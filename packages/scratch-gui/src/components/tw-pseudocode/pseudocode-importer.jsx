@@ -195,8 +195,8 @@ const L10N = {
         basicUbasicFailed: (m) => `The uBASIC (on DOS) route could not run: ${m}`,
         feRunning: 'Running your fe (Lisp) on the libre fe interpreter on the DOS bench…',
         feFailed: (m) => `The fe (Lisp on DOS) route could not run: ${m}`,
-        tclRunning: 'Running your Tcl on the libre partcl interpreter on the DOS bench…',
-        tclFailed: (m) => `The Tcl (partcl on DOS) route could not run: ${m}`,
+        tclRunning: 'Running your Tcl on Jim Tcl, a libre interpreter, on the DOS bench…',
+        tclFailed: (m) => `The Tcl (Jim Tcl on DOS) route could not run: ${m}`,
         basic8086Refused: (m) => `The BASIC compiler refused this program: ${m}`,
         basic8086Failed: (m) => `The 8086 BASIC route could not run: ${m}`,
         apply: '✓ Apply art & convert to blocks', done: 'Done',
@@ -512,8 +512,8 @@ const L10N = {
         basicUbasicFailed: (m) => `Die uBASIC-(auf-DOS)-Route lief nicht: ${m}`,
         feRunning: 'Führe dein fe (Lisp) mit dem freien fe-Interpreter auf der DOS-Werkbank aus…',
         feFailed: (m) => `Die fe-(Lisp-auf-DOS)-Route lief nicht: ${m}`,
-        tclRunning: 'Führe dein Tcl mit dem freien partcl-Interpreter auf der DOS-Werkbank aus…',
-        tclFailed: (m) => `Die Tcl-(partcl-auf-DOS)-Route lief nicht: ${m}`,
+        tclRunning: 'Führe dein Tcl mit dem freien Jim-Tcl-Interpreter auf der DOS-Werkbank aus…',
+        tclFailed: (m) => `Die Tcl-(Jim-Tcl-auf-DOS)-Route lief nicht: ${m}`,
         basic8086Refused: (m) => `Der BASIC-Compiler hat dieses Programm abgelehnt: ${m}`,
         basic8086Failed: (m) => `Die 8086-BASIC-Route lief nicht: ${m}`,
         apply: '✓ Grafik übernehmen & zu Blöcken', done: 'Fertig',
@@ -881,7 +881,7 @@ const readExtraLangs = () => {
 };
 const BW_AUTOSAVE_MAX = 512 * 1024;   // localStorage is ~5MB total; don't hog it
 
-const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC', asm: 'ASM', micropython: 'micro:bit', nqc: 'NQC'};
+const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC', asm: 'ASM', micropython: 'micro:bit', nqc: 'NQC', fe: 'fe (Lisp)', tcl: 'Tcl'};
 
 const DEVICE_HELP = {
     microbit: 'Run MicroPython in the right-hand micro:bit simulator, use its A/B buttons and sensor sliders, or download a .hex for a real board.',
@@ -909,7 +909,40 @@ const deviceHelp = id => DEVICE_HELP[id] || (/^(arduino|atmega|attiny)/.test(id 
 // `LED_ON 0` idiom — every inference reported as a warning, never guessed silently).
 // The one thing it will not do is invert the cooperative-scheduler form; it says so.
 // DEVICE_CHIP_LABELS imported from ../../lib/device-labels.js
-const TWO_WAY = new Set(['pseudocode', 'python', 'javascript', 'c', 'basic']);
+// fe and Tcl read and write through bw-lang/fe.js and bw-lang/tcl.js (Tcl
+// keeps what blocks cannot say as raw blocks; fe refuses it by name).
+const TWO_WAY = new Set(['pseudocode', 'python', 'javascript', 'c', 'basic', 'fe', 'tcl']);
+
+/**
+ * The DOS-interpreter languages' halves, loaded on demand: the module's
+ * default export reads the tab's text into pseudocode; `generate` turns a
+ * project into the tab's text,
+ * or into a comment block naming why it cannot (each language's own comment
+ * syntax, so the refusal is still a valid file to open).
+ */
+const DOS_LANG = {
+    fe: {
+        load: () => import(/* webpackChunkName: "bw-lang-fe" */ '../../lib/bw-lang/fe.js'),
+        generate: (m, proj) => {
+            const r = m.generateFe(proj);
+            return r.ok ? r.fe : `; === Cannot show as fe ===\n${r.reasons.map(s => '; ' + s).join('\n')}\n`;
+        }
+    },
+    tcl: {
+        load: () => import(/* webpackChunkName: "bw-lang-tcl" */ '../../lib/bw-lang/tcl.js'),
+        generate: (m, proj) => {
+            const r = m.generateTcl(proj);
+            return r.ok ? r.tcl : `# === Cannot show as Tcl ===\n${r.reasons.map(s => '# ' + s).join('\n')}\n`;
+        }
+    }
+};
+/** The fe/Tcl buffers for From blocks: the open tab's text if it is one, the
+ * others empty (they re-derive when opened, as after ⇦ To blocks). */
+const dosLangBuffersFor = async (proj, openLang) => {
+    const out = {};
+    for (const [lang, d] of Object.entries(DOS_LANG)) out[lang] = lang === openLang ? d.generate(await d.load(), proj) : '';
+    return out;
+};
 
 /**
  * ONE-WAY IS NOT THE SAME AS READ-ONLY, and the two were conflated because
@@ -1019,6 +1052,37 @@ const SUPPORTED = {
             'No 80186+: SHL AX,4 is expanded and warns; no 8087',
             'No keyboard yet: a program that waits for one will sit there']]
     ],
+    // What generateTcl writes and tclToPseudocode reads: partcl, measured.
+    tcl: [
+        ['Overview', ['Jim Tcl (Tcl 8 compatible) on the DOS bench',
+            'One WHEN flag clicked script + custom blocks (proc)',
+            'Tcl blocks cannot say is kept as a grey raw block and written back as is']],
+        ['Statements', ['set n 5  /  incr n  /  set n [expr {$n + x}] → change n by', 'puts $n  →  say',
+            'after 1000  →  wait 1 secs', 'return / exit  →  stop this script / stop all']],
+        ['Control', ['if {…} {…} elseif {…} {…} else {…}', 'while 1 {…}  →  forever',
+            'while {!(…)} {…}  →  repeat until', 'for {set _r1 0} {$_r1 < N} {incr _r1} {…}  →  repeat N',
+            'foreach x $L {…}  →  a counter walking the list']],
+        ['Expressions', ['expr {…}: + - * / % ** == != < > <= >= && || !', 'abs sqrt floor ceil exp log log10 round rand',
+            '[string length s] [string index s i] [string first a b]', '"text ${n} more"  →  join']],
+        ['Lists', ['lappend L x  →  add x to L', '[lindex $L i] [llength $L]  (Tcl counts from 0)',
+            'lset / linsert / lreplace  →  replace / insert / delete', '{x in $L}  →  L contains x']],
+        ['Notes', ['A proc\'s variables are its own (they show as proc_name); global shares one',
+            'A value from a proc comes back in proc_result',
+            'Integers divide as integers (7 / 2 is 3); the DOS heap is about 12 KB']]
+    ],
+    // What generateFe writes and feToPseudocode reads.
+    fe: [
+        ['Overview', ['fe (rxi), a tiny Lisp on the DOS bench', 'Numbers are floats: (/ 7 2) is 3.5',
+            'One WHEN flag clicked script + custom blocks (fn)']],
+        ['Statements', ['(= n 5)  /  (= n (+ n 1)) → change n by 1', '(print n)  →  say',
+            '(wait 1)  →  wait (no clock: a no-op)', '(= greet (fn (who) …))  →  DEFINE greet (who)']],
+        ['Control', ['(if c (do …) (do …))', '(while t …)  →  forever', '(while (not c) …)  →  repeat until',
+            '(= _r1 0) (while (< _r1 N) (= _r1 (+ _r1 1)) …)  →  repeat N']],
+        ['Expressions', ['(+ a b) (- a b) (* a b) (/ a b) (mod a b)', '(< a b), (< b a) for a > b, (is a b) for =',
+            '(and a b) (or a b) (not a)', 'true/false print as t/nil']],
+        ['Notes', ['No join (fe cannot build text), no stop, no lists',
+            'Custom blocks see and change globals']]
+    ],
     micropython: [
         ['Overview', ['MicroPython for micro:bit v2',
             'from microbit import * (auto-generated)',
@@ -1120,7 +1184,11 @@ class PseudocodeImporter extends React.Component {
             extraLangs: readExtraLangs(), langMenuOpen: false,
             // The Arcade board picker: the boards (null until loaded) and the one chosen.
             arcadeBoards: null, arcadeBoard: '',
-            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: '', nqc: '', fe: '', tcl: ''},
+            // One empty buffer per tab, from LANG_LABEL (the list of tabs);
+            // every buffer reset is built the same way, so no language is
+            // ever left without one — a missing buffer made activeCode()
+            // undefined and crashed the tab on open.
+            buffers: Object.fromEntries(Object.keys(LANG_LABEL).map(l => [l, ''])),
             basicProfile: 'bbc', basicLineNumbers: true,
             uploads: [], status: '', conversionReport: null, reportExpanded: false, busy: false, showRef: false, showInfo: false, showMatrix: false,
             showRepresentation: true,
@@ -1353,8 +1421,7 @@ class PseudocodeImporter extends React.Component {
                 this.publishGameControls(null);
                 this.setState({
                     lang: 'pseudocode',
-                    buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '',
-                        asm: '', micropython: '', nqc: ''},
+                    buffers: Object.fromEntries(Object.keys(LANG_LABEL).map(l => [l, ''])),
                     status: ''
                 });
             } else if (refused) {
@@ -1512,8 +1579,7 @@ class PseudocodeImporter extends React.Component {
             // Same exclusivity the editor's own onChange uses: one authored
             // buffer at a time, so a stale translation of the PREVIOUS source
             // cannot sit in another tab pretending to match.
-            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '',
-                asm: '', micropython: '', nqc: '', [lang]: String(reader.result)},
+            buffers: {...Object.fromEntries(Object.keys(LANG_LABEL).map(l => [l, ''])), [lang]: String(reader.result)},
             asmMode: lang === 'asm' ? 'source' : st.asmMode,
             output: null,
             status: this.L.openDone(file.name, LANG_LABEL[lang] || lang)
@@ -1848,8 +1914,7 @@ class PseudocodeImporter extends React.Component {
             importedPython: res.kind === 'micropython',
             // Same exclusivity openCodeFile keeps: one authored buffer, so
             // no stale translation of a previous source can masquerade.
-            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '',
-                asm: '', micropython: '', [res.lang]: res.code},
+            buffers: {...Object.fromEntries(Object.keys(LANG_LABEL).map(l => [l, ''])), [res.lang]: res.code},
             // The game's artwork rides the same route as an SVG the user
             // drops in themselves: compile() applies `uploads` to the
             // sprites it just parsed, so the costumes land with the code.
@@ -1963,6 +2028,31 @@ class PseudocodeImporter extends React.Component {
             return {files: {...files, 'pxt.json': `${JSON.stringify(cfg, null, 4)}\n`}, name, target: 'calliopemini'};
         }
         return {files, name, target: 'microbit'};
+    }
+
+    /**
+     * Whether to offer ▶ Run in MakeCode for `target`: not when this build
+     * does not serve that target's runtime (made without npm run
+     * sync:makecode) — the button could only fail. Unknown until the probe
+     * answers (one HEAD request, cached), and offered meanwhile.
+     */
+    makeCodeRunOffered (target) {
+        const known = (this.state.mcRuntime || {})[target];
+        if (known === undefined) {
+            this._mcProbes = this._mcProbes || new Set();
+            if (!this._mcProbes.has(target)) {
+                this._mcProbes.add(target);
+                // A HEAD request for the file the compiler loads first (served
+                // under static/makecode/<target>/ by sync:makecode), made here
+                // rather than through pxt-runtime.js so that showing a button
+                // never loads the compiler's chunk.
+                fetch(`static/makecode/${target}/target.json`, {method: 'HEAD'})
+                    .then(r => r.ok, () => false)
+                    .then(ok => { if (!this._unmounted) this.setState(st => ({mcRuntime: {...st.mcRuntime, [target]: ok}})); });
+            }
+            return true;
+        }
+        return known;
     }
 
     /** A MakeCode failure in words: the runtime, the firmware base, or the program. */
@@ -2277,6 +2367,7 @@ class PseudocodeImporter extends React.Component {
         } catch (e) { /* a browser that refuses CustomEvent cannot be helped here */ }
     }
 
+    /** Show or hide the on-request tabs (fe, Tcl); remembered per browser. */
     activeCode () {
         if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return this.state.asmListing;
         // A tab with no buffer yet (fe and Tcl were missing from the initial set and
@@ -2285,7 +2376,7 @@ class PseudocodeImporter extends React.Component {
     }
     setActiveCode (text) {
         if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return; // listing is read-only
-        this.setState(s => ({buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: '', [s.lang]: text}}));
+        this.setState(s => ({buffers: {...Object.fromEntries(Object.keys(LANG_LABEL).map(l => [l, ''])), [s.lang]: text}}));
     }
 
     // Lazily import the compiler through the registering door, which injects this
@@ -2320,6 +2411,7 @@ class PseudocodeImporter extends React.Component {
             else if (from === 'python') pseudo = (await import(/* webpackChunkName: "sb3-creator-python" */ '../../lib/sb3-creator-python.js')).default(src).pseudocode;
             else if (from === 'javascript') pseudo = (await import(/* webpackChunkName: "sb3-creator-javascript" */ '../../lib/sb3-creator-javascript.js')).default(src).pseudocode;
             else if (from === 'basic') pseudo = (await import(/* webpackChunkName: "sb3-creator-basic" */ '../../lib/sb3-creator-basic.js')).default(src).pseudocode;
+            else if (DOS_LANG[from]) pseudo = (await DOS_LANG[from].load()).default(src).pseudocode;
             const creator = new SB3();
             creator.parse(pseudo);
             const proj = creator.project;
@@ -2333,6 +2425,8 @@ class PseudocodeImporter extends React.Component {
             } else if (to === 'micropython') {
                 const r = new SB3().generateMicroPython(proj);
                 code = r.ok ? r.py : `# === Cannot generate MicroPython ===\n${r.reasons.map(s => '# ' + s).join('\n')}`;
+            } else if (DOS_LANG[to]) {
+                code = DOS_LANG[to].generate(await DOS_LANG[to].load(), proj);
             } else code = new SB3().generateJavaScript(proj, this.genOpts());
             return {code};
         } catch (e) { return {error: e.message}; }
@@ -3118,23 +3212,32 @@ class PseudocodeImporter extends React.Component {
     }
 
     /**
-     * Run Tcl (zserge's partcl) through tcl.exe on the DOS bench
-     * (DOS_TOOLCHAINS 'tcl'), mirroring runFeOnDosInterp: the interpreter reads
-     * PROG.TCL (INT 21h) and prints during its run, so the output is the
-     * compile-stage screen (no output file).
+     * Run Tcl through Jim Tcl's jim.exe on the DOS bench (DOS_TOOLCHAINS
+     * 'jim'), mirroring runFeOnDosInterp: the interpreter reads PROG.TCL
+     * (INT 21h) and prints during its run, so the output is the compile-stage
+     * screen (no output file). Jim, not partcl: the tab reads and writes real
+     * Tcl (expr, lists, dicts, strings), and partcl has none of those. Jim's
+     * Tcl-coded library is a second file, JIMLIB.TCL, read on first use.
      */
     async runTclOnDosInterp (code) {
         const source = code != null ? code : this.activeCode();
         if (!source.trim()) return;
         this.setState({output: '', running: true, busy: true, status: this.L.tclRunning});
         try {
-            const r = await runDosToolchain('tcl', source, {
-                // Shipped as a static ROM (MIT, provenance beside it) — fetched,
-                // never bundled into the JS.
+            const r = await runDosToolchain('jim', source, {
+                // Shipped as static files (BSD-2, provenance beside them) —
+                // fetched, never bundled into the JS.
+                // Both paths literal, so the ROM census sees them.
                 fetchToolchain: async () => {
-                    const res = await fetch('static/roms/tcl.exe');
-                    if (!res.ok) throw new Error(`tcl.exe HTTP ${res.status}`);
-                    return {compiler: new Uint8Array(await res.arrayBuffer())};
+                    const bytes = async res => {
+                        if (!res.ok) throw new Error(`${res.url} HTTP ${res.status}`);
+                        return new Uint8Array(await res.arrayBuffer());
+                    };
+                    const [compiler, lib] = await Promise.all([
+                        fetch('static/roms/jim.exe').then(bytes),
+                        fetch('static/roms/jimlib.tcl').then(bytes)
+                    ]);
+                    return {compiler, support: {'JIMLIB.TCL': lib}};
                 },
                 maxSteps: 60_000_000
             });
@@ -4619,6 +4722,10 @@ class PseudocodeImporter extends React.Component {
             } else if (lang === 'basic') {
                 const res = (await import(/* webpackChunkName: "sb3-creator-basic" */ '../../lib/sb3-creator-basic.js')).default(source);
                 source = res.pseudocode; parseWarnings = res.warnings || [];
+            } else if (DOS_LANG[lang]) {
+                const res = (await DOS_LANG[lang].load()).default(source);
+                if (strict && res.warnings.length) throw new Error(res.warnings.join(' · '));
+                source = res.pseudocode; parseWarnings = res.warnings || [];
             } else if (lang === 'c') {
                 // Keil C51 is a different dialect — sbit/sfr/_at_/reg5x headers that SDCC
                 // does not accept and our front end does not model. stc-compiler already
@@ -4769,6 +4876,12 @@ class PseudocodeImporter extends React.Component {
                 nb.basic = br.ok ? br.basic : `REM === Cannot show as BASIC ===\n${br.reasons.map(s => 'REM ' + s).join('\n')}`;
             }
             nb.asm = ''; // cleared — re-fetched on next ASM tab switch
+            // fe and Tcl are NOT regenerated here: their generators load lazily, and
+            // awaiting them inside compile() raced with the user on a slow runner —
+            // after the snapshot above it overwrote an edit typed meanwhile; before
+            // loadProject it reloaded the project after a machine had started and
+            // stopped it. Cleared like ASM, they re-derive when their tab is opened.
+            for (const l of Object.keys(DOS_LANG)) if (l !== lang) nb[l] = '';
             {
                 const mp = new SB3Creator().generateMicroPython(proj);
                 nb.micropython = mp.ok ? mp.py : `# === Cannot generate MicroPython ===\n${mp.reasons.map(s => '# ' + s).join('\n')}`;
@@ -4812,7 +4925,8 @@ class PseudocodeImporter extends React.Component {
                 c: new SB3Creator().generateC(project),
                 basic: basicResult.ok ? basicResult.basic : `REM === Cannot show as BASIC ===\n${basicResult.reasons.map(s => 'REM ' + s).join('\n')}`,
                 asm: '', // cleared — re-fetched on next ASM tab switch
-                micropython: mpResult.ok ? mpResult.py : `# === Cannot generate MicroPython ===\n${mpResult.reasons.map(s => '# ' + s).join('\n')}`
+                micropython: mpResult.ok ? mpResult.py : `# === Cannot generate MicroPython ===\n${mpResult.reasons.map(s => '# ' + s).join('\n')}`,
+                ...(await dosLangBuffersFor(project, this.state.lang))
             };
             this.setState({importedPython: false});
             const baseline = new SB3Creator();
@@ -5016,8 +5130,10 @@ class PseudocodeImporter extends React.Component {
                             {this.L.exportMakeCode}
                         </button>
                     ) : null}
-                    {(this._makeCodeProject && MAKECODE_RUNNABLE.includes(this._makeCodeProject.target)) ||
-                        ['microbit', 'calliopemini'].includes(this.currentDevice()) ? (
+                    {((this._makeCodeProject && MAKECODE_RUNNABLE.includes(this._makeCodeProject.target)) ||
+                        ['microbit', 'calliopemini'].includes(this.currentDevice())) &&
+                        this.makeCodeRunOffered(this._makeCodeProject ? this._makeCodeProject.target :
+                            (this.currentDevice() === 'calliopemini' ? 'calliopemini' : 'microbit')) ? (
                             <button type="button" onClick={() => this.runInMakeCode()} style={item}
                                 title={this.L.mcRunTitle} disabled={this.state.busy}
                                 data-testid="bw-makecode-run">{this.L.mcRun}</button>
@@ -6195,7 +6311,7 @@ class PseudocodeImporter extends React.Component {
                     </React.Suspense>
                 ) : null}
                 {this.state.output != null ? (
-                    <pre data-testid={this.state.lang === 'basic' ? 'bw-basic-output' : undefined}
+                    <pre data-testid={['basic', 'fe', 'tcl'].includes(this.state.lang) ? `bw-${this.state.lang}-output` : undefined}
                         style={{marginTop: 10, padding: 12, background: '#0c3a44', color: '#c7f0e0', borderRadius: 8,
                         fontFamily: 'monospace', fontSize: 13, maxHeight: 220, overflow: 'auto', whiteSpace: 'pre-wrap'}}>
                         {this.state.output || '…'}

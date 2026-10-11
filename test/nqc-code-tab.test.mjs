@@ -24,11 +24,13 @@ test('nqc is registered everywhere a tab has to be, not just in the tab row', ()
     // setActiveCode clears every buffer it knows about except the active one.
     assert.match(importer, /nqc:\s*\{ext: 'nqc'/, 'CODE_FILES needs an entry or save/open breaks');
     assert.match(importer, /micropython: 'micro:bit', nqc: 'NQC'/, 'LANG_LABEL needs a name');
-    const inits = importer.match(/micropython: ''\s*,\s*nqc: ''/g) || [];
-    const initsWithLang = importer.match(/micropython: '', nqc: '', \[lang\]/g) || [];
-    assert.ok(inits.length + initsWithLang.length >= 3,
-        `only ${inits.length + initsWithLang.length} buffer initialisers carry nqc; a tab missing ` +
-        'from one of them is silently emptied when another tab is edited');
+    // Every buffer reset is built from LANG_LABEL (checked above to name
+    // nqc), so a tab cannot be missing from one; a hand-written buffer list
+    // is how a tab went missing before.
+    const inits = importer.match(/Object\.fromEntries\(Object\.keys\(LANG_LABEL\)\.map\(l => \[l, ''\]\)\)/g) || [];
+    assert.ok(inits.length >= 5, `only ${inits.length} buffer resets are built from LANG_LABEL`);
+    assert.doesNotMatch(importer, /buffers: \{pseudocode: ''/,
+        'a hand-written buffer list is back: a tab missing from it is silently emptied when another tab is edited');
 });
 
 test('the tab is offered when the RCX extension is loaded, and not otherwise', () => {
