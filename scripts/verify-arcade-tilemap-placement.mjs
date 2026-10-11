@@ -158,9 +158,11 @@ try {
         const scale = box.width / (await canvas.evaluate(element => element.width));
         return {x: box.x + (c + 0.5) * size * scale, y: box.y + (r + 0.5) * size * scale};
     };
+    // A point inside the marker disc (radius 0.4 of a cell) but clear of the
+    // white initial drawn at its centre.
     const centrePixel = (c, r) => canvas.evaluate((element, [cc, rr, cols]) => {
         const size = element.width / cols;
-        return Array.from(element.getContext('2d').getImageData(Math.floor((cc + 0.5) * size), Math.floor((rr + 0.5) * size), 1, 1).data);
+        return Array.from(element.getContext('2d').getImageData(Math.floor((cc + 0.5) * size), Math.floor((rr + 0.82) * size), 1, 1).data);
     }, [c, r, data.columns]);
     const isMarker = rgba => rgba[2] > 180 && rgba[0] < 90;
 
