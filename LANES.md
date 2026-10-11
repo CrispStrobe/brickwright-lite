@@ -28,8 +28,11 @@ ledger. Not in scope: legacy color-coded maps, tile names, Stage backdrops.
 
 ## Arcade art editable in the paint editor — 2026-10-11
 
-CLAIMED — Claude (opus), owner request ("sprites/backgrounds must be editable in
-our pixel graphics editor"), branch `lane/arcade-editable-art-audit-20261011`.
+DONE — Claude (opus), owner request ("sprites/backgrounds must be editable in
+our pixel graphics editor"), branch `lane/arcade-editable-art-audit-20261011`,
+merged #789 (`074edb8d5`, tree equals the reviewed merge prediction; all
+enabled checks green on attempt 3 after two light-shard failures in the
+unrelated green-flag first-write journey and one PXT palette timing flake).
 Imported MakeCode Arcade art already lands as costumes and edits reach the game;
 this lane makes it legible and organised: helper art sprites get readable names
 from the code (`hero`, `background`, `coinAnimation`) instead of `__arcadeTemplateN`,
@@ -80,8 +83,17 @@ failure-latch, tolerance, runtime/GUI, compiler, firmware or browser timeout
 change. Deployment follows qualified landing; no deployment claim in advance.
 Selected browser evidence path: scripts/verify-circuit-ux.mjs only. Keep its
 strict5000 one-volt/reset assertions; explicitly load the ideal one-volt source
-with a capacitor, and observe real advanceToLive receipts. The100kHz sample
-grid must bound each16-step callback to160us and produce partial continuation.
+with a capacitor, and observe real advanceToLive receipts. Corrected after
+Build38024305644: the time-view100kHz recording is an envelope, not a point
+sample. Its solver bound remains the interactive100us profile ceiling, so a
+16-step callback is bounded by1.6ms; that run preserved all5000 exact one-volt
+envelopes and published31 partial receipts, with no receipt mismatch.
+The replacement must additionally select the actual spectrum point-sample
+tap at100kHz through the UI, verify its capture kind and10us interval, and
+prove16-step callbacks bounded by160us with real partial continuation.
+No engine, profile, accuracy, timeout or existing waveform assertion change.
+Continue on `lane/reactive-live-package-replay-20261011`, retaining main's
+newer sb3 pin. The prior branch/run stays rejected, not rerun unchanged.
 This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
 
 ## Arcade sprite extensions (darts, corgio) — 2026-10-10

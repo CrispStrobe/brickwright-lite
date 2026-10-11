@@ -199,8 +199,18 @@ export async function runProgram (source, {frames = 12, keys = [], uploads = [],
     const creator = new SB3Creator();
     creator.parse(source);
     for (const upload of uploads) {
-        if (upload.mode === 'add') creator.addCustomSVGCostume(upload.sprite, upload.svg, upload.name);
-        else creator.applyCustomSVG(upload.sprite, upload.svg);
+        if (upload.mode === 'add') {
+            // Code read back from blocks already declares the frame (COSTUME name);
+            // fill that slot, as the app's live-artwork transaction does, rather
+            // than appending a second costume after it.
+            const target = creator.project.targets.find(t => !t.isStage && t.name === upload.sprite);
+            const slot = target ? target.costumes.findIndex((c, i) => i > 0 && c.name === upload.name) : -1;
+            if (creator.addCustomSVGCostume(upload.sprite, upload.svg, upload.name) && slot > 0) {
+                const filled = target.costumes.pop();
+                const [declared] = target.costumes.splice(slot, 1, filled);
+                if (declared?.assetId && !target.costumes.some(c => c.assetId === declared.assetId)) creator.assets.delete(declared.assetId);
+            }
+        } else creator.applyCustomSVG(upload.sprite, upload.svg);
     }
     const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
     const vm = new VM();
