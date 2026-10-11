@@ -40,6 +40,7 @@ shard (provisional budget until five readings exist).
 Still open for U03: tile names and the MakeCode `myTiles` asset identity, legacy
 color-coded maps, placing sprites on tiles from the painter, and an SB3
 save/reopen browser journey.
+
 ## Imported Arcade art in the paint editor — 2026-10-11
 
 A MakeCode Arcade game's images already arrived as Scratch costumes, and a
