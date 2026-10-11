@@ -145,3 +145,42 @@ test('a fetched extension compiles in MakeCode\'s worker; without it the compile
     assert.ok(r.outfiles['binary.js'].length > 1000, 'no simulator program');
     assert.equal(sb.bwMakeCode.netAttempts.length, before, 'the compile reached for the network');
 });
+
+
+test('repository subfolder packages keep their identity and report the root notice when absent', async () => {
+    const spec = 'github:Example/Tutorial-Extensions/arrow-images#v0.0.11';
+    assert.deepEqual(parseGithubSpec(spec), {repo: 'example/tutorial-extensions/arrow-images', ref: 'v0.0.11'});
+    for (const bad of ['github:example/repo/../escape#v1', 'github:example/repo/./pkg',
+        'github:example/repo//pkg', 'github:example/repo/pkg#../tag']) assert.equal(parseGithubSpec(bad), null);
+    const calls = [];
+    const repos = publish('example/tutorial-extensions', 'v0.0.11/arrow-images', kitronik, {licence: null});
+    repos['example/tutorial-extensions/v0.0.11/LICENSE'] = kitronik.licenceText.text;
+    const fetched = await fetchMakeCodeExtensions({dependencies: {arrow: spec}, target: 'microbit',
+        table: EXTENSION_TABLE, fetch: fakeGithub(repos, calls)});
+    assert.deepEqual(fetched.refused, []);
+    const [ext] = fetched.extensions;
+    assert.equal(ext.repo, 'example/tutorial-extensions/arrow-images');
+    assert.equal(ext.fetched.base, RAW_BASE + 'example/tutorial-extensions/v0.0.11/arrow-images/');
+    assert.equal(ext.fetched.licenceUrl, RAW_BASE + 'example/tutorial-extensions/v0.0.11/LICENSE');
+    assert.equal(ext.fetched.licence, 'MIT');
+    assert.ok(calls.includes(ext.fetched.base + 'motors.ts'));
+    assert.deepEqual(unresolvedGithubDependencies({arrow: spec}, 'microbit', fetched.extensions), []);
+    assert.equal(unresolvedGithubDependencies({other: 'github:example/tutorial-extensions/other#v0.0.11'},
+        'microbit', fetched.extensions).length, 1, 'a sibling package is not the same dependency');
+});
+
+test('Node compiler stays offline by default and explicitly fetches a package subfolder', {skip}, async () => {
+    const {compile} = await import('../scripts/lib/pxt-node.mjs');
+    const files = {'pxt.json': JSON.stringify({name: 'subfolder', dependencies: {...MICROBIT_DEFAULT_DEPENDENCIES,
+        motor: 'github:example/tutorial-extensions/motor-copy#v9'}, files: ['main.ts']}),
+    'main.ts': 'kitronik.motorOff(kitronik.Motors.Motor1)'};
+    const calls = [];
+    const fetch = fakeGithub(publish('example/tutorial-extensions', 'v9/motor-copy', kitronik), calls);
+    await assert.rejects(compile('microbit', files, {fetch}), error => error.code === 'NO_EXTENSION');
+    assert.deepEqual(calls, [], 'passing a fetch adapter alone must not enable network access');
+    const result = await compile('microbit', files, {fetchExtensions: true, fetch});
+    assert.equal(result.success, true, JSON.stringify(result.diagnostics));
+    assert.equal(result.fetchedExtensions[0].repo, 'example/tutorial-extensions/motor-copy');
+    assert.match(result.fetchedExtensions[0].sha256['motors.ts'], /^[a-f0-9]{64}$/);
+    assert.deepEqual(result.netAttempts, [], 'PXT compiler hooks remain offline after resolving the package');
+});
