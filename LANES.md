@@ -15,10 +15,43 @@ Nobody ignored a rule; there was no rule. The coordinating session worked from a
 worktree created *before* the other landed, and never re-checked. A worktree is a
 photograph of `main`, and the longer you hold it the more of a lie it becomes.
 
+## Intermittent green-flag first-write failure on main — 2026-10-11
+
+CLAIMED — Claude (opus), owner request ("take it on, fix it all"), branch
+`lane/green-flag-transient-20261011`. Since the bw-board pin `09c0f027`
+(winding repair adoption), `scripts/verify-green-flag-first-write.mjs` runs 5
+and 6 fail in about 3 of 5 hosted light-shard runs: the designer reports
+"Simulation stopped: advanceToLive refuses failed transient history", its clock
+does not run and the first write is lost. No lane owned it. This lane
+reproduces it, finds the cause in the pinned engine/UI pair or in Lite's
+wiring, and fixes it at its origin (own forks bw-board / bw-circuit-ui with a
+pin move, or Lite), without weakening the journey's assertions or bounds.
+Envelope: the files the diagnosis implicates, the pin and its ripple surfaces,
+this ledger.
+
+## Code tab blocks ⇄ fe and blocks ⇄ Tcl: rescue of PR #708 — 2026-10-11
+
+DONE — Claude (opus), owner request (fe/Tcl "+" change thought lost; asked to
+pick it up), branch `lane/fe-tcl-two-way-rescue-20261011` from #708's head
+`6ac91b6cf`, merged #791 (`98a5468a1`, tree equals the reviewed merge
+prediction; all enabled checks green, light shard on rerun after the unrelated
+green-flag first-write journey). Beyond the merge: #786's "+" menu kept, and
+To blocks no longer awaits the lazily loaded fe/Tcl generators (that race lost
+typed edits and stopped debugger machines on slow runners); fe/Tcl buffers are
+cleared and re-derived when opened. #708 (no claim, idle since 2026-10-07) carries two-way fe and Tcl
+conversion, a Jim Tcl DOS runtime and its build tooling; its only red check was
+a since-repaired Arcade rotation gate. This lane merges current main (resolving
+the overlap with #786's optional-language "+" control), requalifies, and lands
+it as a new PR; #708's branch is left untouched. Envelope: #708's files plus
+the three conflicted ones, this ledger.
+
 ## Arcade tile map painter — 2026-10-11
 
-CLAIMED — Claude (opus), owner request (imported Arcade levels must be editable
-in our graphics editors), branch `lane/arcade-tilemap-painter-20261011`. Ledger
+DONE — Claude (opus), owner request (imported Arcade levels must be editable
+in our graphics editors), branch `lane/arcade-tilemap-painter-20261011`, merged
+#790 (`513b0caac`, tree equals the reviewed merge prediction; all enabled
+checks green; also gained New tile map and the CI light-shard browser check,
+which touched build.yml and browser-gate-readings.json). Ledger
 U03 first slice: a painter in the Costumes tab for every `set Arcade tilemap`
 block (tile palette, paint/erase/fill, separate wall layer, map size, tile size,
 add/remove/edit tiles as pixels, undo/redo), written back into that block.

@@ -31,9 +31,12 @@ test('actual Code compile catch displays a real VM serialized validation rejecti
     const signature = 'async compile ({strict = false, pseudocode = null} = {})';
     const body = balancedFrom(source, source.indexOf(signature) + signature.length, '{', '}', 'Code compile');
     const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
-    const compile = new AsyncFunction('TWO_WAY', 'LANG_LABEL', 'codeArtworkMatches', 'conversionFailure',
+    // DOS_LANG / generateDosLangs: the fe and Tcl tabs compile() also reads and
+    // regenerates; none here.
+    const compile = new AsyncFunction('TWO_WAY', 'LANG_LABEL', 'codeArtworkMatches', 'conversionFailure', 'DOS_LANG', 'generateDosLangs',
         `return async function ({strict = false, pseudocode = null} = {}) ${body}`);
-    const execute = await compile(new Set(['pseudocode']), {pseudocode: 'Pseudocode'}, codeArtworkMatches, conversionFailure);
+    const execute = await compile(new Set(['pseudocode']), {pseudocode: 'Pseudocode'}, codeArtworkMatches, conversionFailure,
+        {}, async () => ({}));
     class InvalidCostumes extends Creator {
         async generateSB3 () {
             const zip = await JSZip.loadAsync(await (await super.generateSB3()).arrayBuffer());
