@@ -211,14 +211,59 @@ export function findTilemapBlocks (vm) {
     return found;
 }
 
-/** Write a map back into the block it came from. Returns true when written. */
+const sameTile = (left, right) => left.width === right.width && left.height === right.height &&
+    left.displayName === right.displayName && left.pixels.length === right.pixels.length &&
+    left.pixels.every((pixel, index) => pixel === right.pixels[index]);
+
+/** Prepare shared asset changes before touching blocks. Divergent copies stay independent. */
+export function tilemapEditUpdates (maps, ref, data) {
+    if (!ref?.data) return null;
+    const normalized = normalizeTilemap(data);
+    const current = maps.find(map => map.targetId === ref.targetId && map.blockId === ref.blockId);
+    if (!normalized || !current?.editable || current.shadowId !== ref.shadowId ||
+        tilemapText(current.data) !== tilemapText(ref.data)) return null;
+    const replacements = new Map();
+    for (const before of ref.data.images) {
+        if (!validTileId(before.tileId)) continue;
+        const changed = normalized.images.filter(image => image.tileId === before.tileId && !sameTile(image, before));
+        if (!changed.length) continue;
+        // An imported divergent ID has no single global asset to edit safely.
+        if (ref.data.images.some(image => image.tileId === before.tileId && !sameTile(image, before)) ||
+            changed.some(image => !sameTile(image, changed[0]))) return null;
+        replacements.set(before.tileId, {before, after: changed[0]});
+    }
+    const updates = [];
+    for (const map of maps) {
+        if (!map.editable) continue;
+        const selected = map.targetId === ref.targetId && map.blockId === ref.blockId;
+        const base = selected ? normalized : map.data;
+        let sharedChange = false;
+        const images = base.images.map(image => {
+            const replacement = replacements.get(image.tileId);
+            if (!replacement || !sameTile(image, replacement.before)) return image;
+            sharedChange = true;
+            return copyImage(replacement.after);
+        });
+        if (selected || sharedChange) updates.push({...map, data: {...base, images}});
+    }
+    return updates;
+}
+
+/** Save a map and every matching use of its edited named assets. */
 export function writeTilemapBlock (vm, ref, data) {
-    const text = normalizeTilemap(data) && tilemapText(data);
-    const target = vm?.runtime?.getTargetById?.(ref.targetId);
-    const shadow = target?.blocks?.getBlock?.(ref.shadowId);
-    if (!text || !shadow || !shadow.fields?.TEXT) return false;
-    target.blocks.changeBlock({id: ref.shadowId, element: 'field', name: 'TEXT', value: text}, vm.runtime);
-    if (vm.editingTarget && vm.editingTarget.id === target.id && vm.emitWorkspaceUpdate) vm.emitWorkspaceUpdate();
+    const updates = tilemapEditUpdates(findTilemapBlocks(vm), ref, data);
+    if (!updates) return false;
+    const writes = updates.map(update => {
+        const target = vm?.runtime?.getTargetById?.(update.targetId);
+        const shadow = target?.blocks?.getBlock?.(update.shadowId);
+        const text = tilemapText(update.data);
+        return shadow?.fields?.TEXT && text ? {target, shadow, text} : null;
+    });
+    if (writes.some(write => !write)) return false;
+    for (const {target, shadow, text} of writes) {
+        target.blocks.changeBlock({id: shadow.id, element: 'field', name: 'TEXT', value: text}, vm.runtime);
+    }
+    if (writes.some(write => vm.editingTarget?.id === write.target.id) && vm.emitWorkspaceUpdate) vm.emitWorkspaceUpdate();
     vm.runtime.emitProjectChanged?.();
     return true;
 }

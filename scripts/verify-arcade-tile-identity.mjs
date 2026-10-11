@@ -22,7 +22,8 @@ const check = (name, ok, detail = null) => {
     console.log(`ok ${name}`);
 };
 const source = 'namespace myTiles {\n export const empty = img`0 0\n0 0`\n export const floor = img`7 7\n7 7`\n}\n' +
-    'tiles.setTilemap(tiles.createTilemap(hex`020001000100`, img`2 .`, [myTiles.empty, myTiles.floor], TileScale.Four))\n';
+    'tiles.setTilemap(tiles.createTilemap(hex`020001000100`, img`2 .`, [myTiles.empty, myTiles.floor], TileScale.Four))\n' +
+    'tiles.setTilemap(tiles.createTilemap(hex`010002000001`, img`.\n2`, [myTiles.empty, myTiles.floor], TileScale.Four))\n';
 const fixture = join(out, 'named-level.mkcd');
 await writeFile(fixture, makeCodeProjectFile({'main.ts': source, 'pxt.json': JSON.stringify({name: 'Named level', dependencies: {device: '*'}, files: ['main.ts'], preferredEditor: 'tsprj'})}, {target: 'arcade'}));
 const browser = await chromium.launch(process.env.BW_BROWSER ? {executablePath: process.env.BW_BROWSER} : {});
@@ -54,8 +55,8 @@ const importFile = async file => {
     await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles(file);
     await page.getByText(/Imported the Arcade game/).first().waitFor({timeout: 60000});
     await page.getByRole('button', {name: /To blocks|Zu Blöcken/i}).first().click();
-    await page.waitForFunction(() => window.__brickwrightStore?.getState().scratchGui.vm.runtime.targets.some(target =>
-        target.isOriginal && Object.values(target.blocks._blocks).some(block => block.opcode === 'arcade_setTilemap')), null, {timeout: 60000});
+    await page.waitForFunction(() => window.__brickwrightStore?.getState().scratchGui.vm.runtime.targets.reduce((count, target) => count +
+        (target.isOriginal ? Object.values(target.blocks._blocks).filter(block => block.opcode === 'arcade_setTilemap').length : 0), 0) === 2, null, {timeout: 60000});
 };
 const painter = async () => {
     await page.locator('[role="tab"]', {hasText: /Costumes|Kostüme/}).first().click();
@@ -77,7 +78,8 @@ try {
     const box = await page.getByTestId('bw-tilemap-tile-canvas').boundingBox();
     await page.mouse.click(box.x + 2, box.y + 2);
     await page.getByTestId('bw-tilemap-save').click();
-    check('real rename and pixel edit retain the source ID', editedTile((await readMaps())[0].images[1]));
+    const shared = await readMaps();
+    check('real rename and pixel edit update both uses of the source ID', shared.length === 2 && shared.every(map => editedTile(map.images[1])));
     await page.screenshot({path: join(out, 'named-painter.png')});
     await page.getByText('File', {exact: true}).first().click();
     const saved = page.waitForEvent('download');
@@ -91,9 +93,10 @@ try {
     await page.getByText('File', {exact: true}).first().click();
     await page.getByText('Load from your computer', {exact: true}).click();
     await page.locator('body > input[type="file"][accept*=".sb3"]').setInputFiles(sb3);
-    await page.waitForFunction(() => window.__brickwrightStore?.getState().scratchGui.vm.runtime.targets.some(target =>
-        target.isOriginal && Object.values(target.blocks._blocks).some(block => block.opcode === 'arcade_setTilemap')), null, {timeout: 60000});
-    check('File reload keeps ID, label and edited pixels', editedTile((await readMaps())[0].images[1]));
+    await page.waitForFunction(() => window.__brickwrightStore?.getState().scratchGui.vm.runtime.targets.reduce((count, target) => count +
+        (target.isOriginal ? Object.values(target.blocks._blocks).filter(block => block.opcode === 'arcade_setTilemap').length : 0), 0) === 2, null, {timeout: 60000});
+    const reopened = await readMaps();
+    check('File reload keeps shared IDs, labels and edited pixels', reopened.length === 2 && reopened.every(map => editedTile(map.images[1])));
     await painter();
     check('reopened painter shows the saved name', await page.getByTestId('bw-tilemap-tile-name').inputValue() === 'Cracked floor');
     await page.locator('[role="tab"]', {hasText: 'Code'}).first().click();
@@ -107,11 +110,13 @@ try {
     const files = readMakeCodeProjectText(await readFile(mkcd, 'utf8'), 'mkcd').files;
     const assets = parseTileAssets(files['tilemap.g.jres']);
     check('download carries a real named tile resource', editedTile(assets['myTiles.floor']));
+    check('shared edits export one resource per asset ID', Object.keys(JSON.parse(files['tilemap.g.jres'])).length === 2);
     check('project lists generated resource and declaration files', ['tilemap.g.jres', 'tilemap.g.ts'].every(file => JSON.parse(files['pxt.json']).files.includes(file)));
     await page.context().close();
     page = await fresh();
     await importFile(mkcd);
-    check('actual MakeCode download reimports ID, label and pixels', editedTile((await readMaps())[0].images[1]));
+    const reimported = await readMaps();
+    check('actual MakeCode download reimports both shared uses', reimported.length === 2 && reimported.every(map => editedTile(map.images[1])));
     check('no browser exceptions', report.errors.length === 0, report.errors);
 } catch (error) {
     report.fatal = String(error.stack || error);

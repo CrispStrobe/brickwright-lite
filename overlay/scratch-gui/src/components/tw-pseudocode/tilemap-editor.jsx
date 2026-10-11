@@ -13,7 +13,7 @@ import React from 'react';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {ARCADE_PALETTE} from '../../lib/bw-makecode/pixel-image.js';
 import {
-    TILE_SIZES, findTilemapBlocks, writeTilemapBlock, paintCell, eraseCell, fillCells, setWall, resizeTilemap,
+    TILE_SIZES, findTilemapBlocks, writeTilemapBlock, tilemapText, paintCell, eraseCell, fillCells, setWall, resizeTilemap,
     setTileSize, addTile, removeTile, paintTilePixel, renameTile, createHistory, commit, undo, redo, createTilemap, addTilemapBlock
 } from '../../lib/bw-makecode/tilemap-editor.js';
 
@@ -205,9 +205,12 @@ class TilemapEditor extends React.Component {
             this.setState({status: t(locale, 'tm.saveFailed')});
             return false;
         }
-        const maps = this.state.maps.slice();
-        maps[this.state.selected] = {...map, data};
-        this.setState({maps, saved: data, status: t(locale, 'tm.saved', {target: map.targetName})});
+        const maps = findTilemapBlocks(this.props.vm);
+        const written = maps[this.state.selected].data;
+        const sharedChanged = tilemapText(written) !== tilemapText(data);
+        this.setState(state => ({maps, saved: sharedChanged ? written : data,
+            history: sharedChanged ? commit(state.history, written) : state.history,
+            status: t(locale, 'tm.saved', {target: map.targetName})}));
         return true;
     }
 
