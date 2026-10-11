@@ -6,6 +6,37 @@ The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
 The previous agent is paused; its preserved branch is an integration input,
 not a second active owner. SPIKE G01, CPU and hardware ownership remain separate.
 
+## Arcade tile map painter — 2026-10-11 (U03, first slice)
+
+A MakeCode Arcade level arrives as a `set Arcade tilemap` block whose input is
+the level as JSON text — runnable and exportable, but only editable by hand.
+Costumes → **Tile maps** now opens a painter on it.
+
+- `lib/bw-makecode/tilemap-editor.js`: finds every `set Arcade tilemap` block in
+  the project (a reporter or non-map text is listed as not editable), edits the
+  existing `tilemap-values.js` representation without mutating it (paint, erase,
+  flood fill, separate wall layer, resize keeping the top-left, tile size with
+  top-left crop/pad, add/remove tiles with renumbering, per-pixel tile edits),
+  keeps an undo/redo history, and writes the level back into its block.
+- `components/tw-pseudocode/tilemap-editor.jsx`: map picker for all levels, tile
+  palette drawn from the level's tiles, a 16-colour pixel editor for the selected
+  tile, tools, map/tile size, zoom, undo/redo (also Ctrl+Z / Ctrl+Shift+Z),
+  Revert and Save. Nothing changes before Save. Offered in the costume tab when
+  the project has a tile map block.
+
+Evidence: `test/makecode-arcade-tilemap-editor.test.mjs` (7 cases: each edit,
+undo/redo, text round trip and refusal of junk, and in the VM a level found in
+an imported game, painted, written back, then drawn and collided with by the
+running game and exported to MakeCode with the new cell). Browser:
+`scripts/verify-arcade-tilemap-painter.mjs` imports the pinned platformer
+fixture, opens the painter with real pointer input, paints a cell, adds a wall,
+undoes/redoes, draws a tile pixel, saves, then checks the block and the running
+game (14/14 against a local production build). Not yet in a CI browser shard.
+
+Still open for U03: tile names and the MakeCode `myTiles` asset identity, a new
+level from scratch (needs a block), legacy color-coded maps, placing sprites on
+tiles from the painter, and an SB3 save/reopen browser journey.
+
 ## MakeCode extensions fetched on demand — 2026-10-10
 
 Running a MakeCode project (micro:bit, Calliope, EV3, Circuit Playground or
