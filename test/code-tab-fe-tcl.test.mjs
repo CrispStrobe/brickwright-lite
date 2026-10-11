@@ -414,14 +414,16 @@ test('the importer treats fe and Tcl as two-way languages everywhere one must be
     assert.match(importer, /data-testid="bw-lang-more"/);
     // compile() reads them, and both regenerate paths write them.
     assert.match(importer, /\} else if \(DOS_LANG\[lang\]\) \{\n\s+const res = \(await DOS_LANG\[lang\]\.load\(\)\)\.default\(source\);/);
-    assert.match(importer, /for \(const \[l, code\] of Object\.entries\(dosLangBuffers\)\) if \(l !== lang\) nb\[l\] = code;/);
-    // ... generated BEFORE the project loads: awaiting the lazily loaded
-    // generators after the buffer snapshot let an edit typed meanwhile be lost.
+    // ⇦ To blocks clears the other fe/Tcl buffers (they re-derive when opened);
+    // it must not await their lazily loaded generators: on a slow runner that
+    // overwrote an edit typed meanwhile, or reloaded the project after a
+    // machine had started.
+    assert.match(importer, /for \(const l of Object\.keys\(DOS_LANG\)\) if \(l !== lang\) nb\[l\] = '';/);
     const compileStart = importer.indexOf('async compile ({strict = false, pseudocode = null} = {})');
-    const generated = importer.indexOf('const dosLangBuffers = await generateDosLangs(creator.project);', compileStart);
-    assert.ok(generated > compileStart && generated < importer.indexOf('await this.props.vm.loadProject(projectBytes);', compileStart),
-        'fe/Tcl text is generated before loadProject publishes the project');
-    assert.match(importer, /\.\.\.\(await generateDosLangs\(project\)\)/);
+    const compileEnd = importer.indexOf('async fromBlocks ()', compileStart);
+    assert.doesNotMatch(importer.slice(compileStart, compileEnd), /dosLangBuffersFor|generateDosLangs|\.generate\(await/,
+        'compile() runs no fe/Tcl generator (reading the open fe/Tcl tab is its input, not a regeneration)');
+    assert.match(importer, /\.\.\.\(await dosLangBuffersFor\(project, this\.state\.lang\)\)/);
     // A tab switch derives through them in both directions — before this,
     // switching INTO fe or Tcl fell through to generateJavaScript.
     assert.match(importer, /else if \(DOS_LANG\[from\]\) pseudo = \(await DOS_LANG\[from\]\.load\(\)\)\.default\(src\)\.pseudocode;/);

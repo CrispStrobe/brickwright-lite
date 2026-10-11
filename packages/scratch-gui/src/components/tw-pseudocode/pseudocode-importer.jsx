@@ -936,9 +936,11 @@ const DOS_LANG = {
         }
     }
 };
-const generateDosLangs = async proj => {
+/** The fe/Tcl buffers for From blocks: the open tab's text if it is one, the
+ * others empty (they re-derive when opened, as after ⇦ To blocks). */
+const dosLangBuffersFor = async (proj, openLang) => {
     const out = {};
-    for (const [lang, d] of Object.entries(DOS_LANG)) out[lang] = d.generate(await d.load(), proj);
+    for (const [lang, d] of Object.entries(DOS_LANG)) out[lang] = lang === openLang ? d.generate(await d.load(), proj) : '';
     return out;
 };
 
@@ -4742,11 +4744,6 @@ class PseudocodeImporter extends React.Component {
             const SB3Creator = (await this.lib()).default;
             const creator = new SB3Creator();
             creator.parse(source);
-            // The fe and Tcl texts load their generators lazily. Await them NOW,
-            // before the project loads and the device is published: awaiting after
-            // the buffer snapshot below would let an edit typed meanwhile be
-            // overwritten (a slow runner typed after the device switch and lost it).
-            const dosLangBuffers = await generateDosLangs(creator.project);
             const sourceDeclarations = JSON.parse(JSON.stringify(creator.project));
             const missing = [];
             uploads.forEach(u => {
@@ -4879,7 +4876,12 @@ class PseudocodeImporter extends React.Component {
                 nb.basic = br.ok ? br.basic : `REM === Cannot show as BASIC ===\n${br.reasons.map(s => 'REM ' + s).join('\n')}`;
             }
             nb.asm = ''; // cleared — re-fetched on next ASM tab switch
-            for (const [l, code] of Object.entries(dosLangBuffers)) if (l !== lang) nb[l] = code;
+            // fe and Tcl are NOT regenerated here: their generators load lazily, and
+            // awaiting them inside compile() raced with the user on a slow runner —
+            // after the snapshot above it overwrote an edit typed meanwhile; before
+            // loadProject it reloaded the project after a machine had started and
+            // stopped it. Cleared like ASM, they re-derive when their tab is opened.
+            for (const l of Object.keys(DOS_LANG)) if (l !== lang) nb[l] = '';
             {
                 const mp = new SB3Creator().generateMicroPython(proj);
                 nb.micropython = mp.ok ? mp.py : `# === Cannot generate MicroPython ===\n${mp.reasons.map(s => '# ' + s).join('\n')}`;
@@ -4924,7 +4926,7 @@ class PseudocodeImporter extends React.Component {
                 basic: basicResult.ok ? basicResult.basic : `REM === Cannot show as BASIC ===\n${basicResult.reasons.map(s => 'REM ' + s).join('\n')}`,
                 asm: '', // cleared — re-fetched on next ASM tab switch
                 micropython: mpResult.ok ? mpResult.py : `# === Cannot generate MicroPython ===\n${mpResult.reasons.map(s => '# ' + s).join('\n')}`,
-                ...(await generateDosLangs(project))
+                ...(await dosLangBuffersFor(project, this.state.lang))
             };
             this.setState({importedPython: false});
             const baseline = new SB3Creator();
