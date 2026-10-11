@@ -102,7 +102,9 @@ module.exports = function createCarnivalHost (ext) {
             let sound;
             if (args.HAS_SOUND) {
                 const melody = ext._musicValue(args.SOUND, 'Melody');
-                if (!melody) throw new Error('Carnival custom game-over needs a melody sound');
+                // _musicValue already reports BLOCKS_ERROR. Stop this call
+                // without throwing out of the synchronous VM primitive.
+                if (!melody) return;
                 sound = melodySound(melody);
             }
             let scoring;
