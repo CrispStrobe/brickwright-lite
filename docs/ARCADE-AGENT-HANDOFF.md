@@ -816,3 +816,32 @@ custom API/timer/helper capabilities with original controls. Preserve current
 immutable-input audit actually reruns; these tests do not promote corpus rows.
 Private receipt URLs, commands and local paths live in the private handoff;
 `docs/ARCADE-AGENT-HANDOFF.local.md` is ignored operational context.
+
+### Carnival production browser journey — 2026-10-11
+
+`scripts/verify-arcade-carnival-browser.mjs` is now registered on the heavy
+browser shard, with a generated zero-reading provisional budget. Run it against
+an already built production app:
+
+```sh
+BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-carnival-browser.mjs
+```
+
+It imports an owned two-line MakeCode control using Code Open, observes the
+translated pseudocode, clicks To blocks, checks the visible carnival block,
+runs with the green flag, observes real native dialog pixels/score, restarts
+through controller A, and saves through File. The downloaded archive must carry
+exact program records. A fresh browser context with no carnival device records
+loads that file through File, checks restored blocks/records and runs them again.
+The gate records tested source, loaded scripts, screenshots, archive hash and
+errors under `test-results/arcade-carnival-browser/`. `BW_CARNIVAL_REPORT_DIR`
+overrides that output directory; `BW_EXPECT_GUI_BUNDLE` can require a named
+bundle. It observes VM state and does not inject runtime/serializer operations.
+
+The native button-restart control passes; all 12 host checks passed in the
+expanded suite. Thirteen budget/timeout checks pass after registering the new
+gate. The initial budget failures (missing registration) remain in private
+receipts. Syntax checks pass. The production journey has **not yet executed**;
+hosted build/browser qualification is pending, not inferred from these checks.
+No app build or dependency mutation was performed locally. Palette/body controls
+and corpus counts retain the previously documented boundaries.

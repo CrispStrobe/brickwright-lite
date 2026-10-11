@@ -73,6 +73,24 @@ test('stop cancels carnival waits and a new run gets a fresh callback',async()=>
     }finally{run.vm.quit?.();}
 });
 
+test('button input restarts a finished carnival dialog while retaining program records',async()=>{
+    const imported=arcadeToPseudocode('info.setScore(9)\ncarnival.startCountdownGame(2,carnival.WinTypes.Score)');
+    const run=await runProgram(imported.code,{frames:0,storage:true});
+    try {
+        await stepFrames(run.vm,180,20);
+        const first=run.vm.runtime.getTargetForStage().bwArcadeSettings;
+        assert.ok(run.vm.runtime.bwArcadeDeviceState.backgroundImage);
+        assert.ok(run.vm.runtime.bwArcadeDeviceState.elapsedMs>1100);
+        run.vm.postIOData('keyboard',{key:' ',isDown:true});
+        run.vm.postIOData('keyboard',{key:' ',isDown:false});
+        await stepFrames(run.vm,2,20);
+        assert.ok(!run.vm.runtime.bwArcadeDeviceState.backgroundImage);
+        assert.equal(run.vm.runtime.getTargetForStage().bwArcadeSettings.id,first.id);
+        assert.deepEqual(run.vm.runtime.getTargetForStage().bwArcadeSettings.values,first.values);
+        assert.deepEqual(run.errors,[]);
+    }finally{run.vm.quit?.();}
+});
+
 test('unsupported carnival calls, dynamic styles and shadowed namespaces remain diagnosed',()=>{
     for(const source of ['carnival.startCountdownGame(1, 4)','carnival.customGameOverExpanded("Hi")',
         'let carnival=1; carnival.startCountdownGame(1, carnival.WinTypes.Multi)']) {

@@ -3334,3 +3334,13 @@ UI; custom message/scoring/sound game-over API; timer HUD and remaining carnival
 helpers. `WinTypes.Custom` is exposed as a style, not the separate custom API.
 Dynamic styles remain diagnosed. Exact scope, storage semantics, source files
 and next steps are in [the host handoff](ARCADE-AGENT-HANDOFF.md#carnival-native-host-authoring-and-saved-records--2026-10-11).
+
+### Carnival GUI qualification gate prepared — 2026-10-11
+
+The hosted heavy shard now includes a real UI journey for carnival import,
+pseudocode, visible Blocks, green flag, controller A restart, File Save and
+fresh-context File Load with portable scores. The archive and screenshots are
+retained as CI artifacts. Native button-restart and all 12 host checks pass;
+13 workflow budget/timeout checks pass. **The production browser journey is
+pending execution**, so its GUI gap remains open. See
+[the journey contract](ARCADE-AGENT-HANDOFF.md#carnival-production-browser-journey--2026-10-11).
