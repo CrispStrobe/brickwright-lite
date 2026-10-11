@@ -35,6 +35,15 @@ const OPERATIONS = Object.freeze({
     ev3ClearBreakpoint: 'renode.ev3.breakpoint.clear'
 });
 
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 Brickwright contributors
+// The relay deliberately returns fixed failure codes, never native exception
+// text or private resource paths.
+const FAILURE_CODES = new Set(['closed', 'invalid-envelope', 'replayed-request',
+    'out-of-order-request', 'capacity', 'invalid-data', 'invalid-url', 'unpinned-url',
+    'stale-reply', 'operation-failed', 'invalid-registration', 'unknown-worker',
+    'unknown-extension', 'unknown-method', 'timeout']);
+
 const createNativeRenodeCapabilities = ({invoke} = {}) => {
     if (typeof invoke !== 'function') return null;
     let session = null;
@@ -73,6 +82,14 @@ const createNativeRenodeCapabilities = ({invoke} = {}) => {
                 const raw = await invoke('native_broker_request', {session: owned.id, requestId,
                     payload: JSON.stringify({kind: 'capability', operation, args})});
                 const reply = JSON.parse(raw);
+                if (reply && Object.getPrototypeOf(reply) === Object.prototype &&
+                    Object.keys(reply).sort().join(',') === 'code,kind,request_kind' &&
+                    reply.kind === 'failure' && reply.request_kind === 'capability' &&
+                    FAILURE_CODES.has(reply.code)) {
+                    const error = new Error(`Firmware simulator request failed (${reply.code})`);
+                    error.code = reply.code;
+                    throw error;
+                }
                 if (!reply || Object.getPrototypeOf(reply) !== Object.prototype ||
                     reply.kind !== 'capability' || typeof reply.result !== 'string') {
                     throw new Error('Renode capability reply was malformed');
