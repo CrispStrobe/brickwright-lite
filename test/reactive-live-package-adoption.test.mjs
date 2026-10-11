@@ -4,6 +4,40 @@ import path from 'node:path';
 import {loadCircuitModel} from '../scripts/lib/polarity-oracle.mjs';
 
 const root=path.resolve(import.meta.dirname,'..');
+test('installed live clock distinguishes envelope rate from point-sample solver authority',async()=>{
+    const {Circuit}=await loadCircuitModel(root);
+    const circuit=Circuit.fromJSON({parts:[
+        {id:'V',kind:'vsource',params:{volts:1},x:100,y:100},
+        {id:'C',kind:'capacitor',params:{farads:1e-6},x:200,y:100},
+        {id:'G',kind:'gnd',params:{},x:100,y:200},
+    ],wires:[
+        {from:{part:'V',terminal:'pos'},to:{part:'C',terminal:'a'}},
+        {from:{part:'V',terminal:'neg'},to:{part:'C',terminal:'b'}},
+        {from:{part:'V',terminal:'neg'},to:{part:'G',terminal:'gnd'}},
+    ]});
+    assert.equal(circuit.netlistError,null);circuit.setPower(true);
+    const b=circuit.board,netId=b.nets.find(n=>n.terminals.some(t=>t.part==='V'&&t.terminal==='pos')).id;
+    const envelope=b.addScopeChannel({type:'voltage',netId,sampleRateHz:100000,depth:8192});
+    const advance=(target,limit)=>{
+        let partials=0,calls=0;
+        while(b.getTime()<target){
+            assert.ok(++calls<1000);const before=b.getTime();
+            const r=b.advanceToLive(target,{maxSteps:16});
+            assert.ok(b.getTime()>before&&b.getTime()-before<=limit);
+            assert.equal(r.processedTimeNs,String(b.getTime()));
+            if(!r.completed)partials++;
+        }
+        assert.ok(partials>0);
+    };
+    advance(50000000n,1600000n);
+    assert.equal(b.getScopeData(envelope).capture,'envelope');
+    const sample=b.addScopeChannel({type:'voltage',netId,capture:'sample',sampleRateHz:100000,depth:8192});
+    advance(100000000n,160000n);
+    const d=b.getScopeData(sample);
+    assert.equal(d.capture,'sample');assert.equal(d.count,5000);
+    assert.equal(d.sampleIntervalNs,10000n);assert.equal(d.startTNs,50010000n);
+    assert.ok([...d.samples.slice(0,10000)].every(v=>v===1));
+});
 test('installed Circuit live controller resumes winding capture at actual partial clocks',async()=>{
     const {Circuit}=await loadCircuitModel(root);
     const net=(...pins)=>pins.map(([part,terminal])=>({part,terminal}));

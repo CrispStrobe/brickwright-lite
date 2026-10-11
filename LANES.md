@@ -60,7 +60,7 @@ integration session (merged: #786, #787, #788):
 
 ## Reactive live-clock package adoption — 2026-10-10
 
-DONE candidate — Codex bwcx, isolated branch `lane/reactive-live-package-adoption-20261010`,
+DONE candidate — Codex bwcx, isolated branch `lane/reactive-live-package-replay-20261011`,
 exact base `9ac32a75562577c945baff383fbfb5dcddd02804`. Adopt bw-board
 `74b971b48a9ebe97d5dd2a793ba3f85a6ffa0d42` only; keep CUI, sb3 and flasher pins
 unchanged. Upstream CI37985452352 and Harris37985452331 are exact-head green;
@@ -94,6 +94,17 @@ prove16-step callbacks bounded by160us with real partial continuation.
 No engine, profile, accuracy, timeout or existing waveform assertion change.
 Continue on `lane/reactive-live-package-replay-20261011`, retaining main's
 newer sb3 pin. The prior branch/run stays rejected, not rerun unchanged.
+Forward correction follows canonical claim d877f2f09. Replay retains all main
+changes and sb3-creator44d11124; only the Board package is adopted here.
+Build38024305644 passed the build, corpus, FPGA and heavy-browser jobs; the
+installed winding regression passed within6418 tests/6397 passes/zero failures/
+21 skips. Its light-browser envelope/sample assertion was wrong and remains
+recorded as a failure. The replacement preserves the exact5000-envelope proof
+and adds a real UI-selected point-sample capture with exact5000 one-volt samples
+timestamped from50.01ms, not the envelope's50ms bucket boundary. Metadata and
+committed-mirror checks pass7/7 locally. Source-selected controller preflight
+passes2/2; changing its point tap back to envelope causes a genuine failed
+span assertion. No installed replacement or browser success is claimed yet.
 This is temporal receipt evidence, not a CPU-time or analog-probe realism claim.
 Canonical claims c686fd704 and8ebaded2d preceded their edits. Both locks change
 only the board spec/resolution/integrity; other dependency pins stay unchanged.

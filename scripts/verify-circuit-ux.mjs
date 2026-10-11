@@ -609,7 +609,8 @@ try {
                 partialReceipts: 0, maxSpanNs: '0', receiptMismatches: []};
             window.__bwScopeResetReceipt = receipt;
             // Observe the installed method; do not replace its scheduling or
-            // numerical implementation. Scope mode supplies a10us sample grid.
+            // numerical implementation. The time view records envelopes;
+            // only the separately selected spectrum tap imposes a sample grid.
             const nativeAdvance = b.advanceToLive;
             b.advanceToLive = function (...args) {
                 const before = this.getTime();
@@ -658,10 +659,54 @@ try {
             && receipt.firstCapture?.time === '50000000' && receipt.firstCapture.count === 5000
             && receipt.firstCapture.start === '0' && receipt.firstCapture.oneVolt,
             JSON.stringify(receipt));
-        check('installed reactive scope clock yields within sixteen10us sample quanta',
+        check('installed reactive envelope clock yields within sixteen100us profile quanta',
             receipt.partialReceipts > 0 && BigInt(receipt.maxSpanNs) > 0n
-            && BigInt(receipt.maxSpanNs) <= 160000n && receipt.receiptMismatches.length === 0,
+            && BigInt(receipt.maxSpanNs) <= 1600000n && receipt.receiptMismatches.length === 0,
             JSON.stringify(receipt));
+        check('time-view recording is an envelope, not a solver sample grid',
+            await scopePage.evaluate(() => {
+                const b = window.__board, d = b.getScopeData(b.getScopeChannels()[0]);
+                return d.capture === 'envelope' && d.sampleIntervalNs === 10000n;
+            }));
+
+        // Open a REAL point-sample tap through the learner's spectrum controls.
+        // Do not synthesize a channel, alter the profile, or reuse the envelope
+        // rate as sample authority. The original reset/one-volt proof above stays.
+        await scope.getByTestId('bw-scope-view-spectrum').click();
+        await scope.getByTestId('bw-scope-fft-rate').selectOption('100000');
+        await scopePage.waitForFunction(() => {
+            const b = window.__board, hs = b.getScopeChannels();
+            return hs.length === 2 && hs.some(h => {
+                const d = b.getScopeData(h);
+                return d.capture === 'sample' && d.sampleIntervalNs === 10000n && d.count === 0;
+            });
+        });
+        await scopePage.evaluate(() => {
+            const r = window.__bwScopeResetReceipt;
+            r.partialReceipts = 0; r.maxSpanNs = '0'; r.receiptMismatches = [];
+        });
+        await designer.getByRole('button', {name: /Step one tick|Advance one 50/i}).press('Enter');
+        await scopePage.waitForFunction(() => window.__board.getTime() === 100000000n);
+        const pointReceipt = await scopePage.evaluate(() => {
+            const b = window.__board;
+            const h = b.getScopeChannels().find(h => b.getScopeData(h).capture === 'sample');
+            const d = b.getScopeData(h);
+            return {clock: String(b.getTime()), capture: d.capture, interval: String(d.sampleIntervalNs),
+                start: String(d.startTNs), count: d.count,
+                oneVolt: [...d.samples.slice(0, 10000)].every(v => v === 1),
+                ...window.__bwScopeResetReceipt};
+        });
+        check('installed spectrum point capture retains all5000 exact one-volt samples',
+            pointReceipt.clock === '100000000' && pointReceipt.capture === 'sample'
+            // Point samples are timestamped at the first sample instant, not
+            // the envelope bucket's start: 50ms + one10us sample interval.
+            && pointReceipt.interval === '10000' && pointReceipt.start === '50010000'
+            && pointReceipt.count === 5000 && pointReceipt.oneVolt, JSON.stringify(pointReceipt));
+        check('installed reactive point-sample clock yields within sixteen10us sample quanta',
+            pointReceipt.partialReceipts > 0 && BigInt(pointReceipt.maxSpanNs) > 0n
+            && BigInt(pointReceipt.maxSpanNs) <= 160000n
+            && pointReceipt.receiptMismatches.length === 0 && pointReceipt.errors.length === 0,
+            JSON.stringify(pointReceipt));
     } finally {await scopePage.close();}
 } finally {
     await browser.close();
