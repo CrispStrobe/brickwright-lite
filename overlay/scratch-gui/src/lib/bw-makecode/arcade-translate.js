@@ -1320,6 +1320,7 @@ class ArcadeTranslator extends BaseTranslator {
         if(this.spriteExtensionStatement(node,a,push))return;
         if(this.sevensegStatement(node,a,push))return;
         if(this.musicStatement(name,a,push))return;
+        if(this.carnivalStatement(name,a,push))return;
         if(this.gameOverStatement(name,a,push))return;
         const screenEffect=/^effects\.(\w+)\.(startScreenEffect|endScreenEffect)$/.exec(name||'');
         if(this.handleTemplates && screenEffect && IMAGE_EFFECTS.has(screenEffect[1]) && screenEffect[2]==='startScreenEffect') {
@@ -2032,6 +2033,18 @@ class ArcadeTranslator extends BaseTranslator {
     backgroundEffect (node) {
         const match = /^effects\.(\w+)$/.exec(this.path(node) || '');
         return match && !this.bindsName('effects') && (SCREEN_PARTICLE_EFFECTS.has(match[1]) || IMAGE_EFFECTS.has(match[1])) ? match[1] : null;
+    }
+    carnivalStatement(name,a,push) {
+        if(!this.handleTemplates || this.bindsName('carnival') || !['carnival.startCountdownGame','carnival.onGameOverExpanded'].includes(name))return false;
+        const countdown=name==='carnival.startCountdownGame',offset=countdown?1:0;
+        const match=/^carnival\.WinTypes\.(Win|Lose|Score|Timed|Multi|Custom)$/.exec(this.path(a[offset]) || '');
+        const effect=a.length===offset+2?this.backgroundEffect(a[offset+1]):'unset';
+        if(!match || !effect || a.length<offset+1 || a.length>offset+2) {
+            push(this.note(name+'() requires a fixed carnival.WinTypes style and optional fixed effects.* effect'));return true;
+        }
+        push(countdown?`arcade carnival countdown (${this.expr(a[0])}) style ${match[1]} effect ${effect}`:
+            `arcade carnival game over style ${match[1]} effect ${effect}`);
+        return true;
     }
     /** PXT game over and its configuration; returns whether `name` was one. */
     gameOverStatement (name, a, push) {
@@ -3356,6 +3369,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^effects\.(?:\w+\.(?:startScreenEffect|endScreenEffect)|clearParticles)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^music\./.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && /^carnival\.(?:startCountdownGame|onGameOverExpanded)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^game\.(?:gameOver|over|setGameOver\w+)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
         if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
@@ -3498,7 +3512,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     const allowedCalls = new Set(['sprites.onCreated', 'sprites.onDestroyed', 'sprites.onOverlap', 'sprites.destroy',
         ...creationApis, 'game.onUpdateInterval', 'game.onUpdate', 'control.runInParallel', 'forever', 'game.forever', 'basic.forever',
         'controller.A.onEvent', 'controller.moveSprite', 'info.setLife', 'info.setScore',
-        'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'console.log',
+        'carnival.startCountdownGame', 'carnival.onGameOverExpanded', 'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'console.log',
         'pause', 'game.splash', 'game.showLongText', 'image.setPalette', 'scene.setBackgroundColor', 'scene.setBackgroundImage']);
     for (const [index, st] of ast.body.entries()) {
         if (st.type === 'Namespace' && st.name === 'SpriteKind') continue;

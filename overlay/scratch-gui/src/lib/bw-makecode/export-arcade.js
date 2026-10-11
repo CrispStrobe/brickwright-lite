@@ -1541,6 +1541,19 @@ class ArcadeEmitter {
         }
         case 'arcade_clearSpriteEffects': push(`effects.clearParticles(${v('ID')})`); return;
         case 'arcade_gameOver': push(`game.gameOver(${this.boolValue(b, 'WIN')})`); return;
+        case 'arcade_carnivalCountdown':
+        case 'arcade_carnivalGameOver': {
+            this.requiresCarnivalPackage=true;
+            const style=this.field(b,'STYLE'),effect=this.field(b,'EFFECT');
+            if(!['Win','Lose','Score','Timed','Multi','Custom'].includes(style) ||
+                !['unset','confetti','hearts','smiles','blizzard','bubbles','starField','clouds','none','dissolve','melt','slash','splatter'].includes(effect)) {
+                push(this.note('Carnival command has an unsupported style or effect'));return;
+            }
+            const args=[`carnival.WinTypes.${style}`];
+            if(effect!=='unset')args.push(`effects.${effect}`);
+            if(b.opcode==='arcade_carnivalCountdown')args.unshift(v('SECONDS'));
+            push(`carnival.${b.opcode==='arcade_carnivalCountdown'?'startCountdownGame':'onGameOverExpanded'}(${args.join(', ')})`);return;
+        }
         case 'arcade_legacyGameOver': {
             const effect = this.field(b, 'EFFECT');
             if (effect !== 'unset' && !BACKGROUND_EFFECTS.includes(effect)) { push(`// ${this.note(`Unsupported Arcade effect ${effect}`)}`); return; }
@@ -3151,7 +3164,7 @@ export function projectToArcade (project, opts = {}) {
         'main.ts': projectTs,
         ...assetFiles,
         'pxt.json': `${JSON.stringify({
-            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': 'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': 'github:microsoft/arcade-character-animations#v0.1.0'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
+            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresCarnivalPackage ? {'arcade-carnival':'github:microsoft/arcade-carnival#v0.0.7'} : {}), ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': 'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': 'github:microsoft/arcade-character-animations#v0.1.0'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
             files: [...Object.keys(assetFiles), 'main.ts'], preferredEditor: 'tsprj',
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`

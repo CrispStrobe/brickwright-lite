@@ -88,8 +88,8 @@ module.exports = makeExt(`// Name: Arcade
           if(this._foreverTimer!==undefined)clearTimeout(this._foreverTimer);this._foreverTimer=undefined;
         };
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
-        runtime.on('PROJECT_STOP_ALL', () => this._musicHost?.stopAll());
-        runtime.on('RUNTIME_DISPOSED', () => {cancelCreations();this._clearTilemap();this._tileLocations.clear();this._animationAssetCache.clear();for(const id of this._imageSkins.keys())this._clearImage(id);});
+        runtime.on('PROJECT_STOP_ALL', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._musicHost?.stopAll();});
+        runtime.on('RUNTIME_DISPOSED', () => {this._carnivalHost?.cancel();this._carnivalHost=null;cancelCreations();this._clearTilemap();this._tileLocations.clear();this._animationAssetCache.clear();for(const id of this._imageSkins.keys())this._clearImage(id);});
         const reset = () => {
           cancelCreations();
           this._terrainStopped = false;
@@ -119,7 +119,7 @@ module.exports = makeExt(`// Name: Arcade
           this._musicHost?.reset();this._musicIds=new Map();this._musicValues=new Map();
           this._sevensegIds=new Map();this._sevensegValues=new Map();
           this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._scrollerModule=null;this._characterAnimationModule=null;
-          this._gameOver=null;this._buttonPressWaiters=[];
+          this._carnivalHost?.cancel();this._carnivalHost=null;this._gameOver=null;this._buttonPressWaiters=[];
           this._clearBackground();
           for (const id of this._imageSkins.keys()) this._clearImage(id);
           this._images.clear();
@@ -206,6 +206,8 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'setGameOverMessage',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over message [MESSAGE] for win [WIN]',arguments:{...str('MESSAGE','GAME OVER!'),WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'setGameOverPlayable',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over sound [PLAYABLE] looping [LOOPING] for win [WIN]',arguments:{...str('PLAYABLE',''),LOOPING:{type:Scratch.ArgumentType.BOOLEAN},WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'setGameOverScoringType',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over scoring [TYPE]',arguments:{TYPE:{type:Scratch.ArgumentType.STRING,menu:'scoringTypes',defaultValue:'HighScore'}}},
+          {opcode:'carnivalCountdown',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival countdown [SECONDS] seconds style [STYLE] effect [EFFECT]',arguments:{...n('SECONDS',15),STYLE:{type:Scratch.ArgumentType.STRING,menu:'carnivalStyles',defaultValue:'Score'},EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'}}},
+          {opcode:'carnivalGameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival game over style [STYLE] effect [EFFECT]',arguments:{STYLE:{type:Scratch.ArgumentType.STRING,menu:'carnivalStyles',defaultValue:'Win'},EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'}}},
           {opcode:'startImageEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade start image effect [EFFECT] times [TIMES] delay [DELAY] ms',arguments:{EFFECT:{type:Scratch.ArgumentType.STRING,menu:'imageEffects',defaultValue:'dissolve'},...n('TIMES',0),...n('DELAY',0)}},
           {opcode:'scrollBackgroundWithCamera',blockType:Scratch.BlockType.COMMAND,text:'Arcade scroll background with camera [MODE] layer [LAYER]',arguments:{MODE:{type:Scratch.ArgumentType.STRING,menu:'cameraScrollModes',defaultValue:'OnlyHorizontal'},...n('LAYER',0)}},
           {opcode:'scrollBackgroundWithSpeed',blockType:Scratch.BlockType.COMMAND,text:'Arcade scroll background vx [VX] vy [VY] layer [LAYER]',arguments:{...n('VX',-50),...n('VY',-50),...n('LAYER',0)}},
@@ -745,6 +747,8 @@ module.exports = makeExt(`// Name: Arcade
           ,sevensegReadable: {acceptReporters: false, items: ['x', 'y', 'width', 'height', 'value', 'count']}
           ,scoringTypes: {acceptReporters: false, items: ['HighScore', 'LowScore', 'None']}
           ,playbackModes: {acceptReporters: false, items: ['UntilDone', 'InBackground', 'LoopingInBackground']}
+          ,carnivalStyles:{acceptReporters:false,items:['Win','Lose','Score','Timed','Multi','Custom']}
+          ,carnivalEffects:{acceptReporters:false,items:['unset','confetti','hearts','smiles','blizzard','bubbles','starField','clouds','none','dissolve','melt','slash','splatter']}
           ,melodyModes: {acceptReporters: false, items: ['play', 'playUntilDone', 'loop']}
           ,soundPlayModes: {acceptReporters: false, items: ['UntilDone', 'InBackground']}
           ,waveShapes: {acceptReporters: false, items: ['Sine', 'Sawtooth', 'Triangle', 'Square', 'Noise']}
@@ -1110,6 +1114,7 @@ module.exports = makeExt(`// Name: Arcade
       const runtime=this._runtime;if(!runtime?.allScriptsByOpcodeDo || !runtime?._pushThread)return;
       // Scene transitions do not cancel callback fibers already running.
       for(const registration of registrations){
+        if(registration.host){yield registration.host();if(this._terrainStopped)return;continue;}
         const scripts=[];
         runtime.allScriptsByOpcodeDo(opcode,(script,target)=>{
           const hat=target.blocks.getBlock(script.blockId),token=target.blocks.getBlock(hat.inputs?.TOKEN?.block);
@@ -3243,10 +3248,10 @@ module.exports = makeExt(`// Name: Arcade
       for(const name of ['dissolve','melt','slash','splatter'])effects[name]={kind:'image',name};
       this._gameOverEffects=effects;
       const music=this._music().pxt.music;
+      this._dialogHost={wrap:raw=>new DialogImage(raw),img,image:{create:(width,height)=>new DialogImage({width,height,pixels:new Uint8Array(Math.max(0,width*height))}),
+          font5:text.image.font5,font8:text.image.font8,font12:text.image.font12}};
       this._gameOverPxt=dependencies.initializeGameOver({
-        image:{create:(width,height)=>new DialogImage({width,height,pixels:new Uint8Array(Math.max(0,width*height))}),
-          font5:text.image.font5,font8:text.image.font8,font12:text.image.font12},
-        img,screen:{width:160,height:120,isMono:false},effects,music,
+        image:this._dialogHost.image,img,screen:{width:160,height:120,isMono:false},effects,music,
         info:{isBetterScore:(next,previous)=>ext._isBetterScore(next,previous)},
         control:{},controller:{},scene:{}
       });
@@ -3290,6 +3295,15 @@ module.exports = makeExt(`// Name: Arcade
       if(!effect){this._runtime?.emit?.('BLOCKS_ERROR','Arcade has no image effect "'+name+'".');return;}
       effect.startScreenEffect(Scratch.Cast.toNumber(args.TIMES) || undefined,Scratch.Cast.toNumber(args.DELAY) || undefined);
     }
+    _carnivalCall(method,args) {
+      try {
+        if(!this._carnivalHost)this._carnivalHost=dependencies.createCarnivalHost(this);
+        const result=this._carnivalHost[method](args);
+        return result?.catch?result.catch(error=>{if(error.code!=='CARNIVAL_CANCELLED')throw error;}):result;
+      }catch(error){if(error.code!=='CARNIVAL_CANCELLED')throw error;}
+    }
+    carnivalCountdown(args) {return this._carnivalCall('countdown',args);}
+    carnivalGameOver(args) {return this._carnivalCall('gameOver',args);}
     gameOver(args,util) {return this._runGameOver(Scratch.Cast.toBoolean(args.WIN),util);}
     // game.over(win, effect?): the effect applies unless the program chose one.
     legacyGameOver(args,util) {
@@ -4569,6 +4583,7 @@ module.exports = makeExt(`// Name: Arcade
   createMusic: require('./music'),
   initializeMusic: require('./music-pxt'),
   helpers: require('./helpers-pxt'),
+  createCarnivalHost: require('./carnival-host'),
   initializeGameOver: require('./gameover-pxt'),
   initializeHud: require('./hud-pxt')
 });

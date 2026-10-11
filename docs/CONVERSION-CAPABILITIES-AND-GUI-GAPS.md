@@ -3311,3 +3311,26 @@ Corpus counts are not reranked by this browser-only lane.
 Tile names/myTiles identity, legacy colour-coded maps and painter sprite placement
 remain open. The 2026-10-11 merged painter already supports new-level creation;
 do not retain that as an unimplemented feature based on older checkpoints.
+
+### Carnival runtime, two authoring commands and program records — 2026-10-11
+
+The next candidate implements the two carnival countdown/game-over commands in
+native execution, ordinary extension blocks, pseudocode and MakeCode import/
+export with the pinned package dependency. Real custom scoring/dialog rendering
+uses the retained original module and native scene/font/music/button mechanisms.
+Program number records carry a Stage identity and snapshot in SB3; usable device
+localStorage retains the latest same-program scores. Refused writes propagate.
+The actual serializer requires hooks before and after target flattening.
+
+Thirty-two affected checks and an expanded 11-test host suite pass. Six controls
+compile and run in native/original engines, with matching opaque dialog text/body
+and a remaining 42-pixel animated-cursor phase difference per control. A real
+headless SB3 archive saves/loads records using source-injected serializer hooks;
+production GUI qualification is still pending. Do not infer full games or cloud
+storage from this evidence. No corpus counts change without a fresh audit.
+
+GUI gaps: hosted block/controller/save/reopen journey; general settings authoring
+UI; custom message/scoring/sound game-over API; timer HUD and remaining carnival
+helpers. `WinTypes.Custom` is exposed as a style, not the separate custom API.
+Dynamic styles remain diagnosed. Exact scope, storage semantics, source files
+and next steps are in [the host handoff](ARCADE-AGENT-HANDOFF.md#carnival-native-host-authoring-and-saved-records--2026-10-11).

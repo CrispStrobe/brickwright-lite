@@ -748,3 +748,71 @@ and coordinate before changing it. A reviewed map-before-sprite case revealed
 that inserting a new placement immediately after the map can precede sprite
 creation; the peer owns the reported source-order fix. Pending peer PRs and
 reported test totals are not qualified adoption claims.
+
+## Carnival native host, authoring and saved records — 2026-10-11
+
+The next slice implements `carnival.startCountdownGame` and
+`carnival.onGameOverExpanded` with fixed `WinTypes` styles and optional fixed
+screen effects. It connects the retained original scoring/dialog module to the
+real VM's image/font renderer, scene stack, countdown callbacks, clocks, music,
+button wait and restart. Ordinary Arcade extension blocks and pseudocode expose
+both operations. Import/export retains the actual carnival API and declares
+`github:microsoft/arcade-carnival#v0.0.7` in exported `pxt.json`.
+
+For example, type this into Code and use To blocks:
+
+```text
+arcade set score player (1) to (7)
+arcade carnival countdown (15) style Score effect unset
+```
+
+The countdown and game-over blocks offer Win, Lose, Score, Timed, Multi and
+Custom styles. `Custom` here means the original `WinTypes.Custom` branch;
+`customGameOverExpanded` with arbitrary text/scoring/sound is still diagnosed.
+Dynamic styles and shadowed namespaces remain diagnosed. Timer HUD, carnival
+ball helpers and additional extension APIs remain separate work.
+
+`arcade/program-settings.js` stores number records under a program identity on
+the Stage. SB3 carries a validated `bwArcadeSettings` sidecar, including exact
+special numeric values, without adding learner variables. On a device with
+usable localStorage, the latest records for that identity take precedence over
+an older imported snapshot. A different device starts from the SB3 snapshot.
+Without a device backend, records persist only in saved projects. Copying a
+project retains its identity; a genuinely new project receives a new identity.
+Quota/write failures propagate and leave both live values and snapshots intact.
+This is app-owned record storage, not cloud sync or a general settings blocks UI.
+
+Serializer integration in `scripts/lib/arcade-settings-sb3-hooks.mjs` patches
+both the target-flattening and serialization boundaries plus restoration.
+Changing only `serializeTarget` loses live Stage metadata. The focused SB3 test
+injects these exact hooks into the actual serializer in memory, saves an actual
+archive and loads it into another VM. It does not modify dependency files or
+qualify a production browser build.
+
+Qualification: 32 affected runtime/core/info-registration/export checks passed;
+the expanded 11-test host suite also passed, without failures or skips. It
+covers countdown first registration and later replacement, direct game over,
+stop/restart cancellation, number records and actual SB3 reopening. Six source
+controls (unique/tied multiplayer winners, lose, win, score and timed) exported,
+compiled with the original PXT compiler and ran without native/original errors.
+The original render helper aliases two black palette entries (0/15); comparing
+displayed colours yields exact opaque dialog text/body in rows 40–76 after
+excluding the animated cursor at x145–159/y69–76. Each full rectangle still has
+42 cursor-phase pixel differences, preserved in private receipts. Exported
+original dialog rectangles match the original baseline without differences.
+These are bounded comparisons, not whole-game or cursor-timing equivalence.
+
+The candidate branch is `lane/arcade-carnival-runtime-host-20261011`, stacked on
+[PR802](https://github.com/CrispStrobe/brickwright-lite/pull/802). It normally
+integrates the exact [PR800](https://github.com/CrispStrobe/brickwright-lite/pull/800)
+candidate `a078a5e452991a69abb21c7a9bb6de3ae6c18e86` for countdown ordering.
+That is isolated qualification, not adoption of an unmerged peer candidate on
+main. Parent/peer hosted checks and final integration remain mandatory.
+
+Next: a hosted production GUI journey through these blocks, dialog/controller
+restart, saved project reload and original export. Then add the remaining
+custom API/timer/helper capabilities with original controls. Preserve current
+184-input census (142 translated / 41 partial / 1 parse failure) until an
+immutable-input audit actually reruns; these tests do not promote corpus rows.
+Private receipt URLs, commands and local paths live in the private handoff;
+`docs/ARCADE-AGENT-HANDOFF.local.md` is ignored operational context.
