@@ -1,13 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import {createPortal} from 'react-dom';
-import {makeT, browserLocale} from '../../lib/bw-i18n.js';
-
-const ARCADE_DIALOG_L10N = {
-    en: {longText: 'Arcade long text', splash: 'Arcade splash screen', continue: 'Continue'},
-    de: {longText: 'Arcade-Langtext', splash: 'Arcade-Startbildschirm', continue: 'Weiter'}
-};
-const at = makeT(ARCADE_DIALOG_L10N);
+import ArcadeDialog from './arcade-dialog.jsx';
 import classNames from 'classnames';
 
 import Box from '../box/box.jsx';
@@ -43,12 +36,6 @@ const StageComponent = props => {
     } = props;
 
     const stageDimensions = getStageDimensions(stageSize, isFullScreen);
-    const arcadeDialogStyle = arcadeDialog?.type === 'longText' ? {
-        justifyContent: arcadeDialog.layout === 'Top' ? 'flex-start' :
-            arcadeDialog.layout === 'Bottom' ? 'flex-end' : 'center',
-        alignItems: arcadeDialog.layout === 'Left' ? 'flex-start' :
-            arcadeDialog.layout === 'Right' ? 'flex-end' : 'center'
-    } : undefined;
 
     return (
         <React.Fragment>
@@ -76,26 +63,7 @@ const StageComponent = props => {
                         }}
                         {...boxProps}
                     />
-                    {arcadeDialog ? createPortal(
-                        <div className={styles.arcadeDialogOverlay} role="dialog" aria-modal="true"
-                            aria-label={at(browserLocale(), arcadeDialog.type === 'longText' ? 'longText' : 'splash')}
-                            style={arcadeDialogStyle}
-                            onKeyDown={event => {
-                                if (event.key !== 'Tab') {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    onArcadeDialogDismiss();
-                                }
-                            }}>
-                            <div className={styles.arcadeDialogText}
-                                style={arcadeDialog.layout === 'Full' ? {width: '100%', maxHeight: '85vh'} : undefined}>
-                                <strong>{arcadeDialog.title}</strong>
-                                {arcadeDialog.subtitle ? <span>{arcadeDialog.subtitle}</span> : null}
-                            </div>
-                            <button autoFocus className={styles.arcadeDialogButton}
-                                onClick={onArcadeDialogDismiss}>{at(browserLocale(), 'continue')}</button>
-                        </div>, document.body
-                    ) : null}
+                    {arcadeDialog ? <ArcadeDialog dialog={arcadeDialog} onDismiss={onArcadeDialogDismiss} /> : null}
                     <Box className={styles.monitorWrapper}>
                         <MonitorList
                             draggable={useEditorDragStyle}

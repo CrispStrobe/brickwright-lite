@@ -574,3 +574,559 @@ Restoring it into Pixel timelines and original Assets editor qualification remai
 open. The CLI reads current SB3 artwork bundles and exports these resources too.
 See [the authoring gap ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#u04--animation-binding)
 for the remaining acceptance criteria.
+
+## Recover complete tutorial inputs offline
+
+A saved tutorial code fence can reference gallery art, custom code and packages
+that live elsewhere in its Markdown document. Assemble those declared inputs
+with the exact saved program before comparing it with a full project:
+
+```sh
+node scripts/makecode.mjs tutorial-to-project tutorial.md --main main.ts --target arcade -o tutorial.mkcd
+node scripts/makecode.mjs to-sb3 tutorial.mkcd -o tutorial.sb3 --bw tutorial.bw
+node scripts/compat-audit.mjs --target arcade --compile --execute --out audit.json tutorial.mkcd
+```
+
+The assembler preserves `assetjson` files, palette/configuration, `customts`
+files, and `package` declarations, including bare bundled package names. It
+replaces the template `main.ts` with the explicitly selected source, rejects
+conflicting or missing files, and performs no package download or code execution.
+The native project is suitable as an input to the existing MakeCode file route;
+assembly itself is not a compatibility claim. Arcade imports translate local
+TypeScript declared in `pxt.json.files` and root `testFiles`, in original PXT
+order: supplemental files, then `main.ts`, then `_onCodeStop.ts`. Reopened
+namespaces share exports while retaining private declaration scopes. Unlisted
+files do not execute. Missing files, conditional package-dependent files,
+ambient declarations, assembly/Python sources and nondefault palette rendering
+retain named diagnostics. Generated resource factories use the asset readers. Audits discover `.mkcd` and `.pxt` files and report missing
+offline extension packages as unavailable compilation gates with their names.
+See the [pinned ten-project input receipt](receipts/2026-10-08-tutorial-project-inputs.json).
+
+
+### Declared Arcade helper resource types
+
+Local helper declarations can use supported PXT resource types (`Image`,
+`Sprite`, `tiles.Location`, `animation.Animation`, `scene.Scene` and
+`ArcadePhysicsEngine`) on parameters, variables and named function returns.
+Nested `T[]` and `Array<T>` retain array element resource types through aliases,
+indexing and procedure calls, even before any call-site image is available.
+Function and arrow callbacks retain parameter annotations. These constraints
+select native resource operations; they do not cast values or provide missing
+package artwork. Unknown type aliases, unions and callable types are not
+resolved by this type-constraint slice. See the capability ledger for runtime,
+GUI and original-export qualification boundaries.
+
+
+### Synchronous callback helpers
+
+Arcade imports can specialize helper parameters declared with function types,
+for example `handler: (value: number) => number`, when the argument is an inline
+function/arrow or a known global function. The full helper body becomes native
+procedures, preserving loops, conditions, arguments, returns, forwarding,
+recursion and pauses. Callbacks may read and mutate globals. Code and Blocks
+expose the resulting ordinary procedures; exporting writes equivalent Arcade
+procedures, without restoring the original higher-order source abstraction.
+
+Stored/dynamic callable values and callbacks capturing a caller's local cells
+remain named gaps. Namespace-function values, callable type aliases and
+callbacks that themselves accept callable arguments are outside this slice.
+This support does not provide missing extension packages or implement APIs
+inside a callback that already have their own named gaps.
+
+### Built-in namespace augmentation
+
+Arcade source can reopen built-in namespaces such as `sprites` and `game`
+with local exported helpers. Qualified calls and unqualified built-in members
+inside these declarations retain their original PXT bindings. Nested built-in
+namespaces can also be extended; source-private declarations stay private to
+their own declaration block. A generated catalog from the pinned official PXT
+device API metadata identifies exact exports. Recognizing a name does not
+implement its operation: unsupported APIs retain their operation diagnostics.
+Unknown members, conflicting built-in declarations, namespace object escapes
+and reads of source exports before initialization remain explicit errors.
+
+Code and Blocks expose the lowered procedures and ordinary Arcade operations.
+Native export emits equivalent flat procedures. Namespace-preserving editing,
+multi-file navigation and general callable values remain open GUI/runtime work.
+
+### Array random selection
+
+Arcade's `values._pickRandom()` imports as the existing Arrays & Vectors
+`random item of array reference (values)` reporter. The receiver is evaluated
+once. Image, sprite and nested-array selections keep reference identity and
+propagate their element types; an empty array produces the native missing value.
+Code and Blocks can author the same reporter. Native export uses equivalent
+`Math.pickRandom(values)` syntax. Non-array receivers and calls with arguments
+remain unsupported. No new runtime opcode or graphics-editor tool is needed.
+
+For example, `let chosen = actors._pickRandom(); chosen.x = 41` uses a native
+sprite reference. In pseudocode the selection is
+`set chosen to (random item of array reference (actors))`, followed by
+`arcade set x of chosen to 41`.
+
+### Multiplayer player values
+
+Arcade supports `mp.playerSelector`, `mp.getPlayerByNumber`,
+`mp.getPlayerByIndex`, `mp.allPlayers`, `mp.setPlayerSprite`,
+`mp.getPlayerSprite`, `mp.getPlayerBySprite`, and `mp.getPlayerProperty`.
+`mp.PlayerNumber`/`mp.PlayerProperty` constants and typed Player `index`/`number`
+reads are supported. Each scene owns four stable player identities. Arrays from
+`mp.allPlayers()` are copies; their elements retain player identity. Sprite
+association retains exact Sprite references and distinguishes null from missing.
+Older scene player references remain usable after pushing or popping a scene.
+
+The Arcade extension exposes six corresponding Blocks operations. Pseudocode:
+
+```text
+set player to (arcade player by number (3))
+arcade set sprite of player (player) to (actor)
+set chosen to (arcade sprite of player (player))
+arcade set x of chosen to 70
+set number to (arcade player safe property (2) of (player))
+```
+
+Use `arcade all players`, `arcade player of sprite (actor)`, or lookup mode
+`index` for the other operations. Property selector1 is index;2 is number.
+Safe property queries return0 for a missing player; direct member reads retain
+an error on missing players. Native export writes typed `mp.Player` references
+and arrays and declares the bundled `multiplayer` dependency automatically.
+
+### Multiplayer controller movement
+
+`mp.moveWithButtons(player, vx?, vy?)` controls the player's assigned sprite.
+Omitted or undefined speeds default to100; a zero speed leaves that axis under
+program control. Movement settings can be assigned before the sprite. Replacing
+the player's sprite detaches the old binding and binds the replacement. As in
+PXT, detaching alone retains the old sprite's velocity.
+
+The Arcade palette has a matching movement block. Equivalent pseudocode:
+
+```text
+set player to (arcade player by number (2))
+arcade set sprite of player (player) to (actor)
+arcade move player (player) with buttons vx (60) vy (0)
+```
+
+Choose Player1–4 in the controller pane. Directional inputs route independently;
+switching players releases the previous player's held buttons. Keyboard input
+and existing button hats still use player one. Each scene retains its own
+movement bindings while physical button state is shared across scene push/pop.
+Native export emits `mp.moveWithButtons` and the bundled multiplayer dependency.
+
+Multiplayer connection/score/life events, direct `controller.player2/3/4`
+API conversion, analog pressure, arbitrary player data, presence/indicator
+effects and multiplayer networking remain explicit work. The local player
+selector does not establish network connectivity. No new graphics tools were
+added in this slice.
+
+
+### Multiplayer button callbacks and queries
+
+`mp.onButtonEvent(button, event, function (player) { ... })` supports pressed,
+released and repeated callbacks with the actual scene-local `mp.Player`.
+`mp.isButtonPressed(player, button)` reads that player's current input.
+`mp.MultiplayerButton` supports A, B, Up, Right, Down and Left. Callback player
+references retain identity and support sprite lookup and properties.
+Native export emits the original APIs and the bundled multiplayer dependency.
+
+The Arcade palette exposes a multiplayer registration command, matching handler
+hat, event-player reporter and pressed query. Pseudocode uses the same operations:
+
+```text
+DEVICE arcade
+WHEN flag clicked:
+  arcade register multiplayer button (0) event (2049) as "pressed" capturing ""
+WHEN arcade multiplayer button handler "pressed" runs:
+  arcade set local player to arcade event player
+  arcade change score by (arcade player member property (2) of (arcade local player))
+```
+
+Button selectors0–5 mean A/B/Up/Right/Down/Left. Event selectors2049/2048/2054
+mean pressed/released/repeated. Registration and handler tokens must match.
+Choose the player in the controller pane; both edges of a short tap are queued.
+Repeated registrations replace the shared callback; direct player-one button
+registrations can override that player's slot. Scene push/pop restores each
+scene's registrations while physical held/repeat state stays shared.
+
+Friendly button enum pickers and a callback authoring form that creates the
+registration/handler pair remain GUI work. Custom repeat settings, direct
+controller-instance APIs, connection events, network state and presence effects
+remain separate gaps. Queued callback replacement races and long-running
+handler timing still need dedicated differential qualification.
+
+
+### Numeric player state
+
+`mp.getPlayerState`, `mp.setPlayerState` and `mp.changePlayerStateBy` support
+per-player numeric state. `MultiplayerState.score` and `.life` use the same
+values as the Info APIs; their writes use PXT's integer conversion. Custom
+states preserve fractional values. Missing custom states and missing players
+read as0; missing-player writes do nothing.
+
+`MultiplayerState.create()` allocates a fresh key at runtime, globally across
+scenes. Built-in keys are0(score) and1(life), so custom keys start at2. Source
+can reopen `namespace MultiplayerState` with exported keys using qualified or
+unqualified `create()`. Export preserves runtime allocation and declares the
+bundled multiplayer dependency.
+
+The palette exposes key creation, state lookup, set and change blocks. Code:
+
+```text
+DEVICE arcade
+WHEN flag clicked:
+  set player to (arcade player by number (2))
+  set cooldown to (arcade create player state key)
+  arcade set state (cooldown) of player (player) to (7.5)
+  arcade change state (cooldown) of player (player) by (0.25)
+  set value to (arcade state (cooldown) of player (player))
+  arcade set state (0) of player (player) to (10)
+```
+
+Custom states belong to the Player identity. An older scene's Player retains
+its custom state; its score/life access uses the active scene's Info state,
+matching PXT. Key allocation resets when the project starts again.
+
+Arbitrary `player.data` objects and direct Player getState/setState method calls
+remain named gaps. Friendly state-key labels/management and per-player Info HUD
+rendering/layout need separate implementation and visual qualification. This
+slice qualifies state values and controller-driven sprite behavior.
+
+### Legacy color-coded maps
+
+`scene.setTileMap(image, scale?)` and `scene.setTile(index, image, wall?)` now
+use live image references and scene-owned tile definitions. The default scale
+is16 pixels and the default tile wall flag is false. Standard TileScale values
+and the numeric Location.tileSet property roundtrip through native Blocks and
+export with the bundled color-coded-tilemap dependency. Exact-size tile images
+remain live; cropped/padded tiles retain the original package's cached view.
+Replacing/clearing a map preserves definitions; scene push/pop restores them.
+
+```text
+arcade set color-coded map image (mapImage) scale (4)
+arcade set color tile (1) image (tileImage) wall (false)
+set colorIndex to (arcade tile tileSet of (location))
+```
+
+The tile-location property block now has a real dropdown, preserving its
+selected property through GUI loading. Legacy collision callbacks, mixed legacy/modern mutations and the dedicated
+color-index map painter remain open. See the capability/GUI gap ledger and
+[qualification receipt](receipts/2026-10-08-arcade-legacy-tilemap.json).
+
+### Legacy Tile values and placement
+
+`scene.getTile`, `scene.getTilesByType`, `scene.setTileAt`, `scene.place`,
+`scene.placeOnRandomTile` and `Tile.place` now have native Blocks, pseudocode,
+runtime and MakeCode export support. Legacy `tiles.Tile` values retain their
+creating map and expose x/y/tileSet. Their arrays and procedure arguments/results
+preserve identity and export as tiles.Tile/tiles.Tile[]. Modern tiles.Location
+values remain a distinct type. Reading tileSet on a disabled legacy map throws,
+matching the original simulator.
+
+```text
+set spot to (arcade color tile column (1) row (3))
+set spots to (arcade color tile array index (6))
+set center to (arcade color tile x of (spot))
+arcade set color tile (spot) index (4)
+arcade on color tile (spot) place sprite (actor)
+arcade place sprite (actor) on random color tile (6)
+```
+
+The property block has an x/y/tileSet dropdown. The map painter, color-index
+picker and map resource lifecycle remain separate GUI work; numeric index inputs
+support authoring now. The same184 import-only baseline is100 translated,
+83 partial and1 malformed. Two newly translated original examples execute in
+Brickwright and original/exported MakeCode with matching finite sprite
+observables. In the production GUI, the flower example responds to the visible
+right controller button. These checks do not establish complete-game equivalence.
+See the [qualification receipt](receipts/2026-10-08-arcade-legacy-tile-values.json).
+
+### Legacy color-index wall callbacks — 2026-10-08
+
+`scene.onHitTile`, `scene.tileHitFrom` and `Sprite.tileHitFrom` now have native
+conversion, runtime and MakeCode export support. Three dialect words expose
+registration, callback hats and the hit-index reporter in Blocks and pseudocode:
+
+```text
+arcade register color wall kind "Player" index (2) as "wallCallback" capturing []
+WHEN arcade color wall handler "wallCallback" runs:
+    set hit to (arcade sprite (arcade event first) wall hit index (2))
+```
+
+The callback sprite is the normal Arcade event-sprite handle; the converter
+binds the authored callback parameter to it. The reporter's Blocks menu names
+left/top/right/bottom and accepts numeric reporters. Callback captures remain
+live. Registrations belong to their scene and restore after popScene. Matching
+legacy handlers are selected before they run; newly registered handlers wait
+for a later collision. Modern wall handlers are selected afterward and observe
+sprite-kind changes. Obstacle color indices are snapshots and survive map edits.
+Missing sprites report0; existing sprites without an obstacle report-1.
+
+Qualification covers22 affected/regression tests, a final2-test rerun after the
+menu change, and1 producer roundtrip, without skips. It covers original PXT,
+native decompile, MakeCode export/reimport and SB3. Production gui.6891b0d9.js
+passes file→Code→Blocks→visible A, including callback order ABCABC, captured
+count25, index2 after a map edit, parent/child scene isolation and kind-change
+order ABFABLF. Previous browser journeys and boot checks pass, with0 build/page
+errors and unchanged4,360,525 initial bytes.
+
+The same184 import-only baseline advances100/83/1→102 translated/81 partial/
+1 malformed. Two newly translated originals run through the visible controller:
+a wall collision resets the first player's position to50,50 and the second
+advances to level2. Original/exported PXT with an explicit observer/input-driving
+suffix agree on finite collision observables. Unchanged originals also step240
+native frames without block errors or creator warnings. These observations do
+not establish complete-game or full-screen equivalence.
+
+**Open timing gap:** when a callback moves with nonzero velocity during pause,
+the current original-wall-clock versus forced-native-frame probe reports final
+x15 versus11.16796875. Callback order and index snapshots match. A trial ownership
+lock matched x but changed obstacle clearing; it was removed. The passing
+fixture holds velocity at0 during its pause. No timing freeze or workaround is
+shipped. Next qualify comparable clocks and shared callback/physics scheduling,
+then fix any demonstrated semantic defect. The map painter/color-index picker,
+mixed map semantics, artwork packages, palettes, effects and music also remain
+open. [Qualification receipt](receipts/2026-10-08-arcade-legacy-tile-collisions.json).
+
+### Completed callback scheduling — 2026-10-08
+
+The VM now reports `ARCADE_FRAME_END` after executing its threads. Arcade drains
+completed function, creation and terrain callback waits at that point. This
+lets the next inline handler resume before the following physics tick. Motion
+continues during a yielding handler; the change adds no scene ownership lock.
+No new dialect opcode or editor control is needed.
+
+The original PXT and native wall-clock regression both verify that movement
+continues during pause70, then the next legacy handler, modern wall handler and
+caller observe the preceding handler's final position. Disabling the new
+notification makes the regression fail: next-handler x8.61328125 versus previous
+handler x9.890625. Thirty unique regressions pass, covering legacy collisions,
+creation callbacks, yielding function results and scene registrations; the final
+fixture has a separate one-test rerun. No test skips. Production gui.cf6a1da8.js
+passes file import→Code→Blocks→green flag→visible A repeat with no page/block errors; boot
+checks pass. The first direct-Code browser driver omitted imported image assets;
+its failed runs are retained. The corrected driver imports the native project
+through the file chooser, carrying code and costumes together. Initial JavaScript is4,360,555 bytes under unchanged4,467,136.
+
+This closes the extra physics tick between completed callbacks. Absolute timing
+compatibility remains open. With normal wall-clock schedulers, the original
+fixture reproduced original x15/native12.4453125 in three trials before this
+change. Afterward, a simplified pause20 case ends at original15/native13.72265625,
+with no extra movement between the final callback observations. A pause0 case
+matches x15 but reads original obstacle-1/native2. Real long-pause positions vary
+with scheduling, so those probes are retained rather than treated as equality
+gates. The runtime still advances33ms per VM tick although the default VM
+interval is about16.7ms. PXT EventContext initializes its previous timestamp
+immediately before its first frame, producing a near-zero initial delta; startup
+phase and frame-polled waits also need qualification.
+
+Next: establish one controlled monotonic timeline for VM waits and Arcade scene
+frames, including initial zero delta, ordinary60Hz/compatibility30Hz operation,
+yielding frame callbacks, pause0/20/70 and push/pop/restart. Compare event traces
+and obstacle lifetimes against the pinned original scheduler before changing
+shared physics timing. Do not introduce timing freezes or close this lane from
+import counts. The last import-only corpus remains102 translated/81 partial/
+1 malformed; it was not rerun for this runtime-only change. U03 painter and
+resource lifecycle, ranked artwork/maps, palettes, effects and music remain open.
+[Receipt](receipts/2026-10-08-arcade-callback-scheduling.json).
+
+### Elapsed Arcade frame clock — 2026-10-08
+
+Arcade now advances by elapsed VM millisecond time rather than a fixed33ms for
+every tick. This removes the clock-rate mismatch at the default60Hz VM cadence.
+The first VM tick seeds the baseline with0ms, and green flag/scheduler restart
+reset it. Backward timestamps produce0ms, then rebase. Explicit offline frame
+durations remain available; test helpers now state their deliberate33ms physics
+step instead of relying on the production clock. Ordinary helper frames do not
+fast-forward wait timers; controlled tests inject the VM clock as well.
+
+Elapsed time during a pending registered scene callback is carried into the
+next frame rather than discarded. Physics retains the original100ms per-move
+clamp. A registered child-scene callback waiting70ms remains pending at80ms,
+completes at100ms and reports scene elapsed120ms on the next frame. General
+nested registration without a scene-stack selector remains an explicit
+`game.onUpdate()` conversion gap; its reproducer is retained.
+
+Qualification:60 affected tests pass without failures/skips. Thirty, sixty
+and irregular ticks spanning1000ms match original PXT physics exactly:
+x109.3359375,108.59375 and109.80859375, respectively, from x80/vx30. These small
+differences between schedules are the original fixed-point rounding, not a
+reason to replace the oracle with idealized floating-point motion. The comparison
+uses the same explicit physics time schedule in each engine; it does not claim
+complete original event-loop equivalence. Existing prompt, image, flag, speech,
+collision and scene-registration behavior passes. An old prompt assertion was
+updated for the reporter parentheses already emitted by the unchanged importer;
+answer suspension and delivery remain checked.
+
+Production gui.0f84bfdb.js passes native file→Code→Blocks→flag→visible A callback
+repeat, plus a separate visible-right hold checking game time against VM wall
+time and sprite motion. No page/block/build errors; boot checks pass. Initial
+JavaScript4,360,790 bytes remains below unchanged4,467,136.
+
+Remaining: first scene-worker phase versus first VM tick, push/pop, legacy
+update hats versus sequential registered callbacks, nested registrations outside
+the scene-stack path, and original whole-loop pause0/20/70/obstacle ordering.
+The clock follows the VM's existing millisecond source; this does not certify
+all system-clock adjustments or background scheduler behavior. Next unify the
+registration paths and qualify these traces against the original scheduler.
+U03 painter/resource lifecycle and ranked artwork, palette/effect/music gaps
+remain open. No importer/corpus promotion is claimed: last184 import-only
+102 translated/81 partial/1 malformed, not rerun here.
+[Receipt](receipts/2026-10-08-arcade-frame-clock.json).
+
+### Unified frame callback registration — 2026-10-08
+
+`game.onUpdate` and `game.onUpdateInterval` now use scene-owned runtime
+registrations without requiring `game.pushScene()` elsewhere in the program.
+Registration occurs at the authored call site, including inside procedures.
+Repeated installation creates distinct captured cells; callbacks from one
+installation share live cells. Interval expressions are evaluated at registration.
+A yielding update completes before its next inline successor runs.
+
+Captured assignments now export their Arcade value type, preserving booleans
+instead of coercing them to Scratch numeric values. Shadowed `game` bindings,
+invalid arity and non-inline callbacks remain diagnosed.
+
+Qualification: 22 affected tests pass without failures/skips. Original and
+exported MakeCode simulators agree on order `IAaB`, sum25 and one completed
+installation. Native execution, decompilation, MakeCode reimport and SB3 reload
+retain those observations; repeat input produces `IAaBAaB`, sum54 and two
+installations. The registered100ms interval ignores a later assignment of1ms.
+Production `gui.13e19d9b.js` passes native file→Code→Blocks→flag→visible A repeat;
+no page/block/build errors. Initial JavaScript 4,360,790 bytes remains below the
+unchanged4,467,136 limit; boot checks pass.
+
+GUI handoff: existing registration, named callback, local/captured value and
+assignment blocks/pseudocode words support these programs. No new producer pin
+or opcode was needed. Dedicated callback authoring guidance and the remaining
+editor/map-painter/resource work still need their separate GUI qualification.
+
+The same184 immutable apps still report102 translated/81 partial/1 malformed,
+with no changed diagnostic rows. These are import-only results. Other callback
+families still depend on scene-stack selection for their native registration
+path; first scene-worker phase, push/pop, legacy authored hats and whole-loop
+pause/obstacle ordering remain open. This section supersedes the prior nested
+frame-registration gap; it does not establish full event-loop compatibility.
+Exact-head hosted CI and stacked integration remain pending.
+[Receipt](receipts/2026-10-08-arcade-update-registration.json).
+
+### Unified controller callback registration — 2026-10-08
+
+`controller.A/B/up/down/left/right.onEvent` now registers at its authored call
+site without requiring a scene-stack program. Nested procedures retain live
+captured cells; registering the same button/event replaces its earlier handler.
+Pressed, Released and Repeated retain their original event values, including
+dynamic event expressions passed through procedures. Released callbacks observe
+mutations made by the matching pressed callback. Invalid callbacks and shadowed
+controller/event namespace bindings remain diagnosed.
+
+Qualification:27 distinct affected tests pass after10 focused final reruns;
+no skips. The initial regression run had26 passes and one failure: a firework
+test sent A before execution reached registration. It now sends real keyboard
+input after setup and verifies no launch beforehand; the original failure is
+retained. Background, flags, controller bindings, scenes and frame callbacks
+remain covered. Original/exported PXT and native/decompile/reimport/SB3 agree
+on trace `P7R8P10R11`, two presses/releases, three installations and a held-right
+repeat. Native short taps deliver both edges with no intervening frame. Exact
+wall-clock repeat counts and whole-loop startup timing are not claimed.
+
+GUI: existing native button registration, event menu, named callback and
+local/captured-value blocks/pseudocode cover this path. Production `gui.0cc1f4bb.js`
+passes native file→Code→Blocks→flag→visible A/B/A, plus held-right repeat, with
+no page/block/build errors. Initial JavaScript 4,360,790 bytes is below the
+unchanged4,467,136 budget; boot checks pass. No new opcode/producer pin is needed.
+Dedicated callback authoring guidance and graphics/resource editor work remain
+separate GUI tasks.
+
+The same184 immutable apps remain102 translated/81 partial/1 malformed with
+zero changed diagnostic rows; this is an import-only measure. Forever,
+life/countdown and sprite overlap/destruction registration paths still need
+unification. Initial phase, push/pop, legacy authored hats and whole-loop
+pause/obstacle ordering remain open, as do U03 painter/resource lifecycle and
+ranked artwork/palette/effect/music gaps. Exact-head hosted CI and stacked
+integration remain pending.
+[Receipt](receipts/2026-10-08-arcade-button-registration.json).
+
+### Unified life-zero and countdown registration — 2026-10-08
+
+`info.onLifeZero`, player1–4 life-zero callbacks and `info.onCountdownEnd` now
+register at their authored call sites without a scene-stack selector. Repeated
+registration replaces the matching handler and retains live shared captures.
+Programs containing these callbacks use native player life/score state and its
+hasLife/hasScore queries. Assigning zero or negative life invokes the appropriate
+handler without an artificial positive-life prerequisite; revival rearms it.
+Countdown handlers can continue play and run again after a new countdown.
+
+Original and exported PXT agree with native/decompile/reimport/SB3 on trace
+`L9M10T10`, revived life2/player2 life3 and one callback of each kind. Visible A
+input and original PXT input agree on `L9M10T10L10M11T11` with two of each callback.
+Existing registration, callback, player-state and local/captured-value blocks
+and pseudocode words cover this path; no producer pin/opcode change is needed.
+Dedicated callback authoring guidance and graphics/resource editor work remain
+separate GUI tasks.
+
+Qualification:88 distinct affected tests pass after focused reruns, no skips:
+61 Arcade tests,14 gate-inventory checks and13 source-policy/legacy Tile checks.
+The broad suite's old fixed-target assumptions were replaced with native VM
+coordinate, neighbour-write, velocity, geometry, trigonometry and20-case compound
+operator observations. Timed-spawn checks now distinguish the immediate first
+spawn from the newest periodic spawn. Initial failures remain in private evidence.
+Four callback browser journeys are now wired into hosted CI; the inventory
+recognizes Node module preloads while still rejecting mere mentions/preload-only
+commands. A legacy Tile test now resolves shared value state through the audited
+VM source helper.
+
+Production `gui.b9f5aa3d.js` passes native file→Code→Blocks→flag→visible A revival and
+countdown repeat, plus all three preceding callback journeys on that bundle.
+No page/block/build errors; boot checks pass. Initial JavaScript 4,360,790 bytes
+is below the unchanged4,467,136 budget.
+
+The same184 immutable apps still report102 translated/81 partial/1 malformed,
+with zero changed diagnostic rows: an import-only measure. Forever and sprite
+overlap/destruction registration, first phase, push/pop and whole-loop pause/
+obstacle timing remain open. Legacy authored hats and variable-based info paths
+outside these callback-bearing/native scene programs remain separate boundaries.
+U03 painter/resource lifecycle and ranked artwork/palette/effect/music gaps are
+still tracked. The preceding controller head's hosted build had44 unit failures
+and heavy browser camera/pixel/physics/speech failures. This slice repairs some
+local contracts; it does not claim overall hosted integration is green. Next
+finish that gate cleanup alongside the remaining callback families. Exact-head
+CI and stacked integration remain pending.
+[Receipt](receipts/2026-10-08-arcade-info-registration.json).
+
+
+### Scene-owned forever closures — 2026-10-08
+
+Source `94882c6a57d9f32462ec2579efc56fe2d9e35e45` routes `forever`, `game.forever` and `basic.forever` through native registrations at their execution sites, independently of scene-stack calls. Nested calls preserve live captured locals and yielding order. Invalid callback arguments and shadowed API bindings stay explicit diagnostics. Existing scene-local runtime registries suspend new iterations while another scene is active; the pending-frame regression requires elapsed time to survive a callback pause.
+
+All61 affected checks pass after reruns,0 skips. Original and exported PXT agree with native/decompile/reimport/SB3 on finite trace `S12E13S14E15`. Production `gui.4e20cd56.js` passes native file import→Code→Blocks→Run→visible A→From blocks plus all four prior callback journeys,0 page/block/build errors. Initial payload remains4,360,790 bytes under the unchanged limit. Same184 import-only102/81/1,0 changed diagnostic rows. Initial failures remain privately archived.
+
+The native Blocks command is `arcade register forever as TOKEN capturing CAPTURES`, paired with `when arcade forever handler TOKEN runs`; Code decompilation retains the pair. Captures are shared cells of the enclosing function. Dedicated guidance for creating callback pairs and editing captures remains a GUI task. Sprite callback unification, common startup/scene/obstacle timing and the remaining hosted export/browser gates are still open. [Receipt](receipts/2026-10-08-arcade-scene-continuation.json).
+
+
+### Scene-owned sprite overlap and destruction closures — 2026-10-08
+
+Source `d606023f2455a0e0a213da65a34d76a31ed91445` routes `sprites.onOverlap` and `sprites.onDestroyed` through native registrations at their execution sites, independently of scene-stack calls. Nested handlers preserve shared captured locals, both event sprite arguments, and sequential destruction handlers across pauses. Invalid callbacks and shadowed API/kind bindings remain explicit diagnostics. Destruction before registration and skipped conditional registrations do not invoke callbacks. Existing authored legacy hats remain available.
+
+All57 affected checks pass after focused reruns,0 skips. Original/exported PXT and native/decompile/reimport/SB3 agree on finite repeated-input trace `O12D13:20d14B14X16O16D17:20d18B18X20`, four destruction callback invocations and one remaining player. Production `gui.3c9f1746.js` passes native file→Code→Blocks→Run→visible A→From blocks and all five preceding callback journeys,0 page/block/build errors. Initial payload remains4,360,790 bytes. Same184 import-only102/81/1; one existing destruction refusal now explicitly names its unrendered effect/duration. No compatibility promotion or full-game equivalence is claimed.
+
+Native Blocks use `arcade register overlap kind … with kind … as TOKEN capturing CAPTURES` and `arcade register destroyed kind … as TOKEN capturing CAPTURES`, paired with their overlap/destroyed-kind handler hats. Code decompilation retains the pairs and maps event sprites to callback locals. Dedicated callback-pair/capture guidance remains a GUI task. Instance destruction captures, nested parallel calls, common startup/scene/obstacle timing, effects and remaining hosted export/browser gates remain open. [Receipt](receipts/2026-10-08-arcade-sprite-registration.json).
+
+
+### Instance destruction callback captures — 2026-10-08
+
+Source `a0500049b29809f2a2f69b41e47ed7eb9a78ccb0` imports typed `Sprite.onDestroyed` calls using the common live-capture registration machinery. Registration replaces the previous instance callback and stays bound to the actual sprite when its variable changes. Number and boolean captures survive the enclosing procedure; yielding instance handlers complete before kind handlers and the caller resumes. Invalid callback signatures remain explicit diagnostics. Existing authored destruction words remain readable.
+
+Original/exported PXT and native/decompile/reimport/SB3 agree on repeated-input trace `I12i13KXI14i15KY`. Producer dialect checks pass230/230. Browser gate inventory checks pass21/21. Same184 import-only102/81/1,0 changed diagnostic rows. Initial schema-sync and premature-observation test failures are preserved privately. All23 distinct affected Arcade checks pass after a focused rerun,0 skips.
+
+Code and Blocks now expose `arcade register instance destruction of ID as TOKEN capturing CAPTURES` and `when arcade instance destruction handler TOKEN runs`. The visible file→Code→Blocks→Run→controller A→From blocks test is wired to the hosted heavy shard. A fresh production bundle and visible GUI execution are pending; this source qualification does not substitute for those gates. Dedicated callback-pair/capture guidance remains open. Nested parallel call timing/captures are next, alongside scene/startup timing, corpus gaps and hosted integration failures. [Receipt](receipts/2026-10-08-arcade-instance-registration.json).
+
+
+### Parallel execution at call sites — 2026-10-08
+
+Source `9697810a2529b1b6aaaa31e7dc9699d5dad828ee` imports `control.runInParallel` as a one-shot launch at its execution site. Each call queues an independent VM thread and the caller continues without awaiting it. Nested inline callbacks retain live number/boolean cells after the enclosing procedure returns; repeated calls have separate invocation cells. Unexecuted branches launch nothing. Invalid signatures and shadowed `control` bindings remain diagnostics.
+
+All38 affected checks pass,0 skips:16 Arcade,1 canonical SPIKE artifact and21 browser gate inventory checks. Producer dialect232/232 passes. Original/exported PXT and native/decompile/reimport/SB3 agree on repeated-input trace `L12SP12Q13E13N13L14P14Q15E15N15`. Concurrent launches across scene push/pop agree on total26; native stop/restart cancels old queued work and launches one fresh fiber. The SPIKE gate now names the new producer pin and passes its unchanged artifact behavior assertions, resolving the observed parent build refusal.
+
+Code and Blocks expose `arcade run parallel as TOKEN capturing CAPTURES` and `when arcade parallel handler TOKEN runs`; export reconstructs `control.runInParallel(function () { … })`. The visible file→Code→Blocks→Run→A→From blocks test is wired to the hosted heavy shard. Eight GUI journeys are prepared, including instance destruction. The local cold production build was interrupted when shared-host swap was exhausted; no fresh bundle or visible GUI result is claimed. Exact-head hosted build and browser checks remain required. Callback-pair/capture guidance and function-valued callbacks remain GUI/conversion tasks.
+
+Same184 import-only102/81/1,0 changed diagnostic rows. The largest next group is10 unreadable backgrounds: each references a named asset or external image namespace. Audit complete original project resources and dependencies before treating these as renderer gaps. Next groups include7 tilemap-resource refusals and7 destruction effect/duration refusals. Recover actual assets with provenance; do not substitute blank art or count unavailable inputs as implemented features. Scene/startup timing and overall hosted integration remain open. [Receipt](receipts/2026-10-08-arcade-parallel-registration.json).

@@ -118,7 +118,7 @@ const L10N = {
         mcSharePrompt: 'Paste a MakeCode share link:',
         mcShareLoading: 'Fetching the shared project…',
         mcExport: '⬆ To MakeCode',
-        mcExportTitle: 'Save this project as a .hex that makecode.microbit.org can import',
+        mcExportTitle: 'Save this project as a native MakeCode project (.mkcd)',
         mcExportDone: (f, u) => (u ?
             `Saved ${f} — drop it on makecode.microbit.org to open it there. ${u} block(s) had no MakeCode equivalent.` :
             `Saved ${f} — drop it on makecode.microbit.org to open it there.`),
@@ -126,7 +126,10 @@ const L10N = {
         mcRun: '▶ Run in MakeCode simulator',
         mcRunTitle: 'Compile this MakeCode project with MakeCode\'s own compiler and run it in MakeCode\'s simulator — nothing is translated, so nothing is lost',
         mcRunCompiling: n => `Compiling ${n} with MakeCode…`,
+        moreLanguages: 'More languages',
         mcRunStarted: (n, t) => `${n} is running in MakeCode's ${({arcade: 'Arcade', calliopemini: 'Calliope mini', ev3: 'EV3', adafruit: 'Circuit Playground'})[t] || 'micro:bit'} simulator.`,
+        mcFetched: list => ` Extensions fetched from GitHub for this build: ${list}.`,
+        mcLicenceUnknown: 'licence not recognised',
         mcFirmware: '⤓ Firmware for the board',
         mcFirmwareTitle: 'Build the real firmware for this project\'s board (micro:bit or Calliope .hex, EV3, Circuit Playground or the chosen Arcade board .uf2), with the project inside so MakeCode can reopen it',
         mcFirmwareBuilding: n => `Building firmware for ${n}…`,
@@ -431,7 +434,7 @@ const L10N = {
         mcSharePrompt: 'MakeCode-Freigabelink einfügen:',
         mcShareLoading: 'Geteiltes Projekt wird geladen…',
         mcExport: '⬆ Zu MakeCode',
-        mcExportTitle: 'Dieses Projekt als .hex speichern, die makecode.microbit.org importieren kann',
+        mcExportTitle: 'Dieses Projekt als natives MakeCode-Projekt (.mkcd) speichern',
         mcExportDone: (f, u) => (u ?
             `${f} gespeichert — auf makecode.microbit.org ablegen, um es dort zu öffnen. Für ${u} Block/Blöcke gibt es in MakeCode keine Entsprechung.` :
             `${f} gespeichert — auf makecode.microbit.org ablegen, um es dort zu öffnen.`),
@@ -439,7 +442,10 @@ const L10N = {
         mcRun: '▶ Im MakeCode-Simulator ausführen',
         mcRunTitle: 'Dieses MakeCode-Projekt mit dem MakeCode-eigenen Compiler übersetzen und im MakeCode-Simulator ausführen — es wird nichts umgewandelt, also geht nichts verloren',
         mcRunCompiling: n => `${n} wird mit MakeCode übersetzt…`,
+        moreLanguages: 'Weitere Sprachen',
         mcRunStarted: (n, t) => `${n} läuft im MakeCode-Simulator (${({arcade: 'Arcade', calliopemini: 'Calliope mini', ev3: 'EV3', adafruit: 'Circuit Playground'})[t] || 'micro:bit'}).`,
+        mcFetched: list => ` Für diesen Build von GitHub geladene Erweiterungen: ${list}.`,
+        mcLicenceUnknown: 'Lizenz nicht erkannt',
         mcFirmware: '⤓ Firmware für das Board',
         mcFirmwareTitle: 'Die echte Firmware für das Board dieses Projekts bauen (micro:bit oder Calliope .hex, EV3, Circuit Playground oder das gewählte Arcade-Board .uf2), mit dem Projekt darin, damit MakeCode es wieder öffnen kann',
         mcFirmwareBuilding: n => `Firmware für ${n} wird gebaut…`,
@@ -863,6 +869,16 @@ const CODE_ACCEPT = [...new Set(Object.values(CODE_FILES).map(f => `.${f.ext}`))
 // '' and wiped the save. Track the ACTIVE buffer instead — that is the one the
 // user is actually working in, and it is never emptied by that rule.
 const BW_AUTOSAVE_KEY = 'bw-code-autosave';
+// Code-tab languages most people never need: they stay out of the language row
+// until chosen from its "+" menu (remembered per browser), opened, or written in.
+const BW_OPTIONAL_LANGS = [['fe', 'λ fe', 'Lisp (fe on DOS)'], ['tcl', '○ Tcl', 'Tcl (partcl on DOS)']];
+const BW_EXTRA_LANGS_KEY = 'bw-code-extra-languages';
+const readExtraLangs = () => {
+    try {
+        const saved = JSON.parse(localStorage.getItem(BW_EXTRA_LANGS_KEY) || '[]');
+        return Array.isArray(saved) ? saved.filter(l => BW_OPTIONAL_LANGS.some(([id]) => id === l)) : [];
+    } catch { return []; }
+};
 const BW_AUTOSAVE_MAX = 512 * 1024;   // localStorage is ~5MB total; don't hog it
 
 const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC', asm: 'ASM', micropython: 'micro:bit', nqc: 'NQC'};
@@ -1101,9 +1117,10 @@ class PseudocodeImporter extends React.Component {
         // switching tabs always re-derives them from the latest edit — you can never
         // end up with (say) pseudocode sitting in the Python tab.
         this.state = {revealed: props.isVisible !== false, lang: 'pseudocode', importedPython: false,
+            extraLangs: readExtraLangs(), langMenuOpen: false,
             // The Arcade board picker: the boards (null until loaded) and the one chosen.
             arcadeBoards: null, arcadeBoard: '',
-            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: '', nqc: ''},
+            buffers: {pseudocode: '', python: '', javascript: '', c: '', basic: '', asm: '', micropython: '', nqc: '', fe: '', tcl: ''},
             basicProfile: 'bbc', basicLineNumbers: true,
             uploads: [], status: '', conversionReport: null, reportExpanded: false, busy: false, showRef: false, showInfo: false, showMatrix: false,
             showRepresentation: true,
@@ -1886,12 +1903,13 @@ class PseudocodeImporter extends React.Component {
             const SB3Creator = (await this.lib()).default;
             const creator = new SB3Creator();
             const project = creator.parse(source);
-            const {exportToMakeCode} = await import(
+            const {exportToMakeCode, makeCodeProjectFile} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
             const name = (source.match(/^#\s*(.+)$/m) || [])[1] || 'brickwright';
             const out = exportToMakeCode(project, {name: name.trim().slice(0, 40)});
-            await downloadBlob(out.filename, new Blob([out.hex], {type: 'application/octet-stream'}));
-            this.setState({busy: false, status: this.L.mcExportDone(out.filename, out.unsupported.length)});
+            const filename = out.filename.replace(/\.hex$/i, '.mkcd');
+            await downloadBlob(filename, new Blob([makeCodeProjectFile(out.files, {name: name.trim().slice(0, 40), target: 'microbit'})], {type: 'application/octet-stream'}));
+            this.setState({busy: false, status: this.L.mcExportDone(filename, out.unsupported.length)});
         } catch (err) {
             this.setState({busy: false, status: this.L.mcFailed('MakeCode export', (err && err.message) || String(err))});
         }
@@ -1961,6 +1979,12 @@ class PseudocodeImporter extends React.Component {
      * be mounted yet, so the program is parked on the window as well as
      * announced — the Arduboy console's contract.
      */
+    /** Name the extensions a compile fetched on demand (pxt-runtime.js fetchedExtensions), with their licences. */
+    fetchedNote (out) {
+        const list = (out && out.fetchedExtensions) || [];
+        if (!list.length) return '';
+        return this.L.mcFetched(list.map(e => `${e.id} (${e.repo}${e.ref ? '#' + e.ref : ''}, ${e.licence || this.L.mcLicenceUnknown})`).join(', '));
+    }
     async runInMakeCode () {
         const subject = await this.makeCodeSubject().catch(() => null);
         if (!subject) { this.setState({status: this.L.mcNothingToRun}); return; }
@@ -1983,7 +2007,7 @@ class PseudocodeImporter extends React.Component {
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
             window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-debug-dock', value: 'makecode'}}));
             window.dispatchEvent(new CustomEvent('bw-makecode-load', {detail: program}));
-            this.setState({busy: false, status: this.L.mcRunStarted(subject.name, target)});
+            this.setState({busy: false, status: this.L.mcRunStarted(subject.name, target) + this.fetchedNote(out)});
         } catch (err) {
             this.setState({busy: false, status: err && err.code === 'UNSUPPORTED_TARGET' ?
                 this.L.mcUnsupportedTarget(target) : this.makeCodeFailure(err, target)});
@@ -2041,7 +2065,7 @@ class PseudocodeImporter extends React.Component {
             const slug = t => String(t).replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
             const filename = `${[subject.target, slug(subject.name) || 'program', board && slug(board.name)].filter(Boolean).join('-')}.${ext}`;
             await downloadBlob(filename, new Blob([fw.bytes], {type: 'application/octet-stream'}));
-            this.setState({busy: false, status: board ? this.L.mcBoardFirmwareDone(filename, board.name) : this.L.mcFirmwareDone(filename)});
+            this.setState({busy: false, status: (board ? this.L.mcBoardFirmwareDone(filename, board.name) : this.L.mcFirmwareDone(filename)) + this.fetchedNote(out)});
         } catch (err) {
             this.setState({busy: false, status: this.makeCodeFailure(err, subject.target)});
         }
@@ -2144,12 +2168,12 @@ class PseudocodeImporter extends React.Component {
         this.setState({busy: true});
         try {
             const out = await this.arcadeFromStage();
-            const {makeCodeSourceHex} = await import(
+            const {makeCodeProjectFile} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
             const name = JSON.parse(out.files['pxt.json']).name;
-            const filename = `arcade-${String(name).replace(/[^a-z0-9_-]+/gi, '-').toLowerCase()}.hex`;
-            const hex = makeCodeSourceHex(out.files, {name, target: 'arcade', editorUrl: 'https://arcade.makecode.com/'});
-            await downloadBlob(filename, new Blob([hex], {type: 'application/octet-stream'}));
+            const filename = `arcade-${String(name).replace(/[^a-z0-9_-]+/gi, '-').toLowerCase()}.mkcd`;
+            const projectFile = makeCodeProjectFile(out.files, {name, target: 'arcade'});
+            await downloadBlob(filename, new Blob([projectFile], {type: 'application/octet-stream'}));
             this.setState({busy: false, status: this.L.arcDone(filename, out.unsupported.length, out.warnings.length)});
         } catch (err) {
             this.setState({busy: false, status: this.L.mcFailed('MakeCode Arcade', (err && err.message) || String(err))});
@@ -2254,7 +2278,9 @@ class PseudocodeImporter extends React.Component {
 
     activeCode () {
         if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return this.state.asmListing;
-        return this.state.buffers[this.state.lang];
+        // A tab with no buffer yet (fe and Tcl were missing from the initial set and
+        // crashed the editor when opened on an empty project) reads as empty.
+        return this.state.buffers[this.state.lang] ?? '';
     }
     setActiveCode (text) {
         if (this.state.lang === 'asm' && this.state.asmMode === 'listing') return; // listing is read-only
@@ -2334,6 +2360,17 @@ class PseudocodeImporter extends React.Component {
 
     // Switch language tab. If the target buffer is empty, derive it from the active
     // buffer so the tab shows the same project in the new language.
+    /** The optional languages the row shows: active, written in, or added from "+". */
+    visibleOptionalLangs () {
+        return BW_OPTIONAL_LANGS.filter(([l]) => this.state.lang === l ||
+            (this.state.buffers[l] || '').trim() || this.state.extraLangs.includes(l));
+    }
+    /** Add an optional language to the row (remembered per browser) and open it. */
+    addOptionalLang (l) {
+        const extraLangs = this.state.extraLangs.includes(l) ? this.state.extraLangs : [...this.state.extraLangs, l];
+        try { localStorage.setItem(BW_EXTRA_LANGS_KEY, JSON.stringify(extraLangs)); } catch { /* per-browser convenience only */ }
+        this.setState({extraLangs, langMenuOpen: false}, () => this.switchTab(l));
+    }
     switchTab (to) {
         const from = this.state.lang;
         if (to === from || this.state.busy) return;
@@ -4555,6 +4592,8 @@ class PseudocodeImporter extends React.Component {
         if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({status: this.L.stCOneWay}); return; }
         this.setState({busy: true, status: this.L.stCompiling});
         const pending = this._animationImport;
+        const uploads = this.state.uploads;
+        const appliedUploads = new Set();
         const stage = this.props.vm.runtime.getTargetForStage();
         const activeAtStart = this.activeCode();
         try {
@@ -4597,17 +4636,18 @@ class PseudocodeImporter extends React.Component {
             const SB3Creator = (await this.lib()).default;
             const creator = new SB3Creator();
             creator.parse(source);
+            const sourceDeclarations = JSON.parse(JSON.stringify(creator.project));
             const missing = [];
-            this.state.uploads.forEach(u => {
+            uploads.forEach(u => {
                 const name = (u.sprite || '').trim();
                 if (!name || !u.svg) return;
                 const ok = u.mode === 'add' ?
                     creator.addCustomSVGCostume(name, u.svg, u.filename.replace(/\.svg$/i, '')) :
                     creator.applyCustomSVG(name, u.svg);
                 if (!ok) missing.push(name);
+                else appliedUploads.add(u);
             });
             if (strict && (parseWarnings.length || creator.warnings.length)) throw new Error([...parseWarnings, ...creator.warnings].join(' · '));
-            const declarations = JSON.parse(JSON.stringify(creator.project));
             const context = codeArtworkMatches(this.props.vm, this._codeArtwork) ? this._codeArtwork : null;
             const blob = await creator.generateSB3();
             let projectBytes = await blob.arrayBuffer();
@@ -4616,7 +4656,7 @@ class PseudocodeImporter extends React.Component {
                 const module = await import('jszip');
                 const ZIP = module.default || module;
                 const zip = await ZIP.loadAsync(projectBytes);
-                if (context) retainCodeArtwork(zip, creator.project, this.props.vm, context, this.state.uploads);
+                if (context) retainCodeArtwork(zip, creator.project, this.props.vm, context, uploads);
                 const revision = context && captureCodeArtworkRevision(this.props.vm, context);
                 if (pending) {
                     if (pending.stage !== stage) throw new Error('The loaded project changed since this animation import. Import it again.');
@@ -4632,15 +4672,16 @@ class PseudocodeImporter extends React.Component {
                     throw new Error(artwork.reason || 'Artwork or the loaded project changed while preparing this conversion. Read From blocks again.');
                 }
             }
-            if (this.props.vm.runtime.getTargetForStage() !== stage || this._animationImport !== pending ||
+            if (this.props.vm.runtime.getTargetForStage() !== stage || this._animationImport !== pending || this.state.uploads !== uploads ||
                 this.activeCode() !== activeAtStart) throw new Error('The code or loaded project changed while preparing this conversion. Try again.');
             await this.props.vm.loadProject(projectBytes);
             this._animationImport = null;
             this._makeCodeRequest = null;
-            if (artwork) {
-                applyArtwork(artwork, this.props.vm);
-                this._codeArtwork = captureCodeArtwork(this.props.vm, declarations);
-            }
+            if (artwork) applyArtwork(artwork, this.props.vm);
+            // The loaded project owns applied uploads, including ordinary SVG
+            // imports with no animation bundle. Later conversions read its live
+            // artwork instead of replaying stale imports or append operations.
+            this._codeArtwork = captureCodeArtwork(this.props.vm, creator.project, sourceDeclarations);
             // Auto-select the first sprite with scripts so the Blocks palette
             // shows meaningful blocks, not "Stage selected — no motion blocks".
             const vm = this.props.vm;
@@ -4729,12 +4770,13 @@ class PseudocodeImporter extends React.Component {
             const warns = [...parseWarnings, ...creator.warnings];
             if (missing.length) warns.push(`no sprite named: ${missing.join(', ')}`);
             const classified = classifyConversionWarnings(warns);
-            this.setState({
+            this.setState(state => ({
                 buffers: nb,
+                uploads: state.uploads.filter(upload => !appliedUploads.has(upload)),
                 status: warns.length ? this.L.stWarn(warns.slice(0, 4).join(' · ')) : this.L.stLoaded,
                 conversionReport: {direction: `${LANG_LABEL[lang] || lang} → Blocks`, preserved: true,
                     changed: classified.changed, unsupported: classified.unsupported}
-            });
+            }));
         } catch (e) {
             const failure = conversionFailure(e);
             this.setState({status: this.L.stError(failure.message), conversionReport: {
@@ -5137,7 +5179,8 @@ class PseudocodeImporter extends React.Component {
                     missed each other. */}
                 <div style={{display: 'flex', gap: 2, marginBottom: -1, alignItems: 'flex-end', flexWrap: 'wrap', flexShrink: 0, paddingRight: 40}}
                     data-testid="bw-lang-row">
-                    {[['pseudocode', '🧩 Pseudo'], ['python', '🐍 Py'], ['javascript', '🟨 JS'], ['c', '🔧 C'], ['basic', '📺 BAS'], ['asm', '🔩 ASM'], ['fe', 'λ fe'], ['tcl', '○ Tcl'],
+                    {[['pseudocode', '🧩 Pseudo'], ['python', '🐍 Py'], ['javascript', '🟨 JS'], ['c', '🔧 C'], ['basic', '📺 BAS'], ['asm', '🔩 ASM'],
+                        ...this.visibleOptionalLangs().map(([l, label]) => [l, label]),
                         // The tab follows the DEVICE line, except when a
                         // MicroPython program was imported from a .hex: there
                         // is no pseudocode then, and hiding the tab would hide
@@ -5165,6 +5208,36 @@ class PseudocodeImporter extends React.Component {
                             </button>
                         );
                     })}
+                    {(() => {
+                        const shown = this.visibleOptionalLangs().map(([l]) => l);
+                        const hidden = BW_OPTIONAL_LANGS.filter(([l]) => !shown.includes(l));
+                        if (!hidden.length) return null;
+                        return (
+                            <span style={{position: 'relative'}}>
+                                <button type="button" data-testid="bw-lang-more" aria-haspopup="menu"
+                                    aria-expanded={this.state.langMenuOpen} aria-label={this.L.moreLanguages} title={this.L.moreLanguages}
+                                    disabled={this.state.busy}
+                                    onClick={() => this.setState(s => ({langMenuOpen: !s.langMenuOpen}))}
+                                    style={{padding: '6px 10px', border: '1px solid #cbd5e1', borderRadius: '8px 8px 0 0', cursor: 'pointer',
+                                        fontWeight: 700, fontSize: 13, background: '#eef2f7', color: '#64748b', position: 'relative', top: 1}}>
+                                    +
+                                </button>
+                                {this.state.langMenuOpen ? (
+                                    <span role="menu" data-testid="bw-lang-more-menu"
+                                        style={{position: 'absolute', top: '100%', left: 0, zIndex: 20, display: 'flex', flexDirection: 'column',
+                                            background: '#fff', border: '1px solid #cbd5e1', borderRadius: 6, boxShadow: '0 4px 12px rgba(15,23,42,.15)', minWidth: 170}}>
+                                        {hidden.map(([l, label, name]) => (
+                                            <button key={l} type="button" role="menuitem" onClick={() => this.addOptionalLang(l)}
+                                                style={{padding: '7px 10px', border: 0, background: 'transparent', textAlign: 'left', cursor: 'pointer',
+                                                    fontSize: 13, color: '#1e293b', whiteSpace: 'nowrap'}}>
+                                                {label} — {name}
+                                            </button>
+                                        ))}
+                                    </span>
+                                ) : null}
+                            </span>
+                        );
+                    })()}
                     <span style={{flex: 1, minWidth: 4}} />
                     {/* Compact controls */}
                     <React.Fragment>

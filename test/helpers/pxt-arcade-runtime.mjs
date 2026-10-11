@@ -6,8 +6,8 @@ import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 import {compile,STATIC} from '../../scripts/lib/pxt-node.mjs';
 
-export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}} = {}) {
-    const files={'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})};
+export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, buttonActions = null, recordSound = false, waitForMain = true, fakeClock = false} = {}) {
+    const files=typeof source === 'string' ? {'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})} : {...source};
     const built=await compile('arcade',files);
     if(!built.success)throw new Error(JSON.stringify(built.diagnostics));
     const root=path.join(STATIC,'arcade/sim');
@@ -25,16 +25,53 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
         browser=await chromium.launch();const page=await browser.newPage();
         const errors=[],messages=[];page.on('pageerror',error=>errors.push(error.message));
         page.on('console',message=>{if(['error','warning'].includes(message.type()))messages.push(message.text().slice(0,1000));});
+        // A fake clock makes the original's frame times deterministic: its
+        // frame loop pauses max(1, 20 - callback time) ms, so frames are 20 ms.
+        if(fakeClock)await page.clock.install({time:0});
         await page.goto(`http://127.0.0.1:${server.address().port}/simulator.html`);
-        await page.evaluate(async code=>{
+        await page.evaluate(async ({code,recordSound})=>{
             const msg={type:'run',id:'bw-oracle',code,options:{},mute:true};
             pxsim.AudioContextManager.mute(true);
+            if(recordSound){
+                // Record every queued play-instruction buffer with the simulator clock.
+                const queue=pxsim.AudioContextManager.queuePlayInstructions;window.__bwSound=[];
+                pxsim.AudioContextManager.queuePlayInstructions=(when,buffer)=>{
+                    window.__bwSound.push({time:pxsim.runtime?.runningTime?.() ?? null,delay:when,bytes:Array.from(buffer.data)});
+                    return queue(when,buffer);
+                };
+            }
             const runtime=new pxsim.Runtime(msg);window.__bwPxtRuntime=runtime;
             await runtime.board.initAsync(msg);
             runtime.run(()=>{window.__bwPxtDone=true;});
-        },built.outfiles['binary.js']);
-        try {
-            await page.waitForFunction(()=>window.__bwPxtDone,null,{timeout:20000});
+        },{code:built.outfiles['binary.js'],recordSound});
+        if(buttonActions){
+            if(buttonActions.afterGlobals)await page.waitForFunction(expected=>{
+                const values=Object.fromEntries(Object.entries(window.__bwPxtRuntime.globals).map(([key,value])=>[key.replace(/___\d+$/,''),value]));
+                return Object.entries(expected).every(([key,value])=>values[key]===value);
+            },buttonActions.afterGlobals,{timeout:20000});
+            for(const action of buttonActions.steps){
+                if(action.delay)await page.waitForTimeout(action.delay);
+                if(action.button!==undefined)await page.evaluate(({button,held})=>{
+                    const board=window.__bwPxtRuntime.board;
+                    if(typeof board.setButton!=='function')throw new Error('Original PXT board button input unavailable');
+                    board.setButton(button,held);
+                },action);
+            }
+        }
+        if(fakeClock){
+            // Faked timers also stop waitForFunction polling: advance and check.
+            const ready=()=>page.evaluate(({waitForMain,expected})=>{
+                const values=Object.fromEntries(Object.entries(window.__bwPxtRuntime.globals).map(([key,value])=>[key.replace(/___\d+$/,''),value]));
+                return (!waitForMain || window.__bwPxtDone) && Object.entries(expected || {}).every(([key,value])=>values[key]===value);
+            },{waitForMain,expected:waitForGlobals});
+            let elapsed=0;
+            while(!await ready()){
+                if(elapsed>=120000||errors.length)throw new Error('Original Arcade simulator did not complete under the fake clock: '+JSON.stringify({errors,messages,elapsed}));
+                await page.clock.runFor(100);elapsed+=100;
+            }
+        } else try {
+            // Main may never return (game over waits for a button); then only the globals mark completion.
+            if (waitForMain) await page.waitForFunction(()=>window.__bwPxtDone,null,{timeout:20000});
             // Exported Scratch hats can continue in real PXT fibers after main
             // returns. Authored fixtures may name an explicit completion marker;
             // do not read unfinished state or change the scheduler to force it.
@@ -48,11 +85,14 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
             const state=await page.evaluate(()=>{const r=window.__bwPxtRuntime;return {dead:r?.dead,running:r?.running,globals:Object.fromEntries(Object.entries(r?.globals || {}).filter(([,v])=>v===null || ['number','string','boolean','undefined'].includes(typeof v))) };});
             throw new Error('Original Arcade simulator did not complete: '+JSON.stringify({errors,messages,state}),{cause:error});
         }
-        const values=await page.evaluate(()=>{
+        const values=await page.evaluate(({inspectDisplay,recordSound})=>{
             const runtime=window.__bwPxtRuntime;
             const result=Object.fromEntries(Object.entries(runtime.globals).filter(([,v])=>v===null || ['number','string','boolean','undefined'].includes(typeof v)).map(([k,v])=>[k.replace(/___\d+$/,''),v]));
+            if(inspectDisplay)result.$display={palette:Array.from(runtime.board.screenState.palette),
+                screen:Array.from(runtime.board.screenState.screen)};
+            if(recordSound)result.$sound=window.__bwSound;
             runtime.kill();runtime.board.kill();return result;
-        });
+        },{inspectDisplay,recordSound});
         if(errors.length)throw new Error(JSON.stringify(errors));
         return values;
     } finally {await browser?.close();await new Promise(done=>server.close(done));}

@@ -1,0 +1,105 @@
+{
+  "date": "2026-10-08",
+  "testedSource": "d0786eff942106e925dabc80e18a653a44770270",
+  "auditSourceDirty": false,
+  "producer": {
+    "repo": "CrispStrobe/sb3-creator",
+    "source": "638851ab1ab6845c0752a0cc96f053ef2c8745ef",
+    "pr": 66,
+    "wordsAdded": 4,
+    "testsPassed": 1
+  },
+  "implementation": {
+    "APIs": [
+      "mp.onButtonEvent",
+      "mp.isButtonPressed"
+    ],
+    "enums": [
+      "mp.MultiplayerButton.A",
+      "mp.MultiplayerButton.B",
+      "mp.MultiplayerButton.Up",
+      "mp.MultiplayerButton.Right",
+      "mp.MultiplayerButton.Down",
+      "mp.MultiplayerButton.Left"
+    ],
+    "boundariesCovered": [
+      "typed Player callback identity and sprite/property access",
+      "captured mutable local cells",
+      "shared callback replacement with direct player-one slot override",
+      "actual scene push/pop registration identity",
+      "independent press/release/repeat state",
+      "both edges of player-four tap without intervening frame",
+      "missing-player query returns false",
+      "unknown enums, shadowed mp and callback arity remain diagnostics"
+    ],
+    "repeatQualification": "Default500ms/30ms and integer frame-millisecond boundaries tested against pinned controller source; not cross-simulator wall-clock timing equivalence"
+  },
+  "tests": {
+    "affectedAndRegressionsIncludingBrowserGateContracts": 59,
+    "failed": 0,
+    "skipped": 0
+  },
+  "differentialRoutes": [
+    "original PXT runtime",
+    "Code to Blocks",
+    "native export to original PXT runtime",
+    "BW reimport",
+    "SB3 save/reload"
+  ],
+  "build": {
+    "errors": 0,
+    "guiBundle": "gui.a24a77c4.js",
+    "initialBytes": 4360511,
+    "previousInitialBytes": 4360511,
+    "unchangedInitialLimit": 4467136,
+    "bootPayload": "passed"
+  },
+  "browser": {
+    "status": "passed",
+    "pageErrors": [],
+    "rotationSamples": 12,
+    "multiplayerButtons": {
+      "nativeFileImport": true,
+      "codeToBlocks": true,
+      "playerTwoIdentity": true,
+      "capturedWeight": 4,
+      "pressedQuery": true,
+      "playerOneOverride": true,
+      "releaseNumberSum": 3,
+      "playerFourTapBothEdges": 44,
+      "spriteX": 45
+    },
+    "priorJourneys": "All previous production browser journeys pass"
+  },
+  "corpus": {
+    "original184ImportOnly": {
+      "translated": 96,
+      "partial": 87,
+      "malformed": 1
+    },
+    "recoveredTutorials": {
+      "partial": 10,
+      "originalCompileUnavailable": 10,
+      "partialFragmentsSteppedWithoutErrors": 10,
+      "diagnosticOccurrences": 27
+    },
+    "qualificationBoundary": "Original extension packages unavailable; stepping partial fragments is not complete-game equivalence"
+  },
+  "retainedIntermediateFailures": [
+    "Oracle source concatenation newline",
+    "Optimized-away completion marker",
+    "Runtime harness accessed wrapper instead of implementation",
+    "Numeric block input text rejected",
+    "Missing VM callback hat method"
+  ],
+  "remaining": [
+    "friendly button enum labels and callback pair authoring",
+    "direct controller-instance conversion",
+    "connection/score/life events and player state/data",
+    "custom repeats and analog pressure",
+    "presence/network effects",
+    "queued replacement races and long-handler timing qualification",
+    "graphics/palette and package artwork"
+  ],
+  "publication": "Draft stacked PR; exact-head hosted CI and merge still required"
+}

@@ -20,10 +20,12 @@ const unique = (items, key, label) => {
     return result;
 };
 
-const captureCodeArtwork = (vm, declarations) => {
+const captureCodeArtwork = (vm, declarations, sourceDeclarations = declarations) => {
     const targets = originals(vm);
     const byTarget = unique(targets, targetKey, 'target');
     const slots = new Map();
+    const implicitCostumes = new Map();
+    const sourceTargets = new Map((sourceDeclarations.targets || []).map(target => [targetKey(target), target]));
     for (const target of declarations.targets || []) {
         const key = targetKey(target);
         const live = byTarget.get(key);
@@ -35,8 +37,18 @@ const captureCodeArtwork = (vm, declarations) => {
             key: slotKey(costume, index), costume: live.sprite.costumes[index]
         }));
         slots.set(key, unique(rows, row => row.key, 'costume declaration'));
+        const sourceSlots = (sourceTargets.get(key)?.costumes || []).map(slotKey);
+        const generatedSlots = (target.costumes || []).map(slotKey);
+        // SVG uploads can append costumes without a COSTUME declaration. Keep
+        // those owned attachments while the authored declaration slots match;
+        // From blocks makes them ordinary explicit declarations instead.
+        if (sourceSlots.length && generatedSlots.length > sourceSlots.length &&
+            sourceSlots.every((slot, index) => slot === generatedSlots[index])) {
+            implicitCostumes.set(key, {sourceSlots,
+                costumes: copy(target.costumes.slice(sourceSlots.length))});
+        }
     }
-    return {targets, slots, byTarget, libraries: targets.filter(getAssetLibraryRole)};
+    return {targets, slots, byTarget, implicitCostumes, libraries: targets.filter(getAssetLibraryRole)};
 };
 
 const codeArtworkMatches = (vm, context) => {
@@ -75,6 +87,13 @@ const retainCodeArtwork = (zip, project, vm, context, uploads = []) => {
         const prior = library ? new Map((generated.costumes || []).map((costume, index) =>
             [slotKey(costume, index), {costume: library.sprite.costumes[index]}])) : context.slots.get(key);
         if (!live || !prior) continue;
+        const implicit = context.implicitCostumes?.get(key);
+        const currentSlots = (generated.costumes || []).map(slotKey);
+        const hasNewAppend = uploads.some(upload => upload.sprite === generated.name && upload.mode === 'add');
+        if (implicit && (currentSlots.length === implicit.sourceSlots.length || hasNewAppend) &&
+            implicit.sourceSlots.every((slot, index) => slot === currentSlots[index])) {
+            generated.costumes.splice(implicit.sourceSlots.length, 0, ...copy(implicit.costumes));
+        }
         const liveCostumes = live.sprite?.costumes || [];
         const liveCurrent = liveCostumes[live.currentCostume];
         let retainedCurrent = -1;

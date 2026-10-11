@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-10",
+  "testedSource": "f6b48a499dce678c91cef052fcde424c90a6413a",
+  "base": "4e68ebbb8f96b3724ef96c4f84adbc24bf3e4c4e",
+  "implemented": [
+    "Native constructor uses shared scaled/rotated collision hitbox top instead of mask index divided by display width",
+    "Capture original owner offset before yielding creation handler changes scale"
+  ],
+  "local": {
+    "passed": 38,
+    "failed": 0,
+    "skipped": 0,
+    "newChecks": 9,
+    "regressionChecks": 29,
+    "originalNewPlanes": 9,
+    "pixelsPerPlane": 19200,
+    "newNativeOriginalComparedPixels": 172800,
+    "originalExportComparedPixels": 19200,
+    "logs": [
+      "arcade-speech-hitbox-qualified.log",
+      "arcade-speech-hitbox-roundtrip.log"
+    ],
+    "boundary": "Actual original PXT full pixels and bubble coordinates; native VM, Code, saved SB3, original MakeCode export/reimport, fresh development/production extension bundles. No full shipped GUI or native scrolling claim."
+  },
+  "preservedFailures": [
+    {
+      "log": "arcade-speech-hitbox-first.log",
+      "passed": 1,
+      "failed": 7,
+      "cause": "Display-width mask-row guess loses scaled, rotated, blank and pre-yield hitbox offsets."
+    }
+  ],
+  "remaining": [
+    "native speech scrolling and clock-aligned frames",
+    "complex callback reentry",
+    "broader live-image hitbox cache timing",
+    "full shipped GUI/controller qualification",
+    "HUD/effects/renderables and completed global screen API",
+    "all enabled exact-head hosted checks"
+  ],
+  "corpus": {
+    "remeasured": false,
+    "latestTranslated": 109,
+    "latestPartial": 74,
+    "latestMalformed": 1
+  },
+  "producerChanged": false
+}

@@ -56,8 +56,9 @@ const CHAR_TO_INDEX = (() => {
  *
  * @param {string} text the characters between the backticks
  * @returns {{width: number, height: number, pixels: Uint8Array}|null}
- *   null when the rows are ragged or empty — an image we would have to
- *   guess at is not an image we should invent.
+ *   null when empty. Ragged rows follow the PXT compiler: the image is as
+ *   wide as its longest row and shorter rows end in transparent pixels
+ *   (observed in the original runtime, makecode-arcade.test.mjs).
  */
 export function parseImageLiteral (text) {
     // Spaces separate the pixel characters and carry nothing; every
@@ -66,8 +67,7 @@ export function parseImageLiteral (text) {
         .map(row => [...row].filter(c => CHAR_TO_INDEX.has(c)))
         .filter(row => row.length);
     if (!rows.length) return null;
-    const width = rows[0].length;
-    if (rows.some(row => row.length !== width)) return null;
+    const width = Math.max(...rows.map(row => row.length));
     const height = rows.length;
     const pixels = new Uint8Array(width * height);
     rows.forEach((row, y) => row.forEach((c, x) => {
@@ -169,7 +169,16 @@ export function parseJres (text) {
  */
 export function imageToSvg (image, opts = {}) {
     const scale = opts.scale || 4;
-    const palette = opts.palette || ARCADE_PALETTE;
+    const palette = opts.palette || image.palette || ARCADE_PALETTE;
+    if (!Array.isArray(palette) || palette.length !== 16 || palette[0] !== null ||
+        !palette.slice(1).every(color => /^#[0-9a-f]{6}$/i.test(color))) {
+        throw new Error('Invalid Arcade image palette');
+    }
+    // RGB alone cannot distinguish duplicate palette entries. Custom art carries
+    // both its palette and each opaque run's index; readers check index/fill
+    // agreement before trusting them. Preserve the historical default SVG bytes.
+    const customPalette = palette.some((color, index) =>
+        color && color.toLowerCase() !== ARCADE_PALETTE[index]);
     const {width, height, pixels} = image;
     const rects = [];
     for (let y = 0; y < height; y++) {
@@ -181,14 +190,15 @@ export function imageToSvg (image, opts = {}) {
             const fill = palette[colour];
             if (fill) {
                 rects.push(`<rect x="${x * scale}" y="${y * scale}" width="${run * scale}" ` +
-                    `height="${scale}" fill="${fill}"/>`);
+                    `height="${scale}" fill="${fill}"${customPalette ? ` data-bw-color-index="${colour}"` : ''}/>`);
             }
             x += run;
         }
     }
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${width * scale}" height="${height * scale}" ` +
         `viewBox="0 0 ${width * scale} ${height * scale}" shape-rendering="crispEdges" ` +
-        `data-bw-pixel-scale="${scale}">${rects.join('')}</svg>`;
+        `data-bw-pixel-scale="${scale}"${customPalette ?
+            ` data-bw-palette="${palette.slice(1).map(color => color.toLowerCase()).join(',')}"` : ''}>${rects.join('')}</svg>`;
 }
 
 

@@ -13,7 +13,7 @@ import {SCENES_CONTROLLER_SOURCE} from '../test/fixtures/arcade-scenes.mjs';
 const settleFrames=(page,n)=>page.evaluate(n=>new Promise((done,fail)=>{const rt=window.__brickwrightStore.getState().scratchGui.vm.runtime;let c=0;const stop=setTimeout(()=>{rt.removeListener('ARCADE_FRAME',f);fail(new Error('no Arcade frames'));},10000);const f=()=>{if(++c>=n){clearTimeout(stop);rt.removeListener('ARCADE_FRAME',f);requestAnimationFrame(()=>done());}};rt.on('ARCADE_FRAME',f);}),n);
 
 const source=SCENES_CONTROLLER_SOURCE;
-const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,['full terrain collision physics and scene lifecycle are not yet supported']);
+const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
 const build=path.resolve(import.meta.dirname,'../packages/scratch-gui/build');
 const server=createServer(async(req,res)=>{
     try{
@@ -81,14 +81,14 @@ try{
     }
     await page.getByRole('tab',{name:'Code',exact:true}).click();
     await page.getByRole('button',{name:'From blocks ⇨',exact:true}).click();
-    await page.getByText('Read into all languages — 1 unsupported diagnostic(s) retained in Code.',{exact:true}).waitFor({state:'visible',timeout:30000}).catch(async error=>{console.error(JSON.stringify({editor:await editor.innerText(),errors,body:(await page.locator('body').first().innerText()).slice(-3000)}));throw error;});
+    // Terrain physics is measured against the original, so no diagnostic is retained.
+    await page.getByText('Read the current project into all languages. Edit any of them, then “To blocks”.',{exact:true}).waitFor({state:'visible',timeout:30000}).catch(async error=>{console.error(JSON.stringify({editor:await editor.innerText(),errors,body:(await page.locator('body').first().innerText()).slice(-3000)}));throw error;});
     // CodeMirror renders only its viewport; read the document behind the visible editor.
     const decompiled=await editor.evaluate(el=>el.cmTile?.root?.view?.state?.doc?.toString());
     assert.equal(typeof decompiled,'string','full CodeMirror document available');
     assert.match(decompiled,/arcade push scene/);assert.match(decompiled,/arcade pop scene/);assert.match(decompiled,/arcade register button/);assert.match(decompiled,/arcade set life player/);
-    if (!(await page.getByTestId('bw-conversion-unsupported').isVisible())) await page.getByTestId('bw-conversion-report').locator('div').first().click();
-    const retainedDiagnostics=await page.getByTestId('bw-conversion-unsupported').innerText();
-    assert.ok(retainedDiagnostics.includes(imported.unsupported[0]),'UI lists the retained named gap');
+    const retainedDiagnostics=await page.getByTestId('bw-conversion-unsupported').count();
+    assert.equal(retainedDiagnostics,0,'the UI lists no retained gap');
     assert.deepEqual((await state()).errors,[]);assert.deepEqual(errors,[]);
     const report={generatedAt:new Date().toISOString(),authoring:'visible Code editor → To blocks → green flag → repeated controller scene push/pop → From blocks',unsupported:imported.unsupported,initial,initialPixels,transitions,retainedDiagnostics,errors};
     const out=process.argv.includes('--out')?process.argv[process.argv.indexOf('--out')+1]:'test-results/arcade-scenes-browser-current.json';fs.writeFileSync(out,JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));

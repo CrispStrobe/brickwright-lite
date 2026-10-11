@@ -54,7 +54,10 @@ WHEN flag clicked:
         await vm.loadProject(Uint8Array.from(bytes));
         vm.start();
         vm.greenFlag();
-        for (let i = 0; i < 8; i++) vm.runtime._step();
+        // Explicit frames use the elapsed-time contract; eight immediate calls
+        // without a delta advance almost no simulated motion.
+        vm.quit();
+        for (let i = 0; i < 8; i++) { vm.runtime._step(1000 / 30); await Promise.resolve(); }
         const state = vm.runtime.bwArcadeDeviceState;
         const hero = Object.values(state?.sprites || {}).find(sprite => sprite.id);
         const target = hero && state.spriteTargets[hero.id];

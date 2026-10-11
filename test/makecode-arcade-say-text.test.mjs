@@ -29,7 +29,7 @@ test('timed sayText uses a nonblocking Arcade speech command', async () => {
     const run = await runProgram(result.code, {frames: 2, uploads: result.costumes, storage: true});
     assert.deepEqual(run.errors, []);
     assert.equal(Object.values(run.vm.runtime.bwArcadeDeviceState.speech)[0].text, 'Hi');
-    for (let i = 0; i < 16; i++) run.vm.runtime._step();
+    for (let i = 0; i < 16; i++) run.vm.runtime._step(1000 / 30);
     assert.deepEqual(run.vm.runtime.bwArcadeDeviceState.speech, {});
 });
 
@@ -138,7 +138,7 @@ test('the pinned hat overlap game speaks from the colliding handle while its scr
         run.vm.runtime._primitives.arcade_setSpriteProperty({ID: sprite.id, PROPERTY: 'x', VALUE: 80}, {});
         run.vm.runtime._primitives.arcade_setSpriteProperty({ID: sprite.id, PROPERTY: 'y', VALUE: 60}, {});
     }
-    run.vm.runtime._step();
+    run.vm.runtime._step(1000 / 30);
     const player = Object.values(state.sprites).find(sprite => sprite.kind === 'Player');
     assert.equal(state.speech[player.id].text, 'Excuse Me!');
     assert.equal(state.speech[player.id].duration, 500);

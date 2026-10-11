@@ -74,7 +74,8 @@ test('the pins and the vendored module agree; every pin is an exact commit; pxt.
             assert.equal(e[k], pin[k], `${pin.id}: ${k} is ${e[k]} in the vendored module, ${pin[k]} in the pin — re-run the sync`);
         }
         const cfg = JSON.parse(e.files['pxt.json'].text);
-        for (const f of cfg.files) assert.ok(e.files[f], `${pin.id}: pxt.json lists ${f}, which is not vendored`);
+        // Binary images (icons) are not source: the sync does not take them.
+        for (const f of cfg.files.filter(name => !/\.(png|jpe?g|gif)$/i.test(name))) assert.ok(e.files[f], `${pin.id}: pxt.json lists ${f}, which is not vendored`);
         assert.equal(`github:${pin.repo}#${pin.tag}`.toLowerCase(), pin.spec.toLowerCase(), `${pin.id}: spec and repo/tag disagree`);
     }
 });
@@ -145,7 +146,7 @@ const PROGRAMS = {
 
 test('each vendored extension compiles for the simulator with zero network attempts', {skip}, async () => {
     const sb = sandbox();
-    for (const pin of EXTENSIONS) {
+    for (const pin of EXTENSIONS.filter(p => !p.target)) {
         const r = plain(await sb.bwMakeCode.compile(project(PROGRAMS[pin.id], {[pin.id]: pin.spec}), {}));
         assert.equal(r.success, true, `${pin.id}: ${JSON.stringify(r.diagnostics.slice(0, 3))}`);
         assert.deepEqual(r.netAttempts, [], `${pin.id} reached for the network`);

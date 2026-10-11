@@ -11,7 +11,7 @@ test('camera follows, centering, properties and clamps match original PXT throug
     const expected=await runPxtArcade(CAMERA_SOURCE,{waitForGlobals:{cameraDone:true}});
     assert.equal(expected.followX,200);assert.equal(expected.followY,98);assert.equal(expected.unknownIsUndefined,true);
     const check=run=>{for(const name of names)assert.equal(values(run)[name],expected[name],name);assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
-    const execute=async imported=>{assert.deepEqual(imported.unsupported,['full terrain collision physics and scene lifecycle are not yet supported']);const run=await runProgram(imported.code,{frames:100,uploads:imported.costumes,storage:true});check(run);return run;};
+    const execute=async imported=>{assert.deepEqual(imported.unsupported,[]);const run=await runProgram(imported.code,{frames:100,uploads:imported.costumes,storage:true});check(run);return run;};
     const imported=arcadeToPseudocode(CAMERA_SOURCE),run=await execute(imported);
     await execute({...imported,code:run.creator.decompile()});
     const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);

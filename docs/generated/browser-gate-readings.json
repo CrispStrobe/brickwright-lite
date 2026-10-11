@@ -7268,6 +7268,54 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate — Arcade callback completion and elapsed frame clock": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade nested frame registration and live captures": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade controller registration, replacement and repeats": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade life-zero and countdown registration with revival": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade forever registration with live captures and yielding": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade sprite registrations, live captures and yielding destruction": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade instance destruction live captures and yielding order": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade parallel launches with nested live captures": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }

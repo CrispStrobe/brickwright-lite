@@ -8,7 +8,7 @@ const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.valu
 async function execute(source,names){
     const expected=await runPxtArcade(source);
     const imported=arcadeToPseudocode(source);
-    for(const reason of imported.unsupported)assert.match(reason,/terrain collision physics|terrain event callbacks require verified/);
+    for(const reason of imported.unsupported)assert.match(reason,/terrain event callbacks require verified/);
     const run=await runProgram(imported.code,{frames:160,uploads:imported.costumes,storage:true}),actual=vars(run);
     for(const name of names)assert.equal(actual[name],expected[name],name);
     assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);return run;

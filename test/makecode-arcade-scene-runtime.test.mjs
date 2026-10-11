@@ -103,7 +103,7 @@ test('pending frame callbacks remain associated with their scene across push/pop
  runtime._pushThread=()=>{const thread={status:0,constructor:{STATUS_DONE:4}};runtime.threads.push(thread);return thread;};
  runtime.sequencer={activeThread:null,stepThread(){}};
  const old=a._state(),pending=a._advance(.01);assert.ok(pending?.then);a.pushScene();const fresh=a._state();a._advance(.02);assert.equal(fresh.elapsedMs,20);a.popScene();assert.equal(a._state(),old);assert.equal(a._advance(.03),pending);assert.equal(old.elapsedMs,10);runtime.threads[0].status=4;runtime.threads=[];a._pumpTerrainWaits();await pending;
- runtime.allScriptsByOpcodeDo=()=>{};a._advance(.01);assert.equal(old.elapsedMs,20);
+ runtime.allScriptsByOpcodeDo=()=>{};a._advance(.01);assert.equal(old.elapsedMs,50,'restored scene consumes retained30ms plus new10ms');assert.equal(fresh.elapsedMs,20,'child clock is independent');
 });
 test('overlap callbacks queue independently without blocking physics or starting duplicate pairs',async()=>{
  const {runtime,a}=game();const first=actor(a),second=actor(a),initialX=prop(a,second,'x');a.registerOverlapHandler({KIND:'Player',OTHER_KIND:'Player',TOKEN:'overlap',CAPTURES:''});

@@ -226,7 +226,7 @@ test('a real VM frame advances a handle and spawning clones its visible template
         assert.equal(vm.runtime.targets.length, before + 1);
         assert.equal(vm.runtime.bwArcadeDeviceState.spriteTargets[id].x, 0);
         ext.setSpriteProperty({ID: id, PROPERTY: 'vx', VALUE: 30});
-        vm.runtime._step();
+        vm.runtime._step(1000 / 30);
         const expected = await motionOracle();
         assert.equal(ext.spriteProperty({ID: id, PROPERTY: 'x'}), expected.frameX);
         // Arcade drawing floors the left edge to the screen pixel grid.

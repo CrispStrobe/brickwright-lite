@@ -987,7 +987,7 @@ test('Arcade Math.percentChance, Math.clamp and control.millis translate as thei
     assert.match(out.code, /set t to timer \* 1000/);
 });
 
-test('a sprite property written through a value the stage cannot follow is named, not `set 0 to`', async () => {
+test('typed sprite arrays compile property writes without a placeholder destination', async () => {
     const {arcadeToPseudocode} = await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
     // A loop variable over sprites on the fixed-sprite path (corpus arcade-013bd6d9…).
     const loop = arcadeToPseudocode([
@@ -1000,7 +1000,20 @@ test('a sprite property written through a value the stage cannot follow is named
         '})'
     ].join('\n'));
     assert.doesNotMatch(loop.code, /^\s*(set|change) 0 (to|by)/m, loop.code);
-    assert.ok(loop.unsupported.some(u => /paddle\.x = … — a sprite held in a variable/.test(u)), loop.unsupported.join('; '));
+    assert.deepEqual(loop.unsupported, []);
+    assert.match(loop.code, /arcade set x of/);
+    assert.match(loop.code, /arcade set y of/);
+    const populated=arcadeToPseudocode('let first=sprites.create(img`1`,SpriteKind.Player)\n'+
+        'first.setPosition(30,40)\n'+
+        'let paddles:Sprite[]=[first]\n'+
+        'game.onUpdate(function(){for(const paddle of paddles){paddle.x=10;paddle.y+=2}})');
+    assert.deepEqual(populated.unsupported,[]);
+    const {runProgram}=await import('./helpers/bw-vm.mjs');
+    const run=await runProgram(populated.code,{frames:5,uploads:populated.costumes,storage:true});
+    assert.deepEqual(run.errors,[]);
+    const sprite=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites)[0];
+    assert.equal(sprite.x,10);
+    assert.ok(sprite.y>40 && (sprite.y-40)%2===0,'typed loop mutates the actual sprite');
     // A text sprite on the value-sprite path (corpus arcade-0f16f8a1…).
     const text = arcadeToPseudocode([
         'let hero = sprites.create(img`1`, SpriteKind.Player)',

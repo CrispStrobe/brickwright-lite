@@ -28,7 +28,7 @@ let stored=actor.isHittingTile(direction)
 if(actor.isHittingTile(CollisionDirection.Bottom)){actor.vy=-50}`);
     assert.deepEqual(result.unsupported,[]);
     for(const direction of [0,1,2,3])assert.match(result.code,new RegExp(`arcade sprite \\(actor\\) hitting wall \\(${direction}\\)`));
-    assert.match(result.code,/set direction to 3/);
+    assert.match(result.code,/set direction to \(?3\)?/);
     assert.match(result.code,/arcade sprite \(actor\) hitting wall \(direction\)/);
     assert.match(result.code,/IF truthiness of value \(arcade sprite \(actor\) hitting wall \(3\)\) THEN:/);
 });
@@ -77,7 +77,7 @@ test('the shipped platformer wall queries lower while pending terrain and event 
     const result=arcadeToPseudocode(files);
     assert.ok(result.code.includes('hitting wall (3)'));
     assert.ok(!result.unsupported.some(gap=>gap.includes('isHittingTile')));
-    assert.ok(result.unsupported.some(gap=>gap.includes('terrain collision physics and scene lifecycle')));
+    assert.ok(!result.unsupported.some(gap=>gap.includes('terrain collision physics')));
     assert.match(result.code,/arcade register tile kind/);
     assert.ok(!result.unsupported.some(gap=>gap.includes('synchronous handler mutation ordering')));
     const events=arcadeToPseudocode(setup+`scene.onHitWall(SpriteKind.Player,function(sprite,location){sprite.x=10});scene.onOverlapTile(SpriteKind.Player,img\`2\`,function(sprite,location){sprite.y=20})`);

@@ -1,0 +1,102 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "7f40190489bd5ef8c974f7399666dc46c7a3e5d5",
+  "base": "1306a6fcae4a5d03299a0caf6b33b4c0ba39e6af",
+  "producer": {
+    "pin": "de2ac6ce2e93f7193ff7b1a04bc941c5e1a76d45",
+    "pr": "https://github.com/CrispStrobe/sb3-creator/pull/73",
+    "passed": 233,
+    "failed": 0,
+    "skipped": 0,
+    "lint": "Affected files pass",
+    "canonicalWords": 190,
+    "changedInterface": "arcade_setPalette command, arcade set palette hex {DATA}"
+  },
+  "implemented": [
+    "Per-runtime global display palette with 16 RGB entries, including opaque background index zero",
+    "Native solid background, background-image, sprite, tilemap and speech rerendering without pixel-index mutation",
+    "Global palette survives scene push/pop and Stop; restored layers refresh; project restart resets it",
+    "Invalid updates reject before mutating state or renderer resources",
+    "Static pxt.json startup palette and initial indexed graphics palette",
+    "Hex literal and Buffer.fromHex expression import; runtime calls export through original image.setPalette API",
+    "Palette-aware sources route through native rendering; exceptional fixed Scratch paths remain diagnostic",
+    "Native Code/Blocks word, decompile/reimport and saved SB3 retention"
+  ],
+  "hexContract": {
+    "text": "Exactly 96 hex digits, no whitespace; uppercase accepted, matching Buffer.fromHex",
+    "literal": "MakeCode hex template literal formatting whitespace normalized during import",
+    "unsupported": "Other Buffer construction/mutation and palette-extension operations retain diagnostics"
+  },
+  "local": {
+    "passed": 62,
+    "failed": 0,
+    "skipped": 0,
+    "files": [
+      "test/makecode-project-palette.test.mjs",
+      "test/makecode-tutorial-project.test.mjs",
+      "test/makecode-arcade-scenes.test.mjs",
+      "test/makecode-arcade-scene-runtime.test.mjs",
+      "test/arcade-legacy-tilemap-runtime.test.mjs",
+      "test/dialect-arcade-import-lines.test.mjs",
+      "test/lego-spike-roundtrip.test.mjs",
+      "test/makecode-indexed-palette.test.mjs",
+      "test/makecode-arcade-native-image-renderer.test.mjs",
+      "test/makecode-arcade-say-text.test.mjs",
+      "test/makecode-arcade-background-images.test.mjs",
+      "test/makecode-arcade-stage-composition.test.mjs",
+      "test/makecode-arcade-animation-resources.test.mjs"
+    ],
+    "immutableFinalLog": "arcade-project-palette-immutable-final.log",
+    "originalPxtComparisons": [
+      "Original/exported final palette and complete 160x120 screen colors agree",
+      "Duplicate RGB colors preserve distinct image indices",
+      "Runtime text expression and skipped branch retain palette timing",
+      "Original PXT palette remains changed after child scene pop"
+    ],
+    "nativeControls": [
+      "All implemented rendered layers",
+      "Scene restoration, restart and peer isolation",
+      "Atomic malformed-update rejection",
+      "Default scene background color zero without an explicit setter"
+    ],
+    "integration": [
+      "Code decompile/reimport",
+      "Saved SB3 restart",
+      "Original Arcade compile/run",
+      "Unchanged canonical SPIKE artifact at exact producer pin"
+    ]
+  },
+  "preservedFindings": [
+    "Initial renderer tests inspected adapter fields instead of its implementation instance; corrected tests, failed log retained",
+    "Original Buffer.fromHex implementation rejects text whitespace; runtime normalization removed and literal/string import paths distinguished",
+    "Intermediate qualification logs precede final strict-hex source; immutable final log is authoritative"
+  ],
+  "corpus": {
+    "freshImportOnlyCensus": true,
+    "originalInputs": 184,
+    "sha256VerifiedAgainstPriorArchive": 184,
+    "translated": 102,
+    "partial": 81,
+    "malformed": 1,
+    "changedDiagnosticRows": 0,
+    "sourceInputsChanged": false,
+    "fullRuntimeCompatibilityClaim": false
+  },
+  "gui": {
+    "codeAndBlocksCommand": true,
+    "freshProductionBuild": false,
+    "visibleBrowser": false,
+    "open": [
+      "Friendly project-wide palette picker and preview",
+      "Graphics-editor project palette mode and palette precedence",
+      "Fresh integrated controller/graphics browser journey"
+    ]
+  },
+  "remaining": [
+    "Other Buffer-building and palette-extension APIs",
+    "Exceptional fixed Scratch rendering paths",
+    "Unsupported effects/dialog palette behavior",
+    "All enabled exact-head hosted checks and stacked integration"
+  ],
+  "publication": "Stacked draft; not merged; public documentation does not establish fresh installed GUI qualification"
+}

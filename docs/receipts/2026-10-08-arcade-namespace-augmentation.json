@@ -1,0 +1,88 @@
+{
+  "date": "2026-10-08",
+  "testedSource": "13b8911bba85f2136ffe4d3edb9a90789f992d86",
+  "auditSourceDirty": false,
+  "implementation": {
+    "namespaceExports": "Pinned official PXT Arcade device API metadata; exact names, not wildcard acceptance or implementation claims",
+    "sourceScopes": "Source exports, declaration-private bindings and initialization remain separate from library exports",
+    "additionalBoundaries": [
+      "unknown members",
+      "conflicting builtin declarations",
+      "lexical shadows",
+      "namespace object escapes",
+      "source export reads before initialization",
+      "ordinary namespace function values"
+    ]
+  },
+  "tests": {
+    "focused": 16,
+    "regressionsAndBrowserGateContracts": 39,
+    "failed": 0,
+    "skipped": 0
+  },
+  "differentialRoutes": [
+    "original PXT runtime",
+    "Code to Blocks",
+    "native export to original PXT runtime",
+    "BW reimport",
+    "SB3 save/reload"
+  ],
+  "build": {
+    "errors": 0,
+    "guiBundle": "gui.4530654c.js",
+    "initialBytes": 4360502,
+    "unchangedInitialLimit": 4467136,
+    "bootPayload": "passed"
+  },
+  "browser": {
+    "status": "passed",
+    "pageErrors": [],
+    "rotationSamples": 12,
+    "namespaceAugmentation": {
+      "nativeFileImport": true,
+      "codeToBlocks": true,
+      "initialObserved": 192,
+      "initialScore": 7,
+      "controllerObserved": 197,
+      "controllerScore": 9,
+      "spriteX": 36
+    },
+    "priorJourneys": [
+      "rotation",
+      "projectiles",
+      "destroy-kind",
+      "artwork ownership",
+      "multifile source",
+      "typed helper arrays",
+      "static callback helpers"
+    ]
+  },
+  "baseline184ImportOnly": {
+    "translated": 96,
+    "partial": 87,
+    "malformed": 1
+  },
+  "recoveredTutorialAudit": {
+    "count": 10,
+    "partial": 10,
+    "originalCompilerUnavailable": 10,
+    "partialFragmentsStepped": 10,
+    "blockErrors": 0,
+    "frames": 24,
+    "diagnosticOccurrences": 53,
+    "previousDiagnosticOccurrences": 63,
+    "behavioralEquivalence": "not-measured"
+  },
+  "guiBoundaries": [
+    "No namespace-preserving source editor or multi-file navigator",
+    "No callable authoring or general closure implementation",
+    "No new graphics tools; custom palette gaps remain"
+  ],
+  "mergeBlocker": {
+    "pr": 711,
+    "run": 37736945319,
+    "job": 113205416368,
+    "result": "FAILURE",
+    "boundary": "Background authoring PNG dimension wait timed out; do not merge or weaken the gate"
+  }
+}

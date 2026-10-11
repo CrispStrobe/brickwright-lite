@@ -10,7 +10,7 @@ test('a pinned onCreated Arcade game imports creation events and callback coordi
     const result = arcadeToPseudocode(source);
     assert.match(result.code, /arcade register creation kind "Asteroid" as "__bwCreated1"/);
     assert.match(result.code, /WHEN arcade creation handler "__bwCreated1" runs:/);
-    assert.match(result.code, /WHEN arcade every 1000 ms:/);
+    assert.match(result.code, /arcade register interval \(1000\) as/);
     assert.match(result.code, /arcade create template "__arcadeTemplate1" kind "Asteroid"/);
     assert.match(result.code, /arcade set [xy] of arcade event first/);
     assert.equal(result.costumes.length, 3, 'the spawn art and both built-in asteroid images arrive');

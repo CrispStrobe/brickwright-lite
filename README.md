@@ -2,6 +2,8 @@
 
 For SPIKE simulation, see the [current state and actionable task lanes](docs/SPIKE-STATUS-AND-LANES.md).
 
+For MakeCode Arcade work, start with the [self-contained agent handoff and methodology](docs/ARCADE-AGENT-HANDOFF.md).
+
 **Build circuits. Program machines. See how they work.**
 
 Brickwright is an open-source visual computing workbench. Build and measure

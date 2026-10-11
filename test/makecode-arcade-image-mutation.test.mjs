@@ -80,13 +80,15 @@ controller.A.onEvent(ControllerButtonEvent.Pressed, function () { foe.image.fill
     assert.deepEqual(run.errors, []); assert.deepEqual(run.creator.warnings, []);
     const state = Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);
     assert.deepEqual([...state.find(s => s.kind === 'Player').image.pixels], [0,3,5,1]);
-    assert.equal(state.find(s => s.kind === 'Enemy').image, undefined);
+    // Spawn owns its decoded artwork before the first mutation.
+    assert.deepEqual([...state.find(s => s.kind === 'Enemy').image.pixels], [1,2,3,0]);
+    assert.notEqual(state.find(s => s.kind === 'Player').image, state.find(s => s.kind === 'Enemy').image);
     run.vm.postIOData('keyboard', {key:' ', isDown:true});
-    for (let i=0;i<5;i++) run.vm.runtime._step();
+    for (let i=0;i<5;i++) run.vm.runtime._step(1000 / 30);
     assert.deepEqual([...state.find(s => s.kind === 'Enemy').image.pixels], [7,7,7,7]);
     const saved = await run.vm.saveProjectSb3();
     await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
-    run.vm.greenFlag(); for (let i = 0; i < 8; i++) run.vm.runtime._step();
+    run.vm.greenFlag(); for (let i = 0; i < 8; i++) run.vm.runtime._step(1000 / 30);
     assert.deepEqual([...Object.values(run.vm.runtime.bwArcadeDeviceState.sprites).find(s => s.kind === 'Player').image.pixels], [0,3,5,1]);
     const code = run.creator.decompile(); const recreated = new SB3Creator(); recreated.parse(code);
     assert.deepEqual(recreated.warnings, []);
