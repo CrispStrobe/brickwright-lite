@@ -79,7 +79,7 @@ test('the web flag is a build-time boolean, explicit opt-in, no fallback', () =>
         // Only tauri.yml's test job builds the feature, to test and lint it; nothing ships it.
         assert.deepEqual(featureLines.map(l => l.trim()), workflow === 'tauri.yml' ? [
             '- name: cargo test --features peers (peer sessions, off by default)',
-            'run: cargo test --manifest-path src-tauri/Cargo.toml --features peers peer::',
+            "run: 'cargo test --manifest-path src-tauri/Cargo.toml --features peers peer::'",
             '- name: cargo clippy --features peers',
             'run: cargo clippy --manifest-path src-tauri/Cargo.toml --features peers -- -D warnings'
         ] : [], `${workflow} builds the peers feature`);

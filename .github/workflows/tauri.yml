@@ -180,7 +180,7 @@ jobs:
       # (handshake, nonce counters, pre-authentication limits, address and consent policy)
       # run, and clippy holds it to the same bar as the default build.
       - name: cargo test --features peers (peer sessions, off by default)
-        run: cargo test --manifest-path src-tauri/Cargo.toml --features peers peer::
+        run: 'cargo test --manifest-path src-tauri/Cargo.toml --features peers peer::'
 
       - name: cargo clippy --features peers
         run: cargo clippy --manifest-path src-tauri/Cargo.toml --features peers -- -D warnings
