@@ -1576,3 +1576,9 @@ Buffer dropdown fixes are retained by normal merge. This branch has299
 canonical forms and retains its own UTF8 producer pin. The predecessor UTF8
 heavy browser shard passed; its build and light-shard failures remain evidence.
 Fresh exact-head checks are required after this integration.
+
+UTF8 integration census correction: restoring the sparse fixture from the
+feature predecessor brought back its frozen282 assertion. The selected table
+has299 canonical forms, asserted by direct table execution before restoring299
+in the independent fixture. No vocabulary or corpus inputs changed. Preserve
+the intermediate integration as unqualified evidence.
