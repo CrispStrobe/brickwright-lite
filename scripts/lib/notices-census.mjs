@@ -40,6 +40,10 @@ import path from 'node:path';
 
 const LIB = 'overlay/scratch-gui/src/lib';
 const ROMS = 'overlay/scratch-gui/static/roms';
+// Scoped artifact pins name shipped bundles rather than whole vendored trees.
+const SCOPED_BUNDLES = {
+    'arrays-values': 'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js'
+};
 
 /** Licence id from a LICENSE text or package.json `license` string. */
 export const licenceId = text => {
@@ -113,6 +117,18 @@ export const vendoredTrees = (root, owner) => {
     }
     for (const [name] of Object.entries(pins)) {
         if (out.some(o => o.name === name || o.name === name.replace(/-flasher$/, ''))) continue;
+        if (SCOPED_BUNDLES[name]) {
+            const evidence = SCOPED_BUNDLES[name];
+            const file = path.join(root, evidence);
+            if (!existsSync(file)) throw new Error(`Scoped pin ${name} has no shipped bundle: ${evidence}`);
+            const encoded = readFileSync(file, 'utf8').match(/module\.exports\s*=\s*makeExt\(("(?:\\.|[^"\\])*")\);?/);
+            if (!encoded) throw new Error(`Scoped pin ${name} has an unreadable bundle: ${evidence}`);
+            const header = JSON.parse(encoded[1]).split('\n').slice(0, 8).join('\n');
+            const licence = licenceId(header);
+            if (!licence) throw new Error(`Scoped pin ${name} has no readable source licence: ${evidence}`);
+            out.push({kind:'vendored-tree', name, licence, holder:holderOf(header), evidence, pinned:true});
+            continue;
+        }
         // A pinned upstream taken as an npm PACKAGE (bw-board, bw-circuit-ui since
         // 2026-09-12) ships its LICENSE inside node_modules, not under lib/.
         const pkgLicence = path.join(root, 'node_modules', name, 'LICENSE');

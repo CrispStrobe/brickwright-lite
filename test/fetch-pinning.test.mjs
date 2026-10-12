@@ -228,6 +228,12 @@ const describeSkips = ({unreadable, nul}) => {
 //   waived        genuinely cannot be sha-addressed; reason required
 const CENSUS = [
     {
+        file: 'test/vendor-bundles-targeted.test.mjs', kind: 'raw',
+        text: 'raw.githubusercontent.com/${UPSTREAM_REPO}/${candidate}/extensions/CrispStrobe/arrays.js',
+        class: 'source-link',
+        why: 'Offline expected-URL assertion, not a real fetch: candidate is a synthetic 40-hex SHA and the subprocess fetch is replaced by an injected recorder returning synthetic source. The production rawURL site and immutable bundle receipts are judged separately.'
+    },
+    {
         file: 'test/makecode-context-recovery-cli.test.mjs', kind: 'raw',
         text: 'raw.githubusercontent.com/microsoft/pxt-arcade/${sha}/docs/control.md',
         class: 'source-link',
