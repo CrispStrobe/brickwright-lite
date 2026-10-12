@@ -379,6 +379,16 @@ export default [
         ),
         featured: true
     },
+    // Peer sessions (task E11): only in a BW_ENABLE_PEERS=1 build, and usable only in the app.
+    ...(process.env.BW_ENABLE_PEERS === true ? [{
+        name: 'Peer Sessions',
+        extensionId: 'peersessions',
+        iconURL: videoSensingIconURL,
+        insetIconURL: videoSensingInsetIconURL,
+        description: 'Take photos and share projects with paired Brickwright sessions.',
+        featured: true,
+        disabled: typeof window === 'undefined' || !window.__TAURI__
+    }] : []),
     {
         name: (
             <FormattedMessage
