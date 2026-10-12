@@ -99,6 +99,11 @@ const builtinExtensions = {
     microbitplus: () => require('../extensions/crispstrobe/microbitplus'),
     stc12: () => require('../extensions/crispstrobe/stc12'),
     stc12live: () => require('../extensions/crispstrobe/stc12live'),
+    // Lite-native generic GPIO pins: `set pin N to V` / `read pin N`, driving the
+    // Widgets pane's GPIO strip (bw-fpga-leds/output) and round-tripping with the
+    // DOS Forth bench's pin!/pin@ words through the Code tab. LITE_ONLY (no
+    // upstream file); classified in scripts/spike/bundled-upstream.mjs.
+    bwgpio: () => require('../extensions/crispstrobe/bwgpio'),
     circuit: () => require('../extensions/crispstrobe/circuit'),
     // Vendored from the bw-board PACKAGE, not from CrispStrobe/extensions —
     // bw-board ships this extension and Lite had carried a five-block copy of
