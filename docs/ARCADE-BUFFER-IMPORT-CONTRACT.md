@@ -147,7 +147,6 @@ Actual public declarations still needing runtime/native authoring/export work:
 | --- | --- |
 | `Buffer.create(size)` | Import alias for the existing allocator; resolve shadowing |
 | `getUint8` / `setUint8` | Import aliases for byte reads/writes |
-| `Buffer.fromBase64`, `toBase64` | Original common-package encoding/decoding and native words |
 | `chunked`, `Buffer.chunkedFromUTF8` | Original Buffer[] alias/copy branches, UTF8 boundary handling and limits |
 | `unpack`, `packAt`, `Buffer.pack`, `packedSize` | Exact public format parser, array flow and malformed-format behavior |
 | `hash(bits)` | Original FNV-1 algorithm and public bit-width semantics |
@@ -201,3 +200,31 @@ node --import ./scripts/lib/register-gui-scope.mjs --test test/makecode-arcade-b
 
 This is native authoring/export source, not namespace Buffer import or visible
 GUI qualification. Keep corpus classifications until actual immutable recensus.
+
+### Base64 construction and encoding continuation
+
+Native words are `arcade byte buffer from Base64 text TEXT` and `arcade byte
+buffer BUFFER to Base64 text`. Export emits genuine `Buffer.fromBase64` and
+`.toBase64`, preserving dynamic strings and literal numeric text. Constructed
+buffers are mutable; encoding a readonly literal preserves its bytes and flag.
+Foreign or expired references, non-string construction and malformed input emit
+named errors rather than successful empty values.
+
+The generator selects the original alphabet, encoder, parser and constructor
+from the consumed MIT `base/buffer.ts`. It now checks nine Buffer indexed reads,
+four indexed writes and ten string indexed reads. String indexing adapts to
+PXT `String_.charAt`: incomplete groups can yield zero-filled trailing bytes.
+Preserve that original behavior, URL-safe input and original padding validation;
+a standard Base64 library is not an equivalent replacement. The original scan
+calculates the exact allocation under the existing1MiB buffer guard. A separate
+input scan bound permits every accepted group up to the output limit. Aggregate
+heap lifetime and a visible byte/encoding inspector remain separate gaps.
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test test/makecode-arcade-buffer-base64.test.mjs test/makecode-arcade-buffer-arrays.test.mjs test/makecode-arcade-buffer-format-size.test.mjs test/lego-spike-roundtrip.test.mjs test/dialect-arcade-import-lines.test.mjs
+node scripts/generate-arcade-buffer-helpers.mjs --check
+node scripts/generate-arcade-authoring-inventory.mjs --check
+```
+
+Namespace import stays with E10; native authoring/export controls cannot promote
+immutable original apps or establish visible editor qualification by themselves.

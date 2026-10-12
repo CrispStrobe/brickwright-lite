@@ -3668,3 +3668,13 @@ slots are text; the Code fixture uses an explicit numeric reporter. An improved
 typed array-value editing flow remains a GUI task. Buffer byte/array inspection,
 namespace import and exact-head visible controller/export qualification remain
 open. Original decoder invalid-format loops are refused explicitly by the host.
+
+### Buffer Base64 authoring (2026-10-12)
+
+The candidate adds `arcade_bufferFromBase64` and `arcade_bufferToBase64` as
+native reporter blocks and Code words. Typed export uses the real MakeCode
+APIs, including numeric text, custom string returns and mutable aliases. Its
+source-extracted parser retains original incomplete-group/padding/URL-safe
+behavior. Original runtime, Code reconstruction and fresh SB3 checks are
+required. A byte/encoding inspector, visible editor/controller journey and
+namespace imports remain open; source vocabulary alone does not close them.

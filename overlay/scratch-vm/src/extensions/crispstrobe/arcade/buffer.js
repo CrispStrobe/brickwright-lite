@@ -46,6 +46,7 @@ class PxtBuffer extends Uint8Array {
         if (!helpers.sizeOfNumberFormat(value)) throw new RangeError('Unsupported Arcade buffer array number format');
         return helpers.bufferToArray(this, value);
     }
+    toBase64() {return helpers.bufferToBase64(this);}
     toHex() {return methods.toHex(this._reference());}
     toString() {return methods.toString(this._reference());}
 }
@@ -99,10 +100,17 @@ const fromArray = values => {
     if (values.length > MAX_BUFFER_BYTES) throw new RangeError('Arcade buffer exceeds byte allocation limit');
     return helpers.fromArray(values);
 };
+const fromBase64 = text => {
+    if (typeof text !== 'string') throw new TypeError('Expected Base64 text');
+    // Every accepted four-character group produces at least one byte; cap
+    // the scan before original code computes its exact bounded allocation.
+    if (text.length > MAX_BUFFER_BYTES * 4) throw new RangeError('Arcade buffer exceeds byte allocation limit');
+    return helpers.fromBase64(text);
+};
 const concatArrays = buffers => {
     if (!Array.isArray(buffers) || buffers.some(value => !(value instanceof PxtBuffer)))
         throw new TypeError('Expected Buffer array');
     return helpers.concatArrays(buffers);
 };
 
-module.exports = {PxtBuffer, NumberFormat: methods.NumberFormat, MAX_BUFFER_BYTES, fromArray, concatArrays, fromHex, fromUTF8, literal, equals: helpers.bufferEquals, sizeOfNumberFormat: type => helpers.sizeOfNumberFormat(format(type))};
+module.exports = {PxtBuffer, NumberFormat: methods.NumberFormat, MAX_BUFFER_BYTES, fromBase64, fromArray, concatArrays, fromHex, fromUTF8, literal, equals: helpers.bufferEquals, sizeOfNumberFormat: type => helpers.sizeOfNumberFormat(format(type))};

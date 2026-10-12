@@ -402,3 +402,15 @@ Buffer authoring and byte inspection. Keep whole-corpus classifications unchange
 until the immutable184 originals and authenticated contexts are rerun. Wide
 animation authoring has separate observed hosted proof from Build38256137458;
 that older-head proof does not cover these later edits.
+
+### Buffer Base64 checkpoint — 2026-10-12
+
+Native Buffer construction and encoding now cover genuine Base64 APIs, original
+padding/incomplete-group/URL-safe semantics and explicit malformed-input errors.
+The candidate has29 affected controls and352 producer controls passing, zero
+skips, including original export execution and fresh SB3. Source is stacked on
+PR843; hosted qualification remains pending. Namespace imports and a visible
+byte inspector remain separate acceptance tasks. Next source-derived Buffer
+slices are chunking (including UTF8 boundaries), packing/unpacking and hash,
+followed by aggregate heap lifetime. Full immutable project recensus, original
+asset closure and browser journeys remain necessary before41 can become0.

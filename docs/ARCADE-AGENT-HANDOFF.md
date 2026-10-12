@@ -1718,3 +1718,39 @@ survived at this checkpoint; do not advance that head while it runs. Next source
 APIs: Base64, chunked alias/copy semantics, pack/unpack, hash and aggregate heap
 resource handling. Namespace importer integration and actual GUI evidence remain
 required before any whole-game or corpus promotion.
+
+## Buffer Base64 continuation — 2026-10-12
+
+Candidate `lane/arcade-buffer-base64-20261012` is stacked on
+[PR843](https://github.com/CrispStrobe/brickwright-lite/pull/843). It adds native
+`arcade_bufferFromBase64` and `arcade_bufferToBase64`, their Code spellings and
+typed MakeCode export. Producer [PR102](https://github.com/CrispStrobe/sb3-creator/pull/102)
+contains the independent vocabulary fixtures; its exact pin is in
+`vendor-pins.json` and the canonical census is309.
+
+The generator retains the original MIT alphabet, encoding, parsing and Buffer
+construction from the consumed target. Nine Buffer reads, four writes and ten
+string reads have checked adaptations. PXT string indexing uses `charAt`, so
+unpadded `AQ` decodes to `010000`; `AQIDBA=` is rejected by original MakeCode.
+The first test wrongly included that rejected form among accepted inputs and
+used a fictional undefined sentinel; corrected fixtures preserve both failure
+logs privately. No product fallback or parser weakening was needed.
+
+The affected six-file batch passes29/29 without skips; producer controls pass
+352/352 without skips. It covers original byte/Unicode/array/format behavior,
+Base64 tails and URL-safe input, original malformed-input rejection, native
+mutable aliases and readonly encoding, custom string returns, Code/Blocks
+reconstruction, original typed exported execution and actual fresh SB3 reopening.
+Both generators regenerate exactly. Hosted builds and visible GUI proof remain
+pending; namespace imports, the byte inspector and whole-game recensus are open.
+
+The older UTF8 candidate [PR835](https://github.com/CrispStrobe/brickwright-lite/pull/835)
+now retains the parent provenance/dropdown fixes by normal merge after its
+previous diagnostics finished. That predecessor's heavy browser shard passed;
+its build and light failures remain evidence. Fresh checks use merge `b662f2ecaf`,
+299 canonical forms and the UTF8 producer pin. Never apply309 to older candidates.
+
+Next Buffer slices: original chunking/UTF8 chunk boundaries, packing and unpacking
+format parsing, then hash and aggregate heap lifetime. E10 keeps AST/namespace
+import and shared type helper ownership. Locked184 originals remain142 translated,
+41 partial and1 parse failure; authenticated41 contexts remain7/33/1.

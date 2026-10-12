@@ -1052,6 +1052,10 @@ class ArcadeEmitter {
         case 'arcade_bufferEquals': return `${v('BUFFER')}.equals(${v('OTHER')})`;
         case 'arcade_bufferIndexOf': return `${v('BUFFER')}.indexOf(${v('OTHER')})`;
         case 'arcade_bufferGetByte': return `${v('BUFFER')}[${v('OFFSET')}]`;
+        case 'arcade_bufferFromBase64': {
+            const text=this.literalInput(b,'TEXT');
+            return `Buffer.fromBase64(${text===null?v('TEXT'):JSON.stringify(text)})`;
+        }
         case 'arcade_bufferFromArray': return `Buffer.fromArray(${v('ARRAY')})`;
         case 'arcade_bufferConcatArray': return `Buffer.concat(${v('ARRAY')})`;
         case 'arcade_bufferToArray':
@@ -1069,6 +1073,7 @@ class ArcadeEmitter {
                 `${v('BUFFER')}.getNumber(${expression}, ${v('OFFSET')})`;
         }
         case 'arcade_bufferSlice': return `${v('BUFFER')}.slice(${v('OFFSET')}, ${v('LENGTH')})`;
+        case 'arcade_bufferToBase64': return `${v('BUFFER')}.toBase64()`;
         case 'arcade_bufferToHex': return `${v('BUFFER')}.toHex()`;
         case 'arcade_bufferToText': return `${v('BUFFER')}.toString()`;
         case 'arcade_songFromBuffer': return `music.createSong(${v('BUFFER')})`;
@@ -2493,10 +2498,10 @@ class ArcadeEmitter {
                 if(value.opcode==='arrays_namedReference'){const id='named-array:'+literal(blocks,value,'NAME');arrays.add(id);return id;}
                 if(['arrays_parseLegacyValue','arrays_jsonValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
                 if(value.opcode==='arcade_spriteToString') {const id=Symbol('sprite text');strings.add(id);return id;}
-                if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferLiteral','arcade_bufferSlice','arcade_bufferConcat','arcade_bufferFromArray','arcade_bufferConcatArray'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
+                if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferFromBase64','arcade_bufferLiteral','arcade_bufferSlice','arcade_bufferConcat','arcade_bufferFromArray','arcade_bufferConcatArray'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
                 if(value.opcode==='arcade_bufferToArray'){const id=`${key}:buffer-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(['arcade_bufferLength','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf','arcade_bufferFormatSize'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
-                if(['arcade_bufferToHex','arcade_bufferToText'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
+                if(['arcade_bufferToHex','arcade_bufferToText','arcade_bufferToBase64'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
                 if(['arcade_bufferIsReadOnly','arcade_bufferEquals'].includes(value.opcode)){const id=Symbol('buffer readonly');booleans.add(id);return id;}
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);return id;}
                 if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);return id;}

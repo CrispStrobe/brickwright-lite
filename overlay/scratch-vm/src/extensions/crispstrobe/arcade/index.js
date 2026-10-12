@@ -273,6 +273,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'bufferIndexOf',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] index of byte buffer [OTHER]',arguments:{...str('BUFFER',''),...str('OTHER','')}},
           {opcode:'bufferGetByte',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] byte at [OFFSET]',arguments:{...str('BUFFER',''),...n('OFFSET',0)}},
           {opcode:'bufferSetByte',blockType:Scratch.BlockType.COMMAND,text:'Arcade set byte buffer [BUFFER] byte at [OFFSET] to [VALUE]',arguments:{...str('BUFFER',''),...n('OFFSET',0),...n('VALUE',0)}},
+          {opcode:'bufferFromBase64',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from Base64 text [TEXT]',arguments:str('TEXT','AQID')},
           {opcode:'bufferFromArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from number array [ARRAY]',arguments:str('ARRAY','')},
           {opcode:'bufferToArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] to number array format [FORMAT]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt8LE'}}},
           {opcode:'bufferConcatArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade concatenate byte buffers in array [ARRAY]',arguments:str('ARRAY','')},
@@ -284,6 +285,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'bufferFill',blockType:Scratch.BlockType.COMMAND,text:'Arcade fill byte buffer [BUFFER] with [VALUE] at [OFFSET] length [LENGTH]',arguments:{...str('BUFFER',''),...n('VALUE',0),...n('OFFSET',0),...n('LENGTH',-1)}},
           {opcode:'bufferShift',blockType:Scratch.BlockType.COMMAND,text:'Arcade shift byte buffer [BUFFER] by [AMOUNT] at [OFFSET] length [LENGTH]',arguments:{...str('BUFFER',''),...n('AMOUNT',1),...n('OFFSET',0),...n('LENGTH',-1)}},
           {opcode:'bufferRotate',blockType:Scratch.BlockType.COMMAND,text:'Arcade rotate byte buffer [BUFFER] by [AMOUNT] at [OFFSET] length [LENGTH]',arguments:{...str('BUFFER',''),...n('AMOUNT',1),...n('OFFSET',0),...n('LENGTH',-1)}},
+          {opcode:'bufferToBase64',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] to Base64 text',arguments:str('BUFFER','')},
           {opcode:'bufferToHex',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] to hex',arguments:str('BUFFER','')},
           {opcode:'bufferToText',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] to UTF8 text',arguments:str('BUFFER','')},
           {opcode:'songFromBuffer',blockType:Scratch.BlockType.REPORTER,text:'Arcade song playable byte buffer [BUFFER]',arguments:str('BUFFER','')},
@@ -3896,6 +3898,7 @@ module.exports = makeExt(`// Name: Arcade
       if(array.length>dependencies.buffers.MAX_BUFFER_BYTES)throw new RangeError('Arcade buffer exceeds byte allocation limit');
       return array;
     }
+    bufferFromBase64(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.fromBase64(Scratch.BWValues.decode(args.TEXT))));}
     bufferFromArray(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.fromArray(this._bufferArray(args.ARRAY).map(value=>Scratch.BWValues.decode(value)))));}
     bufferToArray(args) {return this._bufferGuard(()=>Scratch.BWValues.arrayReference(this._runtime,this._buffer(args.BUFFER).toArray(args.FORMAT)));}
     bufferConcatArray(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.concatArrays(this._bufferArray(args.ARRAY).map(value=>this._buffer(value)))));}
@@ -3907,6 +3910,7 @@ module.exports = makeExt(`// Name: Arcade
     bufferFill(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).fill(Scratch.Cast.toNumber(args.VALUE),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH)));}
     bufferShift(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).shift(Scratch.Cast.toNumber(args.AMOUNT),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH)));}
     bufferRotate(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).rotate(Scratch.Cast.toNumber(args.AMOUNT),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH)));}
+    bufferToBase64(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).toBase64());}
     bufferToHex(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).toHex());}
     bufferToText(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).toString());}
     songFromBuffer(args) {return this._bufferGuard(()=>this._musicHandle(this._music().createSongBuffer(this._buffer(args.BUFFER))));}
