@@ -3585,3 +3585,19 @@ The original142/41/1 corpus count is unchanged. Wide-animation GUI acceptance
 is now observed in Build38256137458 at387337ad5 (161x121, two frames, offscreen
 edit, SB3 reopening and original-PXT pixel comparison); subsequent Buffer edits
 need their own final hosted qualification.
+
+### Buffer editor proof prepared — 2026-10-12
+
+A dedicated hosted journey now authors native Buffer code, edits the genuine
+16-format dropdown and numeric operand, steers numeric mutation/detached slice/
+custom-block alias using the visible controller, reconstructs Code/Blocks,
+saves/replaces/reopens through File and executes the downloaded MakeCode project
+under original Arcade buttons. This is pending browser acceptance, not a passed
+GUI claim. Its actual native controller fixture and CI contracts pass22 controls.
+
+The fixture found two export issues, now fixed: `hex`/`img` are allocated safely
+around MakeCode's template tags; Buffer sidecar placeholders from saved runtime
+variables are not emitted as string initializers. Runtime byte inspector/editor,
+UTF8 construction, aggregate heap collection and E10 namespace import remain
+open. [Import integration contract](ARCADE-BUFFER-IMPORT-CONTRACT.md) gives the
+native mappings and acceptance steps to the importer owner.

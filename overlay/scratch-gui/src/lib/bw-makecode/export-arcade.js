@@ -100,7 +100,7 @@ const ident = name => {
 
 const RESERVED = new Set(['score', 'life', 'info', 'game', 'scene', 'sprites', 'controller', 'Math', 'function', 'let', 'var',
     'if', 'else', 'while', 'for', 'return', 'true', 'false', 'null', 'new', 'this', 'pause', 'forever',
-    'SpriteKind', 'SpriteFlag', 'ControllerButtonEvent', 'DialogLayout', 'Image', 'Buffer', 'NumberFormat', 'console', 'control', 'assets', 'images', 'image', 'undefined']);
+    'SpriteKind', 'SpriteFlag', 'ControllerButtonEvent', 'DialogLayout', 'Image', 'Buffer', 'NumberFormat', 'console', 'control', 'assets', 'images', 'image', 'hex', 'img', 'undefined']);
 
 class ArcadeEmitter {
     constructor (project, opts) {
@@ -550,12 +550,12 @@ class ArcadeEmitter {
         const initial = entry?.[1]?.[1];
         const tag = owner.bwValues?.version === 1 && entry ? owner.bwValues.variables?.[entry[0]] : null;
         const reference = tag && Object.keys(tag).length === 1 && tag.bwReference;
-        // SB3's readable placeholder is not the value of an image variable.
-        // Saved image resources are per-run and do not resolve after loading;
+        // SB3's readable placeholder is not an image or byte-buffer value.
+        // These resources are per-run and do not resolve after loading;
         // source assignments recreate them. Honor the sidecar only while its
         // standard field still matches, just as the VM's SB3 loader does.
-        if (reference?.kind === 'image' && typeof reference.id === 'string' &&
-            initial === `[image reference ${reference.id}]`) {
+        if (['image','buffer'].includes(reference?.kind) && typeof reference.id === 'string' &&
+            initial === `[${reference.kind} reference ${reference.id}]`) {
             this.initialGlobals.set(ts, null);
             return ts;
         }

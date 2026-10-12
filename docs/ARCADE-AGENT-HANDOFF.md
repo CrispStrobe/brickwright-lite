@@ -1495,3 +1495,36 @@ controls, with zero skips. This includes the actual VM source-site literal
 identity control and original exported mutable-song sound bytes. Producer's
 canonical dialect suite passes341 controls with exact298-opcode fixture coverage.
 The component CI jobs were still queued when this checkpoint was recorded.
+
+## Buffer editor/controller proof preparation — 2026-10-12
+
+The separate `lane/arcade-buffer-gui-proof-20261012` retains PR810's in-flight
+hosted diagnostic head. Its new fixture/controller test exercises actual native
+keyboard events, Blocks/Code reconstruction and export from `vm.toJSON()`;
+original Arcade buttons verify byte/numeric/copy/custom-argument observables.
+Original compilation exposed a global `hex` name collision; `hex` and `img` now
+use the existing reserved-name allocator. Matching serialized Buffer sidecar
+placeholders are discarded as initializers, like image references, so exported
+variables retain Buffer types and source reconstructs the values.
+
+`scripts/verify-arcade-buffer-browser.mjs` uses visible Code/To blocks, native
+16-format dropdown/numeric-shadow edits, controller A/B/down, From blocks,
+File save/replacement/reopen and the actual MakeCode download. Original PXT runs
+that download under its real buttons and compares the bytes. VM/Blockly access
+observes only. The additive light-shard gate writes its own JSON/screenshots/
+SB3/MakeCode artifact and a provisional zero-reading budget registered by the
+existing generator. Browser execution remains pending; do not claim acceptance
+from script presence or local gate contracts.
+
+Focused fixture plus gate contracts pass22/22, no skips; Buffer runtime/vendor
+regression batch passes19/19, no skips. A separate actual serialized-project
+export control passes after the sidecar fix. No full local app build was used.
+Arrays PR34 received a test-format-only followup598fc966: sparse preparation had
+omitted its repository Prettier configuration. Actual Arrays source is unchanged;
+the targeted pin now records that candidate. The informational gallery validator
+reports the same34 errors as current main; raw baseline/candidate logs are private.
+All enabled final-head component checks still need a fresh review before merging.
+
+Importer owner: read [ARCADE-BUFFER-IMPORT-CONTRACT.md](ARCADE-BUFFER-IMPORT-CONTRACT.md)
+for AST/opcode mapping, scope/typing/initialization rules, original controls and
+immutable-context rerun criteria. Namespace Buffer import remains diagnosed.
