@@ -53,6 +53,13 @@ export const CENSUS_ROWS = Object.freeze(${JSON.stringify(rows, null, 4)});
 };
 const rel = p => path.relative(root, p).replaceAll(path.sep, '/');
 
+// Host observations remain unchanged; public presentation omits local locations.
+export const publicSnapshot = doc => ({...doc, rows: doc.rows.map(row => ({...row,
+    via: typeof row.via === 'string' ? row.via.replace(
+        /(^|[\s,;(])(?:\/[^\s,;)]*|[A-Za-z]:[\\/][^\s,;)]*|\\\\[^\s,;)]*)/g,
+        '$1[local path omitted]') : row.via
+}))});
+
 export const STABLE_FIELDS = Object.freeze(['id', 'kind', 'ciAvailable', 'ci', 'gates', 'what']);
 
 const pinnedSha = () => JSON.parse(fs.readFileSync(path.join(root, 'vendor-pins.json'), 'utf8'))['bw-board'];
@@ -99,9 +106,9 @@ export function build (dir) {
                 + 'scripts/oracle-census.mjs --snapshot; refresh with `node scripts/gen-bw-board-census.mjs --dir <bw-board>`',
             stable: [...STABLE_FIELDS],
             note: '`present` and `via` are the box the census was read on; `ciAvailable`/`ci` are the standing facts '
-                + 'the matrix joins to. A row with kind "service" is reachability, never probed: present is false by design.'
+                + 'the matrix joins to. Local paths in `via` are omitted from public output. A row with kind "service" is reachability, never probed: present is false by design.'
         };
-        return doc;
+        return publicSnapshot(doc);
     } finally {
         fs.rmSync(tmp, {force: true});
     }
@@ -120,6 +127,9 @@ const stableView = doc => ({
 export function checkAgainst (dir) {
     if (!fs.existsSync(output)) throw new Error(`${rel(output)} is missing; run: node scripts/gen-bw-board-census.mjs --dir ${dir}`);
     const committed = JSON.parse(fs.readFileSync(output, 'utf8'));
+    if (JSON.stringify(publicSnapshot(committed)) !== JSON.stringify(committed)) {
+        throw new Error('REFUSED: committed census contains local paths in via; regenerate its public presentation.');
+    }
     const fresh = build(dir);
     const a = JSON.stringify(stableView(committed));
     const b = JSON.stringify(stableView(fresh));
