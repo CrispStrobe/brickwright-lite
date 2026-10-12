@@ -1241,6 +1241,10 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+| Main red: Arcade painter browser check (saved painted level after reopen) (task C8 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/c8-painter-red` | base `af1f0ff84`; paths: whatever the root cause needs in the Arcade painter / SB3 reopen path or the browser gate; this row and the task file. Defers to an open Arcade-session PR if one already fixes it. | **CLAIMED 2026-10-12.** |
+
+| ESP32 LEDC pad edges in labwired + an ESP32 board in bw-board's labwired tier (task B9 of docs/OPEN-TASKS-2026-09-29.md; takeover of the released row) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/b9-esp32-ledc*` | base `af1f0ff84`; upstream labwired-core fork (ESP32 LEDC → GPIO-matrix pad seam) + labwired-wasm release, bw-board labwired-tier ESP32 board, Lite pin-bump surfaces; this row and the task file. | **CLAIMED 2026-10-12.** |
+
 
 
 | Arcade compatibility integration and GUI gap closure | Codex, 2026-10-07; isolated branch `lane/arcade-integration-20261007` | Base `fffe90bcb35c9ea0085a9d04331728291c0e41db`; integrate paused `claude/charming-hamilton-jfhfle` at `9fba4739d3549780e01cd9dc111b73fc9d826f54`; adopt qualified sb3-creator parser/dialect changes; Arcade/MakeCode importer, exporter, runtime, associated tests and audit scripts, generated compatibility reports, conversion-to-GUI capability ledger and affected editor controls, explicit vendor pin/mirror surfaces; `.github/workflows/build.yml` and browser gate registration/budget/census tests for PR700 repair; native Arcade/arrays block schemas and asset-aware pseudocode/Blocks/Pixel editor handoff, followed by tilemap/animation authoring in the existing editors. Base refreshed to `3f3b135e9` before continued work. Excludes SPIKE G01 and other hardware/CPU lanes. | **CLAIMED / RESUMED 2026-10-07.** PR700 merged at `21a1fd94a` after all12 enabled exact-head checks passed at `047994c8b`. Its source paths match the tested head; the merge also includes five intervening unrelated documentation/receipt files from main, so the complete trees differ. Stacked [PR703](https://github.com/CrispStrobe/brickwright-lite/pull/703) adds full-screen Pixel backgrounds, logical PNG sizing, versioned source preservation and Stage export composition; seven local browser journeys match all19,200 actual Brickwright/original-PXT pixels. A hosted old-canvas readiness failure is preserved and script-only repairs are pushed at `718e5b29c`; the corrected local seven-journey gate passes. PR703 subsequently passed all7 enabled checks at `c1c40479a` and merged at `15fd1f3b0`; merge source paths match the tested head, with five intervening main documentation/receipt files. Uniform animation resources are pushed in [draft PR704](https://github.com/CrispStrobe/brickwright-lite/pull/704) on `lane/arcade-animation-resources-20261007` (qualified production source `abce50921`): publication/SB3 browser evidence and actual-VM Undo/loading tests pass. Shared compiler PR62 passed its enabled hosted checks, merged at `33ce738` with the reviewed tree unchanged, and is officially adopted in the candidate. Native animation JRES codec tests8/8, visual highlight lifecycle tests2/2, explicit shared-provider identity4/4 without skips, and actual native Blocks resource pickers are qualified. The full production Code/Blocks/controller/export/reimport browser journey passes six journeys at source `897002047`, including exact19,200 original-PXT pixels and zero page errors. It exposed and repaired missing template-free drawables and template animation blank flashes. Native renderer/resource/scaling/scene tests24/24 and affected final retention tests10/10 pass. The full animation gate passed hosted browser qualification on the earlier candidate; build failures exposed saved-zero scalar inference and unused-code/wait-policy issues. Scalar inference now preserves initial zero while allowing later Boolean/string values; observable flyout readiness replaces fixed sleeps. Native gallery export and behavioural import are implemented at `8bca7037c`, with actual original emitter/compiler/simulator alias and exact-pixel checks. The affected export/census rerun passes119 tests; its two remaining stale integrated-copy failures are resolved by synchronization, and the final focused export/import/overlay batch passes21/21 without skips. The current explicit production build passes; the full six-journey browser gate also verifies downloaded native gallery files, exact3×2 frame order/timing and19,200 original-PXT pixels. Browser contract tests25/25 pass. Hosted exact-head checks remain required; U04 and the93 partial corpus results stay open. Validated rich animation companions and current-bundle CLI export are implemented at `55da1b20e`. File/project API recovery retains exact UUID/layers after native projection validation; GUI library installation and fresh-copy live binding remain open. Focused companion/project/overlay policy tests17/17 pass with no skips. Production build and seven browser journeys pass, including exact downloaded companion recovery and preservation of VM/Code/resources on malformed file import; all seven CLI tests pass. Old hosted run37615622567 exposed a stale unclaimed-animation assertion, eager native-codec bytes and an SVG controls readiness race. Exact diagnostics, deferred module loading and decoded-pixel readiness repair these boundaries. At product source `9f6ace3da`, both production builds pass; profiling initial JS4,466,111 meets the unchanged4,467,136 limit and native parser/codec/companion modules are noninitial. Final animation and background gates each pass seven journeys; translation/companion tests140/140 and post-split native/project/overlay16/16 pass. Fresh final-head hosted qualification remains required. The next GUI prerequisite extends Pixel publication to one frame and1–65,535ms with document5/bundle6, legacy validation and opaque future-source preservation. Focused tests50/50 include original-PXT endpoint compilation/execution and exact companion/native recovery; policy and authoring31/31 pass. Runtime endpoint tests6/6, CLI/project3/3 and artwork/import/wait17/17 pass. At product source `f945e7feb`, profiling production passes the unchanged ownership gate at4,466,357 initial bytes; nine actual browser journeys include endpoint Code-to-Blocks/visible playback and19,200 matching original-PXT pixels, with zero page errors. Two stale-served-build failures and two stopped preparation builds are preserved. Final-head hosted qualification remains required. Fresh-copy runtime/Code/Blocks lookup is now implemented at product source `fbac95e16b`: qualified producer PR63 merge `983aa61f` adopted through official sync, provider identity4/4, consumer29/29, literal/computed original-PXT conversion permutations and missing-ID/name-collision execution pass. Profiling production retains4,466,357 initial bytes and passes ten full browser journeys, fresh mutation isolation and19,200 matching original-PXT pixels with zero page errors. Final-head hosted checks remain required. Explicit hidden library-role persistence/Code retention is qualified at `6f29dc3e3`: bundle7 and prior-reader opaque preservation, actual VM/project ownership checks46/46, profiling startup4,467,115 ≤4,467,136, thirteen full browser journeys including Pixel edit/save/reopen/Code retention, and actual GUI/CLI edited-resource export executing in original PXT. The first budget failure and Frames-panel harness failure remain preserved. SPIKE exact-pin fixture was reviewed/rerun at983aa61f; earlier hosted stale-pin failure remains retained. Automatic native carrier installation, fresh factory-to-library binding and library editor affordances remain open. Tilemap authoring, variable timing and action binding are subsequent slices. The owner renewed all MakeCode authoring closure work across pseudocode, Blocks and graphics; require visible authoring, persistence, conversion and original-runtime evidence per feature. Owner explicitly paused the prior agent and transferred the remaining F1–F11/browser/GUI compatibility work to this lane. Preserve its history and failures; qualify upstream dialect before adoption; refresh corpus measurements and close feature families with runtime, roundtrip and GUI proof. Parallel reviewers own disjoint files/tasks under this lane.  Automatic native import at `7a4101798` installs validated used/unused animations into hidden libraries with fresh UUID reporter bindings; regression51/51, transaction/CLI original-PXT semantics4/4 and policy6/6 pass. All14 production browser journeys pass, including automatic import/Pixel edit/save/reopen/Code/Blocks/controller playback; initial4,467,115 bytes remains under unchanged4,467,136. Library navigation/script/visibility safeguards and original Assets editing/download remain open.  At product source `0a187a8c6`, explicit library navigation, disabled gameplay controls, Blocks/Sounds notices and queued-edit/Show guards are implemented. Selection-safe duplicate renews UUIDs and delete/Undo restores source/identity. Production initial JS4,357,538 meets the unchanged4,467,136 limit with a deferred sprite pane. All16 actual browser journeys pass with zero page errors and19,200 matching original-PXT pixels, including rename/duplicate/delete/Restore Sprite/save/reopen/playback. Regression83pass/1namedskip, adopted contracts27pass/1unrelatedskip, audit/shard/timeout/pinning52/52 and final mirror/handoff22/22. First budget/Blockly/selector failures are preserved. Direct-job CI audit reads preserve fail-closed identity and completion checks. Hosted final-head qualification, original Assets editor, costume/sprite-file source transport and duplicate native-name export remain open; corpus93 partial unchanged.  At product source `6f78b0151`, native animation name allocation handles duplicates, punctuation, whitespace and alias/suffix collisions without changing authored names or UUIDs. Companion2 preserves that projection and reads legacy1. Import gives identical rendered resources distinct Scratch carrier costumes. Focused39/39, codec/library/handoff40/40, audit/shard/timeout/pinning53/53 and final mirror1/1 pass without skips. Production startup4,357,538 meets the unchanged4,467,136 limit; all17 actual browser journeys pass, including duplicate-library GUI/CLI original-PXT export and native-file reimport/To Blocks/playback with zero page errors and19,200 matching original pixels. Failed fixtures, menu/chooser attempts, actual Scratch duplicate-costume rejection and predecessor hosted audit failure are preserved privately. API polls now use unique read keys after observed60-second cache headers, with strict completion and identity checks unchanged. Hosted final-head qualification, original Assets editing/retention, duplicate picker labels and VM validation error presentation remain open;93 corpus partial unchanged. |
@@ -2650,3 +2654,148 @@ placement/countdown/original-terrain/mirror checks,0 skips. Fresh hosted package
 and GUI checks are required; original797/800 light failures preserved. Painter
 installation/original-display readiness repair stays with active Codex bwcx.
 Original branches/worktrees remain unchanged; no failed-check main merge.
+
+## Arcade extension project qualification — 2026-10-11
+
+CLAIMED — Codex, branch `lane/arcade-extension-project-qualification-20261011`, stacked on PR798. Recover real original-compiler coverage before implementing carnival countdown semantics: support MakeCode GitHub packages in repository subfolders, preserve exact package/ref identities, add explicit opt-in extension fetching to the Node compiler and compatibility audit with license/content-hash evidence and named refusals. Envelope: `extension-fetch.js`, `scripts/lib/pxt-node.mjs`, `scripts/compat-audit.mjs`, focused on-demand/CLI tests, Arcade handoff and capability ledger. Existing offline defaults, diagnostic classifications and original corpus inputs remain intact. Carnival native gameplay, producer blocks and custom dialogs are subsequent work; no generic countdown substitution or compatibility promotion. No tile painter, peer sprite placement, circuit or dependency-pin changes.
+
+Arcade extension qualification checkpoint: PR799, source `45ce1eb7d367d0b45fd2c502e37f46f0dfeb57a9`, stacked on PR798. Eight on-demand/compiler and seven audit checks pass. Recovered Arrow Battle now passes original PXT with five real declared/transitive packages; the native carnival diagnostic remains open. Six original-simulator controls are retained as reference baselines, not native comparisons. Offline defaults and original corpus inputs remain intact; exact-head hosted checks pending. Source and next native/GUI contract: [handoff](https://github.com/CrispStrobe/brickwright-lite/blob/45ce1eb7d367d0b45fd2c502e37f46f0dfeb57a9/docs/ARCADE-AGENT-HANDOFF.md#original-extension-compilation-and-carnival-contract--2026-10-11).
+
+Legacy layout PR794 hosted checkpoint: all seven enabled checks SUCCESS on source `2b6b723d08136201a43037b81e22da367791794d`; conditional deploy/verify-gui skipped. [Run38152237925](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38152237925) and official artifact11708577135 qualify eight real-control painter/save/reopen/export/reimport observations, zero errors. Artifact source `8b8ec1be7261fbc1697713750aab3d460d4ccff1` is the PR test merge of parent `4fb23b92b59b7b875d0cb1a690765ded4d778660` and reviewed PR794 head. Parent PR793 has since advanced; integrate/retarget against adopted main and qualify fresh enabled checks before merging. This is a bounded legacy fixture, not whole-game equivalence.
+
+## Carnival scoring and dialog core — 2026-10-11
+
+CLAIMED — Codex, `lane/arcade-carnival-scoring-core-20261011`, stacked on PR799. First faithful implementation slice retains the exact MIT carnival v0.0.7 source and notice, generates the countdown/scoring/custom-dialog module with explicit fiber-to-Promise adaptation, and tests winner/tie/score/time/storage/default/first-registration behavior. Envelope: new `arcade/carnival-source/*`, `arcade/carnival-pxt.js`, generator and focused contract test, Arcade handoff/ledger. Runtime host integration, regular Blocks/pseudocode/export and production GUI are subsequent qualification work; native carnival diagnostics remain visible. No changes to countdown-order PR800, painter placement801, engine pins or peer-owned files. Coordinate runtime insertion points before integration.
+
+Carnival core checkpoint: [PR802](https://github.com/CrispStrobe/brickwright-lite/pull/802), source `0e82a2c5a536c20d31a5c462a5748fdcfba3060b`, stacked on PR799. Exact MIT source/notice and reproducibly generated scoring/dialog logic retained. Eleven observing-host contract/generation checks pass, plus one final clean-head generation invocation. This is source/control-flow qualification, not VM rendering, actual persistent storage or native gameplay. Unsupported carnival calls and prior corpus classification remain intact. Runtime host, Blocks/pseudocode/export, SB3 and production GUI remain required; account for qualified PR800 countdown/oracle adoption. [Full method and next host contract](https://github.com/CrispStrobe/brickwright-lite/blob/0e82a2c5a536c20d31a5c462a5748fdcfba3060b/docs/ARCADE-AGENT-HANDOFF.md#carnival-scoringdialog-implementation-slice--2026-10-11). No runtime-index or peer placement/pin edits. Exact-head hosted checks pending.
+
+## Carnival runtime host and program settings — 2026-10-11
+
+CLAIMED — Codex, `lane/arcade-carnival-runtime-host-20261011`, stacked on PR802 with candidate PR800 countdown/oracle source integrated normally for isolated qualification. Envelope: Arcade runtime host methods/dependency wiring/registered host callbacks (preserve PR800 countdown-order edits), reusable program number-settings module and SB3 target save/restore hooks in `scripts/apply-vm-overlay.mjs`, Arcade block metadata/dialect/import/export, focused runtime/storage/roundtrip checks and handoffs. Settings need actual program identity, snapshot persistence and device storage; failures must remain visible. No painter/placement, circuit/pin or peer branch edits, and no claim that PR800 is merged. Preserve lifecycle cancellation across stop/load/restart and the original custom dialog/effect/music sequence.
+
+
+### Carnival host checkpoint — 2026-10-11
+
+Claimed host/settings lane has draft [PR803](https://github.com/CrispStrobe/brickwright-lite/pull/803),
+head c8e23f75f3032150a87b4cd08ee69c270388dd70, stacked on PR802 with exact
+PR800 candidate integration. Native dialogs, ordinary blocks/pseudocode,
+MakeCode package export and program number-record SB3 hooks are implemented.
+32 affected checks and expanded11 overlapping host checks pass. Six original
+controls compile/run; opaque dialog body matches, cursor phase differs.
+Production GUI and exact-head hosted integration remain pending; this is not
+main adoption or a changed corpus census. See the candidate branch's
+ARCADE-AGENT-HANDOFF.md for scope and next tasks. Painter placement/pins remain
+in peer lanes; preserve PR794 parent history.
+
+
+### Carnival custom game-over checkpoint — 2026-10-11
+
+Owned continuation: [PR804](https://github.com/CrispStrobe/brickwright-lite/pull/804),
+branch lane/arcade-carnival-custom-gameover-20261011, head17a64b689, stacked
+on stable PR803. Original custom message/scoring/Melody/optional-score behavior
+now has native execution, blocks/pseudocode and actual MakeCode export/reimport.
+31 affected checks plus one fixed invalid-sound check pass; six actual original
+controls compile and match controlled native dialog rectangles. Fresh immutable
+184-input census remains142/41/1. Recovered Arrow project separately imports
+with zero diagnostics. Production GUI/hosted qualification remains pending.
+Next: actual queued browser results, remaining context assets/maps, song values,
+bundles wrappers and native mode selection; retain separate corpus/project gates.
+No peer painter, PR794 history or dependency pins were changed.
+
+### Carnival vendor synchronization checkpoint — 2026-10-11
+
+PR803's hosted build failed on a stale shared word table/mirror and old census,
+before browser execution. Repaired parent head065a86dbd adopts shared producer
+[sb3-creator PR93](https://github.com/CrispStrobe/sb3-creator/pull/93), exact
+06341e3dd0f5ddfbed6764ec5afe03b04b65e265. Producer323 dialect tests pass;
+consumer parent11 focused checks plus HEAD mirror pass, custom merged parent
+normally at1cbac9ad4 and passes12 checks without skips. All18 mapped files and
+3750 gallery files match. Existing identity/delta gates remain unchanged.
+Fresh hosted checks queued; corpus unchanged142/41/1. Next song execution and
+authoring contract is in PR804 ARCADE-AGENT-HANDOFF.md; no song implementation
+is claimed yet. Preserve peer painter/placement history and engine pin lane.
+
+## Arcade native song sequencing — 2026-10-11
+
+CLAIMED — Codex, `lane/arcade-song-runtime-20261011`, stacked on PR804.
+Envelope: generated pinned mixer instrument/song/sequencer source and music host
+adapters, focused scheduling/instruction/lifecycle checks, reproducible source
+generation and handoff/GUI ledger. This slice establishes actual native song
+playback before importer/dialect/song-editor support. No engine pins, painter
+placement, PR794 history or peer-owned files. Preserve explicit song diagnostics
+until authoring/conversion support is implemented and qualified.
+
+### Native song runtime checkpoint — 2026-10-11
+
+Draft [PR806](https://github.com/CrispStrobe/brickwright-lite/pull/806), tested
+code117a5b31230ae282aa4adee89bed2ab627fc0a6d, stacked normally on PR804.
+Retained MIT PXT instrument/song/TypeScript sequencer now queues real sound,
+with clock-driven playback, malformed/mutable-buffer refusal and empty-track
+handling. 29 affected checks plus HEAD mirrors pass; four actual original
+simulator song controls match active instruction bytes, accounting explicitly
+for zero terminal padding. Headless evidence does not qualify audible output.
+Version0/hardware-path single-current-song behavior only. Conversion reporter,
+shared pseudocode word, import/export/SB3 and song editor remain open; census
+unchanged142/41/1. Hosted checks pending. Separate parentSPIKEpinassertion
+repair/requalification is on8034e7fcfff8 and normally merged8049e0456303.
+No peer placement, PR794 history or engine pins changed. Follow the song
+implementation checkpoint in PR806 ARCADE-AGENT-HANDOFF.md.
+
+## Arcade song values and roundtrips — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-song-values-20261012`, stacked on PR806.
+Envelope: shared producer song playable word, explicit producer adoption and
+tracked mirrors/inventory/pin assertion, Arcade reporter metadata/runtime value,
+MakeCode literal/dynamic hex import/export, genuine execution and saved-SB3
+roundtrips, focused checks and GUI ledger. Song asset editor remains a later
+closure task. No painter/pin/PR794 ownership changes; preserve existing failures.
+PR806 hosted reds: particle-effect assertion and unfinished browser journeys.
+Source song checks remain local qualification, not production completion.
+
+
+### Song values checkpoint — 2026-10-12
+
+Draft [PR807](https://github.com/CrispStrobe/brickwright-lite/pull/807), stacked
+on PR806, tested source79b873478 and final docs0c102b56b. Ordinary song playable
+reporter + shared producer Code word; literal and dynamic hex import/export;
+actual SB3 reopening into fresh VM. 35 affected checks and HEAD mirrors pass,
+producer324 grammar checks pass. Pin c7096355 from producerPR94; all18 mapped
+files exact, empty delta set. Locked184 originals independently verified at
+c67f485; unchanged142/41/1 census. Three snippets reference missing named
+countdown song bytes; next conversion lane needs complete-project assets.song
+resolution. Graphical song editor, production journey, Buffer operations and
+other native format/concurrency semantics remain open. Hosted parent particle
+and painted-level/browser reds are preserved and remain blockers. No merge or
+production completion claimed; no peer painter, PR794 or engine pin changed.
+
+
+## Named Arcade song assets — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-named-song-assets-20261012`, stacked on PR807.
+Envelope: native song JRES resolution and explicit missing/ambiguous diagnostics,
+shared named-song reporter/Code word, name/byte-preserving MakeCode resource
+export and real SB3 roundtrip checks. No graphical song editor claim, painter,
+engine pins or PR794 history changes. Hosted PR807 build and corpus pass;
+both browser shards failed and deployment did not execute. Preserve failures.
+
+
+## Rescue of ended Claude Arcade session — 2026-10-12
+
+CLAIMED — Codex, operator requested recovery of the ended Claude session.
+`integrate/claude-arcade-rescue-20261012` combines exact surviving candidates
+PR801 f97f3606a (placement, plus793/794 parents), PR797 2a0f1e657 (green-flag
+bw-board package adoption), PR800 a078a5e45 (countdown and deterministic clock).
+No unpublished tracked source was found; three diagnostic prototypes are archived
+privately. Keep original branches/worktrees and failures. No main adoption until
+fresh combined exact-head checks pass. PR797/800 both failed the same painted
+level after reopen assertion; that proof repair and original display readiness
+remain owned by the separately active Codex bwcx worker. Do not take its files.
+Named-song work remains in its own branch and is not discarded by this rescue.
+
+
+Claude rescue publication checkpoint:
+[PR810](https://github.com/CrispStrobe/brickwright-lite/pull/810), head
+fbf016c065cb5925821489aa8bc8ddfd35f4902c. Three exact original heads preserved
+by normal merges;20 combined focused checks pass. Private inventory/prototypes
+and original797/800 failed logs archived. Hosted checks queued; no main merge.
+Named-song source separately pushed at5db728c50 so rescue does not discard it.
