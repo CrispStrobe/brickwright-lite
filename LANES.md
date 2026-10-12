@@ -1,5 +1,14 @@
 # Who is doing what — merge the claim before implementation
 
+## Public lane metadata cleanup — 2026-10-12
+
+CLAIMED — Codex, isolated branch `fix/public-lane-metadata-20261012`.
+Envelope: this ledger only. Remove operator machine locations, private session
+and terminal identifiers from public coordination prose; preserve task owners,
+branch/source identities, statuses, evidence links and acceptance criteria.
+No executable, workflow, package pin or peer implementation change.
+
+
 ## SPIKE Linux package permissions — 2026-10-12
 
 CLAIMED — Codex SPIKE integration, isolated branch
