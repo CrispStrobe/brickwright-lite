@@ -672,6 +672,7 @@ try{
         const wideFiles={'main.ts':'let frames = assets.animation`Wide`\nlet hero = sprites.create(frames[0], SpriteKind.Player)\nhero.setPosition(80,60)\nanimation.runImageAnimation(hero, frames, 100, true)',
             'pxt.json':JSON.stringify({name:'Wide animation',dependencies:{device:'*'},files:['main.ts','images.g.jres']}),
             'images.g.jres':JSON.stringify({Wide:encodeAnimationJres({id:'Wide',name:'Wide',width:161,height:121,intervalMs:100,frames:wideFrames})})};
+        await openCode();if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
         await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'wide-animation.hex',mimeType:'application/octet-stream',
             buffer:Buffer.from(makeCodeSourceHex(wideFiles,{target:'arcade',name:'Wide animation'}))});
         await page.getByText(/Imported the Arcade game.*wide-animation\.hex/).first().waitFor({state:'visible'});
