@@ -2799,3 +2799,16 @@ fbf016c065cb5925821489aa8bc8ddfd35f4902c. Three exact original heads preserved
 by normal merges;20 combined focused checks pass. Private inventory/prototypes
 and original797/800 failed logs archived. Hosted checks queued; no main merge.
 Named-song source separately pushed at5db728c50 so rescue does not discard it.
+
+
+## Complete Arcade candidate integration audit — 2026-10-12
+
+CLAIMED — Codex, operator asks whether all surviving work reached main and the
+continuation tree. `lane/arcade-complete-integration-20261012` normally merges
+the rescue810 head, latest793 head aa6b54ae9, complete Carnival/song stack and
+refreshed main38b6bc3ad. No source proof fixes from the independently active
+painter/display-readiness worker are taken. Exact ancestor inventory and fresh
+same184-input main/candidate audits are required; partial classification is not
+an observed runtime failure. Current main does not contain all candidate code.
+No failed-check main merge; prepare a combined reviewable candidate with exact
+producer/engine pins, tracked mirrors and fresh hosted gates.
