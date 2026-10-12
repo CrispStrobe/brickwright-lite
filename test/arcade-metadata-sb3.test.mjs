@@ -138,7 +138,9 @@ test('the Code tab records the original only for an unedited import, and its exp
     assert.match(src, /this\._makeCodeImportedCode = res\.kind === 'makecode' && res\.lang === 'pseudocode' \? res\.code : null;/);
     const subject = src.slice(src.indexOf('    async makeCodeSubject () {'), src.indexOf('    makeCodeRunOffered ('));
     assert.match(subject, /original\.status === 'current'\) return \{files: original\.files/);
-    assert.match(subject, /original\.status !== 'stale'\) return imported;/, 'a stale import never stands in for the program');
+    assert.match(subject, /!\(builtFromImport && original\.status === 'stale'\)\) return imported;/, 'a stale import never stands in for the program');
+    assert.ok(subject.indexOf('return imported;') < subject.indexOf("original.status === 'current'"),
+        'a fresh import in the tab outranks an earlier project\'s original (EV3 after Arcade, verify-makecode)');
     const arcade = src.slice(src.indexOf('    async exportArcade () {'), src.indexOf('    async exportMakeCodeSource () {'));
     assert.match(arcade, /original\.status === 'current' && original\.target === 'arcade' \?/);
 });

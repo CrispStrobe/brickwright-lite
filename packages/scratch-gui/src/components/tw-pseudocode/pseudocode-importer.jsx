@@ -2049,10 +2049,12 @@ class PseudocodeImporter extends React.Component {
 
     async makeCodeSubject () {
         const original = this.makeCodeOriginalStatus();
-        if (original.status === 'current') return {files: original.files, name: original.name, target: original.target};
         const imported = this._makeCodeProject;
-        // Once the built program has changed, the imported files no longer describe it.
-        if (imported && imported.files && original.status !== 'stale') return imported;
+        // A fresh import in this tab is the subject, unless it is the very import
+        // the loaded project was built from and the program has changed since.
+        const builtFromImport = imported && original.target === imported.target && original.name === imported.name;
+        if (imported && imported.files && !(builtFromImport && original.status === 'stale')) return imported;
+        if (original.status === 'current') return {files: original.files, name: original.name, target: original.target};
         const source = this.state.buffers.pseudocode || '';
         if (!['microbit', 'calliopemini'].includes(this.currentDevice()) || !source.trim()) return null;
         const SB3Creator = (await this.lib()).default;
