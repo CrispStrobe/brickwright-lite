@@ -58,7 +58,13 @@ Default callers do not install an observer or wait for this additional boundary.
 Persistent observer controls cover allocation/null/refused-image rejection,
 receiver/arguments/result/exception preservation and restoration. The same
 contract catches four executable mutants in pure controls; syntax and whitespace
-checks pass. Hosted original-render and full replacement Build remain pending.
+checks pass. Qualification complete: exact
+ede781d5613057037b29a2554e6bc26e624975ae passes Build38205559775, all six
+enabled jobs (build/corpus/FPGA/two browser shards/guard). Unit6852/6831/0/21;
+original seven-segment exact pixels and actual post-completion presentation
+pass. Conditional deploy/verify-gui skips do not qualify publication. Later
+main reconciliation changes only this ledger and docs/OPEN-TASKS-2026-09-29.md;
+executable inputs retain the tested tree's bytes. Publication is a separate gate.
 
 Created 2026-08-24, after two sessions independently did the same repair.
 
@@ -123,6 +129,12 @@ reply fix and later song ledger claims. Its focused suite passes14/14 after
 materializing sparse prerequisites; initial missing-file runs are environment
 failures, not product qualification. This executable addition requires a fresh
 combined hosted receipt; the previous green is not relabelled as this head.
+Final qualification is Build38205559775 at ede781d56: all enabled jobs pass,
+including both actual installed reactive cases and circuit/painter browser
+proofs. Preserve f946dd18's seven-segment failure, repaired by real display
+readiness above. Qualified Board pin9c8777d5 includes both original74b live-span
+repair and the later reset/history repair; no old pin downgrade. Main landing
+and deployment receipts are separate from these branch qualification results.
 
 The vendor of `sb3-creator eac7a1a` made two OPEN DEFECT sentinels fire — the
 shift-register bit test and the four faceplates with dead controls. Both are
