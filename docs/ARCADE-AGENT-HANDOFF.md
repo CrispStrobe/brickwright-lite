@@ -1876,3 +1876,29 @@ The browser failure report now includes observed values at the failure boundary
 so later timeouts preserve the reached state. No VM/keyboard state is injected
 into the visible browser journey. Heavy and FPGA passed at the failed head;
 build was pending. This correction still needs fresh hosted editor proof.
+
+## Original Buffer hash checkpoint — 2026-10-12
+
+Candidate `lane/arcade-buffer-hash-20261012` is stacked on
+[controller correction PR847](https://github.com/CrispStrobe/brickwright-lite/pull/847).
+The producer is `feat/arcade-buffer-hash-20261012`, stacked on
+[packing PR104](https://github.com/CrispStrobe/sb3-creator/pull/104).
+Native `.hash(bits)` uses unadapted FNV-1/folding functions extracted from the
+consumed common simulator; its generated file records source hashes and the
+existing Microsoft MIT notice is extended explicitly.
+
+Three new hash controls pass, including original width/byte matrices, native
+refusal and aliases, typed numeric custom returns, actual original exported
+execution and fresh SB3. Seven packing controls pass on the corrected runtime;
+16 other selected controls passed in the first batch. Producer359 passes, no
+skips, selected vocabulary316. Preserve initial failures: wrong block-argument
+helper prevented extension registration, a native fixture supplied TEXT instead
+of HEX, and a return-type regex omitted permitted whitespace. Those controls
+were corrected and rerun; no original algorithm was patched.
+
+PR845 heavy/FPGA passed; light failed at the known B fixture mapping and full
+build failed at30 minutes. The separate controller correction requires fresh
+hosted proof. Audit full build durations and preserve every test/deployment gate
+when separating expensive original simulator checks. Buffer memory roots and
+collection acceptance are now specified in the Buffer contract. Locked184 is
+still142 translated /41 partial /1 parse failure; no whole-app promotion.

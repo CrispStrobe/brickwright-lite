@@ -1050,6 +1050,7 @@ class ArcadeEmitter {
         case 'arcade_bufferIsReadOnly': return `${v('BUFFER')}.isReadOnly()`;
         case 'arcade_bufferConcat': return `${v('BUFFER')}.concat(${v('OTHER')})`;
         case 'arcade_bufferEquals': return `${v('BUFFER')}.equals(${v('OTHER')})`;
+        case 'arcade_bufferHash': return `${v('BUFFER')}.hash(${v('BITS')})`;
         case 'arcade_bufferIndexOf': return `${v('BUFFER')}.indexOf(${v('OTHER')})`;
         case 'arcade_bufferGetByte': return `${v('BUFFER')}[${v('OFFSET')}]`;
         case 'arcade_bufferFromBase64': {
@@ -2518,7 +2519,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_spriteToString') {const id=Symbol('sprite text');strings.add(id);return id;}
                 if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferFromBase64','arcade_bufferLiteral','arcade_bufferSlice','arcade_bufferConcat','arcade_bufferFromArray','arcade_bufferConcatArray','arcade_bufferPack'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
                 if(['arcade_bufferToArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8','arcade_bufferUnpack'].includes(value.opcode)){const id=`${key}:buffer-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
-                if(['arcade_bufferLength','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf','arcade_bufferFormatSize','arcade_bufferPackedSize'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
+                if(['arcade_bufferLength','arcade_bufferHash','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf','arcade_bufferFormatSize','arcade_bufferPackedSize'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
                 if(['arcade_bufferToHex','arcade_bufferToText','arcade_bufferToBase64'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
                 if(['arcade_bufferIsReadOnly','arcade_bufferEquals'].includes(value.opcode)){const id=Symbol('buffer readonly');booleans.add(id);return id;}
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);return id;}

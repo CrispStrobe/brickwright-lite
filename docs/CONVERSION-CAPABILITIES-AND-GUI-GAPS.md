@@ -3699,3 +3699,10 @@ exposes genuine APIs with explicit invalid-format diagnostics. A visible format
 assistant/preview, byte inspector, typed array editing, original namespace
 import and hosted editor/controller journey remain open GUI work. Source
 vocabulary and headless original roundtrips do not qualify those user flows.
+
+Buffer hash authoring continuation: native reporter and pseudocode word
+`arcade byte buffer BUFFER hash BITS bits` expose original k-bit FNV-1; typed
+MakeCode export uses `.hash(bits)`. Byte/array/format inspection and a visible
+controller/editor hash journey remain GUI qualification work. Aggregate heap
+collection needs explicit root tracing across variables, arrays, calls, scenes
+and playback; source vocabulary does not establish that resource guarantee.

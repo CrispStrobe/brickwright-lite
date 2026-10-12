@@ -1645,7 +1645,10 @@ committed file differs from the pinned bundle:
   decoding boundaries; `buffer.js` bounds allocation and preserves mutable byte
   storage for the mixer. Full notice: `static/licenses/pxt-core.MIT.txt`.
 - **pxt-common-packages** (https://github.com/microsoft/pxt-common-packages),
-  MIT, Copyright (c) Microsoft Corporation: the simulator's image algorithms
+  MIT, Copyright (c) Microsoft Corporation: the original simulator FNV-1 and
+  k-bit Buffer hash functions from `sim/common-sim.js`, retained unadapted in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer-hash-pxt.js`
+  (`scripts/generate-arcade-buffers.mjs`); the simulator's image algorithms
   (`sim/common-sim.js`: setPixel, fillRect, drawLine, drawImage, overlapsWith, ...)
   in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/image-pxt.js`
   (`scripts/generate-arcade-image-operations.mjs`); text layout and speech bubbles

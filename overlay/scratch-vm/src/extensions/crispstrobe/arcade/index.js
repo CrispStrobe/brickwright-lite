@@ -270,6 +270,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'bufferIsReadOnly',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade byte buffer [BUFFER] is read only',arguments:str('BUFFER','')},
           {opcode:'bufferConcat',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] concatenated with byte buffer [OTHER]',arguments:{...str('BUFFER',''),...str('OTHER','')}},
           {opcode:'bufferEquals',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade byte buffer [BUFFER] equals byte buffer [OTHER]',arguments:{...str('BUFFER',''),...str('OTHER','')}},
+          {opcode:'bufferHash',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] hash [BITS] bits',arguments:{...str('BUFFER',''),...n('BITS',32)}},
           {opcode:'bufferIndexOf',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] index of byte buffer [OTHER]',arguments:{...str('BUFFER',''),...str('OTHER','')}},
           {opcode:'bufferGetByte',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] byte at [OFFSET]',arguments:{...str('BUFFER',''),...n('OFFSET',0)}},
           {opcode:'bufferSetByte',blockType:Scratch.BlockType.COMMAND,text:'Arcade set byte buffer [BUFFER] byte at [OFFSET] to [VALUE]',arguments:{...str('BUFFER',''),...n('OFFSET',0),...n('VALUE',0)}},
@@ -3895,6 +3896,7 @@ module.exports = makeExt(`// Name: Arcade
         return dependencies.buffers.equals(resolve(args.BUFFER),resolve(args.OTHER));
       });
     }
+    bufferHash(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).hash(Number(args.BITS)));}
     bufferIndexOf(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).indexOf(this._buffer(args.OTHER)));}
     bufferGetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getByte(Scratch.Cast.toNumber(args.OFFSET)));}
     bufferSetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).setByte(Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE)));}

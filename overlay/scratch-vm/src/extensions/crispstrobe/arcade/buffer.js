@@ -1,6 +1,7 @@
 // A bounded byte-array facade over original PXT simulator Buffer algorithms.
 // Uint8Array identity/storage is retained for the mixer and image host adapters.
 const {RefBuffer, methods} = require('./buffer-pxt')();
+const originalHash = require('./buffer-hash-pxt')();
 const MAX_BUFFER_BYTES = 1024 * 1024;
 const MAX_BUFFER_CHUNKS = 65536;
 const MAX_BUFFER_FORMAT_CHARS = 4096;
@@ -61,6 +62,7 @@ class PxtBuffer extends Uint8Array {
         return helpers.bufferToArray(this, value);
     }
     toBase64() {return helpers.bufferToBase64(this);}
+    hash(bits) {return originalHash(this._reference(), bits);}
     toHex() {return methods.toHex(this._reference());}
     toString() {return methods.toString(this._reference());}
 }

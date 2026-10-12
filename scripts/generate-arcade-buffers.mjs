@@ -38,3 +38,28 @@ if (process.argv.includes('--check')) {
     if (readFileSync(target, 'utf8') !== text) throw new Error('buffer-pxt.js differs from pinned PXT');
     console.log(`Verified PXT buffer algorithms (${hash.slice(0, 12)}).`);
 } else writeFileSync(target, text);
+
+// Hash belongs to pxt-common-packages rather than the PXT core byte shim.
+// Retain its complete FNV-1 and k-bit fold functions from the consumed bundle.
+const common = readFileSync(resolve(root, 'packages/scratch-gui/static/makecode/arcade/sim/common-sim.js'), 'utf8');
+const hashStartMarker = '        function fnv1(data) {';
+const hashEndMarker = '        BufferMethods.hash = hash;';
+const hashStart = common.indexOf(hashStartMarker), hashEnd = common.indexOf(hashEndMarker, hashStart);
+if (hashStart < 0 || hashEnd < 0 || common.indexOf(hashStartMarker, hashStart + 1) >= 0)
+    throw new Error('Pinned common-package Buffer hash boundaries changed');
+const hashSource = common.slice(hashStart, hashEnd);
+const hashText = `// Generated from pinned Arcade common-package simulator Buffer hash (MIT).
+// Copyright (c) Microsoft Corporation. See static/licenses/pxt-common-packages.MIT.txt.
+// Consumed input: packages/scratch-gui/static/makecode/arcade/sim/common-sim.js
+// Extracted unadapted functions SHA256: ${createHash('sha256').update(hashSource).digest('hex')}
+// Regenerate: node scripts/generate-arcade-buffers.mjs
+module.exports = function initializePxtBufferHash() {
+${hashSource}
+return hash;
+};
+`;
+const hashTarget = resolve(root, 'overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer-hash-pxt.js');
+if (process.argv.includes('--check')) {
+    if (readFileSync(hashTarget, 'utf8') !== hashText) throw new Error('buffer-hash-pxt.js differs from pinned common-package simulator');
+    console.log('Verified original common-package Buffer hash.');
+} else writeFileSync(hashTarget, hashText);

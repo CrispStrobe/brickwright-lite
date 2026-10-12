@@ -446,3 +446,16 @@ mutation, then timed out on B because the fixture listened for b while the
 pane sends z. Use the actual pane mapping in that fixture; preserve ordinary
 b as a separate keyboard input and retain original exported controller proof.
 Heavy/FPGA passed; fresh full visible journey remains required.
+
+### Original Buffer hash checkpoint — 2026-10-12
+
+Native k-bit FNV-1 reporter, Code word and genuine typed `.hash(bits)` export
+retain the complete original common simulator functions. Three hash controls
+and seven rechecked packing controls pass without skips; producer359 passes.
+The source-derived Buffer authoring API backlog now leaves importer aliases
+with E10. Whole-app original asset/API closure, native GUI inspectors and
+aggregate live memory remain open. Strong Buffer registry entries currently
+retain discarded temporaries until reset: implement root tracing and reserve
+allocations before copies; an ever-growing historical counter is insufficient.
+PR845 full build timed out and the light B-fixture failure is preserved; obtain
+exact-head complete build/editor proof before acceptance or corpus promotion.

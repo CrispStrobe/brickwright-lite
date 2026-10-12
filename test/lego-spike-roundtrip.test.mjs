@@ -286,7 +286,7 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 9541e81f (2026-10-12): Buffer chunking vocabulary; SPIKE artifact unchanged.
     // -> c94f428d (2026-10-12): Buffer packing vocabulary; SPIKE artifact unchanged.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'c94f428da9f74754981f52d6c6355477b35e8477');
+        '7516ef9044d2a8a8299661b68fe299252c2a9042');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

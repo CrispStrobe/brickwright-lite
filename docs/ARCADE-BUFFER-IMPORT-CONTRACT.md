@@ -147,7 +147,6 @@ Actual public declarations still needing runtime/native authoring/export work:
 | --- | --- |
 | `Buffer.create(size)` | Import alias for the existing allocator; resolve shadowing |
 | `getUint8` / `setUint8` | Import aliases for byte reads/writes |
-| `hash(bits)` | Original FNV-1 algorithm and public bit-width semantics |
 
 This is a source-derived backlog, not a claim these calls occur in every partial
 corpus app. Every implementation needs original execution, native value/alias
@@ -317,3 +316,40 @@ different NaN payload bytes for that conversion. Exact byte controls therefore
 execute the retained native facade in Chromium against the original simulator;
 host controls separately check NaN values and field lengths. No fixed NaN payload
 is substituted into the original algorithm.
+
+### Original Buffer hash continuation
+
+Native word: `arcade byte buffer BUFFER hash BITS bits`. The reporter reads the
+same scoped Buffer and returns a number; it does not change bytes. Export uses
+genuine `.hash(bits)` and carries numeric custom-return types. Original public
+declaration is `base/shims.d.ts` in the pinned target bundle.
+
+The implementation retains the complete `fnv1` and `hash` functions from the
+pinned `arcade/sim/common-sim.js`, separately credited to pxt-common-packages.
+`generate-arcade-buffers.mjs` records the unadapted functions' hash and checks
+regeneration. Multiplication precedes XOR (FNV-1), widths coerce to signed32,
+widths below1 return0, widths at least32 return unsigned32 and smaller widths
+retain the original XOR-fold/mask expression. Do not substitute FNV-1a or a
+cryptographic hash.
+
+Required controls: original simulator byte/width matrix, readonly/mutable
+reads, shared alias mutation, foreign/expired reference refusal, Blocks/Code,
+numeric custom returns, typed original export execution and fresh SB3.
+
+### Aggregate live-memory closure method
+
+Per-buffer and per-result limits are already enforced. Native `_bufferHeap`
+currently keeps strong references in `values`; discarded temporary results can
+therefore accumulate until run/project reset. A cumulative allocation counter
+alone would also penalize released temporaries and is not live-heap collection.
+
+Close this in ordered steps: identify every root (variables/lists, active
+reporter/custom-call frames, scoped array graphs, registered callbacks, literal
+sites, song/playback objects and retained scenes); define ownership and reset
+boundaries; reserve storage before each original allocator or copy; preserve
+alias identity and account each backing store once; trace reachable values and
+release unreachable entries without invalidating live references. Add controls
+for cycles, aliasing, repeated discarded temporaries, live cross-frame values,
+suspended scenes, queued playback, reset/disposal and allocation refusal before
+copy. Audit aggregate arrays/images/song storage separately. No global heap
+closure is claimed until all these roots and failure paths are covered.

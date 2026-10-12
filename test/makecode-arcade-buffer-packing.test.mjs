@@ -33,7 +33,7 @@ test('missing floating inputs retain original Chromium bytes and host NaN semant
     // do not replace the original algorithm with a particular host's bit pattern.
     const formats=['<BBf','>BBf','<BBd','>BBd'];
     const original=await runPxtArcade('let trace = ""\n'+formats.map((format,i)=>`let bytes${i}=Buffer.pack(${JSON.stringify(format)},[1])\ntrace += bytes${i}.toHex()+";"`).join('\n'));
-    const sources=Object.fromEntries(['buffer','buffer-pxt','buffer-helpers-pxt'].map(name=>[name,fs.readFileSync(new URL('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/'+name+'.js',import.meta.url),'utf8')]));
+    const sources=Object.fromEntries(['buffer','buffer-pxt','buffer-helpers-pxt','buffer-hash-pxt'].map(name=>[name,fs.readFileSync(new URL('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/'+name+'.js',import.meta.url),'utf8')]));
     const browser=await chromium.launch();
     try {
         const page=await browser.newPage();
