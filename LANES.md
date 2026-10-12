@@ -1,6 +1,36 @@
 # Who is doing what — merge the claim before implementation
 
+## Original Arcade display readiness proof — 2026-10-12
+
+CLAIMED — Codex bwcx, continuing `fix/painter-installation-proof-20261011`.
+Build38198014926 passes both browser shards, corpus and FPGA but fails the
+seven-segment exact-screen comparison (19200 pixels different). Program-global
+completion does not prove a presented frame: original ScreenState initially
+fills its buffer black, while the authored scene draws a white background.
+Envelope: LANES.md, test/helpers/pxt-arcade-runtime.mjs and
+test/makecode-arcade-sevenseg.test.mjs only. Add opt-in observation of a real
+screen update after the existing completion marker; preserve default callers,
+original call semantics and exact pixel equality. No fabricated image, native
+renderer change, timeout increase, changed expected palette or engine pin.
+The current candidate remains rejected until replacement hosted qualification.
+
 Created 2026-08-24, after two sessions independently did the same repair.
+
+## SPIKE caller profile preflight — 2026-10-12
+
+CLAIMED — Codex SPIKE integration, isolated branch
+`fix/spike-profile-preflight-20261012`, base
+`926901bab0` (resolve the full base with Git history).
+Envelope: `overlay/scratch-vm/src/extension-support/native-renode-capability.js`,
+its tracked `packages/scratch-vm` twin, focused native-capability tests,
+`docs/SPIKE-STATUS-AND-LANES.md` and this ledger. Reject unknown SPIKE topology
+and custom topology without explicit own-NuttX backend before broker allocation
+or dispatch. Keep valid requests and existing sessions unchanged; preserve opaque
+native authorization failures and closed relay failure codes. Test valid profile
+forwarding, local refusals, concurrent ordering and session survival, including
+mutations of both guards. This is caller validation, not native authorization or
+installed-package qualification. The separate PR755 adoption/package lane and
+peer Arcade painter/browser repair retain their ownership.
 
 ## Why this file exists
 
@@ -2735,3 +2765,29 @@ roundtrips, focused checks and GUI ledger. Song asset editor remains a later
 closure task. No painter/pin/PR794 ownership changes; preserve existing failures.
 PR806 hosted reds: particle-effect assertion and unfinished browser journeys.
 Source song checks remain local qualification, not production completion.
+
+
+### Song values checkpoint — 2026-10-12
+
+Draft [PR807](https://github.com/CrispStrobe/brickwright-lite/pull/807), stacked
+on PR806, tested source79b873478 and final docs0c102b56b. Ordinary song playable
+reporter + shared producer Code word; literal and dynamic hex import/export;
+actual SB3 reopening into fresh VM. 35 affected checks and HEAD mirrors pass,
+producer324 grammar checks pass. Pin c7096355 from producerPR94; all18 mapped
+files exact, empty delta set. Locked184 originals independently verified at
+c67f485; unchanged142/41/1 census. Three snippets reference missing named
+countdown song bytes; next conversion lane needs complete-project assets.song
+resolution. Graphical song editor, production journey, Buffer operations and
+other native format/concurrency semantics remain open. Hosted parent particle
+and painted-level/browser reds are preserved and remain blockers. No merge or
+production completion claimed; no peer painter, PR794 or engine pin changed.
+
+
+## Named Arcade song assets — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-named-song-assets-20261012`, stacked on PR807.
+Envelope: native song JRES resolution and explicit missing/ambiguous diagnostics,
+shared named-song reporter/Code word, name/byte-preserving MakeCode resource
+export and real SB3 roundtrip checks. No graphical song editor claim, painter,
+engine pins or PR794 history changes. Hosted PR807 build and corpus pass;
+both browser shards failed and deployment did not execute. Preserve failures.
