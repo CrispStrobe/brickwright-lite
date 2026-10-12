@@ -1358,3 +1358,11 @@ and declares validated manifest SHA input in the fetch census. Recovery CLI
 controls reject branches, tags and abbreviated/nonhex revisions before network.
 No dead-module exception or fetch waiver was added. Fresh hosted qualification
 is required; the locked original census remains142/41/1.
+
+Authentic follow-up at source6c93fb987 decodes/re-encodes the real Hawks
+TrampolineDunk resource exactly:161x121,32frames,75ms,311720packed bytes.
+Prepared native diagnostics drop from1 to0 for that recovered context; original
+PXT still fails the unchanged snippet's undeclared `harry`. This does not
+change the locked original census or establish game execution.40 affected
+codec/dependency/native-import/companion/export controls pass, plus14 corrected
+policy/recovery controls; the preceding census failures are preserved.
