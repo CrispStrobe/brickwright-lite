@@ -2,7 +2,7 @@
 
 ## Forth packaged license notice — 2026-10-12
 
-CLAIMED — Codex SPIKE package review, `fix/forth-license-notice-20261012`.
+DONE candidate — Codex SPIKE package review, `fix/forth-license-notice-20261012`.
 Envelope: this ledger, `overlay/scratch-gui/static/licenses/zForth.MIT.txt`
 and the existing Forth provenance record only. Retain the exact upstream
 copyright and permission notice from the recorded zForth source revision beside
@@ -1412,7 +1412,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 ## CLAIMS — work in progress
 
 | Original MakeCode files in the `.sb3`, kept but marked stale (task F10 of docs/OPEN-TASKS-2026-09-29.md; owner decision 2026-10-12) | VPS Claude (opus), `Claude-Session: fa1e9be5-1c83-4316-b417-b2d621c9e62f`, worktrees under `/mnt/volume1/code/wt/lite-f10*` | base `origin/main`; a new overlay module `overlay/scratch-vm/src/serialization/bw-makecode-original.js` (+ its save/load hooks in `scripts/apply-vm-overlay.mjs`), where an import records the original (`scripts/makecode.mjs to-sb3`, the GUI MakeCode import), the export's choice between original and regenerated files, the WIP test `test/arcade-metadata-sb3.test.mjs` re-ported plus a stale-case test; this row and the task file. Not the importer's translation (E10) nor the Arcade runtime/painter lanes. | **CLAIMED 2026-10-12.** |
-| The GUI package's avr8js follows bw-board's fork (task B15 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `origin/main`; `packages/scratch-gui/package.json`, `scripts/integrate.mjs`'s avr8js default (via `scripts/lib/avr8js-spec.mjs`), one focused test; this row and the task file. Not B14 (gearmotor reverse, 7-segment minus) nor B9 (ESP32 LEDC). | **DONE 2026-10-12 — Lite PR (this branch, `lane/b14-pwm-closeout-avr8js-20261012`).** `packages/scratch-gui/package.json` declares `github:CrispStrobe/avr8js#feea84c4`, the commit bw-board pins (#413), instead of npm `^0.21.0`; `scripts/integrate.mjs` writes it from one constant, `scripts/lib/avr8js-spec.mjs`. `test/avr8js-one-version.test.mjs` holds the constant equal to the installed bw-board's declared avr8js, checks the GUI package.json and integrate.mjs use it, and where the GUI package is installed that it resolves the fork build (`-bw.N`): 2/2 locally with the GUI installed. |
+| The GUI package's avr8js follows bw-board's fork (task B15 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `origin/main`; `packages/scratch-gui/package.json`, `scripts/integrate.mjs`'s avr8js default (via `scripts/lib/avr8js-spec.mjs`), one focused test; this row and the task file. Not B14 (gearmotor reverse, 7-segment minus) nor B9 (ESP32 LEDC). | **DONE 2026-10-12 — Lite PR (this branch, `lane/b14-pwm-closeout-avr8js-20261012`).** `packages/scratch-gui/package.json` declares `github:CrispStrobe/avr8js#feea84c4`, the commit bw-board pins (#413), instead of npm `^0.21.0`; `scripts/integrate.mjs` writes it from one constant, `scripts/lib/avr8js-spec.mjs`. `test/avr8js-one-version.test.mjs` holds the constant equal to the installed bw-board's declared avr8js, checks the GUI package.json and integrate.mjs use it, and where the GUI package is installed that it resolves the fork build (`-bw.N`): 2/2 locally with the GUI installed. **Follow-up 2026-10-12:** the tracked `packages/scratch-gui/package-lock.json` still locked npm 0.21.0 (and a nested copy under bw-board), so `worktree-deps verify` failed in every fresh worktree; it now locks the fork commit once at the top level, as installed, and the test checks the lockfile too (3/3; red on the old lockfile). |
 | Arcade importer gaps found by E9: text truthiness, shared functions across sprites, unreachable predicateBranches (task E10 of docs/OPEN-TASKS-2026-09-29.md; starts after C8) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; `overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js` + helpers, export side only if a round trip needs it, focused tests; this row and the task file. | **CLAIMED 2026-10-12.** |
 
 | DONE — `peers` LAN sharing: security review, then salvage behind a build-time gate, default OFF (task E11 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; `docs/PEERS-SECURITY-REVIEW.md` (new), `apps/tauri/src-tauri/**` behind a cargo feature / env gate, GUI peer client + settings behind the same gate, peer dialect words if they pass review, tests proving default builds contain none of it; this row and the task file. | **DONE 2026-10-12 — Lite PR #821** (branch `lane/e11-peers`). Review `docs/PEERS-SECURITY-REVIEW.md` of WIP `23e9c7f44`: GO only behind a compile-time gate OFF by default, fixes F1–F10; NO-GO for default-on until F11 (shared bearer link, no forward secrecy) is redesigned. F1 critical: the WIP's four `window.confirm` consents (peer-sessions.js:176/191/352/360) were always-truthy Promises in the app (E6), so project/code offer+request never asked — consent now native (`peer/mod.rs` `blocking_show`) before the editor sees a request; F2 silent camera capture → Allow/Deny per photo; F3 remote green flag/broadcast/variables/sprites → one consent per sharing session, stop free; F4 24 MiB pre-auth allocation → protocol v2 hello tag before any length (72 bytes per stranger); F5 8×65 s slot hold → 5 s handshake, 8 pre-auth + 4 post-auth pools; F6 zero nonce → counter nonces; F7 one dialog at a time; F8 `peer_enable` asks natively, main window only; F9 private/loopback/link-local IPv4 only; F10 `get_if_addrs` (2018) dropped; F15 (found by the first feature-on CI run, 38222898790) bidi/zero-width characters in a peer-chosen project name stripped from the consent dialog; refused: tauri-plugin-fs, Info.plist strings (F12, F13). Peer dialect words Lite-only, gated (no sb3-creator PR). **Gate:** Cargo feature `peers` (not default): module, 5 commands (`#[cfg(feature = "peers")]` in `generate_handler!`, `build.rs` `CARGO_FEATURE_PEERS`), only grant `runtime-capabilities/peers.json` (main webview, added in a gated setup block); web `BW_ENABLE_PEERS=1` DefinePlugin boolean, `=== true` at 6 consumers. **Default-off proof:** `tauri-app-command-acl` (+10 mutations), new `peers-gate.test.mjs` (7 tests; 10 mutations each red), Build guard `scripts/verify-no-peer-surface.mjs` on the emitted bundle (refuses a vacuous scan; first CI reading, Build run 38225239896: 2779 files, 221 scripts, presence marker found, 0 peer markers), webpack 5.96.1 folding measured on all 5 gate shapes (off: 0 markers/1 file; on: 4/2). **Gate-on:** tauri workflow runs `cargo test --features peers peer::` + clippy (run 38225240012: 9/9 peer tests, clippy -D warnings clean; default test + e2e green); protocol tests 7/7 locally in a standalone crate, 3 mutations red; `peer-pseudocode` 5/5 on current sb3-creator. Notices: 10 RustCrypto crates recorded (MIT OR Apache-2.0); Rust notices check current. **Remains:** F11 redesign before any default-on; a peers-on iOS build needs `NSLocalNetworkUsageDescription`; no end-to-end two-app run (no feature-on app build exists). |
@@ -3051,3 +3051,65 @@ including surrogate replacement and embedded NUL, with a byte allocation bound
 before encoding. E10 retains AST/import/type lowering; no importer helpers,
 painter, project serialization or other peer-owned files are taken. Keep PR810
 and PR834 qualification independent; do not promote the immutable corpus count.
+
+## Arcade Buffer range writes — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-buffer-write-range-20261012`, stacked on PR835.
+Own the missing explicit source offset/length Buffer.write operation in native
+blocks, canonical Code, runtime and typed export, targeted producer adoption and
+original-PXT range/overlap/readonly controls. Preserve the existing short write
+opcode/Code spelling and its defaults. The underlying generated original write
+algorithm is retained. E10 keeps importer/namespace/type-lowering ownership;
+this lane extends its import contract only. No painter, storage or other peer
+files are taken; existing candidate browser diagnostics remain independent.
+
+Buffer range claim correction — the pinned original `base/shims.d.ts` and
+original compiler expose only `Buffer.write(dstOffset, src)`. The simulator's
+extra internal parameters are not a public API; the four-argument qualification
+failed with a named compiler refusal. No range block/export is being adopted.
+The isolated experiment and original failure logs are retained privately.
+Codex instead claims `lane/arcade-buffer-readonly-20261012`, stacked on PR835:
+public `Buffer.isReadOnly()` runtime/Boolean block/Code/export, producer adoption,
+original-PXT mutation guard and roundtrip controls, and the importer contract.
+E10 retains importer helpers. Existing Buffer writes and peer source stay intact.
+
+## Arcade Buffer concatenation and byte comparison — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-buffer-comparison-20261012`, stacked on PR836.
+Own generated pinned common-package bufferConcat/bufferEquals/bufferIndexOf
+helpers, native concat/equality/search blocks and Code, typed export, targeted
+producer adoption and original-PXT/alias/SB3 controls. Preserve PXT indexed-byte
+semantics during transpilation (not JavaScript typed-array out-of-range reads),
+readonly inputs and detached concat output. Keep preallocation bounds and named
+refusal of invalid references. E10 retains importer/type-lowering ownership;
+only extend its API contract. No painter, serialization or peer files are taken.
+
+## Arcade Buffer hosted provenance gate corrections — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-buffer-provenance-20261012`, stacked on PR838.
+Fix the four observed full-suite failures from PR834 Build38279944717: update the
+independent parser opcode census for the new canonical forms, declare the offline
+fetch assertion's actual role, recognize the explicitly scoped Arrays pin and
+read its MPL-2.0 declaration from the shipped bundle for the notices census.
+Add source/author/license attribution and mutation controls; do not suppress the
+checks or modify corpus input counts. Preserve older browser diagnostics until
+they finish; parent corrections must be propagated with correct per-head counts.
+E10/importer helpers, painter and peer implementation ownership remain intact.
+
+## Arcade particle frame assertion investigation — 2026-10-12
+
+CLAIMED — Codex, parent PR810 continuation. Its Build38279930848 also
+failed the destroy/fire particle assertion. Check emitted source pixels against
+the composed frame: aggregate fire-color counts can shrink when particles cover
+the sprite. Preserve the original failure; retain positive emission, exact pixel
+composition, ghost/dissolve/lifespan and cleanup assertions. No generated PXT
+algorithm or random distribution change is authorized to make a test pass.
+
+## Arcade Buffer number-format sizes — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-buffer-format-size-20261012`, stacked on the
+Buffer candidates. Implement genuine public Buffer.sizeOfNumberFormat through
+source-extracted original algorithm, native numeric reporter/menu, Code spelling,
+typed export and producer vocabulary. Verify all16 formats, invalid/dynamic
+format values, original execution, archive reopening and generator drift. Keep
+GUI Buffer failure visible; E10 retains importer/type-lowering ownership.
