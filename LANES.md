@@ -2740,3 +2740,17 @@ shared named-song reporter/Code word, name/byte-preserving MakeCode resource
 export and real SB3 roundtrip checks. No graphical song editor claim, painter,
 engine pins or PR794 history changes. Hosted PR807 build and corpus pass;
 both browser shards failed and deployment did not execute. Preserve failures.
+
+
+## Rescue of ended Claude Arcade session — 2026-10-12
+
+CLAIMED — Codex, operator requested recovery of the ended Claude session.
+`integrate/claude-arcade-rescue-20261012` combines exact surviving candidates
+PR801 f97f3606a (placement, plus793/794 parents), PR797 2a0f1e657 (green-flag
+bw-board package adoption), PR800 a078a5e45 (countdown and deterministic clock).
+No unpublished tracked source was found; three diagnostic prototypes are archived
+privately. Keep original branches/worktrees and failures. No main adoption until
+fresh combined exact-head checks pass. PR797/800 both failed the same painted
+level after reopen assertion; that proof repair and original display readiness
+remain owned by the separately active Codex bwcx worker. Do not take its files.
+Named-song work remains in its own branch and is not discarded by this rescue.
