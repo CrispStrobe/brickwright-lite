@@ -12,6 +12,16 @@ source identities, pins, census observations and stable qualification fields.
 No simulator, engine, peer lane or workflow changes. SPIKE installer
 qualification continues in its existing separate adoption lane.
 
+## Arcade context recovery B1 — 2026-10-12
+
+CLAIMED — Codex Arcade integration. All41 partial inputs map to exact pinned
+original PXT documentation URLs in the private corpus manifest. Recover those
+authentic documents and package/asset/customts fences through a reusable CLI,
+keeping original bytes unchanged and context-enriched reports separate.
+Envelope: scripts/recover-makecode-context.mjs, tutorial-project.js and its focused controls,
+closure plan/handoff and private source/receipt records. Check original manifest
+hashes, preserve source URLs/revisions and missing-context failures. Do not
+replace the locked census or claim fragments compile as complete games.
 
 ## Arcade partial closure and Carnival browser repair — 2026-10-12
 
