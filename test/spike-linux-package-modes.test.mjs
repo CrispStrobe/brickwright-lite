@@ -4,10 +4,14 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp, mkdir, writeFile, readFile, chmod, lstat, symlink, rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
-import {join, dirname} from 'node:path';
+import {join, dirname, basename} from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {normalizePackageModes, requireStagingModes} from '../scripts/lib/spike-linux-package-modes.mjs';
 
+// These controls exercise the host's real Debian archive tools and FIFO creation.
+// Tool absence must fail the test: execFileSync throws, and only finally cleanup
+// surrounds these calls. Their versions remain host inputs; this does not prove
+// identical archives across tool versions. PATH-empty runs must remain red.
 const files = {
     'usr/bin/brickwright-tauri': 'synthetic app permission control',
     'usr/lib/Brickwright/renode/renode': 'synthetic runtime permission control',
@@ -39,9 +43,11 @@ test('root-owned package resources stay readable without changing any bytes; onl
             assert.equal(await permissions(join(root, name)), executable ? 0o755 : 0o644, name);
         }
         for (const name of ['', 'DEBIAN', 'usr/lib/Brickwright/nuttx']) assert.equal(await permissions(join(root, name)), 0o755);
-        const deb = join(root, '..', root.split('/').at(-1) + '.deb');
+        const deb = join(root, '..', basename(root) + '.deb');
         try {
+            // gate-shapes-allow: actual archive producer; absence throws, never skips.
             execFileSync('dpkg-deb', ['--build', '--root-owner-group', '--threads-max=2', root, deb], {stdio: 'pipe'});
+            // gate-shapes-allow: inspect the real archive; absence throws, never skips.
             const archive = execFileSync('dpkg-deb', ['--contents', deb], {encoding: 'utf8'});
             assert.match(archive, /-rw-r--r-- root\/root\s+\d+ .*\.\/usr\/lib\/Brickwright\/nuttx\/state-config\.json/);
             assert.match(archive, /-rwxr-xr-x root\/root\s+\d+ .*\.\/usr\/bin\/brickwright-tauri/);
@@ -49,7 +55,7 @@ test('root-owned package resources stay readable without changing any bytes; onl
     } finally {await rm(root, {recursive: true, force: true});}
 });
 test('package symlinks are rejected without changing their outside target', {skip: process.platform !== 'linux'}, async () => {
-    const root = await fixture();const target = join(root, '..', root.split('/').at(-1) + '-outside');
+    const root = await fixture();const target = join(root, '..', basename(root) + '-outside');
     try {
         await writeFile(target, 'outside');await chmod(target, 0o600);
         await symlink(target, join(root, 'link'));
@@ -60,6 +66,7 @@ test('package symlinks are rejected without changing their outside target', {ski
 test('special files and missing native executables cannot produce a qualified package', {skip: process.platform !== 'linux'}, async () => {
     const root = await fixture();
     try {
+        // gate-shapes-allow: actual FIFO adversary; absence throws, never skips.
         execFileSync('mkfifo', [join(root, 'fifo')]);
         await assert.rejects(normalizePackageModes(root, 'Brickwright'), /only regular files/);
         await rm(join(root, 'fifo'));await rm(join(root, 'usr/bin/brickwright-tauri'));
