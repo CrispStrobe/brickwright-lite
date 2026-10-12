@@ -1,5 +1,17 @@
 # Who is doing what — merge the claim before implementation
 
+## Arcade particle seed controls — 2026-10-12
+
+CLAIMED — Codex SPIKE integration, `fix/arcade-particle-test-seeds-20261012`.
+Envelope: `test/makecode-arcade-particle-effects.test.mjs` and this ledger only.
+The existing 8x8 dissolve assertion depends on an unrecorded random seed;
+two valid generated rectangles can both fall outside the image. Set the
+specific image effect's seed in the positive fixture, retain its image-change,
+particle, lifespan and handler assertions, and add an off-canvas seed control
+for cloning and destruction semantics. Preserve generated PXT/runtime bytes,
+original failed CI and all independently owned Arcade source/GUI lanes.
+
+
 ## Arcade animation resource dimensions — 2026-10-12
 
 CLAIMED — Codex Arcade integration, `lane/arcade-partial-closure-20261012`.
