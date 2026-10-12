@@ -1411,6 +1411,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+| Original MakeCode files in the `.sb3`, kept but marked stale (task F10 of docs/OPEN-TASKS-2026-09-29.md; owner decision 2026-10-12) | VPS Claude (opus), `Claude-Session: fa1e9be5-1c83-4316-b417-b2d621c9e62f`, worktrees under `/mnt/volume1/code/wt/lite-f10*` | base `origin/main`; a new overlay module `overlay/scratch-vm/src/serialization/bw-makecode-original.js` (+ its save/load hooks in `scripts/apply-vm-overlay.mjs`), where an import records the original (`scripts/makecode.mjs to-sb3`, the GUI MakeCode import), the export's choice between original and regenerated files, the WIP test `test/arcade-metadata-sb3.test.mjs` re-ported plus a stale-case test; this row and the task file. Not the importer's translation (E10) nor the Arcade runtime/painter lanes. | **CLAIMED 2026-10-12.** |
 | The GUI package's avr8js follows bw-board's fork (task B15 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `origin/main`; `packages/scratch-gui/package.json`, `scripts/integrate.mjs`'s avr8js default (via `scripts/lib/avr8js-spec.mjs`), one focused test; this row and the task file. Not B14 (gearmotor reverse, 7-segment minus) nor B9 (ESP32 LEDC). | **DONE 2026-10-12 — Lite PR (this branch, `lane/b14-pwm-closeout-avr8js-20261012`).** `packages/scratch-gui/package.json` declares `github:CrispStrobe/avr8js#feea84c4`, the commit bw-board pins (#413), instead of npm `^0.21.0`; `scripts/integrate.mjs` writes it from one constant, `scripts/lib/avr8js-spec.mjs`. `test/avr8js-one-version.test.mjs` holds the constant equal to the installed bw-board's declared avr8js, checks the GUI package.json and integrate.mjs use it, and where the GUI package is installed that it resolves the fork build (`-bw.N`): 2/2 locally with the GUI installed. |
 | Arcade importer gaps found by E9: text truthiness, shared functions across sprites, unreachable predicateBranches (task E10 of docs/OPEN-TASKS-2026-09-29.md; starts after C8) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; `overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js` + helpers, export side only if a round trip needs it, focused tests; this row and the task file. | **CLAIMED 2026-10-12.** |
 
@@ -3016,3 +3017,37 @@ Use owned dependency preparation for local VM tests; shared dependencies stay
 untouched. No E10 importer/namespace/type-lowering helper edits in this slice;
 namespace import remains a coordinated subsequent step. No painter or peer
 package/runtime ownership is taken. Keep native import diagnostics until wired.
+
+Buffer authoring followup boundary — original-export controls require the
+shared value graph to recognize the Buffer atom. The Buffer claimant owns only
+adding Buffer to its two existing atom whitelists in `value-type-graph.js`;
+this does not take E10's importer, namespace or expression/type lowering work.
+The exporter owns hex string literal preservation and NumberFormat menu export.
+
+## Arcade Buffer editor/controller proof — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-buffer-gui-proof-20261012`, based on the published
+PR810 Buffer candidate. Own a new authored Buffer/controller fixture, focused VM
+fixture acceptance, a new visible browser journey, additive light-shard wiring
+and budget registration, and Buffer GUI handoff/ledger updates. Exercise native
+numeric format dropdown edits and numeric operand edits, real controller inputs,
+Code/Blocks reconstruction, File save/reopen and actual MakeCode download/original
+execution. VM/Blockly access observes only; program and fields change through UI.
+Keep pending PR810 hosted diagnostics intact on its existing head. E10 importer
+and all other runtime/painter/file-storage owners retain their files.
+
+Buffer GUI proof's original compiler found a global named `hex` colliding with
+MakeCode's tagged-template declaration. This lane additionally owns reserving
+`hex`/`img` in the exporter's existing global-name allocator and a focused
+export/controller regression. No E10 importer or helper is taken.
+
+## Arcade UTF8 Buffer construction — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-buffer-utf8-20261012`, stacked on PR834.
+Own Buffer UTF8 construction, native reporter/block/dialect, typed MakeCode
+export and targeted producer adoption, Unicode and original-runtime controls,
+and the Buffer import contract. Match the pinned original TextEncoder path,
+including surrogate replacement and embedded NUL, with a byte allocation bound
+before encoding. E10 retains AST/import/type lowering; no importer helpers,
+painter, project serialization or other peer-owned files are taken. Keep PR810
+and PR834 qualification independent; do not promote the immutable corpus count.
