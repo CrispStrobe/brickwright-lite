@@ -108,7 +108,7 @@ var bwMakeCode = {
             var dep = queue.shift(), id = dep[0], spec = dep[1];
             var m = /^github:([^#]+?)(?:#(.+))?$/i.exec(spec);
             if (!m || overrides[id]) continue;
-            var repo = m[1].toLowerCase().replace(/\\.git$/, ''), ref = m[2] || '';
+            var repo = m[1].toLowerCase().replace(/[/]$/, '').replace(/\\.git$/, ''), ref = m[2] || '';
             var hit = null;
             for (var i = 0; i < table.length; i++) {
                 var e = table[i];

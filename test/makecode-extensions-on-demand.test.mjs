@@ -44,6 +44,9 @@ const publish = (repo, ref, ext, {licence = ext.licenceText.text, pxtJson} = {})
 test('github: specs parse; unsafe refs and non-github specs are not fetched', () => {
     assert.deepEqual(parseGithubSpec('github:Example/Motor-Ext#v1.2.0'), {repo: 'example/motor-ext', ref: 'v1.2.0'});
     assert.deepEqual(parseGithubSpec('github:example/motor-ext'), {repo: 'example/motor-ext', ref: ''});
+    assert.deepEqual(parseGithubSpec('github:Example/Motor-Ext/#v1.2.0'), {repo: 'example/motor-ext', ref: 'v1.2.0'});
+    assert.deepEqual(parseGithubSpec('github:example/motor-ext.git/'), {repo: 'example/motor-ext', ref: ''});
+    assert.equal(parseGithubSpec('github:example/motor-ext//#v1.2.0'), null);
     assert.equal(parseGithubSpec('github:example/motor-ext#../../x'), null);
     assert.deepEqual(unresolvedGithubDependencies({core: '*', a: 'github:example/a#v1', [kitronik.id]: kitronik.spec}, 'microbit', EXTENSION_TABLE)
         .map(d => d.id), ['a'], 'core is the target\'s and the vendored pin is served offline');
@@ -183,4 +186,12 @@ test('Node compiler stays offline by default and explicitly fetches a package su
     assert.equal(result.fetchedExtensions[0].repo, 'example/tutorial-extensions/motor-copy');
     assert.match(result.fetchedExtensions[0].sha256['motors.ts'], /^[a-f0-9]{64}$/);
     assert.deepEqual(result.netAttempts, [], 'PXT compiler hooks remain offline after resolving the package');
+    // Real PXT compilation, not just the fetch parser: original tutorials use
+    // a trailing slash before the revision, including subfolder packages.
+    const slashFiles = {...files, 'pxt.json': JSON.stringify({name:'subfolder-slash',
+        dependencies:{...MICROBIT_DEFAULT_DEPENDENCIES,motor:'github:example/tutorial-extensions/motor-copy/#v9'},files:['main.ts']})};
+    const slashResult = await compile('microbit',slashFiles,{fetchExtensions:true,fetch});
+    assert.equal(slashResult.success,true,JSON.stringify(slashResult.diagnostics));
+    assert.equal(slashResult.fetchedExtensions[0].repo,'example/tutorial-extensions/motor-copy');
+    assert.deepEqual(slashResult.netAttempts,[], 'canonical trailing-slash identity compiles offline');
 });

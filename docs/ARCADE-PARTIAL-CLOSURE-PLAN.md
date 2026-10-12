@@ -190,3 +190,21 @@ failure counts. All listed diagnostics must be resolved before closing a row.
 ## Separate parse-failure input
 
 `arcade-12904c83e83fe45a.ts` remains a separate OPEN parser/input-investigation lane.
+
+## B1 dependency specification repair — 2026-10-12
+
+Actual original package declarations include a trailing slash before the Git
+revision, for repositories and subfolder packages. The on-demand fetch parser
+and PXT worker lookup now canonicalize that single trailing slash consistently.
+Double slashes, traversal and malformed paths remain rejected. Eight extension
+controls pass, including actual original PXT compilation through both normal
+and trailing-slash subfolder references, offline compiler hooks and root-notice
+inheritance. This repairs package resolution; it does not prove Arcade native
+execution of those packages or resolve unavailable asset inputs.
+
+Source recovery records declared refs, resolved root commits, exact fetched
+file hashes and licence notices. Preserve unsuccessful attempts. Any mistaken
+local audit adapter must be identified separately from an application defect.
+Unpinned transitive dependencies and unrecognised source licences remain explicit
+qualification/redistribution boundaries; source availability alone is not a
+shipping claim.

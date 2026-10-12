@@ -21,7 +21,7 @@ export const RAW_BASE = 'https://raw.githubusercontent.com/';
 /** Bounds on what one compile may fetch. */
 export const FETCH_LIMITS = Object.freeze({extensions: 8, filesPerExtension: 64, bytesPerExtension: 1024 * 1024});
 
-const SPEC = /^github:([A-Za-z0-9][\w.-]*\/[\w.-]+?(?:\/[\w.-]+)*)(?:\.git)?(?:#([\w./-]+))?$/i;
+const SPEC = /^github:([A-Za-z0-9][\w.-]*\/[\w.-]+?(?:\/[\w.-]+)*)(?:\.git)?\/?(?:#([\w./-]+))?$/i;
 
 /** `github:owner/repo[/package/path]#ref` → {repo (lower case), ref ('' = default branch)}, else null. */
 export function parseGithubSpec (spec) {
