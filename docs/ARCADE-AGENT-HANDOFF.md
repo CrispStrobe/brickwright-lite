@@ -1554,3 +1554,30 @@ Commit `bf5d99f74a` advances that guard only after re-running its unchanged SPIK
 artifact assertions. PR834 includes that fix by normal merge; earlier failed
 logs remain private. Hosted checks and the visible Buffer journey still require
 exact-head results before merge or product qualification.
+
+## Buffer public API audit and readonly continuation — 2026-10-12
+
+An original compiler control rejected four-argument `Buffer.write`; those extra
+parameters are internal simulator arguments. The isolated proposed range word
+is withdrawn and does not enter the candidate. Original source declarations
+(`base/shims.d.ts` in the pinned target bundle) expose only `write(dstOffset, src)`.
+Select fragments with the public detached `slice` operation before writing.
+The failed experiment and its parser precedence failure are retained privately.
+
+The next genuine missing public method is `Buffer.isReadOnly()`. The native
+`arcade_bufferIsReadOnly` Boolean reports the generated original algorithm's
+state; Code spells it `arcade byte buffer BUFFER is read only`. The facade,
+block metadata and exporter retain actual Boolean values, including guarded
+mutation. Literal aliases remain readonly; slices, hex decodes, UTF8 decodes and
+allocated buffers are mutable. Its producer adds one canonical form,299→300.
+The import contract now lists the remaining public Buffer declarations so the
+next worker does not mistake internal simulator parameters for a public API.
+Hosted GUI/feature qualification and E10 import remain separate requirements.
+
+Readonly checkpoint:20 affected original/native/producer-identity/SPIKE controls
+pass with zero skips; producer canonical controls343pass with zero skips.
+The exporter recognizes the readonly reporter both in its type graph and Boolean
+condition classification, avoiding a numeric comparison around Boolean guards.
+Earlier malformed test grammar and an incorrect live-variable initializer
+expectation are retained privately. Actual archive reopening rebuilds the scoped
+heap. Product browser qualification and the184-input classification are unchanged.

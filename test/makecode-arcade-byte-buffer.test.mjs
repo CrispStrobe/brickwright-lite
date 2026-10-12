@@ -111,3 +111,31 @@ test('UTF8 allocation bounds count encoded bytes before invoking TextEncoder', (
         assert.throws(() => fromUTF8(12), /Expected UTF8 text/);
     } finally {globalThis.TextEncoder = OriginalEncoder;}
 });
+
+test('public Buffer readonly introspection matches original construction, aliases and detached slices', async () => {
+    const {fromHex, fromUTF8, literal} = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer.js');
+    const source = `let fixed = hex\`01020304\`
+let alias = fixed
+let copy = fixed.slice(1, 2)
+let dynamic = Buffer.fromHex("01020304")
+let utf8 = Buffer.fromUTF8("A€")
+let allocated = control.createBuffer(4)
+let fixedReadonly = fixed.isReadOnly()
+let aliasReadonly = alias.isReadOnly()
+let copyReadonly = copy.isReadOnly()
+let dynamicReadonly = dynamic.isReadOnly()
+let utf8Readonly = utf8.isReadOnly()
+let allocatedReadonly = allocated.isReadOnly()
+copy[0] = 99
+let fixedHex = fixed.toHex()
+let copyHex = copy.toHex()`;
+    const original = await runPxtArcade(source);
+    const fixed = literal('01020304'), alias = fixed, copy = fixed.slice(1, 2);
+    const actual = {fixedReadonly:fixed.isReadOnly(), aliasReadonly:alias.isReadOnly(),
+        copyReadonly:copy.isReadOnly(), dynamicReadonly:fromHex('01020304').isReadOnly(),
+        utf8Readonly:fromUTF8('A€').isReadOnly(), allocatedReadonly:new PxtBuffer(4).isReadOnly()};
+    copy.setByte(0, 99);
+    actual.fixedHex = fixed.toHex(); actual.copyHex = copy.toHex();
+    for (const [name, value] of Object.entries(actual)) assert.equal(value, original[name], name);
+    assert.throws(() => alias.setByte(0, 99), /read only buffer/);
+});

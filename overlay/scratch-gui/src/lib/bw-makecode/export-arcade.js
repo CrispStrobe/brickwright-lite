@@ -864,7 +864,7 @@ class ArcadeEmitter {
     isBoolean (b) {
         return !!b && ['arrays_valueTruthy','arrays_valueCompare','arrays_referenceRemove','arrays_referenceTruthy', 'arrays_contains', 'operator_and', 'operator_or', 'operator_not', 'operator_gt', 'operator_lt', 'operator_equals',
             'sensing_touchingobject', 'sensing_keypressed', 'sensing_mousedown', 'data_listcontainsitem',
-            'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
+            'arcade_bufferIsReadOnly', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
     }
 
     menuField (b, input, field) {
@@ -1039,6 +1039,7 @@ class ArcadeEmitter {
             return 'hex`'+hex.replace(/\s/g,'').toLowerCase()+'`';
         }
         case 'arcade_bufferLength': return `${v('BUFFER')}.length`;
+        case 'arcade_bufferIsReadOnly': return `${v('BUFFER')}.isReadOnly()`;
         case 'arcade_bufferGetByte': return `${v('BUFFER')}[${v('OFFSET')}]`;
         case 'arcade_bufferGetNumber': {
             const menu=this.menuField(b,'FORMAT','bufferFormats'), text=this.literalInput(b,'FORMAT');
@@ -2477,6 +2478,7 @@ class ArcadeEmitter {
                 if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferLiteral','arcade_bufferSlice'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
                 if(['arcade_bufferLength','arcade_bufferGetByte','arcade_bufferGetNumber'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
                 if(['arcade_bufferToHex','arcade_bufferToText'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
+                if(value.opcode==='arcade_bufferIsReadOnly'){const id=Symbol('buffer readonly');booleans.add(id);return id;}
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);return id;}
                 if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);return id;}
                 if(['arrays_valueBinary','arrays_valueUnary'].includes(value.opcode)) {

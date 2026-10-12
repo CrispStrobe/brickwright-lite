@@ -178,3 +178,52 @@ WHEN flag clicked:
     checkText(reopened);
   } finally {clearStrayTimers();}
 });
+
+test('native readonly Boolean supports guards, aliasing, Code, typed export and SB3 reopening', async () => {
+  try {
+    const source = `SPRITE Game:
+WHEN flag clicked:
+  set fixed to (arcade byte buffer literal hex "01020304")
+  set alias to fixed
+  set fixedReadonly to (arcade byte buffer fixed is read only)
+  set aliasReadonly to (arcade byte buffer alias is read only)
+  set copy to (arcade byte buffer fixed slice at 1 length 2)
+  set copyReadonly to (arcade byte buffer copy is read only)
+  IF NOT (arcade byte buffer copy is read only) THEN:
+    arcade set byte buffer copy byte at 0 to 99
+  set dynamic to (arcade byte buffer from hex text "aabb")
+  set dynamicReadonly to (arcade byte buffer dynamic is read only)
+  set fixedHex to (arcade byte buffer fixed to hex)
+  set copyHex to (arcade byte buffer copy to hex)
+`;
+    const checkReadonly = current => {
+      assert.deepEqual(current.creator.warnings, []);
+      assert.deepEqual(current.errors, []);
+      const result = values(current);
+      assert.equal(result.fixedReadonly, true);
+      assert.equal(result.aliasReadonly, true);
+      assert.equal(result.copyReadonly, false);
+      assert.equal(result.dynamicReadonly, false);
+      assert.equal(result.fixedHex, '01020304');
+      assert.equal(result.copyHex, '6303');
+      return result;
+    };
+    const run = await runProgram(source, {frames:40, storage:true});
+    const result = checkReadonly(run);
+    checkReadonly(await runProgram(run.creator.decompile(), {frames:40, storage:true}));
+    const exported = projectToArcade(JSON.parse(run.vm.toJSON()));
+    assert.deepEqual(exported.unsupported, []);
+    assert.match(exported.ts, /let Game_fixedReadonly = true/);
+    assert.match(exported.ts, /let Game_copyReadonly = false/);
+    assert.ok(!exported.ts.includes("isReadOnly() != 0"), "Boolean remains Boolean in guards");
+    assert.match(exported.ts, /\.isReadOnly\(\)/);
+    const original = await runPxtArcade(exported.files);
+    for (const name of ['fixedReadonly','aliasReadonly','copyReadonly','dynamicReadonly','fixedHex','copyHex'])
+      assert.equal(original[`Game_${name}`], result[name], name);
+    const archive = Buffer.from(await (await run.vm.saveProjectSb3()).arrayBuffer());
+    const fresh = await runProgram('SPRITE Empty:\nWHEN flag clicked:\n  wait 0 seconds\n', {frames:0, storage:true});
+    await fresh.vm.loadProject(archive);
+    fresh.vm.greenFlag(); await stepFrames(fresh.vm, 40);
+    checkReadonly(fresh);
+  } finally {clearStrayTimers();}
+});

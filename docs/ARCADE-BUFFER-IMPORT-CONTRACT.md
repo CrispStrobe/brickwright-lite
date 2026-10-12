@@ -12,6 +12,7 @@ preparation, not a claim that namespace Buffer imports already work.
 - Candidate integration: https://github.com/CrispStrobe/brickwright-lite/pull/810
 - Canonical authoring producer: https://github.com/CrispStrobe/sb3-creator/pull/96
 - UTF8 construction producer: https://github.com/CrispStrobe/sb3-creator/pull/97
+- Readonly Boolean producer: https://github.com/CrispStrobe/sb3-creator/pull/98
 - Arrays fallback: https://github.com/CrispStrobe/extensions/pull/34
 
 Repository paths:
@@ -42,6 +43,7 @@ named-song resource metadata on the existing inline/resource route.
 | `Buffer.fromUTF8(text)` / `control.createBufferFromUTF8(text)` | `arcade_bufferFromUTF8` | Fresh mutable UTF8 bytes; original surrogate replacement, byte bound before encoding |
 | `Buffer.fromHex(text)` | `arcade_bufferFromHex` | Fresh mutable decode; preserve odd-length original behavior |
 | `hex` tagged template | `arcade_bufferLiteral` | Readonly literal; same source site reuses identity, different sites stay distinct |
+| `buffer.isReadOnly()` | `arcade_bufferIsReadOnly` | Original Boolean readonly state; aliases retain it, detached slices become mutable |
 | `buffer.length` | `arcade_bufferLength` | Byte count, not Scratch string length |
 | `buffer[index]` | `arcade_bufferGetByte` | Original byte read and bounds |
 | `buffer[index] = value` | `arcade_bufferSetByte` | Mutate shared storage; evaluate receiver/index/value once in source order |
@@ -113,3 +115,34 @@ Authenticated41-context checkpoint:7translated/33partial/1Code-to-Blocks
 parsefailure. Rerun both with identical inputs after integration and report changed
 diagnostics and observed execution separately. Do not call either count a number
 of proven failing games. Do not change denominators to achieve zero partials.
+
+## Public API scope and remaining Buffer authoring gaps
+
+Validate against `base/buffer.ts` and `base/shims.d.ts` in the pinned original
+`packages/scratch-gui/static/makecode/arcade/target.json`, then compile and execute
+an original fixture before adding a native word. Simulator internals alone are
+not the public API. The original `Buffer.write` declaration takes exactly
+`dstOffset, src`; its simulator implementation has additional internal arguments
+that the compiler rejects. Keep the existing two-argument write. To select a
+source fragment, use the public `slice(offset, length)` operation and write that
+copy. Do not export four-argument `write` calls.
+
+Actual public declarations still needing runtime/native authoring/export work:
+
+| Public API | Required work beyond the existing Buffer foundation |
+| --- | --- |
+| `Buffer.create(size)` | Import alias for the existing allocator; resolve shadowing |
+| `getUint8` / `setUint8` | Import aliases for byte reads/writes |
+| `Buffer.fromBase64`, `toBase64` | Original common-package encoding/decoding and native words |
+| `Buffer.fromArray`, `toArray` | Number/reference-array bridge and all numeric formats |
+| `concat`, `Buffer.concat` | Fresh concatenation with overflow bounds and array/reference flow |
+| `indexOf`, `equals` | Original byte-search/equality algorithms and Boolean/number types |
+| `chunked`, `Buffer.chunkedFromUTF8` | Detached Buffer arrays, UTF8 boundary handling and limits |
+| `unpack`, `packAt`, `Buffer.pack`, `packedSize` | Exact public format parser, array flow and malformed-format behavior |
+| `Buffer.sizeOfNumberFormat` | Original numeric format sizes and named/dynamic enum input |
+| `hash(bits)` | Original FNV-1 algorithm and public bit-width semantics |
+
+This is a source-derived backlog, not a claim these calls occur in every partial
+corpus app. Every implementation needs original execution, native value/alias
+controls, Blocks/Code, typed export and actual SB3 reopening; importer work stays
+with E10. Aggregate Buffer collection remains a separate host-resource task.

@@ -267,6 +267,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'bufferFromUTF8',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from UTF8 text [TEXT]',arguments:str('TEXT','Hello')},
           {opcode:'bufferLiteral',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer literal hex [HEX]',arguments:str('HEX','01020304')},
           {opcode:'bufferLength',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] length',arguments:str('BUFFER','')},
+          {opcode:'bufferIsReadOnly',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade byte buffer [BUFFER] is read only',arguments:str('BUFFER','')},
           {opcode:'bufferGetByte',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] byte at [OFFSET]',arguments:{...str('BUFFER',''),...n('OFFSET',0)}},
           {opcode:'bufferSetByte',blockType:Scratch.BlockType.COMMAND,text:'Arcade set byte buffer [BUFFER] byte at [OFFSET] to [VALUE]',arguments:{...str('BUFFER',''),...n('OFFSET',0),...n('VALUE',0)}},
           {opcode:'bufferGetNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] number [FORMAT] at [OFFSET]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt16LE'},...n('OFFSET',0)}},
@@ -3871,6 +3872,7 @@ module.exports = makeExt(`// Name: Arcade
       });
     }
     bufferLength(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).length);}
+    bufferIsReadOnly(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).isReadOnly());}
     bufferGetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getByte(Scratch.Cast.toNumber(args.OFFSET)));}
     bufferSetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).setByte(Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE)));}
     bufferGetNumber(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getNumber(args.FORMAT,Scratch.Cast.toNumber(args.OFFSET)));}

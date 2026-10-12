@@ -29,6 +29,7 @@ class PxtBuffer extends Uint8Array {
     getNumber(type, offset) {return methods.getNumber(this._reference(), format(type), offset);}
     setNumber(type, offset, value) {methods.setNumber(this._reference(), format(type), offset, value);}
     getByte(offset) {return methods.getByte(this._reference(), offset);}
+    isReadOnly() {return methods.isReadOnly(this._reference());}
     setByte(offset, value) {methods.setByte(this._reference(), offset, value);}
     slice(offset = 0, length = -1) {return new PxtBuffer(methods.slice(this._reference(), offset, length).data);}
     write(offset, source, sourceOffset = 0, length = -1) {

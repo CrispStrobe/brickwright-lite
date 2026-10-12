@@ -3615,3 +3615,14 @@ including shadowing and initializer order. See
 [the complete import contract](ARCADE-BUFFER-IMPORT-CONTRACT.md). Aggregate
 Buffer heap collection and the original corpus's other missing APIs/assets remain
 open. The visible editor journey in PR834 is separately awaiting hosted proof.
+
+### Buffer public-method backlog and readonly Boolean (2026-10-12)
+
+The candidate adds `Buffer.isReadOnly()` as a native Boolean block, Code word
+and typed export, using the retained original method. The source-derived
+[Buffer backlog](ARCADE-BUFFER-IMPORT-CONTRACT.md#public-api-scope-and-remaining-buffer-authoring-gaps)
+tracks Base64, number-array bridges, concatenation, equality/search, chunking,
+packing/unpacking, numeric-format size and hashing. All need runtime, native
+palette/Code and export acceptance before import is promoted. The compiler
+exposes only two-argument `write`; proposed internal range parameters were
+rejected and withdrawn, with original diagnostics preserved privately.
