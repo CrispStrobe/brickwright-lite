@@ -47,20 +47,41 @@ try {
     const name=kind==='format'?'bufferFormats':'NUM',field=inner?.getField(name);
     if(!field)throw new Error('Missing authored Buffer '+kind+' field');
     const rect=field.getSvgRoot().getBoundingClientRect();
-    return {id:inner.id,name,before:field.getValue(),x:rect.x+rect.width/2,y:rect.y+rect.height/2};
+    const workspace=window.Blockly.getMainWorkspace(),svg=workspace.getParentSvg().getBoundingClientRect(),metrics=workspace.getMetrics();
+    return {id:inner.id,name,before:field.getValue(),x:rect.x+rect.width/2,y:rect.y+rect.height/2,
+      workspace:{left:svg.left+metrics.absoluteLeft,right:svg.right,top:svg.top,bottom:svg.bottom}};
   },kind);
-  const format=await observedField('format');assert.ok(format.x>0&&format.x<1600&&format.y>0&&format.y<1200);
+  const reachableField=async kind=>{
+    const before=await observedField(kind),w=before.workspace;
+    // Wide authored stacks may place a field beyond the clipped workspace even
+    // while its SVG coordinates are inside the browser viewport. Pan through
+    // the actual user's wheel event; Blockly access above only observes.
+    const target={x:(w.left+w.right)/2,y:w.top+Math.min(200,(w.bottom-w.top)/2)};
+    await page.mouse.move(target.x,target.y);
+    await page.mouse.wheel(before.x-target.x,before.y-target.y);
+    await page.waitForFunction(({id,name})=>{
+      const workspace=window.Blockly.getMainWorkspace(),field=workspace.getBlockById(id)?.getField(name);
+      if(!field)return false;
+      const rect=field.getSvgRoot().getBoundingClientRect(),svg=workspace.getParentSvg().getBoundingClientRect();
+      const x=rect.x+rect.width/2,y=rect.y+rect.height/2,left=svg.left+workspace.getMetrics().absoluteLeft;
+      return x>left+5&&x<svg.right-30&&y>svg.top+5&&y<svg.bottom-30&&
+        workspace.getBlockById(id).getSvgRoot().contains(document.elementFromPoint(x,y));
+    },before);
+    const after=await observedField(kind);
+    (report.fieldPans ||= []).push({kind,before,after});return after;
+  };
+  const format=await reachableField('format');
   report.formatField=format;
   const escapedFormatId=await page.evaluate(id=>CSS.escape(id),format.id);
   // A coordinate can lie under a flyout or a workspace overlay. Let Playwright
   // wait for the actual authored SVG field to receive the user's click.
-  await page.locator(`g[data-id=${escapedFormatId}] > g[data-argument-type="dropdown"]`).click();
+  await page.locator(`g[data-id=${escapedFormatId}][data-argument-type="dropdown"]`).click();
   const choices=page.getByRole('menuitemcheckbox');await choices.first().waitFor({state:'visible'});
   const labels=await choices.allTextContents();assert.equal(labels.length,16,'all original formats are selectable');
   await page.getByRole('menuitemcheckbox',{name:'UInt16BE',exact:true}).click();
   await page.waitForFunction(({id,name})=>window.Blockly.getMainWorkspace().getBlockById(id)?.getFieldValue(name)==='UInt16BE',format);
   report.edits.push({field:'NumberFormat',before:format.before,after:'UInt16BE',choices:labels});
-  const number=await observedField('number');assert.equal(Number(number.before),4660);assert.ok(number.x>0&&number.x<1600&&number.y>0&&number.y<1200);
+  const number=await reachableField('number');assert.equal(Number(number.before),4660);assert.ok(number.x>0&&number.x<1600&&number.y>0&&number.y<1200);
   await page.mouse.click(number.x,number.y);
   const input=page.locator('input.blocklyHtmlInput');await input.waitFor({state:'visible'});await input.fill('43981');await input.press('Enter');
   await page.waitForFunction(({id,name})=>Number(window.Blockly.getMainWorkspace().getBlockById(id)?.getFieldValue(name))===43981,number);
