@@ -1405,3 +1405,27 @@ Next: collect the exact-head hosted wide-artwork journey; resolve namespace
 Buffer/song semantics in coordination with the importer owner and complete
 graphical dependency import and authoring evidence. The original census and
 pending browser acceptance are not promoted by this focused oracle.
+
+## Byte-buffer runtime foundation — 2026-10-12
+
+`scripts/generate-arcade-buffers.mjs` extracts the complete buffer methods from
+the pinned pxt-core13.2.1 simulator, records their SHA256 and verifies exact
+regeneration. The generated `buffer-pxt.js` retains original numeric, byte,
+slice/write/fill/shift/rotate algorithms. `buffer.js` supplies a bounded mutable
+Uint8Array facade; the mixer now uses it instead of its four-format adapter.
+The original Microsoft MIT notice is shipped and recorded in the notices.
+
+`test/makecode-arcade-byte-buffer.test.mjs` executes original MakeCode programs
+and compares all16 number formats, aliasing, detached copies, self-overlapping
+writes, range operations, clipping and UTF8. Allocation guards run before byte
+allocation; unsupported numeric formats fail explicitly. Song/mixer regressions
+remain required. The first original fixture used the shim's four-argument write
+shape where the public TypeScript method takes two arguments; compilation
+refused it. The corrected public call retains the overlapping-copy assertion.
+That original failed attempt is preserved privately.
+
+Next: wire distinct session-scoped Buffer values and native Blocks/Code words,
+then coordinate importer/helper changes with E10 and preserve exact MakeCode
+export operations. Namespace Buffer/song diagnostics remain until that complete
+path works. This foundation does not establish graphical byte/song editing,
+installed GUI acceptance or a changed original corpus census.

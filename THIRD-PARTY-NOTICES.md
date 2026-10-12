@@ -1637,6 +1637,13 @@ re-implementations. Generated from the pinned pxt-arcade 4.2.1 bundle above
 compiled into the app; each generator has a `--check` mode that fails when the
 committed file differs from the pinned bundle:
 
+- **pxt-core13.2.1** (https://github.com/microsoft/pxt/tree/v13.2.1/pxtsim),
+  MIT, Copyright (c) Microsoft Corporation: the complete simulator buffer
+  algorithms, extracted without algorithm changes and formatted, in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer-pxt.js`
+  (`scripts/generate-arcade-buffers.mjs`). The host supplies cast/error and UTF8
+  decoding boundaries; `buffer.js` bounds allocation and preserves mutable byte
+  storage for the mixer. Full notice: `static/licenses/pxt-core.MIT.txt`.
 - **pxt-common-packages** (https://github.com/microsoft/pxt-common-packages),
   MIT, Copyright (c) Microsoft Corporation: the simulator's image algorithms
   (`sim/common-sim.js`: setPixel, fillRect, drawLine, drawImage, overlapsWith, ...)

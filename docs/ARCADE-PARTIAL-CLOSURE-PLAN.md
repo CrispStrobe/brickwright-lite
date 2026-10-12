@@ -361,3 +361,26 @@ and the unchanged142/41/1 original census remain separate gates.
 ```sh
 node --import ./scripts/lib/register-gui-scope.mjs --test --test-name-pattern='wide sprites retain' test/arcade-wide-artwork.test.mjs
 ```
+
+### B1 byte-buffer runtime foundation
+
+The mixer's limited four-format numeric adapter is replaced with the complete
+buffer algorithms from the pinned pxt-core13.2.1 simulator. Extraction retains
+the original algorithms; a generator records their SHA256 and verifies exact
+regeneration. The host facade retains mutable Uint8Array storage, delegates
+numeric/byte/slice/write/fill/shift/rotate operations and bounds each allocation
+to1MiB. All16 number formats include signed/unsigned integers, both byte orders
+and32/64-bit floats. Source attribution and the original MIT notice are retained.
+
+This is runtime foundation, not namespace Buffer import support. Subsequent
+work must add a distinct session-scoped Buffer reference, alias-preserving
+variable/function/array flow, native Code/Blocks vocabulary and proper export.
+Then connect `hex`, `Buffer.fromHex`, `control.createBuffer`, numeric access and
+`music.createSong(buffer)` without substituting a string for mutable storage.
+Coordinate the importer/helper edits with E10 ownership. Literal readonly
+buffers and mutable constructed buffers need separate original controls.
+Keep namespace hex-buffer diagnostics until those paths execute correctly.
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/makecode-arcade-byte-buffer.test.mjs test/makecode-arcade-song-runtime.test.mjs test/makecode-arcade-song-values.test.mjs
+```

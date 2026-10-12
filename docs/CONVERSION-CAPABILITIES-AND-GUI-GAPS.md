@@ -3536,7 +3536,28 @@ Pixel corner painting outside the Arcade viewport, playback, bundle8 save/
 reopen and original-compiler GUI export. That new GUI journey is PENDING,
 not a completed browser receipt. Original184-input census142/41/1 unchanged.
 
-Next: collect the exact-head hosted wide-artwork journey; add independent
-per-pixel collision/visible-screen oracle coverage for wide images; resolve
-namespace Buffer/song semantics in coordination with the importer owner and
-complete graphical dependency import and authoring evidence.
+The focused wide-image collision and presented-screen oracle now passes:
+offscreen edge/transparent-neighbour collision, image mutation, all19200pixels,
+Code reconstruction, native export/reimport and SB3 reload. Hosted Pixel GUI
+acceptance remains separate and pending.
+
+### Byte-buffer foundation and remaining authoring — 2026-10-12
+
+The mixer now uses complete pinned PXT buffer algorithms, replacing its limited
+four-format adapter. The new bounded byte facade preserves shared mutable
+storage, copying slices, overlapping writes, fill/shift/rotate and all16 numeric
+formats. Original simulator controls compare real program results, including
+integer byte order, signedness and32/64-bit floats. Regeneration and Microsoft
+MIT attribution are retained; no importer diagnostic is removed by this slice.
+
+| Surface | Current boundary | Required next acceptance |
+| --- | --- | --- |
+| Mixer runtime bytes | Implemented and source-backed; each allocation capped at1MiB | Retain sound/song regression controls and hosted final-head gates |
+| Buffer values in variables/functions/arrays | No public Buffer reference yet | Distinct session-scoped identity; aliases share mutation; copies separate; reset/reopen cannot revive stale references |
+| Blocks and pseudocode | No Buffer vocabulary yet | Construction, length, byte and NumberFormat reads/writes, slicing/copying and encoding reporters; decompile/reparse and real VM execution |
+| Namespace/dependency song bytes | Remain diagnosed | Import real hex/constructed buffers; preserve init order and aliasing; createSong consumes their current bytes; export actual Buffer operations |
+| GUI byte/song authoring | Still open | Visible resource/byte inspector, editing and errors; create/edit/run/save/reopen/export in the real UI |
+
+Coordinate importer/helper changes with E10. Literal readonly bytes and mutable
+constructed buffers must retain original distinctions; never replace mutable
+storage with a guessed constant hex string. Original142/41/1 census unchanged.

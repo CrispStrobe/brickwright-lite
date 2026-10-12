@@ -9,29 +9,7 @@
 
 const LOG_LIMIT = 512;
 const validateSongBuffer = require('./song-buffer');
-
-class PxtBuffer extends Uint8Array {
-    getNumber(format, offset) {
-        if (format === 'UInt16LE') return this[offset] | (this[offset + 1] << 8);
-        if (format === 'Int16LE') return ((this[offset] | (this[offset + 1] << 8)) << 16) >> 16;
-        if (format === 'Int8LE') return (this[offset] << 24) >> 24;
-        return this[offset];
-    }
-    setNumber(format, offset, value) {
-        const number = Number(value) | 0;
-        if (format === 'UInt16LE' || format === 'Int16LE') {
-            this[offset] = number & 255;
-            this[offset + 1] = (number >> 8) & 255;
-        } else this[offset] = number & 255;
-    }
-    // PXT Buffer.slice(offset, length)
-    slice(offset = 0, length) {
-        const end = length === undefined ? this.length : Math.min(this.length, offset + length);
-        const out = new PxtBuffer(Math.max(0, end - offset));
-        out.set(this.subarray(offset, end));
-        return out;
-    }
-}
+const {PxtBuffer, NumberFormat} = require('./buffer');
 
 const fromBytes = bytes => {
     const out = new PxtBuffer(bytes.length);
@@ -168,7 +146,7 @@ module.exports = function createArcadeMusic ({initializePxtMusic, clock, audioCo
             getConfigValue: (key, fallback) => fallback
         },
         hex,
-        NumberFormat: {UInt8LE: 'UInt8LE', UInt16LE: 'UInt16LE', Int8LE: 'Int8LE', Int16LE: 'Int16LE'},
+        NumberFormat,
         DAL: {CFG_SPEAKER_VOLUME: 'CFG_SPEAKER_VOLUME'},
         * pause (ms) {
             yield ms;
