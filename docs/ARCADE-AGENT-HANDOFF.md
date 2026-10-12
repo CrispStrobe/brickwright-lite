@@ -1609,3 +1609,25 @@ serialized export/original execution and exact producer/SPIKE artifact identity.
 The producer's303 canonical forms have346 passing controls and zero skips.
 Hosted build/browser qualification and E10 import remain pending; the locked
 184-input corpus classification is unchanged142translated/41partial/1parsefailure.
+
+## Full-build provenance failures — 2026-10-12
+
+[PR834 Build38279944717](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38279944717)
+failed four fast-suite controls: an obsolete282-opcode expectation, an uncensused
+offline URL assertion, missing scoped Arrays license evidence, and omission of
+the scoped Arrays pin from the pin-chain key inventory. The corpus inputs and
+417 generated-program expectations were unchanged. The comparison candidate has
+303 canonical forms; older candidates require their own exact counts.
+
+The correction reads the shipped Arrays source header without evaluating code,
+requires its MPL-2.0 notice, and checks its exact per-file repository/commit
+receipt. Missing/malformed bundles and missing/wrong notices fail explicitly.
+The URL census identifies the injected offline test assertion; production fetch
+validation remains separate. Twenty-two affected controls pass with zero skips.
+This is focused gate repair, not a new full-build or GUI qualification.
+
+The same run's heavy browser job failed during dependency installation with
+ECONNRESET before product checks. Its light browser diagnostic was still pending
+at this checkpoint and must finish before advancing that source head. Preserve
+both failures privately. Hosted candidate checks and the locked142/41/1 corpus
+classification remain independent acceptance requirements.

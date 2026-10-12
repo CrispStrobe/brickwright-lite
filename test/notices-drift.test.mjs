@@ -183,3 +183,24 @@ test('holderOf reads a copyright LINE, and finds none in a licence that has none
         + 'and a gate that compares that against a notices section reports a missing '
         + 'holder for a file whose licence simply does not name one.');
 });
+
+test('scoped Arrays artifact reads its shipped MPL declaration and detects missing or wrong notices', () => {
+    const source = '// Name: Arrays\n// By: ExampleAuthor\n// License: MPL-2.0\n(function () {})();';
+    const root = synth({
+        'vendor-pins.json': JSON.stringify({'arrays-values':'a'.repeat(40)}),
+        'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js':
+            `const makeExt = require('../adapter');\nmodule.exports = makeExt(${JSON.stringify(source)});\n`
+    });
+    const items = vendoredTrees(root, 'Owner');
+    assert.equal(items.length, 1);
+    assert.equal(items[0].licence, 'MPL-2.0');
+    assert.match(items[0].evidence, /arrays\/index.js$/);
+    assert.equal(judge({notices:'', owner:'Owner', items}).length, 1);
+    assert.equal(judge({notices:'## arrays-values — MIT\n', owner:'Owner', items}).length, 1);
+    assert.deepEqual(judge({notices:'## arrays-values — MPL-2.0\n', owner:'Owner', items}), []);
+    const missing = synth({'vendor-pins.json':JSON.stringify({'arrays-values':'a'.repeat(40)})});
+    assert.throws(() => vendoredTrees(missing, 'Owner'), /no shipped bundle/);
+    const malformed = synth({'vendor-pins.json':JSON.stringify({'arrays-values':'a'.repeat(40)}),
+        'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js':'module.exports = broken;'});
+    assert.throws(() => vendoredTrees(malformed, 'Owner'), /unreadable bundle/);
+});
