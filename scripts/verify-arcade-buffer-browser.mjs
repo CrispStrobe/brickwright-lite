@@ -142,6 +142,11 @@ try {
   report.status='passed';
 } catch(error){
   report.status='failed';report.error=String(error?.stack||error);
+  if(page)report.failureState=await page.evaluate(()=>{
+    const vm=window.__brickwrightStore?.getState()?.scratchGui?.vm;
+    const values=Object.fromEntries((vm?.runtime.targets || []).flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
+    return {hex:values.hex,copyHex:values.copyHex,currentNumber:values.currentNumber,phase:values.phase,errors:window.__bwBufferErrors || []};
+  }).catch(error=>({observationError:String(error)}));
   if(page)await page.screenshot({path:path.join(path.dirname(out),'failure.png')}).catch(()=>{});
   throw error;
 }

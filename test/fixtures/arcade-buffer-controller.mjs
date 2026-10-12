@@ -1,4 +1,5 @@
 // Original Brickwright-authored fixture: mutable bytes, dynamic enum, custom alias and slice.
+// Pane mappings: A sends space; B sends z. Keyboard b is a separate key.
 export const BUFFER_CONTROLLER_CODE = `DEVICE ARCADE
 GLOBAL bytes
 GLOBAL copy
@@ -21,7 +22,7 @@ WHEN space key pressed:
   set currentNumber to (arcade byte buffer bytes number (format) at 0)
   set hex to (arcade byte buffer bytes to hex)
   set phase to 1
-WHEN b key pressed:
+WHEN z key pressed:
   set copy to (arcade byte buffer bytes slice at 0 length 4)
   arcade set byte buffer copy byte at 0 to 99
   set copyHex to (arcade byte buffer copy to hex)

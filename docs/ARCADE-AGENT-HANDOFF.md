@@ -1860,3 +1860,19 @@ corpus promotion is claimed. Next source slice: original Buffer hash, then
 aggregate live heap/lifetime; E10 import, byte/format/array inspection and
 whole-app/controller/graphics qualification remain separate. Locked184 remains
 142 translated /41 partial /1 parse failure until genuine recensus.
+
+## Buffer controller-key browser followup — 2026-10-12
+
+[PR845 light browser](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38306464578/job/115012657444)
+completed both real shadow edits with all16 format choices and reached the
+controller cycle. Initial state and A's numeric write passed; the B phase timed
+out. The pane sends keyboard `z` for B, while the authored fixture listened for
+`b`. Its original-export alias mapping alone did not establish pane behavior.
+
+The fixture now listens for the pane's actual `z`. Its native control verifies
+an ordinary `b` press leaves phase1 and source bytes unchanged, then `z` copies
+and edits detached bytes; original exported A/B/down behavior remains required.
+The browser failure report now includes observed values at the failure boundary
+so later timeouts preserve the reached state. No VM/keyboard state is injected
+into the visible browser journey. Heavy and FPGA passed at the failed head;
+build was pending. This correction still needs fresh hosted editor proof.

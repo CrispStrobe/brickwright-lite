@@ -440,3 +440,9 @@ panic108 versus native source-level diagnostics. Namespace imports, visible
 format/byte/array tools and immutable whole-project recensus remain open.
 Next: original hash, then aggregate live heap/lifetime, followed by real app
 qualification. Latest PR834 build/heavy passed; light pending at checkpoint.
+
+Browser followup: PR845 light reached real format/numeric edits and the A
+mutation, then timed out on B because the fixture listened for b while the
+pane sends z. Use the actual pane mapping in that fixture; preserve ordinary
+b as a separate keyboard input and retain original exported controller proof.
+Heavy/FPGA passed; fresh full visible journey remains required.

@@ -13,7 +13,8 @@ test('authored Buffer fixture responds to controller inputs and preserves export
     assert.equal(values(run).currentNumber,513);assert.equal(values(run).hex,'01020304');
     const press=async key=>{run.vm.postIOData('keyboard',{key,isDown:true});await stepFrames(run.vm,8);run.vm.postIOData('keyboard',{key,isDown:false});await stepFrames(run.vm,8);};
     await press(' ');assert.equal(values(run).currentNumber,4660);assert.equal(values(run).hex,'34120304');
-    await press('b');assert.equal(values(run).copyHex,'63120304');assert.equal(values(run).hex,'34120304');
+    await press('b');assert.equal(Number(values(run).phase),1);assert.equal(values(run).hex,'34120304');
+    await press('z');assert.equal(values(run).copyHex,'63120304');assert.equal(values(run).hex,'34120304');
     await press('ArrowDown');assert.equal(values(run).hex,'34120309');
     const recreated=await runProgram(run.creator.decompile(),{frames:20,storage:true});assert.equal(values(recreated).hex,'01020304');assert.deepEqual(recreated.errors,[]);
     const exported=projectToArcade(JSON.parse(run.vm.toJSON()));assert.deepEqual(exported.unsupported,[]);
