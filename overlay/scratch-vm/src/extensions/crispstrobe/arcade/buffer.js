@@ -2,6 +2,7 @@
 // Uint8Array identity/storage is retained for the mixer and image host adapters.
 const {RefBuffer, methods} = require('./buffer-pxt')();
 const MAX_BUFFER_BYTES = 1024 * 1024;
+const MAX_BUFFER_CHUNKS = 65536;
 const format = value => typeof value === 'string' ?
     (typeof methods.NumberFormat[value] === 'number' ? methods.NumberFormat[value] : Number(value)) : value;
 
@@ -41,6 +42,10 @@ class PxtBuffer extends Uint8Array {
     fill(value, offset = 0, length = -1) {methods.fill(this._reference(), value, offset, length); return this;}
     shift(offset, start = 0, length = -1) {methods.shift(this._reference(), offset, start, length);}
     rotate(offset, start = 0, length = -1) {methods.rotate(this._reference(), offset, start, length);}
+    chunked(maxBytes) {
+        if (this.length && !(maxBytes > 0)) throw new RangeError('Arcade buffer chunk size must make progress');
+        return helpers.bufferChunked(this, maxBytes);
+    }
     toArray(type) {
         const value = format(type);
         if (!helpers.sizeOfNumberFormat(value)) throw new RangeError('Unsupported Arcade buffer array number format');
@@ -51,7 +56,11 @@ class PxtBuffer extends Uint8Array {
     toString() {return methods.toString(this._reference());}
 }
 
-const helpers = require('./buffer-helpers-pxt')({create: size => new PxtBuffer(size)}, methods.NumberFormat);
+const helpers = require('./buffer-helpers-pxt')({create: size => new PxtBuffer(size), fromUTF8: text => fromUTF8(text)},
+    methods.NumberFormat, (left, right) => ((left | 0) / (right | 0)) | 0, (chunks, createChunk) => {
+        if (chunks.length >= MAX_BUFFER_CHUNKS) throw new RangeError('Arcade buffer chunk collection exceeds allocation limit');
+        chunks.push(createChunk());
+    });
 
 // Buffer.fromHex follows the original MIT base/buffer.ts helper, including its
 // odd-length behavior. Copyright (c) Microsoft Corporation; retained common-
@@ -107,10 +116,16 @@ const fromBase64 = text => {
     if (text.length > MAX_BUFFER_BYTES * 4) throw new RangeError('Arcade buffer exceeds byte allocation limit');
     return helpers.fromBase64(text);
 };
+const chunkedFromUTF8 = (text, maxBytes) => {
+    if (typeof text !== 'string') throw new TypeError('Expected UTF8 text');
+    if (text.length > MAX_BUFFER_BYTES) throw new RangeError('Arcade buffer text exceeds input allocation limit');
+    if (text.length && (Number.isNaN(maxBytes) || maxBytes === undefined)) throw new RangeError('Arcade UTF8 buffer chunk size must make progress');
+    return helpers.chunkedFromUTF8(text, maxBytes);
+};
 const concatArrays = buffers => {
     if (!Array.isArray(buffers) || buffers.some(value => !(value instanceof PxtBuffer)))
         throw new TypeError('Expected Buffer array');
     return helpers.concatArrays(buffers);
 };
 
-module.exports = {PxtBuffer, NumberFormat: methods.NumberFormat, MAX_BUFFER_BYTES, fromBase64, fromArray, concatArrays, fromHex, fromUTF8, literal, equals: helpers.bufferEquals, sizeOfNumberFormat: type => helpers.sizeOfNumberFormat(format(type))};
+module.exports = {PxtBuffer, NumberFormat: methods.NumberFormat, MAX_BUFFER_BYTES, MAX_BUFFER_CHUNKS, chunkedFromUTF8, fromBase64, fromArray, concatArrays, fromHex, fromUTF8, literal, equals: helpers.bufferEquals, sizeOfNumberFormat: type => helpers.sizeOfNumberFormat(format(type))};

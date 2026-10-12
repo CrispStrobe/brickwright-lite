@@ -147,7 +147,6 @@ Actual public declarations still needing runtime/native authoring/export work:
 | --- | --- |
 | `Buffer.create(size)` | Import alias for the existing allocator; resolve shadowing |
 | `getUint8` / `setUint8` | Import aliases for byte reads/writes |
-| `chunked`, `Buffer.chunkedFromUTF8` | Original Buffer[] alias/copy branches, UTF8 boundary handling and limits |
 | `unpack`, `packAt`, `Buffer.pack`, `packedSize` | Exact public format parser, array flow and malformed-format behavior |
 | `hash(bits)` | Original FNV-1 algorithm and public bit-width semantics |
 
@@ -228,3 +227,41 @@ node scripts/generate-arcade-authoring-inventory.mjs --check
 
 Namespace import stays with E10; native authoring/export controls cannot promote
 immutable original apps or establish visible editor qualification by themselves.
+
+### Buffer chunking continuation
+
+Native words are `arcade byte buffer BUFFER chunks of at most SIZE bytes` and
+`arcade UTF8 text TEXT byte buffer chunks of at most SIZE bytes`. They return
+existing scoped array references containing Buffer references. Custom Buffer[]
+returns, array indexing and static concatenation retain typed MakeCode export
+through genuine `.chunked` and `Buffer.chunkedFromUTF8`. E10 retains namespace
+import and shared type helper ownership.
+
+The original `bufferChunked` returns `[source]` when it fits: preserve reference
+identity and its readonly flag. Several chunks are detached mutable slices.
+Fractional sizes retain the original indexed-slice behavior. Nonempty byte
+buffers with nonpositive/NaN sizes are refused before the original nonprogressing
+loop. Empty-buffer branches retain the original result.
+
+The original UTF8 chunker uses UTF16 string offsets, a binary search and signed
+`Math.idiv`; it may split surrogate pairs and encode each half as replacement
+bytes. Preserve observed original output instead of substituting a Unicode
+code-point chunker. Text and size values are passed through the original selected
+functions with the existing bounded UTF8 constructor. NaN/undefined sizes that
+would never progress are refused; original sizes below3 retain their error.
+
+Per-buffer1MiB and UTF8 input1MiB code-unit limits apply. Both output collections
+are limited to65536 chunks. The generator checks exactly two collection pushes
+and adapts them to reserve before invoking the next chunk allocation; exceeding
+the limit produces a named error, never a successful truncated collection.
+Aggregate live heap collection and a visible byte/chunk inspector remain open.
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test test/makecode-arcade-buffer-chunking.test.mjs test/makecode-arcade-buffer-arrays.test.mjs test/makecode-arcade-buffer-format-size.test.mjs test/makecode-arcade-byte-buffer.test.mjs test/lego-spike-roundtrip.test.mjs test/dialect-arcade-import-lines.test.mjs
+node scripts/generate-arcade-buffer-helpers.mjs --check
+node scripts/generate-arcade-authoring-inventory.mjs --check
+```
+
+Original comparisons, native Code/Blocks reconstruction, Buffer[] custom returns,
+typed exported execution and actual fresh SB3 are controls. Visible editor and
+whole original-project recensus remain separate qualification tasks.

@@ -414,3 +414,15 @@ byte inspector remain separate acceptance tasks. Next source-derived Buffer
 slices are chunking (including UTF8 boundaries), packing/unpacking and hash,
 followed by aggregate heap lifetime. Full immutable project recensus, original
 asset closure and browser journeys remain necessary before41 can become0.
+
+### Buffer chunking checkpoint — 2026-10-12
+
+Native byte/UTF8 chunk arrays now retain the source-extracted original alias,
+copy, fractional-slice and UTF16/surrogate behavior. Scoped Buffer[] custom
+returns and export through genuine MakeCode calls survive original execution
+and actual fresh SB3.31 distinct controls and354 producer controls pass without
+skips. Resource limits diagnose excessive collections before another output
+allocation. Import, visible chunk inspection and full original-app recensus
+remain open. Next: pack/unpack format parsing and hash, then aggregate live heap
+closure. Hosted full builds and editor proof remain required; observed PR834
+unit success with a cancelled full build is not release qualification.

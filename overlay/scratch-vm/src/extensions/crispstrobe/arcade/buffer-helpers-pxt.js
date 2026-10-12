@@ -2,12 +2,14 @@
 // Copyright (c) Microsoft Corporation. See static/licenses/pxt-common-packages.MIT.txt.
 // Original source: https://github.com/microsoft/pxt-common-packages/blob/master/libs/base/buffer.ts
 // Complete bundled buffer.ts SHA256: 970960b537291a5c8028afda5f210318dd1143de8f3835d4d71efb2ed9359061
-// Selected unadapted source SHA256: 021b895e50ef945a7a042ea926523cca6c9aed1c4056d4c094f2d8e1d99fcfe6
+// Selected unadapted source SHA256: 3f06cb52d1abde9b34885bacdefe71570f9da5bb4c626215ecb3cda29714ed62
 // Regenerate: node scripts/generate-arcade-buffer-helpers.mjs
 // Nine indexed Buffer reads and four writes use original getByte/setByte shims.
 // Ten string-index reads use the original PXT String_.charAt boundary.
-module.exports = function initializePxtBufferHelpers(Buffer, NumberFormat) {
+// One Math.idiv uses original signed division; two chunk pushes check collection bounds before allocation.
+module.exports = function initializePxtBufferHelpers(Buffer, NumberFormat, idiv, pushChunk) {
 const create = Buffer.create;
+const fromUTF8 = Buffer.fromUTF8;
 var helpers;
 (function (helpers) {
     helpers._b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -46,6 +48,17 @@ var helpers;
         return -1;
     }
     helpers.bufferIndexOf = bufferIndexOf;
+    function bufferChunked(buf, maxBytes) {
+        if (buf.length <= maxBytes)
+            return [buf];
+        else {
+            const r = [];
+            for (let i = 0; i < buf.length; i += maxBytes)
+                pushChunk(r, () => buf.slice(i, maxBytes));
+            return r;
+        }
+    }
+    helpers.bufferChunked = bufferChunked;
     function bufferToArray(buf, format) {
         const sz = Buffer.sizeOfNumberFormat(format);
         const len = buf.length - sz;
@@ -136,6 +149,36 @@ var Buffer;
         return res;
     }
     Buffer.fromBase64 = fromBase64;
+    function chunkLen(s, off, maxlen) {
+        let L = idiv(maxlen, 3);
+        let R = maxlen;
+        if (fromUTF8(s.slice(off, off + R)).length <= maxlen)
+            return R;
+        while (L < R) {
+            const m = (L + R) >> 1;
+            if (m == L)
+                break;
+            const ll = fromUTF8(s.slice(off, off + m)).length;
+            if (ll <= maxlen)
+                L = m;
+            else
+                R = m;
+        }
+        return L;
+    }
+    function chunkedFromUTF8(str, maxBytes) {
+        if (maxBytes < 3)
+            throw "Oops";
+        const chunks = [];
+        let pos = 0;
+        while (pos < str.length) {
+            const len = chunkLen(str, pos, maxBytes);
+            pushChunk(chunks, () => fromUTF8(str.slice(pos, pos + len)));
+            pos += len;
+        }
+        return chunks;
+    }
+    Buffer.chunkedFromUTF8 = chunkedFromUTF8;
     /**
      * Create a new buffer initialized to bytes from given array.
      * @param bytes data to initialize with
@@ -194,5 +237,5 @@ var Buffer;
     Buffer.sizeOfNumberFormat = sizeOfNumberFormat;
 })(Buffer || (Buffer = {}));
 
-return {...helpers, sizeOfNumberFormat: Buffer.sizeOfNumberFormat, fromArray: Buffer.fromArray, concatArrays: Buffer.concat, fromBase64: Buffer.fromBase64};
+return {...helpers, sizeOfNumberFormat: Buffer.sizeOfNumberFormat, fromArray: Buffer.fromArray, concatArrays: Buffer.concat, fromBase64: Buffer.fromBase64, chunkedFromUTF8: Buffer.chunkedFromUTF8};
 };

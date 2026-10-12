@@ -3678,3 +3678,14 @@ source-extracted parser retains original incomplete-group/padding/URL-safe
 behavior. Original runtime, Code reconstruction and fresh SB3 checks are
 required. A byte/encoding inspector, visible editor/controller journey and
 namespace imports remain open; source vocabulary alone does not close them.
+
+### Buffer chunk authoring (2026-10-12)
+
+Native `arcade_bufferChunked` and `arcade_bufferChunkedFromUTF8` reporters now
+produce scoped Buffer[] references in Code and blocks. Typed export retains
+custom returns and array-element types. Single-byte-chunk identity and readonly
+status match original aliases; multi-chunk storage is detached. Original UTF16
+search/surrogate behavior is preserved. Collection bounds reject unsafe output
+instead of truncating it. A visible array/byte/chunk inspector, GUI field/controller
+proof and namespace import remain open; the vocabulary inventory alone does not
+qualify those user journeys.

@@ -274,6 +274,8 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'bufferGetByte',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] byte at [OFFSET]',arguments:{...str('BUFFER',''),...n('OFFSET',0)}},
           {opcode:'bufferSetByte',blockType:Scratch.BlockType.COMMAND,text:'Arcade set byte buffer [BUFFER] byte at [OFFSET] to [VALUE]',arguments:{...str('BUFFER',''),...n('OFFSET',0),...n('VALUE',0)}},
           {opcode:'bufferFromBase64',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from Base64 text [TEXT]',arguments:str('TEXT','AQID')},
+          {opcode:'bufferChunked',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] chunks of at most [SIZE] bytes',arguments:{...str('BUFFER',''),...n('SIZE',256)}},
+          {opcode:'bufferChunkedFromUTF8',blockType:Scratch.BlockType.REPORTER,text:'Arcade UTF8 text [TEXT] byte buffer chunks of at most [SIZE] bytes',arguments:{...str('TEXT','hello'),...n('SIZE',256)}},
           {opcode:'bufferFromArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from number array [ARRAY]',arguments:str('ARRAY','')},
           {opcode:'bufferToArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] to number array format [FORMAT]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt8LE'}}},
           {opcode:'bufferConcatArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade concatenate byte buffers in array [ARRAY]',arguments:str('ARRAY','')},
@@ -3899,6 +3901,9 @@ module.exports = makeExt(`// Name: Arcade
       return array;
     }
     bufferFromBase64(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.fromBase64(Scratch.BWValues.decode(args.TEXT))));}
+    _bufferChunks(chunks) {return Scratch.BWValues.arrayReference(this._runtime,chunks.map(bytes=>this._bufferReference(bytes)));}
+    bufferChunked(args) {return this._bufferGuard(()=>this._bufferChunks(this._buffer(args.BUFFER).chunked(Scratch.Cast.toNumber(args.SIZE))));}
+    bufferChunkedFromUTF8(args) {return this._bufferGuard(()=>this._bufferChunks(dependencies.buffers.chunkedFromUTF8(Scratch.BWValues.decode(args.TEXT),Scratch.Cast.toNumber(args.SIZE))));}
     bufferFromArray(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.fromArray(this._bufferArray(args.ARRAY).map(value=>Scratch.BWValues.decode(value)))));}
     bufferToArray(args) {return this._bufferGuard(()=>Scratch.BWValues.arrayReference(this._runtime,this._buffer(args.BUFFER).toArray(args.FORMAT)));}
     bufferConcatArray(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.concatArrays(this._bufferArray(args.ARRAY).map(value=>this._buffer(value)))));}

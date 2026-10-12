@@ -1754,3 +1754,41 @@ Next Buffer slices: original chunking/UTF8 chunk boundaries, packing and unpacki
 format parsing, then hash and aggregate heap lifetime. E10 keeps AST/namespace
 import and shared type helper ownership. Locked184 originals remain142 translated,
 41 partial and1 parse failure; authenticated41 contexts remain7/33/1.
+
+## Buffer chunking continuation — 2026-10-12
+
+Candidate `lane/arcade-buffer-chunking-20261012` stacks on
+[PR844](https://github.com/CrispStrobe/brickwright-lite/pull/844). Producer
+[PR103](https://github.com/CrispStrobe/sb3-creator/pull/103) supplies311 canonical
+forms with its exact pin in `vendor-pins.json`. Native `arcade_bufferChunked`
+and `arcade_bufferChunkedFromUTF8` return scoped Buffer[] values through Code,
+blocks and typed original MakeCode export, including custom returns.
+
+Original helpers are source-extracted, with checked signed division and two
+bounded collection pushes before the next output allocation. A fitting Buffer
+is returned by identity, retaining readonly status. Multiple chunks detach.
+Fractional slices, UTF16 search offsets, surrogate splitting, BOM/NUL and
+malformed surrogates match executed original traces. Named guards bound unsafe
+nonprogressing sizes, UTF8 inputs, individual bytes and chunk collections.
+See [the import contract](ARCADE-BUFFER-IMPORT-CONTRACT.md) for limits and commands.
+
+The first six-file batch passed29 controls and failed one authoring fixture:
+it omitted the existing word `text` in `from hex text`. Correcting that fixture
+gives the sixth chunk control; its native Code/Blocks, Buffer[] custom returns,
+original exported execution and fresh SB3 pass. A separate existing Base64
+authoring/archive regression also passes. Distinct affected controls31, zero
+skips; producer354, zero skips. Both generators reproduce exactly. This is
+focused source qualification, not a full product build or visible GUI proof.
+
+The completed PR834 followup has a passing heavy browser shard and passing unit
+suite. Its build job was cancelled after30 minutes before distribution guards
+completed; do not call it a passed build or a new unit failure. Its light shard
+failed when the Buffer menu selector found no element. Saved observations show
+the field atx1122, clipped beyond the workspace atx865. The original Scratch
+Blocks field initializer also places a shadow's dropdown attribute on its root,
+not a child. Preserve the public failures and private screenshot/JSON; the
+visible field journey needs corrected user panning and selector qualification.
+
+Next source slices are pack/unpack/format parsing, hash and aggregate heap
+lifetime. E10 retains AST/import/shared type helpers. The immutable184 census
+remains142/41/1; authenticated41 contexts remain7/33/1 until a true recensus.
