@@ -51,6 +51,7 @@ import {svgToPixels, quantizeRgba, toImgLiteral, remapPalette, nearestIndex} fro
 // arcade-character-animations Predicate members.
 const CHARACTER_PREDICATE_NAMES = ['NotMoving', 'Moving', 'FacingUp', 'FacingRight', 'FacingDown', 'FacingLeft', 'MovingUp', 'MovingRight',
     'MovingDown', 'MovingLeft', 'HittingWallUp', 'HittingWallRight', 'HittingWallDown', 'HittingWallLeft'];
+const BUFFER_FORMAT_NAMES = ['Int8LE','UInt8LE','Int16LE','UInt16LE','Int32LE','Int8BE','UInt8BE','Int16BE','UInt16BE','Int32BE','UInt32LE','UInt32BE','Float32LE','Float64LE','Float32BE','Float64BE'];
 // Background effects game over takes: particle screen effects and image effects.
 const BACKGROUND_EFFECTS = ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter'];
 import {ARCADE_PALETTE, imageToSvg} from './arcade-assets.js';
@@ -99,7 +100,7 @@ const ident = name => {
 
 const RESERVED = new Set(['score', 'life', 'info', 'game', 'scene', 'sprites', 'controller', 'Math', 'function', 'let', 'var',
     'if', 'else', 'while', 'for', 'return', 'true', 'false', 'null', 'new', 'this', 'pause', 'forever',
-    'SpriteKind', 'SpriteFlag', 'ControllerButtonEvent', 'DialogLayout', 'Image', 'console', 'control', 'assets', 'images', 'image', 'undefined']);
+    'SpriteKind', 'SpriteFlag', 'ControllerButtonEvent', 'DialogLayout', 'Image', 'Buffer', 'NumberFormat', 'console', 'control', 'assets', 'images', 'image', 'undefined']);
 
 class ArcadeEmitter {
     constructor (project, opts) {
@@ -1021,6 +1022,33 @@ class ArcadeEmitter {
         case 'arcade_animationAssetFrames':
         case 'arcade_animationAssetInterval': return this.authoredAnimation(b);
         case 'arcade_createImage': return `image.create(${v('WIDTH')}, ${v('HEIGHT')})`;
+        case 'arcade_createBuffer': return `control.createBuffer(${v('SIZE')})`;
+        case 'arcade_bufferFromHex': {
+            const hex=this.literalInput(b,'HEX');
+            return `Buffer.fromHex(${hex===null?v('HEX'):JSON.stringify(hex)})`;
+        }
+        case 'arcade_bufferLiteral': {
+            const hex=this.literalInput(b,'HEX');
+            if(typeof hex!=='string' || !/^(?:[0-9a-f]{2})*$/i.test(hex.replace(/\s/g,''))) {
+                this.note('Byte buffer literal requires complete literal hexadecimal bytes');return 'undefined';
+            }
+            return 'hex`'+hex.replace(/\s/g,'').toLowerCase()+'`';
+        }
+        case 'arcade_bufferLength': return `${v('BUFFER')}.length`;
+        case 'arcade_bufferGetByte': return `${v('BUFFER')}[${v('OFFSET')}]`;
+        case 'arcade_bufferGetNumber': {
+            const menu=this.menuField(b,'FORMAT','bufferFormats'), text=this.literalInput(b,'FORMAT');
+            const fmt=menu || (text===null?this.literalNumber(b,'FORMAT'):BUFFER_FORMAT_NAMES.includes(text)?text:Number(text));
+            const expression=BUFFER_FORMAT_NAMES.includes(fmt)?`NumberFormat.${fmt}`:
+                typeof fmt==='number' && BUFFER_FORMAT_NAMES[fmt-1]?`NumberFormat.${BUFFER_FORMAT_NAMES[fmt-1]}`:
+                fmt===null?v('FORMAT'):null;
+            if(expression===null){this.note('Byte buffer numeric format is not supported');return 'undefined';}
+            return `${v('BUFFER')}.getNumber(${expression}, ${v('OFFSET')})`;
+        }
+        case 'arcade_bufferSlice': return `${v('BUFFER')}.slice(${v('OFFSET')}, ${v('LENGTH')})`;
+        case 'arcade_bufferToHex': return `${v('BUFFER')}.toHex()`;
+        case 'arcade_bufferToText': return `${v('BUFFER')}.toString()`;
+        case 'arcade_songFromBuffer': return `music.createSong(${v('BUFFER')})`;
         case 'arcade_cloneImage': return `${v('IMAGE')}.clone()`;
         case 'arcade_screenImage': return 'screen';
         case 'arcade_melodyPlayable': return `music.melodyPlayable(${v('MELODY')})`;
@@ -1158,6 +1186,11 @@ class ArcadeEmitter {
             const property = this.field(b, 'PROPERTY');
             if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data'].includes(property)){this.note(`Arcade sprite property ${property} is unsupported`);return this.na();}
             return `${v('ID')}.${property}`;
+        }
+        case 'arcade_menu_bufferFormats': {
+            const format=this.field(b,'bufferFormats');
+            if(!BUFFER_FORMAT_NAMES.includes(format)){this.note('Byte buffer numeric format is not supported');return 'undefined';}
+            return `NumberFormat.${format}`;
         }
         case 'arcade_menu_scaleAnchors': return String(Number(this.field(b,'scaleAnchors')));
         case 'arcade_menu_cameraProperties': return String(Number(this.field(b,'cameraProperties')));
@@ -1896,6 +1929,20 @@ class ArcadeEmitter {
             return;
         }
         case 'arcade_copyImageFrom': push(`${v('IMAGE')}.copyFrom(${v('SOURCE')})`);return;
+        case 'arcade_bufferSetByte': push(`${v('BUFFER')}[${v('OFFSET')}] = ${v('VALUE')}`);return;
+        case 'arcade_bufferSetNumber': {
+            const menu=this.menuField(b,'FORMAT','bufferFormats'), text=this.literalInput(b,'FORMAT');
+            const fmt=menu || (text===null?this.literalNumber(b,'FORMAT'):BUFFER_FORMAT_NAMES.includes(text)?text:Number(text));
+            const expression=BUFFER_FORMAT_NAMES.includes(fmt)?`NumberFormat.${fmt}`:
+                typeof fmt==='number' && BUFFER_FORMAT_NAMES[fmt-1]?`NumberFormat.${BUFFER_FORMAT_NAMES[fmt-1]}`:
+                fmt===null?v('FORMAT'):null;
+            if(expression===null){this.note('Byte buffer numeric format is not supported');return;}
+            push(`${v('BUFFER')}.setNumber(${expression}, ${v('OFFSET')}, ${v('VALUE')})`);return;
+        }
+        case 'arcade_bufferWrite': push(`${v('BUFFER')}.write(${v('OFFSET')}, ${v('SOURCE')})`);return;
+        case 'arcade_bufferFill': push(`${v('BUFFER')}.fill(${v('VALUE')}, ${v('OFFSET')}, ${v('LENGTH')})`);return;
+        case 'arcade_bufferShift': push(`${v('BUFFER')}.shift(${v('AMOUNT')}, ${v('OFFSET')}, ${v('LENGTH')})`);return;
+        case 'arcade_bufferRotate': push(`${v('BUFFER')}.rotate(${v('AMOUNT')}, ${v('OFFSET')}, ${v('LENGTH')})`);return;
         case 'arcade_scrollImage': push(`${v('IMAGE')}.scroll(${v('X')}, ${v('Y')})`);return;
         case 'arcade_mutateImage': {
             const op=this.field(b,'OP'); if(!['fill','replace','flipX','flipY'].includes(op)){this.note(`Unsupported Arcade image operation ${op}`);return;}
@@ -2362,7 +2409,7 @@ class ArcadeEmitter {
     /** Infer Image argument annotations from native image operations and
      * resource aliases. Constraint edges carry types through forwarded calls. */
     imageProcedureParameters () {
-        const graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
+        const graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
         const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],lookupTypes=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
         const inputBlock = (blocks, b, name) => {
@@ -2423,6 +2470,9 @@ class ArcadeEmitter {
                 if(value.opcode==='arrays_namedReference'){const id='named-array:'+literal(blocks,value,'NAME');arrays.add(id);return id;}
                 if(['arrays_parseLegacyValue','arrays_jsonValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
                 if(value.opcode==='arcade_spriteToString') {const id=Symbol('sprite text');strings.add(id);return id;}
+                if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferLiteral','arcade_bufferSlice'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
+                if(['arcade_bufferLength','arcade_bufferGetByte','arcade_bufferGetNumber'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
+                if(['arcade_bufferToHex','arcade_bufferToText'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);return id;}
                 if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);return id;}
                 if(['arrays_valueBinary','arrays_valueUnary'].includes(value.opcode)) {
@@ -2498,6 +2548,8 @@ class ArcadeEmitter {
                 for (const input of ['arcade_blitImage','arcade_imagesOverlap','arcade_copyImageFrom'].includes(block.opcode) ? ['IMAGE', 'SOURCE'] : ['IMAGE']) {
                     const image = ref(inputBlock(blocks,block,input));if(image)images.add(image);
                 }
+                if(block.inputs?.BUFFER){const buffer=ref(inputBlock(blocks,block,'BUFFER'));if(buffer)graphBufferValues.add(buffer);}
+                if(block.opcode==='arcade_bufferWrite'){const buffer=ref(inputBlock(blocks,block,'SOURCE'));if(buffer)graphBufferValues.add(buffer);}
                 if(block.opcode==='arcade_eventPlayer'){const player=ref(block);if(player)graphPlayerValues.add(player);}
                 if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons','arcade_playerButtonPressed','arcade_getPlayerState','arcade_setPlayerState','arcade_changePlayerState'].includes(block.opcode)){
                     const player=ref(inputBlock(blocks,block,'PLAYER'));if(player)graphPlayerValues.add(player);
@@ -2567,7 +2619,7 @@ class ArcadeEmitter {
         }
         edges.push(...captureLinks);
         const graph=new ValueTypeGraph();
-        for(const [values,type] of [[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
+        for(const [values,type] of [[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
         for(const [a,b] of edges)graph.merge(a,b);
         for(const [receiver,value] of dataProperties)if(receiver)graph.merge(graph.property(receiver,'data'),value);
         for(const [,value] of dataProperties)if(!graph.node(value).types.size)graph.add(value,'any');
@@ -2597,12 +2649,12 @@ class ArcadeEmitter {
         // to its elements (which would incorrectly change the argument type).
         for(const [array,value] of lookupTypes)if(array && value){
             const element=graph.element(array),types=graph.node(element).types;
-            const searched=[...graph.node(value).types].filter(type=>['Image','Sprite','TileLocation','LegacyTile','Animation','SevenSegDigit','DigitCounter','Dart','Corgio','Scene','PhysicsEngine','Player','array','number','string','boolean'].includes(type));
+            const searched=[...graph.node(value).types].filter(type=>['Buffer','Image','Sprite','TileLocation','LegacyTile','Animation','SevenSegDigit','DigitCounter','Dart','Corgio','Scene','PhysicsEngine','Player','array','number','string','boolean'].includes(type));
             if(types.size && searched.some(type=>!types.has(type)))graph.add(element,'any');
         }
         // Element and alias joins can make a nested array visible to reads or
         // procedure results that had no annotation of their own.
-        const inferred=new Map([[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
+        const inferred=new Map([[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
         for(const [key] of graph.nodes)for(const [values,type] of inferred)if(graph.has(key,type))values.add(key);
         this.spriteReturnFunctions = new Set([...parameters.keys()].filter(key=>graph.arrayType(`${key}:result`)==='Sprite'));
         this.spriteVariableIds = new Set([...sprites].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='Sprite').map(key=>key.slice(9)));
@@ -2611,7 +2663,7 @@ class ArcadeEmitter {
         const arrayType=value=>graph.arrayType(value);
         this.mixedValueVariableIds=new Set([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && (graph.node(key).types.size>1 || graph.has(key,'any')) && graph.arrayType(key)==='any').map(key=>key.slice(9)));
         this.booleanVariableIds=new Set([...booleans].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='boolean').map(key=>key.slice(9)));
-        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['mp.Player','string','tiles.Location','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
+        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['Buffer','mp.Player','string','tiles.Location','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
         this.valueReturnTypes=new Map([...parameters.keys()].map(key=>[key,graph.arrayType(`${key}:result`)]));
         this.localValueTypes=new Map();
         for(const key of graph.nodes.keys()){
@@ -3019,7 +3071,7 @@ class ArcadeEmitter {
             const mixedInitialScalar = this.initialGlobals.has(n) &&
                 ['string', 'boolean', 'number'].some(kind => kinds.has(kind) && kind !== initialScalarType);
             out.push(arrayKind?`let ${n}: ${arrayKind} = null`:this.handleVars.has(n) ? `let ${n}: Sprite = null` :
-                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
+                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
         }
         if (this.usesAnimationResources) {
             const resources = [...this.authoredAnimationArrays.values()];

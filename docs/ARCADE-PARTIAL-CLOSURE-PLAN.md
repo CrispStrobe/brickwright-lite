@@ -384,3 +384,21 @@ Keep namespace hex-buffer diagnostics until those paths execute correctly.
 ```sh
 node --import ./scripts/lib/register-gui-scope.mjs --test --test-concurrency=1 test/makecode-arcade-byte-buffer.test.mjs test/makecode-arcade-song-runtime.test.mjs test/makecode-arcade-song-values.test.mjs
 ```
+
+### Buffer authoring checkpoint — 2026-10-12
+
+The followup now implements scoped Buffer references and16 native Code/Blocks
+words, with alias-preserving variables/custom arguments/reference arrays,
+detached slicing and actual mutable song storage. Export supplies Buffer types,
+all16 numeric enum members and intact hex text. Original-runtime controls caught
+literal content interning and number-declaration/menu-expression mistakes; the
+fixes retain source-site identity and true original compilation/execution.
+Component candidates are sb3-creator PR96 and extensions PR34; exact pins are
+recorded, with targeted Arrays adoption preserving unrelated sources. Final
+hosted qualification remains required; do not confuse candidate source with main.
+
+Next closure: E10 namespace Buffer imports and init order, then real-browser
+Buffer authoring and byte inspection. Keep whole-corpus classifications unchanged
+until the immutable184 originals and authenticated contexts are rerun. Wide
+animation authoring has separate observed hosted proof from Build38256137458;
+that older-head proof does not cover these later edits.

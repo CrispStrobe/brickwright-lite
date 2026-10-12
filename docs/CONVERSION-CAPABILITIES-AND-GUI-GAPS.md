@@ -3561,3 +3561,27 @@ MIT attribution are retained; no importer diagnostic is removed by this slice.
 Coordinate importer/helper changes with E10. Literal readonly bytes and mutable
 constructed buffers must retain original distinctions; never replace mutable
 storage with a guessed constant hex string. Original142/41/1 census unchanged.
+
+### Buffer reference authoring followup — 2026-10-12
+
+The preceding foundation's missing Buffer references and vocabulary now have
+candidate implementations. Native Blocks and Code expose16 words, genuine all16
+NumberFormat menus, session-scoped mutable references, detached slices, aliases
+through custom arguments and reference arrays, and a song reporter backed by
+actual shared bytes. Export emits proper Buffer/Buffer[] types and NumberFormat
+expressions; original PXT execution verifies results and song instructions.
+Code reconstruction and a fresh SB3 reopening execute the authored program.
+Producer/Arrays candidate adoption and final hosted gates remain pending.
+
+| GUI/import boundary | Remaining acceptance |
+| --- | --- |
+| Namespace Buffer imports | Coordinate E10; preserve declared constants, init order, mutable identity and current song bytes; keep diagnostics until wired |
+| New Buffer Blocks/Code in real browser | Author and edit byte/numeric operations, connect a dynamic format reporter, run/save/reopen/export; focused Node VM controls alone do not satisfy this |
+| Byte inspector/editor | Show readonly status, byte offsets and representations; edit mutable buffers visibly, inspect aliases, expose stale-reference/format/allocation errors |
+| Song/Buffer bridge | Author a song using shared mutable bytes in the editor and compare original exported playback |
+| Runtime resources | Per-buffer1MiB guard exists; aggregate heap retention/collection remains open |
+
+The original142/41/1 corpus count is unchanged. Wide-animation GUI acceptance
+is now observed in Build38256137458 at387337ad5 (161x121, two frames, offscreen
+edit, SB3 reopening and original-PXT pixel comparison); subsequent Buffer edits
+need their own final hosted qualification.

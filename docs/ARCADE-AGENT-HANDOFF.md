@@ -1429,3 +1429,69 @@ then coordinate importer/helper changes with E10 and preserve exact MakeCode
 export operations. Namespace Buffer/song diagnostics remain until that complete
 path works. This foundation does not establish graphical byte/song editing,
 installed GUI acceptance or a changed original corpus census.
+
+## Buffer value authoring and exact export followup — 2026-10-12
+
+This continuation supplies a genuine `buffer` reference kind to BWValues and
+its own-fork Arrays fallback. Arcade keeps a scoped mutable byte heap: variable,
+custom-block and array aliases name the same bytes; slice copies are detached.
+Project start/load/disposal drops the heap; foreign/stale references diagnose an
+unavailable buffer. The per-allocation bound remains1MiB, not an aggregate heap
+or whole-process memory guarantee. Saved runtime references do not reconstruct
+heap contents: authored programs rebuild their buffers when reopened and run.
+
+Sixteen native Arcade words cover construction, dynamic hex, readonly literals,
+length, byte and all16 NumberFormat reads/writes, slice/write/fill/shift/rotate,
+hex/UTF8 output and `music.createSong(buffer)`. The canonical words are in
+`docs/generated/ARCADE-AUTHORING-VOCABULARY.md`; `bufferFormats` is a genuine
+reporter-accepting dropdown. Export preserves hex strings with leading zeroes,
+uses actual NumberFormat members, infers Buffer parameters and Buffer[] aliases,
+and declares Buffer variables correctly. Dynamic numeric format reporters work.
+The Buffer atom is added only to the value graph's existing two whitelists;
+importer/namespace/type-lowering ownership stays with E10.
+
+Original execution caught and corrected a literal-identity error: identical
+hex literals at distinct source sites are different objects; repeated execution
+of one source site returns the same literal. The runtime caches by source block
+and target, rather than hex content. Literal byte mutation follows the original
+readonly check; numeric setter behavior is delegated to the original algorithms.
+A song keeps its actual buffer, so mutation changes its subsequent playback.
+
+Owned producer candidate: https://github.com/CrispStrobe/sb3-creator/pull/96
+(stacked on the named-song branch; not a main adoption claim). Arrays fallback:
+https://github.com/CrispStrobe/extensions/pull/34 . Lite records exact candidate
+pins. Targeted `vendor-bundles.mjs --only arrays` preserves every other bundle
+and receipt; its offline test invokes the actual script with one immutable-source
+fetch and checks same-repository per-file pin metadata. Full component and final
+Lite hosted qualification remains required before normal exact-head integration.
+
+Focused controls are `test/makecode-arcade-buffer-values.test.mjs`,
+`test/makecode-arcade-byte-buffer.test.mjs`, song runtime/value regressions,
+`test/bw-values.test.mjs`, `test/vendor-bundles-targeted.test.mjs` and the bundled
+source gate. They execute native VM Blocks/Code reconstruction, custom arguments,
+array aliasing, SB3 fresh reload, all16 menu formats and actual original exported
+PXT programs, including real sound-instruction bytes. Failed controls are retained
+privately. No importer diagnostic or locked corpus classification is promoted.
+
+Next: coordinate E10 namespace Buffer/hex construction and mutable song flow;
+add the GUI byte inspector and visible errors; exercise the new Buffer words in
+the hosted editor before declaring GUI acceptance. Original142/41/1 remains the
+last full immutable184-input census. Authenticated41-context results remain
+7translated/33partial/1parsefailure; static classifications are not game failures.
+
+### Hosted wide artwork proof received
+
+Exact PR810 head387337ad5's Build38256137458 completed all enabled checks,
+including both browser shards. The official `arcade-animation-resource-browser`
+artifact11754784220 records a161x121 two-frame animation: stable UUID, offscreen
+corner edit, bundle version8, actual SB3 reopening, original PXT compilation and
+38962 compared pixels. This supersedes the preceding pending wide-GUI note;
+it does not qualify subsequent Buffer edits or claim a production deployment.
+Permanent run: https://github.com/CrispStrobe/brickwright-lite/actions/runs/38256137458
+Artifact API: https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11754784220/zip
+
+Buffer followup local checkpoint: the seven named suites above pass54 distinct
+controls, with zero skips. This includes the actual VM source-site literal
+identity control and original exported mutable-song sound bytes. Producer's
+canonical dialect suite passes341 controls with exact298-opcode fixture coverage.
+The component CI jobs were still queued when this checkpoint was recorded.

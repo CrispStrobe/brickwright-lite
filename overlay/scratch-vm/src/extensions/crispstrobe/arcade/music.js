@@ -189,6 +189,9 @@ module.exports = function createArcadeMusic ({initializePxtMusic, clock, audioCo
             if (!/^(?:[0-9a-f]{2})+$/i.test(text)) throw new RangeError('Invalid Arcade song: expected complete hexadecimal bytes');
             return this.pxt.music.createSong(fromBytes(text.match(/../g).map(byte => parseInt(byte, 16))));
         },
+        createSongBuffer (bytes) {
+            return this.pxt.music.createSong(bytes);
+        },
         log,
         decodeInstructions,
         // Start a background fiber (control.runInParallel in other generated code).
