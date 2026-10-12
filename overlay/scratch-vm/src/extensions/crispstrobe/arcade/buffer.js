@@ -45,7 +45,7 @@ class PxtBuffer extends Uint8Array {
     toString() {return methods.toString(this._reference());}
 }
 
-const helpers = require('./buffer-helpers-pxt')({create: size => new PxtBuffer(size)});
+const helpers = require('./buffer-helpers-pxt')({create: size => new PxtBuffer(size)}, methods.NumberFormat);
 
 // Buffer.fromHex follows the original MIT base/buffer.ts helper, including its
 // odd-length behavior. Copyright (c) Microsoft Corporation; retained common-
@@ -89,4 +89,4 @@ const literal = text => {
     return bytes;
 };
 
-module.exports = {PxtBuffer, NumberFormat: methods.NumberFormat, MAX_BUFFER_BYTES, fromHex, fromUTF8, literal, equals: helpers.bufferEquals};
+module.exports = {PxtBuffer, NumberFormat: methods.NumberFormat, MAX_BUFFER_BYTES, fromHex, fromUTF8, literal, equals: helpers.bufferEquals, sizeOfNumberFormat: type => helpers.sizeOfNumberFormat(format(type))};

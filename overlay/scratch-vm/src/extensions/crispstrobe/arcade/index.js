@@ -273,6 +273,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'bufferIndexOf',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] index of byte buffer [OTHER]',arguments:{...str('BUFFER',''),...str('OTHER','')}},
           {opcode:'bufferGetByte',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] byte at [OFFSET]',arguments:{...str('BUFFER',''),...n('OFFSET',0)}},
           {opcode:'bufferSetByte',blockType:Scratch.BlockType.COMMAND,text:'Arcade set byte buffer [BUFFER] byte at [OFFSET] to [VALUE]',arguments:{...str('BUFFER',''),...n('OFFSET',0),...n('VALUE',0)}},
+          {opcode:'bufferFormatSize',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer number format [FORMAT] size',arguments:{FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt16LE'}}},
           {opcode:'bufferGetNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] number [FORMAT] at [OFFSET]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt16LE'},...n('OFFSET',0)}},
           {opcode:'bufferSetNumber',blockType:Scratch.BlockType.COMMAND,text:'Arcade set byte buffer [BUFFER] number [FORMAT] at [OFFSET] to [VALUE]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt16LE'},...n('OFFSET',0),...n('VALUE',0)}},
           {opcode:'bufferSlice',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] slice at [OFFSET] length [LENGTH]',arguments:{...str('BUFFER',''),...n('OFFSET',0),...n('LENGTH',-1)}},
@@ -3886,6 +3887,7 @@ module.exports = makeExt(`// Name: Arcade
     bufferIndexOf(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).indexOf(this._buffer(args.OTHER)));}
     bufferGetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getByte(Scratch.Cast.toNumber(args.OFFSET)));}
     bufferSetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).setByte(Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE)));}
+    bufferFormatSize(args) {return this._bufferGuard(()=>dependencies.buffers.sizeOfNumberFormat(args.FORMAT));}
     bufferGetNumber(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getNumber(args.FORMAT,Scratch.Cast.toNumber(args.OFFSET)));}
     bufferSetNumber(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).setNumber(args.FORMAT,Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE)));}
     bufferSlice(args) {return this._bufferGuard(()=>this._bufferReference(this._buffer(args.BUFFER).slice(Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH))));}

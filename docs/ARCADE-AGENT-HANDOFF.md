@@ -1661,3 +1661,28 @@ PR810 now includes prepared provenance fixes and the exact particle pixel check.
 PR834 incorporates those fixes with298 canonical forms and its own selected598fc
 Arrays source notice. Eighteen parser/fetch controls pass with zero skips; the
 browser script passes syntax/whitespace checks. No corpus classification changed.
+
+## Buffer number-format size authoring — 2026-10-12
+
+The continuation extracts genuine `Buffer.sizeOfNumberFormat` from the pinned
+common-package source. No parallel format table is maintained in runtime code.
+Native `arcade_bufferFormatSize`, the shared16-format menu, canonical Code form
+and typed export are added; producer PR100 advances303→304 canonical forms.
+Numeric custom-function returns and invalid-format zero behavior are explicit
+controls. The importer remains E10's lane.
+
+The controls also exposed a weak older literal-return fixture: two malformed
+argument inputs both returned zero, satisfying an identity comparison. It now
+uses the actual empty JSON argument array and checks returned Buffer bytes and
+length before identity. Preserve both failing harness attempts privately: the
+first awaited an optimized-away original completion marker; the second used the
+malformed function argument input. Neither licenses a wider compatibility claim.
+
+Format-size checkpoint:28 distinct affected controls pass with zero skips
+(5 unchanged parser/corpus,10 numeric-byte/helper,1 exact SPIKE artifact,
+2 format-size and10 Buffer value controls). The final12-control run includes
+the strengthened literal-return fixture and original execution of exported
+numeric functions. Producer347 controls pass with zero skips. Generator and
+whitespace checks pass. Hosted acceptance and the locked142/41/1 census remain
+unchanged. Static Buffer-array concat, number arrays, Base64, chunking, packing,
+hashing and aggregate resource limits remain on the source-derived backlog.

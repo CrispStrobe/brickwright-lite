@@ -1044,14 +1044,17 @@ class ArcadeEmitter {
         case 'arcade_bufferEquals': return `${v('BUFFER')}.equals(${v('OTHER')})`;
         case 'arcade_bufferIndexOf': return `${v('BUFFER')}.indexOf(${v('OTHER')})`;
         case 'arcade_bufferGetByte': return `${v('BUFFER')}[${v('OFFSET')}]`;
+        case 'arcade_bufferFormatSize':
         case 'arcade_bufferGetNumber': {
             const menu=this.menuField(b,'FORMAT','bufferFormats'), text=this.literalInput(b,'FORMAT');
             const fmt=menu || (text===null?this.literalNumber(b,'FORMAT'):BUFFER_FORMAT_NAMES.includes(text)?text:Number(text));
             const expression=BUFFER_FORMAT_NAMES.includes(fmt)?`NumberFormat.${fmt}`:
                 typeof fmt==='number' && BUFFER_FORMAT_NAMES[fmt-1]?`NumberFormat.${BUFFER_FORMAT_NAMES[fmt-1]}`:
+                b.opcode==='arcade_bufferFormatSize' && typeof fmt==='number' && Number.isFinite(fmt)?String(fmt):
                 fmt===null?v('FORMAT'):null;
             if(expression===null){this.note('Byte buffer numeric format is not supported');return 'undefined';}
-            return `${v('BUFFER')}.getNumber(${expression}, ${v('OFFSET')})`;
+            return b.opcode==='arcade_bufferFormatSize'?`Buffer.sizeOfNumberFormat(${expression})`:
+                `${v('BUFFER')}.getNumber(${expression}, ${v('OFFSET')})`;
         }
         case 'arcade_bufferSlice': return `${v('BUFFER')}.slice(${v('OFFSET')}, ${v('LENGTH')})`;
         case 'arcade_bufferToHex': return `${v('BUFFER')}.toHex()`;
@@ -2479,7 +2482,7 @@ class ArcadeEmitter {
                 if(['arrays_parseLegacyValue','arrays_jsonValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
                 if(value.opcode==='arcade_spriteToString') {const id=Symbol('sprite text');strings.add(id);return id;}
                 if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferLiteral','arcade_bufferSlice','arcade_bufferConcat'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
-                if(['arcade_bufferLength','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
+                if(['arcade_bufferLength','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf','arcade_bufferFormatSize'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
                 if(['arcade_bufferToHex','arcade_bufferToText'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
                 if(['arcade_bufferIsReadOnly','arcade_bufferEquals'].includes(value.opcode)){const id=Symbol('buffer readonly');booleans.add(id);return id;}
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);return id;}

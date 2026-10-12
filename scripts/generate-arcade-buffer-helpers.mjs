@@ -15,7 +15,11 @@ if (!namespace || !ts.isModuleBlock(namespace.body)) throw new Error('Pinned Buf
 const names = new Set(['bufferConcat', 'bufferEquals', 'bufferIndexOf']);
 const selected = namespace.body.statements.filter(node => ts.isFunctionDeclaration(node) && names.delete(node.name.text));
 if (names.size) throw new Error('Missing pinned Buffer helper: ' + [...names].join(', '));
-const input = 'namespace helpers {\n' + selected.map(node => node.getFullText(parsed)).join('\n') + '\n}';
+const bufferNamespace = parsed.statements.find(node => ts.isModuleDeclaration(node) && node.name.text === 'Buffer');
+const sizeFunction = bufferNamespace?.body?.statements?.find(node => ts.isFunctionDeclaration(node) && node.name.text === 'sizeOfNumberFormat');
+if (!sizeFunction) throw new Error('Missing pinned Buffer.sizeOfNumberFormat');
+const input = 'namespace helpers {\n' + selected.map(node => node.getFullText(parsed)).join('\n') + '\n}' +
+    '\nnamespace Buffer {\n' + sizeFunction.getFullText(parsed) + '\n}';
 const bufferNames = new Set(['a', 'b', 'l', 'r']);
 let indexedReads = 0;
 const indexedReadTransformer = context => {
@@ -45,13 +49,13 @@ const content = `// Generated from PXT Arcade ${bundle.versions.target} base/buf
 // Selected unadapted source SHA256: ${hash(input)}
 // Regenerate: node scripts/generate-arcade-buffer-helpers.mjs
 // Six indexed Buffer reads use the original getByte shim, including out-of-range zero.
-module.exports = function initializePxtBufferHelpers(Buffer) {
+module.exports = function initializePxtBufferHelpers(Buffer, NumberFormat) {
 ${compiled.outputText}
-return helpers;
+return {...helpers, sizeOfNumberFormat: Buffer.sizeOfNumberFormat};
 };
 `;
 const target = resolve(root, 'overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer-helpers-pxt.js');
 if (process.argv.includes('--check')) {
     if (readFileSync(target, 'utf8') !== content) throw new Error('buffer-helpers-pxt.js differs from pinned source/adaptation');
-    console.log('Verified original Buffer concatenation/equality/search helpers');
+    console.log('Verified original Buffer concatenation/equality/search/format-size helpers');
 } else writeFileSync(target, content);

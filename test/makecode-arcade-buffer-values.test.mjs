@@ -111,9 +111,9 @@ test('one literal source site retains its identity while distinct source sites s
   assert.notEqual(a,native.bufferLiteral({HEX:'0102'},util('two')));
   assert.notEqual(a,native.bufferLiteral({HEX:'0102'},{target:{id:'other'},thread:{peekStack:()=> 'one'}}));
   try {
-    const run=await runProgram('SPRITE Game:\nDEFINE make:\n  arcade return value (arcade byte buffer literal hex "0102")\nWHEN flag clicked:\n  set a to (arcade call function "make" arguments (undefined value))\n  set b to (arcade call function "make" arguments (undefined value))\n  set c to (arcade byte buffer literal hex "0102")\n',{frames:30,storage:true});
+    const run=await runProgram('SPRITE Game:\nDEFINE make:\n  arcade return value (arcade byte buffer literal hex "0102")\nWHEN flag clicked:\n  set a to (arcade call function "make" arguments ("[]"))\n  set b to (arcade call function "make" arguments ("[]"))\n  set c to (arcade byte buffer literal hex "0102")\n  set returnedHex to (arcade byte buffer a to hex)\n  set returnedLength to (arcade byte buffer a length)\n',{frames:30,storage:true});
     assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
-    const result=values(run);assert.equal(result.a===result.b,original.same);assert.notEqual(result.a,result.c);
+    const result=values(run);assert.equal(result.returnedHex,"0102");assert.equal(result.returnedLength,2);assert.equal(result.a===result.b,original.same);assert.notEqual(result.a,result.c);
   } finally {clearStrayTimers();}
 });
 

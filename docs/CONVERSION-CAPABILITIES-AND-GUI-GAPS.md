@@ -3637,3 +3637,17 @@ Static `Buffer.concat(Buffer[])`, Base64/number arrays, chunking, packing and
 hashing remain tracked in the [API contract](ARCADE-BUFFER-IMPORT-CONTRACT.md).
 Importer wiring, hosted visible editor proof and unchanged corpus promotion are
 separate gates; do not mark those complete from these controls.
+
+### Buffer number-format sizes (2026-10-12)
+
+The candidate adds original `Buffer.sizeOfNumberFormat` through the native
+`arcade_bufferFormatSize` reporter and `arcade byte buffer number format FORMAT
+size` Code form. All16 menu entries and dynamic numeric inputs use the extracted
+original algorithm; export emits the static API and numeric custom-function
+returns. Code/Blocks, original export execution and fresh actual SB3 checks are
+required. This closes scalar authoring source; namespace import, byte inspection
+and visible product GUI qualification remain open.
+
+The first Buffer browser run failed before any controller cycle while opening
+a dropdown. Its followup uses an actionable SVG-field locator and failure
+screenshot; do not mark this GUI lane passed before hosted evidence.

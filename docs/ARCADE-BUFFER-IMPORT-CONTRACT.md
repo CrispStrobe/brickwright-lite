@@ -14,6 +14,7 @@ preparation, not a claim that namespace Buffer imports already work.
 - UTF8 construction producer: https://github.com/CrispStrobe/sb3-creator/pull/97
 - Readonly Boolean producer: https://github.com/CrispStrobe/sb3-creator/pull/98
 - Concat/equality/search producer: https://github.com/CrispStrobe/sb3-creator/pull/99
+- Number-format size producer: https://github.com/CrispStrobe/sb3-creator/pull/100
 - Common-package helpers: https://github.com/microsoft/pxt-common-packages/blob/master/libs/base/buffer.ts
   (exact consumed source is the pinned Arcade target bundle; generated output records complete/selected source hashes).
 - Arrays fallback: https://github.com/CrispStrobe/extensions/pull/34
@@ -21,7 +22,7 @@ preparation, not a claim that namespace Buffer imports already work.
 Repository paths:
 
 - `scripts/generate-arcade-buffers.mjs`: exact extraction/regeneration and hash.
-- `scripts/generate-arcade-buffer-helpers.mjs`: pinned concat/equality/search functions with checked indexed-read adaptation.
+- `scripts/generate-arcade-buffer-helpers.mjs`: pinned concat/equality/search and format-size functions with checked indexed-read adaptation.
 - `overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer-helpers-pxt.js`: generated common-package helpers.
 - `overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer-pxt.js`: generated original algorithms.
 - `overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer.js`: bounded mutable host facade, dynamic hex and readonly literal construction.
@@ -55,6 +56,7 @@ named-song resource metadata on the existing inline/resource route.
 | `buffer.length` | `arcade_bufferLength` | Byte count, not Scratch string length |
 | `buffer[index]` | `arcade_bufferGetByte` | Original byte read and bounds |
 | `buffer[index] = value` | `arcade_bufferSetByte` | Mutate shared storage; evaluate receiver/index/value once in source order |
+| `Buffer.sizeOfNumberFormat(format)` | `arcade_bufferFormatSize` | Original16 format sizes; dynamic enums and invalid numeric formats return original zero |
 | `buffer.getNumber(format, offset)` | `arcade_bufferGetNumber` | All16 original integer/float formats |
 | `buffer.setNumber(format, offset, value)` | `arcade_bufferSetNumber` | Original byte order, signedness and static-buffer behavior |
 | `buffer.slice(offset, length)` | `arcade_bufferSlice` | Detached copy; second argument is length |
@@ -146,10 +148,27 @@ Actual public declarations still needing runtime/native authoring/export work:
 | `Buffer.concat(Buffer[])` | Static array form; instance concatenation exists, array flow still requires integration |
 | `chunked`, `Buffer.chunkedFromUTF8` | Original Buffer[] alias/copy branches, UTF8 boundary handling and limits |
 | `unpack`, `packAt`, `Buffer.pack`, `packedSize` | Exact public format parser, array flow and malformed-format behavior |
-| `Buffer.sizeOfNumberFormat` | Original numeric format sizes and named/dynamic enum input |
 | `hash(bits)` | Original FNV-1 algorithm and public bit-width semantics |
 
 This is a source-derived backlog, not a claim these calls occur in every partial
 corpus app. Every implementation needs original execution, native value/alias
 controls, Blocks/Code, typed export and actual SB3 reopening; importer work stays
 with E10. Aggregate Buffer collection remains a separate host-resource task.
+
+### Format-size authoring continuation
+
+`arcade byte buffer number format UInt16BE size` returns2; a reporter in the
+FORMAT slot supports computed numeric enums. The native menu retains all16
+original formats. Public `Buffer.sizeOfNumberFormat` is extracted from the same
+pinned target source as the existing helpers, with source hashes and exact
+regeneration. Export emits the genuine static API and preserves numeric function
+returns. Invalid numeric formats retain the original zero result. Import alias
+resolution and visible editor qualification remain separate acceptance tasks.
+
+Run the affected controls with the exact producer pin:
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test test/makecode-arcade-buffer-format-size.test.mjs test/makecode-arcade-buffer-values.test.mjs test/makecode-arcade-byte-buffer.test.mjs test/lego-spike-roundtrip.test.mjs
+node scripts/generate-arcade-buffer-helpers.mjs --check
+node scripts/generate-arcade-authoring-inventory.mjs --check
+```
