@@ -1392,7 +1392,16 @@ Pixel corner painting outside the Arcade viewport, playback, bundle8 save/
 reopen and original-compiler GUI export. That new GUI journey is PENDING,
 not a completed browser receipt. Original184-input census142/41/1 unchanged.
 
-Next: collect the exact-head hosted wide-artwork journey; add independent
-per-pixel collision/visible-screen oracle coverage for wide images; resolve
-namespace Buffer/song semantics in coordination with the importer owner and
-complete graphical dependency import and authoring evidence.
+The focused wide-sprite oracle now compares the original simulator and native
+VM: offscreen edge collisions in both argument orders, transparent neighbours,
+pixel edits and all19200 presented screen pixels. It repeats the checks through
+Code reconstruction, SB3 reload, original execution of exported MakeCode and
+native reimport. `test/arcade-wide-artwork.test.mjs` contains the portable control.
+Original display readiness is observed after completion. The first fixture's
+constant completion marker was optimized away; its timeout is preserved and
+the corrected mutable marker passes. No runtime adjustment was needed.
+
+Next: collect the exact-head hosted wide-artwork journey; resolve namespace
+Buffer/song semantics in coordination with the importer owner and complete
+graphical dependency import and authoring evidence. The original census and
+pending browser acceptance are not promoted by this focused oracle.

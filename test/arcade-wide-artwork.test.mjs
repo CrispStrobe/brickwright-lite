@@ -17,7 +17,8 @@ import {editablePixelLayerBudget, MAX_PIXEL_DIMENSION, pixelsToSvg, svgToPixels,
     from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import * as reader7 from './fixtures/artwork-reader-v7.mjs';
 import {importGuiDependency} from './helpers/bw-integrated.mjs';
-import {VM, ownerOf, projectOpcodes, stepFrames} from './helpers/bw-vm.mjs';
+import {VM, ownerOf, projectOpcodes, stepFrames, runProgram} from './helpers/bw-vm.mjs';
+import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {loadExtensionClass, VM_SRC} from './helpers/bw-extensions.mjs';
 import {compile} from '../scripts/lib/pxt-node.mjs';
 import {runArcadeSim} from '../scripts/lib/makecode-arcade-sim.mjs';
@@ -171,4 +172,72 @@ test('wide native animation keeps source geometry, clips the viewport and advanc
     assert.equal(sprite.image.pixels[160], frames[1].pixels[160]);
     assert.equal(sprite.image.pixels.at(-1), frames[1].pixels.at(-1));
     assert.deepEqual([...resource.frames[0].pixels], frames[0].pixels, 'authored source stays unchanged');
+});
+
+test('wide sprites retain offscreen pixel collisions and draw the original PXT screen through Code, SB3 and export', async () => {
+    // The last opaque pixel is outside the viewport. A renderer crop must never
+    // become the sprite's image or its collision mask. Move the probe onto that
+    // pixel, then onto a transparent neighbour, before painting the final frame.
+    const source = `let artwork = image.create(161, 121)
+artwork.fill(2)
+artwork.setPixel(159, 120, 0)
+artwork.setPixel(160, 120, 9)
+let hero = sprites.create(artwork, SpriteKind.Player)
+hero.setPosition(80.5, 60.5)
+let probe = sprites.create(img\`5\`, SpriteKind.Enemy)
+probe.setPosition(160.5, 120.5)
+let edge = hero.overlapsWith(probe)
+let reverse = probe.overlapsWith(hero)
+probe.setPosition(159.5, 120.5)
+let transparent = hero.overlapsWith(probe)
+hero.image.setPixel(159, 120, 7)
+let painted = hero.overlapsWith(probe)
+hero.image.setPixel(160, 120, 0)
+probe.setPosition(160.5, 120.5)
+let erased = hero.overlapsWith(probe)
+hero.setPosition(79.5, 59.5)
+scene.setBackgroundColor(3)
+let ready = false
+ready = true`;
+    const original = await runPxtArcade(source, {waitForGlobals: {ready: true}, fakeClock: true,
+        inspectDisplay: true, waitForDisplay: true});
+    const names = ['edge', 'reverse', 'transparent', 'painted', 'erased'];
+    assert.deepEqual(names.map(name => original[name]), [true, true, false, true, false]);
+    assert.ok(original.$display.updatesAfterReady > 0);
+    const unpack = value => '#' + [value & 255, (value >>> 8) & 255, (value >>> 16) & 255]
+        .map(byte => byte.toString(16).padStart(2, '0')).join('');
+    const expected = original.$display.screen.map(unpack);
+    const palette = ['#000000', ...ARCADE_PALETTE.slice(1)];
+    const check = run => {
+        assert.deepEqual(run.errors, []);
+        const vars = Object.fromEntries(run.vm.runtime.targets.flatMap(target => Object.values(target.variables))
+            .map(variable => [variable.name.replace(/^Game_/, ''), variable.value]));
+        assert.deepEqual(names.map(name => vars[name]), names.map(name => original[name]));
+        const frame = run.vm.runtime.bwArcadeDeviceState.sceneFrame;
+        assert.equal(frame.pixels.length, 160 * 120);
+        const different = [...frame.pixels].flatMap((index, pixel) => palette[index] === expected[pixel] ? [] : [pixel]);
+        assert.deepEqual(different.slice(0, 10), [], `${different.length} pixels differ from original PXT`);
+    };
+    const imported = importProjectFiles({'main.ts': source}, {target: 'arcade'});
+    assert.deepEqual(imported.unsupported, []);
+    const run = await runProgram(imported.code, {frames: 60, uploads: imported.costumes, storage: true});
+    try {
+        check(run);
+        const code = await runProgram(run.creator.decompile(), {frames: 60, uploads: imported.costumes, storage: true});
+        try { check(code); } finally { code.vm.quit(); }
+        const exported = projectToArcade(run.creator.project,
+            {costumeSvg: (_target, costume) => run.creator.assets.get(costume.assetId)?.data});
+        assert.deepEqual(exported.unsupported, []);
+        const exportOriginal = await runPxtArcade(exported.files, {waitForGlobals: {ready: true}, fakeClock: true,
+            inspectDisplay: true, waitForDisplay: true});
+        assert.deepEqual(names.map(name => exportOriginal[name]), names.map(name => original[name]));
+        assert.deepEqual(exportOriginal.$display.screen, original.$display.screen);
+        const reimported = importProjectFiles(exported.files, {target: 'arcade'});
+        assert.deepEqual(reimported.unsupported, []);
+        const reimportRun = await runProgram(reimported.code,
+            {frames: 60, uploads: reimported.costumes, storage: true});
+        try { check(reimportRun); } finally { reimportRun.vm.quit(); }
+        await run.vm.loadProject(Buffer.from(await (await run.vm.saveProjectSb3()).arrayBuffer()));
+        run.vm.greenFlag(); await stepFrames(run.vm, 60); check(run);
+    } finally { run.vm.quit(); }
 });

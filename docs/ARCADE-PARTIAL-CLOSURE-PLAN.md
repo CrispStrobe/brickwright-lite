@@ -339,3 +339,25 @@ document pixel/byte budgets and old-reader opaque preservation. Headless VM/
 SB3/original-PXT export and actual editor method controls pass. The added hosted
 Pixel painting/save/reopen/export journey is pending. Keep the original census
 and wide collision/screen oracle requirements open until measured.
+
+### B1 wide sprite collision and display oracle
+
+The added control in `test/arcade-wide-artwork.test.mjs` executes a161x121
+sprite in the pinned original PXT simulator and the native VM. Opaque pixels
+outside the160x120 viewport still collide in both argument orders; a transparent
+neighbour does not; pixel painting and erasure update collision masks. Every
+one of the19200 presented screen pixels matches. The original display observer
+requires a real screen update after program completion before comparison.
+
+The same assertions pass after Blocks-to-Code reconstruction and fresh SB3
+reload, and the exported native MakeCode project executes in original PXT with
+the same collision results and screen. The first fixture attempt waited on an
+optimized constant completion marker and timed out before comparison; its
+failure is retained privately. A mutable marker corrects the observation.
+No product runtime change was necessary for this case. This closes the focused
+wide-image collision/display requirement; hosted Pixel authoring qualification
+and the unchanged142/41/1 original census remain separate gates.
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test --test-name-pattern='wide sprites retain' test/arcade-wide-artwork.test.mjs
+```
