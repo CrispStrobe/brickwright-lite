@@ -64,8 +64,14 @@ test('destroy with an effect ghosts and dissolves the sprite, emits particles an
     await f.frames(10);
     assert.ok(f.state().sprites[hero], 'still drawn while the lifespan runs');
     assert.equal(destroyed, 0, 'destroy handlers run in _destroyCore, not at the request');
-    const fire = [2, 4, 5].reduce((n, c) => n + colorCount(f.state().sceneFrame, c), 0);
-    assert.ok(fire > colorCount({pixels: sprite.image.pixels}, 2), 'fire particles are composed into the scene frame');
+    // Fire can cover existing sprite pixels: aggregate color counts need not
+    // increase. Compare the original source's actual writes to the composed frame.
+    const [fireLayer] = f.arcade._inst._drawParticleSources();
+    assert.ok(fireLayer.writes.some(Boolean), 'the source emits visible fire pixels');
+    for (let i = 0; i < fireLayer.writes.length; i++) {
+        if (fireLayer.writes[i]) assert.equal(f.state().sceneFrame.pixels[i], fireLayer.image.pixels[i],
+            `fire source pixel ${i} is composed above its anchor`);
+    }
     assert.ok(f.state().sceneFrame.coverage.includes('particles'));
     await f.frames(6);
     assert.equal(f.state().sprites[hero], undefined, 'lifespan expiry destroys the sprite');

@@ -70,7 +70,7 @@ import path from 'node:path';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PINS = path.join(ROOT, 'vendor-pins.json');
 const REPOS = ['bw-board', 'sb3-creator', 'bw-circuit-ui'];
-const SCOPED_PINS = ['stc-compiler-flasher'];
+const SCOPED_PINS = ['stc-compiler-flasher', 'arrays-values'];
 const ENV_DIR = {'bw-board': 'BW_BOARD_DIR', 'sb3-creator': 'SB3_CREATOR_DIR', 'bw-circuit-ui': 'BW_CIRCUIT_UI_DIR'};
 const PROVENANCE = 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json';
 const HEX40 = /\b[0-9a-f]{40}\b/g;
@@ -226,6 +226,10 @@ test('the pins file names three global repos plus explicitly scoped artifact pin
     const pins = currentPins();
     assert.deepEqual(Object.keys(pins).sort(), [...REPOS, ...SCOPED_PINS].sort());
     for (const [repo, sha] of Object.entries(pins)) assert.match(sha, /^[0-9a-f]{40}$/, `${repo} pin is not a full sha`);
+    const bundles = JSON.parse(readFileSync(path.join(ROOT,
+        'overlay/scratch-vm/src/extension-support/bundled-upstream-pins.json'), 'utf8'));
+    assert.equal(bundles.files.arrays.commit, pins['arrays-values'], 'scoped Arrays pin must name the actual bundled source');
+    assert.equal(bundles.files.arrays.repo, 'CrispStrobe/extensions', 'scoped Arrays source belongs to its declared repository');
     for (const repo of REPOS) {
         const sha = pins[repo];
         if (where[repo]) assert.equal(history.get(sha), repo, `${repo}'s pin ${sha.slice(0, 9)} is not a commit in ${where[repo]}`);

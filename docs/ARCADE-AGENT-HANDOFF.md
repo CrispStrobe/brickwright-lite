@@ -1609,3 +1609,45 @@ serialized export/original execution and exact producer/SPIKE artifact identity.
 The producer's303 canonical forms have346 passing controls and zero skips.
 Hosted build/browser qualification and E10 import remain pending; the locked
 184-input corpus classification is unchanged142translated/41partial/1parsefailure.
+
+## Buffer browser first execution — 2026-10-12
+
+[PR834 light browser job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38279944717/job/114927678175)
+reached visible authored native blocks without page/block errors, then timed out
+opening the format menu after a coordinate click. It completed no controller or
+archive/export cycles; this is failed GUI qualification. The followup clicks the
+identified authored SVG dropdown through Playwright's visibility/hit-target
+checks, following the existing schema browser control, and retains a failure
+screenshot and field observations. Hosted rerun must establish the result.
+
+The surviving parent focused diagnostic passed before its source was advanced.
+PR810 now includes prepared provenance fixes and the exact particle pixel check.
+PR834 incorporates those fixes with298 canonical forms and its own selected598fc
+Arrays source notice. Eighteen parser/fetch controls pass with zero skips; the
+browser script passes syntax/whitespace checks. No corpus classification changed.
+
+## Buffer shadow-menu browser correction — 2026-10-12
+
+The completed [PR834 light followup](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38290533343/job/114968997925)
+failed before any edit/controller cycle: the selector looked for a child
+dropdown under the shadow root. Scratch Blocks `Field.init` places the argument
+attribute on the shadow root itself. The captured field coordinates were also
+beyond the clipped workspace, despite lying inside the page viewport.
+
+The browser script now selects that actual shadow root, pans with real mouse
+wheel events before dropdown and numeric edits, and waits until the observed
+field is inside the editing area and its block receives the click point. It
+records both positions, preserving failed JSON/screenshot evidence. It does not
+set fields, reposition Blockly programmatically or mutate the VM. Syntax and
+whitespace checks pass; fresh hosted visible journey remains required before
+acceptance.
+
+The same run's unit suite passed; its full build job was cancelled after30
+minutes before final distribution guards. Heavy browser passed. These outcomes
+do not qualify the full build or make a failed GUI journey a success.
+
+Comparison candidate integration: completed parent provenance and shadow-field
+browser fixes are retained by normal merge. This branch keeps303 canonical
+forms and its own comparison producer pin. Its prior heavy browser passed;
+original build/light failures remain evidence. Fresh exact-head checks remain
+required.
