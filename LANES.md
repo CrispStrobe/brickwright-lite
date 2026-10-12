@@ -3193,3 +3193,14 @@ closure requires root inventory/reservations/reachability collection across
 arrays, active calls, callbacks, scenes and playback; do not replace that task
 with a counter of all historical allocations. See the Buffer contract.
 Hosted GUI, full build and immutable-app recensus remain separate gates.
+
+## Arcade required unit workload split — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-unit-shards-20261012`, stacked on original
+Buffer hash. Partition the complete fast suite into two required, separately
+audited unit legs; keep local full-suite behavior, corpus, all skip/file/GUI
+checks, build/distribution authority and exact-head publication requirements.
+Both Pages deployment and external main validation must require both legs.
+Preserve the actual30-minute PR845 build failure. Qualification contract:
+[Arcade CI qualification](docs/ARCADE-CI-QUALIFICATION.md). Hosted duration and
+editor success remain pending; E10 importer and other source owners unchanged.

@@ -1902,3 +1902,25 @@ hosted proof. Audit full build durations and preserve every test/deployment gate
 when separating expensive original simulator checks. Buffer memory roots and
 collection acceptance are now specified in the Buffer contract. Locked184 is
 still142 translated /41 partial /1 parse failure; no whole-app promotion.
+
+## Required unit workload split checkpoint — 2026-10-12
+
+Candidate `lane/arcade-unit-shards-20261012` follows original hash
+[PR849](https://github.com/CrispStrobe/brickwright-lite/pull/849). Two mandatory
+unit legs partition the complete fast suite; original local full commands and
+corpus membership remain intact. Each leg retains the original runner, GUI
+resolution, file census and skip-pointer audits. Pages and external main
+publication require both legs. Preparation is intentionally identical to the
+build and enforced by a source contract; the build alone owns Pages artifacts.
+See [CI qualification](ARCADE-CI-QUALIFICATION.md) for selection, full commands,
+observed failure origins and exact hosted acceptance criteria.
+
+Focused source controls pass40 with zero failures; four pre-existing flasher
+source controls skip in the local environment without their checkout. These
+are not substituted for actual hosted shard runs. The first batch's sparse
+missing-input failures and a contract regex that matched an existing optional
+preparation diagnostic are preserved privately. Materialize exact tracked
+inputs and test the mandatory runner's error policy separately from unchanged
+optional setup diagnostics. No test gate or historical receipt was weakened.
+Next: complete hosted build/unit/editor proof, then live Buffer collection.
+The immutable corpus remains142 translated /41 partial /1 parse failure.
