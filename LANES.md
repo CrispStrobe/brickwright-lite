@@ -1,5 +1,20 @@
 # Who is doing what — merge the claim before implementation
 
+## Arcade particle seed controls — 2026-10-12
+
+DONE candidate — Codex SPIKE integration, `fix/arcade-particle-test-seeds-20261012`.
+Envelope: `test/makecode-arcade-particle-effects.test.mjs` and this ledger only.
+The existing 8x8 dissolve assertion depends on an unrecorded random seed;
+two valid generated rectangles can both fall outside the image. Set the
+specific image effect's seed in the positive fixture, retain its image-change,
+particle, lifespan and handler assertions, and add an off-canvas seed control
+for cloning and destruction semantics. Preserve generated PXT/runtime bytes,
+original failed CI and all independently owned Arcade source/GUI lanes.
+Both affected controls pass under Node 22.23.3. Setting the positive fixture
+to the off-canvas seed fails its retained pixel assertion; suppressing the image
+effect fails both pixel-change and clone assertions. Hosted checks remain pending.
+
+
 ## Arcade animation resource dimensions — 2026-10-12
 
 CLAIMED — Codex Arcade integration, `lane/arcade-partial-closure-20261012`.
@@ -11,6 +26,10 @@ encoder and decoder. Preserve frame count, timing, palette and identity checks.
 Editor dimensions, runtime clipping and full saved-project/browser journeys are
 subsequent acceptance gates; codec success alone does not close their GUI gap.
 Do not edit the independently owned importer, painter or peer-sharing files.
+Expanded envelope: `scripts/makecode.mjs`, `test/fetch-pinning.test.mjs` and
+focused recovery controls for Build38237496710 policy failures. Use a literal
+lazy import for the actual CLI consumer and declare the existing validated
+40-hex tutorial revision fetch; preserve census and dead-module gates.
 
 
 ## Public lane metadata cleanup — 2026-10-12
