@@ -16,7 +16,7 @@ const files = {
     'usr/lib/Brickwright/tools/input-script.py': 'synthetic non-executable resource',
     'DEBIAN/control': 'Package: permission-control\nVersion: 1.0\nArchitecture: all\nMaintainer: Test\nDescription: Synthetic permission control\n'
 };
-const permissions = async file => (await lstat(file)).mode & 0o777;
+const permissions = async file => (await lstat(file)).mode & 0o7777;
 async function fixture () {
     const root = await mkdtemp(join(tmpdir(), 'bw-package-mode-'));
     for (const [name, bytes] of Object.entries(files)) {
@@ -30,6 +30,8 @@ test('root-owned package resources stay readable without changing any bytes; onl
     const root = await fixture();
     try {
         await chmod(join(root, 'usr/lib/Brickwright/tools/input-script.py'), 0o755);
+        await chmod(join(root, 'usr/bin/brickwright-tauri'), 0o4755);
+        await chmod(join(root, 'usr/lib/Brickwright/nuttx/state-config.json'), 0o2644);
         await normalizePackageModes(root, 'Brickwright');
         for (const [name, bytes] of Object.entries(files)) {
             assert.equal(await readFile(join(root, name), 'utf8'), bytes);

@@ -9,7 +9,7 @@ export async function requireStagingModes (directory) {
     const info = await lstat(directory);
     if (!info.isDirectory() || info.isSymbolicLink()) throw new Error('Invalid package staging directory');
     await chmod(directory, 0o700);
-    if (((await lstat(directory)).mode & 0o777) !== 0o700) {
+    if (((await lstat(directory)).mode & 0o7777) !== 0o700) {
         throw new Error('Package staging filesystem cannot preserve Unix permissions; use a POSIX staging directory');
     }
 }
@@ -34,7 +34,7 @@ export async function normalizePackageModes (root, resourceName) {
         const executable = info.isFile() && executablePaths.has(name);
         const mode = info.isDirectory() || executable ? 0o755 : 0o644;
         await chmod(file, mode);
-        if (((await lstat(file)).mode & 0o777) !== mode) {
+        if (((await lstat(file)).mode & 0o7777) !== mode) {
             throw new Error('Package staging filesystem cannot preserve Unix permissions; use a POSIX staging directory');
         }
         if (executable) foundExecutables.add(name);
