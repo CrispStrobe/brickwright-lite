@@ -1792,3 +1792,45 @@ visible field journey needs corrected user panning and selector qualification.
 Next source slices are pack/unpack/format parsing, hash and aggregate heap
 lifetime. E10 retains AST/import/shared type helpers. The immutable184 census
 remains142/41/1; authenticated41 contexts remain7/33/1 until a true recensus.
+
+## Buffer shadow-menu browser correction — 2026-10-12
+
+The completed [PR834 light followup](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38290533343/job/114968997925)
+failed before any edit/controller cycle: the selector looked for a child
+dropdown under the shadow root. Scratch Blocks `Field.init` places the argument
+attribute on the shadow root itself. The captured field coordinates were also
+beyond the clipped workspace, despite lying inside the page viewport.
+
+The browser script now selects that actual shadow root, pans with real mouse
+wheel events before dropdown and numeric edits, and waits until the observed
+field is inside the editing area and its block receives the click point. It
+records both positions, preserving failed JSON/screenshot evidence. It does not
+set fields, reposition Blockly programmatically or mutate the VM. Syntax and
+whitespace checks pass; fresh hosted visible journey remains required before
+acceptance.
+
+The same run's unit suite passed; its full build job was cancelled after30
+minutes before final distribution guards. Heavy browser passed. These outcomes
+do not qualify the full build or make a failed GUI journey a success.
+
+Chunking integration retains the corrected shadow-root selector and real user
+panning from PR834. The predecessor build job was still queued with no steps
+when this necessary browser correction was carried forward; no surviving
+browser diagnostic was interrupted. Native source controls remain31 passing
+and the selected canonical fixture remains311; exact-head hosted acceptance
+for the combined tree is pending.
+
+Older integration errata: sparse restoration accidentally resurrected the
+frozen282 fixture on UTF8/comparison integrations. Direct execution verifies
+their actual tables at299/303. Corrected heads2074beaf5a and d2a1fd569a retain
+their own producer pins and those independent fixtures. Their intermediate
+heads are unqualified history, not passed acceptance. During merge resolution,
+read automatically merged files from the index and validate each selected table
+against its fixture before pushing; do not restore the predecessor over it.
+
+CI qualification followup: the completed PR834 unit suite passed but left too
+little time for its remaining build guards within the30-minute job. Audit the
+actual durations and separate expensive original PXT compilation/simulator
+controls into a required shard with the same complete file/skip census and
+deployment dependency. Do not remove controls, hide failures or treat an
+incomplete distribution guard as passed to recover the budget.
