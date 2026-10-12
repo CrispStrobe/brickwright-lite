@@ -2687,3 +2687,40 @@ normally at1cbac9ad4 and passes12 checks without skips. All18 mapped files and
 Fresh hosted checks queued; corpus unchanged142/41/1. Next song execution and
 authoring contract is in PR804 ARCADE-AGENT-HANDOFF.md; no song implementation
 is claimed yet. Preserve peer painter/placement history and engine pin lane.
+
+## Arcade native song sequencing — 2026-10-11
+
+CLAIMED — Codex, `lane/arcade-song-runtime-20261011`, stacked on PR804.
+Envelope: generated pinned mixer instrument/song/sequencer source and music host
+adapters, focused scheduling/instruction/lifecycle checks, reproducible source
+generation and handoff/GUI ledger. This slice establishes actual native song
+playback before importer/dialect/song-editor support. No engine pins, painter
+placement, PR794 history or peer-owned files. Preserve explicit song diagnostics
+until authoring/conversion support is implemented and qualified.
+
+### Native song runtime checkpoint — 2026-10-11
+
+Draft [PR806](https://github.com/CrispStrobe/brickwright-lite/pull/806), tested
+code117a5b31230ae282aa4adee89bed2ab627fc0a6d, stacked normally on PR804.
+Retained MIT PXT instrument/song/TypeScript sequencer now queues real sound,
+with clock-driven playback, malformed/mutable-buffer refusal and empty-track
+handling. 29 affected checks plus HEAD mirrors pass; four actual original
+simulator song controls match active instruction bytes, accounting explicitly
+for zero terminal padding. Headless evidence does not qualify audible output.
+Version0/hardware-path single-current-song behavior only. Conversion reporter,
+shared pseudocode word, import/export/SB3 and song editor remain open; census
+unchanged142/41/1. Hosted checks pending. Separate parentSPIKEpinassertion
+repair/requalification is on8034e7fcfff8 and normally merged8049e0456303.
+No peer placement, PR794 history or engine pins changed. Follow the song
+implementation checkpoint in PR806 ARCADE-AGENT-HANDOFF.md.
+
+## Arcade song values and roundtrips — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-song-values-20261012`, stacked on PR806.
+Envelope: shared producer song playable word, explicit producer adoption and
+tracked mirrors/inventory/pin assertion, Arcade reporter metadata/runtime value,
+MakeCode literal/dynamic hex import/export, genuine execution and saved-SB3
+roundtrips, focused checks and GUI ledger. Song asset editor remains a later
+closure task. No painter/pin/PR794 ownership changes; preserve existing failures.
+PR806 hosted reds: particle-effect assertion and unfinished browser journeys.
+Source song checks remain local qualification, not production completion.

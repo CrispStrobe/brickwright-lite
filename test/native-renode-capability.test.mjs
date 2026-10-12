@@ -78,6 +78,39 @@ test('malformed reply drops the session and the next operation reopens it', asyn
     assert.equal(opens, 2);
 });
 
+test('a valid native failure reports its fixed code and renews without replaying the failed operation', async () => {
+    const calls = [];
+    let opens = 0;
+    const handlers = createNativeRenodeCapabilities({invoke: async (command, params) => {
+        calls.push({command, params});
+        if (command === 'native_broker_open') return `owned-${++opens}`;
+        if (command === 'native_broker_main_teardown') return;
+        if (opens === 1) return JSON.stringify({kind: 'failure', request_kind: 'capability', code: 'operation-failed'});
+        return JSON.stringify({kind: 'capability', result: 'closed'});
+    }});
+    await assert.rejects(handlers[OPERATIONS.start]({}), error =>
+        error.code === 'operation-failed' && error.message === 'Firmware simulator request failed (operation-failed)');
+    assert.equal(await handlers[OPERATIONS.close]({}), 'closed');
+    assert.equal(opens, 2);
+    assert.deepEqual(calls.filter(call => call.command === 'native_broker_request')
+        .map(call => JSON.parse(call.params.payload).operation), [OPERATIONS.start, OPERATIONS.close]);
+});
+
+test('failure replies cannot inject native details, invent codes or change request kind', async () => {
+    const baseline = {kind: 'failure', request_kind: 'capability', code: 'timeout'};
+    for (const reply of [baseline, {...baseline, code: 'closed'},
+        {...baseline, message: 'restricted native detail'}, {...baseline, code: 'restricted native detail'},
+        {...baseline, request_kind: 'load'}, {...baseline, code: null}]) {
+        const handlers = createNativeRenodeCapabilities({invoke: async command =>
+            command === 'native_broker_open' ? 'owned' : JSON.stringify(reply)});
+        const valid = reply === baseline || reply.code === 'closed';
+        await assert.rejects(handlers[OPERATIONS.start]({}), error => valid ?
+            error.code === reply.code && !error.message.includes('malformed') :
+            error.code === undefined && error.message.includes('malformed') &&
+                !error.message.includes('restricted native detail'));
+    }
+});
+
 test('long-running capabilities renew the bounded relay without replaying operations', async () => {
     const calls = [];
     let opens = 0;
