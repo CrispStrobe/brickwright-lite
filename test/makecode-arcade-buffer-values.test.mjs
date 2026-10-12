@@ -139,3 +139,42 @@ test('song playback consumes shared mutable Buffer bytes and exports matching or
     assert.deepEqual(active(run.vm.runtime.bwArcadeMusicLog),active(original.$sound));
   } finally {native._musicHost?.reset();clearStrayTimers();}
 });
+
+test('native UTF8 Buffer authoring preserves dynamic text, alias mutation, export and fresh SB3', async () => {
+  try {
+    const source = `DEVICE ARCADE
+GLOBAL message = "A€🙂"
+WHEN flag clicked:
+  set bytes to (arcade byte buffer from UTF8 text message)
+  set alias to bytes
+  arcade set byte buffer alias byte at 0 to 66
+  set hexOut to (arcade byte buffer bytes to hex)
+  set textOut to (arcade byte buffer bytes to UTF8 text)
+  set numericText to (arcade byte buffer (arcade byte buffer from UTF8 text "0012") to UTF8 text)
+`;
+    const run = await runProgram(source, {frames:60, storage:true});
+    const checkText = current => {
+      assert.deepEqual(current.errors, []);
+      assert.deepEqual(current.creator.warnings, []);
+      const result = values(current);
+      assert.equal(result.hexOut, '42e282acf09f9982');
+      assert.equal(result.textOut, 'B€🙂');
+      assert.equal(result.numericText, '0012');
+    };
+    checkText(run);
+    checkText(await runProgram(run.creator.decompile(), {frames:60, storage:true}));
+    const saved = JSON.parse(run.vm.toJSON());
+    const exported = projectToArcade(saved);
+    assert.deepEqual(exported.unsupported, []);
+    const original = await runPxtArcade(exported.files);
+    assert.equal(original.hexOut, '42e282acf09f9982');
+    assert.equal(original.textOut, 'B€🙂');
+    assert.equal(original.numericText, '0012');
+    const reopened = await runProgram(source, {frames:0, storage:true});
+    const archive = Buffer.from(await (await run.vm.saveProjectSb3()).arrayBuffer());
+    await reopened.vm.loadProject(archive);
+    reopened.vm.greenFlag();
+    await stepFrames(reopened.vm, 60);
+    checkText(reopened);
+  } finally {clearStrayTimers();}
+});

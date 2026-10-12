@@ -1027,6 +1027,10 @@ class ArcadeEmitter {
             const hex=this.literalInput(b,'HEX');
             return `Buffer.fromHex(${hex===null?v('HEX'):JSON.stringify(hex)})`;
         }
+        case 'arcade_bufferFromUTF8': {
+            const text=this.literalInput(b,'TEXT');
+            return `Buffer.fromUTF8(${text===null?v('TEXT'):JSON.stringify(text)})`;
+        }
         case 'arcade_bufferLiteral': {
             const hex=this.literalInput(b,'HEX');
             if(typeof hex!=='string' || !/^(?:[0-9a-f]{2})*$/i.test(hex.replace(/\s/g,''))) {
@@ -2470,7 +2474,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arrays_namedReference'){const id='named-array:'+literal(blocks,value,'NAME');arrays.add(id);return id;}
                 if(['arrays_parseLegacyValue','arrays_jsonValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
                 if(value.opcode==='arcade_spriteToString') {const id=Symbol('sprite text');strings.add(id);return id;}
-                if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferLiteral','arcade_bufferSlice'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
+                if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferLiteral','arcade_bufferSlice'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
                 if(['arcade_bufferLength','arcade_bufferGetByte','arcade_bufferGetNumber'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
                 if(['arcade_bufferToHex','arcade_bufferToText'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);return id;}

@@ -11,6 +11,7 @@ preparation, not a claim that namespace Buffer imports already work.
 - Original MIT notice: https://raw.githubusercontent.com/microsoft/pxt/v13.2.1/LICENSE
 - Candidate integration: https://github.com/CrispStrobe/brickwright-lite/pull/810
 - Canonical authoring producer: https://github.com/CrispStrobe/sb3-creator/pull/96
+- UTF8 construction producer: https://github.com/CrispStrobe/sb3-creator/pull/97
 - Arrays fallback: https://github.com/CrispStrobe/extensions/pull/34
 
 Repository paths:
@@ -38,6 +39,7 @@ named-song resource metadata on the existing inline/resource route.
 | Original API | Native opcode | Required value semantics |
 | --- | --- | --- |
 | `control.createBuffer(size)` | `arcade_createBuffer` | Fresh mutable buffer |
+| `Buffer.fromUTF8(text)` / `control.createBufferFromUTF8(text)` | `arcade_bufferFromUTF8` | Fresh mutable UTF8 bytes; original surrogate replacement, byte bound before encoding |
 | `Buffer.fromHex(text)` | `arcade_bufferFromHex` | Fresh mutable decode; preserve odd-length original behavior |
 | `hex` tagged template | `arcade_bufferLiteral` | Readonly literal; same source site reuses identity, different sites stay distinct |
 | `buffer.length` | `arcade_bufferLength` | Byte count, not Scratch string length |
@@ -78,8 +80,9 @@ Neither `NumberFormat` nor `Buffer` may bypass local shadowing checks.
    the heap; serialized references cannot revive it. Source reconstructs values
    when the program runs. Export discards matching Buffer sidecar placeholders
    as initializers, emits real Buffer/Buffer[] types and rebuilds actual values.
-6. A per-allocation1MiB guard exists. Aggregate collection, UTF8 construction and
-   APIs absent from the table remain separate runtime/authoring gaps. Do not
+6. A per-allocation1MiB guard exists. Aggregate collection and APIs absent from the table remain separate
+   runtime/authoring gaps. UTF8 construction uses the pinned original
+   TextEncoder path, with encoded-byte counting before allocation. Do not
    silently replace a refused value with an empty buffer or successful no-op.
 
 ## Required acceptance and unchanged corpus boundary

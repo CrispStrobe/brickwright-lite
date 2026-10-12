@@ -56,6 +56,25 @@ const fromHex = text => {
     }
     return out;
 };
+// PXT control.createBufferFromUTF8 delegates to U.toUTF8Array/TextEncoder.
+// Count the encoder's output first so oversized text cannot allocate byte storage.
+const fromUTF8 = text => {
+    if (typeof text !== 'string') throw new TypeError('Expected UTF8 text');
+    if (text.length > MAX_BUFFER_BYTES) throw new RangeError('Arcade buffer exceeds byte allocation limit');
+    let length = 0;
+    for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i);
+        if (code < 0x80) length++;
+        else if (code < 0x800) length += 2;
+        else if (code >= 0xd800 && code <= 0xdbff && i + 1 < text.length &&
+            text.charCodeAt(i + 1) >= 0xdc00 && text.charCodeAt(i + 1) <= 0xdfff) {
+            length += 4;
+            i++;
+        } else length += 3;
+        if (length > MAX_BUFFER_BYTES) throw new RangeError('Arcade buffer exceeds byte allocation limit');
+    }
+    return new PxtBuffer(new TextEncoder().encode(text));
+};
 const literal = text => {
     const hex = String(text).replace(/\s/g, '');
     if (!/^(?:[0-9a-f]{2})*$/i.test(hex)) throw new Error('Invalid hexadecimal buffer literal');
@@ -64,4 +83,4 @@ const literal = text => {
     return bytes;
 };
 
-module.exports = {PxtBuffer, NumberFormat: methods.NumberFormat, MAX_BUFFER_BYTES, fromHex, literal};
+module.exports = {PxtBuffer, NumberFormat: methods.NumberFormat, MAX_BUFFER_BYTES, fromHex, fromUTF8, literal};

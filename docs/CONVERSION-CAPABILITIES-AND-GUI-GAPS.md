@@ -3601,3 +3601,17 @@ variables are not emitted as string initializers. Runtime byte inspector/editor,
 UTF8 construction, aggregate heap collection and E10 namespace import remain
 open. [Import integration contract](ARCADE-BUFFER-IMPORT-CONTRACT.md) gives the
 native mappings and acceptance steps to the importer owner.
+
+### Buffer UTF8 constructor continuation (2026-10-12)
+
+`arcade_bufferFromUTF8` adds the missing fresh mutable Buffer constructor to
+runtime, native block metadata, canonical Code and typed MakeCode export.
+It uses the original TextEncoder semantics with a preallocation byte bound;
+Unicode, malformed decoding, alias mutation and archive reopening are focused
+acceptance controls. The producer adds one independently exercised form (299
+canonical opcodes). This does not qualify import: E10 must still lower
+`Buffer.fromUTF8` and `control.createBufferFromUTF8` after receiver/name resolution,
+including shadowing and initializer order. See
+[the complete import contract](ARCADE-BUFFER-IMPORT-CONTRACT.md). Aggregate
+Buffer heap collection and the original corpus's other missing APIs/assets remain
+open. The visible editor journey in PR834 is separately awaiting hosted proof.

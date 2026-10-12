@@ -264,6 +264,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'songPlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade song playable hex [HEX]',arguments:str('HEX','00780004080100')},
           {opcode:'createBuffer',blockType:Scratch.BlockType.REPORTER,text:'Arcade create byte buffer size [SIZE]',arguments:n('SIZE',8)},
           {opcode:'bufferFromHex',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from hex text [HEX]',arguments:str('HEX','01020304')},
+          {opcode:'bufferFromUTF8',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from UTF8 text [TEXT]',arguments:str('TEXT','Hello')},
           {opcode:'bufferLiteral',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer literal hex [HEX]',arguments:str('HEX','01020304')},
           {opcode:'bufferLength',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] length',arguments:str('BUFFER','')},
           {opcode:'bufferGetByte',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] byte at [OFFSET]',arguments:{...str('BUFFER',''),...n('OFFSET',0)}},
@@ -3859,6 +3860,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     createBuffer(args) {return this._bufferGuard(()=>this._bufferReference(new dependencies.buffers.PxtBuffer(Scratch.Cast.toNumber(args.SIZE))));}
     bufferFromHex(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.fromHex(Scratch.BWValues.decode(args.HEX))));}
+    bufferFromUTF8(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.fromUTF8(Scratch.BWValues.decode(args.TEXT))));}
     bufferLiteral(args,util) {
       return this._bufferGuard(()=>{
         const block=util?.thread?.peekStack?.(),heap=this._bufferState();

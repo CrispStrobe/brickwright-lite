@@ -79,3 +79,35 @@ test('byte allocation limits apply before allocation and unsupported numeric for
     subarray.setByte(0, 9); assert.equal(bytes[2], 9);
     assert.equal(subarray.length, 4);
 });
+
+test('UTF8 construction and decoding match original MakeCode for Unicode and malformed bytes', async () => {
+    const {fromUTF8, fromHex} = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer.js');
+    const texts = ['', '0012', 'A\0B', 'A€🙂', '\ud800', '\udc00', '\ud800A', '\ufeffA'];
+    const malformed = ['efbbbf41', 'c0af', 'e282', 'eda080', 'f0808080', '80', '00ff41'];
+    const source = 'let encoded = ""\nlet decoded = ""\n' + texts.map(text =>
+        `encoded += Buffer.fromUTF8(${JSON.stringify(text)}).toHex() + ";"`
+    ).join('\n') + '\n' + malformed.map(hex =>
+        `decoded += Buffer.fromHex("${hex}").toString() + ";"`
+    ).join('\n');
+    const original = await runPxtArcade(source);
+    assert.equal(texts.map(text => fromUTF8(text).toHex() + ';').join(''), original.encoded);
+    assert.equal(malformed.map(hex => fromHex(hex).toString() + ';').join(''), original.decoded);
+    const bytes = fromUTF8('A€🙂');
+    assert.equal(bytes.length, 8);
+    bytes.setByte(0, 66);
+    assert.equal(bytes.toString(), 'B€🙂');
+});
+
+test('UTF8 allocation bounds count encoded bytes before invoking TextEncoder', () => {
+    const {fromUTF8} = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer.js');
+    assert.equal(fromUTF8('a'.repeat(MAX_BUFFER_BYTES)).length, MAX_BUFFER_BYTES);
+    assert.equal(fromUTF8('🙂'.repeat(MAX_BUFFER_BYTES / 4)).length, MAX_BUFFER_BYTES);
+    const OriginalEncoder = globalThis.TextEncoder;
+    globalThis.TextEncoder = class {encode() {assert.fail('oversized input reached byte allocation');}};
+    try {
+        for (const text of ['a'.repeat(MAX_BUFFER_BYTES + 1), '€'.repeat(Math.floor(MAX_BUFFER_BYTES / 3) + 1),
+            '🙂'.repeat(MAX_BUFFER_BYTES / 4 + 1), '\ud800'.repeat(Math.floor(MAX_BUFFER_BYTES / 3) + 1)])
+            assert.throws(() => fromUTF8(text), /byte allocation limit/);
+        assert.throws(() => fromUTF8(12), /Expected UTF8 text/);
+    } finally {globalThis.TextEncoder = OriginalEncoder;}
+});

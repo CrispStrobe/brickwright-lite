@@ -1528,3 +1528,29 @@ All enabled final-head component checks still need a fresh review before merging
 Importer owner: read [ARCADE-BUFFER-IMPORT-CONTRACT.md](ARCADE-BUFFER-IMPORT-CONTRACT.md)
 for AST/opcode mapping, scope/typing/initialization rules, original controls and
 immutable-context rerun criteria. Namespace Buffer import remains diagnosed.
+
+## UTF8 Buffer construction continuation — 2026-10-12
+
+The missing UTF8 constructor is now represented by `arcade_bufferFromUTF8`
+and Code `arcade byte buffer from UTF8 text TEXT`. Its runtime creates fresh
+mutable bytes using the pinned PXT simulator's TextEncoder path. It counts
+encoded bytes before allocation, including paired and unpaired surrogates,
+rather than relying on JavaScript character length. Export emits genuine
+`Buffer.fromUTF8`, preserves literal numeric text and records a Buffer type.
+Producer [PR97](https://github.com/CrispStrobe/sb3-creator/pull/97) adds the
+independent canonical fixture; the census advances from298 to299.
+
+The focused byte tests compare Unicode, embedded NUL, BOM and malformed byte
+sequences against executed original PXT. Native tests cover dynamic text,
+mutation through an alias, Blocks/Code reconstruction, serialized-project
+export/original execution and reopening the actual SB3 archive. A JSON project
+without its assets is not an SB3 reopening control. The first such harness
+attempt failed in costume loading; preserve that failure separately from the
+corrected archive path. The original immutable corpus count is unchanged.
+
+The prior PR810 build failure was the exact producer guard in
+`test/lego-spike-roundtrip.test.mjs` still naming the preceding compiler.
+Commit `bf5d99f74a` advances that guard only after re-running its unchanged SPIKE
+artifact assertions. PR834 includes that fix by normal merge; earlier failed
+logs remain private. Hosted checks and the visible Buffer journey still require
+exact-head results before merge or product qualification.
