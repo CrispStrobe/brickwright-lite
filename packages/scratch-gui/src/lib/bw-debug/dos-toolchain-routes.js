@@ -46,6 +46,14 @@ export const DOS_TOOLCHAINS = Object.freeze({
         sourceName: 'PROG.FE', outputName: null,
         run: false, verified: true
     },
+    'forth': {
+        id: 'forth', label: 'Forth (zForth on DOS)', language: 'forth', kind: 'dos-native',
+        source: 'forth-dos',                   // media-lab project; MIT Forth (zevv/zForth)
+        compiler: 'forth.exe', compilerFormat: 'exe',
+        variant: '80186',
+        sourceName: 'PROG.FTH', outputName: null,
+        run: false, verified: true
+    },
     'tcl': {
         id: 'tcl', label: 'Tcl (partcl on DOS)', language: 'tcl', kind: 'dos-native',
         source: 'tcl-dos',                     // media-lab project; MIT Tcl interpreter (zserge/partcl)

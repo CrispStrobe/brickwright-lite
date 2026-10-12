@@ -1987,6 +1987,34 @@ runtime, and carries no GCC-runtime copyleft.
   bw-board 8086 DOS bench, which mounts the user's program as `PROG.TCL` and
   the library as `JIMLIB.TCL`.
 
+## zForth (DOS-native Forth) — MIT
+
+The code tab's "Forth (zForth on DOS)" language runs a real 16-bit MS-DOS
+interpreter on the 8086 DOS bench. The interpreter is **zForth** by **Ico
+Doornekamp (zevv)**, a tiny embeddable Forth — a small C VM plus a Forth-source
+bootstrap (`core.zf`) defining the language (`:`/`;`, `if/else/fi`,
+`begin/until/again`, `."`, `.`, `emit`, `cr`) — distributed under the **MIT
+licence**.
+
+It is compiled — unmodified except for an added `PROG.FTH`-reading DOS
+front-end (`dosmain.c`) that also embeds `core.zf` — to a 16-bit MS-DOS `.EXE`
+with `ia16-elf-gcc` (the tkchia GCC port for 16-bit x86). That GCC port is GPL,
+but it is a **build-time tool only**: the shipped binary is MIT zForth linked
+against the permissive newlib + libi86 runtime, and carries no GCC-runtime
+copyleft.
+
+- **Upstream:** https://github.com/zevv/zForth (commit
+  `41db72d165c1539d57f3f79970fc57ea881a79dc`)
+- **Licence:** MIT, (c) Ico Doornekamp
+- **What ships:** `static/roms/forth.exe` — the built interpreter (with
+  `core.zf` embedded; the stock `misc.zf` FizzBuzz demo and `memaccess.zf`
+  load-time asserts excluded so nothing prints at startup), with
+  `forth.provenance.json` beside it. Packaged as the media-lab project
+  `projects/forth-dos` (its `fetch.sh` reproduces this binary byte-for-byte).
+  Loaded at run time and driven by `runDosToolchain('forth', …)` over the
+  bw-board 8086 DOS bench, which mounts the user's program as `PROG.FTH`. Blocks
+  ⇄ Forth is `overlay/scratch-gui/src/lib/bw-lang/forth.js`.
+
 ## Free 80386 AT firmware (Bochs BIOS + LGPL VGABios) — LGPL-2.1
 
 The **fully-free 386** machine boots FreeDOS in the browser on redistributable
