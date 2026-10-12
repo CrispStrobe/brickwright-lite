@@ -1581,3 +1581,25 @@ condition classification, avoiding a numeric comparison around Boolean guards.
 Earlier malformed test grammar and an incorrect live-variable initializer
 expectation are retained privately. Actual archive reopening rebuilds the scoped
 heap. Product browser qualification and the184-input classification are unchanged.
+
+## Buffer browser first execution — 2026-10-12
+
+[PR834 light browser job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38279944717/job/114927678175)
+reached visible authored native blocks without page/block errors, then timed out
+opening the format menu after a coordinate click. It completed no controller or
+archive/export cycles; this is failed GUI qualification. The followup clicks the
+identified authored SVG dropdown through Playwright's visibility/hit-target
+checks, following the existing schema browser control, and retains a failure
+screenshot and field observations. Hosted rerun must establish the result.
+
+The surviving parent focused diagnostic passed before its source was advanced.
+PR810 now includes prepared provenance fixes and the exact particle pixel check.
+PR834 incorporates those fixes with298 canonical forms and its own selected598fc
+Arrays source notice. Eighteen parser/fetch controls pass with zero skips; the
+browser script passes syntax/whitespace checks. No corpus classification changed.
+
+Readonly parent followup: both original browser diagnostics finished before
+advancing source. Heavy passed; light failed at the same coordinate-clicked
+Buffer dropdown. Incorporate the actionable-field followup and four provenance
+gates, using this parent's exact300 canonical forms and unchanged producer pin.
+Full hosted acceptance must rerun; no corpus count changes.
