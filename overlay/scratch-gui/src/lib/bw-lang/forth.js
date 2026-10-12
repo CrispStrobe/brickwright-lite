@@ -164,6 +164,8 @@ export function generateForth (project) {
         case 'operator_and': return `${e('OPERAND1')} ${e('OPERAND2')} and`;
         case 'operator_or': return `${e('OPERAND1')} ${e('OPERAND2')} or`;
         case 'operator_not': return `${e('OPERAND')} not`;
+        // GPIO input: `pin@ ( pin -- value )` reads 0x378+pin.
+        case 'bwgpio_readpin': return `${field(b, 'PIN')} pin@`;
         case 'operator_mod': refuse('Forth mod is not supported yet'); return '0';
         case 'operator_join':
             refuse('Forth cannot join text (zForth has no string building) — say the parts separately');
@@ -213,6 +215,9 @@ export function generateForth (project) {
         switch (b.opcode) {
         case 'data_setvariableto': return [`${e('VALUE')} ${varName(field(b, 'VARIABLE'))} !`];
         case 'data_changevariableby': return [`${e('VALUE')} ${varName(field(b, 'VARIABLE'))} +!`];
+        // GPIO output: `pin! ( pin value -- )` OUTs to 0x378+pin, lighting the
+        // Widgets pane's GPIO strip via the i8086 bench's onPortAccess bridge.
+        case 'bwgpio_setpin': return [`${field(b, 'PIN')} ${e('VALUE')} pin!`];
         case 'looks_say': case 'looks_think': case 'stc12_print':
             return sayStatement(b.inputs.MESSAGE ? b.inputs.MESSAGE : b.inputs.VALUE, blocks);
         case 'control_if': {

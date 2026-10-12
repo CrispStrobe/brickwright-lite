@@ -129,6 +129,8 @@ export const LITE_ONLY = {
         'would mean upstreaming that contract too.',
     cameracapture: 'Lite-native. Integrates with the app\'s shared Video Sensing provider and preview ' +
         'to capture still images without opening a competing camera stream.',
+    bwgpio: 'Lite-native. Generic GPIO pin blocks (set pin / read pin) that drive the Widgets pane\'s ' +
+        'GPIO strip and round-trip with the DOS Forth bench\'s pin!/pin@ words through the Code tab.',
 };
 
 /**
