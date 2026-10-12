@@ -266,3 +266,33 @@ test('Save feedback and storage hint distinguish persistent and legacy packages 
         }
     } finally {if (renderer) await act(async () => renderer.unmount()); browser.restore();}
 });
+
+test('dual ultrasonic chooser is sandbox/NuttX-only and frozen while a session owns devices', async () => {
+    const browser = installBrowser(), Pane = await loadPane(); let renderer;
+    try {
+        await act(async () => {renderer = create(React.createElement(Pane, {locale: 'en'}));});
+        const pane = renderer.getInstance();
+        await settle(() => Boolean(pane.bridge), 'arena ready');
+        await act(async () => pane.setState({execution: 'nuttx'}));
+        const choose = () => one(renderer, 'bw-spike-nuttx-topology');
+        const option = () => choose().findAll(node => node.type === 'option' && node.props.value === 'dual-ultrasonic')[0];
+        assert.equal(option().props.disabled, true);
+        await act(async () => choose().props.onChange({target: {value: 'dual-ultrasonic'}}));
+        assert.equal(pane.state.topology, 'default');
+        await act(async () => pane.openSandbox());
+        assert.equal(option().props.disabled, false);
+        await act(async () => choose().props.onChange({target: {value: 'dual-ultrasonic'}}));
+        assert.equal(pane.state.topology, 'dual-ultrasonic');
+        assert.match(one(renderer, 'bw-spike-dual-ultrasonic-hint').children.join(''), /E\/F.*distance/);
+        pane.firmwareSession = {stop: async () => {}};
+        await act(async () => pane.setState({status: 'paused'}));
+        assert.equal(choose().props.disabled, true);
+        await act(async () => choose().props.onChange({target: {value: 'default'}}));
+        assert.equal(pane.state.topology, 'dual-ultrasonic');
+        pane.firmwareSession = null;
+        await act(async () => pane.setState({execution: 'micropython', topology: 'default'}));
+        assert.equal(option().props.disabled, true);
+        await act(async () => choose().props.onChange({target: {value: 'dual-ultrasonic'}}));
+        assert.equal(pane.state.topology, 'default');
+    } finally {if (renderer) await act(async () => renderer.unmount()); browser.restore();}
+});

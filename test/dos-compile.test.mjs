@@ -294,6 +294,36 @@ test('a Forth user syscall reaches the host on the real bench (the device-bridge
         `the user syscall should have short-circuited: ${JSON.stringify(r.compile.screen)}`);
 });
 
+test('a Forth program drives GPIO: `pin!` OUTs are observable via onPortAccess (the GUI widget bridge)', async () => {
+    // The DOS Forth's prelude defines `pin! ( pin value -- )` as an 8086 OUT to
+    // 0x378+pin (dosmain.c). The 8086 bench fires onPortAccess on every OUT, and
+    // the Code-tab run path threads that callback down to light an 8-pin GPIO
+    // strip widget. Here we assert the plumbing end-to-end: a generated-shape
+    // Forth program's pin writes reach the observer with the right pin/value.
+    const program = [
+        ': main',
+        '  3 1 pin!',   // set pin 3 high
+        '  5 0 pin!',   // set pin 5 low
+        '  7 1 pin!',   // set pin 7 high
+        '  2 42 pin!',  // set pin 2 to 42 (a non-boolean value)
+        '  ." pins-set" cr',
+        ';',
+        'main', ''
+    ].join('\n');
+    const outs = [];
+    const r = await runDosToolchain('forth', program, {
+        fetchToolchain: async () => ({compiler: FORTH_EXE}),
+        maxSteps: 200_000_000,
+        onPortAccess: ev => { if (ev.dir === 'out' && ev.port >= 0x378 && ev.port <= 0x37f) outs.push({pin: ev.port - 0x378, value: ev.value}); }
+    });
+    assert.equal(r.stage, 'compile');
+    assert.ok(r.compile.screen.includes('pins-set'), r.compile.screen);
+    for (const want of [{pin: 3, value: 1}, {pin: 5, value: 0}, {pin: 7, value: 1}, {pin: 2, value: 42}]) {
+        assert.ok(outs.some(o => o.pin === want.pin && o.value === want.value),
+            `expected pin ${want.pin} driven to ${want.value}, got ${JSON.stringify(outs)}`);
+    }
+});
+
 test('the DOS-native Tcl (partcl) route is verified and shaped like fe', () => {
     const tcl = DOS_TOOLCHAINS['tcl'];
     assert.ok(tcl && tcl.kind === 'dos-native');
