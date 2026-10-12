@@ -3017,3 +3017,9 @@ Use owned dependency preparation for local VM tests; shared dependencies stay
 untouched. No E10 importer/namespace/type-lowering helper edits in this slice;
 namespace import remains a coordinated subsequent step. No painter or peer
 package/runtime ownership is taken. Keep native import diagnostics until wired.
+
+Buffer authoring followup boundary — original-export controls require the
+shared value graph to recognize the Buffer atom. The Buffer claimant owns only
+adding Buffer to its two existing atom whitelists in `value-type-graph.js`;
+this does not take E10's importer, namespace or expression/type lowering work.
+The exporter owns hex string literal preservation and NumberFormat menu export.
