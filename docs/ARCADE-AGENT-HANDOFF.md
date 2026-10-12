@@ -1296,3 +1296,13 @@ the complete 41-row original diagnostic checklist, ordered batches, editor
 acceptance criteria and corpus-preservation rules. Start with qualification
 of the combined candidate, then authentic project context. PR810 final-head
 build/corpus passed but both browsers failed; no main-adoption claim yet.
+
+### First closure batch receipts — 2026-10-12
+
+At clean49d3cc5a8, originals remain142/41/1 and separate authentic contexts
+measure7/33/1 over41. All41 context projects retain exact original main.ts.
+The reusable recovery CLI and tutorial package-pin refinement are candidate
+source, with8 focused tests and3 CLI controls passing. Private unchanged first
+failure and corrected41-context receipts are archived in the private corpus
+repo.38 declared external dependency specifications form the next context
+frontier. No gameplay, graphical song-editor or main-adoption claim is made.

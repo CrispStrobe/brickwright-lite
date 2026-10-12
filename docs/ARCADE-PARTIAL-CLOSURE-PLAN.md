@@ -115,6 +115,15 @@ asset project's pxt.json pins the same repository. The assembler now retains
 that explicit pin; different repositories or two different explicit revisions
 still fail. Eight tutorial/project/collector controls pass. A corrected recovery
 assembled41/41 contexts; this does not close41 original import diagnostics.
+At clean source `49d3cc5a89e0acc2186601f3c67a28d2a82e073b`, the fresh original
+census remains142/41/1. The separate41-context audit is **7 translated /33 partial
+/1 Code-to-Blocks parse failure**. Seven contexts clear their static import:
+Alien, Wakanda, Arrow, two bundles/countdown tutorials, Alien animation/shooting
+and DunkFrame. Those seven have not passed full gameplay/GUI qualification.
+The recovery frontier has38 distinct declared GitHub dependency specifications;
+actual source/asset resolution and immutable provenance remain pending.
+Three actual CLI controls also pass: altered original hash rejected before
+output, existing receipt directory preserved, empty partial set recorded.
 
 ```sh
 node scripts/recover-makecode-context.mjs --manifest "$CORPUS_MANIFEST" --audit "$IMPORT_REPORT" --corpus-dir "$CORPUS_ROOT" --out "$NEW_CONTEXT_DIR"
