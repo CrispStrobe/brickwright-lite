@@ -104,6 +104,31 @@ the block. Blockly Field replaces spaces with NBSP; match whitespace while
 retaining actual visible block observation, unchanged timeout and every later
 runtime/save/reopen assertion. Replacement hosted qualification is pending.
 
+## B1 context recovery checkpoint — 2026-10-12
+
+All41 original partial inputs map uniquely to documents at original PXT commit
+`8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02`. The recovery CLI verified every
+original manifest hash, fetched each exact document and preserved main.ts
+byte-for-byte in separate native project envelopes. Initial recovery retained
+one failure: Alien's package fence names an unversioned repository while its
+asset project's pxt.json pins the same repository. The assembler now retains
+that explicit pin; different repositories or two different explicit revisions
+still fail. Eight tutorial/project/collector controls pass. A corrected recovery
+assembled41/41 contexts; this does not close41 original import diagnostics.
+
+```sh
+node scripts/recover-makecode-context.mjs --manifest "$CORPUS_MANIFEST" --audit "$IMPORT_REPORT" --corpus-dir "$CORPUS_ROOT" --out "$NEW_CONTEXT_DIR"
+node scripts/compat-audit.mjs --target arcade --out "$CONTEXT_IMPORT_REPORT" "$NEW_CONTEXT_DIR"
+```
+
+The CLI refuses an existing output directory and changed original hashes. Its
+report records exact source URLs, document hashes, dependencies and tool hashes;
+it preserves downloaded documents even if assembly fails. It does not fetch
+external packages or fill in prior tutorial-step setup. Next B1 work: resolve
+required package assets with exact source/provenance and classify incomplete
+fragments separately from full projects. Full-context compilation, native
+execution and authoring are pending.
+
 ## Original partial-input checklist
 
 Each row remains OPEN. These are original static diagnostics, not runtime

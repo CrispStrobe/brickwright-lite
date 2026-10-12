@@ -3461,3 +3461,14 @@ and1 parse failure; its separate static census is109/74/1.183 rows producing
 translation output are not183 fully compatible apps. Keep static import,
 original compilation, native execution, GUI authoring and behavioral equivalence
 separate. [Full reconciliation and continuation](ARCADE-AGENT-HANDOFF.md#combined-candidate-and-census-reconciliation--2026-10-12).
+
+## Approved complete Arcade closure campaign — 2026-10-12
+
+[The ordered plan](ARCADE-PARTIAL-CLOSURE-PLAN.md) tracks every original partial
+input and separates authentic project-context recovery from static diagnostics.
+Each API batch must expose editable normal Blocks and Code words, preserve
+MakeCode export and SB3 reopen, and record missing editor journeys here.
+Graphical song editing (notes/tracks/instruments/drums/tempo), transactional
+asset saves and production create/play/export/reopen remain open even though
+named song reporters and native song files exist in the combined candidate.
+Do not infer graphical authoring completion from a hex field or runtime tests.
