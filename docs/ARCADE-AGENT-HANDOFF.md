@@ -1230,3 +1230,61 @@ original-simulator terrain trajectories and HEAD tracked mirrors. This does not
 qualify the full package/GUI combination. Reuse the original exact-head source
 and retain its failed browser logs; require fresh hosted enabled checks before
 merging the new main-based rescue candidate.
+
+
+## Combined candidate and census reconciliation — 2026-10-12
+
+This is the current integration checkpoint; preceding entries record their
+original slices. `lane/arcade-complete-integration-20261012` includes every
+recorded Arcade candidate head in PR793–807, plus rescue PR810
+and named-song source `5db728c509d79fceeb047677c47e2bde48738b91`. Exact Git
+ancestry was checked for all15 open relevant PR heads. Native source, ordinary
+Blocks/Code words, graphics editor changes and their candidate tests are now
+in one owned tree. This does not mean they have reached main or passed the full
+production gates. Independently active painter/display proof repairs remain
+outside this integration until their owners publish qualified results.
+
+Exact audited main: `38b6bc3adbe636eb3b46dda6aa831e28a5df61fb`.
+Exact audited combined source: `1ff099af6c0b65c81c5d15c663e38f252551b991`.
+Both clean audits keep **142 translated /41 partial /1 parse failure** over the
+same184 originals at `c67f4854610ccc823682280b4d1fbdf737f4a585`, content
+multiset SHA256 `a3dc8c21a33a9fb5e1808d2b2b2d2dbc2f7ce1ab33655b7b4cb14a16894b9f03`.
+Both source/vendor/SDK endpoint identities match. A subsequent main ledger-only
+commit `51eea45fb` is integrated without altering source or the audited inputs.
+
+### Why earlier counts look better
+
+An older real report at clean source
+`14934fb23ac8a68b6d9227d3325ff5609f7e25f2` uses a compiler-dependent top-level
+stage:101 translated,29 partial,53 original-compiler failures and1 parse failure.
+Its separate static translation field is109 translated /74 partial /1 parse
+failure. Its original compile field is130 pass /54 fail, including the failed
+parse input. These independent gates must not be collapsed into "29 apps still
+not working" or compared directly with today's import-only41 partial.
+
+Today's raw rows also mark183 inputs `translated: true` because they produced
+translation output, including41 with diagnostics. The complete static status
+remains142 translated, not183 fully supported. Neither static tally establishes
+actual native gameplay, full-game equivalence or current original compilation.
+The old report's content multiset matches the184 originals; its declared commit
+field alone does not verify the original Git tree. The report remains archived
+privately with its original provenance and failures.
+
+### Qualification and next steps
+
+52 combined checks passed; two vendor-declaration checks initially failed only
+because the sparse tree lacked the tracked declaration Markdown. Materializing
+that unchanged HEAD blob and rerunning those two yielded2 pass,0 skips. Thus
+all54 selected checks passed across the preserved attempts, without modifying
+assertions or source. A prior incomplete invocation saw only3 materialized tests;
+it is preserved and is not the combined qualification. Always assert requested
+test files exist and materialize their tracked dependencies before invoking Node.
+
+Checks cover native songs/MakeCode/SB3, named-song files and single-file exports,
+Carnival custom game-over, placement runtime/export, countdown ordering, ordinary
+dialect inventory, canonical SPIKE artifact, all18 producer mappings, empty
+vendor deltas and HEAD mirrors. Pin producer f079238e and engine9c8777d5 together.
+Keep named song-editor GUI and missing context/wrapper operations on the open
+ledger. Publish this exact combined tree on PR810, refresh all hosted checks,
+and adopt main only after every enabled required check succeeds. Main's existing
+painter red and the independently active repair are not waived by focused checks.

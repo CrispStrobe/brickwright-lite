@@ -87,3 +87,13 @@ All 18 mapped files are verified against the sync's transformation. The ordinary
 song reporter word belongs to the shared producer in
 [sb3-creator PR94](https://github.com/CrispStrobe/sb3-creator/pull/94), stacked on
 PR93. This does not add a downstream exemption or replace historical receipts.
+
+
+## Named song reporter adoption — 2026-10-12
+
+The empty downstream delta set also applies at
+`f079238eeb7d8ac6474048e748208fb7f954198f` from
+[sb3-creator PR95](https://github.com/CrispStrobe/sb3-creator/pull/95).
+All18 mapped files match the sync transform. Named song Code/Blocks uses the
+shared producer word rather than a local grammar exception. Historical receipts
+remain intact; no gate or exemption changes.

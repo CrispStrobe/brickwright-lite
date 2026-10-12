@@ -3445,3 +3445,19 @@ standalone snippets omit its bytes. Next: complete-project song asset resolution
 and named song authoring, with missing assets still diagnosed. Do not replace
 missing song data or reclassify partial projects on the basis of the five focused
 song fixtures.
+
+
+### Current combined source and metric boundary — 2026-10-12
+
+All surviving Arcade candidate heads (PR793–807 and810) plus named-song source
+are assembled in one integration tree. They are candidates awaiting complete
+hosted adoption; main does not contain all of them.54 selected checks pass
+across the preserved runs at code1ff099af6, including normal Code/Blocks,
+native/export/SB3 songs, Carnival and placement.
+
+Fresh main and combined static-import census is142/41/1 on identical184 inputs.
+An older "29 partial" compiler-dependent report also contains53 compile failures
+and1 parse failure; its separate static census is109/74/1.183 rows producing
+translation output are not183 fully compatible apps. Keep static import,
+original compilation, native execution, GUI authoring and behavioral equivalence
+separate. [Full reconciliation and continuation](ARCADE-AGENT-HANDOFF.md#combined-candidate-and-census-reconciliation--2026-10-12).
