@@ -131,6 +131,10 @@ test('every use of the flag is the folded literal, and every reach of a peer mod
 });
 
 test('every scanned marker really occurs in the gated code, so the build scan is not vacuous', () => {
+    // Dropping a marker narrows the emitted-build guard; do it here, visibly, or not at all.
+    assert.deepEqual(PEER_MARKERS, ['bw-peer-request', 'peer_send', 'peer_enable', 'peer_reply',
+        'bw-open-peer-sessions', '__brickwrightPeers', '__brickwrightCameraCapture', 'peersessions',
+        'bwpeer://']);
     const gated = [...GATED_MODULES, 'overlay/scratch-gui/src/components/menu-bar/settings-menu.jsx',
         'overlay/scratch-gui/src/lib/libraries/extensions/index.jsx',
         'overlay/scratch-vm/src/extensions/crispstrobe/cameracapture/index.js'].map(read).join('\n');
