@@ -284,8 +284,9 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 647aed7e (2026-10-12): Buffer array bridge; re-qualify unchanged SPIKE artifact.
     // -> 4fc50baa (2026-10-12): Base64 Buffer vocabulary; SPIKE artifact unchanged.
     // -> 9541e81f (2026-10-12): Buffer chunking vocabulary; SPIKE artifact unchanged.
+    // -> c94f428d (2026-10-12): Buffer packing vocabulary; SPIKE artifact unchanged.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '9541e81f22d302888aed081a6ad3841906f86694');
+        'c94f428da9f74754981f52d6c6355477b35e8477');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

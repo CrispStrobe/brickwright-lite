@@ -2,12 +2,13 @@
 // Copyright (c) Microsoft Corporation. See static/licenses/pxt-common-packages.MIT.txt.
 // Original source: https://github.com/microsoft/pxt-common-packages/blob/master/libs/base/buffer.ts
 // Complete bundled buffer.ts SHA256: 970960b537291a5c8028afda5f210318dd1143de8f3835d4d71efb2ed9359061
-// Selected unadapted source SHA256: 3f06cb52d1abde9b34885bacdefe71570f9da5bb4c626215ecb3cda29714ed62
+// Selected unadapted source SHA256: 0ebf6d76950dcbfbee89d5e22f24cf9d05dbe37594a795fb84c52efe11521567
 // Regenerate: node scripts/generate-arcade-buffer-helpers.mjs
 // Nine indexed Buffer reads and four writes use original getByte/setByte shims.
-// Ten string-index reads use the original PXT String_.charAt boundary.
+// Fifteen string-index reads use the original PXT String_.charAt boundary.
 // One Math.idiv uses original signed division; two chunk pushes check collection bounds before allocation.
-module.exports = function initializePxtBufferHelpers(Buffer, NumberFormat, idiv, pushChunk) {
+// One pack loop has repeat/work bounds and one unpack push checks result allocation.
+module.exports = function initializePxtBufferHelpers(Buffer, NumberFormat, idiv, pushChunk, control, guardPackRepeat, guardPackStep, pushNumber) {
 const create = Buffer.create;
 const fromUTF8 = Buffer.fromUTF8;
 var helpers;
@@ -48,6 +49,18 @@ var helpers;
         return -1;
     }
     helpers.bufferIndexOf = bufferIndexOf;
+    function bufferUnpack(buf, format, offset) {
+        if (!offset)
+            offset = 0;
+        let res = [];
+        Buffer.__packUnpackCore(format, res, buf, false, offset);
+        return res;
+    }
+    helpers.bufferUnpack = bufferUnpack;
+    function bufferPackAt(buf, offset, format, nums) {
+        Buffer.__packUnpackCore(format, nums, buf, true, offset);
+    }
+    helpers.bufferPackAt = bufferPackAt;
     function bufferChunked(buf, maxBytes) {
         if (buf.length <= maxBytes)
             return [buf];
@@ -206,6 +219,92 @@ var Buffer;
         return r;
     }
     Buffer.concat = concat;
+    // Python-like packing, see https://docs.python.org/3/library/struct.html
+    function packedSize(format) {
+        return __packUnpackCore(format, null, null, true);
+    }
+    Buffer.packedSize = packedSize;
+    function pack(format, nums) {
+        let buf = Buffer.create(packedSize(format));
+        __packUnpackCore(format, nums, buf, true);
+        return buf;
+    }
+    Buffer.pack = pack;
+    function getFormat(pychar, isBig) {
+        switch (pychar) {
+            case 'B':
+                return NumberFormat.UInt8LE;
+            case 'b':
+                return NumberFormat.Int8LE;
+            case 'H':
+                return isBig ? NumberFormat.UInt16BE : NumberFormat.UInt16LE;
+            case 'h':
+                return isBig ? NumberFormat.Int16BE : NumberFormat.Int16LE;
+            case 'I':
+            case 'L':
+                return isBig ? NumberFormat.UInt32BE : NumberFormat.UInt32LE;
+            case 'i':
+            case 'l':
+                return isBig ? NumberFormat.Int32BE : NumberFormat.Int32LE;
+            case 'f':
+                return isBig ? NumberFormat.Float32BE : NumberFormat.Float32LE;
+            case 'd':
+                return isBig ? NumberFormat.Float64BE : NumberFormat.Float64LE;
+            default:
+                return null;
+        }
+    }
+    function isDigit(ch) {
+        const code = ch.charCodeAt(0);
+        return 0x30 <= code && code <= 0x39;
+    }
+    function __packUnpackCore(format, nums, buf, isPack, off = 0) {
+        let packSteps = 0;
+        let isBig = false;
+        let idx = 0;
+        for (let i = 0; i < format.length; ++i) {
+            switch (format.charAt(i)) {
+                case ' ':
+                case '<':
+                case '=':
+                    isBig = false;
+                    break;
+                case '>':
+                case '!':
+                    isBig = true;
+                    break;
+                default:
+                    const i0 = i;
+                    while (isDigit(format.charAt(i)))
+                        i++;
+                    let reps = 1;
+                    if (i0 != i)
+                        reps = parseInt(format.slice(i0, i));
+                    if (format.charAt(i) == 'x')
+                        off += reps;
+                    else
+                        while (guardPackRepeat(reps--)) {
+                            guardPackStep(++packSteps);
+                            let fmt = getFormat(format.charAt(i), isBig);
+                            if (fmt === null) {
+                                control.fail("Unsupported format character: " + format.charAt(i));
+                            }
+                            else {
+                                if (buf) {
+                                    if (isPack)
+                                        buf.setNumber(fmt, off, nums[idx++]);
+                                    else
+                                        pushNumber(nums, () => buf.getNumber(fmt, off));
+                                }
+                                off += sizeOfNumberFormat(fmt);
+                            }
+                        }
+                    break;
+            }
+        }
+        return off;
+    }
+    Buffer.__packUnpackCore = __packUnpackCore;
     /**
      * Get the size in bytes of specified number format.
      */
@@ -237,5 +336,5 @@ var Buffer;
     Buffer.sizeOfNumberFormat = sizeOfNumberFormat;
 })(Buffer || (Buffer = {}));
 
-return {...helpers, sizeOfNumberFormat: Buffer.sizeOfNumberFormat, fromArray: Buffer.fromArray, concatArrays: Buffer.concat, fromBase64: Buffer.fromBase64, chunkedFromUTF8: Buffer.chunkedFromUTF8};
+return {...helpers, sizeOfNumberFormat: Buffer.sizeOfNumberFormat, fromArray: Buffer.fromArray, concatArrays: Buffer.concat, fromBase64: Buffer.fromBase64, chunkedFromUTF8: Buffer.chunkedFromUTF8, packedSize: Buffer.packedSize, pack: Buffer.pack};
 };

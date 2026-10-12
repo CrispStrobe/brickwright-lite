@@ -147,7 +147,6 @@ Actual public declarations still needing runtime/native authoring/export work:
 | --- | --- |
 | `Buffer.create(size)` | Import alias for the existing allocator; resolve shadowing |
 | `getUint8` / `setUint8` | Import aliases for byte reads/writes |
-| `unpack`, `packAt`, `Buffer.pack`, `packedSize` | Exact public format parser, array flow and malformed-format behavior |
 | `hash(bits)` | Original FNV-1 algorithm and public bit-width semantics |
 
 This is a source-derived backlog, not a claim these calls occur in every partial
@@ -265,3 +264,56 @@ node scripts/generate-arcade-authoring-inventory.mjs --check
 Original comparisons, native Code/Blocks reconstruction, Buffer[] custom returns,
 typed exported execution and actual fresh SB3 are controls. Visible editor and
 whole original-project recensus remain separate qualification tasks.
+
+### Packing and unpacking continuation
+
+Native words are `arcade byte buffer packed format FORMAT size`, `arcade pack
+number array ARRAY as byte buffer format FORMAT`, `arcade unpack byte buffer
+BUFFER format FORMAT at OFFSET`, and `arcade pack number array ARRAY into byte
+buffer BUFFER at OFFSET format FORMAT`. The array inputs/outputs use existing
+scoped number[] references; foreign/expired references are refused. Export emits
+genuine `Buffer.packedSize`, `Buffer.pack`, `.unpack` and `.packAt`, with Buffer
+and number[] custom-return types through existing exporter constraints. E10
+retains namespace import and shared type helper ownership.
+
+The generator retains original `base/buffer.ts` parsing and field selection.
+Supported field characters are `B b H h I i L l f d` and padding `x`, with
+decimal repeats and endian controls `< = > !`. A space resets to little endian
+as the original parser does. Unsupported characters retain the source-level
+message. This is the consumed MakeCode format language; do not substitute the
+full Python struct grammar or quietly accept unsupported formats.
+
+Padding in newly packed storage starts at zero; padding in `packAt` retains
+existing bytes. Extra numeric inputs are ignored and missing fields retain
+original undefined coercion. Pack results and unpack arrays detach from input
+storage. Original readonly and offset behavior come from the retained Buffer
+shim. Erroring writes may retain a successfully written prefix: this API does
+not promise transactional mutation.
+
+Formats are limited to4096 code units, each repeat and total field work to
+1048576 steps, and unpack output to1048576 numeric values. The original loop
+has checked repeat/work boundaries and a reserved result push before reading
+the next number. Padding-only sizes remain scalar results even above1MiB;
+allocating that size still fails the existing per-buffer bound. No failure
+returns a successful truncated result. Aggregate heap limits and a visible
+format/byte/array inspector remain separate tasks.
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test test/makecode-arcade-buffer-packing.test.mjs test/makecode-arcade-buffer-chunking.test.mjs test/makecode-arcade-buffer-arrays.test.mjs test/makecode-arcade-buffer-format-size.test.mjs test/makecode-arcade-byte-buffer.test.mjs test/lego-spike-roundtrip.test.mjs test/dialect-arcade-import-lines.test.mjs
+node scripts/generate-arcade-buffer-helpers.mjs --check
+node scripts/generate-arcade-authoring-inventory.mjs --check
+```
+
+Required controls compare actual original bytes/numbers, endian changes, repeat
+counts, padding, offsets and error messages, then authored native Code/Blocks,
+typed original export execution and actual fresh SB3 reopening. Visible GUI
+proof and immutable project recensus remain separate acceptance criteria.
+
+Packing failure transport and float-host boundary: the original simulator's
+`control.fail` terminates with panic108; native blocks report the source-level
+unsupported-character message through `BLOCKS_ERROR`. Missing float inputs keep
+the original typed-array conversion of undefined. Chromium and Node can encode
+different NaN payload bytes for that conversion. Exact byte controls therefore
+execute the retained native facade in Chromium against the original simulator;
+host controls separately check NaN values and field lengths. No fixed NaN payload
+is substituted into the original algorithm.

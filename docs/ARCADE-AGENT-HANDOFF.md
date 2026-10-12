@@ -1834,3 +1834,29 @@ actual durations and separate expensive original PXT compilation/simulator
 controls into a required shard with the same complete file/skip census and
 deployment dependency. Do not remove controls, hide failures or treat an
 incomplete distribution guard as passed to recover the budget.
+
+## Buffer packing checkpoint — 2026-10-12
+
+Native blocks and pseudocode expose `Buffer.packedSize`, `Buffer.pack`,
+`.unpack` and `.packAt` through genuine typed MakeCode export, scoped number
+arrays and custom returns. Selected original format parsing is retained, with
+bounded format length, repetition/work and unpack-result allocation. The
+[Buffer contract](ARCADE-BUFFER-IMPORT-CONTRACT.md#packing-and-unpacking-continuation)
+contains exact vocabulary, parser semantics, controls and remaining GUI tasks.
+
+Seven packing controls pass with zero skips, including original simulator byte
+comparisons, Code/Blocks reconstruction and actual fresh SB3. The preceding
+30 affected controls passed in the first batch; its three new failures remain
+preserved privately. They exposed Chromium/Node NaN payload differences,
+original panic108 versus native detailed failure transport, and a fixture
+variable named `size` colliding with an existing pseudocode command. Exact
+missing-float byte comparison now executes the retained facade in Chromium;
+no artificial NaN byte pattern was added. The authoring fixture uses
+`packedWidth`. Producer controls pass358/358; canonical vocabulary is315.
+
+The latest PR834 build and heavy browser shard passed. Its light browser shard
+was still pending at this checkpoint. No fresh visible editor success or full
+corpus promotion is claimed. Next source slice: original Buffer hash, then
+aggregate live heap/lifetime; E10 import, byte/format/array inspection and
+whole-app/controller/graphics qualification remain separate. Locked184 remains
+142 translated /41 partial /1 parse failure until genuine recensus.

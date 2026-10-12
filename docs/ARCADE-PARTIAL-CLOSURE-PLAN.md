@@ -426,3 +426,17 @@ allocation. Import, visible chunk inspection and full original-app recensus
 remain open. Next: pack/unpack format parsing and hash, then aggregate live heap
 closure. Hosted full builds and editor proof remain required; observed PR834
 unit success with a cancelled full build is not release qualification.
+
+### Buffer packing checkpoint — 2026-10-12
+
+Four packing APIs now have native words, scoped numeric arrays, typed custom
+returns, original MakeCode export and fresh SB3 controls. Seven new controls
+pass without skips;30 preceding affected controls passed in the preserved
+first batch. Producer passes358 controls, canonical vocabulary315. Original
+format syntax and partial-write behavior remain intact; bounded repeat/work
+and result allocation reject excessive requests explicitly. The Buffer
+contract records engine-dependent undefined-float NaN payloads and original
+panic108 versus native source-level diagnostics. Namespace imports, visible
+format/byte/array tools and immutable whole-project recensus remain open.
+Next: original hash, then aggregate live heap/lifetime, followed by real app
+qualification. Latest PR834 build/heavy passed; light pending at checkpoint.

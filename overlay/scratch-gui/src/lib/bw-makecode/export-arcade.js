@@ -1061,6 +1061,15 @@ class ArcadeEmitter {
             const text=this.literalInput(b,'TEXT');
             return `Buffer.chunkedFromUTF8(${text===null?v('TEXT'):JSON.stringify(text)}, ${v('SIZE')})`;
         }
+        case 'arcade_bufferPackedSize':
+        case 'arcade_bufferPack':
+        case 'arcade_bufferUnpack': {
+            const format=this.literalInput(b,'FORMAT');
+            const expression=format===null?v('FORMAT'):JSON.stringify(format);
+            return b.opcode==='arcade_bufferPackedSize'?`Buffer.packedSize(${expression})`:
+                b.opcode==='arcade_bufferPack'?`Buffer.pack(${expression}, ${v('ARRAY')})`:
+                `${v('BUFFER')}.unpack(${expression}, ${v('OFFSET')})`;
+        }
         case 'arcade_bufferFromArray': return `Buffer.fromArray(${v('ARRAY')})`;
         case 'arcade_bufferConcatArray': return `Buffer.concat(${v('ARRAY')})`;
         case 'arcade_bufferToArray':
@@ -1972,6 +1981,10 @@ class ArcadeEmitter {
             if(expression===null){this.note('Byte buffer numeric format is not supported');return;}
             push(`${v('BUFFER')}.setNumber(${expression}, ${v('OFFSET')}, ${v('VALUE')})`);return;
         }
+        case 'arcade_bufferPackAt': {
+            const format=this.literalInput(b,'FORMAT');
+            push(`${v('BUFFER')}.packAt(${v('OFFSET')}, ${format===null?v('FORMAT'):JSON.stringify(format)}, ${v('ARRAY')})`);return;
+        }
         case 'arcade_bufferWrite': push(`${v('BUFFER')}.write(${v('OFFSET')}, ${v('SOURCE')})`);return;
         case 'arcade_bufferFill': push(`${v('BUFFER')}.fill(${v('VALUE')}, ${v('OFFSET')}, ${v('LENGTH')})`);return;
         case 'arcade_bufferShift': push(`${v('BUFFER')}.shift(${v('AMOUNT')}, ${v('OFFSET')}, ${v('LENGTH')})`);return;
@@ -2503,9 +2516,9 @@ class ArcadeEmitter {
                 if(value.opcode==='arrays_namedReference'){const id='named-array:'+literal(blocks,value,'NAME');arrays.add(id);return id;}
                 if(['arrays_parseLegacyValue','arrays_jsonValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
                 if(value.opcode==='arcade_spriteToString') {const id=Symbol('sprite text');strings.add(id);return id;}
-                if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferFromBase64','arcade_bufferLiteral','arcade_bufferSlice','arcade_bufferConcat','arcade_bufferFromArray','arcade_bufferConcatArray'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
-                if(['arcade_bufferToArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8'].includes(value.opcode)){const id=`${key}:buffer-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
-                if(['arcade_bufferLength','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf','arcade_bufferFormatSize'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
+                if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferFromBase64','arcade_bufferLiteral','arcade_bufferSlice','arcade_bufferConcat','arcade_bufferFromArray','arcade_bufferConcatArray','arcade_bufferPack'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
+                if(['arcade_bufferToArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8','arcade_bufferUnpack'].includes(value.opcode)){const id=`${key}:buffer-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
+                if(['arcade_bufferLength','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf','arcade_bufferFormatSize','arcade_bufferPackedSize'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
                 if(['arcade_bufferToHex','arcade_bufferToText','arcade_bufferToBase64'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
                 if(['arcade_bufferIsReadOnly','arcade_bufferEquals'].includes(value.opcode)){const id=Symbol('buffer readonly');booleans.add(id);return id;}
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);return id;}
@@ -2584,8 +2597,8 @@ class ArcadeEmitter {
                     const image = ref(inputBlock(blocks,block,input));if(image)images.add(image);
                 }
                 if(block.inputs?.BUFFER){const buffer=ref(inputBlock(blocks,block,'BUFFER'));if(buffer)graphBufferValues.add(buffer);}
-                if(['arcade_bufferFromArray','arcade_bufferConcatArray','arcade_bufferToArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8'].includes(block.opcode)){
-                    const array=['arcade_bufferToArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8'].includes(block.opcode)?ref(block):ref(inputBlock(blocks,block,'ARRAY'));
+                if(['arcade_bufferFromArray','arcade_bufferConcatArray','arcade_bufferToArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8','arcade_bufferPack','arcade_bufferPackAt','arcade_bufferUnpack'].includes(block.opcode)){
+                    const array=['arcade_bufferToArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8','arcade_bufferUnpack'].includes(block.opcode)?ref(block):ref(inputBlock(blocks,block,'ARRAY'));
                     if(array){arrays.add(array);const item=Symbol('buffer array element');
                         (['arcade_bufferConcatArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8'].includes(block.opcode)?graphBufferValues:numbers).add(item);elements.push([array,item]);}
                 }

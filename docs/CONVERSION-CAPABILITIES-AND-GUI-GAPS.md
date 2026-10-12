@@ -3689,3 +3689,13 @@ search/surrogate behavior is preserved. Collection bounds reject unsafe output
 instead of truncating it. A visible array/byte/chunk inspector, GUI field/controller
 proof and namespace import remain open; the vocabulary inventory alone does not
 qualify those user journeys.
+
+### Buffer format authoring (2026-10-12)
+
+Native packed-size, pack, unpack and pack-at blocks now share the original
+MakeCode format parser through Code, scoped number arrays and typed export.
+Format text is editable and can come from a reporter; the existing palette
+exposes genuine APIs with explicit invalid-format diagnostics. A visible format
+assistant/preview, byte inspector, typed array editing, original namespace
+import and hosted editor/controller journey remain open GUI work. Source
+vocabulary and headless original roundtrips do not qualify those user flows.
