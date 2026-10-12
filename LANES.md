@@ -3051,3 +3051,14 @@ including surrogate replacement and embedded NUL, with a byte allocation bound
 before encoding. E10 retains AST/import/type lowering; no importer helpers,
 painter, project serialization or other peer-owned files are taken. Keep PR810
 and PR834 qualification independent; do not promote the immutable corpus count.
+
+## Arcade Buffer range writes — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-buffer-write-range-20261012`, stacked on PR835.
+Own the missing explicit source offset/length Buffer.write operation in native
+blocks, canonical Code, runtime and typed export, targeted producer adoption and
+original-PXT range/overlap/readonly controls. Preserve the existing short write
+opcode/Code spelling and its defaults. The underlying generated original write
+algorithm is retained. E10 keeps importer/namespace/type-lowering ownership;
+this lane extends its import contract only. No painter, storage or other peer
+files are taken; existing candidate browser diagnostics remain independent.
