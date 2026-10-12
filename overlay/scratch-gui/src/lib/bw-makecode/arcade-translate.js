@@ -1990,6 +1990,21 @@ class ArcadeTranslator extends BaseTranslator {
         case 'music.stringPlayable':
             if (a.length === 2) return `arcade string playable ${value(0)} at ${value(1)} bpm`;
             break;
+        case 'music.createSong': {
+            const buffer = a.length === 1 && a[0];
+            if (buffer?.type === 'Template' && buffer.tag === 'hex') {
+                const text = buffer.value.replace(/\s/g, '');
+                if (!/^(?:[0-9a-f]{2}){7,}$/i.test(text) || !/^00/i.test(text)) {
+                    this.note('music.createSong requires complete version-zero song bytes');
+                    return '0';
+                }
+                return `arcade song playable hex ${JSON.stringify(text.toLowerCase())}`;
+            }
+            if (buffer?.type === 'Call' && this.path(buffer.callee) === 'Buffer.fromHex' && !this.bindsName('Buffer') && buffer.args.length === 1)
+                return `arcade song playable hex (${this.expr(buffer.args[0])})`;
+            this.note('music.createSong requires a hex literal or Buffer.fromHex expression');
+            return '0';
+        }
         case 'music.tonePlayable':
             if (a.length === 2) return `arcade tone playable ${value(0)} Hz for ${value(1)} ms`;
             break;

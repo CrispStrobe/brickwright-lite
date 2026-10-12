@@ -1051,10 +1051,10 @@ validation must not be labelled support for every song format.
 
 ### Required continuation
 
-`music.createSong` still needs importer value lowering, a normal Arcade reporter
-block, the shared producer pseudocode word, MakeCode export/reimport and SB3
-roundtrips. Keep diagnostics until these are implemented. Then add editable song
-assets and a real production GUI journey as specified in the song lane above.
+The following song-values slice implements importer value lowering, the normal
+Arcade reporter block, shared producer pseudocode word, MakeCode export/reimport
+and SB3 roundtrips. Editable song assets and a production GUI journey remain
+required as specified in the song lane above.
 The locked corpus census remains 142/41/1; runtime primitives alone do not change
 its classification.
 
@@ -1075,3 +1075,64 @@ skips (12 song, six existing music, 11 Carnival source/control checks). The
 separate HEAD overlay/packages mirror check passes. Production build/browser
 qualification remains pending; the runtime source tree and hosted app result
 are separate evidence. No importer classification was promoted.
+
+
+## Song values and conversion slice — 2026-10-12
+
+### Implementation and authoring
+
+``music.createSong(hex`...`)`` lowers to the normal `arcade_songPlayable`
+reporter. Code uses `arcade song playable hex "00780004080100"`; a string
+expression is also accepted. Connect the reporter to the existing music-play
+block. The runtime creates the native typed playable through the validated PXT
+song codec and sequencer, rather than interpreting a separate song format.
+
+`music.createSong(Buffer.fromHex(expression))` preserves a dynamic hex string.
+Literal reporter values export as ``music.createSong(hex`...`)``; expression
+inputs export through `Buffer.fromHex`. Literal export validates hex before
+embedding it in TypeScript. Unsupported constructor forms retain diagnostics;
+invalid runtime bytes emit a visible block error and return no playable.
+General Buffer variables, mutation and other binary versions remain open.
+
+The shared producer word is in
+[sb3-creator PR94](https://github.com/CrispStrobe/sb3-creator/pull/94), stacked on
+[PR93](https://github.com/CrispStrobe/sb3-creator/pull/93). The adopted pin is
+`c70963552a0ceac9456633cac24e9c62d922cde2`; the inventory now contains 281
+Arcade words. All 18 mapped files match the sync's own transformation; the
+permitted downstream delta set remains empty.
+
+### Reproducible checks
+
+`test/makecode-arcade-song-values.test.mjs` contains five checks:
+
+- Real imported-song VM playback and until-done continuation.
+- Exact literal-byte export and execution in the complete original MakeCode
+  simulator, comparing active instruction bytes.
+- Dynamic-string Code/Blocks/export/reimport plus actual SB3 save and reopening
+  in a fresh VM; the exported dynamic program also runs in original MakeCode.
+- Unsupported constructor forms, malformed hex and invalid native timing retain
+  diagnostics or visible runtime errors; the normal reporter is discoverable.
+- Editing a reporter's bytes changes exported tempo; unsafe malformed literal
+  text is refused.
+
+The combined song-values, native-song, existing-music, canonical SPIKE artifact,
+dialect and vendor-identity checks pass: 35 tests, no failures or skips. The
+shared producer's independent grammar checks pass: 324 tests. These checks do
+not establish a production browser authoring journey or audible output.
+
+### Remaining GUI and integration work
+
+Provide named song assets and an editor for tracks, notes, instruments, drums,
+volume and tempo. Save edits transactionally and exercise creation, playback,
+export, original MakeCode import and SB3 reopening through the actual GUI.
+General Buffer operations, simultaneous-song semantics and version-one songs
+need separate qualification. Do not count an editable hex input as a song editor.
+
+The parent runtime's hosted run
+[38173020786](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38173020786)
+is red: the build failed a particle-effect image assertion, the light browser
+shard failed painted-level save/reopen execution, and the heavy shard stopped
+before the Arcade journeys. The native-song checks did not fail. These failures
+remain integration blockers; their causes must be established before a full
+production claim. Preserve the original failures rather than rerunning them out
+of the evidence record.

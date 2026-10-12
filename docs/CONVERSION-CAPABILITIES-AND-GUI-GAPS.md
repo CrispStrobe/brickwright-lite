@@ -3411,8 +3411,28 @@ sequencing, playback modes and cancellation. Four real original controls match
 active instruction bytes, with zero terminal padding explicitly accounted for.
 This is a candidate runtime slice, not completed song authoring.
 
-Open: createSong import/export and normal Blocks/pseudocode reporter; exact SB3
-roundtrips; named editable song assets, note/track/instrument/tempo UI; production
-GUI playback journey; other binary versions and simultaneous-song behavior.
+The next slice below supplies createSong import/export, normal Blocks/pseudocode
+reporter and actual SB3 roundtrips. Named editable song assets, the
+note/track/instrument/tempo UI, production GUI playback, other binary versions
+and simultaneous-song behavior remain open.
 Source, methods and qualification boundaries are in
 [the runtime handoff](ARCADE-AGENT-HANDOFF.md#native-song-sequencing-implementation-slice--2026-10-11).
+
+
+### Song values and roundtrips candidate — 2026-10-12
+
+The normal Blocks reporter and shared Code word `arcade song playable hex`
+construct the validated native song playable. Import/export supports literal
+hex and dynamic string expressions through `Buffer.fromHex`; unsupported Buffer
+forms retain diagnostics. Five new checks exercise actual VM playback, editing
+song bytes, export execution in original MakeCode and real SB3 save/reopen into
+a fresh VM. Together with affected runtime, canonical artifact and producer
+identity checks: 35 pass, no failures or skips. Producer grammar: 324 pass.
+
+**Still open:** named song assets; a real note/track/instrument/drum/tempo editor;
+transactional GUI saves; production browser creation/playback/export/reopen;
+general Buffer operations; simultaneous-song behavior; other binary versions.
+The reporter's hex field does not satisfy graphical song authoring.
+See [the complete contract](ARCADE-AGENT-HANDOFF.md#song-values-and-conversion-slice--2026-10-12).
+Parent hosted failures remain blockers; this focused qualification is not a
+production build claim.

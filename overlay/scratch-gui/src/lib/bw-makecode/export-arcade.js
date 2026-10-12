@@ -1024,6 +1024,18 @@ class ArcadeEmitter {
         case 'arcade_melodyPlayable': return `music.melodyPlayable(${v('MELODY')})`;
         case 'arcade_stringPlayable': return `music.stringPlayable(${v('MELODY')}, ${v('TEMPO')})`;
         case 'arcade_tonePlayable': return `music.tonePlayable(${v('FREQUENCY')}, ${v('DURATION')})`;
+        case 'arcade_songPlayable': {
+            const literal = this.literalInput(b, 'HEX');
+            if (literal !== null) {
+                const text = String(literal).replace(/\s/g, '');
+                if (!/^(?:[0-9a-f]{2}){7,}$/i.test(text) || !/^00/i.test(text)) {
+                    this.note('Arcade song requires complete version-zero hexadecimal bytes');
+                    return 'undefined';
+                }
+                return 'music.createSong(hex`' + text.toLowerCase() + '`)';
+            }
+            return `music.createSong(Buffer.fromHex(${v('HEX')}))`;
+        }
         case 'arcade_soundEffect': {
             const wave = this.musicField(b, 'WAVE', 'WaveShape'), effect = this.musicField(b, 'EFFECT', 'SoundExpressionEffect');
             const curve = this.musicField(b, 'CURVE', 'InterpolationCurve');

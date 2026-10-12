@@ -78,3 +78,12 @@ The countdown and two game-over dialect words belong to the shared producer,
 not to an intentional Lite divergence. See
 [sb3-creator PR #93](https://github.com/CrispStrobe/sb3-creator/pull/93).
 The historical `9173ca75` measurement above remains a historical receipt.
+
+
+## Song reporter producer adoption — 2026-10-12
+
+The empty delta set also applies at `c70963552a0ceac9456633cac24e9c62d922cde2`.
+All 18 mapped files are verified against the sync's transformation. The ordinary
+song reporter word belongs to the shared producer in
+[sb3-creator PR94](https://github.com/CrispStrobe/sb3-creator/pull/94), stacked on
+PR93. This does not add a downstream exemption or replace historical receipts.
