@@ -2604,3 +2604,14 @@ CLAIMED — Codex, branch `lane/arcade-legacy-layout-authoring-20261011`, stacke
 Legacy layout authoring envelope additionally owns `scripts/verify-arcade-legacy-layout.mjs`, its additive light-shard workflow step and generated browser budget registration. Preserve existing modern/persistence/placement gates and bounds. Single-layer source documents must remain bound to the new rendered asset; multi-layer/animated sources stay explicitly listed for the Pixel path.
 
 Legacy authoring followup in PR794 also owns definition artwork/wall editing: new `legacy-tile-definition-editor.jsx`, definition operations in `legacy-layout-editor.js`, and focused tests/browser coverage. Each definition retains its own block/index/timing; only static artwork sources and literal wall predicates are editable. Computed inputs get explicit reasons. No sprite-placement implementation or circuit pin changes.
+
+
+## Ended Claude session integration checkpoint — 2026-10-12
+
+Operator-requested rescue on `integrate/claude-arcade-rescue-20261012` retains
+exact original797/800/801 commits. No unpublished tracked implementation found;
+three probes privately archived. Combined source47982918f passes20 focused
+placement/countdown/original-terrain/mirror checks,0 skips. Fresh hosted package
+and GUI checks are required; original797/800 light failures preserved. Painter
+installation/original-display readiness repair stays with active Codex bwcx.
+Original branches/worktrees remain unchanged; no failed-check main merge.

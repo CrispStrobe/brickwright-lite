@@ -523,3 +523,47 @@ The same PR794 lane now includes `legacy-tile-definition-editor.jsx`. It lists e
 Definition operations are `findLegacyTileDefinitions` and `writeLegacyTileDefinition` in `legacy-layout-editor.js`. Artwork editing and wall editability are separate: a computed wall remains in its own block while static artwork can be edited. A computed index or image is listed with its reason. Save checks source identity, current index and wall fingerprint before mutation. Native tests verify that the wall change affects every matching colour cell, source/SB3 persistence, original MakeCode tile pixel3 and wall false, stale-save refusal and saved undo back to the initial definition. The existing browser gate now exercises the actual definition pixel/wall controls before fresh File load and downloaded MakeCode reimport. Fresh GUI and enabled hosted results remain pending.
 
 Definition followup qualification: all38 affected tests passed,0 skips; a final5-test focused rerun passed after validation guards. JSX/script syntax and unchanged workflow budget registration passed. Actual fresh-build browser controls remain queued and are not qualified by those unit/runtime results. Remaining authoring gaps include computed definition indices/images, computed wall expressions, richer layer/animation sources and broader source-alias resolution.
+
+
+## Claude session rescue — 2026-10-12
+
+The operator reports that the Claude session has ended. Its useful work is
+committed and pushed; there are no uncommitted tracked changes in its green-flag,
+placement or countdown worktrees. Three diagnostic prototypes were preserved
+privately, not promoted to production scripts.
+
+The isolated `integrate/claude-arcade-rescue-20261012` branch merges these exact
+candidates, preserving their original history:
+
+- [PR801](https://github.com/CrispStrobe/brickwright-lite/pull/801),
+  `f97f3606a5cfcfd0ad7dc02e548736f6ab29dcd6`: sprite placement in the tile painter,
+  including its PR793/794 parents. All seven enabled hosted checks succeeded.
+- [PR797](https://github.com/CrispStrobe/brickwright-lite/pull/797),
+  `2a0f1e657163e25bf6ed1512fa6fb0ebe6a26b79`: exact bw-board package adoption
+  `9c8777d5` and derived pins/receipts/lockfiles. Build and heavy browser passed;
+  light failed saved-painted-level execution after reopening.
+- [PR800](https://github.com/CrispStrobe/brickwright-lite/pull/800),
+  `a078a5e452991a69abb21c7a9bb6de3ae6c18e86`: native countdown event ordering and
+  deterministic original simulator clock. Build and heavy browser passed; light
+  failed the same painted-level check.
+
+The original PR797/800 failure logs establish the shared failed assertion;
+they do not establish that either source change caused it. Both failures remain
+preserved. A separate active worker owns the painted-level installation and
+original-display readiness proof repair. Do not overwrite or duplicate that
+worker's source or claim its unpublished result.
+
+This integration has documentation conflicts resolved while retaining lane
+histories; executable source merged without conflicts. Fresh combined hosted
+qualification is required before main adoption. PR801's green parent-specific
+result does not qualify the new main-based combination. The original branches
+and worktrees remain available. PR789/790/791 are already integrated and need no
+second salvage. Song and Carnival descendants remain separate candidates.
+
+
+Combined focused checkpoint: source `47982918f` passes20 checks, no failures or
+skips: placement model with real runtime/export, info/countdown registration,
+original-simulator terrain trajectories and HEAD tracked mirrors. This does not
+qualify the full package/GUI combination. Reuse the original exact-head source
+and retain its failed browser logs; require fresh hosted enabled checks before
+merging the new main-based rescue candidate.
