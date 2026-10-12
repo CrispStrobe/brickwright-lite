@@ -215,6 +215,31 @@ test('runDosToolchain("forth", …) runs the shipped zForth on the real DOS benc
     assert.ok(r.files.get('PROG.FTH'), 'PROG.FTH was mounted for the interpreter');
 });
 
+test('a Forth user syscall reaches the host on the real bench (the device-bridge extension point)', async () => {
+    // zForth's `sys` is the VM's host-call primitive: `<id> sys` invokes the
+    // front-end's zf_host_sys. `quit` is `128 sys` (ZF_SYSCALL_USER + 0), which
+    // the DOS front-end implements as exit. So a *generated word* can reach a
+    // host handler — the mechanism a "drive the board" GPIO syscall would use
+    // (see docs/CODE-TAB-LANGUAGE-DEVICE-BRIDGE.md). Proof: the line after
+    // `quit` never runs, so the user syscall fired and short-circuited.
+    const program = [
+        ': main',
+        '  ." before-syscall" cr',
+        '  quit',
+        '  ." after-syscall" cr',   // unreachable: the user syscall exited
+        ';',
+        'main', ''
+    ].join('\n');
+    const r = await runDosToolchain('forth', program, {
+        fetchToolchain: async () => ({compiler: FORTH_EXE}),
+        maxSteps: 200_000_000
+    });
+    assert.equal(r.stage, 'compile');
+    assert.ok(r.compile.screen.includes('before-syscall'), r.compile.screen);
+    assert.ok(!r.compile.screen.includes('after-syscall'),
+        `the user syscall should have short-circuited: ${JSON.stringify(r.compile.screen)}`);
+});
+
 test('the DOS-native Tcl (partcl) route is verified and shaped like fe', () => {
     const tcl = DOS_TOOLCHAINS['tcl'];
     assert.ok(tcl && tcl.kind === 'dos-native');

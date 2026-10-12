@@ -1,5 +1,17 @@
 # Who is doing what — merge the claim before implementation
 
+## Forth packaged license notice — 2026-10-12
+
+CLAIMED — Codex SPIKE package review, `fix/forth-license-notice-20261012`.
+Envelope: this ledger, `overlay/scratch-gui/static/licenses/zForth.MIT.txt`
+and the existing Forth provenance record only. Retain the exact upstream
+copyright and permission notice from the recorded zForth source revision beside
+the shipped frontend assets; verify its upstream Git blob and preserve the
+executable digest. This closes only the zForth notice inclusion gap. Exact
+linked newlib/libi86 obligations and whole-package component review remain open.
+No executable, dependency pin, compiler, simulator or peer implementation change.
+
+
 ## Wide Arcade artwork documents and Pixel authoring — 2026-10-12
 
 CLAIMED — Codex Arcade integration, `lane/arcade-partial-closure-20261012`.
@@ -19,7 +31,7 @@ pin changes; retain the separate particle-control owner's test envelope.
 
 ## Arcade particle seed controls — 2026-10-12
 
-CLAIMED — Codex SPIKE integration, `fix/arcade-particle-test-seeds-20261012`.
+DONE candidate — Codex SPIKE integration, `fix/arcade-particle-test-seeds-20261012`.
 Envelope: `test/makecode-arcade-particle-effects.test.mjs` and this ledger only.
 The existing 8x8 dissolve assertion depends on an unrecorded random seed;
 two valid generated rectangles can both fall outside the image. Set the
@@ -27,6 +39,9 @@ specific image effect's seed in the positive fixture, retain its image-change,
 particle, lifespan and handler assertions, and add an off-canvas seed control
 for cloning and destruction semantics. Preserve generated PXT/runtime bytes,
 original failed CI and all independently owned Arcade source/GUI lanes.
+Both affected controls pass under Node 22.23.3. Setting the positive fixture
+to the off-canvas seed fails its retained pixel assertion; suppressing the image
+effect fails both pixel-change and clone assertions. Hosted checks remain pending.
 
 
 ## Arcade animation resource dimensions — 2026-10-12
@@ -1396,6 +1411,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+| Original MakeCode files in the `.sb3`, kept but marked stale (task F10 of docs/OPEN-TASKS-2026-09-29.md; owner decision 2026-10-12) | VPS Claude (opus), `Claude-Session: fa1e9be5-1c83-4316-b417-b2d621c9e62f`, worktrees under `/mnt/volume1/code/wt/lite-f10*` | base `origin/main`; a new overlay module `overlay/scratch-vm/src/serialization/bw-makecode-original.js` (+ its save/load hooks in `scripts/apply-vm-overlay.mjs`), where an import records the original (`scripts/makecode.mjs to-sb3`, the GUI MakeCode import), the export's choice between original and regenerated files, the WIP test `test/arcade-metadata-sb3.test.mjs` re-ported plus a stale-case test; this row and the task file. Not the importer's translation (E10) nor the Arcade runtime/painter lanes. | **CLAIMED 2026-10-12.** |
 | The GUI package's avr8js follows bw-board's fork (task B15 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `origin/main`; `packages/scratch-gui/package.json`, `scripts/integrate.mjs`'s avr8js default (via `scripts/lib/avr8js-spec.mjs`), one focused test; this row and the task file. Not B14 (gearmotor reverse, 7-segment minus) nor B9 (ESP32 LEDC). | **DONE 2026-10-12 — Lite PR (this branch, `lane/b14-pwm-closeout-avr8js-20261012`).** `packages/scratch-gui/package.json` declares `github:CrispStrobe/avr8js#feea84c4`, the commit bw-board pins (#413), instead of npm `^0.21.0`; `scripts/integrate.mjs` writes it from one constant, `scripts/lib/avr8js-spec.mjs`. `test/avr8js-one-version.test.mjs` holds the constant equal to the installed bw-board's declared avr8js, checks the GUI package.json and integrate.mjs use it, and where the GUI package is installed that it resolves the fork build (`-bw.N`): 2/2 locally with the GUI installed. **Follow-up 2026-10-12:** the tracked `packages/scratch-gui/package-lock.json` still locked npm 0.21.0 (and a nested copy under bw-board), so `worktree-deps verify` failed in every fresh worktree; it now locks the fork commit once at the top level, as installed, and the test checks the lockfile too (3/3; red on the old lockfile). |
 | Arcade importer gaps found by E9: text truthiness, shared functions across sprites, unreachable predicateBranches (task E10 of docs/OPEN-TASKS-2026-09-29.md; starts after C8) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; `overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js` + helpers, export side only if a round trip needs it, focused tests; this row and the task file. | **CLAIMED 2026-10-12.** |
 
@@ -2976,3 +2992,28 @@ Full Build38208078539/vendor/debugger/Rust checks queued on updatedPR810.
 No mainmerge; independent painter/display proof worker retains ownership.
 Publicmethod: PR810 docs/ARCADE-AGENT-HANDOFF.md combined integration section;
 original reports and exact ancestry/input proof archived privately.
+
+
+## Arcade byte-buffer runtime foundation — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-partial-closure-20261012`. Envelope: new
+bounded byte-buffer runtime/generator, replacement of the mixer host's limited
+numeric buffer adapter, focused original-PXT numeric/alias/slice controls and
+handoff/GUI ledger. Preserve original numeric formats, signedness, byte order,
+float behavior, copying and mutable storage. Buffer Blocks/Code/value-reference
+and importer wiring remain subsequent acceptance work, coordinated with E10;
+no E10 importer/helper, painter, particle-test or package-pin edits in this slice.
+
+
+## Arcade Buffer reference values and authoring vocabulary — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-partial-closure-20261012`. Envelope: Buffer kind
+in shared BWValues and the own-fork Arrays fallback, scoped byte heap and
+Arcade Buffer blocks/menus, own sb3-creator dialect, qualified targeted producer/
+Arrays adoption, MakeCode export/type support, focused identity/lifetime/VM/
+SB3/Blocks-Code tests and capability handoff. Preserve canonical value rules
+and byte implementation; retain readonly literal vs mutable construction.
+Use owned dependency preparation for local VM tests; shared dependencies stay
+untouched. No E10 importer/namespace/type-lowering helper edits in this slice;
+namespace import remains a coordinated subsequent step. No painter or peer
+package/runtime ownership is taken. Keep native import diagnostics until wired.
