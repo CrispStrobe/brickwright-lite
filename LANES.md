@@ -3138,3 +3138,11 @@ export need original execution, custom-return/alias controls and fresh SB3.
 E10 retains importer/shared type helper ownership; use existing exporter graph
 constraints without changing shared inference code. Preserve GUI qualification
 failures and locked corpus counts.
+
+Buffer array bridge scope refinement: the actual authoring check found that
+fixed numeric JSON arrays run in Arrays.createReference but export diagnoses
+them as a non-chain constructor. Include export of fixed finite number-array
+literals using JSON parsing and exact numeric source expressions, retaining
+negative zero. Other dynamic/non-numeric constructor inputs keep diagnostics;
+do not replace refused inputs with empty successful arrays. Shared E10 helpers
+remain untouched.
