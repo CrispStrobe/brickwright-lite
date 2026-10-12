@@ -27,10 +27,14 @@ import {createHash} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 import JSZip from 'jszip';
+import {createRequire} from 'node:module';
 import {compile, hasRuntime} from './lib/pxt-node.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const lib = rel => import(pathToFileURL(path.join(ROOT, 'overlay/scratch-gui/src/lib', rel)).href);
+// F10: an imported MakeCode project's own files, kept in the .sb3 (the VM overlay module).
+const makeCodeOriginal = createRequire(import.meta.url)(
+    path.join(ROOT, 'overlay/scratch-vm/src/serialization/bw-makecode-original.js'));
 
 const USAGE = `usage:
   node scripts/makecode.mjs tutorial-to-project <tutorial.md> --main <main.ts> [-o out.mkcd] [--target arcade|microbit]
@@ -78,6 +82,8 @@ async function readProject (file) {
     const json = zip.file('project.json');
     if (!json) throw new Error(`${file}: no project.json — not an .sb3`);
     const project = JSON.parse(await json.async('string'));
+    // Before anything rewrites the targets: the fingerprint is over the saved program.
+    const original = makeCodeOriginal.original(project);
     const svgs = new Map();
     for (const name of Object.keys(zip.files)) if (/\.svg$/i.test(name)) svgs.set(name, await zip.file(name).async('string'));
     const costumeSvg = (t, c) => svgs.get(c.md5ext || `${c.assetId}.${c.dataFormat}`) || null;
@@ -99,13 +105,23 @@ async function readProject (file) {
     const costumePalette = (t, c) => palettes.get(`${project.targets.indexOf(t)}:${t.costumes.indexOf(c)}`) || null;
     const {withoutAssetLibraries} = await lib('bw-asset-library.js');
     return {project: withoutAssetLibraries(project, artwork.libraries || []),
-        costumeSvg, costumePalette, soundData, animationDocuments, warnings};
+        costumeSvg, costumePalette, soundData, animationDocuments, warnings, original};
 }
 
 /** The MakeCode files for a project, for a target, with what did not map. */
 async function toMakeCode (file, target) {
-    const {project, costumeSvg, costumePalette, soundData, animationDocuments = [], warnings = []} = await readProject(file);
+    const {project, costumeSvg, costumePalette, soundData, animationDocuments = [], warnings = [], original} = await readProject(file);
     const name = base(file).slice(0, 40);
+    // F10: a project imported from MakeCode and not changed since exports its
+    // own files; once changed, the blocks are exported and the original is only
+    // reported as stale.
+    if (original && original.status === 'current' && original.target === target) {
+        return {ts: original.files['main.ts'], files: original.files, unsupported: [],
+            warnings: ['the original MakeCode files: the program is unchanged since it was imported'], name};
+    }
+    if (original && original.status === 'stale' && original.target === target) {
+        warnings.push('the imported MakeCode original no longer matches this program (it changed since import); exported from the blocks');
+    }
     if (target === 'arcade') {
         const {projectToArcade} = await lib('bw-makecode/export-arcade.js');
         const out = projectToArcade(project, {name, costumeSvg, costumePalette, soundData, animationDocuments});
@@ -233,6 +249,8 @@ async function main () {
         const {default: SB3Creator} = await lib('sb3-creator.js');
         const cr = new SB3Creator();
         cr.parse(res.code);
+        // F10: keep the imported files; the first VM load fingerprints the program.
+        cr.project.bwMakeCode = makeCodeOriginal.record(res.project.target, res.files, res.project.name);
         for (const c of res.costumes || []) {
             if (c.mode === 'add') cr.addCustomSVGCostume(c.sprite, c.svg, c.name);
             else cr.applyCustomSVG(c.sprite, c.svg);
