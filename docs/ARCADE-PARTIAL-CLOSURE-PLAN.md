@@ -86,7 +86,7 @@ all requested files exist; sparse Node test discovery can silently omit files.
 ```sh
 node scripts/compat-audit.mjs --target arcade --corpus-commit "$CORPUS_COMMIT" --out "$REPORT_FILE" "$ORIGINAL_CORPUS_DIR"
 node scripts/compat-audit.mjs --target arcade --compile --fetch-extensions --out "$COMPILE_REPORT_FILE" "$COMPLETE_PROJECT_DIR"
-node scripts/conversion-roundtrips.mjs --help
+node scripts/conversion-roundtrips.mjs --out "$ROUNDTRIP_REPORT_FILE" --corpus-commit "$CORPUS_COMMIT" "$ORIGINAL_CORPUS_DIR"
 ```
 
 Runtime/GUI receipts must state the exact executable/build under observation.
