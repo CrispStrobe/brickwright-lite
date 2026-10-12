@@ -17,7 +17,7 @@ import {existsSync, readFileSync, mkdtempSync, writeFileSync, mkdirSync} from 'n
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 
-import {checkAgainst, output, STABLE_FIELDS, requireSnapshotFlag, renderModule, moduleOutput, moduleMirror} from '../scripts/gen-bw-board-census.mjs';
+import {checkAgainst, output, STABLE_FIELDS, publicSnapshot, requireSnapshotFlag, renderModule, moduleOutput, moduleMirror} from '../scripts/gen-bw-board-census.mjs';
 import {CENSUS_ROWS, CENSUS_SHA} from '../overlay/scratch-gui/src/lib/bw-matrix/census-snapshot.js';
 import {explain, oracleStatus} from '../overlay/scratch-gui/src/lib/bw-matrix/capabilities.js';
 import {DEVICES, CELLS} from '../overlay/scratch-gui/src/lib/bw-matrix/capabilities.js';
@@ -131,4 +131,29 @@ test('explain() shows the tier and each oracle\'s census status, so the GUI and 
     assert.equal(oracleStatus('no-such-oracle'), 'unknown');
     const de = explain('c', 'stc12c5a60s2', 'de');
     assert.match(de, /Stufe 2a \(emu8051: in der bw-board-CI laufend\)/, de);
+});
+
+
+test('public census omits local locations while preserving observations and stable facts', () => {
+    const rows = [
+        {id: 'posix', via: '/home/operator/private/vectors', present: true},
+        {id: 'fallback', via: 'tried $VECTOR_ROOT, /opt/private/vectors', present: false},
+        {id: 'windows', via: 'C:\\Users\\operator\\vectors', present: true},
+        {id: 'network', via: '\\\\server\\private\\vectors', present: false},
+        {id: 'relative', via: 'test/fixtures/vectors.json', present: true},
+        {id: 'url', via: 'https://example.org/public/vectors', present: false}
+    ].map(row => ({...row, kind: 'fixture', ciAvailable: false, ci: 'not in CI', gates: [], what: 'observation'}));
+    const original = {source: {sha: 'a'.repeat(40)}, rows};
+    const saved = JSON.stringify(original), result = publicSnapshot(original);
+    assert.equal(JSON.stringify(original), saved, 'the original snapshot is preserved');
+    assert.deepEqual(result.rows.map(row => row.via), [
+        '[local path omitted]', 'tried $VECTOR_ROOT, [local path omitted]',
+        '[local path omitted]', '[local path omitted]', 'test/fixtures/vectors.json',
+        'https://example.org/public/vectors'
+    ]);
+    assert.deepEqual(publicSnapshot(result), result, 'public projection is idempotent');
+    for (let i = 0; i < rows.length; i++) {
+        for (const key of [...STABLE_FIELDS, 'present']) assert.deepEqual(result.rows[i][key], rows[i][key]);
+    }
+    assert.deepEqual(result.source, original.source);
 });
