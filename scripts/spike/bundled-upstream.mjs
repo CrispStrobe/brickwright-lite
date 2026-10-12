@@ -129,6 +129,9 @@ export const LITE_ONLY = {
         'would mean upstreaming that contract too.',
     cameracapture: 'Lite-native. Integrates with the app\'s shared Video Sensing provider and preview ' +
         'to capture still images without opening a competing camera stream.',
+    peers: 'Lite-native and gated (task E11): the Peer Sessions blocks call the app\'s own native ' +
+        'peer commands, exist only in a BW_ENABLE_PEERS=1 build with the `peers` Cargo feature, and ' +
+        'must not be upstreamed while no default build carries them (docs/PEERS-SECURITY-REVIEW.md).',
 };
 
 /**
