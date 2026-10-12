@@ -3116,3 +3116,12 @@ the composed frame: aggregate fire-color counts can shrink when particles cover
 the sprite. Preserve the original failure; retain positive emission, exact pixel
 composition, ghost/dissolve/lifespan and cleanup assertions. No generated PXT
 algorithm or random distribution change is authorized to make a test pass.
+
+## Arcade Buffer number-format sizes — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-buffer-format-size-20261012`, stacked on the
+Buffer candidates. Implement genuine public Buffer.sizeOfNumberFormat through
+source-extracted original algorithm, native numeric reporter/menu, Code spelling,
+typed export and producer vocabulary. Verify all16 formats, invalid/dynamic
+format values, original execution, archive reopening and generator drift. Keep
+GUI Buffer failure visible; E10 retains importer/type-lowering ownership.
