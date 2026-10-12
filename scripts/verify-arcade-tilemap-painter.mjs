@@ -322,18 +322,58 @@ try {
         JSON.stringify(mapSet(await readLevels())) === JSON.stringify(expectedMaps));
     await page.screenshot({path: join(out, 'reopened-painter.png')});
     // Observe the actual reopened VM, not the old instance or only project JSON.
+    // The green flag starts TWO scripts that set a tile map: the painter's new
+    // level script installs the 10x8 level at once, and the platformer's own
+    // start script installs its first level a few frames later (after it has
+    // initialised animations and the player). The new level is therefore the
+    // running map only for that window, and reading "the current map" raced
+    // the platformer (red on main 8f2cdf8a8, run 38197900088: the poll missed
+    // the window and saw only the 32x8 level). Record what each tile-map block
+    // installs in the reopened runtime, and check each script's own result.
+    const newLevelHat = await page.evaluate(blockId => {
+        for (const target of window.__brickwrightStore.getState().scratchGui.vm.runtime.targets) {
+            const block = target.isOriginal && target.blocks.getBlock(blockId);
+            if (block) return target.blocks.getTopLevelScript(blockId);
+        }
+        return null;
+    }, fresh.blockId);
+    const expectedFirstLevel = canonical(JSON.parse(beforeReload.find(ref => ref.blockId === levels[0].blockId).text));
+    await page.evaluate(() => {
+        const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+        const install = runtime._primitives.arcade_setTilemap;
+        window.__bwTilemapInstalls = [];
+        if (typeof install !== 'function') return;
+        runtime._primitives.arcade_setTilemap = function (args, util) {
+            const result = install.call(this, args, util);
+            const map = runtime.bwArcadeDeviceState?.tilemap;
+            window.__bwTilemapInstalls.push({script: util?.thread?.topBlock || null, map: map ? {
+                columns: map.columns, rows: map.rows, tileSize: map.tileSize,
+                indices: Array.from(map.indices), walls: Array.from(map.walls),
+                images: map.images.map(image => ({width: image.width, height: image.height, pixels: Array.from(image.pixels)}))
+            } : null});
+            return result;
+        };
+    });
     await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.greenFlag());
-    const reopenedRuntime = await waitFor(() => page.evaluate(() => {
-        const map = window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState?.tilemap;
-        if (!map) return null;
-        return {columns: map.columns, rows: map.rows, tileSize: map.tileSize,
-            indices: Array.from(map.indices), walls: Array.from(map.walls),
-            images: map.images.map(image => ({width: image.width, height: image.height, pixels: Array.from(image.pixels)}))};
-    }), map => map && canonical(map) === expectedNewLevel, 30000);
+    const readRun = () => page.evaluate(() => ({installs: window.__bwTilemapInstalls}));
+    const reopenedRun = await waitFor(readRun, run => run.installs.some(entry => entry.script === newLevelHat) &&
+        run.installs.some(entry => entry.script !== newLevelHat), 30000);
+    const reopenedRuntime = reopenedRun.installs.find(entry => entry.script === newLevelHat)?.map || null;
     check('a saved painted level runs with exact pixels and collision walls after reopen',
-        Boolean(reopenedRuntime && canonical(reopenedRuntime) === expectedNewLevel &&
-            reopenedRuntime.indices[0] === 1 && reopenedRuntime.walls[1] === 1 && reopenedRuntime.images[1].pixels[0] === 3));
+        Boolean(newLevelHat && reopenedRuntime && canonical(reopenedRuntime) === expectedNewLevel &&
+            reopenedRuntime.indices[0] === 1 && reopenedRuntime.walls[1] === 1 && reopenedRuntime.images[1].pixels[0] === 3),
+        `${reopenedRun.installs.length} tile map install(s) by ${new Set(reopenedRun.installs.map(entry => entry.script)).size} script(s)`);
+    const platformerInstall = reopenedRun.installs.filter(entry => entry.script !== newLevelHat).pop();
+    // What the platformer's script installed, not the live map: the running
+    // game then clears its spawn tiles (tile indices 4-6) in place.
+    const firstLevelRuntime = platformerInstall?.map || null;
+    check('and the reopened platformer then runs its own painted first level',
+        Boolean(firstLevelRuntime && canonical(firstLevelRuntime) === expectedFirstLevel &&
+            firstLevelRuntime.indices[cell] === 1 && firstLevelRuntime.walls[cell + 1] === 1 &&
+            firstLevelRuntime.images[1].pixels[0] === 2));
     report.reopenedRuntime = reopenedRuntime;
+    report.reopenedInstalls = reopenedRun.installs.map(entry => ({script: entry.script,
+        level: entry.map && `${entry.map.columns}x${entry.map.rows}`}));
     await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.stopAll());
     // Close any title/greeting opened by the original platformer before export.
     const reopenedDialog = page.locator('[role="dialog"][aria-label^="Arcade"]');
