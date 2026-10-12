@@ -1,8 +1,58 @@
 # Who is doing what — merge the claim before implementation
 
+## Original Arcade display readiness proof — 2026-10-12
+
+CLAIMED — Codex bwcx, continuing `fix/painter-installation-proof-20261011`.
+Build38198014926 passes both browser shards, corpus and FPGA but fails the
+seven-segment exact-screen comparison (19200 pixels different). Program-global
+completion does not prove a presented frame: original ScreenState initially
+fills its buffer black, while the authored scene draws a white background.
+Envelope: LANES.md, test/helpers/pxt-arcade-runtime.mjs and
+test/makecode-arcade-sevenseg.test.mjs only. Add opt-in observation of a real
+screen update after the existing completion marker; preserve default callers,
+original call semantics and exact pixel equality. No fabricated image, native
+renderer change, timeout increase, changed expected palette or engine pin.
+The current candidate remains rejected until replacement hosted qualification.
+
 Created 2026-08-24, after two sessions independently did the same repair.
 
+## SPIKE caller profile preflight — 2026-10-12
+
+CLAIMED — Codex SPIKE integration, isolated branch
+`fix/spike-profile-preflight-20261012`, base
+`926901bab0` (resolve the full base with Git history).
+Envelope: `overlay/scratch-vm/src/extension-support/native-renode-capability.js`,
+its tracked `packages/scratch-vm` twin, focused native-capability tests,
+`docs/SPIKE-STATUS-AND-LANES.md` and this ledger. Reject unknown SPIKE topology
+and custom topology without explicit own-NuttX backend before broker allocation
+or dispatch. Keep valid requests and existing sessions unchanged; preserve opaque
+native authorization failures and closed relay failure codes. Test valid profile
+forwarding, local refusals, concurrent ordering and session survival, including
+mutations of both guards. This is caller validation, not native authorization or
+installed-package qualification. The separate PR755 adoption/package lane and
+peer Arcade painter/browser repair retain their ownership.
+
 ## Why this file exists
+
+### Painted-level installation proof repair — 2026-10-11
+
+CLAIMED — Codex bwcx, branch `fix/painter-installation-proof-20261011`.
+Build38155522851 and the independent PR797/800 Builds38155089351 and
+38157758738 all failed the same saved-level runtime-after-reopen check.
+The saved maps compare exactly; the final runtime receipt instead contains
+the platformer's original32x8 map, not the new10x8 map. Diagnose competing
+startup writes without assuming that any requested map was actually installed.
+Observe the real native tilemap primitive after its unchanged execution, retain
+immutable receipts, and require an exact saved-map installation with the same
+pixel/wall requirements. Do not claim that this map remains the game's final
+map when its other scripts replace it. Envelope: this ledger,
+scripts/verify-arcade-tilemap-painter.mjs, new
+scripts/lib/arcade-tilemap-installations.mjs and
+test/arcade-tilemap-installations.test.mjs. Preserve receiver/arguments/return,
+exceptions and restoration; prove wrong/missing installed maps are rejected.
+No engine, painter UI, project, dependency, workflow, timeout or tolerance edits.
+The prior persistence lane is DONE; active identity/legacy/placement lanes
+exclude this persistence proof. Hosted browser qualification remains required.
 
 The vendor of `sb3-creator eac7a1a` made two OPEN DEFECT sentinels fire — the
 shift-register bit test and the four faceplates with dead controls. Both are
@@ -73,7 +123,7 @@ explicitly; never silently alias distinct edited tiles to one exported asset.
 
 ## Arcade painted tilemap project save/reopen — 2026-10-11
 
-DONE — Codex, coordinated with the session owning the circuit green-flag
+CLAIMED — Codex, coordinated with the session owning the circuit green-flag
 repair. Branch `lane/arcade-painted-project-roundtrip-20261011`.
 Extend the existing real-pointer tilemap painter browser journey to save an SB3,
 reopen it through the GUI, verify every painted map/wall/tile pixel and editable
@@ -87,7 +137,7 @@ retry whole unrelated successful shards to mask that failure.
 
 ## Intermittent green-flag first-write failure on main — 2026-10-11
 
-CLAIMED — Claude (opus), owner request ("take it on, fix it all"), branch
+DONE candidate — Claude (opus), owner request ("take it on, fix it all"), branch
 `lane/green-flag-transient-20261011`. Since the bw-board pin `09c0f027`
 (winding repair adoption), `scripts/verify-green-flag-first-write.mjs` runs 5
 and 6 fail in about 3 of 5 hosted light-shard runs: the designer reports
@@ -98,6 +148,19 @@ wiring, and fixes it at its origin (own forks bw-board / bw-circuit-ui with a
 pin move, or Lite), without weakening the journey's assertions or bounds.
 Envelope: the files the diagnosis implicates, the pin and its ripple surfaces,
 this ledger.
+Cause was in the engine, fixed upstream in bw-board PR #496 (merged
+`9c8777d5`): on the 54-motor-driver bench a short first advance left the
+trapezoidal inductor history out of step with the motor's back-EMF, so full
+and half steps disagreed by 0.92 mV at every step size down to the 1e-15 s
+floor (error 42.7, the same as in the failed CI runs) and advanceToLive refused
+the run; reset() also carried the old step seed, history, latch and motor
+speed into the next run. interactive-v2 now restarts the history once at such
+a floor step, and reset() starts fresh. This lane moves the pin to `9c8777d5`
+with every pin-derived surface; the delta also brings other qualified master
+work (winding turn-off and RLC instrument oracles, reactive live-span
+scheduling). Local: the journey passes 10 of 10 runs against a production
+build; 418 analog/motor-sensitive tests pass; pin-move-chain is clean apart
+from this sparse checkout's absent apps/. Hosted CI decides.
 
 ## Code tab blocks ⇄ fe and blocks ⇄ Tcl: rescue of PR #708 — 2026-10-11
 
@@ -2546,7 +2609,7 @@ Legacy layout authoring envelope additionally owns `scripts/verify-arcade-legacy
 Legacy authoring followup in PR794 also owns definition artwork/wall editing: new `legacy-tile-definition-editor.jsx`, definition operations in `legacy-layout-editor.js`, and focused tests/browser coverage. Each definition retains its own block/index/timing; only static artwork sources and literal wall predicates are editable. Computed inputs get explicit reasons. No sprite-placement implementation or circuit pin changes.
 
 
-Painted project persistence PR792 merged at `18b2929a8479bcec880660b94c13bbb6c991741a`, reviewed head `eae43ccbad345a5d123026d6a615a83828a6de89`. All seven enabled checks succeeded; conditional deployment checks skipped on the PR. Hosted painter artifact observes34 successful checks, including actual SB3 fresh-context reopen, native edited state, original compiler/render and downloaded MakeCode reimport. Expected and actual merge tree `4470f89493e6c944ef62359888a9053df514c325` match. [Hosted source qualification](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38146762544). No corpus promotion or whole-game equivalence claim.
+## Ended Claude session integration checkpoint — 2026-10-12
 
 Legacy source followup claim: Codex owns `lane/arcade-legacy-image-aliases-20261011`, stacked on PR794. Same helper/test/browser/docs envelope; trace single authored image assignments and aliases on the preceding command chain without reading live handles or flattening image mutation code. Reassignments and ambiguous sources stay explicitly computed. No painter JSX/model overlap, sprite placement, circuit or pin changes.
 
@@ -2578,3 +2641,10 @@ is retained. The lane additionally owns its optional target-dependent default
 core dependency and propagation through `scripts/makecode.mjs`, plus the new
 `test/makecode-tutorial-collector.test.mjs`. Existing assembly tests stay intact.
 Selected main source is explicit; ghost programs are not automatically chosen.
+Operator-requested rescue on `integrate/claude-arcade-rescue-20261012` retains
+exact original797/800/801 commits. No unpublished tracked implementation found;
+three probes privately archived. Combined source47982918f passes20 focused
+placement/countdown/original-terrain/mirror checks,0 skips. Fresh hosted package
+and GUI checks are required; original797/800 light failures preserved. Painter
+installation/original-display readiness repair stays with active Codex bwcx.
+Original branches/worktrees remain unchanged; no failed-check main merge.

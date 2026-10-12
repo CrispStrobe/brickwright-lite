@@ -1188,3 +1188,45 @@ once the rescue is checkpointed. PR807's build/corpus checks passed; its light
 shard failed painted-level reopening and heavy failed waiting for the visible
 Carnival countdown block. Those exact failures are preserved and not production
 completion. The prior PR806 heavy failure is a separate earlier failure.
+## Claude session rescue — 2026-10-12
+
+The operator reports that the Claude session has ended. Its useful work is
+committed and pushed; there are no uncommitted tracked changes in its green-flag,
+placement or countdown worktrees. Three diagnostic prototypes were preserved
+privately, not promoted to production scripts.
+
+The isolated `integrate/claude-arcade-rescue-20261012` branch merges these exact
+candidates, preserving their original history:
+
+- [PR801](https://github.com/CrispStrobe/brickwright-lite/pull/801),
+  `f97f3606a5cfcfd0ad7dc02e548736f6ab29dcd6`: sprite placement in the tile painter,
+  including its PR793/794 parents. All seven enabled hosted checks succeeded.
+- [PR797](https://github.com/CrispStrobe/brickwright-lite/pull/797),
+  `2a0f1e657163e25bf6ed1512fa6fb0ebe6a26b79`: exact bw-board package adoption
+  `9c8777d5` and derived pins/receipts/lockfiles. Build and heavy browser passed;
+  light failed saved-painted-level execution after reopening.
+- [PR800](https://github.com/CrispStrobe/brickwright-lite/pull/800),
+  `a078a5e452991a69abb21c7a9bb6de3ae6c18e86`: native countdown event ordering and
+  deterministic original simulator clock. Build and heavy browser passed; light
+  failed the same painted-level check.
+
+The original PR797/800 failure logs establish the shared failed assertion;
+they do not establish that either source change caused it. Both failures remain
+preserved. A separate active worker owns the painted-level installation and
+original-display readiness proof repair. Do not overwrite or duplicate that
+worker's source or claim its unpublished result.
+
+This integration has documentation conflicts resolved while retaining lane
+histories; executable source merged without conflicts. Fresh combined hosted
+qualification is required before main adoption. PR801's green parent-specific
+result does not qualify the new main-based combination. The original branches
+and worktrees remain available. PR789/790/791 are already integrated and need no
+second salvage. Song and Carnival descendants remain separate candidates.
+
+
+Combined focused checkpoint: source `47982918f` passes20 checks, no failures or
+skips: placement model with real runtime/export, info/countdown registration,
+original-simulator terrain trajectories and HEAD tracked mirrors. This does not
+qualify the full package/GUI combination. Reuse the original exact-head source
+and retain its failed browser logs; require fresh hosted enabled checks before
+merging the new main-based rescue candidate.
