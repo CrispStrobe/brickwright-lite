@@ -3035,3 +3035,8 @@ Code/Blocks reconstruction, File save/reopen and actual MakeCode download/origin
 execution. VM/Blockly access observes only; program and fields change through UI.
 Keep pending PR810 hosted diagnostics intact on its existing head. E10 importer
 and all other runtime/painter/file-storage owners retain their files.
+
+Buffer GUI proof's original compiler found a global named `hex` colliding with
+MakeCode's tagged-template declaration. This lane additionally owns reserving
+`hex`/`img` in the exporter's existing global-name allocator and a focused
+export/controller regression. No E10 importer or helper is taken.
