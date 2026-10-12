@@ -5,7 +5,7 @@ for the previous session's usage limit to reset.
 
 ## Preservation and ownership
 
-The prior worktree `/mnt/volume1/code/lego/wt-lite-packages` remains unchanged.
+The prior worktree `<owned checkout>` remains unchanged.
 Its tracked diff from `411828a304dd84759cd4c1fb82444e72944ffbdc` plus the two new
 pin-script/test files was captured using a separate temporary Git index in
 checkpoint `44872243ae64a6bb1a3cad62dd05c54c51b00e69`. Its tree is
