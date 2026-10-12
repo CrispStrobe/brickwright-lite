@@ -1,5 +1,42 @@
 # Who is doing what — merge the claim before implementation
 
+## Public operational-path cleanup — 2026-10-12
+
+CLAIMED — Codex, branch `fix/public-operational-paths-20261012`.
+Envelope: this ledger, `docs/PACKAGE-MIGRATION-TAKEOVER.md`,
+`docs/TANG-NANO.md`, `docs/VENDOR-DIRECTION-2026-09-06.md`,
+`scripts/gen-bw-board-census.mjs`, its focused census tests and
+`docs/generated/bw-board-census.json`. Remove machine-specific locations from
+public prose and census presentation; preserve original private receipts,
+source identities, pins, census observations and stable qualification fields.
+No simulator, engine, peer lane or workflow changes. SPIKE installer
+qualification continues in its existing separate adoption lane.
+
+## Arcade context recovery B1 — 2026-10-12
+
+CLAIMED — Codex Arcade integration. All41 partial inputs map to exact pinned
+original PXT documentation URLs in the private corpus manifest. Recover those
+authentic documents and package/asset/customts fences through a reusable CLI,
+keeping original bytes unchanged and context-enriched reports separate.
+Envelope: scripts/recover-makecode-context.mjs, tutorial-project.js, extension-fetch.js, pxt-runtime.js and their focused controls,
+closure plan/handoff and private source/receipt records. Check original manifest
+hashes, preserve source URLs/revisions and missing-context failures. Do not
+replace the locked census or claim fragments compile as complete games.
+
+## Arcade partial closure and Carnival browser repair — 2026-10-12
+
+CLAIMED — Codex Arcade integration. Ordered closure plan covers the locked
+184-input corpus (142 translated /41 partial /1 parse failure), authentic project
+context, native sprite handles and events, standard APIs, custom packages, and
+blocks/Code/asset authoring. Preserve originals and separate import/runtime/GUI
+receipts. First envelope: docs/ARCADE-PARTIAL-CLOSURE-PLAN.md, Arcade handoff and
+GUI-gap records, scripts/verify-arcade-carnival-browser.mjs and focused controls.
+PR810 Build38208078539 passed build/corpus but failed both browsers. Its Carnival
+screenshot visibly contains the requested block while the selector times out;
+inspect the real Blockly DOM before changing any expectation. Painter and
+original-screen readiness repairs remain with their declared peer owners. No
+timeout increase, diagnostic suppression, invented assets or runtime bypass.
+
 ## Original Arcade display readiness proof — 2026-10-12
 
 DONE candidate — Codex bwcx, continuing `fix/painter-installation-proof-20261011`.
@@ -1279,6 +1316,10 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
   unchanged.
 
 ## CLAIMS — work in progress
+
+| Main red: Arcade painter browser check (saved painted level after reopen) (task C8 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktree `/mnt/volume1/code/wt/c8-painter-red` | base `af1f0ff84`; paths: whatever the root cause needs in the Arcade painter / SB3 reopen path or the browser gate; this row and the task file. Defers to an open Arcade-session PR if one already fixes it. | **CLAIMED 2026-10-12.** |
+
+| ESP32 LEDC pad edges in labwired + an ESP32 board in bw-board's labwired tier (task B9 of docs/OPEN-TASKS-2026-09-29.md; takeover of the released row) | VPS Claude (opus), `Claude-Session: df930874-a977-40f8-996f-8689b428942c`, worktrees under `/mnt/volume1/code/wt/b9-esp32-ledc*` | base `af1f0ff84`; upstream labwired-core fork (ESP32 LEDC → GPIO-matrix pad seam) + labwired-wasm release, bw-board labwired-tier ESP32 board, Lite pin-bump surfaces; this row and the task file. | **CLAIMED 2026-10-12.** |
 
 
 
@@ -2800,3 +2841,52 @@ shared named-song reporter/Code word, name/byte-preserving MakeCode resource
 export and real SB3 roundtrip checks. No graphical song editor claim, painter,
 engine pins or PR794 history changes. Hosted PR807 build and corpus pass;
 both browser shards failed and deployment did not execute. Preserve failures.
+
+
+## Rescue of ended Claude Arcade session — 2026-10-12
+
+CLAIMED — Codex, operator requested recovery of the ended Claude session.
+`integrate/claude-arcade-rescue-20261012` combines exact surviving candidates
+PR801 f97f3606a (placement, plus793/794 parents), PR797 2a0f1e657 (green-flag
+bw-board package adoption), PR800 a078a5e45 (countdown and deterministic clock).
+No unpublished tracked source was found; three diagnostic prototypes are archived
+privately. Keep original branches/worktrees and failures. No main adoption until
+fresh combined exact-head checks pass. PR797/800 both failed the same painted
+level after reopen assertion; that proof repair and original display readiness
+remain owned by the separately active Codex bwcx worker. Do not take its files.
+Named-song work remains in its own branch and is not discarded by this rescue.
+
+
+Claude rescue publication checkpoint:
+[PR810](https://github.com/CrispStrobe/brickwright-lite/pull/810), head
+fbf016c065cb5925821489aa8bc8ddfd35f4902c. Three exact original heads preserved
+by normal merges;20 combined focused checks pass. Private inventory/prototypes
+and original797/800 failed logs archived. Hosted checks queued; no main merge.
+Named-song source separately pushed at5db728c50 so rescue does not discard it.
+
+
+## Complete Arcade candidate integration audit — 2026-10-12
+
+CLAIMED — Codex, operator asks whether all surviving work reached main and the
+continuation tree. `lane/arcade-complete-integration-20261012` normally merges
+the rescue810 head, latest793 head aa6b54ae9, complete Carnival/song stack and
+refreshed main38b6bc3ad. No source proof fixes from the independently active
+painter/display-readiness worker are taken. Exact ancestor inventory and fresh
+same184-input main/candidate audits are required; partial classification is not
+an observed runtime failure. Current main does not contain all candidate code.
+No failed-check main merge; prepare a combined reviewable candidate with exact
+producer/engine pins, tracked mirrors and fresh hosted gates.
+
+
+Complete candidate publication checkpoint — PR810 now head
+`56badf1a17ceb691bf283cda1f09492851a8502a`, also pushed as
+`lane/arcade-complete-integration-20261012`. All15 recorded Arcade candidate
+heads are verified ancestors; no candidate was forced/replaced.54 selected
+checks pass across52 plus2unchanged tracked-doc restoration; prior sparse
+attempts preserved. Main38b6 and combined1ff099 clean audits both142/41/1 on
+verified184originals. Recovered older29partial report also had53compile failures
+and1parse failure (static109/74/1). Do not label either count nonworking games.
+Full Build38208078539/vendor/debugger/Rust checks queued on updatedPR810.
+No mainmerge; independent painter/display proof worker retains ownership.
+Publicmethod: PR810 docs/ARCADE-AGENT-HANDOFF.md combined integration section;
+original reports and exact ancestry/input proof archived privately.
