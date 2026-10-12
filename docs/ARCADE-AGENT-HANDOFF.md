@@ -1651,3 +1651,9 @@ browser fixes are retained by normal merge. This branch keeps303 canonical
 forms and its own comparison producer pin. Its prior heavy browser passed;
 original build/light failures remain evidence. Fresh exact-head checks remain
 required.
+
+Comparison integration census correction: sparse preparation restored the old
+fixture from the feature predecessor, which still named282. The actual selected
+word table contains303 forms; a followup asserts that table directly and restores
+303 in the independent fixture. This changes no vocabulary or corpus inputs.
+The intermediate integration failure remains in history; it is not qualification.
