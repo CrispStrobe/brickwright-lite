@@ -1306,3 +1306,14 @@ source, with8 focused tests and3 CLI controls passing. Private unchanged first
 failure and corrected41-context receipts are archived in the private corpus
 repo.38 declared external dependency specifications form the next context
 frontier. No gameplay, graphical song-editor or main-adoption claim is made.
+
+### Dependency compiler loading checkpoint — 2026-10-12
+
+Continue with the bounded loader section in
+[the closure plan](ARCADE-PARTIAL-CLOSURE-PLAN.md). Both previously size-refused
+real packages now resolve; the pizza context compiles in original Arcade, while
+the Hawks snippet exposes an undeclared `harry`. Preserve that failure and the
+original corpus. Fetch reports include exact hashes, retained UTF-8 byte counts
+and explicit compiler-only editor-history exclusions. Source recovery has not
+yet supplied native import assets or qualified gameplay/editor/roundtrip parity.
+Respect the independent E10 importer ownership recorded in LANES.md.

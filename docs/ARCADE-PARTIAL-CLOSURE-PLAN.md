@@ -224,3 +224,39 @@ set; the other includes a large editor history file despite small current art.
 Next establish original compiler/editor file semantics, bounded byte streaming,
 proper dependency assets and metadata preservation. Do not blindly increase a
 limit, discard code or omit an asset because it is inconvenient to parse.
+
+### Bounded dependency compiler inputs — 2026-10-12
+
+`extension-fetch.js` now counts streamed UTF-8 bytes before retaining each
+chunk, cancels oversized bodies, and applies an aggregate budget even to failed
+downloads. Default limits are 8 MiB of listed compiler inputs per package,
+32 MiB across a compile, and 256 KiB each for manifests and licence notices.
+This accommodates the observed art gallery while keeping named refusals for
+larger inputs. Text-only fetch adapters use the same byte accounting, but cannot
+cancel downloads while reading; browser/Node Fetch responses use streams.
+
+The pinned original PXT worker compiles a dependency whose unchanged manifest
+lists `_history` without requesting that file. Only dependency compiler loading
+omits `_history`, reporting `fetched.excludedFiles`; it preserves the original
+manifest and all other listed non-image inputs. Project import/export and
+archives retain their existing semantics. This is not a lossless dependency
+archive API. `sourceBytes` reports the actual retained compiler-input bytes.
+
+Two real pinned package controls now resolve without refusals:
+[Hawks gallery](https://github.com/kiki-lee/hawks-imgs/tree/1b40ca1abe244fe2bd9b122159eba9ce43460bb7)
+retains 1,767,377 bytes of manifest-listed inputs; the earlier 3.1 MiB repository
+inventory also included a generated file absent from that manifest.
+[Pizza assets](https://github.com/kiki-lee/new-pizza-assets/tree/779c3dad9b2024327d12eb90a78a89a8f3998ea1)
+retains 79,176 bytes, explicitly excluding its 36 MB editor history.
+The authentic pizza context compiles in original Arcade without diagnostics.
+The authentic Hawks snippet fails original compilation with undeclared `harry`;
+preserve that incomplete-context failure rather than synthesizing a sprite.
+Neither control qualifies native conversion, gameplay, GUI editing, roundtrips
+or redistribution. The original 184-input static census is unchanged.
+
+Focused controls cover large retained art, split multibyte decoding, actual byte
+limits, early response cancellation, aggregate budgets including failures,
+bounded notices, reported history omission and original PXT compilation.
+Next close dependency asset preparation for native imports, recover complete
+original project context for compiler failures, and then remeasure the separate
+context corpus. B1 remains open.

@@ -112,6 +112,86 @@ test('a build that denies remote extensions does not fetch', async () => {
         {extensions: [], refused: []}, 'a vendored extension is never fetched');
 });
 
+test('large art sources are retained; dependency history omission is explicit and leaves the manifest intact', async () => {
+    const calls = [];
+    const cfg = JSON.stringify({name: 'art', files: ['images.g.jres', '_history']});
+    const art = JSON.stringify({hero: {data: 'A'.repeat(3100000)}});
+    const result = await fetchMakeCodeExtensions({dependencies: {art: 'github:example/art'}, target: 'arcade',
+        table: [], fetch: fakeGithub({'example/art/HEAD/pxt.json': cfg, 'example/art/HEAD/images.g.jres': art}, calls)});
+    assert.deepEqual(result.refused, []);
+    assert.equal(result.extensions[0].files['images.g.jres'], art);
+    assert.equal(result.extensions[0].files['pxt.json'], cfg);
+    assert.equal(result.extensions[0].fetched.sourceBytes, Buffer.byteLength(cfg) + Buffer.byteLength(art));
+    assert.deepEqual(result.extensions[0].fetched.excludedFiles,
+        [{file: '_history', reason: 'dependency editor history is not compiler input'}]);
+    assert.ok(!calls.some(url => url.endsWith('/_history')));
+});
+
+test('streamed UTF-8 sources enforce byte budgets and cancel before consuming oversized downloads', async () => {
+    const cfg = JSON.stringify({name: 'utf8', files: ['main.ts']});
+    let cancelled = false, reads = 0;
+    const fetch = async url => {
+        if (url.endsWith('/pxt.json')) return new Response(cfg);
+        assert.ok(url.endsWith('/main.ts'));
+        return {ok: true, body: {getReader: () => ({
+            read: async () => { reads++; return {done: false, value: new TextEncoder().encode('é'.repeat(50))}; },
+            cancel: async () => { cancelled = true; }, releaseLock: () => {}
+        })}};
+    };
+    const result = await fetchMakeCodeExtensions({dependencies: {art: 'github:example/art'}, target: 'arcade',
+        table: [], fetch, limits: {bytesPerExtension: Buffer.byteLength(cfg) + 99}});
+    assert.equal(result.extensions.length, 0);
+    assert.match(result.refused[0].reason, /sources exceed/);
+    assert.equal(reads, 1, 'UTF-8 bytes, not string characters, must exhaust the budget');
+    assert.equal(cancelled, true);
+});
+
+test('content-length rejects a large body before reading and aggregate limits include failed packages and notices', async () => {
+    let cancelled = false;
+    const headerResult = await fetchMakeCodeExtensions({dependencies: {art: 'github:example/art'}, target: 'arcade', table: [],
+        limits: {bytesPerManifest: 100}, fetch: async () => ({ok: true,
+            headers: new Headers({'content-length': '101'}),
+            body: {cancel: async () => { cancelled = true; }, getReader: () => { throw new Error('body was read'); }}})});
+    assert.match(headerResult.refused[0].reason, /pxt.json exceeds 100 bytes/);
+    assert.equal(cancelled, true);
+    const cfg = JSON.stringify({files: ['main.ts']});
+    const repos = {'example/first/HEAD/pxt.json': cfg, 'example/first/HEAD/main.ts': 'é'.repeat(100),
+        'example/second/HEAD/pxt.json': cfg};
+    const result = await fetchMakeCodeExtensions({dependencies: {first: 'github:example/first', second: 'github:example/second'},
+        target: 'arcade', table: [], fetch: fakeGithub(repos), limits: {bytesPerExtension: 150, bytesTotal: 200}});
+    assert.equal(result.extensions.length, 0);
+    assert.equal(result.refused.length, 2);
+    assert.match(result.refused[1].reason, /in total/);
+    const notice = await fetchMakeCodeExtensions({dependencies: {art: 'github:example/art'}, target: 'arcade', table: [],
+        fetch: fakeGithub({'example/art/HEAD/pxt.json': '{}', 'example/art/HEAD/LICENSE': 'x'.repeat(101)}),
+        limits: {bytesPerLicence: 100}});
+    assert.match(notice.refused[0].reason, /licence notice exceeds 100 bytes/);
+});
+
+test('UTF-8 decoding survives split multibyte characters and adapters use the same byte accounting', async () => {
+    const cfg = JSON.stringify({files: ['main.ts']});
+    const content = '// 🎮é';
+    const fetch = async url => {
+        if (url.endsWith('/pxt.json')) return new Response(cfg);
+        if (url.endsWith('/main.ts')) {
+            const encoded = new TextEncoder().encode(content);
+            return new Response(new ReadableStream({start (controller) {
+                for (const byte of encoded) controller.enqueue(new Uint8Array([byte]));
+                controller.close();
+            }}));
+        }
+        return new Response('', {status: 404});
+    };
+    const result = await fetchMakeCodeExtensions({dependencies: {art: 'github:example/art'}, target: 'arcade', table: [], fetch});
+    assert.deepEqual(result.refused, []);
+    assert.equal(result.extensions[0].files['main.ts'], content);
+    assert.equal(result.extensions[0].fetched.sourceBytes, Buffer.byteLength(cfg + content));
+    const adapterResult = await fetchMakeCodeExtensions({dependencies: {art: 'github:example/art'}, target: 'arcade', table: [],
+        fetch: fakeGithub({'example/art/HEAD/pxt.json': cfg, 'example/art/HEAD/main.ts': content}),
+        limits: {bytesPerExtension: Buffer.byteLength(cfg + content) - 1}});
+    assert.match(adapterResult.refused[0].reason, /sources exceed/);
+});
+
 // ── compiled by MakeCode's own worker, offline ─────────────────────────
 
 function pxtSandbox () {
@@ -131,6 +211,22 @@ function pxtSandbox () {
     return sb;
 }
 const plain = x => JSON.parse(JSON.stringify(x));
+
+test('original PXT compiles a dependency with listed editor history without reading that history', {skip}, async () => {
+    const sb = pxtSandbox();
+    const cfg = JSON.parse(kitronik.files['pxt.json'].text);
+    cfg.files.push('_history');
+    const sources = Object.fromEntries(Object.entries(kitronik.files).map(([name, value]) => [name, value.text]));
+    sources['pxt.json'] = JSON.stringify(cfg);
+    const extension = {id: 'motor', repo: 'example/history', refs: ['v1'], targets: ['microbit'], files: sources};
+    const files = {'pxt.json': JSON.stringify({name: 'history-control',
+        dependencies: {...MICROBIT_DEFAULT_DEPENDENCIES, motor: 'github:example/history#v1'}, files: ['main.ts']}),
+    'main.ts': 'kitronik.motorOff(kitronik.Motors.Motor1)'};
+    const result = plain(await sb.bwMakeCode.compile(files, {extensions: [extension]}));
+    assert.equal(result.success, true, JSON.stringify(result.diagnostics));
+    assert.ok(result.outfiles['binary.js'].length > 1000);
+    assert.deepEqual(plain(sb.bwMakeCode.netAttempts), []);
+});
 
 test('a fetched extension compiles in MakeCode\'s worker; without it the compile names the missing extension', {skip}, async () => {
     const sb = pxtSandbox();
