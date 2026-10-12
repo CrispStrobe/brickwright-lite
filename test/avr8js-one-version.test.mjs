@@ -26,6 +26,17 @@ test('the GUI package and integrate.mjs declare the avr8js the pinned bw-board d
     assert.match(integrate, /pkg\.dependencies\['avr8js'\] = AVR8JS_SPEC;/, 'integrate writes it, unconditionally');
 });
 
+test('the GUI lockfile locks that commit once, at the top level', () => {
+    // Found after B15 landed: package.json moved to the fork but the tracked
+    // lockfile still locked npm 0.21.0 (plus a nested copy under bw-board), so
+    // `worktree-deps verify` failed in every fresh worktree.
+    const lock = json('packages/scratch-gui/package-lock.json').packages;
+    assert.equal(lock[''].dependencies.avr8js, AVR8JS_SPEC);
+    const sha = AVR8JS_SPEC.split('#')[1];
+    assert.match(lock['node_modules/avr8js'].resolved, new RegExp(`CrispStrobe/avr8js\\.git#${sha}$`));
+    assert.equal(lock['node_modules/bw-board/node_modules/avr8js'], undefined, 'no second copy under bw-board');
+});
+
 test('the copy the GUI package resolves is the fork build, where it is installed', (t) => {
     const installed = path.join(ROOT, 'packages/scratch-gui/node_modules/avr8js/package.json');
     if (!fs.existsSync(installed)) return t.skip('packages/scratch-gui has no installed node_modules here');
