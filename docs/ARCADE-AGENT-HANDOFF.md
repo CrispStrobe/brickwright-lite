@@ -1332,3 +1332,29 @@ animations and source-backed factory scopes, then measure all context projects.
 Keep incomplete-source failures and private original receipts. Coordinate
 importer work with E10; the graphical import/network-choice/provenance UI is
 still open, as recorded in the GUI ledger.
+
+## Bounded native animation dimensions — 2026-10-12
+
+`animation-jres.js` now reads/writes the native u16 dimensions independently
+of Arcade's 160x120 display. The unchanged 1MiB packed resource and 64-frame
+budgets are joined by an explicit 2Mi decoded-pixel budget checked before
+frame allocation. Timing, palette, identity, canonical encoding and unused
+nibble checks remain enforced. Ten codec controls pass against the retained
+original PXT encoder/decoder, including exact 161x121/32-frame bytes and pixels,
+u16 endpoint dimensions, and header-only oversized-resource refusals.
+
+This closes the codec's screen-size restriction, not full wide-artwork support.
+Pixel document publication/import still uses `editablePixelSize` (160x160);
+SVG-to-pixel reading separately permits512x512. Next work must align those
+bounds with total document/layer/frame budgets, preserve artwork outside the
+viewport, qualify native clipping/collision and run genuine editor/save/reopen/
+MakeCode export journeys. Do not silently crop, rescale or drop unsupported art.
+
+PR810 source1007dea43 passed both browser shards, corpus, FPGA and companion
+checks in Build38237496710, but its build job failed two policy controls:
+unclassified immutable tutorial fetch and computed CLI module consumption.
+The candidate uses a literal lazy import for the existing dependency consumer
+and declares validated manifest SHA input in the fetch census. Recovery CLI
+controls reject branches, tags and abbreviated/nonhex revisions before network.
+No dead-module exception or fetch waiver was added. Fresh hosted qualification
+is required; the locked original census remains142/41/1.

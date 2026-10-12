@@ -230,7 +230,7 @@ async function main () {
         if (a.fetchExtensions) {
             if (res.project?.target !== 'arcade') throw new Error('Native dependency preparation is currently for Arcade projects');
             const {resolveProjectInputs} = await import('./lib/pxt-node.mjs');
-            const {prepareArcadeDependencyInputs} = await lib('bw-makecode/dependency-project.js');
+            const {prepareArcadeDependencyInputs} = await import('../overlay/scratch-gui/src/lib/bw-makecode/dependency-project.js');
             const originalFiles = res.files;
             const resolved = await resolveProjectInputs('arcade', originalFiles, {fetchExtensions: true});
             const prepared = prepareArcadeDependencyInputs(originalFiles, resolved);

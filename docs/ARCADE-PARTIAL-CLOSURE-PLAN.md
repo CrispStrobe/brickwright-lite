@@ -321,3 +321,12 @@ IDs are no longer spuriously registered twice. Earlier failed preparation
 attempts and corrected source/metadata receipts are preserved privately.
 The focused suite also checks that known unsupported namespace song buffers
 remain diagnosed; a passing suite does not mean that feature is implemented.
+
+### B1 animation dimensions checkpoint — 2026-10-12
+
+The native JRES codec's160-pixel dimension cap is removed using the native u16
+format and bounded packed/decoded resource sizes. Original-PXT golden controls
+cover161x121 with32frames (311720packed bytes), full edge pixels and hostile
+headers before allocation. Editor publication/library installation still has
+a160x160 bound; runtime/graphics/export/SB3 browser acceptance remains open.
+No change to the locked184-input denominator or142/41/1 baseline is claimed.

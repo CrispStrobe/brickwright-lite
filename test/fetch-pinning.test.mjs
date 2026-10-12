@@ -210,6 +210,8 @@ const describeSkips = ({unreadable, nul}) => {
 //   sha-const     the ref is a constant in the SAME file, asserted 40-hex below
 //   resolved-var  the ref is an interpolation of a variable this file resolved
 //                 through the commits API before fetching anything (lib-pin.mjs)
+//   validated-input  the ref comes from a manifest and is required to be a full
+//                 40-hex SHA before any fetch (recovery CLI controls exercise it)
 //   shell-pin     the ref is a shell variable read from vendor-pins.json, and
 //                 the step itself refuses a value that is not 40-hex
 //   resolver      not a content fetch: it reads a NAME to PRODUCE a sha. This
@@ -225,6 +227,13 @@ const describeSkips = ({unreadable, nul}) => {
 //                 excused — and not `sha-const`, because the URL carries a tag.
 //   waived        genuinely cannot be sha-addressed; reason required
 const CENSUS = [
+    {
+        file: 'scripts/recover-makecode-context.mjs', kind: 'raw',
+        text: 'raw.githubusercontent.com/microsoft/pxt-arcade/${revision}/${document}',
+        class: 'validated-input',
+        why: 'The manifest source URL must match the full 40-hex commit regex before selected inputs are fetched. '
+            + 'Mutable tags, branches and abbreviated SHAs are refused before any network call; recovery CLI controls exercise these refusals.'
+    },
     {
         file: 'docs/receipts/2026-10-08-tutorial-project-inputs.json', kind: 'raw',
         text: 'raw.githubusercontent.com/microsoft/pxt-arcade/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/LICENSE',

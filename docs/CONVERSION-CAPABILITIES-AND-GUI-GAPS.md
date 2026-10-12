@@ -3499,3 +3499,14 @@ OPEN authoring/import GUI work:
   the current native animation dimension limits.
 - Qualify GUI import → edit → run with controller → SB3 save/reopen → original
   Arcade export/reimport. The current bridge has CLI/component evidence only.
+
+## Wide native animations: codec versus editor acceptance — 2026-10-12
+
+Native animation JRES dimensions now follow the u16 header, with1MiB packed
+and2Mi decoded pixels across at most64frames. The161x121/32-frame control
+matches original PXT bytes and every pixel. Pixel documents and publication
+still use `editablePixelSize` (160x160): wide animation library installation
+and authoring remain OPEN. Preserve viewport-external pixels and original
+resource identity through edit, Blocks/Code playback, collision, save/reopen
+and original MakeCode export. Align per-image bounds with explicit complete
+document/frame/layer budgets before extending the graphics editor.
