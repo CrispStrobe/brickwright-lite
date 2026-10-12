@@ -16,6 +16,7 @@
 import { cpSync, readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import {spawnSync} from 'node:child_process';
 import path from 'node:path';
+import {AVR8JS_SPEC} from './lib/avr8js-spec.mjs';
 
 const ROOT = process.cwd();
 const GUI = path.join(ROOT, 'packages', 'scratch-gui');
@@ -58,7 +59,7 @@ pkg.dependencies.jszip = pkg.dependencies.jszip || '^3.10.1';    // .sb3 read/wr
 pkg.dependencies.lit = pkg.dependencies.lit || '^3.3.3';                        // BSD-3
 pkg.dependencies['@lit/react'] = pkg.dependencies['@lit/react'] || '^1.0.8';    // BSD-3
 pkg.dependencies['@wokwi/elements'] = pkg.dependencies['@wokwi/elements'] || '^1.9.2';   // MIT
-pkg.dependencies['avr8js'] = pkg.dependencies['avr8js'] || '^0.21.0';                   // MIT — ATmega328P emulator (lazy-imported)
+pkg.dependencies['avr8js'] = AVR8JS_SPEC;   // MIT — AVR emulator: bw-board's own fork commit (scripts/lib/avr8js-spec.mjs)
 pkg.dependencies['rp2040js'] = pkg.dependencies['rp2040js'] || '1.3.3';                // MIT — RP2040/Pico emulator (lazy-imported)
 pkg.dependencies['@xyflow/react'] = pkg.dependencies['@xyflow/react'] || '^12.3.0';  // MIT — node/wire canvas for the FPGA gate builder (lazy-imported, flag-gated)
 pkg.dependencies['@xterm/xterm'] = '6.0.0';                       // MIT — the Linux lesson's terminal emulator (lazy-imported, exact pin)
@@ -109,6 +110,6 @@ pkg.dependencies['@codemirror/language'] = pkg.dependencies['@codemirror/languag
 pkg.dependencies['@codemirror/search'] = pkg.dependencies['@codemirror/search'] || '^6.5.8';       // MIT
 pkg.dependencies['@codemirror/theme-one-dark'] = pkg.dependencies['@codemirror/theme-one-dark'] || '^6.1.2'; // MIT
 writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');
-console.log('  ensured deps (skulpt, jszip, lit + wokwi elements, codemirror, digitaljs + yosys2digitaljs, bw-board + bw-circuit-ui at vendor-pins.json) + pinned avr8js@0.21.0, rp2040js@1.3.3, scratch-vm@4.8.115, scratch-paint@2.2.518');
+console.log('  ensured deps (skulpt, jszip, lit + wokwi elements, codemirror, digitaljs + yosys2digitaljs, bw-board + bw-circuit-ui at vendor-pins.json) + avr8js at the bw-board fork commit, rp2040js@1.3.3, scratch-vm@4.8.115, scratch-paint@2.2.518');
 
 console.log('Integration applied. `cd packages/scratch-gui && npm install --ignore-scripts && npm run build`.');
