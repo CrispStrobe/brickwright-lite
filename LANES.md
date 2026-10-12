@@ -1,5 +1,19 @@
 # Who is doing what — merge the claim before implementation
 
+## Original Arcade display readiness proof — 2026-10-12
+
+CLAIMED — Codex bwcx, continuing `fix/painter-installation-proof-20261011`.
+Build38198014926 passes both browser shards, corpus and FPGA but fails the
+seven-segment exact-screen comparison (19200 pixels different). Program-global
+completion does not prove a presented frame: original ScreenState initially
+fills its buffer black, while the authored scene draws a white background.
+Envelope: LANES.md, test/helpers/pxt-arcade-runtime.mjs and
+test/makecode-arcade-sevenseg.test.mjs only. Add opt-in observation of a real
+screen update after the existing completion marker; preserve default callers,
+original call semantics and exact pixel equality. No fabricated image, native
+renderer change, timeout increase, changed expected palette or engine pin.
+The current candidate remains rejected until replacement hosted qualification.
+
 Created 2026-08-24, after two sessions independently did the same repair.
 
 ## SPIKE caller profile preflight — 2026-10-12
