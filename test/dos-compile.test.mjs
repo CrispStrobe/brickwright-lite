@@ -215,6 +215,85 @@ test('runDosToolchain("forth", …) runs the shipped zForth on the real DOS benc
     assert.ok(r.files.get('PROG.FTH'), 'PROG.FTH was mounted for the interpreter');
 });
 
+test('zForth runs the loops + custom block generateForth emits (REPEAT, REPEAT UNTIL, : word)', async () => {
+    // The exact canonical shape generateForth writes for a custom block, a
+    // counted REPEAT (a `_r` counter down to 0) and a pre-test REPEAT UNTIL.
+    const program = [
+        '( --- variables --- )',
+        'var k',
+        'var _r0',
+        '( --- program --- )',
+        ': banner',
+        '  ." hi" cr',
+        ';',
+        ': main',
+        '  banner',
+        '  0 k !',
+        '  ( repeat )',
+        '  3 _r0 !',
+        '  begin',
+        '    _r0 @ 0 > if',
+        '      1 k +!',
+        '      k @ . cr',
+        '    fi',
+        '    -1 _r0 +!',
+        '    _r0 @ 0 <=',
+        '  until',
+        '  0 k !',
+        '  ( repeat-until )',
+        '  begin',
+        '    k @ 3 > if',
+        '      1',
+        '    else',
+        '      k @ . cr',
+        '      1 k +!',
+        '      0',
+        '    fi',
+        '  until',
+        '  ." done" cr',
+        ';',
+        'main', ''
+    ].join('\n');
+    const r = await runDosToolchain('forth', program, {
+        fetchToolchain: async () => ({compiler: FORTH_EXE}),
+        maxSteps: 200_000_000
+    });
+    assert.equal(r.stage, 'compile');
+    assert.equal(r.compile.exitCode, 0);
+    const screen = r.compile.screen;
+    // the custom block, the REPEAT 3 (1 2 3), the REPEAT UNTIL k>3 (0 1 2 3), done.
+    for (const want of ['hi', '1 ', '2 ', '3 ', '0 ', 'done']) {
+        assert.ok(screen.includes(want), `expected ${JSON.stringify(want)} in ${JSON.stringify(screen)}`);
+    }
+    // the counted loop ran exactly three body prints, not forever.
+    assert.ok(!screen.includes('4 '), `REPEAT 3 should not reach 4: ${JSON.stringify(screen)}`);
+});
+
+test('a Forth user syscall reaches the host on the real bench (the device-bridge extension point)', async () => {
+    // zForth's `sys` is the VM's host-call primitive: `<id> sys` invokes the
+    // front-end's zf_host_sys. `quit` is `128 sys` (ZF_SYSCALL_USER + 0), which
+    // the DOS front-end implements as exit. So a *generated word* can reach a
+    // host handler — the mechanism a "drive the board" GPIO syscall would use
+    // (see docs/CODE-TAB-LANGUAGE-DEVICE-BRIDGE.md). Proof: the line after
+    // `quit` never runs, so the user syscall fired and short-circuited.
+    const program = [
+        ': main',
+        '  ." before-syscall" cr',
+        '  quit',
+        '  ." after-syscall" cr',   // unreachable: the user syscall exited
+        ';',
+        'main', ''
+    ].join('\n');
+    const r = await runDosToolchain('forth', program, {
+        fetchToolchain: async () => ({compiler: FORTH_EXE}),
+        maxSteps: 200_000_000
+    });
+    assert.equal(r.stage, 'compile');
+    assert.ok(r.compile.screen.includes('before-syscall'), r.compile.screen);
+    assert.ok(!r.compile.screen.includes('after-syscall'),
+        `the user syscall should have short-circuited: ${JSON.stringify(r.compile.screen)}`);
+});
+
 test('the DOS-native Tcl (partcl) route is verified and shaped like fe', () => {
     const tcl = DOS_TOOLCHAINS['tcl'];
     assert.ok(tcl && tcl.kind === 'dos-native');
