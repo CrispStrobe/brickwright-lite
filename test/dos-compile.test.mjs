@@ -288,6 +288,11 @@ test('a Forth user syscall reaches the host on the real bench (the device-bridge
         fetchToolchain: async () => ({compiler: FORTH_EXE}),
         maxSteps: 200_000_000
     });
+    assert.equal(r.stage, 'compile');
+    assert.ok(r.compile.screen.includes('before-syscall'), r.compile.screen);
+    assert.ok(!r.compile.screen.includes('after-syscall'),
+        `the user syscall should have short-circuited: ${JSON.stringify(r.compile.screen)}`);
+});
 
 test('a Forth program drives GPIO: `pin!` OUTs are observable via onPortAccess (the GUI widget bridge)', async () => {
     // The DOS Forth's prelude defines `pin! ( pin value -- )` as an 8086 OUT to
@@ -317,11 +322,6 @@ test('a Forth program drives GPIO: `pin!` OUTs are observable via onPortAccess (
         assert.ok(outs.some(o => o.pin === want.pin && o.value === want.value),
             `expected pin ${want.pin} driven to ${want.value}, got ${JSON.stringify(outs)}`);
     }
-});
-    assert.equal(r.stage, 'compile');
-    assert.ok(r.compile.screen.includes('before-syscall'), r.compile.screen);
-    assert.ok(!r.compile.screen.includes('after-syscall'),
-        `the user syscall should have short-circuited: ${JSON.stringify(r.compile.screen)}`);
 });
 
 test('the DOS-native Tcl (partcl) route is verified and shaped like fe', () => {
