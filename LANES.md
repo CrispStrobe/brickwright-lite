@@ -36,6 +36,17 @@ installed-package cases and both circuit browser journeys passed; that overall
 run remains rejected because its inherited painter step failed. This candidate
 must pass every enabled hosted check before landing. No standalone older Board
 pin adoption is permitted and no deployment is claimed.
+Build38172209464 qualifies exact4f7b98a3f: all six enabled Build jobs succeed,
+including both browser shards, corpus and FPGA; deployment and verify-gui are
+conditional skips, not deployment evidence. Fast suite6849/6828/0/21
+(tests/pass/fail/skip). Saved-map installation succeeds; envelope5000 and
+point5000 captures retain their exact1V values, with31/312 partial receipts and
+1.6ms/160us maximum callback spans respectively. Both circuit journeys pass.
+Current-main reconciliation also preserves PR805's independent Renode failure
+reply fix and later song ledger claims. Its focused suite passes14/14 after
+materializing sparse prerequisites; initial missing-file runs are environment
+failures, not product qualification. This executable addition requires a fresh
+combined hosted receipt; the previous green is not relabelled as this head.
 
 The vendor of `sb3-creator eac7a1a` made two OPEN DEFECT sentinels fire — the
 shift-register bit test and the four faceplates with dead controls. Both are
