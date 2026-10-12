@@ -15,21 +15,40 @@
  *     core.zf words < > <= >= = != and or not. Booleans are 0 / non-0.
  *   - Printing: a number with `.` (trailing space), a literal string with `." "`;
  *     each `say` ends with `cr`.
- *   - Control: `<cond> if … else … fi` (zForth spells `then` as `fi`).
+ *   - Control: `<cond> if … else … fi` (zForth spells `then` as `fi`). The only
+ *     loop primitives core.zf gives are `begin … until` (post-test, exits when
+ *     the flag is true) and `begin … again` (infinite). zForth has no `do/loop`,
+ *     `while/repeat`, or `i`, so a counted REPEAT is built from a counter cell.
  *
- * This v1 is a SUBSET, like fe/Tcl began: globals, set/change, arithmetic,
- * comparisons, and/or/not, say (number or string literal), if / if-else.
- * Refused by name (a later slice): loops (REPEAT / FOREVER / REPEAT UNTIL),
- * custom blocks (Forth passes arguments on the stack, not by name), join (zForth
- * has no string building), lists, wait and stop. The generator and reader share
- * one canonical shape so a program round-trips through pseudocode unchanged.
+ * WHAT THIS SLICE EMITS:
+ *   - v1 base (as fe/Tcl began): globals, set/change, arithmetic, comparisons,
+ *     and/or/not, say (number or string literal), if / if-else.
+ *   - Loops. FOREVER is `begin … again`. REPEAT n counts a `_rK` counter cell
+ *     down to zero. REPEAT UNTIL c is a pre-test guard (`begin c if 1 else …body… 0 fi until`).
+ *     control_while reuses the REPEAT-UNTIL form with the condition negated.
+ *   - No-argument custom blocks, as Forth words `: name … ;`. A word must be
+ *     defined before it is used, so the definitions are emitted callees-first
+ *     (a topological order); a cycle or self-recursion is refused — zForth,
+ *     like standard Forth, compiles a call to its target's address at compile
+ *     time, so it cannot forward-reference.
+ *
+ * STILL REFUSED (a later slice): custom blocks WITH arguments (Forth passes
+ * arguments on the stack by position, not by name), join (zForth has no string
+ * building), lists, wait, stop/return. Each loop and the counters, markers and
+ * `: main` wrapper give the generator and reader one canonical shape so a
+ * program round-trips through pseudocode unchanged.
  */
-import {collectScripts, decodeInput, field, procPrototype, substackId} from './project-walk.js';
+import {collectScripts, decodeInput, field, procName, procPrototype, substackId} from './project-walk.js';
 
 const RESERVED = new Set(['var', 'variable', 'if', 'else', 'fi', 'begin', 'until', 'again', 'dup', 'drop', 'swap',
-    'over', 'rot', 'and', 'or', 'not', 'cr', 'emit', 'here', 'allot', 'exit', 'i', 'times']);
+    'over', 'rot', 'and', 'or', 'not', 'cr', 'emit', 'here', 'allot', 'exit', 'i', 'times', 'main']);
 const MARK_VARS = '( --- variables --- )';
 const MARK_PROGRAM = '( --- program --- )';
+// Loop markers: Forth comments the tokenizer turns into marker tokens, so the
+// reader knows a construct's kind without classifying the `begin` body.
+const MARK_REPEAT = '( repeat )';
+const MARK_FOREVER = '( forever )';
+const MARK_UNTIL = '( repeat-until )';
 
 // A Forth `." ..."` string: zForth stops the literal at the closing quote, so a
 // double quote cannot appear inside one. Refused upstream (join), but escape
@@ -50,6 +69,22 @@ function makeNamer (taken) {
     };
 }
 
+/** Every custom-block call reachable from a stack (through next + substacks). */
+function callsIn (startId, blocks) {
+    const codes = new Set();
+    const seen = new Set();
+    const visit = id => {
+        const b = blocks[id];
+        if (!b || seen.has(id)) return;
+        seen.add(id);
+        if (b.opcode === 'procedures_call' && b.mutation) codes.add(String(b.mutation.proccode));
+        for (const key of ['SUBSTACK', 'SUBSTACK2']) { const s = substackId(b, key); if (s) visit(s); }
+        if (b.next) visit(b.next);
+    };
+    visit(startId);
+    return codes;
+}
+
 /**
  * Blocks → Forth.
  * @param {object} project serialized SB3 project
@@ -61,17 +96,41 @@ export function generateForth (project) {
     const refuse = r => { if (!reasons.includes(r)) reasons.push(r); };
     const taken = new Set();
     const varName = makeNamer(taken);
+    const procWord = makeNamer(taken);
+
+    // Counter cells the generator introduces for REPEAT n. User variables can
+    // never start with "_" (makeNamer rewrites a leading "_" to "v_"), so a
+    // "_rK" name is unambiguously generator-internal.
+    const counters = [];
+    let counterSeq = 0;
+    const newCounter = () => { const n = `_r${counterSeq++}`; counters.push(n); return n; };
 
     const {flags, procs, other} = collectScripts(project);
     if (flags.length > 1) {
         refuse(`Forth runs one script at a time: this project has ${flags.length} "when flag clicked" scripts`);
     }
-    if (procs.length) {
-        refuse('Forth custom blocks are not supported yet (Forth passes arguments on the stack, not by name)');
-    }
     for (const o of other) {
         if (/^(argument_|procedures_prototype)/.test(o.block.opcode)) continue;
         refuse(`no Forth form for the script starting with ${o.block.opcode}`);
+    }
+
+    // ---- custom blocks: no-argument definitions become Forth words ----------
+    const procByCode = new Map();
+    const usable = [];
+    for (const p of procs) {
+        const proto = procPrototype(p.block, p.blocks);
+        const label = procName(proto.proccode);
+        if (proto.argumentNames.length) {
+            refuse(`Forth custom block "${label}" takes arguments (Forth passes arguments on the stack by position, not by name) — not supported yet`);
+            continue;
+        }
+        if (!p.block.next) {
+            refuse(`Forth custom block "${label}" is empty — give it at least one block`);
+            continue;
+        }
+        const info = {proccode: proto.proccode, label, word: procWord(label), def: p, bodyStart: p.block.next};
+        procByCode.set(proto.proccode, info);
+        usable.push(info);
     }
 
     // ---- expressions → RPN (a list of whitespace-joined tokens) ----------
@@ -132,6 +191,19 @@ export function generateForth (project) {
         }
         return [`${expr(input, blocks)} . cr`];
     };
+    // REPEAT UNTIL c: a pre-test guard. Run the body while c is false; the
+    // begin…until flag is `1` when c is true (stop), `0` otherwise (loop).
+    const untilLoop = (cond, inner) => [
+        MARK_UNTIL,
+        'begin',
+        `  ${cond} if`,
+        '    1',
+        '  else',
+        ...inner.map(l => `    ${l}`),
+        '    0',
+        '  fi',
+        'until'
+    ];
     const statement = (b, blocks) => {
         const e = k => expr(b.inputs[k], blocks);
         switch (b.opcode) {
@@ -148,25 +220,74 @@ export function generateForth (project) {
             const f = body(b, 'SUBSTACK2', blocks);
             return [`${e('CONDITION')} if`, ...t.map(l => `  ${l}`), 'else', ...f.map(l => `  ${l}`), 'fi'];
         }
-        case 'control_repeat': case 'control_forever': case 'control_repeat_until': case 'control_while':
-            refuse('Forth loops are not supported yet (REPEAT / FOREVER / REPEAT UNTIL)');
-            return [];
+        case 'control_repeat': {
+            const c = newCounter();
+            const times = e('TIMES');
+            const inner = body(b, 'SUBSTACK', blocks);
+            // count the cell down to zero; the guard skips the body once it hits 0.
+            return [
+                MARK_REPEAT,
+                `${times} ${c} !`,
+                'begin',
+                `  ${c} @ 0 > if`,
+                ...inner.map(l => `    ${l}`),
+                '  fi',
+                `  -1 ${c} +!`,
+                `  ${c} @ 0 <=`,
+                'until'
+            ];
+        }
+        case 'control_forever': {
+            const inner = body(b, 'SUBSTACK', blocks);
+            return [MARK_FOREVER, 'begin', ...inner.map(l => `  ${l}`), 'again'];
+        }
+        case 'control_repeat_until':
+            return untilLoop(e('CONDITION'), body(b, 'SUBSTACK', blocks));
+        case 'control_while':
+            // while c = repeat until (not c): run the body while c is true.
+            return untilLoop(`${e('CONDITION')} not`, body(b, 'SUBSTACK', blocks));
         case 'control_wait': case 'looks_sayforsecs': case 'looks_thinkforsecs':
             refuse('Forth has no clock (no wait)');
             return [];
         case 'control_stop':
             refuse('Forth has no way to "stop" here (no return or exit)');
             return [];
-        case 'procedures_call':
-            refuse('Forth custom blocks are not supported yet');
-            return [];
+        case 'procedures_call': {
+            const info = b.mutation && procByCode.get(String(b.mutation.proccode));
+            if (!info) { refuse('Forth cannot call this custom block (no supported definition for it)'); return []; }
+            return [info.word];
+        }
         default:
             refuse(`no Forth form for the block ${b.opcode}`);
             return [];
         }
     };
 
+    // ---- proc bodies, emitted callees-first ------------------------------
+    const procLines = [];
+    const emitted = new Set();
+    const remaining = new Set(usable);
+    let progress = true;
+    while (progress && remaining.size) {
+        progress = false;
+        for (const info of [...remaining]) {
+            const deps = callsIn(info.bodyStart, info.def.blocks);
+            const unmet = [...deps].some(code => procByCode.has(code) && !emitted.has(code));
+            if (unmet) continue;
+            const lines = stack(info.bodyStart, info.def.blocks);
+            procLines.push(`: ${info.word}`, ...lines.map(l => `  ${l}`), ';');
+            emitted.add(info.proccode);
+            remaining.delete(info);
+            progress = true;
+        }
+    }
+    for (const info of remaining) {
+        refuse(`Forth custom block "${info.label}" calls itself or forms a cycle — a Forth word must be defined before it is used`);
+    }
+
     const mainLines = flags.length === 1 ? stack(flags[0].block.next, flags[0].blocks) : [];
+
+    // User-variable `var` cells, then the loop counters.
     const varLines = [];
     const seen = new Set();
     for (const target of (project && project.targets) || []) {
@@ -177,10 +298,13 @@ export function generateForth (project) {
             varLines.push(`var ${n}`);
         }
     }
+    for (const c of counters) varLines.push(`var ${c}`);
+
     if (reasons.length) return {ok: false, forth: '', reasons, warnings};
     const out = [];
     if (varLines.length) out.push(MARK_VARS, ...varLines);
     out.push(MARK_PROGRAM);
+    out.push(...procLines);
     // The program body lives inside a `: main … ; main` word: zForth's if/else/fi
     // and begin/until are compile-only (they only run inside a definition), and
     // `var` globals stay reachable from it. An empty body still defines main so
@@ -195,13 +319,15 @@ export function generateForth (project) {
 
 class ForthReadError extends Error {}
 
-/** Tokenise Forth: words, `( … )` comments (dropped, but the two markers kept),
- *  and `." … "` string literals as one `{str}` token. */
+/** Tokenise Forth: words, `( … )` comments (dropped, except the markers kept as
+ *  marker tokens), and `." … "` string literals as one `{str}` token. */
 function tokenize (src) {
     const toks = [];
     let i = 0;
     const n = src.length;
     let line = 1;
+    const MARKS = {[MARK_VARS]: 'vars', [MARK_PROGRAM]: 'program',
+        [MARK_REPEAT]: 'repeat', [MARK_FOREVER]: 'forever', [MARK_UNTIL]: 'repeat-until'};
     while (i < n) {
         const c = src[i];
         if (c === '\n') { line++; i++; continue; }
@@ -209,8 +335,7 @@ function tokenize (src) {
         if (c === '(') {
             const j = src.indexOf(')', i);
             const text = src.slice(i, j < 0 ? n : j + 1).trim();
-            if (text === MARK_VARS) toks.push({t: 'mark', v: 'vars', line});
-            else if (text === MARK_PROGRAM) toks.push({t: 'mark', v: 'program', line});
+            if (MARKS[text]) toks.push({t: 'mark', v: MARKS[text], line});
             i = j < 0 ? n : j + 1;
             continue;
         }
@@ -237,13 +362,17 @@ const BIN = {'+': '+', '-': '-', '*': '*', '/': '/', '<': '<', '>': '>', '=': '=
 /**
  * Forth → pseudocode (the importer's reader contract: returns
  * {pseudocode, warnings} or throws). Reads the canonical shape the generator
- * writes: an RPN stack machine rebuilds each expression, and `if/else/fi`
- * nests statement lists.
+ * writes: an RPN stack machine rebuilds each expression, `if/else/fi` nests
+ * statement lists, loop markers introduce FOREVER / REPEAT / REPEAT UNTIL, and
+ * every `: word … ;` other than `main` is a DEFINE custom block.
  */
 export default function forthToPseudocode (source) {
     const warnings = [];
     const globals = new Set();
-    const defNames = new Set();
+    const defNames = new Set();   // every defined word, incl. main
+    const procNames = new Set();  // defined words other than main (custom blocks)
+    const procBlocks = [];        // {name, lines} for each custom block, in order
+    let mainBody = [];
     const toks = tokenize(String(source || ''));
     let pos = 0;
     const rename = name => {
@@ -257,96 +386,99 @@ export default function forthToPseudocode (source) {
 
     const peek = () => toks[pos];
     const next = () => toks[pos++];
-
-    // Parse one statement; returns an array of pseudocode lines at `depth`, or
-    // null at a block terminator (else/fi) which the caller consumes.
     const pad = d => '  '.repeat(d);
+    const expectWord = w => {
+        const t = next();
+        if (!t || t.t !== 'word' || t.v !== w) {
+            throw new ForthReadError(`line ${(t || {}).line}: expected "${w}", saw "${(t || {}).v}"`);
+        }
+    };
 
-    // RPN expression builder: consume words until a statement terminator
-    // (! +! . str if) and return {infix, kind}. The terminator token is left
-    // for the statement parser, except operands/operators which are consumed.
-    const readStatement = (depth) => {
-        const estack = [];
-        const popExpr = () => {
-            if (!estack.length) throw new ForthReadError(`line ${(peek() || {}).line}: empty Forth stack`);
-            return estack.pop();
-        };
+    // Read one RPN expression, stopping (without consuming) when `stop(token)`
+    // is true, and return {s} (its infix form).
+    const readExpr = stop => {
+        const es = [];
         for (;;) {
-            const tk = peek();
-            if (!tk) return null;
-            if (tk.t === 'mark') { next(); continue; }
-            if (tk.t === 'str') {
-                next();
-                // a say-string: it must be immediately followed by `cr`
-                if (peek() && peek().t === 'word' && peek().v === 'cr') next();
-                return [`${pad(depth)}say ${pseudoString(tk.v)}`];
-            }
-            const w = tk.v;
-            if (w === 'else' || w === 'fi' || w === 'until' || w === 'again' || w === ';') return null; // terminator for caller
+            const t = peek();
+            if (!t || stop(t)) break;
             next();
-            if (w === 'cr') continue;
-            if (w === ':') {                 // `: main … ;` — the program-body word
-                const nm = next();
-                if (!nm || nm.t !== 'word') throw new ForthReadError(': without a name');
-                defNames.add(nm.v);
-                const lines = [];
-                for (;;) {
-                    const t2 = peek();
-                    if (!t2) throw new ForthReadError(`: ${nm.v} without ;`);
-                    if (t2.t === 'word' && t2.v === ';') { next(); break; }
-                    const s = readStatement(depth);
-                    if (s === null) break;
-                    lines.push(...s);
-                }
-                return lines;
-            }
-            if (defNames.has(w)) return [];  // a bare call of a defined word (the `main` invocation)
-            if (w === 'var') {
-                const nm = next();
-                if (!nm || nm.t !== 'word') throw new ForthReadError('variable without a name');
-                globals.add(rename(nm.v));
-                return [];
-            }
-            if (/^[-+]?(\d+\.?\d*|\.\d+)$/.test(w)) { estack.push({s: w, atom: true}); continue; }
-            if (w === '@') continue; // a stray `@`; a var read `X @` is handled at the var lookahead below
-            if (w === 'not') { estack.push({s: `(not ${popExpr().s})`}); continue; }
-            if (BIN[w]) {
-                const b = popExpr(); const a = popExpr();
-                estack.push({s: `(${a.s} ${BIN[w]} ${b.s})`});
-                continue;
-            }
-            if (w === '.') {
-                const v = popExpr();
-                if (peek() && peek().t === 'word' && peek().v === 'cr') next(); // `<expr> . cr` — eat the cr
-                return [`${pad(depth)}say ${v.s}`];
-            }
-            if (w === 'if') {
-                const cond = popExpr();
-                return parseIf(cond, depth);
-            }
-            // otherwise a bare word: a variable. Look ahead to tell read vs target.
-            const nxt = peek();
-            if (nxt && nxt.t === 'word' && nxt.v === '@') {
-                next(); // consume @
-                estack.push({s: rename(w)});
+            if (t.t === 'str') throw new ForthReadError(`line ${t.line}: string inside a numeric expression`);
+            const w = t.v;
+            if (/^[-+]?(\d+\.?\d*|\.\d+)$/.test(w)) { es.push({s: w}); continue; }
+            if (w === 'not') { es.push({s: `(not ${es.pop().s})`}); continue; }
+            if (BIN[w]) { const b = es.pop(); const a = es.pop(); es.push({s: `(${a.s} ${BIN[w]} ${b.s})`}); continue; }
+            if (w === '@') continue; // the `@` of a var read `X @`
+            if (peek() && peek().t === 'word' && peek().v === '@') { // bare word then @ = var read
+                next();
+                es.push({s: rename(w)});
                 globals.add(rename(w));
                 continue;
             }
-            if (nxt && nxt.t === 'word' && (nxt.v === '!' || nxt.v === '+!')) {
-                const op = next().v;
-                const target = rename(w);
-                globals.add(target);
-                const val = popExpr();
-                return [op === '!' ? `${pad(depth)}set ${target} to ${val.s}`
-                    : `${pad(depth)}change ${target} by ${val.s}`];
-            }
-            throw new ForthReadError(`line ${tk.line}: unexpected Forth word "${w}"`);
+            throw new ForthReadError(`line ${t.line}: unexpected "${w}" in an expression`);
         }
+        if (es.length !== 1) throw new ForthReadError('a Forth expression did not reduce to one value');
+        return es[0];
+    };
+
+    // FOREVER: `begin … again`.
+    const readForever = depth => {
+        expectWord('begin');
+        const inner = [];
+        for (;;) {
+            const t = peek();
+            if (!t) throw new ForthReadError('( forever ) without again');
+            if (t.t === 'word' && t.v === 'again') { next(); break; }
+            const s = readStatement(depth + 1);
+            if (s === null) { next(); continue; }
+            inner.push(...s);
+        }
+        return [`${pad(depth)}FOREVER:`, ...inner];
+    };
+
+    // REPEAT n: `<times> _rK ! begin _rK @ 0 > if …body… fi -1 _rK +! _rK @ 0 <= until`.
+    const readRepeat = depth => {
+        const times = readExpr(t => t.t === 'word' && t.v.startsWith('_') &&
+            toks[pos + 1] && toks[pos + 1].v === '!');
+        const counter = next().v;
+        expectWord('!');
+        expectWord('begin');
+        expectWord(counter); expectWord('@'); expectWord('0'); expectWord('>'); expectWord('if');
+        const inner = [];
+        for (;;) {
+            const t = peek();
+            if (!t) throw new ForthReadError('( repeat ) guard without fi');
+            if (t.t === 'word' && t.v === 'fi') { next(); break; }
+            const s = readStatement(depth + 1);
+            if (s === null) { next(); continue; }
+            inner.push(...s);
+        }
+        expectWord('-1'); expectWord(counter); expectWord('+!');
+        expectWord(counter); expectWord('@'); expectWord('0'); expectWord('<='); expectWord('until');
+        return [`${pad(depth)}REPEAT ${times.s}:`, ...inner];
+    };
+
+    // REPEAT UNTIL c: `begin <c> if 1 else …body… 0 fi until`.
+    const readUntil = depth => {
+        expectWord('begin');
+        const cond = readExpr(t => t.t === 'word' && t.v === 'if');
+        expectWord('if'); expectWord('1'); expectWord('else');
+        const inner = [];
+        for (;;) {
+            const t = peek();
+            if (!t) throw new ForthReadError('( repeat-until ) without fi');
+            // the else-branch ends with a bare `0` immediately before `fi`.
+            if (t.t === 'word' && t.v === '0' && toks[pos + 1] && toks[pos + 1].t === 'word' &&
+                toks[pos + 1].v === 'fi') { next(); break; }
+            const s = readStatement(depth + 1);
+            if (s === null) { next(); continue; }
+            inner.push(...s);
+        }
+        expectWord('fi'); expectWord('until');
+        return [`${pad(depth)}REPEAT UNTIL ${cond.s}:`, ...inner];
     };
 
     const parseIf = (cond, depth) => {
         const out = [`${pad(depth)}IF ${cond.s} THEN:`];
-        // then-branch
         for (;;) {
             const tk = peek();
             if (!tk) throw new ForthReadError('if without fi');
@@ -372,26 +504,117 @@ export default function forthToPseudocode (source) {
         return out;
     };
 
-    const lines = [];
-    const body = [];
-    while (pos < toks.length) {
-        const before = pos;
-        const s = readStatement(1);
-        if (s === null) { // a stray terminator at top level
-            const tk = next();
-            warnings.push(`unexpected "${(tk || {}).v}" at top level`);
-            continue;
+    // Parse one statement; returns an array of pseudocode lines at `depth`, or
+    // null at a block terminator (else/fi/until/again/;) which the caller
+    // consumes.
+    function readStatement (depth) {
+        const estack = [];
+        const popExpr = () => {
+            if (!estack.length) throw new ForthReadError(`line ${(peek() || {}).line}: empty Forth stack`);
+            return estack.pop();
+        };
+        for (;;) {
+            const tk = peek();
+            if (!tk) return null;
+            if (tk.t === 'mark') {
+                if (tk.v === 'repeat') { next(); return readRepeat(depth); }
+                if (tk.v === 'forever') { next(); return readForever(depth); }
+                if (tk.v === 'repeat-until') { next(); return readUntil(depth); }
+                next(); continue; // vars / program markers
+            }
+            if (tk.t === 'str') {
+                next();
+                if (peek() && peek().t === 'word' && peek().v === 'cr') next();
+                return [`${pad(depth)}say ${pseudoString(tk.v)}`];
+            }
+            const w = tk.v;
+            if (w === 'else' || w === 'fi' || w === 'until' || w === 'again' || w === ';') return null;
+            next();
+            if (w === 'cr') continue;
+            if (procNames.has(w)) return [`${pad(depth)}${w}`]; // a custom-block call
+            if (/^[-+]?(\d+\.?\d*|\.\d+)$/.test(w)) { estack.push({s: w, atom: true}); continue; }
+            if (w === '@') continue;
+            if (w === 'not') { estack.push({s: `(not ${popExpr().s})`}); continue; }
+            if (BIN[w]) {
+                const b = popExpr(); const a = popExpr();
+                estack.push({s: `(${a.s} ${BIN[w]} ${b.s})`});
+                continue;
+            }
+            if (w === '.') {
+                const v = popExpr();
+                if (peek() && peek().t === 'word' && peek().v === 'cr') next();
+                return [`${pad(depth)}say ${v.s}`];
+            }
+            if (w === 'if') return parseIf(popExpr(), depth);
+            // otherwise a bare word: a variable read or write.
+            const nxt = peek();
+            if (nxt && nxt.t === 'word' && nxt.v === '@') {
+                next();
+                estack.push({s: rename(w)});
+                globals.add(rename(w));
+                continue;
+            }
+            if (nxt && nxt.t === 'word' && (nxt.v === '!' || nxt.v === '+!')) {
+                const op = next().v;
+                const target = rename(w);
+                globals.add(target);
+                const val = popExpr();
+                return [op === '!' ? `${pad(depth)}set ${target} to ${val.s}`
+                    : `${pad(depth)}change ${target} by ${val.s}`];
+            }
+            throw new ForthReadError(`line ${tk.line}: unexpected Forth word "${w}"`);
         }
-        body.push(...s);
-        if (pos === before) { next(); } // guard against no progress
     }
 
+    // A `: word … ;` definition. `main` is the flag body; anything else is a
+    // custom block.
+    const parseDefinition = () => {
+        next(); // consume ':'
+        const nm = next();
+        if (!nm || nm.t !== 'word') throw new ForthReadError(': without a name');
+        const name = nm.v;
+        defNames.add(name);
+        if (name !== 'main') procNames.add(name);
+        const lines = [];
+        for (;;) {
+            const t = peek();
+            if (!t) throw new ForthReadError(`: ${name} without ;`);
+            if (t.t === 'word' && t.v === ';') { next(); break; }
+            const s = readStatement(1);
+            if (s === null) { next(); continue; }
+            lines.push(...s);
+        }
+        if (name === 'main') mainBody = lines;
+        else procBlocks.push({name, lines});
+    };
+
+    // ---- top level: var decls, `: word … ;` defs, the `main` invocation -----
+    while (pos < toks.length) {
+        const tk = peek();
+        if (tk.t === 'mark') { next(); continue; }
+        if (tk.t === 'word' && tk.v === 'var') {
+            next();
+            const nm = next();
+            if (!nm || nm.t !== 'word') throw new ForthReadError('variable without a name');
+            if (!nm.v.startsWith('_')) globals.add(rename(nm.v)); // skip generator counter cells
+            continue;
+        }
+        if (tk.t === 'word' && tk.v === ':') { parseDefinition(); continue; }
+        if (tk.t === 'word' && defNames.has(tk.v)) { next(); continue; } // the `main` (or word) invocation
+        const before = pos;
+        const s = readStatement(1);
+        if (s === null) { const t = next(); warnings.push(`unexpected "${(t || {}).v}" at top level`); continue; }
+        // loose top-level statements are not part of the generator's shape
+        if (pos === before) next();
+    }
+
+    const lines = [];
     const globalLines = [...globals].sort().map(g => `GLOBAL ${g}`);
-    if (globalLines.length) { lines.push(...globalLines, ''); }
-    // strip say/set/etc. that are variable declarations (empty arrays already dropped)
-    const realBody = body.filter(Boolean);
-    if (realBody.length) lines.push('WHEN flag clicked:', ...realBody);
-    if (!realBody.length && String(source || '').trim()) {
+    if (globalLines.length) lines.push(...globalLines, '');
+    for (const pb of procBlocks) lines.push(`DEFINE ${pb.name}:`, ...pb.lines, '');
+    const realMain = mainBody.filter(Boolean);
+    if (realMain.length) lines.push('WHEN flag clicked:', ...realMain);
+    if (!realMain.length && !procBlocks.length && String(source || '').trim()) {
         warnings.push('no Forth the blocks can represent was found');
     }
     return {pseudocode: `${lines.join('\n').replace(/\n+$/, '')}\n`, warnings};
