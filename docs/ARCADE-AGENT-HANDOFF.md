@@ -1366,3 +1366,33 @@ PXT still fails the unchanged snippet's undeclared `harry`. This does not
 change the locked original census or establish game execution.40 affected
 codec/dependency/native-import/companion/export controls pass, plus14 corrected
 policy/recovery controls; the preceding census failures are preserved.
+
+## Wide artwork authoring candidate — 2026-10-12
+
+Pixel indexed artwork and native animation resource lookup now support up
+to512x512, matching the existing SVG reader. An8Mi indexed-pixel budget covers
+all document frames/layers and the active-frame copy; the16MiB serialized
+document and64MiB artwork-bundle limits still apply. Native JRES export keeps
+its separate1MiB packed limit and reports oversized resources explicitly.
+
+Wide documents require artwork bundle8. Library installation and subsequent
+saves keep that version; old bundle7 readers preserve source byte for byte
+as future data. Narrow documents keep their existing minimum versions.
+Resize, new frame/layer and sheet slicing check pixel budgets before allocating
+new buffers, with English/German feedback. Imports check budgets before
+constructing editable frame copies. IDs, timing and external pixels are retained.
+
+A161x121/32-frame synthetic native project executes in the real VM, saves and
+reopens into a fresh VM, exports/reimports exact source and compiles/runs in
+original PXT. Native viewport clipping and offscreen frame pixels are checked.
+Actual Pixel load/resize/Undo/Redo controls verify no shrinking and refusal
+before oversized allocation. Historical bundle7 preservation also passes.
+The hosted animation browser gate now adds a two-frame wide import, visible
+Pixel corner painting outside the Arcade viewport, playback, bundle8 save/
+reopen and original-compiler GUI export. That new GUI journey is PENDING,
+not a completed browser receipt. Original184-input census142/41/1 unchanged.
+
+Next: collect the exact-head hosted wide-artwork journey; add independent
+per-pixel collision/visible-screen oracle coverage for wide images; resolve
+namespace Buffer/song semantics in coordination with the importer owner and
+complete graphical dependency import and authoring evidence.

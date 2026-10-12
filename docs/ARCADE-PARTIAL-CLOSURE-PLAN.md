@@ -330,3 +330,12 @@ cover161x121 with32frames (311720packed bytes), full edge pixels and hostile
 headers before allocation. Editor publication/library installation still has
 a160x160 bound; runtime/graphics/export/SB3 browser acceptance remains open.
 No change to the locked184-input denominator or142/41/1 baseline is claimed.
+
+### B1 wide artwork source/editor candidate
+
+The native161x121 timeline can now become editable Pixel artwork and a native
+runtime resource. Bundle8 advertises dimensions through512x512, with whole-
+document pixel/byte budgets and old-reader opaque preservation. Headless VM/
+SB3/original-PXT export and actual editor method controls pass. The added hosted
+Pixel painting/save/reopen/export journey is pending. Keep the original census
+and wide collision/screen oracle requirements open until measured.

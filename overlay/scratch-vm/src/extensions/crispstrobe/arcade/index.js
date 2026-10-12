@@ -2843,10 +2843,11 @@ module.exports = makeExt(`// Name: Arcade
       if (!resource) return fail('missing or deleted resource');
       const {width, height, palette, frames, revision} = resource;
       if (resource.id !== id || typeof resource.name !== 'string' || !resource.name.trim() ||
-          !Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 160 || height > 160 ||
+          !Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 512 || height > 512 ||
           !((Number.isInteger(revision) && revision >= 0) || (typeof revision === 'string' && revision.length > 0)) || !Array.isArray(palette) || palette.length !== 16 ||
           palette[0] !== null || !Array.from(palette.slice(1)).every(colour => /^#[0-9a-f]{6}$/i.test(colour)) ||
-          !Array.isArray(frames) || !frames.length || frames.length > 64) return fail('invalid resource metadata');
+          !Array.isArray(frames) || !frames.length || frames.length > 64 ||
+          width * height * (frames.length + 1) > 8 * 1024 * 1024) return fail('invalid resource metadata');
       const ids = new Set();
       const interval = frames[0]?.durationMs;
       for (const frame of frames) {
