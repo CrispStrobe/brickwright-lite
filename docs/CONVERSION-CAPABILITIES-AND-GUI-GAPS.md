@@ -3436,3 +3436,11 @@ The reporter's hex field does not satisfy graphical song authoring.
 See [the complete contract](ARCADE-AGENT-HANDOFF.md#song-values-and-conversion-slice--2026-10-12).
 Parent hosted failures remain blockers; this focused qualification is not a
 production build claim.
+
+
+The locked 184-input census remains 142/41/1 at clean source `79b873478`.
+All three corpus song calls reference `assets.song` named `countdown`; the
+standalone snippets omit its bytes. Next: complete-project song asset resolution
+and named song authoring, with missing assets still diagnosed. Do not replace
+missing song data or reclassify partial projects on the basis of the five focused
+song fixtures.

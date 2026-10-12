@@ -1136,3 +1136,22 @@ before the Arcade journeys. The native-song checks did not fail. These failures
 remain integration blockers; their causes must be established before a full
 production claim. Preserve the original failures rather than rerunning them out
 of the evidence record.
+
+
+### Locked corpus checkpoint
+
+The clean source `79b873478ca65972a45cb70471c0e0e797f6e139` was audited against
+all 184 originals at corpus commit
+`c67f4854610ccc823682280b4d1fbdf737f4a585`. Every original Git blob matched;
+content-multiset SHA256 is
+`a3dc8c21a33a9fb5e1808d2b2b2d2dbc2f7ce1ab33655b7b4cb14a16894b9f03`.
+Source, vendor pins and MakeCode SDK identities were unchanged at both endpoints.
+The census remains **142 translated / 41 partial / 1 parse failure**. This is
+static translation, not compilation or execution of the complete corpus.
+
+The three song cases use ``music.createSong(assets.song`countdown`)``, rather
+than literal hex. Their standalone sources do not supply the named song bytes.
+Resolve song assets from complete project manifests/JRES and preserve their names
+and bytes through authoring/export. Keep the missing-asset diagnostic when only
+a source snippet is provided; never manufacture a countdown song to make the
+census green. These projects also have unrelated artwork and wrapper gaps.
