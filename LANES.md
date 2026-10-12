@@ -63,7 +63,10 @@ lazy import for the actual CLI consumer and declare the existing validated
 
 ## Public lane metadata cleanup — 2026-10-12
 
-CLAIMED — Codex, isolated branch `fix/public-lane-metadata-20261012`.
+DONE candidate — Codex, isolated branch `fix/public-lane-metadata-followup-20261012`.
+Follow-up to [#824](https://github.com/CrispStrobe/brickwright-lite/pull/824):
+remove one newly introduced operator location and session identifier from a claim;
+keep its worker identity, task envelope and status unchanged.
 Envelope: this ledger only. Remove operator machine locations, private session
 and terminal identifiers from public coordination prose; preserve task owners,
 branch/source identities, statuses, evidence links and acceptance criteria.
