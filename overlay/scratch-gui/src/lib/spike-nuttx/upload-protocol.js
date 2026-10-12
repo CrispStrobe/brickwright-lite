@@ -23,8 +23,8 @@ export function crc32 (value) {
     return (crc ^ 0xffffffff) >>> 0;
 }
 export function encodeInstructions (program, {topology = 'default'} = {}) {
-    if (!['default', 'six-motors'].includes(topology)) throw new TypeError('Unknown firmware topology');
-    const six = topology === 'six-motors';
+    if (!['default', 'six-motors', 'dual-ultrasonic'].includes(topology)) throw new TypeError('Unknown firmware topology');
+    const six = topology === 'six-motors', dual = topology === 'dual-ultrasonic';
     if (!program || Object.getPrototypeOf(program) !== Object.prototype ||
         Object.keys(program).length !== 2 || program.version !== 1 ||
         !Array.isArray(program.instructions)) throw new TypeError('Expected compiled firmware program v1');
@@ -39,8 +39,9 @@ export function encodeInstructions (program, {topology = 'default'} = {}) {
         const valid = (op === 0 && a === 0 && b === 0 && c === 0) ||
             (op === 1 && integer(a, 0, six ? 5 : 1) && integer(b, -1110, 1110) && c === 0) ||
             (op === 2 && integer(a, 0, 120000) && b === 0 && c === 0) ||
-            (!six && [3, 5].includes(op) && integer(a, 1, 6) &&
-                integer(b, 0, a <= 2 ? 65535 : a === 3 ? 1 : a === 4 ? 255 : 100) &&
+            (!six && [3, 5].includes(op) &&
+                (dual ? [4, 5, 6, 0x121, 0x122, 0x129, 0x12a].includes(a) : integer(a, 1, 6)) &&
+                integer(b, 0, a >= 0x100 || a <= 2 ? 65535 : a === 3 ? 1 : a === 4 ? 255 : 100) &&
                 (op === 3 ? c === 0 : integer(c, 0, count - 1))) ||
             (op === 4 && integer(a, 0, count - 1) && b === 0 && c === 0) ||
             (op === 6 && integer(a, 0, six ? 5 : 1) && integer(b, -36000, 36000) && integer(c, 1, 1110));
@@ -106,7 +107,7 @@ const cancellation = () => Object.assign(new Error('NuttX program upload cancell
  * before cleanup so packets/replies never overlap. Keep one client per device. */
 export class NuttXProgramClient {
     constructor (exchange, id, {topology = 'default'} = {}) {
-        if (!['default', 'six-motors'].includes(topology)) throw new TypeError('Unknown firmware topology');
+        if (!['default', 'six-motors', 'dual-ultrasonic'].includes(topology)) throw new TypeError('Unknown firmware topology');
         this.topology = topology;
         if (typeof exchange !== 'function') throw new TypeError('Expected packet exchange function');
         requireInteger(id, 1, 0xffffffff, 'program id');
