@@ -7,5 +7,8 @@
   "holder": "Ico Doornekamp (zevv)",
   "buildTool": "ia16-elf-gcc -mcmodel=medium -march=any_186 -O2",
   "bytes": 123952,
-  "sha256": "85cd3d80ddfe0474519b1caca7c9db486a236da89230eecc10571c60f1cb0a4d"
+  "sha256": "85cd3d80ddfe0474519b1caca7c9db486a236da89230eecc10571c60f1cb0a4d",
+  "licenseFile": "../licenses/zForth.MIT.txt",
+  "licenseSha256": "236c96ba448f732e78bc2fcf2fa64b4c56c181300df776cbaa3a1d407c3f888e",
+  "upstreamLicense": "https://github.com/zevv/zForth/blob/41db72d165c1539d57f3f79970fc57ea881a79dc/LICENSE"
 }
