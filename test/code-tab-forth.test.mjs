@@ -160,6 +160,30 @@ test('forth: callees are defined before callers', () => {
     assert.ok(r.forth.indexOf('\n: inner\n') < r.forth.indexOf('\n: outer\n'), r.forth);
 });
 
+test('forth: the GPIO words pin!/pin@ read back as set pin / read pin (the device bridge)', () => {
+    // `pin!`/`pin@` are baked into the DOS Forth binary (dosmain.c prelude), so a
+    // hand-written Code-tab program can drive the 8-pin GPIO strip. The reader
+    // must render them faithfully — not throw on an "unknown word" — so the
+    // pseudocode view of a pin program stays clean.
+    const src = [
+        ': main',
+        '  3 1 pin!',
+        '  5 0 pin!',
+        '  2 42 pin!',
+        '  3 pin@ 0 > if',
+        '    4 1 pin!',
+        '  fi',
+        ';',
+        'main', ''
+    ].join('\n');
+    const r = forthToPseudocode(src);
+    assert.deepEqual(r.warnings, []);
+    assert.ok(r.pseudocode.includes('set pin 3 high'), r.pseudocode);
+    assert.ok(r.pseudocode.includes('set pin 5 low'), r.pseudocode);
+    assert.ok(r.pseudocode.includes('set pin 2 to 42'), r.pseudocode);
+    assert.ok(r.pseudocode.includes('IF ((read pin 3) > 0) THEN:'), r.pseudocode);
+});
+
 const REFUSE = {
     customArgs: {
         src: 'DEFINE double (n):\n  set result to (n * 2)\nWHEN flag clicked:\n  double 5\n',

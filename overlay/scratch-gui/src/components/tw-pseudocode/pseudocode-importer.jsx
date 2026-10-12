@@ -3235,6 +3235,24 @@ class PseudocodeImporter extends React.Component {
         const source = code != null ? code : this.activeCode();
         if (!source.trim()) return;
         this.setState({output: '', running: true, busy: true, status: this.L.forthRunning});
+        // GPIO bridge: the DOS Forth's `pin!` word OUTs to 0x378+pin (8 pins).
+        // Decode those writes and drive the Widgets pane's GPIO strip through the
+        // same bw-fpga-leds/bw-fpga-output event pump the FPGA tab uses, so a
+        // `set pin N high/low` program lights visible LEDs. No new widget code.
+        const GPIO_BASE = 0x378;
+        const seenPins = new Set();
+        const onPortAccess = ev => {
+            if (!ev || ev.dir !== 'out') return;
+            if (ev.port < GPIO_BASE || ev.port > GPIO_BASE + 7) return;
+            const pin = ev.port - GPIO_BASE;
+            const high = (ev.value & 0xff) !== 0;
+            seenPins.add(pin);
+            if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
+            window.dispatchEvent(new CustomEvent('bw-fpga-leds',
+                {detail: {pins: [...seenPins].sort((a, b) => a - b)}}));
+            window.dispatchEvent(new CustomEvent('bw-fpga-output',
+                {detail: {leds: [{pin, high}]}}));
+        };
         try {
             const r = await runDosToolchain('forth', source, {
                 fetchToolchain: async () => {
@@ -3242,7 +3260,8 @@ class PseudocodeImporter extends React.Component {
                     if (!res.ok) throw new Error(`forth.exe HTTP ${res.status}`);
                     return {compiler: new Uint8Array(await res.arrayBuffer())};
                 },
-                maxSteps: 200_000_000
+                maxSteps: 200_000_000,
+                onPortAccess
             });
             const stage = r.run || r.compile;
             const screen = (stage && stage.screen) || '';
