@@ -1,0 +1,11 @@
+{
+  "note": "zForth (Ico Doornekamp / zevv), a tiny embeddable Forth — a small C VM plus a Forth-source bootstrap (forth/core.zf) that defines the language — cross-compiled to a 16-bit MS-DOS MZ .EXE with ia16-elf-gcc. It is DOS-NATIVE: it runs on the bw-board 8086 DOS service bench, reads PROG.FTH via INT 21h, and prints via the C library. dosmain.c embeds forth/core.zf (the language only; the stock misc.zf FizzBuzz demo and memaccess.zf load-time asserts are excluded), evaluates it, prints a banner, then reads and evaluates PROG.FTH. Packaged as media-lab project projects/forth-dos (fetch.sh reproduces this byte-for-byte). zf_cell is float, so the build uses the medium model (soft-float %g), like fe.exe. Build tool ia16-elf-gcc is GPL but build-time only; the binary links permissive newlib + libi86.",
+  "rom": "forth.exe",
+  "upstream": "github.com/zevv/zForth",
+  "commit": "41db72d165c1539d57f3f79970fc57ea881a79dc",
+  "license": "MIT",
+  "holder": "Ico Doornekamp (zevv)",
+  "buildTool": "ia16-elf-gcc -mcmodel=medium -march=any_186 -O2",
+  "bytes": 123952,
+  "sha256": "85cd3d80ddfe0474519b1caca7c9db486a236da89230eecc10571c60f1cb0a4d"
+}

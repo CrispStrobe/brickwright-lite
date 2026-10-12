@@ -28,6 +28,10 @@ const FE_EXE = new Uint8Array(readFileSync(
 // MIT partcl (zserge) built with ia16-elf-gcc).
 const TCL_EXE = new Uint8Array(readFileSync(
     fileURLToPath(new URL('../overlay/scratch-gui/static/roms/tcl.exe', import.meta.url))));
+// The libre DOS-native Forth this repo ships (media-lab project `forth-dos`,
+// MIT zForth (zevv) built with ia16-elf-gcc).
+const FORTH_EXE = new Uint8Array(readFileSync(
+    fileURLToPath(new URL('../overlay/scratch-gui/static/roms/forth.exe', import.meta.url))));
 
 // A 40-byte real .COM: INT 21h create OUT.TXT, write "HI", close, exit(0).
 const FILE_WRITER = new Uint8Array([
@@ -206,6 +210,44 @@ test('runDosToolchain("tcl", …) runs the shipped partcl Tcl on the real DOS be
         assert.ok(r.compile.screen.includes(want), `expected ${want} in ${JSON.stringify(r.compile.screen)}`);
     }
     assert.ok(r.files.get('PROG.TCL'), 'PROG.TCL was mounted for the interpreter');
+});
+
+test('the DOS-native Forth (zForth) route is verified and shaped like fe', () => {
+    const forth = DOS_TOOLCHAINS['forth'];
+    assert.ok(forth && forth.kind === 'dos-native');
+    assert.equal(forth.verified, true);
+    assert.equal(forth.language, 'forth');
+    assert.equal(forth.compilerFormat, 'exe');
+    assert.equal(forth.variant, '80186');
+    assert.equal(forth.sourceName, 'PROG.FTH');
+    assert.equal(forth.outputName, null);
+    assert.equal(forth.run, false);
+});
+
+test('runDosToolchain("forth", …) runs the shipped zForth on the real DOS bench', async () => {
+    // The EXACT production path; the fetcher returns the shipped static/roms/forth.exe.
+    // zForth evaluates its embedded core.zf bootstrap first, prints the banner,
+    // then reads PROG.FTH: sq/*/cube + a begin/until countdown.
+    const program = [
+        ': sq dup * ;',
+        '7 sq .',
+        '6 7 * .',
+        ': cube dup dup * * ;',
+        '4 cube .',
+        ': countdown begin dup . 1 - dup 0 = until drop ;',
+        '5 countdown', ''
+    ].join('\n');
+    const r = await runDosToolchain('forth', program, {
+        fetchToolchain: async () => ({compiler: FORTH_EXE}),
+        maxSteps: 200_000_000   // soft-float bootstrap runs before the user program
+    });
+    assert.equal(r.stage, 'compile');
+    assert.ok(r.compile.terminated, 'the interpreter terminated');
+    assert.equal(r.compile.exitCode, 0);
+    for (const want of ['zForth on DOS (8086)', '49 42 64', '5 4 3 2 1']) {
+        assert.ok(r.compile.screen.includes(want), `expected ${want} in ${JSON.stringify(r.compile.screen)}`);
+    }
+    assert.ok(r.files.get('PROG.FTH'), 'PROG.FTH was mounted for the interpreter');
 });
 
 test('runDosToolchain runs a DOS-native route through the bench (fetch composition)', async () => {
