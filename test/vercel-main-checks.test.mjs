@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {parsePushPaths} from '../scripts/lib/doc-triggers.mjs';
 import {validationProblems, REQUIRED_BUILD_JOBS, githubPages, excludedDocumentation,
-    documentationComparison, loadValidation} from '../scripts/verify-vercel-main-checks.mjs';
+    documentationComparison, loadValidation, mainSupersession} from '../scripts/verify-vercel-main-checks.mjs';
 const sha = 'a'.repeat(40);
 const run = (path, extra = {}) => ({id: 1, path: `.github/workflows/${path}.yml`, head_sha: sha,
     head_branch: 'main', event: 'push', status: 'completed', conclusion: 'success', ...extra});
@@ -54,6 +54,80 @@ const comparison = (files = [{filename: 'docs/unused-validation-note.md', status
     total_commits: 1, commits: [{sha}], files
 });
 const ancestor = run('build', {head_sha: base});
+
+const supersessionRequest = (receipt, tip = sha) => async url => ({ok: true,
+    json: async () => url.endsWith('/commits/main') ? {sha: tip} : receipt});
+
+test('main guard retains qualification for excluded docs but skips genuinely replaced trees', async () => {
+    assert.equal((await mainSupersession('owner/repo', sha, 'token', paths,
+        supersessionRequest(null))).superseded, false);
+    for (const filename of ['LANES.md', 'README.md', 'docs/unused-validation-note.md']) {
+        assert.equal((await mainSupersession('owner/repo', base, 'token', paths,
+            supersessionRequest(comparison([{filename, status: 'modified'}])))).superseded, false, filename);
+    }
+    for (const filename of ['vendor-pins.json', 'scripts/solver.mjs',
+        'docs/generated/report.md', 'overlay/scratch-gui/examples/example/intro.md',
+        ...paths.filter(path => path.startsWith('docs/') && !path.includes('*'))]) {
+        assert.equal((await mainSupersession('owner/repo', base, 'token', paths,
+            supersessionRequest(comparison([{filename, status: 'modified'}])))).superseded, true, filename);
+    }
+    assert.equal((await mainSupersession('owner/repo', base, 'token', paths,
+        supersessionRequest(comparison([{filename: 'README.md', previous_filename: 'src/solver.js',
+            status: 'renamed'}])))).superseded, true);
+});
+
+test('unknown or incomplete main evidence cannot suppress qualification', async () => {
+    for (const receipt of [null, {...comparison(), status: 'diverged'},
+        {...comparison(), base_commit: {sha}}, {...comparison(), merge_base_commit: {sha}},
+        {...comparison(), total_commits: 2}, {...comparison(), total_commits: 250},
+        {...comparison(), commits: [{sha: base}]}, {...comparison(), files: undefined},
+        {...comparison(), files: Array(300).fill(comparison().files[0])},
+        comparison([{filename: 'README.md', status: 'unknown'}]),
+        comparison([{filename: 'README.md', status: 'renamed'}])]) {
+        assert.equal((await mainSupersession('owner/repo', base, 'token', paths,
+            supersessionRequest(receipt))).superseded, false);
+    }
+    for (const request of [async () => { throw new Error('network failure'); },
+        async () => ({ok: false, status: 403}), supersessionRequest(null, 'not-a-sha')]) {
+        assert.equal((await mainSupersession('owner/repo', base, 'token', paths, request)).superseded, false);
+    }
+});
+
+test('Build guard uses the tested documentation-aware selector without changing publication requirements', () => {
+    const workflow = readFileSync(new URL('../.github/workflows/build.yml', import.meta.url), 'utf8');
+    const guard = workflow.split('\n  guard:')[1].split('\n  build:')[0];
+    assert.match(guard, /actions\/checkout@/);
+    assert.match(guard, /node-version: 22/);
+    assert.match(guard, /\[ "\$EVENT" != "push" \] \|\| \[ "\$REF" != "refs\/heads\/main" \]/);
+    assert.match(guard, /node scripts\/verify-vercel-main-checks\.mjs "\$SHA" --superseded >> "\$GITHUB_OUTPUT"/);
+    assert.doesNotMatch(guard, /superseded=true/);
+    assert.deepEqual(REQUIRED_BUILD_JOBS, ['build', 'browser (light)', 'browser (heavy)', 'corpus', 'fpga surface (flag-on)']);
+});
+
+test('three executable supersession mutants fail the real selector assertions', async () => {
+    const original = readFileSync(new URL('../scripts/verify-vercel-main-checks.mjs', import.meta.url), 'utf8');
+    const mutant = async (anchor, replacement) => {
+        assert.equal(original.split(anchor).length - 1, 1, 'unique mutation anchor');
+        const source = original.replace(anchor, replacement).replace("'./lib/doc-triggers.mjs'",
+            JSON.stringify(new URL('../scripts/lib/doc-triggers.mjs', import.meta.url).href));
+        return import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+    };
+    const assertRetained = result => assert.equal(result.superseded, false);
+    const assertReplaced = result => assert.equal(result.superseded, true);
+    const docsSkip = await mutant('superseded: !docsOnly', 'superseded: true');
+    const awaitedDocs = await docsSkip.mainSupersession('owner/repo', base, 'token', paths,
+        supersessionRequest(comparison([{filename: 'LANES.md', status: 'modified'}])));
+    assert.throws(() => assertRetained(awaitedDocs), assert.AssertionError);
+    const sourceSkip = await mutant('superseded: !docsOnly', 'superseded: false');
+    const sourceResult = await sourceSkip.mainSupersession('owner/repo', base, 'token', paths,
+        supersessionRequest(comparison([{filename: 'vendor-pins.json', status: 'modified'}])));
+    assert.throws(() => assertReplaced(sourceResult), assert.AssertionError);
+    const incompleteSkip = await mutant('if (!completeAncestralComparison(comparison, sha, tip.sha))', 'if (false)');
+    const truncated = await incompleteSkip.mainSupersession('owner/repo', base, 'token', paths,
+        supersessionRequest({...comparison(), files: Array(300).fill({filename: 'vendor-pins.json', status: 'modified'})}));
+    assert.throws(() => assertRetained(truncated), assert.AssertionError);
+    assert.equal(readFileSync(new URL('../scripts/verify-vercel-main-checks.mjs', import.meta.url), 'utf8'), original);
+});
 
 test('inheritance uses ordered actual Build paths and only excluded unshipped Markdown', () => {
     for (const filename of ['LANES.md', 'README.md', 'docs/unused-validation-note.md']) {

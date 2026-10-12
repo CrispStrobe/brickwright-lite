@@ -310,3 +310,29 @@ and shared arena, gated native/Python callers, and actual installed Code/Blocks
 qualification. Default D-distance/E-force and six-motor configurations retain
 their existing contracts; package metadata alone does not qualify those next
 steps or arbitrary A–F addressed reads.
+
+## Caller profile preflight candidate — 2026-10-12
+
+The native capability adapter rejects unknown string topologies and unsupported
+custom-profile/backend pairings before reserving a broker request. Its two fixed
+caller messages are `unknown SPIKE topology` and
+`custom topology requires own NuttX firmware`. Default starts remain unchanged;
+NuttX supports the declared custom profiles, and the existing MicroPython
+six-motor pairing remains forwarded unchanged. Dual ultrasonic is still subject
+to the separate [PR755](https://github.com/CrispStrobe/brickwright-lite/pull/755)
+package adoption and native guards; forwarding is not package support evidence.
+
+A local refusal preserves an existing session, pending replies and contiguous
+request IDs. Validation runs when the queued request reaches dispatch, so edits
+to a queued topology cannot evade the check. It reads data descriptors without
+evaluating profile getters. Other malformed DTOs remain subject to the closed
+native boundary. Native lease, caller, sequence, image and API authorization
+errors retain their opaque fixed failure responses; no native error text or
+private paths are disclosed.
+
+Twenty focused adapter tests pass, including valid profile forwarding, both
+local refusals, queue ordering, session survival, malformed DTO failure handling
+and packaged mirror identity. Removing either profile guard makes its dedicated
+refusal test fail. These are caller/transport tests; fresh combined installed
+qualification of the actual Code/arena path, profile refusals, cancellation and
+addressed-API/image negatives remains required before closing package adoption.
