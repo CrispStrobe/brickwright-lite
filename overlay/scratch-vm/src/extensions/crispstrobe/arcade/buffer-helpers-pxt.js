@@ -2,9 +2,9 @@
 // Copyright (c) Microsoft Corporation. See static/licenses/pxt-common-packages.MIT.txt.
 // Original source: https://github.com/microsoft/pxt-common-packages/blob/master/libs/base/buffer.ts
 // Complete bundled buffer.ts SHA256: 970960b537291a5c8028afda5f210318dd1143de8f3835d4d71efb2ed9359061
-// Selected unadapted source SHA256: cd4238be0abd87bc12b1d21ca2aca529ece9deb6301f9427e4cb0a6c5c0c0cea
+// Selected unadapted source SHA256: 71196395cf23baa4c2146b1f8a59524c27df39f1b6e5094cb153b75c83b6c30f
 // Regenerate: node scripts/generate-arcade-buffer-helpers.mjs
-// Six indexed Buffer reads use the original getByte shim, including out-of-range zero.
+// Six indexed Buffer reads and one write use original getByte/setByte shims.
 module.exports = function initializePxtBufferHelpers(Buffer, NumberFormat) {
 var helpers;
 (function (helpers) {
@@ -43,9 +43,45 @@ var helpers;
         return -1;
     }
     helpers.bufferIndexOf = bufferIndexOf;
+    function bufferToArray(buf, format) {
+        const sz = Buffer.sizeOfNumberFormat(format);
+        const len = buf.length - sz;
+        const r = [];
+        for (let i = 0; i <= len; i += sz)
+            r.push(buf.getNumber(format, i));
+        return r;
+    }
+    helpers.bufferToArray = bufferToArray;
 })(helpers || (helpers = {}));
 var Buffer;
 (function (Buffer) {
+    /**
+     * Create a new buffer initialized to bytes from given array.
+     * @param bytes data to initialize with
+     */
+    function fromArray(bytes) {
+        let buf = Buffer.create(bytes.length);
+        for (let i = 0; i < bytes.length; ++i)
+            buf.setByte(i, bytes[i]);
+        return buf;
+    }
+    Buffer.fromArray = fromArray;
+    /**
+     * Concatenates all buffers in the list
+     */
+    function concat(buffers) {
+        let len = 0;
+        for (let b of buffers)
+            len += b.length;
+        const r = Buffer.create(len);
+        len = 0;
+        for (let b of buffers) {
+            r.write(len, b);
+            len += b.length;
+        }
+        return r;
+    }
+    Buffer.concat = concat;
     /**
      * Get the size in bytes of specified number format.
      */
@@ -77,5 +113,5 @@ var Buffer;
     Buffer.sizeOfNumberFormat = sizeOfNumberFormat;
 })(Buffer || (Buffer = {}));
 
-return {...helpers, sizeOfNumberFormat: Buffer.sizeOfNumberFormat};
+return {...helpers, sizeOfNumberFormat: Buffer.sizeOfNumberFormat, fromArray: Buffer.fromArray, concatArrays: Buffer.concat};
 };

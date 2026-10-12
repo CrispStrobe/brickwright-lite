@@ -3651,3 +3651,20 @@ and visible product GUI qualification remain open.
 The first Buffer browser run failed before any controller cycle while opening
 a dropdown. Its followup uses an actionable SVG-field locator and failure
 screenshot; do not mark this GUI lane passed before hosted evidence.
+
+### Buffer number arrays and static concatenation (2026-10-12)
+
+The candidate adds `arcade_bufferFromArray`, `arcade_bufferToArray` and
+`arcade_bufferConcatArray`. Native reporters use the existing scoped Arrays
+references, preserve detached storage and support all16 numeric decode formats.
+The exporter carries number[] returns and Buffer[] inputs through existing
+constraints; original exported execution and actual archive reopening are
+controls. Fixed finite numeric JSON reference constructors now emit array
+literals instead of a refusal. Dynamic/non-numeric constructor forms still
+retain their named diagnostics; do not declare general JSON array export closed.
+
+Authoring uses existing array-reference mutation/value blocks. Their raw value
+slots are text; the Code fixture uses an explicit numeric reporter. An improved
+typed array-value editing flow remains a GUI task. Buffer byte/array inspection,
+namespace import and exact-head visible controller/export qualification remain
+open. Original decoder invalid-format loops are refused explicitly by the host.

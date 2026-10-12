@@ -1686,3 +1686,35 @@ numeric functions. Producer347 controls pass with zero skips. Generator and
 whitespace checks pass. Hosted acceptance and the locked142/41/1 census remain
 unchanged. Static Buffer-array concat, number arrays, Base64, chunking, packing,
 hashing and aggregate resource limits remain on the source-derived backlog.
+
+## Buffer number-array bridge — 2026-10-12
+
+Original `Buffer.fromArray`, `buffer.toArray` and static `Buffer.concat` now have
+native reporters, shared menu/Code forms and typed export. Producer PR101
+adds304→307 canonical forms. The source extractor retains original loops and
+records full/selected hashes; six indexed Buffer reads and one write use original
+byte shims. Number-array reads are not treated as Buffer reads. Native references
+are scoped, copies detach storage and static concat preserves readonly inputs.
+
+The native authoring check exposed fixed numeric JSON reference constructors
+that ran but were refused on export. They now emit parsed numeric source
+literals (retaining negative zero syntax); other unsupported constructor forms
+retain diagnostics. Export adds number[]/Buffer[] constraints through the
+existing graph. No E10 shared inference/importer source was changed.
+
+Five algorithm/guard controls passed in the first batch; its authoring fixture
+initially used an invalid mutation spelling, then text values instead of numeric
+reporters, and had a malformed replacement during correction. All attempts
+remain private. The corrected fixture then exposed the real fixed-array export
+gap. After implementing it, all6 array controls pass, zero skips, including
+original exported execution, custom array return, Code reconstruction and actual
+fresh SB3. Together24 distinct affected controls pass with zero skips; producer
+350 controls pass. Hosted checks and locked142/41/1 classification are separate.
+
+Readonly PR836's original heavy browser passed; light failed at the same Buffer
+dropdown. Both completed before gate/actionability fixes were propagated with
+its own300-word census. Preserve the failure. The UTF8 heavy diagnostic still
+survived at this checkpoint; do not advance that head while it runs. Next source
+APIs: Base64, chunked alias/copy semantics, pack/unpack, hash and aggregate heap
+resource handling. Namespace importer integration and actual GUI evidence remain
+required before any whole-game or corpus promotion.

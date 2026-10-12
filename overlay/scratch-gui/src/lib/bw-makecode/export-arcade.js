@@ -980,6 +980,14 @@ class ArcadeEmitter {
         case 'arrays_contains': return `${this.namedOperationHelper('contains')}(${this.namedArray(b)}, ${this.arrayValue(b,'VALUE')})`;
         case 'arrays_toJSON': {const array=this.namedArray(b);return `${this.legacyValueHelper('json')}(${array} || [])`;}
         case 'arrays_createReference': {
+            const text=this.literalInput(b,'VALUES');
+            if(typeof text==='string'){
+                try {
+                    const values=JSON.parse(text);
+                    if(Array.isArray(values) && values.every(value=>typeof value==='number' && Number.isFinite(value)))
+                        return `[${values.map(value=>Object.is(value,-0)?'-0':String(value)).join(', ')}]`;
+                } catch(_) { /* The existing fixed-chain diagnostic remains authoritative. */ }
+            }
             const args=[];let tail=b.inputs?.VALUES,current=this.block(tail?.[1]);
             while(current?.opcode==='arrays_referenceValues'){args.push(this.arrayValue(current,'VALUE'));tail=current.inputs?.REST;current=this.block(tail?.[1]);}
             const empty=Array.isArray(tail?.[1])?String(tail[1][1])==='[]':current?.fields?.TEXT?.[0]==='[]';
@@ -1044,6 +1052,9 @@ class ArcadeEmitter {
         case 'arcade_bufferEquals': return `${v('BUFFER')}.equals(${v('OTHER')})`;
         case 'arcade_bufferIndexOf': return `${v('BUFFER')}.indexOf(${v('OTHER')})`;
         case 'arcade_bufferGetByte': return `${v('BUFFER')}[${v('OFFSET')}]`;
+        case 'arcade_bufferFromArray': return `Buffer.fromArray(${v('ARRAY')})`;
+        case 'arcade_bufferConcatArray': return `Buffer.concat(${v('ARRAY')})`;
+        case 'arcade_bufferToArray':
         case 'arcade_bufferFormatSize':
         case 'arcade_bufferGetNumber': {
             const menu=this.menuField(b,'FORMAT','bufferFormats'), text=this.literalInput(b,'FORMAT');
@@ -1053,7 +1064,8 @@ class ArcadeEmitter {
                 b.opcode==='arcade_bufferFormatSize' && typeof fmt==='number' && Number.isFinite(fmt)?String(fmt):
                 fmt===null?v('FORMAT'):null;
             if(expression===null){this.note('Byte buffer numeric format is not supported');return 'undefined';}
-            return b.opcode==='arcade_bufferFormatSize'?`Buffer.sizeOfNumberFormat(${expression})`:
+            return b.opcode==='arcade_bufferToArray'?`${v('BUFFER')}.toArray(${expression})`:
+                b.opcode==='arcade_bufferFormatSize'?`Buffer.sizeOfNumberFormat(${expression})`:
                 `${v('BUFFER')}.getNumber(${expression}, ${v('OFFSET')})`;
         }
         case 'arcade_bufferSlice': return `${v('BUFFER')}.slice(${v('OFFSET')}, ${v('LENGTH')})`;
@@ -2481,7 +2493,8 @@ class ArcadeEmitter {
                 if(value.opcode==='arrays_namedReference'){const id='named-array:'+literal(blocks,value,'NAME');arrays.add(id);return id;}
                 if(['arrays_parseLegacyValue','arrays_jsonValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
                 if(value.opcode==='arcade_spriteToString') {const id=Symbol('sprite text');strings.add(id);return id;}
-                if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferLiteral','arcade_bufferSlice','arcade_bufferConcat'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
+                if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferLiteral','arcade_bufferSlice','arcade_bufferConcat','arcade_bufferFromArray','arcade_bufferConcatArray'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
+                if(value.opcode==='arcade_bufferToArray'){const id=`${key}:buffer-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(['arcade_bufferLength','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf','arcade_bufferFormatSize'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
                 if(['arcade_bufferToHex','arcade_bufferToText'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
                 if(['arcade_bufferIsReadOnly','arcade_bufferEquals'].includes(value.opcode)){const id=Symbol('buffer readonly');booleans.add(id);return id;}
@@ -2561,6 +2574,11 @@ class ArcadeEmitter {
                     const image = ref(inputBlock(blocks,block,input));if(image)images.add(image);
                 }
                 if(block.inputs?.BUFFER){const buffer=ref(inputBlock(blocks,block,'BUFFER'));if(buffer)graphBufferValues.add(buffer);}
+                if(['arcade_bufferFromArray','arcade_bufferConcatArray','arcade_bufferToArray'].includes(block.opcode)){
+                    const array=block.opcode==='arcade_bufferToArray'?ref(block):ref(inputBlock(blocks,block,'ARRAY'));
+                    if(array){arrays.add(array);const item=Symbol('buffer array element');
+                        (block.opcode==='arcade_bufferConcatArray'?graphBufferValues:numbers).add(item);elements.push([array,item]);}
+                }
                 if(block.opcode==='arcade_bufferWrite'){const buffer=ref(inputBlock(blocks,block,'SOURCE'));if(buffer)graphBufferValues.add(buffer);}
                 if(['arcade_bufferConcat','arcade_bufferEquals','arcade_bufferIndexOf'].includes(block.opcode)){const buffer=ref(inputBlock(blocks,block,'OTHER'));if(buffer)graphBufferValues.add(buffer);}
                 if(block.opcode==='arcade_eventPlayer'){const player=ref(block);if(player)graphPlayerValues.add(player);}

@@ -15,6 +15,7 @@ preparation, not a claim that namespace Buffer imports already work.
 - Readonly Boolean producer: https://github.com/CrispStrobe/sb3-creator/pull/98
 - Concat/equality/search producer: https://github.com/CrispStrobe/sb3-creator/pull/99
 - Number-format size producer: https://github.com/CrispStrobe/sb3-creator/pull/100
+- Number-array/static-concat producer: https://github.com/CrispStrobe/sb3-creator/pull/101
 - Common-package helpers: https://github.com/microsoft/pxt-common-packages/blob/master/libs/base/buffer.ts
   (exact consumed source is the pinned Arcade target bundle; generated output records complete/selected source hashes).
 - Arrays fallback: https://github.com/CrispStrobe/extensions/pull/34
@@ -53,6 +54,9 @@ named-song resource metadata on the existing inline/resource route.
 | `buffer.concat(other)` | `arcade_bufferConcat` | Detached fresh mutable result; bound combined allocation before creation |
 | `buffer.equals(other)` | `arcade_bufferEquals` | Original content equality Boolean; explicit null equality is supported by runtime, foreign/stale references still diagnose |
 | `buffer.indexOf(other)` | `arcade_bufferIndexOf` | Original first byte-match index / -1, including empty needles and out-of-range zero reads |
+| `Buffer.fromArray(numbers)` | `arcade_bufferFromArray` | Fresh mutable bytes; numeric array remains detached; original byte coercion |
+| `buffer.toArray(format)` | `arcade_bufferToArray` | Fresh scoped number array; all16 formats; ignore trailing incomplete numbers |
+| `Buffer.concat(buffers)` | `arcade_bufferConcatArray` | Fresh mutable detached buffer; readonly inputs stay untouched; total-byte bound |
 | `buffer.length` | `arcade_bufferLength` | Byte count, not Scratch string length |
 | `buffer[index]` | `arcade_bufferGetByte` | Original byte read and bounds |
 | `buffer[index] = value` | `arcade_bufferSetByte` | Mutate shared storage; evaluate receiver/index/value once in source order |
@@ -144,8 +148,6 @@ Actual public declarations still needing runtime/native authoring/export work:
 | `Buffer.create(size)` | Import alias for the existing allocator; resolve shadowing |
 | `getUint8` / `setUint8` | Import aliases for byte reads/writes |
 | `Buffer.fromBase64`, `toBase64` | Original common-package encoding/decoding and native words |
-| `Buffer.fromArray`, `toArray` | Number/reference-array bridge and all numeric formats |
-| `Buffer.concat(Buffer[])` | Static array form; instance concatenation exists, array flow still requires integration |
 | `chunked`, `Buffer.chunkedFromUTF8` | Original Buffer[] alias/copy branches, UTF8 boundary handling and limits |
 | `unpack`, `packAt`, `Buffer.pack`, `packedSize` | Exact public format parser, array flow and malformed-format behavior |
 | `hash(bits)` | Original FNV-1 algorithm and public bit-width semantics |
@@ -172,3 +174,30 @@ node --import ./scripts/lib/register-gui-scope.mjs --test test/makecode-arcade-b
 node scripts/generate-arcade-buffer-helpers.mjs --check
 node scripts/generate-arcade-authoring-inventory.mjs --check
 ```
+
+### Number-array and static concatenation continuation
+
+Native words are `arcade byte buffer from number array ARRAY`, `arcade byte
+buffer BUFFER to number array format FORMAT`, and `arcade concatenate byte
+buffers in array ARRAY`. Their inputs/outputs use the existing session-scoped
+array heap; runtime wrappers refuse foreign or expired arrays. JSON fixed finite
+number-array constructors now export to real numeric array literals; negative
+zero is retained in source. Other unsupported constructor forms keep diagnostics.
+Use reference-array mutation with a numeric reporter (for example `convert value
+(77) op "+"`), since unwrapped inputs in the Arrays block are text.
+
+The original algorithms are selected directly from the consumed target bundle.
+Six Buffer reads and one write adapt indexed access to original getByte/setByte
+shims; ordinary number-array reads remain ordinary array reads. Both directions
+copy storage. Static concat copies bytes, even for one input or readonly literals.
+The original decoder has a zero-size infinite loop for invalid formats; the host
+refuses that input before invocation with a named diagnostic. Never run it as a
+positive original-runtime case. Per-buffer1MiB and input-array element guards
+remain; aggregate heap collection/resources remain separate gaps.
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs --test test/makecode-arcade-buffer-arrays.test.mjs test/makecode-arcade-buffer-format-size.test.mjs test/makecode-arcade-byte-buffer.test.mjs test/lego-spike-roundtrip.test.mjs test/dialect-arcade-import-lines.test.mjs
+```
+
+This is native authoring/export source, not namespace Buffer import or visible
+GUI qualification. Keep corpus classifications until actual immutable recensus.

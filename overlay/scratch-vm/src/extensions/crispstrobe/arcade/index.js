@@ -273,6 +273,9 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'bufferIndexOf',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] index of byte buffer [OTHER]',arguments:{...str('BUFFER',''),...str('OTHER','')}},
           {opcode:'bufferGetByte',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] byte at [OFFSET]',arguments:{...str('BUFFER',''),...n('OFFSET',0)}},
           {opcode:'bufferSetByte',blockType:Scratch.BlockType.COMMAND,text:'Arcade set byte buffer [BUFFER] byte at [OFFSET] to [VALUE]',arguments:{...str('BUFFER',''),...n('OFFSET',0),...n('VALUE',0)}},
+          {opcode:'bufferFromArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from number array [ARRAY]',arguments:str('ARRAY','')},
+          {opcode:'bufferToArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] to number array format [FORMAT]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt8LE'}}},
+          {opcode:'bufferConcatArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade concatenate byte buffers in array [ARRAY]',arguments:str('ARRAY','')},
           {opcode:'bufferFormatSize',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer number format [FORMAT] size',arguments:{FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt16LE'}}},
           {opcode:'bufferGetNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] number [FORMAT] at [OFFSET]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt16LE'},...n('OFFSET',0)}},
           {opcode:'bufferSetNumber',blockType:Scratch.BlockType.COMMAND,text:'Arcade set byte buffer [BUFFER] number [FORMAT] at [OFFSET] to [VALUE]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt16LE'},...n('OFFSET',0),...n('VALUE',0)}},
@@ -3887,6 +3890,15 @@ module.exports = makeExt(`// Name: Arcade
     bufferIndexOf(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).indexOf(this._buffer(args.OTHER)));}
     bufferGetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getByte(Scratch.Cast.toNumber(args.OFFSET)));}
     bufferSetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).setByte(Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE)));}
+    _bufferArray(value) {
+      const array=Scratch.BWValues.arrayValue(this._runtime,value);
+      if(!array)throw new Error('Arcade buffer input array is not available in this project run');
+      if(array.length>dependencies.buffers.MAX_BUFFER_BYTES)throw new RangeError('Arcade buffer exceeds byte allocation limit');
+      return array;
+    }
+    bufferFromArray(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.fromArray(this._bufferArray(args.ARRAY).map(value=>Scratch.BWValues.decode(value)))));}
+    bufferToArray(args) {return this._bufferGuard(()=>Scratch.BWValues.arrayReference(this._runtime,this._buffer(args.BUFFER).toArray(args.FORMAT)));}
+    bufferConcatArray(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.concatArrays(this._bufferArray(args.ARRAY).map(value=>this._buffer(value)))));}
     bufferFormatSize(args) {return this._bufferGuard(()=>dependencies.buffers.sizeOfNumberFormat(args.FORMAT));}
     bufferGetNumber(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getNumber(args.FORMAT,Scratch.Cast.toNumber(args.OFFSET)));}
     bufferSetNumber(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).setNumber(args.FORMAT,Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE)));}
