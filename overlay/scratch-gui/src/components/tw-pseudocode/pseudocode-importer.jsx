@@ -170,7 +170,7 @@ const L10N = {
         toBlocks: '⇦ To blocks', toBlocksTitle: l => `Compile this ${l} into blocks`,
         fromBlocks: 'From blocks ⇨', fromBlocksTitle: 'Read the current blocks back into all languages',
         compactToBlocks: '⇦ Blocks', compactFromBlocks: 'Blocks ⇨',
-        run: 'Run', runBasic: '▶ Run BASIC', runFe: '▶ Run fe', runTcl: '▶ Run Tcl',
+        run: 'Run', runBasic: '▶ Run BASIC', runFe: '▶ Run fe', runTcl: '▶ Run Tcl', runForth: '▶ Run Forth',
         nqcCompile: '⚙ Compile .rcx', nqcSend: '🧱 Send to RCX',
         nqcEmpty: 'Type some NQC first.',
         nqcNoCompiler: 'This build has no local NQC compiler.',
@@ -195,6 +195,8 @@ const L10N = {
         basicUbasicFailed: (m) => `The uBASIC (on DOS) route could not run: ${m}`,
         feRunning: 'Running your fe (Lisp) on the libre fe interpreter on the DOS bench…',
         feFailed: (m) => `The fe (Lisp on DOS) route could not run: ${m}`,
+        forthRunning: 'Running your Forth on zForth, a libre interpreter, on the DOS bench…',
+        forthFailed: (m) => `The Forth (zForth on DOS) route could not run: ${m}`,
         tclRunning: 'Running your Tcl on Jim Tcl, a libre interpreter, on the DOS bench…',
         tclFailed: (m) => `The Tcl (Jim Tcl on DOS) route could not run: ${m}`,
         basic8086Refused: (m) => `The BASIC compiler refused this program: ${m}`,
@@ -486,7 +488,7 @@ const L10N = {
         toBlocks: '⇦ Zu Blöcken', toBlocksTitle: l => `Diesen ${l}-Code zu Blöcken kompilieren`,
         fromBlocks: 'Von Blöcken ⇨', fromBlocksTitle: 'Das aktuelle Projekt in alle Sprachen einlesen',
         compactToBlocks: '⇦ Blöcke', compactFromBlocks: 'Blöcke ⇨',
-        run: 'Ausführen', runBasic: '▶ BASIC ausführen', runFe: '▶ fe ausführen', runTcl: '▶ Tcl ausführen',
+        run: 'Ausführen', runBasic: '▶ BASIC ausführen', runFe: '▶ fe ausführen', runTcl: '▶ Tcl ausführen', runForth: '▶ Forth ausführen',
         nqcCompile: '⚙ .rcx kompilieren', nqcSend: '🧱 An RCX senden',
         nqcEmpty: 'Zuerst NQC eingeben.',
         nqcNoCompiler: 'Dieser Build hat keinen lokalen NQC-Compiler.',
@@ -512,6 +514,8 @@ const L10N = {
         basicUbasicFailed: (m) => `Die uBASIC-(auf-DOS)-Route lief nicht: ${m}`,
         feRunning: 'Führe dein fe (Lisp) mit dem freien fe-Interpreter auf der DOS-Werkbank aus…',
         feFailed: (m) => `Die fe-(Lisp-auf-DOS)-Route lief nicht: ${m}`,
+        forthRunning: 'Führe dein Forth mit dem freien zForth-Interpreter auf der DOS-Werkbank aus…',
+        forthFailed: (m) => `Die Forth-(zForth-auf-DOS)-Route lief nicht: ${m}`,
         tclRunning: 'Führe dein Tcl mit dem freien Jim-Tcl-Interpreter auf der DOS-Werkbank aus…',
         tclFailed: (m) => `Die Tcl-(Jim-Tcl-auf-DOS)-Route lief nicht: ${m}`,
         basic8086Refused: (m) => `Der BASIC-Compiler hat dieses Programm abgelehnt: ${m}`,
@@ -859,6 +863,7 @@ const CODE_FILES = {
     nqc:         {ext: 'nqc', mime: 'text/x-csrc',     base: 'program'},
     // fe (rxi), a tiny Lisp run as fe.exe on the DOS bench (DOS_TOOLCHAINS 'fe').
     fe:          {ext: 'fe',  mime: 'text/plain',      base: 'program'},
+    forth:       {ext: 'fth', mime: 'text/plain',      base: 'program'},
     tcl:         {ext: 'tcl', mime: 'text/plain',      base: 'program'}
 };
 const CODE_ACCEPT = [...new Set(Object.values(CODE_FILES).map(f => `.${f.ext}`)), '.s', '.lst'].join(',');
@@ -871,7 +876,7 @@ const CODE_ACCEPT = [...new Set(Object.values(CODE_FILES).map(f => `.${f.ext}`))
 const BW_AUTOSAVE_KEY = 'bw-code-autosave';
 // Code-tab languages most people never need: they stay out of the language row
 // until chosen from its "+" menu (remembered per browser), opened, or written in.
-const BW_OPTIONAL_LANGS = [['fe', 'λ fe', 'Lisp (fe on DOS)'], ['tcl', '○ Tcl', 'Tcl (partcl on DOS)']];
+const BW_OPTIONAL_LANGS = [['fe', 'λ fe', 'Lisp (fe on DOS)'], ['tcl', '○ Tcl', 'Tcl (partcl on DOS)'], ['forth', '🔺 Forth', 'Forth (zForth on DOS)']];
 const BW_EXTRA_LANGS_KEY = 'bw-code-extra-languages';
 const readExtraLangs = () => {
     try {
@@ -881,7 +886,7 @@ const readExtraLangs = () => {
 };
 const BW_AUTOSAVE_MAX = 512 * 1024;   // localStorage is ~5MB total; don't hog it
 
-const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC', asm: 'ASM', micropython: 'micro:bit', nqc: 'NQC', fe: 'fe (Lisp)', tcl: 'Tcl'};
+const LANG_LABEL = {pseudocode: 'Pseudocode', python: 'Python', javascript: 'JavaScript', c: 'C', basic: 'BASIC', asm: 'ASM', micropython: 'micro:bit', nqc: 'NQC', fe: 'fe (Lisp)', tcl: 'Tcl', forth: 'Forth'};
 
 const DEVICE_HELP = {
     microbit: 'Run MicroPython in the right-hand micro:bit simulator, use its A/B buttons and sensor sliders, or download a .hex for a real board.',
@@ -911,7 +916,7 @@ const deviceHelp = id => DEVICE_HELP[id] || (/^(arduino|atmega|attiny)/.test(id 
 // DEVICE_CHIP_LABELS imported from ../../lib/device-labels.js
 // fe and Tcl read and write through bw-lang/fe.js and bw-lang/tcl.js (Tcl
 // keeps what blocks cannot say as raw blocks; fe refuses it by name).
-const TWO_WAY = new Set(['pseudocode', 'python', 'javascript', 'c', 'basic', 'fe', 'tcl']);
+const TWO_WAY = new Set(['pseudocode', 'python', 'javascript', 'c', 'basic', 'fe', 'tcl', 'forth']);
 
 /**
  * The DOS-interpreter languages' halves, loaded on demand: the module's
@@ -933,6 +938,13 @@ const DOS_LANG = {
         generate: (m, proj) => {
             const r = m.generateTcl(proj);
             return r.ok ? r.tcl : `# === Cannot show as Tcl ===\n${r.reasons.map(s => '# ' + s).join('\n')}\n`;
+        }
+    },
+    forth: {
+        load: () => import(/* webpackChunkName: "bw-lang-forth" */ '../../lib/bw-lang/forth.js'),
+        generate: (m, proj) => {
+            const r = m.generateForth(proj);
+            return r.ok ? r.forth : `( === Cannot show as Forth === )\n${r.reasons.map(s => `( ${s} )`).join('\n')}\n`;
         }
     }
 };
@@ -3208,6 +3220,36 @@ class PseudocodeImporter extends React.Component {
         } catch (e) {
             this.setState({output: `Error: ${e.message}`, running: false, busy: false,
                 status: this.L.feFailed(e.message)});
+        }
+    }
+
+    /**
+     * Run Forth through zForth's forth.exe on the DOS bench (DOS_TOOLCHAINS
+     * 'forth'), mirroring runFeOnDosInterp: the interpreter reads PROG.FTH
+     * (INT 21h) and prints during its run, so the output is the compile-stage
+     * screen (no output file). zForth's core.zf bootstrap is embedded in the
+     * binary; maxSteps is higher than fe/Tcl because the soft-float bootstrap
+     * runs before the user program.
+     */
+    async runForthOnDosInterp (code) {
+        const source = code != null ? code : this.activeCode();
+        if (!source.trim()) return;
+        this.setState({output: '', running: true, busy: true, status: this.L.forthRunning});
+        try {
+            const r = await runDosToolchain('forth', source, {
+                fetchToolchain: async () => {
+                    const res = await fetch('static/roms/forth.exe');
+                    if (!res.ok) throw new Error(`forth.exe HTTP ${res.status}`);
+                    return {compiler: new Uint8Array(await res.arrayBuffer())};
+                },
+                maxSteps: 200_000_000
+            });
+            const stage = r.run || r.compile;
+            const screen = (stage && stage.screen) || '';
+            this.setState({output: screen.trim() || '(no output)', running: false, busy: false, status: ''});
+        } catch (e) {
+            this.setState({output: `Error: ${e.message}`, running: false, busy: false,
+                status: this.L.forthFailed(e.message)});
         }
     }
 
@@ -6154,6 +6196,13 @@ class PseudocodeImporter extends React.Component {
                             style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}
                             data-testid="bw-fe-run">
                             {this.L.runFe}
+                        </button>
+                    ) : null}
+                    {this.state.lang === 'forth' && this.activeCode().trim() ? (
+                        <button onClick={() => this.runForthOnDosInterp()} disabled={this.state.running}
+                            style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}
+                            data-testid="bw-forth-run">
+                            {this.L.runForth}
                         </button>
                     ) : null}
                     {this.state.lang === 'tcl' && this.activeCode().trim() ? (

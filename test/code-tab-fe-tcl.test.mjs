@@ -399,8 +399,8 @@ const importer = readFileSync(
 test('the importer treats fe and Tcl as two-way languages everywhere one must be registered', () => {
     // Two-way is also what makes the editor writable for them: a tab neither
     // TWO_WAY nor EDITABLE_ONE_WAY is read-only.
-    assert.match(importer, /const TWO_WAY = new Set\(\[[^\]]*'fe', 'tcl'\]\)/);
-    assert.match(importer, /nqc: 'NQC', fe: 'fe \(Lisp\)', tcl: 'Tcl'\}/, 'LANG_LABEL');
+    assert.match(importer, /const TWO_WAY = new Set\(\[[^\]]*'fe', 'tcl', 'forth'\]\)/);
+    assert.match(importer, /nqc: 'NQC', fe: 'fe \(Lisp\)', tcl: 'Tcl', forth: 'Forth'\}/, 'LANG_LABEL');
     // Every buffer reset is built from LANG_LABEL, so no tab is left without a
     // buffer (a missing one made activeCode() undefined: "can't access
     // property trim" when the Code tab opened).
@@ -409,7 +409,7 @@ test('the importer treats fe and Tcl as two-way languages everywhere one must be
     assert.match(importer, /return this\.state\.buffers\[this\.state\.lang\] \?\? '';/);
     // fe and Tcl are offered from the "+" menu at the end of the tab row
     // (#786), remembered per browser, and stay visible while open or holding text.
-    assert.match(importer, /const BW_OPTIONAL_LANGS = \[\['fe', 'λ fe', [^\]]*\], \['tcl', '○ Tcl', [^\]]*\]\];/);
+    assert.match(importer, /const BW_OPTIONAL_LANGS = \[\['fe', 'λ fe', [^\]]*\], \['tcl', '○ Tcl', [^\]]*\], \['forth', '🔺 Forth', [^\]]*\]\];/);
     assert.match(importer, /\.\.\.this\.visibleOptionalLangs\(\)/);
     assert.match(importer, /data-testid="bw-lang-more"/);
     // compile() reads them, and both regenerate paths write them.
