@@ -9,7 +9,7 @@
  *       `img` shim (see IMAGE_CHARS).
  *   *.g.jres — the asset gallery, base64 of MakeCode's own image buffer:
  *       `87 04 <w:u16> <h:u16> 00 00`, then the pixels COLUMN by column,
- *       4 bits each, low nibble first, each column padded to a byte.
+ *       4 bits each, low nibble first, each column padded to a 32-bit boundary.
  *       Column-major, which is the detail that decides whether you get a
  *       sprite or a diagonal smear.
  *
@@ -116,8 +116,8 @@ export function decodeMkcdImage (base64) {
     if (bytes.length < 8 || bytes[0] !== 0x87 || bytes[1] !== 0x04) return null;
     const width = bytes[2] | (bytes[3] << 8);
     const height = bytes[4] | (bytes[5] << 8);
-    const stride = Math.ceil(height / 2);
-    if (!width || !height || bytes.length < 8 + (width * stride)) return null;
+    const stride = Math.ceil(height / 8) * 4;
+    if (!width || !height || bytes.length !== 8 + (width * stride)) return null;
     const pixels = new Uint8Array(width * height);
     for (let x = 0; x < width; x++) {
         for (let y = 0; y < height; y++) {

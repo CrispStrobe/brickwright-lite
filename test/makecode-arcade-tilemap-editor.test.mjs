@@ -170,3 +170,141 @@ test('a new level is a real green-flag script the game runs', async () => {
         run.vm.quit?.();
     }
 });
+
+// Named resource identity must survive the data editor and real MakeCode files,
+// rather than being reconstructed later from identical-looking inline pixels.
+import {encodeTileImage, parseTileAssets, TileAssetExporter} from '../overlay/scratch-gui/src/lib/bw-makecode/tile-assets.js';
+import {decodeMkcdImage} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
+import {normalizeTilemap, renameTile, tilemapEditUpdates} from '../overlay/scratch-gui/src/lib/bw-makecode/tilemap-editor.js';
+import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+
+const NAMED_LEVEL = `namespace myTiles {
+    export const empty = img\`0 0\n0 0\`
+    export const floor = img\`7 7\n7 7\`
+}
+tiles.setTilemap(tiles.createTilemap(hex\`020001000100\`, img\`2 .\`,
+    [myTiles.empty, myTiles.floor], TileScale.Four))
+`;
+const mapData = result => result.code.split('\n').filter(line => line.trim().startsWith('arcade set tilemap data '))
+    .map(line => JSON.parse(JSON.parse(line.trim().slice('arcade set tilemap data '.length))));
+
+test('named namespace tile identities survive normalization, resizing, editing and undo', () => {
+    const imported = arcadeToPseudocode(NAMED_LEVEL);
+    assert.deepEqual(imported.unsupported, []);
+    const [map] = mapData(imported);
+    assert.equal(map.images[1].tileId, 'myTiles.floor');
+    assert.equal(map.images[1].displayName, 'floor');
+    assert.equal(normalizeTilemap(map).images[1].tileId, 'myTiles.floor');
+    const resized = setTileSize(map, 8);
+    assert.equal(resized.images[1].tileId, 'myTiles.floor');
+    const edited = paintTilePixel(resized, 1, 0, 0, 3);
+    const renamed = renameTile(edited, 1, 'Cracked floor');
+    assert.equal(renamed.images[1].tileId, 'myTiles.floor');
+    assert.equal(renamed.images[1].displayName, 'Cracked floor');
+    assert.equal(renamed.images[1].pixels[0], 3);
+    assert.equal(undo(commit(createHistory(map), renamed)).present, map);
+    assert.deepEqual(parseTilemapText(tilemapText(renamed)), renamed);
+});
+
+test('tile resource encoding preserves odd-height column padding and all palette indexes', () => {
+    const image = {width: 3, height: 3, pixels: [0, 1, 2, 3, 4, 5, 6, 7, 15]};
+    const decoded = decodeMkcdImage(encodeTileImage(image));
+    assert.equal(decoded.width, 3);
+    assert.equal(decoded.height, 3);
+    assert.deepEqual(Array.from(decoded.pixels), image.pixels);
+});
+
+test('distinct names with identical art remain distinct; conflicting edits cannot silently alias', () => {
+    const warnings = [], tiles = new TileAssetExporter(warnings);
+    const image = {width: 1, height: 1, pixels: [2]};
+    assert.equal(tiles.register({...image, tileId: 'myTiles.floor', displayName: 'Floor'}, 1), 'myTiles.floor');
+    assert.equal(tiles.register({...image, tileId: 'myTiles.other', displayName: 'Other'}, 1), 'myTiles.other');
+    assert.equal(tiles.register({...image, tileId: 'myTiles.floor', displayName: 'Floor'}, 1), 'myTiles.floor');
+    assert.equal(tiles.register({...image, pixels: [3], tileId: 'myTiles.floor', displayName: 'Floor'}, 1), 'myTiles.floor_2');
+    assert.match(warnings[0], /conflicting edits/);
+    const parsed = parseTileAssets(tiles.files()['tilemap.g.jres']);
+    assert.equal(parsed['myTiles.floor'].pixels[0], 2);
+    assert.equal(parsed['myTiles.floor_2'].pixels[0], 3);
+    assert.equal(parsed.Floor, null, 'an ambiguous display alias cannot select arbitrary art');
+});
+
+test('edited named tiles export as actual original-compiler resources and reimport with identity', async () => {
+    const imported = arcadeToPseudocode(NAMED_LEVEL);
+    const run = await runProgram(imported.code, {frames: 2, uploads: imported.costumes, storage: true});
+    try {
+        const [ref] = findTilemapBlocks(run.vm);
+        const edited = renameTile(paintTilePixel(ref.data, 1, 0, 0, 3), 1, 'Cracked floor');
+        assert.equal(writeTilemapBlock(run.vm, ref, edited), true);
+        const exported = projectToArcade(JSON.parse(run.vm.toJSON()));
+        assert.deepEqual(exported.unsupported, []);
+        const resources = JSON.parse(exported.files['tilemap.g.jres']);
+        assert.equal(resources['myTiles.floor'].tilemapTile, true);
+        assert.equal(resources['myTiles.floor'].displayName, 'Cracked floor');
+        assert.equal(decodeMkcdImage(resources['myTiles.floor'].data).pixels[0], 3);
+        assert.match(exported.files['tilemap.g.ts'], /blockIdentity=images\._tile/);
+        assert.match(exported.ts, /myTiles\.floor/);
+        assert.ok(JSON.parse(exported.files['pxt.json']).files.includes('tilemap.g.jres'));
+        const original = await runPxtArcade({...exported.files,
+            'main.ts': `${exported.files['main.ts']}\nlet exportedTilePixel = myTiles.floor.getPixel(0, 0)\n`}, {waitForGlobals: {exportedTilePixel: 3}});
+        assert.equal(original.exportedTilePixel, 3, 'PXT actually consumes the edited JRES resource');
+        const roundtrip = arcadeToPseudocode(exported.files);
+        assert.deepEqual(roundtrip.unsupported, []);
+        assert.deepEqual(mapData(roundtrip)[0], edited, 'stable IDs, display names, pixels and walls return unchanged');
+    } finally { run.vm.quit?.(); }
+});
+
+test('saving a shared named asset updates other maps, survives SB3 and exports one original resource', async () => {
+    const imported = arcadeToPseudocode(NAMED_LEVEL);
+    const run = await runProgram(imported.code, {frames: 2, uploads: imported.costumes, storage: true});
+    try {
+        const [ref] = findTilemapBlocks(run.vm);
+        const second = resizeTilemap(ref.data, 1, 2);
+        const secondRef = await addTilemapBlock(run.vm, second);
+        const edited = renameTile(paintTilePixel(ref.data, 1, 0, 0, 3), 1, 'Shared floor');
+        assert.equal(writeTilemapBlock(run.vm, ref, edited), true);
+        const maps = findTilemapBlocks(run.vm);
+        assert.equal(maps.length, 2);
+        assert.ok(maps.every(map => map.data.images[1].pixels[0] === 3 && map.data.images[1].displayName === 'Shared floor'));
+        const secondMap = maps.find(map => map.blockId === secondRef.blockId);
+        assert.deepEqual(secondMap.data.indices, second.indices, 'shared editing preserves the other level layout');
+        assert.equal(secondMap.data.rows, 2);
+        run.vm.greenFlag();
+        await stepFrames(run.vm, 3);
+        assert.equal(run.vm.runtime.bwArcadeDeviceState.tilemap.images[1].pixels[0], 3);
+        const saved = await run.vm.saveProjectSb3();
+        await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
+        assert.ok(findTilemapBlocks(run.vm).every(map => map.data.images[1].displayName === 'Shared floor'));
+        const exported = projectToArcade(JSON.parse(run.vm.toJSON()));
+        assert.deepEqual(exported.unsupported, []);
+        assert.ok(!exported.warnings.some(warning => /conflicting edits/.test(warning)));
+        assert.deepEqual(Object.keys(JSON.parse(exported.files['tilemap.g.jres'])).sort(), ['myTiles.empty', 'myTiles.floor']);
+        const original = await runPxtArcade({...exported.files,
+            'main.ts': `${exported.files['main.ts']}\nlet sharedPixel = myTiles.floor.getPixel(0, 0)\n`}, {waitForGlobals: {sharedPixel: 3}});
+        assert.equal(original.sharedPixel, 3);
+        assert.ok(mapData(arcadeToPseudocode(exported.files)).every(map => map.images[1].displayName === 'Shared floor'));
+        assert.equal(writeTilemapBlock(run.vm, ref, edited), false, 'a stale pre-reload reference cannot overwrite the loaded project');
+        const restored = findTilemapBlocks(run.vm).find(map => map.blockId === ref.blockId);
+        const undone = undo(commit(createHistory(ref.data), edited)).present;
+        assert.equal(writeTilemapBlock(run.vm, restored, undone), true);
+        assert.ok(findTilemapBlocks(run.vm).every(map => map.data.images[1].pixels[0] === 7 && map.data.images[1].displayName === 'floor'),
+            'saving an undone asset edit restores every shared use');
+    } finally { run.vm.quit?.(); }
+});
+
+test('shared asset updates preserve divergent copies and reject stale or ambiguous edits', () => {
+    const [data] = mapData(arcadeToPseudocode(NAMED_LEVEL));
+    const ref = {targetId: 'a', blockId: 'first', shadowId: 'shadow', editable: true, data};
+    const matching = {...ref, targetId: 'b', blockId: 'second'};
+    const divergent = {...ref, blockId: 'third', data: paintTilePixel(data, 1, 0, 0, 8)};
+    const edited = paintTilePixel(data, 1, 0, 0, 3);
+    const updates = tilemapEditUpdates([ref, matching, divergent], ref, edited);
+    assert.deepEqual(updates.map(map => map.blockId), ['first', 'second']);
+    assert.equal(divergent.data.images[1].pixels[0], 8, 'a divergent copy is never overwritten');
+    assert.equal(tilemapEditUpdates([{...ref, data: divergent.data}], ref, edited), null);
+    const duplicate = {...data, images: [...data.images, {...data.images[1]}]};
+    const duplicateRef = {...ref, data: duplicate};
+    const twice = paintTilePixel(paintTilePixel(duplicate, 1, 0, 0, 3), 2, 0, 0, 9);
+    assert.equal(tilemapEditUpdates([duplicateRef], duplicateRef, twice), null, 'two conflicting edits cannot choose arbitrary pixels');
+    const once = paintTilePixel(duplicate, 1, 0, 0, 3);
+    assert.ok(tilemapEditUpdates([duplicateRef], duplicateRef, once)[0].data.images.slice(1).every(image => image.pixels[0] === 3));
+});

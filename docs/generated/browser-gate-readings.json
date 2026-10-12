@@ -7328,6 +7328,24 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate — Arcade named tiles across painter SB3 and MakeCode export": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade legacy colour layouts through artwork SB3 and export": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate — Arcade sprites placed on a tile map in the painter start there": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }
