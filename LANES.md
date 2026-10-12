@@ -1,8 +1,37 @@
 # Who is doing what — merge the claim before implementation
 
+## Forth packaged license notice — 2026-10-12
+
+CLAIMED — Codex SPIKE package review, `fix/forth-license-notice-20261012`.
+Envelope: this ledger, `overlay/scratch-gui/static/licenses/zForth.MIT.txt`
+and the existing Forth provenance record only. Retain the exact upstream
+copyright and permission notice from the recorded zForth source revision beside
+the shipped frontend assets; verify its upstream Git blob and preserve the
+executable digest. This closes only the zForth notice inclusion gap. Exact
+linked newlib/libi86 obligations and whole-package component review remain open.
+No executable, dependency pin, compiler, simulator or peer implementation change.
+
+
+## Wide Arcade artwork documents and Pixel authoring — 2026-10-12
+
+CLAIMED — Codex Arcade integration, `lane/arcade-partial-closure-20261012`.
+Envelope: `pixel-image.js`, `bw-artwork-bundle.js`, `bw-animation-import.js`,
+`bw-animation-resources.js`, Pixel editor JSX/CSS, affected tracked mirrors,
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js` runtime resource
+validation and any tracked twin, new bounded-artwork helpers if needed, historical-reader fixture,
+focused document/editor/native-runtime/SB3/export controls and animation browser
+qualification scripts; Arcade handoff and GUI ledger. Extend indexed editing
+through512x512 with complete document/frame/layer budgets checked before new
+allocation. Advertise wider artwork through bundle8 so old readers preserve it.
+Preserve exact pixels, IDs, timing and authoring Undo; qualify native clipping,
+resource import/save/reopen and original MakeCode export. No claim of browser
+completion before actual hosted results. No importer, painter, peer or engine
+pin changes; retain the separate particle-control owner's test envelope.
+
+
 ## Arcade particle seed controls — 2026-10-12
 
-CLAIMED — Codex SPIKE integration, `fix/arcade-particle-test-seeds-20261012`.
+DONE candidate — Codex SPIKE integration, `fix/arcade-particle-test-seeds-20261012`.
 Envelope: `test/makecode-arcade-particle-effects.test.mjs` and this ledger only.
 The existing 8x8 dissolve assertion depends on an unrecorded random seed;
 two valid generated rectangles can both fall outside the image. Set the
@@ -10,6 +39,9 @@ specific image effect's seed in the positive fixture, retain its image-change,
 particle, lifespan and handler assertions, and add an off-canvas seed control
 for cloning and destruction semantics. Preserve generated PXT/runtime bytes,
 original failed CI and all independently owned Arcade source/GUI lanes.
+Both affected controls pass under Node 22.23.3. Setting the positive fixture
+to the off-canvas seed fails its retained pixel assertion; suppressing the image
+effect fails both pixel-change and clone assertions. Hosted checks remain pending.
 
 
 ## Arcade animation resource dimensions — 2026-10-12
@@ -2959,3 +2991,28 @@ Full Build38208078539/vendor/debugger/Rust checks queued on updatedPR810.
 No mainmerge; independent painter/display proof worker retains ownership.
 Publicmethod: PR810 docs/ARCADE-AGENT-HANDOFF.md combined integration section;
 original reports and exact ancestry/input proof archived privately.
+
+
+## Arcade byte-buffer runtime foundation — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-partial-closure-20261012`. Envelope: new
+bounded byte-buffer runtime/generator, replacement of the mixer host's limited
+numeric buffer adapter, focused original-PXT numeric/alias/slice controls and
+handoff/GUI ledger. Preserve original numeric formats, signedness, byte order,
+float behavior, copying and mutable storage. Buffer Blocks/Code/value-reference
+and importer wiring remain subsequent acceptance work, coordinated with E10;
+no E10 importer/helper, painter, particle-test or package-pin edits in this slice.
+
+
+## Arcade Buffer reference values and authoring vocabulary — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-partial-closure-20261012`. Envelope: Buffer kind
+in shared BWValues and the own-fork Arrays fallback, scoped byte heap and
+Arcade Buffer blocks/menus, own sb3-creator dialect, qualified targeted producer/
+Arrays adoption, MakeCode export/type support, focused identity/lifetime/VM/
+SB3/Blocks-Code tests and capability handoff. Preserve canonical value rules
+and byte implementation; retain readonly literal vs mutable construction.
+Use owned dependency preparation for local VM tests; shared dependencies stay
+untouched. No E10 importer/namespace/type-lowering helper edits in this slice;
+namespace import remains a coordinated subsequent step. No painter or peer
+package/runtime ownership is taken. Keep native import diagnostics until wired.
