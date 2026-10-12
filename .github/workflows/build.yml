@@ -99,6 +99,7 @@ on:
       - 'docs/LESSON-REVIEW-WAVE-7.md'
       - 'docs/LEGO-ARCHITECTURE.md'
       - 'docs/PICO-KALUMA-BOOT.md'
+      - 'docs/PEERS-SECURITY-REVIEW.md'
       - 'docs/RCX-FIRMWARE.md'
       - 'docs/SPIKE-CONSOLIDATION.md'
       - 'docs/SPIKE-ARENA.md'
