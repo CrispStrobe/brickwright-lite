@@ -50,7 +50,11 @@ try {
     return {id:inner.id,name,before:field.getValue(),x:rect.x+rect.width/2,y:rect.y+rect.height/2};
   },kind);
   const format=await observedField('format');assert.ok(format.x>0&&format.x<1600&&format.y>0&&format.y<1200);
-  await page.mouse.click(format.x,format.y);
+  report.formatField=format;
+  const escapedFormatId=await page.evaluate(id=>CSS.escape(id),format.id);
+  // A coordinate can lie under a flyout or a workspace overlay. Let Playwright
+  // wait for the actual authored SVG field to receive the user's click.
+  await page.locator(`g[data-id=${escapedFormatId}] > g[data-argument-type="dropdown"]`).click();
   const choices=page.getByRole('menuitemcheckbox');await choices.first().waitFor({state:'visible'});
   const labels=await choices.allTextContents();assert.equal(labels.length,16,'all original formats are selectable');
   await page.getByRole('menuitemcheckbox',{name:'UInt16BE',exact:true}).click();
@@ -115,5 +119,9 @@ try {
   report.journey.push('actual GUI MakeCode download compiles/runs in original Arcade with real controller buttons and matching bytes');
   report.blockErrors=await page.evaluate(()=>window.__bwBufferErrors);assert.deepEqual(report.blockErrors,[]);assert.deepEqual(report.pageErrors,[]);
   report.status='passed';
-} catch(error){report.status='failed';report.error=String(error?.stack||error);throw error;}
+} catch(error){
+  report.status='failed';report.error=String(error?.stack||error);
+  if(page)await page.screenshot({path:path.join(path.dirname(out),'failure.png')}).catch(()=>{});
+  throw error;
+}
 finally {clearTimeout(deadline);await fs.writeFile(out,JSON.stringify(report,null,2)+'\n');await browser.close();}
