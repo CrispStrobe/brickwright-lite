@@ -1631,3 +1631,17 @@ ECONNRESET before product checks. Its light browser diagnostic was still pending
 at this checkpoint and must finish before advancing that source head. Preserve
 both failures privately. Hosted candidate checks and the locked142/41/1 corpus
 classification remain independent acceptance requirements.
+
+## Particle composition assertion — 2026-10-12
+
+[PR810 Build38279930848](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38279930848)
+also failed a fire-frame assertion. Total fire-color counts need not exceed
+sprite-color counts when particles overlap the sprite. The replacement requires
+positive visible emission and compares every actual original-source pixel write
+with the composed scene frame. Ghost/dissolve, lifetime, handlers, cleanup and
+original-PXT comparisons remain. All eight particle controls pass with zero skips;
+a deliberate missing composition layer is rejected by the exact-pixel assertion.
+No product algorithm or random distribution changed. Parent provenance fixes are
+prepared with the exact298-word table and original scoped Arrays commit; wait for
+its surviving focused diagnostic before advancing its head. Candidate full-build
+and Buffer browser qualification remain pending; no corpus promotion occurred.
