@@ -310,3 +310,73 @@ and shared arena, gated native/Python callers, and actual installed Code/Blocks
 qualification. Default D-distance/E-force and six-motor configurations retain
 their existing contracts; package metadata alone does not qualify those next
 steps or arbitrary A–F addressed reads.
+
+## Retained Linux installer qualification — 2026-10-12
+
+The fixed broker-failure classification in [PR805](https://github.com/CrispStrobe/brickwright-lite/pull/805)
+merged as `8f2cdf8a8867a7c996c5f68b8ca2fcbfcf303769` after every enabled
+check passed. It preserves fixed failure codes and does not expose native
+exception text. Its reviewed adapter/test files match the merged files.
+
+Separate direct-server tests used the retained installer for consumer
+`7282de2b426979c211efb2e67cd1902a8be7f4aa`, firmware
+`c99412b39a97e5ca74c90fdde2ef84d282794fc2`, Runtime
+`413380963e54b64f94f18d26466e1c6e941be8d2` and Infrastructure
+`1253d925accca23dfda66d5bca61e78498dcb64f`. They did not rebuild a package
+or adopt those pins on current main. Raw receipts and transcripts stay private.
+
+With two CPU cores, 2 GiB RAM and the default headless rendering configuration,
+opening the arena caused native debugger startup to fail. Captured own-runtime
+boot output showed GDB opening beyond the native startup deadline. Disabling
+WebKit compositing for the headless test (`WEBKIT_DISABLE_COMPOSITING_MODE=1`)
+restored actual broker startup with Code and arena open: READY in 57.4 seconds,
+a valid firmware frame and clean close. Native deadlines, guest simulated time,
+resource checks and permissions stayed unchanged. This is an observed test-host
+condition, not a general WebKit defect or a new application rendering default.
+
+Real installed Code/arena tests then observed:
+
+| Test | Observed boundary |
+| --- | --- |
+| Source/pseudocode | Actual upload, signed A/B motor motion, completion, second retained-session run and restoration of the default shared hub/sensors passed |
+| Python in own NuttX | Actual Python upload and completion passed; firmware frames/time advanced with the same session, followed by default hub restoration |
+| Active cancellation | Running → stopped → running → stopped, zero demands at both stops and retained-session identity passed; the overall scenario subsequently failed its specific-refusal assertion |
+| Native ACL | Actual broker acknowledgement, editor denial, replay rejection, real lease expiry and navigation/reload revocation passed |
+| Unsupported profiles | Both requests were rejected and left no GUI firmware session, but the retained installer did not distinguish the intended reasons; specific refusal qualification remains open |
+
+The initial GUI wait was the separately recorded 120-second diagnostic setting;
+assertions and numerical tolerances were unchanged. These observations establish
+neither current-main package qualification nor physical motor accuracy, external
+firmware compatibility or complete distribution licensing. The adoption
+[PR755](https://github.com/CrispStrobe/brickwright-lite/pull/755) remains draft.
+
+### Next implementation and qualification slices
+
+1. **Closed caller profile validation.** Review
+   `overlay/scratch-vm/src/extension-support/native-renode-capability.js`, the
+   start argument schema in `capability-broker.js`, and native policy/semantic
+   guards. Give callers distinguishable, fixed refusals for an unknown topology
+   and a custom topology without own NuttX. A frontend preflight can explain
+   these inputs without widening native error disclosure; label it as caller
+   validation and retain independent native refusal tests. Reject malformed
+   inputs, preserve a valid existing session after a local refusal, and prove
+   no broker dispatch/guest launch occurs. Keep native authorization denials
+   opaque and never forward arbitrary exception strings. Include negative
+   controls for an accepted invalid profile and a generic unrelated failure.
+2. **Image-bound API refusal.** Exercise absent/wrong addressed-sensor ABI and
+   wrong userspace identity through an actual installed package. Require refusal
+   before upload or motor demand and restoration of the shared hub. A generic
+   transport failure does not prove this reason. Keep valid E/F coverage and
+   existing default/six-motor profiles passing.
+3. **Fresh combined package.** Refresh main and the adoption candidate in an
+   isolated branch. Integrate the qualified source, error reporting and caller
+   validation normally, then build an exact source-bound package. Repeat actual
+   Code source/Python, completion, retained restart, active Stop, restoration,
+   profile/API refusal and native ACL tests. Record the tested consumer and pins;
+   do not transfer this retained-installer result to a newer package by inference.
+4. **Headless and distribution boundaries.** Preserve the default-rendering
+   failures and the explicit successful host setting. Qualification receipts
+   must record rendering mode, CPU/memory limits and initial wait. Continue G05
+   selected-component provenance/notices review before a release claim. Run CPU
+   qualification through the authorized direct-server route; private Actions and
+   Kaggle are not the test route for this work.
