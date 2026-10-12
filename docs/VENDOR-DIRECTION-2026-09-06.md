@@ -19,7 +19,7 @@ Then: equal to master → in-sync. Equal to the pin but not master → **BEHIND*
 ## Read this before re-running the check
 
 **The number depends on which tree you measure.** Running `sync-bw-board.mjs --check`
-inside `/mnt/volume1/code/lego/brickwright-lite` gave **30** differing files. From a
+inside `<owned checkout>` gave **30** differing files. From a
 clean worktree of `origin/main` it gives **23**. The shared checkout is **151 commits
 behind `origin/main`**, and the script reads the working tree, not `HEAD` — so seven
 files (`cga-card`, `i8086`, `i8259`, `ne2000`, `rp2040-bootrom`, `rp2040js-adapter`,
