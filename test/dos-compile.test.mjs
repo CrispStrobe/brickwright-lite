@@ -28,6 +28,10 @@ const FE_EXE = new Uint8Array(readFileSync(
 // MIT partcl (zserge) built with ia16-elf-gcc).
 const TCL_EXE = new Uint8Array(readFileSync(
     fileURLToPath(new URL('../overlay/scratch-gui/static/roms/tcl.exe', import.meta.url))));
+// The libre DOS-native Forth this repo ships (media-lab project `forth-dos`,
+// MIT zForth (zevv) built with ia16-elf-gcc).
+const FORTH_EXE = new Uint8Array(readFileSync(
+    fileURLToPath(new URL('../overlay/scratch-gui/static/roms/forth.exe', import.meta.url))));
 
 // A 40-byte real .COM: INT 21h create OUT.TXT, write "HI", close, exit(0).
 const FILE_WRITER = new Uint8Array([
@@ -170,6 +174,45 @@ test('runDosToolchain("fe", …) runs the shipped fe Lisp on the real DOS bench'
     }
     // The user's program was mounted where the interpreter reads it.
     assert.ok(r.files.get('PROG.FE'), 'PROG.FE was mounted for the interpreter');
+});
+
+test('the DOS-native Forth (zForth) route is verified and shaped like fe', () => {
+    const forth = DOS_TOOLCHAINS['forth'];
+    assert.ok(forth && forth.kind === 'dos-native');
+    assert.equal(forth.verified, true);
+    assert.equal(forth.language, 'forth');
+    assert.equal(forth.compilerFormat, 'exe');
+    assert.equal(forth.variant, '80186');
+    assert.equal(forth.sourceName, 'PROG.FTH');
+    assert.equal(forth.outputName, null);
+    assert.equal(forth.run, false);
+});
+
+test('runDosToolchain("forth", …) runs the shipped zForth on the real DOS bench', async () => {
+    // The EXACT production path; the fetcher returns the shipped static/roms/forth.exe.
+    // The canonical shape generateForth emits: var globals, body inside : main.
+    const program = [
+        '( --- variables --- )',
+        'var n',
+        '( --- program --- )',
+        ': main',
+        '  7 n !',
+        '  n @ n @ * . cr',
+        '  n @ 3 > if ." big" cr else ." small" cr fi',
+        ';',
+        'main', ''
+    ].join('\n');
+    const r = await runDosToolchain('forth', program, {
+        fetchToolchain: async () => ({compiler: FORTH_EXE}),
+        maxSteps: 200_000_000   // soft-float bootstrap runs before the user program
+    });
+    assert.equal(r.stage, 'compile');
+    assert.ok(r.compile.terminated, 'the interpreter terminated');
+    assert.equal(r.compile.exitCode, 0);
+    for (const want of ['49', 'big']) {
+        assert.ok(r.compile.screen.includes(want), `expected ${want} in ${JSON.stringify(r.compile.screen)}`);
+    }
+    assert.ok(r.files.get('PROG.FTH'), 'PROG.FTH was mounted for the interpreter');
 });
 
 test('the DOS-native Tcl (partcl) route is verified and shaped like fe', () => {

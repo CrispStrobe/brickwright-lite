@@ -511,7 +511,7 @@ this document suggests**, and a fresh session will not find it unaided:
 
 | what | where | state |
 |---|---|---|
-| `bw-board` (TN1) | `/mnt/volume1/code/lego/wt-bwb-master` | clean, `CrispStrobe/bw-board` |
+| `bw-board` (TN1) | `<owned checkout>` | clean, `CrispStrobe/bw-board` |
 | `bw-circuit-ui` (TN0) | `wt-pin-bw-circuit-ui`, `wt-cui-standard-parts` | clean; the latter on `lane/standard-parts-sidecars` |
 | Renode source | `renode-spike-prime` (v1.16.1), `wt-renode-current-gate` (v1.17.0) | upstream trees |
 | Renode integration | ~40 `wt-renode-*` worktrees | in-flight LEGO/SPIKE work |
@@ -568,7 +568,7 @@ wires a 5 V sensor into this board destroys it. Same class as the README's
 
 ### TN1 — `gate-level` semantics, upstream in `bw-board`
 **Where.** `bw-board`, **upstream**. A clean checkout is already on this box at
-`/mnt/volume1/code/lego/wt-bwb-master` (`github.com/CrispStrobe/bw-board`) — no
+`<owned checkout>` (`github.com/CrispStrobe/bw-board`) — no
 clone needed.
 **Deliver.** A fourth `MACHINE_SEMANTICS` value and its policy/refusal path,
 landed **upstream first**, then brought over by a pin move.
