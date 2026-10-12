@@ -1288,3 +1288,11 @@ Keep named song-editor GUI and missing context/wrapper operations on the open
 ledger. Publish this exact combined tree on PR810, refresh all hosted checks,
 and adopt main only after every enabled required check succeeds. Main's existing
 painter red and the independently active repair are not waived by focused checks.
+
+## Ordered zero-partial campaign — 2026-10-12
+
+The approved [partial closure plan](ARCADE-PARTIAL-CLOSURE-PLAN.md) contains
+the complete 41-row original diagnostic checklist, ordered batches, editor
+acceptance criteria and corpus-preservation rules. Start with qualification
+of the combined candidate, then authentic project context. PR810 final-head
+build/corpus passed but both browsers failed; no main-adoption claim yet.

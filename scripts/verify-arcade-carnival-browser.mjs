@@ -48,6 +48,10 @@ const newSession = async () => {
     await fresh.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.bwDeviceId === 'arcade', null, {timeout});
     return fresh;
 };
+// Blockly Field renders spaces as NBSP; match the visible SVG label without
+// requiring ASCII spaces. This still requires a real visible workspace block.
+const countdownLabel = () => page.locator('.blocklyWorkspace .blocklyText')
+    .filter({hasText: /\bArcade\s+carnival\s+countdown\b/}).first();
 const awaitDialog = async () => {
     await page.waitForFunction(() => {
         const device = window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState;
@@ -77,7 +81,7 @@ try {
     await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
     await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible', timeout});
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
-    await page.locator('.blocklyWorkspace .blocklyText').filter({hasText: /Arcade carnival countdown/}).first().waitFor({state: 'visible', timeout});
+    await countdownLabel().waitFor({state: 'visible', timeout});
     check('the carnival command is visible in the Blocks workspace', true);
     await page.getByTitle('Game Console', {exact: true}).click();
     await page.locator('[class*="green-flag_green-flag"]').first().click();
@@ -117,7 +121,7 @@ try {
     assert.deepEqual((await state()).settings, saved);
     check('GUI reopen restores records without the first device backend', true);
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
-    await page.locator('.blocklyWorkspace .blocklyText').filter({hasText: /Arcade carnival countdown/}).first().waitFor({state: 'visible', timeout});
+    await countdownLabel().waitFor({state: 'visible', timeout});
     await page.getByTitle('Game Console', {exact: true}).click();
     await page.locator('[class*="green-flag_green-flag"]').first().click();
     const reopened = await awaitDialog();
