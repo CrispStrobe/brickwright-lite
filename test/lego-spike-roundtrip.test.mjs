@@ -279,8 +279,9 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // assertions below are re-run against the exact adopted producer.
     // -> b76c61cd (2026-10-12): UTF8 Buffer word; unchanged SPIKE artifact re-qualified.
     // -> eecbbc71 (2026-10-12): Buffer readonly Boolean; SPIKE artifact re-qualified.
+    // -> 5aa81ec0 (2026-10-12): Buffer concat/equality/search; SPIKE artifact re-qualified.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'eecbbc71b9cd35cf57bf62bfb5db71286fb6cca2');
+        '5aa81ec09185ada79890cdbd5ff805c51f237df2');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

@@ -3626,3 +3626,14 @@ packing/unpacking, numeric-format size and hashing. All need runtime, native
 palette/Code and export acceptance before import is promoted. The compiler
 exposes only two-argument `write`; proposed internal range parameters were
 rejected and withdrawn, with original diagnostics preserved privately.
+
+### Buffer concat, equality and search (2026-10-12)
+
+Runtime, native blocks/Code and typed export now support the three genuine public
+instance APIs through generated original common-package helpers. Original indexed
+read semantics, detached storage, Boolean conditions and allocation limits are
+preserved.25 affected checks pass, zero skips; producer346pass, zero skips.
+Static `Buffer.concat(Buffer[])`, Base64/number arrays, chunking, packing and
+hashing remain tracked in the [API contract](ARCADE-BUFFER-IMPORT-CONTRACT.md).
+Importer wiring, hosted visible editor proof and unchanged corpus promotion are
+separate gates; do not mark those complete from these controls.

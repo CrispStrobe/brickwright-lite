@@ -30,6 +30,9 @@ class PxtBuffer extends Uint8Array {
     setNumber(type, offset, value) {methods.setNumber(this._reference(), format(type), offset, value);}
     getByte(offset) {return methods.getByte(this._reference(), offset);}
     isReadOnly() {return methods.isReadOnly(this._reference());}
+    concat(other) {return helpers.bufferConcat(this, other);}
+    equals(other) {return helpers.bufferEquals(this, other);}
+    indexOf(other) {return helpers.bufferIndexOf(this, other);}
     setByte(offset, value) {methods.setByte(this._reference(), offset, value);}
     slice(offset = 0, length = -1) {return new PxtBuffer(methods.slice(this._reference(), offset, length).data);}
     write(offset, source, sourceOffset = 0, length = -1) {
@@ -41,6 +44,8 @@ class PxtBuffer extends Uint8Array {
     toHex() {return methods.toHex(this._reference());}
     toString() {return methods.toString(this._reference());}
 }
+
+const helpers = require('./buffer-helpers-pxt')({create: size => new PxtBuffer(size)});
 
 // Buffer.fromHex follows the original MIT base/buffer.ts helper, including its
 // odd-length behavior. Copyright (c) Microsoft Corporation; retained common-
@@ -84,4 +89,4 @@ const literal = text => {
     return bytes;
 };
 
-module.exports = {PxtBuffer, NumberFormat: methods.NumberFormat, MAX_BUFFER_BYTES, fromHex, fromUTF8, literal};
+module.exports = {PxtBuffer, NumberFormat: methods.NumberFormat, MAX_BUFFER_BYTES, fromHex, fromUTF8, literal, equals: helpers.bufferEquals};

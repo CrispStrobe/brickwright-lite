@@ -268,6 +268,9 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'bufferLiteral',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer literal hex [HEX]',arguments:str('HEX','01020304')},
           {opcode:'bufferLength',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] length',arguments:str('BUFFER','')},
           {opcode:'bufferIsReadOnly',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade byte buffer [BUFFER] is read only',arguments:str('BUFFER','')},
+          {opcode:'bufferConcat',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] concatenated with byte buffer [OTHER]',arguments:{...str('BUFFER',''),...str('OTHER','')}},
+          {opcode:'bufferEquals',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade byte buffer [BUFFER] equals byte buffer [OTHER]',arguments:{...str('BUFFER',''),...str('OTHER','')}},
+          {opcode:'bufferIndexOf',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] index of byte buffer [OTHER]',arguments:{...str('BUFFER',''),...str('OTHER','')}},
           {opcode:'bufferGetByte',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] byte at [OFFSET]',arguments:{...str('BUFFER',''),...n('OFFSET',0)}},
           {opcode:'bufferSetByte',blockType:Scratch.BlockType.COMMAND,text:'Arcade set byte buffer [BUFFER] byte at [OFFSET] to [VALUE]',arguments:{...str('BUFFER',''),...n('OFFSET',0),...n('VALUE',0)}},
           {opcode:'bufferGetNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] number [FORMAT] at [OFFSET]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt16LE'},...n('OFFSET',0)}},
@@ -3873,6 +3876,14 @@ module.exports = makeExt(`// Name: Arcade
     }
     bufferLength(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).length);}
     bufferIsReadOnly(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).isReadOnly());}
+    bufferConcat(args) {return this._bufferGuard(()=>this._bufferReference(this._buffer(args.BUFFER).concat(this._buffer(args.OTHER))));}
+    bufferEquals(args) {
+      return this._bufferGuard(()=>{
+        const resolve=value=>Scratch.BWValues.decode(value)==null?null:this._buffer(value);
+        return dependencies.buffers.equals(resolve(args.BUFFER),resolve(args.OTHER));
+      });
+    }
+    bufferIndexOf(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).indexOf(this._buffer(args.OTHER)));}
     bufferGetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getByte(Scratch.Cast.toNumber(args.OFFSET)));}
     bufferSetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).setByte(Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE)));}
     bufferGetNumber(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getNumber(args.FORMAT,Scratch.Cast.toNumber(args.OFFSET)));}

@@ -864,7 +864,7 @@ class ArcadeEmitter {
     isBoolean (b) {
         return !!b && ['arrays_valueTruthy','arrays_valueCompare','arrays_referenceRemove','arrays_referenceTruthy', 'arrays_contains', 'operator_and', 'operator_or', 'operator_not', 'operator_gt', 'operator_lt', 'operator_equals',
             'sensing_touchingobject', 'sensing_keypressed', 'sensing_mousedown', 'data_listcontainsitem',
-            'arcade_bufferIsReadOnly', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
+            'arcade_bufferIsReadOnly', 'arcade_bufferEquals', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
     }
 
     menuField (b, input, field) {
@@ -1040,6 +1040,9 @@ class ArcadeEmitter {
         }
         case 'arcade_bufferLength': return `${v('BUFFER')}.length`;
         case 'arcade_bufferIsReadOnly': return `${v('BUFFER')}.isReadOnly()`;
+        case 'arcade_bufferConcat': return `${v('BUFFER')}.concat(${v('OTHER')})`;
+        case 'arcade_bufferEquals': return `${v('BUFFER')}.equals(${v('OTHER')})`;
+        case 'arcade_bufferIndexOf': return `${v('BUFFER')}.indexOf(${v('OTHER')})`;
         case 'arcade_bufferGetByte': return `${v('BUFFER')}[${v('OFFSET')}]`;
         case 'arcade_bufferGetNumber': {
             const menu=this.menuField(b,'FORMAT','bufferFormats'), text=this.literalInput(b,'FORMAT');
@@ -2475,10 +2478,10 @@ class ArcadeEmitter {
                 if(value.opcode==='arrays_namedReference'){const id='named-array:'+literal(blocks,value,'NAME');arrays.add(id);return id;}
                 if(['arrays_parseLegacyValue','arrays_jsonValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
                 if(value.opcode==='arcade_spriteToString') {const id=Symbol('sprite text');strings.add(id);return id;}
-                if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferLiteral','arcade_bufferSlice'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
-                if(['arcade_bufferLength','arcade_bufferGetByte','arcade_bufferGetNumber'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
+                if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferLiteral','arcade_bufferSlice','arcade_bufferConcat'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
+                if(['arcade_bufferLength','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
                 if(['arcade_bufferToHex','arcade_bufferToText'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
-                if(value.opcode==='arcade_bufferIsReadOnly'){const id=Symbol('buffer readonly');booleans.add(id);return id;}
+                if(['arcade_bufferIsReadOnly','arcade_bufferEquals'].includes(value.opcode)){const id=Symbol('buffer readonly');booleans.add(id);return id;}
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);return id;}
                 if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);return id;}
                 if(['arrays_valueBinary','arrays_valueUnary'].includes(value.opcode)) {
@@ -2556,6 +2559,7 @@ class ArcadeEmitter {
                 }
                 if(block.inputs?.BUFFER){const buffer=ref(inputBlock(blocks,block,'BUFFER'));if(buffer)graphBufferValues.add(buffer);}
                 if(block.opcode==='arcade_bufferWrite'){const buffer=ref(inputBlock(blocks,block,'SOURCE'));if(buffer)graphBufferValues.add(buffer);}
+                if(['arcade_bufferConcat','arcade_bufferEquals','arcade_bufferIndexOf'].includes(block.opcode)){const buffer=ref(inputBlock(blocks,block,'OTHER'));if(buffer)graphBufferValues.add(buffer);}
                 if(block.opcode==='arcade_eventPlayer'){const player=ref(block);if(player)graphPlayerValues.add(player);}
                 if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons','arcade_playerButtonPressed','arcade_getPlayerState','arcade_setPlayerState','arcade_changePlayerState'].includes(block.opcode)){
                     const player=ref(inputBlock(blocks,block,'PLAYER'));if(player)graphPlayerValues.add(player);

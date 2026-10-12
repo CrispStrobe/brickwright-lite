@@ -13,11 +13,16 @@ preparation, not a claim that namespace Buffer imports already work.
 - Canonical authoring producer: https://github.com/CrispStrobe/sb3-creator/pull/96
 - UTF8 construction producer: https://github.com/CrispStrobe/sb3-creator/pull/97
 - Readonly Boolean producer: https://github.com/CrispStrobe/sb3-creator/pull/98
+- Concat/equality/search producer: https://github.com/CrispStrobe/sb3-creator/pull/99
+- Common-package helpers: https://github.com/microsoft/pxt-common-packages/blob/master/libs/base/buffer.ts
+  (exact consumed source is the pinned Arcade target bundle; generated output records complete/selected source hashes).
 - Arrays fallback: https://github.com/CrispStrobe/extensions/pull/34
 
 Repository paths:
 
 - `scripts/generate-arcade-buffers.mjs`: exact extraction/regeneration and hash.
+- `scripts/generate-arcade-buffer-helpers.mjs`: pinned concat/equality/search functions with checked indexed-read adaptation.
+- `overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer-helpers-pxt.js`: generated common-package helpers.
 - `overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer-pxt.js`: generated original algorithms.
 - `overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer.js`: bounded mutable host facade, dynamic hex and readonly literal construction.
 - `overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js`: native Buffer blocks and scoped heap.
@@ -44,6 +49,9 @@ named-song resource metadata on the existing inline/resource route.
 | `Buffer.fromHex(text)` | `arcade_bufferFromHex` | Fresh mutable decode; preserve odd-length original behavior |
 | `hex` tagged template | `arcade_bufferLiteral` | Readonly literal; same source site reuses identity, different sites stay distinct |
 | `buffer.isReadOnly()` | `arcade_bufferIsReadOnly` | Original Boolean readonly state; aliases retain it, detached slices become mutable |
+| `buffer.concat(other)` | `arcade_bufferConcat` | Detached fresh mutable result; bound combined allocation before creation |
+| `buffer.equals(other)` | `arcade_bufferEquals` | Original content equality Boolean; explicit null equality is supported by runtime, foreign/stale references still diagnose |
+| `buffer.indexOf(other)` | `arcade_bufferIndexOf` | Original first byte-match index / -1, including empty needles and out-of-range zero reads |
 | `buffer.length` | `arcade_bufferLength` | Byte count, not Scratch string length |
 | `buffer[index]` | `arcade_bufferGetByte` | Original byte read and bounds |
 | `buffer[index] = value` | `arcade_bufferSetByte` | Mutate shared storage; evaluate receiver/index/value once in source order |
@@ -135,9 +143,8 @@ Actual public declarations still needing runtime/native authoring/export work:
 | `getUint8` / `setUint8` | Import aliases for byte reads/writes |
 | `Buffer.fromBase64`, `toBase64` | Original common-package encoding/decoding and native words |
 | `Buffer.fromArray`, `toArray` | Number/reference-array bridge and all numeric formats |
-| `concat`, `Buffer.concat` | Fresh concatenation with overflow bounds and array/reference flow |
-| `indexOf`, `equals` | Original byte-search/equality algorithms and Boolean/number types |
-| `chunked`, `Buffer.chunkedFromUTF8` | Detached Buffer arrays, UTF8 boundary handling and limits |
+| `Buffer.concat(Buffer[])` | Static array form; instance concatenation exists, array flow still requires integration |
+| `chunked`, `Buffer.chunkedFromUTF8` | Original Buffer[] alias/copy branches, UTF8 boundary handling and limits |
 | `unpack`, `packAt`, `Buffer.pack`, `packedSize` | Exact public format parser, array flow and malformed-format behavior |
 | `Buffer.sizeOfNumberFormat` | Original numeric format sizes and named/dynamic enum input |
 | `hash(bits)` | Original FNV-1 algorithm and public bit-width semantics |

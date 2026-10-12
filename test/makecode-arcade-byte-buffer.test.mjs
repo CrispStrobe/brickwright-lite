@@ -139,3 +139,55 @@ let copyHex = copy.toHex()`;
     for (const [name, value] of Object.entries(actual)) assert.equal(value, original[name], name);
     assert.throws(() => alias.setByte(0, 99), /read only buffer/);
 });
+
+test('original common-package Buffer helpers regenerate with checked indexed reads', () => {
+    execFileSync(process.execPath, ['scripts/generate-arcade-buffer-helpers.mjs', '--check'], {stdio:'pipe'});
+});
+
+test('Buffer byte search and equality match original for empty needles, zeros, bounds and null', async () => {
+    const {fromHex, equals} = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer.js');
+    const cases = [['',''], ['0102000301',''], ['010203',''], ['010203','01020304'],
+        ['0102010203','010203'], ['010203','02'], ['010203','ff'], ['0000','00'],
+        ['010203','010203'], ['010203','010204']];
+    const source = 'let trace = ""\nlet left: Buffer = null\nlet right: Buffer = null\n' + cases.flatMap(([a,b]) => [
+        `left = Buffer.fromHex("${a}")`, `right = Buffer.fromHex("${b}")`,
+        'trace += left.indexOf(right) + ":" + left.equals(right) + ";"'
+    ]).join('\n') + '\nlet absent: Buffer = null\nlet bothAbsent = absent.equals(null)\nlet oneAbsent = left.equals(null)';
+    const original = await runPxtArcade(source);
+    const trace = cases.map(([a,b]) => {
+        const left = fromHex(a), right = fromHex(b);
+        return left.indexOf(right) + ':' + left.equals(right) + ';';
+    }).join('');
+    assert.equal(trace, original.trace);
+    assert.equal(trace.split(';')[1], '2:false');
+    assert.equal(trace.split(';')[2], '3:false');
+    assert.equal(equals(null, null), original.bothAbsent);
+    assert.equal(fromHex('010203').equals(null), original.oneAbsent);
+});
+
+test('Buffer concatenation matches original detached mutable result and respects allocation limits', async () => {
+    const {fromHex, literal} = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer.js');
+    const original = await runPxtArcade(`let left = hex\`010203\`
+let right = Buffer.fromHex("aabb")
+let combined = left.concat(right)
+let another = left.concat(right)
+let concatenated = combined.toHex()
+let readonlyResult = combined.isReadOnly()
+let distinctResults = combined !== another
+combined[0] = 99
+right[0] = 77
+let afterLeft = left.toHex()
+let afterRight = right.toHex()
+let afterCombined = combined.toHex()
+let afterAnother = another.toHex()
+let empty = Buffer.fromHex("").concat(Buffer.fromHex("")).length`);
+    const left = literal('010203'), right = fromHex('aabb'), combined = left.concat(right), another = left.concat(right);
+    const actual = {concatenated:combined.toHex(), readonlyResult:combined.isReadOnly(), distinctResults:combined !== another};
+    combined.setByte(0, 99); right.setByte(0, 77);
+    Object.assign(actual, {afterLeft:left.toHex(), afterRight:right.toHex(), afterCombined:combined.toHex(),
+        afterAnother:another.toHex(), empty:fromHex('').concat(fromHex('')).length});
+    for (const [name,value] of Object.entries(actual)) assert.equal(value,original[name],name);
+    const big = new PxtBuffer(MAX_BUFFER_BYTES);
+    assert.equal(big.concat(new PxtBuffer(0)).length, MAX_BUFFER_BYTES);
+    assert.throws(() => big.concat(new PxtBuffer(1)), /byte allocation limit/);
+});

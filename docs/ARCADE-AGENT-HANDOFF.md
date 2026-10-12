@@ -1581,3 +1581,31 @@ condition classification, avoiding a numeric comparison around Boolean guards.
 Earlier malformed test grammar and an incorrect live-variable initializer
 expectation are retained privately. Actual archive reopening rebuilds the scoped
 heap. Product browser qualification and the184-input classification are unchanged.
+
+## Buffer concatenation, equality and byte search — 2026-10-12
+
+The continuation implements public `Buffer.concat(other)`, `equals(other)` and
+`indexOf(other)` through three functions extracted from the consumed original
+`base/buffer.ts` in Arcade4.2.1's target bundle. The reproducible generator records
+complete/selected source hashes and preserves original expressions/control flow.
+Its six indexed Buffer reads call the existing original `getByte` shim after
+transpilation. This explicit adaptation preserves PXT out-of-range zero reads;
+plain JavaScript typed-array indexing would change empty-needle search results.
+`Buffer.create` is injected as the bounded allocator, so concatenation checks
+combined size before allocation and creates fresh mutable storage.
+
+Native blocks and Code spellings are listed in the generated vocabulary; typed
+export emits the genuine instance APIs. Equality remains Boolean in guards and
+variables, search remains a number, and concatenation yields a scoped Buffer.
+Explicit null equality follows the original helper at the runtime boundary;
+unknown, foreign and stale references retain named diagnostics. This is not a
+new general null-literal/import capability claim. Static `Buffer.concat(Buffer[])`
+is a separate remaining array integration task.
+
+Checkpoint:25 affected controls pass with zero skips, including original PXT
+empty/zero/bounds/null comparisons, detached/readonly concatenation, allocation
+limits, native aliasing, Code reconstruction, actual saved SB3 reopening,
+serialized export/original execution and exact producer/SPIKE artifact identity.
+The producer's303 canonical forms have346 passing controls and zero skips.
+Hosted build/browser qualification and E10 import remain pending; the locked
+184-input corpus classification is unchanged142translated/41partial/1parsefailure.

@@ -227,3 +227,55 @@ WHEN flag clicked:
     checkReadonly(fresh);
   } finally {clearStrayTimers();}
 });
+
+test('native Buffer concatenation equality and search preserve values through Code export and real SB3', async () => {
+  try {
+    const source = `SPRITE Game:
+WHEN flag clicked:
+  set left to (arcade byte buffer literal hex "01020003")
+  set right to (arcade byte buffer from hex text "aabb")
+  set combined to (arcade byte buffer left concatenated with byte buffer right)
+  set combinedReadonly to (arcade byte buffer combined is read only)
+  set matching to (arcade byte buffer combined equals byte buffer (arcade byte buffer literal hex "01020003aabb"))
+  set found to (arcade byte buffer combined index of byte buffer (arcade byte buffer from hex text "03aa"))
+  set absent to (arcade byte buffer combined index of byte buffer (arcade byte buffer from hex text "ffff"))
+  set emptyFound to (arcade byte buffer combined index of byte buffer (arcade byte buffer from hex text ""))
+  IF (arcade byte buffer combined equals byte buffer (arcade byte buffer literal hex "01020003aabb")) THEN:
+    arcade set byte buffer combined byte at 0 to 99
+  set equalAfterMutation to (arcade byte buffer combined equals byte buffer left)
+  set inputHex to (arcade byte buffer left to hex)
+  set combinedHex to (arcade byte buffer combined to hex)
+`;
+    const expected = {combinedReadonly:false, matching:true, found:3, absent:-1, emptyFound:2,
+      equalAfterMutation:false, inputHex:'01020003', combinedHex:'63020003aabb'};
+    const checkHelpers = current => {
+      assert.deepEqual(current.creator.warnings, []); assert.deepEqual(current.errors, []);
+      const result = values(current);
+      for (const [name,value] of Object.entries(expected)) assert.equal(result[name], value, name);
+    };
+    const run = await runProgram(source, {frames:40, storage:true}); checkHelpers(run);
+    checkHelpers(await runProgram(run.creator.decompile(), {frames:40, storage:true}));
+    const exported = projectToArcade(JSON.parse(run.vm.toJSON()));
+    assert.deepEqual(exported.unsupported, []);
+    assert.match(exported.ts, /let Game_combined: Buffer = null/);
+    assert.match(exported.ts, /\.concat\(Game_right\)/);
+    assert.ok(!exported.ts.includes('.equals(hex`01020003aabb`) != 0'), 'Buffer equality guards remain Boolean');
+    const original = await runPxtArcade(exported.files);
+    for (const [name,value] of Object.entries(expected)) assert.equal(original[`Game_${name}`], value, name);
+    const archive = Buffer.from(await (await run.vm.saveProjectSb3()).arrayBuffer());
+    const fresh = await runProgram('SPRITE Empty:\nWHEN flag clicked:\n  wait 0 seconds\n', {frames:0, storage:true});
+    await fresh.vm.loadProject(archive); fresh.vm.greenFlag(); await stepFrames(fresh.vm, 40); checkHelpers(fresh);
+  } finally {clearStrayTimers();}
+});
+
+test('native Buffer equality handles explicit null but rejects foreign or stale references', () => {
+  const Arcade = loadExtensionClass('arcade');
+  const make = () => {const runtime = new EventEmitter(),errors=[];runtime.startHats=()=>[];runtime.on('BLOCKS_ERROR',e=>errors.push(e));return {runtime,errors,native:new Arcade(runtime)};};
+  const a=make(),b=make(),ref=a.native.bufferFromHex({HEX:'0102'});
+  assert.equal(a.native.bufferEquals({BUFFER:null,OTHER:null}),true);
+  assert.equal(a.native.bufferEquals({BUFFER:ref,OTHER:null}),false);
+  b.native.bufferEquals({BUFFER:ref,OTHER:null});
+  assert.equal(b.errors.length,1);
+  a.runtime.emit('PROJECT_START');a.native.bufferEquals({BUFFER:ref,OTHER:null});
+  assert.equal(a.errors.length,1);
+});
