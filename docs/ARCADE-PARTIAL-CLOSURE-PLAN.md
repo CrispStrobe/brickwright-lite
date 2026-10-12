@@ -208,3 +208,19 @@ local audit adapter must be identified separately from an application defect.
 Unpinned transitive dependencies and unrecognised source licences remain explicit
 qualification/redistribution boundaries; source availability alone is not a
 shipping claim.
+
+### Source frontier after canonical specification repair
+
+At clean `f97bd3ab149371751109b883d2f61ab935600ce1`,17 final focused
+checks pass (tutorial/collector, real original compiler/extension, HEAD mirrors).
+Of38 declared root specifications,36 source graphs resolve and2 retain the
+existing per-extension source-size refusal. Exact root refs and recognised
+licence notices are recorded privately; transitive unpinned refs and unknown
+licences are explicit remaining boundaries. This is source recovery, not native
+execution or shipping qualification.
+
+The two size refusals have different causes: one is a real image gallery/source
+set; the other includes a large editor history file despite small current art.
+Next establish original compiler/editor file semantics, bounded byte streaming,
+proper dependency assets and metadata preservation. Do not blindly increase a
+limit, discard code or omit an asset because it is inconvenient to parse.
