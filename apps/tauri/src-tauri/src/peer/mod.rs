@@ -128,13 +128,20 @@ async fn ask(app: &tauri::AppHandle, message: String) -> bool {
     .unwrap_or(false)
 }
 
+/// Bidirectional overrides/isolates and zero-width marks: they can reorder or hide what the
+/// person reads in a consent dialog. `char::is_control` covers only Cc, not these (Cf).
+fn is_invisible_format(c: char) -> bool {
+    matches!(c, '\u{061C}' | '\u{200B}'..='\u{200F}' | '\u{202A}'..='\u{202E}'
+        | '\u{2060}'..='\u{2069}' | '\u{FEFF}')
+}
+
 /// Text a peer chose, made safe to show in a dialog: no control characters, bounded length.
 fn shown(value: Option<&Value>) -> String {
     let text: String = value
         .and_then(Value::as_str)
         .unwrap_or("")
         .chars()
-        .filter(|c| !c.is_control())
+        .filter(|c| !c.is_control() && !is_invisible_format(*c))
         .take(80)
         .collect();
     if text.trim().is_empty() {
