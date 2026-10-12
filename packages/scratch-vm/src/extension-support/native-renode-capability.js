@@ -44,6 +44,27 @@ const FAILURE_CODES = new Set(['closed', 'invalid-envelope', 'replayed-request',
     'stale-reply', 'operation-failed', 'invalid-registration', 'unknown-worker',
     'unknown-extension', 'unknown-method', 'timeout']);
 
+// Caller diagnostics only: native authorization and image/API checks still run
+// independently and deliberately disclose no policy details. Inspect data
+// properties without evaluating getters; other malformed DTOs stay with the
+// closed native boundary. Run this inside the queue before reserving a request,
+// so a queued mutation is checked without consuming IDs or retiring a session.
+const preflightSpikeStart = args => {
+    if (!args || Object.getPrototypeOf(args) !== Object.prototype) return;
+    const topology = Object.getOwnPropertyDescriptor(args, 'topology');
+    if (!topology || typeof topology.value !== 'string') return;
+    if (!['default', 'six-motors', 'dual-ultrasonic'].includes(topology.value)) {
+        throw new Error('unknown SPIKE topology');
+    }
+    if (topology.value !== 'default') {
+        const backend = Object.getOwnPropertyDescriptor(args, 'backend');
+        if (!backend || (backend.value !== 'nuttx' &&
+            !(topology.value === 'six-motors' && backend.value === 'micropython'))) {
+            throw new Error('custom topology requires own NuttX firmware');
+        }
+    }
+};
+
 const createNativeRenodeCapabilities = ({invoke} = {}) => {
     if (typeof invoke !== 'function') return null;
     let session = null;
@@ -77,6 +98,7 @@ const createNativeRenodeCapabilities = ({invoke} = {}) => {
     // in order so a later request cannot reach the strict relay first.
     const request = operation => args => {
         const next = dispatch.then(async () => {
+            if (operation === OPERATIONS.start) preflightSpikeStart(args);
             const {owned, requestId} = await reserve();
             try {
                 const raw = await invoke('native_broker_request', {session: owned.id, requestId,
