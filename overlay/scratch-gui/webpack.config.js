@@ -382,6 +382,9 @@ cfgs.forEach(c => {
     // The GUI and sandboxed Arcade extension share UUID-preserving menu labels.
     c.resolve.alias['scratch-vm/src/util/bw-animation-resource-menu.js$'] =
         path.join(path.dirname(vmSrc), 'util/bw-animation-resource-menu.js');
+    // F10: the imported-MakeCode-original rules the Code tab shares with the VM's save/load.
+    c.resolve.alias['scratch-vm/src/serialization/bw-makecode-original.js$'] =
+        path.join(path.dirname(vmSrc), 'serialization/bw-makecode-original.js');
     // cat-blocks is a 65 MiB Easter-egg dependency (cat-themed blocks for "time travel to
     // 2020"). Aliasing it to scratch-blocks eliminates a duplicate blockly parse+compile
     // pass — the feature degrades gracefully to showing normal blocks.
