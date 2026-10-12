@@ -188,6 +188,66 @@ var bwMakeCode = {
             }
             throw err;
         }
+        // Preparation uses PXT's real package loading and asset-pack generation
+        // without claiming that the user's program compiled or ran.
+        if (opts.projectInputs) {
+            var packageInputs = {};
+            var resourceIds = {};
+            var collectResources = function (source, config, namespace) {
+                var owned = {};
+                for (var index = 0; index < (config.files || []).length; index++) {
+                    var name = config.files[index];
+                    if (!/\\.jres$/.test(name) || typeof source[name] !== 'string') continue;
+                    var gallery = JSON.parse(source[name]);
+                    if (namespace !== null) gallery = pxt.emitGalleryDeclarations(gallery, namespace)[0];
+                    var parsed = pxt.Package.prototype.parseJRes.call({
+                        getFiles: function () { return ['resources.jres']; },
+                        readFile: function () { return JSON.stringify(gallery); }
+                    }, {});
+                    for (var key in parsed) { resourceIds[key] = true; owned[key] = true; }
+                }
+                return Object.keys(owned);
+            };
+            var rootResourceIds = collectResources(files, cfg, null);
+            for (var id in ext.overrides) {
+                var prefix = 'pxt_modules/' + id + '/';
+                var inputs = {};
+                for (var name in copts.fileSystem) {
+                    if (name.indexOf(prefix) === 0) inputs[name.slice(prefix.length)] = copts.fileSystem[name];
+                }
+                var config = JSON.parse(ext.overrides[id]['pxt.json']);
+                var namespace = null;
+                if (config.assetPack) {
+                    var match = /(?:^|\\n)namespace ([\\w.$]+) \\{/.exec(inputs['gallery.ts'] || '');
+                    var hasResources = (config.files || []).some(function (name) {
+                        return /\\.jres$/.test(name) && typeof ext.overrides[id][name] === 'string' &&
+                            Object.keys(JSON.parse(ext.overrides[id][name])).some(function (key) { return key !== '*'; });
+                    });
+                    if (!match && hasResources) throw new Error('Cannot identify original asset-pack namespace: ' + id);
+                    namespace = match ? match[1] : '';
+                }
+                var ownedResources = collectResources(ext.overrides[id], config, namespace);
+                var vendored = bwMakeCode.extensions.some(function (entry) { return entry.files === ext.overrides[id]; });
+                packageInputs[id] = {files: inputs, assetPack: config.assetPack === true, assetNamespace: namespace,
+                    vendored: vendored, resourceIds: ownedResources,
+                    sourceFiles: (copts.sourceFiles || []).filter(function (name) {
+                    return name.indexOf(prefix) === 0;
+                }).map(function (name) { return name.slice(prefix.length); })};
+            }
+            var sourceOrder = [];
+            for (var index = 0; index < (copts.sourceFiles || []).length; index++) {
+                var path = copts.sourceFiles[index];
+                for (var id in packageInputs) {
+                    var prefix = 'pxt_modules/' + id + '/';
+                    if (path.indexOf(prefix) === 0) sourceOrder.push({id: id, file: path.slice(prefix.length)});
+                }
+            }
+            var resources = {};
+            for (var key in resourceIds) if (copts.jres && copts.jres[key]) resources[key] = copts.jres[key];
+            return {packages: packageInputs, sourceOrder: sourceOrder, jres: resources,
+                rootResourceIds: rootResourceIds,
+                netAttempts: bwMakeCode.netAttempts.slice(before)};
+        }
         if (opts.native && copts.extinfo && copts.extinfo.sha) {
             var infos = [copts.extinfo].concat((copts.otherMultiVariants || []).map(function (v) { return v.extinfo; }));
             for (var i = 0; i < infos.length; i++) {

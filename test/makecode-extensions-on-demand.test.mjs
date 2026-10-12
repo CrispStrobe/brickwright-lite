@@ -72,6 +72,7 @@ test('an extension and its own github: dependency are fetched, with their licenc
     assert.deepEqual(r.extensions.map(e => [e.id, e.repo, e.refs[0]]), [['motor', 'example/motor-copy', 'v9'], ['turtle', 'example/turtle-copy', '']]);
     const [motor, nested] = r.extensions;
     assert.equal(motor.fetched.licence, 'MIT');
+    assert.equal(motor.fetched.licenceText, kitronik.licenceText.text, 'preserve the full notice for derived projects');
     assert.equal(motor.fetched.redistributable, true);
     assert.equal(nested.fetched.licence, null, 'no LICENSE: reported, not guessed');
     assert.equal(nested.fetched.redistributable, false);

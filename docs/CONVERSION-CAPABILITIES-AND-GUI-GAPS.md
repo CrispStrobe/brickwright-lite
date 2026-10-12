@@ -3472,3 +3472,30 @@ Graphical song editing (notes/tracks/instruments/drums/tempo), transactional
 asset saves and production create/play/export/reopen remain open even though
 named song reporters and native song files exist in the combined candidate.
 Do not infer graphical authoring completion from a hex field or runtime tests.
+
+## Dependency-input bridge and GUI follow-up — 2026-10-12
+
+CLI `to-sb3 --fetch-extensions` now obtains real original PXT dependency inputs
+and prepares external helper code and exact fixed-instance image pixels for
+native translation. Root source/galleries remain separate from the internal
+view. Dependency hashes, notices and preparation provenance accompany SB3.
+Component runtime/export/reimport controls do not qualify the graphical flow.
+
+OPEN authoring/import GUI work:
+
+- Offer the same explicit dependency preparation from file/share import, show
+  progress and named fetch/parser/runtime failures, and preserve the original
+  project's source and dependencies for review/export.
+- Expose source/ref/hash/notice and compiler-only history exclusions in a
+  readable import report; distinguish a recovered snippet from a complete app.
+- Put dependency artwork in the asset library with original qualified identity
+  and readable labels; edit it through image/animation/tile/song editors and
+  verify that Blocks and pseudocode use the same edited resource.
+- Supply Buffer creation/access/mutation in Blocks and pseudocode with real
+  aliasing semantics, including namespace song buffers. This remains a
+  conversion gap; no GUI completion claim is made for it.
+- Extend wide animation authoring only alongside bounded codec/runtime/export
+  support and real save/reopen/browser controls. Imported artwork can exceed
+  the current native animation dimension limits.
+- Qualify GUI import → edit → run with controller → SB3 save/reopen → original
+  Arcade export/reimport. The current bridge has CLI/component evidence only.

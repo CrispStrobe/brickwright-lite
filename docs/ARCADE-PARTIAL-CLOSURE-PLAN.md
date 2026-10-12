@@ -260,3 +260,64 @@ bounded notices, reported history omission and original PXT compilation.
 Next close dependency asset preparation for native imports, recover complete
 original project context for compiler failures, and then remeasure the separate
 context corpus. B1 remains open.
+
+### Native dependency preparation — 2026-10-12
+
+`resolveProjectInputs` in `scripts/lib/pxt-node.mjs` obtains package source order,
+conditional inputs, asset-pack declarations and normalized resources from the
+original PXT worker. Preparation is distinct from successful compilation.
+`dependency-project.js` builds an internal native translation view: package
+filenames have separate prefixes, root galleries and main source remain intact,
+and resources already supplied by the root are not registered twice. Vendored
+API implementations stay with the existing call-site translators; their omitted
+library sources are explicitly recorded and unsupported calls remain diagnosed.
+External helper source is included in original compiler order.
+
+PXT generates asset-pack fixed-instance image declarations with empty buffer
+placeholders. Native preparation fills those declarations with the exact decoded
+JRES pixels. Qualified image constants are distinct from editor display labels;
+labels do not create a root factory. Namespace song buffers retain their original
+generated source, including named unsupported diagnostics until native buffer
+conversion is implemented. No substitute pixels, empty songs or no-ops are used.
+
+CLI usage (explicit network opt-in; default remains offline):
+
+```sh
+node --import ./scripts/lib/register-gui-scope.mjs scripts/makecode.mjs \
+  to-sb3 game.mkcd --fetch-extensions -o game.sb3 --bw game.bw
+```
+
+The SB3 includes `bw.makecode-dependencies.json` with source hashes, fetch notices,
+input provenance and the vendored-source boundary. The internal flattened view
+is not a MakeCode export format: original project files remain separate.
+
+Controls exercise actual original asset-pack generation, transitive source order,
+exact image pixels/position in Brickwright, original-Arcade export compilation
+and native reimport, and real CLI child-process offline/opt-in behaviour.
+Root gallery bytes and unsupported source cases remain checked.
+
+New explicit next gaps:
+
+- Namespace-level Buffer/hex constants and dynamic `music.createSong(buffer)`
+  need real mutable buffer identity and conversion. Coordinate importer changes
+  with E10 ownership; do not inline a mutable buffer as a guessed constant.
+- Foreign animation dimensions can exceed the current native codec limits.
+  Qualify wider frames with bounded total pixels/bytes, clipping, collision,
+  codecs, export, SB3 reopen and graphics editing before changing limits.
+- Dependency factory lookup needs source registration order and scoped aliases;
+  do not infer lookup names from dropdown labels. Deferred library declarations
+  must keep diagnostics when used.
+- Original incomplete snippets still need complete authentic source context;
+  Hawks' undeclared `harry` remains an original compiler failure.
+
+Repeat the separate context census after these changes. The locked original
+184-input census has not been promoted by preparation or component controls.
+
+The two authentic prepared-project controls remain partial: pizza exposes its
+namespace hex-buffer declaration; Hawks exposes `TrampolineDunk` (`anim8`),
+whose packed header is 161×121 pixels, 32 frames and 311,720 bytes. Its original
+snippet still fails original compilation on `harry`. Root/dependency animation
+IDs are no longer spuriously registered twice. Earlier failed preparation
+attempts and corrected source/metadata receipts are preserved privately.
+The focused suite also checks that known unsupported namespace song buffers
+remain diagnosed; a passing suite does not mean that feature is implemented.

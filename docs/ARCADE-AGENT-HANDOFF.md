@@ -1317,3 +1317,18 @@ original corpus. Fetch reports include exact hashes, retained UTF-8 byte counts
 and explicit compiler-only editor-history exclusions. Source recovery has not
 yet supplied native import assets or qualified gameplay/editor/roundtrip parity.
 Respect the independent E10 importer ownership recorded in LANES.md.
+
+### Native package-input bridge — 2026-10-12
+
+The closure plan now documents `resolveProjectInputs`, the independent
+`dependency-project.js` bridge and CLI `to-sb3 --fetch-extensions`. Original PXT
+generates dependency inputs; the bridge preserves root galleries, namespaces,
+source order and exact image pixels. SB3 conversion records dependency
+provenance. A component control runs real Brickwright, exports to original Arcade
+and reimports with exact pixels/positions. This is not a full-game GUI receipt.
+
+Next implement namespace Buffer constants/dynamic song-buffer flow, wider native
+animations and source-backed factory scopes, then measure all context projects.
+Keep incomplete-source failures and private original receipts. Coordinate
+importer work with E10; the graphical import/network-choice/provenance UI is
+still open, as recorded in the GUI ledger.

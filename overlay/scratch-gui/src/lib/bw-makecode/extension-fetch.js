@@ -169,7 +169,7 @@ export async function fetchMakeCodeExtensions ({dependencies, target, table, fet
                 files[f] = source.content;
                 bytes += source.bytes;
             }
-            let licence = null, licenceFile = null, licenceUrl = null;
+            let licence = null, licenceFile = null, licenceUrl = null, licenceText = null;
             // Monorepo packages often inherit the repository's root notice.
             for (const licenceBase of base === repositoryBase ? [base] : [base, repositoryBase]) {
                 for (const name of ['LICENSE', 'LICENSE.txt', 'LICENSE.md']) {
@@ -178,7 +178,8 @@ export async function fetchMakeCodeExtensions ({dependencies, target, table, fet
                         licenceFile = name; licenceUrl = licenceBase + name;
                         const notice = await readText(res, limits.bytesPerLicence,
                             `its licence notice exceeds ${limits.bytesPerLicence} bytes`);
-                        licence = licenceOf(notice.content); break;
+                        licenceText = notice.content;
+                        licence = licenceOf(licenceText); break;
                     }
                 }
                 if (licenceFile) break;
@@ -186,7 +187,7 @@ export async function fetchMakeCodeExtensions ({dependencies, target, table, fet
             const sha256 = {};
             for (const [name, content] of Object.entries(files)) sha256[name] = await sha256Hex(content);
             extensions.push({id: dep.id, repo: dep.repo, refs: [dep.ref], targets: [target], files,
-                fetched: {base, licence, licenceFile, licenceUrl, redistributable: REDISTRIBUTABLE.includes(licence),
+                fetched: {base, licence, licenceFile, licenceUrl, licenceText, redistributable: REDISTRIBUTABLE.includes(licence),
                     sha256, sourceBytes: bytes, excludedFiles}});
             // Its own github: dependencies, unless already available.
             for (const next of unresolvedGithubDependencies(cfg.dependencies, target, [...table, ...extensions])) queue.push(next);
