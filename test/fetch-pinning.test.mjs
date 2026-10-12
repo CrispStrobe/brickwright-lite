@@ -228,6 +228,12 @@ const describeSkips = ({unreadable, nul}) => {
 //   waived        genuinely cannot be sha-addressed; reason required
 const CENSUS = [
     {
+        file: 'test/makecode-context-recovery-cli.test.mjs', kind: 'raw',
+        text: 'raw.githubusercontent.com/microsoft/pxt-arcade/${sha}/docs/control.md',
+        class: 'source-link',
+        why: 'Expected URL assertion for the immutable manifest SHA in an offline CLI control. The injected fetch records URLs and returns synthetic tutorial text; no real content is downloaded.'
+    },
+    {
         file: 'scripts/recover-makecode-context.mjs', kind: 'raw',
         text: 'raw.githubusercontent.com/microsoft/pxt-arcade/${revision}/${document}',
         class: 'validated-input',
