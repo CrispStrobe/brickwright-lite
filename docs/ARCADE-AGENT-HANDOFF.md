@@ -1155,3 +1155,36 @@ Resolve song assets from complete project manifests/JRES and preserve their name
 and bytes through authoring/export. Keep the missing-asset diagnostic when only
 a source snippet is provided; never manufacture a countdown song to make the
 census green. These projects also have unrelated artwork and wrapper gaps.
+
+
+## Named song asset candidate — 2026-10-12
+
+The normal `arcade_namedSongPlayable` reporter / Code word
+`arcade song named "countdown" hex "..."` preserves the display name and exact
+version-zero bytes in ordinary blocks and SB3. Native song JRES entries use
+`application/mkcd-song` and raw hex, as in pinned PXT13.2.1 generateSong and
+emitProjectImages. Complete project imports resolve ID, short ID and display-name
+aliases; missing, ambiguous or malformed entries remain diagnosed. The exporter
+writes native song JRES, manifest entries and a song factory. The single-file
+TypeScript export embeds its factory. Export refuses conflicting bytes under
+one name or nonliteral named asset inputs. Internal JRES IDs are regenerated;
+original display names and bytes survive.
+
+Seven focused song checks pass, including complete-original MakeCode execution
+of both file-map and single-file exports and an actual SB3 save/load into a fresh
+VM. First fixture omitted pxt.json on its separate single-file compile and failed;
+the required manifest was restored and that failed run is preserved privately.
+Producer325 grammar checks pass at f079238eeb7d8ac6474048e748208fb7f954198f in
+[sb3-creator PR95](https://github.com/CrispStrobe/sb3-creator/pull/95), stacked
+on PR94. Broader combined gates and hosted production qualification remain open.
+Unused song library entries, general Buffer operations and a graphical song
+editor are not supplied by this slice. Full binary validation stays in the native
+codec; the interchange boundary checks lexical bytes/version and asset identity.
+
+The operator requested rescue of the ended Claude session during this slice.
+Work remains on `lane/arcade-named-song-assets-20261012`, separately from the
+rescue integration branch. Resume the named-song combined checks and GUI work
+once the rescue is checkpointed. PR807's build/corpus checks passed; its light
+shard failed painted-level reopening and heavy failed waiting for the visible
+Carnival countdown block. Those exact failures are preserved and not production
+completion. The prior PR806 heavy failure is a separate earlier failure.

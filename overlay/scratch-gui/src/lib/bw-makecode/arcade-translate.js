@@ -94,6 +94,7 @@ import {
 } from './arcade-assets.js';
 import {svgToPixels} from './pixel-image.js';
 import {parseAnimationJres} from './arcade-animation-assets.js';
+import {parseSongJres} from './song-jres.js';
 import {BUILTIN_IMAGES} from './arcade-builtin-images.js';
 import {ANIMATION_COMPANION_PATH, recoverAnimationCompanion} from './animation-companion.js';
 import {HELPERS} from './arcade-runtime.js';
@@ -1998,7 +1999,9 @@ class ArcadeTranslator extends BaseTranslator {
                     this.note('music.createSong requires complete version-zero song bytes');
                     return '0';
                 }
-                return `arcade song playable hex ${JSON.stringify(text.toLowerCase())}`;
+                return buffer.bwSongName ?
+                    `arcade song named ${JSON.stringify(buffer.bwSongName)} hex ${JSON.stringify(text.toLowerCase())}` :
+                    `arcade song playable hex ${JSON.stringify(text.toLowerCase())}`;
             }
             if (buffer?.type === 'Call' && this.path(buffer.callee) === 'Buffer.fromHex' && !this.bindsName('Buffer') && buffer.args.length === 1)
                 return `arcade song playable hex (${this.expr(buffer.args[0])})`;
@@ -4126,11 +4129,22 @@ export function arcadeToPseudocode (files, opts = {}) {
 
     const assets = Object.create(null);
     const tilemaps = {};
+    const songAliases = new Map();
     const animationAliases = new Map(), animationDiagnostics = [], animationIds = new Set(), nativeAnimations = [];
     let duplicateAnimationId = false;
     for (const [filename, text] of Object.entries(map)) {
         if (/\.jres$/.test(filename)) {
             Object.assign(assets, parseJres(text), parseTileAssets(text));
+            const parsedSongs = parseSongJres(text);
+            animationDiagnostics.push(...parsedSongs.unsupported.map(message => `${filename}: ${message}`));
+            for (const song of parsedSongs.songs) {
+                for (const alias of song.aliases) {
+                    if (songAliases.has(alias)) {
+                        songAliases.set(alias, null);
+                        animationDiagnostics.push(`Ambiguous song asset alias: ${JSON.stringify(alias)}`);
+                    } else songAliases.set(alias, song);
+                }
+            }
             const parsedAnimations = parseAnimationJres(text);
             animationDiagnostics.push(...parsedAnimations.unsupported.map(message => `${filename}: ${message}`));
             for (const animation of parsedAnimations.animations) {
@@ -4171,6 +4185,14 @@ export function arcadeToPseudocode (files, opts = {}) {
     // inference stays intact while emission uses the fresh resource reporter.
     const lowerAnimationAssets = node => {
         if (!node || typeof node !== 'object') return node;
+        if (node.type === 'Template' && node.tag === 'assets.song') {
+            const alias = node.value.trim(), song = songAliases.get(alias);
+            if (!song) {
+                animationDiagnostics.push(`${songAliases.has(alias) ? 'Ambiguous' : 'Missing'} song asset reference: ${JSON.stringify(alias)}`);
+                return {type: 'Undefined'};
+            }
+            return {type: 'Template', tag: 'hex', value: song.hex, bwSongName: song.name};
+        }
         if (node.type === 'Template' && node.tag === 'assets.animation') {
             const alias = node.value.trim(), animation = animationAliases.get(alias);
             if (!animation) {

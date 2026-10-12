@@ -276,7 +276,7 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 06341e3d (2026-10-11): three Carnival grammar words; all SPIKE artifact assertions rerun.
     // -> c7096355 (2026-10-12): song playable word; canonical SPIKE artifact assertions rerun.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'c70963552a0ceac9456633cac24e9c62d922cde2');
+        'f079238eeb7d8ac6474048e748208fb7f954198f');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

@@ -261,6 +261,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'stringPlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade string playable [MELODY] at [TEMPO] bpm',arguments:{...str('MELODY','C D E F'),...n('TEMPO',120)}},
           {opcode:'tonePlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade tone playable [FREQUENCY] Hz for [DURATION] ms',arguments:{...n('FREQUENCY',262),...n('DURATION',500)}},
           {opcode:'songPlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade song playable hex [HEX]',arguments:str('HEX','00780004080100')},
+          {opcode:'namedSongPlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade song named [NAME] hex [HEX]',arguments:{...str('NAME','mySong'),...str('HEX','00780004080100')}},
           {opcode:'soundEffect',blockType:Scratch.BlockType.REPORTER,text:'Arcade sound effect wave [WAVE] from [START_FREQUENCY] Hz to [END_FREQUENCY] Hz volume [START_VOLUME] to [END_VOLUME] for [DURATION] ms effect [EFFECT] curve [CURVE]',
             arguments:{WAVE:{type:Scratch.ArgumentType.STRING,menu:'waveShapes',defaultValue:'Square'},...n('START_FREQUENCY',400),...n('END_FREQUENCY',600),...n('START_VOLUME',255),...n('END_VOLUME',0),...n('DURATION',500),
               EFFECT:{type:Scratch.ArgumentType.STRING,menu:'soundEffects',defaultValue:'None'},CURVE:{type:Scratch.ArgumentType.STRING,menu:'soundCurves',defaultValue:'Linear'}}},
@@ -3819,6 +3820,7 @@ module.exports = makeExt(`// Name: Arcade
     stringPlayable(args) {
       return this._musicHandle(this._music().pxt.music.stringPlayable(String(Scratch.BWValues.decode(args.MELODY) ?? ''),Scratch.Cast.toNumber(args.TEMPO)));
     }
+    namedSongPlayable(args) { return this.songPlayable(args); }
     songPlayable(args) {
       try {return this._musicHandle(this._music().createSong(String(Scratch.BWValues.decode(args.HEX) ?? '')));}
       catch(error){this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error));return '';}

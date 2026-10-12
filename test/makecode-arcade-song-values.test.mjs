@@ -119,3 +119,64 @@ test('editing a literal reporter changes bytes exported to MakeCode; malformed e
         assert.ok(exportProject(run).unsupported.length);
     } finally {clearStrayTimers();}
 });
+
+
+test('named JRES songs preserve names, exact bytes, native execution and actual SB3 reopening', async () => {
+    const files = {'main.ts': source.replace(`hex\`${HEX}\``, 'assets.song`countdown`'),
+        'songs.g.jres': JSON.stringify({'*': {namespace: 'mySongs.'}, song1:
+            {mimeType: 'application/mkcd-song', displayName: 'countdown', data: HEX}})};
+    const imported = arcadeToPseudocode(files);
+    assert.deepEqual(imported.unsupported, []);
+    assert.ok(imported.code.includes(`arcade song named "countdown" hex "${HEX}"`));
+    const run = await runProgram(imported.code, {frames: 84, storage: true});
+    try {
+        assert.deepEqual(run.errors, []);
+        assert.ok(projectOpcodes(run.creator.project).has('arcade_namedSongPlayable'));
+        const exported = exportProject(run);
+        assert.deepEqual(exported.unsupported, []);
+        const entries = JSON.parse(exported.files['songs.g.jres']);
+        assert.equal(entries.song1.displayName, 'countdown');
+        assert.equal(entries.song1.data, HEX);
+        assert.equal(entries.song1.mimeType, 'application/mkcd-song');
+        assert.match(exported.files['main.ts'], /music\.createSong\(assets\.song`countdown`\)/);
+        const original = await runPxtArcade(exported.files,
+            {waitForGlobals: {done: true}, recordSongSound: true, fakeClock: true});
+        assert.deepEqual(active(original.$sound), active(run.vm.runtime.bwArcadeMusicLog));
+        // The single-file export includes its native factory, not a dangling asset.
+        const single = await runPxtArcade({'main.ts': exported.ts, 'pxt.json': JSON.stringify({
+            ...JSON.parse(exported.files['pxt.json']), files: ['main.ts']})},
+            {waitForGlobals: {done: true}, recordSongSound: true, fakeClock: true});
+        assert.deepEqual(active(single.$sound), active(original.$sound));
+        const second = arcadeToPseudocode(exported.files);
+        assert.deepEqual(second.unsupported, []);
+        assert.ok(second.code.includes(`arcade song named "countdown" hex "${HEX}"`));
+        const archive = Buffer.from(await (await run.vm.saveProjectSb3()).arrayBuffer());
+        const fresh = await runProgram('SPRITE Empty:\nWHEN flag clicked:\n  wait 0 seconds\n', {frames: 0, storage: true});
+        await fresh.vm.loadProject(archive);
+        fresh.vm.greenFlag();
+        await stepFrames(fresh.vm, 84);
+        assert.deepEqual(fresh.errors, []);
+        assert.deepEqual(active(fresh.vm.runtime.bwArcadeMusicLog), active(original.$sound));
+        const restored = projectToArcade(JSON.parse(fresh.vm.toJSON()));
+        assert.deepEqual(restored.unsupported, []);
+        assert.equal(JSON.parse(restored.files['songs.g.jres']).song1.data, HEX);
+        assert.equal(JSON.parse(restored.files['songs.g.jres']).song1.displayName, 'countdown');
+    } finally {clearStrayTimers();}
+});
+
+test('missing, malformed and ambiguous named songs remain diagnosed', () => {
+    const main = 'music.play(music.createSong(assets.song`countdown`), music.PlaybackMode.InBackground)';
+    assert.ok(arcadeToPseudocode(main).unsupported.some(message => /Missing song asset/.test(message)));
+    for (const entry of [
+        {data: 'not-hex'}, {data: HEX, dataEncoding: 'base64'}, {data: HEX, displayName: 'bad`name'}
+    ]) {
+        const result = arcadeToPseudocode({'main.ts': main, 'songs.g.jres': JSON.stringify({song1:
+            {mimeType: 'application/mkcd-song', displayName: 'countdown', ...entry}})});
+        assert.ok(result.unsupported.some(message => /Invalid song resource/.test(message)));
+    }
+    const result = arcadeToPseudocode({'main.ts': main, 'songs.g.jres': JSON.stringify({song1:
+        {mimeType: 'application/mkcd-song', displayName: 'countdown', data: HEX}, song2:
+        {mimeType: 'application/mkcd-song', displayName: 'countdown', data: HEX}})});
+    assert.ok(result.unsupported.some(message => /Ambiguous song asset/.test(message)));
+    assert.ok(!result.code.includes(`arcade song named "countdown"`));
+});

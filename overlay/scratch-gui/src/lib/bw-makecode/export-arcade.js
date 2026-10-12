@@ -40,10 +40,11 @@
  */
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
 import {animationResourceFromDocument} from '../bw-animation-resources.js';
-import {encodeAnimationJres, nativeAnimationNameBase} from './animation-jres.js';
+import {encodeAnimationJres, nativeAnimationNameBase, isNativeAnimationName} from './animation-jres.js';
 import {ANIMATION_COMPANION_PATH, encodeAnimationCompanion} from './animation-companion.js';
 import {validateDocument} from '../bw-artwork-bundle.js';
 import {TileAssetExporter} from './tile-assets.js';
+import {SONG_MIME} from './song-jres.js';
 import {tilemapSource} from './tilemap-values.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {svgToPixels, quantizeRgba, toImgLiteral, remapPalette, nearestIndex} from './pixel-image.js';
@@ -154,6 +155,7 @@ class ArcadeEmitter {
         this.guards = [];               // conditions that end the current script at a yield
         this.scriptSeq = 0;
         this.soundCache = new Map();
+        this.songAssets = new Map();
         this.valueOperationHelpers = new Map();
         this.namedArrays = new Map();
         this.legacyValueHelpers = new Map();
@@ -1024,6 +1026,7 @@ class ArcadeEmitter {
         case 'arcade_melodyPlayable': return `music.melodyPlayable(${v('MELODY')})`;
         case 'arcade_stringPlayable': return `music.stringPlayable(${v('MELODY')}, ${v('TEMPO')})`;
         case 'arcade_tonePlayable': return `music.tonePlayable(${v('FREQUENCY')}, ${v('DURATION')})`;
+        case 'arcade_namedSongPlayable':
         case 'arcade_songPlayable': {
             const literal = this.literalInput(b, 'HEX');
             if (literal !== null) {
@@ -1032,8 +1035,24 @@ class ArcadeEmitter {
                     this.note('Arcade song requires complete version-zero hexadecimal bytes');
                     return 'undefined';
                 }
+                if (b.opcode === 'arcade_namedSongPlayable') {
+                    const name = this.literalInput(b, 'NAME');
+                    if (!isNativeAnimationName(name)) {
+                        this.note('Named song export requires a literal native asset name');
+                        return 'undefined';
+                    }
+                    const prior = this.songAssets.get(name);
+                    if (prior && prior.hex !== text.toLowerCase()) {
+                        this.note(`Conflicting song bytes for asset ${JSON.stringify(name)}`);
+                        return 'undefined';
+                    }
+                    const resource = prior || {id: `song${this.songAssets.size + 1}`, name, hex: text.toLowerCase()};
+                    this.songAssets.set(name, resource);
+                    return `music.createSong(assets.song\`${name}\`)`;
+                }
                 return 'music.createSong(hex`' + text.toLowerCase() + '`)';
             }
+            if (b.opcode === 'arcade_namedSongPlayable') this.note('Named song export requires literal hexadecimal bytes');
             return `music.createSong(Buffer.fromHex(${v('HEX')}))`;
         }
         case 'arcade_soundEffect': {
@@ -3163,8 +3182,19 @@ class ArcadeEmitter {
 export function projectToArcade (project, opts = {}) {
     const e = new ArcadeEmitter(project, opts);
     const projectTs = e.emit();
+    e.prepareAuthoredAnimations();
+    const songNamespace = e.animationSymbol('__bwSongAssets');
+    const songNames = new Set(e.songAssets.keys());
+    let songId = 1;
+    for (const resource of e.songAssets.values()) {
+        while (songNames.has(`song${songId}`)) songId++;
+        resource.id = `song${songId++}`;
+    }
     // Plain TypeScript has no companion resource files; keep it executable.
-    const ts = e.tileAssets.inlineSource() + projectTs;
+    const songFactory = [...e.songAssets.values()].map(resource =>
+        `            case ${JSON.stringify(resource.name)}: case ${JSON.stringify(resource.id)}: return hex\`${resource.hex}\``).join('\n');
+    const songSource = songFactory ? `namespace ${songNamespace} {\n    helpers._registerFactory("song", function (name: string) {\n        switch (helpers.stringTrim(name)) {\n${songFactory}\n        }\n        return null\n    })\n}\n` : '';
+    const ts = e.tileAssets.inlineSource() + songSource + projectTs;
     // Publish unused assets as well, without introducing unused main-code helpers.
     e.prepareAuthoredAnimations();
     const resources = [...e.authoredAnimationArrays.values()];
@@ -3176,6 +3206,11 @@ export function projectToArcade (project, opts = {}) {
             `\n                return [${resource.literals.join(',\n')}]`).join('\n')}\n        }\n        return null\n    })\n}\n`
     } : {};
     Object.assign(assetFiles, e.tileAssets.files());
+    if (e.songAssets.size) {
+        assetFiles['songs.g.jres'] = JSON.stringify(Object.fromEntries([...e.songAssets.values()].map(resource =>
+            [resource.id, {mimeType: SONG_MIME, namespace: 'mySongs.', displayName: resource.name, data: resource.hex}])), null, 4) + '\n';
+        assetFiles['songs.g.ts'] = songSource;
+    }
     const sourceEntries = [];
     for (const resource of resources) {
         try { validateDocument(resource.document); }
