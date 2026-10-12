@@ -1554,3 +1554,25 @@ Commit `bf5d99f74a` advances that guard only after re-running its unchanged SPIK
 artifact assertions. PR834 includes that fix by normal merge; earlier failed
 logs remain private. Hosted checks and the visible Buffer journey still require
 exact-head results before merge or product qualification.
+
+## Buffer browser first execution — 2026-10-12
+
+[PR834 light browser job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38279944717/job/114927678175)
+reached visible authored native blocks without page/block errors, then timed out
+opening the format menu after a coordinate click. It completed no controller or
+archive/export cycles; this is failed GUI qualification. The followup clicks the
+identified authored SVG dropdown through Playwright's visibility/hit-target
+checks, following the existing schema browser control, and retains a failure
+screenshot and field observations. Hosted rerun must establish the result.
+
+The surviving parent focused diagnostic passed before its source was advanced.
+PR810 now includes prepared provenance fixes and the exact particle pixel check.
+PR834 incorporates those fixes with298 canonical forms and its own selected598fc
+Arrays source notice. Eighteen parser/fetch controls pass with zero skips; the
+browser script passes syntax/whitespace checks. No corpus classification changed.
+
+UTF8 candidate integration: the completed parent provenance and actionable
+Buffer dropdown fixes are retained by normal merge. This branch has299
+canonical forms and retains its own UTF8 producer pin. The predecessor UTF8
+heavy browser shard passed; its build and light-shard failures remain evidence.
+Fresh exact-head checks are required after this integration.

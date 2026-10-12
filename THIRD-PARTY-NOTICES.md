@@ -2172,3 +2172,17 @@ Original geometry, glyph drawing and scrolling logic are retained with a native
 sprite/image facade. The original generated speech-pxt.js and credited fonts
 remain unchanged for comparisons. This is attributed PXT adaptation and
 integration, not a clean-room implementation.
+
+## arrays-values — MPL-2.0
+
+The scoped `arrays-values` pin selects the Arrays & Vectors extension authored
+by CrispStrobe from https://github.com/CrispStrobe/extensions. Its declared
+license is MPL-2.0. The complete source, including its original author/license
+header, is retained in `overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js`
+as a JSON source string; the host adapter is separate.
+
+The exact selected source is
+https://github.com/CrispStrobe/extensions/blob/598fc9665a3ffdcc6fdeaa465f2c42ccaa814d8f/extensions/CrispStrobe/arrays.js.
+`vendor-pins.json` and the generated per-file bundle receipt record the commit
+and content hash. This scopes the adoption to Arrays; it does not advance other
+extension sources. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.
