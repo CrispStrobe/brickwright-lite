@@ -2,7 +2,7 @@
 
 ## Forth packaged license notice — 2026-10-12
 
-CLAIMED — Codex SPIKE package review, `fix/forth-license-notice-20261012`.
+DONE candidate — Codex SPIKE package review, `fix/forth-license-notice-20261012`.
 Envelope: this ledger, `overlay/scratch-gui/static/licenses/zForth.MIT.txt`
 and the existing Forth provenance record only. Retain the exact upstream
 copyright and permission notice from the recorded zForth source revision beside
@@ -3083,3 +3083,33 @@ semantics during transpilation (not JavaScript typed-array out-of-range reads),
 readonly inputs and detached concat output. Keep preallocation bounds and named
 refusal of invalid references. E10 retains importer/type-lowering ownership;
 only extend its API contract. No painter, serialization or peer files are taken.
+
+## Arcade Buffer hosted provenance gate corrections — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-buffer-provenance-20261012`, stacked on PR838.
+Fix the four observed full-suite failures from PR834 Build38279944717: update the
+independent parser opcode census for the new canonical forms, declare the offline
+fetch assertion's actual role, recognize the explicitly scoped Arrays pin and
+read its MPL-2.0 declaration from the shipped bundle for the notices census.
+Add source/author/license attribution and mutation controls; do not suppress the
+checks or modify corpus input counts. Preserve older browser diagnostics until
+they finish; parent corrections must be propagated with correct per-head counts.
+E10/importer helpers, painter and peer implementation ownership remain intact.
+
+## Arcade particle frame assertion investigation — 2026-10-12
+
+CLAIMED — Codex, parent PR810 continuation. Its Build38279930848 also
+failed the destroy/fire particle assertion. Check emitted source pixels against
+the composed frame: aggregate fire-color counts can shrink when particles cover
+the sprite. Preserve the original failure; retain positive emission, exact pixel
+composition, ghost/dissolve/lifespan and cleanup assertions. No generated PXT
+algorithm or random distribution change is authorized to make a test pass.
+
+## Arcade Buffer number-format sizes — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-buffer-format-size-20261012`, stacked on the
+Buffer candidates. Implement genuine public Buffer.sizeOfNumberFormat through
+source-extracted original algorithm, native numeric reporter/menu, Code spelling,
+typed export and producer vocabulary. Verify all16 formats, invalid/dynamic
+format values, original execution, archive reopening and generator drift. Keep
+GUI Buffer failure visible; E10 retains importer/type-lowering ownership.
