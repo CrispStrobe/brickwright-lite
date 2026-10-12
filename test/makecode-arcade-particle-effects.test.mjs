@@ -50,6 +50,8 @@ test('destroy with an effect ghosts and dissolves the sprite, emits particles an
     const f = fixture(), hero = f.sprite(2, 80, 60);
     let destroyed = 0;
     f.runtime.startHats = opcode => { if (opcode === 'arcade_whenSpriteDestroyed') destroyed++; return []; };
+    // Seed this image effect locally: random rectangles can both miss an 8x8 image.
+    f.arcade._inst._particles().effects.dissolve.fastRandom.lfsr = 1;
     f.arcade.destroySpriteWithEffect({ID: hero, EFFECT: 'fire', DURATION: 500});
     const sprite = f.state().sprites[hero];
     assert.equal(sprite.flags & 7168, 7168, 'PXT ParticleEffect.destroy sets Ghost');
@@ -73,6 +75,30 @@ test('destroy with an effect ghosts and dissolves the sprite, emits particles an
     await f.frames(60);
     assert.equal(f.sources().length, 0);
     assert.equal([...f.drawables.values()].filter(d => d.skin && [...f.skins.keys()].includes(d.skin)).length >= 0, true);
+    assert.deepEqual(f.errors, []);
+});
+
+test('off-canvas dissolve rectangles still clone, ghost and complete destruction', async () => {
+    const f = fixture(), hero = f.sprite(2, 80, 60);
+    const original = f.state().sprites[hero].image;
+    const pixels = original.pixels.slice();
+    let destroyed = 0;
+    f.runtime.startHats = opcode => { if (opcode === 'arcade_whenSpriteDestroyed') destroyed++; return []; };
+    // FastRandom seed 71 places both rectangles outside the 8x8 image.
+    f.arcade._inst._particles().effects.dissolve.fastRandom.lfsr = 71;
+    f.arcade.destroySpriteWithEffect({ID: hero, EFFECT: 'fire', DURATION: 500});
+    const sprite = f.state().sprites[hero];
+    assert.notEqual(sprite.image, original, 'applyTo installs a cloned image even when no pixel changes');
+    assert.deepEqual(sprite.image.pixels, pixels);
+    assert.deepEqual(original.pixels, pixels, 'the original image stays unchanged');
+    assert.equal(sprite.flags & 7168, 7168);
+    assert.equal(f.sources().length, 1);
+    assert.equal(destroyed, 0);
+    await f.frames(16);
+    assert.equal(f.state().sprites[hero], undefined);
+    assert.equal(destroyed, 1);
+    await f.frames(60);
+    assert.equal(f.sources().length, 0);
     assert.deepEqual(f.errors, []);
 });
 
