@@ -2,7 +2,7 @@
 
 ## Original Arcade display readiness proof — 2026-10-12
 
-CLAIMED — Codex bwcx, continuing `fix/painter-installation-proof-20261011`.
+DONE candidate — Codex bwcx, continuing `fix/painter-installation-proof-20261011`.
 Build38198014926 passes both browser shards, corpus and FPGA but fails the
 seven-segment exact-screen comparison (19200 pixels different). Program-global
 completion does not prove a presented frame: original ScreenState initially
@@ -13,6 +13,15 @@ screen update after the existing completion marker; preserve default callers,
 original call semantics and exact pixel equality. No fabricated image, native
 renderer change, timeout increase, changed expected palette or engine pin.
 The current candidate remains rejected until replacement hosted qualification.
+Opt-in waitForDisplay observes the pinned simulator's real updateScreen call
+and its actual lastImage publication, after the existing completion boundary.
+The seven-segment oracle uses the existing paused clock and waits for a real
+post-completion frame; exact pixels, palette and reporter values stay unchanged.
+Default callers do not install an observer or wait for this additional boundary.
+Persistent observer controls cover allocation/null/refused-image rejection,
+receiver/arguments/result/exception preservation and restoration. The same
+contract catches four executable mutants in pure controls; syntax and whitespace
+checks pass. Hosted original-render and full replacement Build remain pending.
 
 Created 2026-08-24, after two sessions independently did the same repair.
 
