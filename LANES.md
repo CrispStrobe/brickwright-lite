@@ -2,7 +2,7 @@
 
 ## Forth packaged license notice — 2026-10-12
 
-CLAIMED — Codex SPIKE package review, `fix/forth-license-notice-20261012`.
+DONE candidate — Codex SPIKE package review, `fix/forth-license-notice-20261012`.
 Envelope: this ledger, `overlay/scratch-gui/static/licenses/zForth.MIT.txt`
 and the existing Forth provenance record only. Retain the exact upstream
 copyright and permission notice from the recorded zForth source revision beside
