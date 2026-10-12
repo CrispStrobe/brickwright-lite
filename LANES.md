@@ -1,5 +1,17 @@
 # Who is doing what — merge the claim before implementation
 
+## Forth packaged license notice — 2026-10-12
+
+CLAIMED — Codex SPIKE package review, `fix/forth-license-notice-20261012`.
+Envelope: this ledger, `overlay/scratch-gui/static/licenses/zForth.MIT.txt`
+and the existing Forth provenance record only. Retain the exact upstream
+copyright and permission notice from the recorded zForth source revision beside
+the shipped frontend assets; verify its upstream Git blob and preserve the
+executable digest. This closes only the zForth notice inclusion gap. Exact
+linked newlib/libi86 obligations and whole-package component review remain open.
+No executable, dependency pin, compiler, simulator or peer implementation change.
+
+
 ## Wide Arcade artwork documents and Pixel authoring — 2026-10-12
 
 CLAIMED — Codex Arcade integration, `lane/arcade-partial-closure-20261012`.
@@ -2988,3 +3000,14 @@ Full Build38208078539/vendor/debugger/Rust checks queued on updatedPR810.
 No mainmerge; independent painter/display proof worker retains ownership.
 Publicmethod: PR810 docs/ARCADE-AGENT-HANDOFF.md combined integration section;
 original reports and exact ancestry/input proof archived privately.
+
+
+## Arcade byte-buffer runtime foundation — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-partial-closure-20261012`. Envelope: new
+bounded byte-buffer runtime/generator, replacement of the mixer host's limited
+numeric buffer adapter, focused original-PXT numeric/alias/slice controls and
+handoff/GUI ledger. Preserve original numeric formats, signedness, byte order,
+float behavior, copying and mutable storage. Buffer Blocks/Code/value-reference
+and importer wiring remain subsequent acceptance work, coordinated with E10;
+no E10 importer/helper, painter, particle-test or package-pin edits in this slice.
