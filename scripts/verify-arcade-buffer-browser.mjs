@@ -73,6 +73,7 @@ try {
     return Object.entries(expected).every(([name,value])=>typeof value==='number'?Number(values[name])===value:values[name]===value);
   },expected);
   const cycle=async label=>{
+    await page.getByTitle('Game Console',{exact:true}).click();
     await flag().click();await page.getByTestId('bw-arcade-a').waitFor({state:'visible'});
     await wait({hex:'01020304',currentNumber:258,phase:0});const initial=await observe();
     await page.getByTestId('bw-arcade-a').click();await wait({hex:'cdab0304',currentNumber:43981,phase:1});const numeric=await observe();
