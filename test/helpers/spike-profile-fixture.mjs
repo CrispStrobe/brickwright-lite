@@ -6,7 +6,7 @@ import {createHash} from 'node:crypto';
 import {profileFiles} from '../../scripts/lib/spike-resource-profile.mjs';
 import {initialFlashScenario} from '../../scripts/lib/spike-initial-flash.mjs';
 const sha=b=>createHash('sha256').update(b).digest('hex');
-export async function syntheticProfile (root,kind,{seed=false}={}) {
+export async function syntheticProfile (root,kind,{seed=false,compiled=false}={}) {
     const source=join(root,kind+'-source');await mkdir(source);
     const files=Object.fromEntries(profileFiles[kind].map(n=>[n,Buffer.from(`synthetic ${n}\n`)]));
     const elf=Buffer.alloc(52);elf.set([127,69,76,70,1,1]);elf.writeUInt16LE(40,18);
@@ -16,7 +16,7 @@ export async function syntheticProfile (root,kind,{seed=false}={}) {
     if(seed)files['initial-flash.bin']=Buffer.alloc(8192);
     files[kind==='guest'?'arena-demo.resc':'nuttx.resc']=Buffer.from(kind==='guest'?
         `mach create\nmachine LoadPlatformDescription @${join(source,'arena-demo.repl')}\n`:
-        `include @${join(source,'models.cs')}\nmach create\nmachine LoadPlatformDescription @${join(source,'platforms/boards/spike-prime.repl')}\nemulation CreatePrimeElectricalPorts "machine-0"\n${seed?initialFlashScenario(source):''}`);
+        `${compiled?'':`include @${join(source,'models.cs')}\n`}mach create\nmachine LoadPlatformDescription @${join(source,'platforms/boards/spike-prime.repl')}\nemulation CreatePrimeElectricalPorts "machine-0"\n${seed?initialFlashScenario(source):''}`);
     const manifest={};
     for(const [n,b] of Object.entries(files)){await mkdir(dirname(join(source,n)),{recursive:true});await writeFile(join(source,n),b);manifest[n]=sha(b);}
     await writeFile(join(source,'manifest.json'),JSON.stringify(manifest));

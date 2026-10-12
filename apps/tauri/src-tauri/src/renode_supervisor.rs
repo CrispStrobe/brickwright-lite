@@ -94,10 +94,12 @@ impl SessionControl {
 pub(crate) enum SpikeTopology {
     Default,
     SixMotors,
+    DualUltrasonic,
 }
 impl SpikeTopology {
     pub(crate) fn parse(value: Option<&str>) -> Result<Self, String> {
         match value { None | Some("default") => Ok(Self::Default), Some("six-motors") => Ok(Self::SixMotors),
+            Some("dual-ultrasonic") => Ok(Self::DualUltrasonic),
             _ => Err("unknown SPIKE topology".into()) }
     }
 }
@@ -106,6 +108,22 @@ fn topology_commands(config: &serde_json::Value, topology: SpikeTopology) -> Res
         return Err("invalid packaged motor-port declaration".into());
     }
     if topology == SpikeTopology::Default { return Ok(Vec::new()); }
+    if topology == SpikeTopology::DualUltrasonic {
+        let marker = &config["addressedSensorCapability"];
+        let image = config["identity"]["imageSha256"].as_str().unwrap_or("");
+        let valid_marker = marker.as_object().is_some_and(|m| m.len() == 3 &&
+            ["abi", "address", "userspaceSha256"].iter().all(|k| m.contains_key(*k))) &&
+            marker["abi"].as_u64() == Some(1) &&
+            marker["address"].as_u64().is_some_and(|a| a % 4 == 0 && (0x08060000..=0x080ffffc).contains(&a)) &&
+            image.len() == 64 && image.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)) &&
+            marker["userspaceSha256"].as_str() == Some(image);
+        if config["identity"]["firmware"] != "brickwright-nuttx" || config["identity"]["transport"] != "none" ||
+            !config["programMailbox"].as_u64().is_some_and(|a| a % 4 == 0 && (0x20020000..=0x20040000-112).contains(&a)) || !valid_marker {
+            return Err("dual ultrasonic requires image-bound own full NuttX addressed API".into());
+        }
+        return Ok(["portD Detach", "portE Attach \"ultrasonic\"", "portF Attach \"ultrasonic\""]
+            .into_iter().map(str::to_owned).collect());
+    }
     if config["identity"]["firmware"] != "brickwright-nuttx" || config["motorPorts"].as_u64() != Some(6) {
         return Err("six-motor topology is not supported by this own firmware package".into());
     }
@@ -492,8 +510,8 @@ impl RenodeSupervisor {
     }
 
     pub(crate) fn start_spike_profile(&self, backend: Option<&str>, topology: SpikeTopology) -> Result<RenodeEndpoint, String> {
-        if topology == SpikeTopology::SixMotors && backend != Some("nuttx") {
-            return Err("six-motor topology requires own NuttX firmware".into());
+        if topology != SpikeTopology::Default && backend != Some("nuttx") {
+            return Err("custom topology requires own NuttX firmware".into());
         }
         if backend.is_some_and(|name| !matches!(name, "guest" | "nuttx")) {
             return Err("unknown SPIKE execution backend".into());
@@ -544,8 +562,8 @@ impl RenodeSupervisor {
         if backend.is_some_and(|name| config["identity"]["firmware"].as_str() != Some(if name == "nuttx" {"brickwright-nuttx"} else {"brickwright-arena-demo"})) {
             return Err("requested SPIKE backend is not packaged in this desktop build".into());
         }
-        if topology == SpikeTopology::SixMotors && (config["identity"]["firmware"] != "brickwright-nuttx" || config.get("programMailbox").is_none()) {
-            return Err("six-motor topology requires own full NuttX firmware".into());
+        if topology != SpikeTopology::Default && (config["identity"]["firmware"] != "brickwright-nuttx" || config.get("programMailbox").is_none()) {
+            return Err("custom topology requires own full NuttX firmware".into());
         }
         if config["identity"]["firmware"] == "brickwright-arena-demo" {
             verify_arena_manifest(&root, &manifest)?;
@@ -1540,6 +1558,41 @@ mod tests {
         assert!(supervisor.start_spike_profile(Some("guest"),SpikeTopology::SixMotors).is_err());
         assert!(supervisor.start_spike_profile(None,SpikeTopology::SixMotors).is_err());
         assert!(supervisor.session.lock().unwrap().is_none(), "unsupported profiles must fail before process creation");
+    }
+
+    #[test]
+    fn dual_ultrasonic_launch_requires_bound_marker_and_attaches_before_load() {
+        let config = serde_json::json!({"identity":{"firmware":"brickwright-nuttx", "transport":"none", "imageSha256":"a".repeat(64)},
+            "programMailbox":0x20020100u64, "addressedSensorCapability":{"abi":1,"address":0x08060100u64,"userspaceSha256":"a".repeat(64)}});
+        assert_eq!(SpikeTopology::parse(Some("dual-ultrasonic")).unwrap(),SpikeTopology::DualUltrasonic);
+        let user = Path::new("/trusted/nuttx-user.elf");
+        let mut args=spike_arguments(Path::new("/trusted/nuttx.resc"),user,
+            Path::new("/trusted/scripts/state.py"),Path::new("/trusted/config.json")).unwrap();
+        insert_topology_commands(&mut args,user,&config,SpikeTopology::DualUltrasonic).unwrap();
+        let load=args.iter().position(|a| a.starts_with("sysbus LoadELF")).unwrap();
+        for command in ["portD Detach","portE Attach \"ultrasonic\"","portF Attach \"ultrasonic\""] {
+            assert!(args.iter().position(|a| a==command).unwrap()<load);
+        }
+        assert!(!args.iter().any(|a| a=="portC Attach \"motor\""));
+        for field in ["addressedSensorCapability","programMailbox"] {
+            let mut bad=config.clone();bad.as_object_mut().unwrap().remove(field);
+            assert!(topology_commands(&bad,SpikeTopology::DualUltrasonic).is_err());
+        }
+        for marker in [serde_json::json!({"abi":true,"address":0x08060100u64,"userspaceSha256":"a".repeat(64)}),
+            serde_json::json!({"abi":1,"address":0x08060101u64,"userspaceSha256":"a".repeat(64)}),
+            serde_json::json!({"abi":1,"address":0x080ffffdu64,"userspaceSha256":"a".repeat(64)}),
+            serde_json::json!({"abi":1,"address":0x08060100u64,"userspaceSha256":"b".repeat(64)}),
+            serde_json::json!({"abi":1,"address":0x08060100u64,"userspaceSha256":"a".repeat(64),"path":"other"})] {
+            let mut bad=config.clone();bad["addressedSensorCapability"]=marker;
+            assert!(topology_commands(&bad,SpikeTopology::DualUltrasonic).is_err());
+        }
+        for (field,value) in [("firmware","micropython-prime"),("transport","ble"),("imageSha256","bad")] {
+            let mut bad=config.clone();bad["identity"][field]=value.into();
+            assert!(topology_commands(&bad,SpikeTopology::DualUltrasonic).is_err());
+        }
+        let supervisor=RenodeSupervisor::new();
+        assert!(supervisor.start_spike_profile(Some("guest"),SpikeTopology::DualUltrasonic).is_err());
+        assert!(supervisor.session.lock().unwrap().is_none());
     }
 
     #[test]

@@ -67,7 +67,7 @@ fn execute(
             match (topology, args["backend"].as_str()) {
                 (SpikeTopology::Default, None) => debugger.start(supervisor),
                 (SpikeTopology::Default, backend) => debugger.start_spike_backend(supervisor, backend),
-                (SpikeTopology::SixMotors, backend) => debugger.start_spike_profile(supervisor, backend, topology),
+                (SpikeTopology::SixMotors | SpikeTopology::DualUltrasonic, backend) => debugger.start_spike_profile(supervisor, backend, topology),
             }.map(str::to_owned)
         }
         Operation::RenodeSpikeClose => {

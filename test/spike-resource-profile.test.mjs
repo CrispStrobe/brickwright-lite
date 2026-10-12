@@ -9,6 +9,28 @@ import {createHash} from 'node:crypto';
 import {freezeResourceProfile} from '../scripts/lib/spike-resource-profile.mjs';
 import {syntheticProfile} from './helpers/spike-profile-fixture.mjs';
 const sha=b=>createHash('sha256').update(b).digest('hex');
+test('compiled NuttX templates relocate without loading retained source types again',async()=>{
+    for(const seed of [false,true]){
+        const root=await mkdtemp(join(tmpdir(),'bw-profile-compiled-'));try{
+            const {source,manifest}=await syntheticProfile(root,'nuttx',{seed,compiled:true});
+            const resources=join(root,'resources');await mkdir(resources);
+            const output=join(resources,'nuttx');
+            const result=await freezeResourceProfile('nuttx',source,output,resources);
+            const text=await readFile(join(output,'nuttx.resc'),'utf8');
+            assert.ok(text.startsWith('mach create\n'));
+            assert.ok(!text.includes('include @') && !text.includes(source));
+            assert.equal(result.manifest['models.cs'],manifest['models.cs']);
+            // Already portable compiled profiles remain accepted byte-for-byte.
+            const second=join(resources,'second');
+            await freezeResourceProfile('nuttx',output,second,resources);
+            assert.equal(await readFile(join(second,'nuttx.resc'),'utf8'),text);
+            const poisoned=Buffer.from(text+'include @models.cs\n');
+            await writeFile(join(source,'nuttx.resc'),poisoned);manifest['nuttx.resc']=sha(poisoned);
+            await writeFile(join(source,'manifest.json'),JSON.stringify(manifest));
+            await assert.rejects(freezeResourceProfile('nuttx',source,join(resources,'poisoned'),resources),/scenario template/);
+        }finally{await rm(root,{recursive:true,force:true});}
+    }
+});
 for(const kind of ['guest','nuttx'])test(`${kind} profile freezes exact mappings and hash cascade, then relocates`,async()=>{
     const root=await mkdtemp(join(tmpdir(),'bw-profile-'));try{
         const {source,manifest}=await syntheticProfile(root,kind,{seed:kind==='nuttx'});
