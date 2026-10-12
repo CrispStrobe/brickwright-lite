@@ -5,7 +5,8 @@
 CLAIMED — Codex Arcade integration, `lane/arcade-partial-closure-20261012`.
 Envelope: `pixel-image.js`, `bw-artwork-bundle.js`, `bw-animation-import.js`,
 `bw-animation-resources.js`, Pixel editor JSX/CSS, affected tracked mirrors,
-new bounded-artwork helpers if needed, original historical-reader fixture,
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js` runtime resource
+validation and any tracked twin, new bounded-artwork helpers if needed, historical-reader fixture,
 focused document/editor/native-runtime/SB3/export controls and animation browser
 qualification scripts; Arcade handoff and GUI ledger. Extend indexed editing
 through512x512 with complete document/frame/layer budgets checked before new
