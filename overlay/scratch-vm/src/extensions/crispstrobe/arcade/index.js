@@ -2788,18 +2788,25 @@ module.exports = makeExt(`// Name: Arcade
       const created = this.createSprite({TEMPLATE: args.TEMPLATE, KIND: args.KIND,
         X: 80, Y: 60, WIDTH: args.WIDTH, HEIGHT: args.HEIGHT, IMAGE: args.IMAGE}, util);
       const finish = id => {
-        const sprite = this._state().sprites[id];
+        const state=this._state();
+        // Creation handlers can destroy either reference or change the current
+        // scene. PXT still finalizes the actual allocated projectile object.
+        const sprite = this._spriteValues.get(id) || state.sprites[id];
         if (!sprite) return id;
         const vx = Number(args.VX) || 0, vy = Number(args.VY) || 0;
-        const xOffset = Math.floor(sprite.width / 2) - 1, yOffset = Math.floor(sprite.height / 2) - 1;
-        const source = this._state().sprites[String(args.SOURCE)];
+        const xOffset = state.tilemap ? -(sprite.width >> 1) : (sprite.width >> 1) - 1;
+        const yOffset = state.tilemap ? -(sprite.height >> 1) : (sprite.height >> 1) - 1;
+        const sourceId=String(args.SOURCE),source=this._spriteValues.get(sourceId) || state.sprites[sourceId];
         const fromSprite = ['sprite', 'kind-source'].includes(String(args.MODE)) && source;
+        const camera=this._camera();
         sprite.vx = vx; sprite.vy = vy;
-        sprite.x = fromSprite ? source.x : vx < 0 ? 160 + xOffset : vx > 0 ? -xOffset : 0;
-        sprite.y = fromSprite ? source.y : vy < 0 ? 120 + yOffset : vy > 0 ? -yOffset : 0;
-        sprite.autoDestroy = true;
-        sprite.flags |= spriteFlags.AutoDestroy;
-        this._clampSprite(sprite); this._positionSprite(id); this._changed();
+        sprite.x = fromSprite ? source.x : camera.offsetX+(vx < 0 ? 160 + xOffset : vx > 0 ? -xOffset : 0);
+        sprite.y = fromSprite ? source.y : camera.offsetY+(vy < 0 ? 120 + yOffset : vy > 0 ? -yOffset : 0);
+        sprite.flags |= spriteFlags.AutoDestroy | spriteFlags.DestroyOnWall;
+        this._syncSpriteFlagState(sprite);
+        // StayInScreen/BounceOnWall apply in physics, after authored creation
+        // returns; projectile placement does not introduce an extra clamp.
+        this._positionSprite(id); this._changed();
         return id;
       };
       return created && typeof created.then === 'function' ? created.then(finish) : finish(created);
