@@ -3949,3 +3949,19 @@ samples with zero producer warnings;11 valid samples retain parser/semantic
 issues. The other12 retain selected-SDK compiler diagnostics. Raw184/142/41/1
 is unchanged. Complete-game execution and editor/save/export qualification remain
 required independently of structural admission.
+
+
+### Runtime classes: parser boundary
+
+`instanceof` now parses as a binary expression at relational precedence. Call
+operands and surrounding Boolean/equality operations remain in the AST. Nine
+parser controls pass, including the existing constructor/parameter-property
+syntax controls. Runtime class identity is explicitly reported as unsupported;
+this is a parser repair, not runtime class support or a corpus promotion.
+
+Before extending class lowering, audit the existing shared record lowering for
+reference identity, alias mutation, constructor ordering, static members,
+getters/setters, inheritance, method receiver binding and escaping callbacks.
+Authoring and export must retain these semantics through editable Code, Blocks
+and saved projects. Mutable instances must not be substituted by JSON snapshots
+or independent scalar field copies.

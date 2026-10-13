@@ -55,7 +55,7 @@ const KEYWORDS = new Set([
     'let', 'const', 'var', 'function', 'if', 'else', 'while', 'for', 'do',
     'return', 'break', 'continue', 'enum', 'namespace', 'export', 'class',
     'true', 'false', 'null', 'undefined', 'new', 'interface', 'type', 'switch',
-    'case', 'default', 'public', 'private', 'static'
+    'case', 'default', 'public', 'private', 'static', 'instanceof'
 ]);
 
 /**
@@ -160,7 +160,7 @@ const BINARY_PRECEDENCE = {
     // read the rest as a new statement.
     '|': 3, '^': 3, '&': 3,
     '==': 4, '!=': 4, '===': 4, '!==': 4,
-    '<': 5, '>': 5, '<=': 5, '>=': 5,
+    '<': 5, '>': 5, '<=': 5, '>=': 5, 'instanceof': 5,
     '<<': 6, '>>': 6, '>>>': 6,
     '+': 7, '-': 7,
     '*': 8, '/': 8, '%': 8, '**': 9
@@ -918,7 +918,7 @@ class Parser {
                 left={...left,assertedType:this.lastType,typeAssertions:[this.lastType,...(left.typeAssertions || [])]};
                 continue;
             }
-            if (t.type !== 'punct') break;
+            if (t.type !== 'punct' && t.type !== 'instanceof') break;
             const prec = BINARY_PRECEDENCE[t.value];
             if (!prec || prec < minPrec) break;
             this.next();

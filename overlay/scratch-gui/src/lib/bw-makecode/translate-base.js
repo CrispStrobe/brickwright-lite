@@ -379,6 +379,10 @@ export class BaseTranslator {
             return this.expr(node.argument);
         case 'Binary': {
             const op = node.op;
+            if (op === 'instanceof') {
+                this.unsupported.push(`instanceof requires runtime class identity${callList(this.callsIn(node))}`);
+                return '0';
+            }
             // An operand that says `of` (`item a of array "P_x"`) is
             // parenthesised: two of them side by side were read as ONE item
             // whose index ran to the second (`item a of array "P_x" + item b`).
