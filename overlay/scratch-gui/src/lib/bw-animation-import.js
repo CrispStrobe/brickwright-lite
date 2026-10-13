@@ -1,14 +1,18 @@
 /** Native animation import preparation. Resources are editor artwork, not actors.
  * Prepare and validate everything before committing to an owned generated ZIP.
  */
-import {newAnimationResourceId, validateDocument, ARTWORK_PATH, ARTWORK_FORMAT} from './bw-artwork-bundle.js';
+import {newAnimationResourceId, validateDocument, ARTWORK_PATH, ARTWORK_FORMAT, ARTWORK_VERSION, artworkBundleVersion} from './bw-artwork-bundle.js';
 import {animationResourceFromDocument} from './bw-animation-resources.js';
-import {pixelsToSvg} from './bw-makecode/pixel-image.js';
+import {pixelsToSvg, editablePixelLayerBudget} from './bw-makecode/pixel-image.js';
 import {ASSET_LIBRARY_ROLE, validateAssetLibraries} from './bw-asset-library.js';
 
 export const prepareAnimationImport = resources => {
     const ids = new Set();
     return resources.map(native => {
+        if (!Array.isArray(native.frames) || !native.frames.length || native.frames.length > 64 ||
+            !editablePixelLayerBudget(native.width, native.height, native.frames.length + 1)) {
+            throw new Error(`Animation "${native.name}" exceeds editable artwork dimensions or pixel budget.`);
+        }
         let document = native.document && JSON.parse(JSON.stringify(native.document));
         if (!document) {
             const frames = native.frames.map((frame, index) => ({id: `frame-${index}`, durationMs: native.intervalMs,
@@ -45,7 +49,7 @@ export const installAnimationImport = async (zip, resources, hashBytes) => {
     const old = zip.file(ARTWORK_PATH);
     const payload = old ? JSON.parse(await old.async('text')) :
         {format: ARTWORK_FORMAT, version: 7, costumes: [], libraries: []};
-    if (payload.format !== ARTWORK_FORMAT || payload.version > 7 || !Array.isArray(payload.costumes)) {
+    if (payload.format !== ARTWORK_FORMAT || payload.version > ARTWORK_VERSION || !Array.isArray(payload.costumes)) {
         throw new Error('Cannot install animations into unsupported artwork source');
     }
     validateAssetLibraries(project, payload.libraries || []);
@@ -87,7 +91,7 @@ export const installAnimationImport = async (zip, resources, hashBytes) => {
     project.targets.push(library);
     const libraries = [...(payload.libraries || []), {targetIndex, role: {...ASSET_LIBRARY_ROLE}}];
     validateAssetLibraries(project, libraries);
-    const next = {...payload, version: 7, libraries, costumes: [...payload.costumes, ...records]};
+    const next = {...payload, version: Math.max(payload.version, 7, artworkBundleVersion(records)), libraries, costumes: [...payload.costumes, ...records]};
     // No mutations before all resources, hashes and bindings have passed.
     for (const asset of assets) zip.file(asset.md5ext, asset.bytes);
     zip.file('project.json', JSON.stringify(project));

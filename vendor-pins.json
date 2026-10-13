@@ -1,6 +1,7 @@
 {
   "bw-circuit-ui": "5f336b24447351ce80742c0e71078cdd23e7912b",
   "bw-board": "9c8777d5b883aa121eb6ee2797c21ac05916f6a1",
-  "sb3-creator": "b2195604fc130a64f6214dfcb508ba5981023684",
-  "stc-compiler-flasher": "30f43384a9f226de3c3cb753e119dd93ca2e81ff"
+  "sb3-creator": "0146aed5c980b6ad224b13c046ea708ea0bee23e",
+  "stc-compiler-flasher": "30f43384a9f226de3c3cb753e119dd93ca2e81ff",
+  "arrays-values": "ef1bf7c4af2e1c2030ed8b1708c3edd8b405e9c5"
 }

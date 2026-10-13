@@ -1,4 +1,4 @@
-import {ARCADE_PALETTE, editablePixelSize, nearestIndex} from './bw-makecode/pixel-image.js';
+import {ARCADE_PALETTE, editablePixelSize, pixelDocumentWithinBudget, nearestIndex} from './bw-makecode/pixel-image.js';
 
 /** Render a published Pixel timeline into Arcade's indexed image model.
  * Independent of the GUI document cache; callers provide the complete source.
@@ -30,6 +30,7 @@ export const animationResourceFromDocument = document => {
     const first = animation.frames[0].layers?.[0]?.content?.value;
     const width = first?.width, height = first?.height;
     if (!editablePixelSize(width, height)) throw new Error(`Animation "${resource.name}" has invalid dimensions.`);
+    if (!pixelDocumentWithinBudget(document)) throw new Error('Animation exceeds artwork pixel budget.');
     const warnings = new Set(), ids = new Set();
     const frames = animation.frames.map(frame => {
         if (typeof frame.id !== 'string' || !frame.id || ids.has(frame.id) || !Array.isArray(frame.layers) || !frame.layers.length) {

@@ -31,6 +31,21 @@ test('invalid or ambiguous tutorial inputs fail explicitly',()=>{
     }
 });
 
+test('unversioned GitHub tutorial packages retain the same repository explicit pin',()=>{
+    const pinned='github:riknoll/arcade-background-scroll#43651f88b917a98ad886fdd4c1c2ad8001ce9b9c';
+    const unpinned='github:riknoll/arcade-background-scroll';
+    const assets=block('assetjson',JSON.stringify({'pxt.json':JSON.stringify({dependencies:{scroll:pinned},files:[]})}));
+    for (const doc of [assets+block('package',`scroll=${unpinned}`),
+        block('package',`scroll=${unpinned}`)+assets,
+        block('package',`scroll=${unpinned}\nscroll=${pinned}`),
+        block('package',`scroll=${pinned}\nscroll=${unpinned}`)]) {
+        assert.equal(tutorialProjectFiles(doc,'let answer=42').dependencies.scroll,pinned);
+    }
+    for (const value of ['github:other/arcade-background-scroll','github:riknoll/arcade-background-scroll#different','*']) {
+        assert.throws(()=>tutorialProjectFiles(assets+block('package',`scroll=${value}`),'let answer=42'),/Conflicting tutorial package/);
+    }
+});
+
 test('CLI assembles an offline native project, and requires an explicit main',()=>{
     const dir=fs.mkdtempSync(path.join(os.tmpdir(),'bw-tutorial-'));
     try{

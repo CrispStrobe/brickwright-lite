@@ -308,7 +308,7 @@ journey passes 5 of 5 against a production build with the fix.
 
 ## Arcade sprite placement from the tile map painter — 2026-10-11
 
-CLAIMED — Claude (opus), owner request ("fix it all"), branch
+DONE candidate — Claude (opus), owner request ("fix it all"), branch
 `lane/arcade-tilemap-placement-20261011`, stacked on Codex's painter stack
 (PR793 → PR794) and agreed with Codex, who is not taking it. In the painter,
 show where sprites are placed on the map and let the user place or move a
@@ -321,6 +321,14 @@ scripts/verify-arcade-tilemap-placement.mjs with its additive light-shard step
 and budget registration in build.yml, Arcade docs and this ledger. No change to
 Codex's tile identity, legacy layout or persistence code paths, circuit source
 or pins; legacy colour-tile placement (`placeOnLegacyTile`) stays out of scope.
+Done: Place sprite tool, placement list, markers and staged Save/Revert in the
+painter; model lib/bw-makecode/tilemap-placements.js. Four model tests run
+the real game and the MakeCode export (moved, added and removed placements;
+the map's own placements only, up to the next map; stale lists refused); three
+source mutants are caught. The new browser journey passes 17 of 17 twice
+against a production build; the painter, tile identity and legacy layout
+journeys still pass (19, 11, 8 checks).
+
 
 ## Arcade tile names and MakeCode asset identity — 2026-10-11
 
@@ -340,7 +348,7 @@ explicitly; never silently alias distinct edited tiles to one exported asset.
 
 ## Arcade painted tilemap project save/reopen — 2026-10-11
 
-DONE — Codex, coordinated with the session owning the circuit green-flag
+CLAIMED — Codex, coordinated with the session owning the circuit green-flag
 repair. Branch `lane/arcade-painted-project-roundtrip-20261011`.
 Extend the existing real-pointer tilemap painter browser journey to save an SB3,
 reopen it through the GUI, verify every painted map/wall/tile pixel and editable
@@ -2838,7 +2846,7 @@ Legacy layout authoring envelope additionally owns `scripts/verify-arcade-legacy
 Legacy authoring followup in PR794 also owns definition artwork/wall editing: new `legacy-tile-definition-editor.jsx`, definition operations in `legacy-layout-editor.js`, and focused tests/browser coverage. Each definition retains its own block/index/timing; only static artwork sources and literal wall predicates are editable. Computed inputs get explicit reasons. No sprite-placement implementation or circuit pin changes.
 
 
-Painted project persistence PR792 merged at `18b2929a8479bcec880660b94c13bbb6c991741a`, reviewed head `eae43ccbad345a5d123026d6a615a83828a6de89`. All seven enabled checks succeeded; conditional deployment checks skipped on the PR. Hosted painter artifact observes34 successful checks, including actual SB3 fresh-context reopen, native edited state, original compiler/render and downloaded MakeCode reimport. Expected and actual merge tree `4470f89493e6c944ef62359888a9053df514c325` match. [Hosted source qualification](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38146762544). No corpus promotion or whole-game equivalence claim.
+## Ended Claude session integration checkpoint — 2026-10-12
 
 Legacy source followup claim: Codex owns `lane/arcade-legacy-image-aliases-20261011`, stacked on PR794. Same helper/test/browser/docs envelope; trace single authored image assignments and aliases on the preceding command chain without reading live handles or flattening image mutation code. Reassignments and ambiguous sources stay explicitly computed. No painter JSX/model overlap, sprite placement, circuit or pin changes.
 
@@ -2870,6 +2878,13 @@ is retained. The lane additionally owns its optional target-dependent default
 core dependency and propagation through `scripts/makecode.mjs`, plus the new
 `test/makecode-tutorial-collector.test.mjs`. Existing assembly tests stay intact.
 Selected main source is explicit; ghost programs are not automatically chosen.
+Operator-requested rescue on `integrate/claude-arcade-rescue-20261012` retains
+exact original797/800/801 commits. No unpublished tracked implementation found;
+three probes privately archived. Combined source47982918f passes20 focused
+placement/countdown/original-terrain/mirror checks,0 skips. Fresh hosted package
+and GUI checks are required; original797/800 light failures preserved. Painter
+installation/original-display readiness repair stays with active Codex bwcx.
+Original branches/worktrees remain unchanged; no failed-check main merge.
 
 ## Arcade extension project qualification — 2026-10-11
 
