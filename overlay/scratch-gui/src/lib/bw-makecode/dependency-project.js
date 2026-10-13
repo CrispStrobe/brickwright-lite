@@ -65,7 +65,18 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
         if (!pkg || typeof pkg.files[file] !== 'string') throw new Error(`Missing resolved dependency source: ${id}/${file}`);
         const nativeAdapter = admitArcadeNativeSource({packageId: id, filename: file, source: pkg.files[file]});
         if (nativeAdapter) {
-            provenance.push({id, file, nativeAdapter});
+            let path;
+            if (nativeAdapter.replacementSource !== undefined) {
+                if (typeof nativeAdapter.replacementSource !== 'string') throw new Error('Native adapter replacement must be reviewed source text');
+                path = `${ROOT}${encodeURIComponent(id)}/${file}`;
+                if (Object.prototype.hasOwnProperty.call(files, path)) throw new Error(`Duplicate dependency input: ${path}`);
+                // Exact-source adapters may retain reviewed initialization at
+                // the original file position; replacing implementations must
+                // not silently drop kind allocations or other initializers.
+                files[path] = nativeAdapter.replacementSource;
+                names.push(path);
+            }
+            provenance.push({id, file, ...(path ? {path} : {}), nativeAdapter});
             continue;
         }
         // Original PXT replaces an asset pack's executable files with generated
