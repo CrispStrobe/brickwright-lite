@@ -794,7 +794,8 @@ class Parser {
         this.expect('punct', ')');
         this.eat('punct', ';');
         const exit = {type: 'If', test: {type: 'Unary', op: '!', argument: test}, consequent: [{type: 'Break'}], alternate: null};
-        return {type: 'While', test: {type: 'Boolean', value: true}, body: [...body, exit]};
+        return {type: 'While', test: {type: 'Boolean', value: true}, body: [...body, exit],
+            doWhile: true, doWhileTest: test, doWhileBody: body};
     }
 
     parseFor () {

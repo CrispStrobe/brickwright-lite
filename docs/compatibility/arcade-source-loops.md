@@ -41,3 +41,35 @@ text-dialog tests. This turns the preserved strict timing/pixel TODO checks into
 required failing checks until the scheduler is fixed. Existing assertions and
 original capture events remain unchanged. A default test run with TODO results
 cannot establish exact phase compatibility.
+
+## Loop exits
+
+Arcade imports lower `break` and `continue` before lazy expressions. Hygienic
+invocation cells hold each loop's exit state, including recursive and overlapping
+function calls. Every nested `if` or block guards statements after an exit. A
+`for` update executes after `continue` and is skipped after `break`; for-of keeps
+its array alias and reevaluated length. Nested loops and functions own their
+exits. Nonfallthrough switches have independent break cells, while `continue`
+reaches the enclosing loop. Unsupported switch fallthrough remains diagnosed.
+
+Focused original/native controls compare results through Code, blocks, saved
+SB3 reopening, executed original export, and reimport. They cover nested exits,
+side effectful conditions and updates, mutable for-of arrays, switch boundaries,
+recursive and overlapping invocations, and generated-name collisions. This
+lowering does not change the other MakeCode target translators or establish
+frame scheduling parity.
+
+### Selected SDK do-while boundary
+
+The parser retains explicit original do-while body and condition metadata.
+Arcade consumes it before namespace and lazy-value lowering: the first body is
+unconditional, `continue` evaluates the posttest once, and `break` skips it.
+Other target translators keep their existing body-plus-tail lowering.
+
+The selected original SDK compiler instead jumps a do-while `continue` directly
+to the body, skipping the posttest. A bounded authored safety-break control
+retains this original-source discrepancy as a failing TODO. Native standard
+semantics are not claimed equivalent to that compiler bug. Native export uses
+normalized `while` and invocation-cell guards; executing that export in the
+original compiler/runtime must match native results. No unbounded original
+probe or silent bug emulation is needed for these controls.
