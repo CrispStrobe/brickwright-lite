@@ -30,3 +30,12 @@ GUI cadence. Those requirements belong to the
 must be integrated and qualified through actual consumer, GUI and original
 runtime controls before a full-game promotion. Unknown or unsupported loop
 expressions remain reported rather than silently replaced.
+
+
+### Required phase qualification
+
+Set `BW_REQUIRE_EXACT_ARCADE_PHASE=1` for the kind, custom terminal and native
+text-dialog tests. This turns the preserved strict timing/pixel TODO checks into
+required failing checks until the scheduler is fixed. Existing assertions and
+original capture events remain unchanged. A default test run with TODO results
+cannot establish exact phase compatibility.

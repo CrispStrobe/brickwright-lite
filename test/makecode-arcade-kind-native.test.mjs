@@ -148,7 +148,7 @@ test('full original Text module allocates once at its explicit source phase, sce
 });
 
 test('unchanged negative-kind source executes real creation and overlap callbacks despite empty queries',
-    {todo:process.env.BW_REQUIRE_EXACT_KIND_TIMING ? false :
+    {todo:process.env.BW_REQUIRE_EXACT_KIND_TIMING || process.env.BW_REQUIRE_EXACT_ARCADE_PHASE==='1' ? false :
         'Exact initial overlap frame timing remains mismatched; preserve original/native clocks and raw failure'},async t=>{
     const source=`let created=0
 let overlaps=0
