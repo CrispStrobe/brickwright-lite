@@ -65,7 +65,7 @@ export async function createI8086DosBench (opts) {
 }
 
 async function createI8086DosBenchSelected (opts) {
-    const {bytes, format, keys, onChar, onExit, variant, chips, files} = opts;
+    const {bytes, format, keys, onChar, onExit, variant, chips, files, onPortAccess} = opts;
     if (!bytes || !bytes.length) throw new Error('the DOS bench was handed an empty image');
 
     // The DOS disk: a Map<name, Uint8Array> that INT 21h create/open/read/write
@@ -143,6 +143,14 @@ async function createI8086DosBenchSelected (opts) {
         cfg = {...base, chips: [...merged, ...chips]};
     }
     const machine = new I8086Machine(withI8086MemoryPreference(cfg));
+    // Observe every port OUT/IN (i8086-machine.js fires this.hooks.onPortAccess
+    // with {dir, port, value}). A DOS Forth `pin!` does an OUT to 0x378+pin, so
+    // the Code-tab run path taps this to drive an 8-pin GPIO strip widget. The
+    // bench normally leaves hooks empty, so existing callers are unaffected.
+    if (typeof onPortAccess === 'function') {
+        machine.hooks = machine.hooks || {};
+        machine.hooks.onPortAccess = onPortAccess;
+    }
     // The hub holds CHIPS, and they do not exist until the machine is built.
     for (const c of (chips || [])) {
         if (c._joinHub && machine.chips[c.name]) c._joinHub.cards.push(machine.chips[c.name]);
