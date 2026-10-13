@@ -12,6 +12,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import {patchArcadeSettingsSB3} from './lib/arcade-settings-sb3-hooks.mjs';
 import {patchArcadeManagedThread} from './lib/arcade-managed-thread-hooks.mjs';
+import {patchSavedProjectDeviceReset} from './lib/saved-project-device-vm-hooks.mjs';
 
 const ROOT = process.cwd();
 const SRC = path.join(ROOT, 'overlay', 'scratch-vm');
@@ -469,6 +470,7 @@ if (vm2.includes(deserPatch)) {
     console.error('  ! virtual-machine.js deserializeProject anchor not found');
     process.exit(1);
 }
+writeFileSync(vmPath2, patchSavedProjectDeviceReset(readFileSync(vmPath2, 'utf8')));
 vm2 = readFileSync(vmPath2, 'utf8');
 const vmSetStcAnchor = '    installTargets (targets, extensions, wholeProject) {';
 const vmSetStcPatch = `    /**

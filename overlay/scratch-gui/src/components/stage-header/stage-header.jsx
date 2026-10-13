@@ -10,6 +10,7 @@ import ToggleButtons from '../toggle-buttons/toggle-buttons.jsx';
 import Controls from '../../containers/controls.jsx';
 import {getStageDimensions} from '../../lib/screen-utils';
 import {STAGE_SIZE_MODES} from '../../lib/layout-constants';
+import {appliedProjectDevice} from '../../lib/saved-project-device-publication.js';
 import {setCircuitView} from '../../lib/bw-debug/debug-view.js';
 
 import fullScreenIcon from './icon--fullscreen.svg';
@@ -127,11 +128,11 @@ const StageViewButtons = ({intl, vm}) => {
     // controls for one pane.
     const MICROPYTHON_DEVICES = ['microbit', 'calliopemini'];
     const [deviceIsMicrobit, setDeviceIsMicrobit] = useState(() =>
-        MICROPYTHON_DEVICES.includes(vm.runtime.bwDeviceId || vm.runtime.stc?.device));
+        MICROPYTHON_DEVICES.includes(appliedProjectDevice(vm.runtime)));
     const [deviceIsArduboy, setDeviceIsArduboy] = useState(() =>
-        (vm.runtime.bwDeviceId || vm.runtime.stc?.device) === 'arduboy');
+        (appliedProjectDevice(vm.runtime)) === 'arduboy');
     const [deviceIsArcade, setDeviceIsArcade] = useState(() => ['arcade', 'pybadge', 'pybadge-lc', 'samd51']
-        .includes(vm.runtime.bwDeviceId || vm.runtime.stc?.device));
+        .includes(appliedProjectDevice(vm.runtime)));
     useEffect(() => {
         const sync = event => {
             const {key, value} = event.detail || {};
@@ -146,8 +147,11 @@ const StageViewButtons = ({intl, vm}) => {
             }
         };
         window.addEventListener('bw-settings-change', sync);
+        // Project load can finish before this effect subscribes. Read the
+        // committed flags again after subscribing to close that mount race.
+        sync({detail: {key: 'bw-device-id', value: appliedProjectDevice(vm.runtime)}});
         return () => window.removeEventListener('bw-settings-change', sync);
-    }, []);
+    }, [vm]);
     return (
         <div
             className={styles.stageSizeToggleGroup}
