@@ -26,7 +26,8 @@ test('class accessors, aliases and reassignment retain eager call checks',()=>{
   'class Reader {read(){return N.value}}let reader=new Reader();let fn=reader.read;fn();namespace N {export let value=7}',
   'class Reader {read(){return N.value}}let reader:any=null;reader=new Reader();reader.read();namespace N {export let value=7}',
   'class Reader {constructor(){this.read()}read(){return N.value}}let C=Reader;let reader=new C();namespace N {export let value=7}',
-  'let read=()=>N.value;let value=read();namespace N {export let value=7}'
+  'let read=()=>N.value;let value=read();namespace N {export let value=7}',
+  'class Reader {read(){return N.value}}let reader=new Reader();let fn=reader.read;let fn2=fn;fn2();namespace N {export let value=7}'
  ])assert.match(lower(source).unsupported.join('\n'),/before initialization/,source);
  const unknownConstructor=lower('class Reader {constructor(){this.read()}read(){return N.value}}let C:any=null;let value=new C();namespace N {export let value=7}');assert.deepEqual(unknownConstructor.unsupported,[]);assert.match(unknownConstructor.warnings.join('\n'),/dynamic constructor/);
  const changed=lower('class Reader {read(){return N.value}}let reader:any=new Reader();reader=null;reader.read();namespace N {export let value=7}');assert.deepEqual(changed.unsupported,[]);assert.match(changed.warnings.join('\n'),/dynamic receiver/);
@@ -53,7 +54,7 @@ for(const [name,source,names]of [
  const execute=async imported=>{assert.deepEqual(imported.unsupported,[]);assert.deepEqual(imported.warnings,[]);const run=await runProgram(imported.code,{frames:50,storage:true});runs.push(run);check(run);return run;};
  try{
   const imported=arcadeToPseudocode(source),run=await execute(imported);await execute({...imported,code:run.creator.decompile()});
-  const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);const original=await runPxtArcade(exported.files,{fakeClock:true});for(const n of names)assert.equal(original[`Game_${n}`],expected[n],n+' exported');await execute(arcadeToPseudocode(exported.files));
+  const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);const original=await runPxtArcade(exported.files,{fakeClock:true});const declared=parseMakeCodeTs(exported.ts).body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls.map(decl=>decl.name));for(const n of names){const matches=declared.filter(name=>name===n || name===`Game_${n}`);assert.equal(matches.length,1,n+' exported declaration');assert.equal(original[matches[0]],expected[n],n+' exported');}await execute(arcadeToPseudocode(exported.files));
   const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));fresh.vm.greenFlag();await stepFrames(fresh.vm,50);check(fresh);
  }finally{for(const run of runs)run.vm.quit();clearStrayTimers();}
 });

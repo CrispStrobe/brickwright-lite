@@ -293,7 +293,7 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
             if (st.type === 'Declaration') {
                 for (const decl of st.decls) {
                     trace(decl.init,scope,active);
-                    if(!lexical){const symbol=scope.symbols.get(decl.name);if(symbol){symbol.classAlias=access(decl.init,scope,active)?.classNode?access(decl.init,scope,active):null;symbol.instanceClass=classOf(decl.init,scope,active);if(decl.init?.type==='FunctionExpression'){symbol.functionNode=decl.init;symbol.bindingScope=scope;}symbol.callAlias=methodOf(decl.init,scope,active) || access(decl.init,scope,active)?.functionNode && access(decl.init,scope,active);initialized.add(symbol);}}
+                    if(!lexical){const symbol=scope.symbols.get(decl.name);if(symbol){symbol.classAlias=access(decl.init,scope,active)?.classNode?access(decl.init,scope,active):access(decl.init,scope,active)?.classAlias || null;symbol.instanceClass=classOf(decl.init,scope,active);if(decl.init?.type==='FunctionExpression'){symbol.functionNode=decl.init;symbol.bindingScope=scope;}symbol.callAlias=methodOf(decl.init,scope,active) || access(decl.init,scope,active)?.callAlias || (access(decl.init,scope,active)?.functionNode ? access(decl.init,scope,active) : null);initialized.add(symbol);}}
                 }
                 continue;
             }
