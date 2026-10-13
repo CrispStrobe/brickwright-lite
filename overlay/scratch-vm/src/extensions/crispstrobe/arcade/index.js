@@ -896,7 +896,7 @@ module.exports = makeExt(`// Name: Arcade
       let value=Scratch.BWValues.decode(args.VALUE);
       if(type==='NumberArray'){value=Scratch.BWValues.arrayValue(this._runtime,args.VALUE);if(!value || value.some(v=>typeof Scratch.BWValues.decode(v)!=='number'))throw new Error('Arcade settings require a number array');value=value.map(v=>Scratch.BWValues.decode(v));}
       else if(type==='Buffer')value=this._buffer(args.VALUE);
-      else if(type==='Number' && typeof value!=='number' || type==='String' && typeof value!=='string')throw new Error('Arcade setting value type does not match');
+      else if(type==='Number' && typeof value!=='number' && value!=null || type==='String' && typeof value!=='string')throw new Error('Arcade setting value type does not match');
       if(!['Number','String','NumberArray','Buffer'].includes(type))throw new Error('Arcade setting type is not supported');
       this._settingsStore().call('write'+type,key,value);
     });}

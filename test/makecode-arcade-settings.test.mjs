@@ -16,6 +16,9 @@ import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const require=createRequire(import.meta.url),settings=require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/program-settings.js');
 const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value?.bwUndefined===true?undefined:v.value]));
 const source=`settings.clear()
+settings.writeNumber("nullable",null)
+let nullable=settings.readNumber("nullable")
+settings.remove("nullable")
 settings.writeNumber("n",1.25)
 settings.writeString("text","A€🙂")
 let numbers=[-31,-32,127,128,65536,3.141592653589793]
@@ -45,7 +48,7 @@ let kept=settings.readNumber("#keep")
 let after=settings.list().length
 let done=1
 done+=0`;
-const keys=['first','detached','count','text','packed','independent','missing','missingText','exists','listed','removed','cleared','kept','after','done'];
+const keys=['nullable','first','detached','count','text','packed','independent','missing','missingText','exists','listed','removed','cleared','kept','after','done'];
 
 test('Settings codecs and byte backend regenerate exactly from pinned original inputs',()=>{execFileSync(process.execPath,['scripts/generate-arcade-settings.mjs','--check'],{stdio:'pipe'});});
 test('native typed Settings matches original bytes, missing values, detached reads, ordering and operations through editable roundtrips',async()=>{
