@@ -6,7 +6,14 @@
 export function lowerSourceLoopControl(program) {
     const names=new Set();
     const scan=node=>{if(!node || typeof node!=='object')return;if(node.name)names.add(node.name);for(const name of node.params || [])names.add(name);for(const value of Object.values(node))if(Array.isArray(value))value.forEach(scan);else scan(value);};
-    scan(program);let next=0,changed=false;
+    scan(program);let next=0,changed=false;const warnings=new Set(program.sourceWarnings || []);
+    const ownedContinue=node=>{
+        if(!node || typeof node!=='object')return false;
+        if(Array.isArray(node))return node.some(ownedContinue);
+        if(node.type==='Continue')return true;
+        if(['While','For','ForOf','FunctionDeclaration','FunctionExpression','Class'].includes(node.type))return false;
+        return Object.values(node).some(ownedContinue);
+    };
     const fresh=()=>{let name;do{name=`__bwLoopExit${++next}`;}while(names.has(name));names.add(name);return name;};
     const id=name=>({type:'Identifier',name,temporary:true});
     const num=value=>({type:'Number',value:String(value)});
@@ -81,6 +88,7 @@ export function lowerSourceLoopControl(program) {
         if(['While','For'].includes(node.type)){
             if(!node.doWhile && !exits(node.body))return {...node,init:node.init?visit(node.init,{flags:[]}):node.init,test:expression(node.test),update:expression(node.update),body:list(node.body,{flags:[],breakName:null,continueName:null})};
             changed=true;
+            if(node.doWhile && ownedContinue(node.doWhileBody))warnings.add('Selected Arcade SDK do-while continue skips its posttest; native uses standard posttest semantics and normalized export (pxt-arcade 4.2.1 / pxt-core 13.2.1 boundary).');
             const stop=fresh(),skip=fresh(),inner={flags:[stop,skip],breakName:stop,continueName:skip};
             const test=node.doWhile?{type:'Boolean',value:true}:node.test || {type:'Boolean',value:true};
             const body=[decl(skip),{type:'If',test:{type:'Unary',op:'!',argument:expression(test)},consequent:[assign(stop,1)],alternate:[]},guard([stop],list(node.doWhile?node.doWhileBody:node.body,inner))];
@@ -96,5 +104,5 @@ export function lowerSourceLoopControl(program) {
         return expression(node);
     }
     const body=list(program.body,{flags:[],breakName:null,continueName:null});
-    return changed?{...program,body,loweredSourceLoopControl:true}:{...program,body};
+    return changed?{...program,body,loweredSourceLoopControl:true,sourceWarnings:[...warnings]}:{...program,body};
 }

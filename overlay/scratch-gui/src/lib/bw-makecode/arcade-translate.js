@@ -4529,6 +4529,8 @@ export function arcadeToPseudocode (files, opts = {}) {
     const withAnimationDiagnostics = result => {
         result = nameArtworkSprites(result);
         let code = result.code;
+        const sourceWarnings=parsed.sourceWarnings || [];
+        if(sourceWarnings.length)code=code.replace(/^(DEVICE ARCADE.*)$/m, (_,header)=>header+'\n'+sourceWarnings.map(warning=>'# source warning: '+warning).join('\n'));
         if(scrollerVersion===LEGACY_SCROLLER_REVISION)code=code.replace(/^WHEN flag clicked:$/m, `WHEN flag clicked:\n  arcade use background scroll version "${scrollerVersion}"`);
         if(characterVersion===LEGACY_CHARACTER_REVISION)code=code.replace(/^WHEN flag clicked:$/m, `WHEN flag clicked:\n  arcade use character animation version "${characterVersion}"`);
         let costumes = result.costumes;
@@ -4557,7 +4559,7 @@ export function arcadeToPseudocode (files, opts = {}) {
             paletteDiagnostics.push('Project palette index zero on a fixed Scratch background requires native Arcade background rendering');
         }
         code = code.replace(/^WHEN flag clicked:$/gm, 'WHEN arcade source starts:');
-        return {...result,code,costumes,animationResources,warnings:recovered.warnings,
+        return {...result,code,costumes,animationResources,warnings:[...recovered.warnings,...sourceWarnings],
             unsupported:[...new Set([...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...result.unsupported])]};
     };
     let textSpriteInitializer=false;

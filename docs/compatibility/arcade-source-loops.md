@@ -73,3 +73,9 @@ semantics are not claimed equivalent to that compiler bug. Native export uses
 normalized `while` and invocation-cell guards; executing that export in the
 original compiler/runtime must match native results. No unbounded original
 probe or silent bug emulation is needed for these controls.
+
+Imports containing a continue owned by do-while carry a named source warning
+for the qualified pxt-arcade 4.2.1 / pxt-core 13.2.1 pair. It appears in the GUI
+import status, CLI notes and editable Code comment. The warning does not block
+native authoring or normalized export. Nested loop/function continues do not
+receive it, and normalized reimport has no original do-while continue warning.
