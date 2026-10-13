@@ -3986,3 +3986,25 @@ At clean consumer `1023ee0423` and producer `7154951853`, the unchanged context
 audit remains 18 structurally admitted of 29 selected-SDK valid projects, with
 11 valid blocked and 12 selected-SDK diagnostic projects. Raw 142/41/1 remains
 unchanged. Promotion requires the actual execution and editor journeys separately.
+
+
+## Numeric selection and random authoring — 2026-10-13
+
+The shared vocabulary now has a continuous random-fraction Number reporter, a
+fixed min/max/randomRange Number reporter, and a percentage-chance Boolean
+reporter. Their connected inputs, menu metadata, Code graphs, saved SB3 files,
+original MakeCode export and reimport have bounded controls. The runtime preserves
+MakeCode's percentage guards and numeric selection rules for NaN and signed zero.
+
+The selected compiler's numeric folding/prefix profile is distinct from locally
+authored BWValues unary operations. Both paths have explicit signed-zero export
+controls. See [the numeric/random contract](compatibility/arcade-math-random.md)
+for source URLs, methods, exact boundaries and reproducible tests.
+
+Remaining GUI acceptance: select each word in the actual editor palette, change
+the fixed operation menu, wire a live controller-driven input, and save/reopen and
+export the edited graph in a hosted production build. Native menu metadata and
+serialized connected graphs do not establish that full-editor journey. Other
+Math APIs, arbitrary compiler const propagation, and the existing clamp rewrite's
+argument-order behavior remain separate conversion tasks. No random trajectory
+or whole-game compatibility count is promoted by these controls.

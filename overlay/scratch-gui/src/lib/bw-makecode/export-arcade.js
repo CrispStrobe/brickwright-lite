@@ -794,6 +794,24 @@ class ArcadeEmitter {
         return reporter && (this.isBoolean(reporter) || reporter.opcode==='data_variable') ? this.expr(reporter) : this.value(b,name);
     }
 
+    mathValue(b,name) {
+        const slot=b.inputs?.[name]?.[1];
+        let text=null;
+        if(Array.isArray(slot) && slot[0]>=4 && slot[0]<=8)text=String(slot[1]);
+        const shadow=typeof slot==='string' && this.block(slot);
+        if(shadow?.shadow && ['math_number','math_integer','math_whole_number','math_positive_number','math_angle'].includes(shadow.opcode))text=String(Object.values(shadow.fields || {})[0]?.[0]);
+        if(text!==null && Object.is(Number(text),-0)){
+            const key='LiteralNegativeZero';
+            if(!this.valueOperationHelpers.has(key)){
+                const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.valueOperationHelpers.values()].map(x=>typeof x==='string'?x:x.name));
+                let helper='__bwLiteralNegativeZero';while(occupied.has(helper))helper+='_';
+                this.valueOperationHelpers.set(key,{name:helper,source:`function ${helper}(divisor: number): number { return -1 / divisor }`});
+            }
+            return `${this.valueOperationHelpers.get(key).name}(Infinity)`;
+        }
+        return this.arrayValue(b,name);
+    }
+
     namedKind (name) {
         if (['Player','Projectile','Food','Enemy'].includes(name)) return `SpriteKind.${name}`;
         if (name==='Text' && this.hasTextKindLibrary) {this.requiresTextSpritePackage=true;return 'SpriteKind.Text';}
@@ -867,7 +885,7 @@ class ArcadeEmitter {
         const input = b.inputs && b.inputs[name];
         if (!input) return fallback;
         const slot = input[1];
-        const numeric = ['operator_equals','operator_gt','operator_lt','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','arcade_truncateNumber','arcade_signNumber','operator_mathop','operator_random','planetemaths_min','planetemaths_max'].includes(b.opcode);
+        const numeric = ['operator_equals','operator_gt','operator_lt','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','arcade_truncateNumber','arcade_signNumber','arcade_randomNumber','arcade_mathBinary','operator_mathop','operator_random','planetemaths_min','planetemaths_max'].includes(b.opcode);
         if (Array.isArray(slot)) {
             const [type, text] = slot;
             if (type === 12 || type === 13) {
@@ -967,7 +985,7 @@ class ArcadeEmitter {
     isBoolean (b) {
         return !!b && ['arrays_valueTruthy','arrays_valueCompare','arrays_referenceRemove','arrays_referenceTruthy', 'arrays_contains', 'operator_and', 'operator_or', 'operator_not', 'operator_gt', 'operator_lt', 'operator_equals',
             'sensing_touchingobject', 'sensing_keypressed', 'sensing_mousedown', 'data_listcontainsitem',
-            'arcade_settingsExists', 'arcade_spriteDataReadBoolean', 'arcade_bufferIsReadOnly', 'arcade_bufferEquals', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_spriteTileKindAt', 'arcade_imageEquals', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
+            'arcade_percentChance','arcade_settingsExists', 'arcade_spriteDataReadBoolean', 'arcade_bufferIsReadOnly', 'arcade_bufferEquals', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_spriteTileKindAt', 'arcade_imageEquals', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
     }
 
     menuField (b, input, field) {
@@ -998,6 +1016,9 @@ class ArcadeEmitter {
         case 'operator_mod': return `(${v('NUM1')} % ${v('NUM2')})`;
         case 'operator_round': return `Math.round(${v('NUM')})`;
         case 'operator_random': return `randint(${v('FROM')}, ${v('TO')})`;
+        case 'arcade_randomNumber': return 'Math.random()';
+        case 'arcade_mathBinary': {const operation=String(this.literalInput(b,'OP') ?? this.menuField(b,'OP','mathOperations'));if(!['min','max','randomRange'].includes(operation)){this.note('Arcade math requires a fixed supported operation');return 'undefined';}return `Math.${operation}(<any>${this.mathValue(b,'A')}, <any>${this.mathValue(b,'B')})`;}
+        case 'arcade_percentChance': return `Math.percentChance(<any>${this.mathValue(b,'PERCENTAGE')})`;
         // Planète Maths: the importer's spelling of Math.min/max/pow (they
         // kept only their first argument before, on the way in).
         // In an Arcade program the blocks run with Scratch's casts (text -> 0),
@@ -1118,7 +1139,7 @@ class ArcadeEmitter {
                 let name='__bw'+key;
                 const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.spriteVar.values(),...this.artVar.values(),...this.valueOperationHelpers.values()].map(x=>typeof x==='string'?x:x.name));
                 while(occupied.has(name))name+='_';
-                this.valueOperationHelpers.set(key,{name,source:unary?`function ${name}(value: any): number { return ${op}value }`:`function ${name}(left: any, right: any): ${compare?'boolean':op==='+'?'any':'number'} { return left ${op} right }`});
+                this.valueOperationHelpers.set(key,{name,source:unary?`function ${name}(value: any): number { return ${op==='-'?'-1 * value':'+value'} }`:`function ${name}(left: any, right: any): ${compare?'boolean':op==='+'?'any':'number'} { return left ${op} right }`});
             }
             const helper=this.valueOperationHelpers.get(key).name;
             return unary?`${helper}(${this.arrayValue(b,'VALUE')})`:`${helper}(${this.arrayValue(b,'LEFT')}, ${this.arrayValue(b,'RIGHT')})`;

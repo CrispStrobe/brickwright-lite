@@ -784,6 +784,9 @@ module.exports = makeExt(`// Name: Arcade
 
           {opcode:'truncateNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade truncate [NUM] toward zero',arguments:n('NUM',0)},
           {opcode:'signNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade sign of [NUM]',arguments:n('NUM',0)},
+          {opcode:'randomNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade random fraction'},
+          {opcode:'mathBinary',blockType:Scratch.BlockType.REPORTER,text:'Arcade math [OP] first [A] second [B]',arguments:{OP:{type:Scratch.ArgumentType.STRING,menu:'mathOperations',defaultValue:'randomRange'},...n('A',0),...n('B',10)}},
+          {opcode:'percentChance',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade percent chance [PERCENTAGE]',arguments:n('PERCENTAGE',50)},
 
           // ── Game flow ────────────────────────────────────────────
           '---',
@@ -805,6 +808,7 @@ module.exports = makeExt(`// Name: Arcade
             text: 'stop Arcade countdown' }
         ],
         menus: {
+          mathOperations:{acceptReporters:false,items:['min','max','randomRange']},
           hudElements:{acceptReporters:false,items:['score','life','countdown']},
           buttons: {acceptReporters: true, items: [
             {text: 'A', value: 'a'}, {text: 'B', value: 'b'},
@@ -1520,6 +1524,44 @@ module.exports = makeExt(`// Name: Arcade
       const negative = axis === 'y' ? 'up' : 'left';
       const positive = axis === 'y' ? 'down' : 'right';
       return (Number(held(positive)) - Number(held(negative))) * (Number(args.STEP) || 0) / 30;
+    }
+    _mathArgument(args,key,util) {
+      const value=Scratch.BWValues.decode(args[key]);
+      const block=util?.target?.blocks?.getBlock(util.thread?.peekStack?.());
+      const input=block?.inputs?.[key];
+      const shadow=input && input.block===input.shadow && util?.target?.blocks?.getBlock(input.shadow);
+      // Numeric editor shadows carry text; connected primitive reporters do not.
+      if (typeof value==='string' && shadow && ['math_number','math_integer','math_whole_number','math_positive_number','math_angle'].includes(shadow.opcode)) return Number(value);
+      if (value!==null && typeof value==='object') throw new TypeError('Arcade math needs a primitive value');
+      return value;
+    }
+    randomNumber() {return Math.random();}
+    mathBinary(args,util) {
+      const a=this._mathArgument(args,'A',util),b=this._mathArgument(args,'B',util);
+      const operation=String(args.OP);
+      let value;
+      if (operation==='min') value=a<=b?a:b;
+      else if (operation==='max') value=a>=b?a:b;
+      else if (operation==='randomRange') value=this._randomRange(a,b);
+      else throw new TypeError('Arcade math operation is not implemented: '+operation);
+      return Scratch.BWValues.encode(value);
+    }
+    _randomRange(min,max) {
+      // PXT simulator Math_.randomRange (MIT), Copyright (c) Microsoft Corporation.
+      // See scratch-gui/static/licenses/pxt-core.MIT.txt and
+      // https://github.com/microsoft/pxt/blob/v13.2.1/pxtsim/langsupport.ts
+      // Preserve its equality guard,
+      // numeric integer test, bound swapping, and one platform entropy draw.
+      if (min==max) return min;
+      if (min>max) {const swap=min;min=max;max=swap;}
+      return Math.floor(min)==min && Math.floor(max)==max
+        ? min+Math.floor(Math.random()*(max-min+1)) : min+Math.random()*(max-min);
+    }
+    percentChance(args,util) {
+      const percentage=this._mathArgument(args,'PERCENTAGE',util);
+      if (percentage>=100) return true;
+      if (percentage<=0) return false;
+      return this._randomRange(0,99)<percentage;
     }
     truncateNumber(args) {return Math.trunc(Number(Scratch.BWValues.decode(args.NUM)));}
     signNumber(args) {

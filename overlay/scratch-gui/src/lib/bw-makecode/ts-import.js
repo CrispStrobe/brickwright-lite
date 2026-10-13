@@ -1145,7 +1145,7 @@ class Parser {
             this.expect('punct', '(');
             const expr = this.parseExpression();
             this.expect('punct', ')');
-            return expr;
+            return this.retainParentheses ? {...expr,parenthesized:true} : expr;
         }
         if (this.eat('punct', '[')) {
             const items = [];
@@ -1187,7 +1187,7 @@ class Parser {
  */
 /**
  * @param {string} source
- * @param {{parameterDefaults?: boolean}} [opts] parameterDefaults: start each
+ * @param {{parameterDefaults?: boolean, retainParentheses?: boolean}} [opts] parameterDefaults: start each
  *   function body with `if (p === undefined) p = <default>` for its default
  *   parameters. Only a translator whose `undefined` is a real value (Arcade's
  *   value heap) may ask for it: one that lowers `undefined` to 0 would apply
@@ -1234,5 +1234,6 @@ function templateString (raw) {
 export function parseMakeCodeTs (source, opts = {}) {
     const parser = new Parser(tokenize(source));
     parser.parameterDefaults = Boolean(opts.parameterDefaults);
+    parser.retainParentheses = Boolean(opts.retainParentheses);
     return parser.parseProgram();
 }

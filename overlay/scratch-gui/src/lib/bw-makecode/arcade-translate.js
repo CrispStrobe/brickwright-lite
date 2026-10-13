@@ -1,3 +1,4 @@
+import {foldPxtNumeric,pxtFoldedNumberCode} from './pxt-numeric-fold.js';
 import {TEXT_SPRITE_INITIALIZER} from './text-source-admission.generated.js';
 import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
 const LEGACY_CHARACTER_REVISION=LEGACY_CHARACTER_NATIVE_IDENTITY.revision;
@@ -855,6 +856,17 @@ class ArcadeTranslator extends BaseTranslator {
             }
             if(a.length!==2){this.unsupported.push('Math.pow() requires exactly two numbers');return 'undefined value';}
             return this.expr({type:'Binary',op:'**',left:a[0],right:a[1]});
+        case 'Math.random':
+        case 'Math.randomRange':
+        case 'Math.min':
+        case 'Math.max':
+        case 'Math.percentChance':
+            if(this.bindsName('Math')) {this.note(`${name} refers to a shadowed Math binding`);return 'undefined value';}
+            {const arity=name==='Math.random'?0:name==='Math.percentChance'?1:2;
+            if(a.length!==arity){this.note(`${name}() requires exactly ${arity} arguments`);return 'undefined value';}
+            if(name==='Math.random')return 'arcade random fraction';
+            if(name==='Math.percentChance')return `arcade percent chance (${this.arrayElementValue(a[0])})`;
+            return `arcade math ${name.slice(5)} first (${this.arrayElementValue(a[0])}) second (${this.arrayElementValue(a[1])})`;}
         case 'Math.sign':
         case 'Math.trunc':
             if(this.boundSourceGlobals?.has('Math') || this.sourceFunctions?.has('Math') || this.localVars?.has('Math') || this.currentParameters?.has('Math') || this.capturedBindings.has('Math')) {
@@ -862,7 +874,9 @@ class ArcadeTranslator extends BaseTranslator {
             }
             if(a.length!==1){this.unsupported.push(`${name}() requires exactly one number`);return 'undefined value';}
             return `arcade ${name==='Math.sign'?'sign of':'truncate'} (${this.expr(a[0])})`;
-        case 'randint': return `pick random ${this.mathOperand(a[0])} to ${this.mathOperand(a[1])}`;
+        case 'randint':
+            if(a.length!==2){this.note('randint() requires exactly two arguments');return 'undefined value';}
+            return `arcade math randomRange first (${this.arrayElementValue(a[0])}) second (${this.arrayElementValue(a[1])})`;
         case 'String.fromCharCode':
             if(a.length!==1 || this.bindsName('String')) {this.note('String.fromCharCode() requires its unshadowed single-argument primitive conversion');return 'undefined value';}
             if(!this.primitiveReferences?.has(a[0])) {this.note('String.fromCharCode() requires a proven primitive argument; object, reference or unknown conversion is not implemented');return 'undefined value';}
@@ -1070,6 +1084,10 @@ class ArcadeTranslator extends BaseTranslator {
             if(Object.prototype.hasOwnProperty.call(COLLISION_DIRECTIONS,node.name))return String(COLLISION_DIRECTIONS[node.name]);
             this.unsupported.push(`${this.path(node)} is not a declared Arcade CollisionDirection member`);return '0';
         }
+        if(this.handleTemplates && ['Unary','Binary'].includes(node?.type)) {
+            const folded=foldPxtNumeric(node,name=>['NaN','Infinity'].includes(name) && !this.bindsName(name) ? {value:name==='NaN'?NaN:Infinity} : null);
+            if(folded){this.usesArrays=true;return pxtFoldedNumberCode(folded.value);}
+        }
         if(node?.type==='Identifier' && ['NaN','Infinity'].includes(node.name) && !this.boundSourceGlobals?.has(node.name) && !this.localVars?.has(node.name) && !this.currentParameters?.has(node.name) && !this.capturedBindings.has(node.name)) {
             return this.expr({type:'Binary',op:'/',left:{type:'Number',value:node.name==='NaN'?'0':'1'},right:{type:'Number',value:'0'}});
         }
@@ -1109,7 +1127,14 @@ class ArcadeTranslator extends BaseTranslator {
             return `compare value (${this.truthValue(node.argument)}) op "===" with (${ARCADE_FALSE})`;
         }
         if(this.handleTemplates && node?.type==='Unary' && ['+','-'].includes(node.op)) {
-            this.usesArrays=true;return `convert value (${this.arrayElementValue(node.argument)}) op "${node.op}"`;
+            this.usesArrays=true;
+            // PXT's nonfolded prefix emitter subtracts for unary signs. If the
+            // operand itself emits a numeric literal, both branches negate it.
+            // Parentheses can block the outer constant fold but not this step.
+            const operand=foldPxtNumeric(node.argument,name=>['NaN','Infinity'].includes(name) && !this.bindsName(name) ? {value:name==='NaN'?NaN:Infinity} : null);
+            if(operand)return pxtFoldedNumberCode(-operand.value);
+            return node.op==='-' ? `calculate value ((0 + (0))) op "-" with (${this.arrayElementValue(node.argument)})` :
+                `convert value (${this.arrayElementValue(node.argument)}) op "+"`;
         }
         if(this.handleTemplates && node?.type==='Binary' && ['&&','||'].includes(node.op))
             this.unsupported.push(`logical ${node.op} as a value needs operand-preserving lazy evaluation`);
@@ -2874,7 +2899,7 @@ const liftExporterStops = program => {
 
 // PXT library calls that are, by their own definition, expressions the
 // translator already has, rewritten to those before translation:
-//   Math.percentChance(p) is \`Math.randomRange(0, 99) < p\` (pxt-core math.ts),
+// Math.percentChance retains a dedicated operation: boundary guards consume no entropy.
 //   Math.clamp(lo, hi, v) is min(max(v, lo), hi), each argument read once,
 // Scene and program clocks keep distinct native reporters; no clock alias is lowered.
 const lowerLibraryCalls = program => {
@@ -2887,10 +2912,6 @@ const lowerLibraryCalls = program => {
         const copy = {...node};
         for (const key of Object.keys(copy)) copy[key] = visit(copy[key]);
         const name = callee(copy), a = copy.args || [];
-        if (name === 'Math.percentChance' && a.length === 1) {
-            return {type: 'Binary', op: '<', left: {type: 'Call', callee: {type: 'Identifier', name: 'randint'},
-                args: [{type: 'Number', value: 0}, {type: 'Number', value: 99}]}, right: a[0]};
-        }
         if (name === 'Math.clamp' && a.length === 3) return call('Math', 'min', [call('Math', 'max', [a[2], a[0]]), a[1]]);
         return copy;
     };
@@ -3694,6 +3715,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Binary' && node.op==='**')return true;
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
+        if(node.type==='Unary' && ['+','-'].includes(node.op))return true;
         if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || ['game.ask','game.askForString','game.askForNumber','controller.pauseUntilAnyButtonIsPressed'].includes(t.path(node.callee))))return true;
         if(node.type==='Call' && /^bwStringArraySettings\.(?:read|write)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^(?:settings|blockSettings)\.(?:(?:write|read)(?:Number|String|NumberArray|StringArray|Buffer)|exists|list|remove|clear)$/.test(t.path(node.callee)||''))return true;
@@ -3720,7 +3742,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(['FunctionDeclaration','FunctionExpression'].includes(node.type) && node.body.some(st=>st.type==='Declaration'))return true;
         if (node.type==='Array' && node.items.some(item=>t.imageReferences.has(item)||t.spriteReferences.has(item))) return true;
         if(node.type==='Index' && (t.imageReferences.has(node)||t.spriteReferences.has(node)||t.arrayReferences.has(node.object)))return true;
-        if(node.type==='Call' && ['Math.sign','Math.trunc','Math.sqrt','Math.log','Math.log10','Math.asin','Math.acos','Math.pow','Math.pickRandom'].includes(t.path(node.callee)))return true;
+        if(node.type==='Call' && ['Math.random','Math.randomRange','Math.percentChance','Math.min','Math.max','randint','Math.sign','Math.trunc','Math.sqrt','Math.log','Math.log10','Math.asin','Math.acos','Math.pow','Math.pickRandom'].includes(t.path(node.callee)))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && t.arrayReferences.has(node.callee.object))return true;
         if (node.type === 'Declaration' && node.decls.some(d => t.imageOf(d.init))) return true;
         if (node.type === 'Return' && (t.imageOf(node.value) || t.imageReferences.has(node.value))) return true;
@@ -4518,7 +4540,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
     const parsed = lowerSourceLoopControl(inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
-        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true})))), source), source), source), source))));
+        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true, retainParentheses: true})))), source), source), source), source))));
     const containsPaletteCall = node => {
         if(!node || typeof node!=='object')return false;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='setPalette' &&

@@ -29,7 +29,7 @@ export function observePxtDisplay(sim = globalThis.pxsim) {
     return observer;
 }
 
-export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, waitForDisplay = false, buttonActions = null, recordSound = false, recordSongSound = false, waitForMain = true, fakeClock = false, inspectImageGlobals = []} = {}) {
+export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, waitForDisplay = false, buttonActions = null, recordSound = false, recordSongSound = false, waitForMain = true, fakeClock = false, inspectImageGlobals = [], observeEntropy = false} = {}) {
     if (waitForDisplay && !inspectDisplay) throw new Error('Display readiness requires display inspection');
     const files=typeof source === 'string' ? {'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})} : {...source};
     const built=await compile('arcade',files);
@@ -58,7 +58,7 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
         if(fakeClock){await page.clock.install({time:0});await page.clock.pauseAt(0);}
         await page.goto(`http://127.0.0.1:${server.address().port}/simulator.html`);
         if (waitForDisplay) await page.evaluate(observePxtDisplay);
-        await page.evaluate(async ({code,recordSound,recordSongSound,initialButtons})=>{
+        await page.evaluate(async ({code,recordSound,recordSongSound,initialButtons,observeEntropy})=>{
             const msg={type:'run',id:'bw-oracle',code,options:{},mute:true};
             pxsim.AudioContextManager.mute(true);
             if(recordSound || recordSongSound){
@@ -79,6 +79,17 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
                     return queue(when,buffer);
                 };
             }
+            if(observeEntropy){
+                // Observe external platform entropy without changing any draw.
+                // Authored probes delimit relevant operations with entropyPhase.
+                window.__bwEntropy=[];window.__bwOriginalRandom=Math.random;
+                Math.random=function(){const value=window.__bwOriginalRandom.call(Math);
+                    const globals=window.__bwPxtRuntime?.globals || {};
+                    const entry=Object.entries(globals).find(([key])=>key.replace(/___\d+$/,'')==='entropyPhase');
+                    if(typeof entry?.[1]==='number' && entry[1]>0)window.__bwEntropy.push({phase:entry[1],value});
+                    return value;
+                };
+            }
             const runtime=new pxsim.Runtime(msg);window.__bwPxtRuntime=runtime;
             await runtime.board.initAsync(msg);
             for(const {button,held} of initialButtons || []){
@@ -86,7 +97,7 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
                 runtime.board.setButton(button,held);
             }
             runtime.run(()=>{window.__bwPxtDone=true;});
-        },{code:built.outfiles['binary.js'],recordSound,recordSongSound,initialButtons:buttonActions?.initial});
+        },{code:built.outfiles['binary.js'],recordSound,recordSongSound,initialButtons:buttonActions?.initial,observeEntropy});
         if(buttonActions){
             const inputReady=expected=>{
                 const values=Object.fromEntries(Object.entries(window.__bwPxtRuntime.globals).map(([key,value])=>[key.replace(/___\d+$/,''),value]));
@@ -149,7 +160,7 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
             } else await page.waitForFunction(baseline => window.__bwPxtDisplayObserver.updates > baseline,
                 displayBaseline, {timeout: 20000});
         }
-        const values=await page.evaluate(({inspectDisplay,recordSound,recordSongSound,waitForDisplay,displayBaseline,inspectImageGlobals})=>{
+        const values=await page.evaluate(({inspectDisplay,recordSound,recordSongSound,waitForDisplay,displayBaseline,inspectImageGlobals,observeEntropy})=>{
             const runtime=window.__bwPxtRuntime;
             const result=Object.fromEntries(Object.entries(runtime.globals).filter(([,v])=>v===null || ['number','string','boolean','undefined'].includes(typeof v)).map(([k,v])=>[k.replace(/___\d+$/,''),v]));
             if(inspectImageGlobals.length){
@@ -171,8 +182,9 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
                 window.__bwPxtDisplayObserver.restore();delete window.__bwPxtDisplayObserver;
             }
             if(recordSound || recordSongSound)result.$sound=window.__bwSound;
+            if(observeEntropy){result.$entropy=window.__bwEntropy;Math.random=window.__bwOriginalRandom;delete window.__bwOriginalRandom;delete window.__bwEntropy;}
             runtime.kill();runtime.board.kill();return result;
-        },{inspectDisplay,recordSound,recordSongSound,waitForDisplay,displayBaseline,inspectImageGlobals});
+        },{inspectDisplay,recordSound,recordSongSound,waitForDisplay,displayBaseline,inspectImageGlobals,observeEntropy});
         if(errors.length)throw new Error(JSON.stringify(errors));
         return values;
     } finally {await browser?.close();await new Promise(done=>server.close(done));}
