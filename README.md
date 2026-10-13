@@ -98,14 +98,36 @@ For x86 programs, raw floppy/HDD images and DOSBox configs, see
 and the [x86 checkpoint and next lanes](docs/X86-NEXT-LANES.md), which keeps
 reached evidence separate from pending work.
 
-### Visualize digital logic (Verilog → schematic)
+### Design digital logic — gates, ICs and FPGAs
 
-Point the renderer at a Verilog/HDL design and it produces a clean SVG
-schematic with [Yosys](https://yosyshq.net/yosys/). Named modules are
-preserved, one level of hierarchy is expanded by default, and you control the
-depth, the top module, and when large repeated arrays stay collapsed. This is
-for *understanding and documenting* a design — reading how the logic is wired —
-not for synthesizing a bitstream.
+Two things ship in every build:
+
+- **Verilog → schematic.** Point the renderer at a Verilog/HDL design and it
+  produces a clean SVG schematic with [Yosys](https://yosyshq.net/yosys/) —
+  named modules preserved, one level of hierarchy expanded by default, with
+  control over depth, the top module, and when large repeated arrays stay
+  collapsed (`npm run render:fpga`). It is for reading and documenting how logic
+  is wired.
+- **A Tang Nano 20K** (Gowin GW2AR-18) board you can place and wire on the
+  breadboard with its real pinout, with a 3.3 V design-rule check that catches
+  5 V fed back into a bank pin.
+
+Behind the build flag **`BW_ENABLE_FPGA`** there is a fuller, still-experimental
+**digital-logic lab**: write Verilog, **synthesise** it to a gate netlist
+(locally, in a WebAssembly Yosys worker, or through a hosted service), bind its
+ports to board pins with a Gowin `.cst` constraints file, and drive the LEDs on
+the virtual Tang Nano through the same analog solver that runs the breadboard —
+stepping the clock and mirroring the result into the Widgets view. The same
+design can be read as a **schematic, truth table, waveform, or gate netlist**
+with a node inspector; you can build equivalent logic from **CMOS transistors or
+74-series logic ICs**, and work through guided challenges. Because compiling a
+GPL-licensed source on a server and returning a bitstream would distribute a
+derivative work, the hosted route refuses GPL sources by name and points them at
+the local WebAssembly tier, which conveys nothing off your machine.
+
+Real-hardware bitstream flashing is scaffolded but **not yet functional**, and
+the lab is **off by default**. See [the Tang Nano notes](docs/TANG-NANO.md) for
+the exact state.
 
 ### Bring a MakeCode project in, and take one back out
 
