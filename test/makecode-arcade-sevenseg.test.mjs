@@ -4,7 +4,7 @@ import {execFileSync} from 'node:child_process';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram, stepFrames, clearStrayTimers, projectOpcodes} from './helpers/bw-vm.mjs';
-import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {runPxtArcade, observePxtDisplay} from './helpers/pxt-arcade-runtime.mjs';
 
 const PALETTE = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609', '#249ca3', '#78dc52',
     '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
@@ -56,7 +56,9 @@ let done = true
 done = true`;
 
 test('seven segment digits and counters draw and report as the original', async () => {
-    const original = await runPxtArcade(SOURCE, {waitForGlobals: {done: true}, inspectDisplay: true, dependencies: DEPENDENCIES});
+    const original = await runPxtArcade(SOURCE, {waitForGlobals: {done: true}, inspectDisplay: true,
+        waitForDisplay: true, fakeClock: true, dependencies: DEPENDENCIES});
+    assert.ok(original.$display.updatesAfterReady > 0, 'original really presents a frame after globals complete');
     const expected = original.$display.screen.map(unpack);
     const imported = arcadeToPseudocode(SOURCE);
     assert.deepEqual(imported.unsupported, []);
@@ -112,4 +114,31 @@ test('seven segment diagnostics stay explicit', () => {
         'let c = sevenseg.createCounter()\nc.setRadix(DigitRadix.Hex)',
         'let d = sevenseg.createDigit()\nd.count = 4'])
         assert.ok(arcadeToPseudocode(source).unsupported.length, source);
+});
+
+test('original display observer requires actual image publication and preserves call semantics', () => {
+    const state = {width: 2, height: 1, screen: [0, 0]}, calls = [], image = {data: [1, 2]};
+    const receiver = {}, sentinel = new Error('original failure');
+    const original = function (...args) {
+        calls.push({receiver: this, args});
+        if (args[0] === sentinel) throw sentinel;
+        if (args[0] === image) {state.lastImage = image; state.screen = [...image.data];}
+        return 123;
+    };
+    const sim = {pxtcore: {updateScreen: original}, getScreenState: () => state};
+    const observer = observePxtDisplay(sim);
+    try {
+        assert.equal(observer.updates, 0, 'initial screen allocation is not presentation');
+        assert.equal(sim.pxtcore.updateScreen.call(receiver, null, 'extra'), 123);
+        assert.equal(observer.updates, 0, 'null refresh is not a new authored frame');
+        assert.equal(sim.pxtcore.updateScreen.call(receiver, image, 'extra'), 123);
+        assert.deepEqual(calls.at(-1), {receiver, args: [image, 'extra']});
+        assert.deepEqual(state.screen, [1, 2]); assert.equal(observer.updates, 1);
+        sim.pxtcore.updateScreen({data: [9, 9]});
+        assert.equal(observer.updates, 1, 'refused image cannot certify publication');
+        assert.throws(() => sim.pxtcore.updateScreen(sentinel), error => error === sentinel);
+        assert.equal(observer.updates, 1);
+    } finally {observer.restore(); delete globalThis.__bwPxtDisplayObserver;}
+    assert.equal(sim.pxtcore.updateScreen, original);
+    assert.throws(() => observePxtDisplay({}), /unavailable/);
 });

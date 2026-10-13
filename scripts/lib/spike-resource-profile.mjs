@@ -78,9 +78,18 @@ export async function freezeResourceProfile (kind, sourceArg, outputArg, resourc
         `include @${join(source,'models.cs')}\nmach create\nmachine LoadPlatformDescription @${join(source,'platforms/boards/spike-prime.repl')}\nemulation CreatePrimeElectricalPorts "machine-0"\n${files['initial-flash.bin']?initialFlashScenario(source):''}`;
     const portable=kind==='guest'?'mach create\nmachine LoadPlatformDescription @arena-demo.repl\n':
         `include @models.cs\nmach create\nmachine LoadPlatformDescription @platforms/boards/spike-prime.repl\nemulation CreatePrimeElectricalPorts "machine-0"\n${files['initial-flash.bin']?initialFlashResourceScenario():''}`;
+    // Compiled Runtime profiles retain models.cs for provenance but must not
+    // load those types again. Preserve the producer's exact loading mode.
+    const templates = [[expected,portable],[portable,portable]];
+    if (kind==='nuttx') {
+        const compiledExpected=expected.slice(`include @${join(source,'models.cs')}\n`.length);
+        const compiledPortable=portable.slice('include @models.cs\n'.length);
+        templates.push([compiledExpected,compiledPortable],[compiledPortable,compiledPortable]);
+    }
     // Accept only the exact authored templates, never arbitrary monitor rewriting.
-    if (![expected,portable].includes(files[scenario].toString())) throw new Error('Unknown source-build scenario template');
-    files[scenario]=Buffer.from(portable);
+    const template=templates.find(([input])=>input===files[scenario].toString());
+    if (!template) throw new Error('Unknown source-build scenario template');
+    files[scenario]=Buffer.from(template[1]);
     await mkdir(output); // Preserve every existing output, even incomplete packages.
     const manifest={},mapping={};
     for (const [name,bytes] of Object.entries(files)) {

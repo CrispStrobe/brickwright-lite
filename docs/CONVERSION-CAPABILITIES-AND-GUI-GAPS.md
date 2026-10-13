@@ -3210,3 +3210,26 @@ https://github.com/CrispStrobe/brickwright-lite/actions/runs/38150051112 .
 Actual downloads and failed/predecessor observations are archived privately.
 The refreshed merge still needs every enabled exact-head check; the older
 light-shard result is not a full-workflow or merged-main claim.
+## Painted tilemap project persistence browser lane — 2026-10-11
+
+The CI tilemap painter journey now saves the actual GUI project as SB3 and
+reopens it in a fresh browser context. It compares every level's dimensions,
+tile size, indices, walls and image pixels both in the archive and in restored
+blocks; checks stable target/block identity; drives restored tile editing and
+undo through pointer controls; and runs the saved new level with its specific
+painted cell, wall and tile pixel. It then downloads MakeCode export, compiles
+and renders the reopened blocks with the original simulator, and reimports the
+downloaded file to compare all levels as a multiset. IDs intentionally regenerate
+on MakeCode reimport. This is the existing light-shard browser gate, not a new
+unconnected helper.
+
+Qualification is pending exact-head hosted CI. Local prepared-build observations
+are recorded separately from source qualification. A rendered original frame
+is compile/render evidence, not whole-game behavioral equivalence; native wall
+state is preserved, not a new reopened collision-trajectory qualification.
+No opcode, schema, producer pin or native runtime change is introduced here.
+Corpus counts are not reranked by this browser-only lane.
+
+Tile names/myTiles identity, legacy colour-coded maps and painter sprite placement
+remain open. The 2026-10-11 merged painter already supports new-level creation;
+do not retain that as an unimplemented feature based on older checkpoints.
