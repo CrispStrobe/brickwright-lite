@@ -718,3 +718,33 @@ simulator errors. Their actual binary output, palette-index frames, source
 files and fetched responses are retained privately as comparison baselines.
 This is original-simulator execution, not a native comparison, complete Arrow
 Battle run, button-restart test or production-browser result.
+
+## Carnival scoring/dialog implementation slice — 2026-10-11
+
+The `lane/arcade-carnival-scoring-core-20261011` lane stacks on PR799 and owns
+new `arcade/carnival-source/*`, `arcade/carnival-pxt.js`,
+`scripts/generate-arcade-carnival.mjs` and
+`test/makecode-arcade-carnival-core.test.mjs`. The exact pinned MIT source/notice
+are retained with their original bytes. A reproducible AST selection and
+fiber-to-Promise adaptation implements the original scoring and custom dialog
+logic, rather than a generic game-over substitute. Eleven contract/generation
+checks pass with no failures/skips. Their observing host doubles qualify source
+control flow and data, not VM rendering, actual durable storage or native game
+equivalence. No corpus row is promoted and carnival diagnostics remain visible.
+
+Next: implement the VM host using native image/font/BaseDialog/renderables,
+scene transitions, countdown-handler replacement, number settings, timer1,
+music and button/reset operations. Verify program cancellation and scene
+lifetime before exposing commands. PR800 separately owns countdown/life-event
+ordering and the paused Playwright oracle; account for its qualified adoption
+without overwriting that lane. The captured original-only carnival frames are
+private reference inputs for subsequent native comparisons. Regular extension
+blocks/pseudocode, fixed/dynamic style handling, MakeCode package export, fresh
+SB3 reopening and a production GUI journey are still required. Original source
+first-registration and explicit-effect branches must remain observable.
+
+The painter-placement peer PR801 stacks on PR794. Preserve that parent history
+and coordinate before changing it. A reviewed map-before-sprite case revealed
+that inserting a new placement immediately after the map can precede sprite
+creation; the peer owns the reported source-order fix. Pending peer PRs and
+reported test totals are not qualified adoption claims.
