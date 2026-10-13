@@ -74,6 +74,7 @@ const NOTE_FREQUENCIES = {C: 262, CSharp: 277, D: 294, Eb: 311, E: 330, F: 349, 
  */
 
 import {parseTileAssets} from './tile-assets.js';
+import {createAssetKindLookup, lookupAssetTemplate} from './asset-kind-lookup.js';
 import {decodeTilemap, parseNativeTilemaps} from './tilemap-values.js';
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
 import {prepareAnimationImport} from '../bw-animation-import.js';
@@ -198,9 +199,10 @@ const CONTROLLER_KEYS = {
 };
 
 class ArcadeTranslator extends BaseTranslator {
-    constructor (assets, tilemaps) {
+    constructor (assets, tilemaps, assetKindLookup = null) {
         super();
         this.assets = assets || {};      // jres images by name
+        this.assetKindLookup = assetKindLookup;
         this.tilemaps = tilemaps || {};  // level name → grid of tile indexes
         this.sprites = [];               // {name, image, kind, velocity}
         this.self = null;                // the sprite the current script is on
@@ -274,7 +276,7 @@ class ArcadeTranslator extends BaseTranslator {
         if (node?.type !== 'Program') return;
         this.boundSourceGlobals=new Set(node.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls.map(decl=>decl.name)));
         this.sourceFunctions=new Map(node.body.filter(fn=>fn.type==='FunctionDeclaration').map(fn=>[fn.name,fn]));
-        const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value));
+        const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value), value => !!this.assetKindLookup && value?.type === 'Template' && ['assets.image', 'assets.tile'].includes(value.tag));
         this.bufferReferences = references.buffers;this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
         this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.inferredSpriteParameters = references.parameters;
@@ -323,6 +325,8 @@ class ArcadeTranslator extends BaseTranslator {
     }
 
     imageRef(node, allowValueCall = true) {
+        if (node?.type === 'Template' && this.assetKindLookup &&
+            lookupAssetTemplate(this.assetKindLookup,node.tag,node.value) === null) return 'null value';
         const background = this.imageValueResources.get(node);
         if (background) {
             const resource = `arcade frame image array "${background.key}" index (${background.value ? this.expr(background.value) : 0}) template "${background.name}" start 0 count ${background.count || 1}`;
@@ -398,6 +402,10 @@ class ArcadeTranslator extends BaseTranslator {
      * rather than a guess.
      */
     imageOf (node) {
+        if(node?.type === 'Template' && this.assetKindLookup) {
+            const scoped=lookupAssetTemplate(this.assetKindLookup,node.tag,node.value);
+            if(scoped !== undefined)return scoped;
+        }
         const tileAsset = node?.type === 'Member' && (this.assets[this.path(node)] ||
             (['myTiles','assets','tiles'].includes(this.path(node.object)) && this.assets[node.name]));
         if(tileAsset)return tileAsset;
@@ -944,6 +952,10 @@ class ArcadeTranslator extends BaseTranslator {
      * The condition() a node is being written for is not a value slot.
      */
     expr (node) {
+        if(node?.type === 'Template' && this.assetKindLookup &&
+            lookupAssetTemplate(this.assetKindLookup,node.tag,node.value) === null) {
+            this.usesArrays=true;return 'null value';
+        }
         if (node?.bwAnimationResourceId) return `arcade animation fresh frames resource ${JSON.stringify(node.bwAnimationResourceId)}`;
         const value=this.valueExpr(node);
         if(!node || node===this.conditionNode)return value;
@@ -2987,7 +2999,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
 /** Infer Image references from bindings and calls, retaining lexical scope.
  * Passing a resource does not copy it. Forwarded parameters and local aliases
  * reach a fixed point, including recursive procedures and callback callers. */
-const inferImageReferences = (ast, pathOf, imageOf) => {
+const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () => false) => {
     const textSprites=new WeakSet();
     const buffers = new WeakSet(), players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), sevensegDigits = new WeakSet(), sevensegCounters = new WeakSet(), darts = new WeakSet(), corgis = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
     const entries = [];
@@ -3037,7 +3049,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         node.type==='FunctionDeclaration' && node.name==='screen');
     const isScreen=node=>node?.type==='Identifier' && node.name==='screen' && !screenDeclared;
     const typeOf = (node, owner) => {
-        if (imageOf(node) || isScreen(node)) return new Set(['image']);
+        if (imageOf(node) || isScreen(node) || isScopedAssetFactory(node)) return new Set(['image']);
         if(node?.type==='Number')return new Set(['number']);
         if(node?.type==='Null')return new Set(['null']);
         if(node?.type==='Member' && node.object?.name==='CameraProperty' && Object.prototype.hasOwnProperty.call(CAMERA_PROPERTIES,node.name))return new Set(['number']);
@@ -3418,8 +3430,8 @@ const appendHandleProcedures = (translator, functions, parameterHandles, out, lo
  * older translator for programs with named sprites or other setup until the
  * handle path covers their full control flow.
  */
-const translateCreationEvents = (ast, assets) => {
-    const t = new ArcadeTranslator(assets, {});
+const translateCreationEvents = (ast, assets, assetKindLookup = null) => {
+    const t = new ArcadeTranslator(assets, {}, assetKindLookup);
     const calls = ast.body.map(st => st.type === 'ExpressionStatement' && st.expr?.type === 'Call' ? st.expr : null);
     const nameOf = call => call && t.path(call.callee);
     const created = calls.filter(call => nameOf(call) === 'sprites.onCreated');
@@ -3534,8 +3546,8 @@ const translateCreationEvents = (ast, assets) => {
 
 /** Handle-valued globals plus onCreated/onOverlap callbacks. Kept separate
  * from the fixed-target path until its other sprite APIs can use handles. */
-const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRuntime = false) => {
-    const t = new ArcadeTranslator(assets, tilemaps);
+const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRuntime = false, assetKindLookup = null) => {
+    const t = new ArcadeTranslator(assets, tilemaps, assetKindLookup);
     const needsProjectileHandles = node => {
         if (!node || typeof node !== 'object') return false;
         if (node.type === 'Call' && ['sprites.onCreated', 'image.create'].includes(t.path(node.callee))) return true;
@@ -3843,7 +3855,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         const directArt = parent?.type === 'Call' && parent.args?.[0] === node &&
             (creationApis.has(nameOf(parent)) || parent.callee?.name === 'setImage' && directImageOwners.has(parent.callee.object?.name) || nameOf(parent) === 'scene.setBackgroundImage');
         if (image && (!directArt || node.type === 'Member')) {
-            const builtin = node.type === 'Member' ? t.path(node) : null;
+            const builtin = node.type === 'Member' ? t.path(node) : node.type === 'Template' && node.tag === 'assets.tile' && image.tileId ? image.tileId : null;
             let resource = builtin && builtinImageResources.get(builtin);
             if (!resource) {
                 const name = `__arcadeBackground${imageValueCostumes.length+1}`;
@@ -4089,8 +4101,8 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
 
 /** Top-level projectile creation with a named handle. PXT starts side
  * projectiles one pixel inside the incoming edge, then integrates velocity. */
-const translateSideProjectiles = (ast, assets) => {
-    const t = new ArcadeTranslator(assets, {});
+const translateSideProjectiles = (ast, assets, assetKindLookup = null) => {
+    const t = new ArcadeTranslator(assets, {}, assetKindLookup);
     const path = call => call && t.path(call.callee);
     const literal = node => node?.type === 'Number' ? Number(node.value) :
         node?.type === 'Unary' && node.op === '-' && node.argument?.type === 'Number' ?
@@ -4161,8 +4173,8 @@ const translateSideProjectiles = (ast, assets) => {
 /** Event-only Arcade snippets can be imported as real kind-filtered hats.
  * Their callback parameters are runtime handles even when the snippet itself
  * contains no sprite creation. */
-const translateOverlapOnly = (ast, assets) => {
-    const t = new ArcadeTranslator(assets, {});
+const translateOverlapOnly = (ast, assets, assetKindLookup = null) => {
+    const t = new ArcadeTranslator(assets, {}, assetKindLookup);
     const call = st => st.type === 'ExpressionStatement' && st.expr?.type === 'Call' ? st.expr : null;
     const overlap = st => call(st) && t.path(call(st).callee) === 'sprites.onOverlap';
     if (!ast.body.some(overlap)) return null;
@@ -4324,6 +4336,13 @@ export function arcadeToPseudocode (files, opts = {}) {
         } catch (error) { projectInputDiagnostics.push(`Project pxt.json could not be read: ${error.message}`); }
     }
 
+    // Internal dependency resources are qualified constants, not root image
+    // factories. Keep incomplete standalone snippets diagnosed when their
+    // galleries are absent; only supplied root galleries establish null lookup.
+    const rootAssetFiles=Object.fromEntries(Object.entries(map).filter(([name])=>!name.startsWith('__bwDependencyInputs/')));
+    let assetFileOrder;try{assetFileOrder=JSON.parse(map['pxt.json'] || '{}').files;}catch{}
+    const assetKindLookup=Object.keys(rootAssetFiles).some(name=>/\.g\.jres$/.test(name)) ?
+        createAssetKindLookup(rootAssetFiles,assetFileOrder?{fileOrder:assetFileOrder}:{}) : null;
     const assets = Object.create(null);
     const tilemaps = {};
     const songAliases = new Map();
@@ -4463,20 +4482,20 @@ export function arcadeToPseudocode (files, opts = {}) {
     const ast = lowerLazyValues(callbacks.program);
     const flattened = namespaceBindings.program ? ast : null;
     const tileImagePath = node => node?.type==='Identifier' ? node.name : node?.type==='Member' ? `${tileImagePath(node.object)}.${node.name}` : null;
-    const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ?
+    const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && assetKindLookup && ['assets.image','assets.tile'].includes(node.tag) ? lookupAssetTemplate(assetKindLookup,node.tag,node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ?
         assets[tileImagePath(node)] || assets[node.name] || (BUILTIN_IMAGES[tileImagePath(node)] ? decodeMkcdImage(BUILTIN_IMAGES[tileImagePath(node)]) : null) :
         node?.type==='Identifier' ? assets[node.name] : null;
     const nativeTilemaps = {};
     for(const [filename,text] of Object.entries(map))if(/\.g\.ts$/.test(filename))Object.assign(nativeTilemaps,parseNativeTilemaps(text,tileImageOf));
-    const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested);
+    const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested, assetKindLookup);
     if (namedEvents) return withAnimationDiagnostics(namedEvents);
-    const creationEvents = flattened && translateCreationEvents(flattened, assets);
+    const creationEvents = flattened && translateCreationEvents(flattened, assets, assetKindLookup);
     if (creationEvents) return withAnimationDiagnostics(creationEvents);
-    const sideProjectiles = namespaceBindings.program && translateSideProjectiles(ast, assets);
+    const sideProjectiles = namespaceBindings.program && translateSideProjectiles(ast, assets, assetKindLookup);
     if (sideProjectiles) return withAnimationDiagnostics(sideProjectiles);
-    const overlapOnly = namespaceBindings.program && translateOverlapOnly(ast, assets);
+    const overlapOnly = namespaceBindings.program && translateOverlapOnly(ast, assets, assetKindLookup);
     if (overlapOnly) return withAnimationDiagnostics(overlapOnly);
-    const t = new ArcadeTranslator(assets, tilemaps);
+    const t = new ArcadeTranslator(assets, tilemaps, assetKindLookup);
     t.unsupported.push(...animationDiagnostics, ...namespaceBindings.unsupported);
     // Before anything is emitted: a variable this program has to be
     // renamed must not land on a name the program already uses.
