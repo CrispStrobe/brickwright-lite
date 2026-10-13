@@ -677,6 +677,7 @@ module.exports = makeExt(`// Name: Arcade
             text: 'Arcade shake camera by [AMPLITUDE] pixels for [DURATION] ms', arguments: {...n('AMPLITUDE', 4), ...n('DURATION', 500)} },
           { opcode: 'cameraFollowSprite', blockType: Scratch.BlockType.COMMAND,
             text: 'Arcade camera follow sprite [ID]', arguments: str('ID', '') },
+          {opcode:'cameraDrawOffset',blockType:Scratch.BlockType.REPORTER,text:'Arcade camera draw offset [AXIS]',arguments:{AXIS:{type:Scratch.ArgumentType.STRING,menu:'cameraAxes',defaultValue:'x'}}},
           { opcode: 'cameraProperty', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade camera property [PROPERTY]', arguments: {PROPERTY: {type: Scratch.ArgumentType.STRING,
               menu: 'cameraProperties', defaultValue: '0'}} },
@@ -860,8 +861,9 @@ module.exports = makeExt(`// Name: Arcade
             'rotation', 'rotationDegrees', 'data']}
           ,readableSpriteProperties: {acceptReporters:false,items:['x','y','left','right','top','bottom',
             'vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan',
-            'rotation','rotationDegrees','data','kind']}
+            'rotation','rotationDegrees','data','kind','flags']}
           ,eventSprites: {acceptReporters: false, items: ['first', 'second']}
+          ,cameraAxes:{acceptReporters:false,items:['x','y']}
           ,cameraProperties: {acceptReporters: true, items: [{text:'x',value:'0'}, {text:'y',value:'1'}, {text:'left',value:'2'}, {text:'right',value:'3'}, {text:'top',value:'4'}, {text:'bottom',value:'5'}]}
           ,collisionDirections: {acceptReporters: true, items: [{text:'left',value:'0'}, {text:'top',value:'1'}, {text:'right',value:'2'}, {text:'bottom',value:'3'}]}
           ,controllerNumbers: {acceptReporters:false,items:['1','2','3','4']}
@@ -1998,6 +2000,12 @@ module.exports = makeExt(`// Name: Arcade
         for(const id of Object.keys(this._state().sprites))this._positionSprite(id);
         this._changed();
       }
+    }
+    cameraDrawOffset(args) {
+      const camera=this._camera();
+      if(args.AXIS==='x')return camera.drawOffsetX;
+      if(args.AXIS==='y')return camera.drawOffsetY;
+      throw new Error('Arcade camera draw offset requires x or y');
     }
     cameraProperty(args) {
       if(!this._cameraIsUpdated())this._updateCamera();
@@ -4533,6 +4541,7 @@ module.exports = makeExt(`// Name: Arcade
         (event?.first === String(args.ID) ? event.destroyedSprite : null);
       if (!sprite) return 0;
       const property = String(args.PROPERTY);
+      if(property==='flags')return (sprite.flags|0)|(sprite._destroyed || sprite._destroying?2:0);
       if (property === 'left') return sprite._fx / 256;
       if (property === 'right') return sprite._fx / 256 + sprite.width;
       if (property === 'top') return sprite._fy / 256;

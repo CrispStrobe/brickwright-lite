@@ -1364,7 +1364,7 @@ class ArcadeEmitter {
         case 'arcade_spriteProperty': {
             const property = this.field(b, 'PROPERTY');
             if(property==='kind')return `${v('ID')}.kind()`;
-            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data'].includes(property)){this.note(`Arcade sprite property ${property} is unsupported`);return this.na();}
+            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data','flags'].includes(property)){this.note(`Arcade sprite property ${property} is unsupported`);return this.na();}
             return `${v('ID')}.${property}`;
         }
         case 'arcade_menu_bufferFormats': {
@@ -1401,6 +1401,11 @@ class ArcadeEmitter {
             const property=b.fields?.PROPERTY?.[0];
             if(!['maxSpeed','minStep','maxStep'].includes(property)){this.note(`Arcade PhysicsEngine property ${property} is unsupported`);return 'undefined';}
             return `(${v('ENGINE')}).${property}`;
+        }
+        case 'arcade_cameraDrawOffset': {
+            const axis=this.field(b,'AXIS');
+            if(!['x','y'].includes(axis)){this.note('Arcade camera draw offset requires x or y');return this.na();}
+            return axis==='x'?'scene.cameraLeft()':'scene.cameraTop()';
         }
         case 'arcade_cameraProperty': return `scene.cameraProperty(${this.arrayValue(b,'PROPERTY')})`;
         case 'arcade_backgroundImage': return 'scene.backgroundImage()';
@@ -2753,7 +2758,7 @@ class ArcadeEmitter {
                 }
                 if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_tileHitFrom'){const id=Symbol('hit tile index');numbers.add(id);return id;}
-                if(value.opcode==='arcade_cameraProperty'){const id=Symbol('camera numeric property');numbers.add(id);return id;}
+                if(['arcade_cameraProperty','arcade_cameraDrawOffset'].includes(value.opcode)){const id=Symbol('camera numeric property');numbers.add(id);return id;}
                 if(['arcade_tileLocationProperty','arcade_legacyTileProperty'].includes(value.opcode)){const id=Symbol('tile numeric property');numbers.add(id);return id;}
                 if(['arcade_playerLookup','arcade_playerBySprite','arcade_eventPlayer'].includes(value.opcode)){const id=Symbol('player value');graphPlayerValues.add(id);return id;}
                 if(value.opcode==='arcade_allPlayers'){const id=Symbol('player array');arrays.add(id);return id;}
