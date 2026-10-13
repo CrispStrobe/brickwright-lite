@@ -2310,12 +2310,16 @@ module.exports = makeExt(`// Name: Arcade
     }
     createSprite(args, util) {
       const width = Math.max(1, Number(args.WIDTH) || 16), height = Math.max(1, Number(args.HEIGHT) || 16);
-      return this._finishSpriteCreation(this._createSprite({...args, X: ((160-width) >> 1) + width/2,
+      return this._finishSpriteCreation(this._createSprite({...args, WIDTH:width, HEIGHT:height, X: ((160-width) >> 1) + width/2,
         Y: ((120-height) >> 1) + height/2}), util);
     }
     createImageSprite(args, util) {
       const image = this._image(args.IMAGE);
-      return image ? this.createSprite({...args, WIDTH:image.width, HEIGHT:image.height}, util) : '';
+      if(!image){this._runtime?.emit?.('BLOCKS_ERROR','Sprite image cannot be undefined or null');return ''; }
+      // Image dimensions are constructor data: zero is a genuine empty image.
+      const width=image.width,height=image.height;
+      return this._finishSpriteCreation(this._createSprite({...args,WIDTH:width,HEIGHT:height,
+        X:((160-width)>>1)+width/2,Y:((120-height)>>1)+height/2}),util);
     }
     // Arcade stores edges, velocity and acceleration as signed 24.8 values.
     // Keep the actual object in fixed point: reads, image resizing and subsequent
@@ -2431,7 +2435,10 @@ module.exports = makeExt(`// Name: Arcade
       const id = 'arcade:' + (++this._nextSpriteHandle);state.nextSpriteId++;
       const sprite = {id, pxtId: state.nextSpriteId - 1, kind: String(args.KIND), x: Number(args.X) || 0, y: Number(args.Y) || 0,
         vx: 0, vy: 0, ax: 0, ay: 0, fx: 0, fy: 0, z: 0, lifespan: 0, flags: 0,
-        width: Math.max(1, Number(args.WIDTH) || 16), height: Math.max(1, Number(args.HEIGHT) || 16)};
+        // Public creation normalizes defaults before entering this private path;
+        // native image constructors may supply genuine zero dimensions.
+        width: args.WIDTH===0?0:Math.max(1,Number(args.WIDTH)||16),
+        height: args.HEIGHT===0?0:Math.max(1,Number(args.HEIGHT)||16)};
       this._installSpriteFixedPoint(sprite);
       sprite._kindInsertion = ++this._kindInsertion;
       state.sprites[id] = sprite;
