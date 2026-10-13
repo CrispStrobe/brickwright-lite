@@ -2207,3 +2207,12 @@ https://github.com/CrispStrobe/extensions/blob/598fc9665a3ffdcc6fdeaa465f2c42cca
 `vendor-pins.json` and the generated per-file bundle receipt record the commit
 and content hash. This scopes the adoption to Arrays; it does not advance other
 extension sources. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.
+
+## Arcade Sprite Data
+
+The native Sprite Data API adapter follows Microsoft arcade-sprite-data v0.0.5
+(commit `332026d12c46286c7afe59bc4829ccf08471d5b1`), licensed under MIT.
+Copyright (c) Microsoft Corporation. Original source, license and provenance:
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/sprite-data-source/`.
+The adapter covers the original nine Number, String, Boolean and
+Sprite methods; arbitrary object data and Image/array methods are separate.

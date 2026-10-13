@@ -655,7 +655,8 @@ class ArcadeTranslator extends BaseTranslator {
         const dataApi=this.path(node.callee),dataArgs=node.args||[];
         const dataRead=/^sprites\.readData(Number|String|Boolean|Sprite)$/.exec(dataApi||'');
         if(this.handleTemplates && dataRead && !this.bindsName('sprites')) {
-            if(dataArgs.length===2)return `arcade sprite (${this.expr(dataArgs[0])}) data (${this.expr(dataArgs[1])}) type ${dataRead[1]}`;
+            if(dataArgs.length===2)return dataRead[1]==='Boolean'?`arcade sprite (${this.expr(dataArgs[0])}) boolean data (${this.expr(dataArgs[1])})`:
+                `arcade sprite (${this.expr(dataArgs[0])}) data (${this.expr(dataArgs[1])}) type ${dataRead[1]}`;
             this.unsupported.push(`${dataApi} requires a sprite and data key`);return 'undefined value';
         }
         const engineApi=this.path(node.callee),engineArgs=node.args||[];
