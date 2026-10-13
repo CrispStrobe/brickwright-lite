@@ -8,13 +8,13 @@ The fixture is owned code and four-pixel art in `test/fixtures/arcade-numeric-au
 
 ## Required identity
 
-Run from the exact reviewed consumer checkout. Set `PROOF_URL` to a server serving the sole admitted official full-app artifact, `BW_GUI_BUILD_ARCHIVE` to that already acquired archive, and `BW_GUI_BUILD_RECEIPT` to its independently reviewed JSON receipt. This script does not acquire artifacts, dispatch builds or assert that supplied metadata independently proves GitHub provenance. The operator must first admit the original run, successful build job, actual checkout, artifact ID and archive hash using official GitHub metadata.
+Run from the exact admitted tested consumer checkout (including the tested merge commit for a pull request). Set `PROOF_URL` to a server serving the sole admitted official full-app artifact, `BW_GUI_BUILD_ARCHIVE` to that already acquired archive, and `BW_GUI_BUILD_RECEIPT` to its independently reviewed JSON receipt. Set `BW_GUI_GIT_EXECUTABLE` to the explicitly reviewed absolute source-inspection executable. Its resolved path, SHA256 and version are recorded in the report; PATH discovery is never used. Tracked edits to the harness checkout are refused. This source-inspection tool is separate from the app's runtime and compiler provenance. This script does not acquire artifacts, dispatch builds or assert that supplied metadata independently proves GitHub provenance. The operator must first admit the original run, successful build job, actual checkout, artifact ID and archive hash using official GitHub metadata.
 
 Receipt shape:
 
 ```json
 {
-  "sourceSha": "full reviewed consumer SHA",
+  "sourceSha": "full actual tested checkout SHA",
   "producerSha": "full matching sb3-creator pin",
   "arraysValuesSha": "full matching arrays-values pin",
   "sdk": {
@@ -30,21 +30,24 @@ Receipt shape:
     "artifactId": "numeric original artifact ID",
     "runUrl": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/RUN_ID",
     "conclusion": "success",
-    "checkoutSha": "same reviewed consumer SHA",
+    "checkoutSha": "same actual tested checkout SHA",
     "archiveSha256": "SHA256 of original acquired ZIP"
   },
   "assets": {
     "gui.js": "SHA256 of this original extracted artifact member"
+  },
+  "assetBytes": {
+    "gui.js": 12345
   }
 }
 ```
 
-Inventory every served JavaScript asset and the Arcade SDK target.json using its URL path relative to `PROOF_URL`, including lazy chunks. The original comparison SDK must match the admitted target and worker hashes. The runner refuses an unlisted or different actual response body. Keep the receipt, acquisition mapping, source paths and raw reports private when they include local operational data. Public acceptance records should link the official [Actions runs](https://github.com/CrispStrobe/brickwright-lite/actions) and reviewed source, with the exact tested pins and boundary.
+Inventory every served JavaScript asset and the Arcade SDK target.json using its URL path relative to `PROOF_URL`, including lazy chunks. The original comparison SDK must match the admitted target and worker hashes. Record the original extracted byte length of every inventoried member in `assetBytes` (the example length is illustrative). The runner refuses an unlisted or different actual GET response body or byte length. HEAD responses are separate metadata observations: identity-encoded resource lengths must match the admitted length, while compressed resource lengths describe the transferred representation. A HEAD observation never attests body bytes or counts as JavaScript consumption. Successful GET body observations remain required. Keep the receipt, acquisition mapping, source paths and raw reports private when they include local operational data. Public acceptance records should link the official [Actions runs](https://github.com/CrispStrobe/brickwright-lite/actions) and reviewed source, with the exact tested pins and boundary.
 
 ## Actual user journey
 
 1. Open the owned MakeCode project using Code actions; choose Arcade and use **To blocks**. Observe real random fraction, min/max/randomRange, percent chance, clamp, settings read/write and source-while blocks.
-2. Run via green flag. Verify the Stage's actual presented sprite/HUD pixels against the original simulator. Use the visible controller **A**; score and sprite position change.
+2. Run via green flag. Select the real **Scratch Stage** view and verify its actual presented sprite/HUD pixels against the original simulator. Select **Game Console** before using its visible controller **A**; score and sprite position change.
 3. Stop. Scroll the actual Arcade toolbox to clamp, drag a new reporter into the workspace, then delete the selected orphan through the keyboard.
 4. Edit the actual clamp maximum number from 10 to 12. Change the actual math menu from min to max. Open the real settings read menu and select String, then StringArray. Verify available choices and resulting fields through read-only observations.
 5. Run the edited project and use A. Stop. Use **From blocks**, then ordinary CodeMirror keyboard input to change the stored Unicode text to PLAY. Use **To blocks**, run and use A again.
@@ -60,3 +63,21 @@ Math.random consumes real entropy. It is checked only for `[0,1)`; independent r
 The owned fixture preflight is `test/arcade-numeric-authoring-fixture.test.mjs`. It checks ordinary source conversion admission and original simulator behavior for baseline and edited variants with and without A. It is not a substitute for running the full IDE journey.
 
 Execution writes `current.json`, exact saved/exported files and a success or failure screenshot under `BW_NUMERIC_GUI_REPORT_DIR` (default `test-results/arcade-numeric-authoring-gui`). Retain failures. Add an enabled hosted workflow step only after reviewing the script and exact build receipt integration. A failure identifies an actual UI step to fix; do not substitute a component proxy or direct VM operation.
+
+## Hosted artifact consumer contract
+
+The existing `build` job owns the one `github-pages` artifact. Its completed successful job can be the producer for a separate dependent numeric GUI consumer job. The existing browser shard builds its own bundle; that different output must not be relabeled as the downloaded official archive. A running job cannot truthfully supply its own completed-success receipt. Do not substitute environment success flags or a knowingly-unwired exemption for the consumer.
+
+The workflow owner must provide these stages:
+
+1. Produce an embedded source manifest alongside the built bundle: actual checkout commit/tree, reviewed pull-request head separately, exact producer/arrays pins, target and worker hashes. Preserve the actual checkout witness in the original job log. A pull-request run's `head_sha` does not by itself establish the checkout merge commit.
+2. After `needs: build` succeeds, read the original run, producer job and artifact metadata for that same run. Require the producer job to be completed/successful, its actual build and upload steps successful, the exact expected artifact name/ID, matching repository/run, nonexpired artifact and matching source witness. The artifact API binds to a workflow run, not a producer job; correlate the unique upload step and source workflow explicitly.
+3. Admit the metadata before one archive acquisition by artifact ID. Record the original ZIP SHA256 and size; compare the API artifact digest when supplied and refuse a discrepancy. Extract that admitted archive into an owned served directory. Verify its embedded source manifest, every served JavaScript member (including lazy chunks), SDK target and worker. Generate the receipt from those original records and bytes.
+4. Check out the exact tested source named by that manifest, install only the gate dependencies/original SDK comparison prerequisites, and serve the admitted extraction. No second GUI build is needed. Run `node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-numeric-authoring-gui.mjs` with `PROOF_URL`, `BW_GUI_BUILD_RECEIPT`, `BW_GUI_BUILD_ARCHIVE`, explicit `BW_GUI_GIT_EXECUTABLE` and the report directory. Pass a repository token with Actions read permission to the metadata/acquisition steps; no new secret or wider admin token is required.
+5. Retain the source/tool/metadata/archive receipt and the success or failure journey artifacts. Make this enabled consumer a required deployment dependency. Its timeout needs a measured full-journey reading; the canvas wait retains the existing 10000ms bound and the helper tests are not a full GUI timing measurement.
+
+Primary metadata contracts: [GitHub artifact REST API](https://docs.github.com/en/rest/actions/artifacts#get-an-artifact) and [GitHub job REST API](https://docs.github.com/en/rest/actions/workflow-jobs#get-a-job-for-a-workflow-run). The Actions workflow mutation belongs to its owner. Until that real consumer is wired and passes, the numeric journey remains unqualified and the repository coverage gate should continue reporting the missing workflow invocation.
+
+## Observable wait policy
+
+The three fixed sleeps introduced by the two Arcade GUI journeys are removed: both frame comparisons now wait for an actual complete 19200-pixel presentation on animation-frame observation, and toolbox scrolling waits for its actual block rectangle to move. The observer never calls the renderer's draw method. Number and dropdown editors must close after commitment before their fields are checked. The repository sleep ceiling and gate-shape thresholds are unchanged. `test/arcade-stage-frame-observer.test.mjs` proves that a last-pixel mismatch, zero-size canvas and incomplete expected frame cannot pass; it uses a small canvas fixture and does not qualify the application. `test/gui-harness-source.test.mjs` checks explicit Git identity and refusal of dirty tracked source. `test/gui-artifact-response.test.mjs` checks separate HEAD metadata and strict GET body identity, including wrong same-length bodies and compressed HEAD metadata. These controls do not qualify a hosted build or the full journey.

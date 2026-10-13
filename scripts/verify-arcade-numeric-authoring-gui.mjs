@@ -3,12 +3,14 @@
 import assert from 'node:assert/strict';
 import {readFile, writeFile, mkdir} from 'node:fs/promises';
 import path from 'node:path';
-import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 import JSZip from 'jszip';
 import {openCodeActions} from './lib-code-actions.mjs';
+import {waitForArcadeStageFrame} from './lib/arcade-stage-frame.mjs';
+import {inspectGuiHarnessSource} from './lib/gui-harness-source.mjs';
+import {inspectGuiArtifactResponse} from './lib/gui-artifact-response.mjs';
 import {makeCodeProjectFile, readMakeCodeProjectText} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 import {runPxtArcade} from '../test/helpers/pxt-arcade-runtime.mjs';
 import {numericAuthoringFiles, numericSample} from '../test/fixtures/arcade-numeric-authoring-game.mjs';
@@ -20,7 +22,8 @@ assert.ok(base, 'PROOF_URL must identify the admitted full production build');
 assert.ok(process.env.BW_GUI_BUILD_RECEIPT, 'An admitted exact-source official build receipt is required');
 assert.ok(process.env.BW_GUI_BUILD_ARCHIVE, 'The sole already acquired official archive is required');
 const receipt = JSON.parse(await readFile(process.env.BW_GUI_BUILD_RECEIPT, 'utf8'));
-const source = execFileSync('git', ['rev-parse', 'HEAD'], {cwd: root, encoding: 'utf8'}).trim();
+const inspected = inspectGuiHarnessSource({root, executable: process.env.BW_GUI_GIT_EXECUTABLE});
+const source = inspected.sourceSha;
 const pins = JSON.parse(await readFile(path.join(root, 'vendor-pins.json'), 'utf8'));
 assert.equal(receipt.sourceSha, source, 'Harness and admitted build must use the exact reviewed source');
 assert.equal(receipt.producerSha, pins['sb3-creator']);
@@ -42,9 +45,10 @@ for (const key of ['runId', 'jobId', 'artifactId']) assert.match(String(receipt.
 assert.equal(receipt.build.runUrl, `https://github.com/CrispStrobe/brickwright-lite/actions/runs/${receipt.build.runId}`);
 assert.equal(digest(await readFile(process.env.BW_GUI_BUILD_ARCHIVE)), receipt.build.archiveSha256);
 assert.ok(Object.keys(receipt.assets).length, 'Receipt must inventory the actual extracted build assets');
+for (const name of Object.keys(receipt.assets)) assert.ok(Number.isSafeInteger(receipt.assetBytes?.[name]) && receipt.assetBytes[name] >= 0, `Receipt must inventory original extracted asset length ${name}`);
 const out = path.resolve(process.env.BW_NUMERIC_GUI_REPORT_DIR || 'test-results/arcade-numeric-authoring-gui');
 await mkdir(out, {recursive: true});
-const report = {status: 'running', source, receipt, journeys: [], samples: [], original: [], pageErrors: [], bundleObservations: [],
+const report = {status: 'running', source, sourceTool: inspected.tool, receipt, journeys: [], samples: [], original: [], pageErrors: [], bundleObservations: [],
     boundary: 'Owned numeric/settings/source-loop authoring only. Random values are bounded, not seeded or compared across independent runs. Script preparation is not GUI qualification.'};
 const browser = await chromium.launch(process.env.BW_BROWSER ? {executablePath: process.env.BW_BROWSER} : {});
 let page;
@@ -62,9 +66,9 @@ const fresh = async () => {
         if (url.origin !== prefix.origin || !(/\.js$/.test(url.pathname) || /\/makecode\/arcade\/target\.json$/.test(url.pathname))) return;
         bodyChecks.push((async () => {
             const name = decodeURIComponent(url.pathname.slice(prefix.pathname.endsWith('/') ? prefix.pathname.length : prefix.pathname.lastIndexOf('/') + 1));
-            const sha256 = digest(await response.body());
-            assert.equal(sha256, receipt.assets[name], `Actual served production JS ${name} must match admitted artifact`);
-            report.bundleObservations.push({name, sha256});
+            const observed = await inspectGuiArtifactResponse(response, {name, sha256: receipt.assets[name], bytes: receipt.assetBytes[name]});
+            if (observed.method === 'HEAD') (report.bundleHeaders ||= []).push(observed);
+            else report.bundleObservations.push(observed);
         })().catch(error => { (report.bundleFailures ||= []).push(String(error)); }));
     });
     await tab.addInitScript(() => { localStorage.clear(); sessionStorage.clear(); localStorage.setItem('bw-starter-v1-complete', '1'); localStorage.setItem('bw-right-pane-hidden', '0'); });
@@ -113,6 +117,7 @@ const reachField = async spec => {
 const editNumber = async (spec, value) => {
     const field = await reachField(spec); await page.mouse.click(field.x, field.y);
     const input = page.locator('input.blocklyHtmlInput'); await input.waitFor({state: 'visible'}); await input.fill(String(value)); await input.press('Enter');
+    await input.waitFor({state: 'hidden'});
     await page.waitForFunction(({id, name, value}) => String(window.Blockly.getMainWorkspace().getBlockById(id)?.getFieldValue(name)) === value, {...field, value: String(value)});
 };
 const editMenu = async (spec, choice, required) => {
@@ -120,6 +125,7 @@ const editMenu = async (spec, choice, required) => {
     const items = page.getByRole('menuitemcheckbox'); await items.first().waitFor({state: 'visible'});
     const labels = await items.allTextContents(); for (const text of required) assert.ok(labels.includes(text), `${text} is a real visible choice`);
     await page.getByRole('menuitemcheckbox', {name: choice, exact: true}).click();
+    await items.first().waitFor({state: 'hidden'});
     await page.waitForFunction(({id, name, choice}) => window.Blockly.getMainWorkspace().getBlockById(id)?.getFieldValue(name) === choice, {...field, choice});
     report.journeys.push({action: 'visible dropdown edit', opcode: spec.opcode, choice, labels});
 };
@@ -132,18 +138,10 @@ const waitSample = sample => page.waitForFunction(sample => {
     const variables = Object.fromEntries(window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.filter(t => t.isOriginal).flatMap(t => Object.values(t.variables)).map(v => [v.name.replace(/^(?:Game_)+/, ''), v.value]));
     return Object.entries(sample).every(([key, value]) => variables[key] === value);
 }, sample);
-const frame = () => page.evaluate(() => {
-    const renderer = window.__brickwrightStore.getState().scratchGui.vm.runtime.renderer;
-    // Read the last presented production canvas; no renderer/VM primitive call.
-    const canvas = document.createElement('canvas'); canvas.width = renderer.canvas.width; canvas.height = renderer.canvas.height;
-    const ctx = canvas.getContext('2d'); ctx.drawImage(renderer.canvas, 0, 0);
-    const rgba = ctx.getImageData(0, 0, canvas.width, canvas.height).data, pixels = [];
-    for (let y = 0; y < 120; y++) for (let x = 0; x < 160; x++) { const i = (Math.floor((y + .5) * canvas.height / 120) * canvas.width + Math.floor((x + .5) * canvas.width / 160)) * 4; pixels.push((rgba[i] + (rgba[i + 1] << 8) + (rgba[i + 2] << 16) + 0xff000000) >>> 0); }
-    return pixels;
-});
 const compareFrame = async original => {
-    for (let attempt = 0; attempt < 100; attempt++) { const pixels = await frame(); if (pixels.every((pixel, index) => pixel === original[index])) return digest(Buffer.from(Uint32Array.from(pixels).buffer)); await page.waitForTimeout(100); }
-    assert.deepEqual(await frame(), original, 'Actual visible Stage HUD and sprite match the original presentation');
+    await page.getByTitle('Scratch Stage', {exact: true}).click();
+    const pixels = await waitForArcadeStageFrame(page, original);
+    return digest(Buffer.from(Uint32Array.from(pixels).buffer));
 };
 const original = async (files, options, pressed) => {
     const sample = numericSample({...options, pressed});
@@ -162,6 +160,7 @@ const cycle = async (label, options, files) => {
     await waitSample(numericSample(options)); const initial = await observe();
     assert.deepEqual(initial.errors, []); assert.ok(initial.variables.noise >= 0 && initial.variables.noise < 1);
     const initialFrame = await compareFrame(await original(files, options, false));
+    await page.getByTitle('Game Console', {exact: true}).click();
     await page.getByTestId('bw-arcade-a').click(); await waitSample(numericSample({...options, pressed: true}));
     const pressedFrame = await compareFrame(await original(files, options, true));
     const pressed = await observe(); assert.deepEqual(pressed.errors, []);
@@ -177,7 +176,13 @@ const paletteCreate = async () => {
         });
         assert.ok(point, 'New clamp reporter is present in actual Arcade flyout');
         if (point.y > 130 && point.y < 900) break;
-        await page.mouse.move(220, 500); await page.mouse.wheel(0, point.y > 900 ? 450 : -450); await page.waitForTimeout(60);
+        await page.mouse.move(220, 500); await page.mouse.wheel(0, point.y > 900 ? 450 : -450);
+        await page.waitForFunction(previousY => {
+            const flyout = window.Blockly.getMainWorkspace().getFlyout().getWorkspace();
+            const block = flyout.getAllBlocks(false).find(value => value.type === 'arcade_clampNumber');
+            const rect = block?.getSvgRoot().getBoundingClientRect();
+            return Boolean(rect && rect.y !== previousY);
+        }, point.y);
     }
     assert.ok(point.y > 130 && point.y < 900, 'Clamp is reachable by real palette scrolling');
     const before = await page.evaluate(() => window.Blockly.getMainWorkspace().getAllBlocks(false).filter(b => b.type === 'arcade_clampNumber').map(b => b.id));

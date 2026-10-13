@@ -10,6 +10,7 @@ import {createHash} from 'node:crypto';
 import JSZip from 'jszip';
 import {chromium} from 'playwright';
 import {openCodeActions} from './lib-code-actions.mjs';
+import {waitForArcadeStageFrame} from './lib/arcade-stage-frame.mjs';
 import {makeCodeProjectFile, readMakeCodeProjectText} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 import {svgToPixels} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {runPxtArcade} from '../test/helpers/pxt-arcade-runtime.mjs';
@@ -90,34 +91,11 @@ const openFile = async file => {
     assert.doesNotMatch(await page.getByTestId('bw-code-status').innerText(), /unsupported|not translated|could not|partial/i);
     assert.doesNotMatch(await readCode(), /# unsupported:/);
 };
-// Read the ACTUAL Stage presentation at Arcade logical pixel centers. Rendering
-// uses the production renderer, without changing program state or replacing it.
-const nativeFrame = () => page.evaluate(() => {
-    const renderer = window.__brickwrightStore.getState().scratchGui.vm.runtime.renderer;
-    renderer.draw();
-    const canvas = document.createElement('canvas');
-    canvas.width = renderer.canvas.width; canvas.height = renderer.canvas.height;
-    const context = canvas.getContext('2d'); context.drawImage(renderer.canvas, 0, 0);
-    const rgba = context.getImageData(0, 0, canvas.width, canvas.height).data;
-    const frame = [];
-    for (let y = 0; y < 120; y++) for (let x = 0; x < 160; x++) {
-        const offset = (Math.floor((y + .5) * canvas.height / 120) * canvas.width +
-            Math.floor((x + .5) * canvas.width / 160)) * 4;
-        frame.push((rgba[offset] + (rgba[offset + 1] << 8) + (rgba[offset + 2] << 16) + 0xff000000) >>> 0);
-    }
-    return frame;
-});
+// The real renderer must present the expected complete frame. No fixed sleep
+// or forced renderer draw substitutes for the visible production presentation.
 const waitFrame = async original => {
-    const deadline = Date.now() + 10000;
-    let frame;
-    do {
-        frame = await nativeFrame();
-        if (frame.every((pixel, index) => pixel === original[index])) return frame;
-        await page.waitForTimeout(100);
-    } while (Date.now() < deadline);
-    const differences = frame.flatMap((pixel, index) => pixel === original[index] ? [] : [index]);
-    report.lastFrameMismatch = {pixels: differences.length, first: differences.slice(0, 32)};
-    assert.deepEqual(frame, original, 'actual Stage sprite and TextSprite pixels match the original presented screen');
+    await page.getByTitle('Scratch Stage', {exact: true}).click();
+    return waitForArcadeStageFrame(page, original);
 };
 const oracle = async (files, sample, pressed = false) => {
     const result = await runPxtArcade(withRetainedTextSprite(files), {
@@ -136,9 +114,11 @@ const cycle = async (label, message, pixel, originalFiles) => {
     await page.locator('[class*="green-flag_green-flag"]:visible').first().click();
     const initial = expected(message, pixel); await waitSample(initial);
     const initialFrame = await waitFrame(await oracle(originalFiles, initial));
+    await page.getByTitle('Game Console', {exact: true}).click();
     await page.getByTestId('bw-arcade-a').click();
     const pressed = expected(message, pixel, 1); await waitSample(pressed);
     const pressedFrame = await waitFrame(await oracle(originalFiles, pressed, true));
+    await page.getByTitle('Game Console', {exact: true}).click();
     await page.getByTestId('bw-arcade-b').click();
     await waitSample(expected('RESET', pixel));
     report.native.push({label, initial, pressed, reset: await observe(),
