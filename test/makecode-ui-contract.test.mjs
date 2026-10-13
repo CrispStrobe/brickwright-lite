@@ -52,9 +52,12 @@ test('an artefact is read as bytes, not as text', () => {
 test('all five entry points share one lazily-loaded chunk', () => {
     const chunks = [...source.matchAll(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/\.\.\/lib\/bw-makecode\/(index|export-arcade)\.js'/g)]
         .map(m => m[1]);
-    assert.equal(chunks.length, 6,
-        'file import, share import, export, the ▶/⤓ MakeCode subject, the Arcade export (+ its hex container)');
-    assert.deepEqual([...new Set(chunks)], ['bw-makecode'], 'one chunk, not six');
+    // Eight since a project can hold several boards: the per-board subjects
+    // (boardSubjects) and the per-board export each import it once more.
+    assert.equal(chunks.length, 8,
+        'file import, share import, export, the ▶/⤓ MakeCode subject, the Arcade export (+ its hex container), ' +
+        'and the per-board subjects and per-board export of a multi-board project');
+    assert.deepEqual([...new Set(chunks)], ['bw-makecode'], 'one chunk, not eight');
 });
 
 test('MakeCode\'s compiler is loaded on demand, in its own chunk, by the ▶ and ⤓ actions and the Arcade board list only', () => {
@@ -66,7 +69,10 @@ test('MakeCode\'s compiler is loaded on demand, in its own chunk, by the ▶ and
     // Four, deliberately: the Arcade board picker's list (loadArcadeBoards) is the
     // fourth, and it rides the same chunk — it reads pxt-arcade's served hardware
     // list through pxt-runtime.js, so the importer's own chunk stays compiler-free.
-    assert.equal(chunks.length, 4, 'run in the simulator, build the firmware, run this project as Arcade, list the Arcade boards');
+    // Six since a project can hold several boards: compiling every board for
+    // the side-by-side simulators, and for the per-board firmware download.
+    assert.equal(chunks.length, 6, 'run in the simulator, build the firmware, run this project as Arcade, list the Arcade boards, ' +
+        'and the two multi-board actions (run every board, build every board\'s firmware)');
     assert.deepEqual([...new Set(chunks)], ['bw-makecode-pxt']);
     for (const [method, testid] of [['runInMakeCode ()', 'bw-makecode-run'], ['downloadMakeCodeFirmware ()', 'bw-makecode-firmware'],
         ['runAsArcade ()', 'bw-makecode-arcade-run']]) {
