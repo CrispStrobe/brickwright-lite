@@ -91,9 +91,26 @@ fn main() {
         "native_broker_invoke",
         "native_broker_audit",
     ];
+    // Peer sessions (task E11, docs/PEERS-SECURITY-REVIEW.md) exist only in a build with the
+    // `peers` Cargo feature, which is off by default. Without it these commands are neither
+    // registered (`#[cfg(feature = "peers")]` in src/lib.rs) nor given a permission here, so no
+    // capability could grant them even by mistake. With it, src/lib.rs adds the one reviewed
+    // capability, runtime-capabilities/peers.json, to the main window at startup.
+    const PEER_COMMANDS: &[&str] = &[
+        "peer_status",
+        "peer_enable",
+        "peer_disable",
+        "peer_send",
+        "peer_reply",
+    ];
+    let commands: &'static [&'static str] = if std::env::var_os("CARGO_FEATURE_PEERS").is_some() {
+        Box::leak([APP_COMMANDS, PEER_COMMANDS].concat().into_boxed_slice())
+    } else {
+        APP_COMMANDS
+    };
     tauri_build::try_build(
         tauri_build::Attributes::new()
-            .app_manifest(tauri_build::AppManifest::new().commands(APP_COMMANDS)),
+            .app_manifest(tauri_build::AppManifest::new().commands(commands)),
     )
     .expect("failed to build Tauri application manifest");
 }

@@ -35,6 +35,36 @@ const OPERATIONS = Object.freeze({
     ev3ClearBreakpoint: 'renode.ev3.breakpoint.clear'
 });
 
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 Brickwright contributors
+// The relay deliberately returns fixed failure codes, never native exception
+// text or private resource paths.
+const FAILURE_CODES = new Set(['closed', 'invalid-envelope', 'replayed-request',
+    'out-of-order-request', 'capacity', 'invalid-data', 'invalid-url', 'unpinned-url',
+    'stale-reply', 'operation-failed', 'invalid-registration', 'unknown-worker',
+    'unknown-extension', 'unknown-method', 'timeout']);
+
+// Caller diagnostics only: native authorization and image/API checks still run
+// independently and deliberately disclose no policy details. Inspect data
+// properties without evaluating getters; other malformed DTOs stay with the
+// closed native boundary. Run this inside the queue before reserving a request,
+// so a queued mutation is checked without consuming IDs or retiring a session.
+const preflightSpikeStart = args => {
+    if (!args || Object.getPrototypeOf(args) !== Object.prototype) return;
+    const topology = Object.getOwnPropertyDescriptor(args, 'topology');
+    if (!topology || typeof topology.value !== 'string') return;
+    if (!['default', 'six-motors', 'dual-ultrasonic'].includes(topology.value)) {
+        throw new Error('unknown SPIKE topology');
+    }
+    if (topology.value !== 'default') {
+        const backend = Object.getOwnPropertyDescriptor(args, 'backend');
+        if (!backend || (backend.value !== 'nuttx' &&
+            !(topology.value === 'six-motors' && backend.value === 'micropython'))) {
+            throw new Error('custom topology requires own NuttX firmware');
+        }
+    }
+};
+
 const createNativeRenodeCapabilities = ({invoke} = {}) => {
     if (typeof invoke !== 'function') return null;
     let session = null;
@@ -68,11 +98,20 @@ const createNativeRenodeCapabilities = ({invoke} = {}) => {
     // in order so a later request cannot reach the strict relay first.
     const request = operation => args => {
         const next = dispatch.then(async () => {
+            if (operation === OPERATIONS.start) preflightSpikeStart(args);
             const {owned, requestId} = await reserve();
             try {
                 const raw = await invoke('native_broker_request', {session: owned.id, requestId,
                     payload: JSON.stringify({kind: 'capability', operation, args})});
                 const reply = JSON.parse(raw);
+                if (reply && Object.getPrototypeOf(reply) === Object.prototype &&
+                    Object.keys(reply).sort().join(',') === 'code,kind,request_kind' &&
+                    reply.kind === 'failure' && reply.request_kind === 'capability' &&
+                    FAILURE_CODES.has(reply.code)) {
+                    const error = new Error(`Firmware simulator request failed (${reply.code})`);
+                    error.code = reply.code;
+                    throw error;
+                }
                 if (!reply || Object.getPrototypeOf(reply) !== Object.prototype ||
                     reply.kind !== 'capability' || typeof reply.result !== 'string') {
                     throw new Error('Renode capability reply was malformed');

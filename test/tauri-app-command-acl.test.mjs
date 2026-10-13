@@ -8,6 +8,9 @@ const native = path.join(root, 'apps/tauri/src-tauri');
 const BROKER_PREFIX = 'native_broker_';
 const BROKER_WEBVIEW = 'capability-broker';
 const ACK_COMMAND = 'native_broker_ready';
+// Peer sessions (task E11): registered and permitted ONLY in a `peers` Cargo-feature build.
+const PEER_CFG = 'feature = "peers"';
+const PEER_COMMANDS = ['peer_status', 'peer_enable', 'peer_disable', 'peer_send', 'peer_reply'];
 
 const balanced = (source, marker, open, close) => {
     const markerAt = source.indexOf(marker);
@@ -46,9 +49,17 @@ const handlerEntries = source => balanced(source, 'tauri::generate_handler!', '[
 
 const manifestCommands = source => {
     assert.match(source, /tauri_build::try_build\s*\(/, 'fallible ACL generation must not be discarded');
-    assert.match(source, /AppManifest::new\(\)\.commands\(APP_COMMANDS\)/,
-        'the generated app manifest must use the reviewed command constant');
-    return stringArray(balanced(source, 'const APP_COMMANDS: &[&str] = &', '[', ']'));
+    assert.match(source, /AppManifest::new\(\)\.commands\(commands\)/,
+        'the generated app manifest must use the reviewed command selection');
+    // The default manifest is APP_COMMANDS alone; the peer commands join it only when Cargo
+    // builds the `peers` feature (CARGO_FEATURE_PEERS), and in no other way.
+    assert.match(source,
+        /let commands: &'static \[&'static str\] = if std::env::var_os\("CARGO_FEATURE_PEERS"\)\.is_some\(\) \{\s*Box::leak\(\[APP_COMMANDS, PEER_COMMANDS\]\.concat\(\)\.into_boxed_slice\(\)\)\s*\} else \{\s*APP_COMMANDS\s*\};/,
+        'peer commands may enter the manifest only under the peers feature');
+    return {
+        app: stringArray(balanced(source, 'const APP_COMMANDS: &[&str] = &', '[', ']')),
+        peers: stringArray(balanced(source, 'const PEER_COMMANDS: &[&str] = &', '[', ']'))
+    };
 };
 
 const allowName = command => `allow-${command.replaceAll('_', '-')}`;
@@ -63,10 +74,35 @@ const EDITOR_DIALOG_COMMANDS = ['message'];
 const dialogCommandsInvoked = source =>
     uniqueSorted([...source.matchAll(/plugin:dialog\|([a-z_]+)/g)].map(match => match[1]));
 
-const audit = ({handler, build, main, mobile, ack, runtime, editor}) => {
-    const entries = handlerEntries(handler);
+const audit = ({handler, build, main, mobile, ack, runtime, peers, editor}) => {
+    const all = handlerEntries(handler);
+    // Peer sessions first: exactly the five reviewed commands, each behind the feature, each
+    // in PEER_COMMANDS, none in any default grant, and granted only by peers.json.
+    const peerEntries = all.filter(entry => entry.cfg === PEER_CFG);
+    const {app: manifested, peers: manifestedPeers} = manifestCommands(build);
+    assert.deepEqual(uniqueSorted(peerEntries.map(entry => entry.name)), uniqueSorted(PEER_COMMANDS),
+        'exactly the reviewed peer commands are registered behind the peers feature');
+    assert.deepEqual(all.filter(entry => entry.name.startsWith('peer_') && entry.cfg !== PEER_CFG), [],
+        'no peer command may be registered outside the peers feature');
+    assert.deepEqual(uniqueSorted(manifestedPeers), uniqueSorted(PEER_COMMANDS),
+        'PEER_COMMANDS must name exactly the gated peer commands');
+    assert.deepEqual(manifested.filter(name => PEER_COMMANDS.includes(name)), [],
+        'the default manifest must not permit a peer command');
+    const peerAllows = PEER_COMMANDS.map(allowName);
+    for (const capability of [main, mobile, ack, ...runtime]) {
+        assert.deepEqual(capability.permissions.filter(value => peerAllows.includes(value)), [],
+            `${capability.identifier} must not grant a peer command`);
+    }
+    assert.deepEqual(uniqueSorted(peers.permissions), uniqueSorted(peerAllows),
+        'peers.json grants exactly the peer commands');
+    assert.deepEqual(peers.webviews, ['main'], 'peers.json targets the main webview only');
+    assert.deepEqual(peers.windows || [], [], 'peers.json must not use window scope');
+    assert.ok(/#\[cfg\(feature = "peers"\)\]\s*\{\s*use tauri::Manager;\s*app\.add_capability\(include_str!\("\.\.\/runtime-capabilities\/peers\.json"\)\)\?;/.test(handler),
+        'peers.json may be added only by the feature-gated setup block');
+    assert.equal((handler.match(/peers\.json/g) || []).length, 1, 'peers.json is added in one place');
+
+    const entries = all.filter(entry => entry.cfg !== PEER_CFG);
     const registered = entries.map(entry => entry.name);
-    const manifested = manifestCommands(build);
     assert.equal(registered.length, 39, 'review a deliberate command-count change');
     assert.equal(new Set(registered).size, registered.length, 'handler commands must be unique');
     assert.equal(new Set(manifested).size, manifested.length, 'manifest commands must be unique');
@@ -178,6 +214,7 @@ const live = () => ({
     ack: readJson(path.join(native, 'capabilities/native-broker-ack.json')),
     runtime: ['native-broker-main', 'native-capability-broker']
         .map(name => readJson(path.join(native, `runtime-capabilities/${name}.json`))),
+    peers: readJson(path.join(native, 'runtime-capabilities/peers.json')),
     editor: editorSources()
 });
 
@@ -228,7 +265,22 @@ test('Tauri application-command ACL rejects omissions, extras, and mobile duplic
             input.runtime[1].permissions.filter(p => p !== 'allow-native-broker-invoke'); },
         input => { input.runtime[1].permissions.push('allow-native-broker-audit'); },
         input => { input.runtime[0].permissions =
-            input.runtime[0].permissions.filter(p => p !== 'allow-native-broker-audit'); }
+            input.runtime[0].permissions.filter(p => p !== 'allow-native-broker-audit'); },
+        // Peer sessions (E11): off unless the feature is built.
+        input => { input.main.permissions.push('allow-peer-send'); },
+        input => { input.mobile.permissions.push('allow-peer-enable'); },
+        input => { input.build = input.build.replace('        "scratchlink_bridge_close",',
+            '        "scratchlink_bridge_close",\n        "peer_send",'); },
+        input => { input.build = input.build.replace('if std::env::var_os("CARGO_FEATURE_PEERS").is_some()',
+            'if true'); },
+        input => { input.handler = input.handler.replace(
+            '#[cfg(feature = "peers")]\n            peer::peer_send', 'peer::peer_send'); },
+        input => { input.handler = input.handler.replace(
+            '#[cfg(feature = "peers")]\n            {\n                use tauri::Manager;',
+            '{\n                use tauri::Manager;'); },
+        input => { input.peers.permissions.push('allow-save-project'); },
+        input => { input.peers.webviews = ['main', 'capability-broker']; },
+        input => { input.build = input.build.replace('        "peer_reply",\n', ''); }
     ];
     const base = live();
     for (const mutate of mutations) {
