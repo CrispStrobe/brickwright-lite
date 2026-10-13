@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 
 const Arcade=loadExtensionClass('arcade');
 function setup(){
@@ -38,11 +39,15 @@ test('manual Destroyed masks guard destruction, clearing retained flags permits 
 
 test('raw mask writes update physical flag state and clipping retains unrelated bits',()=>{
  const {ext,id,sprite}=setup();
+ const target={visible:true,setVisible(value){this.visible=value;}};
+ ext._state().spriteTargets[id]=target;
  set(ext,id,128|256|8|2048);assert.equal(sprite.invisible,true);assert.equal(sprite._wallClipping,true);
+ assert.equal(target.visible,false);
  assert.equal(sprite.stayInScreen,true);assert.equal(sprite.ghostThroughWalls,true);
  ext._setSpriteClipping(sprite,false);assert.equal(read(ext,id),128|8|2048);
  ext._setSpriteClipping(sprite,true);assert.equal(read(ext,id),128|256|8|2048);
  set(ext,id,0);assert.equal(sprite.invisible,false);assert.equal(sprite._wallClipping,false);
+ assert.equal(target.visible,true);
  assert.equal(sprite.stayInScreen,false);assert.equal(sprite.ghostThroughWalls,false);
  assert.ok(ext.getInfo().menus.spriteProperties.items.includes('flags'));
 });
@@ -58,4 +63,14 @@ test('source flags require proven primitive values and real unshadowed SDK const
  }
  const shadow=arcadeToPseudocode('let SpriteFlag=1;let actor=sprites.create(img`1`,SpriteKind.Player);actor.flags=SpriteFlag.Ghost');
  assert.ok(shadow.unsupported.length>0);
+});
+
+test('bitwise compound flag assignments parse as one assignment with the complete operator',()=>{
+ for(const op of ['&=','|=','^=','<<=','>>=','>>>=']){
+  const ast=parseMakeCodeTs('actor.flags '+op+' 1');
+  assert.equal(ast.body.length,1);assert.equal(ast.body[0].expr.type,'Assignment');
+  assert.equal(ast.body[0].expr.op,op);
+  const imported=arcadeToPseudocode('let actor=sprites.create(img`1`,SpriteKind.Player);actor.flags '+op+' 1');
+  assert.deepEqual(imported.unsupported,[],op);assert.match(imported.code,/calculate value/);
+ }
 });

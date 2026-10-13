@@ -2796,7 +2796,7 @@ module.exports = makeExt(`// Name: Arcade
       if (name === 'data') { sprite.data = args.VALUE; this._changed(); return; }
       if(name==='flags'){
         sprite.flags=this._mathArgument(args,'VALUE',util,'Arcade sprite flags require a primitive value');
-        this._syncSpriteFlagState(sprite);this._positionSprite(sprite.id);this._changed();return;
+        this._syncSpriteFlagState(sprite);this._updateSpriteFlagVisibility(sprite);this._positionSprite(sprite.id);this._changed();return;
       }
       const value = Number(args.VALUE);
       if(['sx','sy','scale'].includes(name)){
@@ -3103,11 +3103,8 @@ module.exports = makeExt(`// Name: Arcade
       const on = Scratch.Cast.toBoolean(args.ON);
       sprite.flags = on ? (sprite.flags || 0) | mask : (sprite.flags || 0) & ~mask;
       this._syncSpriteFlagState(sprite);
-      const target = this._state().spriteTargets[String(args.ID)];
       if (String(args.FLAG) === 'Invisible') {
-        if(target?.setVisible)target.setVisible(!sprite.invisible);
-        const drawable=this._imageSkins.get(sprite.id)?.drawableId;
-        if(drawable!==undefined)this._runtime?.renderer?.updateDrawableVisible(drawable,!sprite.invisible && this._state().sprites[sprite.id]===sprite);
+        this._updateSpriteFlagVisibility(sprite);
       }
       if (String(args.FLAG) === 'RelativeToCamera') this._positionSprite(sprite.id);
       if (String(args.FLAG) === 'StayInScreen') {
@@ -3115,6 +3112,12 @@ module.exports = makeExt(`// Name: Arcade
         this._positionSprite(String(args.ID));
       }
       this._changed();
+    }
+    _updateSpriteFlagVisibility(sprite) {
+      const target=this._state().spriteTargets[sprite.id];
+      if(target?.setVisible)target.setVisible(!sprite.invisible);
+      const drawable=this._imageSkins.get(sprite.id)?.drawableId;
+      if(drawable!==undefined)this._runtime?.renderer?.updateDrawableVisible(drawable,!sprite.invisible && this._state().sprites[sprite.id]===sprite);
     }
     setSpriteStayInScreen(args) { this.setSpriteFlag({...args, FLAG: 'StayInScreen'}); }
     setSpriteAutoDestroy(args) { this.setSpriteFlag({...args, FLAG: 'AutoDestroy'}); }

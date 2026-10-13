@@ -2546,7 +2546,7 @@ class ArcadeTranslator extends BaseTranslator {
             if(property==='flags' && !this.primitiveReferences?.has(expr.right)){push(this.note('Sprite.flags assignment requires a proven primitive value; opaque or unknown conversion is not implemented'));return;}
             const value = this.expr(expr.right);
             const result = expr.op === '=' ? value :
-                ['+=','-=','*=','/=','%=','|=','&=','^=','<<=','>>='].includes(expr.op) ? this.expr({type:'Binary',op:expr.op.slice(0,-1),left:expr.left,right:expr.right}) : null;
+                ['+=','-=','*=','/=','%=','|=','&=','^=','<<=','>>=','>>>='].includes(expr.op) ? this.expr({type:'Binary',op:expr.op.slice(0,-1),left:expr.left,right:expr.right}) : null;
             if (result === null) push(this.note(`${this.path(expr.left)} ${expr.op} — unsupported assignment`));
             else push(`arcade set ${property} of ${handle} to ${result}`);
             return;
