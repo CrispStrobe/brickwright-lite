@@ -411,3 +411,38 @@ checks passed; PR-only deployment jobs skipped. This predates the lifetime and
 single-storage candidates, which require their own exact-head qualification.
 Namespace imports, a byte inspector and immutable whole-app recensus remain
 separate gaps. No corpus classifications changed.
+
+### Read-only root inspection — 2026-10-13
+
+Internal `_bufferMemorySnapshot(extraRoots, limits)` now measures registered
+Buffer backing storage separately from storage reachable through inspected
+roots. Two views of the same ArrayBuffer count once. Raw storage belonging to
+other resources is reported separately in `observedByteStorage`; it does not
+inflate registered Buffer totals. The strong Buffer registry is not treated as
+a root simply because it retains an issued ID.
+
+The owner inventory includes variables/list records and block fields from all
+runtime targets, thread stack frames and return/capture/event slots, threads
+held by function/creation/terrain waits, callback captures, current/suspended
+scene state, music value objects and literal-site caches. The graph walk follows
+reachable scoped arrays, including cycles; unrelated interned arrays are not
+automatic roots. Serialized JSON values containing reference records are
+parsed recursively under a text budget, then checked against the current
+runtime scope. Foreign and expired handles do not retain local resources.
+Symbol and nonenumerable data fields are inspected without calling accessors.
+
+Node/text limits, accessors, functions, weak containers and reference-bearing
+text fragments produce explicit incomplete-traversal reasons. Bounds are
+checked before expanding large property/Map/Set collections. `traversalComplete`
+only describes the supplied graph: `rootCoverageComplete` and
+`collectionAllowed` remain false. The walk never removes registry entries or
+claims to observe generator locals, arbitrary external host references or every
+extension's private closure. Those owners still need explicit roots/leases and
+allocation reservations before any automatic sweeping is enabled.
+
+Controls cover distinct backing stores/aliases, discarded registry entries,
+reachable array cycles, active call/callback/scene captures, nested serialized
+JSON, foreign/expired scopes, actual native Buffer-backed songs, disposal and
+bounded refusal without getter execution. Shared value and serialization
+helpers remain unchanged. This is collector preparation, not heap closure or
+whole-app promotion.

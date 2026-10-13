@@ -3865,6 +3865,10 @@ module.exports = makeExt(`// Name: Arcade
       if(!this._bufferHeap)this._bufferHeap={generation:dependencies.buffers.newHeapId(),values:new Map(),ids:new WeakMap(),literals:new Map(),next:0};
       return this._bufferHeap;
     }
+    _bufferMemorySnapshot(extraRoots=[],limits={}) {
+      return dependencies.bufferMemory.inspect({...limits,runtime:this._runtime,values:Scratch.BWValues,
+        heap:this._bufferHeap,roots:[...dependencies.bufferMemory.ownerRoots(this),...extraRoots]});
+    }
     _bufferReference(bytes) {
       const heap=this._bufferState();let id=heap.ids.get(bytes);
       if(id===undefined){id='buffer:'+heap.generation+':'+ ++heap.next;heap.ids.set(bytes,id);heap.values.set(id,bytes);}
@@ -4708,6 +4712,7 @@ module.exports = makeExt(`// Name: Arcade
   initializeText: require('./text-pxt'),
   createMusic: require('./music'),
   buffers: require('./buffer'),
+  bufferMemory: require('./buffer-memory'),
   initializeMusic: require('./music-pxt'),
   helpers: require('./helpers-pxt'),
   createCarnivalHost: require('./carnival-host'),

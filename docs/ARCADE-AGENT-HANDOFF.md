@@ -1993,3 +1993,17 @@ detachment, typed-array construction and original simulator values are required
 controls. Root-aware collection and aggregate reservation remain open, with
 serialized values and music fibers needing explicit ownership. Continue the
 ordered method in the Buffer contract. Locked184 remains142/41/1.
+
+## Buffer root inventory — 2026-10-13
+
+Child `lane/arcade-buffer-roots-20261013` follows storage PR855. The internal
+read-only memory snapshot distinguishes registry retention from graph roots,
+counts backing stores once and follows reachable scoped arrays and serialized
+JSON. Owner roots cover target values/block fields, thread and custom-call
+slots, callback captures, retained scenes, playable objects and literal sites.
+Inspect the Buffer contract for its limits and exact scope. The walk never
+sweeps; both root-coverage and collection authorization remain false even when
+the supplied graph was fully visited. Generator/host closures still need
+explicit leases, followed by preallocation reservation and controlled tracing.
+Shared BWValues and serialization source are untouched. Whole-app142/41/1
+remains unchanged; parent and child hosted results are separate evidence.
