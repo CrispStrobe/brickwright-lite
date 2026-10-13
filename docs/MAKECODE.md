@@ -420,6 +420,41 @@ The order therefore stands — import first, emulate later, and only if the
 demand is for playing other people's games rather than learning from them —
 but "later" is now a week of peripheral work rather than a rewrite.
 
+## The command line: every target, and `run` (2026-10-13)
+
+`npm run makecode -- <command>` (scripts/makecode.mjs) covers the targets the
+Code tab translates, and runs a micro:bit or Calliope program without the app.
+
+| `--target` | to-sb3 | to-ts / to-project | to-hex (firmware) | run |
+|---|---|---|---|---|
+| `microbit` | yes | yes | universal V1 + V2 `.hex` | yes, the V1 board model |
+| `calliopemini` (`calliope`) | yes | yes, export-calliope.js | `.hex` | yes, the V1 board model |
+| `arcade` | yes | yes | `.uf2` for a `--board` | refused by name |
+| `ev3` | yes | yes, export-ev3.js | `.uf2` | refused by name |
+
+A Calliope project exports through the micro:bit walk with pxt-calliope's own
+packages (`core`, `radio`), and `wait until` becomes the polling loop it stands
+for: pxt-calliope 3.0.30 has no `pauseUntil` (pxt-microbit's core poll.ts), and
+a Calliope corpus program failed to compile on it until this (task A6).
+
+`run <file> [--target microbit|calliopemini] [--seconds N] [--json]` (task A7)
+runs the program on LabWired's `microbit-v1` board: an nRF51822 with the Nordic
+S110 SoftDevice EMULATED (only the application window of the `.hex` is loaded;
+no Nordic byte runs), the same board model the Debug pane uses. A firmware
+`.hex` runs as it is (a universal hex's V1 section); a `.ts`, `.sb3`/`.bw` or a
+`.hex` that only carries a project is compiled first. Time is GUEST time: the
+serial console prints as it arrives, the 5x5 matrix when it changes. It needs
+`npm run sync:labwiredwasm` (the app's own engine artifact, run in Node through
+its glue's `initSync`) and, to compile, `npm run sync:makecode`; either missing
+is exit 3, by name. A Calliope mini runs on the same board model: its matrix and
+serial are real, its RGB LED, motor driver and pin labels are not modelled.
+
+Found while building it: a program that reads an analog pin faults with a
+BusFault at `0x4000_7500`, the nRF51 ADC, which LabWired's nRF51822 descriptor
+does not model yet. `run` reports the fault and exits 1; it does not fake a
+reading. The micro:bit V2 (nRF52833) runs MakeCode only on a Bluetooth-free
+base, which task A8 wires in.
+
 ## Two things found on the way that are not built here
 
 **The pxteditor iframe protocol.** MakeCode editors accept
