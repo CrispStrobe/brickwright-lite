@@ -145,3 +145,18 @@ test('native-project audit reports missing offline extension inputs separately f
         assert.notEqual(row.stage,'pxt-compile-failed');
     }finally{fs.rmSync(dir,{recursive:true,force:true});}
 });
+
+
+test('extension fetching is an explicit compiled audit policy', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-audit-fetch-policy-'));
+    try {
+        const source = path.join(dir, 'plain.ts'), out = path.join(dir, 'audit.json');
+        fs.writeFileSync(source, 'let value = 3');
+        const rejected = spawnSync(process.execPath, [CLI, '--fetch-extensions', source], {cwd: ROOT, encoding: 'utf8'});
+        assert.notEqual(rejected.status, 0);
+        assert.match(rejected.stderr, /requires --compile/);
+        const result = spawnSync(process.execPath, [CLI, '--out', out, source], {cwd: ROOT, encoding: 'utf8'});
+        assert.equal(result.status, 0, result.stderr);
+        assert.equal(JSON.parse(fs.readFileSync(out, 'utf8')).compilerPolicy.extensionFetching, 'offline');
+    } finally { fs.rmSync(dir, {recursive: true, force: true}); }
+});

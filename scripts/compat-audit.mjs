@@ -8,7 +8,7 @@
  * TurboWarp is clean-room only: the .sb3 mode is a Scratch-format check, with no
  * TurboWarp-specific cases and no TurboWarp-sourced inputs.
  * Usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json]
- *        [--corpus-commit SHA] [--compile] [--execute] [--limit N] file-or-directory [...]
+ *        [--corpus-commit SHA] [--compile] [--fetch-extensions] [--execute] [--limit N] file-or-directory [...]
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -113,6 +113,7 @@ let out = null;
 let corpusCommit = null;
 let markdown = null;
 let doCompile = false;
+let fetchExtensions = false;
 let execute = false;
 let limit = Infinity;
 const inputs = [];
@@ -124,13 +125,14 @@ for (let i = 0; i < args.length; i++) {
     else if (a === '--markdown') markdown = args[++i];
     else if (a === '--limit') limit = Number(args[++i]);
     else if (a === '--compile') doCompile = true;
+    else if (a === '--fetch-extensions') fetchExtensions = true;
     else if (a === '--execute') execute = true;
     else if (a.startsWith('-')) throw new Error(`unknown option ${a}`);
     else inputs.push(a);
 }
 if (!inputs.length || !['microbit', 'arcade', 'calliopemini', 'ev3', 'adafruit'].includes(target) ||
     !Number.isFinite(limit) && limit !== Infinity || limit < 0) {
-    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--execute] [--limit N] file-or-directory [...]');
+    console.error('usage: node scripts/compat-audit.mjs [--target microbit|arcade] [--out report.json] [--markdown report.md] [--corpus-commit SHA] [--compile] [--fetch-extensions] [--execute] [--limit N] file-or-directory [...]');
     process.exit(2);
 }
 
@@ -140,6 +142,8 @@ function collect (name) {
     return supported.has(path.extname(name).toLowerCase()) ||
         (inputs.includes(name) && path.extname(name).toLowerCase() === '.png') ? [name] : [];
 }
+
+if (fetchExtensions && !doCompile) throw new Error('--fetch-extensions requires --compile');
 
 if (corpusCommit !== null && !/^[a-f0-9]{40}$/i.test(corpusCommit)) throw new Error('--corpus-commit requires a full immutable commit SHA');
 const files = [...new Set(inputs.flatMap(collect))].slice(0, limit);
@@ -151,7 +155,7 @@ const normalize = e => String(e?.message || e).slice(0, 350);
 // Missing offline package inputs are an unavailable original-compiler gate,
 // not a TypeScript diagnostic. Preserve the compiler's typed dependency list.
 const compileFailure = error => error?.code === 'NO_EXTENSION' ?
-    {status: 'unavailable', reason: normalize(error), code: error.code, extensions: Array.from(error.extensions || [], String)} :
+    {status: 'unavailable', reason: normalize(error), code: error.code, extensions: Array.from(error.extensions || [], String), refused: error.refused || [], fetchedExtensions: error.fetchedExtensions || []} :
     {status: 'fail', reason: normalize(error)};
 
 async function makecode (file) {
@@ -166,8 +170,8 @@ async function makecode (file) {
             'pxt.json': JSON.stringify({name: path.basename(file, ext), dependencies, files: ['main.ts']})};
         if (doCompile && hasRuntime(target)) {
             try {
-                const result = await compile(target, projectFiles);
-                preCompile = {status: result.success ? 'pass' : 'fail',
+                const result = await compile(target, projectFiles, {fetchExtensions});
+                preCompile = {status: result.success ? 'pass' : 'fail', fetchedExtensions: result.fetchedExtensions || [],
                     diagnostics: (result.diagnostics || []).slice(0, 10).map(d =>
                         `${d.file}:${d.line + 1}: ${d.message}`)};
             } catch (error) { preCompile = compileFailure(error); }
@@ -207,8 +211,8 @@ async function makecode (file) {
         else if (!imported.files?.['pxt.json']) row.compile = {status: 'unavailable', reason: 'no complete MakeCode project files'};
         else {
             try {
-                const result = await compile(row.target, imported.files);
-                row.compile = {status: result.success ? 'pass' : 'fail',
+                const result = await compile(row.target, imported.files, {fetchExtensions});
+                row.compile = {status: result.success ? 'pass' : 'fail', fetchedExtensions: result.fetchedExtensions || [],
                     diagnostics: (result.diagnostics || []).slice(0, 10).map(d => `${d.file}:${d.line + 1}: ${d.message}`)};
             } catch (error) { row.compile = compileFailure(error); }
         }
@@ -329,6 +333,7 @@ for (const file of files) {
 }
 const report = {schema: 'brickwright/compat-audit/v1', generatedAt: new Date().toISOString(),
     provenance: finishProvenance(provenance),
+    compilerPolicy: {extensionFetching: fetchExtensions ? 'explicitly-enabled' : 'offline'},
     qualificationBoundary: 'Static translation, original compilation, and runtime smoke are independent; stepped is not behavioral equivalence.',
     gapRanking: rankGaps(rows, row => [
         ...(row.unsupported || []).map(x => `${row.target}: ${x}`),

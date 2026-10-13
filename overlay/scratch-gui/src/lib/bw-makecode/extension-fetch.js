@@ -21,12 +21,13 @@ export const RAW_BASE = 'https://raw.githubusercontent.com/';
 /** Bounds on what one compile may fetch. */
 export const FETCH_LIMITS = Object.freeze({extensions: 8, filesPerExtension: 64, bytesPerExtension: 1024 * 1024});
 
-const SPEC = /^github:([A-Za-z0-9][\w.-]*\/[\w.-]+?)(?:\.git)?(?:#([\w./-]+))?$/i;
+const SPEC = /^github:([A-Za-z0-9][\w.-]*\/[\w.-]+?(?:\/[\w.-]+)*)(?:\.git)?(?:#([\w./-]+))?$/i;
 
-/** `github:owner/repo#ref` → {repo (lower case), ref ('' = default branch)}, else null. */
+/** `github:owner/repo[/package/path]#ref` → {repo (lower case), ref ('' = default branch)}, else null. */
 export function parseGithubSpec (spec) {
     const m = SPEC.exec(String(spec || '').trim());
     if (!m) return null;
+    if (m[1].split('/').some(part => !part || part === '.' || part === '..')) return null;
     const ref = m[2] || '';
     if (ref && ref.split('/').some(part => !part || part === '.' || part === '..')) return null;
     return {repo: m[1].toLowerCase(), ref};
@@ -84,9 +85,13 @@ export async function fetchMakeCodeExtensions ({dependencies, target, table, fet
         const key = `${dep.repo}#${dep.ref}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        if (!dep.repo) { refused.push({id: dep.id, spec: dep.spec, reason: 'not a github:owner/repo#ref dependency'}); continue; }
+        if (!dep.repo) { refused.push({id: dep.id, spec: dep.spec, reason: 'not a github:owner/repo[/package/path]#ref dependency'}); continue; }
         if (extensions.length >= limits.extensions) { refused.push({id: dep.id, spec: dep.spec, reason: `more than ${limits.extensions} extensions to fetch`}); continue; }
-        const base = `${RAW_BASE}${dep.repo}/${dep.ref || 'HEAD'}/`;
+        // A package subfolder follows the ref in GitHub raw URLs, but remains
+        // part of the package identity used by PXT's dependency resolver.
+        const parts = dep.repo.split('/');
+        const repositoryBase = `${RAW_BASE}${parts.slice(0, 2).join('/')}/${dep.ref || 'HEAD'}/`;
+        const base = repositoryBase + (parts.length > 2 ? parts.slice(2).join('/') + '/' : '');
         try {
             const pxtJson = await text(`${base}pxt.json`);
             const cfg = JSON.parse(pxtJson);
@@ -105,15 +110,22 @@ export async function fetchMakeCodeExtensions ({dependencies, target, table, fet
                 bytes += files[f].length;
                 if (bytes > limits.bytesPerExtension) throw new Error(`its sources exceed ${limits.bytesPerExtension} bytes`);
             }
-            let licence = null, licenceFile = null;
-            for (const name of ['LICENSE', 'LICENSE.txt', 'LICENSE.md']) {
-                const res = await fetch(base + name);
-                if (res.ok) { licenceFile = name; licence = licenceOf(await res.text()); break; }
+            let licence = null, licenceFile = null, licenceUrl = null;
+            // Monorepo packages often inherit the repository's root notice.
+            for (const licenceBase of base === repositoryBase ? [base] : [base, repositoryBase]) {
+                for (const name of ['LICENSE', 'LICENSE.txt', 'LICENSE.md']) {
+                    const res = await fetch(licenceBase + name);
+                    if (res.ok) {
+                        licenceFile = name; licenceUrl = licenceBase + name;
+                        licence = licenceOf(await res.text()); break;
+                    }
+                }
+                if (licenceFile) break;
             }
             const sha256 = {};
             for (const [name, content] of Object.entries(files)) sha256[name] = await sha256Hex(content);
             extensions.push({id: dep.id, repo: dep.repo, refs: [dep.ref], targets: [target], files,
-                fetched: {base, licence, licenceFile, redistributable: REDISTRIBUTABLE.includes(licence), sha256}});
+                fetched: {base, licence, licenceFile, licenceUrl, redistributable: REDISTRIBUTABLE.includes(licence), sha256}});
             // Its own github: dependencies, unless already available.
             for (const next of unresolvedGithubDependencies(cfg.dependencies, target, [...table, ...extensions])) queue.push(next);
         } catch (err) {
