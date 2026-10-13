@@ -14,8 +14,8 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 The integration branch now includes managed class/object references and static
 visibility metadata using producer [PR125](https://github.com/CrispStrobe/sb3-creator/pull/125),
-which merged after its enabled checks passed. Structured class authoring,
-inheritance and SDK intrinsic subclasses remain separate gaps. Source-entry
+which merged after its enabled checks passed. Ordinary inheritance is implemented and qualified below. Structured class
+authoring and SDK intrinsic subclasses remain separate gaps. Source-entry
 palette editing and exact array helper recognition are repaired; scoped Arrays
 bundle provenance matches the selected immutable dependency.
 
@@ -35,8 +35,9 @@ controls across Code, same/fresh SB3 and prepared export/reimport. Full GUI
 qualification and unresolved asset licences still prevent whole-game promotion.
 The integrated inheritance/callback/heap/reload gate passes 16 controls. The
 full ordinary inheritance candidate passes 17 original/native authoring controls;
-[producer PR126](https://github.com/CrispStrobe/sb3-creator/pull/126) remains under
-independent CI review. Canonical mirrors and the 363-word inventory agree.
+[producer PR126](https://github.com/CrispStrobe/sb3-creator/pull/126) merged after all
+four enabled checks passed; its reviewed and landed trees match. Canonical mirrors
+and the 363-word inventory agree.
 Constructor and method string defaults are refused by the selected original SDK;
 native admission preserves those errors.
 
@@ -49,13 +50,31 @@ retain unchanged main/assets and preserve the failed envelopes. They do not
 rewrite the immutable raw census or establish complete games.
 
 Hero passes 101 and the recovered projectile demo passes 195 finite original/native
-and authoring route controls. Genuine Corgio browser journeys verify imported map
+and authoring route controls. Wakanda passes 214 finite controller, complete-frame
+and authoring route controls from its explicitly recovered context. Its source
+contains no point-loss handler or terminal, so neither is invented for acceptance.
+Genuine Corgio browser journeys verify imported map
 and art, controller-to-win behavior, Code roundtrip, all coral costume pixels,
 actual tile pixel editing, level painting, undo/redo and Save with unchanged walls
 and other cells. Painted-level controller repetition, fresh-project device/pane
 restoration and the matching later timer build remain unresolved. These observed
 routes do not promote the 41 raw partial projects to full GUI compatibility.
 
+
+Managed Arcade caller frames now preserve ordinary Scratch procedure recursion
+checks. Scalar results and early void returns match the selected original SDK,
+and native Code/export/reimport/SB3 routes pass. Two real-thread adversaries verify
+that only the owned non-executable caller root is exempt from block lookup;
+missing executable frames remain errors.
+
+The [numeric authoring GUI](compatibility/arcade-numeric-authoring-gui.md) now has
+an explicit CI consumer of the completed official build. Source/SDK manifests,
+official run/job/artifact identities, archive safety and extracted asset bytes
+are checked before the real editor journey. The 47 workflow controls pass,
+including partitioning, deployment dependencies and unchanged wait ceilings.
+Actual hosted browser qualification on that new artifact remains pending.
+The browser audit also retries missing API step records and refuses permanent
+absence or duplicates; 27 focused controls pass.
 
 The draft [integration PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888)
 contains source startup and positive-condition loops, invocation-local
