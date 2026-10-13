@@ -2303,9 +2303,9 @@ class ArcadeEmitter {
         case 'arcade_setSpritePosition': push(`${v('ID')}.setPosition(${v('X')}, ${v('Y')})`); return;
         case 'arcade_setSpriteProperty': {
             const property = this.field(b, 'PROPERTY');
-            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data'].includes(property)){push(`// ${this.note(`Arcade sprite property ${property} is unsupported`)}`);return;}
+            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data','flags'].includes(property)){push(`// ${this.note(`Arcade sprite property ${property} is unsupported`)}`);return;}
             if (['width', 'height'].includes(property)) push(`// ${this.note(`Arcade sprite ${property} needs image resizing`)}`);
-            else push(`${v('ID')}.${property} = ${v('VALUE')}`);
+            else push(`${v('ID')}.${property} = ${v('VALUE')}${property==='flags'?' as any':''}`);
             return;
         }
         case 'arcade_setSpriteKind': push(`${v('ID')}.setKind(${this.kindExpr(b, 'KIND')})`); return;

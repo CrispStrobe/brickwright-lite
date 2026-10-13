@@ -866,7 +866,7 @@ module.exports = makeExt(`// Name: Arcade
           ,scaleAnchors:{acceptReporters:true,items:[{text:'middle',value:'0'},{text:'top',value:'1'},{text:'left',value:'2'},{text:'right',value:'4'},{text:'bottom',value:'8'},{text:'top left',value:'3'},{text:'top right',value:'5'},{text:'bottom left',value:'10'},{text:'bottom right',value:'12'}]}
           ,spriteProperties: {acceptReporters: false, items: ['x', 'y', 'left', 'right', 'top', 'bottom',
             'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale', 'width', 'height', 'z', 'lifespan',
-            'rotation', 'rotationDegrees', 'data']}
+            'rotation', 'rotationDegrees', 'data', 'flags']}
           ,readableSpriteProperties: {acceptReporters:false,items:['x','y','left','right','top','bottom',
             'vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan',
             'rotation','rotationDegrees','data','kind','flags']}
@@ -1526,14 +1526,14 @@ module.exports = makeExt(`// Name: Arcade
       const positive = axis === 'y' ? 'down' : 'right';
       return (Number(held(positive)) - Number(held(negative))) * (Number(args.STEP) || 0) / 30;
     }
-    _mathArgument(args,key,util) {
+    _mathArgument(args,key,util,errorMessage='Arcade math needs a primitive value') {
       const value=Scratch.BWValues.decode(args[key]);
       const block=util?.target?.blocks?.getBlock(util.thread?.peekStack?.());
       const input=block?.inputs?.[key];
       const shadow=input && input.block===input.shadow && util?.target?.blocks?.getBlock(input.shadow);
       // Numeric editor shadows carry text; connected primitive reporters do not.
       if (typeof value==='string' && shadow && ['math_number','math_integer','math_whole_number','math_positive_number','math_angle'].includes(shadow.opcode)) return Number(value);
-      if (value!==null && typeof value==='object') throw new TypeError('Arcade math needs a primitive value');
+      if (value!==null && typeof value==='object') throw new TypeError(errorMessage);
       return value;
     }
     randomNumber() {return Math.random();}
@@ -1846,7 +1846,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     *_tileOverlapSteps(sprite, map, box, util) {
       const epoch=this._terrainEpoch,owner=this._state();
-      if (sprite._destroyed || sprite.flags & (spriteFlags.GhostThroughTiles | spriteFlags.RelativeToCamera) || !this._sprite(sprite.id)) return;
+      if (sprite._destroyed || sprite.flags & (2|spriteFlags.GhostThroughTiles | spriteFlags.RelativeToCamera) || !this._sprite(sprite.id)) return;
       const size = map.tileSize*256, left = sprite._fx+box.left*256, right = left+(box.width-1)*256;
       const top = sprite._fy+box.top*256, bottom = top+(box.height-1)*256, locations = [], seen = new Set();
       for (let x=left;x<right+size;x+=size) for (let y=top;y<bottom+size;y+=size) {
@@ -2707,7 +2707,7 @@ module.exports = makeExt(`// Name: Arcade
       }
       if (args.IMAGE) this.setSpriteImage({ID: id, IMAGE: args.IMAGE});
       else if (this._projectPalette) this._renderSpriteImageIfPresent(sprite);
-      if (state.tilemap) sprite._wallClipping = this._spriteOnWall(sprite,state.tilemap);
+      if (state.tilemap) this._setSpriteClipping(sprite,this._spriteOnWall(sprite,state.tilemap));
       this._changed();
       return id;
     }
@@ -2736,8 +2736,9 @@ module.exports = makeExt(`// Name: Arcade
     }
     registerInstanceDestroyedHandler(args,util) {
       const id=String(args.ID),state=this._state();
-      if(!state.sprites[id])return;
+      const sprite=this._spriteValues.get(id) || state.sprites[id];if(!sprite)return;
       (state.spriteDestroyedHandlers ||= {})[id]=this._handlerRegistration(args,util);
+      sprite._destroyedRegistration=state.spriteDestroyedHandlers[id];
     }
     whenRegisteredInstanceDestroyed(args,util) {return this.whenRegisteredWall(args,util);}
     *_instanceDestroyedSteps(registration,kind,id,util) {
@@ -2747,18 +2748,19 @@ module.exports = makeExt(`// Name: Arcade
     registerSpriteDestroyed(args) {
       const id = String(args.ID);
       const state = this._state();
-      if (!state.sprites[id]) return;
+      const sprite=this._spriteValues.get(id) || state.sprites[id];if(!sprite)return;
       if (!state.spriteDestroyedHandlers) state.spriteDestroyedHandlers = {};
       state.spriteDestroyedHandlers[id] = String(args.TOKEN);
+      sprite._destroyedRegistration=state.spriteDestroyedHandlers[id];
     }
     destroySprite(args,util) {
       const id = String(args.ID);
       const state = this._state();
       const sprite = this._spriteValues.get(id) || state.sprites[id];
-      if (!sprite || sprite._destroyed) return;
+      if (!sprite || !args._core && (sprite.flags & 2)) return;
       // PXT Sprite.destroy() returns once the Destroyed flag is set; only the
       // lifespan expiry (_destroyCore) completes an effect destruction.
-      if (sprite._destroying && !args._core) return;
+      sprite.flags=(sprite.flags|0)|2;
       sprite._destroyed=true;
       const members=state.physicsEngine.members,index=members.indexOf(sprite);if(index>=0)members.splice(index,1);
       if(this._speech.get(id)?.nativeBubbleId) {
@@ -2774,7 +2776,7 @@ module.exports = makeExt(`// Name: Arcade
       }
       delete state.spriteTargets[id];
       delete state.sprites[id];
-      const token = state.spriteDestroyedHandlers?.[id];
+      const token = sprite._destroyedRegistration ?? state.spriteDestroyedHandlers?.[id];
       if (state.spriteDestroyedHandlers) delete state.spriteDestroyedHandlers[id];
       if (typeof token==='string') this._emitSpriteHat('arcade_whenRegisteredDestroyed', {TOKEN: token}, id, '', {...sprite});
       this._emitSpriteHat('arcade_whenSpriteDestroyed', {KIND: sprite.kind}, id, '', {...sprite});
@@ -2786,9 +2788,13 @@ module.exports = makeExt(`// Name: Arcade
       const name = String(args.PROPERTY);
       if (!sprite || !['x', 'y', 'left', 'right', 'top', 'bottom',
         'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale', 'width', 'height', 'z', 'lifespan',
-        'rotation', 'rotationDegrees', 'data'].includes(name)) return;
+        'rotation', 'rotationDegrees', 'data', 'flags'].includes(name)) return;
       // PXT Sprite.data holds any value; it is stored as given, not as a number.
       if (name === 'data') { sprite.data = args.VALUE; this._changed(); return; }
+      if(name==='flags'){
+        sprite.flags=this._mathArgument(args,'VALUE',util,'Arcade sprite flags require a primitive value');
+        this._syncSpriteFlagState(sprite);this._positionSprite(sprite.id);this._changed();return;
+      }
       const value = Number(args.VALUE);
       if(['sx','sy','scale'].includes(name)){
         const finish=()=>{this._renderSpriteImageIfPresent(sprite);this._positionSprite(sprite.id);this._changed();};
@@ -2889,15 +2895,15 @@ module.exports = makeExt(`// Name: Arcade
       if (Math.abs((dx+128)>>8)<=maxDist && Math.abs((dy+128)>>8)<=maxDist) {
         yield* this._collideTileWallsSteps(sprite,map,dx,dy,{dx,dy,xStep:dx,yStep:dy,cachedVx:sprite._vx,cachedVy:sprite._vy},util);
       } else {
-        sprite._wallClipping = this._spriteOnWall(sprite,map) && !this._resolveSpriteClipping(sprite,map);
+        this._setSpriteClipping(sprite,this._spriteOnWall(sprite,map) && !this._resolveSpriteClipping(sprite,map));
       }
     }
     *_collideTileWallsSteps(sprite, map, dx, dy, motion, util) {
       const epoch=this._terrainEpoch,owner=this._state();
       map=owner.tilemap;if(!map) return;
-      if (sprite._wallClipping && !this._spriteOnWall(sprite,map)) sprite._wallClipping=false;
+      if (sprite._wallClipping && !this._spriteOnWall(sprite,map)) this._setSpriteClipping(sprite,false);
       const box = this._wallHitbox(sprite);if (!box) return;
-      const size=map.tileSize*256, blocked=()=>sprite._wallClipping || sprite._destroyed || !this._sprite(sprite.id) || sprite.flags & (spriteFlags.GhostThroughWalls|spriteFlags.RelativeToCamera);
+      const size=map.tileSize*256, blocked=()=>sprite._wallClipping || sprite._destroyed || !this._sprite(sprite.id) || sprite.flags & (2|spriteFlags.GhostThroughWalls|spriteFlags.RelativeToCamera);
       if(!blocked()) for(const axis of ['x','y']){
         const delta=axis==='x'?dx:dy;if(!delta) continue;
         const positive=delta>0, horizontal=axis==='x', storage=horizontal?'_fx':'_fy', offset=horizontal?box.left:box.top, extent=horizontal?box.width:box.height;
@@ -3009,7 +3015,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     _physicsOverlapRounds(grid,handlers,owner) {
       if(!handlers.length)return;
-      const checked=new Set(),blocked=s=>s._destroyed || s.flags&(spriteFlags.GhostThroughSprites|spriteFlags.RelativeToCamera);
+      const checked=new Set(),blocked=s=>s._destroyed || s.flags&(2|spriteFlags.GhostThroughSprites|spriteFlags.RelativeToCamera);
       for(const bucket of grid.filled){
         if(bucket.length===1)continue;
         for(const first of bucket){if(blocked(first))continue;
@@ -3050,7 +3056,7 @@ module.exports = makeExt(`// Name: Arcade
           const dy=Math.abs(motion.yStep)>Math.abs(motion.dy)?motion.dy:motion.yStep;
           motion.dx-=dx;motion.dy-=dy;
           sprite._fx=(sprite._fx+dx)|0;sprite._fy=(sprite._fy+dy)|0;
-          if(!sprite._destroyed && !(sprite.flags&(spriteFlags.GhostThroughSprites|spriteFlags.RelativeToCamera)) &&
+          if(!sprite._destroyed && !(sprite.flags&(2|spriteFlags.GhostThroughSprites|spriteFlags.RelativeToCamera)) &&
             [...this._overlapHandlers,...handlers.filter(h=>h.legacy)].some(h=>h.kind===sprite.kind || h.otherKind===sprite.kind))this._physicsInsert(grid,sprite);
           if(map)yield* this._collideTileWallsSteps(sprite,map,dx,dy,motion);
           if(epoch!==this._terrainEpoch || this._state()!==owner)return;
@@ -3076,12 +3082,9 @@ module.exports = makeExt(`// Name: Arcade
       if(dx){sprite._fx=(sprite._fx+((dx*256)|0))|0;if(sprite.bounceOnWall)sprite.vx=-sprite.vx;}
       if(dy){sprite._fy=(sprite._fy+((dy*256)|0))|0;if(sprite.bounceOnWall)sprite.vy=-sprite.vy;}
     }
-    setSpriteFlag(args) {
-      const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID);
-      const mask = spriteFlags[String(args.FLAG)];
-      if (!sprite || mask === undefined) return;
-      const on = Scratch.Cast.toBoolean(args.ON);
-      sprite.flags = on ? (sprite.flags || 0) | mask : (sprite.flags || 0) & ~mask;
+    _setSpriteClipping(sprite,clipping) {sprite._wallClipping=!!clipping;sprite.flags=clipping?(sprite.flags|256):(sprite.flags&~256);}
+    _syncSpriteFlagState(sprite) {
+      sprite._wallClipping=!!(sprite.flags&256);
       sprite.autoDestroy = !!(sprite.flags & spriteFlags.AutoDestroy);
       sprite.stayInScreen = !!(sprite.flags & spriteFlags.StayInScreen);
       sprite.bounceOnWall = !!(sprite.flags & spriteFlags.BounceOnWall);
@@ -3089,6 +3092,14 @@ module.exports = makeExt(`// Name: Arcade
       sprite.ghostThroughWalls = !!(sprite.flags & spriteFlags.GhostThroughWalls);
       sprite.ghostThroughTiles = !!(sprite.flags & spriteFlags.GhostThroughTiles);
       sprite.invisible = !!(sprite.flags & spriteFlags.Invisible);
+    }
+    setSpriteFlag(args) {
+      const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID);
+      const mask = spriteFlags[String(args.FLAG)];
+      if (!sprite || mask === undefined) return;
+      const on = Scratch.Cast.toBoolean(args.ON);
+      sprite.flags = on ? (sprite.flags || 0) | mask : (sprite.flags || 0) & ~mask;
+      this._syncSpriteFlagState(sprite);
       const target = this._state().spriteTargets[String(args.ID)];
       if (String(args.FLAG) === 'Invisible') {
         if(target?.setVisible)target.setVisible(!sprite.invisible);
@@ -3612,7 +3623,7 @@ module.exports = makeExt(`// Name: Arcade
       anchor={
         get x(){return sprite.x;},get y(){return sprite.y;},get vx(){return sprite.vx;},get vy(){return sprite.vy;},
         get width(){return sprite.width;},get height(){return sprite.height;},
-        get flags(){return (sprite.flags|0)|(sprite._destroyed || sprite._destroying ? 2 : 0);},
+        get flags(){return sprite.flags;},
         get lifespan(){return sprite.lifespan;},set lifespan(value){sprite.lifespan=value;},
         get image(){ext._particles();return ext._pxtImage(sprite.image || ext._imageForSprite(sprite.id,{quiet:true}));},
         setImage(image){ext._particles();if(image?.raw)ext._assignSpriteRaster(sprite,image.raw);},
@@ -3635,12 +3646,12 @@ module.exports = makeExt(`// Name: Arcade
     _effectError(name){this._runtime?.emit?.('BLOCKS_ERROR',\`Arcade has no particle effect named "\${String(name)}".\`);}
     destroySpriteWithEffect(args,util) {
       const id=String(args.ID),sprite=this._spriteValues.get(id) || this._state().sprites[id];
-      if(!sprite || sprite._destroyed || sprite._destroying)return;
+      if(!sprite || (sprite.flags&2))return;
       const effect=this._particleEffect(args.EFFECT);
       if(!effect){this._effectError(args.EFFECT);return this.destroySprite({ID:id},util);}
       // PXT Sprite.destroy(effect, duration): Destroyed is set first, the sprite
       // keeps moving as a ghost until its lifespan ends in _destroyCore.
-      sprite._destroying=true;
+      sprite.flags=(sprite.flags|0)|2;sprite._destroying=true;
       effect.destroy(this._particleAnchor(sprite),Number(args.DURATION) || undefined);
       this._changed();
     }
@@ -4733,7 +4744,7 @@ module.exports = makeExt(`// Name: Arcade
         (event?.first === String(args.ID) ? event.destroyedSprite : null);
       if (!sprite) return 0;
       const property = String(args.PROPERTY);
-      if(property==='flags')return (sprite.flags|0)|(sprite._destroyed || sprite._destroying?2:0);
+      if(property==='flags')return Scratch.BWValues.encode(sprite.flags);
       if (property === 'left') return sprite._fx / 256;
       if (property === 'right') return sprite._fx / 256 + sprite.width;
       if (property === 'top') return sprite._fy / 256;
@@ -4749,13 +4760,14 @@ module.exports = makeExt(`// Name: Arcade
     }
     spriteOverlaps(args) {
       const a = this._spriteValues.get(String(args.A)) || this._sprite(args.A), b = this._spriteValues.get(String(args.B)) || this._sprite(args.B);
-      if (!a || !b || a._destroyed || b._destroyed || a === b || (a.flags|b.flags)&(spriteFlags.GhostThroughSprites|spriteFlags.RelativeToCamera) ||
+      if (!a || !b || a === b || (a.flags|b.flags)&(2|spriteFlags.GhostThroughSprites|spriteFlags.RelativeToCamera) ||
         Math.abs(a.x - b.x) * 2 >= a.width + b.width ||
         Math.abs(a.y - b.y) * 2 >= a.height + b.height) return false;
       const ab=this._wallHitbox(a),bb=this._wallHitbox(b);
       const al=a._fx+ab.left*256,ar=al+(ab.width-1)*256,at=a._fy+ab.top*256,ad=at+(ab.height-1)*256;
       const bl=b._fx+bb.left*256,br=bl+(bb.width-1)*256,bt=b._fy+bb.top*256,bd=bt+(bb.height-1)*256;
       if(al>br || at>bd || ar<bl || ad<bt)return false;
+      if((a.flags|b.flags)&8192)return true;
       if(a._rotatedBBox || b._rotatedBBox)return this._rotatedSpriteOverlap(a,b);
       const am = this._spriteMask(a), bm = this._spriteMask(b);
       if (!am || !bm) return true;
@@ -5114,7 +5126,7 @@ module.exports = makeExt(`// Name: Arcade
       // in scene/physics ownership and continue to receive lifecycle callbacks.
       kind=this._kindValue(kind);if(kind==null || !(kind>=0))return [];
       // SpriteSet.sprites() also drops sprites an effect is destroying.
-      return Object.values(this._state().sprites).filter(s => !s._destroyed && !s._destroying && s.kind === kind)
+      return Object.values(this._state().sprites).filter(s => !(s.flags&2) && s.kind === kind)
         .sort((a, b) => a._kindInsertion - b._kindInsertion);
     }
     spritesOfKind(args) {

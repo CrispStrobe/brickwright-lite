@@ -16,6 +16,9 @@ const MUSIC_MELODIES = new Set(['baDing', 'wawawawaa', 'jumpUp', 'jumpDown', 'po
 // The seven segment extension's enums by member name (sevenseg.ts).
 // The sprite extensions' calls and adjustable fields (darts.ts, corgio.ts).
 // arcade-character-animations: Predicate bits and FacingDirection (= the facing predicates).
+// Numeric enum values of the selected MIT Arcade Sprite/physics sources.
+const SPRITE_FLAG_VALUES=Object.freeze({AutoDestroy:4,StayInScreen:8,DestroyOnWall:16,BounceOnWall:32,ShowPhysics:64,Invisible:128,RelativeToCamera:512,GhostThroughTiles:1024,GhostThroughWalls:2048,GhostThroughSprites:4096,Ghost:7168});
+const PRIVATE_SPRITE_FLAG_VALUES=Object.freeze({...SPRITE_FLAG_VALUES,None:0,Destroyed:2,IsClipping:256,HitboxOverlaps:8192});
 const CHARACTER_PREDICATES = Object.freeze({NotMoving: 1, Moving: 2, FacingUp: 4, FacingRight: 8, FacingDown: 16, FacingLeft: 32,
     MovingUp: 64, MovingRight: 128, MovingDown: 256, MovingLeft: 512, HittingWallUp: 1024, HittingWallRight: 2048,
     HittingWallDown: 4096, HittingWallLeft: 8192});
@@ -1106,6 +1109,12 @@ class ArcadeTranslator extends BaseTranslator {
         if(node?.type==='LegacyJsonValue'){this.usesArrays=true;return `JSON text of value (${this.arrayElementValue(node.value)})`;}
         if(this.handleTemplates && node?.type==='Identifier' && node.temporary)return `arcade local ${node.name}`;
         if(this.handleTemplates && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
+        if(this.handleTemplates && node?.type==='Member' && ['SpriteFlag','sprites.Flag'].includes(this.path(node.object))) {
+            const prefix=this.path(node.object),root=prefix.split('.')[0],values=prefix==='SpriteFlag'?SPRITE_FLAG_VALUES:PRIVATE_SPRITE_FLAG_VALUES;
+            if(this.bindsName(root)){this.unsupported.push(prefix+' refers to a shadowed flag binding');return 'undefined value';}
+            if(Object.prototype.hasOwnProperty.call(values,node.name))return `(0 + (${values[node.name]}))`;
+            this.unsupported.push(prefix+'.'+node.name+' is not a declared sprite flag');return 'undefined value';
+        }
         if(this.handleTemplates && node?.type==='Member' && this.path(node.object)==='TileScale') {
             if(this.boundSourceGlobals?.has('TileScale') || this.sourceFunctions?.has('TileScale') || this.localVars?.has('TileScale') || this.currentParameters?.has('TileScale') || this.capturedBindings.has('TileScale')){this.unsupported.push('TileScale refers to a shadowed binding');return 'undefined value';}
             const values={Four:2,Eight:3,Sixteen:4,ThirtyTwo:5};
@@ -2523,13 +2532,14 @@ class ArcadeTranslator extends BaseTranslator {
         if (handle) {
             const property = expr.left.name;
             if (!['x', 'y', 'left', 'right', 'top', 'bottom', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
-                'width', 'height', 'z', 'lifespan', 'rotation', 'rotationDegrees', 'data'].includes(property)) {
+                'width', 'height', 'z', 'lifespan', 'rotation', 'rotationDegrees', 'data', 'flags'].includes(property)) {
                 push(this.note(`${this.path(expr.left)} = … — unsupported Arcade handle property`));
                 return;
             }
+            if(property==='flags' && !this.primitiveReferences?.has(expr.right)){push(this.note('Sprite.flags assignment requires a proven primitive value; opaque or unknown conversion is not implemented'));return;}
             const value = this.expr(expr.right);
             const result = expr.op === '=' ? value :
-                ['+=','-=','*=','/=','%='].includes(expr.op) ? this.expr({type:'Binary',op:expr.op.slice(0,-1),left:expr.left,right:expr.right}) : null;
+                ['+=','-=','*=','/=','%=','|=','&=','^=','<<=','>>='].includes(expr.op) ? this.expr({type:'Binary',op:expr.op.slice(0,-1),left:expr.left,right:expr.right}) : null;
             if (result === null) push(this.note(`${this.path(expr.left)} ${expr.op} — unsupported assignment`));
             else push(`arcade set ${property} of ${handle} to ${result}`);
             return;
@@ -3122,6 +3132,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(node?.type==='Undefined')return new Set(['undefined']);
         if(node?.type==='Object')return new Set(['object']);
         if(node?.type==='Identifier' && ['NaN','Infinity'].includes(node.name) && !global.bindings.has(node.name))return new Set(['number']);
+        if(node?.type==='Member' && ((pathOf(node.object)==='SpriteFlag' && !binding(owner,'SpriteFlag').size && Object.prototype.hasOwnProperty.call(SPRITE_FLAG_VALUES,node.name)) || (pathOf(node.object)==='sprites.Flag' && !binding(owner,'sprites').size && Object.prototype.hasOwnProperty.call(PRIVATE_SPRITE_FLAG_VALUES,node.name))))return new Set(['number']);
         if(node?.type==='Member' && node.object?.name==='Math' && !mathDeclared && ['E','LN2','LN10','LOG2E','LOG10E','PI','SQRT1_2','SQRT2'].includes(node.name))return new Set(['number']);
         if(node?.type==='Member' && node.object?.name==='CameraProperty' && Object.prototype.hasOwnProperty.call(CAMERA_PROPERTIES,node.name))return new Set(['number']);
         if(node?.type==='Member' && node.object?.name==='TileDirection' && Object.prototype.hasOwnProperty.call(TILE_DIRECTIONS,node.name))return new Set(['number']);
@@ -3144,7 +3155,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(node?.type==='Member' && ['index','number'].includes(node.name) && typeOf(node.object,owner).has('player'))return new Set(['number']);
         if(node?.type==='Member' && ['maxSpeed','minStep','maxStep'].includes(node.name) && typeOf(node.object,owner).has('physics-engine'))return new Set(['number']);
         if(node?.type==='Member' && node.name==='physicsEngine' && typeOf(node.object,owner).has('scene'))return new Set(['physics-engine']);
-        if(node?.type==='Member' && ['fx','fy','sx','sy','scale'].includes(node.name) && typeOf(node.object,owner).has('sprite'))return new Set(['number']);
+        if(node?.type==='Member' && ['fx','fy','sx','sy','scale','flags'].includes(node.name) && typeOf(node.object,owner).has('sprite'))return new Set(['number']);
         if (node?.type === 'Member' && node.name === 'image' && (typeOf(node.object, owner).has('sprite') || typeOf(node.object, owner).has('animation'))) return new Set(['image']);
         if (node?.type === 'Member' && ['action','interval'].includes(node.name) && typeOf(node.object,owner).has('animation')) return new Set(['number']);
         if(node?.type==='Member' && typeOf(node.object,owner).has('text-sprite') && TEXT_SPRITE_PROPERTIES.includes(node.name))return new Set([node.name==='text'?'string':node.name==='icon'?'image':'number']);
