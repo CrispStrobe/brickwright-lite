@@ -110,6 +110,10 @@ function registerBundledExtensions (vm, calls) {
     manager.loadExtensionURL = id => {
         const key = String(id);
         if (EXTENSION_IDS.has(key)) {
+            // Production rejects a second built-in instance for the same ID.
+            // Reopening an SB3 must reset the existing extension through its
+            // lifecycle events, without adding another frame listener.
+            if (manager.isExtensionLoaded(key)) return Promise.resolve();
             const instance = new (extensionClass(key))(vm.runtime);
             for (const name of Object.getOwnPropertyNames(instance)) {
                 const method = instance[name];

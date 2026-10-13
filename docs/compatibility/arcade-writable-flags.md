@@ -25,3 +25,15 @@ Flags export preserves connected raw primitives separately from numeric editor
 shadows; numeric-looking strings are not converted to numbers. Foreign objects
 remain explicitly unsupported. Hosted whole-IDE browser authoring qualification
 is pending.
+
+The stationary StayInScreen `pause(20)` observation uses the original boot-zero
+clock authority. Its native control steps boot 0 and due 20 explicitly: the
+source continuation records x=200 before that frame's physics may clamp it.
+The test checks real getter calls, so previously saved variables cannot imitate
+completion. Fresh Code, same/fresh SB3 and reimport use the same authority.
+
+The actual reused-VM loader control verifies one built-in extension service and
+one physical-frame listener. A successful project reload rearms the cached
+source phase driver after disposal; an explicitly detached driver stays retired.
+These are headless runtime/lifecycle tests, not a substitute for the pending
+hosted GUI save/reopen journey.
