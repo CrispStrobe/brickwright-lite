@@ -9,6 +9,7 @@
  * block the level came from. The painter UI (tilemap-editor.jsx) is a view
  * over them.
  */
+import {findLegacyLayoutBlocks, writeLegacyLayout} from './legacy-layout-editor.js';
 import {validTileId} from './tile-assets.js';
 import {tilemapSource} from './tilemap-values.js';
 
@@ -208,7 +209,7 @@ export function findTilemapBlocks (vm) {
                 blockId: block.id, shadowId: shadow ? shadow.id : null, data, editable: Boolean(data)});
         }
     }
-    return found;
+    return [...found, ...findLegacyLayoutBlocks(vm)];
 }
 
 const sameTile = (left, right) => left.width === right.width && left.height === right.height &&
@@ -251,6 +252,7 @@ export function tilemapEditUpdates (maps, ref, data) {
 
 /** Save a map and every matching use of its edited named assets. */
 export function writeTilemapBlock (vm, ref, data) {
+    if (ref?.kind === 'legacyLayout') return writeLegacyLayout(vm, ref, data);
     const updates = tilemapEditUpdates(findTilemapBlocks(vm), ref, data);
     if (!updates) return false;
     const writes = updates.map(update => {
