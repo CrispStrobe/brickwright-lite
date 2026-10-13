@@ -551,6 +551,46 @@ Typed Number/String/NumberArray/Buffer Settings operations now preserve original
 byte codecs, durable project identity and SB3 snapshots. Numeric block shadows
 are interpreted using actual block-input metadata; connected string reporters
 retain type checks. Generic calls and exported nested mixed-value array access
-have original/native and roundtrip controls. The Text Sprite adapter is the next
-shared library lane; eight valid dependency graphs use it but retain independent
+have original/native and roundtrip controls. The Text Sprite adapter now has focused native/original/editable roundtrip
+qualification; eight valid dependency graphs use it but retain independent
 class, callback and library gaps. Do not count eight completions from one adapter.
+
+## Integration following Text Sprite controls
+
+Text Sprite and asset factory changes are in
+[PR870](https://github.com/CrispStrobe/brickwright-lite/pull/870), with shared
+compiler words in [producer PR115](https://github.com/CrispStrobe/sb3-creator/pull/115).
+The affected integration batch passes17 controls, with zero skips. Authentic
+Smurfy now registers zero tile-overlap handlers in both original MakeCode and
+the real native extension. The former native count1 remains retained as a
+failed receipt. Finite boot/frame observations do not qualify a whole game.
+
+Next owned slices: exact single-background scroller version selection with
+source admission/export, distinct scene/program clocks and hosted Gallery
+authority checks using the actual CI token. All remain unmerged and must pass
+affected original/runtime/roundtrip controls plus exact-head hosted gates.
+After these, implement the older character-animation rules, Story/parser and
+remaining callable/class/string operations in dependency order. Requalify each
+complete authentic project with controller input and GUI editing before changing
+its prepared result; preserve the immutable raw census separately.
+
+## Current ordered work after clocks and primitive strings
+
+Exact legacy background-scroll source/native/export, separate program/scene
+clocks and primitive SDK strings now have focused controls. The Gallery helper
+has an actual hosted read-only-token proof. Whole-game and production-IDE
+qualification remain separate; the immutable raw41 partials/1 parser failure
+are unchanged.
+
+1. Complete exact older character-animation source and export selection.
+2. Replace placeholder SpriteKind IDs with original allocation and initializer
+   order, native numeric membership, captured events and original defaults.
+3. Re-run authentic prepared inputs against the matching345-form producer,
+   retaining unchanged originals, invalid contexts and all named diagnostics.
+4. Execute candidate complete games with controller input; compare original
+   observations and then exercise Blocks/Code/Pixel save/export/reimport.
+5. Continue Story, classes and callable semantics by the remaining actual
+   diagnostics. Promote only complete observed projects, preserving raw counts.
+
+The new owned-game GUI gate is a production-build light-browser step. Pending
+hosted execution cannot be reported as acceptance or a corpus promotion.

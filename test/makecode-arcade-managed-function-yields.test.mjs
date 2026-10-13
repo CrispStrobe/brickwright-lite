@@ -5,7 +5,7 @@ import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 const bindClock=(run,now)=>{
-    const runtime=run.vm.runtime;runtime.updateCurrentMSecs=()=>{runtime.currentMSecs=now();};runtime.currentMSecs=now();runtime.ioDevices.clock.resetProjectTimer();
+    const runtime=run.vm.runtime;runtime.updateCurrentMSecs=()=>{runtime.currentMSecs=now();};runtime.currentMSecs=now();runtime.ioDevices.clock.resetProjectTimer();runtime.bwArcadeProgramClock={now};run.vm.greenFlag();
     // The existing BlockUtility stack timers read runtime.currentMSecs too.
     // Keep the sequencer work budget on its real host clock.
 };
@@ -37,8 +37,7 @@ test('explicit function waits survive export while stop and restart cancel pendi
         run.vm.greenFlag();await stepFrames(run.vm,2);assert.equal(values(run).done,0);now=80;await stepFrames(run.vm,2);assert.equal(values(run).done,1);assert.equal(values(run).result,7);assert.equal(run.vm.runtime.ioDevices.clock.projectTimer()*1000,40);assert.deepEqual(run.errors,[]);
     }finally{run?.vm.quit?.();clearStrayTimers();}
     const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/pause\(0\.04 \* 1000\)/);assert.ok(!exported.ts.includes('pause(20)'));
-    // Observe the real SDK project clock separately: scene game.runtime()
-    // and control.millis() have a distinct known exporter clock boundary.
+    // Observe the independent original program clock at explicit wait completion.
     const oracle=await runPxtArcade({...exported.files,'main.ts':exported.files['main.ts']+observe},{fakeClock:true});assert.equal(oracle.result??oracle.Game_result,7);assert.equal(oracle.oracleElapsed,40);
 });
 

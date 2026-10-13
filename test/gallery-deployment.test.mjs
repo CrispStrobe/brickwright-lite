@@ -19,13 +19,18 @@ const run = deployment => ({id: deployment.id, head_sha: deployment.sha, head_br
     status: 'completed', conclusion: 'success', run_attempt: 1,
     html_url: `https://github.com/${repo}/actions/runs/${deployment.id}`});
 
+const job = deployment => ({id: deployment.id + 100, run_id: deployment.id, run_attempt: 1,
+    head_sha: deployment.sha, html_url: status(deployment, 'success').log_url, name: 'deploy',
+    status: 'completed', conclusion: 'success',
+    steps: [{name: 'Deploy to GitHub Pages', status: 'completed', conclusion: 'success'}]});
+
 function fixture (rows, statuses = rows.map(row => [status(row, 'success')])) {
     const responses = new Map([[`${api}/deployments?environment=github-pages&ref=main&per_page=100&page=1`, rows]]);
     for (const [index, row] of rows.entries()) {
         responses.set(row.url, row);
         responses.set(`${row.statuses_url}?per_page=1`, statuses[index]);
         responses.set(`${api}/actions/runs/${row.id}`, run(row));
-        responses.set(`${api}/pages/deployments/${row.sha}`, {status: 'succeed'});
+        responses.set(`${api}/actions/jobs/${row.id + 100}`, job(row));
     }
     const calls = [];
     return {responses, calls, options: {repo, base, getGraphql: async variables => {
@@ -61,7 +66,9 @@ test('queued main replacement keeps the actually successful deployed source', as
     assert.equal(result.deploymentId, 1);
     assert.equal(result.statusId, 10);
     assert.equal(result.runUrl, run(deployed).html_url);
-    assert.equal(result.pagesStatusUrl, `${api}/pages/deployments/${deployed.sha}`);
+    assert.equal(result.jobApiUrl, `${api}/actions/jobs/${deployed.id + 100}`);
+    assert.equal(result.authority, 'public-deployment-status-and-successful-pages-job');
+    assert.ok(!f.calls.some(url => url.includes('/pages/')));
     assert.ok(!f.calls.some(url => url.includes('/pages/builds')));
     assert.ok(!f.calls.some(url => url.includes('/commits/main')));
 });
@@ -103,7 +110,15 @@ test('invalid identity, status and run receipts fail closed', async t => {
         ['run conclusion', f => f.responses.get(`${api}/actions/runs/1`).conclusion = 'failure'],
         ['run repository', f => f.responses.get(`${api}/actions/runs/1`).repository.full_name = 'other/gallery'],
         ['run event', f => f.responses.get(`${api}/actions/runs/1`).event = 'pull_request'],
-        ['Pages completion', f => f.responses.get(`${api}/pages/deployments/${sha('a')}`).status = 'queued'],
+        ['job conclusion', f => f.responses.get(`${api}/actions/jobs/101`).conclusion = 'failure'],
+        ['job source', f => f.responses.get(`${api}/actions/jobs/101`).head_sha = sha('b')],
+        ['job run', f => f.responses.get(`${api}/actions/jobs/101`).run_id = 2],
+        ['job attempt', f => f.responses.get(`${api}/actions/jobs/101`).run_attempt = 2],
+        ['job URL', f => f.responses.get(`${api}/actions/jobs/101`).html_url = 'https://evil.example/job'],
+        ['job profile', f => f.responses.get(`${api}/actions/jobs/101`).name = 'build'],
+        ['Pages step missing', f => f.responses.get(`${api}/actions/jobs/101`).steps = []],
+        ['Pages step failure', f => f.responses.get(`${api}/actions/jobs/101`).steps[0].conclusion = 'failure'],
+        ['Pages step duplicate', f => f.responses.get(`${api}/actions/jobs/101`).steps.push(f.responses.get(`${api}/actions/jobs/101`).steps[0])],
         ['permissions failure', f => f.responses.set(`${api}/actions/runs/1`, Error('HTTP403 permissions'))]
     ]) {
         await t.test(label, async () => {
@@ -129,7 +144,7 @@ test('pagination is consumed completely rather than admitting page one', async (
     f.responses.set(old.url, old);
     f.responses.set(`${old.statuses_url}?per_page=1`, [status(old, 'success')]);
     f.responses.set(`${api}/actions/runs/1`, run(old));
-    f.responses.set(`${api}/pages/deployments/${old.sha}`, {status: 'succeed'});
+    f.responses.set(`${api}/actions/jobs/${old.id + 100}`, job(old));
     assert.equal((await resolveGalleryDeployment(f.options)).deploymentId, 1);
 });
 
@@ -137,7 +152,7 @@ test('changed deployment authority refuses the whole measurement', async () => {
     const before = await resolveGalleryDeployment(fixture([deployment(1, sha('a'))]).options);
     assertSameGalleryDeployment(before, {...before});
     for (const [key, value] of Object.entries({sha: sha('b'), deploymentId: 2, statusId: 11,
-        runId: 2, runAttempt: 2, completedAt: '2026-10-14T00:00:00Z'})) {
+        runId: 2, runAttempt: 2, jobId: 102, authority: 'other', completedAt: '2026-10-14T00:00:00Z'})) {
         assert.throws(() => assertSameGalleryDeployment(before, {...before, [key]: value}), /mixed snapshot/);
     }
 });
@@ -191,7 +206,7 @@ test('API transports use authenticated fixed endpoints and keep GraphQL errors v
         assert.equal(requests[0].options.method, 'POST');
         assert.equal(requests[0].options.headers.authorization, 'Bearer test-placeholder');
         assert.deepEqual(JSON.parse(requests[0].options.body), {query: GALLERY_DEPLOYMENT_QUERY, variables});
-        await galleryApiJson(`${api}/pages/deployments/${sha('a')}`);
+        await galleryApiJson(`${api}/actions/jobs/101`);
         assert.equal(requests[1].options.headers.authorization, 'Bearer test-placeholder');
         fetch.mock.mockImplementation(async () => ({ok: false, status: 403}));
         await assert.rejects(galleryApiGraphql(variables), /GraphQL HTTP 403/);

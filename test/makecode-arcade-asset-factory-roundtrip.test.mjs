@@ -22,6 +22,7 @@ test('source factory kinds preserve null, fresh images and shared tiles through 
     try {
         const run=await runProgram(imported.code,{frames:90,uploads:imported.costumes,storage:true});check(run);
         const sb3=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());await run.vm.loadProject(sb3);run.vm.greenFlag();await stepFrames(run.vm,90);check(run);
+        const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});fresh.vm.stopAll();await fresh.vm.loadProject(sb3);fresh.vm.greenFlag();await stepFrames(fresh.vm,90);check(fresh);fresh.vm.quit?.();
         check(await runProgram(run.creator.decompile(),{frames:90,uploads:imported.costumes,storage:true}));
         const exported=projectToArcade(run.creator.project,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
         const oracle=await runPxtArcade(exported.files);for(const name of ['imageMissing','tileMissing','freshPixel','tilePixel','done'])assert.equal(oracle[name]??oracle['Game_'+name],expected[name],name+' exported');

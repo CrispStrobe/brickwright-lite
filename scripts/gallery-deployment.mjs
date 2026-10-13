@@ -7,7 +7,7 @@
 // https://docs.github.com/en/graphql/reference/repos
 // https://docs.github.com/en/rest/deployments/deployments
 // https://docs.github.com/en/rest/deployments/statuses
-// https://docs.github.com/en/rest/pages/pages#get-the-status-of-a-github-pages-deployment
+// https://docs.github.com/en/rest/actions/workflow-jobs#get-a-job-for-a-workflow-run
 import {fetchRetry, FULL_SHA} from './lib-pin.mjs';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
@@ -161,9 +161,19 @@ export async function resolveGalleryDeployment ({repo, base, ref = 'main',
         run.html_url !== `https://github.com/${repo}/actions/runs/${runMatch[1]}`) {
         throw new Error('deployment is not a successful owned main Deploy workflow run');
     }
-    const pagesUrl = `${repositoryUrl}/pages/deployments/${deployment.sha}`;
-    const pages = await getJson(pagesUrl);
-    if (pages.status !== 'succeed') throw new Error('Pages has not successfully deployed the selected source commit');
+    // Workflow Pages status-by-SHA is not readable with another repository's
+    // CI token. The public deployment status and actual successful Deploy job
+    // are the authority: bind the job that produced this status, including the
+    // successful Pages step, instead of requesting private Pages permissions.
+    const jobUrl = `${repositoryUrl}/actions/jobs/${runMatch[2]}`;
+    const job = await getJson(jobUrl);
+    const pagesSteps = Array.isArray(job.steps) ? job.steps.filter(step => step.name === 'Deploy to GitHub Pages') : [];
+    if (job.id !== Number(runMatch[2]) || job.run_id !== run.id || job.run_attempt !== run.run_attempt ||
+        job.head_sha !== deployment.sha || job.html_url !== status.log_url || job.name !== 'deploy' ||
+        job.status !== 'completed' || job.conclusion !== 'success' || pagesSteps.length !== 1 ||
+        pagesSteps[0].status !== 'completed' || pagesSteps[0].conclusion !== 'success') {
+        throw new Error('deployment is not bound to a successful actual Pages workflow job');
+    }
     return {
         sha: deployment.sha,
         deploymentId: deployment.id,
@@ -171,18 +181,22 @@ export async function resolveGalleryDeployment ({repo, base, ref = 'main',
         completedAt: status.updated_at,
         runId: run.id,
         runAttempt: run.run_attempt,
+        jobId: job.id,
+        authority: 'public-deployment-status-and-successful-pages-job',
         sourceUrl: `https://github.com/${repo}/commit/${deployment.sha}`,
         deploymentUrl: deployment.url,
         statusUrl: `${deployment.statuses_url}/${status.id}`,
         runUrl: run.html_url,
-        pagesStatusUrl: pagesUrl
+        jobApiUrl: jobUrl,
+        jobUrl: job.html_url
     };
 }
 
 export function assertSameGalleryDeployment (before, after) {
     if (before.sha !== after.sha || before.deploymentId !== after.deploymentId ||
         before.statusId !== after.statusId || before.runId !== after.runId ||
-        before.runAttempt !== after.runAttempt || before.completedAt !== after.completedAt) {
+        before.runAttempt !== after.runAttempt || before.jobId !== after.jobId ||
+        before.authority !== after.authority || before.completedAt !== after.completedAt) {
         throw new Error('gallery deployment changed during source attestation; refusing a mixed snapshot');
     }
 }

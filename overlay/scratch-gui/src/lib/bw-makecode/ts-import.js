@@ -911,12 +911,11 @@ class Parser {
             const t = this.peek();
             // Type assertions have relational precedence and erase only their
             // type; the expression's evaluation and identity are unchanged.
-            if (t.type === 'ident' && t.value === 'as' && minPrec <= 5) {
-                this.next();
-                if (this.at('punct', '(') || this.at('punct', '{')) {this.skipTypeAnnotation(true);continue;}
-                this.expect('ident');
-                while (this.eat('punct', '.')) this.expect('ident');
-                while (this.eat('punct', '[')) this.expect('punct', ']');
+            if (t.type === 'ident' && t.value === 'as' && minPrec <= 5 &&
+                (this.peek(1).type==='ident' || this.peek(1).type==='punct' && ['(','{'].includes(this.peek(1).value))) {
+                this.next();this.skipTypeAnnotation(true);
+                if(!this.lastType)throw new Error(`MakeCode TS: missing assertion type on line ${t.line}`);
+                left={...left,assertedType:this.lastType,typeAssertions:[this.lastType,...(left.typeAssertions || [])]};
                 continue;
             }
             if (t.type !== 'punct') break;
@@ -930,6 +929,13 @@ class Parser {
     }
 
     parseUnary () {
+        if(this.at('punct','<')) {
+            const types=this.tryCallTypeArguments(false);
+            if(!types || types.length!==1)throw new Error(`MakeCode TS: malformed type assertion on line ${this.peek().line}`);
+            const expression=this.parseUnary();
+            // A type assertion changes static typing, never the runtime value.
+            return {...expression,assertedType:types[0],typeAssertions:[types[0],...(expression.typeAssertions || [])]};
+        }
         if (this.at('punct', '!') || this.at('punct', '-') || this.at('punct', '+') ||
             this.at('punct', '~') || this.at('ident', 'typeof')) {
             const op = this.next().value;
@@ -946,7 +952,7 @@ class Parser {
      * Otherwise `<`/`>`/`>>` retain their expression meaning. This speculative
      * read restores tokens as well as position when it is not a generic call.
      */
-    tryCallTypeArguments () {
+    tryCallTypeArguments (requireCall = true) {
         if (!this.at('punct', '<')) return null;
         const saved = this.pos, tokens = this.toks.slice();
         try {
@@ -981,7 +987,7 @@ class Parser {
                 text += current.type === 'string' ? `"${current.value}"` : current.value;
                 previous = current;
             }
-            if (!this.at('punct', '(')) throw new Error('type arguments need a call');
+            if (requireCall && !this.at('punct', '(')) throw new Error('type arguments need a call');
             return arguments_;
         } catch (error) {
             this.pos = saved;this.toks = tokens;
