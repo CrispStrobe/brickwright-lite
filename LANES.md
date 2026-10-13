@@ -2,7 +2,7 @@
 
 ## Native Arcade frame phases — 2026-10-13
 
-CLAIMED — Codex Arcade scheduler, `lane/arcade-frame-scheduler-20261013`,
+PROPOSED CLAIM — Codex Arcade scheduler, `lane/arcade-frame-scheduler-20261013`,
 base `b86d1cb9f294052bd0ae6dc4cd97d5bc57193c55`.
 This publication is documentation only; merge the claim before product edits.
 Envelope: the Arcade-specific phase hook in `scripts/apply-vm-overlay.mjs`,
