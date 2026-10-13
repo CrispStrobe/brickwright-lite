@@ -646,7 +646,7 @@ class ArcadeTranslator extends BaseTranslator {
         // slot it is kept as literal text, so say so instead.
         if(isScratchPredicate(value)){this.unsupported.push(`${value} as a value (a Scratch condition has no value form here)`);return ARCADE_FALSE;}
         // Scratch string shadows must not turn a numeric array element into text.
-        return node?.type==='Number' ? `(0 + (${value}))` : value;
+        return node?.type==='Number' || /^-?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value) ? `(0 + (${value}))` : value;
     }
 
     callExpression (node) {
@@ -965,6 +965,13 @@ class ArcadeTranslator extends BaseTranslator {
     valueExpr (node) {
         const music=this.musicValue(node);
         if(music!==null)return music;
+        if(node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='Math' &&
+            ['E','LN2','LN10','LOG2E','LOG10E','PI','SQRT1_2','SQRT2'].includes(node.name)) {
+            if(this.boundSourceGlobals?.has('Math') || this.sourceFunctions?.has('Math') || this.localVars?.has('Math') || this.currentParameters?.has('Math') || this.capturedBindings.has('Math')) {
+                this.unsupported.push(`${this.path(node)} refers to a shadowed Math binding`);return 'undefined value';
+            }
+            return String(Math[node.name]);
+        }
         const core=this.coreValue(node);
         if(core!==null)return core;
         if(['MultiplayerState.score','MultiplayerState.life'].includes(this.path(node))) {
