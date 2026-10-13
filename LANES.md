@@ -3239,3 +3239,55 @@ results. Native scoped number arrays, blocks, Code and typed export require
 original traces, function-return controls and actual fresh SB3. E10 retains
 importer/shared type helper ownership. Hosted qualification and corpus recensus
 remain separate from focused source controls.
+
+## Arcade Buffer hash and live-memory continuation — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-buffer-hash-20261012`, stacked on PR847.
+Retain original common-package simulator FNV-1 and k-bit folding functions;
+expose native scoped Buffer reporter, Code vocabulary and genuine typed export.
+E10 retains importer/shared type helpers. Hash controls include original width
+coercion, aliases, readonly reads, reset and actual fresh SB3. Aggregate memory
+closure requires root inventory/reservations/reachability collection across
+arrays, active calls, callbacks, scenes and playback; do not replace that task
+with a counter of all historical allocations. See the Buffer contract.
+Hosted GUI, full build and immutable-app recensus remain separate gates.
+
+## Arcade required unit workload split — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-unit-shards-20261012`, stacked on original
+Buffer hash. Partition the complete fast suite into two required, separately
+audited unit legs; keep local full-suite behavior, corpus, all skip/file/GUI
+checks, build/distribution authority and exact-head publication requirements.
+Both Pages deployment and external main validation must require both legs.
+Preserve the actual30-minute PR845 build failure. Qualification contract:
+[Arcade CI qualification](docs/ARCADE-CI-QUALIFICATION.md). Hosted duration and
+editor success remain pending; E10 importer and other source owners unchanged.
+
+## Buffer heap namespace and disposal boundary — 2026-10-13
+
+CLAIMED — Codex, `lane/arcade-buffer-lifetime-20261013`, stacked on PR850.
+Own Buffer/music registry namespace and disposal/replacement boundary only.
+Preserve within-owner aliases, original song byte sharing and same-VM project
+replacement. Existing import/shared value helper ownership remains separate.
+Live root tracing and aggregate allocation budgets remain explicit next work;
+no whole-app corpus promotion follows from reset/disposal controls. Lower
+Arcade integration branches are landing separately by normal merges.
+
+## Arcade Buffer destination storage — 2026-10-13
+
+CLAIMED — Codex, `lane/arcade-buffer-storage-20261013`, stacked on PR853.
+Remove redundant detached-slice and UTF-8 copies while retaining original
+simulator semantics and before-allocation byte limits. No new public opcode
+or producer pin. Live-run tracing, serialization roots and aggregate allocation
+reservations remain separate work. Parent PR850 exact head f30e57cfa2 passed
+all enabled checks, including the native editor/controller/reopen/export proof;
+this new source needs independent qualification. Whole-app142/41/1 unchanged.
+
+## Arcade Buffer root inspection — 2026-10-13
+
+CLAIMED — Codex, `lane/arcade-buffer-roots-20261013`, stacked on PR855.
+Implement read-only root traversal, backing-store accounting, scoped nested
+arrays and serialized reference observations with bounded incomplete results.
+No automatic sweep, complete-root claim, new opcode or producer pin change.
+Explicit hidden-owner leases and preallocation reservations remain required.
+Scope and followup method are in the Buffer contract;142/41/1 unchanged.

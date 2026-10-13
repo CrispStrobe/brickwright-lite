@@ -157,8 +157,8 @@ jobs:
   # joins a group, whatever cancel-in-progress says.
   #
   # Instead: a commit that is no longer main's tip by the time its run starts
-  # still gets `build` (the unit and source suites, so `git bisect` keeps working
-  # and a red commit is still named) and `corpus`, and skips the heavy tail —
+  # still gets `build`, both `unit` shards and `corpus` (source and unit verdicts
+  # remain attributable to that commit), and skips the heavy tail —
   # browser, fpga-surface, deploy, verify-gui — which the tip's own run re-covers
   # anyway, unless main advanced only through excluded documentation (which has
   # NO replacement Build). That case retains the full tail. ~24 of the ~36 min,
@@ -192,7 +192,14 @@ jobs:
           fi
           node scripts/verify-vercel-main-checks.mjs "$SHA" --superseded >> "$GITHUB_OUTPUT"
 
-  build:
+  # Each shard retains identical integrated prerequisites and its own audited
+  # file/skip/GUI-resolution census. No Pages artifact is produced here.
+  unit:
+    name: unit (${{ matrix.shard }}/2)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -668,6 +675,7 @@ jobs:
       - name: Run unit tests
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.unit_playwright.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' }}
         env:
+          BW_TEST_SHARD: ${{ matrix.shard }}/2
           STC_COMPILER_FLASHER_DIR: ${{ github.workspace }}/.stc-compiler-flasher
         run: |
           if ! grep -q '"test"' package.json; then
@@ -675,16 +683,15 @@ jobs:
             exit 1
           fi
           set -o pipefail
-          # Everything except the two corpus walks (every lesson bench solved,
-          # twice over): those are ~14 CPU-minutes and were this step's whole
-          # duration. They run in the `corpus` job below, in parallel with this
-          # one, and the deploy needs both. `npm test` locally is still all of it.
+          # This shard partitions the complete non-corpus suite; the two corpus
+          # walks remain in their existing required job. They run in the `corpus` job below, in parallel with this
+          # one, and deployment requires corpus, both unit shards and the build. `npm test` locally is still all of it.
           mkdir -p test-results
           # The runner's OWN exit status is captured and returned at the end, so
           # the two readings below print on red runs too — the days they matter
           # most — instead of the shell's -e ending the step at the pipeline.
           set +e
-          npm run test:fast 2>&1 | tee /tmp/unit.tap
+          npm run test:fast:shard 2>&1 | tee /tmp/unit.tap
           rc=${PIPESTATUS[0]}
           set -e
           # The GUI-scope resolve hook (scripts/lib/gui-scope-hooks.mjs) is the
@@ -702,7 +709,7 @@ jobs:
           # census with at least one test, and any `not ok` must be counted by
           # the summary (header of the script). On a red run this still names a
           # file that vanished or failed to construct, beside the real failure.
-          node scripts/check-test-run.mjs --set fast --tap /tmp/unit.tap --census test-results/fast.census.json --max-stdout-bytes 0
+          node scripts/check-test-run.mjs --set fast --shard "$BW_TEST_SHARD" --tap /tmp/unit.tap --census test-results/fast.census.json --max-stdout-bytes 0
           # A SUITE THAT CANNOT BE CONSTRUCTED CURRENTLY READS AS A SUITE THAT
           # PASSED, and that is not a hypothesis — it happened in run
           # 32779945069 on this branch. `test/wait-census.test.mjs` calls a
@@ -727,6 +734,491 @@ jobs:
             exit 1
           fi
           exit "$rc"
+
+      - name: Preserve unit shard evidence
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: unit-shard-${{ matrix.shard }}
+          path: |
+            /tmp/unit.tap
+            test-results/fast.census.json
+            test-results/fast.gui-scope.tsv
+          if-no-files-found: error
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22 }
+      - name: Require green upstream evidence for the pinned 8086 engine
+        # Authenticated: verify-bw-board-ci.mjs reads GH_TOKEN. Without it every runner
+        # shares GitHub's anonymous per-IP limit and this step dies with HTTP 403 on a
+        # busy night (2026-09-06, twice in one hour), which paints a rate limit and a red
+        # bw-board the same colour.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: npm run verify:bwboard-ci
+      - name: Install source-test dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      # Fast, tracked-source verdict before vendor/integrate/install spend. The
+      # generated GUI suite below remains the authoritative release verdict.
+      - name: Run bounded source-only tests
+        run: npm run test:source
+      - name: Vendor the pinned permissive Scratch sources
+        run: npm run vendor
+      - name: Integrate the Code tab (sb3-creator)
+        run: node scripts/integrate.mjs
+      # Same static asset Vercel deploys, so the browser gate below runs against the
+      # shape users get rather than one where the heavy tier is silently missing.
+      # Non-fatal on purpose: if the release fetch fails, the engine is simply not
+      # offered — lib/labwired-engine.js already answers null instead of throwing,
+      # and the gate covers that degraded path too.
+      - name: Fetch the heavy simulation engine (labwired-wasm)
+        run: node scripts/sync-labwired-wasm.mjs || echo "labwired-wasm unavailable — the heavy tier will not be offered"
+      - name: Install
+        run: cd packages/scratch-gui && npm install --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      # The deployable build below is flag-ON, and flag-on webpack aliases
+      # @yowasp/yosys to the REAL package (an off build gets the yosys-absent stub),
+      # so the local FPGA tier's worker resolves. ~75 MB, in the deploy build only.
+      - name: Install the local FPGA toolchain (the deployable build is flag-on)
+        run: cd packages/scratch-gui && npm install --no-save --ignore-scripts --legacy-peer-deps --no-audit --no-fund @yowasp/yosys
+      - name: Apply the scratch-vm overlay (built-in extensions)
+        run: node scripts/apply-vm-overlay.mjs
+      # The FPGA surface ships in the DEPLOYABLE build (BW_ENABLE_FPGA=1 above),
+      # behind a per-user opt-in (Settings ▸ FPGA lab, default off) and lazily
+      # loaded so it stays out of first paint — verify-boot-payload proves the
+      # heavy libs are not eager. The BROWSER-gate build below stays flag-off, so
+      # this parse still guards the flagged JSX for that path — cheap, and it also
+      # catches a syntax error before the deploy build reaches it.
+      - name: Parse the flagged JSX
+        run: node scripts/check-flagged-jsx.mjs
+      # Everything from here to `Serve the built app` is an INDEPENDENT check —
+      # guards, unit tests, the lazy-bundle inspection, the debugger smoke test.
+      # None of them produces an input the next one needs, so none of them should
+      # silence the next one. They hang off this id, the last step of the actual
+      # prerequisite chain (vendor -> integrate -> install -> overlays).
+      - name: Apply the scratch-paint overlay (extended costume designer)
+        run: node scripts/apply-paint-overlay.mjs
+      # One patch: text costumes wait for the lazy render-fonts chunk (ROADMAP §2.4).
+      - name: Apply the scratch-render overlay (lazy render fonts)
+        id: overlays
+        run: node scripts/apply-render-overlay.mjs
+
+      # --- guards: catch silent reverts before the build runs ---
+      #
+      # Falsified 2026-08-09 on branch guard-falsification (deleted):
+      #   1. stc12 truncated to 4 opcodes → CAUGHT (run 31312830786)
+      #      "Bundled stc12 has only 4 opcodes (need ≥10)"
+      #   2. PIN=2f896b1a with matching binary → CAUGHT (run 31312945118)
+      #      "WASM PIN is not a descendant of the crash-fix floor (85ed23d)"
+      #      Proved the floor check, not a single-hash blacklist.
+      #   3. blocks.jsx null-guard removed → CAUGHT (run 31313002380)
+      #      "blocks.jsx is missing the toolbox null-guard"
+      #      Exact replay of the 0ba092b revert that caused the live outage.
+      #   4. HOC throw (unknown GUI crash) → CAUGHT (run 31331264070)
+      #      "FAIL: GUI did not render" — all 3 static guards passed, only the
+      #      headless browser check caught it. Proved it catches unknown causes,
+      #      not just the three named regressions. Branch: guard4-falsification.
+
+      - name: Guard — bundled stc12 has all emitted opcodes
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: |
+          FILE=overlay/scratch-vm/src/extensions/crispstrobe/stc12/index.js
+          # `grep -o | wc -l` counts OCCURRENCES; `grep -c` counts LINES that
+          # match. The bundles are one long line now — they hold the extension
+          # as a JSON string rather than a template literal, because a stray
+          # backtick in a comment closed the template early twice (711e4744f,
+          # 2258847c1). With `grep -c` this guard read 30 opcodes as 1 and
+          # failed a correct tree.
+          COUNT=$(grep -o 'opcode:' "$FILE" | wc -l | tr -d ' ')
+          echo "stc12 opcodes: $COUNT"
+          if [ "$COUNT" -lt 10 ]; then
+            echo "::error::Bundled stc12 has only $COUNT opcodes (need ≥10). Was it rebuilt from the gallery?"
+            exit 1
+          fi
+
+      - name: Guard — WASM pin is a descendant of the crash-fix floor
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: |
+          # The floor: 85ed23d94a1fbf8a15c2ddff068d438a832913cc is the commit
+          # with the emu_init crash fix and corrected BUILD-INFO.md. Any pin
+          # older than this ships a crashing binary. Bump the floor when a
+          # newer build is deliberately adopted.
+          #
+          # Full 40-hex, like the PIN it is compared against: an abbreviation is
+          # unique only within one repo at one moment, and `--is-ancestor` given
+          # an ambiguous or unknown rev fails in a way this step reads as "not a
+          # descendant" — a true-looking error about the wrong thing.
+          FLOOR=85ed23d94a1fbf8a15c2ddff068d438a832913cc
+          PIN=$(node -e "
+            const src = require('fs').readFileSync('scripts/sync-emu8051-wasm.mjs','utf8');
+            const m = src.match(/const PIN = '([^']+)'/);
+            console.log(m ? m[1] : '');
+          ")
+          echo "PIN=$PIN  FLOOR=$FLOOR"
+          if [ -z "$PIN" ]; then
+            echo "::error::Could not extract PIN from sync-emu8051-wasm.mjs"
+            exit 1
+          fi
+          # Clone just enough of emu8051-stc to check ancestry
+          git clone --bare --filter=blob:none https://github.com/CrispStrobe/emu8051-stc.git /tmp/emu8051-stc.git 2>/dev/null
+          if ! git -C /tmp/emu8051-stc.git merge-base --is-ancestor "$FLOOR" "$PIN" 2>/dev/null; then
+            echo "::error::WASM PIN ($PIN) is not a descendant of the crash-fix floor ($FLOOR). Re-pin to $FLOOR or later."
+            exit 1
+          fi
+          echo "PIN is at or after the floor — good"
+          node scripts/sync-emu8051-wasm.mjs --check
+
+      - name: Guard — blocks.jsx has the toolbox null-guard
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: |
+          # The crash: blocks.jsx passes this.props.toolboxXML to ScratchBlocks.inject().
+          # toolboxXML is null at startup (deferred because scratch-blocks is lazy-loaded).
+          # Without the null-guard, inject() gets null and the GUI doesn't mount.
+          FILE=overlay/scratch-gui/src/containers/blocks.jsx
+          if ! grep -q 'this.props.toolboxXML || makeToolboxXML' "$FILE"; then
+            echo "::error::blocks.jsx is missing the toolbox null-guard (this.props.toolboxXML || makeToolboxXML). GUI will not render."
+            exit 1
+          fi
+          echo "blocks.jsx: toolbox null-guard present (good)"
+
+      # --- tests ---
+
+      - name: Gate — independent SPIKE runtime with retired firmware assets absent
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        env:
+          BW_SPIKE_RECEIPT_DIR: ${{ runner.temp }}/spike-runtime-receipts
+        run: node scripts/verify-independent-spike.mjs
+
+      # Milestone 0: the shipped example corpus must be proven to EXECUTE, and
+      # the gate that proves it must be present and must still be able to fail.
+      # `npm test` below runs both gates through its glob; this step exists so a
+      # deleted gate, or a ratchet quietly padded until nothing is red any more,
+      # is a build failure and not an absence nobody notices. Both failure modes
+      # have happened in this repo: five gates were found that could not fail,
+      # and a dead-module exclusion list grew from five entries to sixteen while
+      # staying green.
+      #
+      # Mutation-proven 2026-08-23 (docs/EXAMPLE-CORPUS-FINDINGS.md, seven
+      # mutations): breaking a shipped example, deleting an opcode from a
+      # bundled extension, padding a ratchet, and removing the corpus each make
+      # the gate red.
+      - name: Guard — the example execution gates exist and their ratchets have not grown
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: |
+          set -e
+          for gate in test/example-vm-execution.test.mjs test/example-execution.test.mjs; do
+            if [ ! -f "$gate" ]; then
+              echo "::error::$gate is missing — the shipped example corpus would be unproven"
+              exit 1
+            fi
+          done
+          # A waiver list may only shrink. Lower these as examples are fixed,
+          # never raise them. All four example waivers are now ZERO, so these
+          # ceilings are zero: any reappearance is a regression, not a budget to
+          # spend. KNOWN_INERT 4 -> 0 and KNOWN_MISSING_OPCODES -> 0 when the
+          # eleven devices_oled*/devices_tft* opcodes were defined (37 -> 48
+          # blocks); KNOWN_SHADOWED_WRITES 19 -> 0 and KNOWN_NO_BLOCKS 2 -> 0 with
+          # the sb3-creator pin bump to 1a83dfa. TIME_GATED is NOT a waiver list
+          # -- its entries still carry a static assertion -- but it is capped too,
+          # so it cannot quietly become one.
+          node -e "
+            const fs = require('fs');
+            // Strip line comments before counting. The counter looks for quoted
+            // strings, and a stray apostrophe in prose reads as a quoted span —
+            // it reported an entry in a list with none. A guard that miscounts is
+            // worse than no guard, so it does not get to read prose.
+            const gate = fs.readFileSync('test/example-vm-execution.test.mjs', 'utf8')
+              .split('\n').map(l => l.replace(/^\s*\/\/.*$/, '')).join('\n');
+            // A Set entry is 'id'; a Map entry is ['id', 'reason'] and would
+            // otherwise count double. Count the id, whichever shape it is in.
+            const count = (name) => {
+              const at = gate.indexOf(name);
+              if (at < 0) { console.error('::error::' + name + ' is gone from the gate'); process.exit(1); }
+              const isMap = /new Map\(/.test(gate.slice(at, at + 40));
+              const body = gate.slice(gate.indexOf('[', at), gate.indexOf(isMap ? '])' : ']', at));
+              return (body.match(isMap ? /\['[^']+'/g : /'[^']+'/g) || []).length;
+            };
+            const ceilings = {KNOWN_INERT: 0, KNOWN_SHADOWED_WRITES: 0, KNOWN_NO_BLOCKS: 0, TIME_GATED: 2};
+            let bad = 0;
+            for (const [name, ceiling] of Object.entries(ceilings)) {
+              const n = count(name);
+              console.log(name + ': ' + n + ' waived (ceiling ' + ceiling + ')');
+              if (n > ceiling) {
+                console.error('::error::' + name + ' grew to ' + n + ' entries (ceiling ' + ceiling +
+                  '). A waiver list may only shrink.');
+                bad++;
+              }
+            }
+            const undefinedOpcodes = (gate.slice(gate.indexOf('KNOWN_MISSING_OPCODES'),
+              gate.indexOf('KNOWN_INERT')).match(/'[a-z0-9]+_[a-z0-9_]+'/g) || []).length;
+            console.log('KNOWN_MISSING_OPCODES: ' + undefinedOpcodes + ' opcodes waived (ceiling 0)');
+            if (undefinedOpcodes > 0) {
+              console.error('::error::KNOWN_MISSING_OPCODES grew to ' + undefinedOpcodes + ' opcodes.');
+              bad++;
+            }
+            process.exit(bad ? 1 : 0);
+          "
+
+      - name: Guard — the fetch-pinning gate exists and can still fail
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: |
+          set -e
+          # `npm test` below runs test/fetch-pinning.test.mjs through its glob.
+          # This step exists for the two failure modes a green suite cannot
+          # distinguish from a passing gate: the gate DELETED, and the gate
+          # unable to go red. Both have happened in this repo — five gates were
+          # found that could not fail, and one of them walked a tree containing
+          # its own prover, so every string-literal target matched itself.
+          #
+          # The prover mutates tracked files and reverts each in a finally
+          # block; it exits 2 if the tree does not come back green, so a failed
+          # revert cannot be mistaken for a passing run.
+          if [ ! -f test/fetch-pinning.test.mjs ]; then
+            echo "::error::test/fetch-pinning.test.mjs is missing — every fetch in this repo would be unchecked"
+            exit 1
+          fi
+          # No `git diff` here. By this point `npm install`, vendor and integrate
+          # have modified thousands of tracked files, so a dirty tree says
+          # nothing about the prover — and the first version of this step
+          # reported "the pinning prover left the tree dirty" after the prover
+          # had just printed 11/11 caught (run 32762117022). A well-formed,
+          # confident statement about the wrong thing, in the step meant to
+          # catch exactly that. The prover checks its own restoration at BYTE
+          # level against what each file held before it touched it, which is
+          # the question, and exits 2 if a revert failed.
+          node scripts/prove-fetch-pinning.mjs
+
+      # Three checks that read example JSON off disk — no browser, no server,
+      # no built app. They were sitting unrun with the browser gates purely
+      # because of their filename, and they cost about a second each.
+      - name: Content gates — faceplates, hub faces, retro console
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: |
+          node scripts/verify-faceplate-blinkenrocket.mjs
+          node scripts/verify-lego-hub-faces.mjs
+          node scripts/verify-retro-console.mjs
+
+      # test/pin-move-chain.test.mjs (plan T9) needs two histories the default
+      # checkout does not have: this repo's own, for every value vendor-pins.json
+      # ever held (depth-1 sees one commit and the half would pass on an empty
+      # set — the test refuses that by name), and the vendored repos', so a sha of
+      # theirs that was never a pin is caught too. Both without blobs: the
+      # unshallow measured 3.2 s on a CI-shaped clone, each bare clone ~1 s.
+      - name: Vendored-repo history for the pin-move gate
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: |
+          if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then
+            git fetch --quiet --unshallow --filter=blob:none origin
+          fi
+          echo "vendor-pins.json history: $(git rev-list --count HEAD -- vendor-pins.json) commits"
+          mkdir -p "$RUNNER_TEMP/vendor-history"
+          for repo in bw-board sb3-creator bw-circuit-ui; do
+            git clone --quiet --bare --filter=blob:none "https://github.com/CrispStrobe/$repo.git" "$RUNNER_TEMP/vendor-history/$repo.git"
+            echo "$repo: $(git --git-dir="$RUNNER_TEMP/vendor-history/$repo.git" rev-list --all | wc -l) commits"
+          done
+          echo "BW_VENDOR_HISTORY_DIR=$RUNNER_TEMP/vendor-history" >> "$GITHUB_ENV"
+
+      # THE PIN-READER TESTS HAVE NEVER RUN IN CI, and that is how a stale
+      # inventory shipped. Four tests need a bw-board tree AT THE PIN --
+      # bw-board-census, vendor-identity, and the two i8086-bios provenance
+      # gates -- and each of them skips BY NAME when BW_BOARD_DIR is unset. The
+      # skips were honest and nobody was reading them, so vendor-identity's
+      # convergence inventory went stale through a pin bump and was still
+      # claiming "APPEARED rp2040-bootrom.js" when the file had converged.
+      #
+      # No workflow in this repo provided that tree. I checked every file under
+      # .github/workflows before adding one rather than assuming the census step
+      # had it: there is no census step in CI at all.
+      #
+      # Blobless and AT THE PIN SHA, following the emu8051-stc precedent above:
+      # a clone pinned to an exact sha is the pinned class, and --filter=blob:none
+      # fetches only the objects the checkout needs.
+      - name: Fetch the pinned bw-board tree for the pin-reader tests
+        id: bwboard_tree
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: |
+          set -o pipefail
+          PIN=$(node -e "const p=require('./vendor-pins.json')['bw-board']; if(!/^[0-9a-f]{40}$/.test(p || '')) process.exit(1); console.log(p)")
+          git clone --filter=blob:none --no-checkout \
+            https://github.com/CrispStrobe/bw-board.git /tmp/bw-board
+          git -C /tmp/bw-board checkout -q "$PIN"
+          # The tree must BE the pin, not merely near it -- a checkout that
+          # silently landed elsewhere would make every reader below assert
+          # against the wrong tree and still look green.
+          GOT=$(git -C /tmp/bw-board rev-parse HEAD)
+          [ "$GOT" = "$PIN" ] || { echo "::error::bw-board tree is at $GOT, pin is $PIN"; exit 1; }
+          echo "BW_BOARD_DIR=/tmp/bw-board" >> "$GITHUB_ENV"
+          echo "bw-board at the pin ${PIN:0:9}"
+
+      - name: Verify pinned installed package bytes and upstream notices
+        id: package_provenance
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.bwboard_tree.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          UI_PIN=$(node -e "const p=require('./vendor-pins.json')['bw-circuit-ui']; if(!/^[0-9a-f]{40}$/.test(p || '')) process.exit(1); console.log(p)")
+          git clone --filter=blob:none --no-checkout https://github.com/CrispStrobe/bw-circuit-ui.git /tmp/bw-circuit-ui
+          git -C /tmp/bw-circuit-ui checkout --detach -q "$UI_PIN"
+          [ "$(git -C /tmp/bw-circuit-ui rev-parse HEAD)" = "$UI_PIN" ]
+          node scripts/pin-packages.mjs --verify-installed \
+            --source bw-board=/tmp/bw-board --source bw-circuit-ui=/tmp/bw-circuit-ui \
+            --installed-root node_modules --installed-root packages/scratch-gui/node_modules
+          node scripts/package-upstream-notices.mjs --check
+
+      # The absent-by-design proof consumes BW_BOARD_DIR at the recorded pin.
+      # No second moving checkout or skip when the default branch advances.
+
+      # The EXECUTED C side of the P3 differential (plan N11a) compiles generateC's
+      # Pico output with arm-none-eabi-gcc. The runner has none, so the sha-pinned
+      # ARM GNU toolchain (13.2.rel1) is fetched here — content-pinned in
+      # scripts/sync-arm-toolchain.mjs (verified before extract, --version asserted
+      # after), declared in test/fetch-pinning.test.mjs. This is the ONLY job that
+      # runs that differential (test:fast), so it is fetched only here; the build
+      # job is not sharded, so there is no shard clause to add.
+      - name: Restore the sha-pinned ARM toolchain from cache
+        id: arm_cache
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: artifacts/arm-toolchain
+          # Keyed on the sha256 ALONE (ARM_TOOLCHAIN.sha256): a URL change with no
+          # byte change never re-downloads, and new bytes are a new key.
+          key: arm-toolchain-6cd1bbc1d9ae57312bcd169ae283153a9572bd6a8e4eeae2fedfbc33b115fdbb
+
+      - name: Fetch the sha-pinned ARM toolchain for the executed-C differential (tolerated absent)
+        id: arm_toolchain
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        # Measured: 171 MB cold-downloads ~6 s @ ~30 MB/s from a box (2026-09-07);
+        # 8 min is wide margin for a slow-network runner plus xz extraction.
+        timeout-minutes: 8
+        run: |
+          set -o pipefail
+          # sync-arm-toolchain.mjs uses a preinstalled arm-none-eabi-gcc if present,
+          # else fetches+verifies+extracts the pinned 13.2.rel1 (a cache hit skips
+          # the download). Tolerated absent by name: a transient ARM CDN failure
+          # makes the executed-C tests SKIP, like the firmware step, never redden.
+          if ! node scripts/sync-arm-toolchain.mjs | tee /tmp/arm.out; then
+            echo "::warning::ARM toolchain fetch/verify failed — the executed-C differential will skip by name"
+            exit 0
+          fi
+          BIN_DIR=$(grep -oE '^BIN_DIR=.*' /tmp/arm.out | tail -1 | cut -d= -f2)
+          if [ -n "$BIN_DIR" ]; then echo "$BIN_DIR" >> "$GITHUB_PATH"; fi
+
+      # The Pico MicroPython firmware (650 KB, sha256-pinned, gitignored) gates
+      # TWELVE unit tests — pico-micropython-boot, pico-sim-transport-drain,
+      # p3-pin-c-mpy-differential, pico-image-builder, pico-micropython-gpio —
+      # and until 2026-09-07 this job never fetched it, so none of the twelve
+      # had executed in any of 20 green main runs, while the browser job below
+      # fetched the same file for its sim gate (plan T13). Cached by the sha256
+      # alone, like the ARM toolchain; tolerated absent BY NAME: on a fetch
+      # failure the twelve skip with their reason, and every skip in this job
+      # must point at where it executes (check-test-run, LANES.md).
+      - name: Restore the sha-pinned Pico MicroPython firmware from cache
+        id: pico_cache
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: artifacts/pico-micropython
+          # FIRMWARE.sha256 in scripts/probe-pico-micropython.mjs; new bytes are a new key.
+          key: pico-micropython-e92c2a253d2d4830d56cd6aebae1bbc6c913f413122dabba3cc2de74b984bba9
+      - name: Fetch the sha-pinned Pico MicroPython firmware for the unit tests (tolerated absent)
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        timeout-minutes: 3
+        run: npm run sync:picomicropython || echo "::warning::pico firmware sync failed — the twelve firmware-gated unit tests will skip by name"
+      # MakeCode's compiler + simulators (MIT, ~48 MB of sha256-pinned npm tarballs,
+      # never committed). Served under static/makecode by the editor build below, and
+      # needed by test/makecode-pxt-runtime (which SKIPS BY NAME without it).
+      - name: Restore the sha256-pinned MakeCode runtime tarballs from cache
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: artifacts/makecode
+          # The pin tables (TARBALLS, BASES) live in the sync script: a changed pin is a new key.
+          key: makecode-${{ hashFiles('scripts/sync-makecode-runtime.mjs') }}
+      - name: Fetch the pinned MakeCode runtime (tolerated absent)
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        timeout-minutes: 5
+        run: npm run sync:makecode || echo "::warning::MakeCode runtime sync failed — the MakeCode compile tests skip by name and the build will not offer it"
+
+      # THE FPGA PACKER GATE NEEDS A PYTHON RUNTIME, AND IT IS NOT A DEPENDENCY.
+      # test/fpga-pyodide-packer.test.mjs asserts that Apicula's gowin_pack,
+      # running under Pyodide, packs the committed nextpnr fixtures to bitstreams
+      # BYTE-IDENTICAL to the native packer. That is the measurement that
+      # reversed docs/TANG-NANO.md §8c ("there is no path"), so it is worth
+      # running rather than recording once and trusting.
+      #
+      # Pyodide is 17 MB and serves exactly this gate, so it is installed into
+      # gitignored artifacts/ rather than added to package.json, and Apicula
+      # itself comes from PyPI at run time. Tolerated absent for the same reason
+      # the Pico firmware is: a network failure must degrade the run to a NAMED
+      # skip, not redden a build over something nobody changed.
+      - name: Install Pyodide for the FPGA bitstream-packer gate (tolerated absent)
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        timeout-minutes: 4
+        run: node scripts/probe-pyodide-packer.mjs --install || echo "::warning::pyodide install failed — the two packer gates will skip by name"
+
+      # THE GPL TOOLCHAIN, FETCHED RATHER THAN TRACKED.
+      # SDCC is GPL-2.0-or-later and this repository is BSD-3-Clause, so as of
+      # 2026-09-08 the binaries are no longer committed here — they live at
+      # https://github.com/CrispStrobe/sdcc-wasm and the app downloads them only
+      # when a user opts in. Four Node consumers still READ that directory
+      # (smoke-debugger, the two wasm-compiler suites, pack-sdcc-runtime), so CI
+      # fetches it here.
+      #
+      # TOLERATED ABSENT, deliberately. A network fetch in a previously hermetic
+      # job must not turn a github.io hiccup into a red build on unrelated work:
+      # the consumers skip BY NAME when the directory is missing, which is loud
+      # in the TAP and cannot be mistaken for a pass.
+      - name: Fetch the GPL SDCC toolchain for the Node consumers (tolerated absent)
+        id: sdcc_toolchain
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ORIGIN=https://crispstrobe.github.io/sdcc-wasm/static/sdcc-wasm
+          DEST=overlay/scratch-gui/src/lib/sdcc-wasm/dist
+          mkdir -p "$DEST/include/mcs51" "$DEST/lib/small"
+          ok=1
+          for f in cc1.js cc1.wasm sdcc.js sdcc.wasm sdas8051.js sdas8051.wasm \
+                   sdld.js sdld.wasm runtime.json; do
+            curl -fsS --max-time 120 -o "$DEST/$f" "$ORIGIN/$f" || { ok=0; break; }
+          done
+          if [ "$ok" = "1" ]; then
+            cp -r "$DEST" packages/scratch-gui/src/lib/sdcc-wasm/dist 2>/dev/null || true
+            echo "SDCC toolchain fetched from the GPL origin ($(du -sh "$DEST" | cut -f1))"
+          else
+            echo "::warning::GPL toolchain not fetched — the SDCC Node gates will skip by name"
+            rm -rf "$DEST"
+            exit 1
+          fi
+
+      - name: Resolve the path-scoped stc flasher pin
+        id: stc_flasher_pin
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        run: |
+          node -e 'const sha=require("./vendor-pins.json")["stc-compiler-flasher"]; if (!/^[0-9a-f]{40}$/.test(sha)) throw new Error("stc-compiler-flasher must be a full SHA"); process.stdout.write(`sha=${sha}\n`)' >> "$GITHUB_OUTPUT"
+
+      - name: Fetch stc-compiler at the flasher artifact pin
+        id: stc_flasher_source
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' }}
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: CrispStrobe/stc-compiler
+          ref: ${{ steps.stc_flasher_pin.outputs.sha }}
+          path: .stc-compiler-flasher
+
+      - name: Install Playwright Chromium for the PXT Arcade oracle in the unit tests
+        id: unit_playwright
+        if: ${{ !cancelled() && steps.overlays.outcome == 'success' }}
+        timeout-minutes: 10
+        # Run even if another independent guard failed. Unit tests below require
+        # this actual installation; they must not run against a missing browser.
+        # Bound one installation step; do not start nested retries that may
+        # contend with APT children left behind by a timed-out attempt.
+        run: npx playwright install --with-deps chromium
 
       # A green suite says every assertion PASSED. It does not say any of them could have
       # failed. These mutations weaken a real enforcement point and require the named suite to
@@ -2194,6 +2686,17 @@ jobs:
         run: |
           mkdir -p test-results
           node scripts/verify-arcade-physics-engine-browser.mjs
+      - name: Browser gate — Arcade Buffer editor controller and original export
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-buffer-browser.mjs
+      - name: Upload arcade-buffer-browser observations
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: arcade-buffer-browser
+          path: test-results/arcade-buffer-browser/
+          if-no-files-found: error
       - name: Browser gate — Arcade sprite scaling through the controller
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
@@ -2490,7 +2993,7 @@ jobs:
 
 
   deploy:
-    needs: [build, corpus, browser, fpga-surface, guard]
+    needs: [build, unit, corpus, browser, fpga-surface, guard]
     # TWO RATCHETS READ THESE EXACT CHARACTERS, so the line's shape is load-bearing
     # even though Actions treats `needs` as an unordered set and ignores comments:
     #   - pages-deploy-ordering matches /needs:\s*(?:build|\[\s*build\b...)/, so

@@ -402,3 +402,60 @@ Buffer authoring and byte inspection. Keep whole-corpus classifications unchange
 until the immutable184 originals and authenticated contexts are rerun. Wide
 animation authoring has separate observed hosted proof from Build38256137458;
 that older-head proof does not cover these later edits.
+
+### Buffer Base64 checkpoint — 2026-10-12
+
+Native Buffer construction and encoding now cover genuine Base64 APIs, original
+padding/incomplete-group/URL-safe semantics and explicit malformed-input errors.
+The candidate has29 affected controls and352 producer controls passing, zero
+skips, including original export execution and fresh SB3. Source is stacked on
+PR843; hosted qualification remains pending. Namespace imports and a visible
+byte inspector remain separate acceptance tasks. Next source-derived Buffer
+slices are chunking (including UTF8 boundaries), packing/unpacking and hash,
+followed by aggregate heap lifetime. Full immutable project recensus, original
+asset closure and browser journeys remain necessary before41 can become0.
+
+### Buffer chunking checkpoint — 2026-10-12
+
+Native byte/UTF8 chunk arrays now retain the source-extracted original alias,
+copy, fractional-slice and UTF16/surrogate behavior. Scoped Buffer[] custom
+returns and export through genuine MakeCode calls survive original execution
+and actual fresh SB3.31 distinct controls and354 producer controls pass without
+skips. Resource limits diagnose excessive collections before another output
+allocation. Import, visible chunk inspection and full original-app recensus
+remain open. Next: pack/unpack format parsing and hash, then aggregate live heap
+closure. Hosted full builds and editor proof remain required; observed PR834
+unit success with a cancelled full build is not release qualification.
+
+### Buffer packing checkpoint — 2026-10-12
+
+Four packing APIs now have native words, scoped numeric arrays, typed custom
+returns, original MakeCode export and fresh SB3 controls. Seven new controls
+pass without skips;30 preceding affected controls passed in the preserved
+first batch. Producer passes358 controls, canonical vocabulary315. Original
+format syntax and partial-write behavior remain intact; bounded repeat/work
+and result allocation reject excessive requests explicitly. The Buffer
+contract records engine-dependent undefined-float NaN payloads and original
+panic108 versus native source-level diagnostics. Namespace imports, visible
+format/byte/array tools and immutable whole-project recensus remain open.
+Next: original hash, then aggregate live heap/lifetime, followed by real app
+qualification. Latest PR834 build/heavy passed; light pending at checkpoint.
+
+Browser followup: PR845 light reached real format/numeric edits and the A
+mutation, then timed out on B because the fixture listened for b while the
+pane sends z. Use the actual pane mapping in that fixture; preserve ordinary
+b as a separate keyboard input and retain original exported controller proof.
+Heavy/FPGA passed; fresh full visible journey remains required.
+
+### Original Buffer hash checkpoint — 2026-10-12
+
+Native k-bit FNV-1 reporter, Code word and genuine typed `.hash(bits)` export
+retain the complete original common simulator functions. Three hash controls
+and seven rechecked packing controls pass without skips; producer359 passes.
+The source-derived Buffer authoring API backlog now leaves importer aliases
+with E10. Whole-app original asset/API closure, native GUI inspectors and
+aggregate live memory remain open. Strong Buffer registry entries currently
+retain discarded temporaries until reset: implement root tracing and reserve
+allocations before copies; an ever-growing historical counter is insufficient.
+PR845 full build timed out and the light B-fixture failure is preserved; obtain
+exact-head complete build/editor proof before acceptance or corpus promotion.

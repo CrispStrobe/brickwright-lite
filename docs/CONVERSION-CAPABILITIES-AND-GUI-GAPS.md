@@ -3585,3 +3585,124 @@ The original142/41/1 corpus count is unchanged. Wide-animation GUI acceptance
 is now observed in Build38256137458 at387337ad5 (161x121, two frames, offscreen
 edit, SB3 reopening and original-PXT pixel comparison); subsequent Buffer edits
 need their own final hosted qualification.
+
+### Buffer editor proof prepared — 2026-10-12
+
+A dedicated hosted journey now authors native Buffer code, edits the genuine
+16-format dropdown and numeric operand, steers numeric mutation/detached slice/
+custom-block alias using the visible controller, reconstructs Code/Blocks,
+saves/replaces/reopens through File and executes the downloaded MakeCode project
+under original Arcade buttons. This is pending browser acceptance, not a passed
+GUI claim. Its actual native controller fixture and CI contracts pass22 controls.
+
+The fixture found two export issues, now fixed: `hex`/`img` are allocated safely
+around MakeCode's template tags; Buffer sidecar placeholders from saved runtime
+variables are not emitted as string initializers. Runtime byte inspector/editor,
+UTF8 construction, aggregate heap collection and E10 namespace import remain
+open. [Import integration contract](ARCADE-BUFFER-IMPORT-CONTRACT.md) gives the
+native mappings and acceptance steps to the importer owner.
+
+### Buffer UTF8 constructor continuation (2026-10-12)
+
+`arcade_bufferFromUTF8` adds the missing fresh mutable Buffer constructor to
+runtime, native block metadata, canonical Code and typed MakeCode export.
+It uses the original TextEncoder semantics with a preallocation byte bound;
+Unicode, malformed decoding, alias mutation and archive reopening are focused
+acceptance controls. The producer adds one independently exercised form (299
+canonical opcodes). This does not qualify import: E10 must still lower
+`Buffer.fromUTF8` and `control.createBufferFromUTF8` after receiver/name resolution,
+including shadowing and initializer order. See
+[the complete import contract](ARCADE-BUFFER-IMPORT-CONTRACT.md). Aggregate
+Buffer heap collection and the original corpus's other missing APIs/assets remain
+open. The visible editor journey in PR834 is separately awaiting hosted proof.
+
+### Buffer public-method backlog and readonly Boolean (2026-10-12)
+
+The candidate adds `Buffer.isReadOnly()` as a native Boolean block, Code word
+and typed export, using the retained original method. The source-derived
+[Buffer backlog](ARCADE-BUFFER-IMPORT-CONTRACT.md#public-api-scope-and-remaining-buffer-authoring-gaps)
+tracks Base64, number-array bridges, concatenation, equality/search, chunking,
+packing/unpacking, numeric-format size and hashing. All need runtime, native
+palette/Code and export acceptance before import is promoted. The compiler
+exposes only two-argument `write`; proposed internal range parameters were
+rejected and withdrawn, with original diagnostics preserved privately.
+
+### Buffer concat, equality and search (2026-10-12)
+
+Runtime, native blocks/Code and typed export now support the three genuine public
+instance APIs through generated original common-package helpers. Original indexed
+read semantics, detached storage, Boolean conditions and allocation limits are
+preserved.25 affected checks pass, zero skips; producer346pass, zero skips.
+Static `Buffer.concat(Buffer[])`, Base64/number arrays, chunking, packing and
+hashing remain tracked in the [API contract](ARCADE-BUFFER-IMPORT-CONTRACT.md).
+Importer wiring, hosted visible editor proof and unchanged corpus promotion are
+separate gates; do not mark those complete from these controls.
+
+### Buffer number-format sizes (2026-10-12)
+
+The candidate adds original `Buffer.sizeOfNumberFormat` through the native
+`arcade_bufferFormatSize` reporter and `arcade byte buffer number format FORMAT
+size` Code form. All16 menu entries and dynamic numeric inputs use the extracted
+original algorithm; export emits the static API and numeric custom-function
+returns. Code/Blocks, original export execution and fresh actual SB3 checks are
+required. This closes scalar authoring source; namespace import, byte inspection
+and visible product GUI qualification remain open.
+
+The first Buffer browser run failed before any controller cycle while opening
+a dropdown. Its followup uses an actionable SVG-field locator and failure
+screenshot; do not mark this GUI lane passed before hosted evidence.
+
+### Buffer number arrays and static concatenation (2026-10-12)
+
+The candidate adds `arcade_bufferFromArray`, `arcade_bufferToArray` and
+`arcade_bufferConcatArray`. Native reporters use the existing scoped Arrays
+references, preserve detached storage and support all16 numeric decode formats.
+The exporter carries number[] returns and Buffer[] inputs through existing
+constraints; original exported execution and actual archive reopening are
+controls. Fixed finite numeric JSON reference constructors now emit array
+literals instead of a refusal. Dynamic/non-numeric constructor forms still
+retain their named diagnostics; do not declare general JSON array export closed.
+
+Authoring uses existing array-reference mutation/value blocks. Their raw value
+slots are text; the Code fixture uses an explicit numeric reporter. An improved
+typed array-value editing flow remains a GUI task. Buffer byte/array inspection,
+namespace import and exact-head visible controller/export qualification remain
+open. Original decoder invalid-format loops are refused explicitly by the host.
+
+### Buffer Base64 authoring (2026-10-12)
+
+The candidate adds `arcade_bufferFromBase64` and `arcade_bufferToBase64` as
+native reporter blocks and Code words. Typed export uses the real MakeCode
+APIs, including numeric text, custom string returns and mutable aliases. Its
+source-extracted parser retains original incomplete-group/padding/URL-safe
+behavior. Original runtime, Code reconstruction and fresh SB3 checks are
+required. A byte/encoding inspector, visible editor/controller journey and
+namespace imports remain open; source vocabulary alone does not close them.
+
+### Buffer chunk authoring (2026-10-12)
+
+Native `arcade_bufferChunked` and `arcade_bufferChunkedFromUTF8` reporters now
+produce scoped Buffer[] references in Code and blocks. Typed export retains
+custom returns and array-element types. Single-byte-chunk identity and readonly
+status match original aliases; multi-chunk storage is detached. Original UTF16
+search/surrogate behavior is preserved. Collection bounds reject unsafe output
+instead of truncating it. A visible array/byte/chunk inspector, GUI field/controller
+proof and namespace import remain open; the vocabulary inventory alone does not
+qualify those user journeys.
+
+### Buffer format authoring (2026-10-12)
+
+Native packed-size, pack, unpack and pack-at blocks now share the original
+MakeCode format parser through Code, scoped number arrays and typed export.
+Format text is editable and can come from a reporter; the existing palette
+exposes genuine APIs with explicit invalid-format diagnostics. A visible format
+assistant/preview, byte inspector, typed array editing, original namespace
+import and hosted editor/controller journey remain open GUI work. Source
+vocabulary and headless original roundtrips do not qualify those user flows.
+
+Buffer hash authoring continuation: native reporter and pseudocode word
+`arcade byte buffer BUFFER hash BITS bits` expose original k-bit FNV-1; typed
+MakeCode export uses `.hash(bits)`. Byte/array/format inspection and a visible
+controller/editor hash journey remain GUI qualification work. Aggregate heap
+collection needs explicit root tracing across variables, arrays, calls, scenes
+and playback; source vocabulary does not establish that resource guarantee.
