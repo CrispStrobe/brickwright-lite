@@ -132,6 +132,12 @@ const L10N = {
         mcRunStarted: (n, t) => `${n} is running in MakeCode's ${({arcade: 'Arcade', calliopemini: 'Calliope mini', ev3: 'EV3', adafruit: 'Circuit Playground'})[t] || 'micro:bit'} simulator.`,
         mcFetched: list => ` Extensions fetched from GitHub for this build: ${list}.`,
         mcLicenceUnknown: 'licence not recognised',
+        mcEmulate: '▶ Run on the emulated micro:bit V2',
+        mcEmulateTitle: 'Compile this micro:bit project with MakeCode\'s own compiler onto the Bluetooth-free firmware bases and run the real image on LabWired\'s micro:bit V2 (nRF52833) in the Debug pane — the official base carries Nordic\'s SoftDevice, which the emulator never runs',
+        mcEmulateBuilding: n => `Building ${n} for the emulated micro:bit V2…`,
+        mcEmulateStarted: n => `${n} is running on the emulated micro:bit V2 in the Debug pane (LED matrix in Widgets). Its serial output is not faithful on this board model yet: the engine reads a transmit buffer after CODAL has reused it.`,
+        mcEmulateNoBases: 'This build does not serve the micro:bit V2 emulator bases (npm run sync:makecode fetches them), or this project needs a package set they do not cover; the emulator never falls back to the official base.',
+        mcEmulateRefused: m => `The emulator refused this firmware base: ${m}`,
         mcFirmware: '⤓ Firmware for the board',
         mcFirmwareTitle: 'Build the real firmware for this project\'s board (micro:bit or Calliope .hex, EV3, Circuit Playground or the chosen Arcade board .uf2), with the project inside so MakeCode can reopen it',
         mcFirmwareBuilding: n => `Building firmware for ${n}…`,
@@ -450,6 +456,12 @@ const L10N = {
         mcRunStarted: (n, t) => `${n} läuft im MakeCode-Simulator (${({arcade: 'Arcade', calliopemini: 'Calliope mini', ev3: 'EV3', adafruit: 'Circuit Playground'})[t] || 'micro:bit'}).`,
         mcFetched: list => ` Für diesen Build von GitHub geladene Erweiterungen: ${list}.`,
         mcLicenceUnknown: 'Lizenz nicht erkannt',
+        mcEmulate: '▶ Auf dem emulierten micro:bit V2 ausführen',
+        mcEmulateTitle: 'Dieses micro:bit-Projekt mit dem MakeCode-eigenen Compiler auf die Bluetooth-freien Firmware-Basen übersetzen und das echte Image auf LabWireds micro:bit V2 (nRF52833) im Debug-Bereich ausführen — die offizielle Basis enthält Nordics SoftDevice, die der Emulator nie ausführt',
+        mcEmulateBuilding: n => `${n} wird für den emulierten micro:bit V2 gebaut…`,
+        mcEmulateStarted: n => `${n} läuft auf dem emulierten micro:bit V2 im Debug-Bereich (LED-Matrix in Widgets). Die serielle Ausgabe ist auf diesem Board-Modell noch nicht originalgetreu: die Engine liest einen Sendepuffer, nachdem CODAL ihn wiederverwendet hat.`,
+        mcEmulateNoBases: 'Dieser Build stellt die micro:bit-V2-Emulator-Basen nicht bereit (npm run sync:makecode lädt sie), oder das Projekt braucht einen Paketsatz, den sie nicht abdecken; der Emulator weicht nie auf die offizielle Basis aus.',
+        mcEmulateRefused: m => `Der Emulator hat diese Firmware-Basis abgelehnt: ${m}`,
         mcFirmware: '⤓ Firmware für das Board',
         mcFirmwareTitle: 'Die echte Firmware für das Board dieses Projekts bauen (micro:bit oder Calliope .hex, EV3, Circuit Playground oder das gewählte Arcade-Board .uf2), mit dem Projekt darin, damit MakeCode es wieder öffnen kann',
         mcFirmwareBuilding: n => `Firmware für ${n} wird gebaut…`,
@@ -2145,6 +2157,57 @@ class PseudocodeImporter extends React.Component {
         } catch (err) {
             this.setState({busy: false, status: err && err.code === 'UNSUPPORTED_TARGET' ?
                 this.L.mcUnsupportedTarget(target) : this.makeCodeFailure(err, target)});
+        }
+    }
+
+    /**
+     * ▶ Run on the emulated micro:bit V2 (task A8): MakeCode's own compiler links
+     * the program onto a Bluetooth-free base (compileMakeCodeForEmulator — never
+     * the official base, whose Nordic SoftDevice the emulator does not run), and
+     * the image goes to the Debug pane on LabWired's micro:bit V2 board, through
+     * the same firmware hand-off a compiled sketch takes. The engine loads an
+     * ELF, so the plain V2 .hex becomes one where its records say (vector table at 0).
+     */
+    async runOnEmulatedMicrobit () {
+        const subject = await this.makeCodeSubject().catch(() => null);
+        if (!subject || subject.target !== 'microbit') { this.setState({status: this.L.mcNothingToRun}); return; }
+        this.setState({busy: true, status: this.L.mcEmulateBuilding(subject.name)});
+        try {
+            const {compileMakeCodeForEmulator, firmwareFile} = await import(
+                /* webpackChunkName: "bw-makecode-pxt" */ '../../lib/bw-makecode/pxt-runtime.js');
+            const out = await compileMakeCodeForEmulator({target: 'microbit', files: subject.files});
+            const fw = out.success ? firmwareFile({'binary.hex': out.outfiles['binary.hex']}) : null;
+            if (!out.success || !fw) {
+                const first = (out.diagnostics[0] && `${out.diagnostics[0].file}:${out.diagnostics[0].line + 1} ${out.diagnostics[0].message}`) || '';
+                this.setState({busy: false, status: out.success ? this.L.mcEmulateNoBases : this.L.mcCompileErrors(out.diagnostics.length, first)});
+                return;
+            }
+            const [{hexToSegments}, {binToElf}] = await Promise.all([
+                import(/* webpackChunkName: "labwired-catalog" */ 'bw-board/hex-app-region.js'),
+                import(/* webpackChunkName: "labwired-catalog" */ 'bw-board/bin-to-elf.js')]);
+            const [first, ...rest] = hexToSegments(new TextDecoder().decode(fw.bytes));
+            if (!first || first.addr !== 0) throw new Error('the emulator image has no vector table at 0');
+            const elf = binToElf(first.data, {loadAddress: 0, extraSegments: rest.map(r => ({address: r.addr, bytes: r.data}))});
+            const slug = String(subject.name).replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'program';
+            const detail = {format: 'firmware', kind: 'labwired', labwiredChip: 'board:microbit-v2', target: 'microbit',
+                firmware: {name: `${slug}-microbit-v2-emu.elf`, bytes: elf, text: null, fCpu: null},
+                rom: null, image: null, listing: null};
+            try { localStorage.setItem('bw-right-pane-hidden', '0'); } catch { /* private mode */ }
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
+            // A simulator/console dock hides the Debug pane: show the debugger instead.
+            let dock = 'top';
+            try { dock = localStorage.getItem('bw-debug-dock') || 'top'; } catch { /* private mode */ }
+            if (!['top', 'right', 'solo'].includes(dock)) {
+                try { localStorage.setItem('bw-debug-dock', 'right'); } catch { /* private mode */ }
+                window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-debug-dock', value: 'right'}}));
+            }
+            window.__bwPendingMedia = {type: 'asm', detail};
+            window.dispatchEvent(new CustomEvent('bw-asm-rom-ready', {detail}));
+            this.setState({busy: false, status: this.L.mcEmulateStarted(subject.name) + this.fetchedNote(out)});
+        } catch (err) {
+            if (err && err.code === 'NO_BASE_HEX') { this.setState({busy: false, status: this.L.mcEmulateNoBases}); return; }
+            if (err && /BASE$/.test(String(err.code || ''))) { this.setState({busy: false, status: this.L.mcEmulateRefused(err.message)}); return; }
+            this.setState({busy: false, status: this.makeCodeFailure(err, 'microbit')});
         }
     }
 
@@ -5238,6 +5301,12 @@ class PseudocodeImporter extends React.Component {
                             <button type="button" onClick={() => this.runInMakeCode()} style={item}
                                 title={this.L.mcRunTitle} disabled={this.state.busy}
                                 data-testid="bw-makecode-run">{this.L.mcRun}</button>
+                        ) : null}
+                    {(this._makeCodeProject ? this._makeCodeProject.target === 'microbit' : this.currentDevice() === 'microbit') &&
+                        this.makeCodeRunOffered('microbit') ? (
+                            <button type="button" onClick={() => this.runOnEmulatedMicrobit()} style={item}
+                                title={this.L.mcEmulateTitle} disabled={this.state.busy}
+                                data-testid="bw-makecode-emulate">{this.L.mcEmulate}</button>
                         ) : null}
                     {this._makeCodeProject && this._makeCodeProject.target === 'arcade' ? (
                         <select value={this.state.arcadeBoard} style={item} disabled={this.state.busy}

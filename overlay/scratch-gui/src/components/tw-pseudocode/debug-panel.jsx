@@ -739,13 +739,17 @@ class DebugPanel extends React.Component {
      * clearing it returns the panel to debugging the blocks.
      */
     _runSketch (detail) {
-        const {firmware, kind} = detail || {};
+        const {firmware, kind, labwiredChip} = detail || {};
         if (!firmware || (!firmware.text && !(firmware.bytes && firmware.bytes.length))) return;
         this._userFirmware = firmware;
         this._teardownRunner();
         return new Promise(resolve => this.setState({
             firmwareName: firmware.name,
             kind: kind || this.state.kind,
+            // A hand-off that names its LabWired chip or board (the MakeCode
+            // emulator image: board:microbit-v2) runs there, not on whatever the
+            // chip picker was last left at.
+            ...(kind === 'labwired' && typeof labwiredChip === 'string' ? {labwiredChip} : {}),
             runner: null,
             ui: {phase: 'idle', message: ''}
         }, () => resolve(this.onStart())));

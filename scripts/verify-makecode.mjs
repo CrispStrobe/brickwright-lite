@@ -193,6 +193,43 @@ try {
             /41140E2FB82FA2BB/i.test(hex), '');
     }
 
+    // ── 1c. …and as REAL FIRMWARE on the emulated micro:bit V2 (task A8) ──
+    // MakeCode's compiler links the program onto a Bluetooth-free base
+    // (compileMakeCodeForEmulator), and the image runs on LabWired's micro:bit V2
+    // board in the Debug pane. Needs the emulator bases and the LabWired engine
+    // served (both synced in CI's build); absent, said by name.
+    const served = async rel => page.evaluate(async r => (await fetch(r, {method: 'HEAD'}).catch(() => null))?.ok === true, rel);
+    const emuServed = runtime && await served('static/makecode/microbit/hexcache-emu/354b97da4696027afdaa3977420ec181bfc88a2faa2d2c0174842767718551e7.hex') &&
+        await served('static/labwired/labwired_wasm_bg.wasm');
+    if (!emuServed) {
+        console.log('SKIP the emulated micro:bit V2 run: the emulator bases or the LabWired engine are not in this build ' +
+            '(npm run sync:makecode, npm run sync:labwiredwasm)');
+    } else {
+        const statusText = () => page.evaluate(() => {
+            const st = [...document.querySelectorAll('strong')]
+                .find(n => /^(error|ready|running|paused|building|attaching|idle|stepping)$/i.test(n.textContent.trim()));
+            return st ? st.parentElement.innerText.replace(/\n/g, ' | ') : '';
+        });
+        await clickAction('bw-makecode-emulate');
+        // The status words are transient: sample them all, as verify-labwired-engine.mjs does.
+        const seen = [];
+        for (let i = 0; i < 300; i++) {
+            await page.waitForTimeout(200);
+            const t = await statusText();
+            if (t && seen[seen.length - 1] !== t) seen.push(t);
+            if (/^(running|error)/i.test(t)) break;
+        }
+        const trail = seen.join('  ·  ').slice(0, 240);
+        check('▶ Run on the emulated micro:bit V2 reaches a running LabWired session', seen.some(t => /^running/i.test(t)), trail);
+        check('and never the error phase', !seen.some(t => /^error/i.test(t)), trail);
+        const body = await page.evaluate(() => document.body.innerText);
+        check('on the micro:bit V2 board, from the emulator image (not the official base)',
+            /microbit-v2 board \(nrf52833/i.test(body) && /microbit-v2-emu\.elf/.test(body),
+            (body.match(/[^\n]*microbit-v2[^\n]*/i) || [''])[0].slice(0, 160));
+        check('the status names what the V2 model does not do faithfully yet (serial)',
+            /serial output is not faithful|serielle Ausgabe ist auf diesem Board-Modell noch nicht/.test(await paneText()), '');
+    }
+
     // ── 2. an Arcade game brings its sprites ──────────────────────────
     await input.setInputFiles(join(fixtures, 'arcade-assets.hex'));
     // Both locales, because the browser's language decides which string

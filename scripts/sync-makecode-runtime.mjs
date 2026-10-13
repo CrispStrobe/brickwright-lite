@@ -43,6 +43,7 @@
  *   npm run sync:makecode -- --strict-bases   # and fail unless every pinned Arcade base is served
  *   npm run sync:makecode -- --built-bases    # serve ONLY our from-source builds, all of them, or fail
  *   npm run sync:makecode -- --emu-bases      # and fail unless every pinned micro:bit emulator base is served
+ *   npm run sync:makecode -- --no-emu-fetch   # serve only LOCALLY built emulator bases (the workflow that builds them)
  */
 // WHAT THIS SHIPS, for THIRD-PARTY-NOTICES.md: test/notices-drift.test.mjs reads this
 // declaration (strict JSON) from every sync script that places an artifact under static/,
@@ -270,11 +271,15 @@ export const ARCADE_BASES = {
  *   sha     pxt's extinfo.sha for the V2 ('mbcodal') variant.
  *   sha256  of our build (gcc-arm-none-eabi 15:13.2.rel1-2, Ubuntu 24.04);
  *           byte-identical across three build directories (measured 2026-09-25).
- * NOT FETCHED: nothing hosts them. Built locally or by the makecode-arcade-bases
- * workflow's emu job into artifacts/makecode/emu-bases/; served only when the
- * bytes match. Absent, the emulator's compile is refused (NO_BASE_HEX) — the
- * official bases are never substituted.
+ * WHERE THEY COME FROM. A local build (`npm run build:makecode-emu-bases`, or the
+ * makecode-arcade-bases workflow's emu job) in artifacts/makecode/emu-bases/
+ * wins; otherwise the sync fetches the same bytes from EMU_BASES_RELEASE (the
+ * workflow's build of these pins, published with its manifest and its
+ * components' licence texts) into that directory. Either way a file is served
+ * only when its sha256 is the pin. Absent, the emulator's compile is refused
+ * (NO_BASE_HEX) — the official bases are never substituted.
  */
+export const EMU_BASES_RELEASE = 'https://github.com/CrispStrobe/brickwright-lite/releases/download/makecode-emu-bases-1/';
 export const EMU_BASES_DIR = path.join(ROOT, 'artifacts', 'makecode', 'emu-bases');
 export const MICROBIT_EMU_BASES = {
     'v2-radio': {sha: '137d8c972fe969dae4c15a314658e85c8910206d5f45c741c535ee616e3961a1',
@@ -284,28 +289,49 @@ export const MICROBIT_EMU_BASES = {
 };
 
 /**
- * The emulator bases that can be served: {rel -> bytes}. Only a local file whose
- * sha256 is the pin; anything else is refused by name. `strict` makes a missing
+ * The emulator bases that can be served: {rel -> bytes}. Only bytes (local, or
+ * fetched from EMU_BASES_RELEASE) whose sha256 is the pin; anything else is refused by name. `strict` makes a missing
  * or refused base fatal (the workflow's --emu-bases).
  */
-export function emuBases ({strict = false, dir = EMU_BASES_DIR, log = console.log} = {}) {
+export async function emuBases ({strict = false, offline = false, dir = EMU_BASES_DIR, release = EMU_BASES_RELEASE, log = console.log,
+    fetch: fetchImpl = globalThis.fetch, pins = MICROBIT_EMU_BASES} = {}) {
     const files = new Map();
     const missing = [];
     const refused = [];
-    for (const [set, pin] of Object.entries(MICROBIT_EMU_BASES)) {
+    const source = {};
+    for (const [set, pin] of Object.entries(pins)) {
         const local = path.join(dir, `${pin.sha}.hex`);
-        if (!fs.existsSync(local)) { missing.push(set); continue; }
-        const b = fs.readFileSync(local);
-        const got = sha256(b);
-        if (got !== pin.sha256) { refused.push(`${set} (${local}: sha256 ${got}, pinned ${pin.sha256})`); continue; }
-        files.set(`microbit/hexcache-emu/${pin.sha}.hex`, b);
+        let bytes = null;
+        if (fs.existsSync(local)) {
+            const b = fs.readFileSync(local);
+            const got = sha256(b);
+            if (got === pin.sha256) { bytes = b; source[set] = 'local'; }
+            else refused.push(`${set} (${local}: sha256 ${got}, pinned ${pin.sha256})`);
+        } else if (!offline && release) {
+            const url = `${release}${pin.sha}.hex`;
+            try {
+                const res = await fetchImpl(url);
+                if (res.ok) {
+                    const b = Buffer.from(await res.arrayBuffer());
+                    const got = sha256(b);
+                    if (got === pin.sha256) {
+                        bytes = b;
+                        source[set] = 'release';
+                        fs.mkdirSync(dir, {recursive: true});
+                        fs.writeFileSync(local, b);
+                    } else refused.push(`${set} (${url}: sha256 ${got}, pinned ${pin.sha256})`);
+                }
+            } catch { /* offline: reported as missing below */ }
+        }
+        if (!bytes) { if (!refused.some(r => r.startsWith(`${set} `))) missing.push(set); continue; }
+        files.set(`microbit/hexcache-emu/${pin.sha}.hex`, bytes);
     }
     if (refused.length) log(`[sync:makecode] REFUSED micro:bit emulator base(s) whose bytes are not pinned: ${refused.join('; ')}`);
     if (missing.length) {
-        log(`[sync:makecode] micro:bit emulator bases not built: ${missing.join(', ')} — emulating those package sets is refused ` +
+        log(`[sync:makecode] micro:bit emulator bases not available: ${missing.join(', ')} — emulating those package sets is refused ` +
             '(NO_BASE_HEX); build them with `npm run build:makecode-emu-bases`');
     }
-    if (files.size) log(`[sync:makecode] micro:bit emulator bases: ${files.size} served (Bluetooth-free, built from source)`);
+    if (files.size) log(`[sync:makecode] micro:bit emulator bases: ${Object.entries(source).map(([k, v]) => `${k} (${v})`).join(', ')} (Bluetooth-free, built from source)`);
     if (strict && (missing.length || refused.length)) throw new Error('--emu-bases: every pinned micro:bit emulator base must be present and match its pin');
     return files;
 }
@@ -567,7 +593,8 @@ async function main () {
     if (!tconf) throw new Error(`${TARGETS.arcade.target}: no targetconfig.json in the tarball`);
     files.set('arcade/hardware.json', Buffer.from(JSON.stringify(arcadeHardwareList(JSON.parse(tconf.toString('utf8')),
         JSON.parse(files.get('arcade/target.json').toString('utf8')), servedVariants), null, 1) + '\n'));
-    for (const [rel, bytes] of emuBases({strict: process.argv.includes('--emu-bases')})) files.set(rel, bytes);
+    for (const [rel, bytes] of await emuBases({offline: check, strict: process.argv.includes('--emu-bases'),
+        release: process.argv.includes('--no-emu-fetch') ? null : EMU_BASES_RELEASE})) files.set(rel, bytes);
     if (check) {
         const wrong = [...files].filter(([rel, bytes]) => {
             const p = path.join(STATIC_DIR, rel);

@@ -1752,7 +1752,9 @@ Bluetooth-free CODAL V2 builds of pxt-microbit's {core, radio} and
 Built by `scripts/build-makecode-emu-bases.mjs` (codal-microbit-v2 with
 DEVICE_BLE 0, Nordic's SoftDevice/MBR/bootloader objects removed before the
 link), pinned by sha256 in `scripts/sync-makecode-runtime.mjs`
-(MICROBIT_EMU_BASES), served under
+(MICROBIT_EMU_BASES), fetched by the sync from this repository's
+`makecode-emu-bases-1` release (the build workflow's own bytes, published with
+the component licence texts) unless built locally, and served under
 `packages/scratch-gui/static/makecode/microbit/hexcache-emu/`, never committed.
 The build refuses to write a base whose linker map places a byte of the
 Nordic nRF5 SDK or of a SoftDevice/MBR/bootloader/UICR section in the image.
