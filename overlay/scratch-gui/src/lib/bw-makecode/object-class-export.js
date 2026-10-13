@@ -23,13 +23,13 @@ export function prepareObjectClassExport(emitter) {
             if(!/^[A-Za-z_]\w*$/.test(name||'') || classes.has(name) || !Array.isArray(fields) || !Array.isArray(parameters) || !Array.isArray(methods))throw Error('invalid declaration');
             const validType=type=>typeof type==='string' && /^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\[\])*$/.test(type);
             const names=new Set();
-            for(const field of fields){if(!/^[A-Za-z_]\w*$/.test(field?.name||'') || names.has(field.name) || !validType(field.type) || typeof field.readonly!=='boolean')throw Error('invalid field');names.add(field.name);}
+            for(const field of fields){if(!/^[A-Za-z_]\w*$/.test(field?.name||'') || names.has(field.name) || !validType(field.type) || typeof field.readonly!=='boolean' || field.visibility!==undefined&&!['public','private','protected'].includes(field.visibility))throw Error('invalid field');names.add(field.name);}
             for(const param of parameters)if(!/^[A-Za-z_]\w*$/.test(param?.name||'') || !validType(param.type))throw Error('invalid constructor parameter');
-            for(const method of methods)if(!/^[A-Za-z_]\w*$/.test(method?.name||'') || names.has(method.name) || !validType(method.returnType) || !Array.isArray(method.parameters) || method.parameters.some(param=>!validType(param.type)||!/^[A-Za-z_]\w*$/.test(param.name)))throw Error('invalid method');
+            for(const method of methods)if(!/^[A-Za-z_]\w*$/.test(method?.name||'') || names.has(method.name) || !validType(method.returnType) || method.visibility!==undefined&&!['public','private','protected'].includes(method.visibility) || !Array.isArray(method.parameters) || method.parameters.some(param=>!validType(param.type)||!/^[A-Za-z_]\w*$/.test(param.name)))throw Error('invalid method');
             classes.set(name,{name,target,fields,parameters,methods,initializer:literal(target,block,'INITIALIZER'),constructor:literal(target,block,'CONSTRUCTOR')});
         }catch(error){emitter.note('Arcade class export requires fixed valid declaration metadata: '+error.message);}
     }
-    if(!classes.size)return {classes,procedures,variableTypes:new Map(),localType:()=> 'any',render:()=>[]};
+    if(!classes.size)return {classes,procedures,variableTypes:new Map(),localType:()=> 'any',render:()=>[],receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
     const addType=(cell,type)=>{if(type.endsWith('[]')){graph.add(cell,'array');addType(graph.element(cell),type.slice(0,-2));}else graph.add(cell,type);};
     for(const cls of classes.values()) {
         for(const field of cls.fields)addType(`field:${cls.name}:${field.name}`,field.type);
@@ -105,12 +105,17 @@ export function prepareObjectClassExport(emitter) {
     }
     const variableTypes=new Map([...variables].map(([id,{target,name}])=>[emitter.varName(target,name),typeOf(`var:${id}`)]));
     const localType=(key,name)=>typeOf(`${key}:local:${name}`);
+    function receiver(block,write=false,method=false) {
+        const target=emitter.target,text=emitter.arrayValue(block,'OBJECT'),name=literal(target,block,method?'METHOD':'FIELD');
+        const restricted=[...graph.node(input(target,block,'OBJECT')).types].some(type=>{const cls=classes.get(type),member=(method?cls?.methods:cls?.fields)?.find(value=>value.name===name);return member && ((member.visibility && member.visibility!=='public' && emitter.currentClassName!==type) || write&&member.readonly);});
+        return restricted?`(${text} as any)`:text;
+    }
     function render() {
-        const saved={target:emitter.target,blocks:emitter.blocks,currentLocalNames:emitter.currentLocalNames};
+        const saved={target:emitter.target,blocks:emitter.blocks,currentLocalNames:emitter.currentLocalNames,currentClassName:emitter.currentClassName};
         const out=[];
         function body(code,cls,parameters,constructor=false) {
             const k=key(cls.target,code),def=definitions.get(k);if(!def)return [];
-            emitter.target=cls.target;emitter.blocks=cls.target.blocks;emitter.currentLocalNames=new Set();
+            emitter.target=cls.target;emitter.blocks=cls.target.blocks;emitter.currentLocalNames=new Set();emitter.currentClassName=cls.name;
             let lines=emitter.body(def.block.next,[],[],false);
             const locals=[...emitter.currentLocalNames].filter(name=>!def.parameters.includes(name));
             lines=[...locals.map(name=>`    let ${name}: ${localType(k,name)} = undefined`),...lines];
@@ -123,18 +128,18 @@ export function prepareObjectClassExport(emitter) {
         for(const cls of classes.values()) {
             const ctor=definitions.get(key(cls.target,cls.constructor));
             const params=cls.parameters.map((param,index)=>`${ctor?.parameters[index+1] || param.name}${param.optional?'?':''}: ${param.type}`).join(', ');
-            const lines=[`class ${cls.name} {`,...cls.fields.map(field=>`    ${field.readonly?'readonly ':''}${field.name}: ${field.type}`),
+            const lines=[`class ${cls.name} {`,...cls.fields.map(field=>`    ${field.visibility && field.visibility!=='public'?field.visibility+' ':''}${field.readonly?'readonly ':''}${field.name}: ${field.type}`),
                 `    constructor(${params}) {`,...body(cls.initializer,cls,[],true),...body(cls.constructor,cls,cls.parameters,true),'    }'];
             for(const method of cls.methods) {
                 const def=definitions.get(key(cls.target,method.procedure));
                 const params=method.parameters.map((param,index)=>`${def?.parameters[index+1] || param.name}${param.optional?'?':''}: ${param.type}`).join(', ');
                 const script=body(method.procedure,cls,method.parameters),returns=script.some(line=>/^\s*return\s+\S/.test(line));
                 const result=method.returnType==='any'?typeOf(`${key(cls.target,method.procedure)}:result`):method.returnType;
-                lines.push(`    ${method.name}(${params})${returns?': '+result:''} {`,...script,'    }');
+                lines.push(`    ${method.visibility && method.visibility!=='public'?method.visibility+' ':''}${method.name}(${params})${returns?': '+result:''} {`,...script,'    }');
             }
             lines.push('}');out.push(lines.join('\n'));
         }
         Object.assign(emitter,saved);return out;
     }
-    return {classes,procedures,variableTypes,localType,render};
+    return {classes,procedures,variableTypes,localType,render,receiver};
 }

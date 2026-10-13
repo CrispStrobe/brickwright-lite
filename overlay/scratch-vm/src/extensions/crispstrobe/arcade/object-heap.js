@@ -53,15 +53,15 @@ module.exports = function createObjectHeap(runtime, values) {
         const fields = new Map(), methods = new Map();
         for (const field of spec.fields) {
             if (!field || typeof field.name !== 'string' || !/^[A-Za-z_]\w*$/.test(field.name) || fields.has(field.name) ||
-                Object.keys(field).some(key => !['name', 'type', 'readonly'].includes(key)) ||
-                !validType(field.type) || typeof field.readonly !== 'boolean') throw new Error('Invalid declared class field');
+                Object.keys(field).some(key => !['name', 'type', 'readonly', 'visibility'].includes(key)) ||
+                !validType(field.type) || typeof field.readonly !== 'boolean' || field.visibility !== undefined && !['public','private','protected'].includes(field.visibility)) throw new Error('Invalid declared class field');
             fields.set(field.name, Object.freeze({...field}));
         }
         for (const method of spec.methods) {
             if (!method || typeof method.name !== 'string' || !/^[A-Za-z_]\w*$/.test(method.name) ||
                 methods.has(method.name) || fields.has(method.name) || typeof method.procedure !== 'string' ||
-                !validParameters(method.parameters) || !validType(method.returnType) ||
-                Object.keys(method).some(key => !['name', 'procedure', 'parameters', 'returnType'].includes(key)))
+                !validParameters(method.parameters) || !validType(method.returnType) || method.visibility !== undefined && !['public','private','protected'].includes(method.visibility) ||
+                Object.keys(method).some(key => !['name', 'procedure', 'parameters', 'returnType', 'visibility'].includes(key)))
                 throw new Error('Invalid declared class method');
             methods.set(method.name, Object.freeze({...method, parameters: Object.freeze([...method.parameters])}));
         }
@@ -91,11 +91,11 @@ module.exports = function createObjectHeap(runtime, values) {
         if (!state.fields.has(key)) throw new Error(`Unknown class field ${key}`);
         return state.fields.get(key);
     }
-    function set(ref, key, value, token) {
+    function set(ref, key, value) {
         const state = object(ref), field = state.def.fields.get(key);
         if (!field) throw new Error(`Unknown class field ${key}`);
-        if (field.readonly && (state.construction !== token || token?.state !== state || token.generation !== generation))
-            throw new Error(`Readonly class field ${key} may only be initialized by its constructor`);
+        // readonly/visibility are TypeScript declaration checks, not runtime
+        // immutability. Construction tokens still own allocation completion.
         state.fields.set(key, hold(value));
     }
     function method(ref, name) {

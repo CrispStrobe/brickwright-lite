@@ -28,10 +28,14 @@ namespace type references and whenUsed allocation reachability through original
 execution, Code, export, reimport and fresh SB3. This does not admit the entire
 football extension or qualify a complete game.
 
-Inheritance, accessors, static members, private/protected fields, captured
+Inheritance, accessors, static members, captured
 callbacks and runtime constructor aliases remain explicitly unsupported. The
 selected SDK rejects this in field initializers and effectful parameter defaults;
-these source forms have diagnostics. Writes through any to readonly fields are
-also unsupported: original runtime behavior can permit them, and the native
-readonly declaration contract does not claim that equivalence. General exception
+these source forms have diagnostics. Readonly and public/private/protected
+visibility are static TypeScript metadata, retained on export. Invalid typed
+accesses remain diagnosed; valid any receiver accesses use the same live fields
+and methods without runtime visibility or immutability restrictions. Construction
+tokens govern allocation completion and cancellation, not field mutability. The
+selected SDK rejects unary updates on any class properties; source diagnostics
+retain that boundary while valid assignment and compound assignment are supported. General exception
 flow, garbage collection and arbitrary JavaScript objects are not qualified.

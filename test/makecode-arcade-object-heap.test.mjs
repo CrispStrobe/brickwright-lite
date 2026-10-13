@@ -11,7 +11,7 @@ import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 
 const spec=name=>({name,fields:[{name:'value',type:'number',readonly:false},{name:'next',type:'any',readonly:false},{name:'label',type:'string',readonly:true}],initializer:'',constructor:'',parameters:[],methods:[]});
-test('objects retain live cross-class identity, aliases, undefined fields, cycles and readonly construction ownership',()=>{
+test('objects retain live cross-class identity, aliases, undefined fields, cycles and declaration metadata',()=>{
     const runtime=new EventEmitter(),heap=createHeap(runtime,BW);
     heap.register(spec('First'));heap.register(spec('Second'));
     const a=heap.allocate('First'),b=heap.allocate('Second');
@@ -23,7 +23,7 @@ test('objects retain live cross-class identity, aliases, undefined fields, cycle
     assert.equal(BW.compare(cloned,'===',a.ref),true);heap.set(cloned,'value',9);
     assert.equal(heap.get(a.ref,'value'),9);assert.equal(BW.equal(heap.get(a.ref,'next'),a.ref),true);
     const array=BW.arrayReference(runtime,[a.ref,b.ref,a.ref]);assert.equal(BW.equal(BW.arrayValue(runtime,array)[2],a.ref),true);
-    assert.throws(()=>heap.set(a.ref,'label','changed',a.token),/Readonly/);
+    assert.throws(()=>heap.finish(a.ref,a.token),/no longer owns/);heap.set(a.ref,'label','changed');assert.equal(heap.get(a.ref,'label'),'changed','readonly is a static declaration check');
     assert.throws(()=>heap.set(a.ref,'missing',7),/Unknown class field/);
     assert.throws(()=>heap.set(a.ref,'next',{}),/registered reference/);
     const forged=BW.reference(runtime,'object','not allocated');assert.throws(()=>heap.get(forged,'value'),/Unknown or stale/);
@@ -135,7 +135,7 @@ let result=node.sum();let same=node===alias;trace=trace+"";result+=0;`;
     try{const imported=arcadeToPseudocode(authored);assert.deepEqual(imported.unsupported,[]);const run=await runProgram(imported.code,{frames:120});runs.push(run);assert.deepEqual(run.creator.warnings,[]);check(run);const code=await runProgram(run.creator.decompile(),{frames:120});runs.push(code);check(code);const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);const original=await runPxtArcade(exported.files,{fakeClock:true});for(const name of ['trace','reads','old','pre','result','same'])assert.equal(original[name]??original['Game_'+name],expected[name],name+' export');const reimported=arcadeToPseudocode(exported.files);assert.deepEqual(reimported.unsupported,[]);const again=await runProgram(reimported.code,{frames:120});runs.push(again);check(again);}finally{for(const run of runs)run.vm.quit();clearStrayTimers();}
 });
 
-test('yielding construction retains readonly ownership and stop/restart never invokes a stale constructor continuation',async()=>{
+test('yielding construction retains allocation ownership and stop/restart never invokes a stale constructor continuation',async()=>{
     const authored=`let started=0;let bodies=0;
 function initialize(){started++;pause(40);return 3}
 class Delayed {value=initialize();constructor(public readonly name:string){bodies++;this.value=7}}
@@ -169,14 +169,14 @@ DEFINE once (value):
     try{assert.deepEqual(run.errors,[]);const vars=Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,BW.decode(v.value)]));assert.equal(vars.count,expected.count);assert.equal(vars.done,expected.done);assert.equal(vars.returned,undefined);assert.equal(run.calls.get('arcade_callFunction'),1);assert.equal(run.calls.get('arrays_valueBinary'),1);}finally{run.vm.quit();clearStrayTimers();}
 });
 
-test('class namespace types remain lexical through source export and readonly any-cast writes retain an explicit admission boundary',async()=>{
+test('class namespace types remain lexical through source export and readonly any-cast writes retain runtime semantics',async()=>{
     const authored=`namespace Library {export class Node {next:Node;constructor(public value:number){this.next=this}read(){return this.value}}export function make(){return new Node(9)}}let object=Library.make();let same=object.next===object;let result=object.read();result+=0;`;
     const expected=await runPxtArcade(authored,{fakeClock:true}),imported=arcadeToPseudocode(authored);assert.deepEqual(imported.unsupported,[]);assert.deepEqual(imported.warnings,[]);
     const run=await runProgram(imported.code,{frames:80});
     try{assert.deepEqual(run.errors,[]);const vars=Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,BW.decode(v.value)]));assert.equal(vars.same,expected.same);assert.equal(vars.result,expected.result);const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);const original=await runPxtArcade(exported.files,{fakeClock:true});assert.equal(original.result??original.Game_result,expected.result);assert.equal(original.same??original.Game_same,expected.same);}finally{run.vm.quit();clearStrayTimers();}
     const cast=`class Readonly {constructor(public readonly value:number){}}let object=new Readonly(1);(object as any).value=2;let observed=object.value;observed+=0;`;
     const original=await runPxtArcade(cast,{fakeClock:true});assert.equal(original.observed,2);
-    assert.match(arcadeToPseudocode(cast).unsupported.join('\n'),/Readonly class field/);
+    assert.deepEqual(arcadeToPseudocode(cast).unsupported,[]);
     assert.match(arcadeToPseudocode('class A {constructor(){}}let constructorValue=A;').unsupported.join('\n'),/runtime value requires function references/);
 });
 

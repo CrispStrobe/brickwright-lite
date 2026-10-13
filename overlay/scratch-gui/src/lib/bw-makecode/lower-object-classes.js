@@ -12,7 +12,6 @@ export function lowerObjectClasses(program) {
     for (const [name, cls] of classes) {
         const problems = [...(cls.unsupported || [])];
         if(cls.fields.some(field=>field.typeName && !/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\[\])*$/.test(field.typeName)))problems.push('union, callable or opaque field type metadata');
-        if(cls.fields.some(field=>field.modifiers?.some(modifier=>['private','protected'].includes(modifier))) || cls.methods.some(method=>method.modifiers?.some(modifier=>['private','protected'].includes(modifier))))problems.push('private or protected class members');
         if(cls.fields.some(field=>contains(field.init,node=>node.type==='Identifier' && node.name==='this')))problems.push('selected Arcade SDK instance-field this initializers');
         const originalDefault=value=>['Number','Boolean','Null'].includes(value?.type) || value?.type==='Unary' && ['+','-'].includes(value.op) && value.argument?.type==='Number';
         if([cls.ctor,...cls.methods].filter(Boolean).some(member=>member.parameterDefaults?.some(param=>!originalDefault(param.value))))problems.push('selected Arcade SDK nonliteral default arguments');
@@ -26,7 +25,7 @@ export function lowerObjectClasses(program) {
     }
     const graph = new ValueTypeGraph(), owners = new WeakMap(), cells = new WeakMap(), entries = [];
     const global = {parent: null, bindings: new Map(), className: null, result: Symbol('global result')};
-    const functions = new Map(), memberOwners = new WeakMap();
+    const functions = new Map(), memberOwners = new WeakMap(), anyBindings = new Set();
     const binding = (owner, name, declare = false) => {
         if (declare) { if (!owner.bindings.has(name)) owner.bindings.set(name, Symbol(name)); return owner.bindings.get(name); }
         for (let scope = owner; scope; scope = scope.parent) if (scope.bindings.has(name)) return scope.bindings.get(name);
@@ -35,9 +34,11 @@ export function lowerObjectClasses(program) {
     const fieldCell = (name, field) => graph.property(binding(global, `class:${name}`), field);
     const typeText = value => (typeof value==='string'?value:value?.text) || 'any';
     const addType = (key, name) => {
+        if (!name) return;
         name=typeText(name);
         if (!name) return;
-        if (admitted.has(name)) graph.add(key, `class:${name}`);
+        if (name === 'any') anyBindings.add(key);
+        else if (admitted.has(name)) graph.add(key, `class:${name}`);
         else if (/\[\]$/.test(name)) { graph.add(key, 'array'); addType(graph.element(key), name.slice(0, -2)); }
         else if (['number','string','boolean','null','undefined','Image','Sprite','Buffer'].includes(name)) graph.add(key, name);
     };
@@ -86,7 +87,7 @@ export function lowerObjectClasses(program) {
             const owner = owners.get(node), value = cell(node);
             const primitive = {Number:'number',String:'string',Boolean:'boolean',Null:'null',Undefined:'undefined'}[node.type];
             if (primitive) graph.add(value, primitive);
-            addType(value, node.assertedType);
+            if (node.assertedType !== 'any') addType(value, node.assertedType);
             if (node.type === 'Call' && node.isNew && node.callee?.type === 'Identifier' && admitted.has(node.callee.name)) {
                 graph.add(value, `class:${node.callee.name}`);
                 const ctor = admitted.get(node.callee.name).ctor;
@@ -147,6 +148,12 @@ export function lowerObjectClasses(program) {
     const statement = expr => ({type:'ExpressionStatement', expr});
     const signature = (name, params) => [name, ...params.map(() => '%s')].join(' ');
     const types = node => [...graph.node(cell(node)).types].map(type => type.startsWith('class:') ? 'object' : type === 'Image' ? 'image' : type === 'Sprite' ? 'sprite' : type === 'Buffer' ? 'buffer' : type);
+    const visibility = member => member.modifiers?.find(value => ['private','protected'].includes(value)) || 'public';
+    const anyReceiver = node => node.assertedType === 'any' || node.type === 'Identifier' && anyBindings.has(binding(owners.get(node) || global,node.name));
+    const access = (receiver, name, members, context) => {
+        if (!anyReceiver(receiver)) for (let index=0;index<members.length;index++) if (visibility(members[index]) !== 'public' && context?.name !== classNames(receiver)[index])
+            fail(`Class ${visibility(members[index])} member ${name} cannot be accessed outside its declaring class`);
+    };
     function rewrite(node, context = null) {
         if (!node || typeof node !== 'object') return node;
         if (Array.isArray(node)) return node.map(child => rewrite(child, context));
@@ -157,28 +164,36 @@ export function lowerObjectClasses(program) {
             return call('create', [str(node.callee.name), {type:'Array', items:node.args.map(arg => rewrite(arg, context))}], ['object']);
         if (node.type === 'Call' && node.callee?.type === 'Member' && classNames(node.callee.object).length) {
             const names = classNames(node.callee.object);
-            if (names.every(name => admitted.get(name).methods.some(method => method.name === node.callee.name)))
+            if (names.every(name => admitted.get(name).methods.some(method => method.name === node.callee.name))) {
+                access(node.callee.object,node.callee.name,names.map(name=>admitted.get(name).methods.find(method=>method.name===node.callee.name)),context);
                 return call('call', [rewrite(node.callee.object, context), str(node.callee.name), {type:'Array', items:node.args.map(arg => rewrite(arg, context))}], types(node));
+            }
             fail(`Class receiver method ${node.callee.name} is not declared for every possible receiver`);
         }
         if (node.type === 'Assignment' && node.left?.type === 'Member' && classNames(node.left.object).length) {
             const names = classNames(node.left.object);
             const fields = names.map(name => admitted.get(name).fields.find(field => field.name === node.left.name));
             if (fields.some(field => !field)) { fail(`Unknown declared class field ${node.left.name}`); return node; }
-            if (fields.some(field => field.modifiers?.includes('readonly')) && !(context?.constructor && node.left.object.type === 'Identifier' && node.left.object.name === 'this'))
+            access(node.left.object,node.left.name,fields,context);
+            if (!anyReceiver(node.left.object) && fields.some(field => field.modifiers?.includes('readonly')) && !(context?.constructor && node.left.object.type === 'Identifier' && node.left.object.name === 'this'))
                 fail(`Readonly class field ${node.left.name} cannot be assigned outside its constructor`);
             if(node.op==='=')return call('set', [rewrite(node.left.object, context), str(node.left.name), rewrite(node.right, context)]);
             if(!['+=','-=','*=','/=','%=','&=','|=','^=','<<=','>>=','>>>='].includes(node.op)){fail('Unsupported class field assignment operator '+node.op);return node;}
             return call('assign',[rewrite(node.left.object,context),str(node.left.name),str(node.op.slice(0,-1)),rewrite(node.right,context),str('new')],types(node.left));
         }
         if(node.type==='Update' && node.argument?.type==='Member' && classNames(node.argument.object).length) {
-            const member=node.argument,fields=classNames(member.object).map(name=>admitted.get(name).fields.find(field=>field.name===member.name));
+            const member=node.argument;
+            if (anyReceiver(member.object)) fail('Selected Arcade SDK does not support unary update on any class properties');
+            const fields=classNames(member.object).map(name=>admitted.get(name).fields.find(field=>field.name===member.name));
             if(fields.some(field=>!field)){fail('Unknown class field '+member.name);return node;}
-            if(fields.some(field=>field.modifiers?.includes('readonly')) && !(context?.constructor && member.object.type==='Identifier' && member.object.name==='this'))fail(`Readonly class field ${member.name} cannot be assigned outside its constructor`);
+            access(member.object,member.name,fields,context);
+            if(!anyReceiver(member.object) && fields.some(field=>field.modifiers?.includes('readonly')) && !(context?.constructor && member.object.type==='Identifier' && member.object.name==='this'))fail(`Readonly class field ${member.name} cannot be assigned outside its constructor`);
             return call('assign',[rewrite(member.object,context),str(member.name),str(node.op),{type:'Number',value:1},str(node.prefix?'new':'old')],['number']);
         }
-        if (node.type === 'Member' && classNames(node.object).length && classNames(node.object).every(name => admitted.get(name).fields.some(field => field.name === node.name)))
+        if (node.type === 'Member' && classNames(node.object).length && classNames(node.object).every(name => admitted.get(name).fields.some(field => field.name === node.name))) {
+            access(node.object,node.name,classNames(node.object).map(name=>admitted.get(name).fields.find(field=>field.name===node.name)),context);
             return call('get', [rewrite(node.object, context), str(node.name)], types(node));
+        }
         const out = Object.fromEntries(Object.entries(node).map(([key, value]) => [key, rewrite(value, context)]));
         if (types(node).includes('object')) out.bwObjectTypes = types(node);
         return out;
@@ -199,9 +214,9 @@ export function lowerObjectClasses(program) {
             const fn = `__bwClass_${name}_${method.name}`, params = ['__bwSelf', ...method.params];
             body.push({type:'FunctionDeclaration', name:fn, params, paramTypes:method.paramTypes,
                 body:rewrite(method.body, {name, constructor:false})});
-            methods.push({name:method.name, procedure:signature(fn, params), parameters:method.params.map(param => ({name:param,type:typeText(method.paramTypes?.[param]),optional:!!method.optionalParams?.includes(param)})), returnType:typeText(method.returnType)});
+            methods.push({name:method.name, procedure:signature(fn, params), parameters:method.params.map(param => ({name:param,type:typeText(method.paramTypes?.[param]),optional:!!method.optionalParams?.includes(param)})), returnType:typeText(method.returnType),visibility:visibility(method)});
         }
-        body.push(statement(call('declare', [str(name), str(JSON.stringify(node.fields.map(field => ({name:field.name,type:field.typeName || 'any',readonly:!!field.modifiers?.includes('readonly')})))),
+        body.push(statement(call('declare', [str(name), str(JSON.stringify(node.fields.map(field => ({name:field.name,type:field.typeName || 'any',readonly:!!field.modifiers?.includes('readonly'),visibility:visibility(field)})))),
             str(signature(initName, ['__bwSelf'])), str(signature(ctorName, ctorParams)),
             str(JSON.stringify((node.ctor?.params || []).map(param => ({name:param,type:typeText(node.ctor?.paramTypes?.[param]),optional:!!node.ctor?.optionalParams?.includes(param)})))), str(JSON.stringify(methods))])));
     }

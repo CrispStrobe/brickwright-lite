@@ -1095,8 +1095,8 @@ class ArcadeEmitter {
             if(!this.objectClassExport?.classes.has(name)){this.note('Object export requires a fixed declared class');return this.na();}
             return `new ${name}(${this.objectArgumentValues(b).join(', ')})`;
         }
-        case 'arcade_objectField':return `${this.arrayValue(b,'OBJECT')}.${this.objectFieldName(b)}`;
-        case 'arcade_callObjectMethod':return `${this.arrayValue(b,'OBJECT')}.${this.objectFieldName(b,'METHOD')}(${this.objectArgumentValues(b).join(', ')})`;
+        case 'arcade_objectField':return `${this.objectClassExport.receiver(b)}.${this.objectFieldName(b)}`;
+        case 'arcade_callObjectMethod':return `${this.objectClassExport.receiver(b,false,true)}.${this.objectFieldName(b,'METHOD')}(${this.objectArgumentValues(b).join(', ')})`;
         case 'arcade_callFunction': {
             const code = this.literalInput(b, 'NAME');
             const fn = code && (this.fnNames.get(`${this.target.isStage ? '' : this.target.name}:${code}`) || this.fnNames.get(`:${code}`));
@@ -1699,7 +1699,7 @@ class ArcadeEmitter {
         case 'arcade_setscore':push(`info.setScore(${v('N')})`);return;
         case 'arcade_changescore':push(`info.changeScoreBy(${v('N')})`);return;
         case 'arcade_declareClass':return;
-        case 'arcade_setObjectField':push(`${this.arrayValue(b,'OBJECT')}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`);return;
+        case 'arcade_setObjectField':push(`;${this.objectClassExport.receiver(b,true)}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`);return;
         case 'data_setvariableto': {
             const scratchName = this.field(b, 'VARIABLE');
             const info = this.infoVariable(scratchName);
