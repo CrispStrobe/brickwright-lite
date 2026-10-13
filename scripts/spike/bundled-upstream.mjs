@@ -132,6 +132,8 @@ export const LITE_ONLY = {
     peers: 'Lite-native and gated (task E11): the Peer Sessions blocks call the app\'s own native ' +
         'peer commands, exist only in a BW_ENABLE_PEERS=1 build with the `peers` Cargo feature, and ' +
         'must not be upstreamed while no default build carries them (docs/PEERS-SECURITY-REVIEW.md).',
+    bwgpio: 'Lite-native. Generic GPIO pin blocks (set pin / read pin) that drive the Widgets pane\'s ' +
+        'GPIO strip and round-trip with the DOS Forth bench\'s pin!/pin@ words through the Code tab.',
 };
 
 /**
