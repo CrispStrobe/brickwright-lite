@@ -115,12 +115,13 @@ jobs:
           dpkg -s gcc-arm-none-eabi | grep '^Version'
       - name: Fetch the pinned MakeCode runtime (emulator bases)
         timeout-minutes: 5
-        run: npm run sync:makecode
+        # --no-emu-fetch: the published bases must not stand in for this build.
+        run: npm run sync:makecode -- --no-emu-fetch
       - name: Build the micro:bit emulator bases from source — the licence gate fails on any Nordic code
         timeout-minutes: 20
         run: node scripts/build-makecode-emu-bases.mjs --work "$RUNNER_TEMP/codal-emu"
       - name: Serve OUR emulator bases — every pin present and byte-identical
-        run: npm run sync:makecode -- --emu-bases
+        run: npm run sync:makecode -- --emu-bases --no-emu-fetch
       - name: A program links onto every emulator base, the official one is refused (fails if the test skips)
         env:
           BW_REQUIRE_EMU_BASES: '1'

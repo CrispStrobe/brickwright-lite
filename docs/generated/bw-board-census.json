@@ -2,7 +2,7 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "7254f2404d6c0572adcdd73544e65aad9ac1a0d6",
+    "sha": "0c5b0284b9c10b2b8a3fa61b9edb094b3b324f32",
     "read": "2026-10-13"
   },
   "rows": [
@@ -240,7 +240,8 @@
         "test/rlc-instrument-oracle.test.mjs",
         "test/winding-uic-reference.test.mjs",
         "test/winding-reference-comparison.test.mjs",
-        "test/winding-edge-instruments.test.mjs"
+        "test/winding-edge-instruments.test.mjs",
+        "test/current-scope-simulation-clock.test.mjs"
       ],
       "what": "The reference NUMERIC circuit simulator. lcapy is symbolic and exact but cannot model a junction; ngspice models devices, so the two are complementary rather than redundant -- where both agree and we do not, it is us, and where THEY disagree the circuit is ill-posed and belongs in neither corpus. Note that the ngspice GOLDENS under test/golden/ are pre-recorded and need no binary; this row is for the gates that invoke ngspice LIVE."
     },

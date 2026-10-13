@@ -161,8 +161,9 @@ const glyph = b => (b === 0 ? ' ' : b === 0x40 ? '-' : FONT.includes(b) ? String
  * What the display shows, decoded from the firmware's own pin writes: per
  * select address, the segment byte held for at least 200 us (the ISR blanks P0
  * for microseconds around each switch and holds each digit for 1 ms).
- * sevenseg8 is not read here: it latches at the select change, which this
- * ISR's order (blank, select, segments) makes the blank -- a gap B14 names.
+ * Until B16, sevenseg8 could not be read here: it latched at the select
+ * change, which this ISR's order (blank, select, segments) makes the blank.
+ * Since B16 it integrates on-time over 20 ms, and the test reads both.
  */
 function scanned (writes, fromMs) {
     const lv = {};
@@ -203,5 +204,7 @@ test('compiled C: show number puts the minus directly before the number, scanned
             adapter.runNs(60_000_000);
             assert.ok(writes.length > 100, `${n}: the ISR scans (${writes.length} writes)`);
             assert.equal(scanned(writes, 20), want, `show number ${n}`);
+            assert.equal(board.getDeviceState('sevenseg').text.map(c => (c === '0x40' ? '-' : c)).join(''), want,
+                `show number ${n}: what the circuit's display shows (B16)`);
         }
     });

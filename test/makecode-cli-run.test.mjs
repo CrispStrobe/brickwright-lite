@@ -13,7 +13,12 @@
  *   - the same program for a Calliope mini runs on the same board model and
  *     says what that model does not cover;
  *   - a firmware .hex runs as it is (the V1 section of a universal hex);
- *   - a target with no board model, and a missing engine, are refused by name.
+ *   - a target with no board model, and a missing engine, are refused by name;
+ *   - --board v2 (task A8): the program compiled for the EMULATOR onto the
+ *     Bluetooth-free bases runs on the micro:bit V2 board model and draws its
+ *     picture; its serial is withheld by name (task A10); a universal hex (whose
+ *     V2 section carries Nordic's SoftDevice) is refused there, as is a
+ *     Calliope program.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,6 +38,10 @@ const run = (args, env = {}) => spawnSync(process.execPath, ['--disable-warning=
 const engine = fs.existsSync(path.join(ROOT, 'packages/scratch-gui/static/labwired/labwired_wasm_bg.wasm'));
 const runtime = target => fs.existsSync(path.join(ROOT, 'packages/scratch-gui/static/makecode', target, 'pxtworker.js'));
 const SKIP_BOTH = 'LabWired engine or MakeCode runtime not synced (npm run sync:labwiredwasm, npm run sync:makecode)';
+const {MICROBIT_EMU_BASES} = await import(path.join(ROOT, 'scripts/sync-makecode-runtime.mjs'));
+const emuBases = Object.values(MICROBIT_EMU_BASES).every(p =>
+    fs.existsSync(path.join(ROOT, 'packages/scratch-gui/static/makecode/microbit/hexcache-emu', `${p.sha}.hex`)));
+const SKIP_V2 = 'LabWired engine, MakeCode runtime or micro:bit V2 emulator bases not synced (npm run sync:labwiredwasm, npm run sync:makecode)';
 
 test.after(() => fs.rmSync(tmp, {recursive: true, force: true}));
 
@@ -132,3 +141,34 @@ test('--seconds is bounded', () => {
     assert.equal(r.status, 2);
     assert.match(r.stderr, /--seconds must be between 0 and 600/);
 });
+
+test('--board v2: the emulator image runs on the micro:bit V2 board model and draws its picture',
+    {skip: engine && runtime('microbit') && emuBases ? false : SKIP_V2, timeout: 900000}, () => {
+        const r = run(['run', programFile, '--board', 'v2', '--seconds', '1', '--json']);
+        assert.equal(r.status, 0, r.stderr);
+        const out = json(r);
+        assert.equal(out.board, 'microbit-v2');
+        assert.equal(out.universal, false, 'the emulator image is a plain nRF52833 hex');
+        assert.equal(out.fault, null);
+        assert.ok(out.frames.some(f => f.rows.join('/') === X.join('/')), JSON.stringify(out.frames));
+        assert.equal(out.serial, null, 'serial is withheld on the V2 model, not reported wrong');
+        assert.match(out.serialWithheld, /transmit buffer when the transfer completes.*task A10/);
+        assert.match(r.stderr, /note: serial is not reported on the V2 board model yet/);
+    });
+
+test('--board v2 refuses a universal hex (its V2 section carries the SoftDevice) and a Calliope program',
+    {skip: engine && runtime('microbit') ? false : SKIP_BOTH, timeout: 900000}, () => {
+        const sb3 = path.join(tmp, 'hello-v2.sb3');
+        assert.equal(run(['to-sb3', programFile, '-o', sb3]).status, 0);
+        const fw = path.join(tmp, 'hello-universal.hex');
+        assert.equal(run(['to-hex', sb3, '-o', fw]).status, 0);
+        let r = run(['run', fw, '--board', 'v2', '--seconds', '0.1']);
+        assert.equal(r.status, 1);
+        assert.match(r.stderr, /refused: a universal micro:bit hex is for a real board: its V2 section carries Nordic's SoftDevice/);
+        r = run(['run', programFile, '--board', 'v2', '--target', 'calliope']);
+        assert.equal(r.status, 2);
+        assert.match(r.stderr, /--board v2 is the micro:bit V2; a calliopemini runs on --board v1/);
+        r = run(['run', programFile, '--board', 'v3']);
+        assert.equal(r.status, 2);
+        assert.match(r.stderr, /run --board is v1 or v2, not v3/);
+    });
