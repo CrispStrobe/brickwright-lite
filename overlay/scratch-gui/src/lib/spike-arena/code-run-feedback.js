@@ -22,6 +22,9 @@ export function createCodeRunFeedback (update, {running, completed, stopped = 'S
             if (['starting', 'running'].includes(phase)) update({spike3Running: true, status: running});
         },
         callbacks: {
+            onStarting: status => {
+                if (phase === 'starting' && !requestedStop) update({spike3Running: true, status});
+            },
             onCompleted: () => finish(completed, 'completed'),
             onError: error => { requestedStop = false; finish(error.message, 'failed'); },
             onStopped: () => {
