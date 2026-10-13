@@ -3965,3 +3965,24 @@ getters/setters, inheritance, method receiver binding and escaping callbacks.
 Authoring and export must retain these semantics through editable Code, Blocks
 and saved projects. Mutable instances must not be substituted by JSON snapshots
 or independent scalar field copies.
+
+
+## Current source and authoring closure — 2026-10-13
+
+This section supersedes earlier unsupported-operation snapshots only for the
+qualified operations listed here. It does not mark an authoring lane complete.
+
+| Area | Implemented source/runtime boundary | Remaining user-facing acceptance |
+| --- | --- | --- |
+| Source startup and loops | Genuine source-start hat and positive-condition loop; invocation-local nested break/continue, for updates and switch exits; Code, original export and fresh SB3 controls. Integrated gate: 17 pass, one explicit selected-SDK do-while discrepancy TODO. | Create and edit these blocks through the actual palette; nested and recursive edits, save/reopen, controller-driven gameplay, export and reimport on a matching hosted artifact. |
+| Do-while source discrepancy | Named original SDK warning appears in GUI import status, editable Code comment and CLI notes. Native standard semantics export as normalized while loops. | Retain the visible warning without blocking native authoring; do not label the original faulty compiler behavior as equivalent. |
+| StringArray settings | Existing read/write blocks have fixed StringArray menu choices; an owned portable helper preserves UTF16 numeric-stream storage, detached results, missing values and original-observed malformed decoding. | Palette-only construction and value changes, persistence across real runs, editor save/reopen and original export through the app. Unknown-license BetterSettings package source remains inadmissible. |
+| Null tilemap operations | No initial map returns the original guarded results; an explicitly cleared map retains its container and named faults. Old locations use the current scene's map. Six original/native controls pass. | Controller and tile painter journeys across level replacement, scene push/pop and save/reopen; no generic fallback may hide a named fault. |
+| Native splash and long text | Retained pixel renderer, live parent scene, controller release/new-press guards, accessible controls sending real controller edges, continuation cancellation. | Matching hosted app input, scrolling phase, concurrent questions/dialogs and asynchronous scene replacement. The strict 342-pixel scrolling mismatch remains a failure. |
+| Classes and object references | Syntax and private identity/order controls only; current product class admission remains unsupported. | Reference and class blocks, constructor/method/field editing, aliases and receiver binding, inspectable state, saved reference graphs, original export/reimport. |
+| Native debugger pause/step | Examined native GUI/runtime paths expose run and stop; the MCU debugger owns a separate target session. | An explicit native debugger interface and real pause/step qualification. Do not infer native authority from the MCU debugger's phase or invent a runtime flag. |
+
+At clean consumer `1023ee0423` and producer `7154951853`, the unchanged context
+audit remains 18 structurally admitted of 29 selected-SDK valid projects, with
+11 valid blocked and 12 selected-SDK diagnostic projects. Raw 142/41/1 remains
+unchanged. Promotion requires the actual execution and editor journeys separately.

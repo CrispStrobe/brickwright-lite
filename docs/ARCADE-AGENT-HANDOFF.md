@@ -8,6 +8,41 @@ operator's actual checkouts, tools, private corpus and original receipts.
 Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
 
+## Latest source qualification — 2026-10-13
+
+The draft [integration PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888)
+contains genuine source startup and positive-condition loops, invocation-local
+`break`/`continue` guards, native text dialogs, StringArray settings and corrected
+null tilemap query guards. Producer
+[PR120](https://github.com/CrispStrobe/sb3-creator/pull/120) and
+[PR121](https://github.com/CrispStrobe/sb3-creator/pull/121) merged after every
+enabled check passed; each landed tree matched the reviewed merge prediction.
+Refresh consumer checks independently before adopting this source stack.
+
+The clean `1023ee0423` consumer with producer `7154951853` repeats the unchanged
+41-context audit: **29 selected-SDK compile-valid, 12 compiler diagnostics;
+18 of the 29 admit with no unsupported elements or producer warnings, 11 remain
+blocked**. This is structural admission, not complete-game qualification.
+The immutable raw census and the fewer-than20-partial goal are unchanged.
+
+Follow [the GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) for authoring
+requirements. Source loops pass 17 integrated controls with one explicit SDK
+do-while discrepancy TODO. The warning reaches the import status, editable Code
+and CLI. StringArray settings pass original/native/Code/SB3/export/reimport
+controls; their helper is independently authored and does not admit the
+unknown-license extension package. Null tilemap operations distinguish the
+never-created map from an explicitly cleared map and retain original guards and
+faults. Native dialog pixels and inputs pass focused controls; exact scrolling
+phase and matching hosted GUI acceptance remain pending.
+
+The [scheduler claim](https://github.com/CrispStrobe/brickwright-lite/pull/881)
+precedes global VM integration. Private prototypes still expose managed ordinary
+loop and lifecycle failures; a passing subset does not qualify the kernel.
+The [class contract](https://github.com/CrispStrobe/brickwright-lite/pull/889)
+requires explicit reference identity, original constructor order and receiver
+binding. Parser support alone does not admit runtime classes. Numerical source
+semantics and deferred namespace bindings are the next isolated conversion areas.
+
 ## Current integration checkpoint — 2026-10-13
 
 The lower runtime and Buffer stack is integrated into main through
