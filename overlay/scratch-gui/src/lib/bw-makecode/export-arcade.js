@@ -124,7 +124,7 @@ class ArcadeEmitter {
             const version=Array.isArray(slot) && slot[0]===10?String(slot[1]):shadow?.shadow?String(Object.values(shadow.fields || {})[0]?.[0]):this.field(block,'VERSION');
             let parent=target.blocks[block.parent];
             while(parent && ['looks_hide','arcade_setPalette','arcade_setCharacterAnimationVersion'].includes(parent.opcode))parent=target.blocks[parent.parent];
-            if(!['v0.1.2',LEGACY_SCROLLER_REVISION].includes(version) || parent?.opcode!=='event_whenflagclicked')this.note('Arcade background scroll version must be a fixed selection at the start of a green-flag script');
+            if(!['v0.1.2',LEGACY_SCROLLER_REVISION].includes(version) || !['event_whenflagclicked', 'arcade_whenSourceStarts'].includes(parent?.opcode))this.note('Arcade background scroll version must be a fixed selection at the start of a green-flag script');
             else this.scrollerVersion=version;
         }
         this.characterVersion='v0.1.0';
@@ -135,7 +135,7 @@ class ArcadeEmitter {
             const version=Array.isArray(slot) && slot[0]===10?String(slot[1]):shadow?.shadow?String(Object.values(shadow.fields || {})[0]?.[0]):this.field(block,'VERSION');
             let parent=target.blocks[block.parent];
             while(parent && ['looks_hide','arcade_setPalette','arcade_setBackgroundScrollVersion'].includes(parent.opcode))parent=target.blocks[parent.parent];
-            if(!['v0.1.0',LEGACY_CHARACTER_REVISION].includes(version) || parent?.opcode!=='event_whenflagclicked')this.note('Arcade character animation version must be a fixed selection at the start of a green-flag script');
+            if(!['v0.1.0',LEGACY_CHARACTER_REVISION].includes(version) || !['event_whenflagclicked', 'arcade_whenSourceStarts'].includes(parent?.opcode))this.note('Arcade character animation version must be a fixed selection at the start of a green-flag script');
             else this.characterVersion=version;
         }
         this.requiresCharacterAnimationsPackage = false;
@@ -844,10 +844,10 @@ class ArcadeEmitter {
                 if(initializer.opcode!=='arcade_initializeSpriteKindLibrary')continue;
                 let ancestor=initializer,seen=new Set([id]);
                 while(ancestor.parent && blocks[ancestor.parent] && !seen.has(ancestor.parent)){seen.add(ancestor.parent);ancestor=blocks[ancestor.parent];}
-                if(ancestor.opcode!=='event_whenflagclicked'){this.note('Arcade sprite kind library initialization must be on startup before kind allocation');continue;}
+                if(!['event_whenflagclicked', 'arcade_whenSourceStarts'].includes(ancestor.opcode)){this.note('Arcade sprite kind library initialization must be on startup before kind allocation');continue;}
                 const hasAllocation=(block,visited=new Set())=>{
                     if(!block || visited.has(block))return false;visited.add(block);
-                    if(block.opcode==='arcade_createSpriteKind' || /^arcade_textSprite/.test(block.opcode) || ['procedures_call','arcade_callFunction','control_if','control_if_else','control_repeat','control_repeat_until','control_forever'].includes(block.opcode))return true;
+                    if(block.opcode==='arcade_createSpriteKind' || /^arcade_textSprite/.test(block.opcode) || ['procedures_call','arcade_callFunction','arcade_sourceWhile','control_if','control_if_else','control_repeat','control_repeat_until','control_forever'].includes(block.opcode))return true;
                     return Object.values(block.inputs || {}).some(input=>typeof input?.[1]==='string' && hasAllocation(blocks[input[1]],visited));
                 };
                 let current=ancestor.next,walk=new Set();
@@ -1718,6 +1718,12 @@ class ArcadeEmitter {
             return;
         case 'control_repeat':
             push(`for (let i${depth} = 0; i${depth} < ${v('TIMES')}; i${depth}++) {`);
+            this.substack(b, 'SUBSTACK', depth + 1, out);
+            this.guardLine().forEach(line => push(`    ${line}`));
+            push('}');
+            return;
+        case 'arcade_sourceWhile':
+            push(`while (${this.condition(b, 'CONDITION')}) {`);
             this.substack(b, 'SUBSTACK', depth + 1, out);
             this.guardLine().forEach(line => push(`    ${line}`));
             push('}');
@@ -3084,9 +3090,9 @@ class ArcadeEmitter {
         const background = this.sprites.find(t => {
             if (t.name !== 'background' || t.costumes?.length !== 1) return false;
             const opcodes = Object.values(t.blocks || {}).map(b => b.opcode);
-            return ['event_whenflagclicked', 'motion_gotoxy', 'looks_gotofrontback', 'looks_show']
-                .every(opcode => opcodes.includes(opcode)) &&
-                opcodes.every(opcode => ['event_whenflagclicked', 'motion_gotoxy',
+            return opcodes.some(opcode => ['event_whenflagclicked','arcade_whenSourceStarts'].includes(opcode)) &&
+                ['motion_gotoxy', 'looks_gotofrontback', 'looks_show'].every(opcode => opcodes.includes(opcode)) &&
+                opcodes.every(opcode => ['event_whenflagclicked', 'arcade_whenSourceStarts', 'motion_gotoxy',
                     'looks_gotofrontback', 'looks_show'].includes(opcode));
         });
         const backgroundSvg = background && this.opts.costumeSvg?.(background, background.costumes[0]);
@@ -3191,7 +3197,7 @@ class ArcadeEmitter {
                 if (this.templateNames.has(t.name)) {
                     // An Arcade sprite template (E1) is artwork for sprites.create:
                     // its own scripts have no MakeCode instance to run on.
-                    if (b.opcode === 'event_whenflagclicked') {
+                    if (['event_whenflagclicked','arcade_whenSourceStarts'].includes(b.opcode)) {
                         const commands = [];
                         for (let item = this.block(b.next); item; item = this.block(item.next)) commands.push(item.opcode);
                         if (commands.some(opcode => opcode !== 'looks_hide')) {
@@ -3223,7 +3229,7 @@ class ArcadeEmitter {
                     this.eventKind = null;
                     return lines;
                 };
-                if (b.opcode === 'event_whenflagclicked') {
+                if (['event_whenflagclicked','arcade_whenSourceStarts'].includes(b.opcode)) {
                     // The green flag starts the ORIGINAL sprite's scripts; clones do not exist yet.
                     if (clonable) this.use('gone');
                     script = scoped(() => this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])]));

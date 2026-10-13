@@ -171,7 +171,7 @@ module.exports = makeExt(`// Name: Arcade
           reset();
           this._bufferSuspended = false;
         });
-        runtime.on('PROJECT_START',()=>{reset();this._initializeImplicitTextKinds();});
+        runtime.on('PROJECT_START',()=>{reset();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
         runtime.on('targetWasRemoved', target => {
           for (const [id, entry] of this._imageSkins) if (entry.target === target) this._clearImage(id);
           for (const [id, entry] of this._speech) if (entry.target === target) this._clearSpeech(id);
@@ -189,6 +189,8 @@ module.exports = makeExt(`// Name: Arcade
         color2: '#D63878',
         color3: '#C42870',
         blocks: [
+          {opcode:'whenSourceStarts',blockType:Scratch.BlockType.HAT,text:'when Arcade source starts',isEdgeActivated:false},
+          {opcode:'sourceWhile',blockType:Scratch.BlockType.LOOP,text:'Arcade repeat while [CONDITION]',arguments:{CONDITION:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'sceneMillis',blockType:Scratch.BlockType.REPORTER,text:'Arcade scene runtime milliseconds'},
           {opcode:'programMillis',blockType:Scratch.BlockType.REPORTER,text:'Arcade program runtime milliseconds'},
           {opcode:'textSpriteCreate',blockType:Scratch.BlockType.REPORTER,text:'Arcade create text sprite [TEXT] background [BACKGROUND] foreground [FOREGROUND]',arguments:{...str('TEXT','Hello'),...n('BACKGROUND',0),...n('FOREGROUND',1)}},
@@ -2026,6 +2028,12 @@ module.exports = makeExt(`// Name: Arcade
         this._changed();
       }
     }
+    whenSourceStarts() {return true;}
+
+    sourceWhile(args, util) {
+        if (args.CONDITION) util.startBranch(1, true);
+    }
+
     cameraDrawOffset(args) {
       const camera=this._camera();
       if(args.AXIS==='x')return camera.drawOffsetX;

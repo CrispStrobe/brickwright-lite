@@ -2271,3 +2271,19 @@ Next active areas are validated tile-map factory aliases/null/order; explicit
 source-loop eligibility and frame scheduling; and original native splash/long
 text rendering and controller input. Their respective controls and lane claims
 remain separate from whole-game promotions.
+
+
+## Source startup and source loops
+
+The [source-loop contract](compatibility/arcade-source-loops.md) records genuine
+Code/Blocks source-start and positive-condition loop forms, changing-bound and
+break lowering, fresh SB3/original export roundtrips, and the remaining frame
+scheduler and GUI qualifications. Updated consumer checks: four focused, five
+import-line/decompiler and eight legacy/kind roundtrip controls pass. No raw
+corpus partial is promoted by these focused results.
+
+Fresh immutable tile-factory baseline audit admits18 of29 selected-SDK valid
+samples with zero producer warnings;11 valid samples retain parser/semantic
+issues. The other12 retain selected-SDK compiler diagnostics. Raw184/142/41/1
+is unchanged. Complete-game execution and editor/save/export qualification remain
+required independently of structural admission.

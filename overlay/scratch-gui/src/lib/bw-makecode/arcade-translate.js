@@ -204,6 +204,7 @@ const CONTROLLER_KEYS = {
 };
 
 class ArcadeTranslator extends BaseTranslator {
+    sourceLoopHeader (condition) {return `arcade repeat while ${condition}:`;}
     constructor (assets, tilemaps, assetKindLookup = null, scrollerVersion = 'v0.1.2', characterVersion = 'v0.1.0') {
         super();
         // The legacy Arcade exporter gives global score/lives HUD meaning.
@@ -558,13 +559,6 @@ class ArcadeTranslator extends BaseTranslator {
                 const value=['insertAt','set'].includes(op)?this.arrayElementValue(a[1]):['push','unshift','removeElement'].includes(op)?this.arrayElementValue(a[0]):'0';
                 out.push(`${'  '.repeat(indent)}mutate array reference (${this.expr(n.callee.object)}) op "${op}" index (${index}) value (${value})`);return;
             }
-        }
-        if (st.type === 'For' && st.init?.type === 'Declaration' && this.localVars?.has(st.init.decls[0]?.name)) {
-            this.statement(st.init,indent,out);
-            out.push(`${'  '.repeat(indent)}REPEAT UNTIL not (${this.repeatedCondition(st.test)}):`);
-            this.block(st.body,indent+1,out);
-            if(st.update)this.expressionStatement(st.update,indent+1,out);
-            return;
         }
         // A counter the body reads must start as a number value: the shared
         // loop writes \`set i to 0\`, a text "0" that \`x + i\` would join.
@@ -4550,6 +4544,7 @@ export function arcadeToPseudocode (files, opts = {}) {
             (result.costumes || []).some(costume=>costume.sprite==='background' && !/shape-rendering="crispEdges"/.test(costume.svg || ''))) {
             paletteDiagnostics.push('Project palette index zero on a fixed Scratch background requires native Arcade background rendering');
         }
+        code = code.replace(/^WHEN flag clicked:$/gm, 'WHEN arcade source starts:');
         return {...result,code,costumes,animationResources,warnings:recovered.warnings,
             unsupported:[...new Set([...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...result.unsupported])]};
     };

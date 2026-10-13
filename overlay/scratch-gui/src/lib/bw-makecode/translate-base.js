@@ -738,6 +738,15 @@ export class BaseTranslator {
             return;
 
         case 'While': {
+            if (this.sourceLoopHeader) {
+                const flag = breaks(st.body) ? this.freshName('_brk') : null;
+                if (flag) push(`set ${flag} to 0`);
+                const condition = this.loopCondition(st.test);
+                push(this.sourceLoopHeader(flag ? `(${flag} = 0) and (${condition})` : condition));
+                if (flag) this.breakBlock(st.body, indent + 1, out, flag);
+                else this.block(st.body, indent + 1, out);
+                return;
+            }
             const forever = st.test && st.test.type === 'Boolean' && st.test.value;
             if (breaks(st.body)) {
                 // No `break` in the dialect: a flag the loop also tests, and
@@ -781,7 +790,8 @@ export class BaseTranslator {
             push(`set ${i} to 0`);
             if (flag) push(`set ${flag} to 0`);
             const more = `${i} < length of ${this.arrayRef(name)}`;
-            push(flag ? `REPEAT UNTIL (${flag} = 1) or (not (${more})):` : `REPEAT UNTIL not (${more}):`);
+            push(this.sourceLoopHeader ? this.sourceLoopHeader(flag ? `(${flag} = 0) and (${more})` : more) :
+                flag ? `REPEAT UNTIL (${flag} = 1) or (not (${more})):` : `REPEAT UNTIL not (${more}):`);
             this.declared.add(st.name);
             out.push(`${pad}  set ${this.varName(st.name)} to item ${i} of ${this.arrayRef(name)}`);
             if (flag) this.breakBlock(st.body, indent + 1, out, flag);
@@ -791,6 +801,22 @@ export class BaseTranslator {
         }
 
         case 'For': {
+            if (this.sourceLoopHeader) {
+                // The bound is reevaluated every iteration, including when
+                // the body changes it. Keep all declarations and updates.
+                if (st.init) this.statement(st.init, indent, out);
+                const flag = breaks(st.body) ? this.freshName('_brk') : null;
+                if (flag) push(`set ${flag} to 0`);
+                const condition = st.test ? this.loopCondition(st.test) : 'true';
+                push(this.sourceLoopHeader(flag ? `(${flag} = 0) and (${condition})` : condition));
+                if (flag) this.breakBlock(st.body, indent + 1, out, flag);
+                else this.block(st.body, indent + 1, out);
+                if (st.update) {
+                    if (flag) out.push(`${pad}  IF ${flag} = 0 THEN:`);
+                    this.statement({type: 'ExpressionStatement', expr: st.update}, indent + (flag ? 2 : 1), out);
+                }
+                return;
+            }
             // `for (let i = 0; i < N; i++)` — the only shape MakeCode
             // emits — becomes an explicit counter, because our REPEAT
             // takes a count and not a condition-with-a-variable.
@@ -1505,7 +1531,7 @@ export class BaseTranslator {
         }
         const i = this.freshName('_i');
         out.push(`${pad}new ${this.arrayRef(to)}`, `${pad}set ${i} to 0`,
-            `${pad}REPEAT UNTIL not (${i} < length of ${this.arrayRef(from)}):`,
+            `${pad}${this.sourceLoopHeader ? this.sourceLoopHeader(`${i} < length of ${this.arrayRef(from)}`) : `REPEAT UNTIL not (${i} < length of ${this.arrayRef(from)}):`}`,
             `${pad}  push item ${i} of ${this.arrayRef(from)} to ${this.arrayRef(to)}`,
             `${pad}  change ${i} by 1`);
     }
