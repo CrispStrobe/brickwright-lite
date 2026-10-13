@@ -2007,3 +2007,21 @@ the supplied graph was fully visited. Generator/host closures still need
 explicit leases, followed by preallocation reservation and controlled tracing.
 Shared BWValues and serialization source are untouched. Whole-app142/41/1
 remains unchanged; parent and child hosted results are separate evidence.
+
+## Sustained corpus closure checkpoint — 2026-10-13
+
+The operator requested autonomous continuation until fewer than20 unresolved
+corpus cases remain partial. Keep the immutable raw184 and authentic mapped
+project-context results distinct. A fresh raw audit at ad96760f7e remains
+142translated/41partial/1parse-failed. A raw snippet with missing libraries or
+art cannot be fixed by inserting placeholder sprites, dropping callbacks or
+forcing a different rendering route. Close actual APIs and recover original
+project inputs, then prove compilation/runtime/roundtrips per mapped case.
+
+Native namespace Buffer source import is integrated from independently tested
+converter source bb0fd971c. Typed aliases, source mutation and live song Buffers
+now use the existing native block surface; unsupported views/init-order errors
+remain diagnosed. Authentic prepared pizza has zero original compiler and
+native translation diagnostics. Broader project execution and the fresh full
+census remain required before a case is promoted. Namespace/source and runtime
+work use separate file ownership; original evidence is retained privately.

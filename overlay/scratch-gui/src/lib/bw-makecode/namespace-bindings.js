@@ -96,7 +96,7 @@ export const lowerNamespaceBindings = program => {
             } else if (st.type === 'FunctionDeclaration') {
                 declare(scope, st.name, {kind: 'value', bindingScope:scope, functionNode:st, procedure: scope !== root, name: scope === root ? st.name : fresh([...scope.path, st.name]), exported: Boolean(st.exported)});
             } else if (st.type === 'Declaration') {
-                for (const decl of st.decls) declare(scope, decl.name, {kind: 'value', bindingScope:scope, name: scope === root ? decl.name : fresh([...scope.path, decl.name]), exported: Boolean(st.exported)});
+                for (const decl of st.decls) declare(scope, decl.name, {kind: 'value', bindingScope:scope, name: scope === root ? decl.name : fresh([...scope.path, decl.name]), readonly: st.kind==='const', exported: Boolean(st.exported)});
             }
         }
     };
@@ -251,7 +251,9 @@ export const lowerNamespaceBindings = program => {
         if (node.type === 'Declaration') return {...node, decls:node.decls.map(decl => ({...decl, ...(namespaceBody ? {assetPath: scope.symbols.get(decl.name)?.sourcePath} : {}), name:namespaceBody ? scope.symbols.get(decl.name)?.name || decl.name : decl.name, init:rewrite(decl.init, scope, shadows)}))};
         if (node.type === 'Assignment' || node.type === 'Update') {
             const target = node.type === 'Assignment' ? node.left : node.argument;
-            if (access(target, scope, shadows)?.kind === 'enumMember') fail('assignment to an enum member');
+            const symbol=access(target,scope,shadows);
+            if (symbol?.kind === 'enumMember') fail('assignment to an enum member');
+            if (symbol?.readonly && symbol.bindingScope!==root) fail(`assignment to readonly namespace binding ${symbol.sourcePath}`);
         }
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, rewrite(value, scope, shadows, false, key)]));
     };
