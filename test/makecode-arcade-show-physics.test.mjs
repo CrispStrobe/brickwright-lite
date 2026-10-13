@@ -40,7 +40,10 @@ test('actual renderer overlays reuse one drawable, follow z order, and clean up 
  for(let i=0;i<6;i++)a._composeSceneFrame();assert.equal(calls.skin,skinCount);assert.equal(calls.drawable,drawableCount);assert.equal([...a._inst._particleOverlays.values()][0],entry);
  a.setSpriteProperty({ID:id,PROPERTY:'z',VALUE:9});a._composeSceneFrame();assert.equal(a._sprite(id)._physicsLayer.source.z,9);assert.equal(calls.orders.at(-1),entry.drawableId);
  a.setSpriteFlag({ID:id,FLAG:'ShowPhysics',ON:false});a._composeSceneFrame();assert.equal(a._inst._particleOverlays.size,0);assert.ok(calls.destroySkin>=1);assert.ok(calls.destroyDrawable>=1);
- a.setSpriteFlag({ID:id,FLAG:'ShowPhysics',ON:true});a._composeSceneFrame();assert.equal(a._inst._particleOverlays.size,1);a.destroySprite({ID:id});a._composeSceneFrame();assert.equal(a._inst._particleOverlays.size,0);
+ a.setSpriteFlag({ID:id,FLAG:'ShowPhysics',ON:true});a._composeSceneFrame();assert.equal(a._inst._particleOverlays.size,1);
+ a.setSpriteProperty({ID:id,PROPERTY:'flags',VALUE:64|128});a._composeSceneFrame();assert.equal(a._inst._particleOverlays.size,0,'direct Invisible mask hides physics overlay');
+ a.setSpriteProperty({ID:id,PROPERTY:'flags',VALUE:64});a._composeSceneFrame();assert.equal(a._inst._particleOverlays.size,1,'direct clear restores physics overlay');
+ a.destroySprite({ID:id});a._composeSceneFrame();assert.equal(a._inst._particleOverlays.size,0);
 });
 
 test('supported ShowPhysics source survives native Code, fresh SB3, original export and reimport with its exact mask',async()=>{

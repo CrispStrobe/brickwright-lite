@@ -12,4 +12,16 @@ Public and internal flag constants are admitted only from unshadowed SDK names.
 
 Focused backend controls cover raw numeric values, destruction guards, retained
 callbacks, clipping masks, primitive admission and the property menu. Full
-Code, fresh SB3, original export and browser authoring qualification is pending.
+native/Code/same and fresh SB3/original export/reimport controls now also cover
+raw 1.5 and nonfinite values, manual Destroyed masks and kind filtering,
+clear-and-repeat kind and instance callbacks, raw string/null/undefined codec
+values, receiver-before-RHS `+=` and `|=` evaluation exactly once, and `>>>=`
+from -1. Existing completed unchanged original observations are reused; new
+compound/primitive fixtures and actual exported files run the original SDK.
+The matching vocabulary uses producer `846dcf057796e63fc4434fc9094e47c8ed7aedc9`
+and Arrays values `e197ab06e792a501716b837761dfb13cf29458c9`.
+
+Flags export preserves connected raw primitives separately from numeric editor
+shadows; numeric-looking strings are not converted to numbers. Foreign objects
+remain explicitly unsupported. Hosted whole-IDE browser authoring qualification
+is pending.
