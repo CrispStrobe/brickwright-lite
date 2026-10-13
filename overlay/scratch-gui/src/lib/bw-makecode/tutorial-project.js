@@ -8,6 +8,20 @@ const fileMap = value => value && typeof value === 'object' && !Array.isArray(va
 const safeName = name => name && !name.startsWith('/') && !name.includes('\\') &&
     !name.split('/').some(part => !part || part === '.' || part === '..');
 
+// A tutorial package fence may name a repository without a revision while its
+// saved asset project's pxt.json pins that same repository. Retain that exact
+// pin. Different repositories or two different explicit revisions conflict.
+const mergePackage = (previous, next, name) => {
+    if (previous === next) return previous;
+    const github = value => value.match(/^github:([^#]+?)(?:#([^#]+))?$/);
+    const before = github(previous), after = github(next);
+    if (before && after && before[1].toLowerCase() === after[1].toLowerCase()) {
+        if (before[2] && !after[2]) return previous;
+        if (!before[2] && after[2]) return next;
+    }
+    throw new Error(`Conflicting tutorial package: ${name}`);
+};
+
 export function tutorialProjectFiles(markdown, mainSource, {name = 'Recovered tutorial', target = 'arcade'} = {}) {
     if (typeof markdown !== 'string' || typeof mainSource !== 'string') throw new Error('Tutorial and main.ts must be text.');
     const fences = [];
@@ -47,8 +61,8 @@ export function tutorialProjectFiles(markdown, mainSource, {name = 'Recovered tu
                 const entry = line.match(/^([\w-]+)(?:\s*=\s*(\S+))?$/);
                 if (!entry) throw new Error(`Invalid tutorial package entry: ${line}`);
                 const version = entry[2] || '*';
-                if (own(dependencies, entry[1]) && dependencies[entry[1]] !== version) throw new Error(`Conflicting tutorial package: ${entry[1]}`);
-                dependencies[entry[1]] = version;
+                dependencies[entry[1]] = own(dependencies, entry[1]) ?
+                    mergePackage(dependencies[entry[1]], version, entry[1]) : version;
             }
         }
     }
@@ -60,8 +74,7 @@ export function tutorialProjectFiles(markdown, mainSource, {name = 'Recovered tu
     if (config.dependencies !== undefined && !fileMap(config.dependencies)) throw new Error('Tutorial dependencies must be a text map.');
     const deps = {...(config.dependencies || (target === 'microbit' ? {core: '*'} : {device: '*'}))};
     for (const [key, value] of Object.entries(dependencies)) {
-        if (own(deps, key) && deps[key] !== value) throw new Error(`Conflicting tutorial package: ${key}`);
-        deps[key] = value;
+        deps[key] = own(deps, key) ? mergePackage(deps[key], value, key) : value;
     }
     // assetjson often carries the tutorial template's main.ts. The explicitly
     // selected saved snippet supersedes it; all other asset bytes stay exact.

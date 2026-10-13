@@ -12,16 +12,20 @@
  * Files come from raw.githubusercontent.com, which serves cross-origin reads, at
  * the ref the dependency names (a tag, a branch or a commit; none = the default
  * branch). Only the files the extension's pxt.json lists are taken; image files
- * are skipped, as the vendoring sync does.
+ * are skipped, as the vendoring sync does. Dependency editor history is not
+ * compiler input; its omission is reported without rewriting pxt.json. This
+ * loader is for compilation, not a lossless package/project archive.
  */
 import {licenceOf, REDISTRIBUTABLE} from './extension-licence.js';
 
 export const RAW_BASE = 'https://raw.githubusercontent.com/';
 
 /** Bounds on what one compile may fetch. */
-export const FETCH_LIMITS = Object.freeze({extensions: 8, filesPerExtension: 64, bytesPerExtension: 1024 * 1024});
+export const FETCH_LIMITS = Object.freeze({extensions: 8, filesPerExtension: 64,
+    bytesPerExtension: 8 * 1024 * 1024, bytesTotal: 32 * 1024 * 1024,
+    bytesPerManifest: 256 * 1024, bytesPerLicence: 256 * 1024});
 
-const SPEC = /^github:([A-Za-z0-9][\w.-]*\/[\w.-]+?(?:\/[\w.-]+)*)(?:\.git)?(?:#([\w./-]+))?$/i;
+const SPEC = /^github:([A-Za-z0-9][\w.-]*\/[\w.-]+?(?:\/[\w.-]+)*)(?:\.git)?\/?(?:#([\w./-]+))?$/i;
 
 /** `github:owner/repo[/package/path]#ref` → {repo (lower case), ref ('' = default branch)}, else null. */
 export function parseGithubSpec (spec) {
@@ -73,12 +77,58 @@ async function sha256Hex (text) {
  *   licenceFile, sha256}` describing what was taken.
  */
 export async function fetchMakeCodeExtensions ({dependencies, target, table, fetch = url => globalThis.fetch(url), limits = FETCH_LIMITS}) {
+    limits = {...FETCH_LIMITS, ...limits};
+    for (const [name, value] of Object.entries(limits)) {
+        if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`invalid extension fetch limit: ${name}`);
+    }
     const extensions = [], refused = [], seen = new Set();
     const queue = unresolvedGithubDependencies(dependencies, target, table);
-    const text = async url => {
+    let totalBytes = 0;
+    // Count bytes as they arrive, before decoding or retaining another chunk.
+    // Failed packages still consume the compile's aggregate download budget.
+    const readText = async (res, byteLimit, reason) => {
+        const maximum = Math.min(byteLimit, limits.bytesTotal - totalBytes);
+        const failure = () => new Error(maximum < byteLimit ?
+            `extension downloads exceed ${limits.bytesTotal} bytes in total` : reason);
+        const header = res.headers && res.headers.get('content-length');
+        if (header !== null && header !== undefined && /^\d+$/.test(header) && Number(header) > maximum) {
+            if (res.body) await res.body.cancel();
+            throw failure();
+        }
+        let bytes = 0;
+        const count = length => {
+            bytes += length;
+            totalBytes += length;
+            if (bytes > maximum) throw failure();
+        };
+        if (!res.body || typeof res.body.getReader !== 'function') {
+            // Fetch adapters without a stream (offline controls, for example).
+            const content = await res.text();
+            count(new TextEncoder().encode(content).byteLength);
+            return {content, bytes};
+        }
+        const reader = res.body.getReader(), decoder = new TextDecoder();
+        const chunks = [];
+        try {
+            while (true) {
+                const chunk = await reader.read();
+                if (chunk.done) break;
+                count(chunk.value.byteLength);
+                chunks.push(decoder.decode(chunk.value, {stream: true}));
+            }
+            chunks.push(decoder.decode());
+            return {content: chunks.join(''), bytes};
+        } catch (err) {
+            await reader.cancel().catch(() => {});
+            throw err;
+        } finally {
+            reader.releaseLock();
+        }
+    };
+    const text = async (url, byteLimit, reason) => {
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-        return res.text();
+        return readText(res, byteLimit, reason);
     };
     while (queue.length) {
         const dep = queue.shift();
@@ -93,7 +143,11 @@ export async function fetchMakeCodeExtensions ({dependencies, target, table, fet
         const repositoryBase = `${RAW_BASE}${parts.slice(0, 2).join('/')}/${dep.ref || 'HEAD'}/`;
         const base = repositoryBase + (parts.length > 2 ? parts.slice(2).join('/') + '/' : '');
         try {
-            const pxtJson = await text(`${base}pxt.json`);
+            const sourceLimitReason = `its sources exceed ${limits.bytesPerExtension} bytes`;
+            const manifest = await text(`${base}pxt.json`, Math.min(limits.bytesPerManifest, limits.bytesPerExtension),
+                limits.bytesPerManifest < limits.bytesPerExtension ?
+                    `its pxt.json exceeds ${limits.bytesPerManifest} bytes` : sourceLimitReason);
+            const pxtJson = manifest.content;
             const cfg = JSON.parse(pxtJson);
             const supported = Array.isArray(cfg.supportedTargets) ? cfg.supportedTargets : null;
             if (supported && supported.length && !supported.includes(target)) {
@@ -103,21 +157,29 @@ export async function fetchMakeCodeExtensions ({dependencies, target, table, fet
             if (listed.some(f => !safePath(f))) throw new Error('its pxt.json lists a file outside the extension');
             if (listed.length > limits.filesPerExtension) throw new Error(`its pxt.json lists more than ${limits.filesPerExtension} files`);
             const files = {'pxt.json': pxtJson};
-            let bytes = pxtJson.length;
+            const excludedFiles = [];
+            let bytes = manifest.bytes;
             for (const f of listed) {
                 if (f === 'pxt.json') continue;
-                files[f] = await text(base + f);
-                bytes += files[f].length;
-                if (bytes > limits.bytesPerExtension) throw new Error(`its sources exceed ${limits.bytesPerExtension} bytes`);
+                if (f === '_history') {
+                    excludedFiles.push({file: f, reason: 'dependency editor history is not compiler input'});
+                    continue;
+                }
+                const source = await text(base + f, limits.bytesPerExtension - bytes, sourceLimitReason);
+                files[f] = source.content;
+                bytes += source.bytes;
             }
-            let licence = null, licenceFile = null, licenceUrl = null;
+            let licence = null, licenceFile = null, licenceUrl = null, licenceText = null;
             // Monorepo packages often inherit the repository's root notice.
             for (const licenceBase of base === repositoryBase ? [base] : [base, repositoryBase]) {
                 for (const name of ['LICENSE', 'LICENSE.txt', 'LICENSE.md']) {
                     const res = await fetch(licenceBase + name);
                     if (res.ok) {
                         licenceFile = name; licenceUrl = licenceBase + name;
-                        licence = licenceOf(await res.text()); break;
+                        const notice = await readText(res, limits.bytesPerLicence,
+                            `its licence notice exceeds ${limits.bytesPerLicence} bytes`);
+                        licenceText = notice.content;
+                        licence = licenceOf(licenceText); break;
                     }
                 }
                 if (licenceFile) break;
@@ -125,7 +187,8 @@ export async function fetchMakeCodeExtensions ({dependencies, target, table, fet
             const sha256 = {};
             for (const [name, content] of Object.entries(files)) sha256[name] = await sha256Hex(content);
             extensions.push({id: dep.id, repo: dep.repo, refs: [dep.ref], targets: [target], files,
-                fetched: {base, licence, licenceFile, licenceUrl, redistributable: REDISTRIBUTABLE.includes(licence), sha256}});
+                fetched: {base, licence, licenceFile, licenceUrl, licenceText, redistributable: REDISTRIBUTABLE.includes(licence),
+                    sha256, sourceBytes: bytes, excludedFiles}});
             // Its own github: dependencies, unless already available.
             for (const next of unresolvedGithubDependencies(cfg.dependencies, target, [...table, ...extensions])) queue.push(next);
         } catch (err) {

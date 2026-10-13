@@ -94,6 +94,7 @@ import {
 } from './arcade-assets.js';
 import {svgToPixels} from './pixel-image.js';
 import {parseAnimationJres} from './arcade-animation-assets.js';
+import {parseSongJres} from './song-jres.js';
 import {BUILTIN_IMAGES} from './arcade-builtin-images.js';
 import {ANIMATION_COMPANION_PATH, recoverAnimationCompanion} from './animation-companion.js';
 import {HELPERS} from './arcade-runtime.js';
@@ -1292,6 +1293,7 @@ class ArcadeTranslator extends BaseTranslator {
         if(this.spriteExtensionStatement(node,a,push))return;
         if(this.sevensegStatement(node,a,push))return;
         if(this.musicStatement(name,a,push))return;
+        if(this.carnivalStatement(name,a,push))return;
         if(this.gameOverStatement(name,a,push))return;
         const screenEffect=/^effects\.(\w+)\.(startScreenEffect|endScreenEffect)$/.exec(name||'');
         if(this.handleTemplates && screenEffect && IMAGE_EFFECTS.has(screenEffect[1]) && screenEffect[2]==='startScreenEffect') {
@@ -1961,6 +1963,23 @@ class ArcadeTranslator extends BaseTranslator {
         case 'music.stringPlayable':
             if (a.length === 2) return `arcade string playable ${value(0)} at ${value(1)} bpm`;
             break;
+        case 'music.createSong': {
+            const buffer = a.length === 1 && a[0];
+            if (buffer?.type === 'Template' && buffer.tag === 'hex') {
+                const text = buffer.value.replace(/\s/g, '');
+                if (!/^(?:[0-9a-f]{2}){7,}$/i.test(text) || !/^00/i.test(text)) {
+                    this.note('music.createSong requires complete version-zero song bytes');
+                    return '0';
+                }
+                return buffer.bwSongName ?
+                    `arcade song named ${JSON.stringify(buffer.bwSongName)} hex ${JSON.stringify(text.toLowerCase())}` :
+                    `arcade song playable hex ${JSON.stringify(text.toLowerCase())}`;
+            }
+            if (buffer?.type === 'Call' && this.path(buffer.callee) === 'Buffer.fromHex' && !this.bindsName('Buffer') && buffer.args.length === 1)
+                return `arcade song playable hex (${this.expr(buffer.args[0])})`;
+            this.note('music.createSong requires a hex literal or Buffer.fromHex expression');
+            return '0';
+        }
         case 'music.tonePlayable':
             if (a.length === 2) return `arcade tone playable ${value(0)} Hz for ${value(1)} ms`;
             break;
@@ -2004,6 +2023,29 @@ class ArcadeTranslator extends BaseTranslator {
     backgroundEffect (node) {
         const match = /^effects\.(\w+)$/.exec(this.path(node) || '');
         return match && !this.bindsName('effects') && (SCREEN_PARTICLE_EFFECTS.has(match[1]) || IMAGE_EFFECTS.has(match[1])) ? match[1] : null;
+    }
+    carnivalStatement(name,a,push) {
+        if(this.handleTemplates && !this.bindsName('carnival') && name==='carnival.customGameOverExpanded') {
+            const missing = node => !node || node.type==='Undefined';
+            const effect = missing(a[1]) ? 'unset' : this.backgroundEffect(a[1]);
+            const scoring = missing(a[3]) ? 'unset' :
+                /^carnival\.ScoreTypes\.(None|HScore|LScore|HTime|LTime)$/.exec(this.path(a[3]) || '')?.[1];
+            if(a.length<1 || a.length>5 || !effect || !scoring) {
+                push(this.note(name+'() needs a message, optional fixed effect and optional fixed carnival.ScoreTypes scoring'));return true;
+            }
+            push(`arcade carnival custom game over message (${this.expr(a[0])}) effect ${effect} sound (${missing(a[2])?'""':this.expr(a[2])}) use sound ${missing(a[2])?'0':'1'} scoring ${scoring} score (${missing(a[4])?'0':this.expr(a[4])}) use score ${missing(a[4])?'0':'1'}`);
+            return true;
+        }
+        if(!this.handleTemplates || this.bindsName('carnival') || !['carnival.startCountdownGame','carnival.onGameOverExpanded','carnival.customGameOverExpanded'].includes(name))return false;
+        const countdown=name==='carnival.startCountdownGame',offset=countdown?1:0;
+        const match=/^carnival\.WinTypes\.(Win|Lose|Score|Timed|Multi|Custom)$/.exec(this.path(a[offset]) || '');
+        const effect=a.length===offset+2?this.backgroundEffect(a[offset+1]):'unset';
+        if(!match || !effect || a.length<offset+1 || a.length>offset+2) {
+            push(this.note(name+'() requires a fixed carnival.WinTypes style and optional fixed effects.* effect'));return true;
+        }
+        push(countdown?`arcade carnival countdown (${this.expr(a[0])}) style ${match[1]} effect ${effect}`:
+            `arcade carnival game over style ${match[1]} effect ${effect}`);
+        return true;
     }
     /** PXT game over and its configuration; returns whether `name` was one. */
     gameOverStatement (name, a, push) {
@@ -3328,6 +3370,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^effects\.(?:\w+\.(?:startScreenEffect|endScreenEffect)|clearParticles)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^music\./.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && /^carnival\.(?:startCountdownGame|onGameOverExpanded|customGameOverExpanded)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^game\.(?:gameOver|over|setGameOver\w+)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
         if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
@@ -3470,7 +3513,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     const allowedCalls = new Set(['sprites.onCreated', 'sprites.onDestroyed', 'sprites.onOverlap', 'sprites.destroy',
         ...creationApis, 'game.onUpdateInterval', 'game.onUpdate', 'control.runInParallel', 'forever', 'game.forever', 'basic.forever',
         'controller.A.onEvent', 'controller.moveSprite', 'info.setLife', 'info.setScore',
-        'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'console.log',
+        'carnival.startCountdownGame', 'carnival.onGameOverExpanded', 'carnival.customGameOverExpanded', 'info.startCountdown', 'info.stopCountdown', 'info.onCountdownEnd', 'info.onLifeZero', 'console.log',
         'pause', 'game.splash', 'game.showLongText', 'image.setPalette', 'scene.setBackgroundColor', 'scene.setBackgroundImage']);
     for (const [index, st] of ast.body.entries()) {
         if (st.type === 'Namespace' && st.name === 'SpriteKind') continue;
@@ -4058,11 +4101,22 @@ export function arcadeToPseudocode (files, opts = {}) {
 
     const assets = Object.create(null);
     const tilemaps = {};
+    const songAliases = new Map();
     const animationAliases = new Map(), animationDiagnostics = [], animationIds = new Set(), nativeAnimations = [];
     let duplicateAnimationId = false;
     for (const [filename, text] of Object.entries(map)) {
         if (/\.jres$/.test(filename)) {
             Object.assign(assets, parseJres(text), parseTileAssets(text));
+            const parsedSongs = parseSongJres(text);
+            animationDiagnostics.push(...parsedSongs.unsupported.map(message => `${filename}: ${message}`));
+            for (const song of parsedSongs.songs) {
+                for (const alias of song.aliases) {
+                    if (songAliases.has(alias)) {
+                        songAliases.set(alias, null);
+                        animationDiagnostics.push(`Ambiguous song asset alias: ${JSON.stringify(alias)}`);
+                    } else songAliases.set(alias, song);
+                }
+            }
             const parsedAnimations = parseAnimationJres(text);
             animationDiagnostics.push(...parsedAnimations.unsupported.map(message => `${filename}: ${message}`));
             for (const animation of parsedAnimations.animations) {
@@ -4103,6 +4157,14 @@ export function arcadeToPseudocode (files, opts = {}) {
     // inference stays intact while emission uses the fresh resource reporter.
     const lowerAnimationAssets = node => {
         if (!node || typeof node !== 'object') return node;
+        if (node.type === 'Template' && node.tag === 'assets.song') {
+            const alias = node.value.trim(), song = songAliases.get(alias);
+            if (!song) {
+                animationDiagnostics.push(`${songAliases.has(alias) ? 'Ambiguous' : 'Missing'} song asset reference: ${JSON.stringify(alias)}`);
+                return {type: 'Undefined'};
+            }
+            return {type: 'Template', tag: 'hex', value: song.hex, bwSongName: song.name};
+        }
         if (node.type === 'Template' && node.tag === 'assets.animation') {
             const alias = node.value.trim(), animation = animationAliases.get(alias);
             if (!animation) {

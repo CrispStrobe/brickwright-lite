@@ -308,7 +308,7 @@ journey passes 5 of 5 against a production build with the fix.
 
 ## Arcade sprite placement from the tile map painter — 2026-10-11
 
-CLAIMED — Claude (opus), owner request ("fix it all"), branch
+DONE candidate — Claude (opus), owner request ("fix it all"), branch
 `lane/arcade-tilemap-placement-20261011`, stacked on Codex's painter stack
 (PR793 → PR794) and agreed with Codex, who is not taking it. In the painter,
 show where sprites are placed on the map and let the user place or move a
@@ -321,6 +321,14 @@ scripts/verify-arcade-tilemap-placement.mjs with its additive light-shard step
 and budget registration in build.yml, Arcade docs and this ledger. No change to
 Codex's tile identity, legacy layout or persistence code paths, circuit source
 or pins; legacy colour-tile placement (`placeOnLegacyTile`) stays out of scope.
+Done: Place sprite tool, placement list, markers and staged Save/Revert in the
+painter; model lib/bw-makecode/tilemap-placements.js. Four model tests run
+the real game and the MakeCode export (moved, added and removed placements;
+the map's own placements only, up to the next map; stale lists refused); three
+source mutants are caught. The new browser journey passes 17 of 17 twice
+against a production build; the painter, tile identity and legacy layout
+journeys still pass (19, 11, 8 checks).
+
 
 ## Arcade tile names and MakeCode asset identity — 2026-10-11
 
@@ -340,7 +348,7 @@ explicitly; never silently alias distinct edited tiles to one exported asset.
 
 ## Arcade painted tilemap project save/reopen — 2026-10-11
 
-DONE — Codex, coordinated with the session owning the circuit green-flag
+CLAIMED — Codex, coordinated with the session owning the circuit green-flag
 repair. Branch `lane/arcade-painted-project-roundtrip-20261011`.
 Extend the existing real-pointer tilemap painter browser journey to save an SB3,
 reopen it through the GUI, verify every painted map/wall/tile pixel and editable
@@ -976,11 +984,31 @@ The [receipt](docs/receipts/2026-10-07-arcade-resource-picker-errors.json) recor
 exact boundaries. Hosted follow-up checks remain pending; corpus93 partial
 and original Assets-editor qualification remain open.
 
+## SPIKE Code Stop during native startup — 2026-10-13
+
+CLAIMED — Codex SPIKE integration, `fix/spike-startup-stop-feedback-20261013`.
+Envelope: `overlay/scratch-gui/src/lib/spike-arena/code-run-feedback.js`,
+`overlay/scratch-gui/src/components/tw-pseudocode/spike-arena-pane.jsx`,
+`test/spike-code-run-feedback.test.mjs`, `test/spike-arena-pane-units.test.mjs`,
+this ledger and the SPIKE status guide; preserve tracked mirrors only where they
+still exist. The installed bb293 startup observation exposes Arena Stop but
+hides Code Stop until firmware feedback becomes active. Add an explicit starting
+notification through the existing feedback callbacks and arena pane, after
+validation and with the stop handler already installed. Show Code Stop while
+starting without reporting guest execution as RUNNING. Preserve terminal and
+cancellation guards, invalid-program refusal, existing retained uploads and
+cleanup ownership. Qualify the actual Code Stop action during pending native
+startup on a freshly built installed consumer, followed by cleanup and a new
+run; host controls alone do not close this lane. No importer, painter, peer,
+firmware, Runtime/model pin or workflow edits.
+
 ## SPIKE handover
 
 The [SPIKE state and next lanes](docs/SPIKE-STATUS-AND-LANES.md) record the
-2026-10-05 tested GUI baseline and proposed cross-repository work. These are task
-definitions, not implementation claims; claim a lane below before source changes.
+2026-10-05 GUI baseline, the separately versioned 2026-10-12 installed Linux
+native/Python persistence and lifecycle checkpoint, and proposed cross-repository
+work. G01–G07 definitions do not imply full completion; claim a lane below before
+source changes. The checkpoint preserves earlier failures and package boundaries.
 This documentation-only handover owns no actuator or firmware implementation.
 
 ## The protocol
@@ -1436,7 +1464,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 ## CLAIMS — work in progress
 
 | Original MakeCode files in the `.sb3`, kept but marked stale (task F10 of docs/OPEN-TASKS-2026-09-29.md; owner decision 2026-10-12) | VPS Claude (opus) | base `origin/main`; a new overlay module `overlay/scratch-vm/src/serialization/bw-makecode-original.js` (+ its save/load hooks in `scripts/apply-vm-overlay.mjs`), where an import records the original (`scripts/makecode.mjs to-sb3`, the GUI MakeCode import), the export's choice between original and regenerated files, the WIP test `test/arcade-metadata-sb3.test.mjs` re-ported plus a stale-case test; this row and the task file. Not the importer's translation (E10) nor the Arcade runtime/painter lanes. | **DONE 2026-10-12 — Lite PR #832 (merge `414b25e6`).** An imported MakeCode project saves its own files as `bwMakeCode` {version 2, target, name, files, fingerprint} (overlay module `serialization/bw-makecode-original.js`; two idempotent hooks in `apply-vm-overlay.mjs`: toJSON after E5's extensionURLs, deserializeProject load + settle after installTargets). The importer writes it unfingerprinted; the VM's first load fingerprints the program from its own serialization (blocks without positions/comments, variable/list/broadcast names, costume/sound assets, target names, extensions — not runtime state, so running the game is not an edit). CLI `to-ts`/`to-project`/`to-hex` export the original while current and say when it is stale; the Code tab records it only for a build of the unedited translation, and its run/download subject, Arcade `.mkcd` and micro:bit exports use it only while current; the source zip says when the program changed. `test/arcade-metadata-sb3.test.mjs` (the WIP test re-ported + stale case + GUI wiring): 4/4, red under never-stale, no-settle, position-counts and not-saved mutations. |
-| F10's GUI path in a real browser (task F10.1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `origin/main`; `scripts/verify-makecode.mjs` (Arcade import section only), plus status text. No new CI step, budget or census entry; no runtime/importer change unless the browser check finds a real F10 defect. | **CLAIMED 2026-10-13.** |
+| F10's GUI path in a real browser (task F10.1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `origin/main`; `scripts/verify-makecode.mjs` (Arcade import section only), plus status text. No new CI step, budget or census entry; no runtime/importer change unless the browser check finds a real F10 defect. | **DONE 2026-10-13** (branch `lane/f10-1-gui-check-20261013`). Five new checks in `scripts/verify-makecode.mjs` section 2d′, after the Arcade run: ⇦ To blocks keeps `bwMakeCode` with a 16-hex fingerprint; the real `.sb3` save → reopen brings the same files and fingerprint back; ⤓ Arcade export of the unchanged project writes the original `main.ts` byte for byte; after deleting a script's top block the original is still saved; and the export then comes from the blocks. No new CI step. Found while reading 2d: since F10, ▶ Run as MakeCode Arcade on an unchanged import compiles the ORIGINAL files, so 2d no longer exercises the Scratch → Arcade exporter for this fixture; the post-edit export check covers that exporter again. |
 | The GUI package's avr8js follows bw-board's fork (task B15 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `origin/main`; `packages/scratch-gui/package.json`, `scripts/integrate.mjs`'s avr8js default (via `scripts/lib/avr8js-spec.mjs`), one focused test; this row and the task file. Not B14 (gearmotor reverse, 7-segment minus) nor B9 (ESP32 LEDC). | **DONE 2026-10-12 — Lite PR (this branch, `lane/b14-pwm-closeout-avr8js-20261012`).** `packages/scratch-gui/package.json` declares `github:CrispStrobe/avr8js#feea84c4`, the commit bw-board pins (#413), instead of npm `^0.21.0`; `scripts/integrate.mjs` writes it from one constant, `scripts/lib/avr8js-spec.mjs`. `test/avr8js-one-version.test.mjs` holds the constant equal to the installed bw-board's declared avr8js, checks the GUI package.json and integrate.mjs use it, and where the GUI package is installed that it resolves the fork build (`-bw.N`): 2/2 locally with the GUI installed. **Follow-up 2026-10-12:** the tracked `packages/scratch-gui/package-lock.json` still locked npm 0.21.0 (and a nested copy under bw-board), so `worktree-deps verify` failed in every fresh worktree; it now locks the fork commit once at the top level, as installed, and the test checks the lockfile too (3/3; red on the old lockfile). |
 | Arcade importer gaps found by E9: text truthiness, shared functions across sprites, unreachable predicateBranches (task E10 of docs/OPEN-TASKS-2026-09-29.md; starts after C8) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; `overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js` + helpers, export side only if a round trip needs it, focused tests; this row and the task file. | **CLAIMED 2026-10-12.** |
 
@@ -2818,7 +2846,7 @@ Legacy layout authoring envelope additionally owns `scripts/verify-arcade-legacy
 Legacy authoring followup in PR794 also owns definition artwork/wall editing: new `legacy-tile-definition-editor.jsx`, definition operations in `legacy-layout-editor.js`, and focused tests/browser coverage. Each definition retains its own block/index/timing; only static artwork sources and literal wall predicates are editable. Computed inputs get explicit reasons. No sprite-placement implementation or circuit pin changes.
 
 
-Painted project persistence PR792 merged at `18b2929a8479bcec880660b94c13bbb6c991741a`, reviewed head `eae43ccbad345a5d123026d6a615a83828a6de89`. All seven enabled checks succeeded; conditional deployment checks skipped on the PR. Hosted painter artifact observes34 successful checks, including actual SB3 fresh-context reopen, native edited state, original compiler/render and downloaded MakeCode reimport. Expected and actual merge tree `4470f89493e6c944ef62359888a9053df514c325` match. [Hosted source qualification](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38146762544). No corpus promotion or whole-game equivalence claim.
+## Ended Claude session integration checkpoint — 2026-10-12
 
 Legacy source followup claim: Codex owns `lane/arcade-legacy-image-aliases-20261011`, stacked on PR794. Same helper/test/browser/docs envelope; trace single authored image assignments and aliases on the preceding command chain without reading live handles or flattening image mutation code. Reassignments and ambiguous sources stay explicitly computed. No painter JSX/model overlap, sprite placement, circuit or pin changes.
 
@@ -2850,6 +2878,13 @@ is retained. The lane additionally owns its optional target-dependent default
 core dependency and propagation through `scripts/makecode.mjs`, plus the new
 `test/makecode-tutorial-collector.test.mjs`. Existing assembly tests stay intact.
 Selected main source is explicit; ghost programs are not automatically chosen.
+Operator-requested rescue on `integrate/claude-arcade-rescue-20261012` retains
+exact original797/800/801 commits. No unpublished tracked implementation found;
+three probes privately archived. Combined source47982918f passes20 focused
+placement/countdown/original-terrain/mirror checks,0 skips. Fresh hosted package
+and GUI checks are required; original797/800 light failures preserved. Painter
+installation/original-display readiness repair stays with active Codex bwcx.
+Original branches/worktrees remain unchanged; no failed-check main merge.
 
 ## Arcade extension project qualification — 2026-10-11
 

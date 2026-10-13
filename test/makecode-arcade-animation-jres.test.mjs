@@ -55,7 +55,7 @@ test('codec matches actual PXT encoder and decoder for asymmetric odd/even frame
     }
 });
 
-test('maximum supported resource is exact and independent from caller-owned pixels',()=>{
+test('large timeline resource is exact and independent from caller-owned pixels',()=>{
     const source=sample(160,160,64,65535),entry=encodeAnimationJres(source);
     const decoded=decodeAnimationJres(entry);
     assert.deepEqual(plain(decoded),source);
@@ -130,7 +130,7 @@ test('native names agree with actual original PXT validator including Unicode an
 });
 
 test('encoder refuses invalid dimensions/count/timing and pixels without coercion or truncation',()=>{
-    for(const width of [0,-1,1.5,161,65536,NaN]) rejects(()=>encodeAnimationJres({...sample(),width}),'DIMENSIONS');
+    for(const width of [0,-1,1.5,65536,NaN]) rejects(()=>encodeAnimationJres({...sample(),width}),'DIMENSIONS');
     for(const intervalMs of [0,-1,.5,65536,Infinity]) rejects(()=>encodeAnimationJres({...sample(),intervalMs}),'INTERVAL');
     for(const frames of [[],Array.from({length:65},()=>({pixels:[0]}))]) rejects(()=>encodeAnimationJres({...sample(),frames}),'FRAME_COUNT');
     rejects(()=>encodeAnimationJres({...sample(),frames:[{pixels:[1,2]}]}),'FRAME_PIXELS');
@@ -157,4 +157,36 @@ test('decoder rejects malformed, truncated, oversized and noncanonical resources
     rejects(()=>decodeAnimationJres({...entry,data:btoa(atob(entry.data)+'00')}),'LENGTH');
     rejects(()=>decodeAnimationJres(altered(entry,b=>b[12]|=0xf0)),'PADDING');
     assert.equal(ANIMATION_JRES_MIME,'application/mkcd-animation');
+});
+
+
+test('overscreen 161x121/32-frame timeline preserves exact original PXT bytes and edge pixels',()=>{
+    const source=sample(161,121,32,100),entry=encodeAnimationJres(source);
+    assert.equal(Buffer.from(atob(entry.data),'hex').length,311720);
+    assert.equal(entry.data,originalEncode(source));
+    assert.deepEqual(originalDecode(entry),source);
+    const decoded=plain(decodeAnimationJres(entry));
+    assert.deepEqual(decoded,source);
+    for(let f=0;f<32;f++){
+        assert.equal(decoded.frames[f].pixels[160],source.frames[f].pixels[160]);
+        assert.equal(decoded.frames[f].pixels[161*120+160],source.frames[f].pixels[161*120+160]);
+    }
+});
+
+test('native u16 dimensions use resource budgets instead of screen-size bounds',()=>{
+    for(const [width,height] of [[65535,1],[1,65535],[512,513]]){
+        const source=sample(width,height,1,1),entry=encodeAnimationJres(source);
+        assert.equal(entry.data,originalEncode(source));
+        assert.deepEqual(plain(decodeAnimationJres(entry)),source);
+    }
+    const source=sample(3,3,1,1),entry=encodeAnimationJres(source);
+    // Huge dimensions are refused from just the header, before frame allocation.
+    rejects(()=>decodeAnimationJres(altered(entry,b=>{b[2]=b[3]=b[4]=b[5]=255;})),'RESOURCE_LIMIT');
+    rejects(()=>encodeAnimationJres({...source,width:65535,height:65535}),'RESOURCE_LIMIT');
+    // Exactly 2Mi decoded pixels would still exceed the packed budget once the
+    // eight-byte header is included. Both allocation boundaries are enforced.
+    rejects(()=>encodeAnimationJres({...source,width:2048,height:1024}),'RESOURCE_LIMIT');
+    rejects(()=>encodeAnimationJres({...source,width:2048,height:1025}),'RESOURCE_LIMIT');
+    const fitting=sample(2048,1023,1,1);
+    assert.doesNotThrow(()=>decodeAnimationJres(encodeAnimationJres(fitting)));
 });

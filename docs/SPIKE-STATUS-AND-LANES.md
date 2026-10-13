@@ -6,6 +6,93 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Installed dual-ultrasonic checkpoint — 2026-10-12
+
+[PR755](https://github.com/CrispStrobe/brickwright-lite/pull/755) is merged at
+`a2517162000246e40c1d1a10e510ae685cfb48ab`. The installed package was built
+from reviewed consumer `bb293fad02d3448c5ea2d187b07ebedc82283fa6`;
+[its exact-head CI](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38291405858)
+and the separate native/vendor checks passed all nine enabled checks. Four
+conditional profile/publication jobs skipped. The authenticated frontend's actual
+CI checkout, `c7064a182363568db4cde6e8ccc2f5bfd6bc4819`, differs from the
+consumer only in `LANES.md`.
+
+The reviewed merge tree matched the actual merge, and all 25 affected SPIKE
+source, test and handoff paths matched the installed consumer. Unrelated main
+Forth/DOS compiler and importer changes were preserved. The whole merge tree
+and every later main package are therefore not installed-qualified by these
+receipts. The subsequent privacy merge changes only the task ledger.
+
+The own NuttX dual-ultrasonic profile has A/B motors, C color, D detached and
+E/F ultrasonic inputs. Fresh package assembly and installation passed; independent
+checks authenticated all 180 payload files and 23 directories, including bytes,
+Unix modes and ownership. Fresh installed Code native and embedded-Python routes
+passed addressed E/F feedback, shared-arena motion, completion and default
+restoration. Active Stop/restart/Stop and two unsupported caller-profile refusals
+also passed. The installed frontend served the exact publisher zForth notice and
+matching executable/provenance; that observation does not close other component
+licensing obligations.
+
+Both native and Python saved programs now pass actual installed-app quit and
+relaunch using the same owned profile. Load remains READY without arena movement
+while guest telemetry advances; explicit Run executes the saved original and
+preserves replacement editor text. Native execution reaches original instruction
+PC7 rather than replacement PC1. Saved Python prints actual E/F readings of
+61 and 1410 mm. A deliberate Python `OSError(74)` repeats on retained retry
+without uploading the editor replacement; explicit Code upload then recovers
+to COMPLETE in the same session. Original failed preparations and exact
+controls/results are preserved privately.
+
+Fresh installed lifecycle checks also pass on the same bb293 package:
+
+| GUI action during active guest motor commands | Observed result |
+| --- | --- |
+| Close the arena, then reopen it | Old pane/session closes, configuration and clock ownership release, its emulator exits, defaults restore, and a new pane completes a fresh guest |
+| Change execution backend | Same pane survives; old session closes and its emulator exits, defaults restore, and a replacement guest completes; the old closed frame remains unchanged across that run |
+| Switch 2D → 3D → 2D → 3D → 2D | Same pane, world, hub, bridge and firmware session remain; both 3D visits use a visible WebGL canvas and guest telemetry advances with motor demand; actual Stop reaches a fresh zero-demand frame and a subsequent upload completes |
+
+The first new view-switch run passed the view identities but failed an immediate
+Stop observation: program status was STOPPED while its sampled motor demand was
+still active. The next captured frame had zero demand. The consumed [Runtime observer](https://github.com/CrispStrobe/renode-spike-prime/blob/413380963e54b64f94f18d26466e1c6e941be8d2/scripts/spike-state-server.py#L289)
+reads motor `Power`, and the [electrical model](https://github.com/CrispStrobe/renode-infrastructure-spike-prime/blob/1253d925accca23dfda66d5bca61e78498dcb64f/src/Emulator/Peripherals/Peripherals/UART/LegoLpf2ElectricalPort.cs#L41)
+samples bridge drive on its periodic tick; acknowledgement alone is therefore
+insufficient for this observation. The revised private controller waits, within the unchanged
+30-second host bound, for a fresh STOPPED frame with both motor demands zero.
+The existing zero-demand, identity, telemetry and restoration assertions remain.
+Six observation controls pass; mutations accepting acknowledgement alone,
+ignoring demand or accepting stale frames fail. The original guest failure and
+the later full successful run remain separately preserved. No simulator, model,
+firmware, timing limit or package bytes changed for this controller correction.
+This records observed demand removal, not an instantaneous stop or safety bound.
+
+A separate fresh bb293 installed startup check now passes cancellation through
+**Arena Stop** while the owned native emulator exists and the session is still
+starting, before any firmware frame. The admitted native audit contains session
+start and close, with no program-packet upload. Startup unwinds, configuration
+and clock ownership release, the emulator exits, default sensors return, and
+stopped Code feedback remains visible without later world motion in the sampled
+interval. A fresh Code run then completes in a different session; the old closed
+session never acquires a frame. This is deferred cleanup, not instantaneous
+native process abort or an arbitrary race guarantee.
+
+The same run observes a usability gap: **Code Stop** is hidden during pending
+startup even though **Arena Stop** is available. The focused lane in `LANES.md`
+will add an explicit starting feedback callback through the arena pane, then
+require fresh installed qualification of the actual Code Stop action. No source
+fix or completion of that new lane is claimed by this documentation.
+
+These are finite installed Linux simulator observations. Earlier A383
+storage, ABI, ACL and lifecycle receipts retain their own source/package binding.
+The fresh results do not establish OS reboot, physical power loss, arbitrary
+concurrent actions, general rendering correctness or release/licensing clearance.
+G02 still needs its remaining chooser/startup/final-sampling, generation and
+late-poll adversaries; G03 responsive controls and G05 distribution closure remain
+separate lanes. The source merge's
+[main Build](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38305155209)
+passed its build, corpus, light/heavy browser, FPGA, deployment and published-GUI
+verification checks. The separate native and vendor main checks also passed.
+These results remain bound to that source merge rather than every later main.
+
 ## What works
 
 The same virtual hub and arena serve browser execution and desktop firmware
@@ -545,3 +632,78 @@ and packaged mirror identity. Removing either profile guard makes its dedicated
 refusal test fail. These are caller/transport tests; fresh combined installed
 qualification of the actual Code/arena path, profile refusals, cancellation and
 addressed-API/image negatives remains required before closing package adoption.
+
+
+The following retained-installer record and proposed slices describe their older
+consumer and capture point. Use the newer checkpoint above for reached work;
+these original observations are not relabelled as results for a later package.
+
+## Retained Linux installer qualification — 2026-10-12
+
+The fixed broker-failure classification in [PR805](https://github.com/CrispStrobe/brickwright-lite/pull/805)
+merged as `8f2cdf8a8867a7c996c5f68b8ca2fcbfcf303769` after every enabled
+check passed. It preserves fixed failure codes and does not expose native
+exception text. Its reviewed adapter/test files match the merged files.
+
+Separate direct-server tests used the retained installer for consumer
+`7282de2b426979c211efb2e67cd1902a8be7f4aa`, firmware
+`c99412b39a97e5ca74c90fdde2ef84d282794fc2`, Runtime
+`413380963e54b64f94f18d26466e1c6e941be8d2` and Infrastructure
+`1253d925accca23dfda66d5bca61e78498dcb64f`. They did not rebuild a package
+or adopt those pins on current main. Raw receipts and transcripts stay private.
+
+With two CPU cores, 2 GiB RAM and the default headless rendering configuration,
+opening the arena caused native debugger startup to fail. Captured own-runtime
+boot output showed GDB opening beyond the native startup deadline. Disabling
+WebKit compositing for the headless test (`WEBKIT_DISABLE_COMPOSITING_MODE=1`)
+restored actual broker startup with Code and arena open: READY in 57.4 seconds,
+a valid firmware frame and clean close. Native deadlines, guest simulated time,
+resource checks and permissions stayed unchanged. This is an observed test-host
+condition, not a general WebKit defect or a new application rendering default.
+
+Real installed Code/arena tests then observed:
+
+| Test | Observed boundary |
+| --- | --- |
+| Source/pseudocode | Actual upload, signed A/B motor motion, completion, second retained-session run and restoration of the default shared hub/sensors passed |
+| Python in own NuttX | Actual Python upload and completion passed; firmware frames/time advanced with the same session, followed by default hub restoration |
+| Active cancellation | Running → stopped → running → stopped, zero demands at both stops and retained-session identity passed; the overall scenario subsequently failed its specific-refusal assertion |
+| Native ACL | Actual broker acknowledgement, editor denial, replay rejection, real lease expiry and navigation/reload revocation passed |
+| Unsupported profiles | Both requests were rejected and left no GUI firmware session, but the retained installer did not distinguish the intended reasons; specific refusal qualification remains open |
+
+The initial GUI wait was the separately recorded 120-second diagnostic setting;
+assertions and numerical tolerances were unchanged. These observations establish
+neither current-main package qualification nor physical motor accuracy, external
+firmware compatibility or complete distribution licensing. The adoption
+[PR755](https://github.com/CrispStrobe/brickwright-lite/pull/755) remains draft.
+
+### Next implementation and qualification slices
+
+1. **Closed caller profile validation.** Review
+   `overlay/scratch-vm/src/extension-support/native-renode-capability.js`, the
+   start argument schema in `capability-broker.js`, and native policy/semantic
+   guards. Give callers distinguishable, fixed refusals for an unknown topology
+   and a custom topology without own NuttX. A frontend preflight can explain
+   these inputs without widening native error disclosure; label it as caller
+   validation and retain independent native refusal tests. Reject malformed
+   inputs, preserve a valid existing session after a local refusal, and prove
+   no broker dispatch/guest launch occurs. Keep native authorization denials
+   opaque and never forward arbitrary exception strings. Include negative
+   controls for an accepted invalid profile and a generic unrelated failure.
+2. **Image-bound API refusal.** Exercise absent/wrong addressed-sensor ABI and
+   wrong userspace identity through an actual installed package. Require refusal
+   before upload or motor demand and restoration of the shared hub. A generic
+   transport failure does not prove this reason. Keep valid E/F coverage and
+   existing default/six-motor profiles passing.
+3. **Fresh combined package.** Refresh main and the adoption candidate in an
+   isolated branch. Integrate the qualified source, error reporting and caller
+   validation normally, then build an exact source-bound package. Repeat actual
+   Code source/Python, completion, retained restart, active Stop, restoration,
+   profile/API refusal and native ACL tests. Record the tested consumer and pins;
+   do not transfer this retained-installer result to a newer package by inference.
+4. **Headless and distribution boundaries.** Preserve the default-rendering
+   failures and the explicit successful host setting. Qualification receipts
+   must record rendering mode, CPU/memory limits and initial wait. Continue G05
+   selected-component provenance/notices review before a release claim. Run CPU
+   qualification through the authorized direct-server route; private Actions and
+   Kaggle are not the test route for this work.

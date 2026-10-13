@@ -4,7 +4,8 @@
  * A level is the data of a `set Arcade tilemap` block, so it lives in a script,
  * not in a costume; this panel lists every such block in the project and edits
  * one: a tile palette whose tiles are drawn as palette pixels, paint / erase /
- * fill on the map, a separate wall layer, map and tile size, undo/redo. Save
+ * fill on the map, a separate wall layer, map and tile size, undo/redo, and
+ * where sprites start on the map (lib/bw-makecode/tilemap-placements.js). Save
  * writes the level back into the block it came from (lib/bw-makecode/
  * tilemap-editor.js); nothing changes before Save.
  */
@@ -17,6 +18,9 @@ import {
     TILE_SIZES, findTilemapBlocks, writeTilemapBlock, tilemapText, paintCell, eraseCell, fillCells, setWall, resizeTilemap,
     setTileSize, addTile, removeTile, paintTilePixel, renameTile, createHistory, commit, undo, redo, createTilemap, addTilemapBlock
 } from '../../lib/bw-makecode/tilemap-editor.js';
+import {
+    findMapPlacements, placeableSprites, stagePlacement, unstagePlacement, placementsChanged, writePlacements
+} from '../../lib/bw-makecode/tilemap-placements.js';
 
 const L10N = {
     en: {
@@ -33,7 +37,13 @@ const L10N = {
         'tm.legacyLayout': 'Colour-index layout. Tile artwork and walls remain in the colour-tile blocks.',
         'tm.computedScale': 'computed tile size', 'tm.computedImage': 'computed layout image', 'tm.mutableFrames': 'runtime frame definitions',
         'tm.missingArtwork': 'missing or ambiguous artwork', 'tm.layeredArtwork': 'edit this layered image in Pixel', 'tm.unsupportedArtwork': 'unsupported layout artwork',
-        'tm.tileName': 'Tile name', 'tm.invalidTileName': 'Use a unique tile name with 1–128 characters.'
+        'tm.tileName': 'Tile name', 'tm.invalidTileName': 'Use a unique tile name with 1–128 characters.',
+        'tm.place': 'Place sprite', 'tm.placements': 'Sprite placements', 'tm.placeSprite': 'Sprite to place',
+        'tm.placeHint': 'Click a cell to place the chosen sprite there; it starts on that tile when this level is set.',
+        'tm.noSprites': 'No sprite variable is used by an Arcade block yet: create a sprite and keep it in a variable first.',
+        'tm.noPlacements': 'No sprite is placed on this map.', 'tm.placedAt': '{sprite} on tile ({column}, {row})',
+        'tm.computedPlacement': '{sprite} on a computed tile', 'tm.outside': 'outside the map', 'tm.removePlacement': 'Remove',
+        'tm.placementsFailed': 'The map was saved, but the placements were not: the blocks changed since this map was opened.'
     },
     de: {
         'tm.title': 'Kachelkarten', 'tm.map': 'Kachelkarte', 'tm.none': 'Dieses Projekt hat keine Kachelkarte. Ein Level wird mit dem Arcade-Block „setze Kachelkarte“ gesetzt, den ein importiertes MakeCode-Arcade-Spiel mitbringt.',
@@ -49,7 +59,13 @@ const L10N = {
         'tm.legacyLayout': 'Farbindizierter Grundriss. Kachelgrafiken und Wände bleiben in den Farbkachel-Blöcken.',
         'tm.computedScale': 'berechnete Kachelgröße', 'tm.computedImage': 'berechnetes Grundrissbild', 'tm.mutableFrames': 'Bilddefinitionen zur Laufzeit',
         'tm.missingArtwork': 'fehlende oder mehrdeutige Grafik', 'tm.layeredArtwork': 'dieses Ebenenbild in Pixel bearbeiten', 'tm.unsupportedArtwork': 'nicht unterstützte Grundrissgrafik',
-        'tm.tileName': 'Kachelname', 'tm.invalidTileName': 'Verwende einen eindeutigen Kachelnamen mit 1–128 Zeichen.'
+        'tm.tileName': 'Kachelname', 'tm.invalidTileName': 'Verwende einen eindeutigen Kachelnamen mit 1–128 Zeichen.',
+        'tm.place': 'Figur platzieren', 'tm.placements': 'Figurenplätze', 'tm.placeSprite': 'Zu platzierende Figur',
+        'tm.placeHint': 'Klicke eine Zelle an, um die gewählte Figur dort zu platzieren; sie beginnt auf dieser Kachel, wenn das Level gesetzt wird.',
+        'tm.noSprites': 'Noch keine Figurenvariable wird von einem Arcade-Block benutzt: Erzeuge zuerst eine Figur und speichere sie in einer Variablen.',
+        'tm.noPlacements': 'Auf dieser Karte ist keine Figur platziert.', 'tm.placedAt': '{sprite} auf Kachel ({column}, {row})',
+        'tm.computedPlacement': '{sprite} auf einer berechneten Kachel', 'tm.outside': 'außerhalb der Karte', 'tm.removePlacement': 'Entfernen',
+        'tm.placementsFailed': 'Die Karte wurde gespeichert, die Platzierungen nicht: Die Blöcke haben sich seit dem Öffnen geändert.'
     }
 };
 const t = makeT(L10N);
@@ -84,7 +100,7 @@ class TilemapEditor extends React.Component {
         this.state = {maps, selected: first, history: first >= 0 ? createHistory(maps[first].data) : null,
             saved: first >= 0 ? maps[first].data : null, tool: 'paint', tile: maps[first]?.data?.images.length > 1 ? 1 : 0,
             tileNameDraft: null, colour: 2, showWalls: true, zoom: 2, status: '', columns: maps[first]?.data?.columns || 10,
-            rows: maps[first]?.data?.rows || 8};
+            rows: maps[first]?.data?.rows || 8, ...this.placementState(maps[first])};
         this.handleMapPointerDown = this.handleMapPointerDown.bind(this);
         this.handleMapPointerMove = this.handleMapPointerMove.bind(this);
         this.handleMapPointerUp = this.handleMapPointerUp.bind(this);
@@ -98,13 +114,24 @@ class TilemapEditor extends React.Component {
     get data () { return this.stroke ? this.stroke.data : this.state.history?.present; }
 
     /** True when the shown level differs from what the block holds. */
-    hasUnsavedChanges () { return Boolean(this.state.history && this.state.history.present !== this.state.saved); }
+    hasUnsavedChanges () {
+        return Boolean(this.state.history && (this.state.history.present !== this.state.saved ||
+            placementsChanged(this.state.placements, this.state.placementDraft)));
+    }
+
+    /** The placements on a map, read from its blocks, and the sprites a new one may use. */
+    placementState (map) {
+        const placements = map ? findMapPlacements(this.props.vm, map) : [];
+        const sprites = map ? placeableSprites(this.props.vm, map) : [];
+        return {placements, placementDraft: placements, sprites, placeSprite: sprites[0]?.id || null};
+    }
 
     selectMap (index) {
         const map = this.state.maps[index];
         if (!map || !map.editable) return;
         this.setState({selected: index, history: createHistory(map.data), saved: map.data, status: '',
-            tileNameDraft: null, tool: 'paint', tile: map.data.images.length > 1 ? 1 : 0, columns: map.data.columns, rows: map.data.rows});
+            tileNameDraft: null, tool: 'paint', tile: map.data.images.length > 1 ? 1 : 0, columns: map.data.columns, rows: map.data.rows,
+            ...this.placementState(map)});
     }
 
     commitTileName () {
@@ -132,7 +159,7 @@ class TilemapEditor extends React.Component {
             const maps = findTilemapBlocks(this.props.vm);
             const selected = maps.findIndex(map => map.blockId === ref?.blockId);
             this.setState({maps, selected, history: createHistory(maps[selected].data), saved: maps[selected].data,
-                tile: 1, tool: 'paint', columns: data.columns, rows: data.rows,
+                tile: 1, tool: 'paint', columns: data.columns, rows: data.rows, ...this.placementState(maps[selected]),
                 status: t(locale, 'tm.created', {target: maps[selected].targetName})});
         } catch (error) {
             this.setState({status: t(locale, 'tm.createFailed', {error: error.message})});
@@ -163,6 +190,11 @@ class TilemapEditor extends React.Component {
         const cell = this.cellAt(event);
         if (!cell || !this.state.history) return;
         const data = this.state.history.present;
+        if (this.state.tool === 'place') {
+            const sprite = this.state.sprites.find(each => each.id === this.state.placeSprite);
+            if (sprite) this.setState(state => ({placementDraft: stagePlacement(state.placementDraft, sprite, cell.column, cell.row), status: ''}));
+            return;
+        }
         if (this.state.tool === 'fill') {
             this.apply(fillCells(data, cell.column, cell.row, this.state.tile));
             return;
@@ -215,10 +247,18 @@ class TilemapEditor extends React.Component {
         const maps = findTilemapBlocks(this.props.vm);
         const written = maps[this.state.selected].data;
         const sharedChanged = tilemapText(written) !== tilemapText(data);
+        // Placements are separate blocks; write them after the map, refusing if
+        // those blocks changed since they were read.
+        let placementsSaved = true;
+        if (placementsChanged(this.state.placements, this.state.placementDraft)) {
+            placementsSaved = Boolean(writePlacements(this.props.vm, maps[this.state.selected],
+                this.state.placements, this.state.placementDraft));
+        }
         this.setState(state => ({maps, saved: sharedChanged ? written : data,
             history: sharedChanged ? commit(state.history, written) : state.history,
-            status: t(locale, 'tm.saved', {target: map.targetName})}));
-        return true;
+            ...(placementsSaved ? this.placementState(maps[state.selected]) : {}),
+            status: t(locale, placementsSaved ? 'tm.saved' : 'tm.placementsFailed', {target: map.targetName})}));
+        return placementsSaved;
     }
 
     draw () {
@@ -253,6 +293,18 @@ class TilemapEditor extends React.Component {
             ctx.lineWidth = 1;
             for (let c = 0; c <= data.columns; c++) { ctx.beginPath(); ctx.moveTo(c * size + 0.5, 0); ctx.lineTo(c * size + 0.5, h); ctx.stroke(); }
             for (let r = 0; r <= data.rows; r++) { ctx.beginPath(); ctx.moveTo(0, r * size + 0.5); ctx.lineTo(w, r * size + 0.5); ctx.stroke(); }
+            // Placed sprites: a ringed disc with the sprite's initial on its tile.
+            for (const entry of this.state.placementDraft || []) {
+                if (entry.removed || !entry.editable || entry.column >= data.columns || entry.row >= data.rows) continue;
+                const cx = (entry.column + 0.5) * size, cy = (entry.row + 0.5) * size, radius = Math.max(4, size * 0.4);
+                ctx.beginPath(); ctx.arc(cx, cy, radius, 0, 2 * Math.PI);
+                ctx.fillStyle = 'rgba(37, 99, 235, 0.85)'; ctx.fill();
+                ctx.lineWidth = 2; ctx.strokeStyle = '#ffffff'; ctx.stroke();
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `bold ${Math.max(8, Math.round(radius))}px sans-serif`;
+                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText((entry.sprite.name[0] || '?').toUpperCase(), cx, cy + 0.5);
+            }
         }
         const tileCanvas = this.tileCanvas.current;
         if (tileCanvas && data && data.images[this.state.tile]) {
@@ -264,6 +316,39 @@ class TilemapEditor extends React.Component {
             checker(ctx, tileCanvas.width, tileCanvas.height, scale);
             drawImage(ctx, image, 0, 0, scale);
         }
+    }
+
+    renderPlacements (locale, btn, label, data) {
+        const {tool, sprites, placeSprite, placementDraft} = this.state;
+        return (
+            <div data-testid="bw-tilemap-placements" style={{display: 'flex', flexDirection: 'column', gap: 4}}>
+                <strong style={{fontSize: 13}}>{t(locale, 'tm.placements')}</strong>
+                {tool === 'place' ? (sprites.length ? <>
+                    <label style={label}>{t(locale, 'tm.placeSprite')}
+                        <select data-testid="bw-tilemap-place-sprite" value={placeSprite || ''}
+                            onChange={event => this.setState({placeSprite: event.target.value})}>
+                            {sprites.map(sprite => <option key={sprite.id} value={sprite.id}>{sprite.name}</option>)}
+                        </select></label>
+                    <p style={{fontSize: 12, color: '#64748b', margin: 0}}>{t(locale, 'tm.placeHint')}</p>
+                </> : <p data-testid="bw-tilemap-no-sprites" style={{fontSize: 12, color: '#64748b', margin: 0}}>{t(locale, 'tm.noSprites')}</p>) : null}
+                {placementDraft.some(entry => !entry.removed) ? null :
+                    <p style={{fontSize: 12, color: '#64748b', margin: 0}}>{t(locale, 'tm.noPlacements')}</p>}
+                {placementDraft.map((entry, i) => entry.removed ? null : (
+                    <div key={entry.blockId || `new-${i}`} data-testid={`bw-tilemap-placement-${i}`}
+                        style={{display: 'flex', alignItems: 'center', gap: 4, fontSize: 12}}>
+                        <span style={{flex: 1, minWidth: 0}}>
+                            {entry.editable ? t(locale, 'tm.placedAt', {sprite: entry.sprite.name, column: entry.column, row: entry.row}) :
+                                t(locale, 'tm.computedPlacement', {sprite: entry.sprite?.name || '?'})}
+                            {entry.editable && (entry.column >= data.columns || entry.row >= data.rows) ?
+                                ` (${t(locale, 'tm.outside')})` : ''}
+                        </span>
+                        {entry.editable ? <button type="button" data-testid={`bw-tilemap-placement-remove-${i}`} style={btn(false)}
+                            onClick={() => this.setState(state => ({placementDraft: unstagePlacement(state.placementDraft, i)}))}>
+                            {t(locale, 'tm.removePlacement')}</button> : null}
+                    </div>
+                ))}
+            </div>
+        );
     }
 
     render () {
@@ -300,7 +385,7 @@ class TilemapEditor extends React.Component {
                         onChange={event => this.selectMap(Number(event.target.value))}>
                         {maps.map((map, i) => <option key={map.blockId} value={i} disabled={!map.editable}>{mapName(map, i)}</option>)}
                     </select>
-                    {(legacy ? ['paint', 'erase', 'fill'] : ['paint', 'erase', 'fill', 'wall']).map(name => (
+                    {(legacy ? ['paint', 'erase', 'fill'] : ['paint', 'erase', 'fill', 'wall', 'place']).map(name => (
                         <button key={name} type="button" data-testid={`bw-tilemap-tool-${name}`} aria-pressed={tool === name}
                             style={btn(tool === name)} onClick={() => this.setState({tool: name})}>
                             {t(locale, `tm.${name}`)}</button>
@@ -329,7 +414,8 @@ class TilemapEditor extends React.Component {
                     <span style={{flex: 1}} />
                     {this.hasUnsavedChanges() ? <span style={{fontSize: 12, color: '#b45309'}}>{t(locale, 'tm.unsaved')}</span> : null}
                     <button type="button" data-testid="bw-tilemap-revert" style={btn(false)} disabled={!this.hasUnsavedChanges()}
-                        onClick={() => this.setState(state => ({history: commit(state.history, state.saved)}))}>{t(locale, 'tm.revert')}</button>
+                        onClick={() => this.setState(state => ({history: commit(state.history, state.saved),
+                            placementDraft: state.placements}))}>{t(locale, 'tm.revert')}</button>
                     <button type="button" data-testid="bw-tilemap-save" style={{...btn(true), fontWeight: 600}}
                         onClick={() => this.save()}>{t(locale, 'tm.save')}</button>
                 </div>
@@ -387,6 +473,7 @@ class TilemapEditor extends React.Component {
                         ) : null}
                         </>}
                         {tool === 'wall' ? <p style={{fontSize: 12, color: '#64748b', margin: 0}}>{t(locale, 'tm.wallHint')}</p> : null}
+                        {legacy ? null : this.renderPlacements(locale, btn, label, data)}
                     </div>
                 </div>
                 <div data-testid="bw-tilemap-status" role="status" style={{fontSize: 12, color: '#334155', minHeight: 16}}>{status}</div>
