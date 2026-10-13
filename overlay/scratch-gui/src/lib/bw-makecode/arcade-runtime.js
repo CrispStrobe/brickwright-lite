@@ -21,6 +21,10 @@
 
 /** name -> {deps, ts}. Every helper's TypeScript, compiled by pxt-arcade in the tests. */
 export const HELPERS = {
+    scratchTimer: {deps: [],ts:`let __bwScratchTimerStart = control.millis()
+function __bwScratchTimer(): number { return (control.millis() - __bwScratchTimerStart) / 1000 }
+function __bwResetScratchTimer() { __bwScratchTimerStart = control.millis() }
+`},
     wait: {deps: [], ts: `class _Wait {
     n: number
     constructor () { this.n = 0 }

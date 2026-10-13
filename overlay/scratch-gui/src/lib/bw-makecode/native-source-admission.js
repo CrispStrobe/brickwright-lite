@@ -1,3 +1,4 @@
+import {LEGACY_SCROLLER_SOURCE_TEXT,LEGACY_SCROLLER_NATIVE_IDENTITY} from './legacy-scroller-source-admission.generated.js';
 import {TEXT_SPRITE_SOURCE_TEXT,TEXT_SPRITE_INITIALIZER,TEXT_SPRITE_NATIVE_IDENTITY} from './text-source-admission.generated.js';
 import {SPRITE_DATA_SOURCE_TEXT,SPRITE_DATA_NATIVE_IDENTITY,SPRITE_DATA_NATIVE_APIS} from './native-source-admission.generated.js';
 
@@ -27,7 +28,16 @@ const TEXT_SPRITE_RECEIPT=Object.freeze({
     initialization:'retain original SpriteKind.Text initializer at original file ordering; replace class and function installation with original native host',
     boundary:'symbolic kind identity; numeric kind allocation is not qualified; additional executable files and unimplemented callsites remain diagnosed'
 });
+const LEGACY_SCROLLER_RECEIPT=Object.freeze({
+    adapter:'arcade-background-scroll-single',source:LEGACY_SCROLLER_NATIVE_IDENTITY,
+    libraryNamespace:'scroller',libraryVersion:LEGACY_SCROLLER_NATIVE_IDENTITY.revision,
+    apis:Object.freeze(['scroller.scrollBackgroundWithCamera','scroller.scrollBackgroundWithSpeed','scroller.setCameraScrollingMultipliers','scroller.setBackgroundScrollOffset','scroller.getBackgroundXOffset','scroller.getBackgroundYOffset']),
+    nativeOpcodes:Object.freeze(['setBackgroundScrollVersion','scrollBackgroundWithCamera','scrollBackgroundWithSpeed','setBackgroundScrollMultipliers','setBackgroundScrollOffset','backgroundScrollOffset']),
+    initialization:'complete namespace enum/class/function installation in native host; lazy state and registrations begin at original first API operation',
+    boundary:'exact main.ts only; no layer APIs or additional executable files admitted'
+});
 export const admitArcadeNativeSource=({packageId,filename,source}={}) =>
+    packageId===LEGACY_SCROLLER_NATIVE_IDENTITY.packageId && filename===LEGACY_SCROLLER_NATIVE_IDENTITY.filename && source===LEGACY_SCROLLER_SOURCE_TEXT ? LEGACY_SCROLLER_RECEIPT :
     packageId===TEXT_SPRITE_NATIVE_IDENTITY.packageId && filename===TEXT_SPRITE_NATIVE_IDENTITY.filename && source===TEXT_SPRITE_SOURCE_TEXT ? TEXT_SPRITE_RECEIPT :
     packageId===SPRITE_DATA_NATIVE_IDENTITY.packageId &&
     filename===SPRITE_DATA_NATIVE_IDENTITY.filename &&

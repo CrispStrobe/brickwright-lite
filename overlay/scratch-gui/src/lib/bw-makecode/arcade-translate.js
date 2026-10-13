@@ -178,6 +178,7 @@ const MAX_ANIMATION_FRAMES = 24;
  * something we cannot resolve is reported rather than turned into a
  * variable of that name — see the note in expr().
  */
+const LEGACY_SCROLLER_REVISION='43651f88b917a98ad886fdd4c1c2ad8001ce9b9c';
 const SPRITE_PROPERTIES = new Set([
     'x', 'y', 'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale',
     'width', 'height', 'left', 'right', 'top', 'bottom',
@@ -199,10 +200,11 @@ const CONTROLLER_KEYS = {
 };
 
 class ArcadeTranslator extends BaseTranslator {
-    constructor (assets, tilemaps, assetKindLookup = null) {
+    constructor (assets, tilemaps, assetKindLookup = null, scrollerVersion = 'v0.1.2') {
         super();
         this.assets = assets || {};      // jres images by name
         this.assetKindLookup = assetKindLookup;
+        this.scrollerVersion = scrollerVersion;
         this.tilemaps = tilemaps || {};  // level name → grid of tile indexes
         this.sprites = [];               // {name, image, kind, velocity}
         this.self = null;                // the sprite the current script is on
@@ -863,7 +865,10 @@ class ArcadeTranslator extends BaseTranslator {
             if(a.length!==1){this.unsupported.push(`${name}() requires exactly one number`);return 'undefined value';}
             return `arcade ${name==='Math.sign'?'sign of':'truncate'} (${this.expr(a[0])})`;
         case 'randint': return `pick random ${this.mathOperand(a[0])} to ${this.mathOperand(a[1])}`;
-        case 'game.runtime': return 'timer * 1000';
+        case 'game.runtime':
+        case 'control.millis':
+            if(a.length || this.bindsName(name.split('.')[0])) {this.note(`${name}() needs its unshadowed zero-argument clock`);return 'undefined value';}
+            return name==='game.runtime'?'arcade scene runtime milliseconds':'arcade program runtime milliseconds';
         case 'controller.dx': return `arcade controller x step ${this.expr(a[0] || {type: 'Number', value: 100})}`;
         case 'controller.dy': return `arcade controller y step ${this.expr(a[0] || {type: 'Number', value: 100})}`;
         // Math.min/max/pow/map: the base translator's (task #400) — every
@@ -1109,6 +1114,7 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(this.handleTemplates && node?.type==='Call' && /^scroller\.getBackground[XY]Offset$/.test(this.path(node.callee)||'') && !this.bindsName('scroller')) {
             const a=node.args||[],layer=this.scrollerLayer(a[0]);
+            if(this.scrollerVersion===LEGACY_SCROLLER_REVISION && a.length) {this.note('Legacy background offset getters take no layer argument');return 'undefined value';}
             if(a.length>1 || layer===null){this.unsupported.push(`${this.path(node.callee)}() takes an optional layer`);return '0';}
             return `arcade background scroll offset ${/X/.test(this.path(node.callee))?'x':'y'} layer (${layer})`;
         }
@@ -2055,6 +2061,10 @@ class ArcadeTranslator extends BaseTranslator {
         }, method = name.slice(9);
         const layer = i => this.scrollerLayer(a[i]);
         const fail = message => { push(this.note(`scroller.${method}() ${message}`)); return true; };
+        if(this.scrollerVersion===LEGACY_SCROLLER_REVISION) {
+            const arity={scrollBackgroundWithCamera:[1,1],scrollBackgroundWithSpeed:[2,2],setCameraScrollingMultipliers:[0,2],setBackgroundScrollOffset:[2,2]}[method];
+            if(!arity || a.length<arity[0] || a.length>arity[1])return fail('is not available with these arguments in the selected single-background library');
+        }
         switch (method) {
         case 'scrollBackgroundWithCamera': {
             const mode = /^scroller\.CameraScrollMode\.(OnlyHorizontal|OnlyVertical|BothDirections)$/.exec(this.path(a[0]) || '');
@@ -2828,7 +2838,7 @@ const liftExporterStops = program => {
 // translator already has, rewritten to those before translation:
 //   Math.percentChance(p) is \`Math.randomRange(0, 99) < p\` (pxt-core math.ts),
 //   Math.clamp(lo, hi, v) is min(max(v, lo), hi), each argument read once,
-//   control.millis() is the time since the program started, as game.runtime().
+// Scene and program clocks keep distinct native reporters; no clock alias is lowered.
 const lowerLibraryCalls = program => {
     const callee = node => node?.type === 'Call' && node.callee?.type === 'Member' && node.callee.object?.type === 'Identifier' ?
         `${node.callee.object.name}.${node.callee.name}` : null;
@@ -2844,7 +2854,6 @@ const lowerLibraryCalls = program => {
                 args: [{type: 'Number', value: 0}, {type: 'Number', value: 99}]}, right: a[0]};
         }
         if (name === 'Math.clamp' && a.length === 3) return call('Math', 'min', [call('Math', 'max', [a[2], a[0]]), a[1]]);
-        if (name === 'control.millis' && a.length === 0) return call('game', 'runtime', []);
         return copy;
     };
     return visit(program);
@@ -3430,8 +3439,8 @@ const appendHandleProcedures = (translator, functions, parameterHandles, out, lo
  * older translator for programs with named sprites or other setup until the
  * handle path covers their full control flow.
  */
-const translateCreationEvents = (ast, assets, assetKindLookup = null) => {
-    const t = new ArcadeTranslator(assets, {}, assetKindLookup);
+const translateCreationEvents = (ast, assets, assetKindLookup = null, scrollerVersion = 'v0.1.2') => {
+    const t = new ArcadeTranslator(assets, {}, assetKindLookup, scrollerVersion);
     const calls = ast.body.map(st => st.type === 'ExpressionStatement' && st.expr?.type === 'Call' ? st.expr : null);
     const nameOf = call => call && t.path(call.callee);
     const created = calls.filter(call => nameOf(call) === 'sprites.onCreated');
@@ -3546,8 +3555,8 @@ const translateCreationEvents = (ast, assets, assetKindLookup = null) => {
 
 /** Handle-valued globals plus onCreated/onOverlap callbacks. Kept separate
  * from the fixed-target path until its other sprite APIs can use handles. */
-const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRuntime = false, assetKindLookup = null) => {
-    const t = new ArcadeTranslator(assets, tilemaps, assetKindLookup);
+const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRuntime = false, assetKindLookup = null, scrollerVersion = 'v0.1.2') => {
+    const t = new ArcadeTranslator(assets, tilemaps, assetKindLookup, scrollerVersion);
     const needsProjectileHandles = node => {
         if (!node || typeof node !== 'object') return false;
         if (node.type === 'Call' && ['sprites.onCreated', 'image.create'].includes(t.path(node.callee))) return true;
@@ -4101,8 +4110,8 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
 
 /** Top-level projectile creation with a named handle. PXT starts side
  * projectiles one pixel inside the incoming edge, then integrates velocity. */
-const translateSideProjectiles = (ast, assets, assetKindLookup = null) => {
-    const t = new ArcadeTranslator(assets, {}, assetKindLookup);
+const translateSideProjectiles = (ast, assets, assetKindLookup = null, scrollerVersion = 'v0.1.2') => {
+    const t = new ArcadeTranslator(assets, {}, assetKindLookup, scrollerVersion);
     const path = call => call && t.path(call.callee);
     const literal = node => node?.type === 'Number' ? Number(node.value) :
         node?.type === 'Unary' && node.op === '-' && node.argument?.type === 'Number' ?
@@ -4173,8 +4182,8 @@ const translateSideProjectiles = (ast, assets, assetKindLookup = null) => {
 /** Event-only Arcade snippets can be imported as real kind-filtered hats.
  * Their callback parameters are runtime handles even when the snippet itself
  * contains no sprite creation. */
-const translateOverlapOnly = (ast, assets, assetKindLookup = null) => {
-    const t = new ArcadeTranslator(assets, {}, assetKindLookup);
+const translateOverlapOnly = (ast, assets, assetKindLookup = null, scrollerVersion = 'v0.1.2') => {
+    const t = new ArcadeTranslator(assets, {}, assetKindLookup, scrollerVersion);
     const call = st => st.type === 'ExpressionStatement' && st.expr?.type === 'Call' ? st.expr : null;
     const overlap = st => call(st) && t.path(call(st).callee) === 'sprites.onOverlap';
     if (!ast.body.some(overlap)) return null;
@@ -4340,6 +4349,8 @@ export function arcadeToPseudocode (files, opts = {}) {
     // factories. Keep incomplete standalone snippets diagnosed when their
     // galleries are absent; only supplied root galleries establish null lookup.
     const rootAssetFiles=Object.fromEntries(Object.entries(map).filter(([name])=>!name.startsWith('__bwDependencyInputs/')));
+    let scrollerVersion='v0.1.2';
+    try {const cfg=JSON.parse(map['pxt.json'] || '{}');if(cfg.bwArcadeNativeLibraries?.scroller===LEGACY_SCROLLER_REVISION || Object.values(cfg.dependencies || {}).some(ref=>ref===`github:riknoll/arcade-background-scroll#${LEGACY_SCROLLER_REVISION}`))scrollerVersion=LEGACY_SCROLLER_REVISION;}catch{}
     let assetFileOrder;try{assetFileOrder=JSON.parse(map['pxt.json'] || '{}').files;}catch{}
     const assetKindLookup=Object.keys(rootAssetFiles).some(name=>/\.g\.jres$/.test(name)) ?
         createAssetKindLookup(rootAssetFiles,assetFileOrder?{fileOrder:assetFileOrder}:{}) : null;
@@ -4436,6 +4447,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const withAnimationDiagnostics = result => {
         result = nameArtworkSprites(result);
         let code = result.code;
+        if(scrollerVersion===LEGACY_SCROLLER_REVISION)code=code.replace(/^WHEN flag clicked:$/m, `WHEN flag clicked:\n  arcade use background scroll version "${scrollerVersion}"`);
         let costumes = result.costumes;
         if (projectPaletteHex) {
             const command = `  arcade set palette hex "${projectPaletteHex}"`;
@@ -4487,15 +4499,15 @@ export function arcadeToPseudocode (files, opts = {}) {
         node?.type==='Identifier' ? assets[node.name] : null;
     const nativeTilemaps = {};
     for(const [filename,text] of Object.entries(map))if(/\.g\.ts$/.test(filename))Object.assign(nativeTilemaps,parseNativeTilemaps(text,tileImageOf));
-    const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested, assetKindLookup);
+    const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested, assetKindLookup, scrollerVersion);
     if (namedEvents) return withAnimationDiagnostics(namedEvents);
-    const creationEvents = flattened && translateCreationEvents(flattened, assets, assetKindLookup);
+    const creationEvents = flattened && translateCreationEvents(flattened, assets, assetKindLookup, scrollerVersion);
     if (creationEvents) return withAnimationDiagnostics(creationEvents);
-    const sideProjectiles = namespaceBindings.program && translateSideProjectiles(ast, assets, assetKindLookup);
+    const sideProjectiles = namespaceBindings.program && translateSideProjectiles(ast, assets, assetKindLookup, scrollerVersion);
     if (sideProjectiles) return withAnimationDiagnostics(sideProjectiles);
-    const overlapOnly = namespaceBindings.program && translateOverlapOnly(ast, assets, assetKindLookup);
+    const overlapOnly = namespaceBindings.program && translateOverlapOnly(ast, assets, assetKindLookup, scrollerVersion);
     if (overlapOnly) return withAnimationDiagnostics(overlapOnly);
-    const t = new ArcadeTranslator(assets, tilemaps, assetKindLookup);
+    const t = new ArcadeTranslator(assets, tilemaps, assetKindLookup, scrollerVersion);
     t.unsupported.push(...animationDiagnostics, ...namespaceBindings.unsupported);
     // Before anything is emitted: a variable this program has to be
     // renamed must not land on a name the program already uses.
