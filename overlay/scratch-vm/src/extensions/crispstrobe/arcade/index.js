@@ -38,6 +38,7 @@ module.exports = makeExt(`// Name: Arcade
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
       this._renderables=new WeakMap();this._screen=null;this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._extensionCreationWaits=[];
       this._scenePushHandlers = [];this._scenePopHandlers = [];
+      this._scrollerVersion = 'v0.1.2';
       this._nextSpriteHandle = 0;this._globalElapsedMs = 0;this._nextMultiplayerState=2;
       this._buttonStates = {};this._controllerConnections={};this._controllerInputs={};
       this._activeLegacyAnimations = new Set();
@@ -128,6 +129,7 @@ module.exports = makeExt(`// Name: Arcade
           this._musicHost?.reset();this._musicIds=new Map();this._musicValues=new Map();this._musicGeneration=dependencies.buffers.newHeapId();
           this._bufferHeap = null;
           this._sevensegIds=new Map();this._sevensegValues=new Map();
+          this._scrollerVersion='v0.1.2';
           this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._scrollerModule=null;this._characterAnimationModule=null;
           this._carnivalHost?.cancel();this._carnivalHost=null;this._gameOver=null;this._buttonPressWaiters=[];
           this._clearBackground();
@@ -230,6 +232,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'carnivalGameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival game over style [STYLE] effect [EFFECT]',arguments:{STYLE:{type:Scratch.ArgumentType.STRING,menu:'carnivalStyles',defaultValue:'Win'},EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'}}},
           {opcode:'carnivalCustomGameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival custom game over message [MESSAGE] effect [EFFECT] sound [SOUND] use sound [HAS_SOUND] scoring [SCORING] score [SCORE] use score [HAS_SCORE]',arguments:{...str('MESSAGE','Great Job!'),EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'},...str('SOUND',''),HAS_SOUND:{type:Scratch.ArgumentType.BOOLEAN},SCORING:{type:Scratch.ArgumentType.STRING,menu:'carnivalScoring',defaultValue:'HScore'},...n('SCORE',0),HAS_SCORE:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'startImageEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade start image effect [EFFECT] times [TIMES] delay [DELAY] ms',arguments:{EFFECT:{type:Scratch.ArgumentType.STRING,menu:'imageEffects',defaultValue:'dissolve'},...n('TIMES',0),...n('DELAY',0)}},
+          {opcode:'setBackgroundScrollVersion',blockType:Scratch.BlockType.COMMAND,text:'Arcade background scroll version [VERSION]',arguments:{VERSION:{type:Scratch.ArgumentType.STRING,menu:'backgroundScrollVersions',defaultValue:'v0.1.2'}}},
           {opcode:'scrollBackgroundWithCamera',blockType:Scratch.BlockType.COMMAND,text:'Arcade scroll background with camera [MODE] layer [LAYER]',arguments:{MODE:{type:Scratch.ArgumentType.STRING,menu:'cameraScrollModes',defaultValue:'OnlyHorizontal'},...n('LAYER',0)}},
           {opcode:'scrollBackgroundWithSpeed',blockType:Scratch.BlockType.COMMAND,text:'Arcade scroll background vx [VX] vy [VY] layer [LAYER]',arguments:{...n('VX',-50),...n('VY',-50),...n('LAYER',0)}},
           {opcode:'setBackgroundScrollMultipliers',blockType:Scratch.BlockType.COMMAND,text:'Arcade set background scroll multipliers x [X] y [Y] layer [LAYER]',arguments:{...n('X',1),...n('Y',1),...n('LAYER',0)}},
@@ -799,7 +802,8 @@ module.exports = makeExt(`// Name: Arcade
           ,backgroundEffects: {acceptReporters: false, items: ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter']}
           ,legacyGameOverEffects: {acceptReporters: false, items: ['unset', 'confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter']}
           ,imageEffects: {acceptReporters: false, items: ['dissolve', 'melt', 'slash', 'splatter']}
-          ,cameraScrollModes: {acceptReporters: false, items: ['OnlyHorizontal', 'OnlyVertical', 'BothDirections']}
+          ,backgroundScrollVersions:{acceptReporters:false,items:[{text:'Layers (v0.1.2)',value:'v0.1.2'},{text:'Single background (legacy)',value:'43651f88b917a98ad886fdd4c1c2ad8001ce9b9c'}]},
+          cameraScrollModes: {acceptReporters: false, items: ['OnlyHorizontal', 'OnlyVertical', 'BothDirections']}
           ,scrollAxes: {acceptReporters: false, items: ['x', 'y']}
           ,characterFrameModes: {acceptReporters: false, items: ['loop', 'run']}
           ,characterFacings: {acceptReporters: false, items: ['Up', 'Right', 'Down', 'Left']}
@@ -3645,9 +3649,23 @@ module.exports = makeExt(`// Name: Arcade
     // (scroller-pxt.js). Its frame handler runs after the camera update and
     // before rendering, as PXT's pre-render priority places it; each layer is a
     // renderable of its scene.
+    setBackgroundScrollVersion(args) {
+      const version=String(args.VERSION);
+      if(!['v0.1.2','43651f88b917a98ad886fdd4c1c2ad8001ce9b9c'].includes(version)) {
+        this._runtime?.emit?.('BLOCKS_ERROR','Arcade background scroll version is not implemented: '+version);return;
+      }
+      if(this._scrollerModule && version!==this._scrollerVersion) {
+        this._runtime?.emit?.('BLOCKS_ERROR','Arcade background scroll version must be selected before its first operation.');return;
+      }
+      this._scrollerVersion=version;
+    }
     _scroller() {
       if (this._scrollerModule) return this._scrollerModule;
       const ext=this;
+      if(this._scrollerVersion==='43651f88b917a98ad886fdd4c1c2ad8001ce9b9c') {
+        this._scrollerModule=dependencies.createLegacyScrollerHost(this,imageEngine,dependencies.initializeLegacyScroller);
+        return this._scrollerModule;
+      }
       const wrap=raw=>raw?{raw,get width(){return raw.width;},get height(){return raw.height;}}:null;
       this._scrollerModule=dependencies.initializeScroller({
         game:{
@@ -3766,7 +3784,11 @@ module.exports = makeExt(`// Name: Arcade
       const list=this._frameHandlers.get(state);
       if(list)for(let i=0;i<list.length;i++)if(list[i].order>=low && list[i].order<high)list[i].handler();
     }
-    _scrollerLayer(value) {return Math.floor(Scratch.Cast.toNumber(value));}
+    _scrollerLayer(value) {
+      const layer=Math.floor(Scratch.Cast.toNumber(value));
+      if(this._scrollerVersion!=='v0.1.2' && layer!==0)throw new Error('Legacy Arcade background scroll does not support layers.');
+      return layer;
+    }
     scrollBackgroundWithCamera(args) {
       const modes={OnlyHorizontal:0,OnlyVertical:1,BothDirections:2},mode=modes[String(args.MODE)];
       if(mode===undefined){this._runtime?.emit?.('BLOCKS_ERROR','Arcade has no camera scroll mode "'+String(args.MODE)+'".');return;}
@@ -3776,11 +3798,14 @@ module.exports = makeExt(`// Name: Arcade
     setBackgroundScrollMultipliers(args) {this._scroller().scroller.setCameraScrollingMultipliers(Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y),this._scrollerLayer(args.LAYER));}
     setBackgroundScrollOffset(args) {this._scroller().scroller.setBackgroundScrollOffset(Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y),this._scrollerLayer(args.LAYER));}
     setBackgroundLayerImage(args) {
+      if(this._scrollerVersion!=='v0.1.2') {this._runtime?.emit?.('BLOCKS_ERROR','Legacy Arcade background scroll does not support layers.');return;}
       const image=this._image(args.IMAGE);
       if(!image){this._runtime?.emit?.('BLOCKS_ERROR','Arcade background layers need an image.');return;}
       this._scroller().scroller.setLayerImage(this._scrollerLayer(args.LAYER),{raw:image,get width(){return image.width;},get height(){return image.height;}});
     }
-    setBackgroundLayerZ(args) {this._scroller().scroller.setLayerZIndex(this._scrollerLayer(args.LAYER),Scratch.Cast.toNumber(args.Z));}
+    setBackgroundLayerZ(args) {
+      if(this._scrollerVersion!=='v0.1.2') {this._runtime?.emit?.('BLOCKS_ERROR','Legacy Arcade background scroll does not support layers.');return;}
+      this._scroller().scroller.setLayerZIndex(this._scrollerLayer(args.LAYER),Scratch.Cast.toNumber(args.Z));}
     backgroundScrollOffset(args) {
       const scroller=this._scroller().scroller,layer=this._scrollerLayer(args.LAYER);
       return String(args.AXIS)==='y' ? scroller.getBackgroundYOffset(layer) : scroller.getBackgroundXOffset(layer);
@@ -4947,6 +4972,8 @@ module.exports = makeExt(`// Name: Arcade
   initializeSevenseg: require('./sevenseg-pxt'),
   initializeSpriteExtensions: require('./sprite-extensions-pxt'),
   initializeScroller: require('./scroller-pxt'),
+  initializeLegacyScroller: require('./legacy-scroller-pxt'),
+  createLegacyScrollerHost: require('./legacy-scroller-host'),
   initializeCharacterAnimations: require('./character-animations-pxt'),
   initializeText: require('./text-pxt'),
   createMusic: require('./music'),
