@@ -403,19 +403,25 @@ class SpikeArenaPane extends React.Component {
 
     // New MicroPython selection glue: BSD-3-Clause, (c) 2026 Brickwright contributors.
     async chooseMicroPythonImage () {
+        if (this.disposed || this.state.execution !== 'micropython') return false;
         const choose = this.nativeCapabilities()?.['renode.spike.micropython.image.choose'];
         if (!choose) throw new Error(this.locale === 'de' ? 'MicroPython benötigt das Desktop-Paket.' : 'MicroPython requires the desktop package.');
+        const choice = this.imageChoice = {};
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.imageChoice === choice &&
+            this.programIntent === intent && this.state.execution === 'micropython';
         this.setState({microImageSelected: false, status: 'choosing', message: this.locale === 'de' ? 'Lokales MicroPython-Anwendungsimage auswählen…' : 'Choose a local MicroPython application image…'});
         try {
             const result = await choose({});
-            if (this.disposed || this.state.execution !== 'micropython') return false;
+            if (!current()) return false;
             if (!['selected', 'cancelled'].includes(result)) throw new Error('Unexpected image selection result');
             this.setState({microImageSelected: result === 'selected', status: 'ready', message: result === 'selected' ?
                 (this.locale === 'de' ? 'Image ausgewählt. Python im Code-Tab ausführen.' : 'Image selected. Run Python from the Code tab.') :
                 (this.locale === 'de' ? 'Image-Auswahl abgebrochen.' : 'Image selection cancelled.')});
             return result === 'selected';
         } catch (error) {
-            if (!this.disposed) this.setState({status: 'failed', message: error.message});
+            if (!current()) return false;
+            this.setState({status: 'failed', message: error.message});
             throw error;
         }
     }

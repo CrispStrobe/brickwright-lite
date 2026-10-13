@@ -307,7 +307,7 @@ its replacement and no leaked owned process. Mutating a terminal/ownership guard
 must fail the comparison. Doable now; no externally supplied firmware needed for
 small-guest/NuttX cases.
 
-The first source candidate on `lane/spike-g02-lifecycle-20261013` invalidates a
+The source candidate on `lane/spike-g02-lifecycle-20261013` invalidates a
 pending native Start when Stop or Reset runs, and checks pane disposal, bridge
 identity and backend intent after asynchronous teardown and connection. It also
 keeps late connection errors from replacing newer feedback. Focused controls in
@@ -316,8 +316,12 @@ Reset; removing cancellation or ownership guards must fail these comparisons.
 The installed baseline reproduced late native starts after backend selection,
 Reset and pane unmount using an explicitly delayed real connection return.
 Those observations qualify the baseline defect, not this source candidate.
+The candidate also invalidates pending image choices on Stop, backend changes
+and newer chooser requests. Stale selections and errors return cancellation;
+current selection, cancellation and errors retain their existing behavior.
+Focused actual-method controls include backend round trips and disposal.
 Exact-head CI and a fresh installed candidate package remain required. Broader
-G02 teardown, chooser, final-sampling and generation closure remains open.
+G02 teardown, installed chooser, final-sampling and generation closure remains open.
 
 ### G03 — Qualify usable sandbox and responsive editor controls
 

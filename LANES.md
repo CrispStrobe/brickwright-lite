@@ -3275,9 +3275,11 @@ fetch restricted images, fabricate reference storage/mapping or infer physical
 safety, full G02 coverage or distribution closure from bounded simulations.
 
 
-Implementation in progress: the first candidate fences native Start across
+Implementation in progress: the candidate fences native Start across
 teardown and connection waits using Stop revision, bridge/backend identity and
-pane disposal. Dedicated actual-method controls live in
+pane disposal. It also invalidates old image choices on Stop, backend changes
+and newer requests, suppressing stale selections and errors while preserving
+current chooser results. Dedicated actual-method controls live in
 `test/spike-arena-pane-lifecycle.test.mjs`; baseline installed connection-return
 races and normal Start/Reset recovery are preserved separately. This candidate
 has not been qualified in a fresh installed package and does not close G02.
