@@ -199,7 +199,7 @@ export async function stepFrames(vm, frames, frameMs = 1000 / 30) {
     }
 }
 
-export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false, retainExtensionTimers = false} = {}) {
+export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false, retainExtensionTimers = false, frameAuthority = 'manual'} = {}) {
     const creator = new SB3Creator();
     creator.parse(source);
     for (const upload of uploads) {
@@ -217,7 +217,13 @@ export async function runProgram (source, {frames = 12, keys = [], uploads = [],
         } else creator.applyCustomSVG(upload.sprite, upload.svg);
     }
     const buffer = Buffer.from(await (await creator.generateSB3()).arrayBuffer());
+    if(!['manual','timed'].includes(frameAuthority))throw new Error('Frame authority must be manual or timed');
     const vm = new VM();
+    // Historical finite fixtures explicitly supply manual physical frames and
+    // retain their real program/wait clock. GUI runtimes never receive this flag.
+    // Exact source timer/scene controls select timed and inject an independent
+    // now/setTimeout/clearTimeout platform; a frame delta is not a timer clock.
+    vm.runtime.bwArcadeFrameAuthority=frameAuthority;
     if (storage) {
         const Storage = (await importGuiDependency('scratch-storage/dist/node/scratch-storage.js')).default;
         vm.attachStorage(new Storage());

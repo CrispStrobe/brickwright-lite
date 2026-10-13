@@ -78,7 +78,7 @@ module.exports = makeExt(`// Name: Arcade
       this._terrainFrame = null;
       this._terrainStopped = false;
       if (runtime && runtime.on) {
-        runtime.on('ARCADE_FRAME', elapsedMs => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); this._pumpQuestion(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? elapsedMs : 1000 / 30); this._advance(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? elapsedMs / 1000 : 1 / 30); this._musicHost?.pump(); });
+        runtime.on('ARCADE_FRAME', elapsedMs => { if(this._sourceSceneTimers())return;this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); this._pumpQuestion(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? elapsedMs : 1000 / 30); this._advance(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? elapsedMs / 1000 : 1 / 30); this._musicHost?.pump(); });
         runtime.on('ARCADE_FRAME_END', () => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); });
         runtime.on('ARCADE_DIALOG_BUTTON_EDGE',(button,held)=>{if(this._dialogs?.[0]?.type==='ask')this._questionButtonEdge(button,held);else this._nativeDialogButtonEdge(button,held);});
         runtime.on('ARCADE_CONTROLLER_INPUT',(player,button,held)=>this._observeControllerInput(player,button,held));
@@ -910,7 +910,11 @@ module.exports = makeExt(`// Name: Arcade
       const supplied=this._runtime?.bwArcadeProgramClock;
       const now=supplied===undefined ? (()=>globalThis.performance?.now?.() ?? Date.now()) :
         supplied && typeof supplied.now==='function' ? supplied.now.bind(supplied) : null;
-      const epoch={now,start:undefined,last:0,active:true};this._programClockEpoch=epoch;
+      const suppliedTimers=supplied && (supplied.setTimeout!==undefined || supplied.clearTimeout!==undefined);
+      if(suppliedTimers && (typeof supplied.setTimeout!=='function' || typeof supplied.clearTimeout!=='function'))throw new Error('Arcade program timer source needs setTimeout and clearTimeout');
+      const epoch={now,start:undefined,last:0,active:true,timerAuthority:supplied===undefined || suppliedTimers,
+        setTimeout:suppliedTimers?supplied.setTimeout.bind(supplied):supplied===undefined?globalThis.setTimeout.bind(globalThis):undefined,
+        clearTimeout:suppliedTimers?supplied.clearTimeout.bind(supplied):supplied===undefined?globalThis.clearTimeout.bind(globalThis):undefined};this._programClockEpoch=epoch;
       if(!now)throw new Error('Arcade program clock source needs a now function');
       const start=now();
       if(this._programClockEpoch!==epoch || !Number.isFinite(start))throw new Error('Arcade program clock initialization is invalid');
@@ -1150,10 +1154,25 @@ module.exports = makeExt(`// Name: Arcade
       const engine={id,members:[],maxVelocity:(Number(maxSpeed)*256)|0,minSingleStep:(Number(minStep)*256)|0,maxSingleStep:(Number(maxStep)*256)|0};
       this._physicsEngines.set(id,engine);return engine;
     }
+    _sourceSceneTimers() {return !!(this._runtime?.bwArcadeFrameAuthority!=='manual' && this._programClockEpoch?.active && this._programClockEpoch.timerAuthority && this._runtime?._arcadeFramePhase?.hasSourceProject());}
+    _sceneFrameContexts() {
+      if(!this._sceneFrameHost){
+        const epoch=this._programClockEpoch;
+        this._sceneFrameHost=dependencies.createSceneFrameContexts({now:()=>this._programMillis(),
+          setTimeout:epoch.setTimeout,clearTimeout:epoch.clearTimeout,polls:()=>this._nativePollEvents(),
+          runFrame:(owner,delta)=>this._runtime._arcadeFramePhase.requestSceneFrame(()=>{
+            if(this._state()!==owner)return;
+            this._globalElapsedMs=this._programMillis();this._pumpQuestion(delta);
+            const result=this._advance(delta/1000);this._musicHost?.pump();return result;
+          }),onError:error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error))});
+      }
+      return this._sceneFrameHost;
+    }
     _ensureSceneEngine(state) {
       if(state.elapsedMs===undefined)state.elapsedMs=0;
       if(this._sceneValues.get(state._sceneValueId)!==state){state._sceneValueId='arcade-scene:'+(++this._nextSceneValue);this._sceneValues.set(state._sceneValueId,state);}
       if(this._physicsEngines.get(state.physicsEngine?.id)!==state.physicsEngine || !state.physicsEngine)state.physicsEngine=this._newPhysicsEngine();
+      if(this._sourceSceneTimers())this._sceneFrameContexts().register(state);
     }
     _sceneValue(value) {return this._sceneValues.get(Scratch.BWValues.referenceId(this._runtime,value,'scene'));}
     _engineValue(value) {return this._physicsEngines.get(Scratch.BWValues.referenceId(this._runtime,value,'physics-engine'));}
@@ -1209,12 +1228,12 @@ module.exports = makeExt(`// Name: Arcade
     }
     pushScene(args,util) {
       if(this._particleModule){this._particleModule.particles.clearAll();this._particleModule.particles.disableAll();}
-      const old=this._sceneBundle();this._sceneBundles.add(old);this._sceneStack.push(old);this._sceneVisible(old,false);
+      const old=this._sceneBundle();this._sceneFrameHost?.unregister(old.state);this._sceneBundles.add(old);this._sceneStack.push(old);this._sceneVisible(old,false);
       this._activateScene(this._freshScene(old.state));
       return this._runTerrainGenerator(this._sceneHandlerSteps(this._scenePushHandlers.slice(),'arcade_whenRegisteredScenePush',util));
     }
     popScene(args,util) {
-      const old=this._sceneBundle();this._sceneBundles.add(old);this._sceneVisible(old,false);
+      const old=this._sceneBundle();this._sceneFrameHost?.unregister(old.state);this._sceneBundles.add(old);this._sceneVisible(old,false);
       const restored=this._sceneStack.pop() || this._freshScene(old.state);this._sceneBundles.delete(restored);this._activateScene(restored);
       if(this._particleModule)this._particleModule.particles.enableAll();
       return this._runTerrainGenerator(this._sceneHandlerSteps(this._scenePopHandlers.slice(),'arcade_whenRegisteredScenePop',util));
@@ -2025,8 +2044,21 @@ module.exports = makeExt(`// Name: Arcade
       this._controllerButtonEdge(1,button,held);
     }
     _cancelNativeTextDialogs() {
+      this._sceneFrameHost?.cancel();this._sceneFrameHost=null;
+      this._pollEvents?.cancel();this._pollEvents=null;
       for(const dialog of this._nativeTextDialogs || []){dialog.closed=true;dialog.resolve();}
       this._nativeTextDialogs=[];this._userControllerEvents=true;
+    }
+    _nativePollEvents() {
+      if(!this._pollEvents){
+        const epoch=this._programClockEpoch;
+        if(!epoch?.timerAuthority)throw new Error('Native Arcade condition polling requires program timer authority; a now-only manual clock supplies frames but not timers');
+        this._pollEvents=dependencies.createPollEvents({now:()=>this._programMillis(),
+          setTimeout:epoch.setTimeout,clearTimeout:epoch.clearTimeout,
+          onReady:()=>this._runtime?._arcadeFramePhase?.requestContinuation(),
+          onError:error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error))});
+      }
+      return this._pollEvents;
     }
     _startNativeTextDialog(type,title,subtitle,layout,util) {
       // BlockUtility is shared across concurrently running VM threads.
@@ -2041,7 +2073,7 @@ module.exports = makeExt(`// Name: Arcade
         [width,height,left,top]=sizes[layout];
       }
       return new Promise(resolve=>{
-        const dialog={type,title:text,subtitle:subtext,layout,body:null,owner,epoch,resolve,closed:false,pressed:true,upPressed:true};
+        const dialog={type,title:text,subtitle:subtext,layout,body:null,owner,epoch,resolve,closed:false,done:false,pressed:true,upPressed:true};
         this._nativeTextDialogs.push(dialog);this._showNextDialog();
         const ready=()=>{
           if(dialog.closed || epoch!==this._terrainEpoch)return;
@@ -2056,6 +2088,13 @@ module.exports = makeExt(`// Name: Arcade
             if(type==='longText'){this.setSpriteProperty({ID:id,PROPERTY:'left',VALUE:left});this.setSpriteProperty({ID:id,PROPERTY:'top',VALUE:top});}
             this._updateHandlers.push({host:()=>this._updateNativeTextDialog(dialog,util)});
             this._showNextDialog();
+            // The original pauseUntil(done) checks optimistically and then
+            // waits for the shared condition-poll event, independently of frames.
+            if(dialog.done)resolve();
+            else this._nativePollEvents().enqueue(()=>dialog.done,()=>{
+              if(dialog.epoch!==this._terrainEpoch)return;
+              this._userControllerEvents=true;resolve();
+            });
           };
           if(created?.then)created.then(complete).catch(error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error)));else complete(created);
         };
@@ -2084,7 +2123,7 @@ module.exports = makeExt(`// Name: Arcade
       const finish=()=>{
         if(dialog.epoch!==this._terrainEpoch)return;
         this._nativeTextDialogs=this._nativeTextDialogs.filter(value=>value!==dialog);
-        this._userControllerEvents=true;this._showNextDialog();dialog.resolve();
+        this._showNextDialog();dialog.done=true;
       };
       if(popped?.then)popped.then(finish).catch(error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error)));else finish();
     }
@@ -5307,7 +5346,7 @@ module.exports = makeExt(`// Name: Arcade
       const epoch=this._terrainEpoch;
       const state = this._state();
       state.frameDeltaTime=dt;
-      this._globalElapsedMs+=dt*1000;
+      if(!this._sourceSceneTimers())this._globalElapsedMs+=dt*1000;
       state.elapsedMs = (state.elapsedMs || 0) + dt * 1000;
       yield* this._sceneButtons(dt);if(this._state()!==state)return;
       // The countdown runs down with the frame but ends in the HUD pass, below.
@@ -5409,7 +5448,12 @@ module.exports = makeExt(`// Name: Arcade
   Scratch.extensions.register(new Arcade(Scratch.vm && Scratch.vm.runtime));
 })(Scratch);
 `, {
+<<<<<<< HEAD
   createObjectHeap: require('./object-heap'),
+=======
+  createSceneFrameContexts: require('./scene-frame-contexts'),
+  createPollEvents: require('./poll-events'),
+>>>>>>> e29c1bc89e (Run Arcade scene frames and dialog polls on owned program timers)
   createKindRegistry: require('./kind-registry'),
   createTextSpriteHost: require('./text-sprite-host'),
   initializeTextSprite: require('./text-sprite-pxt'),
