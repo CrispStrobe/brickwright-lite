@@ -29,6 +29,7 @@ const legacyOverlap = (rt, pushed, includeCreated = false) => {
 };
 let originalMotion;
 const motionOracle = () => originalMotion ||= runPxtArcade(`
+namespace SpriteKind {export const Friend=SpriteKind.create()}
 let artwork=image.create(16,16)
 artwork.fill(2)
 let moving=sprites.create(artwork,SpriteKind.Player)
@@ -51,6 +52,12 @@ let secondX=bouncing.x
 let secondY=bouncing.y
 let secondVx=bouncing.vx
 let secondVy=bouncing.vy
+let friendKind=SpriteKind.Friend
+let friendBefore=sprites.allOfKind(SpriteKind.Friend).length
+moving.setKind(SpriteKind.Friend)
+let friendAfter=sprites.allOfKind(SpriteKind.Friend).length
+moving.destroy()
+let friendDestroyed=sprites.allOfKind(SpriteKind.Friend).length
 `);
 
 test('Arcade handle blocks are defined and implemented for the GUI and VM', () => {
@@ -78,11 +85,17 @@ test('Arcade sprite handles preserve identity, kinds, AABB overlap, and physics 
     ext.setSpriteProperty({ID: first, PROPERTY: 'vx', VALUE: 30});
     rt.emit('ARCADE_FRAME');
     assert.equal(ext.spriteProperty({ID: first, PROPERTY: 'x'}), (await motionOracle()).frameX);
+    const selected=await motionOracle();
+    assert.throws(()=>ext.setSpriteKind({ID:first,KIND:'Friend'}),/Unregistered or nonnumeric/,'unknown authored names cannot allocate kinds');
+    const friend=ext.createSpriteKind({});assert.equal(friend,selected.friendKind);
+    ext.bindSpriteKind({NAME:'Friend',KIND:friend});
+    assert.equal(ext.spriteCount({KIND:'Friend'}),selected.friendBefore);
     ext.setSpriteKind({ID: first, KIND: 'Friend'});
+    assert.equal(rt.bwArcadeDeviceState.sprites[first].kind,selected.friendKind);
     assert.equal(ext.spriteCount({KIND: 'Player'}), 0);
-    assert.equal(ext.spriteCount({KIND: 'Friend'}), 1);
+    assert.equal(ext.spriteCount({KIND: 'Friend'}), selected.friendAfter);
     ext.destroySprite({ID: first});
-    assert.equal(ext.spriteCount({KIND: 'Friend'}), 0);
+    assert.equal(ext.spriteCount({KIND: 'Friend'}), selected.friendDestroyed);
 });
 
 test('changing a pixel-art costume updates the handle bounds used by overlap', () => {

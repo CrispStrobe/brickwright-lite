@@ -5,6 +5,7 @@ import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import BWValues from '../overlay/scratch-vm/src/util/bw-values.js';
 import {compile} from '../scripts/lib/pxt-node.mjs';
+import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 async function execute(source,frames=120){const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[],JSON.stringify(imported));const run=await runProgram(imported.code,{frames,uploads:imported.costumes,storage:true});assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);run.imported=imported;return run;}
 async function roundtrip(source,verify,frames=120){
@@ -167,9 +168,10 @@ hero.setPosition(30,40)
 friend.setPosition(60,70)
 shot.setPosition(90,80)
 let width=hero.width`;
+    const original=await runPxtArcade(source+'\nlet projectileKind=shot.kind();let projectileX=shot.x;let heroX=hero.x;let friendX=friend.x',{fakeClock:true});
     await roundtrip(source,run=>{
         const s=Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);assert.equal(s.length,3);
-        assert.equal(s[0].x,30);assert.equal(s[1].x,60);assert.equal(s[2].x,90);assert.equal(s[2].kind,'Projectile');
+        assert.equal(s[0].x,original.heroX);assert.equal(s[1].x,original.friendX);assert.equal(s[2].x,original.projectileX);assert.equal(s[2].kind,original.projectileKind);
         assert.equal(Number(vars(run).width),2);
     });
 });

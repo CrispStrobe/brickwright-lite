@@ -10,6 +10,7 @@ let actor=sprites.create(img\`. . . .\n. . . .\n. 2 2 .\n. 2 2 .\`,SpriteKind.Pl
 actor.setPosition(80,60)
 `;
 const capture=`pause(60)
+let bubbleKind=bubble.kind()
 let bx=bubble.x
 let by=bubble.y
 let bw=bubble.width
@@ -36,7 +37,7 @@ for(const [name,body] of cases)test('legacy speech owner hitbox matches original
  const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
  const run=await runProgram(imported.code,{frames:40,uploads:imported.costumes,storage:true});
  assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
- const state=run.vm.runtime.bwArcadeDeviceState,b=Object.values(state.sprites).find(s=>s.kind==='-1');
+ const state=run.vm.runtime.bwArcadeDeviceState,b=Object.values(state.sprites).find(s=>s.kind===original.bubbleKind);
  assert.deepEqual([b.x,b.y,b.width,b.height],[original.bx,original.by,original.bw,original.bh]);
  assert.equal(original.raster.length,19200);
  assert.deepEqual([...state.sceneFrame.pixels],Array.from(original.raster,ch=>parseInt(ch,16)));

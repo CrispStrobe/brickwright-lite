@@ -7,6 +7,7 @@ import {SB3Creator, runProgram, stepFrames} from './helpers/bw-vm.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {compile} from '../scripts/lib/pxt-node.mjs';
+import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const Arcade = loadExtensionClass('arcade');
 function setup () {
     const rt = new EventEmitter(); rt.startHats = () => []; rt.requestRedraw = () => {};
@@ -63,12 +64,15 @@ hero.setFlag(SpriteFlag.GhostThroughTiles, false)
 hero.setFlag(SpriteFlag.StayInScreen, true)
 hide(hero)
 hide(foe)`;
+    const observed='\nlet heroKind=hero.kind();let foeKind=foe.kind();let heroFlags=hero.flags;let foeFlags=foe.flags';
+    const original=await runPxtArcade(source+observed,{fakeClock:true});
     const imported = arcadeToPseudocode(source); assert.deepEqual(imported.unsupported, []);
     const run = await runProgram(imported.code, {frames: 5, uploads: imported.costumes, storage: true});
     assert.deepEqual(run.errors, []); assert.deepEqual(run.creator.warnings, []);
     const state = Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);
-    assert.equal(state.find(s => s.kind === 'Player').flags, 6280);
-    assert.equal(state.find(s => s.kind === 'Enemy').flags, 128);
+    assert.equal(original.heroFlags,6280);assert.equal(original.foeFlags,128);
+    assert.equal(state.find(s => s.kind === original.heroKind).flags, original.heroFlags);
+    assert.equal(state.find(s => s.kind === original.foeKind).flags, original.foeFlags);
     const recreated = new SB3Creator(); recreated.parse(run.creator.decompile());
     assert.deepEqual(recreated.warnings, []);
     const out = exported(run.creator); assert.deepEqual(out.unsupported, []);
@@ -95,7 +99,7 @@ controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
     const run = await runProgram(result.code, {frames: 4, uploads: result.costumes, storage: true});
     for (let n = 0; n < 2; n++) {
         run.vm.postIOData('keyboard', {key: ' ', isDown: true});
-        for (let i = 0; i < 4; i++) run.vm.runtime._step(1000 / 30);
+        await stepFrames(run.vm,4,1000/30);
         run.vm.postIOData('keyboard', {key: ' ', isDown: false});
     }
     assert.deepEqual(run.creator.warnings, []); assert.deepEqual(run.errors, []);
@@ -116,7 +120,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function () {
     const run = await runProgram(result.code, {frames: 4, uploads: result.costumes, storage: true});
     for (const expected of [true, false, true]) {
         run.vm.postIOData('keyboard', {key: 'z', isDown: true});
-        for (let i = 0; i < 4; i++) run.vm.runtime._step(1000 / 30);
+        await stepFrames(run.vm,4,1000/30);
         run.vm.postIOData('keyboard', {key: 'z', isDown: false});
         assert.equal(Object.values(run.vm.runtime.bwArcadeDeviceState.sprites)[0].invisible, expected);
     }
@@ -136,7 +140,7 @@ controller.B.onEvent(ControllerButtonEvent.Pressed, function () {
     const recreated = await runProgram(again.code, {frames: 4, uploads: again.costumes, storage: true});
     for (const expected of [true, false]) {
         recreated.vm.postIOData('keyboard', {key: 'z', isDown: true});
-        for (let i = 0; i < 4; i++) recreated.vm.runtime._step(1000 / 30);
+        await stepFrames(recreated.vm,4,1000/30);
         recreated.vm.postIOData('keyboard', {key: 'z', isDown: false});
         assert.equal(Object.values(recreated.vm.runtime.bwArcadeDeviceState.sprites)[0].invisible, expected);
     }
@@ -156,21 +160,26 @@ test('pinned firework source retains local creation, Ghost, and sprite image mut
     run.vm.postIOData('keyboard', {key: ' ', isDown: false});
     assert.deepEqual(run.creator.warnings, []); assert.deepEqual(run.errors, []);
     const firework = Object.values(run.vm.runtime.bwArcadeDeviceState.sprites)[0];
-    assert.equal(firework.kind, 'Firework'); assert.equal(firework.flags, 7172);
+    const observed=`\nlet observedKind=-1;let observedFlags=-1;let observedVy=0;let observedReady=0;control.runInParallel(function(){pause(120);let sample=sprites.allOfKind(SpriteKind.Firework)[0];observedKind=sample.kind();observedFlags=sample.flags;observedVy=sample.vy;observedReady=1})`;
+    const original=await runPxtArcade(source+observed,{fakeClock:true,waitForGlobals:{observedReady:1},buttonActions:{steps:[{delay:100,button:5,held:true},{delay:40,button:5,held:false}]}});
+    assert.equal(firework.kind,original.observedKind);assert.equal(firework.flags,original.observedFlags);assert.equal(original.observedFlags,7172);
     assert.equal(firework.vy, -15);
 });
 
-test('unknown flags remain explicit gaps in import and authored Code', () => {
-    const result = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nhero.setFlag(SpriteFlag.ShowPhysics, true)');
+test('unknown flags remain explicit gaps in import and authored Code', async () => {
+    const result = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nhero.setFlag(SpriteFlag.NoSuchFlag, true)');
     assert.ok(result.unsupported.some(gap => gap.includes('setFlag')));
+    const rejected=await compile('arcade',{'main.ts':'let hero=sprites.create(img`1`,SpriteKind.Player);hero.setFlag(SpriteFlag.NoSuchFlag,true)','pxt.json':JSON.stringify({name:'owned-unknown-flag',dependencies:{device:'*'},files:['main.ts']})});
+    assert.equal(rejected.success,false,'the selected SDK also refuses the unknown enum member');
+    assert.ok(rejected.diagnostics.some(d=>JSON.stringify(d).includes('NoSuchFlag')));
     // E0: the dialect refuses an unknown flag by name rather than warning.
-    assert.throws(() => new SB3Creator().parse('DEVICE ARCADE\nSPRITE Game:\nWHEN flag clicked:\n  arcade set flag ShowPhysics of 1 to 1'),
-        error => error.code === 'DIALECT_UNPARSED_LINES' && error.lines[0].text === 'arcade set flag ShowPhysics of 1 to 1');
+    assert.throws(() => new SB3Creator().parse('DEVICE ARCADE\nSPRITE Game:\nWHEN flag clicked:\n  arcade set flag NoSuchFlag of 1 to 1'),
+        error => error.code === 'DIALECT_UNPARSED_LINES' && error.lines[0].text === 'arcade set flag NoSuchFlag of 1 to 1');
     // A flag block the dialect cannot write (a project edited elsewhere) is
     // still refused by name on the way out, never exported as a guess.
     const creator = new SB3Creator(); creator.parse('DEVICE ARCADE\nSPRITE Game:\nWHEN flag clicked:\n  arcade set flag Ghost of 1 to 1');
     assert.deepEqual(creator.warnings, []);
     const flag = Object.values(creator.project.targets.find(t => t.name === 'Game').blocks).find(b => b.opcode === 'arcade_setSpriteFlag');
-    flag.fields.FLAG[0] = 'ShowPhysics';
-    assert.ok(exported(creator).unsupported.some(gap => gap.includes('Unsupported Arcade sprite flag ShowPhysics')));
+    flag.fields.FLAG[0] = 'NoSuchFlag';
+    assert.ok(exported(creator).unsupported.some(gap => gap.includes('Unsupported Arcade sprite flag NoSuchFlag')));
 });
