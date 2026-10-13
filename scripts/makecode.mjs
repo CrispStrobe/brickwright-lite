@@ -97,7 +97,7 @@ function args (argv) {
         if (out.board === 'v2' && out.target !== 'microbit') {
             throw Object.assign(new Error(`--board v2 is the micro:bit V2; a ${out.target} runs on --board v1`), {usage: true});
         }
-    } else if (out.board && out.target !== 'arcade') throw Object.assign(new Error('--board is for Arcade (and run) only'), {usage: true});
+    } else if (out.board && out.target !== 'arcade') throw Object.assign(new Error('--board is for Arcade only'), {usage: true});
     if (!(out.seconds > 0 && out.seconds <= 600)) throw Object.assign(new Error('--seconds must be between 0 and 600'), {usage: true});
     if (out.fetchExtensions && out.cmd !== 'to-sb3') throw Object.assign(new Error('--fetch-extensions is for to-sb3'), {usage: true});
     return out;
