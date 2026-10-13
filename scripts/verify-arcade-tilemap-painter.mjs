@@ -23,6 +23,7 @@ import {fileURLToPath} from 'node:url';
 import {chromium} from 'playwright';
 import {createHash} from 'node:crypto';
 import {openCodeActions} from './lib-code-actions.mjs';
+import {observeTilemapInstallations} from './lib/arcade-tilemap-installations.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const build = join(process.env.BW_INTEGRATED_ROOT || root, 'packages', 'scratch-gui', 'build');
@@ -321,19 +322,41 @@ try {
     check('saving the undone edit preserves all saved levels',
         JSON.stringify(mapSet(await readLevels())) === JSON.stringify(expectedMaps));
     await page.screenshot({path: join(out, 'reopened-painter.png')});
-    // Observe the actual reopened VM, not the old instance or only project JSON.
-    await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.greenFlag());
-    const reopenedRuntime = await waitFor(() => page.evaluate(() => {
-        const map = window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState?.tilemap;
-        if (!map) return null;
-        return {columns: map.columns, rows: map.rows, tileSize: map.tileSize,
-            indices: Array.from(map.indices), walls: Array.from(map.walls),
-            images: map.images.map(image => ({width: image.width, height: image.height, pixels: Array.from(image.pixels)}))};
-    }), map => map && canonical(map) === expectedNewLevel, 30000);
-    check('a saved painted level runs with exact pixels and collision walls after reopen',
-        Boolean(reopenedRuntime && canonical(reopenedRuntime) === expectedNewLevel &&
-            reopenedRuntime.indices[0] === 1 && reopenedRuntime.walls[1] === 1 && reopenedRuntime.images[1].pixels[0] === 3));
-    report.reopenedRuntime = reopenedRuntime;
+    // The platformer's other green-flag scripts can immediately select a
+    // different level. Observe the saved block's REAL installation before
+    // those writes, without fabricating a map or changing execution order.
+    await page.evaluate(observeTilemapInstallations, {blockId: fresh.blockId, expose: true});
+    // The platformer's own start script then installs its first level (the
+    // level painted before saving). Observe that block too: the live map is
+    // no witness for it, since the running game clears its spawn tiles in place.
+    const expectedFirstLevel = canonical(JSON.parse(beforeReload.find(ref => ref.blockId === levels[0].blockId).text));
+    await page.evaluate(observeTilemapInstallations, {blockId: levels[0].blockId, expose: '__bwFirstLevelInstallationProof'});
+    try {
+        await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.greenFlag());
+        const reopenedRuntime = await waitFor(() => page.evaluate(() =>
+            window.__bwTilemapInstallationProof.receipts[0]?.map || null),
+        map => map && canonical(map) === expectedNewLevel, 30000);
+        check('a saved painted level runs with exact pixels and collision walls after reopen',
+            Boolean(reopenedRuntime && canonical(reopenedRuntime) === expectedNewLevel &&
+                reopenedRuntime.indices[0] === 1 && reopenedRuntime.walls[1] === 1 && reopenedRuntime.images[1].pixels[0] === 3));
+        report.reopenedRuntime = reopenedRuntime;
+        report.reopenedInstallations = await page.evaluate(() => window.__bwTilemapInstallationProof.receipts);
+        const firstLevelRuntime = await waitFor(() => page.evaluate(() =>
+            window.__bwFirstLevelInstallationProof.receipts[0]?.map || null),
+        map => map && canonical(map) === expectedFirstLevel, 30000);
+        check('and the reopened platformer then runs its own painted first level',
+            Boolean(firstLevelRuntime && canonical(firstLevelRuntime) === expectedFirstLevel &&
+                firstLevelRuntime.indices[cell] === 1 && firstLevelRuntime.walls[cell + 1] === 1 &&
+                firstLevelRuntime.images[1].pixels[0] === 2));
+        report.reopenedFirstLevelInstallations = await page.evaluate(() => window.__bwFirstLevelInstallationProof.receipts.length);
+    } finally {
+        await page.evaluate(() => {
+            window.__bwFirstLevelInstallationProof.restore();
+            delete window.__bwFirstLevelInstallationProof;
+            window.__bwTilemapInstallationProof.restore();
+            delete window.__bwTilemapInstallationProof;
+        });
+    }
     await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.stopAll());
     // Close any title/greeting opened by the original platformer before export.
     const reopenedDialog = page.locator('[role="dialog"][aria-label^="Arcade"]');
