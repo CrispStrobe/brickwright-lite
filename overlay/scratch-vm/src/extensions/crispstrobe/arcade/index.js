@@ -1576,7 +1576,17 @@ module.exports = makeExt(`// Name: Arcade
       thread.bwFunctionNames.add(name);
       if (util.sequencer === runtime.sequencer && !recursive) {
         const caller = util.thread, sequencer = util.sequencer, active = sequencer.activeThread;
-        try {sequencer.activeThread = thread;sequencer.stepThread(thread);}
+        try {
+          sequencer.activeThread = thread;
+          const deadline=Date.now()+0.75*runtime.currentStepTime;
+          sequencer.stepThread(thread);
+          // Native source functions do not add a physics frame for finite loop
+          // bookkeeping. Continue only loop yields within the real scheduler
+          // budget; promises, explicit waits and stop retirements still suspend.
+          while(runtime.threads.includes(thread) && thread.status===thread.constructor.STATUS_RUNNING &&
+            thread.peekStackFrame()?.isLoop && !thread.peekStackFrame()?.timer && Date.now()<deadline)
+            sequencer.stepThread(thread);
+        }
         finally {util.thread = caller;util.sequencer = sequencer;sequencer.activeThread = active;}
         if (!runtime.threads.includes(caller)) {sequencer.retireThread(caller);sequencer.retireThread(thread);return 0;}
       }
