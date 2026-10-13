@@ -1,5 +1,20 @@
 # Who is doing what — merge the claim before implementation
 
+## Arcade classes and mutable object semantics — proposed
+
+Claim proposed for the Arcade compatibility lane. Contract:
+[classes and objects](docs/ARCADE-CLASS-AND-OBJECT-SEMANTICS.md).
+Envelope: an explicit reference/descriptor helper alongside existing Arcade and
+Arrays values; Arcade-only AST lowering and native object operations; scoped
+shared dialect producer additions with reviewed pin adoption; Code/Blocks and
+export/reimport authoring; tests and GUI closure records. Preserve other target
+translators, independent device/arena work and the separately claimed frame
+scheduler. No global scheduler hook is owned by this lane.
+Merge this claim and check concurrent ownership before implementation.
+Constructor ordering, reference identity, alias mutation and original execution
+must qualify before class admission; source parsing alone is insufficient.
+
+
 ## Native Arcade frame phases — 2026-10-13
 
 PROPOSED CLAIM — Codex Arcade scheduler, `lane/arcade-frame-scheduler-20261013`,
