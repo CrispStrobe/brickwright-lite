@@ -4,6 +4,9 @@ import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-imp
 import {lowerNamespaceBindings} from '../overlay/scratch-gui/src/lib/bw-makecode/namespace-bindings.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {prepareArcadeDependencyInputs} from '../overlay/scratch-gui/src/lib/bw-makecode/dependency-project.js';
+import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {runProgram,clearStrayTimers} from './helpers/bw-vm.mjs';
+import BW from '../overlay/scratch-vm/src/util/bw-values.js';
 import {TEXT_SPRITE_SOURCE_TEXT} from '../overlay/scratch-gui/src/lib/bw-makecode/text-source-admission.generated.js';
 const lowered=source=>lowerNamespaceBindings(parseMakeCodeTs(source),{spriteKinds:true});
 test('SpriteKind forwards preserve undefined reads, initialization order, unused allocations and numeric globals',()=>{
@@ -20,9 +23,17 @@ test('SpriteKind forwards preserve undefined reads, initialization order, unused
  assert.ok(code.code.indexOf('set between')<code.code.indexOf('arcade bind sprite kind name "Later"'));
  assert.match(code.code,/set __bwNamespace_SpriteKind_Later to \(undefined value\)/);
 });
-test('ordinary namespace forward reads and SpriteKind object escape remain diagnosed',()=>{
- assert.ok(lowered('let before=Other.Later;namespace Other {export const Later=1;}').unsupported.some(message=>message.includes('before initialization')));
- assert.ok(lowered('namespace SpriteKind {export const Later=SpriteKind.create();}let object=SpriteKind;').unsupported.some(message=>message.includes('runtime object')));
+test('ordinary namespace literal forward reads match selected original hoisting while unsafe namespace object escape stays refused',async()=>{
+ const source='let before=Other.Later;namespace Other {export const Later=1;}let after=Other.Later;before+=0;after+=0;';
+ const original=await runPxtArcade(source,{fakeClock:true});assert.equal(original.before,1);assert.equal(original.after,1);
+ const result=lowered(source);assert.deepEqual(result.unsupported,[]);assert.equal(result.program.body[0].decls[0].init.type,'Number');assert.equal(result.program.body[0].decls[0].init.value,'1');
+ const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);const run=await runProgram(imported.code,{frames:30});
+ try{assert.deepEqual(run.errors,[]);const vars=Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),BW.decode(v.value)]));assert.equal(vars.before,original.before);assert.equal(vars.after,original.after);}
+ finally{run.vm.quit();clearStrayTimers();}
+ const escape='namespace SpriteKind {export const Later=SpriteKind.create();}let object=SpriteKind;';
+ await assert.rejects(()=>runPxtArcade(escape,{fakeClock:true}),/Unknown or undeclared identifier/);
+ assert.ok(lowered(escape).unsupported.some(message=>message.includes('runtime object')));
+ assert.ok(lowered('let before=Other.Later;namespace Other {export let Later=1;}').unsupported.some(message=>message.includes('before initialization')));
 });
 test('builtin numeric lookups, dynamic kind values, omitted/null creation and kind method use handle words',()=>{
  for(const source of ['let observed=SpriteKind.Player;','let hero=sprites.create(img`1`);let observed=hero.kind();','let kind=-1.5;let hero=sprites.create(img`1`,kind);hero.setKind(null);let observed=hero.kind();','let hero=sprites.create(img`1`,null);let observed=hero.kind();']){
