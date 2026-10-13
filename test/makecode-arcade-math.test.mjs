@@ -16,7 +16,7 @@ let power = Math.pow(2, 3)`;
     creator.parse(translated.code);
     assert.deepEqual(creator.warnings, []);
     const opcodes = projectOpcodes(creator.project);
-    for (const opcode of ['planetemaths_min', 'planetemaths_max', 'planetemaths_pow']) {
+    for (const opcode of ['planetemaths_min', 'planetemaths_max', 'arrays_valueBinary']) {
         assert.ok(opcodes.has(opcode), `${opcode} missing`);
     }
     assert.ok(!opcodes.has('microbitplus_map'), 'no micro:bit block in an Arcade project');

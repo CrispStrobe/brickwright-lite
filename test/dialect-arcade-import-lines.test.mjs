@@ -97,12 +97,13 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the Arcade word table (319 opcodes)', () => {
-    assert.equal(ARCADE_DIALECT_OPS.length, 319);
+test('the pinned parser has the Arcade word table (324 opcodes)', () => {
+    assert.equal(ARCADE_DIALECT_OPS.length, 324);
     for (const opcode of ['arcade_setPalette', 'arcade_registerInstanceDestroyedHandler',
         'arcade_whenRegisteredInstanceDestroyed', 'arcade_startParallelHandler',
         'arcade_whenParallelHandler', 'arcade_carnivalCountdown',
-        'arcade_carnivalGameOver', 'arcade_carnivalCustomGameOver', 'arcade_songPlayable']) assert.ok(ARCADE_DIALECT_OPS.includes(opcode), opcode);
+        'arcade_carnivalGameOver', 'arcade_carnivalCustomGameOver', 'arcade_songPlayable', 'arcade_spriteDataSet',
+        'arcade_spriteDataRead', 'arcade_spriteDataReadBoolean', 'arcade_spriteDataChange', 'arcade_playerConnected']) assert.ok(ARCADE_DIALECT_OPS.includes(opcode), opcode);
 });
 
 test('every program the Arcade importer writes parses, with no unread line and no warning', () => {

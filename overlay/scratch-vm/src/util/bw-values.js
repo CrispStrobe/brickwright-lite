@@ -41,7 +41,7 @@
  *  - Non-finite numbers in JSON: jsonReplacer writes NaN/Infinity/-Infinity/-0
  *    as {bwNumber: '...'}, and decode turns them back into numbers.
  *  - JavaScript operators over these values: compare (== != === !== < > <= >=),
- *    equal, indexOf (by equal), binary (+ - * / %), unary (+ -), truth. Two
+ *    equal, indexOf (by equal), binary (+ - * / % **), unary (+ -), truth. Two
  *    references are equal only when they are the same reference.
  *
  * WHAT IT DOES NOT DO (measured on main, test/bw-values.test.mjs)
@@ -224,6 +224,8 @@ const makeValues = () => {
         return a / b;
       case "%":
         return a % b;
+      case "**":
+        return a ** b;
       default:
         throw new Error("Unknown value arithmetic " + op);
     }

@@ -27,7 +27,7 @@ let missing=pick(10)
 let text=identity("hello, [world]!")
 stopEarly()
 let after=4`;
-    await roundtrip(source,run=>{const v=vars(run);assert.equal(v.answer,17);assert.equal(v.missing,-1);assert.equal(v.text,'hello, [world]!');assert.equal(v.touched,2);assert.equal(Number(v.after),4);});
+    await roundtrip(source,run=>{const v=vars(run);assert.equal(v.answer_,17);assert.equal(v.missing,-1);assert.equal(v.text,'hello, [world]!');assert.equal(v.touched,2);assert.equal(Number(v.after),4);});
 });
 
 test('recursive and mutual-recursive value calls keep independent native frames',async()=>{

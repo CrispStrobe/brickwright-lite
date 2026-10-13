@@ -97,8 +97,9 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
         names.push(name);
         const origin = (resolved.generatedRootProvenance || []).find(entry => entry.file === name);
         if (!origin || !safePath(origin.input) || typeof originalFiles[origin.input] !== 'string' ||
-            origin.emitter !== 'pxt.emitTilemapsFromJRes') throw new Error(`Missing original root generation provenance: ${name}`);
-        provenance.push({id: 'root', file: origin.input, path: name, generated: true, emitter: origin.emitter});
+            !['pxt.emitTilemapsFromJRes','pxt.emitProjectImages'].includes(origin.emitter)) throw new Error(`Missing original root generation provenance: ${name}`);
+        provenance.push({id: 'root', file: origin.input, path: name, generated: true, emitter: origin.emitter,
+            versions: origin.versions || null, workerSha256: origin.workerSha256 || null});
     }
     const effectivePalette = resolved.runtimeConfig?.palette;
     files['pxt.json'] = JSON.stringify({...cfg,
