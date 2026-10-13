@@ -28,6 +28,7 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import {makeT, browserLocale} from '../../lib/bw-i18n.js';
 import {driveMakeCodeOutput} from '../../lib/bw-makecode/pin-drive.js';
+import MakeCodeMultiPane from './makecode-multi-pane.jsx';
 
 const L10N = {
     en: {
@@ -44,7 +45,9 @@ const L10N = {
         'mc.stopped': 'Stopped',
         'mc.serial': 'Serial',
         'mc.keys': 'Keys: arrows, Z/Space = A, X = B (click the screen first).',
-        'mc.error': 'Simulator error: {msg}'
+        'mc.error': 'Simulator error: {msg}',
+        'mc.radio': 'Radio packets: {n}',
+        'mc.motor': 'Motor {m}'
     },
     de: {
         'mc.title.microbit': 'MakeCode micro:bit',
@@ -60,7 +63,9 @@ const L10N = {
         'mc.stopped': 'Gestoppt',
         'mc.serial': 'Seriell',
         'mc.keys': 'Tasten: Pfeile, Z/Leertaste = A, X = B (erst auf den Bildschirm klicken).',
-        'mc.error': 'Simulatorfehler: {msg}'
+        'mc.error': 'Simulatorfehler: {msg}',
+        'mc.radio': 'Funkpakete: {n}',
+        'mc.motor': 'Motor {m}'
     }
 };
 const t = makeT(L10N);
@@ -97,6 +102,13 @@ class MakeCodeSimPane extends React.Component {
 
     take (program) {
         window.__bwMakeCodePending = null;
+        // Several boards of one project: their own pane, which frames one
+        // simulator per board and relays radio between them.
+        if (Array.isArray(program.boards)) {
+            this.setState(state => ({program, serial: '', error: null, running: false, hostReady: false,
+                runId: state.runId + 1}));
+            return;
+        }
         const sameTarget = this.state.program && this.state.program.target === program.target;
         // A different target is a different host page: the frame reloads and
         // announces itself again. The same target reuses the loaded simulator.
@@ -194,6 +206,24 @@ class MakeCodeSimPane extends React.Component {
                 <div data-testid="bw-makecode-pane" style={{padding: 24, color: '#64748b'}}>
                     {t(locale, 'mc.empty')}
                 </div>
+            );
+        }
+        if (Array.isArray(program.boards)) {
+            return (
+                <MakeCodeMultiPane
+                    program={program}
+                    labels={{
+                        error: msg => t(locale, 'mc.error', {msg}),
+                        loading: t(locale, 'mc.loading'),
+                        motor: m => t(locale, 'mc.motor', {m}),
+                        radio: n => t(locale, 'mc.radio', {n}),
+                        restart: t(locale, 'mc.restart'),
+                        running: t(locale, 'mc.running'),
+                        stop: t(locale, 'mc.stop'),
+                        stopped: t(locale, 'mc.stopped'),
+                        target: target => t(locale, `mc.title.${target}`)
+                    }}
+                />
             );
         }
         return (

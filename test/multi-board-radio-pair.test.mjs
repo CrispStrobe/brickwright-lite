@@ -14,7 +14,8 @@ import vm from 'node:vm';
 import util from 'node:util';
 
 import {SOURCE, REPO} from './helpers/bw-integrated.mjs';
-import {projectToMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/export.js';
+import {projectToMakeCodeTs, exportToMakeCode} from '../overlay/scratch-gui/src/lib/bw-makecode/export.js';
+import {boardMakeCodeProjects} from '../overlay/scratch-gui/src/lib/bw-boards/makecode-boards.js';
 import {microbitToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/microbit-translate.js';
 import {PXT_GLUE_JS} from '../overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js';
 import {readBoards, boardTargets, boardProject, makeCodeTargetOf, BOARDS_MAGIC} from
@@ -116,6 +117,20 @@ test('each board exports its own MakeCode program and nothing of the other', {sk
     assert.equal(makeCodeTargetOf(boardProject(project, 'Remote').stc.device), 'microbit');
     assert.equal(makeCodeTargetOf(boardProject(project, 'Car').stc.device), 'calliopemini');
     assert.equal(makeCodeTargetOf('arduino-uno'), null);
+});
+
+test('the pair becomes two MakeCode projects, and a board MakeCode cannot build is named', {skip}, () => {
+    const one = new SB3Creator().parse('DEVICE MICROBIT\nWHEN flag clicked:\n  radio send number 1\n');
+    assert.equal(boardMakeCodeProjects(one, {exportToMakeCode}), null);
+    const built = boardMakeCodeProjects(new SB3Creator().parse(PAIR), {exportToMakeCode, name: 'pair'});
+    assert.deepEqual(built.map(b => [b.name, b.device, b.target]),
+        [['Remote', 'microbit', 'microbit'], ['Car', 'calliopemini', 'calliopemini']]);
+    assert.match(built[0].files['main.ts'], /radio\.sendNumber\(0\)/);
+    assert.match(built[1].files['main.ts'], /motors\.dualMotorPower\(Motor\.B, 50\)/);
+    assert.deepEqual(JSON.parse(built[1].files['pxt.json']).dependencies, {core: '*', radio: '*'});
+    const mixed = new SB3Creator().parse(`${PAIR}\nDEVICE ARDUINO-UNO AS Logger:\nWHEN flag clicked:\n  set n to 1\n`);
+    assert.throws(() => boardMakeCodeProjects(mixed, {exportToMakeCode}),
+        e => e.code === 'NOT_MAKECODE_BOARD' && e.board === 'Logger' && e.device === 'arduino-uno');
 });
 
 const STATIC = path.join(REPO, 'packages/scratch-gui/static/makecode');

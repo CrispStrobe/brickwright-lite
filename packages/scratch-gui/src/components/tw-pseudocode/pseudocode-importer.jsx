@@ -146,6 +146,10 @@ const L10N = {
         mcUnsupportedTarget: t => `MakeCode ${t} projects are not something this build can compile (micro:bit and Arcade are).`,
         mcCompileErrors: (n, first) => `MakeCode found ${n} error(s): ${first}`,
         mcNothingToRun: 'Nothing to run — import a MakeCode project, or write blocks for a micro:bit.',
+        mcBoardsCompiling: n => `Compiling ${n} boards with MakeCode…`,
+        mcBoardsStarted: names => `${names.join(' + ')} are running side by side in MakeCode's simulators, sharing one radio.`,
+        mcBoardNotMakeCode: (board, device) => `Board "${board}" is a ${device || 'board with no device'}: only micro:bit and Calliope mini boards run together in MakeCode's simulators.`,
+        mcBoardCompileErrors: (board, n, first) => `Board "${board}": MakeCode found ${n} error(s). ${first}`,
         arcRun: '▶ Run as MakeCode Arcade',
         arcRunTitle: 'Turn this Scratch project into a MakeCode Arcade game (sprites from their costumes, scripts as code) and run it in MakeCode\'s Arcade simulator',
         arcExport: '⬆ To MakeCode Arcade',
@@ -464,6 +468,10 @@ const L10N = {
         mcUnsupportedTarget: t => `MakeCode-${t}-Projekte kann dieser Build nicht übersetzen (micro:bit und Arcade schon).`,
         mcCompileErrors: (n, first) => `MakeCode meldet ${n} Fehler: ${first}`,
         mcNothingToRun: 'Nichts auszuführen — ein MakeCode-Projekt importieren oder Blöcke für einen micro:bit schreiben.',
+        mcBoardsCompiling: n => `${n} Boards werden mit MakeCode kompiliert…`,
+        mcBoardsStarted: names => `${names.join(' + ')} laufen nebeneinander in den MakeCode-Simulatoren und teilen sich einen Funkkanal.`,
+        mcBoardNotMakeCode: (board, device) => `Board „${board}“ ist ein ${device || 'Board ohne Gerät'}: nur micro:bit und Calliope mini laufen gemeinsam in den MakeCode-Simulatoren.`,
+        mcBoardCompileErrors: (board, n, first) => `Board „${board}“: MakeCode meldet ${n} Fehler. ${first}`,
         arcRun: '▶ Als MakeCode Arcade ausführen',
         arcRunTitle: 'Dieses Scratch-Projekt in ein MakeCode-Arcade-Spiel umwandeln (Figuren aus ihren Kostümen, Skripte als Code) und im MakeCode-Arcade-Simulator ausführen',
         arcExport: '⬆ Zu MakeCode Arcade',
@@ -2119,7 +2127,56 @@ class PseudocodeImporter extends React.Component {
         if (!list.length) return '';
         return this.L.mcFetched(list.map(e => `${e.id} (${e.repo}${e.ref ? '#' + e.ref : ''}, ${e.licence || this.L.mcLicenceUnknown})`).join(', '));
     }
+    /**
+     * Several boards in one program (`DEVICE <id> AS <Name>:` sections): every
+     * board is compiled for its own MakeCode target and the whole set goes to
+     * the simulator pane, which frames one simulator per board and relays radio
+     * between them. All boards or none: a pair with one half missing would
+     * look like a broken radio.
+     */
+    async runBoardsInMakeCode (source) {
+        this.setState({busy: true, status: this.L.mcBoardsCompiling((source.match(/^DEVICE\s+[\w-]+\s+AS\s+/gim) || []).length)});
+        try {
+            const SB3Creator = (await this.lib()).default;
+            const project = new SB3Creator().parse(source);
+            const {exportToMakeCode} = await import(
+                /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
+            const {boardMakeCodeProjects} = await import(
+                /* webpackChunkName: "bw-makecode" */ '../../lib/bw-boards/makecode-boards.js');
+            const name = ((source.match(/^#\s*(.+)$/m) || [])[1] || 'brickwright').trim().slice(0, 40);
+            const subjects = boardMakeCodeProjects(project, {exportToMakeCode, name});
+            const {compileMakeCode} = await import(
+                /* webpackChunkName: "bw-makecode-pxt" */ '../../lib/bw-makecode/pxt-runtime.js');
+            const boards = [];
+            for (const subject of subjects) {
+                const out = await compileMakeCode({target: subject.target, files: subject.files});
+                if (!out.success) {
+                    const d = out.diagnostics[0];
+                    this.setState({busy: false, status: this.L.mcBoardCompileErrors(subject.name, out.diagnostics.length,
+                        (d && `${d.file}:${d.line + 1} ${d.message}`) || '')});
+                    return;
+                }
+                boards.push({name: subject.name, target: subject.target, js: out.outfiles['binary.js']});
+            }
+            const program = {boards, name};
+            window.__bwMakeCodePending = program;
+            localStorage.setItem('bw-stage-circuit', '1');
+            localStorage.setItem('bw-debug-dock', 'makecode');
+            localStorage.setItem('bw-right-pane-hidden', '0');
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-debug-dock', value: 'makecode'}}));
+            window.dispatchEvent(new CustomEvent('bw-makecode-load', {detail: program}));
+            this.setState({busy: false, status: this.L.mcBoardsStarted(boards.map(b => b.name))});
+        } catch (err) {
+            this.setState({busy: false, status: err && err.code === 'NOT_MAKECODE_BOARD' ?
+                this.L.mcBoardNotMakeCode(err.board, err.device) :
+                this.L.mcFailed('MakeCode', (err && err.message) || String(err))});
+        }
+    }
+
     async runInMakeCode () {
+        const boardSource = this.state.buffers.pseudocode || '';
+        if (/^DEVICE\s+[\w-]+\s+AS\s+\S/im.test(boardSource)) { await this.runBoardsInMakeCode(boardSource); return; }
         const subject = await this.makeCodeSubject().catch(() => null);
         if (!subject) { this.setState({status: this.L.mcNothingToRun}); return; }
         const target = subject.target;
