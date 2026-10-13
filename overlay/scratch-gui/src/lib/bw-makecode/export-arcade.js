@@ -43,6 +43,7 @@ import {animationResourceFromDocument} from '../bw-animation-resources.js';
 import {encodeAnimationJres, nativeAnimationNameBase} from './animation-jres.js';
 import {ANIMATION_COMPANION_PATH, encodeAnimationCompanion} from './animation-companion.js';
 import {validateDocument} from '../bw-artwork-bundle.js';
+import {TileAssetExporter} from './tile-assets.js';
 import {tilemapSource} from './tilemap-values.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {svgToPixels, quantizeRgba, toImgLiteral, remapPalette, nearestIndex} from './pixel-image.js';
@@ -111,6 +112,7 @@ class ArcadeEmitter {
         this.requiresScrollerPackage = false;
         this.requiresCharacterAnimationsPackage = false;
         this.warnings = [];
+        this.tileAssets = new TileAssetExporter(this.warnings);
         this.sprites = project.targets.filter(t => !t.isStage);
         // Each sprite is a global `<name>Sprite`, kept clear of the program's variable names.
         this.spriteVar = new Map();
@@ -1364,7 +1366,7 @@ class ArcadeEmitter {
             const raw=this.literalInput(b,'DATA');let data=null;
             if(raw==='null' || raw===''){push('tiles.setTilemap(null)');return;}
             try{data=JSON.parse(raw);}catch(e){/* named below */}
-            const source=tilemapSource(data);
+            const source=tilemapSource(data, (image, index) => this.tileAssets.register(image, index));
             if(!source){this.note('Arcade tile map export requires valid fixed tile data, wall layer and scale');return;}
             push(`tiles.setTilemap(${source})`);return;
         }
@@ -3104,7 +3106,9 @@ class ArcadeEmitter {
  */
 export function projectToArcade (project, opts = {}) {
     const e = new ArcadeEmitter(project, opts);
-    const ts = e.emit();
+    const projectTs = e.emit();
+    // Plain TypeScript has no companion resource files; keep it executable.
+    const ts = e.tileAssets.inlineSource() + projectTs;
     // Publish unused assets as well, without introducing unused main-code helpers.
     e.prepareAuthoredAnimations();
     const resources = [...e.authoredAnimationArrays.values()];
@@ -3115,6 +3119,7 @@ export function projectToArcade (project, opts = {}) {
             `            case ${JSON.stringify(alias)}:`).join('\n') +
             `\n                return [${resource.literals.join(',\n')}]`).join('\n')}\n        }\n        return null\n    })\n}\n`
     } : {};
+    Object.assign(assetFiles, e.tileAssets.files());
     const sourceEntries = [];
     for (const resource of resources) {
         try { validateDocument(resource.document); }
@@ -3131,7 +3136,7 @@ export function projectToArcade (project, opts = {}) {
     if (sourceEntries.length) assetFiles[ANIMATION_COMPANION_PATH] = encodeAnimationCompanion(sourceEntries, e.palette);
     const name = opts.name || 'brickwright-game';
     const files = {
-        'main.ts': ts,
+        'main.ts': projectTs,
         ...assetFiles,
         'pxt.json': `${JSON.stringify({
             name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': 'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': 'github:microsoft/arcade-character-animations#v0.1.0'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},

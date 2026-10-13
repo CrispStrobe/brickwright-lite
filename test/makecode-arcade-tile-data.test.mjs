@@ -101,7 +101,7 @@ test('generated tile factories preserve JRES pixels, scale thirty-two and the ex
     const factory='tiles.createTilemap(hex`020001000000`,img`2 7`,[myTiles.red],TileScale.ThirtyTwo)';
     const main='tiles.setTilemap(tilemap`wide`)\nlet leftLocation=tiles.getTileLocation(0,0)\nlet rightLocation=tiles.getTileLocation(1,0)\nlet leftCenter=leftLocation.x\nlet rightCenter=rightLocation.x\nlet wallTwo=tiles.tileAtLocationIsWall(leftLocation)\nlet wallSeven=tiles.tileAtLocationIsWall(rightLocation)\nlet generatedCount=tiles.getTilesByType(img`2`).length\nlet tileGeneratedDone=tiles.getTileLocation(0,0).column===0';
     const files={'main.ts':main,'tilemap.g.ts':`helpers._registerFactory("tilemap",function(name:string){switch(name){case "wide":return ${factory};}return null;})`,
-        'tilemap.g.jres':JSON.stringify({'*':{mimeType:'image/x-mkcd-f4',dataEncoding:'base64',namespace:'myTiles'},red:{data:Buffer.from([0x87,0x04,1,0,1,0,0,0,2]).toString('base64'),tilemapTile:true}})};
+        'tilemap.g.jres':JSON.stringify({'*':{mimeType:'image/x-mkcd-f4',dataEncoding:'base64',namespace:'myTiles'},red:{data:Buffer.from([0x87,0x04,1,0,1,0,0,0,2,0,0,0]).toString('base64'),tilemapTile:true}})};
     const original=main.replace('tilemap`wide`',factory.replace('myTiles.red','img`2`'));
     const expected=await runPxtArcade(original,{waitForGlobals:{tileGeneratedDone:true}});
     assert.equal(expected.leftCenter,16);assert.equal(expected.rightCenter,48);

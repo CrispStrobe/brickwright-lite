@@ -72,6 +72,7 @@ const NOTE_FREQUENCIES = {C: 262, CSharp: 277, D: 294, Eb: 311, E: 330, F: 349, 
  * @module
  */
 
+import {parseTileAssets} from './tile-assets.js';
 import {decodeTilemap, parseNativeTilemaps} from './tilemap-values.js';
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
 import {prepareAnimationImport} from '../bw-animation-import.js';
@@ -391,7 +392,8 @@ class ArcadeTranslator extends BaseTranslator {
      * rather than a guess.
      */
     imageOf (node) {
-        const tileAsset = node?.type === 'Member' && ['myTiles','assets','tiles'].includes(this.path(node.object)) && this.assets[node.name];
+        const tileAsset = node?.type === 'Member' && (this.assets[this.path(node)] ||
+            (['myTiles','assets','tiles'].includes(this.path(node.object)) && this.assets[node.name]));
         if(tileAsset)return tileAsset;
         if(node?.type === 'Identifier' && /^__bwNamespace_/.test(node.name) && Object.prototype.hasOwnProperty.call(this.assets,node.name))return this.assets[node.name];
         const builtIn = node?.type === 'Member' && BUILTIN_IMAGES[this.path(node)];
@@ -4082,13 +4084,13 @@ export function arcadeToPseudocode (files, opts = {}) {
         } catch (error) { projectInputDiagnostics.push(`Project pxt.json could not be read: ${error.message}`); }
     }
 
-    const assets = {};
+    const assets = Object.create(null);
     const tilemaps = {};
     const animationAliases = new Map(), animationDiagnostics = [], animationIds = new Set(), nativeAnimations = [];
     let duplicateAnimationId = false;
     for (const [filename, text] of Object.entries(map)) {
         if (/\.jres$/.test(filename)) {
-            Object.assign(assets, parseJres(text));
+            Object.assign(assets, parseJres(text), parseTileAssets(text));
             const parsedAnimations = parseAnimationJres(text);
             animationDiagnostics.push(...parsedAnimations.unsupported.map(message => `${filename}: ${message}`));
             for (const animation of parsedAnimations.animations) {
@@ -4190,8 +4192,10 @@ export function arcadeToPseudocode (files, opts = {}) {
     for (const statement of namespaceBindings.program?.body || []) {
         if (statement.type !== 'Declaration' || statement.kind !== 'const') continue;
         for (const decl of statement.decls) {
-            if (!/^__bwNamespace_/.test(decl.name) || decl.init?.type !== 'Template' || decl.init.tag !== 'img') continue;
-            const image = parseImageLiteral(decl.init.value);
+            if (!/^__bwNamespace_/.test(decl.name)) continue;
+            const literal = decl.init?.type === 'Template' && decl.init.tag === 'img' ? parseImageLiteral(decl.init.value) : null;
+            const image = assets[decl.assetPath] || (literal ?
+                {...literal, tileId: decl.assetPath, displayName: decl.assetPath?.split('.').pop()} : null);
             if (image && !Object.prototype.hasOwnProperty.call(assets, decl.name)) assets[decl.name] = image;
         }
     }
@@ -4199,7 +4203,8 @@ export function arcadeToPseudocode (files, opts = {}) {
     projectInputDiagnostics.push(...callbacks.unsupported);
     const ast = lowerLazyValues(callbacks.program);
     const flattened = namespaceBindings.program ? ast : null;
-    const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ? assets[node.name] : null;
+    const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ? assets[`${node.object.name}.${node.name}`] || assets[node.name] :
+        node?.type==='Identifier' ? assets[node.name] : null;
     const nativeTilemaps = {};
     for(const [filename,text] of Object.entries(map))if(/\.g\.ts$/.test(filename))Object.assign(nativeTilemaps,parseNativeTilemaps(text,tileImageOf));
     const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested);
