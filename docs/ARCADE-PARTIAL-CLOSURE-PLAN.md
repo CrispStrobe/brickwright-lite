@@ -594,3 +594,31 @@ are unchanged.
 
 The new owned-game GUI gate is a production-build light-browser step. Pending
 hosted execution cannot be reported as acceptance or a corpus promotion.
+
+## Requalification after numeric kinds
+
+Exact older character-animation selection and numeric SpriteKind allocation now
+have focused original/native/editable roundtrip controls. Scene numeric constants
+and local original particle collection removals are integrated. Prepared source
+qualification on PR877 retains 29 valid / 12 invalid original contexts and improves
+structural admission to 16 valid programs. Twelve valid programs still have
+semantic/API blockers and one has a parser failure. This does not alter the raw
+41 partials or establish full execution for structurally admitted inputs.
+
+The next ordered gates are:
+
+1. Qualify the combined integration on hosted exact-head checks and the production
+   Code/Blocks/Pixel/controller/SB3/export/reimport journey.
+2. Fix default countdown/life-zero loss presentation and real splash input; retain
+   full original screen, sound and controller comparisons.
+3. Implement the claimed native frame phase contract before treating value-only
+   timing controls as complete. Preserve authored waits, shared budgets, scene
+   ownership and debugger behavior.
+4. Qualify complete authentic Maze, Cherry Pickr and Dance Party outcomes, then
+   their editable/persistence/original-compiler roundtrips. Maze's controller win
+   and asset comparisons already match, but its idle loss remains divergent.
+5. Continue source-backed Story, class and callable support from actual diagnostic
+   families. Keep invalid source contexts separate and preserve original bytes.
+
+A genuine completion requires the whole authored project acceptance boundary.
+Raw and prepared counts must remain distinguishable throughout.

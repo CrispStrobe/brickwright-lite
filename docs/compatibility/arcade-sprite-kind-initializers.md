@@ -46,3 +46,18 @@ These checks have distinct authority. Source lowering and original-only fixtures
 do not qualify native execution, saved SB3 reopening, exported original execution,
 a hosted editor journey or whole corpus projects. Native registry and exporter
 integration must pass those separate comparisons before closing runtime gaps.
+
+## Combined native and export qualification
+
+`test/makecode-arcade-sprite-kind-roundtrip.test.mjs` now runs three owned
+programs through unchanged original compilation/simulation, the native registry,
+Code reconstruction, same and fresh VM SB3 reopening, exported original execution
+and prepared reimport. The combined worker batch passes 14 controls. Nullable
+creation, unused/dependency allocations, zero/unused callback parameters, numeric
+queries and captured event IDs have separate controls.
+
+Those finite comparisons supersede the pending native/export integration status
+for the covered cases. Original MakeCode Blockly decompilation, direct GUI
+custom-kind authoring, broader dynamic binding, scheduling/cadence and complete
+authentic games remain separate acceptance gates. An exact timing control still
+reports its known failure; it is not included as a passing compatibility result.

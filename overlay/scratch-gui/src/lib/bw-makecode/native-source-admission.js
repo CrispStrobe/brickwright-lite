@@ -28,7 +28,7 @@ const TEXT_SPRITE_RECEIPT=Object.freeze({
     nativeOpcodes:Object.freeze(['textSpriteCreate','textSpriteSetText','textSpriteSetMaxFontHeight','textSpriteSetIcon','textSpriteSetBorder','textSpriteSetOutline','textSpriteUpdate','textSpriteProperty','textSpriteSetProperty']),
     replacementSource:TEXT_SPRITE_INITIALIZER,
     initialization:'initialize complete original TextSprite module at original file ordering, including one shared SpriteKind.Text allocation; retained namespace binding reads that same numeric kind',
-    boundary:'exact text.ts only; additional executable files and unimplemented callsites remain diagnosed; numeric allocation requires original registry qualification'
+    boundary:'exact text.ts only; additional executable files and unimplemented callsites remain diagnosed; numeric allocation has finite original/native registry roundtrip qualification; full scheduling and arbitrary games remain separate'
 });
 const LEGACY_SCROLLER_RECEIPT=Object.freeze({
     adapter:'arcade-background-scroll-single',source:LEGACY_SCROLLER_NATIVE_IDENTITY,
