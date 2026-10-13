@@ -170,6 +170,33 @@ test('MakeCode\'s compiler builds each board for its own target, offline', {skip
             assert.equal(r.success, true, `${board.name} (${target}, native ${native}): ` +
                 JSON.stringify((r.diagnostics || []).slice(0, 3)));
             assert.deepEqual(r.netAttempts, [], `${board.name}: the compile reached for the network`);
+            // The per-board firmware download saves exactly this file.
+            if (native) assert.match(r.outfiles['binary.hex'] || '', /^:[0-9A-F]+\r?\n/, `${board.name}: no binary.hex`);
         }
     }
+});
+
+test('a multi-board program is saved per board, never as one mixed program', () => {
+    const src = fs.readFileSync(path.join(REPO,
+        'overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx'), 'utf8');
+    const body = name => {
+        const at = src.indexOf(`    async ${name} () {`);
+        assert.notEqual(at, -1, name);
+        return src.slice(at, src.indexOf('\n    }\n', at));
+    };
+    // Each single-program action hands a program with board sections to its
+    // per-board twin BEFORE it would build the whole project as one program.
+    for (const [action, twin, single] of [
+        ['runInMakeCode', 'runBoardsInMakeCode', 'this.makeCodeSubject()'],
+        ['downloadMakeCodeFirmware', 'downloadBoardsFirmware', 'this.makeCodeSubject()'],
+        ['exportMakeCode', 'exportBoardsMakeCode', 'creator.parse(source)']
+    ]) {
+        const text = body(action);
+        const handOff = text.search(new RegExp(`if \\(this\\.hasBoards\\(\\w+\\)\\) \\{ await this\\.${twin}\\(\\w+\\); return; \\}`));
+        assert.notEqual(handOff, -1, `${action} does not hand off to ${twin}`);
+        assert.ok(handOff < text.indexOf(single), `${action} builds one program before checking for boards`);
+    }
+    // All boards are built before the first file is saved.
+    const dl = src.slice(src.indexOf('    async downloadBoardsFirmware (source) {'));
+    assert.ok(dl.indexOf('built.push(') < dl.indexOf('await downloadBlob('));
 });
