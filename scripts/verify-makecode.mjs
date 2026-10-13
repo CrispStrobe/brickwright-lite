@@ -487,6 +487,10 @@ try {
     // verify-multi-board-radio.mjs drives the simulator host pages from a
     // plain page.
     if (runtime) {
+        // State, not just event: the one-board program of 2e is still on screen,
+        // and a one-board program must not get the multi-board pane.
+        const multi = page.locator('[data-testid="bw-makecode-multi-pane"]');
+        check('a one-board program runs without the multi-board pane', await multi.count() === 0);
         await input.setInputFiles(join(root, 'test', 'fixtures', 'multi-board', 'radio-pair.bw'));
         const pairCode = await waitFor(
             () => page.evaluate(() => {
@@ -497,7 +501,6 @@ try {
         check('a program with two board sections opens in the Code tab',
             /AS Remote:/.test(pairCode) && /AS Car:/.test(pairCode), pairCode.split('\n').slice(0, 2).join(' / '));
         await clickAction('bw-makecode-run');
-        const multi = page.locator('[data-testid="bw-makecode-multi-pane"]');
         await multi.waitFor({state: 'visible', timeout: 90000}).catch(() => {});
         const shown = await page.locator('[data-testid="bw-makecode-board"]').evaluateAll(
             els => els.map(e => `${e.dataset.board}:${e.dataset.target}`)).catch(() => []);
