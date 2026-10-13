@@ -787,6 +787,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'randomNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade random fraction'},
           {opcode:'mathBinary',blockType:Scratch.BlockType.REPORTER,text:'Arcade math [OP] first [A] second [B]',arguments:{OP:{type:Scratch.ArgumentType.STRING,menu:'mathOperations',defaultValue:'randomRange'},...n('A',0),...n('B',10)}},
           {opcode:'percentChance',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade percent chance [PERCENTAGE]',arguments:n('PERCENTAGE',50)},
+          {opcode:'clampNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade clamp minimum [MIN] maximum [MAX] value [VALUE]',arguments:{...n('MIN',0),...n('MAX',100),...n('VALUE',50)}},
 
           // ── Game flow ────────────────────────────────────────────
           '---',
@@ -1556,6 +1557,16 @@ module.exports = makeExt(`// Name: Arcade
       if (min>max) {const swap=min;min=max;max=swap;}
       return Math.floor(min)==min && Math.floor(max)==max
         ? min+Math.floor(Math.random()*(max-min+1)) : min+Math.random()*(max-min);
+    }
+    clampNumber(args,util) {
+      // MIT PXT pxt-helpers.ts, Copyright (c) Microsoft Corporation;
+      // retained notice scratch-gui/static/licenses/pxt-core.MIT.txt.
+      // SDK argument order and raw argument selection are observable.
+      const minimum=this._mathArgument(args,'MIN',util);
+      const maximum=this._mathArgument(args,'MAX',util);
+      const value=this._mathArgument(args,'VALUE',util);
+      const inner=minimum>=value?minimum:value;
+      return Scratch.BWValues.encode(maximum<=inner?maximum:inner);
     }
     percentChance(args,util) {
       const percentage=this._mathArgument(args,'PERCENTAGE',util);

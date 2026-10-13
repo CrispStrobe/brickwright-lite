@@ -861,11 +861,19 @@ class ArcadeTranslator extends BaseTranslator {
         case 'Math.min':
         case 'Math.max':
         case 'Math.percentChance':
+        case 'Math.clamp':
             if(this.bindsName('Math')) {this.note(`${name} refers to a shadowed Math binding`);return 'undefined value';}
-            {const arity=name==='Math.random'?0:name==='Math.percentChance'?1:2;
+            {const arity=name==='Math.random'?0:name==='Math.percentChance'?1:name==='Math.clamp'?3:2;
             if(a.length!==arity){this.note(`${name}() requires exactly ${arity} arguments`);return 'undefined value';}
             if(name==='Math.random')return 'arcade random fraction';
             if(name==='Math.percentChance')return `arcade percent chance (${this.arrayElementValue(a[0])})`;
+            if(name==='Math.clamp'){
+                if(a.some(value=>!['Null','Undefined'].includes(value?.type) &&
+                    (['Array','Object'].includes(value?.type) || this.arrayReferences?.has(value) || this.spriteReferences?.has(value) || this.bufferReferences?.has(value) || this.imageReferences?.has(value)))){
+                    this.note('Math.clamp reference argument conversion is not implemented');return 'undefined value';
+                }
+                return `arcade clamp minimum (${this.arrayElementValue(a[0])}) maximum (${this.arrayElementValue(a[1])}) value (${this.arrayElementValue(a[2])})`;
+            }
             return `arcade math ${name.slice(5)} first (${this.arrayElementValue(a[0])}) second (${this.arrayElementValue(a[1])})`;}
         case 'Math.sign':
         case 'Math.trunc':
@@ -2900,23 +2908,11 @@ const liftExporterStops = program => {
 // PXT library calls that are, by their own definition, expressions the
 // translator already has, rewritten to those before translation:
 // Math.percentChance retains a dedicated operation: boundary guards consume no entropy.
-//   Math.clamp(lo, hi, v) is min(max(v, lo), hi), each argument read once,
+// Math.clamp retains its original three-argument evaluation and raw selection order.
 // Scene and program clocks keep distinct native reporters; no clock alias is lowered.
-const lowerLibraryCalls = program => {
-    const callee = node => node?.type === 'Call' && node.callee?.type === 'Member' && node.callee.object?.type === 'Identifier' ?
-        `${node.callee.object.name}.${node.callee.name}` : null;
-    const call = (object, name, args) => ({type: 'Call', callee: {type: 'Member', object: {type: 'Identifier', name: object}, name}, args});
-    const visit = node => {
-        if (Array.isArray(node)) return node.map(visit);
-        if (!node || typeof node !== 'object') return node;
-        const copy = {...node};
-        for (const key of Object.keys(copy)) copy[key] = visit(copy[key]);
-        const name = callee(copy), a = copy.args || [];
-        if (name === 'Math.clamp' && a.length === 3) return call('Math', 'min', [call('Math', 'max', [a[2], a[0]]), a[1]]);
-        return copy;
-    };
-    return visit(program);
-};
+// These Math APIs use dedicated native reporters. Retain the source expression
+// tree: rewriting calls changed caller order and raw numeric selection.
+const lowerLibraryCalls = program => program;
 
 const inlineLegacyArrayHelpers = program => {
     if(!program.body.some(fn=>fn.type==='FunctionDeclaration' && /^__bw(?:Named(?:Parse|Json)Value|ArrayAccess)/.test(fn.name)))return program;
@@ -3163,7 +3159,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(api==='characterAnimations.ruleToString' && node.args.length===1)return new Set(['string']);
             if(['characterAnimations.rule','characterAnimations._predicate','characterAnimations._direction'].includes(api))return new Set(['number']);
             if(api==='characterAnimations.matchesRule')return new Set(['boolean']);
-            if(!mathDeclared && /^Math\.(?:abs|min|max|pow|round|floor|ceil|trunc|sign|sqrt|sin|cos|tan|asin|acos|atan|atan2|log|exp|random|randomRange|imul|idiv)$/.test(api || ''))return new Set(['number']);
+            if(!mathDeclared && /^Math\.(?:abs|min|max|pow|round|floor|ceil|trunc|sign|sqrt|sin|cos|tan|asin|acos|atan|atan2|log|exp|random|randomRange|clamp|imul|idiv)$/.test(api || ''))return new Set(['number']);
             if(['mp.playerSelector','mp.getPlayerByNumber','mp.getPlayerByIndex','mp.getPlayerBySprite'].includes(api))return new Set(['player']);
             if(api==='bwStringArraySettings.read')return new Set(['array','string-array']);
             const settingRead=/^(?:settings|blockSettings)\.(read(Number|String|NumberArray|StringArray|Buffer)|exists|list)$/.exec(api||'');
@@ -3742,7 +3738,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(['FunctionDeclaration','FunctionExpression'].includes(node.type) && node.body.some(st=>st.type==='Declaration'))return true;
         if (node.type==='Array' && node.items.some(item=>t.imageReferences.has(item)||t.spriteReferences.has(item))) return true;
         if(node.type==='Index' && (t.imageReferences.has(node)||t.spriteReferences.has(node)||t.arrayReferences.has(node.object)))return true;
-        if(node.type==='Call' && ['Math.random','Math.randomRange','Math.percentChance','Math.min','Math.max','randint','Math.sign','Math.trunc','Math.sqrt','Math.log','Math.log10','Math.asin','Math.acos','Math.pow','Math.pickRandom'].includes(t.path(node.callee)))return true;
+        if(node.type==='Call' && ['Math.random','Math.randomRange','Math.percentChance','Math.clamp','Math.min','Math.max','randint','Math.sign','Math.trunc','Math.sqrt','Math.log','Math.log10','Math.asin','Math.acos','Math.pow','Math.pickRandom'].includes(t.path(node.callee)))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && t.arrayReferences.has(node.callee.object))return true;
         if (node.type === 'Declaration' && node.decls.some(d => t.imageOf(d.init))) return true;
         if (node.type === 'Return' && (t.imageOf(node.value) || t.imageReferences.has(node.value))) return true;

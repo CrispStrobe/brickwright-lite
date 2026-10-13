@@ -4005,6 +4005,20 @@ Remaining GUI acceptance: select each word in the actual editor palette, change
 the fixed operation menu, wire a live controller-driven input, and save/reopen and
 export the edited graph in a hosted production build. Native menu metadata and
 serialized connected graphs do not establish that full-editor journey. Other
-Math APIs, arbitrary compiler const propagation, and the existing clamp rewrite's
-argument-order behavior remain separate conversion tasks. No random trajectory
+Math APIs and arbitrary compiler const propagation remain separate conversion
+tasks; the ordered clamp section below records that rewrite's replacement. No random trajectory
 or whole-game compatibility count is promoted by these controls.
+
+## Ordered clamp authoring — 2026-10-13
+
+The dedicated `arcade clamp minimum ... maximum ... value ...` Number reporter
+preserves MakeCode's three-argument caller order and actual raw min/max selection.
+The former clamp rewrite is replaced. Code and connected block graphs, save and
+fresh reopen as SB3, original export and reimport have bounded controls, including
+side effects, NaN and authored negative-zero shadows. See the
+[ordered clamp contract](compatibility/arcade-clamp-order.md).
+
+The actual hosted editor must still exercise discovering this block, wiring all
+three inputs, adjusting numeric fields, running a controller-driven example,
+and saving/reopening/exporting the edited project. Metadata and serialization
+checks establish the graph contract; full-editor acceptance remains open.

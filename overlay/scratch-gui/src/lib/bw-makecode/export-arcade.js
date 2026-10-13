@@ -1019,6 +1019,7 @@ class ArcadeEmitter {
         case 'arcade_randomNumber': return 'Math.random()';
         case 'arcade_mathBinary': {const operation=String(this.literalInput(b,'OP') ?? this.menuField(b,'OP','mathOperations'));if(!['min','max','randomRange'].includes(operation)){this.note('Arcade math requires a fixed supported operation');return 'undefined';}return `Math.${operation}(<any>${this.mathValue(b,'A')}, <any>${this.mathValue(b,'B')})`;}
         case 'arcade_percentChance': return `Math.percentChance(<any>${this.mathValue(b,'PERCENTAGE')})`;
+        case 'arcade_clampNumber': return `Math.clamp(<any>${this.mathValue(b,'MIN')}, <any>${this.mathValue(b,'MAX')}, <any>${this.mathValue(b,'VALUE')})`;
         // Planète Maths: the importer's spelling of Math.min/max/pow (they
         // kept only their first argument before, on the way in).
         // In an Arcade program the blocks run with Scratch's casts (text -> 0),
