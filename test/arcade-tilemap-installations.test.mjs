@@ -85,6 +85,25 @@ test('serialized browser observer is self-contained and restores the real primit
     assert.equal(vm.runtime._primitives.arcade_setTilemap, original);
 });
 
+test('two serialized observers under named globals each keep only their own block (C8)', () => {
+    const vm = setup(args => {vm.runtime.bwArcadeDeviceState.tilemap = args.map;});
+    const original = vm.runtime._primitives.arcade_setTilemap;
+    const browser = {__brickwrightStore: {getState: () => ({scratchGui: {vm}})}};
+    const source = '(' + observeTilemapInstallations.toString() + ')';
+    runInNewContext(source + '({blockId:"saved",expose:true})', browser);
+    runInNewContext(source + '({blockId:"first",expose:"__bwFirstLevelInstallationProof"})', browser);
+    try {
+        vm.runtime._primitives.arcade_setTilemap({map: map(3)}, util('saved'));
+        vm.runtime._primitives.arcade_setTilemap({map: map(2)}, util('first'));
+        assert.equal(JSON.stringify(browser.__bwTilemapInstallationProof.receipts.map(r => r.map.images[0].pixels[0])), '[3]');
+        assert.equal(JSON.stringify(browser.__bwFirstLevelInstallationProof.receipts.map(r => r.map.images[0].pixels[0])), '[2]');
+    } finally {
+        browser.__bwFirstLevelInstallationProof.restore();
+        browser.__bwTilemapInstallationProof.restore();
+    }
+    assert.equal(vm.runtime._primitives.arcade_setTilemap, original);
+});
+
 test('four executable observer mutants fail the same receipt contracts', async () => {
     const source = readFileSync(new URL('../scripts/lib/arcade-tilemap-installations.mjs', import.meta.url), 'utf8');
     const cases = [

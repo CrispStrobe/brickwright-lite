@@ -50,6 +50,10 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 # Project documents (src/fileio.rs): Save refuses to overwrite a file that changed on disk
 # since it was opened, which it detects by digest. Also used by the desktop SPIKE flash store.
 sha2 = "0.10"
+# Peer sessions (task E11, docs/PEERS-SECURITY-REVIEW.md): only with the `peers` feature below,
+# which is OFF by default. RustCrypto crates, MIT OR Apache-2.0.
+chacha20poly1305 = { version = "0.10", optional = true }
+hkdf = { version = "0.12", optional = true }
 
 # Mobile-only: OS share sheet (sender side of the project share round-trip).
 [target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
@@ -104,3 +108,8 @@ tauri-plugin-share = { path = "vendor/tauri-plugin-share" }
 [features]
 # Used by the desktop entrypoint (main.rs) to avoid the extra console window.
 custom-protocol = ["tauri/custom-protocol"]
+# LAN peer sessions (task E11). NOT a default feature, and it must never become one without a
+# new review: docs/PEERS-SECURITY-REVIEW.md. With it off there is no listener, no peer command
+# and no peer capability (test/peers-gate.test.mjs). Build with `--features peers`, and build
+# the web side with BW_ENABLE_PEERS=1, or the app carries one half without the other.
+peers = ["dep:chacha20poly1305", "dep:hkdf", "tokio/io-util", "tokio/time"]
