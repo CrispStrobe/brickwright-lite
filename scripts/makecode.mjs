@@ -26,8 +26,16 @@
  * through export-ev3.js. A file's own target wins on import; --target
  * names it for a bare main.ts and for the export commands.
  *
- * Exit codes: 0 done, 1 the program does not compile / refused, 2 bad usage,
- * 3 the runtime is not synced. What was not translated is always printed.
+ *   node scripts/makecode.mjs run <in.hex|in.ts|in.sb3|in.bw> [--target microbit|calliopemini] [--seconds N] [--json]
+ *       Runs the program on LabWired's micro:bit V1 board (nRF51822, Nordic
+ *       S110 SoftDevice EMULATED: only the application region of the .hex is
+ *       loaded), headless, for N seconds of guest time (default 5): prints the
+ *       serial console as it arrives and the 5x5 LED matrix when it changes.
+ *       A firmware .hex runs as it is; a .ts/.sb3/.bw, or a .hex that only
+ *       carries a project, is compiled first (task A7).
+ *
+ * Exit codes: 0 done, 1 the program does not compile / refused / faulted, 2 bad usage,
+ * 3 the runtime (or, for run, the LabWired engine) is not synced. What was not translated is always printed.
  */
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';
@@ -49,6 +57,7 @@ const USAGE = `usage:
   node scripts/makecode.mjs to-hex <in.sb3|in.bw> [-o out.hex|out.uf2] [--target TARGET] [--board variant] [--source]
   node scripts/makecode.mjs to-ts  <in.sb3|in.bw> [-o out.ts]  [--target TARGET]
   node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|in.mkcd|share-url> [-o out.sb3] [--bw out.bw] [--target TARGET]
+  node scripts/makecode.mjs run <in.hex|in.ts|in.sb3|in.bw> [--target microbit|calliopemini] [--seconds N] [--json]
 TARGET: microbit (default), arcade, calliopemini (or calliope), ev3`;
 
 /** The targets the CLI exports to and imports for: the Code tab's translators. */
@@ -62,7 +71,8 @@ const DEFAULT_DEPENDENCIES = {microbit: {core: '*', radio: '*', microphone: '*'}
     calliopemini: {core: '*', radio: '*'}, ev3: {ev3: '*'}};
 
 function args (argv) {
-    const out = {cmd: argv[0], input: null, output: null, target: 'microbit', board: '', source: false, bw: null, mainSource: null};
+    const out = {cmd: argv[0], input: null, output: null, target: 'microbit', board: '', source: false, bw: null, mainSource: null,
+        seconds: 5, json: false};
     for (let i = 1; i < argv.length; i++) {
         const a = argv[i];
         if (a === '-o') out.output = argv[++i];
@@ -71,12 +81,15 @@ function args (argv) {
         else if (a === '--source') out.source = true;
         else if (a === '--bw') out.bw = argv[++i];
         else if (a === '--main') out.mainSource = argv[++i];
+        else if (a === '--seconds') out.seconds = Number(argv[++i]);
+        else if (a === '--json') out.json = true;
         else if (!out.input) out.input = a;
         else throw Object.assign(new Error(`unexpected argument ${a}`), {usage: true});
     }
     if (!out.cmd || !out.input) throw Object.assign(new Error('missing command or input'), {usage: true});
     if (!TARGETS.includes(out.target)) throw Object.assign(new Error(`unknown --target ${out.target} (${TARGETS.join(', ')})`), {usage: true});
     if (out.board && out.target !== 'arcade') throw Object.assign(new Error('--board is for Arcade only'), {usage: true});
+    if (!(out.seconds > 0 && out.seconds <= 600)) throw Object.assign(new Error('--seconds must be between 0 and 600'), {usage: true});
     return out;
 }
 
@@ -305,8 +318,88 @@ async function main () {
             `${(res.unsupported || []).length} not translated`);
         return 0;
     }
+    if (a.cmd === 'run') return runCommand(a);
     console.error(`unknown command ${a.cmd}\n${USAGE}`);
     return 2;
+}
+
+/** The targets `run` has a board model for: nRF51822 + S110 (task A7). */
+const RUN_TARGETS = ['microbit', 'calliopemini'];
+
+/** The files of a program to compile for `run`, from a .ts, an .sb3/.bw, or a project-only .hex. */
+async function programFiles (a) {
+    if (/\.ts$/i.test(a.input)) {
+        return {target: a.target, files: {'main.ts': fs.readFileSync(a.input, 'utf8'),
+            'pxt.json': JSON.stringify({name: base(a.input), dependencies: DEFAULT_DEPENDENCIES[a.target], files: ['main.ts']})}};
+    }
+    if (/\.(sb3|bw|txt)$/i.test(a.input)) {
+        const out = await toMakeCode(a.input, a.target);
+        report(out);
+        return {target: a.target, files: out.files};
+    }
+    const mc = await lib('bw-makecode/index.js');
+    const res = await mc.importArtefact(new Uint8Array(fs.readFileSync(a.input)), {name: path.basename(a.input)});
+    if (!res.files || !res.files['pxt.json']) throw Object.assign(new Error(`${a.input} carries neither firmware nor a MakeCode project`), {refused: true});
+    console.error(`  note: ${path.basename(a.input)} carries the project, not firmware; compiled for ${res.project.target}`);
+    return {target: res.project.target, files: res.files};
+}
+
+async function runCommand (a) {
+    const run = await import('./lib/makecode-run.mjs');
+    let hex = /\.hex$/i.test(a.input) ? fs.readFileSync(a.input, 'utf8') : null;
+    let target = a.target;
+    if (!hex || !run.hasFirmware(hex)) {
+        let program;
+        try {
+            program = await programFiles(a);
+        } catch (e) {
+            if (!e.refused) throw e;
+            console.error(`refused: ${e.message}`);
+            return 1;
+        }
+        target = program.target;
+        if (!RUN_TARGETS.includes(target)) {
+            console.error(`refused: run has a board model for the micro:bit and the Calliope mini, not ${target}`);
+            return 1;
+        }
+        if (!hasRuntime(target)) { console.error('the MakeCode runtime is not synced — run `npm run sync:makecode`'); return 3; }
+        const r = await compile(target, program.files, {native: true});
+        if (!r.success) {
+            for (const d of r.diagnostics.slice(0, 10)) console.error(`  ${d.file}:${d.line + 1}: ${d.message}`);
+            console.error(`MakeCode did not compile the program (${r.diagnostics.length} error(s))`);
+            return 1;
+        }
+        const {firmwareFile} = await lib('bw-makecode/pxt-runtime.js');
+        const firmware = firmwareFile(r.outfiles);
+        if (!firmware) { console.error('MakeCode compiled no firmware file'); return 1; }
+        hex = new TextDecoder().decode(firmware.bytes);
+    } else if (!RUN_TARGETS.includes(target)) {
+        console.error(`refused: run has a board model for the micro:bit and the Calliope mini, not ${target}`);
+        return 1;
+    }
+    if (target === 'calliopemini') {
+        console.error('  note: a Calliope mini runs on the micro:bit V1 board model (the same nRF51822 + S110): ' +
+            'serial and the 5x5 matrix; its RGB LED, motor driver and own pins are not modelled');
+    }
+    const live = !a.json;
+    let result;
+    try {
+        result = await run.runNrf51({hex, seconds: a.seconds,
+            onSerial: live ? c => { if (c !== '\0') process.stdout.write(c); } : null,
+            onMatrix: live ? f => process.stdout.write(`\n[${f.t.toFixed(2)} s] LED matrix\n${f.rows.map(r => `  ${r}`).join('\n')}\n`) : null});
+    } catch (e) {
+        if (e.code === 'NO_ENGINE') { console.error(e.message); return 3; }
+        throw e;
+    }
+    if (a.json) {
+        process.stdout.write(`${JSON.stringify({target, board: 'microbit-v1', universal: result.universal,
+            guestSeconds: result.guestSeconds, serial: result.serial.replace(/\0/g, ''), frames: result.frames,
+            fault: result.fault})}\n`);
+    } else {
+        process.stdout.write(`\n— ran ${result.guestSeconds.toFixed(2)} s of guest time on the micro:bit V1 board model\n`);
+    }
+    if (result.fault) { console.error(`fault: ${result.fault.cause}${result.fault.message ? ` — ${result.fault.message}` : ''}`); return 1; }
+    return 0;
 }
 
 main().then(code => process.exit(code), e => {
