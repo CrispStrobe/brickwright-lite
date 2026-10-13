@@ -748,3 +748,750 @@ and coordinate before changing it. A reviewed map-before-sprite case revealed
 that inserting a new placement immediately after the map can precede sprite
 creation; the peer owns the reported source-order fix. Pending peer PRs and
 reported test totals are not qualified adoption claims.
+
+## Carnival native host, authoring and saved records — 2026-10-11
+
+The next slice implements `carnival.startCountdownGame` and
+`carnival.onGameOverExpanded` with fixed `WinTypes` styles and optional fixed
+screen effects. It connects the retained original scoring/dialog module to the
+real VM's image/font renderer, scene stack, countdown callbacks, clocks, music,
+button wait and restart. Ordinary Arcade extension blocks and pseudocode expose
+both operations. Import/export retains the actual carnival API and declares
+`github:microsoft/arcade-carnival#v0.0.7` in exported `pxt.json`.
+
+For example, type this into Code and use To blocks:
+
+```text
+arcade set score player (1) to (7)
+arcade carnival countdown (15) style Score effect unset
+```
+
+The countdown and game-over blocks offer Win, Lose, Score, Timed, Multi and
+Custom styles. `Custom` here means the original `WinTypes.Custom` branch;
+`customGameOverExpanded` with arbitrary text/scoring/sound is still diagnosed.
+Dynamic styles and shadowed namespaces remain diagnosed. Timer HUD, carnival
+ball helpers and additional extension APIs remain separate work.
+
+`arcade/program-settings.js` stores number records under a program identity on
+the Stage. SB3 carries a validated `bwArcadeSettings` sidecar, including exact
+special numeric values, without adding learner variables. On a device with
+usable localStorage, the latest records for that identity take precedence over
+an older imported snapshot. A different device starts from the SB3 snapshot.
+Without a device backend, records persist only in saved projects. Copying a
+project retains its identity; a genuinely new project receives a new identity.
+Quota/write failures propagate and leave both live values and snapshots intact.
+This is app-owned record storage, not cloud sync or a general settings blocks UI.
+
+Serializer integration in `scripts/lib/arcade-settings-sb3-hooks.mjs` patches
+both the target-flattening and serialization boundaries plus restoration.
+Changing only `serializeTarget` loses live Stage metadata. The focused SB3 test
+injects these exact hooks into the actual serializer in memory, saves an actual
+archive and loads it into another VM. It does not modify dependency files or
+qualify a production browser build.
+
+Qualification: 32 affected runtime/core/info-registration/export checks passed;
+the expanded 11-test host suite also passed, without failures or skips. It
+covers countdown first registration and later replacement, direct game over,
+stop/restart cancellation, number records and actual SB3 reopening. Six source
+controls (unique/tied multiplayer winners, lose, win, score and timed) exported,
+compiled with the original PXT compiler and ran without native/original errors.
+The original render helper aliases two black palette entries (0/15); comparing
+displayed colours yields exact opaque dialog text/body in rows 40–76 after
+excluding the animated cursor at x145–159/y69–76. Each full rectangle still has
+42 cursor-phase pixel differences, preserved in private receipts. Exported
+original dialog rectangles match the original baseline without differences.
+These are bounded comparisons, not whole-game or cursor-timing equivalence.
+
+The candidate branch is `lane/arcade-carnival-runtime-host-20261011`, stacked on
+[PR802](https://github.com/CrispStrobe/brickwright-lite/pull/802). It normally
+integrates the exact [PR800](https://github.com/CrispStrobe/brickwright-lite/pull/800)
+candidate `a078a5e452991a69abb21c7a9bb6de3ae6c18e86` for countdown ordering.
+That is isolated qualification, not adoption of an unmerged peer candidate on
+main. Parent/peer hosted checks and final integration remain mandatory.
+
+Next: a hosted production GUI journey through these blocks, dialog/controller
+restart, saved project reload and original export. Then add the remaining
+custom API/timer/helper capabilities with original controls. Preserve current
+184-input census (142 translated / 41 partial / 1 parse failure) until an
+immutable-input audit actually reruns; these tests do not promote corpus rows.
+Private receipt URLs, commands and local paths live in the private handoff;
+`docs/ARCADE-AGENT-HANDOFF.local.md` is ignored operational context.
+
+### Carnival production browser journey — 2026-10-11
+
+`scripts/verify-arcade-carnival-browser.mjs` is now registered on the heavy
+browser shard, with a generated zero-reading provisional budget. Run it against
+an already built production app:
+
+```sh
+BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-carnival-browser.mjs
+```
+
+It imports an owned two-line MakeCode control using Code Open, observes the
+translated pseudocode, clicks To blocks, checks the visible carnival block,
+runs with the green flag, observes real native dialog pixels/score, restarts
+through controller A, and saves through File. The downloaded archive must carry
+exact program records. A fresh browser context with no carnival device records
+loads that file through File, checks restored blocks/records and runs them again.
+The gate records tested source, loaded scripts, screenshots, archive hash and
+errors under `test-results/arcade-carnival-browser/`. `BW_CARNIVAL_REPORT_DIR`
+overrides that output directory; `BW_EXPECT_GUI_BUNDLE` can require a named
+bundle. It observes VM state and does not inject runtime/serializer operations.
+
+The native button-restart control passes; all 12 host checks passed in the
+expanded suite. Thirteen budget/timeout checks pass after registering the new
+gate. The initial budget failures (missing registration) remain in private
+receipts. Syntax checks pass. The production journey has **not yet executed**;
+hosted build/browser qualification is pending, not inferred from these checks.
+No app build or dependency mutation was performed locally. Palette/body controls
+and corpus counts retain the previously documented boundaries.
+
+
+## Carnival custom game-over authoring — 2026-10-11
+
+The `lane/arcade-carnival-custom-gameover-20261011` candidate stacks on PR803
+without changing its qualification head. `carnival.customGameOverExpanded` now
+uses the retained original module, actual native Melody handles, game-over sound
+configuration, scene/dialog renderer and program record store. An ordinary block
+and pseudocode command expose message, fixed effect, melody reporter, fixed
+scoring type and optional score. General playable objects are not Melody values;
+invalid supplied sounds raise runtime errors instead of falling back silently.
+
+Example, authored directly in Code and convertible to blocks:
+
+```text
+arcade set score to (7)
+arcade carnival custom game over message ("Well done!") effect hearts sound (arcade melody baDing) use sound 1 scoring LScore score (3) use score 1
+```
+
+`use sound` and `use score` are boolean inputs, separate from the values. A false
+flag represents an omitted MakeCode argument; a true score flag preserves zero.
+Scoring menu: unset, None, HScore, LScore, HTime, LTime. The retained original
+source owns defaulting, elapsed-time scoring and record comparison. The exporter
+folds fixed flags and emits ordinary conditional statements for editable flags;
+these reimport through the existing native control blocks. No helper shim or
+replacement generic dialog is exported. Dynamic scoring types remain diagnosed;
+remaining timer/HUD and ball helpers remain unsupported.
+
+Qualification: 31 core/host/custom checks pass, plus one focused invalid-sound
+check. Controls include omission, zero, low/high/unjudged score, timed zero and
+editable presence flags. Six original and exported-original controls compile
+and execute with the real PXT SDK and captured public package responses. After
+aligning the native test's Scratch wait clock and Arcade frame clock, all six
+native dialog rectangles (all x, rows40–76) match displayed original colours at
+4000ms; exported-original rectangles match their original baselines. Original
+RGB readback aliases palette indices0/15 to black as previously documented.
+Unchanged original/reference frames are reused for the corrected clock pass;
+actual initial failures and raw frames remain private. This does not qualify
+whole-game behavior, general cursor timing or audible sound output.
+
+Tests: `test/makecode-arcade-carnival-custom.test.mjs`; production paths are
+`arcade/carnival-host.js`, native `arcade/index.js`, `arcadeDialect.js`,
+`bw-makecode/arcade-translate.js` and `bw-makecode/export-arcade.js` under overlay.
+The selected pinned source/generator is unchanged. The production custom-block
+GUI journey and final hosted checks remain pending. Parent PR803's independent
+browser journey is queued; do not label it passed. Corpus counts remain unchanged
+until an actual immutable-input audit. Private paths, source receipts and commands
+remain in the private handoff and ignored local Markdown.
+
+
+### Refreshed immutable import census and recovered Arrow Battle — 2026-10-11
+
+At custom-runtime source `bb95f4dfb6a94f0ddd6d36f0864553842a6137e3`, a fresh
+184-input import audit still reports 142 translated / 41 partial / 1 parse
+failure. Every input blob matches the immutable original corpus commit, and the
+content-multiset hash matches the preceding census. The audit is static import
+only; compilation/execution gates are separate. Its expected nonzero exit due
+to partial inputs is preserved, not treated as a passing all-apps result.
+
+The previously recovered Arrow Battle **project**, with its real assets and
+declared dependencies, now imports with zero unsupported diagnostics. Its raw
+tutorial fragment remains in the original 184-input denominator. This is not
+full Arrow Battle gameplay qualification; the original compiler result was
+recorded in the earlier package lane. Do not replace a fragment with the richer
+project or count this separate one-project audit as a corpus promotion.
+
+The leading census gaps are unreadable background artwork (10 inputs), literal
+map data (4), bundles wrapper APIs (3 each), song values (3) and several sprite
+operations in the older translation path (3 each). Next: recover explicit
+project context/assets without rewriting original fragments, classify each
+remaining input's real dependencies, then implement the remaining song/wrapper
+and native-mode gaps with original controls. Keep census and context-project
+results separate, and qualify runtime/Blocks/GUI/export for each accepted API.
+
+## Carnival shared-parser integration repair — 2026-10-11
+
+Lite PR #803's first hosted build failed before browser execution: its two new
+Carnival words differed from the pinned producer, the tracked packages mirror
+was stale, and the dialect census still expected 277 operations. These failures
+are integration defects, not evidence that the browser journey passed.
+
+The repair adds the three Carnival words (including the custom game-over word
+used by stacked PR #804) to the shared producer in
+[sb3-creator PR #93](https://github.com/CrispStrobe/sb3-creator/pull/93). Lite
+explicitly adopts producer commit `06341e3dd0f5ddfbed6764ec5afe03b04b65e265`,
+refreshes its tracked mirror and generated authoring inventory, and expects 280
+dialect operations. The producer's Arcade dialect suite passed 323 tests.
+The extra custom word in this parent is grammar support; its runtime and GUI
+implementation remains in PR #804.
+
+Vendor identity and exact-delta gates remain intact: the adopted producer and
+Lite copies must match after the existing import rewrites. No downstream
+exception or new normalization is introduced. Hosted consumer build/browser
+qualification remains pending at this checkpoint. The immutable corpus result
+remains 142 translated, 41 partial, and one parse failure; this synchronization
+repair does not close a corpus gap.
+
+## Song implementation next lane — 2026-10-11
+
+### Source and present gap
+
+The consumed target is Arcade 4.2.1 / PXT 13.2.1, built from
+[Arcade commit 2d7d59b5226e8a1a1e05e8042dd9f5248ed68fea](https://github.com/microsoft/pxt-arcade/commit/2d7d59b5226e8a1a1e05e8042dd9f5248ed68fea).
+Use the exact bundled strings in
+`packages/scratch-gui/static/makecode/arcade/target.json`, package `mixer`,
+not a moving copy of common-packages main. The upstream source repository is
+[Microsoft pxt-common-packages](https://github.com/microsoft/pxt-common-packages);
+retain its MIT notice and record hashes of every consumed bundled source.
+
+`scripts/generate-arcade-music.mjs` currently replaces `createSong` with an
+explicit refusal and installs an empty `_stopAllSongs` function. The runtime
+host is `overlay/scratch-vm/src/extensions/crispstrobe/arcade/music.js`; the
+generated module is `arcade/music-pxt.js`. Do not erase these limits by accepting
+a buffer without implementing scheduling and sound instructions.
+
+The bundled `instrument.ts` already contains the song/track/note/instrument
+encoding and instrument rendering. `sequencer.ts` contains a real TypeScript
+sequencer and a distinct simulator-shim wrapper. `Song.play` selects the latter
+when `control.deviceDalVersion()` equals `sim`; the other path uses the
+TypeScript sequencer. Choose and document a real host path, with faithful
+clock/fiber suspension, rather than routing to absent native shims.
+
+### Ordered acceptance
+
+1. Generate retained song/instrument/sequencer logic using the existing fiber
+   lowering and explicit host adapters. Add the needed buffer, clock and
+   pause-until contracts. Verify playback completion, replacement, looping,
+   global stop, restart and disposal.
+2. Compare actual scheduled mixer instruction buffers against the original
+   target for melodic, drum and polyphonic songs, tempo changes, empty tracks,
+   and loop boundaries. Preserve failures; headless instruction equality is
+   not audible output qualification. Check malformed input bounds explicitly.
+3. Add `music.createSong(hex...)` as a genuine playable value, normal Blocks
+   reporter and shared pseudocode word. Preserve exact song bytes through
+   MakeCode export/reimport and SB3 save/reopen; inspect existing playable
+   dispatch before adding a separate execution mechanism.
+4. Provide editable song assets with note grid, tracks/instruments, tempo,
+   measures, preview and undo/redo. Preserve naming and edits in both SB3 and
+   MakeCode projects. Record unfinished editor capability in the GUI ledger.
+5. Run the real production editor journey: import, edit, play with controller
+   widgets, save/reopen, export, compile and run the resulting MakeCode
+   project. Re-audit the locked 184 inputs independently; three original
+   projects mention `createSong`, and unrelated missing assets/extensions
+   may keep each partial. Report the actual census, not an assumed reduction.
+
+### Vendor repair qualification checkpoint
+
+At Lite parent `065a86dbd6da751709f7779874a55567a52c0996`, all 11 focused
+parser/vendor checks and the separate HEAD mirror check pass. At custom
+`1cbac9ad44ce957794d3eb2491b8150fc1320bd7`, all 12 checks pass without skips.
+All 18 mapped source files were compared at producer
+`06341e3dd0f5ddfbed6764ec5afe03b04b65e265`; the 3750-file gallery matches.
+Fresh hosted build/browser checks remain queued, so do not merge or claim
+production GUI qualification from these local results.
+
+## Native song sequencing implementation slice — 2026-10-11
+
+### Implemented source and host behavior
+
+Branch `lane/arcade-song-runtime-20261011` is stacked on PR804. The generated
+music module now retains the pinned mixer `instrument.ts` and `sequencer.ts`
+in addition to the five existing files. Input hashes and MIT attribution are
+in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/music-pxt.js`.
+`scripts/generate-arcade-music.mjs --check` reproduces that source. The explicit
+`createSong` refusal and empty stop-songs placeholder are removed.
+
+The host uses the original TypeScript sequencer through its non-simulator
+branch; it does not call absent simulator-native song shims. `pauseUntil` is
+lowered as an explicit primitive and polls on the Arcade clock. Positive music
+pauses keep absolute deadlines, with bounded catch-up after a clock jump and
+zero-duration polls deferred to the next pump. Existing melody/tone/effect
+control tests cover the shared scheduler change.
+
+One declared generation adaptation skips empty note streams before reading a
+current event; otherwise the retained decoder can read into the following track.
+`arcade/song-buffer.js` checks version-zero structure, positive timing, complete
+instruments/drum steps/events, tick ordering/extents and drum references. It
+refuses malformed data without changing song bytes. Mutable buffers are checked
+again at each scheduled tick; failure ends sequencing and releases waiting
+callers with the host error still visible.
+
+### Evidence and limits
+
+The focused tests cover melodic polyphony, drum and mixed tracks, envelope/LFO
+modulation, volume/tempo, until-done/background/looping behavior, replacement,
+global stop/reset, empty tracks, truncated streams and invalid edits. Four real
+MakeCode programs compile and run in the complete original simulator; every
+active instruction byte matches. The simulator's melodic buffers have an extra
+zero record after the terminator. The comparison requires the entire unused
+tail to be zero and compares all active bytes exactly; it does not normalize
+frequencies, envelopes, waveform, duration, volume or order.
+
+The oracle now has an opt-in `recordSongSound` observer on the original
+`AudioContextManager.playInstructionsAsync` sink, because songs bypass the
+existing melody queue observer. It calls the original sink unchanged. Initial
+empty-capture failures and the subsequent padding-only comparison failures are
+preserved privately. This is headless instruction/control-flow evidence, not
+audible speaker output or a production GUI song journey.
+
+The native backend uses the pinned hardware-path single-current-song behavior.
+The simulator has a distinct sequencer backend; simultaneous-song semantics and
+other binary format versions are not qualified by this slice. Version-zero
+validation must not be labelled support for every song format.
+
+### Required continuation
+
+The following song-values slice implements importer value lowering, the normal
+Arcade reporter block, shared producer pseudocode word, MakeCode export/reimport
+and SB3 roundtrips. Editable song assets and a production GUI journey remain
+required as specified in the song lane above.
+The locked corpus census remains 142/41/1; runtime primitives alone do not change
+its classification.
+
+### Separate parent integration repair
+
+The next hosted failure in PR804 was an old exact producer-pin assertion in
+`test/lego-spike-roundtrip.test.mjs`. The canonical executable artifact test was
+rerun against `06341e3dd0f5ddfbed6764ec5afe03b04b65e265` and passed. The assertion
+was updated without weakening artifact checks. Repair is on PR803 at
+`4e7fcfff80e8a4966e42ce41a19a85c6f7376dd9`, normally merged into PR804 at
+`9e0456303180e7d93901e84b635228210ac9a404`. Fresh hosted checks remain required.
+
+### Native song source qualification checkpoint
+
+[PR806](https://github.com/CrispStrobe/brickwright-lite/pull/806) tested code
+`117a5b31230ae282aa4adee89bed2ab627fc0a6d`: 29 affected checks pass with no
+skips (12 song, six existing music, 11 Carnival source/control checks). The
+separate HEAD overlay/packages mirror check passes. Production build/browser
+qualification remains pending; the runtime source tree and hosted app result
+are separate evidence. No importer classification was promoted.
+
+
+## Song values and conversion slice — 2026-10-12
+
+### Implementation and authoring
+
+``music.createSong(hex`...`)`` lowers to the normal `arcade_songPlayable`
+reporter. Code uses `arcade song playable hex "00780004080100"`; a string
+expression is also accepted. Connect the reporter to the existing music-play
+block. The runtime creates the native typed playable through the validated PXT
+song codec and sequencer, rather than interpreting a separate song format.
+
+`music.createSong(Buffer.fromHex(expression))` preserves a dynamic hex string.
+Literal reporter values export as ``music.createSong(hex`...`)``; expression
+inputs export through `Buffer.fromHex`. Literal export validates hex before
+embedding it in TypeScript. Unsupported constructor forms retain diagnostics;
+invalid runtime bytes emit a visible block error and return no playable.
+General Buffer variables, mutation and other binary versions remain open.
+
+The shared producer word is in
+[sb3-creator PR94](https://github.com/CrispStrobe/sb3-creator/pull/94), stacked on
+[PR93](https://github.com/CrispStrobe/sb3-creator/pull/93). The adopted pin is
+`c70963552a0ceac9456633cac24e9c62d922cde2`; the inventory now contains 281
+Arcade words. All 18 mapped files match the sync's own transformation; the
+permitted downstream delta set remains empty.
+
+### Reproducible checks
+
+`test/makecode-arcade-song-values.test.mjs` contains five checks:
+
+- Real imported-song VM playback and until-done continuation.
+- Exact literal-byte export and execution in the complete original MakeCode
+  simulator, comparing active instruction bytes.
+- Dynamic-string Code/Blocks/export/reimport plus actual SB3 save and reopening
+  in a fresh VM; the exported dynamic program also runs in original MakeCode.
+- Unsupported constructor forms, malformed hex and invalid native timing retain
+  diagnostics or visible runtime errors; the normal reporter is discoverable.
+- Editing a reporter's bytes changes exported tempo; unsafe malformed literal
+  text is refused.
+
+The combined song-values, native-song, existing-music, canonical SPIKE artifact,
+dialect and vendor-identity checks pass: 35 tests, no failures or skips. The
+shared producer's independent grammar checks pass: 324 tests. These checks do
+not establish a production browser authoring journey or audible output.
+
+### Remaining GUI and integration work
+
+Provide named song assets and an editor for tracks, notes, instruments, drums,
+volume and tempo. Save edits transactionally and exercise creation, playback,
+export, original MakeCode import and SB3 reopening through the actual GUI.
+General Buffer operations, simultaneous-song semantics and version-one songs
+need separate qualification. Do not count an editable hex input as a song editor.
+
+The parent runtime's hosted run
+[38173020786](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38173020786)
+is red: the build failed a particle-effect image assertion, the light browser
+shard failed painted-level save/reopen execution, and the heavy shard stopped
+before the Arcade journeys. The native-song checks did not fail. These failures
+remain integration blockers; their causes must be established before a full
+production claim. Preserve the original failures rather than rerunning them out
+of the evidence record.
+
+
+### Locked corpus checkpoint
+
+The clean source `79b873478ca65972a45cb70471c0e0e797f6e139` was audited against
+all 184 originals at corpus commit
+`c67f4854610ccc823682280b4d1fbdf737f4a585`. Every original Git blob matched;
+content-multiset SHA256 is
+`a3dc8c21a33a9fb5e1808d2b2b2d2dbc2f7ce1ab33655b7b4cb14a16894b9f03`.
+Source, vendor pins and MakeCode SDK identities were unchanged at both endpoints.
+The census remains **142 translated / 41 partial / 1 parse failure**. This is
+static translation, not compilation or execution of the complete corpus.
+
+The three song cases use ``music.createSong(assets.song`countdown`)``, rather
+than literal hex. Their standalone sources do not supply the named song bytes.
+Resolve song assets from complete project manifests/JRES and preserve their names
+and bytes through authoring/export. Keep the missing-asset diagnostic when only
+a source snippet is provided; never manufacture a countdown song to make the
+census green. These projects also have unrelated artwork and wrapper gaps.
+
+
+## Named song asset candidate — 2026-10-12
+
+The normal `arcade_namedSongPlayable` reporter / Code word
+`arcade song named "countdown" hex "..."` preserves the display name and exact
+version-zero bytes in ordinary blocks and SB3. Native song JRES entries use
+`application/mkcd-song` and raw hex, as in pinned PXT13.2.1 generateSong and
+emitProjectImages. Complete project imports resolve ID, short ID and display-name
+aliases; missing, ambiguous or malformed entries remain diagnosed. The exporter
+writes native song JRES, manifest entries and a song factory. The single-file
+TypeScript export embeds its factory. Export refuses conflicting bytes under
+one name or nonliteral named asset inputs. Internal JRES IDs are regenerated;
+original display names and bytes survive.
+
+Seven focused song checks pass, including complete-original MakeCode execution
+of both file-map and single-file exports and an actual SB3 save/load into a fresh
+VM. First fixture omitted pxt.json on its separate single-file compile and failed;
+the required manifest was restored and that failed run is preserved privately.
+Producer325 grammar checks pass at f079238eeb7d8ac6474048e748208fb7f954198f in
+[sb3-creator PR95](https://github.com/CrispStrobe/sb3-creator/pull/95), stacked
+on PR94. Broader combined gates and hosted production qualification remain open.
+Unused song library entries, general Buffer operations and a graphical song
+editor are not supplied by this slice. Full binary validation stays in the native
+codec; the interchange boundary checks lexical bytes/version and asset identity.
+
+The operator requested rescue of the ended Claude session during this slice.
+Work remains on `lane/arcade-named-song-assets-20261012`, separately from the
+rescue integration branch. Resume the named-song combined checks and GUI work
+once the rescue is checkpointed. PR807's build/corpus checks passed; its light
+shard failed painted-level reopening and heavy failed waiting for the visible
+Carnival countdown block. Those exact failures are preserved and not production
+completion. The prior PR806 heavy failure is a separate earlier failure.
+## Claude session rescue — 2026-10-12
+
+The operator reports that the Claude session has ended. Its useful work is
+committed and pushed; there are no uncommitted tracked changes in its green-flag,
+placement or countdown worktrees. Three diagnostic prototypes were preserved
+privately, not promoted to production scripts.
+
+The isolated `integrate/claude-arcade-rescue-20261012` branch merges these exact
+candidates, preserving their original history:
+
+- [PR801](https://github.com/CrispStrobe/brickwright-lite/pull/801),
+  `f97f3606a5cfcfd0ad7dc02e548736f6ab29dcd6`: sprite placement in the tile painter,
+  including its PR793/794 parents. All seven enabled hosted checks succeeded.
+- [PR797](https://github.com/CrispStrobe/brickwright-lite/pull/797),
+  `2a0f1e657163e25bf6ed1512fa6fb0ebe6a26b79`: exact bw-board package adoption
+  `9c8777d5` and derived pins/receipts/lockfiles. Build and heavy browser passed;
+  light failed saved-painted-level execution after reopening.
+- [PR800](https://github.com/CrispStrobe/brickwright-lite/pull/800),
+  `a078a5e452991a69abb21c7a9bb6de3ae6c18e86`: native countdown event ordering and
+  deterministic original simulator clock. Build and heavy browser passed; light
+  failed the same painted-level check.
+
+The original PR797/800 failure logs establish the shared failed assertion;
+they do not establish that either source change caused it. Both failures remain
+preserved. A separate active worker owns the painted-level installation and
+original-display readiness proof repair. Do not overwrite or duplicate that
+worker's source or claim its unpublished result.
+
+This integration has documentation conflicts resolved while retaining lane
+histories; executable source merged without conflicts. Fresh combined hosted
+qualification is required before main adoption. PR801's green parent-specific
+result does not qualify the new main-based combination. The original branches
+and worktrees remain available. PR789/790/791 are already integrated and need no
+second salvage. Song and Carnival descendants remain separate candidates.
+
+
+Combined focused checkpoint: source `47982918f` passes20 checks, no failures or
+skips: placement model with real runtime/export, info/countdown registration,
+original-simulator terrain trajectories and HEAD tracked mirrors. This does not
+qualify the full package/GUI combination. Reuse the original exact-head source
+and retain its failed browser logs; require fresh hosted enabled checks before
+merging the new main-based rescue candidate.
+
+
+## Combined candidate and census reconciliation — 2026-10-12
+
+This is the current integration checkpoint; preceding entries record their
+original slices. `lane/arcade-complete-integration-20261012` includes every
+recorded Arcade candidate head in PR793–807, plus rescue PR810
+and named-song source `5db728c509d79fceeb047677c47e2bde48738b91`. Exact Git
+ancestry was checked for all15 open relevant PR heads. Native source, ordinary
+Blocks/Code words, graphics editor changes and their candidate tests are now
+in one owned tree. This does not mean they have reached main or passed the full
+production gates. Independently active painter/display proof repairs remain
+outside this integration until their owners publish qualified results.
+
+Exact audited main: `38b6bc3adbe636eb3b46dda6aa831e28a5df61fb`.
+Exact audited combined source: `1ff099af6c0b65c81c5d15c663e38f252551b991`.
+Both clean audits keep **142 translated /41 partial /1 parse failure** over the
+same184 originals at `c67f4854610ccc823682280b4d1fbdf737f4a585`, content
+multiset SHA256 `a3dc8c21a33a9fb5e1808d2b2b2d2dbc2f7ce1ab33655b7b4cb14a16894b9f03`.
+Both source/vendor/SDK endpoint identities match. A subsequent main ledger-only
+commit `51eea45fb` is integrated without altering source or the audited inputs.
+
+### Why earlier counts look better
+
+An older real report at clean source
+`14934fb23ac8a68b6d9227d3325ff5609f7e25f2` uses a compiler-dependent top-level
+stage:101 translated,29 partial,53 original-compiler failures and1 parse failure.
+Its separate static translation field is109 translated /74 partial /1 parse
+failure. Its original compile field is130 pass /54 fail, including the failed
+parse input. These independent gates must not be collapsed into "29 apps still
+not working" or compared directly with today's import-only41 partial.
+
+Today's raw rows also mark183 inputs `translated: true` because they produced
+translation output, including41 with diagnostics. The complete static status
+remains142 translated, not183 fully supported. Neither static tally establishes
+actual native gameplay, full-game equivalence or current original compilation.
+The old report's content multiset matches the184 originals; its declared commit
+field alone does not verify the original Git tree. The report remains archived
+privately with its original provenance and failures.
+
+### Qualification and next steps
+
+52 combined checks passed; two vendor-declaration checks initially failed only
+because the sparse tree lacked the tracked declaration Markdown. Materializing
+that unchanged HEAD blob and rerunning those two yielded2 pass,0 skips. Thus
+all54 selected checks passed across the preserved attempts, without modifying
+assertions or source. A prior incomplete invocation saw only3 materialized tests;
+it is preserved and is not the combined qualification. Always assert requested
+test files exist and materialize their tracked dependencies before invoking Node.
+
+Checks cover native songs/MakeCode/SB3, named-song files and single-file exports,
+Carnival custom game-over, placement runtime/export, countdown ordering, ordinary
+dialect inventory, canonical SPIKE artifact, all18 producer mappings, empty
+vendor deltas and HEAD mirrors. Pin producer f079238e and engine9c8777d5 together.
+Keep named song-editor GUI and missing context/wrapper operations on the open
+ledger. Publish this exact combined tree on PR810, refresh all hosted checks,
+and adopt main only after every enabled required check succeeds. Main's existing
+painter red and the independently active repair are not waived by focused checks.
+
+## Ordered zero-partial campaign — 2026-10-12
+
+The approved [partial closure plan](ARCADE-PARTIAL-CLOSURE-PLAN.md) contains
+the complete 41-row original diagnostic checklist, ordered batches, editor
+acceptance criteria and corpus-preservation rules. Start with qualification
+of the combined candidate, then authentic project context. PR810 final-head
+build/corpus passed but both browsers failed; no main-adoption claim yet.
+
+### First closure batch receipts — 2026-10-12
+
+At clean49d3cc5a8, originals remain142/41/1 and separate authentic contexts
+measure7/33/1 over41. All41 context projects retain exact original main.ts.
+The reusable recovery CLI and tutorial package-pin refinement are candidate
+source, with8 focused tests and3 CLI controls passing. Private unchanged first
+failure and corrected41-context receipts are archived in the private corpus
+repo.38 declared external dependency specifications form the next context
+frontier. No gameplay, graphical song-editor or main-adoption claim is made.
+
+### Dependency compiler loading checkpoint — 2026-10-12
+
+Continue with the bounded loader section in
+[the closure plan](ARCADE-PARTIAL-CLOSURE-PLAN.md). Both previously size-refused
+real packages now resolve; the pizza context compiles in original Arcade, while
+the Hawks snippet exposes an undeclared `harry`. Preserve that failure and the
+original corpus. Fetch reports include exact hashes, retained UTF-8 byte counts
+and explicit compiler-only editor-history exclusions. Source recovery has not
+yet supplied native import assets or qualified gameplay/editor/roundtrip parity.
+Respect the independent E10 importer ownership recorded in LANES.md.
+
+### Native package-input bridge — 2026-10-12
+
+The closure plan now documents `resolveProjectInputs`, the independent
+`dependency-project.js` bridge and CLI `to-sb3 --fetch-extensions`. Original PXT
+generates dependency inputs; the bridge preserves root galleries, namespaces,
+source order and exact image pixels. SB3 conversion records dependency
+provenance. A component control runs real Brickwright, exports to original Arcade
+and reimports with exact pixels/positions. This is not a full-game GUI receipt.
+
+Next implement namespace Buffer constants/dynamic song-buffer flow, wider native
+animations and source-backed factory scopes, then measure all context projects.
+Keep incomplete-source failures and private original receipts. Coordinate
+importer work with E10; the graphical import/network-choice/provenance UI is
+still open, as recorded in the GUI ledger.
+
+## Bounded native animation dimensions — 2026-10-12
+
+`animation-jres.js` now reads/writes the native u16 dimensions independently
+of Arcade's 160x120 display. The unchanged 1MiB packed resource and 64-frame
+budgets are joined by an explicit 2Mi decoded-pixel budget checked before
+frame allocation. Timing, palette, identity, canonical encoding and unused
+nibble checks remain enforced. Ten codec controls pass against the retained
+original PXT encoder/decoder, including exact 161x121/32-frame bytes and pixels,
+u16 endpoint dimensions, and header-only oversized-resource refusals.
+
+This closes the codec's screen-size restriction, not full wide-artwork support.
+Pixel document publication/import still uses `editablePixelSize` (160x160);
+SVG-to-pixel reading separately permits512x512. Next work must align those
+bounds with total document/layer/frame budgets, preserve artwork outside the
+viewport, qualify native clipping/collision and run genuine editor/save/reopen/
+MakeCode export journeys. Do not silently crop, rescale or drop unsupported art.
+
+PR810 source1007dea43 passed both browser shards, corpus, FPGA and companion
+checks in Build38237496710, but its build job failed two policy controls:
+unclassified immutable tutorial fetch and computed CLI module consumption.
+The candidate uses a literal lazy import for the existing dependency consumer
+and declares validated manifest SHA input in the fetch census. Recovery CLI
+controls reject branches, tags and abbreviated/nonhex revisions before network.
+No dead-module exception or fetch waiver was added. Fresh hosted qualification
+is required; the locked original census remains142/41/1.
+
+Authentic follow-up at source6c93fb987 decodes/re-encodes the real Hawks
+TrampolineDunk resource exactly:161x121,32frames,75ms,311720packed bytes.
+Prepared native diagnostics drop from1 to0 for that recovered context; original
+PXT still fails the unchanged snippet's undeclared `harry`. This does not
+change the locked original census or establish game execution.40 affected
+codec/dependency/native-import/companion/export controls pass, plus14 corrected
+policy/recovery controls; the preceding census failures are preserved.
+
+## Wide artwork authoring candidate — 2026-10-12
+
+Pixel indexed artwork and native animation resource lookup now support up
+to512x512, matching the existing SVG reader. An8Mi indexed-pixel budget covers
+all document frames/layers and the active-frame copy; the16MiB serialized
+document and64MiB artwork-bundle limits still apply. Native JRES export keeps
+its separate1MiB packed limit and reports oversized resources explicitly.
+
+Wide documents require artwork bundle8. Library installation and subsequent
+saves keep that version; old bundle7 readers preserve source byte for byte
+as future data. Narrow documents keep their existing minimum versions.
+Resize, new frame/layer and sheet slicing check pixel budgets before allocating
+new buffers, with English/German feedback. Imports check budgets before
+constructing editable frame copies. IDs, timing and external pixels are retained.
+
+A161x121/32-frame synthetic native project executes in the real VM, saves and
+reopens into a fresh VM, exports/reimports exact source and compiles/runs in
+original PXT. Native viewport clipping and offscreen frame pixels are checked.
+Actual Pixel load/resize/Undo/Redo controls verify no shrinking and refusal
+before oversized allocation. Historical bundle7 preservation also passes.
+The hosted animation browser gate now adds a two-frame wide import, visible
+Pixel corner painting outside the Arcade viewport, playback, bundle8 save/
+reopen and original-compiler GUI export. That new GUI journey is PENDING,
+not a completed browser receipt. Original184-input census142/41/1 unchanged.
+
+The focused wide-sprite oracle now compares the original simulator and native
+VM: offscreen edge collisions in both argument orders, transparent neighbours,
+pixel edits and all19200 presented screen pixels. It repeats the checks through
+Code reconstruction, SB3 reload, original execution of exported MakeCode and
+native reimport. `test/arcade-wide-artwork.test.mjs` contains the portable control.
+Original display readiness is observed after completion. The first fixture's
+constant completion marker was optimized away; its timeout is preserved and
+the corrected mutable marker passes. No runtime adjustment was needed.
+
+Next: collect the exact-head hosted wide-artwork journey; resolve namespace
+Buffer/song semantics in coordination with the importer owner and complete
+graphical dependency import and authoring evidence. The original census and
+pending browser acceptance are not promoted by this focused oracle.
+
+## Byte-buffer runtime foundation — 2026-10-12
+
+`scripts/generate-arcade-buffers.mjs` extracts the complete buffer methods from
+the pinned pxt-core13.2.1 simulator, records their SHA256 and verifies exact
+regeneration. The generated `buffer-pxt.js` retains original numeric, byte,
+slice/write/fill/shift/rotate algorithms. `buffer.js` supplies a bounded mutable
+Uint8Array facade; the mixer now uses it instead of its four-format adapter.
+The original Microsoft MIT notice is shipped and recorded in the notices.
+
+`test/makecode-arcade-byte-buffer.test.mjs` executes original MakeCode programs
+and compares all16 number formats, aliasing, detached copies, self-overlapping
+writes, range operations, clipping and UTF8. Allocation guards run before byte
+allocation; unsupported numeric formats fail explicitly. Song/mixer regressions
+remain required. The first original fixture used the shim's four-argument write
+shape where the public TypeScript method takes two arguments; compilation
+refused it. The corrected public call retains the overlapping-copy assertion.
+That original failed attempt is preserved privately.
+
+Next: wire distinct session-scoped Buffer values and native Blocks/Code words,
+then coordinate importer/helper changes with E10 and preserve exact MakeCode
+export operations. Namespace Buffer/song diagnostics remain until that complete
+path works. This foundation does not establish graphical byte/song editing,
+installed GUI acceptance or a changed original corpus census.
+
+## Buffer value authoring and exact export followup — 2026-10-12
+
+This continuation supplies a genuine `buffer` reference kind to BWValues and
+its own-fork Arrays fallback. Arcade keeps a scoped mutable byte heap: variable,
+custom-block and array aliases name the same bytes; slice copies are detached.
+Project start/load/disposal drops the heap; foreign/stale references diagnose an
+unavailable buffer. The per-allocation bound remains1MiB, not an aggregate heap
+or whole-process memory guarantee. Saved runtime references do not reconstruct
+heap contents: authored programs rebuild their buffers when reopened and run.
+
+Sixteen native Arcade words cover construction, dynamic hex, readonly literals,
+length, byte and all16 NumberFormat reads/writes, slice/write/fill/shift/rotate,
+hex/UTF8 output and `music.createSong(buffer)`. The canonical words are in
+`docs/generated/ARCADE-AUTHORING-VOCABULARY.md`; `bufferFormats` is a genuine
+reporter-accepting dropdown. Export preserves hex strings with leading zeroes,
+uses actual NumberFormat members, infers Buffer parameters and Buffer[] aliases,
+and declares Buffer variables correctly. Dynamic numeric format reporters work.
+The Buffer atom is added only to the value graph's existing two whitelists;
+importer/namespace/type-lowering ownership stays with E10.
+
+Original execution caught and corrected a literal-identity error: identical
+hex literals at distinct source sites are different objects; repeated execution
+of one source site returns the same literal. The runtime caches by source block
+and target, rather than hex content. Literal byte mutation follows the original
+readonly check; numeric setter behavior is delegated to the original algorithms.
+A song keeps its actual buffer, so mutation changes its subsequent playback.
+
+Owned producer candidate: https://github.com/CrispStrobe/sb3-creator/pull/96
+(stacked on the named-song branch; not a main adoption claim). Arrays fallback:
+https://github.com/CrispStrobe/extensions/pull/34 . Lite records exact candidate
+pins. Targeted `vendor-bundles.mjs --only arrays` preserves every other bundle
+and receipt; its offline test invokes the actual script with one immutable-source
+fetch and checks same-repository per-file pin metadata. Full component and final
+Lite hosted qualification remains required before normal exact-head integration.
+
+Focused controls are `test/makecode-arcade-buffer-values.test.mjs`,
+`test/makecode-arcade-byte-buffer.test.mjs`, song runtime/value regressions,
+`test/bw-values.test.mjs`, `test/vendor-bundles-targeted.test.mjs` and the bundled
+source gate. They execute native VM Blocks/Code reconstruction, custom arguments,
+array aliasing, SB3 fresh reload, all16 menu formats and actual original exported
+PXT programs, including real sound-instruction bytes. Failed controls are retained
+privately. No importer diagnostic or locked corpus classification is promoted.
+
+Next: coordinate E10 namespace Buffer/hex construction and mutable song flow;
+add the GUI byte inspector and visible errors; exercise the new Buffer words in
+the hosted editor before declaring GUI acceptance. Original142/41/1 remains the
+last full immutable184-input census. Authenticated41-context results remain
+7translated/33partial/1parsefailure; static classifications are not game failures.
+
+### Hosted wide artwork proof received
+
+Exact PR810 head387337ad5's Build38256137458 completed all enabled checks,
+including both browser shards. The official `arcade-animation-resource-browser`
+artifact11754784220 records a161x121 two-frame animation: stable UUID, offscreen
+corner edit, bundle version8, actual SB3 reopening, original PXT compilation and
+38962 compared pixels. This supersedes the preceding pending wide-GUI note;
+it does not qualify subsequent Buffer edits or claim a production deployment.
+Permanent run: https://github.com/CrispStrobe/brickwright-lite/actions/runs/38256137458
+Artifact API: https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11754784220/zip
+
+Buffer followup local checkpoint: the seven named suites above pass54 distinct
+controls, with zero skips. This includes the actual VM source-site literal
+identity control and original exported mutable-song sound bytes. Producer's
+canonical dialect suite passes341 controls with exact298-opcode fixture coverage.
+The component CI jobs were still queued when this checkpoint was recorded.

@@ -1213,6 +1213,17 @@ jobs:
           name: arcade-legacy-layout
           path: test-results/arcade-legacy-layout/
           if-no-files-found: error
+      - name: Browser gate — Arcade sprites placed on a tile map in the painter start there
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ BW_TILEMAP_PLACEMENT_REPORT_DIR=test-results/arcade-tilemap-placement node scripts/verify-arcade-tilemap-placement.mjs
+      - name: Upload arcade-tilemap-placement observations
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: arcade-tilemap-placement
+          path: test-results/arcade-tilemap-placement/
+          if-no-files-found: error
 
       - name: Browser gate — Arcade animation resources across Pixel Code Blocks and original export
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
@@ -2119,6 +2130,18 @@ jobs:
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
         run: BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-info-registration-browser.mjs
+      - name: Browser gate — Arcade carnival dialogs, controller restart and saved records
+        id: arcade_carnival
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}
+        run: BW_STEP_BUDGET_MIN=3 BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-carnival-browser.mjs
+      - name: Upload Arcade carnival browser receipts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ always() && matrix.shard == 'heavy' && steps.arcade_carnival.outcome != 'skipped' }}
+        with:
+          name: arcade-carnival-browser
+          path: test-results/arcade-carnival-browser/
+          if-no-files-found: warn
       - name: Browser gate — Arcade forever registration with live captures and yielding
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'heavy' }}

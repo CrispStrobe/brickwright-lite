@@ -10,6 +10,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import {patchArcadeSettingsSB3} from './lib/arcade-settings-sb3-hooks.mjs';
 
 const ROOT = process.cwd();
 const SRC = path.join(ROOT, 'overlay', 'scratch-vm');
@@ -289,6 +290,10 @@ for (const [name, anchor, patch, marker] of bwSb3Hooks) {
         process.exit(1);
     }
 }
+
+// Arcade program records travel with project saves without becoming ordinary
+// learner variables. Keep each idempotent hook separate from exact-value tags.
+sb3 = patchArcadeSettingsSB3(sb3);
 
 writeFileSync(sb3Path, sb3);
 

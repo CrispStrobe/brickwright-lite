@@ -13,7 +13,7 @@ import {chromium} from 'playwright';
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {unpackMakeCodeSource} from '../overlay/scratch-gui/src/lib/bw-makecode/embedded-source.js';
 import {makeCodeSourceHex} from '../overlay/scratch-gui/src/lib/bw-makecode/export.js';
-import {decodeAnimationJres} from '../overlay/scratch-gui/src/lib/bw-makecode/animation-jres.js';
+import {decodeAnimationJres, encodeAnimationJres} from '../overlay/scratch-gui/src/lib/bw-makecode/animation-jres.js';
 import {ANIMATION_COMPANION_PATH, recoverAnimationCompanion} from '../overlay/scratch-gui/src/lib/bw-makecode/animation-companion.js';
 import {compile} from './lib/pxt-node.mjs';
 import {runArcadeSim} from './lib/makecode-arcade-sim.mjs';
@@ -668,6 +668,52 @@ try{
         report.duplicateNativeExport={gui:true,cli:true,uniqueNativeNames:true,authoredNamesAndUuidsPreserved:true,
             originalPxtCompiledAndRun:true,guiReimported:true};
         report.journey.push('duplicated library GUI/CLI exports use unique native names, recover exact authored documents and UUIDs, run in original PXT and reimport with playback');
+        const wideFrames=[2,5].map(colour=>({pixels:Array(161*121).fill(colour)}));
+        const wideFiles={'main.ts':'let frames = assets.animation`Wide`\nlet hero = sprites.create(frames[0], SpriteKind.Player)\nhero.setPosition(80,60)\nanimation.runImageAnimation(hero, frames, 100, true)',
+            'pxt.json':JSON.stringify({name:'Wide animation',dependencies:{device:'*'},files:['main.ts','images.g.jres']}),
+            'images.g.jres':JSON.stringify({Wide:encodeAnimationJres({id:'Wide',name:'Wide',width:161,height:121,intervalMs:100,frames:wideFrames})})};
+        await openCode();if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
+        await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({name:'wide-animation.hex',mimeType:'application/octet-stream',
+            buffer:Buffer.from(makeCodeSourceHex(wideFiles,{target:'arcade',name:'Wide animation'}))});
+        await page.getByText(/Imported the Arcade game.*wide-animation\.hex/).first().waitFor({state:'visible'});
+        await apply();
+        const wideBefore=(await resource())[0];assert.equal(wideBefore.width,161);assert.equal(wideBefore.height,121);
+        assert.deepEqual(wideBefore.frames.map(frame=>frame.pixels),wideFrames.map(frame=>frame.pixels));
+        await pixels('Arcade artwork');await panel('frames');await page.getByTestId('bw-pixel-frame-0').click();
+        await page.getByTestId('bw-pixel-frames-toggle').click();
+        await page.getByTestId('bw-pixel-colour-9').click();
+        await page.getByTestId('bw-pixel-tool-pencil').click();
+        const wideCanvas=page.getByTestId('bw-pixel-canvas');const wideBox=await wideCanvas.boundingBox();assert.ok(wideBox);
+        await wideCanvas.click({position:{x:wideBox.width*160.5/161,y:wideBox.height*120.5/121}});
+        await page.getByTestId('bw-pixel-save').click();
+        await page.waitForFunction(()=>[...window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeAnimationResources.values()][0]?.frames[0].pixels[161*121-1]===9);
+        const wideEdited=(await resource())[0];assert.equal(wideEdited.id,wideBefore.id);
+        const expectedWide=wideFrames.map(frame=>[...frame.pixels]);expectedWide[0][161*121-1]=9;
+        assert.deepEqual(wideEdited.frames.map(frame=>frame.pixels),expectedWide);
+        await flag().click();
+        await page.waitForFunction(()=>{
+            const runtime=window.__brickwrightStore.getState().scratchGui.vm.runtime;
+            return Object.values(runtime.bwArcadeDeviceState?.sprites||{}).some(sprite=>sprite.image?.width===161&&sprite.image?.height===121);
+        });await stop().click();
+        await page.getByText('File',{exact:true}).first().click();const wideDownload=page.waitForEvent('download');
+        await page.getByText('Save to your computer',{exact:true}).click();
+        const wideSaved=path.join(path.dirname(out),'wide-animation-edited.sb3');await(await wideDownload).saveAs(wideSaved);
+        const wideZip=await JSZip.loadAsync(await fs.readFile(wideSaved));assert.equal(JSON.parse(await wideZip.file('brickwright/artwork/v1.json').async('text')).version,8);
+        const wideStage=await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+        await page.getByText('File',{exact:true}).first().click();const wideLoad=page.waitForEvent('filechooser');
+        await page.getByText('Load from your computer',{exact:true}).click();await(await wideLoad).setFiles(wideSaved);
+        await page.waitForFunction(id=>window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id!==id,wideStage);
+        const wideReopened=(await resource())[0];assert.equal(wideReopened.id,wideEdited.id);assert.deepEqual(wideReopened.frames.map(frame=>frame.pixels),expectedWide);
+        await openCode();if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
+        const wideExport=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
+        const wideExportFile=path.join(path.dirname(out),'wide-animation-edited.mkcd');await(await wideExport).saveAs(wideExportFile);
+        const wideReturned=await unpackMakeCodeSource(await fs.readFile(wideExportFile));
+        const wideNative=Object.values(JSON.parse(wideReturned.files['images.g.jres'])).filter(entry=>entry.mimeType==='application/mkcd-animation').map(entry=>decodeAnimationJres(entry));
+        assert.equal(wideNative.length,1);assert.deepEqual(wideNative[0].frames.map(frame=>Array.from(frame.pixels)),expectedWide);
+        const wideCompiled=await compile('arcade',wideReturned.files);assert.equal(wideCompiled.success,true,JSON.stringify(wideCompiled.diagnostics));
+        report.wideAnimation={width:161,height:121,frames:2,uuidPreserved:true,offscreenCornerEdited:true,bundleVersion:8,sb3Reopened:true,originalPxtCompiled:true,pixelsCompared:161*121*2};
+        report.journey.push('wide native import opens in Pixel, edits viewport-external corner, plays from Blocks, saves/reopens exact bundle8 pixels and compiles its GUI export in original PXT');
+
 
 
 

@@ -88,8 +88,8 @@ module.exports = makeExt(`// Name: Arcade
           if(this._foreverTimer!==undefined)clearTimeout(this._foreverTimer);this._foreverTimer=undefined;
         };
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
-        runtime.on('PROJECT_STOP_ALL', () => this._musicHost?.stopAll());
-        runtime.on('RUNTIME_DISPOSED', () => {cancelCreations();this._clearTilemap();this._tileLocations.clear();this._animationAssetCache.clear();for(const id of this._imageSkins.keys())this._clearImage(id);});
+        runtime.on('PROJECT_STOP_ALL', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._musicHost?.stopAll();});
+        runtime.on('RUNTIME_DISPOSED', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._bufferHeap=null;cancelCreations();this._clearTilemap();this._tileLocations.clear();this._animationAssetCache.clear();for(const id of this._imageSkins.keys())this._clearImage(id);});
         const reset = () => {
           cancelCreations();
           this._terrainStopped = false;
@@ -117,9 +117,10 @@ module.exports = makeExt(`// Name: Arcade
           this._clearParticleOverlays();this._particleScenes=new WeakMap();this._particleAnchors=new WeakMap();
           this._renderables=new WeakMap();this._screen=null;
           this._musicHost?.reset();this._musicIds=new Map();this._musicValues=new Map();
+          this._bufferHeap = null;
           this._sevensegIds=new Map();this._sevensegValues=new Map();
           this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._scrollerModule=null;this._characterAnimationModule=null;
-          this._gameOver=null;this._buttonPressWaiters=[];
+          this._carnivalHost?.cancel();this._carnivalHost=null;this._gameOver=null;this._buttonPressWaiters=[];
           this._clearBackground();
           for (const id of this._imageSkins.keys()) this._clearImage(id);
           this._images.clear();
@@ -206,6 +207,9 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'setGameOverMessage',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over message [MESSAGE] for win [WIN]',arguments:{...str('MESSAGE','GAME OVER!'),WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'setGameOverPlayable',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over sound [PLAYABLE] looping [LOOPING] for win [WIN]',arguments:{...str('PLAYABLE',''),LOOPING:{type:Scratch.ArgumentType.BOOLEAN},WIN:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'setGameOverScoringType',blockType:Scratch.BlockType.COMMAND,text:'Arcade set game over scoring [TYPE]',arguments:{TYPE:{type:Scratch.ArgumentType.STRING,menu:'scoringTypes',defaultValue:'HighScore'}}},
+          {opcode:'carnivalCountdown',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival countdown [SECONDS] seconds style [STYLE] effect [EFFECT]',arguments:{...n('SECONDS',15),STYLE:{type:Scratch.ArgumentType.STRING,menu:'carnivalStyles',defaultValue:'Score'},EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'}}},
+          {opcode:'carnivalGameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival game over style [STYLE] effect [EFFECT]',arguments:{STYLE:{type:Scratch.ArgumentType.STRING,menu:'carnivalStyles',defaultValue:'Win'},EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'}}},
+          {opcode:'carnivalCustomGameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade carnival custom game over message [MESSAGE] effect [EFFECT] sound [SOUND] use sound [HAS_SOUND] scoring [SCORING] score [SCORE] use score [HAS_SCORE]',arguments:{...str('MESSAGE','Great Job!'),EFFECT:{type:Scratch.ArgumentType.STRING,menu:'carnivalEffects',defaultValue:'unset'},...str('SOUND',''),HAS_SOUND:{type:Scratch.ArgumentType.BOOLEAN},SCORING:{type:Scratch.ArgumentType.STRING,menu:'carnivalScoring',defaultValue:'HScore'},...n('SCORE',0),HAS_SCORE:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'startImageEffect',blockType:Scratch.BlockType.COMMAND,text:'Arcade start image effect [EFFECT] times [TIMES] delay [DELAY] ms',arguments:{EFFECT:{type:Scratch.ArgumentType.STRING,menu:'imageEffects',defaultValue:'dissolve'},...n('TIMES',0),...n('DELAY',0)}},
           {opcode:'scrollBackgroundWithCamera',blockType:Scratch.BlockType.COMMAND,text:'Arcade scroll background with camera [MODE] layer [LAYER]',arguments:{MODE:{type:Scratch.ArgumentType.STRING,menu:'cameraScrollModes',defaultValue:'OnlyHorizontal'},...n('LAYER',0)}},
           {opcode:'scrollBackgroundWithSpeed',blockType:Scratch.BlockType.COMMAND,text:'Arcade scroll background vx [VX] vy [VY] layer [LAYER]',arguments:{...n('VX',-50),...n('VY',-50),...n('LAYER',0)}},
@@ -257,6 +261,24 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'melodyPlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade melody playable [MELODY]',arguments:str('MELODY','')},
           {opcode:'stringPlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade string playable [MELODY] at [TEMPO] bpm',arguments:{...str('MELODY','C D E F'),...n('TEMPO',120)}},
           {opcode:'tonePlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade tone playable [FREQUENCY] Hz for [DURATION] ms',arguments:{...n('FREQUENCY',262),...n('DURATION',500)}},
+          {opcode:'songPlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade song playable hex [HEX]',arguments:str('HEX','00780004080100')},
+          {opcode:'createBuffer',blockType:Scratch.BlockType.REPORTER,text:'Arcade create byte buffer size [SIZE]',arguments:n('SIZE',8)},
+          {opcode:'bufferFromHex',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from hex text [HEX]',arguments:str('HEX','01020304')},
+          {opcode:'bufferLiteral',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer literal hex [HEX]',arguments:str('HEX','01020304')},
+          {opcode:'bufferLength',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] length',arguments:str('BUFFER','')},
+          {opcode:'bufferGetByte',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] byte at [OFFSET]',arguments:{...str('BUFFER',''),...n('OFFSET',0)}},
+          {opcode:'bufferSetByte',blockType:Scratch.BlockType.COMMAND,text:'Arcade set byte buffer [BUFFER] byte at [OFFSET] to [VALUE]',arguments:{...str('BUFFER',''),...n('OFFSET',0),...n('VALUE',0)}},
+          {opcode:'bufferGetNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] number [FORMAT] at [OFFSET]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt16LE'},...n('OFFSET',0)}},
+          {opcode:'bufferSetNumber',blockType:Scratch.BlockType.COMMAND,text:'Arcade set byte buffer [BUFFER] number [FORMAT] at [OFFSET] to [VALUE]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt16LE'},...n('OFFSET',0),...n('VALUE',0)}},
+          {opcode:'bufferSlice',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] slice at [OFFSET] length [LENGTH]',arguments:{...str('BUFFER',''),...n('OFFSET',0),...n('LENGTH',-1)}},
+          {opcode:'bufferWrite',blockType:Scratch.BlockType.COMMAND,text:'Arcade write byte buffer [BUFFER] at [OFFSET] from [SOURCE]',arguments:{...str('BUFFER',''),...n('OFFSET',0),...str('SOURCE','')}},
+          {opcode:'bufferFill',blockType:Scratch.BlockType.COMMAND,text:'Arcade fill byte buffer [BUFFER] with [VALUE] at [OFFSET] length [LENGTH]',arguments:{...str('BUFFER',''),...n('VALUE',0),...n('OFFSET',0),...n('LENGTH',-1)}},
+          {opcode:'bufferShift',blockType:Scratch.BlockType.COMMAND,text:'Arcade shift byte buffer [BUFFER] by [AMOUNT] at [OFFSET] length [LENGTH]',arguments:{...str('BUFFER',''),...n('AMOUNT',1),...n('OFFSET',0),...n('LENGTH',-1)}},
+          {opcode:'bufferRotate',blockType:Scratch.BlockType.COMMAND,text:'Arcade rotate byte buffer [BUFFER] by [AMOUNT] at [OFFSET] length [LENGTH]',arguments:{...str('BUFFER',''),...n('AMOUNT',1),...n('OFFSET',0),...n('LENGTH',-1)}},
+          {opcode:'bufferToHex',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] to hex',arguments:str('BUFFER','')},
+          {opcode:'bufferToText',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] to UTF8 text',arguments:str('BUFFER','')},
+          {opcode:'songFromBuffer',blockType:Scratch.BlockType.REPORTER,text:'Arcade song playable byte buffer [BUFFER]',arguments:str('BUFFER','')},
+          {opcode:'namedSongPlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade song named [NAME] hex [HEX]',arguments:{...str('NAME','mySong'),...str('HEX','00780004080100')}},
           {opcode:'soundEffect',blockType:Scratch.BlockType.REPORTER,text:'Arcade sound effect wave [WAVE] from [START_FREQUENCY] Hz to [END_FREQUENCY] Hz volume [START_VOLUME] to [END_VOLUME] for [DURATION] ms effect [EFFECT] curve [CURVE]',
             arguments:{WAVE:{type:Scratch.ArgumentType.STRING,menu:'waveShapes',defaultValue:'Square'},...n('START_FREQUENCY',400),...n('END_FREQUENCY',600),...n('START_VOLUME',255),...n('END_VOLUME',0),...n('DURATION',500),
               EFFECT:{type:Scratch.ArgumentType.STRING,menu:'soundEffects',defaultValue:'None'},CURVE:{type:Scratch.ArgumentType.STRING,menu:'soundCurves',defaultValue:'Linear'}}},
@@ -745,6 +767,9 @@ module.exports = makeExt(`// Name: Arcade
           ,sevensegReadable: {acceptReporters: false, items: ['x', 'y', 'width', 'height', 'value', 'count']}
           ,scoringTypes: {acceptReporters: false, items: ['HighScore', 'LowScore', 'None']}
           ,playbackModes: {acceptReporters: false, items: ['UntilDone', 'InBackground', 'LoopingInBackground']}
+          ,carnivalScoring:{acceptReporters:false,items:['unset','None','HScore','LScore','HTime','LTime']}
+          ,carnivalStyles:{acceptReporters:false,items:['Win','Lose','Score','Timed','Multi','Custom']}
+          ,carnivalEffects:{acceptReporters:false,items:['unset','confetti','hearts','smiles','blizzard','bubbles','starField','clouds','none','dissolve','melt','slash','splatter']}
           ,melodyModes: {acceptReporters: false, items: ['play', 'playUntilDone', 'loop']}
           ,soundPlayModes: {acceptReporters: false, items: ['UntilDone', 'InBackground']}
           ,waveShapes: {acceptReporters: false, items: ['Sine', 'Sawtooth', 'Triangle', 'Square', 'Noise']}
@@ -773,6 +798,7 @@ module.exports = makeExt(`// Name: Arcade
           ,animationProperties: {acceptReporters: false, items: ['image', 'action', 'interval']}
           ,animationTypes: {acceptReporters: true, items: [{text:'all',value:'0'}, {text:'image',value:'1'}, {text:'movement',value:'2'}]}
           ,imageProperties: {acceptReporters: false, items: ['width', 'height']}
+          ,bufferFormats: {acceptReporters: true, items: Object.keys(dependencies.buffers.NumberFormat).filter(key=>!/^\\d+$/.test(key))}
           ,imageBlitOperations: {acceptReporters: false, items: ['drawImage', 'drawTransparentImage']},
           imageDrawOperations: {acceptReporters: false, items: ['fillRect', 'drawLine']},
           imageOperations: {acceptReporters: false, items: ['fill', 'replace', 'flipX', 'flipY']},
@@ -1110,6 +1136,7 @@ module.exports = makeExt(`// Name: Arcade
       const runtime=this._runtime;if(!runtime?.allScriptsByOpcodeDo || !runtime?._pushThread)return;
       // Scene transitions do not cancel callback fibers already running.
       for(const registration of registrations){
+        if(registration.host){yield registration.host();if(this._terrainStopped)return;continue;}
         const scripts=[];
         runtime.allScriptsByOpcodeDo(opcode,(script,target)=>{
           const hat=target.blocks.getBlock(script.blockId),token=target.blocks.getBlock(hat.inputs?.TOKEN?.block);
@@ -2834,10 +2861,11 @@ module.exports = makeExt(`// Name: Arcade
       if (!resource) return fail('missing or deleted resource');
       const {width, height, palette, frames, revision} = resource;
       if (resource.id !== id || typeof resource.name !== 'string' || !resource.name.trim() ||
-          !Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 160 || height > 160 ||
+          !Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 512 || height > 512 ||
           !((Number.isInteger(revision) && revision >= 0) || (typeof revision === 'string' && revision.length > 0)) || !Array.isArray(palette) || palette.length !== 16 ||
           palette[0] !== null || !Array.from(palette.slice(1)).every(colour => /^#[0-9a-f]{6}$/i.test(colour)) ||
-          !Array.isArray(frames) || !frames.length || frames.length > 64) return fail('invalid resource metadata');
+          !Array.isArray(frames) || !frames.length || frames.length > 64 ||
+          width * height * (frames.length + 1) > 8 * 1024 * 1024) return fail('invalid resource metadata');
       const ids = new Set();
       const interval = frames[0]?.durationMs;
       for (const frame of frames) {
@@ -3243,10 +3271,10 @@ module.exports = makeExt(`// Name: Arcade
       for(const name of ['dissolve','melt','slash','splatter'])effects[name]={kind:'image',name};
       this._gameOverEffects=effects;
       const music=this._music().pxt.music;
+      this._dialogHost={wrap:raw=>new DialogImage(raw),img,image:{create:(width,height)=>new DialogImage({width,height,pixels:new Uint8Array(Math.max(0,width*height))}),
+          font5:text.image.font5,font8:text.image.font8,font12:text.image.font12}};
       this._gameOverPxt=dependencies.initializeGameOver({
-        image:{create:(width,height)=>new DialogImage({width,height,pixels:new Uint8Array(Math.max(0,width*height))}),
-          font5:text.image.font5,font8:text.image.font8,font12:text.image.font12},
-        img,screen:{width:160,height:120,isMono:false},effects,music,
+        image:this._dialogHost.image,img,screen:{width:160,height:120,isMono:false},effects,music,
         info:{isBetterScore:(next,previous)=>ext._isBetterScore(next,previous)},
         control:{},controller:{},scene:{}
       });
@@ -3289,6 +3317,21 @@ module.exports = makeExt(`// Name: Arcade
       const name=String(args.EFFECT),effect=['dissolve','melt','slash','splatter'].includes(name)?this._particles().effects[name]:null;
       if(!effect){this._runtime?.emit?.('BLOCKS_ERROR','Arcade has no image effect "'+name+'".');return;}
       effect.startScreenEffect(Scratch.Cast.toNumber(args.TIMES) || undefined,Scratch.Cast.toNumber(args.DELAY) || undefined);
+    }
+    _carnivalCall(method,args) {
+      try {
+        if(!this._carnivalHost)this._carnivalHost=dependencies.createCarnivalHost(this);
+        const result=this._carnivalHost[method](args);
+        return result?.catch?result.catch(error=>{if(error.code!=='CARNIVAL_CANCELLED')throw error;}):result;
+      }catch(error){if(error.code!=='CARNIVAL_CANCELLED')throw error;}
+    }
+    carnivalCountdown(args) {return this._carnivalCall('countdown',args);}
+    carnivalGameOver(args) {return this._carnivalCall('gameOver',args);}
+    carnivalCustomGameOver(args) {
+      return this._carnivalCall('customGameOver',{...args,
+        MESSAGE:String(Scratch.BWValues.decode(args.MESSAGE) ?? ''),
+        HAS_SOUND:Scratch.Cast.toBoolean(args.HAS_SOUND),HAS_SCORE:Scratch.Cast.toBoolean(args.HAS_SCORE),
+        SCORE:Number(Scratch.BWValues.decode(args.SCORE))});
     }
     gameOver(args,util) {return this._runGameOver(Scratch.Cast.toBoolean(args.WIN),util);}
     // game.over(win, effect?): the effect applies unless the program chose one.
@@ -3795,6 +3838,52 @@ module.exports = makeExt(`// Name: Arcade
     }
     stringPlayable(args) {
       return this._musicHandle(this._music().pxt.music.stringPlayable(String(Scratch.BWValues.decode(args.MELODY) ?? ''),Scratch.Cast.toNumber(args.TEMPO)));
+    }
+    namedSongPlayable(args) { return this.songPlayable(args); }
+    _bufferState() {
+      if(!this._bufferHeap)this._bufferHeap={values:new Map(),ids:new WeakMap(),literals:new Map(),next:0};
+      return this._bufferHeap;
+    }
+    _bufferReference(bytes) {
+      const heap=this._bufferState();let id=heap.ids.get(bytes);
+      if(id===undefined){id='buffer:'+ ++heap.next;heap.ids.set(bytes,id);heap.values.set(id,bytes);}
+      return Scratch.BWValues.reference(this._runtime,'buffer',id);
+    }
+    _buffer(value) {
+      const id=Scratch.BWValues.referenceId(this._runtime,value,'buffer'),bytes=id===null?null:this._bufferState().values.get(id);
+      if(!bytes)throw new Error('Arcade byte buffer is not available in this project run');
+      return bytes;
+    }
+    _bufferGuard(action) {
+      try{return action();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error));return Scratch.BWValues.UNDEFINED;}
+    }
+    createBuffer(args) {return this._bufferGuard(()=>this._bufferReference(new dependencies.buffers.PxtBuffer(Scratch.Cast.toNumber(args.SIZE))));}
+    bufferFromHex(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.fromHex(Scratch.BWValues.decode(args.HEX))));}
+    bufferLiteral(args,util) {
+      return this._bufferGuard(()=>{
+        const block=util?.thread?.peekStack?.(),heap=this._bufferState();
+        const key=block?String(util.target?.id)+':'+block:null;
+        if(key===null)return this._bufferReference(dependencies.buffers.literal(args.HEX));
+        if(!heap.literals.has(key))heap.literals.set(key,dependencies.buffers.literal(args.HEX));
+        return this._bufferReference(heap.literals.get(key));
+      });
+    }
+    bufferLength(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).length);}
+    bufferGetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getByte(Scratch.Cast.toNumber(args.OFFSET)));}
+    bufferSetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).setByte(Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE)));}
+    bufferGetNumber(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getNumber(args.FORMAT,Scratch.Cast.toNumber(args.OFFSET)));}
+    bufferSetNumber(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).setNumber(args.FORMAT,Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE)));}
+    bufferSlice(args) {return this._bufferGuard(()=>this._bufferReference(this._buffer(args.BUFFER).slice(Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH))));}
+    bufferWrite(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).write(Scratch.Cast.toNumber(args.OFFSET),this._buffer(args.SOURCE)));}
+    bufferFill(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).fill(Scratch.Cast.toNumber(args.VALUE),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH)));}
+    bufferShift(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).shift(Scratch.Cast.toNumber(args.AMOUNT),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH)));}
+    bufferRotate(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).rotate(Scratch.Cast.toNumber(args.AMOUNT),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH)));}
+    bufferToHex(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).toHex());}
+    bufferToText(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).toString());}
+    songFromBuffer(args) {return this._bufferGuard(()=>this._musicHandle(this._music().createSongBuffer(this._buffer(args.BUFFER))));}
+    songPlayable(args) {
+      try {return this._musicHandle(this._music().createSong(String(Scratch.BWValues.decode(args.HEX) ?? '')));}
+      catch(error){this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error));return '';}
     }
     tonePlayable(args) {return this._musicHandle(this._music().pxt.music.tonePlayable(Scratch.Cast.toNumber(args.FREQUENCY),Scratch.Cast.toNumber(args.DURATION)));}
     soundEffect(args) {
@@ -4567,8 +4656,10 @@ module.exports = makeExt(`// Name: Arcade
   initializeCharacterAnimations: require('./character-animations-pxt'),
   initializeText: require('./text-pxt'),
   createMusic: require('./music'),
+  buffers: require('./buffer'),
   initializeMusic: require('./music-pxt'),
   helpers: require('./helpers-pxt'),
+  createCarnivalHost: require('./carnival-host'),
   initializeGameOver: require('./gameover-pxt'),
   initializeHud: require('./hud-pxt')
 });

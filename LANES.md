@@ -308,7 +308,7 @@ journey passes 5 of 5 against a production build with the fix.
 
 ## Arcade sprite placement from the tile map painter — 2026-10-11
 
-CLAIMED — Claude (opus), owner request ("fix it all"), branch
+DONE candidate — Claude (opus), owner request ("fix it all"), branch
 `lane/arcade-tilemap-placement-20261011`, stacked on Codex's painter stack
 (PR793 → PR794) and agreed with Codex, who is not taking it. In the painter,
 show where sprites are placed on the map and let the user place or move a
@@ -321,6 +321,14 @@ scripts/verify-arcade-tilemap-placement.mjs with its additive light-shard step
 and budget registration in build.yml, Arcade docs and this ledger. No change to
 Codex's tile identity, legacy layout or persistence code paths, circuit source
 or pins; legacy colour-tile placement (`placeOnLegacyTile`) stays out of scope.
+Done: Place sprite tool, placement list, markers and staged Save/Revert in the
+painter; model lib/bw-makecode/tilemap-placements.js. Four model tests run
+the real game and the MakeCode export (moved, added and removed placements;
+the map's own placements only, up to the next map; stale lists refused); three
+source mutants are caught. The new browser journey passes 17 of 17 twice
+against a production build; the painter, tile identity and legacy layout
+journeys still pass (19, 11, 8 checks).
+
 
 ## Arcade tile names and MakeCode asset identity — 2026-10-11
 
@@ -340,7 +348,7 @@ explicitly; never silently alias distinct edited tiles to one exported asset.
 
 ## Arcade painted tilemap project save/reopen — 2026-10-11
 
-DONE — Codex, coordinated with the session owning the circuit green-flag
+CLAIMED — Codex, coordinated with the session owning the circuit green-flag
 repair. Branch `lane/arcade-painted-project-roundtrip-20261011`.
 Extend the existing real-pointer tilemap painter browser journey to save an SB3,
 reopen it through the GUI, verify every painted map/wall/tile pixel and editable
@@ -976,11 +984,36 @@ The [receipt](docs/receipts/2026-10-07-arcade-resource-picker-errors.json) recor
 exact boundaries. Hosted follow-up checks remain pending; corpus93 partial
 and original Assets-editor qualification remain open.
 
+## SPIKE Code Stop during native startup — 2026-10-13
+
+CLAIMED — Codex SPIKE integration, `fix/spike-startup-stop-feedback-20261013`.
+Envelope: `overlay/scratch-gui/src/lib/spike-arena/code-run-feedback.js`,
+`overlay/scratch-gui/src/components/tw-pseudocode/spike-arena-pane.jsx`,
+`test/spike-code-run-feedback.test.mjs`, `test/spike-arena-pane-units.test.mjs`,
+this ledger and the SPIKE status guide; preserve tracked mirrors only where they
+still exist. The installed bb293 startup observation exposes Arena Stop but
+hides Code Stop until firmware feedback becomes active. Add an explicit starting
+notification through the existing feedback callbacks and arena pane, after
+validation and with the stop handler already installed. Show Code Stop while
+starting without reporting guest execution as RUNNING. Preserve terminal and
+cancellation guards, invalid-program refusal, existing retained uploads and
+cleanup ownership. Qualify the actual Code Stop action during pending native
+startup on a freshly built installed consumer, followed by cleanup and a new
+run; host controls alone do not close this lane. No importer, painter, peer,
+firmware, Runtime/model pin or workflow edits.
+
+Source candidate: localized cold-start feedback exposes Code Stop after session
+startup invocation. Fourteen Node 22 feedback controls pass; four notification,
+terminal and retained-upload mutants fail. Hosted and fresh installed Code Stop
+qualification remain pending; this claim is not closed by host controls.
+
 ## SPIKE handover
 
 The [SPIKE state and next lanes](docs/SPIKE-STATUS-AND-LANES.md) record the
-2026-10-05 tested GUI baseline and proposed cross-repository work. These are task
-definitions, not implementation claims; claim a lane below before source changes.
+2026-10-05 GUI baseline, the separately versioned 2026-10-12 installed Linux
+native/Python persistence and lifecycle checkpoint, and proposed cross-repository
+work. G01–G07 definitions do not imply full completion; claim a lane below before
+source changes. The checkpoint preserves earlier failures and package boundaries.
 This documentation-only handover owns no actuator or firmware implementation.
 
 ## The protocol
@@ -1442,7 +1475,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 | DONE — `peers` LAN sharing: security review, then salvage behind a build-time gate, default OFF (task E11 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; `docs/PEERS-SECURITY-REVIEW.md` (new), `apps/tauri/src-tauri/**` behind a cargo feature / env gate, GUI peer client + settings behind the same gate, peer dialect words if they pass review, tests proving default builds contain none of it; this row and the task file. | **DONE 2026-10-13 — Lite PR #821** (branch `lane/e11-peers`). Review `docs/PEERS-SECURITY-REVIEW.md` of WIP `23e9c7f44`: GO only behind a compile-time gate OFF by default, fixes F1–F10; NO-GO for default-on until F11 (shared bearer link, no forward secrecy) is redesigned. F1 critical: the WIP's four `window.confirm` consents (peer-sessions.js:176/191/352/360) were always-truthy Promises in the app (E6), so project/code offer+request never asked — consent now native (`peer/mod.rs` `blocking_show`) before the editor sees a request; F2 silent camera capture → Allow/Deny per photo; F3 remote green flag/broadcast/variables/sprites → one consent per sharing session, stop free; F4 24 MiB pre-auth allocation → protocol v2 hello tag before any length (72 bytes per stranger); F5 8×65 s slot hold → 5 s handshake, 8 pre-auth + 4 post-auth pools; F6 zero nonce → counter nonces; F7 one dialog at a time; F8 `peer_enable` asks natively, main window only; F9 private/loopback/link-local IPv4 only; F10 `get_if_addrs` (2018) dropped; F15 (found by the first feature-on CI run, 38222898790) bidi/zero-width characters in a peer-chosen project name stripped from the consent dialog; refused: tauri-plugin-fs, Info.plist strings (F12, F13). Peer dialect words Lite-only, gated (no sb3-creator PR). **Gate:** Cargo feature `peers` (not default): module, 5 commands (`#[cfg(feature = "peers")]` in `generate_handler!`, `build.rs` `CARGO_FEATURE_PEERS`), only grant `runtime-capabilities/peers.json` (main webview, added in a gated setup block); web `BW_ENABLE_PEERS=1` DefinePlugin boolean, `=== true` at 6 consumers. **Default-off proof:** `tauri-app-command-acl` (+10 mutations), new `peers-gate.test.mjs` (7 tests; 10 mutations each red), Build guard `scripts/verify-no-peer-surface.mjs` on the emitted bundle (refuses a vacuous scan; first CI reading, Build run 38225239896: 2779 files, 221 scripts, presence marker found, 0 peer markers), webpack 5.96.1 folding measured on all 5 gate shapes (off: 0 markers/1 file; on: 4/2). **Gate-on:** tauri workflow runs `cargo test --features peers peer::` + clippy (run 38225240012: 9/9 peer tests, clippy -D warnings clean; default test + e2e green); protocol tests 7/7 locally in a standalone crate, 3 mutations red; `peer-pseudocode` 5/5 on current sb3-creator. Notices: 10 RustCrypto crates recorded (MIT OR Apache-2.0); Rust notices check current. **Remains:** F11 redesign before any default-on; a peers-on iOS build needs `NSLocalNetworkUsageDescription`; no end-to-end two-app run (no feature-on app build exists). |
 
-| Gearmotor/encoder-motor reverse; stc12 7-segment minus sign (task B14 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; bw-board motor models (gearmotor, dc_motor_encoder), CrispStrobe/extensions stc12 7-segment, the C emitter (stc-compiler/sb3-creator, upstream first), Lite pin-bump surfaces; this row and the task file. | **DONE 2026-10-13 — Lite PR (this branch, `lane/b14-motor-sign`).** Upstream merged first: bw-board #535 `7254f240` (master CI 38364447706 green), CrispStrobe/extensions #35 `c13f4a9d`, stc-compiler #16 `bcfe34e2`, sb3-creator #109 `504abe93`; Lite pins bw-board `7254f240`, extensions `c13f4a9d`, sb3-creator `504abe93` with every ripple surface regenerated. **(1) Motors, measured first** (bw-board `18fa8508`, L293D bench kV 0.05 / J 1e-5 / R 5, 200 ms): program reverse (IN1 low, IN2 high) left gearmotor and dc_motor_encoder at omega 0 (encoder angle 0); `set motor speed/direction` refused on both ("no simulator action"); "motor 1" counted dc_motor only. FOUND: both stamped the back-EMF as an INVERTED Norton pair (dc_motor's old bug): driven 17.5 rad/s vs V/kV 44 (50 % PWM pin 4.33 vs dc_motor 35.6), an open motor braked itself to 0 in 40 ms, and once signed crept into reverse. **Fix:** dc_motor's signed step shared (`stepMotorVelocity`/`motorDirectionOf` in `src/devices/dc-motor.js`), used by gearmotor (`tier1-parts.js`) and dc_motor_encoder (`misc-parts.js`: signed angle, quadrature runs backwards, signed `count`), both on dc_motor's Thevenin stamp; `DRIVEN_MOTOR_KINDS` in `board.js` routes speed/direction for all three; devices.js `MOTOR_KINDS` counts them. **After:** reverse velocity -42.40 (gearmotor) / -43.82 and count -91 (encoder), forward +42.40 / +43.82; devices blocks drive both ways, nothing refused. Forward: dc_motor bit-identical (150 ms traces); with the old stamp kept the signed integrator is bit-identical for gearmotor/encoder (bridge, PWM pin, supply); the stamp correction changes their forward speed by design. Mutations (8), each red: sign dropped (each model), count unsigned, slot unwrapped, routes dc_motor-only, EMF inverted (each), shared step clamping at 0. **(2) Minus sign, measured first:** `show number -42` = "    - 42" in the stc12 block (A2 latch) and in the compiled C (chain sdcc -> emu8051 -> A2 wiring, decoded from the pin writes; stc89c52rc/stc12c5a60s2/stc15f2k60s2); block `-1234567` lost its sign. Fixed the same way in stc12.js `seg_shownum`, stc_pseudocode.py (+ docs mirror) and sb3Creator.js `_cSevenSegHelpers` (sign directly before the most significant digit). After: "     -42", "      -7", "  -32768", block "-1234567". Mutations: old placement, `i > 0` guard, sign over the MSD: red; the C's `i > 1` guard survives (unreachable with a 16-bit int). **Lite:** `test/b14-motor-sign-and-minus.test.mjs` (4: devices on gearmotor/encoder, the stc12 block, the compiled C via SDCC WASM + emu8051), each red with the old bundle/emitter; `example-vm-execution` drops dc_motor/gearmotor from KNOWN_NO_CONTROL with a live route check. **Named, not fixed:** bw-board's sevenseg8 latches at the select change, so the compiled C's ISR order (blank, select, segments) reads blank on the model -- compiled 7-segment programs show nothing in the circuit (the tests decode the pin trace); sb3-creator CI skips its 8051 chains (no emu8051 build there), so the C chain runs in Lite's CI. |
+| Gearmotor/encoder-motor reverse; stc12 7-segment minus sign (task B14 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; bw-board motor models (gearmotor, dc_motor_encoder), CrispStrobe/extensions stc12 7-segment, the C emitter (stc-compiler/sb3-creator, upstream first), Lite pin-bump surfaces; this row and the task file. | **DONE 2026-10-13 — Lite PR (this branch, `lane/b14-motor-sign`).** Upstream merged first: bw-board #535 `7254f240` (master CI 38364447706 green), CrispStrobe/extensions #35 `c13f4a9d`, stc-compiler #16 `bcfe34e2`, sb3-creator #109 `504abe93`; Lite pins bw-board `7254f240`, extensions `c13f4a9d`, sb3-creator `858b732e` (#109's head on `0146aed5`, merged as `504abe93`; pinned there so the Buffer dialect words #97-#105 brought onto sb3-creator main stay with the Arcade lanes' own adoptions) with every ripple surface regenerated. **(1) Motors, measured first** (bw-board `18fa8508`, L293D bench kV 0.05 / J 1e-5 / R 5, 200 ms): program reverse (IN1 low, IN2 high) left gearmotor and dc_motor_encoder at omega 0 (encoder angle 0); `set motor speed/direction` refused on both ("no simulator action"); "motor 1" counted dc_motor only. FOUND: both stamped the back-EMF as an INVERTED Norton pair (dc_motor's old bug): driven 17.5 rad/s vs V/kV 44 (50 % PWM pin 4.33 vs dc_motor 35.6), an open motor braked itself to 0 in 40 ms, and once signed crept into reverse. **Fix:** dc_motor's signed step shared (`stepMotorVelocity`/`motorDirectionOf` in `src/devices/dc-motor.js`), used by gearmotor (`tier1-parts.js`) and dc_motor_encoder (`misc-parts.js`: signed angle, quadrature runs backwards, signed `count`), both on dc_motor's Thevenin stamp; `DRIVEN_MOTOR_KINDS` in `board.js` routes speed/direction for all three; devices.js `MOTOR_KINDS` counts them. **After:** reverse velocity -42.40 (gearmotor) / -43.82 and count -91 (encoder), forward +42.40 / +43.82; devices blocks drive both ways, nothing refused. Forward: dc_motor bit-identical (150 ms traces); with the old stamp kept the signed integrator is bit-identical for gearmotor/encoder (bridge, PWM pin, supply); the stamp correction changes their forward speed by design. Mutations (8), each red: sign dropped (each model), count unsigned, slot unwrapped, routes dc_motor-only, EMF inverted (each), shared step clamping at 0. **(2) Minus sign, measured first:** `show number -42` = "    - 42" in the stc12 block (A2 latch) and in the compiled C (chain sdcc -> emu8051 -> A2 wiring, decoded from the pin writes; stc89c52rc/stc12c5a60s2/stc15f2k60s2); block `-1234567` lost its sign. Fixed the same way in stc12.js `seg_shownum`, stc_pseudocode.py (+ docs mirror) and sb3Creator.js `_cSevenSegHelpers` (sign directly before the most significant digit). After: "     -42", "      -7", "  -32768", block "-1234567". Mutations: old placement, `i > 0` guard, sign over the MSD: red; the C's `i > 1` guard survives (unreachable with a 16-bit int). **Lite:** `test/b14-motor-sign-and-minus.test.mjs` (4: devices on gearmotor/encoder, the stc12 block, the compiled C via SDCC WASM + emu8051), each red with the old bundle/emitter; `example-vm-execution` drops dc_motor/gearmotor from KNOWN_NO_CONTROL with a live route check. **Named, not fixed:** bw-board's sevenseg8 latches at the select change, so the compiled C's ISR order (blank, select, segments) reads blank on the model -- compiled 7-segment programs show nothing in the circuit (the tests decode the pin trace); sb3-creator CI skips its 8051 chains (no emu8051 build there), so the C chain runs in Lite's CI. |
 
 | DONE — Main red: Arcade painter browser check (saved painted level after reopen) (task C8 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktree `[local path omitted]` | base `af1f0ff84`; paths: whatever the root cause needs in the Arcade painter / SB3 reopen path or the browser gate; this row and the task file. Defers to an open Arcade-session PR if one already fixes it. | **DONE 2026-10-12 — Lite PR #814** (branch `lane/c8-painter-red-20261012`). Flake in the gate, not the app: the reopened green flag runs the painter's new-level script (10x8 at ~30-60 ms) and the platformer's `setLevelTileMap` (32x8, ~350-670 ms later); the check read the live map and passed only if a 400 ms poll hit that window (main `8f2cdf8a8`, run 38197900088, missed it). Two converged repairs: the owner-landed `40cfe8107` (`scripts/lib/arcade-tilemap-installations.mjs`, per-block install receipts) fixed the race on main first; #814 (first qualified independently at `06e918fe2`/`afa5306ff`, Build 38209932025 and 38213358016 green) was converged onto that helper and keeps only its extra check that the platformer installs its own painted first level exactly, plus named observer globals and a unit test for two observers. Red→green: old assertion + injected 3 s wait 4/4 red; the gate green with and without the wait; mutations red. Details in the C8 cell. |
 
@@ -2818,7 +2851,7 @@ Legacy layout authoring envelope additionally owns `scripts/verify-arcade-legacy
 Legacy authoring followup in PR794 also owns definition artwork/wall editing: new `legacy-tile-definition-editor.jsx`, definition operations in `legacy-layout-editor.js`, and focused tests/browser coverage. Each definition retains its own block/index/timing; only static artwork sources and literal wall predicates are editable. Computed inputs get explicit reasons. No sprite-placement implementation or circuit pin changes.
 
 
-Painted project persistence PR792 merged at `18b2929a8479bcec880660b94c13bbb6c991741a`, reviewed head `eae43ccbad345a5d123026d6a615a83828a6de89`. All seven enabled checks succeeded; conditional deployment checks skipped on the PR. Hosted painter artifact observes34 successful checks, including actual SB3 fresh-context reopen, native edited state, original compiler/render and downloaded MakeCode reimport. Expected and actual merge tree `4470f89493e6c944ef62359888a9053df514c325` match. [Hosted source qualification](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38146762544). No corpus promotion or whole-game equivalence claim.
+## Ended Claude session integration checkpoint — 2026-10-12
 
 Legacy source followup claim: Codex owns `lane/arcade-legacy-image-aliases-20261011`, stacked on PR794. Same helper/test/browser/docs envelope; trace single authored image assignments and aliases on the preceding command chain without reading live handles or flattening image mutation code. Reassignments and ambiguous sources stay explicitly computed. No painter JSX/model overlap, sprite placement, circuit or pin changes.
 
@@ -2850,6 +2883,13 @@ is retained. The lane additionally owns its optional target-dependent default
 core dependency and propagation through `scripts/makecode.mjs`, plus the new
 `test/makecode-tutorial-collector.test.mjs`. Existing assembly tests stay intact.
 Selected main source is explicit; ghost programs are not automatically chosen.
+Operator-requested rescue on `integrate/claude-arcade-rescue-20261012` retains
+exact original797/800/801 commits. No unpublished tracked implementation found;
+three probes privately archived. Combined source47982918f passes20 focused
+placement/countdown/original-terrain/mirror checks,0 skips. Fresh hosted package
+and GUI checks are required; original797/800 light failures preserved. Painter
+installation/original-display readiness repair stays with active Codex bwcx.
+Original branches/worktrees remain unchanged; no failed-check main merge.
 
 ## Arcade extension project qualification — 2026-10-11
 
