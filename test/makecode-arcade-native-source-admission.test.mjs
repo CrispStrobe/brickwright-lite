@@ -37,3 +37,33 @@ test('fake names and additional executable files stay outside file-scoped admiss
     assert.ok(decisions[0].receipt);assert.equal(decisions[1].receipt,null);
     assert.equal(files['extra.ts'],'let sideEffect=1;sideEffect+=1','the hook does not mutate or discard additional source');
 });
+
+// Preparation preserves additional executable initialization while replacing
+// only the complete byte-identical helper with its qualified native adapter.
+test('prepared SpriteData inputs keep additional executable sources and diagnose altered helpers',async()=>{
+    const {prepareArcadeDependencyInputs}=await import('../overlay/scratch-gui/src/lib/bw-makecode/dependency-project.js');
+    const {arcadeToPseudocode}=await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
+    const {runProgram,clearStrayTimers}=await import('./helpers/bw-vm.mjs');
+    const {SPRITE_DATA_SOURCE_TEXT}=await import('../overlay/scratch-gui/src/lib/bw-makecode/native-source-admission.generated.js');
+    const original={'main.ts':'let hero=sprites.create(img`1`,SpriteKind.Player)\nsprites.setDataNumber(hero,"score",7)\nlet observed=sprites.readDataNumber(hero,"score")',
+        'pxt.json':JSON.stringify({dependencies:{device:'*','arcade-sprite-data':'github:microsoft/arcade-sprite-data#v0.0.5'},files:['main.ts']})};
+    const before=JSON.stringify(original);
+    const resolved={packages:{'arcade-sprite-data':{files:{'main.ts':SPRITE_DATA_SOURCE_TEXT,'extra.ts':'let packageInitialized=3'}}},
+        sourceOrder:[{id:'arcade-sprite-data',file:'main.ts'},{id:'arcade-sprite-data',file:'extra.ts'}],jres:{}};
+    const prepared=prepareArcadeDependencyInputs(original,resolved);
+    assert.equal(JSON.stringify(original),before);
+    assert.ok(prepared.provenance.some(entry=>entry.nativeAdapter?.adapter==='arcade-sprite-data-v0.0.5'));
+    assert.ok(Object.values(prepared.files).includes('let packageInitialized=3'));
+    const imported=arcadeToPseudocode(prepared.files);assert.deepEqual(imported.unsupported,[]);
+    try {
+        const run=await runProgram(imported.code,{frames:15,uploads:imported.costumes});
+        assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+        const variables=run.vm.runtime.targets.flatMap(target=>Object.values(target.variables));
+        for(const [name,value] of [['observed',7],['packageInitialized',3]])
+            assert.equal(variables.find(variable=>variable.name===name||variable.name==='Game_'+name)?.value,value);
+    }finally{clearStrayTimers();}
+    resolved.packages['arcade-sprite-data'].files['main.ts']+='\n// altered source';
+    const changed=prepareArcadeDependencyInputs(original,resolved);
+    assert.equal(changed.provenance.some(entry=>entry.nativeAdapter),false);
+    assert.ok(Object.values(changed.files).includes(resolved.packages['arcade-sprite-data'].files['main.ts']));
+});

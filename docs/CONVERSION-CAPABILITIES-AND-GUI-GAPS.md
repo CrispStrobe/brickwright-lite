@@ -3724,3 +3724,39 @@ native runtime/roundtrip controls; a new dedicated visible dropdown/controller
 journey is still needed to qualify that GUI surface on the shipped build.
 Generated vocabulary contains319 canonical forms. No whole-corpus promotion
 from the new blocks alone.
+
+## SpriteData and extension syntax — 2026-10-13
+
+The complete original arcade-sprite-data v0.0.5 algorithms are retained under
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/sprite-data-source/` with
+the MIT license and immutable official source provenance. Supported source APIs:
+`sprites.setDataNumber`, `changeDataNumberBy`, `readDataNumber`, `setDataString`,
+`readDataString`, `setDataBoolean`, `readDataBoolean`, `setDataSprite`,
+`readDataSprite`. Missing values, false/null guards, lazy sprite data and Sprite
+reference aliases are preserved. Image and Array helpers and arbitrary object
+member access are not covered by this original version.
+
+Four native block identities expose these capabilities in blocks and Code:
+`spriteDataSet`, `spriteDataChange`, `spriteDataRead`, `spriteDataReadBoolean`.
+Boolean reads use Boolean blocks; other read types use reporters. The generated
+[authoring vocabulary](generated/ARCADE-AUTHORING-VOCABULARY.md) provides exact
+spellings. Native/original execution, Code decompilation, original export compile,
+reimport and fresh SB3 checks pass. A visible editor discovery/drag/connect/save
+journey remains pending and must not be inferred from parser tests.
+
+Dependency preparation may replace only the byte-identical original helper
+file with that qualified adapter. The public receipt lists the source hash,
+revision, nine APIs and initialization boundary. Additional executable files
+remain included. Changed comments or line endings do not qualify for admission.
+
+The TS parser now retains constructor parameter properties as fields and
+initialization assignments, object index signatures, dotted namespaces and
+exponentiation syntax. Six previously failing retained extension sources parse
+unchanged. Their classes/helper execution remain separate capabilities; syntax
+support does not establish runtime support. Exponentiation execution is being
+qualified separately.
+
+Original root JRES tilemaps with an absent generated companion now use the
+pinned original PXT emitter during preparation. Existing companions and
+authored resource/main bytes are preserved. This closes an input-generation
+gap; the tile painter and complete games require their own GUI/behavior checks.
