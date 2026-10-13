@@ -116,6 +116,19 @@ export function lowerLazyValues(program) {
         if(st.type==='If'){
             const result=expression(st.test);return [...result.prefix,{...st,test:result.value,consequent:body(st.consequent),alternate:body(st.alternate)}];
         }
+        // A switch's case bodies are statements like any other (E10: they were
+        // skipped, so `&&`/`||`, `? :` and `i++` in them stayed unlowered). The
+        // discriminant is read once, before any label. A label is tested only
+        // until one matches, so one whose value needs lines before it is left
+        // as written rather than run early.
+        if(st.type==='Switch'){
+            const discriminant=expression(st.discriminant);
+            const cases=st.cases.map(c=>{
+                const test=c.test?expression(c.test):null;
+                return {...c,test:test && !test.prefix.length?test.value:c.test,body:body(c.body)};
+            });
+            return [...discriminant.prefix,{...st,discriminant:discriminant.value,cases}];
+        }
         if(st.type==='While' || st.type==='For'){
             const test=expression(st.test),statements=body(st.body);
             const init=st.type==='For' && st.init?statement(st.init):[];
