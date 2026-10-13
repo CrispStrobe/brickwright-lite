@@ -984,7 +984,9 @@ test('Arcade Math.percentChance, Math.clamp and control.millis translate as thei
     // pxt-core: percentChance(p) is randomRange(0, 99) < p, exact at 0 and 100 too.
     assert.match(out.code, /IF \(pick random 0 to 99\) < 25 THEN:/);
     assert.match(out.code, /set c to min of \(max of \(n \+ 3\) and 0\) and 10/);
-    assert.match(out.code, /set t to timer \* 1000/);
+    // PXT millis is the monotonic program clock, independent of scene time
+    // and Scratch timer resets. Exact clock behavior has dedicated controls.
+    assert.match(out.code, /set t to arcade program runtime milliseconds/);
 });
 
 test('typed sprite arrays compile property writes without a placeholder destination', async () => {

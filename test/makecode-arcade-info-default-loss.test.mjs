@@ -12,10 +12,7 @@ for(const [name,body] of [['countdown','info.startCountdown(0.2)'],['life zero',
  const source='info.setScore(7);scene.setBackgroundColor(9);'+body;
  const original=await runPxtArcade(marked(source),{waitForGlobals:{shown:true},waitForMain:false,inspectDisplay:true,recordSound:true,fakeClock:true});
  const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
- // The info-only life source currently selects the legacy lives opcode.
- // Qualify the native helper directly; source selection is a separate gap.
- const code=name==='life zero' ? 'DEVICE ARCADE\nSPRITE Game:\nWHEN flag clicked:\n  hide\n  arcade set score to 7\n  arcade set background color to 9\n  arcade set life player 1 to 0\n' : imported.code;
- const run=await runProgram(code,{frames:0,storage:true,uploads:imported.costumes});
+ const run=await runProgram(imported.code,{frames:0,storage:true,uploads:imported.costumes});
  try{
   let now=0;run.vm.stopAll();run.vm.runtime.bwArcadeProgramClock={now:()=>now};
   run.vm.runtime.updateCurrentMSecs=()=>{run.vm.runtime.currentMSecs=now;};
