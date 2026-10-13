@@ -49,6 +49,9 @@ semantics. This registry does not select or infer that order.
   Original controls retained kind 1.5 and -2 exactly. `allOfKind(1.5)` included
   the sprite; `allOfKind(-2)` was empty because original `setKind` only inserts
   kinds at least zero into the scene's membership sets. Do not round kinds.
+  This exclusion does not apply to event handlers: original `onCreated(-2)`
+  fired, and `onOverlap(-2, Projectile)` fired on each observed overlapping
+  frame while `allOfKind(-2)` remained empty.
 - Unknown names, empty fields, and missing bindings must produce a diagnostic;
   normalization never invents a kind or advances allocation.
 - Original builtin kinds are constants; assigning Player was refused by the
