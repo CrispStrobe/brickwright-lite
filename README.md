@@ -253,8 +253,9 @@ cd apps/tauri && npm run ios:device-build
 ```
 
 Do not package a device app with `tauri ios dev --no-dev-server`: it compiles
-Tauri in development mode, where `tauri://localhost` expects a live dev server,
-so the app installs but cannot open its start page offline. CI builds every
+Tauri in development mode, where `tauri://localhost` expects a live dev server
+instead of serving the embedded web build, so the app installs but cannot open
+its start page offline. CI builds every
 platform in `.github/workflows/release.yml` (desktop) and `mobile.yml` (Android
 APK + iOS simulator).
 
@@ -427,10 +428,12 @@ without depending on TurboWarp. Brickwright Lite is not a TurboWarp fork.
 
 ### Affiliation and trademarks
 
-Brickwright Lite is an independent project. It is **not affiliated with,
-authorized by, sponsored by, or endorsed by** any of the companies or
-organizations whose products, hardware, file formats or trademarks it works
-with or names for compatibility.
+Brickwright Lite is an independent project. **Not affiliated with or endorsed
+by Scratch, MIT, LEGO, STC, Arduino, or Raspberry Pi, nor by the makers of the
+circuit file formats the Circuit tab imports and exports (KiCad, EasyEDA, EAGLE,
+LTspice). All trademarks belong to their owners.** It is likewise not authorized
+or sponsored by any company whose products, hardware, file formats or trademarks
+it names for compatibility.
 
 In particular, **LEGO®, SPIKE™ and MINDSTORMS® are trademarks of the LEGO
 Group**, which does not sponsor, authorize or endorse this project; the virtual
