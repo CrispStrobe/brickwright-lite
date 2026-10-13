@@ -61,3 +61,14 @@ test('source for loops keep expression initializers, multiple declarations and o
  const expression=arcadeToPseudocode('let i=7;for(i=0;i<3;i++){}');assert.match(expression.code,/set i to .*0/);
  const multiple=arcadeToPseudocode('for(let i=0,j=2;i<j;i++){}');assert.match(multiple.code,/set j to .*2/);
 });
+
+test('source loop conditions call predicates anew instead of hoisting a result',async()=>{
+ const source='let checks=0;let count=0;function more(){checks++;return checks<4;}while(more()){count++;}console.log(checks);console.log(count)';
+ const original=await runPxtArcade(source,{fakeClock:true});const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
+ const runs=[];const check=run=>{assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);const vars=Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));assert.equal(vars.checks,original.checks);assert.equal(vars.count,original.count);};
+ try{
+  const run=await runProgram(imported.code,{frames:80,uploads:imported.costumes,storage:true});runs.push(run);check(run);
+  const code=await runProgram(run.creator.decompile(),{frames:80,uploads:imported.costumes,storage:true});runs.push(code);check(code);
+  const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);const again=await runPxtArcade(exported.files,{fakeClock:true});assert.equal(again.checks??again.Game_checks,original.checks);assert.equal(again.count??again.Game_count,original.count);
+ }finally{for(const run of runs)run.vm.quit();clearStrayTimers();}
+});
