@@ -72,6 +72,18 @@ const section = (ts, board, device, name) => {
 };
 const PAIR = `${section(REMOTE_TS, 'microbit', 'MICROBIT', 'Remote')}\n${section(CAR_TS, 'calliopemini', 'CALLIOPEMINI', 'Car')}`;
 
+// The same text as a program file: what scripts/verify-makecode.mjs opens in the
+// built app. It is the importer's output, so it is regenerated, never edited:
+//   BW_WRITE_FIXTURES=1 node --test test/multi-board-radio-pair.test.mjs
+const PAIR_FILE = path.join(REPO, 'test/fixtures/multi-board/radio-pair.bw');
+test('the program file the browser gate opens is the imported pair', () => {
+    if (process.env.BW_WRITE_FIXTURES) {
+        fs.mkdirSync(path.dirname(PAIR_FILE), {recursive: true});
+        fs.writeFileSync(PAIR_FILE, PAIR);
+    }
+    assert.equal(fs.readFileSync(PAIR_FILE, 'utf8'), PAIR);
+});
+
 test('the model and the compiler agree on the marker', {skip}, () => {
     assert.equal(BOARDS_MAGIC, SB3Creator.BOARDS_MAGIC);
 });
