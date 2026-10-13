@@ -3349,6 +3349,14 @@ closure, fresh recovery and guest qualification plus enabled exact-head gates.
 No new firmware/model/runtime pins, restricted image acquisition/inspection, physical
 mapping, reference boot, release/licence, instantaneous abort or whole-G02 claim.
 
+Native observation continuation: isolated branch
+`lane/spike-g02-native-observation-20261013` prepares closed, bounded native
+phase/result/elapsed records in `renode_debugger.rs`. Three extracted std-only
+controls and three mutation adversaries pass; full native and fresh installed
+qualification remain pending. Builds on the separately qualified PR895 source
+candidate, whose hosted merge gates are still pending. No startup failure
+attribution, deadline fix or full G02 completion is claimed.
+
 ## SPIKE remaining lifecycle boundaries — 2026-10-13
 
 CLAIMED — Codex SPIKE integration, `lane/spike-g02-lifecycle-20261013`.
