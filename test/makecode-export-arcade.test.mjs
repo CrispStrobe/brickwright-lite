@@ -242,7 +242,7 @@ test('Arcade maths keeps every argument both ways (min/max/pow kept only the fir
     // argument kept.
     assert.match(code, /set a to \(max of 0 and \(calculate value \(b\) op "-" with \(\(0 \+ \(1\)\)\)\)\)/);
     assert.match(code, /set b to \(min of a and 10\)/);
-    assert.match(code, /set a to \(2 to the power of b\)/);
+    assert.match(code, /set a to \(calculate value \(\(0 \+ \(2\)\)\) op "\*\*" with \(b\)\)/);
     assert.match(code, /set b to \(abs of \(calculate value \(a\) op "-" with \(b\)\)\)/);
     // No map reporter off the micro:bit: its definition, and said.
     assert.match(code, /set a to \(\(\(b - 0\) \* \(100 - 0\) \/ \(10 - 0\) \+ 0\)\)/);
@@ -253,7 +253,7 @@ test('Arcade maths keeps every argument both ways (min/max/pow kept only the fir
     // argument kept, nothing refused.
     const back = exportOf(code);
     assert.deepEqual(back.unsupported, []);
-    for (const call of [/__bwScratchMax\(0, __bwBinarySubtract\(b, \(0 \+ 1\)\)\)/, /__bwScratchMin\(a, 10\)/, /Math\.pow\(2, b\)/,
+    for (const call of [/__bwScratchMax\(0, __bwBinarySubtract\(b, \(0 \+ 1\)\)\)/, /__bwScratchMin\(a, 10\)/, /__bwBinaryPower\(\(0 \+ 2\), b\)/,
         /Math\.abs\(__bwBinarySubtract\(a, b\)\)/, /function __bwBinarySubtract\(left: any, right: any\): number \{ return left - right \}/]) {
         assert.match(back.ts, call);
     }
