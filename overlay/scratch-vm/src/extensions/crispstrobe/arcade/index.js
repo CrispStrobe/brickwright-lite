@@ -39,7 +39,7 @@ module.exports = makeExt(`// Name: Arcade
       this._renderables=new WeakMap();this._screen=null;this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._extensionCreationWaits=[];
       this._scenePushHandlers = [];this._scenePopHandlers = [];
       this._nextSpriteHandle = 0;this._globalElapsedMs = 0;this._nextMultiplayerState=2;
-      this._buttonStates = {};
+      this._buttonStates = {};this._controllerConnections={};this._controllerInputs={};
       this._activeLegacyAnimations = new Set();
       this._updateHandlers = [];this._intervalHandlers = [];this._buttonHandlers = [];
       this._destroyedHandlers = [];this._overlapHandlers = [];this._foreverHandlers=[];this._countdownHandlers=[];
@@ -77,6 +77,8 @@ module.exports = makeExt(`// Name: Arcade
         runtime.on('ARCADE_FRAME_END', () => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); });
         runtime.on('ARCADE_BUTTON_DOWN', button => { if(this._dialogs?.[0]?.type!=='ask')this._dialogs?.[0]?.dismiss(); });
         runtime.on('ARCADE_DIALOG_BUTTON_EDGE',(button,held)=>this._questionButtonEdge(button,held));
+        runtime.on('ARCADE_CONTROLLER_INPUT',(player,button,held)=>this._observeControllerInput(player,button,held));
+        runtime.on('ARCADE_CONTROLLER_CONNECTION',(player,connected)=>this._controllerConnectionChanged(player,connected));
         runtime.on('ARCADE_PLAYER_BUTTON_EDGE',(player,button,isDown)=>this._controllerButtonEdge(player,button,isDown));
         runtime.on('KEY_STATE_CHANGED',(key,isDown)=>this._keyboardButtonEdge(key,isDown));
         const cancelCreations = () => {
@@ -115,7 +117,7 @@ module.exports = makeExt(`// Name: Arcade
             }
           }
           this._sceneBundles.clear();this._sceneStack=[];this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
-          this._scenePushHandlers=[];this._scenePopHandlers=[];this._nextSpriteHandle=0;this._globalElapsedMs=0;this._nextMultiplayerState=2;this._buttonStates={};
+          this._scenePushHandlers=[];this._scenePopHandlers=[];this._nextSpriteHandle=0;this._globalElapsedMs=0;this._nextMultiplayerState=2;this._buttonStates={};this._controllerConnections={};this._controllerInputs={};
           this._activeLegacyAnimations=new Set();this._updateHandlers=[];this._intervalHandlers=[];this._buttonHandlers=[];
           this._destroyedHandlers=[];this._overlapHandlers=[];this._foreverHandlers=[];this._countdownHandlers=[];
           this._createdHandlers = [];
@@ -325,6 +327,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'registerMultiplayerButtonHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register multiplayer button [BUTTON] event [EVENT] as [TOKEN] capturing [CAPTURES]',arguments:{...n('BUTTON',0),EVENT:{type:Scratch.ArgumentType.NUMBER,menu:'buttonEvents',defaultValue:2049},...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredMultiplayerButton',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade multiplayer button handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'eventPlayer',blockType:Scratch.BlockType.REPORTER,text:'Arcade event player'},
+          {opcode:'playerConnected',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade player [PLAYER] connected?',arguments:str('PLAYER','')},
           {opcode:'playerButtonPressed',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade player [PLAYER] button [BUTTON] pressed?',arguments:{...str('PLAYER',''),...n('BUTTON',0)}},
           {opcode:'registerButtonHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register button [BUTTON] event [EVENT] as [TOKEN] capturing [CAPTURES]',arguments:{BUTTON:{type:Scratch.ArgumentType.STRING,menu:'buttons',defaultValue:'a'},EVENT:{type:Scratch.ArgumentType.NUMBER,menu:'buttonEvents',defaultValue:2049},...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredButton',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade button handler [TOKEN] runs',arguments:str('TOKEN','handler')},
@@ -1072,6 +1075,23 @@ module.exports = makeExt(`// Name: Arcade
       const key={left:'left arrow',up:'up arrow',right:'right arrow',down:'down arrow',a:'space',b:'z',start:'enter',select:'m'}[button];
       return Boolean(buttons[button] || (number===1 && this._runtime?.ioDevices?.keyboard?.getKeyIsDown?.(key)));
     }
+    playerConnected(args) {
+      const player=this._player(args.PLAYER);
+      return !!player && !!this._controllerConnections[player.index+1];
+    }
+    _controllerConnectionChanged(number,connected) {
+      if(!Number.isInteger(number) || number<1 || number>4 || typeof connected!=='boolean')return;
+      this._controllerConnections[number]=connected;
+    }
+    _observeControllerInput(number,button,held) {
+      if(!Number.isInteger(number) || number<1 || number>4 || !['left','up','right','down','a','b','start','select'].includes(button))return;
+      const key=number+':'+button,pressed=!!held;
+      if(!!this._controllerInputs[key]===pressed)return;
+      this._controllerInputs[key]=pressed;
+      // Original controller.Button.setPressed connects its owner before
+      // dispatching either changed-state button event. Release stays connected.
+      this._controllerConnectionChanged(number,true);
+    }
     playerButtonPressed(args) {
       const player=this._player(args.PLAYER);if(!player)return false;
       const button=this._multiplayerButton(args.BUTTON);if(!button)throw new TypeError('Invalid multiplayer button');
@@ -1235,6 +1255,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     _controllerButtonEdge(number,button,isDown) {
       if(!Number.isInteger(number) || number<1 || number>4)return;
+      this._observeControllerInput(number,button,isDown);
       const key=number+':'+button,current=this._buttonStates[key] || (this._buttonStates[key]={held:false,elapsed:0,count:0});
       const held=!!isDown;if(current.held===held)return;
       current.held=held;current.elapsed=0;current.count=0;
@@ -1248,6 +1269,7 @@ module.exports = makeExt(`// Name: Arcade
       const state=this._state();
       for(let number=1;number<=4;number++)for(const button of ['left','up','right','down','a','b','start','select']){
         const held=this._heldButton(number,button),key=number+':'+button;
+        this._observeControllerInput(number,button,held);
         const current=this._buttonStates[key] || (this._buttonStates[key]={held:false,elapsed:0,count:0});
         let event;
         if(held!==current.held){current.held=held;current.elapsed=0;current.count=0;event=held?2049:2048;if(held)this._buttonPressed();}
@@ -1605,7 +1627,7 @@ module.exports = makeExt(`// Name: Arcade
         const cancelled=new Promise(resolve=>{cancel=()=>resolve(false);this._textPromptWaits.add(cancel);});
         this._runtime.bwArcadeTextPrompt={answerLength,numbersOnly};
         try {
-          const completed=await Promise.race([Promise.resolve(ask({QUESTION:String(args.QUESTION)},util)).then(()=>true),cancelled]);
+          const completed=await Promise.race([Promise.resolve(ask({QUESTION:String(Scratch.BWValues.decode(args.QUESTION))},util)).then(()=>true),cancelled]);
           if(!completed || epoch!==this._terrainEpoch)return '';
           const reply=String(answer()).substr(0,answerLength);
           restored=true;

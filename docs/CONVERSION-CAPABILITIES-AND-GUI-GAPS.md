@@ -3760,3 +3760,13 @@ Original root JRES tilemaps with an absent generated companion now use the
 pinned original PXT emitter during preparation. Existing companions and
 authored resource/main bytes are preserved. This closes an input-generation
 gap; the tile painter and complete games require their own GUI/behavior checks.
+
+### Multiplayer connection query
+
+`mp.isConnected(player)` has a Boolean block (`playerConnected`) and the Code
+spelling `arcade player (PLAYER) connected`. Controller state starts disconnected,
+changes on actual keyboard or pane button transitions, survives release and
+responds to explicit connection events. Native input, alias, original export,
+reimport and fresh-SB3 controls pass. Controller pane integration emits the same
+input edge before routing buttons. Browser discovery and physical gamepad
+detection remain separate pending checks; no physical device claim is made.

@@ -678,6 +678,7 @@ class ArcadeTranslator extends BaseTranslator {
             this.unsupported.push(`${engineApi} requires ${arity} argument`);return 'undefined value';
         }
         if(engineApi==='mp.allPlayers' && !engineArgs.length)return 'arcade all players';
+        if(engineApi==='mp.isConnected' && engineArgs.length===1)return `arcade player (${this.expr(engineArgs[0])}) connected`;
         if(engineApi==='mp.isButtonPressed' && engineArgs.length===2)return `arcade player (${this.expr(engineArgs[0])}) button (${this.expr(engineArgs[1])}) pressed`;
         if(engineApi==='mp.getPlayerProperty' && engineArgs.length===2)return `arcade player safe property (${this.expr(engineArgs[1])}) of (${this.expr(engineArgs[0])})`;
         if(engineApi==='game.currentScene') {
@@ -3007,7 +3008,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             if(api==='mp.allPlayers')return new Set(['array']);
             if(api==='mp.getPlayerState' || api==='MultiplayerState.create')return new Set(['number']);
             if(api==='mp.getPlayerProperty')return new Set(['number']);
-            if(api==='mp.isButtonPressed' || api==='game.ask' || node.callee?.type==='Member' && (node.callee.name==='tileKindAt' && typeOf(node.callee.object,owner).has('sprite') || node.callee.name==='equals' && typeOf(node.callee.object,owner).has('image')))return new Set(['boolean']);
+            if(api==='mp.isConnected' || api==='mp.isButtonPressed' || api==='game.ask' || node.callee?.type==='Member' && (node.callee.name==='tileKindAt' && typeOf(node.callee.object,owner).has('sprite') || node.callee.name==='equals' && typeOf(node.callee.object,owner).has('image')))return new Set(['boolean']);
             if(api==='game.currentScene' && !node.args.length)return new Set(['scene']);
             if(api==='ArcadePhysicsEngine' && node.constructorCall && node.args.length<=3)return new Set(['physics-engine']);
             if(api==='scene.cameraProperty' && node.args.length===1 || /^info(?:\.player[1-4])?\.(life|score)$/.test(api||'') && !node.args.length)return new Set(['number']);
