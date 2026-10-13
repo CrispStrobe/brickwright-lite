@@ -152,6 +152,41 @@ export function parseJres (text) {
     return out;
 }
 
+/** Image resources only. Tile images have the same binary format but a different
+ * PXT factory kind, so they must not resolve an assets.image tagged template.
+ * The older parseJres decoder remains unscoped for tilemap rasterization callers.
+ */
+export function parseImageAssetEntries (text) {
+    let jres;
+    try {jres = JSON.parse(text);} catch (error) {return [];}
+    const images = [];
+    if (!jres || typeof jres !== 'object' || Array.isArray(jres)) return images;
+    for (const [key, raw] of Object.entries(jres)) {
+        if (key === '*') continue;
+        const entry = typeof raw === 'string' ? {data:raw} : raw;
+        if (!entry || typeof entry !== 'object' || entry.tilemapTile || typeof entry.data !== 'string') continue;
+        const mime = entry.mimeType || jres['*']?.mimeType;
+        if (mime && mime !== 'image/x-mkcd-f4') continue;
+        const decoded = decodeMkcdImage(entry.data);
+        if (!decoded) continue;
+        const namespace = entry.namespace || jres['*']?.namespace || 'myImages';
+        const imageId = entry.id || (key.includes('.') ? key : `${String(namespace).replace(/\.$/, '')}.${key}`);
+        const displayName = typeof entry.displayName === 'string' && entry.displayName ? entry.displayName : key;
+        images.push({key,image:{...decoded,imageId,displayName},
+            aliases:[...new Set([key,imageId,key.split('.').pop(),displayName])],factoryDisplayName:entry.displayName});
+    }
+    return images;
+}
+
+export function parseImageAssets (text) {
+    const images = Object.create(null);
+    for (const {image,aliases} of parseImageAssetEntries(text)) for (const name of aliases) {
+        if (!Object.prototype.hasOwnProperty.call(images,name)) images[name] = image;
+        else if (images[name]?.imageId !== image.imageId) images[name] = null;
+    }
+    return images;
+}
+
 /**
  * Render a decoded image as SVG.
  *
