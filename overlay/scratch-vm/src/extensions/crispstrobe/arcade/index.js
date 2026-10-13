@@ -880,7 +880,6 @@ module.exports = makeExt(`// Name: Arcade
       const key=Scratch.BWValues.decode(args.KEY),id=Scratch.BWValues.decode(args.ID);
       let facade=null;
       if(id && key) {
-        if(['__proto__','prototype','constructor'].includes(String(key)))throw new Error('Arcade Sprite Data prototype keys are not supported');
         const sprite=this._sprite(args.ID);
         if(!sprite)throw new Error('Arcade Sprite Data sprite is not available');
         facade={data:()=>{
@@ -890,7 +889,17 @@ module.exports = makeExt(`// Name: Arcade
           const descriptor=Object.getOwnPropertyDescriptor(data,String(key));
           if(descriptor && (descriptor.get || descriptor.set))throw new Error('Arcade Sprite Data accessor keys are not supported');
           if((method.startsWith('set') || method==='changeDataNumberBy') && (!Object.isExtensible(data) || descriptor?.writable===false))throw new Error('Arcade Sprite Data record is read only');
-          return data;
+          // PXT RefMap lookup reads only stored keys, including names that
+          // JavaScript normally inherits. Keep the actual record and its aliases;
+          // this helper-only facade must not change its prototype or replace it.
+          return new Proxy(data, {
+            get:(record,name)=>Object.prototype.hasOwnProperty.call(record,name)?record[name]:undefined,
+            set:(record,name,next)=>{
+              const own=Object.getOwnPropertyDescriptor(record,name);
+              Object.defineProperty(record,name,own?{...own,value:next}:{value:next,writable:true,enumerable:true,configurable:true});
+              return true;
+            }
+          });
         }};
       }
       return originalSpriteData[method](facade,key,value);
