@@ -1655,8 +1655,18 @@ re-implementations. Generated from the pinned pxt-arcade 4.2.1 bundle above
 compiled into the app; each generator has a `--check` mode that fails when the
 committed file differs from the pinned bundle:
 
+- **pxt-core13.2.1** (https://github.com/microsoft/pxt/tree/v13.2.1/pxtsim),
+  MIT, Copyright (c) Microsoft Corporation: the complete simulator buffer
+  algorithms, extracted without algorithm changes and formatted, in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer-pxt.js`
+  (`scripts/generate-arcade-buffers.mjs`). The host supplies cast/error and UTF8
+  decoding boundaries; `buffer.js` bounds allocation and preserves mutable byte
+  storage for the mixer. Full notice: `static/licenses/pxt-core.MIT.txt`.
 - **pxt-common-packages** (https://github.com/microsoft/pxt-common-packages),
-  MIT, Copyright (c) Microsoft Corporation: the simulator's image algorithms
+  MIT, Copyright (c) Microsoft Corporation: the original simulator FNV-1 and
+  k-bit Buffer hash functions from `sim/common-sim.js`, retained unadapted in
+  `overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer-hash-pxt.js`
+  (`scripts/generate-arcade-buffers.mjs`); the simulator's image algorithms
   (`sim/common-sim.js`: setPixel, fillRect, drawLine, drawImage, overlapsWith, ...)
   in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/image-pxt.js`
   (`scripts/generate-arcade-image-operations.mjs`); text layout and speech bubbles
@@ -2183,3 +2193,17 @@ Original geometry, glyph drawing and scrolling logic are retained with a native
 sprite/image facade. The original generated speech-pxt.js and credited fonts
 remain unchanged for comparisons. This is attributed PXT adaptation and
 integration, not a clean-room implementation.
+
+## arrays-values — MPL-2.0
+
+The scoped `arrays-values` pin selects the Arrays & Vectors extension authored
+by CrispStrobe from https://github.com/CrispStrobe/extensions. Its declared
+license is MPL-2.0. The complete source, including its original author/license
+header, is retained in `overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js`
+as a JSON source string; the host adapter is separate.
+
+The exact selected source is
+https://github.com/CrispStrobe/extensions/blob/598fc9665a3ffdcc6fdeaa465f2c42ccaa814d8f/extensions/CrispStrobe/arrays.js.
+`vendor-pins.json` and the generated per-file bundle receipt record the commit
+and content hash. This scopes the adoption to Arrays; it does not advance other
+extension sources. MPL-2.0 text: https://www.mozilla.org/en-US/MPL/2.0/.

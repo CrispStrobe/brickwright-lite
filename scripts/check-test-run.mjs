@@ -50,7 +50,7 @@ if (!args.tap) {
     console.error('usage: check-test-run.mjs --set fast|corpus|all --tap <file> --census <file>');
     process.exit(2);
 }
-const expected = listTests(set);
+const expected = listTests(set, args.shard ?? null);
 let failed = 0;
 const check = (name, ok, detail = '') => {
     console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);

@@ -151,7 +151,7 @@ test('an edited costume uses the new asset ID even when VM leaves md5ext stale',
 
 test('a future artwork source survives an unchanged Scratch rendering', async () => {
     const {vm, blob} = await fixture();
-    const future = JSON.stringify({format: artwork.ARTWORK_FORMAT, version: 8,
+    const future = JSON.stringify({format: artwork.ARTWORK_FORMAT, version: artwork.ARTWORK_VERSION + 1,
         costumes: [], futureField: {keep: true}});
     const inputZip = await JSZip.loadAsync(await blob.arrayBuffer());
     inputZip.file(artwork.ARTWORK_PATH, future);

@@ -26,6 +26,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readdirSync, readFileSync} from 'node:fs';
 import path from 'node:path';
+import {stepReferenceProblems} from '../scripts/lib/workflow-step-refs.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 
@@ -640,32 +641,11 @@ const KNOWN_SWALLOWED = {
  * Every reference in this repo resolves correctly today. That is exactly when to pin it — the
  * failure is a typo away and would look like nothing at all.
  */
-const stepIdLines = text => {
-    const lines = text.split('\n');
-    const declared = new Map();
-    lines.forEach((line, index) => {
-        const id = line.match(/^\s*id:\s*([A-Za-z0-9_-]+)\s*$/);
-        if (id) declared.set(id[1], index);
-    });
-    return {lines, declared};
-};
-
 test('no gate is keyed on a step id that does not exist, or that comes later', () => {
     for (const file of readdirSync(path.join(ROOT, '.github/workflows')).filter(f => f.endsWith('.yml'))) {
-        const {lines, declared} = stepIdLines(readFileSync(path.join(ROOT, '.github/workflows', file), 'utf8'));
-        const broken = [];
-        lines.forEach((line, index) => {
-            if (!/^\s*if:/.test(line)) return;
-            for (const [, ref] of line.matchAll(/steps\.([A-Za-z0-9_-]+)\./g)) {
-                if (!declared.has(ref)) broken.push(`${file}:${index + 1} -> steps.${ref} is never declared`);
-                else if (declared.get(ref) > index) {
-                    broken.push(`${file}:${index + 1} -> steps.${ref} is declared LATER (line ${declared.get(ref) + 1})`);
-                }
-            }
-        });
+        const broken = stepReferenceProblems(readFileSync(path.join(ROOT, '.github/workflows', file), 'utf8'), file);
         assert.deepEqual(broken, [],
-            `a condition references a step that cannot have an outcome, so it is permanently ` +
-            `false and its step silently never runs: ${broken.join(' | ')}`);
+            `a condition references a step that cannot have an outcome in its job: ${broken.join(' | ')}`);
     }
 });
 

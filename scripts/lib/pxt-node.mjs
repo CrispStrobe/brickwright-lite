@@ -50,7 +50,7 @@ async function sandbox (target) {
  * @param {{native?: boolean, embedSource?: object, hwVariant?: string, fetchExtensions?: boolean, fetch?: Function}} [opts] hwVariant: an
  *     Arcade board for a native build (ARCADE_HARDWARE in pxt-runtime.js)
  */
-export async function compile (target, files, opts = {}) {
+async function runCompiler (target, files, opts = {}, projectInputs = false) {
     const sb = await sandbox(target);
     const {onDemandExtensions} = await import(pathToFileURL(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js')).href);
     // CLI audits are offline by default. Fetch only when explicitly requested.
@@ -61,6 +61,7 @@ export async function compile (target, files, opts = {}) {
     };
     try {
         const r = await sb.bwMakeCode.compile(files, {native: !!opts.native, embedSource: opts.embedSource || null,
+            projectInputs,
             hwVariant: opts.hwVariant || '', getBaseHex,
             extensions: onDemand.extensions.map(({id, repo, refs, targets, files: source}) =>
                 ({id, repo, refs, targets, files: source}))});
@@ -74,3 +75,11 @@ export async function compile (target, files, opts = {}) {
         throw error;
     }
 }
+
+export const compile = (target, files, opts = {}) => runCompiler(target, files, opts);
+
+/** Original PXT package installation and generated inputs, without compilation.
+ * Includes only GitHub packages supplied through the extension resolver, not
+ * target libraries. Remote fetching remains explicitly opt-in.
+ */
+export const resolveProjectInputs = (target, files, opts = {}) => runCompiler(target, files, opts, true);

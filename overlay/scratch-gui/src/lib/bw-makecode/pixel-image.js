@@ -26,7 +26,29 @@ import {ARCADE_PALETTE, imageToSvg} from './arcade-assets.js';
 export {ARCADE_PALETTE};
 
 // Bound each editable layer; the bundle also caps total document bytes/frames.
-export const MAX_PIXEL_DIMENSION = 160;
+export const MAX_PIXEL_DIMENSION = 512;
+// Indexed JSON uses at least two bytes per pixel. Keep the complete source
+// within the existing16MiB document envelope, including its active-frame copy.
+export const MAX_PIXEL_DOCUMENT_PIXELS = 8 * 1024 * 1024;
+export const editablePixelLayerBudget = (width, height, layers) => editablePixelSize(width, height) &&
+    Number.isSafeInteger(layers) && layers > 0 && width * height * layers <= MAX_PIXEL_DOCUMENT_PIXELS;
+export const pixelDocumentWithinBudget = document => {
+    let count = 0;
+    const frames = document?.animation?.frames || [];
+    if (!Array.isArray(frames) || frames.length > 64) return false;
+    const sets = [document?.layers || [], ...frames.map(frame => frame?.layers)];
+    for (const layers of sets) {
+        if (!Array.isArray(layers)) return false;
+        for (const layer of layers) {
+            if (layer?.content?.kind !== 'pixels') continue;
+            const image = layer.content.value;
+            if (!editablePixelSize(image?.width, image?.height)) return false;
+            count += image.width * image.height;
+            if (count > MAX_PIXEL_DOCUMENT_PIXELS) return false;
+        }
+    }
+    return true;
+};
 export const editablePixelSize = (width, height) => Number.isInteger(width) && Number.isInteger(height) &&
     width > 0 && height > 0 && width <= MAX_PIXEL_DIMENSION && height <= MAX_PIXEL_DIMENSION;
 
@@ -161,7 +183,7 @@ export function svgToPixels (svg, palette = ARCADE_PALETTE) {
     if (!scale) scale = 1;
     const width = w / scale;
     const height = h / scale;
-    if (!Number.isInteger(width) || !Number.isInteger(height) || width > 512 || height > 512) return null;
+    if (!Number.isInteger(width) || !Number.isInteger(height) || width > MAX_PIXEL_DIMENSION || height > MAX_PIXEL_DIMENSION) return null;
     const lookup = new Map(palette.map((c, i) => [c && c.toLowerCase(), i]).filter(([c]) => c));
     const pixels = new Uint8Array(width * height);
     for (let i = 0; i < rects.length; i++) {
@@ -235,7 +257,8 @@ export function sliceSpriteSheet (rgba, sheetWidth, sheetHeight, frameWidth, fra
         rgba.length !== sheetWidth * sheetHeight * 4) return null;
     const columns = sheetWidth / frameWidth;
     const rows = sheetHeight / frameHeight;
-    if (columns * rows < 2 || columns * rows > 64) return null;
+    if (columns * rows < 2 || columns * rows > 64 ||
+        !editablePixelLayerBudget(frameWidth / pixelScale, frameHeight / pixelScale, columns * rows + 1)) return null;
     const frames = [];
     for (let row = 0; row < rows; row++) {
         for (let column = 0; column < columns; column++) {

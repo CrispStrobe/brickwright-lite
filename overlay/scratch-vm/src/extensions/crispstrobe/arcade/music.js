@@ -8,29 +8,8 @@
 // wave byte ends the buffer. Volumes reach about 1024.
 
 const LOG_LIMIT = 512;
-
-class PxtBuffer extends Uint8Array {
-    getNumber(format, offset) {
-        if (format === 'UInt16LE') return this[offset] | (this[offset + 1] << 8);
-        if (format === 'Int16LE') return ((this[offset] | (this[offset + 1] << 8)) << 16) >> 16;
-        if (format === 'Int8LE') return (this[offset] << 24) >> 24;
-        return this[offset];
-    }
-    setNumber(format, offset, value) {
-        const number = Number(value) | 0;
-        if (format === 'UInt16LE' || format === 'Int16LE') {
-            this[offset] = number & 255;
-            this[offset + 1] = (number >> 8) & 255;
-        } else this[offset] = number & 255;
-    }
-    // PXT Buffer.slice(offset, length)
-    slice(offset = 0, length) {
-        const end = length === undefined ? this.length : Math.min(this.length, offset + length);
-        const out = new PxtBuffer(Math.max(0, end - offset));
-        out.set(this.subarray(offset, end));
-        return out;
-    }
-}
+const validateSongBuffer = require('./song-buffer');
+const {PxtBuffer, NumberFormat} = require('./buffer');
 
 const fromBytes = bytes => {
     const out = new PxtBuffer(bytes.length);
@@ -81,11 +60,12 @@ module.exports = function createArcadeMusic ({initializePxtMusic, clock, audioCo
             fiber.resolve?.();
             return;
         }
-        fiber.wakeAt = clock() + Math.max(0, Number(result.value) || 0);
+        fiber.pauseMs = Math.max(0, Number(result.value) || 0);
+        fiber.wakeAt = fiber.resumeAt + fiber.pauseMs;
     };
 
     const start = generator => {
-        const fiber = {generator, wakeAt: 0, done: false, generation};
+        const fiber = {generator, wakeAt: clock(), resumeAt: clock(), done: false, generation};
         fibers.push(fiber);
         step(fiber);
         return fiber;
@@ -156,6 +136,8 @@ module.exports = function createArcadeMusic ({initializePxtMusic, clock, audioCo
     const host = {
         control: {
             millis: clock,
+            // Use PXT's actual TypeScript sequencer, rather than simulator-native shims.
+            deviceDalVersion: () => 'brickwright',
             createBuffer: size => new PxtBuffer(Math.max(0, Number(size) | 0)),
             runInParallel: generator => {
                 start(typeof generator === 'function' ? generator() : generator);
@@ -164,18 +146,51 @@ module.exports = function createArcadeMusic ({initializePxtMusic, clock, audioCo
             getConfigValue: (key, fallback) => fallback
         },
         hex,
-        NumberFormat: {UInt8LE: 'UInt8LE', UInt16LE: 'UInt16LE', Int8LE: 'Int8LE', Int16LE: 'Int16LE'},
+        NumberFormat,
         DAL: {CFG_SPEAKER_VOLUME: 'CFG_SPEAKER_VOLUME'},
         * pause (ms) {
             yield ms;
+        },
+        * pauseUntil (condition) {
+            // The Arcade frame clock owns polling; no wall-clock timer or busy wait.
+            while (!condition()) yield 0;
         },
         shims
     };
 
     return {
         get pxt () {
-            if (!pxt) pxt = initializePxtMusic(host);
+            if (!pxt) {
+                pxt = initializePxtMusic(host);
+                // Song buffers are mutable in PXT. Check again at each tick, so
+                // an edited tempo/extent cannot feed an unbounded renderer.
+                const sequencer = pxt.music.sequencer.Sequencer.prototype;
+                const schedule = sequencer.scheduleCurrentTick;
+                sequencer.scheduleCurrentTick = function () {
+                    try {
+                        validateSongBuffer(this.song.buf);
+                        return schedule.call(this);
+                    } catch (error) {
+                        this.isPlaying = false;
+                        this.isRunning = false;
+                        throw error;
+                    }
+                };
+                const createSong = pxt.music.createSong;
+                pxt.music.createSong = buffer => {
+                    validateSongBuffer(buffer);
+                    return createSong(buffer);
+                };
+            }
             return pxt;
+        },
+        createSong (hexText) {
+            const text = String(hexText).replace(/\s/g, '');
+            if (!/^(?:[0-9a-f]{2})+$/i.test(text)) throw new RangeError('Invalid Arcade song: expected complete hexadecimal bytes');
+            return this.pxt.music.createSong(fromBytes(text.match(/../g).map(byte => parseInt(byte, 16))));
+        },
+        createSongBuffer (bytes) {
+            return this.pxt.music.createSong(bytes);
         },
         log,
         decodeInstructions,
@@ -194,7 +209,17 @@ module.exports = function createArcadeMusic ({initializePxtMusic, clock, audioCo
         pump () {
             const now = clock();
             const due = fibers.filter(fiber => !fiber.done && fiber.wakeAt <= now);
-            for (const fiber of due) if (!fiber.done) step(fiber);
+            for (const fiber of due) {
+                if (fiber.done) continue;
+                // Positive pauses retain absolute deadlines, so song tempo does not
+                // drift by one frame per tick. A poll/zero pause resumes next pump.
+                // Bound catch-up work after a large clock jump, retaining the backlog.
+                for (let count = 0; count < 1024 && !fiber.done && fiber.wakeAt <= now; count++) {
+                    fiber.resumeAt = fiber.pauseMs > 0 ? fiber.wakeAt : now;
+                    step(fiber);
+                    if (!fiber.pauseMs) break;
+                }
+            }
             fibers = fibers.filter(fiber => !fiber.done);
         },
         get running () {
