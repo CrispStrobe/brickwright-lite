@@ -11,6 +11,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import {patchArcadeSettingsSB3} from './lib/arcade-settings-sb3-hooks.mjs';
+import {patchArcadeManagedThread} from './lib/arcade-managed-thread-hooks.mjs';
 
 const ROOT = process.cwd();
 const SRC = path.join(ROOT, 'overlay', 'scratch-vm');
@@ -148,6 +149,12 @@ if (!executeSource.includes('bwPromiseReported')) {
     writeFileSync(executePath, executeSource);
     console.log('  patched execute.js (null promise reporter results)');
 }
+
+// Managed Arcade functions retain argument cells in a non-executable root.
+// Ordinary Scratch procedures can be called from those functions; recursion
+// checks must retain both managed ancestry and real Scratch call frames.
+const managedThreadPath = path.join(DEST, 'src', 'engine', 'thread.js');
+writeFileSync(managedThreadPath, patchArcadeManagedThread(readFileSync(managedThreadPath, 'utf8')));
 
 // Per-device palettes: _refreshExtensionPrimitives must propagate color changes.
 // Upstream only updates `name` on refresh; our stc12 extension changes color1/color2

@@ -28,6 +28,12 @@ let missing=pick(10)
 let text=identity("hello, [world]!")
 stopEarly()
 let after=4`;
+    const original=await runPxtArcade(source);
+    assert.equal(original.answer,17);assert.equal(original.missing,-1);
+    assert.equal(original.text,'hello, [world]!');assert.equal(original.touched,2);
+    // The selected SDK eliminates the unused final constant; native still
+    // checks the following statement, while original comparison uses live cells.
+    assert.equal(Object.hasOwn(original,'after'),false);
     await roundtrip(source,run=>{const v=vars(run);assert.equal(v.answer_,17);assert.equal(v.missing,-1);assert.equal(v.text,'hello, [world]!');assert.equal(v.touched,2);assert.equal(Number(v.after),4);});
 });
 
