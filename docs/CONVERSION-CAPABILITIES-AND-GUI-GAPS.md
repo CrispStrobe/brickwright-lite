@@ -3814,3 +3814,21 @@ and comparison, general classes/records/callable values, and version-specific
 library behavior. Older character-animation and background-scroll sources are
 not interchangeable with the existing adapters. Their update ordering and rule
 state must be implemented and qualified by exact version before source admission.
+
+### Text Sprite authoring and asset factory behavior
+
+The shared dialect now exposes 338 Arcade forms. Text Sprite creation and
+text/font/icon/border/outline editing, explicit redraw and field reporters/setters
+are available in native blocks and pseudocode. Imported class aliases and
+arrays preserve one sprite identity. The retained original library supplies
+fonts and rendering; costume art is passed through the existing asset editor.
+A dedicated visual Text Sprite inspector, discoverability controls and complete
+GUI game-building acceptance remain to be qualified. Numeric SpriteKind IDs
+remain an explicit runtime/conversion gap.
+
+Asset factories distinguish image and tile galleries, genuine missing-kind null,
+fresh image allocation and shared tile identities. Zero-sized image sprite
+geometry and subsequent resizing survive editable roundtrips. These controls
+do not establish complete null-image method behavior or zero-image collision
+semantics. Exact legacy scroller version controls and distinct scene/program
+clock blocks are next; do not silently map older libraries to modern behavior.
