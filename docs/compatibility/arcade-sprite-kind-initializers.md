@@ -30,7 +30,12 @@ initializes the complete native TextSprite module and then reads its single shar
 numeric Text kind into the namespace global. It does not execute a second
 `SpriteKind.create()` for the same module. This path requires both prepared
 library metadata and the byte-identical retained internal initializer source.
-Additional dependency files remain in their original order.
+Additional dependency files remain in their original order. The initializer
+replacement is an output of exact full-library admission; providing that partial
+file as a standalone library does not install its original APIs or qualify an
+original program. The converter control prepares the complete retained library
+and checks one Text allocation, native membership and the following numeric kind
+through Code, export, reimport and fresh SB3.
 
 ## Acceptance checks
 
