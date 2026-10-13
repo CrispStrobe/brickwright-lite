@@ -4475,21 +4475,12 @@ module.exports = makeExt(`// Name: Arcade
       this._globalElapsedMs+=dt*1000;
       state.elapsedMs = (state.elapsedMs || 0) + dt * 1000;
       yield* this._sceneButtons(dt);if(this._state()!==state)return;
-      if (state.countdownActive) {
-        state.countdown = Math.max(0, (Number(state.countdown) || 0) - dt);
-        if (state.countdown <= 0) {
-          state.countdownActive = false;
-          state.countdown = 0;
-          this._changed();
-          if(this._countdownHandlers.length)yield* this._registeredCallbackSteps(this._countdownHandlers.slice(),'arcade_whenRegisteredCountdown',{});
-          else {const threads=this._runtime?.startHats?.('arcade_whenCountdownEnds') || [];if(!threads.length)this.gameover();}
-          return;
-        }
-      }
+      // The countdown runs down with the frame but ends in the HUD pass, below.
+      if (state.countdownActive) state.countdown = Math.max(0, (Number(state.countdown) || 0) - dt);
       const live = Object.values(state.sprites).filter(s => s.id);
       this._moveControlledSprites(live);yield* this._moveFollowingSpriteSteps();
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
-      if (!live.length && !state.physicsEngine.members.length) {this._runFrameHandlers(state,0,19);yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();this._runFrameHandlers(state);if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();this._startFrameHats();return;}
+      if (!live.length && !state.physicsEngine.members.length) {this._runFrameHandlers(state,0,19);yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();this._runFrameHandlers(state);if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;yield* this._countdownEndSteps(state);if(this._state()!==state)return;yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();this._startFrameHats();return;}
       yield* this._advancePhysicsSteps(state.physicsEngine.members.slice(),dt,state.tilemap);
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
       for(const sprite of live)if(state.sprites[sprite.id])this._positionSprite(sprite.id);
@@ -4515,11 +4506,22 @@ module.exports = makeExt(`// Name: Arcade
         }
       }
       yield* this._lifeZeroSteps();if(this._state()!==state)return;
+      yield* this._countdownEndSteps(state);if(this._state()!==state)return;
       yield* this._advanceSpeechSteps(dt);
       if(this._state()!==state)return;
       yield* this._composeSceneSteps();
       this._changed();
       this._startFrameHats();
+    }
+    // PXT's HUD pass raises the life-zero events and then ends the countdown,
+    // after the frame's updates and physics; the frame itself runs on.
+    *_countdownEndSteps(state) {
+      if (!state.countdownActive || state.countdown > 0) return;
+      state.countdownActive = false;
+      state.countdown = 0;
+      this._changed();
+      if(this._countdownHandlers.length)yield* this._registeredCallbackSteps(this._countdownHandlers.slice(),'arcade_whenRegisteredCountdown',{});
+      else {const threads=this._runtime?.startHats?.('arcade_whenCountdownEnds') || [];if(!threads.length)this.gameover();}
     }
     gameover() {
       this._state().gameOver = true; this._changed();
