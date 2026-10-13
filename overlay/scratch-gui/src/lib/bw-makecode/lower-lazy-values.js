@@ -1,3 +1,5 @@
+import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
+
 /** Lower lazy value expressions to editable statements before type inference.
  * Each result is a hygienic invocation cell. Snapshot earlier operands before
  * a later operand's statements run, preserving JavaScript's evaluation order.
@@ -16,8 +18,8 @@ export function lowerLazyValues(program) {
     const declaration=(name,init)=>({type:'Declaration',kind:'let',decls:[{name,init,temporary:true,valuePreserving:true}]});
     const assign=(name,value)=>({type:'ExpressionStatement',expr:{type:'Assignment',op:'=',left:id(name),right:value,valuePreserving:true}});
     const save=(value,prefix)=>{const name=fresh();prefix.push(declaration(name,value));return id(name);};
-    const namespaces=new Set(['Math','sprites','SpriteKind','SpriteFlag','controller','info','scene','game','image','assets','animation','effects','music','control','loops','console','screen']);
-    const namespace=node=>node?.type==='Identifier'?namespaces.has(node.name):node?.type==='Member' && namespace(node.object);
+    const namespaces=staticSdkNamespaceReceivers(program);
+    const namespace=node=>namespaces.has(node);
     // A compound target is evaluated before its right operand. Calls can
     // mutate the receiver, index or old value even when neither side is lazy.
     const hasEffects=node=>{
