@@ -32,9 +32,11 @@ must qualify before class admission; source parsing alone is insufficient.
 
 ## Native Arcade frame phases — 2026-10-13
 
-PROPOSED CLAIM — Codex Arcade scheduler, `lane/arcade-frame-scheduler-20261013`,
-base `b86d1cb9f294052bd0ae6dc4cd97d5bc57193c55`.
-This publication is documentation only; merge the claim before product edits.
+CLAIMED — Codex Arcade scheduler; claim PR881 is merged. Initial branch
+`lane/arcade-frame-scheduler-20261013`, base
+`b86d1cb9f294052bd0ae6dc4cd97d5bc57193c55`.
+The claim landed before product implementation. Source-phase and timer controls
+are qualified; complete installed GUI cadence remains open.
 Envelope: the Arcade-specific phase hook in `scripts/apply-vm-overlay.mjs`,
 new `overlay/scratch-vm/src/extensions/crispstrobe/arcade/frame-phase.js`,
 necessary phase/lifecycle hunks in that directory's `index.js`, focused
