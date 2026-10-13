@@ -9,7 +9,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
-import {tutorialProjectFiles} from '../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js';
+import {tutorialProjectFiles, hasTutorialJres} from '../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js';
+import {getTutorialTilemapGenerator} from './lib/pxt-node.mjs';
 import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 
 const args = process.argv.slice(2), options = {};
@@ -71,14 +72,16 @@ for (const {entry, name, bytes, revision, document} of selected) {
         await fs.mkdir(path.join(out, directory));
         await fs.writeFile(path.join(out, directory, 'tutorial.md'), markdown);
         Object.assign(record, {documentationUrl: url, documentationSha256: hash(Buffer.from(markdown))});
-        const project = tutorialProjectFiles(markdown, bytes.toString('utf8'), {target: 'arcade', name: name.replace(/\.ts$/, '')});
+        const jresToTypeScript = hasTutorialJres(markdown) ? await getTutorialTilemapGenerator('arcade') : undefined;
+        const project = tutorialProjectFiles(markdown, bytes.toString('utf8'), {target: 'arcade', name: name.replace(/\.ts$/, ''), jresToTypeScript});
         if (project.files['main.ts'] !== bytes.toString('utf8')) throw new Error('Recovered project changed original main.ts');
         await fs.writeFile(path.join(out, directory, 'project.mkcd'), makeCodeProjectFile(project.files, {target: 'arcade', name: directory}));
         const packageJson = JSON.parse(project.files['pxt.json']);
         Object.assign(record, {status: 'context-recovered', documentationUrl: url,
             documentationSha256: hash(Buffer.from(markdown)), project: `${directory}/project.mkcd`,
             files: Object.keys(project.files), dependencies: packageJson.dependencies,
-            packageSourcesFetched: false, originalMainPreserved: true});
+            packageSourcesFetched: false, originalMainPreserved: true,
+            ...(jresToTypeScript ? {jresGeneration: jresToTypeScript.provenance} : {})});
     } catch (error) {
         Object.assign(record, {status: 'recovery-failed', error: error.message});
         process.exitCode = 1;
