@@ -403,19 +403,25 @@ class SpikeArenaPane extends React.Component {
 
     // New MicroPython selection glue: BSD-3-Clause, (c) 2026 Brickwright contributors.
     async chooseMicroPythonImage () {
+        if (this.disposed || this.state.execution !== 'micropython') return false;
         const choose = this.nativeCapabilities()?.['renode.spike.micropython.image.choose'];
         if (!choose) throw new Error(this.locale === 'de' ? 'MicroPython benötigt das Desktop-Paket.' : 'MicroPython requires the desktop package.');
+        const choice = this.imageChoice = {};
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.imageChoice === choice &&
+            this.programIntent === intent && this.state.execution === 'micropython';
         this.setState({microImageSelected: false, status: 'choosing', message: this.locale === 'de' ? 'Lokales MicroPython-Anwendungsimage auswählen…' : 'Choose a local MicroPython application image…'});
         try {
             const result = await choose({});
-            if (this.disposed || this.state.execution !== 'micropython') return false;
+            if (!current()) return false;
             if (!['selected', 'cancelled'].includes(result)) throw new Error('Unexpected image selection result');
             this.setState({microImageSelected: result === 'selected', status: 'ready', message: result === 'selected' ?
                 (this.locale === 'de' ? 'Image ausgewählt. Python im Code-Tab ausführen.' : 'Image selected. Run Python from the Code tab.') :
                 (this.locale === 'de' ? 'Image-Auswahl abgebrochen.' : 'Image selection cancelled.')});
             return result === 'selected';
         } catch (error) {
-            if (!this.disposed) this.setState({status: 'failed', message: error.message});
+            if (!current()) return false;
+            this.setState({status: 'failed', message: error.message});
             throw error;
         }
     }
@@ -562,6 +568,7 @@ class SpikeArenaPane extends React.Component {
     }
 
     async start () {
+        if (this.disposed) return;
         const session = this.firmwareSession;
         if (session?.storageSupported && !session.closed &&
             ((session.loaded && session.programState === 1) || [3, 4, 5].includes(session.programState))) {
@@ -591,7 +598,14 @@ class SpikeArenaPane extends React.Component {
             this.setState({status: 'running'});
             return;
         }
-        await this.stopProgram();
+        const bridge = this.bridge;
+        const execution = this.state.execution;
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.programIntent === intent &&
+            this.bridge === bridge && this.state.execution === execution;
+        await stopped;
+        if (!current()) return;
         this.hubState.setSimulationEnabled(true);
         this.bridge.reset();
         let message = '';
@@ -600,9 +614,10 @@ class SpikeArenaPane extends React.Component {
             try {
                 await this.connect();
             } catch (error) {
-                this.setState({message: this.t('connectFailed', {error: error.message})});
+                if (current()) this.setState({message: this.t('connectFailed', {error: error.message})});
                 return;
             }
+            if (!current()) return;
             this.bridge.reset();
             this.vm.greenFlag();
         } else message = this.t('noProgram');
@@ -613,6 +628,9 @@ class SpikeArenaPane extends React.Component {
     }
 
     async stopProgram ({restart = false} = {}) {
+        // Invalidate a pending native Start even when Reset retains its bridge
+        // and execution backend, or a backend selection returns to native.
+        this.programIntent = {};
         const firmware = this.firmwareSession;
         this.firmwareSession = null;
         if (firmware) await firmware.stop();
