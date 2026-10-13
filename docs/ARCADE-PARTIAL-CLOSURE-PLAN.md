@@ -459,3 +459,28 @@ retain discarded temporaries until reset: implement root tracing and reserve
 allocations before copies; an ever-growing historical counter is insufficient.
 PR845 full build timed out and the light B-fixture failure is preserved; obtain
 exact-head complete build/editor proof before acceptance or corpus promotion.
+
+## Authentic terrain recovery and prepared audits — 2026-10-13
+
+Standalone tutorial `jres` fences were omitted from recovered project envelopes.
+The assembler now preserves their original bytes and uses the pinned original
+`pxt.emitTilemapsFromJRes` worker to generate companion TypeScript. Collector,
+recovery and tutorial-to-project CLI callers record worker versions/hash and
+emitter provenance. Conflicting, malformed and unterminated resource fences
+are diagnosed; original main files remain unchanged. Four authentic map
+contexts (Maze, Cherry Pickr, Simple Extensions, Dance Party) compile originally
+and import without native diagnostics. Gameplay/roundtrip qualification is
+being measured separately; these are not changed raw snippets.
+
+The compatibility CLI can separately inspect genuine prepared dependency inputs:
+
+```sh
+node scripts/compat-audit.mjs --target arcade --prepare-extensions --fetch-extensions --out "$PREPARED_REPORT" "$AUTHENTIC_PROJECT_DIR"
+```
+
+Fetching stays explicit. Raw `stage`/`unsupported`/`tally` are preserved;
+`preparedTranslation` and `preparedTally` report the added input layer with
+original/prepared file hashes, package source provenance and explicit failures.
+The resolver is not a compiler or gameplay oracle. A requested preparation or
+prepared parse failure returns a failing CLI status. Compilation, execution,
+behavioural comparisons and GUI evidence remain separate gates.
