@@ -12,7 +12,9 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 The lower runtime and Buffer stack is integrated into main through
 [PR856](https://github.com/CrispStrobe/brickwright-lite/pull/856).
-The next source stack is PR858, PR859, PR861, PR862, PR864 and PR865;
+The next source stack is PR858, PR859, PR861, PR862, PR864, PR865,
+[PR869](https://github.com/CrispStrobe/brickwright-lite/pull/869) and
+[PR870](https://github.com/CrispStrobe/brickwright-lite/pull/870);
 refresh their actual heads and checks before adoption. Follow the latest
 `LANES.md` ownership, including the independent device and board work.
 
