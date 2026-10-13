@@ -221,7 +221,14 @@ try {
             if (t && seen[seen.length - 1] !== t) seen.push(t);
             return t;
         }, t => /^(running|error)$/.test(t), 60000, 200);
-        const trail = seen.join('  ·  ').slice(0, 240);
+        // An error phase has a sentence beside it; a gate that fails without
+        // quoting it sends the reader to a browser to find out why.
+        const phaseLine = () => page.evaluate(() => {
+            const panel = [...document.querySelectorAll('[data-debug-panel]')].find(n => n.offsetParent !== null);
+            const word = panel && [...panel.querySelectorAll('strong')].find(n => n.parentElement.style.alignItems === 'baseline');
+            return word ? word.parentElement.innerText.replace(/\s+/g, ' ') : '';
+        });
+        const trail = `${seen.join('  ·  ')}${seen.includes('error') ? ` — ${await phaseLine()}` : ''}`.slice(0, 600);
         check('▶ Run on the emulated micro:bit V2 reaches a running LabWired session', seen.includes('running'), trail);
         check('and never the error phase', seen.length > 0 && !seen.includes('error'), trail);
         const body = await page.evaluate(() => document.body.innerText);
