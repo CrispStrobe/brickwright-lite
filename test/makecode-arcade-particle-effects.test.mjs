@@ -244,3 +244,36 @@ sceneAt750 = game.currentScene().allSprites.indexOf(hero) >= 0`;
     await f.frames(16, 1 / 32);
     assert.deepEqual([events, ghost, countedAt0, sceneAt250, eventsAt250, !!f.state().sprites[hero]], ['rd', true, 0, true, 'r', false]);
 });
+
+test('actual original AshFactory exhausts its single and multiple color collections without losing particles',async()=>{
+    const source=`let bare:particles.ParticleAnchor={x:80,y:60,vx:0,vy:0}
+let defaultFactory=new particles.AshFactory(bare,false)
+let emitted=0
+let defaultColorSum=0
+for(let i=0;i<25;i++){let particle=defaultFactory.createParticle(bare);if(particle){emitted++;defaultColorSum+=particle.color;}}
+let hero=sprites.create(img\`2 3\n4 5\`,SpriteKind.Player)
+let coloredFactory=new particles.AshFactory(hero,true,100)
+let colored=0
+let coloredSum=0
+for(let i=0;i<8;i++){let particle=coloredFactory.createParticle(hero);if(particle){colored++;coloredSum+=particle.color;}}
+let imageSum=hero.image.getPixel(0,0)+hero.image.getPixel(1,0)+hero.image.getPixel(0,1)+hero.image.getPixel(1,1)
+let done=1;done+=0;`;
+    const original=await runPxtArcade(source,{fakeClock:true});assert.equal(original.emitted,20);assert.equal(original.defaultColorSum,20);assert.equal(original.colored,4);assert.equal(original.coloredSum,14);assert.equal(original.imageSum,0);
+    const f=fixture(),module=f.arcade._inst._particles(),bare={x:80,y:60,vx:0,vy:0};
+    const plain=new module.particles.AshFactory(bare,false);let emitted=0,defaultColorSum=0;
+    for(let i=0;i<25;i++){const particle=plain.createParticle(bare);if(particle){emitted++;defaultColorSum+=particle.color;}}
+    const image=f.arcade.createImage({WIDTH:2,HEIGHT:2});for(const [x,y,c] of [[0,0,2],[1,0,3],[0,1,4],[1,1,5]])f.arcade.drawImage({IMAGE:image,OP:'fillRect',X:x,Y:y,W:1,H:1,COLOR:c});
+    const id=f.arcade.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:'Player'}),hero=f.state().sprites[id],anchor=f.arcade._inst._particleAnchor(hero);
+    const coloredFactory=new module.particles.AshFactory(anchor,true,100);let colored=0,coloredSum=0;
+    for(let i=0;i<8;i++){const particle=coloredFactory.createParticle(anchor);if(particle){colored++;coloredSum+=particle.color;}}
+    const imageSum=hero.image.pixels.reduce((sum,value)=>sum+value,0);
+    assert.deepEqual({emitted,defaultColorSum,colored,coloredSum,imageSum},{emitted:original.emitted,defaultColorSum:original.defaultColorSum,colored:original.colored,coloredSum:original.coloredSum,imageSum:original.imageSum});
+    assert.equal(plain.colors.length,0);assert.equal(coloredFactory.colors.length,0);assert.deepEqual(f.errors,[]);
+});
+
+test('ashes destroy effects execute depleted collection removal and finish destruction',async()=>{
+    const original=await runPxtArcade('let hero=sprites.create(img`2 2\n2 2`,SpriteKind.Player);let destroyed=0;sprites.onDestroyed(SpriteKind.Player,function(sprite){destroyed++;});hero.destroy(effects.ashes,500);pause(1000);let remaining=sprites.allOfKind(SpriteKind.Player).length;let done=1;done+=0;',{fakeClock:true});
+    const f=fixture(),id=f.sprite(2,80,60);let destroyed=0;f.runtime.startHats=opcode=>{if(opcode==='arcade_whenSpriteDestroyed')destroyed++;return [];};
+    f.arcade.destroySpriteWithEffect({ID:id,EFFECT:'ashes',DURATION:500});await f.frames(32,1/32);
+    assert.equal(destroyed,original.destroyed);assert.equal(f.arcade.spriteCount({KIND:'Player'}),original.remaining);assert.equal(original.destroyed,1);assert.deepEqual(f.errors,[]);
+});
