@@ -3410,3 +3410,18 @@ arrays and serialized reference observations with bounded incomplete results.
 No automatic sweep, complete-root claim, new opcode or producer pin change.
 Explicit hidden-owner leases and preallocation reservations remain required.
 Scope and followup method are in the Buffer contract;142/41/1 unchanged.
+
+## Arcade editor startup dependency boundary — 2026-10-13
+
+PROPOSED CLAIM — Codex Arcade integration. Merge this claim before product edits.
+Envelope: a pure tilemap-block presence helper in `lib/bw-makecode/`, the presence
+read in `containers/costume-tab.jsx` and its tracked mirror, focused equivalence
+controls, this ledger and the linked contract. Existing painter decoding, legacy
+layout resolution, validation, saves, sprite placement and ownership remain intact.
+The startup byte gate has a concrete failure; preserve its exact budget and
+original result. Replace the eager full-editor import with the same presence
+semantics for original targets, modern/legacy blocks and malformed/computed data.
+Qualify emitted initial bytes through the unchanged hosted P17 gate, and retain
+actual painter and editor journeys. No local full GUI build, threshold change or
+claim that a structural source scan proves emitted bundle size. Contract:
+[editor load boundary](docs/ARCADE-EDITOR-LOAD-BOUNDARY.md).
