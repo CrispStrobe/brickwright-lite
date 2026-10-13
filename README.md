@@ -186,9 +186,16 @@ and `bwlite convert` — using the same readers as the in-app Code tab.
 
 - **Flash a real STC 8051 board:** the installed SDCC compiler turns your
   pseudocode or C into Intel HEX, and `stcgal` flashes it over a serial port.
-- **Talk to real LEGO hubs:** the native app includes its own ScratchLink over
-  **Bluetooth LE and Bluetooth Classic** (plus a WiFi/USB bridge for SPIKE), so
-  SPIKE and MINDSTORMS hubs connect without a browser or a separate install.
+- **Program real LEGO bricks — the whole lineage.** Blocks transpile to the
+  code each brick actually runs and connect over its real transport:
+  **SPIKE Prime / Robot Inventor** and **EV3** (Python / ev3dev2, plus EV3
+  `.lms` bytecode), **NXT** (NXC), and **Boost**, **WeDo 2.0** and **Powered
+  Up** over Bluetooth LE or Classic — and the classic 1998 **MINDSTORMS RCX**,
+  whose blocks compile to `.rcx` bytecode through an in-browser **NQC**
+  compiler and download to the brick over a **Web Serial infrared tower** (you
+  supply the RCX's own firmware). The native app's own ScratchLink provides
+  BLE + Bluetooth Classic (plus a WiFi/USB bridge for SPIKE) with no browser or
+  separate install.
 
 ### Learn with guided lessons
 
