@@ -43,7 +43,7 @@ test('art holders are named after the game\'s own names, costumes after their ho
     assert.deepEqual(summary(r), ['hero/hero/replace', 'coin/coin/replace', 'background/background/replace',
         'coinAnimation/coinAnimation-1/replace', 'coinAnimation/coinAnimation-2/add']);
     assert.doesNotMatch(r.code, /__arcade(?:Template|Background)\d/, 'no internal name is left for the user to read');
-    assert.match(r.code, /set hero to \(arcade create template "hero" kind "Player"/);
+    assert.match(r.code, /set hero to \(arcade create template "hero" kind \(arcade sprite kind value "Player"\)/);
     assert.match(r.code, /arcade frame image array "coinAnimationImage" index \(0\) template "coinAnimation" start 0 count 2/);
     assert.match(r.code, /arcade set background image \(arcade copy image \(arcade frame image array "backgroundImage"/);
     assert.ok(r.costumes.every(c => !/\s/.test(c.name)), 'Code\'s COSTUME lines end a name at a space');
@@ -96,7 +96,7 @@ test('readable names never collide with the game\'s own sprites', () => {
         unsupported: []
     });
     assert.deepEqual(named.sprites, ['Game', 'background', 'background2', 'background3']);
-    assert.match(named.code, /template "background2" kind "Player"/);
+    assert.match(named.code, /template "background2" kind \(arcade sprite kind value "Player"\)/);
     assert.match(named.code, /array "background3Image" index \(0\) template "background3"/);
     const plain = {code: 'SPRITE hero:\n', costumes: [], sprites: ['hero'], unsupported: []};
     assert.equal(nameArtworkSprites(plain), plain, 'a program without helper sprites is untouched');
