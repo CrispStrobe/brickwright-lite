@@ -6,6 +6,23 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Code Stop startup feedback candidate — 2026-10-13
+
+The source candidate adds a cold-start notification through the existing arena
+and Code feedback callbacks. Code Stop becomes available while startup is
+pending, with the pane's localized starting message; it does not report a
+firmware RUNNING observation. Notification follows input validation, observer
+binding and invocation of the new session's startup. Retained uploads keep their
+existing path, and late starting notifications cannot overwrite observed running,
+READY, completion, cancellation or failure feedback.
+
+All 14 focused feedback controls pass under Node 22. Four mutations fail the
+controls: allowing late startup to overwrite terminal feedback, removing the
+notification, notifying before session startup, and notifying on retained upload.
+Hosted checks and a fresh source-bound installed Code Stop cancellation,
+cleanup/restoration and subsequent-run check remain required. The older bb293
+Arena Stop observations below do not qualify this new source or close G02.
+
 ## Installed dual-ultrasonic checkpoint — 2026-10-12
 
 [PR755](https://github.com/CrispStrobe/brickwright-lite/pull/755) is merged at

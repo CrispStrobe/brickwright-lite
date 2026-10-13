@@ -994,6 +994,11 @@ startup on a freshly built installed consumer, followed by cleanup and a new
 run; host controls alone do not close this lane. No importer, painter, peer,
 firmware, Runtime/model pin or workflow edits.
 
+Source candidate: localized cold-start feedback exposes Code Stop after session
+startup invocation. Fourteen Node 22 feedback controls pass; four notification,
+terminal and retained-upload mutants fail. Hosted and fresh installed Code Stop
+qualification remain pending; this claim is not closed by host controls.
+
 ## SPIKE handover
 
 The [SPIKE state and next lanes](docs/SPIKE-STATUS-AND-LANES.md) record the
