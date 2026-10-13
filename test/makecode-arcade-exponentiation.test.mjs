@@ -77,3 +77,36 @@ test('sprite-reference exponentiation remains a named arithmetic conversion gap'
     const imported=arcadeToPseudocode('let hero=sprites.create(img`1`,SpriteKind.Player);let result=hero**2');
     assert.ok(imported.unsupported.includes('sprite arithmetic conversion requires ToPrimitive support'));
 });
+
+test('Math.pow imports use the same original-compatible arithmetic instead of Scratch coercion',async()=>{
+    const program=`let trace=0
+function base(){trace=trace*10+2;return 2}
+function exponent(){trace=trace*10+3;return 3}
+let sideEffect=Math.pow(base(),exponent())
+let invalid=Math.pow(0/0,2)
+let zeroNaN=Math.pow(0/0,0)
+let positiveInfinity=Math.pow(0,-1)
+function zero(){return 0}
+let signedZero=Math.pow(zero()/(-1),3)
+let inverseSignedZero=1/signedZero
+function observe(value:number){return value}
+invalid=observe(invalid)
+zeroNaN=observe(zeroNaN)
+positiveInfinity=observe(positiveInfinity)
+signedZero=observe(signedZero)
+inverseSignedZero=observe(inverseSignedZero)`;
+    const keys=['trace','sideEffect','invalid','zeroNaN','positiveInfinity','signedZero','inverseSignedZero'];
+    const original=await runPxtArcade(program);
+    const imported=arcadeToPseudocode(program);assert.deepEqual(imported.unsupported,[]);
+    const check=run=>{const values=vars(run);for(const key of keys)assert.ok(Object.is(values[key],original[key]),key+': '+String(values[key]));assert.deepEqual(run.errors,[]);};
+    try {
+        const run=await runProgram(imported.code,{frames:100,storage:true});check(run);
+        assert.ok(projectOpcodes(run.creator.project).has('arrays_valueBinary'));
+        assert.ok(!projectOpcodes(run.creator.project).has('planetemaths_pow'));
+        check(await runProgram(run.creator.decompile(),{frames:100,storage:true}));
+        const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);
+        const roundtrip=await runPxtArcade(exported.files);for(const key of keys)assert.ok(Object.is(roundtrip[key]??roundtrip['Game_'+key],original[key]),key+' exported');
+        const again=arcadeToPseudocode(exported.ts);assert.deepEqual(again.unsupported,[]);check(await runProgram(again.code,{frames:100,storage:true}));
+        const saved=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());await run.vm.loadProject(saved);run.vm.greenFlag();await stepFrames(run.vm,100);check(run);
+    }finally{clearStrayTimers();}
+});

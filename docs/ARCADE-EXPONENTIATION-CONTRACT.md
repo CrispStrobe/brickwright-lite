@@ -49,7 +49,8 @@ exponentiation runtime comparison uses a runtime-produced signed zero so that
 both execute the numeric operation with the same input. That compiler-folding
 difference remains a separate source-conversion gap.
 
-Existing `Math.pow` import still uses `planetemaths_pow`, whose Scratch numeric
-conversion turns a NaN operand into zero. Supporting `**` does not close that
-separate `Math.pow` conversion gap. Likewise, these focused controls do not
-reclassify a corpus game or qualify a complete library.
+Arcade `Math.pow` imports now use the same native value operation. Original
+comparisons cover NaN inputs, infinities, dynamically produced signed zero and
+single evaluation of operands through Code, blocks, export and reimport. The
+independent Planète Maths block retains its existing Scratch conversion behavior.
+These focused controls do not reclassify a corpus game or qualify a complete library.

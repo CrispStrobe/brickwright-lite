@@ -832,6 +832,13 @@ class ArcadeTranslator extends BaseTranslator {
             this.unsupported.push('scene.cameraProperty requires one property selector and native camera support');return 'undefined value';
         case 'scene.screenWidth': return String(HALF_WIDTH * 2);
         case 'scene.screenHeight': return String(HALF_HEIGHT * 2);
+        case 'Math.pow':
+            if(!this.handleTemplates)return super.callExpression(node);
+            if(this.boundSourceGlobals?.has('Math') || this.sourceFunctions?.has('Math') || this.localVars?.has('Math') || this.currentParameters?.has('Math') || this.capturedBindings.has('Math')) {
+                this.unsupported.push('Math.pow refers to a shadowed Math binding');return 'undefined value';
+            }
+            if(a.length!==2){this.unsupported.push('Math.pow() requires exactly two numbers');return 'undefined value';}
+            return this.expr({type:'Binary',op:'**',left:a[0],right:a[1]});
         case 'Math.sign':
         case 'Math.trunc':
             if(this.boundSourceGlobals?.has('Math') || this.sourceFunctions?.has('Math') || this.localVars?.has('Math') || this.currentParameters?.has('Math') || this.capturedBindings.has('Math')) {

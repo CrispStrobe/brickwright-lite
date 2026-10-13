@@ -288,7 +288,7 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 110787e7 (2026-10-13): tile/image/controller words; rerun SPIKE artifact assertions.
     // -> 0088c75b (2026-10-13): normal producer main merge; same artifact gate.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '5c1045883fc27c41570996a659c571a712027455');
+        '342a4f860572b531ca622dba8d9e1fe3db444bfe');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
