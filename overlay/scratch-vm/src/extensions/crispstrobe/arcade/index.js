@@ -1627,7 +1627,7 @@ module.exports = makeExt(`// Name: Arcade
         const cancelled=new Promise(resolve=>{cancel=()=>resolve(false);this._textPromptWaits.add(cancel);});
         this._runtime.bwArcadeTextPrompt={answerLength,numbersOnly};
         try {
-          const completed=await Promise.race([Promise.resolve(ask({QUESTION:String(args.QUESTION)},util)).then(()=>true),cancelled]);
+          const completed=await Promise.race([Promise.resolve(ask({QUESTION:String(Scratch.BWValues.decode(args.QUESTION))},util)).then(()=>true),cancelled]);
           if(!completed || epoch!==this._terrainEpoch)return '';
           const reply=String(answer()).substr(0,answerLength);
           restored=true;
