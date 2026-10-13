@@ -39,8 +39,8 @@ for(const [button,expected] of [['a',true],['b',false]])test(`game.ask ${button}
   assert.deepEqual(run.errors,[]);assert.equal(value('reply'),expected);assert.equal(value('branch'),expected?1:2);
   const code=run.creator.decompile();assert.match(code,/arcade ask yes/);
   const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/game\.ask\(/);
-  const original=await runPxtArcade(source,{buttonActions:{steps:[{delay:650},{button:button==='a'?5:6,held:true}]}});
-  const actual=await runPxtArcade(exported.files,{waitForGlobals:{ready:true},buttonActions:{steps:[{delay:650},{button:button==='a'?5:6,held:true}]}});
+  const original=await runPxtArcade(source,{fakeClock:true,buttonActions:{steps:[{delay:650},{button:button==='a'?5:6,held:true}]}});
+  const actual=await runPxtArcade(exported.files,{fakeClock:true,waitForGlobals:{ready:true},buttonActions:{steps:[{delay:650},{button:button==='a'?5:6,held:true}]}});
   assert.equal(original.reply,expected);assert.equal(actual.reply,expected);assert.equal(actual.branch,original.branch);
   const back=arcadeToPseudocode(exported.files);assert.deepEqual(back.unsupported,[]);
   const codeRun=await runProgram(code,{frames:5});await stepFrames(codeRun.vm,20);

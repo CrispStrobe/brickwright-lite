@@ -90,7 +90,7 @@ test('unknown layout and opaque text retain explicit diagnostics',()=>{
  for(const source of ['game.showLongText("X",999)','let layout=DialogLayout.Top;game.showLongText("X",layout)','game.splash({a:1})','let x:Sprite=null;game.splash(x)'])assert.ok(arcadeToPseudocode(source).unsupported.length,source);
 });
 
-test('Splash scroll pixels match the original at the authored capture event',{todo:process.env.BW_REQUIRE_EXACT_ARCADE_PHASE==='1' ? false : 'Initial/source continuation and resumed scene frame phases remain unqualified; strict 2400 ms pixel failure retained'},async()=>{
+test('Splash scroll pixels match the original at the authored capture event',async()=>{
  const source=marked('game.splash("ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZ","你好")').replace('let shown=false;', 'let shown=false;let capturedProgram=0;let capturedScene=0;').replace('pause(100);captured=', 'pause(2400);capturedProgram=control.millis();capturedScene=game.runtime();captured=');
  const original=await runPxtArcade(source,{waitForGlobals:{shown:true},waitForMain:false,inspectImageGlobals:['captured'],fakeClock:true});let run;
  try{
