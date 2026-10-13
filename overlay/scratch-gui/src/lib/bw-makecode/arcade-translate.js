@@ -1,3 +1,4 @@
+import {TEXT_SPRITE_INITIALIZER} from './text-source-admission.generated.js';
 import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
 const LEGACY_CHARACTER_REVISION=LEGACY_CHARACTER_NATIVE_IDENTITY.revision;
 import {applyDeclaredValueType} from './declared-value-types.js';
@@ -214,7 +215,6 @@ class ArcadeTranslator extends BaseTranslator {
         this.self = null;                // the sprite the current script is on
         this.aliases = new Map();        // handler parameter → sprite name
         this.pendingClone = null;        // a sprite spawned in this block
-        this.kinds = 0;                  // SpriteKind.create() hands out ids
         this.handleTemplates = null;     // enabled for creation-event projects
         this.projectileTemplates = new Map(); // projectile calls inside functions
         this.handleAliases = new Map();  // callback parameter -> event handle
@@ -310,7 +310,8 @@ class ArcadeTranslator extends BaseTranslator {
                 this.spriteResultBindings.add(name);added = true;
             }
         } while (added);
-        this.sceneStackProgram=containsAst(node,value=>value.type==='Call' && /^(?:mp\.(?:onButtonEvent|getPlayerState|setPlayerState|changePlayerStateBy)|game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler))$/.test(this.path(value.callee)||''));
+        this.kindRuntimeProgram=containsAst(node,value=>value.type==='SpriteKindReset' || value.type==='Member' && this.path(value.object)==='SpriteKind' || value.type==='Call' && (this.path(value.callee)==='SpriteKind.create' || value.callee?.type==='Member' && ['kind','setKind'].includes(value.callee.name)));
+        this.sceneStackProgram=this.kindRuntimeProgram || containsAst(node,value=>value.type==='Call' && /^(?:mp\.(?:onButtonEvent|getPlayerState|setPlayerState|changePlayerStateBy)|game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler))$/.test(this.path(value.callee)||''));
         this.nativeInfoProgram=this.sceneStackProgram || containsAst(node,value=>value.type==='Call' && isInfoRegistration(this.path(value.callee)));
         const registrations=discoverRuntimeRegistrations(node,this);
         this.createdRegistrations=new Map([...registrations].filter(([,record])=>record.kind==='creation'));
@@ -498,6 +499,7 @@ class ArcadeTranslator extends BaseTranslator {
         if(delegated)super.statement(st,indent,out);
     }
     arcadeStatement(st, indent, out) {
+        if(st.type==='SpriteKindReset'){out.push(`${'  '.repeat(indent)}set ${this.varName(st.name)} to (undefined value)`);return;}
         if(st?.type==='ExpressionStatement' && this.bufferStatement(st.expr,indent,out))return;
         const target=st?.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left;
         if(target?.type==='Member' && (this.physicsEngineReferences?.has(target.object) || this.sceneReferences?.has(target.object))) {
@@ -534,13 +536,15 @@ class ArcadeTranslator extends BaseTranslator {
             const pad='  '.repeat(indent);
             for(const d of st.decls){
                 const gaps=this.unsupported.length;
-                let value=d.init?this.arrayElementValue(d.init):d.isArray?this.expr({type:'Undefined'}):'0';
+                if(d.spriteKindLibrary)out.push(`${pad}arcade initialize sprite kind library ${JSON.stringify(d.spriteKindLibrary.library)} version ${JSON.stringify(d.spriteKindLibrary.version)}`);
+                let value=d.spriteKindLibrary?`arcade sprite kind value ${JSON.stringify(d.spriteKindName)}`:d.init?this.arrayElementValue(d.init):d.isArray?this.expr({type:'Undefined'}):'0';
                 // An array we could not translate (already named as a gap) stands in as an
                 // EMPTY array, so \`for (const t of unknownArrayFactory())\` runs no times
                 // instead of failing at run time on "Array reference is null or expired".
                 if(d.isArray && d.init && value==='0' && this.unsupported.length>gaps)value='new array reference from ("[]")';
                 if(d.temporary || this.localVars?.has(d.name))out.push(`${pad}arcade set local ${d.name} to (${value})`);
                 else out.push(`${pad}set ${this.varName(d.name)} to (${value})`);
+                if(d.spriteKindName && !d.spriteKindLibrary)out.push(`${pad}arcade bind sprite kind name ${JSON.stringify(d.spriteKindName)} to (${this.expr({type:'Identifier',name:d.name})})`);
             }
             return;
         }
@@ -741,6 +745,7 @@ class ArcadeTranslator extends BaseTranslator {
         }
         const name = this.path(node.callee);
         const a = node.args || [];
+        if(this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='kind' && !a.length && this.spriteReferences?.has(node.callee.object))return `arcade sprite (${this.expr(node.callee.object)}) property kind`;
         const fn = node.callee?.type === 'Identifier' && this.returnFunctions?.get(node.callee.name);
         if (fn) {
             if (a.length > fn.params.length || fn.params.slice(a.length).some(name=>!fn.optionalParams?.includes(name))) {this.unsupported.push(`${fn.name}() argument count differs from its declaration`);return '0';}
@@ -810,10 +815,10 @@ class ArcadeTranslator extends BaseTranslator {
             if (source && !sourceHandle) this.unsupported.push(`${name}() source must be a sprite handle or null`);
             const vx = mode === 'sprite' ? a[2] : a[1];
             const vy = mode === 'sprite' ? a[3] : a[2];
-            if (template.dynamicImage) return `arcade projectile image (${this.imageRef(a[0])}) template "${template.name}" kind "${template.kind}" ` +
+            if (template.dynamicImage) return `arcade projectile image (${this.imageRef(a[0])}) template "${template.name}" kind ${this.kindSlot(name==='sprites.createProjectile'?a[3]:undefined)} ` +
                 `vx ${this.expr(vx)} vy ${this.expr(vy)} mode ${mode}` +
                 (source ? ` source ${sourceHandle || this.expr(source)}` : '');
-            return `arcade projectile template "${template.name}" kind "${template.kind}" ` +
+            return `arcade projectile template "${template.name}" kind ${this.kindSlot(name==='sprites.createProjectile'?a[3]:undefined)} ` +
                 `vx ${this.expr(vx)} vy ${this.expr(vy)} width ${template.width} ` +
                 `height ${template.height} mode ${mode}` +
                 (source ? ` source ${sourceHandle || this.expr(source)}` : '');
@@ -826,8 +831,8 @@ class ArcadeTranslator extends BaseTranslator {
                 this.unsupported.push('sprites.create() — image could not be used as a sprite template');
                 return '0';
             }
-            if (template.dynamicImage) return `arcade create image (${this.imageRef(a[0])}) template "${template.name}" kind "${template.kind}"`;
-            return `arcade create template "${template.name}" kind "${template.kind}" ` +
+            if (template.dynamicImage) return `arcade create image (${this.imageRef(a[0])}) template "${template.name}" kind ${this.kindSlot(a[1])}`;
+            return `arcade create template "${template.name}" kind ${this.kindSlot(a[1])} ` +
                 `width ${template.width} height ${template.height}`;
         }
         if(this.handleTemplates && /^info(?:\.player[1-4])?\.life$/.test(name||'')) {
@@ -898,7 +903,9 @@ class ArcadeTranslator extends BaseTranslator {
         // A sprite KIND is a compile-time label; every Arcade game defines
         // a few, and reporting them as unsupported would bury the real
         // refusals under noise. A number is exactly what they are.
-        case 'SpriteKind.create': return String(100 + (++this.kinds));
+        case 'SpriteKind.create':
+            if(a.length || this.bindsName('SpriteKind')){this.unsupported.push('SpriteKind.create() requires no arguments and the original namespace');return 'undefined value';}
+            return 'arcade create sprite kind';
         case 'animation.createAnimation':
             if (this.handleTemplates && a.length === 2) return `arcade create animation action (${this.expr(a[0])}) interval (${this.expr(a[1])})`;
             this.unsupported.push('animation.createAnimation requires an action, interval and runtime animation support');
@@ -1103,6 +1110,7 @@ class ArcadeTranslator extends BaseTranslator {
             if(Object.prototype.hasOwnProperty.call(values,node.name))return String(values[node.name]);
             this.unsupported.push(`TileScale.${node.name} is not a declared tile scale`);return '4';
         }
+        if(this.handleTemplates && node?.type==='Member' && this.path(node.object)==='SpriteKind' && !this.bindsName('SpriteKind'))return `arcade sprite kind value ${JSON.stringify(node.name)}`;
         if(this.handleTemplates && node?.type==='String')return arcadeTextLiteral(tsText(node.value));
         if(this.handleTemplates && ['Update','Assignment'].includes(node?.type)){this.unsupported.push(`${node.type.toLowerCase()} expression used as a value`);return '0';}
         if (this.handleTemplates && ['Null','Undefined'].includes(node?.type)) {
@@ -1200,7 +1208,7 @@ class ArcadeTranslator extends BaseTranslator {
             if(node.args.length!==1 || !fixedKind(kind)) {
                 this.unsupported.push('sprites.allOfKind requires a supported SpriteKind member or fixed negative numeric kind');return '0';
             }
-            return `arcade sprite array kind ${JSON.stringify(kindOf(kind))}`;
+            return `arcade sprite array kind ${this.kindSlot(kind)}`;
         }
         if (node?.type==='Index' && this.isArrayReference(node.object) && !this.imageValueResources.has(node)) return `item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
         if (node?.type==='Member' && node.name==='length' && this.isArrayReference(node.object)) return `length of array reference (${this.expr(node.object)})`;
@@ -1220,7 +1228,7 @@ class ArcadeTranslator extends BaseTranslator {
         if (node?.type === 'Identifier' && this.capturedBindings.has(node.name)) return `arcade captured ${this.capturedBindings.get(node.name)}`;
         if (node?.type === 'Member' && node.name === 'length' && node.object?.type === 'Call' &&
             this.path(node.object.callee) === 'sprites.allOfKind') {
-            return `arcade count kind "${kindOf(node.object.args?.[0])}"`;
+            return `arcade count kind ${this.kindSlot(node.object.args?.[0])}`;
         }
         if (node?.type === 'Identifier' && this.handleAliases.has(node.name)) {
             return this.handleAliases.get(node.name);
@@ -1377,7 +1385,7 @@ class ArcadeTranslator extends BaseTranslator {
                 push(this.note('sprites.onCreated() runtime kind expressions need support'));return;
             }
             const registration = this.createdRegistrations.get(node);
-            if (registration && this.handleTemplates) push(`arcade register creation kind "${kindOf(a[0])}" as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`);
+            if (registration && this.handleTemplates) push(`arcade register creation kind ${this.kindSlot(a[0])} as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`);
             else push(this.note('sprites.onCreated() needs a supported callback'));
             return;
         }
@@ -1386,9 +1394,9 @@ class ArcadeTranslator extends BaseTranslator {
             const registration=this.terrainRegistrations.get(node);
             if(!registration){push(this.note(`${name} requires a fixed SpriteKind, exact arguments and an inline callback with at most two parameters`));return;}
             const captures=JSON.stringify([...registration.ownCaptures].join(' '));
-            if(registration.kind==='legacyWall')push(`arcade register color wall kind "${kindOf(a[0])}" index (${this.expr(a[1])}) as "${registration.token}" capturing ${captures}`);
-            else if(registration.kind==='wall')push(`arcade register wall kind "${kindOf(a[0])}" as "${registration.token}" capturing ${captures}`);
-            else push(`arcade register tile kind "${kindOf(a[0])}" image (${this.expr(a[1])}) as "${registration.token}" capturing ${captures}`);
+            if(registration.kind==='legacyWall')push(`arcade register color wall kind ${this.kindSlot(a[0])} index (${this.expr(a[1])}) as "${registration.token}" capturing ${captures}`);
+            else if(registration.kind==='wall')push(`arcade register wall kind ${this.kindSlot(a[0])} as "${registration.token}" capturing ${captures}`);
+            else push(`arcade register tile kind ${this.kindSlot(a[0])} image (${this.expr(a[1])}) as "${registration.token}" capturing ${captures}`);
             return;
         }
         if(this.handleTemplates && ['game.pushScene','game.popScene'].includes(name)) {
@@ -1429,8 +1437,8 @@ class ArcadeTranslator extends BaseTranslator {
             case 'interval':push(`arcade register interval (${this.expr(a[0])}) ${suffix}`);break;
             case 'multiplayerButton':push(`arcade register multiplayer button (${this.expr(a[0])}) event (${this.expr(a[1])}) ${suffix}`);break;
             case 'button':push(`arcade register button "${/^controller\.(\w+)\./.exec(name)[1]}" event (${this.expr(a[0])}) ${suffix}`);break;
-            case 'destroyed':push(`arcade register destroyed kind "${kindOf(a[0])}" ${suffix}`);break;
-            case 'overlap':push(`arcade register overlap kind "${kindOf(a[0])}" with kind "${kindOf(a[1])}" ${suffix}`);break;
+            case 'destroyed':push(`arcade register destroyed kind ${this.kindSlot(a[0])} ${suffix}`);break;
+            case 'overlap':push(`arcade register overlap kind ${this.kindSlot(a[0])} with kind ${this.kindSlot(a[1])} ${suffix}`);break;
             case 'scenePush':push(`arcade register scene push ${suffix}`);break;
             case 'scenePop':push(`arcade register scene pop ${suffix}`);break;
             }
@@ -1661,7 +1669,7 @@ class ArcadeTranslator extends BaseTranslator {
                 if (registration) push(`arcade register instance destruction of (${handle}) as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`);
                 else push(this.note('sprite.onDestroyed() requires one inline callback without parameters and a typed sprite reference'));
             }
-            else if (node.callee.name === 'setKind') push(`arcade set kind of ${handle} to "${kindOf(a[0])}"`);
+            else if (node.callee.name === 'setKind') push(`arcade set kind of ${handle} to ${this.kindSlot(a[0])}`);
             else if (node.callee.name === 'setFlag' && this.path(a[0]) === 'SpriteFlag.AutoDestroy') {
                 push(`arcade auto destroy ${handle} outside screen ${this.expr(a[1])}`);
             }
@@ -2031,6 +2039,13 @@ class ArcadeTranslator extends BaseTranslator {
         if (node?.type === 'Call' && this.path(node.callee) === 'characterAnimations._direction' && node.args?.length === 1) return this.characterFacing(node.args[0]);
         return false;
     }
+    kindSlot(node) {
+        if(!node)return '(undefined value)';
+        if(['Array','Object','ObjectLiteral','FunctionExpression'].includes(node.type) || this.arrayReferences?.has(node) || this.imageReferences?.has(node) || this.spriteReferences?.has(node)) {
+            this.unsupported.push('SpriteKind argument requires a numeric value, null or undefined');return '(undefined value)';
+        }
+        return `(${this.expr(node)})`;
+    }
     /** arcade-character-animations calls. */
     characterStatement (name, a, push) {
         if (!this.handleTemplates || !/^characterAnimations\./.test(name || '') || this.bindsName('characterAnimations')) return false;
@@ -2140,11 +2155,11 @@ class ArcadeTranslator extends BaseTranslator {
     spriteExtensionCreate (node) {
         const dart = this.path(node.callee) === 'darts.create', a = node.args || [], first = dart ? 1 : 0;
         if (a.length < first + 1 || a.length > first + 3) { this.unsupported.push(`${dart ? 'darts' : 'corgio'}.create() takes ${dart ? 'an image, a kind' : 'a kind'} and an optional x and y`); return 'undefined value'; }
-        const kind = kindOf(a[first]), x = a.length > first + 1 ? this.expr(a[first + 1]) : '10', y = a.length > first + 2 ? this.expr(a[first + 2]) : dart ? '110' : '70';
-        if (!dart) return `arcade create corgi kind "${kind}" x (${x}) y (${y})`;
+        const kind = this.kindSlot(a[first]), x = a.length > first + 1 ? this.expr(a[first + 1]) : '10', y = a.length > first + 2 ? this.expr(a[first + 2]) : dart ? '110' : '70';
+        if (!dart) return `arcade create corgi kind ${kind} x (${x}) y (${y})`;
         const image = this.imageRef(a[0]);
         if (!image) { this.unsupported.push('darts.create() needs an image'); return 'undefined value'; }
-        return `arcade create dart image (${image}) kind "${kind}" x (${x}) y (${y})`;
+        return `arcade create dart image (${image}) kind ${kind} x (${x}) y (${y})`;
     }
     /** darts and corgio method calls on a tracked extension sprite. */
     spriteExtensionStatement (node, a, push) {
@@ -2580,8 +2595,7 @@ const negativeKind = node => {
             -Number(node.argument.value) : NaN;
     return Number.isFinite(value) && value < 0 ? value : null;
 };
-const fixedKind = node => negativeKind(node) !== null ||
-    node?.type === 'Member' && node.object?.type === 'Identifier' && node.object.name === 'SpriteKind';
+const fixedKind = node => !!node && ['Number','Unary','Identifier','Member','Call','Binary','Null','Undefined','Conditional'].includes(node.type);
 
 /** SpriteKind member or fixed negative numeric kind → native kind identity. */
 const kindOf = node => {
@@ -3126,6 +3140,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             (typeOf(node.object,owner).has('sevenseg-digit') || typeOf(node.object,owner).has('sevenseg-counter'))) return new Set(['number']);
         if (node?.type === 'Call') {
             const api = pathOf(node.callee);
+            if(api==='SpriteKind.create' || node.callee?.type==='Member' && node.callee.name==='kind' && typeOf(node.callee.object,owner).has('sprite'))return new Set(['number']);
             if(api==='characterAnimations.ruleToString' && node.args.length===1)return new Set(['string']);
             if(['characterAnimations.rule','characterAnimations._predicate','characterAnimations._direction'].includes(api))return new Set(['number']);
             if(api==='characterAnimations.matchesRule')return new Set(['boolean']);
@@ -3670,6 +3685,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if (!node || typeof node !== 'object') return false;
         if(node.loweredStaticCallbacks || node.optionalParams?.length || node.loweredLazyValues || node.type==='Undefined' || node.type==='Null' && !node.spritePlaceholder || t.hasLazyCondition(node))return true;
         if(['LegacyParsedValue','LegacyJsonValue','NativeArrayAccess'].includes(node.type) || node.type==='Identifier' && ['NaN','Infinity'].includes(node.name) && !t.boundSourceGlobals.has(node.name))return true;
+        if(node.type==='SpriteKindReset' || node.type==='Member' && t.path(node.object)==='SpriteKind' || node.type==='Call' && (t.path(node.callee)==='SpriteKind.create' || node.callee?.type==='Member' && ['kind','setKind'].includes(node.callee.name) || t.path(node.callee)==='sprites.create' && (!node.args[1] || !['Member'].includes(node.args[1].type))))return true;
         if(t.bufferReferences.has(node))return true;
         if(node.type==='Declaration' && node.decls.some(decl=>decl.isArray && !decl.init))return true;
         const constantNumber=value=>value?.type==='Number'?Number(value.value):value?.type==='Unary' && value.op==='-' && value.argument?.type==='Number'?-Number(value.argument.value):value?.type==='Member' && value.object?.name==='Math' && value.name==='PI'?Math.PI:NaN;
@@ -3832,7 +3848,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         'pause', 'game.splash', 'game.showLongText', 'image.setPalette', 'scene.setBackgroundColor', 'scene.setBackgroundImage']);
     for (const [index, st] of ast.body.entries()) {
         if (st.type === 'Namespace' && st.name === 'SpriteKind') continue;
-        if (st.type === 'FunctionDeclaration') continue;
+        if (st.type === 'FunctionDeclaration' || st.type==='SpriteKindReset') continue;
         if (plainDeclaration(st) || frameDeclaration(st)) continue;
         if (assignsCreate(st)) continue;
         if (handleProperty(st)) continue;
@@ -3970,16 +3986,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         const image = dynamicImage ? {width: 1, height: 1, pixels: new Uint8Array(1)} : t.imageOf(call.args[0]);
         if (!image) return null;
         const kindArgument = projectile ? api === 'sprites.createProjectile' ? call.args[3] : null : call.args[1];
-        let kind = projectile ? 'Projectile' : 'Player';
-        if (negativeKind(kindArgument) !== null) kind = kindOf(kindArgument);
-        else if (kindArgument?.type === 'Number') {
-            const builtinKind = ['Player','Projectile','Food','Enemy'][Number(kindArgument.value)];
-            if (builtinKind) kind = builtinKind;
-            else t.unsupported.push(`${api}() numeric sprite kind ${kindArgument.value} needs kind identity support`);
-        } else if (kindArgument?.type === 'Member' && t.path(kindArgument.object) === 'SpriteKind') kind = kindArgument.name;
-        else if (kindArgument) t.unsupported.push(`${api}() dynamic sprite kind needs kind expression support`);
-        // PXT's optional projectile kind uses `kind || SpriteKind.Projectile`.
-        if (projectile && kind === 'Player') kind = 'Projectile';
+        const kind = kindArgument?.type==='Member' && t.path(kindArgument.object)==='SpriteKind'?kindArgument.name:projectile?'Projectile':'Player';
         const template = {name: `__arcadeTemplate${index + 1}`, dynamicImage: !!dynamicImage, kind,
             width: image.width, height: image.height};
         t.handleTemplates.set(call, template);
@@ -4153,7 +4160,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     const out = ['DEVICE ARCADE', '', ...[...new Set([...t.handleVars, ...declaredGlobals])]
         .map(name => `GLOBAL ${t.varName(name)}`),
         '', 'SPRITE Game:'];
-    const setup = ast.body.filter(st => assignsCreate(st) || handleProperty(st) || ordinaryAssignment(st) ||
+    const setup = ast.body.filter(st => st.type==='SpriteKindReset' || assignsCreate(st) || handleProperty(st) || ordinaryAssignment(st) ||
         st.type==='ExpressionStatement' && ['Assignment','Update'].includes(st.expr?.type) ||
         plainDeclaration(st) ||
         ['If', 'For', 'While','Block'].includes(st.type) ||
@@ -4548,7 +4555,9 @@ export function arcadeToPseudocode (files, opts = {}) {
         return {...result,code,costumes,animationResources,warnings:recovered.warnings,
             unsupported:[...new Set([...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...result.unsupported])]};
     };
-    const namespaceBindings = lowerNamespaceBindings(parsed);
+    let textSpriteInitializer=false;
+    try {const cfg=JSON.parse(map['pxt.json'] || '{}');textSpriteInitializer=cfg.bwArcadeNativeLibraries?.textsprite==='v1.3.0' && selectedSource.entries.some(entry=>entry.name.startsWith('__bwDependencyInputs/arcade-text/') && entry.source===TEXT_SPRITE_INITIALIZER);}catch{}
+    const namespaceBindings = lowerNamespaceBindings(parsed,{spriteKinds:true,textSpriteInitializer});
     // Namespace image constants (\`namespace myTiles { export const tile0 = img\`...\` }\`)
     // become generated top-level consts; they are immutable, so read them as images.
     for (const statement of namespaceBindings.program?.body || []) {

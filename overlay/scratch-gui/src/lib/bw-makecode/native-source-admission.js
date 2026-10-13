@@ -23,11 +23,12 @@ const SPRITE_DATA_RECEIPT=Object.freeze({
  */
 const TEXT_SPRITE_RECEIPT=Object.freeze({
     adapter:'arcade-text-v1.3.0',source:TEXT_SPRITE_NATIVE_IDENTITY,
+    libraryNamespace:'textsprite',libraryVersion:'v1.3.0',
     apis:Object.freeze(['textsprite.create','TextSprite.setText','TextSprite.setMaxFontHeight','TextSprite.setIcon','TextSprite.setBorder','TextSprite.setOutline','TextSprite.update','TextSprite property read','TextSprite property write']),
     nativeOpcodes:Object.freeze(['textSpriteCreate','textSpriteSetText','textSpriteSetMaxFontHeight','textSpriteSetIcon','textSpriteSetBorder','textSpriteSetOutline','textSpriteUpdate','textSpriteProperty','textSpriteSetProperty']),
     replacementSource:TEXT_SPRITE_INITIALIZER,
-    initialization:'retain original SpriteKind.Text initializer at original file ordering; replace class and function installation with original native host',
-    boundary:'symbolic kind identity; numeric kind allocation is not qualified; additional executable files and unimplemented callsites remain diagnosed'
+    initialization:'initialize complete original TextSprite module at original file ordering, including one shared SpriteKind.Text allocation; retained namespace binding reads that same numeric kind',
+    boundary:'exact text.ts only; additional executable files and unimplemented callsites remain diagnosed; numeric allocation requires original registry qualification'
 });
 const LEGACY_SCROLLER_RECEIPT=Object.freeze({
     adapter:'arcade-background-scroll-single',source:LEGACY_SCROLLER_NATIVE_IDENTITY,
