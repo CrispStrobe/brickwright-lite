@@ -36,7 +36,7 @@
 
 const PUNCT = [
     '===', '!==', '==', '!=', '<=', '>=', '&&', '||', '++', '--',
-    '+=', '-=', '*=', '/=', '%=', '=>', '...', '>>>', '<<', '>>',
+    '+=', '-=', '*=', '/=', '%=', '**', '=>', '...', '>>>', '<<', '>>',
     '{', '}', '(', ')', '[', ']', ';', ',', '.', ':', '?',
     '+', '-', '*', '/', '%', '<', '>', '=', '!', '&', '|', '^', '~'
 ];
@@ -163,7 +163,7 @@ const BINARY_PRECEDENCE = {
     '<': 5, '>': 5, '<=': 5, '>=': 5,
     '<<': 6, '>>': 6, '>>>': 6,
     '+': 7, '-': 7,
-    '*': 8, '/': 8, '%': 8
+    '*': 8, '/': 8, '%': 8, '**': 9
 };
 
 /** The dotted name of a template literal's tag, for `img` / `assets.image`. */
@@ -287,15 +287,15 @@ class Parser {
                 !(prev.type === 'punct' && ['|', '&', '.', '<', ',', '=>', ':'].includes(prev.value))) return isArray;
             prev = t;
             // A return type ends at the function body: `): void {`.
-            if (depth === 0 && t.type === 'punct' && t.value === '{') return isArray;
+            if (depth === 0 && t.type === 'punct' && t.value === '{' && this.lastType) return isArray;
             // Once a type is complete, only a type suffix/operator can
             // continue it. A following declaration or expression belongs to
             // the program, even when an optional semicolon was omitted.
             if (depth === 0 && complete && !(t.type === 'punct' && continuations.has(t.value))) return isArray;
-            if (t.type === 'punct' && '<[('.includes(t.value)) depth++;
-            if (t.type === 'punct' && t.value === '[') isArray = true;
-            if (t.type === 'ident' && t.value === 'Array') isArray = true;
-            if (t.type === 'punct' && ['>',']',')','>>','>>>'].includes(t.value)) {
+            if (t.type === 'punct' && '<[({'.includes(t.value)) depth++;
+            if (t.type === 'punct' && t.value === '[' && depth === 1) isArray = true;
+            if (t.type === 'ident' && t.value === 'Array' && depth === 0) isArray = true;
+            if (t.type === 'punct' && ['>',']',')','}','>>','>>>'].includes(t.value)) {
                 if (depth === 0) return isArray;
                 depth=Math.max(0,depth-(t.value.startsWith('>')?t.value.length:1));
                 complete=true;
@@ -430,8 +430,8 @@ class Parser {
         while (!this.at('eof')) {
             const t = this.peek();
             if (depth === 0 && (t.line !== line || (t.type === 'punct' && ['=', ';', '}', ','].includes(t.value)))) return;
-            if (t.type === 'punct' && '<[('.includes(t.value)) depth++;
-            if (t.type === 'punct' && '>])'.includes(t.value)) depth--;
+            if (t.type === 'punct' && '<[({'.includes(t.value)) depth++;
+            if (t.type === 'punct' && '>])}'.includes(t.value)) depth--;
             this.lastType += this.next().value;
         }
     }
@@ -530,7 +530,18 @@ class Parser {
                 this.skipTypeAnnotation();
                 const returnType = this.lastType;
                 const body = this.parseBlock();
-                if (member === 'constructor') node.ctor = {params, paramTypes, body};
+                if (member === 'constructor') {
+                    // Parameter properties initialize instance fields before the constructor body.
+                    // Retain their modifiers/types for later lowering and explicit diagnostics.
+                    const properties = params.parameterProperties;
+                    for (const property of properties) node.fields.push({...property, init: null, isStatic: false, parameterProperty: true});
+                    const assignments = properties.map(({name}) => ({type: 'ExpressionStatement', expr: {
+                        type: 'Assignment', op: '=', left: {type: 'Member', object: {type: 'Identifier', name: 'this'}, name},
+                        right: {type: 'Identifier', name}
+                    }}));
+                    node.ctor = {params, paramTypes, parameterProperties: properties,
+                        body: [...this.defaultStatements(params), ...assignments, ...body]};
+                }
                 else node.methods.push({name: member, kind: 'method', params, paramTypes, returnType, body, isStatic});
                 continue;
             }
@@ -595,7 +606,7 @@ class Parser {
         // Each parameter's type text, by name (`p: Player`, `arr: boolean[]`):
         // what a record or an array parameter is known by.
         const types = {};
-        Object.defineProperties(params,{optionalParams:{value:[]},parameterDefaults:{value:[]}});
+        Object.defineProperties(params,{optionalParams:{value:[]},parameterDefaults:{value:[]},parameterProperties:{value:[]}});
         while (!this.at('punct', ')') && !this.at('eof')) {
             // `radio.onDataPacketReceived(({receivedString: text}) => ...)`
             // binds a destructured object. The names that reach the body are
@@ -603,7 +614,12 @@ class Parser {
             if (this.at('punct', '{')) {
                 params.push(...this.parseObjectPatternNames());
             } else {
-                const name = this.next().value;
+                const modifiers = [];
+                while (['public','private','protected','readonly'].includes(this.peek().value) &&
+                    (this.peek(1).type === 'ident' || ['public','private','protected'].includes(this.peek(1).value))) {
+                    modifiers.push(this.next().value);
+                }
+                const name = this.expect('ident').value;
                 // `input?: Buffer` — an optional parameter: the marker changes
                 // the type, not the name bound in the body; a default is
                 // applied at the top of the body when the argument is undefined.
@@ -615,6 +631,7 @@ class Parser {
                     params.parameterDefaults.push({name, value: this.parseExpression()});
                 }
                 params.push(name);
+                if (modifiers.length) params.parameterProperties.push({name, modifiers, typeName: types[name].text});
             }
             if (!this.eat('punct', ',')) break;
         }
@@ -753,9 +770,11 @@ class Parser {
 
     parseNamespace () {
         this.expect('namespace');
-        const name = this.expect('ident').value;
-        const body = this.parseBlock();
-        return {type: 'Namespace', name, body};
+        const names = [this.expect('ident').value];
+        while (this.eat('punct', '.')) names.push(this.expect('ident').value);
+        let node = {type: 'Namespace', name: names.pop(), body: this.parseBlock()};
+        while (names.length) node = {type: 'Namespace', name: names.pop(), body: [node]};
+        return node;
     }
 
     parseExpression () {
@@ -806,7 +825,7 @@ class Parser {
             const prec = BINARY_PRECEDENCE[t.value];
             if (!prec || prec < minPrec) break;
             this.next();
-            const right = this.parseBinary(prec + 1);
+            const right = this.parseBinary(t.value === '**' ? prec : prec + 1);
             left = {type: 'Binary', op: t.value, left, right};
         }
         return left;

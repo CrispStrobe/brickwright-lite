@@ -17,6 +17,7 @@ module.exports = makeExt(`// Name: Arcade
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
   const imageEngine = dependencies.createImageEngine(speechPalette, dependencies.initializeImage);
+  const originalSpriteData = dependencies.initializeSpriteData();
   const animationResourceMenuItems = dependencies.animationResourceMenuItems;
   const {RotatedBoundingBox, rasterWindow: rotatedRasterWindow, rasterFootprint: rotatedRasterFootprint} = dependencies.initializeRotation();
 
@@ -289,6 +290,10 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'bufferUnpack',blockType:Scratch.BlockType.REPORTER,text:'Arcade unpack byte buffer [BUFFER] format [FORMAT] at [OFFSET]',arguments:{...str('BUFFER',''),...str('FORMAT','<BH'),...n('OFFSET',0)}},
           {opcode:'bufferPackAt',blockType:Scratch.BlockType.COMMAND,text:'Arcade pack number array [ARRAY] into byte buffer [BUFFER] at [OFFSET] format [FORMAT]',arguments:{...str('ARRAY',''),...str('BUFFER',''),...n('OFFSET',0),...str('FORMAT','<BH')}},
           {opcode:'bufferFromArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from number array [ARRAY]',arguments:str('ARRAY','')},
+          {opcode:'spriteDataSet',blockType:Scratch.BlockType.COMMAND,text:'Arcade set sprite [ID] data [KEY] type [TYPE] to [VALUE]',arguments:{...str('ID',''),...str('KEY',''),...str('VALUE',''),TYPE:{type:Scratch.ArgumentType.STRING,menu:'spriteDataTypes',defaultValue:'Number'}}},
+          {opcode:'spriteDataRead',blockType:Scratch.BlockType.REPORTER,text:'Arcade sprite [ID] data [KEY] type [TYPE]',arguments:{...str('ID',''),...str('KEY',''),TYPE:{type:Scratch.ArgumentType.STRING,menu:'spriteDataReadTypes',defaultValue:'Number'}}},
+          {opcode:'spriteDataReadBoolean',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade sprite [ID] boolean data [KEY]',arguments:{...str('ID',''),...str('KEY','')}},
+          {opcode:'spriteDataChange',blockType:Scratch.BlockType.COMMAND,text:'Arcade change sprite [ID] number data [KEY] by [VALUE]',arguments:{...str('ID',''),...str('KEY',''),...str('VALUE','')}},
           {opcode:'bufferToArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] to number array format [FORMAT]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt8LE'}}},
           {opcode:'bufferConcatArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade concatenate byte buffers in array [ARRAY]',arguments:str('ARRAY','')},
           {opcode:'bufferFormatSize',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer number format [FORMAT] size',arguments:{FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt16LE'}}},
@@ -827,6 +832,8 @@ module.exports = makeExt(`// Name: Arcade
           ,animationProperties: {acceptReporters: false, items: ['image', 'action', 'interval']}
           ,animationTypes: {acceptReporters: true, items: [{text:'all',value:'0'}, {text:'image',value:'1'}, {text:'movement',value:'2'}]}
           ,imageProperties: {acceptReporters: false, items: ['width', 'height']}
+          ,spriteDataTypes:{acceptReporters:false,items:['Number','String','Boolean','Sprite']}
+          ,spriteDataReadTypes:{acceptReporters:false,items:['Number','String','Sprite']}
           ,bufferFormats: {acceptReporters: true, items: Object.keys(dependencies.buffers.NumberFormat).filter(key=>!/^\\d+$/.test(key))}
           ,imageBlitOperations: {acceptReporters: false, items: ['drawImage', 'drawTransparentImage']},
           imageDrawOperations: {acceptReporters: false, items: ['fillRect', 'drawLine']},
@@ -864,6 +871,44 @@ module.exports = makeExt(`// Name: Arcade
       });
       return state._mpPlayers;
     }
+    // Original v0.0.5 helpers run unchanged over the owned Sprite data object.
+    // The facade supplies its historical data() accessor; values retain aliases.
+    _spriteDataCall(args,method,value) {
+      const key=Scratch.BWValues.decode(args.KEY),id=Scratch.BWValues.decode(args.ID);
+      let facade=null;
+      if(id && key) {
+        if(['__proto__','prototype','constructor'].includes(String(key)))throw new Error('Arcade Sprite Data prototype keys are not supported');
+        const sprite=this._sprite(args.ID);
+        if(!sprite)throw new Error('Arcade Sprite Data sprite is not available');
+        facade={data:()=>{
+          let data=sprite.data;
+          if(!Scratch.BWValues.truth(data)){data={};sprite.data=data;}
+          if(!data || typeof data!=='object' || Array.isArray(data) || Scratch.BWValues.isReference(data) || ![null,Object.prototype].includes(Object.getPrototypeOf(data)))throw new Error('Arcade Sprite Data requires an owned data record');
+          const descriptor=Object.getOwnPropertyDescriptor(data,String(key));
+          if(descriptor && (descriptor.get || descriptor.set))throw new Error('Arcade Sprite Data accessor keys are not supported');
+          if((method.startsWith('set') || method==='changeDataNumberBy') && (!Object.isExtensible(data) || descriptor?.writable===false))throw new Error('Arcade Sprite Data record is read only');
+          return data;
+        }};
+      }
+      return originalSpriteData[method](facade,key,value);
+    }
+    _spriteDataGuard(work,boolean=false) {
+      try{return work();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',error.message);return boolean?false:Scratch.BWValues.encode(undefined);}
+    }
+    spriteDataSet(args) {return this._spriteDataGuard(()=>{
+      const type=args.TYPE;
+      if(!['Number','String','Boolean','Sprite'].includes(type))throw new Error('Arcade Sprite Data type is not supported');
+      const value=Scratch.BWValues.decode(args.VALUE);
+      if(type==='Sprite' && Scratch.BWValues.truth(args.ID) && Scratch.BWValues.truth(args.KEY) && value && !this._sprite(args.VALUE))throw new Error('Arcade Sprite Data value sprite is not available');
+      this._spriteDataCall(args,'setData'+type,value);this._changed();
+    });}
+    spriteDataRead(args) {return this._spriteDataGuard(()=>{
+      if(!['Number','String','Sprite'].includes(args.TYPE))throw new Error('Arcade Sprite Data read type is not supported');
+      return Scratch.BWValues.encode(this._spriteDataCall(args,'readData'+args.TYPE));
+    });}
+    spriteDataReadBoolean(args) {return this._spriteDataGuard(()=>this._spriteDataCall(args,'readDataBoolean'),true);}
+    spriteDataChange(args) {return this._spriteDataGuard(()=>{this._spriteDataCall(args,'changeDataNumberBy',Scratch.BWValues.decode(args.VALUE));this._changed();});}
+
     _player(value) {return this._playerValues.get(Scratch.BWValues.referenceId(this._runtime,value,'player'));}
     _playerRef(player) {return player?Scratch.BWValues.reference(this._runtime,'player',player.id):Scratch.BWValues.encode(undefined);}
     playerLookup(args) {
@@ -4741,6 +4786,7 @@ module.exports = makeExt(`// Name: Arcade
   Scratch.extensions.register(new Arcade(Scratch.vm && Scratch.vm.runtime));
 })(Scratch);
 `, {
+  initializeSpriteData: require('./sprite-data-pxt'),
   createSpeechEngine: require('./speech'),
   initializeSpeech: require('./speech-pxt'),
   initializeNativeLegacy: require('./speech-native-legacy'),

@@ -506,3 +506,19 @@ Hosted checks exposed two obsolete controls: an expected namespace Buffer
 refusal, and an old producer pin. The controls now verify actual namespace song
 bytes and requalify the SPIKE artifact against the adopted producer. The nine
 combined dependency, palette and SPIKE controls passed without skips.
+
+### Fresh contextual blocker census
+
+The original 41 unresolved contexts were measured against immutable prompt and
+palette source with unchanged inputs. Original compilation: 26 succeed,
+14 fail and one dependency is unavailable. Thirteen valid contexts import
+without native diagnostics; the remaining valid cases contain seven API/asset
+blockers and six source-parser blockers. Two additional diagnostic-free imports
+have invalid original programs. Keep every row and the raw 184-source census.
+
+Controlled presented-frame paths match exactly for Maze, Court, Flamethrower
+and Froggy; other apps retain animation/physics, randomness, timing or prompt
+display differences. This finite evidence establishes those observed paths,
+not complete games. GUI qualification remains separate. The next source
+clusters are typed SpriteData with genuine root tiles, controller connectivity,
+settings persistence, and reachable custom class/font/scene helper behavior.

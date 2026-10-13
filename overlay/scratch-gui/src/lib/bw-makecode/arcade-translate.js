@@ -652,6 +652,13 @@ class ArcadeTranslator extends BaseTranslator {
     callExpression (node) {
         const importedBuffer=this.bufferExpression(node);
         if(importedBuffer!==null)return importedBuffer;
+        const dataApi=this.path(node.callee),dataArgs=node.args||[];
+        const dataRead=/^sprites\.readData(Number|String|Boolean|Sprite)$/.exec(dataApi||'');
+        if(this.handleTemplates && dataRead && !this.bindsName('sprites')) {
+            if(dataArgs.length===2)return dataRead[1]==='Boolean'?`arcade sprite (${this.expr(dataArgs[0])}) boolean data (${this.expr(dataArgs[1])})`:
+                `arcade sprite (${this.expr(dataArgs[0])}) data (${this.expr(dataArgs[1])}) type ${dataRead[1]}`;
+            this.unsupported.push(`${dataApi} requires a sprite and data key`);return 'undefined value';
+        }
         const engineApi=this.path(node.callee),engineArgs=node.args||[];
         if(engineApi?.startsWith('mp.') && (this.boundSourceGlobals?.has('mp') || this.sourceFunctions?.has('mp') || this.localVars?.has('mp') || this.currentParameters?.has('mp') || this.capturedBindings.has('mp'))) {
             this.unsupported.push(`${engineApi} refers to a shadowed mp binding`);return 'undefined value';
@@ -1238,6 +1245,16 @@ class ArcadeTranslator extends BaseTranslator {
             if(!a.length)push('arcade wait until any button pressed');
             else push(this.note('controller.pauseUntilAnyButtonIsPressed requires no arguments'));
             return;
+        }
+        if(this.handleTemplates && !this.bindsName('sprites')) {
+            const dataSet=/^sprites\.setData(Number|String|Boolean|Sprite)$/.exec(name||'');
+            if(dataSet || name==='sprites.changeDataNumberBy') {
+                if(a.length!==3){push(this.note(`${name} requires a sprite, data key and value`));return;}
+                const receiver=`(${this.expr(a[0])})`,key=`(${this.expr(a[1])})`,value=`(${this.arrayElementValue(a[2])})`;
+                push(dataSet?`arcade set sprite ${receiver} data ${key} type ${dataSet[1]} to ${value}`:
+                    `arcade change sprite ${receiver} number data ${key} by ${value}`);
+                return;
+            }
         }
         // Lite's own export's stop machinery, lifted back by liftExporterStops.
         if (name === '__bwStopAll') { push('stop all'); return; }
@@ -2984,6 +3001,8 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if (node?.type === 'Call') {
             const api = pathOf(node.callee);
             if(['mp.playerSelector','mp.getPlayerByNumber','mp.getPlayerByIndex','mp.getPlayerBySprite'].includes(api))return new Set(['player']);
+            const dataRead=/^sprites\.readData(Number|String|Boolean|Sprite)$/.exec(api||'');
+            if(dataRead && node.args.length===2)return new Set([dataRead[1].toLowerCase()]);
             if(api==='mp.getPlayerSprite')return new Set(['sprite']);
             if(api==='mp.allPlayers')return new Set(['array']);
             if(api==='mp.getPlayerState' || api==='MultiplayerState.create')return new Set(['number']);
@@ -3485,6 +3504,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
         if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || ['game.ask','game.askForString','game.askForNumber','controller.pauseUntilAnyButtonIsPressed'].includes(t.path(node.callee))))return true;
+        if(node.type==='Call' && /^sprites\.(?:(?:set|read)Data(?:Number|String|Boolean|Sprite)|changeDataNumberBy)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && t.path(node.callee)==='MultiplayerState.create')return true;
         if(node.type==='Call' && /^controller\.player[1-4]\.(?:moveSprite|stopControllingSprite)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^mp\./.test(t.path(node.callee)||''))return true;

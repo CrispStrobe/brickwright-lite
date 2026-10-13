@@ -1,3 +1,4 @@
+import {admitArcadeNativeSource} from './native-source-admission.js';
 /** Bridge original PXT package inputs to the native Arcade translator.
  * This is an internal translation view, never an exported MakeCode project.
  * PXT owns dependency order, conditional files and asset-pack generation.
@@ -62,6 +63,11 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
         const pkg = resolved.packages[id];
         if (pkg?.vendored) continue;
         if (!pkg || typeof pkg.files[file] !== 'string') throw new Error(`Missing resolved dependency source: ${id}/${file}`);
+        const nativeAdapter = admitArcadeNativeSource({packageId: id, filename: file, source: pkg.files[file]});
+        if (nativeAdapter) {
+            provenance.push({id, file, nativeAdapter});
+            continue;
+        }
         // Original PXT replaces an asset pack's executable files with generated
         // declarations. Native resource readers consume those declarations.
         const generated = pkg.assetPack && file === 'gallery.ts';
