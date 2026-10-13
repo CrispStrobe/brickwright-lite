@@ -1093,6 +1093,7 @@ class ArcadeEmitter {
         case 'arcade_bufferToText': return `${v('BUFFER')}.toString()`;
         case 'arcade_songFromBuffer': return `music.createSong(${v('BUFFER')})`;
         case 'arcade_cloneImage': return `${v('IMAGE')}.clone()`;
+        case 'arcade_imageEquals': return `${v('IMAGE')}.equals(${v('OTHER')})`;
         case 'arcade_screenImage': return 'screen';
         case 'arcade_melodyPlayable': return `music.melodyPlayable(${v('MELODY')})`;
         case 'arcade_stringPlayable': return `music.stringPlayable(${v('MELODY')}, ${v('TEMPO')})`;
@@ -1288,6 +1289,7 @@ class ArcadeEmitter {
         case 'arcade_tilesOfType': return `tiles.getTilesByType(${v('IMAGE')})`;
         case 'arcade_tileLocationProperty': return `${v('LOCATION')}.${this.field(b,'PROPERTY')}`;
         case 'arcade_tileIs': return `tiles.tileAtLocationEquals(${v('LOCATION')}, ${v('IMAGE')})`;
+        case 'arcade_spriteTileKindAt': return `${v('ID')}.tileKindAt(${this.arrayValue(b,'DIRECTION')}, ${v('IMAGE')})`;
         case 'arcade_isHittingTile': return `${v('ID')}.isHittingTile(${this.arrayValue(b,'DIRECTION')})`;
         case 'arcade_tileIsWall': return `tiles.tileAtLocationIsWall(${v('LOCATION')})`;
         case 'arcade_spritesOfKind': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')})`;
@@ -2136,6 +2138,7 @@ class ArcadeEmitter {
             return;
         }
         case 'arcade_log': push(`console.log(${this.arrayValue(b, 'TEXT')})`); return;
+        case 'arcade_waitAnyButton': push('controller.pauseUntilAnyButtonIsPressed()'); return;
         case 'arcade_gameover': push('game.over(false)'); return;
         case 'procedures_call': {
             const code = b.mutation && b.mutation.proccode;

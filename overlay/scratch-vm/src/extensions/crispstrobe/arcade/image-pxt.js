@@ -1,6 +1,6 @@
 // Generated from pinned pxt-common-packages simulator image algorithms (MIT).
 // Copyright (c) Microsoft Corporation. See static/licenses/pxt-common-packages.MIT.txt.
-// Source algorithms SHA-256: 077647b73cced8e8058dac5e3ec53be2ff1c75a57c4e33aa03aca953912df648
+// Source algorithms SHA-256: f55e06de58ddd688f5d25cbeb0d99619a7222cbc06dd7a5c6838fcfaf0afc4db
 // Regenerate: node scripts/generate-arcade-image-operations.mjs
 module.exports = function initializePxtImageOperations() {
 function setPixel(img, x, y, c) {
@@ -208,6 +208,20 @@ function drawTransparentImage(img, from, x, y) {
         }
 function overlapsWith(img, other, x, y) {
             return drawImageCore(img, other, x, y, false, true);
+        }
+function equals(img, other) {
+            if (!other || img._bpp != other._bpp || img._width != other._width || img._height != other._height) {
+                return false;
+            }
+            let imgData = img.data;
+            let otherData = other.data;
+            let len = imgData.length;
+            for (let i = 0; i < len; i++) {
+                if (imgData[i] != otherData[i]) {
+                    return false;
+                }
+            }
+            return true;
         }
 const TWO_PI = 2 * Math.PI;
         const HALF_PI = Math.PI / 2;
@@ -480,7 +494,7 @@ const TWO_PI = 2 * Math.PI;
             }
             return false;
         }
-return {setPixel, getPixel, fillRect, drawLine, drawImage, drawTransparentImage, overlapsWith,
+return {setPixel, getPixel, fillRect, drawLine, drawImage, drawTransparentImage, overlapsWith, equals,
     drawScaledRotatedImage, checkOverlapsScaledRotatedImage: _checkOverlapsScaledRotatedImage,
     checkOverlapsTwoScaledRotatedImages: _checkOverlapsTwoScaledRotatedImages};
 };
