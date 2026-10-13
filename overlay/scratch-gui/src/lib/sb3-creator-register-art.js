@@ -51,4 +51,12 @@ for (const legacyId of SPIKE_LEGACY_IDS) {
     delete SB3Creator.RUNTIME_EXTENSIONS[legacyId];
 }
 
-export default SB3Creator;
+// Peer sessions (task E11): the peer dialect words are Lite-only and exist only in a build
+// made with BW_ENABLE_PEERS=1 (a DefinePlugin literal; in node, process.env holds strings, so
+// `=== true` keeps this off). They are not upstreamed to sb3-creator because no build that
+// lacks the gate may parse them. test/peers-gate.test.mjs holds the gate.
+const Creator = process.env.BW_ENABLE_PEERS === true ?
+    require('./peer-pseudocode.js').default(SB3Creator) : // eslint-disable-line global-require
+    SB3Creator;
+
+export default Creator;
