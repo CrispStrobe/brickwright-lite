@@ -262,23 +262,29 @@ test('explicit concurrent physical deltas survive pending owner completion',asyn
  }finally{close(r);}
 });
 
-for(const action of ['stop','load'])test('actual '+action+' cancels an owned browser-turn continuation without a physical frame',async()=>{
- const r=await setup({budgetMs:1},`SPRITE Game:
+for(const budgetMs of [1,100])for(const action of ['stop','load'])test('actual '+action+' cancels an owned browser-turn continuation without a physical frame ('+budgetMs+'ms quantum)',async()=>{
+ const r=await setup({budgetMs},`SPRITE Game:
 WHEN arcade source starts:
   set loops to 0
   arcade repeat while (1 = 1):
     change loops by 1`);
  let frames=0;r.vm.runtime.on('ARCADE_FRAME',()=>frames++);
  let cancel,resolveCancel;cancel=new Promise(resolve=>{resolveCancel=resolve;});
- let pendingSeen=false;
+ let owner;const generation=r.driver.generation;
  try{
   const request=r.vm.runtime._step(0);
   setTimeout(async()=>{
-   try{pendingSeen=!!r.driver.pending;if(action==='load')await r.vm.loadProject(r.buffer);else r.vm.stopAll();resolveCancel();}
+   try{owner={request:r.driver.request,generation:r.driver.generation,active:r.driver.active,pendingGeneration:r.driver.pending?.generation,sourceEligible:r.vm.runtime.threads.some(thread=>r.driver._eligible(thread))};if(action==='load')await r.vm.loadProject(r.buffer);else r.vm.stopAll();resolveCancel();}
    catch(error){resolveCancel(error);}
   },0);
   const outcome=await request,error=await cancel;if(error)throw error;
-  assert.equal(pendingSeen,true,'actual host timer observes the pending physical owner');
+  assert.equal(owner.request,request,'host timer observes this actual physical request');
+  assert.equal(owner.generation,generation,'request belongs to the current run');
+  // The host may deliver its timer inside the first active quantum or after
+  // exhaustion. The phase cache is not the physical-request authority.
+  assert.equal(owner.active || owner.pendingGeneration===generation,true);
+  assert.equal(owner.sourceEligible,true,'source is still live before cancellation');
+  assert.ok(r.driver.generation>generation,'actual lifecycle action cancels its run');
   assert.equal(outcome.cancelled,true);assert.equal(frames,0);
   assert.equal(r.driver.pending,null);assert.equal(r.driver.queuedDelta,null);
   assert.equal(r.vm.runtime.threads.length,0);
