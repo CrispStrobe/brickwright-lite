@@ -96,9 +96,10 @@ bitmap design tool.
 Programs run on instruction-level emulators you can **run, pause, single-step,
 reset**, and inspect register-by-register and byte-by-byte in memory.
 
-- **On the breadboard**, with a full debugger: **8051** (STC12/STC89), **AVR**
-  (Arduino Uno / Nano), **RP2040** (Raspberry Pi Pico), **6502** (W65C02), and
-  **Z80**.
+- **On the breadboard**, with a full debugger: the **8051 / STC** family —
+  **STC89C52RC** (a classic 12-clock 8052), **STC12** and the fast 1-clock
+  **STC15** — **AVR** (Arduino Uno / Nano), **RP2040** (Raspberry Pi Pico),
+  **6502** (W65C02), and **Z80**.
 - **Board and firmware targets** loaded from real `ELF`, Intel `HEX` and `UF2`
   files: **BBC micro:bit v2**, **Adafruit PyBadge**, **LEGO SPIKE Prime**,
   **LEGO MINDSTORMS EV3**, **Arduboy**, and **ATtiny** boards.
@@ -184,8 +185,12 @@ and `bwlite convert` — using the same readers as the in-app Code tab.
 
 ### Program real hardware
 
-- **Flash a real STC 8051 board:** the installed SDCC compiler turns your
-  pseudocode or C into Intel HEX, and `stcgal` flashes it over a serial port.
+- **Flash a real STC 8051 board:** choose or retarget the part — **STC89C52RC**,
+  **STC12** (e.g. STC12C5A60S2) or **STC15** (STC15F2K60S2) — with `bwlite
+  devices` / `bwlite retarget`; the installed SDCC compiler turns your
+  pseudocode or C into Intel HEX and `stcgal` flashes it over a serial port. The
+  toolchain models each part's own timers and second UART baud source, and the
+  1-clock STC12/STC15 cores run far faster than the classic 12-clock STC89.
 - **Program real LEGO bricks — the whole lineage.** Blocks transpile to the
   code each brick actually runs and connect over its real transport:
   **SPIKE Prime / Robot Inventor** and **EV3** (Python / ev3dev2, plus EV3
