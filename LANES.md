@@ -976,6 +976,24 @@ The [receipt](docs/receipts/2026-10-07-arcade-resource-picker-errors.json) recor
 exact boundaries. Hosted follow-up checks remain pending; corpus93 partial
 and original Assets-editor qualification remain open.
 
+## SPIKE Code Stop during native startup — 2026-10-13
+
+CLAIMED — Codex SPIKE integration, `fix/spike-startup-stop-feedback-20261013`.
+Envelope: `overlay/scratch-gui/src/lib/spike-arena/code-run-feedback.js`,
+`overlay/scratch-gui/src/components/tw-pseudocode/spike-arena-pane.jsx`,
+`test/spike-code-run-feedback.test.mjs`, `test/spike-arena-pane-units.test.mjs`,
+this ledger and the SPIKE status guide; preserve tracked mirrors only where they
+still exist. The installed bb293 startup observation exposes Arena Stop but
+hides Code Stop until firmware feedback becomes active. Add an explicit starting
+notification through the existing feedback callbacks and arena pane, after
+validation and with the stop handler already installed. Show Code Stop while
+starting without reporting guest execution as RUNNING. Preserve terminal and
+cancellation guards, invalid-program refusal, existing retained uploads and
+cleanup ownership. Qualify the actual Code Stop action during pending native
+startup on a freshly built installed consumer, followed by cleanup and a new
+run; host controls alone do not close this lane. No importer, painter, peer,
+firmware, Runtime/model pin or workflow edits.
+
 ## SPIKE handover
 
 The [SPIKE state and next lanes](docs/SPIKE-STATUS-AND-LANES.md) record the

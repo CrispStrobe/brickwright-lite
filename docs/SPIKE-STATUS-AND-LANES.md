@@ -65,6 +65,22 @@ the later full successful run remain separately preserved. No simulator, model,
 firmware, timing limit or package bytes changed for this controller correction.
 This records observed demand removal, not an instantaneous stop or safety bound.
 
+A separate fresh bb293 installed startup check now passes cancellation through
+**Arena Stop** while the owned native emulator exists and the session is still
+starting, before any firmware frame. The admitted native audit contains session
+start and close, with no program-packet upload. Startup unwinds, configuration
+and clock ownership release, the emulator exits, default sensors return, and
+stopped Code feedback remains visible without later world motion in the sampled
+interval. A fresh Code run then completes in a different session; the old closed
+session never acquires a frame. This is deferred cleanup, not instantaneous
+native process abort or an arbitrary race guarantee.
+
+The same run observes a usability gap: **Code Stop** is hidden during pending
+startup even though **Arena Stop** is available. The focused lane in `LANES.md`
+will add an explicit starting feedback callback through the arena pane, then
+require fresh installed qualification of the actual Code Stop action. No source
+fix or completion of that new lane is claimed by this documentation.
+
 These are finite installed Linux simulator observations. Earlier A383
 storage, ABI, ACL and lifecycle receipts retain their own source/package binding.
 The fresh results do not establish OS reboot, physical power loss, arbitrary
