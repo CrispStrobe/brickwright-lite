@@ -29,7 +29,7 @@ export function observePxtDisplay(sim = globalThis.pxsim) {
     return observer;
 }
 
-export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, waitForDisplay = false, buttonActions = null, recordSound = false, recordSongSound = false, waitForMain = true, fakeClock = false} = {}) {
+export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, waitForDisplay = false, buttonActions = null, recordSound = false, recordSongSound = false, waitForMain = true, fakeClock = false, inspectImageGlobals = []} = {}) {
     if (waitForDisplay && !inspectDisplay) throw new Error('Display readiness requires display inspection');
     const files=typeof source === 'string' ? {'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})} : {...source};
     const built=await compile('arcade',files);
@@ -136,9 +136,21 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
             } else await page.waitForFunction(baseline => window.__bwPxtDisplayObserver.updates > baseline,
                 displayBaseline, {timeout: 20000});
         }
-        const values=await page.evaluate(({inspectDisplay,recordSound,recordSongSound,waitForDisplay,displayBaseline})=>{
+        const values=await page.evaluate(({inspectDisplay,recordSound,recordSongSound,waitForDisplay,displayBaseline,inspectImageGlobals})=>{
             const runtime=window.__bwPxtRuntime;
             const result=Object.fromEntries(Object.entries(runtime.globals).filter(([,v])=>v===null || ['number','string','boolean','undefined'].includes(typeof v)).map(([k,v])=>[k.replace(/___\d+$/,''),v]));
+            if(inspectImageGlobals.length){
+                result.$images={};
+                for(const name of inspectImageGlobals){
+                    const matches=Object.entries(runtime.globals).filter(([key])=>key.replace(/___\d+$/,'')===name);
+                    if(matches.length!==1)throw new Error('Original image global is missing or ambiguous: '+name);
+                    const value=matches[0][1];
+                    if(typeof value?._width!=='number' || typeof value?._height!=='number' || !value?.data)throw new Error('Original image global unavailable: '+name);
+                    const pixels=Array.from(value.data);
+                    if(pixels.length!==value._width*value._height)throw new Error('Original image global has incomplete pixels: '+name);
+                    result.$images[name]={width:value._width,height:value._height,pixels};
+                }
+            }
             if(inspectDisplay)result.$display={palette:Array.from(runtime.board.screenState.palette),
                 screen:Array.from(runtime.board.screenState.screen)};
             if(waitForDisplay){
@@ -147,7 +159,7 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
             }
             if(recordSound || recordSongSound)result.$sound=window.__bwSound;
             runtime.kill();runtime.board.kill();return result;
-        },{inspectDisplay,recordSound,recordSongSound,waitForDisplay,displayBaseline});
+        },{inspectDisplay,recordSound,recordSongSound,waitForDisplay,displayBaseline,inspectImageGlobals});
         if(errors.length)throw new Error(JSON.stringify(errors));
         return values;
     } finally {await browser?.close();await new Promise(done=>server.close(done));}

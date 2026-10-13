@@ -213,6 +213,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'hasPlayerScore',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade player [PLAYER] has score',arguments:n('PLAYER',1)},
           {opcode:'setPlayerScore',blockType:Scratch.BlockType.COMMAND,text:'Arcade set score player [PLAYER] to [VALUE]',arguments:{...n('PLAYER',1),...n('VALUE',0)}},
           {opcode:'changePlayerScore',blockType:Scratch.BlockType.COMMAND,text:'Arcade change score player [PLAYER] by [VALUE]',arguments:{...n('PLAYER',1),...n('VALUE',1)}},
+          {opcode:'setHudVisibility',blockType:Scratch.BlockType.COMMAND,text:'Arcade HUD [ELEMENT] visible [VISIBLE]',arguments:{ELEMENT:{type:Scratch.ArgumentType.STRING,menu:'hudElements',defaultValue:'score'},VISIBLE:{type:Scratch.ArgumentType.BOOLEAN,defaultValue:true}}},
           {opcode:'setLife',blockType:Scratch.BlockType.COMMAND,text:'Arcade set life player [PLAYER] to [VALUE]',arguments:{...n('PLAYER',1),...n('VALUE',3)}},
           {opcode:'changeLife',blockType:Scratch.BlockType.COMMAND,text:'Arcade change life player [PLAYER] by [VALUE]',arguments:{...n('PLAYER',1),...n('VALUE',-1)}},
           {opcode:'getLife',blockType:Scratch.BlockType.REPORTER,text:'Arcade life player [PLAYER]',arguments:n('PLAYER',1)},
@@ -677,6 +678,7 @@ module.exports = makeExt(`// Name: Arcade
             text: 'Arcade shake camera by [AMPLITUDE] pixels for [DURATION] ms', arguments: {...n('AMPLITUDE', 4), ...n('DURATION', 500)} },
           { opcode: 'cameraFollowSprite', blockType: Scratch.BlockType.COMMAND,
             text: 'Arcade camera follow sprite [ID]', arguments: str('ID', '') },
+          {opcode:'cameraDrawOffset',blockType:Scratch.BlockType.REPORTER,text:'Arcade camera draw offset [AXIS]',arguments:{AXIS:{type:Scratch.ArgumentType.STRING,menu:'cameraAxes',defaultValue:'x'}}},
           { opcode: 'cameraProperty', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade camera property [PROPERTY]', arguments: {PROPERTY: {type: Scratch.ArgumentType.STRING,
               menu: 'cameraProperties', defaultValue: '0'}} },
@@ -802,6 +804,7 @@ module.exports = makeExt(`// Name: Arcade
             text: 'stop Arcade countdown' }
         ],
         menus: {
+          hudElements:{acceptReporters:false,items:['score','life','countdown']},
           buttons: {acceptReporters: true, items: [
             {text: 'A', value: 'a'}, {text: 'B', value: 'b'},
             {text: 'up', value: 'up'}, {text: 'down', value: 'down'},
@@ -860,8 +863,9 @@ module.exports = makeExt(`// Name: Arcade
             'rotation', 'rotationDegrees', 'data']}
           ,readableSpriteProperties: {acceptReporters:false,items:['x','y','left','right','top','bottom',
             'vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan',
-            'rotation','rotationDegrees','data','kind']}
+            'rotation','rotationDegrees','data','kind','flags']}
           ,eventSprites: {acceptReporters: false, items: ['first', 'second']}
+          ,cameraAxes:{acceptReporters:false,items:['x','y']}
           ,cameraProperties: {acceptReporters: true, items: [{text:'x',value:'0'}, {text:'y',value:'1'}, {text:'left',value:'2'}, {text:'right',value:'3'}, {text:'top',value:'4'}, {text:'bottom',value:'5'}]}
           ,collisionDirections: {acceptReporters: true, items: [{text:'left',value:'0'}, {text:'top',value:'1'}, {text:'right',value:'2'}, {text:'bottom',value:'3'}]}
           ,controllerNumbers: {acceptReporters:false,items:['1','2','3','4']}
@@ -1287,6 +1291,15 @@ module.exports = makeExt(`// Name: Arcade
       }
       this._foreverTimer=setTimeout(()=>this._pumpForever(),20);this._foreverTimer?.unref?.();
     }
+    setHudVisibility(args) {
+      const methods={score:'showScore',life:'showLife',countdown:'showCountdown'};
+      const method=Object.prototype.hasOwnProperty.call(methods,String(args.ELEMENT))?methods[String(args.ELEMENT)]:undefined;
+      if(!method){this._runtime?.emit?.('BLOCKS_ERROR','Arcade HUD element is not implemented: '+String(args.ELEMENT));return;}
+      const state=this._infoState(),info=this._hud().info;
+      info._setInfoState(state.hudInfo);
+      info[method](Scratch.Cast.toBoolean(Scratch.BWValues.decode(args.VISIBLE)));
+      this._changed();
+    }
     _infoState() {
       const state=this._state();
       // PXT initHUD installs one scene renderable, which shares sprite IDs
@@ -1297,7 +1310,7 @@ module.exports = makeExt(`// Name: Arcade
         // PXT's InfoState; the native player state objects are its playerStates.
         state.hudInfo=this._hud().info._newInfoState();
         state.hudInfo.playerStates=state.players;
-        this._renderablesOf(state).push({z:100,id:state.infoRenderable.pxtId,draw:screen=>this._drawHud(state,screen)});
+        this._renderablesOf(state).push({z:100,id:state.infoRenderable.pxtId,drawSteps:screen=>this._drawHudSteps(state,screen)});
       }
       return state;
     }
@@ -1332,8 +1345,10 @@ module.exports = makeExt(`// Name: Arcade
       this._hudModule={info:module.info,players:[1,2,3,4].map(n=>new module.info.PlayerInfo(n))};
       return this._hudModule;
     }
-    _drawHud(state,screen) {
+    _drawHud(state,screen) {return this._runTerrainGenerator(this._drawHudSteps(state,screen));}
+    *_drawHudSteps(state,screen) {
       const {info,players}=this._hud(),hud=state.hudInfo,V=info.Visibility;
+      const pass={screen,epoch:this._terrainEpoch};state._hudPass=pass;
       info._setInfoState(hud);this._hudScreen=screen;
       try {
         if(hud.visibilityFlag & V.Multi)for(const player of players)player.drawPlayer();
@@ -1342,8 +1357,20 @@ module.exports = makeExt(`// Name: Arcade
           if(player.impl.hasScore() && (hud.visibilityFlag & V.Score))player.drawScore();
           if(player.impl.hasLife() && (hud.visibilityFlag & V.Life))player.drawLives();
         }
-        if(state.countdownActive && (hud.visibilityFlag & V.Countdown))info._drawTimer(Math.round((Number(state.countdown) || 0)*1000));
-      } finally {this._hudScreen=null;}
+        // info.ts raises life events after drawing lives and before the timer.
+        // Registered callbacks can wait or change scenes; preserve that boundary.
+        yield* this._lifeZeroSteps(screen);
+        if(this._state()!==state || pass.epoch!==this._terrainEpoch || state._defaultGameOverPending)return;
+        // A callback can push and restore scenes. Resume with this HUD's state.
+        info._setInfoState(hud);this._hudScreen=screen;
+        if(state.countdownActive && (hud.visibilityFlag & V.Countdown)){
+          info._drawTimer(Math.round((Number(state.countdown) || 0)*1000));
+          yield* this._countdownEndSteps(state,screen);
+        }
+      } finally {
+        if(state._hudPass===pass)delete state._hudPass;
+        if(this._hudScreen===screen)this._hudScreen=null;
+      }
     }
     _lifeState(player) {
       const state=this._infoState(),index=(Number(player)||1)-1;if(index<0 || index>3)return null;
@@ -1361,13 +1388,13 @@ module.exports = makeExt(`// Name: Arcade
     changeLife(args) {this.setLife({PLAYER:args.PLAYER,VALUE:this.getLife(args)+Number(args.VALUE)});}
     registerLifeZeroHandler(args,util) {const state=this._lifeState(args.PLAYER);if(state)state.lifeZero=this._handlerRegistration(args,util);}
     whenRegisteredLifeZero(args,util) {return this.whenRegisteredWall(args,util);}
-    *_lifeZeroSteps() {
-      const owner=this._state();
+    *_lifeZeroSteps(screen) {
+      const owner=this._state(),epoch=this._terrainEpoch;
       for(const state of owner.players || [])if(state && state.life!==undefined && state.life!==null && state.life<=0){
         state.life=null;
         if(state.lifeZero)yield* this._registeredCallbackSteps([state.lifeZero],'arcade_whenRegisteredLifeZero',{});
-        else if(!owner.multiplayerInfo)this.gameover();
-        if(this._state()!==owner)return;
+        else if(!owner.multiplayerInfo)this._defaultInfoGameOver(owner,screen.pixels.slice());
+        if(this._state()!==owner || epoch!==this._terrainEpoch || owner._defaultGameOverPending)return;
       }
     }
     registerCountdownHandler(args,util) {this._infoState();this._countdownHandlers=[this._handlerRegistration(args,util)];}
@@ -1998,6 +2025,12 @@ module.exports = makeExt(`// Name: Arcade
         for(const id of Object.keys(this._state().sprites))this._positionSprite(id);
         this._changed();
       }
+    }
+    cameraDrawOffset(args) {
+      const camera=this._camera();
+      if(args.AXIS==='x')return camera.drawOffsetX;
+      if(args.AXIS==='y')return camera.drawOffsetY;
+      throw new Error('Arcade camera draw offset requires x or y');
     }
     cameraProperty(args) {
       if(!this._cameraIsUpdated())this._updateCamera();
@@ -3652,7 +3685,7 @@ module.exports = makeExt(`// Name: Arcade
     _nextButtonPress() {return new Promise(resolve=>{(this._buttonPressWaiters || (this._buttonPressWaiters=[])).push(resolve);});}
     waitAnyButton() {return new Promise(resolve=>this._nativeButtonWaiters.add(resolve));}
     _buttonPressed() {const waiters=this._buttonPressWaiters;this._buttonPressWaiters=[];if(waiters)for(const resolve of waiters)resolve();for(const resolve of this._nativeButtonWaiters)resolve();this._nativeButtonWaiters.clear();}
-    async _runGameOver(win,util) {
+    async _runGameOver(win,util,capturedFrame) {
       const go=this._gameOverState();
       if(go.over)return;
       go.over=true;
@@ -3668,8 +3701,9 @@ module.exports = makeExt(`// Name: Arcade
       if(judged && winner && this._isBetterScore(winner.score,best))this._highScore=winner.score;
       const message=goc.getMessage(win,false),effect=goc.getEffect(win),sound=goc.getSound(win);
       const mode=goc.getSoundLooping(win)?this._music().pxt.music.PlaybackMode.LoopingInBackground:this._music().pxt.music.PlaybackMode.InBackground;
-      // The last displayed frame becomes the background of a fresh scene.
-      const shown=state.sceneFrame?.pixels?.slice() || new Uint8Array(160*120);
+      // Explicit game over captures the last frame; default info loss captures
+      // the partial HUD pass at the original terminal draw boundary.
+      const shown=capturedFrame || (state._hudPass?.epoch===this._terrainEpoch && state._hudPass.screen.pixels.slice()) || state.sceneFrame?.pixels?.slice() || new Uint8Array(160*120);
       while(this._sceneStack.length){const pending=this.popScene({},util);if(pending?.then)await pending;}
       const pushed=this.pushScene({},util);if(pushed?.then)await pushed;
       const scene=this._state();
@@ -4348,7 +4382,7 @@ module.exports = makeExt(`// Name: Arcade
     // scene.render with renderables: background, then sprites and renderables
     // by z then id into the screen; each renderable's changes become a layer.
     *_composeSceneSteps() {
-      const state=this._state(),renderables=this._renderables.get(state);
+      const epoch=this._terrainEpoch,state=this._state(),renderables=this._renderables.get(state);
       if(!renderables?.length){
         const frame=this._composeSceneFrame();
         // PXT renders every frame into the screen image itself, so afterwards
@@ -4366,12 +4400,14 @@ module.exports = makeExt(`// Name: Arcade
       for(const item of items){
         if(!item.renderable){imageEngine.drawLayer(screen,item);continue;}
         const before=screen.pixels.slice();
-        if(item.renderable.draw)item.renderable.draw(screen);
+        if(item.renderable.drawSteps)yield* item.renderable.drawSteps(screen);
+        else if(item.renderable.draw)item.renderable.draw(screen);
         else yield* this._registeredCallbackSteps([item.renderable],item.renderable.z===-20?'arcade_whenRegisteredPaint':'arcade_whenRegisteredShade',{});
-        if(this._state()!==state)return;
+        if(this._state()!==state || epoch!==this._terrainEpoch)return;
         const writes=new Uint8Array(screen.pixels.length);
         for(let i=0;i<writes.length;i++)if(screen.pixels[i]!==before[i])writes[i]=1;
         drawn.push({image:{width:160,height:120,pixels:screen.pixels.slice()},writes,x:0,y:0,z:item.z,id:item.id,source:item.renderable});
+        if(state._defaultGameOverPending)break;
       }
       const frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
       frame.pixels.set(screen.pixels);
@@ -4533,6 +4569,7 @@ module.exports = makeExt(`// Name: Arcade
         (event?.first === String(args.ID) ? event.destroyedSprite : null);
       if (!sprite) return 0;
       const property = String(args.PROPERTY);
+      if(property==='flags')return (sprite.flags|0)|(sprite._destroyed || sprite._destroying?2:0);
       if (property === 'left') return sprite._fx / 256;
       if (property === 'right') return sprite._fx / 256 + sprite.width;
       if (property === 'top') return sprite._fy / 256;
@@ -4974,11 +5011,11 @@ module.exports = makeExt(`// Name: Arcade
       state.elapsedMs = (state.elapsedMs || 0) + dt * 1000;
       yield* this._sceneButtons(dt);if(this._state()!==state)return;
       // The countdown runs down with the frame but ends in the HUD pass, below.
-      if (state.countdownActive) state.countdown = Math.max(0, (Number(state.countdown) || 0) - dt);
+      if (state.countdownActive) state.countdown = Math.max(0, (state.countdownEndMs-state.elapsedMs)/1000);
       const live = Object.values(state.sprites).filter(s => s.id);
       this._moveControlledSprites(live);yield* this._moveFollowingSpriteSteps();
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
-      if (!live.length && !state.physicsEngine.members.length) {this._runFrameHandlers(state,0,19);yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();this._runFrameHandlers(state);if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._lifeZeroSteps();if(this._state()!==state)return;yield* this._countdownEndSteps(state);if(this._state()!==state)return;yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();this._startFrameHats();return;}
+      if (!live.length && !state.physicsEngine.members.length) {this._runFrameHandlers(state,0,19);yield* this._sceneUpdates();if(this._state()!==state)return;this._advanceAnimations(dt);this._updateCamera();this._runFrameHandlers(state);if(state.tilemap?.legacy)this._renderTilemap(true);yield* this._advanceSpeechSteps(dt);if(this._state()!==state)return;yield* this._composeSceneSteps();if(this._state()!==state || epoch!==this._terrainEpoch || state._defaultGameOverPending)return;this._startFrameHats();return;}
       yield* this._advancePhysicsSteps(state.physicsEngine.members.slice(),dt,state.tilemap);
       if(epoch!==this._terrainEpoch || this._state()!==state)return;
       for(const sprite of live)if(state.sprites[sprite.id])this._positionSprite(sprite.id);
@@ -5003,23 +5040,44 @@ module.exports = makeExt(`// Name: Arcade
           if (sprite.lifespan <= 0) { this.destroySprite({ID: sprite.id, _core: true}); continue; }
         }
       }
-      yield* this._lifeZeroSteps();if(this._state()!==state)return;
-      yield* this._countdownEndSteps(state);if(this._state()!==state)return;
       yield* this._advanceSpeechSteps(dt);
       if(this._state()!==state)return;
       yield* this._composeSceneSteps();
+      if(this._state()!==state || epoch!==this._terrainEpoch || state._defaultGameOverPending)return;
       this._changed();
       this._startFrameHats();
     }
     // PXT's HUD pass raises the life-zero events and then ends the countdown,
-    // after the frame's updates and physics; the frame itself runs on.
-    *_countdownEndSteps(state) {
-      if (!state.countdownActive || state.countdown > 0) return;
-      state.countdownActive = false;
+    // after the frame's updates and physics. Default terminal actions wait for
+    // their final HUD draw; authored callback scheduling stays unchanged.
+    *_countdownEndSteps(state,screen) {
+      if (!state.countdownActive || state.countdown > 0 || !(state.hudInfo?.visibilityFlag & this._hud().info.Visibility.Countdown)) return;
+      state.countdownActive=false;
       state.countdown = 0;
       this._changed();
       if(this._countdownHandlers.length)yield* this._registeredCallbackSteps(this._countdownHandlers.slice(),'arcade_whenRegisteredCountdown',{});
-      else {const threads=this._runtime?.startHats?.('arcade_whenCountdownEnds') || [];if(!threads.length)this.gameover();}
+      else {
+        const threads=this._runtime?.startHats?.('arcade_whenCountdownEnds') || [];
+        if(!threads.length)this._defaultInfoGameOver(state,screen.pixels.slice());
+      }
+    }
+    _defaultInfoGameOver(owner,capturedFrame) {
+      if(owner._defaultGameOverPending || this._state()!==owner)return;
+      owner._defaultGameOverPending=true;
+      // info.ts clears the default loss effect/sound, preserving explicit user
+      // choices. Use the retained GameOverConfig setters, not replacement rules.
+      const config=this._gameOverState().config;
+      config.setEffect(false,null,false);
+      config.setSound(false,null,false,false);
+      const epoch=this._terrainEpoch;
+      // The current native frame must release its terrain transaction before
+      // game over pushes a new scene. Awaiting the scene transition inside that
+      // transaction would wait on itself. Run the original terminal operation
+      // in the same continuation queue once the frame has yielded/completed.
+      Promise.resolve().then(()=>{
+        if(epoch!==this._terrainEpoch || this._state()!==owner)return;
+        return this._runGameOver(false,undefined,capturedFrame);
+      }).catch(error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error)));
     }
     gameover() {
       this._state().gameOver = true; this._changed();
@@ -5035,6 +5093,7 @@ module.exports = makeExt(`// Name: Arcade
       const state = this._infoState();
       state.countdown = Math.max(0, Number(args.N) || 0);
       state.countdownActive = true;
+      state.countdownEndMs=state.elapsedMs+state.countdown*1000;
       state.hudInfo.visibilityFlag |= this._hud().info.Visibility.Countdown;
       this._changed();
     }

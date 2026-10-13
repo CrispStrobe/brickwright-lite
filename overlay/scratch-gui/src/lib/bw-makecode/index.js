@@ -43,6 +43,7 @@ export {microbitToPseudocode} from './microbit-translate.js';
 export {arcadeToPseudocode} from './arcade-translate.js';
 export {ev3ToPseudocode} from './ev3-translate.js';
 export {exportToMakeCodeEv3, projectToEv3Ts} from './export-ev3.js';
+export {exportToMakeCodeCalliope, projectToCalliopeTs} from './export-calliope.js';
 export {parseImageLiteral, parseJres, imageToSvg, ARCADE_PALETTE} from './arcade-assets.js';
 export {exportToMakeCode, projectToMakeCodeTs, makeCodeSourceHex} from './export.js';
 export {parseMakeCodeTs} from './ts-import.js';

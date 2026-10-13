@@ -3907,3 +3907,29 @@ all four controller buttons and an authored win are observed. Complete game
 editing, persistence and original export/reimport remain required independently.
 Default HUD loss presentation, splash keyboard acknowledgement and scheduler
 phases remain active gaps. No raw corpus classification changes here.
+
+## HUD visibility, raw camera offsets and sprite flags
+
+351 canonical forms now include `arcade set hud <element> visible <Boolean>`
+with a fixed score/life/countdown menu and an actual Boolean reporter input,
+and `arcade camera draw offset <axis>` with a fixed x/y menu and numeric result.
+The existing readable sprite property menu adds numeric `flags`. Code, Blocks
+and SB3 retain these fields and values; the camera/flag sample also passes
+original compiler export/reimport. HUD controls include original pixels and
+saved-project/export checks. Ordinary source `score`/`lives` bindings retain
+their meaning through collision-safe renaming.
+
+User-facing gaps still required: direct raw flag writes; complete custom kind
+management and original Blockly decompilation; dedicated TextSprite editing;
+dynamic layout/opaque dialog value handling; genuine splash/long-text original
+rendering and input. The
+[native dialog contract](compatibility/arcade-native-text-dialogs.md) requires
+live parent rendering and real controller edges rather than generic dismissal.
+
+Default and custom terminal HUD pixels/sounds now have combined controls. Two
+initial callback clock comparisons remain explicit failures; source-loop and
+scene scheduling controls must close them. The first hosted owned-game journey
+failed on a stage replacement observation; its guard is fixed, and full execution
+remains pending. The private authentic Maze GUI journey is prepared, unrun.
+No dedicated inspector or whole-game GUI acceptance is inferred from these
+focused controls.
