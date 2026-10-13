@@ -3791,3 +3791,26 @@ Parsing now preserves ordered object/array bindings, defaults, rest and computed
 keys, generic function metadata, function-array assertions and type predicates.
 Unsupported execution still produces named diagnostics. These syntax controls
 do not imply native class, record or binding execution or editable library blocks.
+
+### Typed Settings and constrained prompt input
+
+Number, String, NumberArray and Buffer Settings use the retained original codecs.
+Native Blocks/Code can write/read records, test existence, list keys, remove keys
+and clear user records. Project identity and an SB3 snapshot survive reopening;
+device storage preserves the latest local records across browser-process reload.
+Quota or malformed storage failures are reported without replacing good records.
+Actual numeric shadows and connected string reporters are qualified separately.
+The independently sourced StringArray extension remains unsupported where its
+source licence and implementation have not been established.
+
+The production Question UI now consumes Arcade prompt metadata: text/number
+length limits and the original system keyboard's accepted number characters.
+Real typing, clipboard paste, Enter and submit-button controls pass; ordinary
+Scratch questions remain unconstrained. Optional source parameters, on-screen
+keyboard controls and a complete imported-game IDE journey remain pending.
+
+Known additional gaps to retain explicitly: numeric `Sprite.kind()` allocation
+and comparison, general classes/records/callable values, and version-specific
+library behavior. Older character-animation and background-scroll sources are
+not interchangeable with the existing adapters. Their update ordering and rule
+state must be implemented and qualified by exact version before source admission.
