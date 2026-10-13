@@ -181,6 +181,15 @@ module.exports = makeExt(`// Name: Arcade
         color2: '#D63878',
         color3: '#C42870',
         blocks: [
+          {opcode:'textSpriteCreate',blockType:Scratch.BlockType.REPORTER,text:'Arcade create text sprite [TEXT] background [BACKGROUND] foreground [FOREGROUND]',arguments:{...str('TEXT','Hello'),...n('BACKGROUND',0),...n('FOREGROUND',1)}},
+          {opcode:'textSpriteSetText',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set text [TEXT]',arguments:{...str('ID',''),...str('TEXT','Hello')}},
+          {opcode:'textSpriteSetMaxFontHeight',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set max font height [HEIGHT]',arguments:{...str('ID',''),...n('HEIGHT',8)}},
+          {opcode:'textSpriteSetIcon',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set icon [IMAGE]',arguments:{...str('ID',''),...str('IMAGE','')}},
+          {opcode:'textSpriteSetBorder',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set border width [WIDTH] color [COLOR] padding [PADDING]',arguments:{...str('ID',''),...n('WIDTH',1),...n('COLOR',6),...n('PADDING',0)}},
+          {opcode:'textSpriteSetOutline',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set outline width [WIDTH] color [COLOR]',arguments:{...str('ID',''),...n('WIDTH',1),...n('COLOR',6)}},
+          {opcode:'textSpriteUpdate',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] redraw',arguments:str('ID','')},
+          {opcode:'textSpriteProperty',blockType:Scratch.BlockType.REPORTER,text:'Arcade text sprite [ID] property [PROPERTY]',arguments:{...str('ID',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'textSpriteProperties',defaultValue:'text'}}},
+          {opcode:'textSpriteSetProperty',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set property [PROPERTY] to [VALUE]',arguments:{...str('ID',''),...str('VALUE',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'textSpriteProperties',defaultValue:'text'}}},
           {opcode:'followSprite',blockType:Scratch.BlockType.COMMAND,text:'Arcade sprite [ID] follow [TARGET] speed [SPEED] turn rate [TURN]',arguments:{...str('ID',''),...str('TARGET',''),...n('SPEED',100),...n('TURN',400)}},
           {opcode:'unfollowSprite',blockType:Scratch.BlockType.COMMAND,text:'Arcade sprite [ID] stop following',arguments:str('ID','')},
           {opcode:'startParallelHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade run parallel as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -841,6 +850,7 @@ module.exports = makeExt(`// Name: Arcade
           ,animationTypes: {acceptReporters: true, items: [{text:'all',value:'0'}, {text:'image',value:'1'}, {text:'movement',value:'2'}]}
           ,imageProperties: {acceptReporters: false, items: ['width', 'height']}
           ,settingWriteTypes:{acceptReporters:false,items:['Number','String','NumberArray','Buffer']}
+          ,textSpriteProperties:{acceptReporters:false,items:['text','bg','fg','maxFontHeight','borderWidth','borderColor','padding','outlineWidth','outlineColor','icon']}
           ,settingReadTypes:{acceptReporters:false,items:['Number','String','NumberArray','Buffer','List']}
           ,spriteDataTypes:{acceptReporters:false,items:['Number','String','Boolean','Sprite']}
           ,spriteDataReadTypes:{acceptReporters:false,items:['Number','String','Sprite']}
@@ -918,6 +928,48 @@ module.exports = makeExt(`// Name: Arcade
     settingsExists(args){return this._settingsGuard(()=>this._settingsStore().call('exists',Scratch.BWValues.decode(args.KEY)),true);}
     settingsRemove(args){return this._settingsGuard(()=>this._settingsStore().call('remove',Scratch.BWValues.decode(args.KEY)));}
     settingsClear(){return this._settingsGuard(()=>this._settingsStore().call('clear'));}
+
+    _textSprites() {
+      if(!this._textSpriteModule)this._textSpriteModule=dependencies.createTextSpriteHost(this,imageEngine,dependencies.initializeTextSprite);
+      return this._textSpriteModule;
+    }
+    _textSprite(value) {
+      const instance=this._extensionSprites.get(String(Scratch.BWValues.decode(value)));
+      if(!instance || !(instance instanceof this._textSprites().TextSprite))throw new Error('Arcade expected an owned text sprite');
+      return instance;
+    }
+    _textSpriteGuard(call) {
+      try {return call();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',String(error.message || error));return Scratch.BWValues.encode(undefined);}
+    }
+    textSpriteCreate(args) {return this._textSpriteGuard(()=>this._textSprites().textsprite.create(Scratch.BWValues.decode(args.TEXT),
+      this._animationNumericValue(args.BACKGROUND),this._animationNumericValue(args.FOREGROUND)).__bwId);}
+    textSpriteSetText(args) {return this._textSpriteGuard(()=>this._textSprite(args.ID).setText(Scratch.BWValues.decode(args.TEXT)));}
+    textSpriteSetMaxFontHeight(args) {return this._textSpriteGuard(()=>this._textSprite(args.ID).setMaxFontHeight(this._animationNumericValue(args.HEIGHT)));}
+    _textSpriteImage(value) {
+      const decoded=Scratch.BWValues.decode(value);
+      if(decoded==null)return null;
+      const image=this._image(value);if(!image)throw new Error('Arcade text sprite icon needs an image or null');
+      return this._textSprites().wrapImage(image);
+    }
+    textSpriteSetIcon(args) {return this._textSpriteGuard(()=>this._textSprite(args.ID).setIcon(this._textSpriteImage(args.IMAGE)));}
+    textSpriteSetBorder(args) {return this._textSpriteGuard(()=>this._textSprite(args.ID).setBorder(this._animationNumericValue(args.WIDTH),
+      this._animationNumericValue(args.COLOR),this._animationNumericValue(args.PADDING)));}
+    textSpriteSetOutline(args) {return this._textSpriteGuard(()=>this._textSprite(args.ID).setOutline(this._animationNumericValue(args.WIDTH),this._animationNumericValue(args.COLOR)));}
+    textSpriteUpdate(args) {return this._textSpriteGuard(()=>this._textSprite(args.ID).update());}
+    _textSpritePropertyName(value) {
+      const property=String(value);
+      if(!['text','bg','fg','maxFontHeight','borderWidth','borderColor','padding','outlineWidth','outlineColor','icon'].includes(property))throw new Error('Arcade Text Sprite property is not supported');
+      return property;
+    }
+    textSpriteProperty(args) {return this._textSpriteGuard(()=>{
+      const property=this._textSpritePropertyName(args.PROPERTY),value=this._textSprite(args.ID)[property];
+      return property==='icon' && value?this._imageHandle(value.raw):Scratch.BWValues.encode(value);
+    });}
+    textSpriteSetProperty(args) {return this._textSpriteGuard(()=>{
+      const property=this._textSpritePropertyName(args.PROPERTY);
+      this._textSprite(args.ID)[property]=property==='icon'?this._textSpriteImage(args.VALUE):Scratch.BWValues.decode(args.VALUE);
+      // Original public field writes store only; update() explicitly redraws.
+    });}
 
     // Original v0.0.5 helpers run unchanged over the owned Sprite data object.
     // The facade supplies its historical data() accessor; values retain aliases.
@@ -4862,6 +4914,8 @@ module.exports = makeExt(`// Name: Arcade
   Scratch.extensions.register(new Arcade(Scratch.vm && Scratch.vm.runtime));
 })(Scratch);
 `, {
+  createTextSpriteHost: require('./text-sprite-host'),
+  initializeTextSprite: require('./text-sprite-pxt'),
   createProgramSettings: require('./program-settings').createProgramSettings,
   initializeSpriteData: require('./sprite-data-pxt'),
   createSpeechEngine: require('./speech'),
