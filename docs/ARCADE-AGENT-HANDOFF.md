@@ -2287,3 +2287,20 @@ samples with zero producer warnings;11 valid samples retain parser/semantic
 issues. The other12 retain selected-SDK compiler diagnostics. Raw184/142/41/1
 is unchanged. Complete-game execution and editor/save/export qualification remain
 required independently of structural admission.
+
+
+### Native text dialog and class follow-up
+
+Native text dialogs now use retained rendering with live parent scenes and
+controller release guards. The integrated source-loop/dialog controls pass20
+with one strictly failing scrolling TODO. Explicit required phase mode turns
+preserved timing/pixel TODOs into failures; the unchanged scroll event still
+fails. Hosted graphical application qualification remains pending.
+
+The [class contract](https://github.com/CrispStrobe/brickwright-lite/pull/889)
+requires globally unique reference identity and original constructor order.
+Read-only original controls expose argument/field order and cross-class identity
+failures in existing shared record lowering. Preserve its working same-class
+aliases while designing explicit object references; Arcade class admission is
+still unsupported. Source parser `instanceof` is supported syntactically and
+reports missing runtime identity.

@@ -15,12 +15,14 @@ runs after the VM finishes green-flag initialization.
 
 ## Qualification boundary
 
-Four focused controls pass, including unchanged original/native variable values,
+Five focused controls pass, including unchanged original/native variable values,
 Code decompilation, fresh SB3 reload, original compiler/runtime execution of the
 export and reimport. Five importer line/decompiler checks and eight existing
 legacy scroller, character-animation and SpriteKind roundtrip controls pass on
 the updated consumer. The shared producer adds two explicit forms and reports
-620 passing checks without skips; hosted checks are separate.
+620 passing checks without skips. A hosted signature-dependent census failed;
+its AST method locator repair preserves the rule floor and passes twelve command
+census and ninety-three Boolean value controls. Hosted checks are separate.
 
 These controls establish graph structure and eventual loop results. They do not
 establish exact original frame scheduling for finite loops that draw, mixed
