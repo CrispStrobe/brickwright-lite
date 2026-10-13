@@ -19,6 +19,13 @@
  *       Scratch project, through the importer's translation; what did not
  *       translate is listed.
  *
+ * TARGETS (task A6). --target is microbit, arcade, calliopemini (alias
+ * calliope) or ev3 — the targets whose translators the app's Code tab uses.
+ * A Calliope mini goes through the micro:bit exporter (pxt-calliope is a
+ * pxt-microbit derivative) with pxt-calliope's own default packages; an EV3
+ * project through export-ev3.js. A file's own target wins on import; --target
+ * names it for a bare main.ts and for the export commands.
+ *
  * Exit codes: 0 done, 1 the program does not compile / refused, 2 bad usage,
  * 3 the runtime is not synced. What was not translated is always printed.
  */
@@ -38,17 +45,28 @@ const makeCodeOriginal = createRequire(import.meta.url)(
 
 const USAGE = `usage:
   node scripts/makecode.mjs tutorial-to-project <tutorial.md> --main <main.ts> [-o out.mkcd] [--target arcade|microbit]
-  node scripts/makecode.mjs to-project <in.sb3|in.bw> [-o out.mkcd] [--target microbit|arcade]
-  node scripts/makecode.mjs to-hex <in.sb3|in.bw> [-o out.hex|out.uf2] [--target microbit|arcade] [--board variant] [--source]
-  node scripts/makecode.mjs to-ts  <in.sb3|in.bw> [-o out.ts]  [--target microbit|arcade]
-  node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|in.mkcd|share-url> [-o out.sb3] [--bw out.bw] [--target microbit|arcade]`;
+  node scripts/makecode.mjs to-project <in.sb3|in.bw> [-o out.mkcd] [--target TARGET]
+  node scripts/makecode.mjs to-hex <in.sb3|in.bw> [-o out.hex|out.uf2] [--target TARGET] [--board variant] [--source]
+  node scripts/makecode.mjs to-ts  <in.sb3|in.bw> [-o out.ts]  [--target TARGET]
+  node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|in.mkcd|share-url> [-o out.sb3] [--bw out.bw] [--target TARGET]
+TARGET: microbit (default), arcade, calliopemini (or calliope), ev3`;
+
+/** The targets the CLI exports to and imports for: the Code tab's translators. */
+const TARGETS = ['microbit', 'arcade', 'calliopemini', 'ev3'];
+const TARGET_ALIAS = {calliope: 'calliopemini'};
+const EDITOR_URL = {microbit: 'https://makecode.microbit.org/', arcade: 'https://arcade.makecode.com/',
+    calliopemini: 'https://makecode.calliope.cc/', ev3: 'https://makecode.mindstorms.com/'};
+const TARGET_NAME = {microbit: 'micro:bit (V1 + V2)', calliopemini: 'Calliope mini', ev3: 'LEGO MINDSTORMS EV3'};
+/** Each target's own new-project packages, for a bare main.ts and the export's pxt.json. */
+const DEFAULT_DEPENDENCIES = {microbit: {core: '*', radio: '*', microphone: '*'}, arcade: {device: '*'},
+    calliopemini: {core: '*', radio: '*'}, ev3: {ev3: '*'}};
 
 function args (argv) {
     const out = {cmd: argv[0], input: null, output: null, target: 'microbit', board: '', source: false, bw: null, mainSource: null};
     for (let i = 1; i < argv.length; i++) {
         const a = argv[i];
         if (a === '-o') out.output = argv[++i];
-        else if (a === '--target') out.target = argv[++i];
+        else if (a === '--target') out.target = TARGET_ALIAS[argv[i + 1]] || argv[i + 1], i++;
         else if (a === '--board') out.board = argv[++i];
         else if (a === '--source') out.source = true;
         else if (a === '--bw') out.bw = argv[++i];
@@ -57,7 +75,7 @@ function args (argv) {
         else throw Object.assign(new Error(`unexpected argument ${a}`), {usage: true});
     }
     if (!out.cmd || !out.input) throw Object.assign(new Error('missing command or input'), {usage: true});
-    if (!['microbit', 'arcade'].includes(out.target)) throw Object.assign(new Error(`unknown --target ${out.target}`), {usage: true});
+    if (!TARGETS.includes(out.target)) throw Object.assign(new Error(`unknown --target ${out.target} (${TARGETS.join(', ')})`), {usage: true});
     if (out.board && out.target !== 'arcade') throw Object.assign(new Error('--board is for Arcade only'), {usage: true});
     return out;
 }
@@ -127,9 +145,22 @@ async function toMakeCode (file, target) {
         const out = projectToArcade(project, {name, costumeSvg, costumePalette, soundData, animationDocuments});
         return {...out, warnings: [...warnings, ...out.warnings], name};
     }
+    if (target === 'ev3') {
+        const {exportToMakeCodeEv3} = await lib('bw-makecode/export-ev3.js');
+        const out = exportToMakeCodeEv3(project, {name});
+        return {ts: out.ts, files: out.files, unsupported: out.unsupported, warnings, name};
+    }
     const {exportToMakeCode} = await lib('bw-makecode/export.js');
-    const out = exportToMakeCode(project, {name});
-    return {ts: out.ts, files: out.files, unsupported: out.unsupported, warnings: [], name};
+    const out = exportToMakeCode(project, {name, target});
+    const files = {...out.files};
+    if (target === 'calliopemini') {
+        // The micro:bit exporter writes pxt-microbit's new-project packages;
+        // pxt-calliope has no `microphone` package, so give it its own set.
+        const pxt = JSON.parse(files['pxt.json']);
+        pxt.dependencies = DEFAULT_DEPENDENCIES.calliopemini;
+        files['pxt.json'] = `${JSON.stringify(pxt, null, 4)}\n`;
+    }
+    return {ts: out.ts, files, unsupported: out.unsupported, warnings, name};
 }
 
 function report (out) {
@@ -146,6 +177,10 @@ async function main () {
         return 2;
     }
     if (a.cmd === 'tutorial-to-project') {
+        if (!['microbit', 'arcade'].includes(a.target)) {
+            console.error(`tutorial-to-project is for microbit and arcade tutorials, not ${a.target}`);
+            return 2;
+        }
         if (!a.mainSource) { console.error(`tutorial-to-project requires --main <main.ts>\n${USAGE}`); return 2; }
         const {tutorialProjectFiles} = await import('../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js');
         const {makeCodeProjectFile} = await lib('bw-makecode/project-file.js');
@@ -180,7 +215,7 @@ async function main () {
             const {makeCodeSourceHex} = await lib('bw-makecode/export.js');
             const dest = a.output || `${base(a.input)}.${a.target}-project.hex`;
             fs.writeFileSync(dest, makeCodeSourceHex(out.files, {name: out.name, target: a.target,
-                editorUrl: a.target === 'arcade' ? 'https://arcade.makecode.com/' : 'https://makecode.microbit.org/'}));
+                editorUrl: EDITOR_URL[a.target]}));
             console.log(`wrote ${dest} — legacy source HEX for Brickwright (no firmware); use to-project for the original MakeCode editor`);
             return 0;
         }
@@ -199,8 +234,7 @@ async function main () {
         let r;
         try {
             r = await compile(a.target, out.files, {native: true, hwVariant: a.board,
-                embedSource: {files: out.files, name: out.name, editorUrl: a.target === 'arcade' ?
-                    'https://arcade.makecode.com/' : 'https://makecode.microbit.org/'}});
+                embedSource: {files: out.files, name: out.name, editorUrl: EDITOR_URL[a.target]}});
         } catch (e) {
             if (e.code === 'NO_BASE_HEX') {
                 console.error(`refused: ${e.message}. ${a.target === 'arcade' ?
@@ -221,7 +255,7 @@ async function main () {
         const dest = a.output || `${base(a.input)}${a.target === 'arcade' ? `-${a.board}` : ''}${path.extname(firmware.name)}`;
         fs.writeFileSync(dest, firmware.bytes);
         console.log(`wrote ${dest} — ${(firmware.bytes.length / 1024).toFixed(0)} KB ` +
-            `${a.target === 'arcade' ? `Arcade ${a.board}` : 'micro:bit (V1 + V2)'} firmware, project embedded; ` +
+            `${a.target === 'arcade' ? `Arcade ${a.board}` : TARGET_NAME[a.target]} firmware, project embedded; ` +
             `${out.unsupported.length} not translated`);
         return 0;
     }
@@ -231,8 +265,7 @@ async function main () {
         if (/\.ts$/i.test(a.input)) {
             // A bare main.ts carries no pxt.json: give it the target's default
             // packages. A program that needs another package fails by name.
-            const dependencies = a.target === 'arcade' ? {device: '*'} :
-                {core: '*', radio: '*', microphone: '*'};
+            const dependencies = DEFAULT_DEPENDENCIES[a.target];
             const files = {'main.ts': fs.readFileSync(a.input, 'utf8'),
                 'pxt.json': JSON.stringify({name: base(a.input), dependencies, files: ['main.ts']})};
             res = mc.importProjectFiles(files, {target: a.target, name: base(a.input), animationResources: true});
