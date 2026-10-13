@@ -95,7 +95,9 @@ test('the remote\'s button A drives the car\'s motor A line over the shared air,
         'LabWired engine or MakeCode runtime not synced (npm run sync:labwiredwasm, npm run sync:makecode)', timeout: 900000}, () => {
         const r = run(['run', PAIR, '--press', 'Remote:A@3-3.6', '--seconds', '4.5', '--json']);
         assert.equal(r.status, 0, r.stderr);
-        const out = JSON.parse(r.stdout.trim().split('\n').pop());
+        // With --json the result is the last line the command prints.
+        const printed = r.stdout.trim().split('\n');
+        const out = JSON.parse(printed[printed.length - 1]);
         // Everything but serial and the matrix frames, for a failure that can be read.
         const seen = JSON.stringify({...out, boards: out.boards.map(({serial, frames, ...b}) => b)});
         assert.equal(out.sharedAir, true, seen);
