@@ -21,7 +21,7 @@ let nullable=settings.readNumber("nullable")
 settings.remove("nullable")
 settings.writeNumber("n",1.25)
 settings.writeString("text","A€🙂")
-let numbers=[-31,-32,127,128,65536,3.141592653589793]
+let numbers=[-31,-32,127,128,65536,Math.PI]
 settings.writeNumberArray("numbers",numbers)
 numbers[0]=99
 let stored=settings.readNumberArray("numbers")
@@ -116,4 +116,17 @@ test('original logical capacity panic clears user settings while retaining bound
     store.call('writeString','cross','abc');assert.equal(store.call('readNumber','cross'),97,'read APIs decode actual bytes without a guessed stored type');
     store.call('writeNumber','nan',NaN);assert.ok(Number.isNaN(store.call('readNumber','nan')));
     store.call('writeNumber','infinity',Infinity);assert.equal(store.call('readNumber','infinity'),Infinity);
+});
+
+
+test('declared Number settings accept real SB3 numeric shadows without operator workarounds',async()=>{
+    const code='SPRITE Game:\nWHEN flag clicked:\n  arcade write setting "seven" type Number value 7\n  arcade write setting "zero" type Number value 0\n  arcade write setting "blank" type Number value ""\n  arcade write setting "text" type String value "7"\n';
+    let run;
+    try{
+        run=await runProgram(code,{frames:15,storage:true});assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+        const blocks=run.creator.project.targets.flatMap(t=>Object.values(t.blocks)).filter(b=>b.opcode==='arcade_settingsWrite');
+        assert.deepEqual(blocks.slice(0,2).map(b=>b.inputs.VALUE[1]),[[4,'7'],[4,'0']],'actual SB3 numeric shadow primitives contain string field values');
+        const store=settings.createProgramSettings(run.vm.runtime.getTargetForStage(),{storage:null});
+        assert.equal(store.call('readNumber','seven'),7);assert.equal(store.call('readNumber','zero'),0);assert.equal(store.call('readNumber','blank'),0);assert.equal(store.call('readString','text'),'7');
+    }finally{run?.vm.quit?.();clearStrayTimers();}
 });
