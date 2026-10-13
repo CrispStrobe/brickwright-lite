@@ -99,6 +99,7 @@ on:
       - 'docs/LESSON-REVIEW-WAVE-7.md'
       - 'docs/LEGO-ARCHITECTURE.md'
       - 'docs/PICO-KALUMA-BOOT.md'
+      - 'docs/PEERS-SECURITY-REVIEW.md'
       - 'docs/RCX-FIRMWARE.md'
       - 'docs/SPIKE-CONSOLIDATION.md'
       - 'docs/SPIKE-ARENA.md'
@@ -773,6 +774,13 @@ jobs:
       - name: Guard — no GPL payload reaches the build output
         if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
         run: node scripts/verify-no-gpl-in-build.mjs packages/scratch-gui/build
+
+      # Peer sessions (task E11, docs/PEERS-SECURITY-REVIEW.md) are a build-time opt-in,
+      # BW_ENABLE_PEERS=1, which this build does not set. Like the GPL guard this asks about the
+      # REAL emitted bytes: no peer marker in any file, and the scan must see the editor bundle.
+      - name: Guard — the default build carries no peer-session code
+        if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
+        run: node scripts/verify-no-peer-surface.mjs packages/scratch-gui/build
 
       # The heavy tier is 20 MB and MUST stay out of the first load. That is a
       # question about a real build, so it cannot be a unit test — `npm test`

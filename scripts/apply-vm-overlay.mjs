@@ -480,6 +480,52 @@ if (vm2.includes(`require('./serialization/bw-gallery-urls')`)) {
     process.exit(1);
 }
 
+// F10: an imported MakeCode project keeps its own files in the saved project,
+// with a fingerprint of the program it was imported as (owner decision
+// 2026-10-12: keep, marked stale). The rules live in the overlay module
+// serialization/bw-makecode-original.js. Two hooks: toJSON writes the record
+// (after E5's extensionURLs), and deserializeProject reads it before the
+// targets install and fingerprints a new one from the VM's own serialization
+// once they have. Separate steps with their own anchors, so a store already
+// carrying the E5 patch still gets these.
+vm2 = readFileSync(vmPath2, 'utf8');
+const f10SaveAnchor = `        return StringUtil.stringify(bwGalleryURLs.save(sb3.serialize(this.runtime, optTargetId), this.extensionManager));`;
+const f10SavePatch = `        // Brickwright F10: + bwMakeCode, the imported MakeCode original (bw-makecode-original.js).
+        const bwMakeCodeOriginal = require('./serialization/bw-makecode-original');
+        return StringUtil.stringify(bwMakeCodeOriginal.save(
+            bwGalleryURLs.save(sb3.serialize(this.runtime, optTargetId), this.extensionManager), this.runtime));`;
+const f10LoadAnchor = `                return this.installTargets(targets, extensions, true);
+            });`;
+const f10LoadPatch = `                // Brickwright F10: the imported MakeCode original (bw-makecode-original.js).
+                const bwMakeCodeOriginal = require('./serialization/bw-makecode-original');
+                bwMakeCodeOriginal.load(projectJSON, runtime);
+                return this.installTargets(targets, extensions, true).then(installed => {
+                    bwMakeCodeOriginal.settle(runtime, () => require('./serialization/sb3').serialize(runtime));
+                    return installed;
+                });
+            });`;
+if (vm2.includes(`bwMakeCodeOriginal.save(`)) {
+    console.log('  virtual-machine.js F10 MakeCode-original save hook already applied');
+} else if (vm2.split(f10SaveAnchor).length === 2) {
+    vm2 = vm2.replace(f10SaveAnchor, f10SavePatch);
+    writeFileSync(vmPath2, vm2);
+    console.log('  patched virtual-machine.js (F10 MakeCode-original save hook)');
+} else {
+    console.error('  ! virtual-machine.js F10 save anchor (the E5 toJSON line) not found exactly once');
+    process.exit(1);
+}
+vm2 = readFileSync(vmPath2, 'utf8');
+if (vm2.includes(`bwMakeCodeOriginal.load(projectJSON, runtime);`)) {
+    console.log('  virtual-machine.js F10 MakeCode-original load hook already applied');
+} else if (vm2.split(f10LoadAnchor).length === 2) {
+    vm2 = vm2.replace(f10LoadAnchor, f10LoadPatch);
+    writeFileSync(vmPath2, vm2);
+    console.log('  patched virtual-machine.js (F10 MakeCode-original load hook)');
+} else {
+    console.error('  ! virtual-machine.js F10 load anchor (deserializeProject installTargets) not found exactly once');
+    process.exit(1);
+}
+
 // A builtin extension that fails to load must cost its own blocks, not the
 // project. Before 2026-09-05 a builtin COULD not fail: its code was in the
 // bundle. Now music and the LEGO family are import()ed chunks, so their

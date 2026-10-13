@@ -96,6 +96,18 @@ export default appTarget => {
     // Wire native file-open (Tauri) → web VM. No-op in a browser.
     initTauriBridge();
 
+    // Peer sessions (task E11): only in a build made with BW_ENABLE_PEERS=1. The literal is
+    // substituted by webpack's DefinePlugin, so a default build drops this branch and emits no
+    // peer chunk at all (test/peers-gate.test.mjs, scripts/verify-no-peer-surface.mjs).
+    if (process.env.BW_ENABLE_PEERS === true) {
+        import(/* webpackChunkName: "peer-sessions" */ '../lib/peer-sessions.js')
+            .then(module => module.default())
+            .catch(error => {
+                // eslint-disable-next-line no-console
+                console.error('[brickwright] peer sessions unavailable', error);
+            });
+    }
+
     // Load any ?extension=<url> from the address bar (Xcratch-style), once the
     // VM is up. Untrusted URLs prompt for confirmation first.
     initUrlExtensions();

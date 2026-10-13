@@ -74,6 +74,8 @@ import {createCodeRunFeedback} from '../../lib/spike-arena/code-run-feedback.js'
 // Every yes/no question is awaited: `window.confirm` cannot block in the desktop/iOS app.
 import {confirmAsync, promptAsync} from '../../lib/native-dialog.js';
 import {mathWithRandom, runWithReplayedInput} from '../../lib/replay-input.js';
+// F10: an imported MakeCode project's own files, kept in the .sb3 and marked stale once the program changes.
+import makeCodeOriginal from 'scratch-vm/src/serialization/bw-makecode-original.js';
 
 // gui.jsx's tab order: the FPGA tab follows Circuit. Stated here because the
 // handoff has to name a tab index and a wrong one silently switches to Sounds.
@@ -1568,6 +1570,7 @@ class PseudocodeImporter extends React.Component {
         if (!file) return;
         this.publishGameControls(null);
         this._makeCodeProject = null;
+        this._makeCodeImportedCode = null;
         // A compiled artefact from ANOTHER editor — a MakeCode .hex/.uf2/.png
         // cartridge, or a MicroPython .hex — is not source we can read as
         // text, but it is not opaque either: both formats carry the project
@@ -1899,6 +1902,10 @@ class PseudocodeImporter extends React.Component {
             name: res.project.name || String(label).replace(/\.[^.]+$/, ''),
             target: res.project.target
         } : null;
+        // F10: the translation as it arrived. A build of exactly this code keeps
+        // the original files in the project (bw-makecode-original.js); an edited
+        // one does not, since the files would describe a different program.
+        this._makeCodeImportedCode = res.kind === 'makecode' && res.lang === 'pseudocode' ? res.code : null;
         const unsupported = (res.unsupported || []).length;
         const arcade = res.project.target === 'arcade';
         if (arcade && res.kind === 'makecode') this.loadArcadeBoards();
@@ -1984,7 +1991,11 @@ class PseudocodeImporter extends React.Component {
             const {exportToMakeCode, makeCodeProjectFile} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
             const name = (source.match(/^#\s*(.+)$/m) || [])[1] || 'brickwright';
-            const out = exportToMakeCode(project, {name: name.trim().slice(0, 40)});
+            const original = this.makeCodeOriginalStatus();
+            // F10: an imported micro:bit project, unchanged since import, exports its own files.
+            const out = original.status === 'current' && original.target === 'microbit' ?
+                {files: original.files, unsupported: [], filename: `${String(original.name || name).trim().slice(0, 40)}.hex`} :
+                exportToMakeCode(project, {name: name.trim().slice(0, 40)});
             const filename = out.filename.replace(/\.hex$/i, '.mkcd');
             await downloadBlob(filename, new Blob([makeCodeProjectFile(out.files, {name: name.trim().slice(0, 40), target: 'microbit'})], {type: 'application/octet-stream'}));
             this.setState({busy: false, status: this.L.mcExportDone(filename, out.unsupported.length)});
@@ -2021,9 +2032,29 @@ class PseudocodeImporter extends React.Component {
      * as MakeCode wrote it — or, on a micro:bit, this tab's blocks exported to
      * MakeCode TypeScript (export.js, the same files ⬆ To MakeCode saves).
      */
+    /**
+     * F10: the imported MakeCode original the loaded project carries, and
+     * whether it still describes the program ('current' | 'stale' |
+     * 'unsettled' | 'none'; files only when current).
+     */
+    makeCodeOriginalStatus () {
+        const vm = this.props.vm;
+        if (!vm || !vm.runtime || !vm.runtime.bwMakeCode) return {status: 'none'};
+        try {
+            return makeCodeOriginal.original(JSON.parse(vm.toJSON()));
+        } catch (e) {
+            return {status: 'none'};
+        }
+    }
+
     async makeCodeSubject () {
+        const original = this.makeCodeOriginalStatus();
         const imported = this._makeCodeProject;
-        if (imported && imported.files) return imported;
+        // A fresh import in this tab is the subject, unless it is the very import
+        // the loaded project was built from and the program has changed since.
+        const builtFromImport = imported && original.target === imported.target && original.name === imported.name;
+        if (imported && imported.files && !(builtFromImport && original.status === 'stale')) return imported;
+        if (original.status === 'current') return {files: original.files, name: original.name, target: original.target};
         const source = this.state.buffers.pseudocode || '';
         if (!['microbit', 'calliopemini'].includes(this.currentDevice()) || !source.trim()) return null;
         const SB3Creator = (await this.lib()).default;
@@ -2270,7 +2301,9 @@ class PseudocodeImporter extends React.Component {
     async exportArcade () {
         this.setState({busy: true});
         try {
-            const out = await this.arcadeFromStage();
+            const original = this.makeCodeOriginalStatus();
+            const out = original.status === 'current' && original.target === 'arcade' ?
+                {files: original.files, unsupported: [], warnings: []} : await this.arcadeFromStage();
             const {makeCodeProjectFile} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
             const name = JSON.parse(out.files['pxt.json']).name;
@@ -2296,6 +2329,8 @@ class PseudocodeImporter extends React.Component {
         zip.file('BRICKWRIGHT-IMPORT.txt',
             `Recovered ${project.target} source from an imported MakeCode artefact.\n` +
             'These are the original files, not a reverse translation of later BrickWright edits.\n' +
+            (this.makeCodeOriginalStatus().status === 'stale' ?
+                'The program has been changed since it was imported, so these files no longer describe it.\n' : '') +
             'Open the folder with the MakeCode Asset Explorer/PXT toolchain and compile for your exact board.\n');
         const blob = await zip.generateAsync({type: 'blob'});
         await downloadBlob(`${String(project.name || 'makecode-project').replace(/[^a-z0-9_-]+/gi, '-')}.zip`, blob);
@@ -3235,6 +3270,24 @@ class PseudocodeImporter extends React.Component {
         const source = code != null ? code : this.activeCode();
         if (!source.trim()) return;
         this.setState({output: '', running: true, busy: true, status: this.L.forthRunning});
+        // GPIO bridge: the DOS Forth's `pin!` word OUTs to 0x378+pin (8 pins).
+        // Decode those writes and drive the Widgets pane's GPIO strip through the
+        // same bw-fpga-leds/bw-fpga-output event pump the FPGA tab uses, so a
+        // `set pin N high/low` program lights visible LEDs. No new widget code.
+        const GPIO_BASE = 0x378;
+        const seenPins = new Set();
+        const onPortAccess = ev => {
+            if (!ev || ev.dir !== 'out') return;
+            if (ev.port < GPIO_BASE || ev.port > GPIO_BASE + 7) return;
+            const pin = ev.port - GPIO_BASE;
+            const high = (ev.value & 0xff) !== 0;
+            seenPins.add(pin);
+            if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return;
+            window.dispatchEvent(new CustomEvent('bw-fpga-leds',
+                {detail: {pins: [...seenPins].sort((a, b) => a - b)}}));
+            window.dispatchEvent(new CustomEvent('bw-fpga-output',
+                {detail: {leds: [{pin, high}]}}));
+        };
         try {
             const r = await runDosToolchain('forth', source, {
                 fetchToolchain: async () => {
@@ -3242,7 +3295,8 @@ class PseudocodeImporter extends React.Component {
                     if (!res.ok) throw new Error(`forth.exe HTTP ${res.status}`);
                     return {compiler: new Uint8Array(await res.arrayBuffer())};
                 },
-                maxSteps: 200_000_000
+                maxSteps: 200_000_000,
+                onPortAccess
             });
             const stage = r.run || r.compile;
             const screen = (stage && stage.screen) || '';
@@ -4806,6 +4860,11 @@ class PseudocodeImporter extends React.Component {
             });
             if (strict && (parseWarnings.length || creator.warnings.length)) throw new Error([...parseWarnings, ...creator.warnings].join(' · '));
             const context = codeArtworkMatches(this.props.vm, this._codeArtwork) ? this._codeArtwork : null;
+            if (lang === 'pseudocode' && this._makeCodeProject && this._makeCodeProject.files &&
+                typeof this._makeCodeImportedCode === 'string' && source === this._makeCodeImportedCode) {
+                creator.project.bwMakeCode = makeCodeOriginal.record(this._makeCodeProject.target,
+                    this._makeCodeProject.files, this._makeCodeProject.name);
+            }
             const blob = await creator.generateSB3();
             let projectBytes = await blob.arrayBuffer();
             let artwork = null;
