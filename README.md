@@ -48,16 +48,25 @@ The editor is a Scratch-style block canvas. A **Code tab** shows the exact same
 program as text, and you can edit either side; the two stay in sync.
 
 - Every project reads and writes in three core forms: **Brickwright Code** (a
-  plain, readable pseudocode), **Python**, and **JavaScript**.
-- The same converter also handles **C**, **MicroPython**, and **BASIC**.
-- Three more tabs are *live interpreters* running on an emulated DOS machine:
-  **Forth** (zForth), **Tcl** (Jim Tcl), and **Lisp** (rxi's `fe`). You write
-  blocks, read the real Forth/Tcl/Lisp they become, and run it.
+  plain, readable pseudocode), **Python** (an algorithmic subset), and
+  **JavaScript**.
+- The same converter round-trips more: **C**, **BBC BASIC** (numbered or
+  structured), and **MicroPython** in two real dialects — for the **micro:bit**
+  and the **Raspberry Pi Pico** — plus live **Forth** (zForth), **Tcl**
+  (Jim Tcl / partcl) and **Lisp** (`fe`) tabs. It reads hand-written code back
+  too: edit the C or BASIC a program became and import it to blocks again.
+- Beyond the round trip, programs can be **compiled and run on emulated DOS and
+  CP/M machines** through real toolchains — **GW-BASIC** and **uBASIC**,
+  **Pascal** and **Modula-2** (ACK), and **C** (SDCC, including via CP/M) — with
+  **8051 / AVR / ARM / 6502 assembly** listings from the compile service.
 - Conversion is two-way wherever it can be. Anything the target language has no
   equivalent for is **marked in place and counted in the status line — never
   silently dropped** — so a program always survives the round trip as a program.
 
 The green flag starts the Scratch scripts and the circuit simulation together.
+A **LEGO SPIKE App 3 Python** program can also be imported and run on the
+virtual hub. The full language-and-target table is in
+[the code-tab language/device bridge](docs/CODE-TAB-LANGUAGE-DEVICE-BRIDGE.md).
 
 **Extensions and media.** 23 extensions ship built in (the LEGO family,
 gamepad, arrays, text-to-speech, camera, a bridge to the circuit surface, GPIO,
@@ -95,7 +104,7 @@ reset**, and inspect register-by-register and byte-by-byte in memory.
   **LEGO MINDSTORMS EV3**, **Arduboy**, and **ATtiny** boards.
 - A **Machine Manager** boots whole computers and operating systems from
   separately distributed disk/ROM images, each introduced by a guided lesson:
-  an **x86 AT PC** running **DOS/FreeDOS**, **ELKS** (a small Unix) on an 8086,
+  an **80386 AT PC** running **DOS/FreeDOS**, **ELKS** (a small Unix) on an 8086,
   **CP/M on a Z80**, **Microsoft BASIC on a 6502** single-board computer (RAM,
   ROM, VIA, ACIA, screen and keyboard), and a **RISC-V Linux** machine. See the
   loading guides below for the image and licensing details.
@@ -105,8 +114,8 @@ peripherals it models rather than pretending: the permissively licensed
 **avr8js** (AVR) and **rp2040js** (RP2040) JavaScript cores; **LabWired**, a
 native core compiled to WebAssembly, for the micro:bit and PyBadge; a
 **Renode**-derived boundary for the LEGO SPIKE Prime and MINDSTORMS EV3 firmware
-targets; an LGPL **Bochs** core for the x86 PC; and small in-house cores for the
-Z80, 6502 and 8086/80286 machines. Output appears on the **Widgets pane**
+targets; an LGPL **Bochs** core for the 80386 AT PC (a native 386 core is in
+progress); and small in-house cores for the Z80, 6502 and 8086/80286 machines. Output appears on the **Widgets pane**
 (screens, LEDs, GPIO strips); a **Debug view** adds a serial console and video. The emulators clear real-time speed on the established targets in the
 browser; the exact per-target numbers, the shipped-versus-candidate matrix, and
 the remaining gaps live in
