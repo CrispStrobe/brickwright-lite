@@ -19,7 +19,21 @@ test('typed bitwise primitives preserve integer conversion and reject opaque val
 test('source bitwise conversions diagnose unknown and reference operands',()=>{
  for(const source of ['let a=[1];let result=(a as any)>>>0','let a=image.create(1,1);let result=~(a as any)','let a:any={n:1};let result=a|0','function unknown(){return screen};let result=unknown()>>>0'])assert.match(arcadeToPseudocode(source).unsupported.join('\n'),/Bitwise operation requires proven primitive/,source);
 });
-const source=`function unsigned(a:any,b:any){return a>>>b}
+test('uncalled typed SDK helpers retain sprite flag and enum primitive inference',()=>{
+ const source=`function unused(actor:Sprite){return actor.flags & SpriteFlag.StayInScreen}
+function returned():Sprite{return null}
+function unusedReturn(){return returned().flags & SpriteFlag.StayInScreen}
+function unusedLocal(){let actor:Sprite=null;return actor.flags & SpriteFlag.StayInScreen}
+let ready=1`;
+ const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);assert.deepEqual(imported.warnings,[]);
+ assert.match(imported.code,/op "&"/);
+ for(const opaque of ['function bad(actor:any){return actor.flags & 1}',
+  'function bad(actor:Image){return actor & 1}'])
+  assert.match(arcadeToPseudocode(opaque).unsupported.join('\n'),/Bitwise operation requires proven primitive/,opaque);
+ assert.match(arcadeToPseudocode('function bad(actor:Sprite,SpriteFlag:any){return actor.flags & SpriteFlag.StayInScreen}').unsupported.join('\n'),/shadowed flag binding/);
+});
+const source=`function unusedSprite(actor:Sprite){return actor.flags & SpriteFlag.StayInScreen}
+function unsigned(a:any,b:any){return a>>>b}
 function signed(a:any,b:any){return a>>b}
 function invert(a:any){return ~a}
 function combine(a:any,b:any){return (a&b)|(a^b)}

@@ -3087,6 +3087,19 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
     const functions = new Map();
     const scope = parent => ({parent, bindings: new Map()});
     const global = scope(null);
+    // The early member/result fixed point and the later constraint graph must
+    // agree on declared SDK references, even for an uncalled helper. Reuse the
+    // annotation decoder; it does not admit unknown aliases or callable types.
+    const declaredGraph = new ValueTypeGraph();
+    const declaredNames = {Image:'image',Sprite:'sprite',TileLocation:'tile',LegacyTile:'legacy-tile',
+        Animation:'animation',SevenSegDigit:'sevenseg-digit',DigitCounter:'sevenseg-counter',
+        Dart:'dart',Corgio:'corgio',TextSprite:'text-sprite',Scene:'scene',PhysicsEngine:'physics-engine',
+        Player:'player',number:'number',string:'string',boolean:'boolean',array:'array'};
+    const seedDeclared = (value,annotation) => {
+        const key=String(annotation || '');
+        applyDeclaredValueType(declaredGraph,key,key);
+        for(const name of declaredGraph.node(key).types)if(declaredNames[name])value.add(declaredNames[name]);
+    };
     const binding = (owner, name, declare = false) => {
         if (declare) {
             if (!owner.bindings.has(name)) owner.bindings.set(name, new Set());
@@ -3103,12 +3116,16 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             owner = scope(owner);
             for (const [i, name] of (node.params || []).entries()) {
                 const value = binding(owner, name, true);
+                seedDeclared(value,node.paramTypes?.[name]?.text);
                 if (eventParameters[i]) value.add(eventParameters[i]);
             }
-            if (node.type === 'FunctionDeclaration') functions.set(node.name, {node, owner});
+            if (node.type === 'FunctionDeclaration') {
+                const returns=new Set();seedDeclared(returns,node.returnType);
+                functions.set(node.name, {node, owner, returns});
+            }
         }
         entries.push({node, owner});
-        if (node.type === 'Declaration') for (const decl of node.decls) {const value=binding(owner,decl.name,true);if(decl.isArray)value.add('array');}
+        if (node.type === 'Declaration') for (const decl of node.decls) {const value=binding(owner,decl.name,true);seedDeclared(value,decl.typeName);if(decl.isArray)value.add('array');}
         if (node.type === 'Call') {
             const api = pathOf(node.callee);
             const types = api==='mp.onButtonEvent'?['player']:api==='sprites.onOverlap'?['sprite','sprite']:
