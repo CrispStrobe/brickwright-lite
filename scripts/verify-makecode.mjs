@@ -119,7 +119,9 @@ try {
     await openCodeActions(page);
     await page.waitForSelector('[data-testid="bw-open-file"]', {timeout: 30000});
 
-    const input = page.locator('input[type="file"][accept*=".hex"]');
+    // The importer's own input (.mkcd is its alone): the Debug pane's Firmware…
+    // input also takes a .hex once a LabWired session is showing (section 1c).
+    const input = page.locator('input[type="file"][accept*=".hex"][accept*=".mkcd"]');
     const offersHex = await input.count() > 0;
     check('the Open button offers .hex', offersHex,
         offersHex ? '' : 'this build predates the MakeCode importer');
@@ -205,10 +207,11 @@ try {
         console.log('SKIP the emulated micro:bit V2 run: the emulator bases or the LabWired engine are not in this build ' +
             '(npm run sync:makecode, npm run sync:labwiredwasm)');
     } else {
+        // The Debug pane's own phase (data-debug-phase), not a status word found
+        // by its text: other panes show one too, and the word follows the locale.
         const statusText = () => page.evaluate(() => {
-            const st = [...document.querySelectorAll('strong')]
-                .find(n => /^(error|ready|running|paused|building|attaching|idle|stepping)$/i.test(n.textContent.trim()));
-            return st ? st.parentElement.innerText.replace(/\n/g, ' | ') : '';
+            const panel = [...document.querySelectorAll('[data-debug-panel]')].find(n => n.offsetParent !== null);
+            return panel ? panel.getAttribute('data-debug-phase') || '' : '';
         });
         await clickAction('bw-makecode-emulate');
         // The status words are transient: sample them all, as verify-labwired-engine.mjs does.
@@ -217,10 +220,10 @@ try {
             const t = await statusText();
             if (t && seen[seen.length - 1] !== t) seen.push(t);
             return t;
-        }, t => /^(running|error)/i.test(t), 60000, 200);
+        }, t => /^(running|error)$/.test(t), 60000, 200);
         const trail = seen.join('  ·  ').slice(0, 240);
-        check('▶ Run on the emulated micro:bit V2 reaches a running LabWired session', seen.some(t => /^running/i.test(t)), trail);
-        check('and never the error phase', !seen.some(t => /^error/i.test(t)), trail);
+        check('▶ Run on the emulated micro:bit V2 reaches a running LabWired session', seen.includes('running'), trail);
+        check('and never the error phase', seen.length > 0 && !seen.includes('error'), trail);
         const body = await page.evaluate(() => document.body.innerText);
         check('on the micro:bit V2 board, from the emulator image (not the official base)',
             /microbit-v2 board \(nrf52833/i.test(body) && /microbit-v2-emu\.elf/.test(body),
