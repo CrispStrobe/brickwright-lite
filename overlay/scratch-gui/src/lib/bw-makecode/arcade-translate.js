@@ -780,6 +780,11 @@ class ArcadeTranslator extends BaseTranslator {
             }
             return `arcade sprite (${handle}) hitting wall (${this.expr(a[0])})`;
         }
+        if(node.callee?.type==='Member' && node.callee.name==='concat' && this.stringReferences?.has(node.callee.object)) {
+            if(a.length!==1) {this.note('String.concat() requires exactly one argument');return 'undefined value';}
+            if([this.imageReferences,this.spriteReferences,this.arrayReferences,this.bufferReferences,this.sceneReferences].some(refs=>refs?.has(a[0]))) {this.note('String.concat() object conversion is not implemented');return 'undefined value';}
+            return `concatenate text (${this.arrayElementValue(node.callee.object)}) with (${this.arrayElementValue(a[0])})`;
+        }
         if (node.callee?.type==='Member' && node.callee.name==='toString' && this.spriteReferences?.has(node.callee.object)) {
             if(a.length) {this.unsupported.push('Sprite.toString() requires zero arguments');return '""';}
             return `arcade text of sprite (${this.handleRef(node.callee.object) || this.expr(node.callee.object)})`;
@@ -865,6 +870,10 @@ class ArcadeTranslator extends BaseTranslator {
             if(a.length!==1){this.unsupported.push(`${name}() requires exactly one number`);return 'undefined value';}
             return `arcade ${name==='Math.sign'?'sign of':'truncate'} (${this.expr(a[0])})`;
         case 'randint': return `pick random ${this.mathOperand(a[0])} to ${this.mathOperand(a[1])}`;
+        case 'String.fromCharCode':
+            if(a.length!==1 || this.bindsName('String')) {this.note('String.fromCharCode() requires its unshadowed single-argument primitive conversion');return 'undefined value';}
+            if([this.imageReferences,this.spriteReferences,this.arrayReferences,this.bufferReferences,this.sceneReferences].some(refs=>refs?.has(a[0]))) {this.note('String.fromCharCode() object conversion is not implemented');return 'undefined value';}
+            return `text from char code (${this.arrayElementValue(a[0])})`;
         case 'game.runtime':
         case 'control.millis':
             if(a.length || this.bindsName(name.split('.')[0])) {this.note(`${name}() needs its unshadowed zero-argument clock`);return 'undefined value';}
@@ -3116,6 +3125,8 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(api==='animation.createAnimation')return new Set(['animation']);
             if(api==='sevenseg.createDigit')return new Set(['sevenseg-digit']);
             if(api==='sevenseg.createCounter')return new Set(['sevenseg-counter']);
+            if(api==='String.fromCharCode' && node.args.length===1)return new Set(['string']);
+            if(node.callee?.type==='Member' && node.callee.name==='concat' && node.args.length===1 && typeOf(node.callee.object,owner).has('string'))return new Set(['string']);
             if(api==='textsprite.create')return new Set(['sprite','text-sprite']);
             if(api==='darts.create')return new Set(['sprite','dart']);
             if(api==='corgio.create')return new Set(['sprite','corgio']);
