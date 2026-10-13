@@ -49,3 +49,8 @@ test('exported let kind declarations remain undefined without binding until expl
  const result=arcadeToPseudocode('namespace SpriteKind {export let Custom:number;}let before=SpriteKind.Custom;SpriteKind.Custom=42.5;let after=SpriteKind.Custom;');assert.deepEqual(result.unsupported,[]);
  assert.equal((result.code.match(/arcade bind sprite kind name "Custom"/g)||[]).length,1);assert.match(result.code,/set __bwNamespace_SpriteKind_Custom to \(undefined value\)/);assert.ok(result.code.indexOf('set before')<result.code.indexOf('arcade bind sprite kind name "Custom"'));assert.ok(result.code.indexOf('set __bwNamespace_SpriteKind_Custom to 42.5')<result.code.indexOf('arcade bind sprite kind name "Custom"'));
 });
+test('valid creation callbacks need no parameter use or locally created sprite to register',()=>{
+ for(const callback of ['function(sprite){counter++;}','function(){counter++;}'])for(const main of ['', 'let hero=sprites.create(img`1`,-1);']){
+  const result=arcadeToPseudocode(`let counter=0;sprites.onCreated(-1,${callback});${main}`);assert.deepEqual(result.unsupported,[]);assert.match(result.code,/arcade register creation kind/);assert.match(result.code,/WHEN arcade creation handler/);assert.match(result.code,/set counter to/);
+ }
+});
