@@ -18,6 +18,29 @@ content, or whole-package licensing. G02 qualification continues independently
 on its reviewed source and sole official frontend artifact.
 
 
+
+## Native Arcade frame phases — 2026-10-13
+
+PROPOSED CLAIM — Codex Arcade scheduler, `lane/arcade-frame-scheduler-20261013`,
+base `b86d1cb9f294052bd0ae6dc4cd97d5bc57193c55`.
+This publication is documentation only; merge the claim before product edits.
+Envelope: the Arcade-specific phase hook in `scripts/apply-vm-overlay.mjs`,
+new `overlay/scratch-vm/src/extensions/crispstrobe/arcade/frame-phase.js`,
+necessary phase/lifecycle hunks in that directory's `index.js`, focused
+`test/makecode-arcade-frame-phase*.test.mjs` controls, this ledger and
+[the scheduler contract](docs/ARCADE-FRAME-SCHEDULER.md).
+Coordinate shared-file hunks with the existing Arcade integration owner.
+Preserve other runtime patches, producer vocabulary/pins, particle factories,
+import/export and independently owned complete-game qualification.
+Qualify original startup through its first authored yield, initial frame delta0,
+due pause/callback continuations, frame-fiber eligibility, one shared work
+budget, scene ownership, Stop/disposal/restart and debugger guards. Retain the
+observed missing update0 and delayed pause/creation caller failures; preserve
+the separate original 50 fps / GUI compatibility-mode 30 fps cadence limit. No fixed tick delay,
+counter/registry patch or diagnostic execution-order promotion. Exact-source
+Code/Blocks/export/reimport/fresh SB3 and installed GUI comparisons are required
+before closure; a private prototype is separate from product qualification.
+
 ## Several boards in one project (radio pair first) — 2026-10-13
 
 CLAIMED — VPS Claude (opus), `lane/multi-board-project-20261013`.
@@ -1524,9 +1547,11 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
+| MakeCode re-export: infer procedure parameter types instead of always `number` (task E13 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `d65b0864b`; paths `overlay/scratch-gui/src/lib/bw-makecode/export.js` (+ export-arcade.js only if it shares the declaration), focused tests, MakeCode census if counts move; this row and the task file. | **CLAIMED 2026-10-13.** Found by E12 (#882). |
+
 | Compiled 7-segment programs blank in the circuit view: persistence-based 7-segment model (task B16 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `60b1a18b6`; upstream bw-board 7-segment / multiplexed display model + tests; Lite bw-board pin-bump surfaces + a compiled-C display test; this row and the task file. | **CLAIMED 2026-10-13.** Found by B14 (#867). |
 
-| Text truthiness in the shared MakeCode importer base: micro:bit and EV3 (task E12 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `e9c3373b4`; paths `overlay/scratch-gui/src/lib/bw-makecode/translate-base.js` (+ micro:bit/EV3 translate if needed), focused tests, regenerated MakeCode census if counts move; this row and the task file. | **CLAIMED 2026-10-13.** Found by E10 (#863). |
+| DONE — Text truthiness in the shared MakeCode importer base: micro:bit and EV3 (task E12 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `e9c3373b4`; paths `overlay/scratch-gui/src/lib/bw-makecode/translate-base.js` (+ micro:bit/EV3 translate if needed), focused tests, regenerated MakeCode census if counts move; this row and the task file. | **DONE 2026-10-13 — Lite PR #882.** A text in a condition (isText, or a reference declared `: string`, by scope: new `stringTypedReferences()`) is `not ((length of s) = 0)` in translate-base.js `condition()`; numbers unchanged. Readings (sim / Lite before → after): `2 1 1 2 1 1 2 2 1 1` / `1 2 2 1 0 2 1 1 2 1` → `2 1 1 2 1 1 2 2 1 1`, micro:bit and EV3; re-export refused by pxt before → equals the sim after (parameter calls excluded: export.js types parameters `: number`). Census unchanged (204/8/2/1, 150/143/30/30, 100/157/1; 0 rows differ); importer output byte-identical over 1113 micro:bit, 258 EV3, 2097 Arcade inputs. Tests `test/makecode-text-truthiness.test.mjs` (6), 7 mutations red; MakeCode+sb3 suites 1404 (3 Arcade timing flakes at load 17, green alone); pre-push gates 94 green. Fix commit `c9c95f01c`. |
 
 | Original MakeCode files in the `.sb3`, kept but marked stale (task F10 of docs/OPEN-TASKS-2026-09-29.md; owner decision 2026-10-12) | VPS Claude (opus) | base `origin/main`; a new overlay module `overlay/scratch-vm/src/serialization/bw-makecode-original.js` (+ its save/load hooks in `scripts/apply-vm-overlay.mjs`), where an import records the original (`scripts/makecode.mjs to-sb3`, the GUI MakeCode import), the export's choice between original and regenerated files, the WIP test `test/arcade-metadata-sb3.test.mjs` re-ported plus a stale-case test; this row and the task file. Not the importer's translation (E10) nor the Arcade runtime/painter lanes. | **DONE 2026-10-12 — Lite PR #832 (merge `414b25e6`).** An imported MakeCode project saves its own files as `bwMakeCode` {version 2, target, name, files, fingerprint} (overlay module `serialization/bw-makecode-original.js`; two idempotent hooks in `apply-vm-overlay.mjs`: toJSON after E5's extensionURLs, deserializeProject load + settle after installTargets). The importer writes it unfingerprinted; the VM's first load fingerprints the program from its own serialization (blocks without positions/comments, variable/list/broadcast names, costume/sound assets, target names, extensions — not runtime state, so running the game is not an edit). CLI `to-ts`/`to-project`/`to-hex` export the original while current and say when it is stale; the Code tab records it only for a build of the unedited translation, and its run/download subject, Arcade `.mkcd` and micro:bit exports use it only while current; the source zip says when the program changed. `test/arcade-metadata-sb3.test.mjs` (the WIP test re-ported + stale case + GUI wiring): 4/4, red under never-stale, no-settle, position-counts and not-saved mutations. |
 | F10's GUI path in a real browser (task F10.1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `origin/main`; `scripts/verify-makecode.mjs` (Arcade import section only), plus status text. No new CI step, budget or census entry; no runtime/importer change unless the browser check finds a real F10 defect. | **DONE 2026-10-13** (branch `lane/f10-1-gui-check-20261013`). Five new checks in `scripts/verify-makecode.mjs` section 2d′, after the Arcade run: ⇦ To blocks keeps `bwMakeCode` with a 16-hex fingerprint; the real `.sb3` save → reopen brings the same files and fingerprint back; ⤓ Arcade export of the unchanged project writes the original `main.ts` byte for byte; after deleting a script's top block the original is still saved; and the export then comes from the blocks. No new CI step. Found while reading 2d: since F10, ▶ Run as MakeCode Arcade on an unchanged import compiles the ORIGINAL files, so 2d no longer exercises the Scratch → Arcade exporter for this fixture; the post-edit export check covers that exporter again. |
@@ -3324,6 +3349,18 @@ model pin or workflow changes. Any required shared-file or dependency extension
 needs a separately recorded coordinated envelope before implementation. Do not
 fetch restricted images, fabricate reference storage/mapping or infer physical
 safety, full G02 coverage or distribution closure from bounded simulations.
+
+
+Implementation in progress: the candidate fences native Start across
+teardown and connection waits using Stop revision, bridge/backend identity and
+pane disposal. It also invalidates old image choices on Stop, backend changes
+and newer requests, suppressing stale selections and errors while preserving
+current chooser results. Dedicated actual-method controls live in
+`test/spike-arena-pane-lifecycle.test.mjs`; baseline installed connection-return
+races and normal Start/Reset recovery are preserved separately. This candidate
+has not been qualified in a fresh installed package and does not close G02.
+Native cold-start failures before a separate teardown diagnostic reached its
+race remain unresolved; no startup timeout or native feature was changed.
 
 ## Arcade Buffer hash and live-memory continuation — 2026-10-12
 
