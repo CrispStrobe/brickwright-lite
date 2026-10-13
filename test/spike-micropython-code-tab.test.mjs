@@ -18,6 +18,85 @@ const paneMethod = window => {
     const body = paneSource.slice(paneSource.indexOf('    async chooseMicroPythonImage () {'), paneSource.indexOf('    firmwareProgramObserver ('));
     return new Function('window', `return ({${body}}).chooseMicroPythonImage;`)(window);
 };
+const delayedChooser = () => {
+    const choices = [], updates = [];
+    const stopBody = paneSource.slice(paneSource.indexOf('    async stopProgram ('), paneSource.indexOf('    async pause () {'));
+    const pane = {
+        locale: 'en', state: {execution: 'micropython', status: 'ready'},
+        hubState: {backend: {cancel () {}}}, clock: {uninstall () {}},
+        nativeCapabilities: () => ({'renode.spike.micropython.image.choose': () =>
+            new Promise((resolve, reject) => choices.push({resolve, reject}))}),
+        setState (patch) {updates.push(patch); Object.assign(this.state, patch);}
+    };
+    pane.chooseMicroPythonImage = paneMethod({});
+    pane.stopProgram = new Function('ArenaHubBridge', `return ({${stopBody}}).stopProgram;`)(class {});
+    return {pane, choices, updates};
+};
+
+test('Stop invalidates a pending image selection even when the backend stays MicroPython', async () => {
+    const f = delayedChooser(); const pending = f.pane.chooseMicroPythonImage();
+    await f.pane.stopProgram({restart: true}); const mark = f.updates.length;
+    f.choices[0].resolve('selected');
+    assert.equal(await pending, false); assert.equal(f.pane.state.microImageSelected, false);
+    assert.deepEqual(f.updates.slice(mark), []); assert.equal(f.pane.state.status, 'ready');
+});
+
+test('late chooser errors after backend changes or a return to MicroPython preserve newer state', async () => {
+    for (const returnToMicroPython of [false, true]) {
+        const f = delayedChooser(); const pending = f.pane.chooseMicroPythonImage();
+        await f.pane.stopProgram({restart: true}); f.pane.state.execution = 'native';
+        if (returnToMicroPython) f.pane.state.execution = 'micropython';
+        f.pane.state.message = 'New intent'; const mark = f.updates.length;
+        f.choices[0].reject(new Error('Late image error'));
+        assert.equal(await pending, false); assert.deepEqual(f.updates.slice(mark), []);
+        assert.equal(f.pane.state.status, 'ready'); assert.equal(f.pane.state.message, 'New intent');
+    }
+});
+
+test('a newer chooser request supersedes the older response', async () => {
+    const f = delayedChooser(); const first = f.pane.chooseMicroPythonImage();
+    const second = f.pane.chooseMicroPythonImage(); const mark = f.updates.length;
+    f.choices[0].resolve('selected');
+    assert.equal(await first, false); assert.deepEqual(f.updates.slice(mark), []);
+    assert.equal(f.pane.state.microImageSelected, false);
+    f.choices[1].resolve('cancelled');
+    assert.equal(await second, false); assert.equal(f.pane.state.status, 'ready');
+});
+
+test('disposal turns a late chooser error into cancellation without publishing it', async () => {
+    const f = delayedChooser(); const pending = f.pane.chooseMicroPythonImage();
+    f.pane.disposed = true; const mark = f.updates.length;
+    f.choices[0].reject(new Error('Late disposed error'));
+    assert.equal(await pending, false); assert.deepEqual(f.updates.slice(mark), []);
+});
+
+test('disposed and inactive panes do not open the native image chooser', async () => {
+    for (const disposed of [false, true]) {
+        const f = delayedChooser(); f.pane.disposed = disposed;
+        if (!disposed) f.pane.state.execution = 'native';
+        // Resolve a broken baseline too, so it fails an assertion rather than hanging.
+        const pending = f.pane.chooseMicroPythonImage(); f.choices[0]?.resolve('cancelled');
+        assert.equal(await pending, false); assert.equal(f.choices.length, 0);
+        assert.deepEqual(f.updates, []);
+    }
+});
+
+test('current chooser errors and invalid results still fail explicitly', async () => {
+    for (const nativeError of [true, false]) {
+        const f = delayedChooser(); const pending = f.pane.chooseMicroPythonImage();
+        if (nativeError) f.choices[0].reject(new Error('Current image error'));
+        else f.choices[0].resolve('unexpected');
+        await assert.rejects(pending, nativeError ? /Current image error/ : /Unexpected image selection result/);
+        assert.equal(f.pane.state.status, 'failed'); assert.equal(f.pane.state.microImageSelected, false);
+    }
+});
+
+test('a current successful chooser selection remains authorized', async () => {
+    const f = delayedChooser(); const pending = f.pane.chooseMicroPythonImage();
+    f.choices[0].resolve('selected');
+    assert.equal(await pending, true); assert.equal(f.pane.state.microImageSelected, true);
+    assert.equal(f.pane.state.status, 'ready');
+});
 const scaffold = ({selected = true, source = 'print(42)', previouslySelected = false} = {}) => {
     const calls = [];
     const pane = {bridge: {}, state: {microImageSelected: previouslySelected},
