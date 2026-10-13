@@ -4071,3 +4071,31 @@ switch Code/Blocks, save and freshly reopen, export through the UI and run the
 exported game in the original SDK. Corgio's built-in animation and authored tile
 art are distinct editor capabilities and need separate witnesses. These runtime
 routes do not establish editor usability or change the corpus partial count.
+
+## Class and object authoring foundation — 2026-10-13
+
+The five class operations are listed in the generated
+[authoring vocabulary](generated/ARCADE-AUTHORING-VOCABULARY.md): declaration,
+construction, field read, field write and method invocation. Public/private/
+protected and readonly declarations retain static metadata. Valid `any` access
+follows original runtime behavior; invalid typed access is diagnosed. Instances,
+arrays, resource fields and aliases retain reference identity. See the
+[qualified class scope](compatibility/arcade-class-references.md).
+
+| Surface | Available foundation | Work still needed |
+|---|---|---|
+| Code | Explicit class operations and managed procedures; decompilation and original export/reimport controls. | Structured class syntax, readable declaration editing and completion for class/field/method names. |
+| Blocks | Five real operations with connected object/value/argument ports. | A declaration builder for fields, parameters and method links; typed class/member dropdowns. Fixed metadata currently uses JSON text ports. |
+| Runtime/debugger | Constructor ordering, alias mutation, receiver calls, recursive/yielding calls and cancellation controls. | Object inspector, reference display, useful field watches and separately qualified inheritance/accessors/statics/captures. |
+| Save/reopen | Declarations and executable graphs survive saved SB3 and reconstruct the heap on run. | Restoring a live heap snapshot is unqualified; test actual editor save/fresh reopen and edits. |
+| Graphics | Sprite and Image references can be class fields. | SDK sprite subclasses and custom renderable classes need their own original asset, lifecycle and editor controls. |
+
+### Projectile creation semantics
+
+The original default mask is `AutoDestroy | DestroyOnWall`. Finalization occurs
+after creation handlers and retains their changes, even when a handler destroys
+the projectile or its source. Camera world offsets and tile-map edge placement
+follow the selected SDK, without an extra creation-time screen clamp. Original,
+Code, saved-project, export and reimport controls pass. GUI acceptance still needs
+controller-driven creation, flag inspection and wall destruction in an edited
+game; these focused controls do not promote a complete project.
