@@ -4028,3 +4028,16 @@ checks establish the graph contract; full-editor acceptance remains open.
 A real production editor journey is prepared in [`scripts/verify-arcade-numeric-authoring-gui.mjs`](../scripts/verify-arcade-numeric-authoring-gui.mjs), with its [identity contract and exact user steps](compatibility/arcade-numeric-authoring-gui.md). It covers imported and palette-created clamp blocks, numeric shadows, math and StringArray dropdowns, Code edits, source-while blocks, actual Stage/controller presentation, File save/fresh reopen, UI MakeCode export, original-SDK comparison and UI reimport.
 
 **Pending:** run this script against the exact reviewed hosted full-app artifact and record the actual result. The owned fixture's original simulator preflight and script preparation are not GUI qualification. Random samples use real entropy and bounds, without a seeded or invented trajectory. The script requires an admitted build receipt, exact source/pins/SDK/archive identity and matching actually served JavaScript bytes. No whole-game compatibility count promotion follows.
+
+## Native flags, debug labels and phase integration — 2026-10-13
+
+| Capability | Conversion/runtime evidence | Remaining GUI qualification |
+|---|---|---|
+| Writable sprite flags | Raw primitive masks, complete bitwise compound syntax, Destroyed guards, retained callbacks and clipping-bit maintenance. Full flags export gate pending. | Create/read/write flags through property dropdowns; connected Boolean/string/number values, edited masks, save/reopen and original export. |
+| Typed bitwise values | Explicit primitive operations preserve unsigned shifts, wrapped counts and once-only arguments. Opaque reference conversion is diagnosed. | Author all six binary operators and unary complement through Code and connected blocks; preserve unsigned values on save/reopen. |
+| ShowPhysics | Per-sprite original font labels follow sprite order, camera, visibility and lifecycle; full-pixel and Code/SB3/export/reimport controls pass. | Toggle through flag blocks and Code; visibly verify label layering, camera movement and edited sprite art in the actual Stage. General debugger graphics remain open. |
+| Frame phases | Actual VM source work, physical frame ownership, shared work budget and Stop/load controls pass; strict callback clocks/pixels/sound pass. | Matching production GUI with source yields, dialogs, controller inputs and restart; explicit native debugger and cadence qualification remain open. |
+
+The prepared numeric/settings/loop editor journey is additive. Passing focused
+controls or importing a block graph does not establish palette usability or a
+complete-game corpus promotion.

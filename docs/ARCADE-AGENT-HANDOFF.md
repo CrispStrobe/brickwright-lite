@@ -11,37 +11,46 @@ branches, checks, ownership or dependency pins remain unchanged.
 ## Latest source qualification — 2026-10-13
 
 The draft [integration PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888)
-contains genuine source startup and positive-condition loops, invocation-local
-`break`/`continue` guards, native text dialogs, StringArray settings and corrected
-null tilemap query guards. Producer
-[PR120](https://github.com/CrispStrobe/sb3-creator/pull/120) and
-[PR121](https://github.com/CrispStrobe/sb3-creator/pull/121) merged after every
-enabled check passed; each landed tree matched the reviewed merge prediction.
-Refresh consumer checks independently before adopting this source stack.
+contains source startup and positive-condition loops, invocation-local
+`break`/`continue` guards, native text dialogs, StringArray settings, null tilemap
+guards, ordered clamp and typed bitwise operations. Producer
+[PR120](https://github.com/CrispStrobe/sb3-creator/pull/120),
+[PR121](https://github.com/CrispStrobe/sb3-creator/pull/121),
+[PR122](https://github.com/CrispStrobe/sb3-creator/pull/122) and
+[PR123](https://github.com/CrispStrobe/sb3-creator/pull/123) merged after all enabled
+checks passed. The next typed bitwise and writable-property vocabulary is
+[PR124](https://github.com/CrispStrobe/sb3-creator/pull/124); refresh its checks
+and the consumer's checks independently before adoption.
 
-The clean `1023ee0423` consumer with producer `7154951853` repeats the unchanged
-41-context audit: **29 selected-SDK compile-valid, 12 compiler diagnostics;
-18 of the 29 admit with no unsupported elements or producer warnings, 11 remain
-blocked**. This is structural admission, not complete-game qualification.
-The immutable raw census and the fewer-than20-partial goal are unchanged.
-
-Follow [the GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) for authoring
-requirements. Source loops pass 17 integrated controls with one explicit SDK
-do-while discrepancy TODO. The warning reaches the import status, editable Code
-and CLI. StringArray settings pass original/native/Code/SB3/export/reimport
-controls; their helper is independently authored and does not admit the
-unknown-license extension package. Null tilemap operations distinguish the
-never-created map from an explicitly cleared map and retain original guards and
-faults. Native dialog pixels and inputs pass focused controls; exact scrolling
-phase and matching hosted GUI acceptance remain pending.
+The clean `dc3fc0d684` audit retains every importer warning as a blocker:
+**29 selected-SDK compile-valid, 12 compiler diagnostics; 18 of the 29 admit
+without unsupported elements, importer warnings or producer warnings; 11 remain
+blocked**. This establishes structural admission. The immutable raw census and
+the fewer-than20-partial goal remain unchanged pending complete-game evidence.
 
 The [scheduler claim](https://github.com/CrispStrobe/brickwright-lite/pull/881)
-precedes global VM integration. Private prototypes still expose managed ordinary
-loop and lifecycle failures; a passing subset does not qualify the kernel.
-The [class contract](https://github.com/CrispStrobe/brickwright-lite/pull/889)
-requires explicit reference identity, original constructor order and receiver
-binding. Parser support alone does not admit runtime classes. Numerical source
-semantics and deferred namespace bindings are the next isolated conversion areas.
+and [class claim](https://github.com/CrispStrobe/brickwright-lite/pull/889) are
+merged. Actual product phase controls cover source bootstrap, due continuations,
+a shared work budget, owned host-turn continuation, managed callers and Stop/load
+cancellation. The combined scheduler, bitwise and writable-flags backend gate
+passes 32 controls. Eight strict terminal/callback controls match original
+program and scene clocks, full pixels and sound. Earlier failures remain retained.
+Matching installed GUI, native debugging and original 50 fps versus compatibility
+mode 30 fps behavior remain open; these controls do not promote whole games.
+
+Follow [the GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md). The prepared
+numeric/settings/loop editor journey requires a matching production artifact.
+[ShowPhysics](compatibility/arcade-show-physics.md) has original full-pixel and
+Code/SB3/export/reimport controls; general debugger graphics remain separate.
+[Writable flags](compatibility/arcade-writable-flags.md) preserve raw primitives,
+destruction masks and clipping state; full export qualification remains pending.
+[Typed bitwise values](compatibility/arcade-bitwise-values.md) preserve unsigned
+shifts and once-only argument order, with explicit opaque-reference diagnostics.
+
+Class implementation follows explicit reference identity, original constructor
+order and receiver binding. Parser support alone does not admit runtime classes.
+Keep the genuine selected-SDK do-while discrepancy and unsupported library
+operations visible while completing source, whole-game and GUI qualification.
 
 ## Current integration checkpoint — 2026-10-13
 
