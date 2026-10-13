@@ -15,6 +15,28 @@ Constructor ordering, reference identity, alias mutation and original execution
 must qualify before class admission; source parsing alone is insufficient.
 
 
+## Native Arcade frame phases — 2026-10-13
+
+PROPOSED CLAIM — Codex Arcade scheduler, `lane/arcade-frame-scheduler-20261013`,
+base `b86d1cb9f294052bd0ae6dc4cd97d5bc57193c55`.
+This publication is documentation only; merge the claim before product edits.
+Envelope: the Arcade-specific phase hook in `scripts/apply-vm-overlay.mjs`,
+new `overlay/scratch-vm/src/extensions/crispstrobe/arcade/frame-phase.js`,
+necessary phase/lifecycle hunks in that directory's `index.js`, focused
+`test/makecode-arcade-frame-phase*.test.mjs` controls, this ledger and
+[the scheduler contract](docs/ARCADE-FRAME-SCHEDULER.md).
+Coordinate shared-file hunks with the existing Arcade integration owner.
+Preserve other runtime patches, producer vocabulary/pins, particle factories,
+import/export and independently owned complete-game qualification.
+Qualify original startup through its first authored yield, initial frame delta0,
+due pause/callback continuations, frame-fiber eligibility, one shared work
+budget, scene ownership, Stop/disposal/restart and debugger guards. Retain the
+observed missing update0 and delayed pause/creation caller failures; preserve
+the separate original 50 fps / GUI compatibility-mode 30 fps cadence limit. No fixed tick delay,
+counter/registry patch or diagnostic execution-order promotion. Exact-source
+Code/Blocks/export/reimport/fresh SB3 and installed GUI comparisons are required
+before closure; a private prototype is separate from product qualification.
+
 ## Several boards in one project (radio pair first) — 2026-10-13
 
 CLAIMED — VPS Claude (opus), `lane/multi-board-project-20261013`.
@@ -1520,6 +1542,8 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
   unchanged.
 
 ## CLAIMS — work in progress
+
+| MakeCode re-export: infer procedure parameter types instead of always `number` (task E13 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `d65b0864b`; paths `overlay/scratch-gui/src/lib/bw-makecode/export.js` (+ export-arcade.js only if it shares the declaration), focused tests, MakeCode census if counts move; this row and the task file. | **CLAIMED 2026-10-13.** Found by E12 (#882). |
 
 | Compiled 7-segment programs blank in the circuit view: persistence-based 7-segment model (task B16 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `60b1a18b6`; upstream bw-board 7-segment / multiplexed display model + tests; Lite bw-board pin-bump surfaces + a compiled-C display test; this row and the task file. | **CLAIMED 2026-10-13.** Found by B14 (#867). |
 
@@ -3321,6 +3345,18 @@ model pin or workflow changes. Any required shared-file or dependency extension
 needs a separately recorded coordinated envelope before implementation. Do not
 fetch restricted images, fabricate reference storage/mapping or infer physical
 safety, full G02 coverage or distribution closure from bounded simulations.
+
+
+Implementation in progress: the candidate fences native Start across
+teardown and connection waits using Stop revision, bridge/backend identity and
+pane disposal. It also invalidates old image choices on Stop, backend changes
+and newer requests, suppressing stale selections and errors while preserving
+current chooser results. Dedicated actual-method controls live in
+`test/spike-arena-pane-lifecycle.test.mjs`; baseline installed connection-return
+races and normal Start/Reset recovery are preserved separately. This candidate
+has not been qualified in a fresh installed package and does not close G02.
+Native cold-start failures before a separate teardown diagnostic reached its
+race remain unresolved; no startup timeout or native feature was changed.
 
 ## Arcade Buffer hash and live-memory continuation — 2026-10-12
 
