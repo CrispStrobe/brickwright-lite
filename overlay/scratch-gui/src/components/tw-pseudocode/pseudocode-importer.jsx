@@ -146,6 +146,13 @@ const L10N = {
         mcUnsupportedTarget: t => `MakeCode ${t} projects are not something this build can compile (micro:bit and Arcade are).`,
         mcCompileErrors: (n, first) => `MakeCode found ${n} error(s): ${first}`,
         mcNothingToRun: 'Nothing to run — import a MakeCode project, or write blocks for a micro:bit.',
+        mcBoardsCompiling: n => `Compiling ${n} boards with MakeCode…`,
+        mcBoardsFirmwareBuilding: n => `Building firmware for ${n} boards…`,
+        mcBoardsFirmwareDone: files => `Saved ${files.join(' and ')}: one file per board. Copy each onto its own board's USB drive (MICROBIT, MINI) to flash it.`,
+        mcBoardsExportDone: files => `Saved ${files.join(' and ')}: one MakeCode project per board.`,
+        mcBoardsStarted: names => `${names.join(' + ')} are running side by side in MakeCode's simulators, sharing one radio.`,
+        mcBoardNotMakeCode: (board, device) => `Board "${board}" is a ${device || 'board with no device'}: only micro:bit and Calliope mini boards run together in MakeCode's simulators.`,
+        mcBoardCompileErrors: (board, n, first) => `Board "${board}": MakeCode found ${n} error(s). ${first}`,
         arcRun: '▶ Run as MakeCode Arcade',
         arcRunTitle: 'Turn this Scratch project into a MakeCode Arcade game (sprites from their costumes, scripts as code) and run it in MakeCode\'s Arcade simulator',
         arcExport: '⬆ To MakeCode Arcade',
@@ -464,6 +471,13 @@ const L10N = {
         mcUnsupportedTarget: t => `MakeCode-${t}-Projekte kann dieser Build nicht übersetzen (micro:bit und Arcade schon).`,
         mcCompileErrors: (n, first) => `MakeCode meldet ${n} Fehler: ${first}`,
         mcNothingToRun: 'Nichts auszuführen — ein MakeCode-Projekt importieren oder Blöcke für einen micro:bit schreiben.',
+        mcBoardsCompiling: n => `${n} Boards werden mit MakeCode kompiliert…`,
+        mcBoardsFirmwareBuilding: n => `Firmware für ${n} Boards wird gebaut…`,
+        mcBoardsFirmwareDone: files => `${files.join(' und ')} gespeichert: eine Datei je Board. Jede auf das USB-Laufwerk ihres eigenen Boards kopieren (MICROBIT, MINI), um es zu flashen.`,
+        mcBoardsExportDone: files => `${files.join(' und ')} gespeichert: ein MakeCode-Projekt je Board.`,
+        mcBoardsStarted: names => `${names.join(' + ')} laufen nebeneinander in den MakeCode-Simulatoren und teilen sich einen Funkkanal.`,
+        mcBoardNotMakeCode: (board, device) => `Board „${board}“ ist ein ${device || 'Board ohne Gerät'}: nur micro:bit und Calliope mini laufen gemeinsam in den MakeCode-Simulatoren.`,
+        mcBoardCompileErrors: (board, n, first) => `Board „${board}“: MakeCode meldet ${n} Fehler. ${first}`,
         arcRun: '▶ Als MakeCode Arcade ausführen',
         arcRunTitle: 'Dieses Scratch-Projekt in ein MakeCode-Arcade-Spiel umwandeln (Figuren aus ihren Kostümen, Skripte als Code) und im MakeCode-Arcade-Simulator ausführen',
         arcExport: '⬆ Zu MakeCode Arcade',
@@ -1983,6 +1997,7 @@ class PseudocodeImporter extends React.Component {
     async exportMakeCode () {
         const source = this.state.buffers.pseudocode || '';
         if (!source.trim()) { this.setState({status: this.L.mcExportEmpty}); return; }
+        if (this.hasBoards(source)) { await this.exportBoardsMakeCode(source); return; }
         this.setState({busy: true});
         try {
             const SB3Creator = (await this.lib()).default;
@@ -2119,7 +2134,132 @@ class PseudocodeImporter extends React.Component {
         if (!list.length) return '';
         return this.L.mcFetched(list.map(e => `${e.id} (${e.repo}${e.ref ? '#' + e.ref : ''}, ${e.licence || this.L.mcLicenceUnknown})`).join(', '));
     }
+    /**
+     * Several boards in one program (`DEVICE <id> AS <Name>:` sections): every
+     * board is compiled for its own MakeCode target and the whole set goes to
+     * the simulator pane, which frames one simulator per board and relays radio
+     * between them. All boards or none: a pair with one half missing would
+     * look like a broken radio.
+     */
+    /** Whether a program holds several boards (`DEVICE <id> AS <Name>:` sections). */
+    hasBoards (source) {
+        return /^DEVICE\s+[\w-]+\s+AS\s+\S/im.test(source || '');
+    }
+
+    /**
+     * The boards of a multi-board program as MakeCode projects, one per board:
+     * `[{name, device, target, files}]` (lib/bw-boards/makecode-boards.js).
+     * Throws NOT_MAKECODE_BOARD, naming the board, when one is not a MakeCode board.
+     */
+    async boardSubjects (source) {
+        const SB3Creator = (await this.lib()).default;
+        const project = new SB3Creator().parse(source);
+        const {exportToMakeCode} = await import(
+            /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
+        const {boardMakeCodeProjects} = await import(
+            /* webpackChunkName: "bw-makecode" */ '../../lib/bw-boards/makecode-boards.js');
+        const name = ((source.match(/^#\s*(.+)$/m) || [])[1] || 'brickwright').trim().slice(0, 40);
+        return {name, subjects: boardMakeCodeProjects(project, {exportToMakeCode, name})};
+    }
+
+    /** The status line for a failed multi-board MakeCode action. */
+    boardsFailure (err) {
+        return err && err.code === 'NOT_MAKECODE_BOARD' ?
+            this.L.mcBoardNotMakeCode(err.board, err.device) :
+            this.L.mcFailed('MakeCode', (err && err.message) || String(err));
+    }
+
+    /**
+     * Several boards, several firmware files: each board is built for its own
+     * target and saved under its own name. All boards are built before any file
+     * is saved, so a failing board leaves no half set to flash.
+     */
+    async downloadBoardsFirmware (source) {
+        this.setState({busy: true, status: this.L.mcBoardsFirmwareBuilding((source.match(/^DEVICE\s+[\w-]+\s+AS\s+/gim) || []).length)});
+        try {
+            const {name, subjects} = await this.boardSubjects(source);
+            const {compileMakeCode, firmwareFile} = await import(
+                /* webpackChunkName: "bw-makecode-pxt" */ '../../lib/bw-makecode/pxt-runtime.js');
+            const slug = t => String(t).replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
+            const built = [];
+            for (const subject of subjects) {
+                const ext = MAKECODE_FIRMWARE[subject.target];
+                const title = `${name} — ${subject.name}`;
+                const out = await compileMakeCode({target: subject.target, files: subject.files, native: true, hwVariant: '',
+                    embedSource: {files: subject.files, name: title, editorUrl: MAKECODE_EDITOR[subject.target]}});
+                const fw = out.success ? firmwareFile({[`binary.${ext}`]: out.outfiles[`binary.${ext}`]}) : null;
+                if (!fw) {
+                    const d = out.diagnostics[0];
+                    this.setState({busy: false, status: this.L.mcBoardCompileErrors(subject.name, out.diagnostics.length,
+                        (d && `${d.file}:${d.line + 1} ${d.message}`) || '')});
+                    return;
+                }
+                built.push({filename: `${[subject.target, slug(name) || 'program', slug(subject.name) || 'board'].join('-')}.${ext}`, bytes: fw.bytes});
+            }
+            for (const file of built) {
+                await downloadBlob(file.filename, new Blob([file.bytes], {type: 'application/octet-stream'}));
+            }
+            this.setState({busy: false, status: this.L.mcBoardsFirmwareDone(built.map(f => f.filename))});
+        } catch (err) {
+            this.setState({busy: false, status: this.boardsFailure(err)});
+        }
+    }
+
+    /** Several boards, several MakeCode projects: one .mkcd per board, for its own editor. */
+    async exportBoardsMakeCode (source) {
+        this.setState({busy: true});
+        try {
+            const {name, subjects} = await this.boardSubjects(source);
+            const {makeCodeProjectFile} = await import(
+                /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
+            const slug = t => String(t).replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
+            const saved = [];
+            for (const subject of subjects) {
+                const filename = `${[slug(name) || 'program', slug(subject.name) || 'board'].join('-')}.mkcd`;
+                await downloadBlob(filename, new Blob([makeCodeProjectFile(subject.files,
+                    {name: `${name} — ${subject.name}`.slice(0, 40), target: subject.target})], {type: 'application/octet-stream'}));
+                saved.push(filename);
+            }
+            this.setState({busy: false, status: this.L.mcBoardsExportDone(saved)});
+        } catch (err) {
+            this.setState({busy: false, status: this.boardsFailure(err)});
+        }
+    }
+
+    async runBoardsInMakeCode (source) {
+        this.setState({busy: true, status: this.L.mcBoardsCompiling((source.match(/^DEVICE\s+[\w-]+\s+AS\s+/gim) || []).length)});
+        try {
+            const {name, subjects} = await this.boardSubjects(source);
+            const {compileMakeCode} = await import(
+                /* webpackChunkName: "bw-makecode-pxt" */ '../../lib/bw-makecode/pxt-runtime.js');
+            const boards = [];
+            for (const subject of subjects) {
+                const out = await compileMakeCode({target: subject.target, files: subject.files});
+                if (!out.success) {
+                    const d = out.diagnostics[0];
+                    this.setState({busy: false, status: this.L.mcBoardCompileErrors(subject.name, out.diagnostics.length,
+                        (d && `${d.file}:${d.line + 1} ${d.message}`) || '')});
+                    return;
+                }
+                boards.push({name: subject.name, target: subject.target, js: out.outfiles['binary.js']});
+            }
+            const program = {boards, name};
+            window.__bwMakeCodePending = program;
+            localStorage.setItem('bw-stage-circuit', '1');
+            localStorage.setItem('bw-debug-dock', 'makecode');
+            localStorage.setItem('bw-right-pane-hidden', '0');
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-right-pane-hidden', value: '0'}}));
+            window.dispatchEvent(new CustomEvent('bw-settings-change', {detail: {key: 'bw-debug-dock', value: 'makecode'}}));
+            window.dispatchEvent(new CustomEvent('bw-makecode-load', {detail: program}));
+            this.setState({busy: false, status: this.L.mcBoardsStarted(boards.map(b => b.name))});
+        } catch (err) {
+            this.setState({busy: false, status: this.boardsFailure(err)});
+        }
+    }
+
     async runInMakeCode () {
+        const boardSource = this.state.buffers.pseudocode || '';
+        if (this.hasBoards(boardSource)) { await this.runBoardsInMakeCode(boardSource); return; }
         const subject = await this.makeCodeSubject().catch(() => null);
         if (!subject) { this.setState({status: this.L.mcNothingToRun}); return; }
         const target = subject.target;
@@ -2169,6 +2309,8 @@ class PseudocodeImporter extends React.Component {
      * and the download says so rather than building (NO_BASE_HEX by name).
      */
     async downloadMakeCodeFirmware () {
+        const boardSource = this.state.buffers.pseudocode || '';
+        if (this.hasBoards(boardSource)) { await this.downloadBoardsFirmware(boardSource); return; }
         const subject = await this.makeCodeSubject().catch(() => null);
         let board = null;
         if (subject && subject.target === 'arcade') {
