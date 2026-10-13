@@ -213,6 +213,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'hasPlayerScore',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade player [PLAYER] has score',arguments:n('PLAYER',1)},
           {opcode:'setPlayerScore',blockType:Scratch.BlockType.COMMAND,text:'Arcade set score player [PLAYER] to [VALUE]',arguments:{...n('PLAYER',1),...n('VALUE',0)}},
           {opcode:'changePlayerScore',blockType:Scratch.BlockType.COMMAND,text:'Arcade change score player [PLAYER] by [VALUE]',arguments:{...n('PLAYER',1),...n('VALUE',1)}},
+          {opcode:'setHudVisibility',blockType:Scratch.BlockType.COMMAND,text:'Arcade HUD [ELEMENT] visible [VISIBLE]',arguments:{ELEMENT:{type:Scratch.ArgumentType.STRING,menu:'hudElements',defaultValue:'score'},VISIBLE:{type:Scratch.ArgumentType.BOOLEAN,defaultValue:true}}},
           {opcode:'setLife',blockType:Scratch.BlockType.COMMAND,text:'Arcade set life player [PLAYER] to [VALUE]',arguments:{...n('PLAYER',1),...n('VALUE',3)}},
           {opcode:'changeLife',blockType:Scratch.BlockType.COMMAND,text:'Arcade change life player [PLAYER] by [VALUE]',arguments:{...n('PLAYER',1),...n('VALUE',-1)}},
           {opcode:'getLife',blockType:Scratch.BlockType.REPORTER,text:'Arcade life player [PLAYER]',arguments:n('PLAYER',1)},
@@ -803,6 +804,7 @@ module.exports = makeExt(`// Name: Arcade
             text: 'stop Arcade countdown' }
         ],
         menus: {
+          hudElements:{acceptReporters:false,items:['score','life','countdown']},
           buttons: {acceptReporters: true, items: [
             {text: 'A', value: 'a'}, {text: 'B', value: 'b'},
             {text: 'up', value: 'up'}, {text: 'down', value: 'down'},
@@ -1288,6 +1290,15 @@ module.exports = makeExt(`// Name: Arcade
         if(work?.then)work.finally(()=>{h.lock=false;});else h.lock=false;
       }
       this._foreverTimer=setTimeout(()=>this._pumpForever(),20);this._foreverTimer?.unref?.();
+    }
+    setHudVisibility(args) {
+      const methods={score:'showScore',life:'showLife',countdown:'showCountdown'};
+      const method=Object.prototype.hasOwnProperty.call(methods,String(args.ELEMENT))?methods[String(args.ELEMENT)]:undefined;
+      if(!method){this._runtime?.emit?.('BLOCKS_ERROR','Arcade HUD element is not implemented: '+String(args.ELEMENT));return;}
+      const state=this._infoState(),info=this._hud().info;
+      info._setInfoState(state.hudInfo);
+      info[method](Scratch.Cast.toBoolean(Scratch.BWValues.decode(args.VISIBLE)));
+      this._changed();
     }
     _infoState() {
       const state=this._state();
@@ -5039,7 +5050,7 @@ module.exports = makeExt(`// Name: Arcade
     // after the frame's updates and physics. Default terminal actions wait for
     // their final HUD draw; authored callback scheduling stays unchanged.
     *_countdownEndSteps(state) {
-      if (!state.countdownActive || state.countdown > 0) return;
+      if (!state.countdownActive || state.countdown > 0 || !(state.hudInfo?.visibilityFlag & this._hud().info.Visibility.Countdown)) return;
       state.countdown = 0;
       this._changed();
       if(this._countdownHandlers.length){

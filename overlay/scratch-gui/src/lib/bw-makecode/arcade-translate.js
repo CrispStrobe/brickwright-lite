@@ -206,6 +206,9 @@ const CONTROLLER_KEYS = {
 class ArcadeTranslator extends BaseTranslator {
     constructor (assets, tilemaps, assetKindLookup = null, scrollerVersion = 'v0.1.2', characterVersion = 'v0.1.0') {
         super();
+        // The legacy Arcade exporter gives global score/lives HUD meaning.
+        // Ordinary source bindings retain independent storage under safe names.
+        this.reservedVariableNames=new Set(['score','lives']);
         this.assets = assets || {};      // jres images by name
         this.assetKindLookup = assetKindLookup;
         this.scrollerVersion = scrollerVersion;
@@ -1380,6 +1383,12 @@ class ArcadeTranslator extends BaseTranslator {
         if(this.handleTemplates && ['game.pushScene','game.popScene'].includes(name)) {
             if(a.length){push(this.note(`${name} requires no arguments`));return;}
             push(name==='game.pushScene'?'arcade push scene':'arcade pop scene');return;
+        }
+        if(this.handleTemplates && /^info\.(showScore|showLife|showCountdown)$/.test(name||'')) {
+            if(this.bindsName('info')){push(this.note(`${name} refers to a shadowed info binding`));return;}
+            if(a.length!==1){push(this.note(`${name} requires one Boolean visibility value`));return;}
+            const element=name.slice('info.show'.length).toLowerCase();
+            push(`arcade set hud ${element} visible ${this.boolSlot(a[0])}`);return;
         }
         if(this.handleTemplates && /^info(?:\.player[1-4])?\.(setLife|changeLifeBy)$/.test(name||'')) {
             if(a.length!==1){push(this.note(`${name} requires one life value`));return;}
@@ -3666,6 +3675,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(['LegacyParsedValue','LegacyJsonValue','NativeArrayAccess'].includes(node.type) || node.type==='Identifier' && ['NaN','Infinity'].includes(node.name) && !t.boundSourceGlobals.has(node.name))return true;
         if(node.type==='SpriteKindReset' || node.type==='Member' && t.path(node.object)==='SpriteKind' || node.type==='Call' && (t.path(node.callee)==='SpriteKind.create' || node.callee?.type==='Member' && ['kind','setKind'].includes(node.callee.name) || t.path(node.callee)==='sprites.create' && (!node.args[1] || !['Member'].includes(node.args[1].type))))return true;
         if(node.type==='Call' && (isSpriteRegistration(t.path(node.callee)) || t.path(node.callee)==='sprites.onCreated'))return true;
+        if(node.type==='Call' && /^info\.(showScore|showLife|showCountdown)$/.test(t.path(node.callee)||''))return true;
         if(t.bufferReferences.has(node))return true;
         if(node.type==='Declaration' && node.decls.some(decl=>decl.isArray && !decl.init))return true;
         const constantNumber=value=>value?.type==='Number'?Number(value.value):value?.type==='Unary' && value.op==='-' && value.argument?.type==='Number'?-Number(value.argument.value):value?.type==='Member' && value.object?.name==='Math' && value.name==='PI'?Math.PI:NaN;

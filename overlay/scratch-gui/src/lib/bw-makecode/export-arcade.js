@@ -2293,6 +2293,12 @@ class ArcadeEmitter {
         case 'arcade_setSpriteAutoDestroy': push(`${v('ID')}.setFlag(SpriteFlag.AutoDestroy, ${this.spriteFlagCondition(b)})`); return;
         case 'arcade_setSpriteBounceOnWall': push(`${v('ID')}.setBounceOnWall(${this.spriteFlagCondition(b)})`); return;
         case 'arcade_setSpriteGhostThroughSprites': push(`${v('ID')}.setFlag(SpriteFlag.GhostThroughSprites, ${this.spriteFlagCondition(b)})`); return;
+        case 'arcade_setHudVisibility': {
+            const element=this.field(b,'ELEMENT');
+            const method={score:'showScore',life:'showLife',countdown:'showCountdown'}[element];
+            if(!method){push(`// ${this.note(`Unsupported HUD visibility element ${element}`)}`);return;}
+            push(`info.${method}(${this.boolValue(b,'VISIBLE')})`);return;
+        }
         case 'arcade_startCountdown': push(`info.startCountdown(${v('N')})`); return;
         case 'arcade_stopCountdown': push('info.stopCountdown()'); return;
         case 'arcade_splash': {
