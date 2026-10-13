@@ -3770,3 +3770,24 @@ responds to explicit connection events. Native input, alias, original export,
 reimport and fresh-SB3 controls pass. Controller pane integration emits the same
 input edge before routing buttons. Browser discovery and physical gamepad
 detection remain separate pending checks; no physical device claim is made.
+
+### Additional source and value capabilities — 2026-10-13
+
+The Arrays value arithmetic reporter exposes `**` in blocks and Code. Arcade
+`Math.pow` uses that same value path, preserving NaN, infinities and evaluation
+order. All eight supported `Math` constants retain full numeric precision;
+numeric enum/constant expressions retain number type when passed as arguments.
+The [exponentiation contract](ARCADE-EXPONENTIATION-CONTRACT.md) gives exact
+source ownership, original comparisons and the literal negative-zero boundary.
+Visible drag/connect/menu and save/reopen journeys still need qualification.
+
+SpriteData keys use own properties while preserving the backing record and
+reference aliases, including keys such as `__proto__` and `constructor`.
+The pinned original compiler refuses the tested literal `hasOwnProperty` input;
+runtime-constructed keys are compared separately. Do not hide that compiler
+failure or reinterpret it as successful literal-source conversion.
+
+Parsing now preserves ordered object/array bindings, defaults, rest and computed
+keys, generic function metadata, function-array assertions and type predicates.
+Unsupported execution still produces named diagnostics. These syntax controls
+do not imply native class, record or binding execution or editable library blocks.
