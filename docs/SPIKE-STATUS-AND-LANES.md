@@ -19,9 +19,38 @@ READY, completion, cancellation or failure feedback.
 All 14 focused feedback controls pass under Node 22. Four mutations fail the
 controls: allowing late startup to overwrite terminal feedback, removing the
 notification, notifying before session startup, and notifying on retained upload.
-Hosted checks and a fresh source-bound installed Code Stop cancellation,
-cleanup/restoration and subsequent-run check remain required. The older bb293
+At candidate publication, hosted checks and a fresh source-bound installed
+Code Stop cancellation, cleanup/restoration and subsequent-run check remained
+required. The older bb293
 Arena Stop observations below do not qualify this new source or close G02.
+
+### Qualified startup Stop follow-up
+
+[PR860](https://github.com/CrispStrobe/brickwright-lite/pull/860) merged the
+focused fix at `5e69e8ac85c006a0d5724e3be17bc3d03729f88b`. Tested consumer
+[`da373394`](https://github.com/CrispStrobe/brickwright-lite/commit/da37339468a1080d22812b8747eb9659ac85d6c5)
+passed all seven enabled hosted checks, including
+[Build38359601487](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38359601487).
+Its emitted CI checkout has exactly the same tracked tree. Offline native
+compilation passed, and independent installer verification matched all 180 files
+and 23 directories, their bytes/modes and root ownership to staging. Retained
+Runtime, firmware and support payloads remained unchanged.
+
+The actual installed Code Stop check passed before the first firmware frame:
+the control is visible and enabled with localized starting feedback, the owned
+native emulator exists, and actual cancellation uploads no program packet.
+Deferred cleanup releases configuration/clock ownership, exits the owned
+emulator, restores defaults and preserves stopped feedback without sampled late
+world motion. A fresh run completes in a different session; the old closed
+session remains without a frame. These results are bound to the tested consumer,
+not every later main package or instantaneous process abort.
+
+Original assembly/cache failures and the first installed Forth guard failure
+remain preserved. The revised asset guard matches this consumer's committed
+provenance, exact size/hash and emitted inventory; assertions and time limits
+were retained. Raw results stay private. The normal source merge tree matched
+the reviewed tree and preserved independently merged vendor changes. G02's
+chooser/final-sampling/generation/late-poll cases and G05 closure remain open.
 
 ## Installed dual-ultrasonic checkpoint — 2026-10-12
 

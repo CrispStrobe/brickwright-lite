@@ -986,7 +986,7 @@ and original Assets-editor qualification remain open.
 
 ## SPIKE Code Stop during native startup — 2026-10-13
 
-CLAIMED — Codex SPIKE integration, `fix/spike-startup-stop-feedback-20261013`.
+DONE — Codex SPIKE integration, `fix/spike-startup-stop-feedback-20261013`.
 Envelope: `overlay/scratch-gui/src/lib/spike-arena/code-run-feedback.js`,
 `overlay/scratch-gui/src/components/tw-pseudocode/spike-arena-pane.jsx`,
 `test/spike-code-run-feedback.test.mjs`, `test/spike-arena-pane-units.test.mjs`,
@@ -1006,6 +1006,12 @@ Source candidate: localized cold-start feedback exposes Code Stop after session
 startup invocation. Fourteen Node 22 feedback controls pass; four notification,
 terminal and retained-upload mutants fail. Hosted and fresh installed Code Stop
 qualification remain pending; this claim is not closed by host controls.
+
+Closed by PR860, merge5e69e8ac85c006a0d5724e3be17bc3d03729f88b; tested source
+da37339468a1080d22812b8747eb9659ac85d6c5. All seven enabled checks passed;
+actual installed Code Stop before first frame, no upload, deferred cleanup,
+restoration and fresh successful run passed. Original failures remain preserved.
+Reviewed and actual merge trees match; broader G02 and distribution stay open.
 
 ## SPIKE handover
 
@@ -3239,3 +3245,27 @@ results. Native scoped number arrays, blocks, Code and typed export require
 original traces, function-return controls and actual fresh SB3. E10 retains
 importer/shared type helper ownership. Hosted qualification and corpus recensus
 remain separate from focused source controls.
+
+
+## SPIKE remaining lifecycle boundaries — 2026-10-13
+
+CLAIMED — Codex SPIKE integration, `lane/spike-g02-lifecycle-20261013`.
+Envelope: `overlay/scratch-gui/src/lib/spike-arena/renode-arena-session.js`,
+`code-run-feedback.js` in that directory,
+`overlay/scratch-gui/src/components/tw-pseudocode/spike-arena-pane.jsx`,
+`test/spike-renode-arena-session.test.mjs`, `test/spike-code-run-feedback.test.mjs`,
+`test/spike-micropython-code-tab.test.mjs`, `test/spike-arena-pane-units.test.mjs`,
+small owned lifecycle fixtures/helpers if necessary, this ledger and the SPIKE
+status guide. First review and qualify existing guards using delayed/error-capable
+native boundaries: chooser cancellation/disposal/backend intent, Stop during
+final sampling, connection/UART generation change, late polls and stale session
+callbacks after replacement. Fix demonstrated gaps in owned session/pane/feedback
+files; qualify representative cases with a fresh source-bound actual installed
+own-guest package. Preserve PR631/755/860 regression and artifact boundaries.
+Require one terminal result, no late world publication or owned process leak,
+and no stale owner stopping a replacement; broken terminal/ownership/generation
+mutants must fail. No importer, painter, peer, native feature, firmware/Runtime/
+model pin or workflow changes. Any required shared-file or dependency extension
+needs a separately recorded coordinated envelope before implementation. Do not
+fetch restricted images, fabricate reference storage/mapping or infer physical
+safety, full G02 coverage or distribution closure from bounded simulations.
