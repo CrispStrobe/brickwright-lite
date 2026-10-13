@@ -1,3 +1,4 @@
+import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
 import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
 const LEGACY_CHARACTER_REVISION=LEGACY_CHARACTER_NATIVE_IDENTITY.revision;
 /**
@@ -103,7 +104,7 @@ const ident = name => {
 const LEGACY_SCROLLER_REVISION='43651f88b917a98ad886fdd4c1c2ad8001ce9b9c';
 const RESERVED = new Set(['score', 'life', 'info', 'game', 'scene', 'sprites', 'controller', 'Math', 'function', 'let', 'var',
     'if', 'else', 'while', 'for', 'return', 'true', 'false', 'null', 'new', 'this', 'pause', 'forever',
-    '__bwSdkCharCode','__bwSdkConcat','__bwScratchTimerStart','__bwScratchTimer','__bwResetScratchTimer', 'SpriteKind', 'SpriteFlag', 'ControllerButtonEvent', 'DialogLayout', 'Image', 'Buffer', 'NumberFormat', 'console', 'control', 'assets', 'images', 'image', 'hex', 'img', 'undefined']);
+    '__bwSdkCharCode','__bwSdkConcat','__bwScratchTimerStart','__bwScratchTimer','__bwResetScratchTimer', 'SpriteKind', 'SpriteFlag', 'ControllerButtonEvent', 'DialogLayout', 'Image', 'Buffer', 'NumberFormat', 'console', 'control', 'assets', 'images', 'image', 'hex', 'img', 'undefined', 'bwStringArraySettings']);
 
 class ArcadeEmitter {
     constructor (project, opts) {
@@ -1206,7 +1207,8 @@ class ArcadeEmitter {
         case 'arcade_settingsRead': {
             const type=this.menuField(b,'TYPE','settingReadTypes') || this.literalInput(b,'TYPE');
             if(type==='List')return `settings.list(${v('KEY')})`;
-            if(!['Number','String','NumberArray','Buffer'].includes(type)){this.note('Settings requires a fixed supported read type');return 'undefined';}
+            if(!['Number','String','NumberArray','StringArray','Buffer'].includes(type)){this.note('Settings requires a fixed supported read type');return 'undefined';}
+            if(type==='StringArray'){this.requiresStringArraySettings=true;return `bwStringArraySettings.read(${v('KEY')})`;}
             return `settings.read${type}(${v('KEY')})`;
         }
         case 'arcade_settingsExists': return `settings.exists(${v('KEY')})`;
@@ -2325,7 +2327,8 @@ class ArcadeEmitter {
         case 'arcade_log': push(`console.log(${this.arrayValue(b, 'TEXT')})`); return;
         case 'arcade_settingsWrite': {
             const type=this.menuField(b,'TYPE','settingWriteTypes') || this.literalInput(b,'TYPE');
-            if(!['Number','String','NumberArray','Buffer'].includes(type)){push(this.note('Settings requires a fixed supported write type'));return;}
+            if(!['Number','String','NumberArray','StringArray','Buffer'].includes(type)){push(this.note('Settings requires a fixed supported write type'));return;}
+            if(type==='StringArray'){this.requiresStringArraySettings=true;push(`bwStringArraySettings.write(${v('KEY')}, ${v('VALUE')})`);return;}
             push(`settings.write${type}(${v('KEY')}, ${v('VALUE')})`);return;
         }
         case 'arcade_settingsRemove': push(`settings.remove(${v('KEY')})`);return;
@@ -2723,7 +2726,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_settingsRead'){
                     const menu=inputBlock(blocks,value,'TYPE'),type=menu?.fields?.settingReadTypes?.[0] || literal(blocks,value,'TYPE'),id=Symbol('setting value');
                     if(type==='Number')numbers.add(id);else if(type==='String')strings.add(id);else if(type==='Buffer')graphBufferValues.add(id);
-                    else if(type==='NumberArray' || type==='List'){arrays.add(id);const item=Symbol('setting array item');(type==='NumberArray'?numbers:strings).add(item);elements.push([id,item]);}
+                    else if(type==='NumberArray' || type==='StringArray' || type==='List'){arrays.add(id);const item=Symbol('setting array item');(type==='NumberArray'?numbers:strings).add(item);elements.push([id,item]);}
                     else anys.add(id);return id;
                 }
                 if(value.opcode==='arcade_spriteDataRead') {
@@ -2875,7 +2878,7 @@ class ArcadeEmitter {
                 }
                 if(block.opcode==='arcade_settingsWrite'){
                     const menu=inputBlock(blocks,block,'TYPE'),type=menu?.fields?.settingWriteTypes?.[0] || literal(blocks,block,'TYPE'),value=ref(inputBlock(blocks,block,'VALUE'));
-                    if(type==='NumberArray' && value){arrays.add(value);const item=Symbol('setting write item');numbers.add(item);elements.push([value,item]);}
+                    if((type==='NumberArray' || type==='StringArray') && value){arrays.add(value);const item=Symbol('setting write item');(type==='NumberArray'?numbers:strings).add(item);elements.push([value,item]);}
                     if(type==='Buffer' && value)graphBufferValues.add(value);
                 }
                 if(block.opcode==='arcade_setSpriteProperty' && literal(blocks,block,'PROPERTY')==='data') {
@@ -3541,7 +3544,7 @@ export function projectToArcade (project, opts = {}) {
     const songFactory = [...e.songAssets.values()].map(resource =>
         `            case ${JSON.stringify(resource.name)}: case ${JSON.stringify(resource.id)}: return hex\`${resource.hex}\``).join('\n');
     const songSource = songFactory ? `namespace ${songNamespace} {\n    helpers._registerFactory("song", function (name: string) {\n        switch (helpers.stringTrim(name)) {\n${songFactory}\n        }\n        return null\n    })\n}\n` : '';
-    const ts = e.tileAssets.inlineSource() + songSource + projectTs;
+    const ts = (e.requiresStringArraySettings ? STRING_ARRAY_SETTINGS_SOURCE+'\n' : '') + e.tileAssets.inlineSource() + songSource + projectTs;
     // Publish unused assets as well, without introducing unused main-code helpers.
     e.prepareAuthoredAnimations();
     const resources = [...e.authoredAnimationArrays.values()];
@@ -3553,6 +3556,7 @@ export function projectToArcade (project, opts = {}) {
             `\n                return [${resource.literals.join(',\n')}]`).join('\n')}\n        }\n        return null\n    })\n}\n`
     } : {};
     Object.assign(assetFiles, e.tileAssets.files());
+    if(e.requiresStringArraySettings)assetFiles[STRING_ARRAY_SETTINGS_PATH]=STRING_ARRAY_SETTINGS_SOURCE;
     if (e.songAssets.size) {
         assetFiles['songs.g.jres'] = JSON.stringify(Object.fromEntries([...e.songAssets.values()].map(resource =>
             [resource.id, {mimeType: SONG_MIME, namespace: 'mySongs.', displayName: resource.name, data: resource.hex}])), null, 4) + '\n';

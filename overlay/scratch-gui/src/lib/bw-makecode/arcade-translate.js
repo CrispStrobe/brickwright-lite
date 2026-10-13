@@ -1891,8 +1891,12 @@ class ArcadeTranslator extends BaseTranslator {
     /** A program binding (global, function, local, parameter or capture) named `name`. */
     settingsExpression(node) {
         if(!this.handleTemplates || node?.type!=='Call')return null;
-        const api=this.path(node.callee),match=/^(settings|blockSettings)\.(read(Number|String|NumberArray|Buffer)|exists|list|remove|clear|write(Number|String|NumberArray|Buffer))$/.exec(api||'');
+        let api=this.path(node.callee);
+        if(api==='bwStringArraySettings.read' && !this.bindsName('bwStringArraySettings'))api='blockSettings.readStringArray';
+        if(api==='bwStringArraySettings.write' && !this.bindsName('bwStringArraySettings'))api='blockSettings.writeStringArray';
+        const match=/^(settings|blockSettings)\.(read(Number|String|NumberArray|StringArray|Buffer)|exists|list|remove|clear|write(Number|String|NumberArray|StringArray|Buffer))$/.exec(api||'');
         if(!match || this.bindsName(match[1]))return null;
+        if(match[1]==='settings' && (match[3]==='StringArray' || match[4]==='StringArray')){this.note(`${api} is not an original SDK API; use bwStringArraySettings with its owned helper`);return 'undefined value';}
         const method=match[2],a=node.args||[];
         if(method==='exists' && a.length===1)return `arcade setting (${this.expr(a[0])}) exists`;
         if(method==='list' && a.length<=(match[1]==='blockSettings'?0:1))return `arcade read setting (${a[0]?this.expr(a[0]):'""'}) type List`;
@@ -1902,8 +1906,10 @@ class ArcadeTranslator extends BaseTranslator {
     }
     settingsStatement(api,a,push) {
         if(!this.handleTemplates)return false;
-        const match=/^(settings|blockSettings)\.(write(Number|String|NumberArray|Buffer)|remove|clear)$/.exec(api||'');
+        if(api==='bwStringArraySettings.write' && !this.bindsName('bwStringArraySettings'))api='blockSettings.writeStringArray';
+        const match=/^(settings|blockSettings)\.(write(Number|String|NumberArray|StringArray|Buffer)|remove|clear)$/.exec(api||'');
         if(!match || this.bindsName(match[1]))return false;
+        if(match[1]==='settings' && match[3]==='StringArray'){push(this.note(`${api} is not an original SDK API; use bwStringArraySettings with its owned helper`));return true;}
         const method=match[2];
         if(match[3] && a.length===2)push(`arcade write setting (${this.expr(a[0])}) type ${match[3]} value (${this.arrayElementValue(a[1])})`);
         else if(method==='remove' && a.length===1)push(`arcade remove setting (${this.expr(a[0])})`);
@@ -3137,10 +3143,12 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(api==='characterAnimations.matchesRule')return new Set(['boolean']);
             if(!mathDeclared && /^Math\.(?:abs|min|max|pow|round|floor|ceil|trunc|sign|sqrt|sin|cos|tan|asin|acos|atan|atan2|log|exp|random|randomRange|imul|idiv)$/.test(api || ''))return new Set(['number']);
             if(['mp.playerSelector','mp.getPlayerByNumber','mp.getPlayerByIndex','mp.getPlayerBySprite'].includes(api))return new Set(['player']);
-            const settingRead=/^(?:settings|blockSettings)\.(read(Number|String|NumberArray|Buffer)|exists|list)$/.exec(api||'');
+            if(api==='bwStringArraySettings.read')return new Set(['array','string-array']);
+            const settingRead=/^(?:settings|blockSettings)\.(read(Number|String|NumberArray|StringArray|Buffer)|exists|list)$/.exec(api||'');
             if(settingRead){
                 if(settingRead[1]==='list')return new Set(['array','string-array']);
                 if(settingRead[1]==='exists')return new Set(['boolean']);
+                if(settingRead[2]==='StringArray')return new Set(['array','string-array']);
                 if(settingRead[2]==='NumberArray')return new Set(['array','number-array']);
                 if(settingRead[2]==='Number')return new Set(['number']);
                 if(settingRead[2]==='String')return new Set(['string']);
@@ -3686,7 +3694,8 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
         if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || ['game.ask','game.askForString','game.askForNumber','controller.pauseUntilAnyButtonIsPressed'].includes(t.path(node.callee))))return true;
-        if(node.type==='Call' && /^(?:settings|blockSettings)\.(?:(?:write|read)(?:Number|String|NumberArray|Buffer)|exists|list|remove|clear)$/.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && /^bwStringArraySettings\.(?:read|write)$/.test(t.path(node.callee)||''))return true;
+        if(node.type==='Call' && /^(?:settings|blockSettings)\.(?:(?:write|read)(?:Number|String|NumberArray|StringArray|Buffer)|exists|list|remove|clear)$/.test(t.path(node.callee)||''))return true;
         if(t.textSpriteReferences?.has(node) || node.type==='Call' && t.path(node.callee)==='textsprite.create')return true;
         if(node.type==='Call' && /^sprites\.(?:(?:set|read)Data(?:Number|String|Boolean|Sprite)|changeDataNumberBy)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && t.path(node.callee)==='MultiplayerState.create')return true;

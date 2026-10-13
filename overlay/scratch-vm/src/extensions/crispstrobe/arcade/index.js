@@ -876,9 +876,9 @@ module.exports = makeExt(`// Name: Arcade
           ,animationProperties: {acceptReporters: false, items: ['image', 'action', 'interval']}
           ,animationTypes: {acceptReporters: true, items: [{text:'all',value:'0'}, {text:'image',value:'1'}, {text:'movement',value:'2'}]}
           ,imageProperties: {acceptReporters: false, items: ['width', 'height']}
-          ,settingWriteTypes:{acceptReporters:false,items:['Number','String','NumberArray','Buffer']}
+          ,settingWriteTypes:{acceptReporters:false,items:['Number','String','NumberArray','StringArray','Buffer']}
           ,textSpriteProperties:{acceptReporters:false,items:['text','bg','fg','maxFontHeight','borderWidth','borderColor','padding','outlineWidth','outlineColor','icon']}
-          ,settingReadTypes:{acceptReporters:false,items:['Number','String','NumberArray','Buffer','List']}
+          ,settingReadTypes:{acceptReporters:false,items:['Number','String','NumberArray','StringArray','Buffer','List']}
           ,spriteDataTypes:{acceptReporters:false,items:['Number','String','Boolean','Sprite']}
           ,spriteDataReadTypes:{acceptReporters:false,items:['Number','String','Sprite']}
           ,bufferFormats: {acceptReporters: true, items: Object.keys(dependencies.buffers.NumberFormat).filter(key=>!/^\\d+$/.test(key))}
@@ -965,18 +965,18 @@ module.exports = makeExt(`// Name: Arcade
       const input=block?.inputs?.VALUE;
       const shadow=input && input.block===input.shadow && util?.target?.blocks?.getBlock(input?.shadow);
       if(type==='Number' && typeof value==='string' && shadow && ['math_number','math_integer','math_whole_number','math_positive_number','math_angle','text'].includes(shadow.opcode))value=Scratch.Cast.toNumber(value);
-      if(type==='NumberArray'){value=Scratch.BWValues.arrayValue(this._runtime,args.VALUE);if(!value || value.some(v=>typeof Scratch.BWValues.decode(v)!=='number'))throw new Error('Arcade settings require a number array');value=value.map(v=>Scratch.BWValues.decode(v));}
+      if(type==='NumberArray' || type==='StringArray'){value=Scratch.BWValues.arrayValue(this._runtime,args.VALUE);const elementType=type==='NumberArray'?'number':'string';if(!value || value.some(v=>typeof Scratch.BWValues.decode(v)!==elementType))throw new Error('Arcade settings require a '+elementType+' array');value=value.map(v=>Scratch.BWValues.decode(v));}
       else if(type==='Buffer')value=this._buffer(args.VALUE);
       else if(type==='Number' && typeof value!=='number' && value!=null || type==='String' && typeof value!=='string')throw new Error('Arcade setting value type does not match');
-      if(!['Number','String','NumberArray','Buffer'].includes(type))throw new Error('Arcade setting type is not supported');
+      if(!['Number','String','NumberArray','StringArray','Buffer'].includes(type))throw new Error('Arcade setting type is not supported');
       this._settingsStore().call('write'+type,key,value);
     });}
     settingsRead(args){return this._settingsGuard(()=>{
       const type=args.TYPE,key=Scratch.BWValues.decode(args.KEY);
-      if(!['Number','String','NumberArray','Buffer','List'].includes(type))throw new Error('Arcade setting read type is not supported');
+      if(!['Number','String','NumberArray','StringArray','Buffer','List'].includes(type))throw new Error('Arcade setting read type is not supported');
       const value=this._settingsStore().call(type==='List'?'list':'read'+type,key);
       if(type==='List')return Scratch.BWValues.arrayReference(this._runtime,value.data);
-      if(type==='NumberArray' && Array.isArray(value))return Scratch.BWValues.arrayReference(this._runtime,value);
+      if((type==='NumberArray' || type==='StringArray') && Array.isArray(value))return Scratch.BWValues.arrayReference(this._runtime,value);
       if(type==='Buffer' && value)return this._bufferReference(value);
       return Scratch.BWValues.encode(value);
     });}
