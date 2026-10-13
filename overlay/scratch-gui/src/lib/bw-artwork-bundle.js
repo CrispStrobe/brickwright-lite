@@ -6,11 +6,11 @@
  * artwork edited by Scratch or an older Brickwright.
  */
 import {animationResourceFromDocument} from './bw-animation-resources.js';
-import {editablePixelSize} from './bw-makecode/pixel-image.js';
+import {editablePixelSize, pixelDocumentWithinBudget} from './bw-makecode/pixel-image.js';
 
 const ARTWORK_PATH = 'brickwright/artwork/v1.json';
 const ARTWORK_FORMAT = 'brickwright-artwork';
-const ARTWORK_VERSION = 7;
+const ARTWORK_VERSION = 8;
 const MAX_ARTWORK_BYTES = 64 * 1024 * 1024;
 const MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;
 
@@ -76,6 +76,7 @@ const validateDocument = (doc, maxBytes = MAX_DOCUMENT_BYTES) => {
     }
     if (Object.prototype.hasOwnProperty.call(doc, 'pixelScale') && (!Number.isInteger(doc.pixelScale) ||
         doc.pixelScale < 1 || doc.pixelScale > 64)) throw new Error('invalid pixel scale');
+    if (!pixelDocumentWithinBudget(doc)) throw new Error('invalid pixel source or artwork pixel budget exceeded');
     const pixelSize = validateLayers(doc.layers);
     if (Object.prototype.hasOwnProperty.call(doc, 'activeLayerId') &&
         !doc.layers.some(layer => layer.id === doc.activeLayerId)) throw new Error('invalid active layer');
@@ -127,6 +128,8 @@ const validateDocument = (doc, maxBytes = MAX_DOCUMENT_BYTES) => {
 // readers preserve this source as opaque future data instead of dropping frames.
 const artworkBundleVersion = records => Math.max(1, ...records.map(record => {
     const document = record.document;
+    if (document.layers.some(layer => layer.content.kind === 'pixels' &&
+        (layer.content.value.width > 160 || layer.content.value.height > 160))) return 8;
     const extended = document.layers.some(layer => layer.content.kind === 'pixels' &&
         (layer.content.value.width > 128 || layer.content.value.height > 128));
     return document.version === 5 ? 6 : document.version === 4 ? 5 : Math.max(document.version, extended ? 4 : 1);
@@ -294,7 +297,7 @@ const inspectArtwork = async input => {
             const costume = project.targets?.[record.targetIndex]?.costumes?.[record.costumeIndex];
             if (!costume || costume.md5ext !== record.renderedMd5ext) continue;
             validateDocument(record.document);
-            if (record.document.version > payload.version || (record.document.version === 5 && payload.version < 6)) {
+            if (artworkBundleVersion([{document: record.document}]) > payload.version || (record.document.version === 5 && payload.version < 6)) {
                 throw new Error('artwork document exceeds bundle version');
             }
             // Every asset reference must point to the matching render or another ZIP asset.
@@ -388,7 +391,7 @@ const writeArtworkToZip = async (zip, vm) => {
         }
         const libraries = targets.some(target => target.bwAssetLibrary) ?
             (await import('./bw-asset-library.js')).assetLibraryRecords(vm, project) : [];
-        const version = libraries.length ? 7 : artworkBundleVersion(costumes);
+        const version = Math.max(libraries.length ? 7 : 1, artworkBundleVersion(costumes));
         zip.file(ARTWORK_PATH, JSON.stringify({format: ARTWORK_FORMAT, version, costumes,
             ...(libraries.length ? {libraries} : {})}));
         return true;

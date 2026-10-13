@@ -40,16 +40,18 @@
  */
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
 import {animationResourceFromDocument} from '../bw-animation-resources.js';
-import {encodeAnimationJres, nativeAnimationNameBase} from './animation-jres.js';
+import {encodeAnimationJres, nativeAnimationNameBase, isNativeAnimationName} from './animation-jres.js';
 import {ANIMATION_COMPANION_PATH, encodeAnimationCompanion} from './animation-companion.js';
 import {validateDocument} from '../bw-artwork-bundle.js';
 import {TileAssetExporter} from './tile-assets.js';
+import {SONG_MIME} from './song-jres.js';
 import {tilemapSource} from './tilemap-values.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {svgToPixels, quantizeRgba, toImgLiteral, remapPalette, nearestIndex} from './pixel-image.js';
 // arcade-character-animations Predicate members.
 const CHARACTER_PREDICATE_NAMES = ['NotMoving', 'Moving', 'FacingUp', 'FacingRight', 'FacingDown', 'FacingLeft', 'MovingUp', 'MovingRight',
     'MovingDown', 'MovingLeft', 'HittingWallUp', 'HittingWallRight', 'HittingWallDown', 'HittingWallLeft'];
+const BUFFER_FORMAT_NAMES = ['Int8LE','UInt8LE','Int16LE','UInt16LE','Int32LE','Int8BE','UInt8BE','Int16BE','UInt16BE','Int32BE','UInt32LE','UInt32BE','Float32LE','Float64LE','Float32BE','Float64BE'];
 // Background effects game over takes: particle screen effects and image effects.
 const BACKGROUND_EFFECTS = ['confetti', 'hearts', 'smiles', 'blizzard', 'bubbles', 'starField', 'clouds', 'none', 'dissolve', 'melt', 'slash', 'splatter'];
 import {ARCADE_PALETTE, imageToSvg} from './arcade-assets.js';
@@ -98,7 +100,7 @@ const ident = name => {
 
 const RESERVED = new Set(['score', 'life', 'info', 'game', 'scene', 'sprites', 'controller', 'Math', 'function', 'let', 'var',
     'if', 'else', 'while', 'for', 'return', 'true', 'false', 'null', 'new', 'this', 'pause', 'forever',
-    'SpriteKind', 'SpriteFlag', 'ControllerButtonEvent', 'DialogLayout', 'Image', 'console', 'control', 'assets', 'images', 'image', 'undefined']);
+    'SpriteKind', 'SpriteFlag', 'ControllerButtonEvent', 'DialogLayout', 'Image', 'Buffer', 'NumberFormat', 'console', 'control', 'assets', 'images', 'image', 'hex', 'img', 'undefined']);
 
 class ArcadeEmitter {
     constructor (project, opts) {
@@ -154,6 +156,7 @@ class ArcadeEmitter {
         this.guards = [];               // conditions that end the current script at a yield
         this.scriptSeq = 0;
         this.soundCache = new Map();
+        this.songAssets = new Map();
         this.valueOperationHelpers = new Map();
         this.namedArrays = new Map();
         this.legacyValueHelpers = new Map();
@@ -547,12 +550,12 @@ class ArcadeEmitter {
         const initial = entry?.[1]?.[1];
         const tag = owner.bwValues?.version === 1 && entry ? owner.bwValues.variables?.[entry[0]] : null;
         const reference = tag && Object.keys(tag).length === 1 && tag.bwReference;
-        // SB3's readable placeholder is not the value of an image variable.
-        // Saved image resources are per-run and do not resolve after loading;
+        // SB3's readable placeholder is not an image or byte-buffer value.
+        // These resources are per-run and do not resolve after loading;
         // source assignments recreate them. Honor the sidecar only while its
         // standard field still matches, just as the VM's SB3 loader does.
-        if (reference?.kind === 'image' && typeof reference.id === 'string' &&
-            initial === `[image reference ${reference.id}]`) {
+        if (['image','buffer'].includes(reference?.kind) && typeof reference.id === 'string' &&
+            initial === `[${reference.kind} reference ${reference.id}]`) {
             this.initialGlobals.set(ts, null);
             return ts;
         }
@@ -861,7 +864,7 @@ class ArcadeEmitter {
     isBoolean (b) {
         return !!b && ['arrays_valueTruthy','arrays_valueCompare','arrays_referenceRemove','arrays_referenceTruthy', 'arrays_contains', 'operator_and', 'operator_or', 'operator_not', 'operator_gt', 'operator_lt', 'operator_equals',
             'sensing_touchingobject', 'sensing_keypressed', 'sensing_mousedown', 'data_listcontainsitem',
-            'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
+            'arcade_bufferIsReadOnly', 'arcade_bufferEquals', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
     }
 
     menuField (b, input, field) {
@@ -977,6 +980,14 @@ class ArcadeEmitter {
         case 'arrays_contains': return `${this.namedOperationHelper('contains')}(${this.namedArray(b)}, ${this.arrayValue(b,'VALUE')})`;
         case 'arrays_toJSON': {const array=this.namedArray(b);return `${this.legacyValueHelper('json')}(${array} || [])`;}
         case 'arrays_createReference': {
+            const text=this.literalInput(b,'VALUES');
+            if(typeof text==='string'){
+                try {
+                    const values=JSON.parse(text);
+                    if(Array.isArray(values) && values.every(value=>typeof value==='number' && Number.isFinite(value)))
+                        return `[${values.map(value=>Object.is(value,-0)?'-0':String(value)).join(', ')}]`;
+                } catch(_) { /* The existing fixed-chain diagnostic remains authoritative. */ }
+            }
             const args=[];let tail=b.inputs?.VALUES,current=this.block(tail?.[1]);
             while(current?.opcode==='arrays_referenceValues'){args.push(this.arrayValue(current,'VALUE'));tail=current.inputs?.REST;current=this.block(tail?.[1]);}
             const empty=Array.isArray(tail?.[1])?String(tail[1][1])==='[]':current?.fields?.TEXT?.[0]==='[]';
@@ -1019,11 +1030,102 @@ class ArcadeEmitter {
         case 'arcade_animationAssetFrames':
         case 'arcade_animationAssetInterval': return this.authoredAnimation(b);
         case 'arcade_createImage': return `image.create(${v('WIDTH')}, ${v('HEIGHT')})`;
+        case 'arcade_createBuffer': return `control.createBuffer(${v('SIZE')})`;
+        case 'arcade_bufferFromHex': {
+            const hex=this.literalInput(b,'HEX');
+            return `Buffer.fromHex(${hex===null?v('HEX'):JSON.stringify(hex)})`;
+        }
+        case 'arcade_bufferFromUTF8': {
+            const text=this.literalInput(b,'TEXT');
+            return `Buffer.fromUTF8(${text===null?v('TEXT'):JSON.stringify(text)})`;
+        }
+        case 'arcade_bufferLiteral': {
+            const hex=this.literalInput(b,'HEX');
+            if(typeof hex!=='string' || !/^(?:[0-9a-f]{2})*$/i.test(hex.replace(/\s/g,''))) {
+                this.note('Byte buffer literal requires complete literal hexadecimal bytes');return 'undefined';
+            }
+            return 'hex`'+hex.replace(/\s/g,'').toLowerCase()+'`';
+        }
+        case 'arcade_bufferLength': return `${v('BUFFER')}.length`;
+        case 'arcade_bufferIsReadOnly': return `${v('BUFFER')}.isReadOnly()`;
+        case 'arcade_bufferConcat': return `${v('BUFFER')}.concat(${v('OTHER')})`;
+        case 'arcade_bufferEquals': return `${v('BUFFER')}.equals(${v('OTHER')})`;
+        case 'arcade_bufferHash': return `${v('BUFFER')}.hash(${v('BITS')})`;
+        case 'arcade_bufferIndexOf': return `${v('BUFFER')}.indexOf(${v('OTHER')})`;
+        case 'arcade_bufferGetByte': return `${v('BUFFER')}[${v('OFFSET')}]`;
+        case 'arcade_bufferFromBase64': {
+            const text=this.literalInput(b,'TEXT');
+            return `Buffer.fromBase64(${text===null?v('TEXT'):JSON.stringify(text)})`;
+        }
+        case 'arcade_bufferChunked': return `${v('BUFFER')}.chunked(${v('SIZE')})`;
+        case 'arcade_bufferChunkedFromUTF8': {
+            const text=this.literalInput(b,'TEXT');
+            return `Buffer.chunkedFromUTF8(${text===null?v('TEXT'):JSON.stringify(text)}, ${v('SIZE')})`;
+        }
+        case 'arcade_bufferPackedSize':
+        case 'arcade_bufferPack':
+        case 'arcade_bufferUnpack': {
+            const format=this.literalInput(b,'FORMAT');
+            const expression=format===null?v('FORMAT'):JSON.stringify(format);
+            return b.opcode==='arcade_bufferPackedSize'?`Buffer.packedSize(${expression})`:
+                b.opcode==='arcade_bufferPack'?`Buffer.pack(${expression}, ${v('ARRAY')})`:
+                `${v('BUFFER')}.unpack(${expression}, ${v('OFFSET')})`;
+        }
+        case 'arcade_bufferFromArray': return `Buffer.fromArray(${v('ARRAY')})`;
+        case 'arcade_bufferConcatArray': return `Buffer.concat(${v('ARRAY')})`;
+        case 'arcade_bufferToArray':
+        case 'arcade_bufferFormatSize':
+        case 'arcade_bufferGetNumber': {
+            const menu=this.menuField(b,'FORMAT','bufferFormats'), text=this.literalInput(b,'FORMAT');
+            const fmt=menu || (text===null?this.literalNumber(b,'FORMAT'):BUFFER_FORMAT_NAMES.includes(text)?text:Number(text));
+            const expression=BUFFER_FORMAT_NAMES.includes(fmt)?`NumberFormat.${fmt}`:
+                typeof fmt==='number' && BUFFER_FORMAT_NAMES[fmt-1]?`NumberFormat.${BUFFER_FORMAT_NAMES[fmt-1]}`:
+                b.opcode==='arcade_bufferFormatSize' && typeof fmt==='number' && Number.isFinite(fmt)?String(fmt):
+                fmt===null?v('FORMAT'):null;
+            if(expression===null){this.note('Byte buffer numeric format is not supported');return 'undefined';}
+            return b.opcode==='arcade_bufferToArray'?`${v('BUFFER')}.toArray(${expression})`:
+                b.opcode==='arcade_bufferFormatSize'?`Buffer.sizeOfNumberFormat(${expression})`:
+                `${v('BUFFER')}.getNumber(${expression}, ${v('OFFSET')})`;
+        }
+        case 'arcade_bufferSlice': return `${v('BUFFER')}.slice(${v('OFFSET')}, ${v('LENGTH')})`;
+        case 'arcade_bufferToBase64': return `${v('BUFFER')}.toBase64()`;
+        case 'arcade_bufferToHex': return `${v('BUFFER')}.toHex()`;
+        case 'arcade_bufferToText': return `${v('BUFFER')}.toString()`;
+        case 'arcade_songFromBuffer': return `music.createSong(${v('BUFFER')})`;
         case 'arcade_cloneImage': return `${v('IMAGE')}.clone()`;
         case 'arcade_screenImage': return 'screen';
         case 'arcade_melodyPlayable': return `music.melodyPlayable(${v('MELODY')})`;
         case 'arcade_stringPlayable': return `music.stringPlayable(${v('MELODY')}, ${v('TEMPO')})`;
         case 'arcade_tonePlayable': return `music.tonePlayable(${v('FREQUENCY')}, ${v('DURATION')})`;
+        case 'arcade_namedSongPlayable':
+        case 'arcade_songPlayable': {
+            const literal = this.literalInput(b, 'HEX');
+            if (literal !== null) {
+                const text = String(literal).replace(/\s/g, '');
+                if (!/^(?:[0-9a-f]{2}){7,}$/i.test(text) || !/^00/i.test(text)) {
+                    this.note('Arcade song requires complete version-zero hexadecimal bytes');
+                    return 'undefined';
+                }
+                if (b.opcode === 'arcade_namedSongPlayable') {
+                    const name = this.literalInput(b, 'NAME');
+                    if (!isNativeAnimationName(name)) {
+                        this.note('Named song export requires a literal native asset name');
+                        return 'undefined';
+                    }
+                    const prior = this.songAssets.get(name);
+                    if (prior && prior.hex !== text.toLowerCase()) {
+                        this.note(`Conflicting song bytes for asset ${JSON.stringify(name)}`);
+                        return 'undefined';
+                    }
+                    const resource = prior || {id: `song${this.songAssets.size + 1}`, name, hex: text.toLowerCase()};
+                    this.songAssets.set(name, resource);
+                    return `music.createSong(assets.song\`${name}\`)`;
+                }
+                return 'music.createSong(hex`' + text.toLowerCase() + '`)';
+            }
+            if (b.opcode === 'arcade_namedSongPlayable') this.note('Named song export requires literal hexadecimal bytes');
+            return `music.createSong(Buffer.fromHex(${v('HEX')}))`;
+        }
         case 'arcade_soundEffect': {
             const wave = this.musicField(b, 'WAVE', 'WaveShape'), effect = this.musicField(b, 'EFFECT', 'SoundExpressionEffect');
             const curve = this.musicField(b, 'CURVE', 'InterpolationCurve');
@@ -1127,6 +1229,11 @@ class ArcadeEmitter {
             const property = this.field(b, 'PROPERTY');
             if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data'].includes(property)){this.note(`Arcade sprite property ${property} is unsupported`);return this.na();}
             return `${v('ID')}.${property}`;
+        }
+        case 'arcade_menu_bufferFormats': {
+            const format=this.field(b,'bufferFormats');
+            if(!BUFFER_FORMAT_NAMES.includes(format)){this.note('Byte buffer numeric format is not supported');return 'undefined';}
+            return `NumberFormat.${format}`;
         }
         case 'arcade_menu_scaleAnchors': return String(Number(this.field(b,'scaleAnchors')));
         case 'arcade_menu_cameraProperties': return String(Number(this.field(b,'cameraProperties')));
@@ -1541,6 +1648,38 @@ class ArcadeEmitter {
         }
         case 'arcade_clearSpriteEffects': push(`effects.clearParticles(${v('ID')})`); return;
         case 'arcade_gameOver': push(`game.gameOver(${this.boolValue(b, 'WIN')})`); return;
+        case 'arcade_carnivalCustomGameOver': {
+            const effect=this.field(b,'EFFECT'),scoring=this.field(b,'SCORING');
+            if(!['unset','confetti','hearts','smiles','blizzard','bubbles','starField','clouds','none','dissolve','melt','slash','splatter'].includes(effect) ||
+                !['unset','None','HScore','LScore','HTime','LTime'].includes(scoring)) {
+                push(`// ${this.note('Carnival custom game-over needs a supported effect and scoring type')}`);return;
+            }
+            this.requiresCarnivalPackage=true;
+            // Flags describe presence, not score truthiness. Export branches
+            // for editable flag expressions so ordinary MakeCode conditionals
+            // preserve absence and import back through existing control blocks.
+            const option = (field, emit) => {
+                const flag=this.boolValue(b,field);
+                if(flag==='true' || flag==='false')emit(flag==='true');
+                else {push(`if (${flag}) {`);emit(true);push('} else {');emit(false);push('}');}
+            };
+            option('HAS_SOUND', hasSound => option('HAS_SCORE', hasScore => {
+                push(`carnival.customGameOverExpanded(${v('MESSAGE')}, ${effect==='unset'?'undefined':`effects.${effect}`}, ${hasSound?v('SOUND'):'undefined'}, ${scoring==='unset'?'undefined':`carnival.ScoreTypes.${scoring}`}, ${hasScore?v('SCORE'):'undefined'})`);
+            }));return;
+        }
+        case 'arcade_carnivalCountdown':
+        case 'arcade_carnivalGameOver': {
+            this.requiresCarnivalPackage=true;
+            const style=this.field(b,'STYLE'),effect=this.field(b,'EFFECT');
+            if(!['Win','Lose','Score','Timed','Multi','Custom'].includes(style) ||
+                !['unset','confetti','hearts','smiles','blizzard','bubbles','starField','clouds','none','dissolve','melt','slash','splatter'].includes(effect)) {
+                push(this.note('Carnival command has an unsupported style or effect'));return;
+            }
+            const args=[`carnival.WinTypes.${style}`];
+            if(effect!=='unset')args.push(`effects.${effect}`);
+            if(b.opcode==='arcade_carnivalCountdown')args.unshift(v('SECONDS'));
+            push(`carnival.${b.opcode==='arcade_carnivalCountdown'?'startCountdownGame':'onGameOverExpanded'}(${args.join(', ')})`);return;
+        }
         case 'arcade_legacyGameOver': {
             const effect = this.field(b, 'EFFECT');
             if (effect !== 'unset' && !BACKGROUND_EFFECTS.includes(effect)) { push(`// ${this.note(`Unsupported Arcade effect ${effect}`)}`); return; }
@@ -1833,6 +1972,24 @@ class ArcadeEmitter {
             return;
         }
         case 'arcade_copyImageFrom': push(`${v('IMAGE')}.copyFrom(${v('SOURCE')})`);return;
+        case 'arcade_bufferSetByte': push(`${v('BUFFER')}[${v('OFFSET')}] = ${v('VALUE')}`);return;
+        case 'arcade_bufferSetNumber': {
+            const menu=this.menuField(b,'FORMAT','bufferFormats'), text=this.literalInput(b,'FORMAT');
+            const fmt=menu || (text===null?this.literalNumber(b,'FORMAT'):BUFFER_FORMAT_NAMES.includes(text)?text:Number(text));
+            const expression=BUFFER_FORMAT_NAMES.includes(fmt)?`NumberFormat.${fmt}`:
+                typeof fmt==='number' && BUFFER_FORMAT_NAMES[fmt-1]?`NumberFormat.${BUFFER_FORMAT_NAMES[fmt-1]}`:
+                fmt===null?v('FORMAT'):null;
+            if(expression===null){this.note('Byte buffer numeric format is not supported');return;}
+            push(`${v('BUFFER')}.setNumber(${expression}, ${v('OFFSET')}, ${v('VALUE')})`);return;
+        }
+        case 'arcade_bufferPackAt': {
+            const format=this.literalInput(b,'FORMAT');
+            push(`${v('BUFFER')}.packAt(${v('OFFSET')}, ${format===null?v('FORMAT'):JSON.stringify(format)}, ${v('ARRAY')})`);return;
+        }
+        case 'arcade_bufferWrite': push(`${v('BUFFER')}.write(${v('OFFSET')}, ${v('SOURCE')})`);return;
+        case 'arcade_bufferFill': push(`${v('BUFFER')}.fill(${v('VALUE')}, ${v('OFFSET')}, ${v('LENGTH')})`);return;
+        case 'arcade_bufferShift': push(`${v('BUFFER')}.shift(${v('AMOUNT')}, ${v('OFFSET')}, ${v('LENGTH')})`);return;
+        case 'arcade_bufferRotate': push(`${v('BUFFER')}.rotate(${v('AMOUNT')}, ${v('OFFSET')}, ${v('LENGTH')})`);return;
         case 'arcade_scrollImage': push(`${v('IMAGE')}.scroll(${v('X')}, ${v('Y')})`);return;
         case 'arcade_mutateImage': {
             const op=this.field(b,'OP'); if(!['fill','replace','flipX','flipY'].includes(op)){this.note(`Unsupported Arcade image operation ${op}`);return;}
@@ -2299,7 +2456,7 @@ class ArcadeEmitter {
     /** Infer Image argument annotations from native image operations and
      * resource aliases. Constraint edges carry types through forwarded calls. */
     imageProcedureParameters () {
-        const graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
+        const graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
         const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],lookupTypes=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
         const inputBlock = (blocks, b, name) => {
@@ -2360,6 +2517,11 @@ class ArcadeEmitter {
                 if(value.opcode==='arrays_namedReference'){const id='named-array:'+literal(blocks,value,'NAME');arrays.add(id);return id;}
                 if(['arrays_parseLegacyValue','arrays_jsonValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
                 if(value.opcode==='arcade_spriteToString') {const id=Symbol('sprite text');strings.add(id);return id;}
+                if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferFromBase64','arcade_bufferLiteral','arcade_bufferSlice','arcade_bufferConcat','arcade_bufferFromArray','arcade_bufferConcatArray','arcade_bufferPack'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
+                if(['arcade_bufferToArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8','arcade_bufferUnpack'].includes(value.opcode)){const id=`${key}:buffer-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
+                if(['arcade_bufferLength','arcade_bufferHash','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf','arcade_bufferFormatSize','arcade_bufferPackedSize'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
+                if(['arcade_bufferToHex','arcade_bufferToText','arcade_bufferToBase64'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
+                if(['arcade_bufferIsReadOnly','arcade_bufferEquals'].includes(value.opcode)){const id=Symbol('buffer readonly');booleans.add(id);return id;}
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);return id;}
                 if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);return id;}
                 if(['arrays_valueBinary','arrays_valueUnary'].includes(value.opcode)) {
@@ -2435,6 +2597,14 @@ class ArcadeEmitter {
                 for (const input of ['arcade_blitImage','arcade_imagesOverlap','arcade_copyImageFrom'].includes(block.opcode) ? ['IMAGE', 'SOURCE'] : ['IMAGE']) {
                     const image = ref(inputBlock(blocks,block,input));if(image)images.add(image);
                 }
+                if(block.inputs?.BUFFER){const buffer=ref(inputBlock(blocks,block,'BUFFER'));if(buffer)graphBufferValues.add(buffer);}
+                if(['arcade_bufferFromArray','arcade_bufferConcatArray','arcade_bufferToArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8','arcade_bufferPack','arcade_bufferPackAt','arcade_bufferUnpack'].includes(block.opcode)){
+                    const array=['arcade_bufferToArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8','arcade_bufferUnpack'].includes(block.opcode)?ref(block):ref(inputBlock(blocks,block,'ARRAY'));
+                    if(array){arrays.add(array);const item=Symbol('buffer array element');
+                        (['arcade_bufferConcatArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8'].includes(block.opcode)?graphBufferValues:numbers).add(item);elements.push([array,item]);}
+                }
+                if(block.opcode==='arcade_bufferWrite'){const buffer=ref(inputBlock(blocks,block,'SOURCE'));if(buffer)graphBufferValues.add(buffer);}
+                if(['arcade_bufferConcat','arcade_bufferEquals','arcade_bufferIndexOf'].includes(block.opcode)){const buffer=ref(inputBlock(blocks,block,'OTHER'));if(buffer)graphBufferValues.add(buffer);}
                 if(block.opcode==='arcade_eventPlayer'){const player=ref(block);if(player)graphPlayerValues.add(player);}
                 if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons','arcade_playerButtonPressed','arcade_getPlayerState','arcade_setPlayerState','arcade_changePlayerState'].includes(block.opcode)){
                     const player=ref(inputBlock(blocks,block,'PLAYER'));if(player)graphPlayerValues.add(player);
@@ -2504,7 +2674,7 @@ class ArcadeEmitter {
         }
         edges.push(...captureLinks);
         const graph=new ValueTypeGraph();
-        for(const [values,type] of [[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
+        for(const [values,type] of [[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
         for(const [a,b] of edges)graph.merge(a,b);
         for(const [receiver,value] of dataProperties)if(receiver)graph.merge(graph.property(receiver,'data'),value);
         for(const [,value] of dataProperties)if(!graph.node(value).types.size)graph.add(value,'any');
@@ -2534,12 +2704,12 @@ class ArcadeEmitter {
         // to its elements (which would incorrectly change the argument type).
         for(const [array,value] of lookupTypes)if(array && value){
             const element=graph.element(array),types=graph.node(element).types;
-            const searched=[...graph.node(value).types].filter(type=>['Image','Sprite','TileLocation','LegacyTile','Animation','SevenSegDigit','DigitCounter','Dart','Corgio','Scene','PhysicsEngine','Player','array','number','string','boolean'].includes(type));
+            const searched=[...graph.node(value).types].filter(type=>['Buffer','Image','Sprite','TileLocation','LegacyTile','Animation','SevenSegDigit','DigitCounter','Dart','Corgio','Scene','PhysicsEngine','Player','array','number','string','boolean'].includes(type));
             if(types.size && searched.some(type=>!types.has(type)))graph.add(element,'any');
         }
         // Element and alias joins can make a nested array visible to reads or
         // procedure results that had no annotation of their own.
-        const inferred=new Map([[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
+        const inferred=new Map([[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
         for(const [key] of graph.nodes)for(const [values,type] of inferred)if(graph.has(key,type))values.add(key);
         this.spriteReturnFunctions = new Set([...parameters.keys()].filter(key=>graph.arrayType(`${key}:result`)==='Sprite'));
         this.spriteVariableIds = new Set([...sprites].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='Sprite').map(key=>key.slice(9)));
@@ -2548,7 +2718,7 @@ class ArcadeEmitter {
         const arrayType=value=>graph.arrayType(value);
         this.mixedValueVariableIds=new Set([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && (graph.node(key).types.size>1 || graph.has(key,'any')) && graph.arrayType(key)==='any').map(key=>key.slice(9)));
         this.booleanVariableIds=new Set([...booleans].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='boolean').map(key=>key.slice(9)));
-        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['mp.Player','string','tiles.Location','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
+        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['Buffer','mp.Player','string','tiles.Location','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
         this.valueReturnTypes=new Map([...parameters.keys()].map(key=>[key,graph.arrayType(`${key}:result`)]));
         this.localValueTypes=new Map();
         for(const key of graph.nodes.keys()){
@@ -2956,7 +3126,7 @@ class ArcadeEmitter {
             const mixedInitialScalar = this.initialGlobals.has(n) &&
                 ['string', 'boolean', 'number'].some(kind => kinds.has(kind) && kind !== initialScalarType);
             out.push(arrayKind?`let ${n}: ${arrayKind} = null`:this.handleVars.has(n) ? `let ${n}: Sprite = null` :
-                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
+                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
         }
         if (this.usesAnimationResources) {
             const resources = [...this.authoredAnimationArrays.values()];
@@ -3119,8 +3289,19 @@ class ArcadeEmitter {
 export function projectToArcade (project, opts = {}) {
     const e = new ArcadeEmitter(project, opts);
     const projectTs = e.emit();
+    e.prepareAuthoredAnimations();
+    const songNamespace = e.animationSymbol('__bwSongAssets');
+    const songNames = new Set(e.songAssets.keys());
+    let songId = 1;
+    for (const resource of e.songAssets.values()) {
+        while (songNames.has(`song${songId}`)) songId++;
+        resource.id = `song${songId++}`;
+    }
     // Plain TypeScript has no companion resource files; keep it executable.
-    const ts = e.tileAssets.inlineSource() + projectTs;
+    const songFactory = [...e.songAssets.values()].map(resource =>
+        `            case ${JSON.stringify(resource.name)}: case ${JSON.stringify(resource.id)}: return hex\`${resource.hex}\``).join('\n');
+    const songSource = songFactory ? `namespace ${songNamespace} {\n    helpers._registerFactory("song", function (name: string) {\n        switch (helpers.stringTrim(name)) {\n${songFactory}\n        }\n        return null\n    })\n}\n` : '';
+    const ts = e.tileAssets.inlineSource() + songSource + projectTs;
     // Publish unused assets as well, without introducing unused main-code helpers.
     e.prepareAuthoredAnimations();
     const resources = [...e.authoredAnimationArrays.values()];
@@ -3132,6 +3313,11 @@ export function projectToArcade (project, opts = {}) {
             `\n                return [${resource.literals.join(',\n')}]`).join('\n')}\n        }\n        return null\n    })\n}\n`
     } : {};
     Object.assign(assetFiles, e.tileAssets.files());
+    if (e.songAssets.size) {
+        assetFiles['songs.g.jres'] = JSON.stringify(Object.fromEntries([...e.songAssets.values()].map(resource =>
+            [resource.id, {mimeType: SONG_MIME, namespace: 'mySongs.', displayName: resource.name, data: resource.hex}])), null, 4) + '\n';
+        assetFiles['songs.g.ts'] = songSource;
+    }
     const sourceEntries = [];
     for (const resource of resources) {
         try { validateDocument(resource.document); }
@@ -3151,7 +3337,7 @@ export function projectToArcade (project, opts = {}) {
         'main.ts': projectTs,
         ...assetFiles,
         'pxt.json': `${JSON.stringify({
-            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': 'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': 'github:microsoft/arcade-character-animations#v0.1.0'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
+            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresCarnivalPackage ? {'arcade-carnival':'github:microsoft/arcade-carnival#v0.0.7'} : {}), ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': 'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': 'github:microsoft/arcade-character-animations#v0.1.0'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
             files: [...Object.keys(assetFiles), 'main.ts'], preferredEditor: 'tsprj',
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`

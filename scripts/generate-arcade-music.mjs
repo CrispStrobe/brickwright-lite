@@ -18,14 +18,17 @@ const root = resolve(import.meta.dirname, '..');
 const require = createRequire(resolve(root, 'packages/scratch-gui/package.json'));
 const ts = require('typescript');
 const bundle = JSON.parse(readFileSync(resolve(root, 'packages/scratch-gui/static/makecode/arcade/target.json')));
-const files = ['music.ts', 'melody.ts', 'playable.ts', 'legacy.ts', 'soundEffect.ts'];
+const files = ['music.ts', 'melody.ts', 'playable.ts', 'legacy.ts', 'soundEffect.ts', 'instrument.ts', 'sequencer.ts'];
 const mixer = bundle.bundledpkgs.mixer;
 for (const file of files) if (typeof mixer[file] !== 'string') throw new Error(`mixer/${file} is missing from the pinned target`);
-// createSong needs the native sequencer (music::_createSequencer); it is not lowered.
-const joined = files.map(file => mixer[file]).join('\n')
-    .replace(/export function createSong\(song: Buffer\): Playable \{\s*return new sequencer\.Song\(song\);\s*\}/,
-        'export function createSong(song: Buffer): Playable { throw new Error("Arcade songs are not available"); }');
-if (!joined.includes('throw new Error("Arcade songs are not available")')) throw new Error('createSong changed in the pinned target');
+// Retain the original song decoder, instrument renderer and TypeScript sequencer.
+// The host selects the non-simulator path, which queues real mixer instructions.
+const emptyTrackGuard = 'if (track.currentNoteEvent.startTick === this.currentTick)';
+if (!mixer['sequencer.ts'].includes(emptyTrackGuard)) throw new Error('sequencer empty-track boundary changed');
+const joined = files.map(file => file === 'sequencer.ts'
+    // Empty note streams have no current event; do not read into the next track.
+    ? mixer[file].replace(emptyTrackGuard, 'if (track.noteEventByteLength > 0 && track.currentNoteEvent.startTick === this.currentTick)')
+    : mixer[file]).join('\n');
 // Functions marked `//% shim=music::name` are native in PXT: their bodies call the host.
 const shims = new Set();
 const source = joined.replace(/(\/\/% shim=music::(\w+)\n\s*(?:export )?function \w+\(([^)]*)\)[^{]*)\{[^}]*\}/g,
@@ -36,7 +39,7 @@ const source = joined.replace(/(\/\/% shim=music::(\w+)\n\s*(?:export )?function
     });
 const SHIMS = ['enableAmp', 'forceOutput', 'queuePlayInstructions', 'stopPlaying'];
 if ([...shims].sort().join() !== SHIMS.join()) throw new Error(`unexpected music shims: ${[...shims].sort().join(', ')}`);
-const {printed, asyncKeys} = lowerFibers(ts, source, 'mixer.ts');
+const {printed, asyncKeys} = lowerFibers(ts, source, 'mixer.ts', {asyncPrimitives: ['pause', 'pauseUntil']});
 const compiled = ts.transpileModule(printed, {compilerOptions: {target: ts.ScriptTarget.ES2018, removeComments: false}}).outputText;
 const removals = compiled.match(/[\w.]+\.removeElement\(/g) || [];
 const output = compiled.replace(/([\w.]+)\.removeElement\(/g, '__removeElement($1, ');
@@ -45,16 +48,17 @@ const hashes = files.map(file => `${file}: ${createHash('sha256').update(mixer[f
 const content = `// Generated from PXT Arcade ${bundle.versions.target}, pxt-common-packages (MIT).
 // Copyright (c) Microsoft Corporation. See static/licenses/pxt-common-packages.MIT.txt.
 // ${hashes.join('\n// ')}
+// Host adaptation: skip empty track note streams; use the TypeScript sequencer.
 // Pausing functions lowered to generators: ${asyncKeys.join(', ')}
 // Regenerate: node scripts/generate-arcade-music.mjs
 module.exports = function initializePxtMusic(host) {
 const {control, hex, NumberFormat, DAL} = host;
 const pause = host.pause;
+const pauseUntil = host.pauseUntil;
 const __shim = (name, args) => host.shims[name](...args);
 const Math = Object.create(globalThis.Math);
 Math.idiv = (a, b) => (a / b) | 0;
 Math.clamp = (low, high, value) => Math.min(high, Math.max(low, value));
-const sequencer = {_stopAllSongs() {}};
 const __removeElement = (array, element) => { const index = array ? array.indexOf(element) : -1; if (index >= 0) array.splice(index, 1); return index >= 0; };
 ${output}
 return {music, Note, BeatFraction, Sounds, WaveShape, InterpolationCurve, SoundExpressionEffect, SoundExpressionPlayMode};

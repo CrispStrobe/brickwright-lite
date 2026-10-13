@@ -3275,6 +3275,20 @@ Battle now compiles against its actual declared/transitive packages, but native
 GUI native carnival blocks, pseudocode, custom scoring/dialog execution, export
 and saved-project comparisons remain open. See the carnival contract in
 [the agent handoff](ARCADE-AGENT-HANDOFF.md#original-extension-compilation-and-carnival-contract--2026-10-11).
+
+### Carnival source-backed scoring/dialog core — 2026-10-11
+
+The pinned MIT carnival v0.0.7 scoring/countdown/dialog source now has a
+reproducible selected module with explicit fiber-to-Promise adaptation. Eleven
+contract/generation checks pass, including ties, negative scores, low-time
+records across module instances, first countdown registration and effect
+defaults. Tests observe host calls; native VM rendering/storage/lifetimes remain
+unqualified. Import diagnostics stay visible. User-facing countdown/game-over
+blocks, pseudocode, correct dependency export, saved-project reopening and
+production GUI controls remain open until host integration and original
+comparisons pass. See the [handoff](ARCADE-AGENT-HANDOFF.md#carnival-scoringdialog-implementation-slice--2026-10-11).
+
+
 ## Painted tilemap project persistence browser lane — 2026-10-11
 
 The CI tilemap painter journey now saves the actual GUI project as SB3 and
@@ -3298,3 +3312,397 @@ Corpus counts are not reranked by this browser-only lane.
 Tile names/myTiles identity, legacy colour-coded maps and painter sprite placement
 remain open. The 2026-10-11 merged painter already supports new-level creation;
 do not retain that as an unimplemented feature based on older checkpoints.
+
+### Carnival runtime, two authoring commands and program records — 2026-10-11
+
+The next candidate implements the two carnival countdown/game-over commands in
+native execution, ordinary extension blocks, pseudocode and MakeCode import/
+export with the pinned package dependency. Real custom scoring/dialog rendering
+uses the retained original module and native scene/font/music/button mechanisms.
+Program number records carry a Stage identity and snapshot in SB3; usable device
+localStorage retains the latest same-program scores. Refused writes propagate.
+The actual serializer requires hooks before and after target flattening.
+
+Thirty-two affected checks and an expanded 11-test host suite pass. Six controls
+compile and run in native/original engines, with matching opaque dialog text/body
+and a remaining 42-pixel animated-cursor phase difference per control. A real
+headless SB3 archive saves/loads records using source-injected serializer hooks;
+production GUI qualification is still pending. Do not infer full games or cloud
+storage from this evidence. No corpus counts change without a fresh audit.
+
+GUI gaps: hosted block/controller/save/reopen journey; general settings authoring
+UI; custom message/scoring/sound game-over API; timer HUD and remaining carnival
+helpers. `WinTypes.Custom` is exposed as a style, not the separate custom API.
+Dynamic styles remain diagnosed. Exact scope, storage semantics, source files
+and next steps are in [the host handoff](ARCADE-AGENT-HANDOFF.md#carnival-native-host-authoring-and-saved-records--2026-10-11).
+
+### Carnival GUI qualification gate prepared — 2026-10-11
+
+The hosted heavy shard now includes a real UI journey for carnival import,
+pseudocode, visible Blocks, green flag, controller A restart, File Save and
+fresh-context File Load with portable scores. The archive and screenshots are
+retained as CI artifacts. Native button-restart and all 12 host checks pass;
+13 workflow budget/timeout checks pass. **The production browser journey is
+pending execution**, so its GUI gap remains open. See
+[the journey contract](ARCADE-AGENT-HANDOFF.md#carnival-production-browser-journey--2026-10-11).
+
+
+### Carnival custom game-over implementation — 2026-10-11
+
+The next candidate closes the custom message/scoring/melody/optional-score API
+across native execution, ordinary extension blocks, pseudocode and MakeCode
+export/reimport. Sound/score presence flags preserve omitted arguments separately
+from zero; dynamic boolean flags export with normal conditional blocks. Actual
+native Melody objects supply playback and the original game-over sound setting.
+Invalid supplied sounds report errors. The retained pinned original owns scoring
+and defaults; no generic dialog substitution is used.
+
+31 affected core/host/custom checks and one invalid-sound check pass. Six actual
+original/exported-original controls compile/run and match native dialog rectangles
+with controlled clocks. Production GUI custom-block qualification, dynamic
+scoring/effect types, arbitrary sound objects, timer HUD and ball helpers remain
+open. Parent browser tests are queued. Neither whole-game equivalence nor corpus
+promotion is claimed. See [the custom API contract](ARCADE-AGENT-HANDOFF.md#carnival-custom-game-over-authoring--2026-10-11).
+
+
+Custom-source census was actually rerun against all 184 unchanged original
+blobs: still142 translated /41 partial /1 parse failure. Recovered Arrow Battle
+with its real project context separately imports with zero diagnostics; it is
+not a replacement census input or full-game execution result. Next priority is
+missing project artwork/maps plus song values/wrapper APIs and native-mode
+selection. See the refreshed census section in the handoff.
+
+## Carnival shared-parser integration repair — 2026-10-11
+
+Lite PR #803's first hosted build failed before browser execution: its two new
+Carnival words differed from the pinned producer, the tracked packages mirror
+was stale, and the dialect census still expected 277 operations. These failures
+are integration defects, not evidence that the browser journey passed.
+
+The repair adds the three Carnival words (including the custom game-over word
+used by stacked PR #804) to the shared producer in
+[sb3-creator PR #93](https://github.com/CrispStrobe/sb3-creator/pull/93). Lite
+explicitly adopts producer commit `06341e3dd0f5ddfbed6764ec5afe03b04b65e265`,
+refreshes its tracked mirror and generated authoring inventory, and expects 280
+dialect operations. The producer's Arcade dialect suite passed 323 tests.
+The extra custom word in this parent is grammar support; its runtime and GUI
+implementation remains in PR #804.
+
+Vendor identity and exact-delta gates remain intact: the adopted producer and
+Lite copies must match after the existing import rewrites. No downstream
+exception or new normalization is introduced. Hosted consumer build/browser
+qualification remains pending at this checkpoint. The immutable corpus result
+remains 142 translated, 41 partial, and one parse failure; this synchronization
+repair does not close a corpus gap.
+
+### Song authoring and native sequencing: open
+
+The song lane must cover real melodic/drum/polyphonic execution, playable
+reporters in Blocks and pseudocode, exact byte-preserving export/SB3, and an
+editable note/track/instrument/tempo asset view. Current `createSong` explicitly
+refuses execution. The ordered source and acceptance contract is in
+[the song handoff](ARCADE-AGENT-HANDOFF.md#song-implementation-next-lane--2026-10-11).
+Do not count a song editor or accepted hex value as completed playback.
+
+### Native song sequencing candidate — 2026-10-11
+
+The song runtime lane implements genuine version-zero PXT song playback with
+melodic/polyphonic/drum tracks, original instrument rendering, frame-clock
+sequencing, playback modes and cancellation. Four real original controls match
+active instruction bytes, with zero terminal padding explicitly accounted for.
+This is a candidate runtime slice, not completed song authoring.
+
+The next slice below supplies createSong import/export, normal Blocks/pseudocode
+reporter and actual SB3 roundtrips. Named editable song assets, the
+note/track/instrument/tempo UI, production GUI playback, other binary versions
+and simultaneous-song behavior remain open.
+Source, methods and qualification boundaries are in
+[the runtime handoff](ARCADE-AGENT-HANDOFF.md#native-song-sequencing-implementation-slice--2026-10-11).
+
+
+### Song values and roundtrips candidate — 2026-10-12
+
+The normal Blocks reporter and shared Code word `arcade song playable hex`
+construct the validated native song playable. Import/export supports literal
+hex and dynamic string expressions through `Buffer.fromHex`; unsupported Buffer
+forms retain diagnostics. Five new checks exercise actual VM playback, editing
+song bytes, export execution in original MakeCode and real SB3 save/reopen into
+a fresh VM. Together with affected runtime, canonical artifact and producer
+identity checks: 35 pass, no failures or skips. Producer grammar: 324 pass.
+
+**Still open:** named song assets; a real note/track/instrument/drum/tempo editor;
+transactional GUI saves; production browser creation/playback/export/reopen;
+general Buffer operations; simultaneous-song behavior; other binary versions.
+The reporter's hex field does not satisfy graphical song authoring.
+See [the complete contract](ARCADE-AGENT-HANDOFF.md#song-values-and-conversion-slice--2026-10-12).
+Parent hosted failures remain blockers; this focused qualification is not a
+production build claim.
+
+
+The locked 184-input census remains 142/41/1 at clean source `79b873478`.
+All three corpus song calls reference `assets.song` named `countdown`; the
+standalone snippets omit its bytes. Next: complete-project song asset resolution
+and named song authoring, with missing assets still diagnosed. Do not replace
+missing song data or reclassify partial projects on the basis of the five focused
+song fixtures.
+
+
+### Current combined source and metric boundary — 2026-10-12
+
+All surviving Arcade candidate heads (PR793–807 and810) plus named-song source
+are assembled in one integration tree. They are candidates awaiting complete
+hosted adoption; main does not contain all of them.54 selected checks pass
+across the preserved runs at code1ff099af6, including normal Code/Blocks,
+native/export/SB3 songs, Carnival and placement.
+
+Fresh main and combined static-import census is142/41/1 on identical184 inputs.
+An older "29 partial" compiler-dependent report also contains53 compile failures
+and1 parse failure; its separate static census is109/74/1.183 rows producing
+translation output are not183 fully compatible apps. Keep static import,
+original compilation, native execution, GUI authoring and behavioral equivalence
+separate. [Full reconciliation and continuation](ARCADE-AGENT-HANDOFF.md#combined-candidate-and-census-reconciliation--2026-10-12).
+
+## Approved complete Arcade closure campaign — 2026-10-12
+
+[The ordered plan](ARCADE-PARTIAL-CLOSURE-PLAN.md) tracks every original partial
+input and separates authentic project-context recovery from static diagnostics.
+Each API batch must expose editable normal Blocks and Code words, preserve
+MakeCode export and SB3 reopen, and record missing editor journeys here.
+Graphical song editing (notes/tracks/instruments/drums/tempo), transactional
+asset saves and production create/play/export/reopen remain open even though
+named song reporters and native song files exist in the combined candidate.
+Do not infer graphical authoring completion from a hex field or runtime tests.
+
+## Dependency-input bridge and GUI follow-up — 2026-10-12
+
+CLI `to-sb3 --fetch-extensions` now obtains real original PXT dependency inputs
+and prepares external helper code and exact fixed-instance image pixels for
+native translation. Root source/galleries remain separate from the internal
+view. Dependency hashes, notices and preparation provenance accompany SB3.
+Component runtime/export/reimport controls do not qualify the graphical flow.
+
+OPEN authoring/import GUI work:
+
+- Offer the same explicit dependency preparation from file/share import, show
+  progress and named fetch/parser/runtime failures, and preserve the original
+  project's source and dependencies for review/export.
+- Expose source/ref/hash/notice and compiler-only history exclusions in a
+  readable import report; distinguish a recovered snippet from a complete app.
+- Put dependency artwork in the asset library with original qualified identity
+  and readable labels; edit it through image/animation/tile/song editors and
+  verify that Blocks and pseudocode use the same edited resource.
+- Supply Buffer creation/access/mutation in Blocks and pseudocode with real
+  aliasing semantics, including namespace song buffers. This remains a
+  conversion gap; no GUI completion claim is made for it.
+- Extend wide animation authoring only alongside bounded codec/runtime/export
+  support and real save/reopen/browser controls. Imported artwork can exceed
+  the current native animation dimension limits.
+- Qualify GUI import → edit → run with controller → SB3 save/reopen → original
+  Arcade export/reimport. The current bridge has CLI/component evidence only.
+
+## Wide native animations: codec versus editor acceptance — 2026-10-12
+
+Native animation JRES dimensions now follow the u16 header, with1MiB packed
+and2Mi decoded pixels across at most64frames. The161x121/32-frame control
+matches original PXT bytes and every pixel. Pixel documents and publication
+still use `editablePixelSize` (160x160): wide animation library installation
+and authoring remain OPEN. Preserve viewport-external pixels and original
+resource identity through edit, Blocks/Code playback, collision, save/reopen
+and original MakeCode export. Align per-image bounds with explicit complete
+document/frame/layer budgets before extending the graphics editor.
+
+## Wide artwork authoring candidate — 2026-10-12
+
+Pixel indexed artwork and native animation resource lookup now support up
+to512x512, matching the existing SVG reader. An8Mi indexed-pixel budget covers
+all document frames/layers and the active-frame copy; the16MiB serialized
+document and64MiB artwork-bundle limits still apply. Native JRES export keeps
+its separate1MiB packed limit and reports oversized resources explicitly.
+
+Wide documents require artwork bundle8. Library installation and subsequent
+saves keep that version; old bundle7 readers preserve source byte for byte
+as future data. Narrow documents keep their existing minimum versions.
+Resize, new frame/layer and sheet slicing check pixel budgets before allocating
+new buffers, with English/German feedback. Imports check budgets before
+constructing editable frame copies. IDs, timing and external pixels are retained.
+
+A161x121/32-frame synthetic native project executes in the real VM, saves and
+reopens into a fresh VM, exports/reimports exact source and compiles/runs in
+original PXT. Native viewport clipping and offscreen frame pixels are checked.
+Actual Pixel load/resize/Undo/Redo controls verify no shrinking and refusal
+before oversized allocation. Historical bundle7 preservation also passes.
+The hosted animation browser gate now adds a two-frame wide import, visible
+Pixel corner painting outside the Arcade viewport, playback, bundle8 save/
+reopen and original-compiler GUI export. That new GUI journey is PENDING,
+not a completed browser receipt. Original184-input census142/41/1 unchanged.
+
+The focused wide-image collision and presented-screen oracle now passes:
+offscreen edge/transparent-neighbour collision, image mutation, all19200pixels,
+Code reconstruction, native export/reimport and SB3 reload. Hosted Pixel GUI
+acceptance remains separate and pending.
+
+### Byte-buffer foundation and remaining authoring — 2026-10-12
+
+The mixer now uses complete pinned PXT buffer algorithms, replacing its limited
+four-format adapter. The new bounded byte facade preserves shared mutable
+storage, copying slices, overlapping writes, fill/shift/rotate and all16 numeric
+formats. Original simulator controls compare real program results, including
+integer byte order, signedness and32/64-bit floats. Regeneration and Microsoft
+MIT attribution are retained; no importer diagnostic is removed by this slice.
+
+| Surface | Current boundary | Required next acceptance |
+| --- | --- | --- |
+| Mixer runtime bytes | Implemented and source-backed; each allocation capped at1MiB | Retain sound/song regression controls and hosted final-head gates |
+| Buffer values in variables/functions/arrays | No public Buffer reference yet | Distinct session-scoped identity; aliases share mutation; copies separate; reset/reopen cannot revive stale references |
+| Blocks and pseudocode | No Buffer vocabulary yet | Construction, length, byte and NumberFormat reads/writes, slicing/copying and encoding reporters; decompile/reparse and real VM execution |
+| Namespace/dependency song bytes | Remain diagnosed | Import real hex/constructed buffers; preserve init order and aliasing; createSong consumes their current bytes; export actual Buffer operations |
+| GUI byte/song authoring | Still open | Visible resource/byte inspector, editing and errors; create/edit/run/save/reopen/export in the real UI |
+
+Coordinate importer/helper changes with E10. Literal readonly bytes and mutable
+constructed buffers must retain original distinctions; never replace mutable
+storage with a guessed constant hex string. Original142/41/1 census unchanged.
+
+### Buffer reference authoring followup — 2026-10-12
+
+The preceding foundation's missing Buffer references and vocabulary now have
+candidate implementations. Native Blocks and Code expose16 words, genuine all16
+NumberFormat menus, session-scoped mutable references, detached slices, aliases
+through custom arguments and reference arrays, and a song reporter backed by
+actual shared bytes. Export emits proper Buffer/Buffer[] types and NumberFormat
+expressions; original PXT execution verifies results and song instructions.
+Code reconstruction and a fresh SB3 reopening execute the authored program.
+Producer/Arrays candidate adoption and final hosted gates remain pending.
+
+| GUI/import boundary | Remaining acceptance |
+| --- | --- |
+| Namespace Buffer imports | Coordinate E10; preserve declared constants, init order, mutable identity and current song bytes; keep diagnostics until wired |
+| New Buffer Blocks/Code in real browser | Author and edit byte/numeric operations, connect a dynamic format reporter, run/save/reopen/export; focused Node VM controls alone do not satisfy this |
+| Byte inspector/editor | Show readonly status, byte offsets and representations; edit mutable buffers visibly, inspect aliases, expose stale-reference/format/allocation errors |
+| Song/Buffer bridge | Author a song using shared mutable bytes in the editor and compare original exported playback |
+| Runtime resources | Per-buffer1MiB guard exists; aggregate heap retention/collection remains open |
+
+The original142/41/1 corpus count is unchanged. Wide-animation GUI acceptance
+is now observed in Build38256137458 at387337ad5 (161x121, two frames, offscreen
+edit, SB3 reopening and original-PXT pixel comparison); subsequent Buffer edits
+need their own final hosted qualification.
+
+### Buffer editor proof prepared — 2026-10-12
+
+A dedicated hosted journey now authors native Buffer code, edits the genuine
+16-format dropdown and numeric operand, steers numeric mutation/detached slice/
+custom-block alias using the visible controller, reconstructs Code/Blocks,
+saves/replaces/reopens through File and executes the downloaded MakeCode project
+under original Arcade buttons. This is pending browser acceptance, not a passed
+GUI claim. Its actual native controller fixture and CI contracts pass22 controls.
+
+The fixture found two export issues, now fixed: `hex`/`img` are allocated safely
+around MakeCode's template tags; Buffer sidecar placeholders from saved runtime
+variables are not emitted as string initializers. Runtime byte inspector/editor,
+UTF8 construction, aggregate heap collection and E10 namespace import remain
+open. [Import integration contract](ARCADE-BUFFER-IMPORT-CONTRACT.md) gives the
+native mappings and acceptance steps to the importer owner.
+
+### Buffer UTF8 constructor continuation (2026-10-12)
+
+`arcade_bufferFromUTF8` adds the missing fresh mutable Buffer constructor to
+runtime, native block metadata, canonical Code and typed MakeCode export.
+It uses the original TextEncoder semantics with a preallocation byte bound;
+Unicode, malformed decoding, alias mutation and archive reopening are focused
+acceptance controls. The producer adds one independently exercised form (299
+canonical opcodes). This does not qualify import: E10 must still lower
+`Buffer.fromUTF8` and `control.createBufferFromUTF8` after receiver/name resolution,
+including shadowing and initializer order. See
+[the complete import contract](ARCADE-BUFFER-IMPORT-CONTRACT.md). Aggregate
+Buffer heap collection and the original corpus's other missing APIs/assets remain
+open. The visible editor journey in PR834 is separately awaiting hosted proof.
+
+### Buffer public-method backlog and readonly Boolean (2026-10-12)
+
+The candidate adds `Buffer.isReadOnly()` as a native Boolean block, Code word
+and typed export, using the retained original method. The source-derived
+[Buffer backlog](ARCADE-BUFFER-IMPORT-CONTRACT.md#public-api-scope-and-remaining-buffer-authoring-gaps)
+tracks Base64, number-array bridges, concatenation, equality/search, chunking,
+packing/unpacking, numeric-format size and hashing. All need runtime, native
+palette/Code and export acceptance before import is promoted. The compiler
+exposes only two-argument `write`; proposed internal range parameters were
+rejected and withdrawn, with original diagnostics preserved privately.
+
+### Buffer concat, equality and search (2026-10-12)
+
+Runtime, native blocks/Code and typed export now support the three genuine public
+instance APIs through generated original common-package helpers. Original indexed
+read semantics, detached storage, Boolean conditions and allocation limits are
+preserved.25 affected checks pass, zero skips; producer346pass, zero skips.
+Static `Buffer.concat(Buffer[])`, Base64/number arrays, chunking, packing and
+hashing remain tracked in the [API contract](ARCADE-BUFFER-IMPORT-CONTRACT.md).
+Importer wiring, hosted visible editor proof and unchanged corpus promotion are
+separate gates; do not mark those complete from these controls.
+
+### Buffer number-format sizes (2026-10-12)
+
+The candidate adds original `Buffer.sizeOfNumberFormat` through the native
+`arcade_bufferFormatSize` reporter and `arcade byte buffer number format FORMAT
+size` Code form. All16 menu entries and dynamic numeric inputs use the extracted
+original algorithm; export emits the static API and numeric custom-function
+returns. Code/Blocks, original export execution and fresh actual SB3 checks are
+required. This closes scalar authoring source; namespace import, byte inspection
+and visible product GUI qualification remain open.
+
+The first Buffer browser run failed before any controller cycle while opening
+a dropdown. Its followup uses an actionable SVG-field locator and failure
+screenshot; do not mark this GUI lane passed before hosted evidence.
+
+### Buffer number arrays and static concatenation (2026-10-12)
+
+The candidate adds `arcade_bufferFromArray`, `arcade_bufferToArray` and
+`arcade_bufferConcatArray`. Native reporters use the existing scoped Arrays
+references, preserve detached storage and support all16 numeric decode formats.
+The exporter carries number[] returns and Buffer[] inputs through existing
+constraints; original exported execution and actual archive reopening are
+controls. Fixed finite numeric JSON reference constructors now emit array
+literals instead of a refusal. Dynamic/non-numeric constructor forms still
+retain their named diagnostics; do not declare general JSON array export closed.
+
+Authoring uses existing array-reference mutation/value blocks. Their raw value
+slots are text; the Code fixture uses an explicit numeric reporter. An improved
+typed array-value editing flow remains a GUI task. Buffer byte/array inspection,
+namespace import and exact-head visible controller/export qualification remain
+open. Original decoder invalid-format loops are refused explicitly by the host.
+
+### Buffer Base64 authoring (2026-10-12)
+
+The candidate adds `arcade_bufferFromBase64` and `arcade_bufferToBase64` as
+native reporter blocks and Code words. Typed export uses the real MakeCode
+APIs, including numeric text, custom string returns and mutable aliases. Its
+source-extracted parser retains original incomplete-group/padding/URL-safe
+behavior. Original runtime, Code reconstruction and fresh SB3 checks are
+required. A byte/encoding inspector, visible editor/controller journey and
+namespace imports remain open; source vocabulary alone does not close them.
+
+### Buffer chunk authoring (2026-10-12)
+
+Native `arcade_bufferChunked` and `arcade_bufferChunkedFromUTF8` reporters now
+produce scoped Buffer[] references in Code and blocks. Typed export retains
+custom returns and array-element types. Single-byte-chunk identity and readonly
+status match original aliases; multi-chunk storage is detached. Original UTF16
+search/surrogate behavior is preserved. Collection bounds reject unsafe output
+instead of truncating it. A visible array/byte/chunk inspector, GUI field/controller
+proof and namespace import remain open; the vocabulary inventory alone does not
+qualify those user journeys.
+
+### Buffer format authoring (2026-10-12)
+
+Native packed-size, pack, unpack and pack-at blocks now share the original
+MakeCode format parser through Code, scoped number arrays and typed export.
+Format text is editable and can come from a reporter; the existing palette
+exposes genuine APIs with explicit invalid-format diagnostics. A visible format
+assistant/preview, byte inspector, typed array editing, original namespace
+import and hosted editor/controller journey remain open GUI work. Source
+vocabulary and headless original roundtrips do not qualify those user flows.
+
+Buffer hash authoring continuation: native reporter and pseudocode word
+`arcade byte buffer BUFFER hash BITS bits` expose original k-bit FNV-1; typed
+MakeCode export uses `.hash(bits)`. Byte/array/format inspection and a visible
+controller/editor hash journey remain GUI qualification work. Aggregate heap
+collection needs explicit root tracing across variables, arrays, calls, scenes
+and playback; source vocabulary does not establish that resource guarantee.

@@ -401,6 +401,71 @@ try {
         check('▶ Run as MakeCode Arcade: the live Scratch project exports, compiles and draws', lit > 20, `${lit} lit pixels`);
     }
 
+    // ── 2d'. F10: the imported original travels with the project and is what ⤓ exports, until an edit ──
+    // After 2d, so the run above exported the untouched game. Needs no MakeCode runtime:
+    // the export writes a .mkcd (JSON) without compiling.
+    {
+        const vmRecord = () => page.evaluate(() => {
+            const vm = window.__brickwrightStore && window.__brickwrightStore.getState().scratchGui.vm;
+            const r = vm && vm.runtime.bwMakeCode;
+            return r ? {target: r.target, fingerprint: r.fingerprint, main: r.files && r.files['main.ts']} : null;
+        }).catch(() => null);
+        const exportedMain = async () => {
+            const download = page.waitForEvent('download', {timeout: 60000});
+            await clickAction('bw-makecode-arcade-export').catch(() => {});
+            const dl = await download.catch(() => null);
+            const path = dl ? await dl.path().catch(() => null) : null;
+            if (!path) return null;
+            try {
+                const parsed = JSON.parse(await readFile(path, 'utf8'));
+                const files = typeof parsed.source === 'string' ? JSON.parse(parsed.source) : parsed.source;
+                return files && typeof files['main.ts'] === 'string' ? files['main.ts'] : null;
+            } catch (e) {
+                return null;
+            }
+        };
+        const imported = await vmRecord();
+        check('⇦ To blocks keeps the imported MakeCode files in the project, fingerprinted (F10)',
+            !!imported && imported.target === 'arcade' && /^[0-9a-f]{16}$/.test(imported.fingerprint || '') &&
+                /sprites\.create/.test(imported.main || ''),
+            JSON.stringify(imported && {target: imported.target, fingerprint: imported.fingerprint}));
+        // Save and reopen through the real .sb3 (zip) path; the record must come back from the file.
+        const reopened = await page.evaluate(async () => {
+            const vm = window.__brickwrightStore && window.__brickwrightStore.getState().scratchGui.vm;
+            if (!vm) return null;
+            const sb3 = await (await vm.saveProjectSb3()).arrayBuffer();
+            vm.runtime.bwMakeCode = null;
+            await vm.loadProject(sb3);
+            const r = vm.runtime.bwMakeCode;
+            return r ? {fingerprint: r.fingerprint, main: r.files && r.files['main.ts']} : null;
+        }).catch(e => ({error: String(e)}));
+        check('the saved .sb3 carries the original files back on reopen (F10)',
+            !!imported && !!reopened && reopened.main === imported.main && reopened.fingerprint === imported.fingerprint,
+            reopened && reopened.error ? reopened.error : '');
+        const unchangedExport = await exportedMain();
+        check('⤓ Arcade export of the unchanged project writes the original main.ts byte for byte (F10)',
+            !!imported && unchangedExport === imported.main,
+            unchangedExport === null ? 'no .mkcd downloaded' : `${unchangedExport.length} chars`);
+        // Edit the program: delete one script's top block. The original stays for reference,
+        // but no longer describes the program, so the export must come from the blocks.
+        const edited = await page.evaluate(() => {
+            const vm = window.__brickwrightStore && window.__brickwrightStore.getState().scratchGui.vm;
+            const target = vm && vm.runtime.targets.find(t => !t.isStage &&
+                Object.values(t.blocks._blocks).some(b => b.topLevel && !b.shadow));
+            if (!target) return null;
+            const top = Object.values(target.blocks._blocks).find(b => b.topLevel && !b.shadow);
+            target.blocks.deleteBlock(top.id);
+            vm.runtime.emitProjectChanged();
+            return {kept: !!JSON.parse(vm.toJSON()).bwMakeCode, sprite: target.getName()};
+        }).catch(() => null);
+        check('after a block edit the original is still saved, for reference (F10)', !!edited && edited.kept,
+            edited ? `edited ${edited.sprite}` : 'no sprite with scripts');
+        const editedExport = await exportedMain();
+        check('⤓ Arcade export after the edit comes from the blocks, not the stale original (F10)',
+            typeof editedExport === 'string' && editedExport.length > 0 && !!imported && editedExport !== imported.main,
+            editedExport === null ? 'no .mkcd downloaded' : `${editedExport.length} chars`);
+    }
+
     // ── 2e. a LEGO MINDSTORMS EV3 program runs in MakeCode's EV3 simulator ──
     if (runtime) {
         await input.setInputFiles(join(fixtures, 'ev3-button-events.uf2'));

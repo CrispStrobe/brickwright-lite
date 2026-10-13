@@ -48,7 +48,7 @@ const USAGE = `usage:
   node scripts/makecode.mjs to-project <in.sb3|in.bw> [-o out.mkcd] [--target TARGET]
   node scripts/makecode.mjs to-hex <in.sb3|in.bw> [-o out.hex|out.uf2] [--target TARGET] [--board variant] [--source]
   node scripts/makecode.mjs to-ts  <in.sb3|in.bw> [-o out.ts]  [--target TARGET]
-  node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|in.mkcd|share-url> [-o out.sb3] [--bw out.bw] [--target TARGET]
+  node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|in.mkcd|share-url> [-o out.sb3] [--bw out.bw] [--target TARGET] [--fetch-extensions]
 TARGET: microbit (default), arcade, calliopemini (or calliope), ev3`;
 
 /** The targets the CLI exports to and imports for: the Code tab's translators. */
@@ -71,12 +71,14 @@ function args (argv) {
         else if (a === '--source') out.source = true;
         else if (a === '--bw') out.bw = argv[++i];
         else if (a === '--main') out.mainSource = argv[++i];
+        else if (a === '--fetch-extensions') out.fetchExtensions = true;
         else if (!out.input) out.input = a;
         else throw Object.assign(new Error(`unexpected argument ${a}`), {usage: true});
     }
     if (!out.cmd || !out.input) throw Object.assign(new Error('missing command or input'), {usage: true});
     if (!TARGETS.includes(out.target)) throw Object.assign(new Error(`unknown --target ${out.target} (${TARGETS.join(', ')})`), {usage: true});
     if (out.board && out.target !== 'arcade') throw Object.assign(new Error('--board is for Arcade only'), {usage: true});
+    if (out.fetchExtensions && out.cmd !== 'to-sb3') throw Object.assign(new Error('--fetch-extensions is for to-sb3'), {usage: true});
     return out;
 }
 
@@ -272,6 +274,18 @@ async function main () {
                 await mc.importShareLink(a.input, {animationResources: true}) :
                 await mc.importArtefact(new Uint8Array(fs.readFileSync(a.input)), {name: path.basename(a.input), animationResources: true});
         }
+        if (a.fetchExtensions) {
+            if (res.project?.target !== 'arcade') throw new Error('Native dependency preparation is currently for Arcade projects');
+            const {resolveProjectInputs} = await import('./lib/pxt-node.mjs');
+            const {prepareArcadeDependencyInputs} = await import('../overlay/scratch-gui/src/lib/bw-makecode/dependency-project.js');
+            const originalFiles = res.files;
+            const resolved = await resolveProjectInputs('arcade', originalFiles, {fetchExtensions: true});
+            const prepared = prepareArcadeDependencyInputs(originalFiles, resolved);
+            res = {...mc.importProjectFiles(prepared.files, {target: 'arcade', name: res.project.name, animationResources: true}),
+                files: originalFiles, dependencyInputs: {provenance: prepared.provenance, skippedPackages: prepared.skippedPackages,
+                    fetchedExtensions: prepared.fetchedExtensions}};
+            for (const e of prepared.fetchedExtensions) console.error(`  dependency: ${e.id} (${e.repo}#${e.ref}) — ${e.licence || 'unidentified licence'}`);
+        }
         if (res.lang !== 'pseudocode') {
             console.error(`this is a ${res.project && res.project.target} project in ${res.lang}; only translated projects become .sb3`);
             return 1;
@@ -289,15 +303,18 @@ async function main () {
         const blob = await cr.generateSB3();
         const dest = a.output || `${base(a.input) || 'project'}.sb3`;
         let bytes = new Uint8Array(await blob.arrayBuffer());
-        if (res.animationResources?.length) {
+        if (res.animationResources?.length || res.dependencyInputs) {
             const {default: ZIP} = await import('jszip');
             const {installAnimationImport} = await lib('bw-animation-import.js');
             const zip = await ZIP.loadAsync(bytes);
-            await installAnimationImport(zip, res.animationResources, data => createHash('md5').update(data).digest('hex'));
+            if (res.animationResources?.length) {
+                await installAnimationImport(zip, res.animationResources, data => createHash('md5').update(data).digest('hex'));
+            }
+            if (res.dependencyInputs) zip.file('bw.makecode-dependencies.json', JSON.stringify({version: 1, ...res.dependencyInputs}, null, 2));
             bytes = await zip.generateAsync({type: 'uint8array', compression: 'DEFLATE'});
             const {inspectArtwork} = await lib('bw-artwork-bundle.js');
             const inspection = await inspectArtwork(bytes);
-            if (inspection.outcome !== 'loaded') throw new Error(inspection.reason || 'Invalid animation import');
+            if (res.animationResources?.length && inspection.outcome !== 'loaded') throw new Error(inspection.reason || 'Invalid animation import');
         }
         fs.writeFileSync(dest, bytes);
         if (a.bw) fs.writeFileSync(a.bw, res.code);
@@ -310,6 +327,7 @@ async function main () {
 }
 
 main().then(code => process.exit(code), e => {
+    for (const refusal of e?.refused || []) console.error(`  dependency refused: ${refusal.id} (${refusal.spec}) — ${refusal.reason}`);
     console.error(e && e.stack || e);
     process.exit(e && e.code === 'NO_RUNTIME' ? 3 : 1);
 });
