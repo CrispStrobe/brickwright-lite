@@ -2971,9 +2971,9 @@ const lowerLibraryCalls = program => program;
 const inlineLegacyArrayHelpers = program => {
     if(!program.body.some(fn=>fn.type==='FunctionDeclaration' && /^__bw(?:Named(?:Parse|Json)Value|ArrayAccess)/.test(fn.name)))return program;
     const templates=legacyArrayHelperTemplates || (legacyArrayHelperTemplates=new Map([
-        ['__bwNamedParseValue',{fn:parseMakeCodeTs(LEGACY_PARSE_SOURCE, {parameterDefaults: true}).body[0],type:'LegacyParsedValue'}],
-        ['__bwNamedJsonValue',{fn:parseMakeCodeTs(LEGACY_JSON_SOURCE, {parameterDefaults: true}).body[0],type:'LegacyJsonValue'}],
-        ['__bwArrayAccess',{fn:parseMakeCodeTs(ARRAY_ACCESS_SOURCE, {parameterDefaults: true}).body[0],type:'NativeArrayAccess'}]
+        ['__bwNamedParseValue',{fn:parseMakeCodeTs(LEGACY_PARSE_SOURCE, {parameterDefaults: true, retainParentheses:true}).body[0],type:'LegacyParsedValue'}],
+        ['__bwNamedJsonValue',{fn:parseMakeCodeTs(LEGACY_JSON_SOURCE, {parameterDefaults: true, retainParentheses:true}).body[0],type:'LegacyJsonValue'}],
+        ['__bwArrayAccess',{fn:parseMakeCodeTs(ARRAY_ACCESS_SOURCE, {parameterDefaults: true, retainParentheses:true}).body[0],type:'NativeArrayAccess'}]
     ]));
     const normalize=(fn,base)=>{
         const rename=node=>Array.isArray(node)?node.map(rename):node && typeof node==='object'?

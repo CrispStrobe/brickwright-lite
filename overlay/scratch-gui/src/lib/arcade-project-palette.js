@@ -10,6 +10,7 @@ export const paletteHex = colors => {
     }
     return colors.map(color => color.slice(1).toLowerCase()).join('');
 };
+const startupHat = block => ['arcade_whenSourceStarts','event_whenflagclicked'].includes(block?.opcode);
 const literalPalette = (blocks, block) => {
     const input = block.inputs?.DATA;
     const text = input && blocks.getBlock(input.block);
@@ -25,7 +26,7 @@ export function inspectProjectPalette (vm) {
         if (!blocks?.getScripts || !blocks.getBlock) continue;
         for (const id of blocks.getScripts()) {
             const hat = blocks.getBlock(id), first = hat?.next && blocks.getBlock(hat.next);
-            if (hat?.opcode === 'event_whenflagclicked' && first?.opcode === 'arcade_setPalette') {
+            if (startupHat(hat) && first?.opcode === 'arcade_setPalette') {
                 starts.push({target,hat,command:first,literal:literalPalette(blocks,first)});
             }
         }
@@ -74,10 +75,20 @@ export async function applyProjectPalette (vm, colors, expectedSignature) {
         const {target,literal} = current.start;
         target.blocks.changeBlock({id:literal.text.id,element:'field',name:'TEXT',value:hex});
     } else {
-        const stage = vm.runtime.getTargetForStage();
-        const blocks = stage?.blocks;
+        const sourceEntries=(vm.runtime.targets || []).filter(target=>target.isOriginal!==false).flatMap(target=>
+            (target.blocks?.getScripts?.() || []).map(id=>target.blocks.getBlock(id))
+                .filter(hat=>hat?.opcode==='arcade_whenSourceStarts').map(hat=>({target,hat})));
+        // Generated art holders use source hats containing only hide. They
+        // do not own program initialization or compete for palette ordering.
+        const activeEntries=sourceEntries.filter(({target,hat})=>{let id=hat.next;const seen=new Set();while(id){if(seen.has(id))return true;seen.add(id);const block=target.blocks.getBlock(id);if(!block || block.opcode!=='looks_hide')return true;id=block.next;}return false;});
+        if(activeEntries.length>1)throw new Error('Project has multiple source entry stacks. Edit its startup palette in Code or Blocks.');
+        // Source entry owns the earlier startup phase, even on a non-Stage
+        // target. Keep its existing stack and ordinary Scratch hats intact.
+        const selected=activeEntries[0] || sourceEntries[0];
+        const target=selected?.target || vm.runtime.getTargetForStage();
+        const blocks = target?.blocks;
         if (!blocks?.createBlock || !blocks.moveBlock) throw new Error('Project Stage is unavailable');
-        const hat = blocks.getScripts().map(id=>blocks.getBlock(id)).find(block=>block.opcode==='event_whenflagclicked');
+        const hat=selected?.hat || blocks.getScripts().map(id=>blocks.getBlock(id)).find(startupHat);
         const hatId=hat?.id || newId(blocks), commandId=newId(blocks), textId=newId(blocks);
         const first=hat?.next;
         if(first && !blocks.getBlock(first)) throw new Error('Startup stack has a missing block');

@@ -92,3 +92,20 @@ test('extension load failure and project edits during extension loading do not m
   assert.equal(before.start.literal.text.fields.TEXT.value,'000000'.repeat(16));
  }finally{clearStrayTimers();}
 });
+
+test('palette authoring reuses the source entry on its actual target before ordinary Scratch startup',async()=>{
+ const run=await fixture();try{
+  const sourceTarget=run.vm.runtime.targets.find(target=>!target.isStage&&target.isOriginal!==false&&target.blocks.getScripts().some(id=>target.blocks.getBlock(id)?.opcode==='arcade_whenSourceStarts'));
+  assert.ok(sourceTarget);const hat=sourceTarget.blocks.getScripts().map(id=>sourceTarget.blocks.getBlock(id)).find(block=>block.opcode==='arcade_whenSourceStarts'),first=hat.next;
+  const stage=run.vm.runtime.getTargetForStage(),oldStage=JSON.stringify(stage.blocks._blocks);
+  const authored=await applyProjectPalette(run.vm,colors,inspectProjectPalette(run.vm).signature);
+  assert.equal(authored.start.target,sourceTarget);assert.equal(authored.start.hat,hat);assert.equal(authored.start.command.next,first);assert.equal(JSON.stringify(stage.blocks._blocks),oldStage);
+  run.vm.greenFlag();await stepFrames(run.vm,12);assert.deepEqual(run.vm.runtime.bwArcadeDeviceState.palette,colors);assert.deepEqual(run.errors,[]);
+  sourceTarget.blocks.createBlock({id:'otherSourceEntry',opcode:'arcade_whenSourceStarts',inputs:{},fields:{},next:'otherSourceBody',parent:null,shadow:false,topLevel:true,x:0,y:0});
+  sourceTarget.blocks.createBlock({id:'otherSourceBody',opcode:'looks_show',inputs:{},fields:{},next:null,parent:'otherSourceEntry',shadow:false,topLevel:false});
+  // Existing literal startup edits remain local and unambiguous. A new startup
+  // insertion into multiple source entries must refuse without any mutation.
+  const command=authored.start.command;sourceTarget.blocks.deleteBlock(command.id);const frozen=snapshot(run.vm);
+  await assert.rejects(applyProjectPalette(run.vm,colors,inspectProjectPalette(run.vm).signature),/multiple source entry/);assert.equal(snapshot(run.vm),frozen);
+ }finally{run.vm.quit();clearStrayTimers();}
+});
