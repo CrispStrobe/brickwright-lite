@@ -2227,3 +2227,15 @@ notices apply; input SHA256 values are retained in the generated header.
 The application storage host uses the existing program-owned identity, device
 records and portable SB3 snapshots; physical flash and SDK startup scopes are
 separate qualification boundaries.
+
+### Microsoft Arcade Text Sprite
+
+The complete Text Sprite v1.3.0 source is retained at
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/text-sprite-source/text.ts`,
+from Microsoft `arcade-text` commit `fa2439314c6633943666a763fdae32a5c67a9ae8`.
+It is MIT licensed, Copyright (c) Microsoft Corporation; the original notice is
+retained beside the source. `scripts/generate-arcade-text-sprite.mjs` transpiles
+those algorithms without replacing their font, outline, icon or setter logic.
+The native host uses the separately retained PXT image operations and font
+notices, including the existing SIL OFL font12 notice. Source identity and host
+qualification are distinct from native blocks and whole-game qualification.
