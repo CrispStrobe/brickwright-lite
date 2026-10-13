@@ -2093,3 +2093,42 @@ provenance distinguish supplied project context from newly generated dependency
 views. The original main bytes are checked before/after. Missing offline
 libraries or prepared parser failures remain explicit failing results.
 Do not reinterpret prepared translation or compiler success as a working game.
+
+## Text sprites and resource factory integration — 2026-10-13
+
+The current integration branch is `lane/arcade-text-sprite-20261013`, stacked
+on [exponentiation PR869](https://github.com/CrispStrobe/brickwright-lite/pull/869).
+The matching producer is `CrispStrobe/sb3-creator` commit
+`e358c7cebdcf2055d0f31197833cffddea81dbff`: 338 canonical Arcade forms.
+It contains current multi-board and Calliope changes; syncing must preserve them.
+
+Text Sprite creation, text/font/icon/border/outline setters, explicit redraw and
+public field access are native Blocks/Code operations. The complete retained MIT
+Microsoft library provides the pixel algorithms. Exact source admission retains
+its SpriteKind initializer in the original file order. Class instances retain
+sprite identity through arrays and procedure arguments/results. Numeric
+`Sprite.kind()` allocation remains unresolved. See
+`test/makecode-arcade-text-sprite-converter.test.mjs` and
+`test/makecode-arcade-text-sprite-host.test.mjs`.
+
+Resource factories now distinguish image and tile names, return genuine null
+when a supplied gallery lacks the requested kind, allocate fresh image results
+and preserve shared tile instances. Missing standalone galleries still produce
+diagnostics. `test/makecode-arcade-asset-factory-roundtrip.test.mjs` qualifies
+original execution, native execution, Code regeneration, SB3 reload, export
+execution in original MakeCode and reimport. Generic zero-sized image sprites
+preserve zero dimensions and original constructor positioning; invalid image
+construction reports the original error. Public size defaults are unchanged.
+
+The combined affected integration batch passes 17 controls without skips.
+Hosted qualification is separate. Earlier PR869 CI failures include stale
+numeric-output assertions, an outdated power-word assertion and a divergent
+Arcade pane mirror; these are corrected on this branch. The Question component
+and container mirrors are also refreshed; the tracked mirror gate passes.
+
+Exact legacy background-scroll source and a scene host are retained and tested
+separately. Version selection, source admission and export dependency selection
+remain pending. Distinct program/scene clocks, older character-animation rules,
+general classes/callable values and whole-game GUI journeys remain active gaps.
+Raw census remains 142 translated, 41 partial, 1 parse failure; no project has
+been promoted from these focused controls alone.

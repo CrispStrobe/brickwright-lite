@@ -522,3 +522,35 @@ display differences. This finite evidence establishes those observed paths,
 not complete games. GUI qualification remains separate. The next source
 clusters are typed SpriteData with genuine root tiles, controller connectivity,
 settings persistence, and reachable custom class/font/scene helper behavior.
+
+### Compiler isolation and fresh context audit — 2026-10-13
+
+The fresh immutable integration audit measures **29 original compiler successes,
+12 original source/configuration failures and zero dependency refusals** across
+the same 41 contexts. Every original main hash is unchanged. Of the valid29,
+15 structurally import without native diagnostics,13 retain API/source-semantics
+gaps and one retains a parser gap. Structural import is a qualification candidate;
+it does not establish gameplay or editor acceptance. No whole-game promotion or
+fewer-than20 checkpoint follows from these counts.
+
+Two earlier internal compiler assertions were reproduced with the same original
+worker and unchanged seven-project sequence. Fresh contexts recover both inputs;
+the original compiler's own reset also recovers that measured sequence. The CLI
+and browser now isolate compile/preparation operations, preserving the immutable
+SDK and actual diagnostics. Browser workers and their Blob URLs are released
+after successful or failed operations. Repeated original binaries and executed
+original programs are checked, independently of native translation.
+
+One authentic project requires ten external packages. The default fetch budget
+now allows16, retaining the existing32MiB total, per-package and file-count
+bounds. The unchanged project compiles with binary bytes matching the prior
+explicit16-package probe. Unknown dependency licences remain explicit and do not
+authorize redistribution. Dependency cycles and budget exhaustion remain tested.
+
+Typed Number/String/NumberArray/Buffer Settings operations now preserve original
+byte codecs, durable project identity and SB3 snapshots. Numeric block shadows
+are interpreted using actual block-input metadata; connected string reporters
+retain type checks. Generic calls and exported nested mixed-value array access
+have original/native and roundtrip controls. The Text Sprite adapter is the next
+shared library lane; eight valid dependency graphs use it but retain independent
+class, callback and library gaps. Do not count eight completions from one adapter.

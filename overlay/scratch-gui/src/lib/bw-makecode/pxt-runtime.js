@@ -388,15 +388,19 @@ export class MakeCodeError extends Error {
     }
 }
 
-const workers = new Map();
-
-/** One worker per target, initialised once (the target bundle is large). */
-function workerFor (target, base) {
-    if (workers.has(target)) return workers.get(target);
+/** A fresh compiler context per operation: PXT package/compiler state from a
+ * previous project, including failed installations, must not affect this one.
+ * The browser's HTTP cache still supplies the immutable target/runtime assets.
+ */
+function workerFor (base) {
     const url = URL.createObjectURL(new Blob([WORKER_JS], {type: 'application/javascript'}));
     const worker = new Worker(url);
     let next = 0;
     const pending = new Map();
+    worker.onerror = event => {
+        for (const p of pending.values()) p.reject(new MakeCodeError(event.message || 'MakeCode worker failed', 'COMPILE'));
+        pending.clear();
+    };
     worker.onmessage = e => {
         const p = pending.get(e.data.id);
         if (!p) return;
@@ -409,10 +413,12 @@ function workerFor (target, base) {
         pending.set(id, {resolve, reject});
         worker.postMessage(Object.assign({id, base}, msg));
     });
-    const entry = {call, ready: call({op: 'init'})};
-    entry.ready.catch(() => workers.delete(target));   // a failed init is retried next time
-    workers.set(target, entry);
-    return entry;
+    return {call, ready: call({op: 'init'}), dispose() {
+        worker.terminate();
+        URL.revokeObjectURL(url);
+        for (const p of pending.values()) p.reject(new MakeCodeError('MakeCode worker disposed', 'COMPILE'));
+        pending.clear();
+    }};
 }
 
 /**
@@ -440,9 +446,11 @@ export async function compileMakeCode ({target, files, native = false, embedSour
     if (!files || !files['pxt.json']) throw new MakeCodeError('a MakeCode project needs its pxt.json', 'COMPILE');
     const extensions = await onDemandExtensions(target, files, fetchExtensions, fetch);
     const base = new URL(runtimeBase(target), baseUrl || document.baseURI).href;
-    const w = workerFor(target, base);
-    await w.ready;
-    return withFetched(await callWithExtensions(w, {op: 'compile', files, native, embedSource, hwVariant}, extensions), extensions);
+    const w = workerFor(base);
+    try {
+        await w.ready;
+        return withFetched(await callWithExtensions(w, {op: 'compile', files, native, embedSource, hwVariant}, extensions), extensions);
+    } finally { w.dispose(); }
 }
 
 /**
@@ -507,14 +515,14 @@ export async function compileMakeCodeForEmulator ({target = 'microbit', files, b
     if (!files || !files['pxt.json']) throw new MakeCodeError('a MakeCode project needs its pxt.json', 'COMPILE');
     const extensions = await onDemandExtensions(target, files, fetchExtensions, fetch);
     const base = new URL(runtimeBase(target), baseUrl || document.baseURI).href;
-    const w = workerFor(target, base);
-    await w.ready;
+    const w = workerFor(base);
     try {
+        await w.ready;
         return withFetched(await callWithExtensions(w, {op: 'compile', files, native: true, appVariant: 'mbcodal', emulator: true, cleanBases: EMULATOR_CLEAN_BASES}, extensions), extensions);
     } catch (e) {
         if (e && e.code === 'BASE_REFUSED') assertEmulatorBase(e.baseSha256);
         throw e;
-    }
+    } finally { w.dispose(); }
 }
 
 /**
