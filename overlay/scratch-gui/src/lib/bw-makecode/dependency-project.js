@@ -80,6 +80,20 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
         names.push(path);
         provenance.push({id, file, path, generated});
     }
+    for (const [name, content] of Object.entries(resolved.generatedRootFiles || {})) {
+        if (!safePath(name) || !/\.g\.ts$/.test(name) || typeof content !== 'string') {
+            throw new Error('Unsafe original generated root companion');
+        }
+        if (Object.prototype.hasOwnProperty.call(originalFiles, name)) {
+            throw new Error(`Original generated companion would overwrite project file: ${name}`);
+        }
+        files[name] = content;
+        names.push(name);
+        const origin = (resolved.generatedRootProvenance || []).find(entry => entry.file === name);
+        if (!origin || !safePath(origin.input) || typeof originalFiles[origin.input] !== 'string' ||
+            origin.emitter !== 'pxt.emitTilemapsFromJRes') throw new Error(`Missing original root generation provenance: ${name}`);
+        provenance.push({id: 'root', file: origin.input, path: name, generated: true, emitter: origin.emitter});
+    }
     const effectivePalette = resolved.runtimeConfig?.palette;
     files['pxt.json'] = JSON.stringify({...cfg,
         ...(effectivePalette ? {palette: [...effectivePalette]} : {}), files: [...names, ...cfg.files,

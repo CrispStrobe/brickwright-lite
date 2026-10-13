@@ -253,9 +253,23 @@ var bwMakeCode = {
             var palette = typeof paletteHex === 'string' && /^(?:[0-9a-f]{6})+$/i.test(paletteHex) ?
                 paletteHex.match(/.{6}/g).map(function (color) { return '#' + color; }) :
                 runtime && Array.isArray(runtime.palette) ? runtime.palette.slice() : null;
+            var generatedRootFiles = {};
+            var generatedRootProvenance = [];
+            for (var rootName of (cfg.files || [])) {
+                if (!/\\.g\\.jres$/.test(rootName) || typeof files[rootName] !== 'string') continue;
+                var companion = rootName.replace(/\\.jres$/, '.ts');
+                if (Object.prototype.hasOwnProperty.call(files, companion)) continue;
+                var rootGallery = JSON.parse(files[rootName]);
+                if (!Object.keys(rootGallery).some(function (key) {
+                    return rootGallery[key] && rootGallery[key].mimeType === 'application/mkcd-tilemap';
+                })) continue;
+                generatedRootFiles[companion] = pxt.emitTilemapsFromJRes(rootGallery);
+                generatedRootProvenance.push({input: rootName, file: companion, emitter: 'pxt.emitTilemapsFromJRes'});
+            }
             var runtimeConfig = {palette: palette};
             return {packages: packageInputs, sourceOrder: sourceOrder, jres: resources, runtimeConfig: runtimeConfig,
-                rootResourceIds: rootResourceIds,
+                rootResourceIds: rootResourceIds, generatedRootFiles: generatedRootFiles,
+                generatedRootProvenance: generatedRootProvenance,
                 netAttempts: bwMakeCode.netAttempts.slice(before)};
         }
         if (opts.native && copts.extinfo && copts.extinfo.sha) {
