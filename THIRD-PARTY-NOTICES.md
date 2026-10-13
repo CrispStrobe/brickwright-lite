@@ -2239,3 +2239,11 @@ those algorithms without replacing their font, outline, icon or setter logic.
 The native host uses the separately retained PXT image operations and font
 notices, including the existing SIL OFL font12 notice. Source identity and host
 qualification are distinct from native blocks and whole-game qualification.
+
+## MakeCode kickoff TeamData qualification source
+
+The complete unchanged `teamdata.ts` from Microsoft pxt-kickoff revision
+`c2c7f8193af1dafaebda3a7cda235df4c42b87ae` is retained in
+`test/fixtures/arcade-teamdata-source` for class qualification. It is MIT licensed;
+the original licence and fixed source provenance are retained beside it.
+This fixture does not admit or bundle the complete kickoff game library.

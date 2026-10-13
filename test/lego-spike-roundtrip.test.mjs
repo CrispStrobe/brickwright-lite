@@ -291,7 +291,7 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> e1a40796 (2026-10-13): explicit Arcade source HAT/LOOP and AST census fix; rerun every SPIKE artifact assertion.
     // -> 846dcf05 (2026-10-13): clamp, typed bitwise and raw flags field choices; board main is retained; rerun SPIKE artifact assertions.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '846dcf057796e63fc4434fc9094e47c8ed7aedc9');
+        'cfc219939077d2960f327761f73ab2fd7a1cfec1');
 
 
     const creator = new SB3Creator();
