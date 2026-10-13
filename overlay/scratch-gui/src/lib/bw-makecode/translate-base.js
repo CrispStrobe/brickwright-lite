@@ -157,6 +157,54 @@ const isCreateSprite = (node, t) => !!node && node.type === 'Call' && t.path(nod
 /** Does this case body `break` anywhere but its end (which switchStatement has already dropped)? */
 const switchBreaks = body => breaks(body);
 
+/**
+ * The Identifier nodes whose binding is DECLARED text: a `p: string`
+ * parameter, a `let s: string` (not `string[]`). By scope: a function's
+ * parameters and declarations shadow the names outside it, and a name the
+ * same function binds both as text and as something else is not counted.
+ * (Text known from a value, `let s = ""`, is isText's textVars.)
+ */
+const FUNCTION_NODES = new Set(['FunctionDeclaration', 'FunctionExpression']);
+export function stringTypedReferences (program) {
+    const refs = new WeakSet();
+    const isString = text => String(text || '').replace(/\s+/g, '') === 'string';
+    const scope = (outer, params, paramTypes, body) => {
+        const own = new Map();
+        const bind = (name, text) => own.set(name, own.has(name) ? own.get(name) && text : text);
+        for (const p of params || []) {
+            const t = (paramTypes || {})[p];
+            bind(p, !!t && isString(t.text));
+        }
+        const collect = node => {
+            if (!node || typeof node !== 'object') return;
+            if (Array.isArray(node)) return node.forEach(collect);
+            if (FUNCTION_NODES.has(node.type) || node.type === 'Class') return;
+            if (node.type === 'Declaration') for (const d of node.decls || []) bind(d.name, isString(d.typeName));
+            if (node.type === 'ForOf') bind(node.name, false);
+            for (const v of Object.values(node)) if (v && typeof v === 'object') collect(v);
+        };
+        collect(body);
+        return new Map([...outer, ...own]);
+    };
+    const seen = new Set();
+    const visit = (node, env) => {
+        if (!node || typeof node !== 'object' || seen.has(node)) return;
+        seen.add(node);
+        if (Array.isArray(node)) return node.forEach(n => visit(n, env));
+        if (node.type === 'Identifier' && env.get(node.name)) refs.add(node);
+        if (FUNCTION_NODES.has(node.type)) return visit(node.body, scope(env, node.params, node.paramTypes, node.body));
+        if (node.type === 'Class') {
+            for (const m of [...(node.methods || []), ...(node.ctor ? [node.ctor] : [])]) {
+                visit(m.body, scope(env, m.params, m.paramTypes, m.body));
+            }
+            return;
+        }
+        for (const v of Object.values(node)) if (v && typeof v === 'object') visit(v, env);
+    };
+    visit(program, program && program.type === 'Program' ? scope(new Map(), [], {}, program.body) : new Map());
+    return refs;
+}
+
 /** `(…)` whose first parenthesis closes at the very end: already one operand. */
 const wrapped = value => {
     if (!value.startsWith('(') || !value.endsWith(')')) return false;
@@ -212,7 +260,10 @@ export class BaseTranslator {
         // minutes` after `let time = ""` is a string, and as operator_add it
         // added "12:" to a number. Known text on the right makes the name text.
         if (!this.textVars) this.textVars = new Set();
-        const holds = (name, value) => { if (name && this.isText(value)) this.textVars.add(name); };
+        // Declared text (`p: string`), by scope, for a text's truthiness in
+        // condition(). Arcade replaces it with its type graph's strings.
+        if (node.type === 'Program') this.stringReferences = stringTypedReferences(node);
+        const holds =(name, value) => { if (name && this.isText(value)) this.textVars.add(name); };
         if (node.type === 'Declaration') for (const d of node.decls || []) holds(d.name, d.init);
         if (node.type === 'Assignment' && node.op === '=' && node.left && node.left.type === 'Identifier') holds(node.left.name, node.right);
         for (const value of Object.values(node)) {
@@ -467,6 +518,15 @@ export class BaseTranslator {
     /** An expression used where a boolean is expected. */
     condition (node) {
         if (!node) return 'false';
+        // A text's truthiness is MakeCode's: "" is false and every other text
+        // ("0" too) true. The bare-value test below, `not (s = 0)`, is
+        // Scratch's comparison instead — "" = 0 is false (a blank side compares
+        // as text) and "0" = 0 true — so both came out inverted (E10 on the
+        // Arcade path, E12 here for micro:bit and EV3). The length is the
+        // text's own truthiness. A number stays `not (v = 0)`.
+        if (this.isText(node) || (this.stringReferences && this.stringReferences.has(node))) {
+            return `not ((length of ${this.operand(node)}) = 0)`;
+        }
         if (node.type === 'Binary' || node.type === 'Unary') return this.expr(node);
         if (node.type === 'Boolean') return node.value ? 'true' : 'false';
         const value = this.expr(node);

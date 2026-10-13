@@ -15,6 +15,36 @@ through actual controller edges. Preserve independent DEVICE/arena and question
 flows. No local full GUI build, source/actor substitution or dialog-dismiss shortcut.
 Initial and resumed scene frame timing remains a separately tracked scheduler gap.
 
+## Several boards in one project (radio pair first) — 2026-10-13
+
+CLAIMED — VPS Claude (opus), `lane/multi-board-project-20261013`.
+Goal: one project holds several boards, each owning its own program and
+sprites, the board being a layer above sprites; first demo a micro:bit remote
+driving a Calliope mini car over the simulated radio. One-board projects must
+load, save, compile and decompile byte-for-byte as today.
+Envelope, in landing order (each its own PR): (1) a board model helper under
+`overlay/scratch-gui/src/lib/bw-boards/` and routing the existing applied-device
+reads through it (`gui.jsx`, `stage-header.jsx`, `controls.jsx`,
+`debug-panel.jsx`, `microbit-sim-pane.jsx`, `arcade-device-pane.jsx`,
+`bw-debug/block-menu.js`, `pseudocode-importer.jsx` applied-device path,
+`circuit-tab.jsx` device writers); (2) per-target board tag and additional
+board configuration comments in the sb3 hooks (`scripts/apply-vm-overlay.mjs`,
+`scripts/lib/*-sb3-hooks.mjs`); (3) in sb3-creator (own producer repository,
+then a pin move here): `DEVICE <id> AS <Name>:` board sections, the per-board
+configuration cursor, the decompiler's board sections, Calliope motor words;
+(4) per-board MakeCode export/compile in
+`overlay/scratch-gui/src/lib/bw-makecode/{export.js,microbit-translate.js}`;
+(5) radio relay between two MakeCode simulator frames
+(`scripts/makecode/host.html`, `makecode-sim-pane.jsx`) and a board strip in
+`components/target-pane/`; (6) later, the firmware tier: a Calliope mini board
+and a shared-air hook in bw-board, then a multi-machine runner here. Tracked
+`packages/scratch-gui` twins and tests follow each step.
+Not in scope: Arcade authoring, painter, Buffer, SPIKE and peer-session code;
+no change to what a one-board project does. Evidence so far (not committed):
+both tutorial programs compiled offline and run as firmware on the pinned
+engine with the emulated radio stack; holding a remote button runs the
+matching Calliope motor line on a shared air and nothing moves on separate airs.
+
 
 ## Two-way GPIO pin block ⇄ Forth — 2026-10-12
 
@@ -1493,7 +1523,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 | Compiled 7-segment programs blank in the circuit view: persistence-based 7-segment model (task B16 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `60b1a18b6`; upstream bw-board 7-segment / multiplexed display model + tests; Lite bw-board pin-bump surfaces + a compiled-C display test; this row and the task file. | **CLAIMED 2026-10-13.** Found by B14 (#867). |
 
-| Text truthiness in the shared MakeCode importer base: micro:bit and EV3 (task E12 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `e9c3373b4`; paths `overlay/scratch-gui/src/lib/bw-makecode/translate-base.js` (+ micro:bit/EV3 translate if needed), focused tests, regenerated MakeCode census if counts move; this row and the task file. | **CLAIMED 2026-10-13.** Found by E10 (#863). |
+| DONE — Text truthiness in the shared MakeCode importer base: micro:bit and EV3 (task E12 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `e9c3373b4`; paths `overlay/scratch-gui/src/lib/bw-makecode/translate-base.js` (+ micro:bit/EV3 translate if needed), focused tests, regenerated MakeCode census if counts move; this row and the task file. | **DONE 2026-10-13 — Lite PR #882.** A text in a condition (isText, or a reference declared `: string`, by scope: new `stringTypedReferences()`) is `not ((length of s) = 0)` in translate-base.js `condition()`; numbers unchanged. Readings (sim / Lite before → after): `2 1 1 2 1 1 2 2 1 1` / `1 2 2 1 0 2 1 1 2 1` → `2 1 1 2 1 1 2 2 1 1`, micro:bit and EV3; re-export refused by pxt before → equals the sim after (parameter calls excluded: export.js types parameters `: number`). Census unchanged (204/8/2/1, 150/143/30/30, 100/157/1; 0 rows differ); importer output byte-identical over 1113 micro:bit, 258 EV3, 2097 Arcade inputs. Tests `test/makecode-text-truthiness.test.mjs` (6), 7 mutations red; MakeCode+sb3 suites 1404 (3 Arcade timing flakes at load 17, green alone); pre-push gates 94 green. Fix commit `c9c95f01c`. |
 
 | Original MakeCode files in the `.sb3`, kept but marked stale (task F10 of docs/OPEN-TASKS-2026-09-29.md; owner decision 2026-10-12) | VPS Claude (opus) | base `origin/main`; a new overlay module `overlay/scratch-vm/src/serialization/bw-makecode-original.js` (+ its save/load hooks in `scripts/apply-vm-overlay.mjs`), where an import records the original (`scripts/makecode.mjs to-sb3`, the GUI MakeCode import), the export's choice between original and regenerated files, the WIP test `test/arcade-metadata-sb3.test.mjs` re-ported plus a stale-case test; this row and the task file. Not the importer's translation (E10) nor the Arcade runtime/painter lanes. | **DONE 2026-10-12 — Lite PR #832 (merge `414b25e6`).** An imported MakeCode project saves its own files as `bwMakeCode` {version 2, target, name, files, fingerprint} (overlay module `serialization/bw-makecode-original.js`; two idempotent hooks in `apply-vm-overlay.mjs`: toJSON after E5's extensionURLs, deserializeProject load + settle after installTargets). The importer writes it unfingerprinted; the VM's first load fingerprints the program from its own serialization (blocks without positions/comments, variable/list/broadcast names, costume/sound assets, target names, extensions — not runtime state, so running the game is not an edit). CLI `to-ts`/`to-project`/`to-hex` export the original while current and say when it is stale; the Code tab records it only for a build of the unedited translation, and its run/download subject, Arcade `.mkcd` and micro:bit exports use it only while current; the source zip says when the program changed. `test/arcade-metadata-sb3.test.mjs` (the WIP test re-ported + stale case + GUI wiring): 4/4, red under never-stale, no-settle, position-counts and not-saved mutations. |
 | F10's GUI path in a real browser (task F10.1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `origin/main`; `scripts/verify-makecode.mjs` (Arcade import section only), plus status text. No new CI step, budget or census entry; no runtime/importer change unless the browser check finds a real F10 defect. | **DONE 2026-10-13** (branch `lane/f10-1-gui-check-20261013`). Five new checks in `scripts/verify-makecode.mjs` section 2d′, after the Arcade run: ⇦ To blocks keeps `bwMakeCode` with a 16-hex fingerprint; the real `.sb3` save → reopen brings the same files and fingerprint back; ⤓ Arcade export of the unchanged project writes the original `main.ts` byte for byte; after deleting a script's top block the original is still saved; and the export then comes from the blocks. No new CI step. Found while reading 2d: since F10, ▶ Run as MakeCode Arcade on an unchanged import compiles the ORIGINAL files, so 2d no longer exercises the Scratch → Arcade exporter for this fixture; the post-edit export check covers that exporter again. |
