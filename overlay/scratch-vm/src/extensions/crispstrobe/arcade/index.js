@@ -891,12 +891,15 @@ module.exports = makeExt(`// Name: Arcade
       return this._settingsBinding.store;
     }
     _settingsGuard(work,boolean=false){try{return work();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',error.message);return boolean?false:Scratch.BWValues.encode(undefined);}}
-    settingsWrite(args){return this._settingsGuard(()=>{
+    settingsWrite(args,util){return this._settingsGuard(()=>{
       const type=args.TYPE,key=Scratch.BWValues.decode(args.KEY);
       let value=Scratch.BWValues.decode(args.VALUE);
-      // The declared Number menu supplies numeric editor intent. Scratch number
-      // shadows deliver strings, while typed source numbers retain NaN/null.
-      if(type==='Number' && typeof value==='string')value=Scratch.Cast.toNumber(value);
+      // Editor shadows deliver numeric strings; connected typed reporters keep
+      // their values and diagnostics. BWValues does not tag primitive strings.
+      const block=util?.target?.blocks?.getBlock(util.thread?.peekStack?.());
+      const input=block?.inputs?.VALUE;
+      const shadow=input && input.block===input.shadow && util?.target?.blocks?.getBlock(input?.shadow);
+      if(type==='Number' && typeof value==='string' && shadow && ['math_number','math_integer','math_whole_number','math_positive_number','math_angle','text'].includes(shadow.opcode))value=Scratch.Cast.toNumber(value);
       if(type==='NumberArray'){value=Scratch.BWValues.arrayValue(this._runtime,args.VALUE);if(!value || value.some(v=>typeof Scratch.BWValues.decode(v)!=='number'))throw new Error('Arcade settings require a number array');value=value.map(v=>Scratch.BWValues.decode(v));}
       else if(type==='Buffer')value=this._buffer(args.VALUE);
       else if(type==='Number' && typeof value!=='number' && value!=null || type==='String' && typeof value!=='string')throw new Error('Arcade setting value type does not match');

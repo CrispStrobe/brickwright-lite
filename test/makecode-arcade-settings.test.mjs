@@ -130,3 +130,13 @@ test('declared Number settings accept real SB3 numeric shadows without operator 
         assert.equal(store.call('readNumber','seven'),7);assert.equal(store.call('readNumber','zero'),0);assert.equal(store.call('readNumber','blank'),0);assert.equal(store.call('readString','text'),'7');
     }finally{run?.vm.quit?.();clearStrayTimers();}
 });
+
+
+test('Number setting editor conversion does not consume connected dynamic String values',async()=>{
+    let run;
+    try{
+        run=await runProgram('SPRITE Game:\nWHEN flag clicked:\n  set raw to "seven"\n  arcade write setting "dynamic" type Number value raw\n',{frames:10,storage:true});
+        assert.ok(run.errors.some(error=>error.includes('setting value type does not match')));
+        assert.equal(settings.createProgramSettings(run.vm.runtime.getTargetForStage(),{storage:null}).call('exists','dynamic'),false);
+    }finally{run?.vm.quit?.();clearStrayTimers();}
+});
