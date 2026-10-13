@@ -62,8 +62,25 @@ The green flag starts the Scratch scripts and the circuit simulation together.
 **Extensions and media.** 23 extensions ship built in (the LEGO family,
 gamepad, arrays, text-to-speech, camera, a bridge to the circuit surface, GPIO,
 and more), plus 150 reviewed extensions available from the gallery on the web.
-There is an extended **paint/costume editor**, a **sound-effects creator**, and
-a full **German** translation alongside English.
+A **sound-effects creator** and a full **German** translation sit alongside
+English.
+
+### Draw and edit graphics
+
+The costume and sprite editor is Scratch's, extended into a capable vector and
+bitmap design tool.
+
+- **In vector mode:** an **objects panel** that lists every shape to show, hide,
+  lock, rename and reorder; a **properties panel** with exact position, width,
+  height, rotation, opacity and locked aspect ratio; **align and distribute**;
+  **boolean path operations** (unite, subtract, intersect, exclude overlap,
+  divide); **mirror/symmetry**; and shape tools for **rounded rectangles,
+  polygons and stars** next to the usual rectangle, ellipse, line and triangle,
+  with independent bezier handles when you reshape a path.
+- **In bitmap mode:** a **lasso** and a **magic wand** with adjustable
+  tolerance, **layers**, and brush presets with an opacity control.
+- Throughout: an optional pixel grid, a scrollable canvas, recent-colour reuse,
+  and text costumes that rasterise with their real fonts.
 
 ### Run and debug emulated machines
 
