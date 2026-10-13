@@ -55,7 +55,7 @@ try {
     check(await more.count() === 1, 'the language row has a "+" control');
     await more.click();
     const menu = page.getByTestId('bw-lang-more-menu');
-    check(await menu.getByRole('menuitem').count() === 2, '"+" offers fe and Tcl',
+    check(await menu.getByRole('menuitem').count() === 3, '"+" offers fe, Tcl and Forth',
         (await menu.innerText().catch(() => '')).replace(/\s+/g, ' '));
     await menu.getByRole('menuitem', {name: /Tcl/}).click();
     check(await tabNamed('○ Tcl').getAttribute('aria-pressed') === 'true', 'choosing Tcl opens its tab');

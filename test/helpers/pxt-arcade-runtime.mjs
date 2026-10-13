@@ -6,7 +6,31 @@ import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 import {compile,STATIC} from '../../scripts/lib/pxt-node.mjs';
 
-export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, buttonActions = null, recordSound = false, recordSongSound = false, waitForMain = true, fakeClock = false} = {}) {
+// Self-contained for browser serialization. Observe actual presentation, not
+// requested pixels or main/global completion, which can precede the first frame.
+export function observePxtDisplay(sim = globalThis.pxsim) {
+    const api = sim?.pxtcore, original = api?.updateScreen;
+    if (typeof original !== 'function' || typeof sim.getScreenState !== 'function') {
+        throw new Error('Original PXT screen-update boundary is unavailable');
+    }
+    const observer = {updates: 0, restore() {
+        if (api.updateScreen !== observed) throw new Error('Original PXT display observer was replaced');
+        api.updateScreen = original;
+    }};
+    function observed(...args) {
+        const result = Reflect.apply(original, this, args);
+        const state = sim.getScreenState(), image = args[0];
+        if (image && state?.lastImage === image && state.width > 0 && state.height > 0
+            && state.screen?.length === state.width * state.height) observer.updates++;
+        return result;
+    }
+    api.updateScreen = observed;
+    globalThis.__bwPxtDisplayObserver = observer;
+    return observer;
+}
+
+export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, waitForDisplay = false, buttonActions = null, recordSound = false, recordSongSound = false, waitForMain = true, fakeClock = false} = {}) {
+    if (waitForDisplay && !inspectDisplay) throw new Error('Display readiness requires display inspection');
     const files=typeof source === 'string' ? {'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})} : {...source};
     const built=await compile('arcade',files);
     if(!built.success)throw new Error(JSON.stringify(built.diagnostics));
@@ -33,6 +57,7 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
         // moves only by runFor.
         if(fakeClock){await page.clock.install({time:0});await page.clock.pauseAt(0);}
         await page.goto(`http://127.0.0.1:${server.address().port}/simulator.html`);
+        if (waitForDisplay) await page.evaluate(observePxtDisplay);
         await page.evaluate(async ({code,recordSound,recordSongSound})=>{
             const msg={type:'run',id:'bw-oracle',code,options:{},mute:true};
             pxsim.AudioContextManager.mute(true);
@@ -99,14 +124,30 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
             const state=await page.evaluate(()=>{const r=window.__bwPxtRuntime;return {dead:r?.dead,running:r?.running,globals:Object.fromEntries(Object.entries(r?.globals || {}).filter(([,v])=>v===null || ['number','string','boolean','undefined'].includes(typeof v))) };});
             throw new Error('Original Arcade simulator did not complete: '+JSON.stringify({errors,messages,state}),{cause:error});
         }
-        const values=await page.evaluate(({inspectDisplay,recordSound,recordSongSound})=>{
+        let displayBaseline;
+        if (waitForDisplay) {
+            displayBaseline = await page.evaluate(() => window.__bwPxtDisplayObserver.updates);
+            if (fakeClock) {
+                let elapsed = 0;
+                while (await page.evaluate(() => window.__bwPxtDisplayObserver.updates) <= displayBaseline) {
+                    if (elapsed >= 20000 || errors.length) throw new Error('Original PXT did not present a frame after completion');
+                    await page.clock.runFor(20); elapsed += 20;
+                }
+            } else await page.waitForFunction(baseline => window.__bwPxtDisplayObserver.updates > baseline,
+                displayBaseline, {timeout: 20000});
+        }
+        const values=await page.evaluate(({inspectDisplay,recordSound,recordSongSound,waitForDisplay,displayBaseline})=>{
             const runtime=window.__bwPxtRuntime;
             const result=Object.fromEntries(Object.entries(runtime.globals).filter(([,v])=>v===null || ['number','string','boolean','undefined'].includes(typeof v)).map(([k,v])=>[k.replace(/___\d+$/,''),v]));
             if(inspectDisplay)result.$display={palette:Array.from(runtime.board.screenState.palette),
                 screen:Array.from(runtime.board.screenState.screen)};
+            if(waitForDisplay){
+                result.$display.updatesAfterReady=window.__bwPxtDisplayObserver.updates-displayBaseline;
+                window.__bwPxtDisplayObserver.restore();delete window.__bwPxtDisplayObserver;
+            }
             if(recordSound || recordSongSound)result.$sound=window.__bwSound;
             runtime.kill();runtime.board.kill();return result;
-        },{inspectDisplay,recordSound,recordSongSound});
+        },{inspectDisplay,recordSound,recordSongSound,waitForDisplay,displayBaseline});
         if(errors.length)throw new Error(JSON.stringify(errors));
         return values;
     } finally {await browser?.close();await new Promise(done=>server.close(done));}

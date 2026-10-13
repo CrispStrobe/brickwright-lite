@@ -2,7 +2,7 @@
 // Copyright (c) 2026 Brickwright contributors
 import {RenodeArenaBridge} from './renode-arena-bridge.js';
 import {NuttXProgramClient, encodePython, encodeInstructions} from '../spike-nuttx/upload-protocol.js';
-import {validateTopology, requireSixMotorFrame, prepareSixMotorHub} from '../spike-nuttx/motor-topology.js';
+import {validateTopology, requireSixMotorFrame, prepareSixMotorHub, requireDualUltrasonicFrame, requireDualUltrasonicRobot} from '../spike-nuttx/motor-topology.js';
 import {exchangeStorage, DEFERRED_STORAGE_CAPABILITY} from '../spike-nuttx/storage-exchange.js';
 import {MicroPythonProgramClient, encodeSource} from '../spike-micropython/raw-repl.js';
 /** Owns only a session it successfully started; stopping invalidates outstanding polls. */
@@ -11,6 +11,10 @@ export class RenodeArenaSession {
         validateTopology(topology);
         if (topology === 'six-motors' && (!['nuttx', 'micropython'].includes(backend) || (!program && source === null) || bridge?.robot?.sensors?.length !== 0)) {
             throw new Error('Six motors require NuttX or MicroPython code and a sensorless sandbox');
+        }
+        if (topology === 'dual-ultrasonic') {
+            if (backend !== 'nuttx' || (!program && source === null)) throw new Error('Dual ultrasonic requires own NuttX code');
+            requireDualUltrasonicRobot(bridge?.robot);
         }
         this.topology = topology;
         this.adapter = new RenodeArenaBridge(bridge, {allMotors: topology === 'six-motors'});
@@ -37,6 +41,17 @@ export class RenodeArenaSession {
         this.programStartEpoch = 0;
         this.tail = Promise.resolve();
     }
+    acceptFrame (frame) {
+        if (this.topology === 'dual-ultrasonic') requireDualUltrasonicFrame(frame);
+        return this.adapter.accept(frame);
+    }
+    async verifyDualFrame () {
+        if (this.topology !== 'dual-ultrasonic') return;
+        const fresh = JSON.parse(await this.call('state.read'));
+        if (this.closed) throw new Error('NuttX session is closed');
+        this.acceptFrame(fresh);
+        this.latestFrame = fresh;
+    }
     call (operation, args = {}) {
         const handler = this.capabilities?.[`renode.spike.${operation}`];
         if (typeof handler !== 'function') throw new Error('The desktop simulation runtime is unavailable');
@@ -49,7 +64,7 @@ export class RenodeArenaSession {
             // Reserve only configuration controls while startup is pending;
             // native motors and clock ownership remain unchanged until a frame.
             hub.configurationOwner = this;hub.changed();
-            await this.call('session.start', this.backend ? {backend: this.backend, ...(this.topology === 'six-motors' ? {topology: this.topology} : {})} : {});
+            await this.call('session.start', this.backend ? {backend: this.backend, ...(this.topology !== 'default' ? {topology: this.topology} : {})} : {});
             this.started = true;
             if (this.closed) return;
             const first = JSON.parse(await this.call('state.read'));
@@ -68,6 +83,7 @@ export class RenodeArenaSession {
                 requireSixMotorFrame(first, this.micropython ? 'micropython-prime' : 'brickwright-nuttx');
                 prepareSixMotorHub(this.adapter.bridge.hubState);
             }
+            if (this.topology === 'dual-ultrasonic') requireDualUltrasonicFrame(first);
             this.outputSequence = first.lifecycle?.nuttxProgramOutput?.sequence;
             this.nuttx = first.target?.firmware === 'brickwright-nuttx' &&
                 first.target?.capabilities?.includes('nuttx-program/v1');
@@ -87,7 +103,7 @@ export class RenodeArenaSession {
                 await this.call('arena.program.load', this.program);
                 if (this.closed) return;
             }
-            const inputs = this.adapter.accept(first);
+            const inputs = this.acceptFrame(first);
             this.adapter.bridge.hubState.externalBackend = this;
             await this.call('arena.inputs.write', inputs);
             if (this.closed) return;
@@ -102,7 +118,7 @@ export class RenodeArenaSession {
                             sample: async () => JSON.parse(await this.call('state.read')),
                             closed: () => this.closed,
                             onFrame: frame => {
-                                this.adapter.accept(frame);
+                                this.acceptFrame(frame);
                                 this.latestFrame = frame;
                                 this.observeOutput(frame);
                                 this.onFrame(this.adapter.bridge.snapshot());
@@ -110,9 +126,9 @@ export class RenodeArenaSession {
                     }
                     const frame = JSON.parse(await this.call('program.packet', {bytes: Array.from(bytes)}));
                     if (!this.closed) {
+                        const inputs = this.acceptFrame(frame);
                         this.observeProgram(frame.lifecycle?.nuttxProgram);
                         this.observeOutput(frame);
-                        const inputs = this.adapter.accept(frame);
                         this.latestFrame = frame;
                         await this.call('arena.inputs.write', inputs);
                         this.onFrame(this.adapter.bridge.snapshot());
@@ -233,7 +249,7 @@ export class RenodeArenaSession {
         }
         // The existing adapter checks image identity, sequence, clock, topology,
         // motor bounds and slew before changing the shared hub or arena.
-        this.adapter.accept(frame);
+        this.acceptFrame(frame);
         if (this.closed) return false;
         this.latestFrame = frame;
         this.onFrame(this.adapter.bridge.snapshot());
@@ -269,8 +285,8 @@ export class RenodeArenaSession {
         if (this.closed || this.finishingMicroPython) return;
         const frame = JSON.parse(await this.call('state.read'));
         if (this.closed) return;
+        const inputs = this.acceptFrame(frame);
         this.observeOutput(frame);
-        const inputs = this.adapter.accept(frame);
         this.latestFrame = frame;
         await this.call('arena.inputs.write', inputs);
         if (this.closed) return;
@@ -317,6 +333,7 @@ export class RenodeArenaSession {
         try {
             await this.tail;
             if (this.closed) throw new Error('NuttX session is closed');
+            await this.verifyDualFrame();
             const reply = await this.programClient[operation]();
             if (operation === 'load') { this.loaded = true; this.retainedProgram = true; }
             this.observeProgram(reply);
@@ -340,9 +357,10 @@ export class RenodeArenaSession {
                 const fresh = JSON.parse(await this.call('state.read'));
                 if (this.closed) throw new Error('NuttX session is closed');
                 requireSixMotorFrame(fresh);
-                this.adapter.accept(fresh);
+                this.acceptFrame(fresh);
                 this.latestFrame = fresh;
             }
+            await this.verifyDualFrame();
             await this.programClient.stop();
             this.program = program; this.source = source; this.loaded = false; this.completed = false;
             this.retainedProgram = false;
@@ -403,6 +421,8 @@ export class RenodeArenaSession {
         try {
             await this.tail;
             if (this.closed) throw new Error('NuttX session is closed');
+            requireCurrentStart();
+            if (operation === 'start') await this.verifyDualFrame();
             requireCurrentStart();
             const reply = await this.programClient[operation]();
             if (this.closed) throw new Error('NuttX session is closed');

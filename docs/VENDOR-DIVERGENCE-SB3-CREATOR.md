@@ -73,7 +73,8 @@ naming scheme changes. The sync's `--check` is what proves those, and it does.
 
 ## Carnival producer adoption — 2026-10-11
 
-The empty delta set also applies at `06341e3dd0f5ddfbed6764ec5afe03b04b65e265`.
+The empty delta set also applies at `e8c6dd5a6c0b26e6538424f4c26a857b386f3c17`
+(producer main with the Carnival words of sb3-creator #93 merged).
 The countdown and two game-over dialect words belong to the shared producer,
 not to an intentional Lite divergence. See
 [sb3-creator PR #93](https://github.com/CrispStrobe/sb3-creator/pull/93).
