@@ -4022,3 +4022,9 @@ The actual hosted editor must still exercise discovering this block, wiring all
 three inputs, adjusting numeric fields, running a controller-driven example,
 and saving/reopening/exporting the edited project. Metadata and serialization
 checks establish the graph contract; full-editor acceptance remains open.
+
+### Pending whole-IDE numeric/settings/source-loop authoring gate
+
+A real production editor journey is prepared in [`scripts/verify-arcade-numeric-authoring-gui.mjs`](../scripts/verify-arcade-numeric-authoring-gui.mjs), with its [identity contract and exact user steps](compatibility/arcade-numeric-authoring-gui.md). It covers imported and palette-created clamp blocks, numeric shadows, math and StringArray dropdowns, Code edits, source-while blocks, actual Stage/controller presentation, File save/fresh reopen, UI MakeCode export, original-SDK comparison and UI reimport.
+
+**Pending:** run this script against the exact reviewed hosted full-app artifact and record the actual result. The owned fixture's original simulator preflight and script preparation are not GUI qualification. Random samples use real entropy and bounds, without a seeded or invented trajectory. The script requires an admitted build receipt, exact source/pins/SDK/archive identity and matching actually served JavaScript bytes. No whole-game compatibility count promotion follows.
