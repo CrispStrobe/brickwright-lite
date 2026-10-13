@@ -706,12 +706,24 @@ class ArcadeEmitter {
 
     referenceArrayValue (b, name='ARRAY') {
         const value=this.value(b,name);
-        const slot=b.inputs?.[name]?.[1];
-        let id=Array.isArray(slot) && [12,13].includes(slot[0]) ? slot[2] : null;
-        const reporter=typeof slot==='string' && this.block(slot);
-        if(reporter?.opcode==='data_variable')id=reporter.fields?.VARIABLE?.[1];
-        const dynamic=id && this.mixedValueVariableIds.has(id);
-        if(!dynamic)return value;
+        const needsArrayAccess = (block, input, seen = new Set()) => {
+            if (seen.has(block)) return false;
+            seen.add(block);
+            const slot=block.inputs?.[input]?.[1];
+            let id=Array.isArray(slot) && [12,13].includes(slot[0]) ? slot[2] : null;
+            const reporter=typeof slot==='string' && this.block(slot);
+            if(reporter?.opcode==='data_variable')id=reporter.fields?.VARIABLE?.[1];
+            if(id)return this.mixedValueVariableIds.has(id);
+            // A cast receiver is any[]. Its indexed/pop/random element is any,
+            // so an outer array operation needs its own explicit array access.
+            // Typed array receivers retain their element types (Sprite/Image/
+            // nested arrays); casting those indiscriminately changes PXT dispatch.
+            if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(reporter?.opcode) ||
+                reporter?.opcode==='arrays_mutateReference' && ['pop','shift','removeAt'].includes(this.literalInput(reporter,'OP')))
+                return needsArrayAccess(reporter,'ARRAY',seen);
+            return false;
+        };
+        if(!needsArrayAccess(b,name))return value;
         const key='arrayAccess';
         if(!this.legacyValueHelpers.has(key)) {
             let fn='__bwArrayAccess';

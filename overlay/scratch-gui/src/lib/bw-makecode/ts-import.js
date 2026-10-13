@@ -942,6 +942,53 @@ class Parser {
         return this.parsePostfix();
     }
 
+    /** Read call type arguments only when followed by an actual argument list.
+     * Otherwise `<`/`>`/`>>` retain their expression meaning. This speculative
+     * read restores tokens as well as position when it is not a generic call.
+     */
+    tryCallTypeArguments () {
+        if (!this.at('punct', '<')) return null;
+        const saved = this.pos, tokens = this.toks.slice();
+        try {
+            this.next();
+            const arguments_ = [];
+            let text = '', previous = null;
+            const stack = [];
+            for (;;) {
+                let token = this.peek();
+                if (token.type === 'eof') throw new Error('unfinished call type arguments');
+                if (token.type === 'punct' && ['>>','>>>'].includes(token.value)) {
+                    this.toks.splice(this.pos, 1, ...Array.from(token.value, () => ({...token, value: '>'})));
+                    token = this.peek();
+                }
+                if (!stack.length && token.type === 'punct' && [',','>'].includes(token.value)) {
+                    if (!text) throw new Error('empty call type argument');
+                    arguments_.push(text);text = '';previous = null;
+                    this.next();
+                    if (token.value === '>') break;
+                    continue;
+                }
+                if (token.type === 'punct') {
+                    if (!['<','>','[',']','(',')','{','}','.',',',':','?','|','&','=>',';','-'].includes(token.value)) throw new Error('expression is not call type syntax');
+                    if (token.value === '-' && (previous && !['|',',',':','?','('].includes(previous.value) || this.peek(1).type !== 'number')) throw new Error('expression is not a numeric literal type');
+                    if (['<','[','(','{'].includes(token.value)) stack.push(token.value);
+                    else if (['>',']',')','}'].includes(token.value)) {
+                        if (stack.pop() !== {'>':'<',']':'[',')':'(','}':'{'}[token.value]) throw new Error('unbalanced call type argument');
+                    }
+                } else if (!['ident','number','string','true','false','null','undefined'].includes(token.type)) throw new Error('expression is not call type syntax');
+                const current = this.next();
+                if (previous && ['ident','string','number'].includes(previous.type) && ['ident','string','number'].includes(current.type)) text += ' ';
+                text += current.type === 'string' ? `"${current.value}"` : current.value;
+                previous = current;
+            }
+            if (!this.at('punct', '(')) throw new Error('type arguments need a call');
+            return arguments_;
+        } catch (error) {
+            this.pos = saved;this.toks = tokens;
+            return null;
+        }
+    }
+
     parsePostfix () {
         let node = this.parsePrimary();
         for (;;) {
@@ -950,8 +997,9 @@ class Parser {
                 node = {type: 'Member', object: node, name};
                 continue;
             }
+            const typeArguments = this.tryCallTypeArguments();
             if (this.at('punct', '(')) {
-                node = {type: 'Call', callee: node, args: this.parseArguments()};
+                node = {type: 'Call', callee: node, args: this.parseArguments(), ...(typeArguments ? {typeArguments} : {})};
                 continue;
             }
             if (this.at('template')) {
@@ -1058,8 +1106,9 @@ class Parser {
             // `isNew` and `constructorCall` mark the same fact for both readers.
             let callee = this.parsePrimary();
             while (this.eat('punct', '.')) callee = {type: 'Member', object: callee, name: this.next().value};
+            const typeArguments = this.tryCallTypeArguments();
             return {type: 'Call', callee, args: this.at('punct', '(') ? this.parseArguments() : [],
-                isNew: true, constructorCall: true};
+                ...(typeArguments ? {typeArguments} : {}), isNew: true, constructorCall: true};
         }
         if (t.type === 'ident') {
             this.next();
