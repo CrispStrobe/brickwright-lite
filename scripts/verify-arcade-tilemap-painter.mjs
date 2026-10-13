@@ -326,6 +326,11 @@ try {
     // different level. Observe the saved block's REAL installation before
     // those writes, without fabricating a map or changing execution order.
     await page.evaluate(observeTilemapInstallations, {blockId: fresh.blockId, expose: true});
+    // The platformer's own start script then installs its first level (the
+    // level painted before saving). Observe that block too: the live map is
+    // no witness for it, since the running game clears its spawn tiles in place.
+    const expectedFirstLevel = canonical(JSON.parse(beforeReload.find(ref => ref.blockId === levels[0].blockId).text));
+    await page.evaluate(observeTilemapInstallations, {blockId: levels[0].blockId, expose: '__bwFirstLevelInstallationProof'});
     try {
         await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.greenFlag());
         const reopenedRuntime = await waitFor(() => page.evaluate(() =>
@@ -336,8 +341,18 @@ try {
                 reopenedRuntime.indices[0] === 1 && reopenedRuntime.walls[1] === 1 && reopenedRuntime.images[1].pixels[0] === 3));
         report.reopenedRuntime = reopenedRuntime;
         report.reopenedInstallations = await page.evaluate(() => window.__bwTilemapInstallationProof.receipts);
+        const firstLevelRuntime = await waitFor(() => page.evaluate(() =>
+            window.__bwFirstLevelInstallationProof.receipts[0]?.map || null),
+        map => map && canonical(map) === expectedFirstLevel, 30000);
+        check('and the reopened platformer then runs its own painted first level',
+            Boolean(firstLevelRuntime && canonical(firstLevelRuntime) === expectedFirstLevel &&
+                firstLevelRuntime.indices[cell] === 1 && firstLevelRuntime.walls[cell + 1] === 1 &&
+                firstLevelRuntime.images[1].pixels[0] === 2));
+        report.reopenedFirstLevelInstallations = await page.evaluate(() => window.__bwFirstLevelInstallationProof.receipts.length);
     } finally {
         await page.evaluate(() => {
+            window.__bwFirstLevelInstallationProof.restore();
+            delete window.__bwFirstLevelInstallationProof;
             window.__bwTilemapInstallationProof.restore();
             delete window.__bwTilemapInstallationProof;
         });

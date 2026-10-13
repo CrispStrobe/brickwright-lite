@@ -3145,6 +3145,7 @@ Definition operations are `findLegacyTileDefinitions` and `writeLegacyTileDefini
 
 Definition followup qualification: all38 affected tests passed,0 skips; a final5-test focused rerun passed after validation guards. JSX/script syntax and unchanged workflow budget registration passed. Actual fresh-build browser controls remain queued and are not qualified by those unit/runtime results. Remaining authoring gaps include computed definition indices/images, computed wall expressions, richer layer/animation sources and broader source-alias resolution.
 
+
 ## Painted tilemap project persistence browser lane — 2026-10-11
 
 The CI tilemap painter journey now saves the actual GUI project as SB3 and
