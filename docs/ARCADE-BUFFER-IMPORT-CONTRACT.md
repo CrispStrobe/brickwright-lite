@@ -387,3 +387,27 @@ can restore scoped references from JSON text; a weak byte registry alone could
 lose payloads still recoverable through serialized values. Define those roots
 and pins before introducing tracing or allocation reservations. Do not claim
 host GC or a counter of historical allocations as complete live collection.
+
+### Single destination storage — 2026-10-13
+
+Buffer slices adopt the fresh detached byte storage returned by the original
+PXT slice algorithm. Public construction from a caller's typed array still
+copies, so this does not turn detached slices into aliases. Slice offset,
+length and readonly behavior are still supplied by the retained original code.
+UTF-8 conversion computes the exact encoded size before allocation, allocates
+one bounded destination and uses `TextEncoder.encodeInto` to write directly
+into it. Surrogate replacement and empty text retain original simulator bytes.
+These changes remove duplicate backing stores on two allocation paths; they
+do not introduce live collection or an aggregate memory limit.
+
+The authored Buffer GUI/export journey passed on
+[PR850 head f30e57cfa2](https://github.com/CrispStrobe/brickwright-lite/pull/850),
+[run38342374353](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38342374353).
+It covers actual dropdown/numeric edits, A/B/down controller input, Code/Blocks
+reconstruction, saved project replacement/reopen and a genuine downloaded
+MakeCode project executed in the original runtime. Original artifact11789541637
+contains the unchanged JSON, SB3, TypeScript, mkcd and screenshot. All enabled
+checks passed; PR-only deployment jobs skipped. This predates the lifetime and
+single-storage candidates, which require their own exact-head qualification.
+Namespace imports, a byte inspector and immutable whole-app recensus remain
+separate gaps. No corpus classifications changed.

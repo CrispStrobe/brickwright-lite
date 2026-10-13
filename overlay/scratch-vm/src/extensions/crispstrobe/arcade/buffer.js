@@ -48,7 +48,13 @@ class PxtBuffer extends Uint8Array {
     equals(other) {return helpers.bufferEquals(this, other);}
     indexOf(other) {return helpers.bufferIndexOf(this, other);}
     setByte(offset, value) {methods.setByte(this._reference(), offset, value);}
-    slice(offset = 0, length = -1) {return new PxtBuffer(methods.slice(this._reference(), offset, length).data);}
+    slice(offset = 0, length = -1) {
+        // Original PXT slice has already detached the storage from its source.
+        // Adopt that fresh storage; constructing from the typed array would
+        // copy it a second time. Public typed-array construction still copies.
+        const data = methods.slice(this._reference(), offset, length).data;
+        return new PxtBuffer(data.buffer, data.byteOffset, data.byteLength);
+    }
     write(offset, source, sourceOffset = 0, length = -1) {
         methods.write(this._reference(), offset, source._reference(), sourceOffset, length);
     }
@@ -119,7 +125,11 @@ const fromUTF8 = text => {
         } else length += 3;
         if (length > MAX_BUFFER_BYTES) throw new RangeError('Arcade buffer exceeds byte allocation limit');
     }
-    return new PxtBuffer(new TextEncoder().encode(text));
+    const bytes = new PxtBuffer(length);
+    // Encode straight into the checked destination, including replacement
+    // characters for unpaired surrogates. No temporary encoded array is needed.
+    new TextEncoder().encodeInto(text, bytes);
+    return bytes;
 };
 const literal = text => {
     const hex = String(text).replace(/\s/g, '');

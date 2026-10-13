@@ -1974,3 +1974,22 @@ open. The Buffer contract records specific runtime roots and serialized custom
 argument values that a weak registry would miss. Full hosted/editor acceptance
 is pending; immutable app classifications remain142/41/1. Lower-stack landing
 is handled separately using normal merges; work continues on this top candidate.
+
+## Buffer editor proof and storage continuation — 2026-10-13
+
+The fresh PR850 head f30e57cfa2 passed all enabled source/unit/browser checks in
+[run38342374353](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38342374353).
+The passing Buffer browser artifact11789541637 proves actual format/value edits,
+three A/B/down cycles, Code/Blocks reconstruction, File save/replacement/reopen
+and genuine MakeCode download running in original Arcade with matching bytes.
+The original ZIP and all members are preserved privately. This supersedes the
+pending GUI/export observation above; preserve the earlier failed receipts.
+It does not qualify subsequent candidates or close namespace import coverage.
+
+Next child `lane/arcade-buffer-storage-20261013` follows lifetime PR853 without
+changing that pending head. It removes a second copy of original detached slice
+storage and encodes UTF-8 directly into the prechecked destination. Readonly,
+detachment, typed-array construction and original simulator values are required
+controls. Root-aware collection and aggregate reservation remain open, with
+serialized values and music fibers needing explicit ownership. Continue the
+ordered method in the Buffer contract. Locked184 remains142/41/1.
