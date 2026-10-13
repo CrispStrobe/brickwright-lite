@@ -78,7 +78,7 @@ const NOTE_FREQUENCIES = {C: 262, CSharp: 277, D: 294, Eb: 311, E: 330, F: 349, 
 
 import {parseTileAssets} from './tile-assets.js';
 import {createAssetKindLookup, lookupAssetTemplate} from './asset-kind-lookup.js';
-import {decodeTilemap, parseNativeTilemaps} from './tilemap-values.js';
+import {decodeTilemap, createNativeTilemapRegistry, resolveNativeTilemap} from './tilemap-values.js';
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
 import {prepareAnimationImport} from '../bw-animation-import.js';
 import {ValueTypeGraph} from './value-type-graph.js';
@@ -1531,8 +1531,15 @@ class ArcadeTranslator extends BaseTranslator {
         if(this.handleTemplates && ['tiles.setTilemap','tiles.setCurrentTilemap','scene.setTileMapLevel'].includes(name)) {
             const value=a[0];
             if(a.length===1 && value?.type==='Null'){push('arcade set tilemap data \"null\"');return;}
-            const data=value?.type==='Template' && /^(tilemap|assets\.tilemap)$/.test(value.tag||'') ? this.tilemaps[value.value.trim()] : decodeTilemap(value,node=>this.imageOf(node),node=>this.path(node));
-            if(!data){this.unsupported.push(`${name}() requires a readable literal tile map with wall layer and tile scale`);return;}
+            let data;
+            if(value?.type==='Template' && /^(tilemap|assets\.tilemap)$/.test(value.tag||'')) {
+                if(a.length!==1 || value.value.includes('${')){push(this.note(`${name}() requires a literal tilemap name`));return;}
+                const resolved=resolveNativeTilemap(this.tilemaps,value.value);
+                if(resolved.unsupported.length){push(this.note(`${name}(): ${resolved.unsupported.join('; ')}`));return;}
+                data=resolved.value;
+                if(data===null){push('arcade set tilemap data \"null\"');return;}
+            } else data=decodeTilemap(value,node=>this.imageOf(node),node=>this.path(node));
+            if(a.length!==1 || !data){this.unsupported.push(`${name}() requires a readable literal tile map with wall layer and tile scale`);return;}
             // Terrain physics is measured frame by frame against the original
             // (test/makecode-arcade-terrain-trajectories.test.mjs).
             push(`arcade set tilemap data ${JSON.stringify(JSON.stringify(data))}`);
@@ -4569,8 +4576,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && assetKindLookup && ['assets.image','assets.tile'].includes(node.tag) ? lookupAssetTemplate(assetKindLookup,node.tag,node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ?
         assets[tileImagePath(node)] || assets[node.name] || (BUILTIN_IMAGES[tileImagePath(node)] ? decodeMkcdImage(BUILTIN_IMAGES[tileImagePath(node)]) : null) :
         node?.type==='Identifier' ? assets[node.name] : null;
-    const nativeTilemaps = {};
-    for(const [filename,text] of Object.entries(map))if(/\.g\.ts$/.test(filename))Object.assign(nativeTilemaps,parseNativeTilemaps(text,tileImageOf));
+    const nativeTilemaps = createNativeTilemapRegistry(map,tileImageOf,assetFileOrder?{fileOrder:assetFileOrder}:{});
     const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested, assetKindLookup, scrollerVersion, characterVersion);
     if (namedEvents) return withAnimationDiagnostics(namedEvents);
     const creationEvents = flattened && translateCreationEvents(flattened, assets, assetKindLookup, scrollerVersion, characterVersion);
