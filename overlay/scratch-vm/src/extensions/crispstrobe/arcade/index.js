@@ -37,8 +37,8 @@ module.exports = makeExt(`// Name: Arcade
       this._sceneStack = [];this._sceneParents=new WeakMap();this._seeThroughSources=new WeakMap();this._renderingScenes=new WeakSet();this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
       this._sceneBundles = new Set();
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
-      this._sdkSpriteClasses=dependencies.sdkSpriteClasses.create(this,Scratch.BWValues);
-      this._objectHeap=dependencies.createObjectHeap(runtime,Scratch.BWValues,this._sdkSpriteClasses.heapHooks);
+      this._sdkObjectClasses=dependencies.sdkObjectClasses.create(this,Scratch.BWValues);
+      this._objectHeap=dependencies.createObjectHeap(runtime,Scratch.BWValues,this._sdkObjectClasses.heapHooks);
       this._renderables=new WeakMap();this._screen=null;this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._extensionCreationWaits=[];
       this._scenePushHandlers = [];this._scenePopHandlers = [];
       this._scrollerVersion = 'v0.1.2';
@@ -1727,7 +1727,7 @@ module.exports = makeExt(`// Name: Arcade
     _objectProcedure(name,values,util,token) {
       const target=util?.target || util?.thread?.target;
       if(util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))){const error=new Error('Class construction or method invocation was cancelled');error.bwObjectCancelled=true;throw error;}
-      if(this._sdkSpriteClasses.matches(name))return this._sdkSpriteClasses.invoke(name,values,util,token);
+      if(this._sdkObjectClasses.matches(name))return this._sdkObjectClasses.invoke(name,values,util,token);
       if(!target?.blocks?.getProcedureDefinition(name))throw new Error('Class procedure is not defined: '+name);
       // Dispatch through the real managed-call queue. Its source phase owns
       // runnable eligibility; a Promise continuation must not synchronously
@@ -1792,7 +1792,7 @@ module.exports = makeExt(`// Name: Arcade
     callFunction(args, util) {
       const runtime = this._runtime, target = util?.target || util?.thread?.target;
       const name = String(args.NAME);
-      if(this._sdkSpriteClasses.matches(name)) {try {const values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));if(!Array.isArray(values))throw new Error('SDK Sprite call requires ordered arguments');return this._sdkSpriteClasses.invoke(name,values,util,args.bwObjectConstruction || util?.thread?.bwObjectConstruction);}catch(error){return this._objectError(error);}}
+      if(this._sdkObjectClasses.matches(name)) {try {const values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));if(!Array.isArray(values))throw new Error('SDK Sprite call requires ordered arguments');return this._sdkObjectClasses.invoke(name,values,util,args.bwObjectConstruction || util?.thread?.bwObjectConstruction);}catch(error){return this._objectError(error);}}
       const definition = target?.blocks?.getProcedureDefinition(name);
       if (!definition || !runtime?._pushThread) return 0;
       let values;try {values = JSON.parse(String(args.ARGS), (_key,value)=>
@@ -3933,7 +3933,7 @@ module.exports = makeExt(`// Name: Arcade
       for(const name of ['dissolve','melt','slash','splatter'])effects[name]={kind:'image',name};
       this._gameOverEffects=effects;
       const music=this._music().pxt.music;
-      this._dialogHost={wrap:raw=>new DialogImage(raw),img,image:{create:(width,height)=>new DialogImage({width,height,pixels:new Uint8Array(Math.max(0,width*height))}),
+      this._dialogHost={wrap:raw=>new DialogImage(raw),img,image:{create:(width,height)=>{width=Number(width)|0;height=Number(height)|0;if(width<0||height<0||width>2000||height>2000)return undefined;return new DialogImage({width,height,pixels:new Uint8Array(width*height)});},
           font5:text.image.font5,font8:text.image.font8,font12:text.image.font12,getFontForText:value=>text.image.getFontForText(value)}};
       this._gameOverPxt=dependencies.initializeGameOver({
         image:this._dialogHost.image,img,screen:{width:160,height:120,isMono:false},effects,music,
@@ -5465,6 +5465,7 @@ module.exports = makeExt(`// Name: Arcade
 })(Scratch);
 `, {
   sdkSpriteClasses: require('./sdk-sprite-classes'),
+  sdkObjectClasses: require('./sdk-object-classes'),
   createObjectHeap: require('./object-heap'),
   createSceneFrameContexts: require('./scene-frame-contexts'),
   createPollEvents: require('./poll-events'),

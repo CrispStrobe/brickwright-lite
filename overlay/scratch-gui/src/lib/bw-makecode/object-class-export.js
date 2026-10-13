@@ -1,4 +1,4 @@
-import {sdkSpriteExportClasses,sdkSpritePublicBase} from './sdk-sprite-class-descriptors.js';
+import {sdkExportClasses,sdkClassPublicName,sdkClassName} from './sdk-class-descriptors.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 
 // Recover reviewable class declarations from explicit authoring blocks, not
@@ -30,8 +30,10 @@ export function prepareObjectClassExport(emitter) {
             classes.set(name,{name,parent:block.opcode==='arcade_declareSubclass'?literal(target,block,'BASE'):null,target,fields,parameters,methods,initializer:literal(target,block,'INITIALIZER'),constructor:literal(target,block,'CONSTRUCTOR')});
         }catch(error){emitter.note('Arcade class export requires fixed valid declaration metadata: '+error.message);}
     }
-    if(!classes.size)return {classes,procedures,variableTypes:new Map(),localType:()=> 'any',render:()=>[],receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
-    for(const cls of sdkSpriteExportClasses())if(!classes.has(cls.name))classes.set(cls.name,cls);
+    const builtinNames=new Set(sdkExportClasses().map(cls=>cls.name));
+    const builtinObject=emitter.project.targets.some(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_createObject' && builtinNames.has(literal(target,block,'CLASS'))));
+    if(!classes.size && !builtinObject)return {classes,procedures,variableTypes:new Map(),localType:()=> 'any',render:()=>[],receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
+    for(const cls of sdkExportClasses())if(!classes.has(cls.name))classes.set(cls.name,cls);
     const ancestors=name=>{const result=[],seen=new Set();while(name){if(seen.has(name)||!classes.has(name)){emitter.note('Class inheritance export requires declared acyclic parents');return [];}seen.add(name);result.push(classes.get(name));name=classes.get(name).parent;}return result;};
     const resolveMember=(cls,name,method=false)=>ancestors(cls.name).flatMap(base=>method?base.methods:base.fields).find(value=>value.name===name);
     const superHelpers=new Map(),parameterPropertyBlocks=new Set();
@@ -134,7 +136,7 @@ export function prepareObjectClassExport(emitter) {
     function typeOf(cell,seen=new Set()) {
         const node=graph.node(cell);if(seen.has(node))return 'any';seen.add(node);
         if(node.types.has('array'))return `${node.element?typeOf(node.element,seen):'any'}[]`;
-        const types=[...node.types].filter(type=>type!=='any' && type!=='void');return types.length===1?types[0]:'any';
+        const types=[...node.types].filter(type=>type!=='any' && type!=='void');return types.length===1?sdkClassPublicName(types[0]):'any';
     }
     const variableTypes=new Map([...variables].map(([id,{target,name}])=>[emitter.varName(target,name),typeOf(`var:${id}`)]));
     const localType=(key,name)=>typeOf(`${key}:local:${name}`);
@@ -180,7 +182,7 @@ export function prepareObjectClassExport(emitter) {
             if(cls.intrinsic)continue;
             const ctor=definitions.get(key(cls.target,cls.constructor));
             const params=cls.parameters.map((param,index)=>{const field=cls.fields.find(field=>field.parameterProperty&&field.name===param.name);return `${field?(field.visibility||'public')+' '+(field.readonly?'readonly ':''):''}${ctor?.parameters[index+1] || param.name}${param.optional&&!Object.prototype.hasOwnProperty.call(param,'default')?'?':''}: ${param.type}${Object.prototype.hasOwnProperty.call(param,'default')?' = '+JSON.stringify(param.default):''}`;}).join(', ');
-            const lines=[`class ${cls.name}${cls.parent?' extends '+sdkSpritePublicBase(cls.parent):''} {`];
+            const lines=[`class ${cls.name}${cls.parent?' extends '+sdkClassPublicName(cls.parent):''} {`];
             for(const field of cls.fields){
                 if(field.parameterProperty)continue;
                 let initializer='';
@@ -206,5 +208,5 @@ export function prepareObjectClassExport(emitter) {
         }
         Object.assign(emitter,saved);return out;
     }
-    return {classes,procedures,variableTypes,localType,render,receiver,superCall,parameterPropertyBlocks};
+    return {classes,procedures,variableTypes,localType,render,receiver,superCall,parameterPropertyBlocks,publicName:sdkClassPublicName,hasType:type=>classes.has(sdkClassName(type.replace(/(?:\[\])+$/,'')))};
 }

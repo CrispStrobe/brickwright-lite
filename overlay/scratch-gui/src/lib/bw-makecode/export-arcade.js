@@ -1093,7 +1093,7 @@ class ArcadeEmitter {
         case 'arcade_createObject': {
             const name=this.literalInput(b,'CLASS');
             if(!this.objectClassExport?.classes.has(name)){this.note('Object export requires a fixed declared class');return this.na();}
-            return `new ${name}(${this.objectArgumentValues(b).join(', ')})`;
+            return `new ${this.objectClassExport.publicName(name)}(${this.objectArgumentValues(b).join(', ')})`;
         }
         case 'arcade_objectField':return `${this.objectClassExport.receiver(b)}.${this.objectFieldName(b)}`;
         case 'arcade_callObjectMethod':return `${this.objectClassExport.receiver(b,false,true)}.${this.objectFieldName(b,'METHOD')}(${this.objectArgumentValues(b).join(', ')})`;
@@ -3411,7 +3411,7 @@ class ArcadeEmitter {
         out.push(...objectClasses);
         for (const n of decls) {
             const objectType=this.objectClassExport?.variableTypes.get(n);
-            if(objectType && (this.objectClassExport.classes.has(objectType) || /\[\]$/.test(objectType) && this.objectClassExport.classes.has(objectType.slice(0,-2)))){out.push(`let ${n}: ${objectType} = null`);continue;}
+            if(objectType && this.objectClassExport.hasType?.(objectType)){out.push(`let ${n}: ${objectType} = null`);continue;}
             if(['number','boolean','string'].includes(objectType)){out.push(`let ${n}: ${objectType} = ${objectType==='string'?'\"\"':objectType==='boolean'?'false':'0'}`);continue;}
             const kinds = this.kinds.get(n) || new Set(['number']);
             // A variable given both text and numbers is `any` — Scratch's own

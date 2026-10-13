@@ -1,23 +1,26 @@
-import {SDK_SPRITE_CLASS_NODES,sdkSpriteBase} from './sdk-sprite-class-descriptors.js';
+import {SDK_CLASS_NODES,SDK_SPRITE_CLASS_NODES,SDK_DIALOG_CLASS_NODES,sdkClassName} from './sdk-class-descriptors.js';
+import {SDK_DIALOG_OPAQUE_PARAMETERS} from './sdk-dialog-class-descriptors.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 
 // Class structure is declarative authoring data. Instances are explicit heap
 // references; no field state, per-class numeric handles or closure snapshots.
 export function lowerObjectClasses(program) {
-    const reserved = new Set(SDK_SPRITE_CLASS_NODES.map(node=>node.name).filter(name=>name.startsWith('__bwSDK_')));
+    const reserved = new Set(SDK_CLASS_NODES.map(node=>node.name).filter(name=>name.startsWith('__bwSDK_')));
     const usesReserved = node => node && typeof node==='object' &&
         (reserved.has(node.type==='Identifier'||node.type==='Class'?node.name:null) || reserved.has(node.type==='Class'?node.base:null) ||
         Object.values(node).some(value=>Array.isArray(value)?value.some(usesReserved):usesReserved(value)));
     if(usesReserved(program))return {program,unsupported:['Internal SDK class descriptor names are not source constructors or bindings']};
-    const sourceClasses = program.body.filter(node => node.type === 'Class').map(node=>({...node,...(node.base?{base:sdkSpriteBase(node.base)}:{})}));
+    const contains = (node, predicate) => node && typeof node === 'object' && (predicate(node) ||
+        Object.values(node).some(value => Array.isArray(value) ? value.some(child => contains(child, predicate)) : contains(value, predicate)));
+    const dialogName=node=>node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='game' && ['BaseDialog','SplashDialog'].includes(node.name) ? sdkClassName('game.'+node.name):null;
+    const dialogRequested=contains(program,node=>node.type==='Call' && node.isNew && dialogName(node.callee));
+    const sourceClasses = program.body.filter(node => node.type === 'Class').map(node=>({...node,...(node.base?{base:sdkClassName(node.base)}:{})}));
     const classes = new Map(sourceClasses.map(node => [node.name, node]));
-    if (!classes.size) return {program, unsupported: []};
-    const sdkClasses=sourceClasses.some(node=>['Sprite','__bwSDK_ExtendableSprite'].includes(node.base))?SDK_SPRITE_CLASS_NODES:[];
+    if (!classes.size && !dialogRequested) return {program, unsupported: []};
+    const sdkClasses=[...(sourceClasses.some(node=>['Sprite','__bwSDK_ExtendableSprite'].includes(node.base))?SDK_SPRITE_CLASS_NODES:[]),...(dialogRequested||sourceClasses.some(node=>SDK_DIALOG_CLASS_NODES.some(base=>base.name===node.base))?SDK_DIALOG_CLASS_NODES:[])];
     const originalClasses=new Map(classes);classes.clear();for(const node of sdkClasses)classes.set(node.name,node);for(const [name,node]of originalClasses)classes.set(name,node);
     const unsupported = [], admitted = new Map();
     const fail = message => { if (!unsupported.includes(message)) unsupported.push(message); };
-    const contains = (node, predicate) => node && typeof node === 'object' && (predicate(node) ||
-        Object.values(node).some(value => Array.isArray(value) ? value.some(child => contains(child, predicate)) : contains(value, predicate)));
     for (const [name, cls] of [...sdkClasses.filter(node=>classes.get(node.name)===node).map(node=>[node.name,node]),...sourceClasses.map(node=>[node.name,node])]) {
         const problems = [...(cls.unsupported || [])];
         if(cls.fields.some(field=>field.typeName && !/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\[\])*$/.test(field.typeName)))problems.push('union, callable or opaque field type metadata');
@@ -39,6 +42,7 @@ export function lowerObjectClasses(program) {
         if(!chain){fail(`Class ${name} requires unsupported or cyclic parent ${cls.base}`);continue;}
         if(!cls.ctor && cls.fields.some(field=>field.init))fail(`Class ${name} initialized fields require an explicit constructor in selected Arcade SDK`);
         if(cls.sdkIntrinsic)continue;
+        if(chain.some(base=>['BaseDialog','SplashDialog'].includes(admitted.get(base)?.sdkIntrinsic)))fail('User SDK Dialog subclasses require separate native dispatch qualification');
         if(chain.some(base=>admitted.get(base)?.sdkIntrinsic) && cls.methods.some(method=>['update','draw','drawSprite','__draw','__drawCore','__update','setHitbox','resetHitbox','recalcSize','setDimensions','__visible','__serialize'].includes(method.name)))fail('SDK Sprite draw/update/hitbox overrides require separate qualification');
         if(cls.base && cls.ctor){
             const body=cls.ctor.originalBody || cls.ctor.body,superCall=node=>node?.type==='ExpressionStatement' && node.expr?.type==='Call' && node.expr.callee?.name==='super';
@@ -64,7 +68,7 @@ export function lowerObjectClasses(program) {
         return binding(global, name, true);
     };
     const fieldCell = (name, field) => graph.property(binding(global, `class:${fieldOwners.get(findField(name,field)) || name}`), field);
-    const typeText = value => (typeof value==='string'?value:value?.text) || 'any';
+    const typeText = value => {const text=(typeof value==='string'?value:value?.text) || 'any';return text.endsWith('[]')?sdkClassName(text.slice(0,-2))+'[]':sdkClassName(text);};
     const addType = (key, name) => {
         if (!name) return;
         name=typeText(name);
@@ -116,6 +120,12 @@ export function lowerObjectClasses(program) {
     }
     for(const node of sdkClasses)visit(node,global);
     visit({...program,body:program.body.map(node=>node.type==='Class'?classes.get(node.name):node)}, global);
+    // Namespace lowering resolves bare SDK names first. Never treat a lexical
+    // variable called game as the SDK namespace, including forward declarations.
+    for(const node of entries)if(node.type==='Call' && node.isNew && dialogName(node.callee)){
+        let scope=owners.get(node),shadow=false;while(scope){if(scope.bindings.has('game')){shadow=true;break;}scope=scope.parent;}
+        if(!shadow){node.callee={type:'Identifier',name:dialogName(node.callee)};owners.set(node.callee,owners.get(node));}
+    }
     const staticType=node=>{
         if(!node)return null;
         if(node.assertedType && node.assertedType!=='any')return typeText(node.assertedType);
@@ -210,6 +220,7 @@ export function lowerObjectClasses(program) {
         }
     };
     const omittedArgument=(member,index)=>member?.parameterDefaults?.find(value=>value.name===member.params[index])?.value || {type:'Undefined'};
+    const opaqueParameters=(name,member)=>{const slots=SDK_DIALOG_OPAQUE_PARAMETERS[name]?.[member];return Array.isArray(slots)?slots:[];};
     const classBody=member=>member.body.slice(member.parameterDefaults?.length || 0);
     const procedure = (name,args,result=[])=>call('procedure',[str(name),{type:'Array',items:args}],result);
     function rewrite(node, context = null) {
@@ -231,11 +242,14 @@ export function lowerObjectClasses(program) {
         }
         if(node.type==='Identifier' && admitted.has(node.name))fail(`Class constructor ${node.name} used as a runtime value requires function references`);
         if (node.type === 'Identifier' && node.name === 'this' && context) return {...id('__bwSelf'), bwObjectTypes:['object']};
-        if (node.type === 'Call' && node.isNew && node.callee?.type === 'Identifier' && admitted.has(node.callee.name))
+        if (node.type === 'Call' && node.isNew && node.callee?.type === 'Identifier' && admitted.has(node.callee.name)) {
+            for(const index of opaqueParameters(node.callee.name,'constructor'))if(node.args[index] && !['Null','Undefined'].includes(node.args[index].type))fail('SDK Dialog Font arguments require separate native Font qualification');
             return call('create', [str(node.callee.name), {type:'Array', items:node.args.map(arg => rewrite(arg, context))}], ['object']);
+        }
         if (node.type === 'Call' && node.callee?.type === 'Member' && classNames(node.callee.object).length) {
             const names = classNames(node.callee.object);
             if (names.every(name => findMethod(name,node.callee.name))) {
+                for(const name of names)for(const index of opaqueParameters(name,node.callee.name))if(node.args[index] && !['Null','Undefined'].includes(node.args[index].type))fail('SDK Dialog Font arguments require separate native Font qualification');
                 access(node.callee.object,node.callee.name,names.map(name=>findMethod(name,node.callee.name)),context);
                 return call('call', [rewrite(node.callee.object, context), str(node.callee.name), {type:'Array', items:node.args.map(arg => rewrite(arg, context))}], types(node));
             }
