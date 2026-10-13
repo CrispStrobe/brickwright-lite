@@ -26,6 +26,7 @@ module.exports = makeExt(`// Name: Arcade
   class Arcade {
     constructor(runtime) {
       this._runtime = runtime;
+      this._bufferSuspended = false;
       this._speechEngine = dependencies.createSpeechEngine(dependencies.initializeSpeech, dependencies.fonts,
         dependencies.initializeNativeLegacy);
       this._fallbackState = null;
@@ -89,7 +90,7 @@ module.exports = makeExt(`// Name: Arcade
         };
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
         runtime.on('PROJECT_STOP_ALL', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._musicHost?.stopAll();});
-        runtime.on('RUNTIME_DISPOSED', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._bufferHeap=null;cancelCreations();this._clearTilemap();this._tileLocations.clear();this._animationAssetCache.clear();for(const id of this._imageSkins.keys())this._clearImage(id);});
+        runtime.on('RUNTIME_DISPOSED', () => {this._bufferSuspended=true;this._musicHost?.reset();this._musicHost=null;this._musicIds=new Map();this._musicValues=new Map();this._musicGeneration=dependencies.buffers.newHeapId();this._carnivalHost?.cancel();this._carnivalHost=null;this._bufferHeap=null;cancelCreations();this._clearTilemap();this._tileLocations.clear();this._animationAssetCache.clear();for(const id of this._imageSkins.keys())this._clearImage(id);});
         const reset = () => {
           cancelCreations();
           this._terrainStopped = false;
@@ -116,7 +117,7 @@ module.exports = makeExt(`// Name: Arcade
           for (const id of this._speech.keys()) this._clearSpeech(id, undefined, true);
           this._clearParticleOverlays();this._particleScenes=new WeakMap();this._particleAnchors=new WeakMap();
           this._renderables=new WeakMap();this._screen=null;
-          this._musicHost?.reset();this._musicIds=new Map();this._musicValues=new Map();
+          this._musicHost?.reset();this._musicIds=new Map();this._musicValues=new Map();this._musicGeneration=dependencies.buffers.newHeapId();
           this._bufferHeap = null;
           this._sevensegIds=new Map();this._sevensegValues=new Map();
           this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._scrollerModule=null;this._characterAnimationModule=null;
@@ -152,6 +153,7 @@ module.exports = makeExt(`// Name: Arcade
           // restoration repopulates them after successful deserialization.
           runtime.bwArcadeAnimationResources = new Map();
           reset();
+          this._bufferSuspended = false;
         });
         runtime.on('PROJECT_START', reset);
         runtime.on('targetWasRemoved', target => {
@@ -3805,8 +3807,8 @@ module.exports = makeExt(`// Name: Arcade
     }
     _musicHandle(value) {
       if(!value)return '';
-      if(!this._musicIds)this._musicIds=new Map(),this._musicValues=new Map();
-      if(!this._musicIds.has(value)){const id='arcade-music:'+(this._musicIds.size+1);this._musicIds.set(value,id);this._musicValues.set(id,value);}
+      if(!this._musicIds)this._musicIds=new Map(),this._musicValues=new Map(),this._musicGeneration=dependencies.buffers.newHeapId();
+      if(!this._musicIds.has(value)){const id='arcade-music:'+this._musicGeneration+':'+(this._musicIds.size+1);this._musicIds.set(value,id);this._musicValues.set(id,value);}
       return Scratch.BWValues.reference(this._runtime,'music',this._musicIds.get(value));
     }
     // A music value of the given PXT class, or an explicit error.
@@ -3859,12 +3861,13 @@ module.exports = makeExt(`// Name: Arcade
     }
     namedSongPlayable(args) { return this.songPlayable(args); }
     _bufferState() {
-      if(!this._bufferHeap)this._bufferHeap={values:new Map(),ids:new WeakMap(),literals:new Map(),next:0};
+      if(this._bufferSuspended)throw new Error('Arcade byte buffer owner is disposed; load a project before allocating');
+      if(!this._bufferHeap)this._bufferHeap={generation:dependencies.buffers.newHeapId(),values:new Map(),ids:new WeakMap(),literals:new Map(),next:0};
       return this._bufferHeap;
     }
     _bufferReference(bytes) {
       const heap=this._bufferState();let id=heap.ids.get(bytes);
-      if(id===undefined){id='buffer:'+ ++heap.next;heap.ids.set(bytes,id);heap.values.set(id,bytes);}
+      if(id===undefined){id='buffer:'+heap.generation+':'+ ++heap.next;heap.ids.set(bytes,id);heap.values.set(id,bytes);}
       return Scratch.BWValues.reference(this._runtime,'buffer',id);
     }
     _buffer(value) {
@@ -3873,7 +3876,7 @@ module.exports = makeExt(`// Name: Arcade
       return bytes;
     }
     _bufferGuard(action) {
-      try{return action();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error));return Scratch.BWValues.UNDEFINED;}
+      try{if(this._bufferSuspended)throw new Error('Arcade byte buffer owner is disposed; load a project before allocating');return action();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error));return Scratch.BWValues.UNDEFINED;}
     }
     createBuffer(args) {return this._bufferGuard(()=>this._bufferReference(new dependencies.buffers.PxtBuffer(Scratch.Cast.toNumber(args.SIZE))));}
     bufferFromHex(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.fromHex(Scratch.BWValues.decode(args.HEX))));}

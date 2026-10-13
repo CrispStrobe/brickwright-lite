@@ -353,3 +353,37 @@ for cycles, aliasing, repeated discarded temporaries, live cross-frame values,
 suspended scenes, queued playback, reset/disposal and allocation refusal before
 copy. Audit aggregate arrays/images/song storage separately. No global heap
 closure is claimed until all these roots and failure paths are covered.
+
+### Buffer and song heap lifetime boundary — 2026-10-13
+
+Each Buffer and native music registry now receives a module-local monotonic
+heap namespace. A cleared registry or another Arcade instance in the same
+runtime cannot reuse an issued ID for different bytes/playables. IDs remain
+opaque; within-owner aliases still share their canonical reference.
+
+Scratch VM uses `RUNTIME_DISPOSED` during `clear()` and project replacement,
+not only permanent shutdown. That event suspends Buffer APIs before their
+allocation bodies run, drops the Buffer registry, resets queued music and
+releases playable registries. `PROJECT_START` alone cannot reopen a cleared
+owner. Successful `PROJECT_LOADED` resets the world and reopens Buffer APIs.
+New allocations then receive fresh heap IDs; old tokens stay invalid. Existing
+sound constructors can still be invoked during that interval, but their new
+registry cannot revive old playable IDs. This is not a general sound API
+suspension policy.
+
+Controls cover late allocation refusal, same-runtime owner separation,
+Buffer-backed song release, queued sound cancellation and paused-caller
+completion. An actual VM clear and same-VM SB3 replacement proves allocation
+reopens without reviving the prior token. Existing alias/custom-return/array,
+original export and original song-instruction controls remain required.
+
+This closes reset/disposal ownership; it does not collect discarded temporary
+Buffers during a live run or impose an aggregate allocation budget. Further
+root inventory must include target variables/lists, thread stack frames and
+`bwReturnValue`, callback captures, `_functionCalls`, suspended scene bundles,
+scoped nested array graphs and `_musicValues`/private music fibers. Literal
+source-site caches retain original identity until reset. Custom call arguments
+can restore scoped references from JSON text; a weak byte registry alone could
+lose payloads still recoverable through serialized values. Define those roots
+and pins before introducing tracing or allocation reservations. Do not claim
+host GC or a counter of historical allocations as complete live collection.

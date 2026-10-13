@@ -2,6 +2,11 @@
 // Uint8Array identity/storage is retained for the mixer and image host adapters.
 const {RefBuffer, methods} = require('./buffer-pxt')();
 const originalHash = require('./buffer-hash-pxt')();
+let nextHeap = 0;
+const newHeapId = () => {
+    if (nextHeap >= Number.MAX_SAFE_INTEGER) throw new RangeError('Arcade resource heap identity limit reached');
+    return ++nextHeap;
+};
 const MAX_BUFFER_BYTES = 1024 * 1024;
 const MAX_BUFFER_CHUNKS = 65536;
 const MAX_BUFFER_FORMAT_CHARS = 4096;
@@ -151,4 +156,4 @@ const concatArrays = buffers => {
     return helpers.concatArrays(buffers);
 };
 
-module.exports = {PxtBuffer, NumberFormat: methods.NumberFormat, MAX_BUFFER_BYTES, MAX_BUFFER_CHUNKS, MAX_BUFFER_FORMAT_CHARS, MAX_BUFFER_PACK_STEPS, packedSize, pack, chunkedFromUTF8, fromBase64, fromArray, concatArrays, fromHex, fromUTF8, literal, equals: helpers.bufferEquals, sizeOfNumberFormat: type => helpers.sizeOfNumberFormat(format(type))};
+module.exports = {newHeapId, PxtBuffer, NumberFormat: methods.NumberFormat, MAX_BUFFER_BYTES, MAX_BUFFER_CHUNKS, MAX_BUFFER_FORMAT_CHARS, MAX_BUFFER_PACK_STEPS, packedSize, pack, chunkedFromUTF8, fromBase64, fromArray, concatArrays, fromHex, fromUTF8, literal, equals: helpers.bufferEquals, sizeOfNumberFormat: type => helpers.sizeOfNumberFormat(format(type))};

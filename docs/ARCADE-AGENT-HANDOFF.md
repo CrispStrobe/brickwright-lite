@@ -1949,3 +1949,28 @@ These fixes remain on the isolated candidate; no unrelated main source was
 silently mixed into its tested tree. Integrate refreshed main in a separately
 reviewed step after fixing the current diagnostic, then qualify actual consumer
 pins and the immutable app census. Locked184 remains142/41/1.
+
+## Buffer reset/disposal ownership — 2026-10-13
+
+Candidate `lane/arcade-buffer-lifetime-20261013` follows
+[unit/audit PR850](https://github.com/CrispStrobe/brickwright-lite/pull/850).
+Buffer/music IDs now include distinct heap namespaces, preventing same-runtime
+owner collisions and cleared-registry resurrection. Buffer allocation bodies
+are suspended at disposal and reopened at successful project load. VM clear
+uses disposal internally: do not make the suspension permanent or reopen it
+with green flag alone. Disposal also releases Buffer-backed playable roots,
+resets queued audio and resolves paused callers. Shared value/import helpers
+remain unchanged.
+
+Four lifecycle controls pass, including actual same-VM SB3 replacement. The
+preceding25 affected lifecycle/value/original-song controls pass without skips;
+26 distinct controls are covered across runs. The initial pre-fix run preserves
+Buffer ID collision/resurrection failures and a fixture observation that read
+an adapter property instead of its underlying instance. Tests now use the real
+instance for root observations; no raw receipt is rewritten.
+
+Root collection during a live run and aggregate allocation reservations remain
+open. The Buffer contract records specific runtime roots and serialized custom
+argument values that a weak registry would miss. Full hosted/editor acceptance
+is pending; immutable app classifications remain142/41/1. Lower-stack landing
+is handled separately using normal merges; work continues on this top candidate.
