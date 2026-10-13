@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fetchMakeCodeExtensions, FETCH_LIMITS} from '../overlay/scratch-gui/src/lib/bw-makecode/extension-fetch.js';
+import {fetchMakeCodeExtensions, FETCH_LIMITS, RAW_BASE} from '../overlay/scratch-gui/src/lib/bw-makecode/extension-fetch.js';
 const license = `MIT License
 Copyright (c) Brickwright contributors
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -17,7 +17,7 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.`;
 function dependencyGraph(count) {
     const urls = new Map(), calls = [];
     for(let i=0;i<count;i++) {
-        const base=`https://raw.githubusercontent.com/brickwright-test/package-${i}/v1/`;
+        const base=`${RAW_BASE}brickwright-test/package-${i}/v1/`;
         urls.set(base+'pxt.json', JSON.stringify({name:`package-${i}`, files:['main.ts'], supportedTargets:['arcade'],
             dependencies: i+1<count ? {[`pkg${i+1}`]:`github:brickwright-test/package-${i+1}#v1`} : {pkg0:'github:brickwright-test/package-0#v1'}}));
         urls.set(base+'main.ts', `namespace Package${i} { export function value():number { return ${i}; } }`);
