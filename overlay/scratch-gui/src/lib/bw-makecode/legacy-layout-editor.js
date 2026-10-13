@@ -15,13 +15,36 @@ const originals = vm => (vm?.runtime?.targets || []).filter(target => target.isO
 const svgText = costume => costume?.asset?.decodeText?.() ||
     (costume?.asset?.data ? new TextDecoder().decode(costume.asset.data) : null);
 
+// Trace authored initializers, never the running VM's image handles. A unique
+// assignment must precede this use on the same straight command chain. This
+// also permits aliases and subsequent pixel mutations without baking their
+// current runtime result into the source artwork.
+const imageSource = (vm, target, image, use, seen = new Set()) => {
+    if (!image || seen.has(image.id)) return null;
+    seen.add(image.id);
+    const blocks = target.blocks._blocks;
+    if (image.opcode === 'arcade_cloneImage') return imageSource(vm, target, blocks[image.inputs?.IMAGE?.block], use, seen);
+    if (image.opcode !== 'data_variable') return image;
+    const id = image.fields?.VARIABLE?.id;
+    if (!id) return null;
+    const writes = originals(vm).flatMap(candidate => Object.values(candidate.blocks?._blocks || {})
+        .filter(block => ['data_setvariableto', 'data_changevariableby'].includes(block.opcode) && block.fields?.VARIABLE?.id === id)
+        .map(block => ({target: candidate, block})));
+    if (writes.length !== 1 || writes[0].target !== target || writes[0].block.opcode !== 'data_setvariableto') return null;
+    const writer = writes[0].block;
+    let cursor = blocks[writer.next];
+    const chain = new Set([writer.id]);
+    while (cursor && cursor !== use && !chain.has(cursor.id)) {
+        chain.add(cursor.id);
+        cursor = blocks[cursor.next];
+    }
+    if (cursor !== use) return null;
+    return imageSource(vm, target, blocks[writer.inputs?.VALUE?.block], writer, seen);
+};
+
 const artworkOf = (vm, target, command) => {
     const blocks = target.blocks._blocks;
-    let image = blocks[command.inputs?.IMAGE?.block];
-    const seen = new Set();
-    while (image?.opcode === 'arcade_cloneImage' && !seen.has(image.id)) {
-        seen.add(image.id); image = blocks[image.inputs?.IMAGE?.block];
-    }
+    const image = imageSource(vm, target, blocks[command.inputs?.IMAGE?.block], command);
     if (image?.opcode !== 'arcade_frameImage') return {reason: 'computedImage'};
     const name = literal(blocks, image, 'TEMPLATE');
     const key = literal(blocks, image, 'KEY');

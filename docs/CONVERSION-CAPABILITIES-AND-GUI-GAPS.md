@@ -3146,6 +3146,33 @@ Definition operations are `findLegacyTileDefinitions` and `writeLegacyTileDefini
 Definition followup qualification: all38 affected tests passed,0 skips; a final5-test focused rerun passed after validation guards. JSX/script syntax and unchanged workflow budget registration passed. Actual fresh-build browser controls remain queued and are not qualified by those unit/runtime results. Remaining authoring gaps include computed definition indices/images, computed wall expressions, richer layer/animation sources and broader source-alias resolution.
 
 
+## Legacy authored image aliases — 2026-10-11
+
+The image-source editor follows a single authored variable assignment and alias
+chains when each initializer precedes its use on the same command chain. It
+edits the original artwork, preserving assignment blocks and later pixel
+mutations. The painter previews authored pixels rather than a live image
+snapshot. Reassignment, computed creation and sources outside the preceding
+chain remain explicitly unavailable in this editor; Code/Blocks execution is
+unchanged. Definition artwork follows the same rules.
+
+A native/SB3/original-MakeCode regression exposed saved image-reference text
+being treated as a string during export. Export now honors version1 image
+reference sidecars only when the standard field still matches their placeholder.
+Per-run resources initialize as null and authored assignments recreate them;
+external edits to the standard field remain intact. No runtime handle or resource
+is copied into a MakeCode project. The real GUI legacy journey now uses variable
+and alias sources, retaining pointer edits, SB3 reopening and MakeCode reimport.
+Exact-source browser qualification is pending; no original-corpus promotion or
+whole-game equivalence is claimed.
+
+Persistence PR792 is merged at `18b2929a8479bcec880660b94c13bbb6c991741a`.
+Its seven enabled checks and all34 hosted painter observations passed:
+https://github.com/CrispStrobe/brickwright-lite/actions/runs/38146762544 .
+Reviewed head `eae43ccbad345a5d123026d6a615a83828a6de89`; expected and actual
+merge tree `4470f89493e6c944ef62359888a9053df514c325` match. Conditional PR
+deployment jobs skipped as configured. Original compilation/rendering is
+qualified for this fixture; full-game equivalence is not established.
 ## Painted tilemap project persistence browser lane — 2026-10-11
 
 The CI tilemap painter journey now saves the actual GUI project as SB3 and

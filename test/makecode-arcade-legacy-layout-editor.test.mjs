@@ -9,6 +9,59 @@ import {findLegacyTileDefinitions, writeLegacyTileDefinition} from '../overlay/s
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 
 const SOURCE = 'scene.setTile(1,img`7`,true)\nscene.setTileMap(img`1 0\n0 1`,TileScale.Four)\n';
+test('single-assignment image aliases edit source artwork and preserve live pixel mutations', async () => {
+    const imported = arcadeToPseudocode('let layout = img`1 0\n0 1`\nlet alias = layout\n' +
+        'alias.setPixel(0,0,4)\nlet tileArt = img`7`\nscene.setTile(1,tileArt,true)\nscene.setTileMap(alias,TileScale.Four)');
+    assert.deepEqual(imported.unsupported, []);
+    const run = await runProgram(imported.code, {frames: 2, uploads: imported.costumes, storage: true});
+    try {
+        const [ref] = findTilemapBlocks(run.vm), [definition] = findLegacyTileDefinitions(run.vm);
+        assert.equal(ref.editable, true, ref.reason);
+        assert.deepEqual(ref.data.indices, [1, 0, 0, 1], 'the editor reads authored pixels, not mutated live values');
+        assert.equal(definition.editable, true, definition.reason);
+        const target = run.vm.runtime.getTargetById(ref.targetId);
+        const before = JSON.stringify(target.blocks._blocks);
+        assert.equal(writeTilemapBlock(run.vm, ref, paintCell(ref.data, 1, 0, 2)), true);
+        assert.equal(writeLegacyTileDefinition(run.vm, definition, {...definition.data, pixels: [3]}), true);
+        assert.equal(JSON.stringify(target.blocks._blocks), before, 'assignments, aliases and mutations retain their block graph');
+        run.vm.greenFlag(); await stepFrames(run.vm, 3);
+        assert.deepEqual(Array.from(run.vm.runtime.bwArcadeDeviceState.tilemap.indices), [4, 2, 0, 1]);
+        assert.equal(run.vm.runtime.bwArcadeDeviceState.tilemap.images[1].pixels[0], 3);
+        const saved = await run.vm.saveProjectSb3(); await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
+        assert.deepEqual(findTilemapBlocks(run.vm)[0].data.indices, [1, 2, 0, 1]);
+        assert.equal(findLegacyTileDefinitions(run.vm)[0].data.pixels[0], 3);
+        const out = projectToArcade(JSON.parse(run.vm.toJSON()), {costumeSvg: (target, costume) =>
+            run.vm.runtime.getSpriteTargetByName(target.name)?.getCostumes().find(candidate => candidate.name === costume.name)?.asset?.decodeText()});
+        assert.deepEqual(out.unsupported, []);
+        assert.match(out.ts, /let layout: Image = null/);
+        assert.match(out.ts, /let alias: Image = null/);
+        assert.doesNotMatch(out.ts, /\[image reference /);
+        const original = await runPxtArcade({...out.files, 'main.ts': out.files['main.ts'] +
+            '\nlet aliasMutation = scene.getTile(0,0).tileSet\nlet aliasPainted = scene.getTile(1,0).tileSet\n' +
+            'let aliasArt = tiles.getTileImage(tiles.getTileLocation(1,1)).getPixel(0,0)\n'},
+        {waitForGlobals: {aliasMutation: 4, aliasPainted: 2, aliasArt: 3}});
+        assert.equal(original.aliasMutation, 4); assert.equal(original.aliasPainted, 2); assert.equal(original.aliasArt, 3);
+        const externallyEdited = JSON.parse(run.vm.toJSON());
+        const stage = externallyEdited.targets.find(target => target.isStage);
+        const entry = Object.values(stage.variables).find(variable => variable[0] === 'layout');
+        entry[1] = '[image reference externally edited]';
+        const changed = projectToArcade(externallyEdited, {costumeSvg: (target, costume) =>
+            run.vm.runtime.getSpriteTargetByName(target.name)?.getCostumes().find(candidate => candidate.name === costume.name)?.asset?.decodeText()});
+        assert.match(changed.ts, /let layout: any = "\[image reference externally edited\]"/,
+            'a stale sidecar cannot erase an external edit to the standard field');
+    } finally { run.vm.quit?.(); }
+});
+
+test('reassigned image variables remain explicit computed sources', async () => {
+    const imported = arcadeToPseudocode('let layout = img`1`\nlayout = img`2`\nscene.setTileMap(layout,TileScale.Four)');
+    const run = await runProgram(imported.code, {frames: 2, uploads: imported.costumes, storage: true});
+    try {
+        const [ref] = findTilemapBlocks(run.vm);
+        assert.equal(ref.editable, false); assert.equal(ref.reason, 'computedImage');
+        assert.deepEqual(Array.from(run.vm.runtime.bwArcadeDeviceState.tilemap.indices), [2]);
+    } finally { run.vm.quit?.(); }
+});
+
 test('definition pixel and colour-wide wall edits survive native execution, SB3 and original MakeCode', async () => {
     const imported = arcadeToPseudocode(SOURCE);
     const run = await runProgram(imported.code, {frames: 2, uploads: imported.costumes, storage: true});
