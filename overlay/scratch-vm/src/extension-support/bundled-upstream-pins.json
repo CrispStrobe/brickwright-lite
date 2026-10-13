@@ -5,10 +5,10 @@
     "files": {
         "arrays": {
             "path": "extensions/CrispStrobe/arrays.js",
-            "sha256": "3cb48d5ab66a97be87da40b45b31b8e0e44eeade896a929c359842edef9ba8d2",
-            "bytes": 74883,
+            "sha256": "fa7db061e2a2e3ce3363f7b2697d4cf874b7cd7dd4a75ba680466f3b83bcd1e3",
+            "bytes": 75045,
             "repo": "CrispStrobe/extensions",
-            "commit": "6139c269b07799bbcaa3335cf2ef1c328d5014ee"
+            "commit": "3f9812599cef61a0d47c843c6ba2c5ef4bdb98b2"
         },
         "csp": {
             "path": "extensions/CrispStrobe/csp.js",
