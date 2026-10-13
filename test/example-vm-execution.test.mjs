@@ -409,13 +409,29 @@ test('every device kind the devices extension can drive accepts a control verb',
     // simulation with nothing to say why, and `measurement-current-burden` was
     // rewritten around it (docs/LESSON-REVIEW-WAVE-2.md defect 1). Four left,
     // all of them motion.
-    const KNOWN_NO_CONTROL = new Set(['dc_motor', 'gearmotor',
-        'relay_dpdt', 'solenoid']);
+    // dc_motor and gearmotor came off this list on 2026-10-13 (task B14), and
+    // dc_motor_encoder never joined it when the devices extension's MOTOR_KINDS
+    // grew to name it: the board itself carries `speed` and `direction` for
+    // these three, before any control() hook (bw-board setDeviceControl ->
+    // _motorSpeed/_motorDirection: a PWM on the driving pin, or the L293D
+    // truth table; B7, extended to all three in B14). That they move is held
+    // by test/b7-actuators-reach-the-circuit.test.mjs (dc_motor) and
+    // test/b14-motor-sign-and-minus.test.mjs (gearmotor, dc_motor_encoder).
+    const BOARD_ROUTED = new Set(['dc_motor', 'gearmotor', 'dc_motor_encoder']);
+    const KNOWN_NO_CONTROL = new Set(['relay_dpdt', 'solenoid']);
 
     const registered = new Set(registeredKinds());
     const missing = [...addressable]
-        .filter(kind => registered.has(kind))
+        .filter(kind => registered.has(kind) && !BOARD_ROUTED.has(kind))
         .filter(kind => typeof getDevice(kind).control !== 'function');
+    const {BoardImpl} = await import(path.join(bwb, 'board.js'));
+    for (const kind of BOARD_ROUTED) {
+        const b = new BoardImpl(5);
+        b.setNetlist([{id: 'm', kind, params: {}, terminals: getDevice(kind).terminals}], []);
+        b.setDeviceControl('m', 'direction', 'reverse');
+        assert.doesNotMatch(b.getWarnings().map(w => w.message).join('\n'), /no simulator action/,
+            `${kind}: the board no longer routes direction for it -- it belongs in KNOWN_NO_CONTROL again`);
+    }
     assert.deepEqual(missing.filter(kind => !KNOWN_NO_CONTROL.has(kind)).sort(), [],
         'these device models are addressable from a block and have no control() handler, so ' +
         'every actuator verb aimed at them returns false and moves nothing');
