@@ -1,7 +1,7 @@
 /* Explicit class instances. Declarative definitions may be serialized; mutable
  * fields stay in this runtime's heap and travel only as BWValues references. */
 let nextHeap = 0;
-module.exports = function createObjectHeap(runtime, values) {
+module.exports = function createObjectHeap(runtime, values, native = {}) {
     const heapId = ++nextHeap;
     let generation = 0, nextObject = 0, disposed = false, closed = false;
     const classes = new Map(), objects = new Map();
@@ -16,17 +16,19 @@ module.exports = function createObjectHeap(runtime, values) {
     runtime?.on?.('PROJECT_START', reset);runtime?.on?.('PROJECT_LOADED', loaded);runtime?.on?.('RUNTIME_DISPOSED', suspend);
     function live() { if (disposed) throw new Error('Class object heap is disposed'); }
     function definition(name,seen=new Set()) {
-        live(); const def = classes.get(name);
+        live(); const def = classes.get(name) || native.definition?.(name);
         if (!def) throw new Error(`Class ${name} is not declared in this project run`);
         if (!def.parent) return def;
         if (seen.has(name)) throw new Error('Cyclic class inheritance');
         seen.add(name);const base=definition(def.parent,seen);
         for(const field of def.fields.keys())if(base.fields.has(field))throw new Error('Redefinition of inherited class field '+field);
-        return Object.freeze({...def,fields:new Map([...base.fields,...def.fields]),methods:new Map([...base.methods,...def.methods])});
+        return Object.freeze({...def,intrinsic:def.intrinsic || base.intrinsic,fields:new Map([...base.fields,...def.fields]),methods:new Map([...base.methods,...def.methods])});
     }
+    const referenceKey = ref => values.isReference(ref) ? values.referenceId(runtime,ref,'object') : native.external?.(ref) ? ref : null;
     function object(ref) {
-        live(); const id = values.referenceId(runtime, ref, 'object');
-        const state = id !== null && objects.get(id);
+        live(); const external = native.external?.(ref), id = referenceKey(ref);
+        let state = id !== null && objects.get(id);
+        if (!state && external) {const def=definition(native.externalClass(ref));state={ref,def,generation,construction:null,fields:new Map([...def.fields.keys()].map(key=>[key,values.UNDEFINED]))};objects.set(id,state);}
         if (!state || state.generation !== generation) throw new Error('Unknown or stale class object reference');
         return state;
     }
@@ -47,7 +49,7 @@ module.exports = function createObjectHeap(runtime, values) {
         if (!spec || typeof spec !== 'object' || Array.isArray(spec) ||
             Object.keys(spec).some(key => !['name', 'parent', 'fields', 'initializer', 'constructor', 'parameters', 'methods'].includes(key)))
             throw new Error('Invalid class declaration');
-        if (typeof spec.name !== 'string' || !/^[A-Za-z_]\w*$/.test(spec.name) || classes.has(spec.name))
+        if (typeof spec.name !== 'string' || !/^[A-Za-z_]\w*$/.test(spec.name) || (classes.has(spec.name) || native.definition?.(spec.name)))
             throw new Error('Invalid or duplicate class declaration name');
         if (spec.parent!==undefined && (typeof spec.parent!=='string' || !/^[A-Za-z_]\w*$/.test(spec.parent)))throw new Error('Invalid class parent name');
         if (!Array.isArray(spec.fields) || !Array.isArray(spec.parameters) || !Array.isArray(spec.methods))
@@ -76,8 +78,8 @@ module.exports = function createObjectHeap(runtime, values) {
         classes.set(spec.name, def); return def;
     }
     function allocate(name) {
-        const def = definition(name), id = `object:${heapId}:${generation}:${++nextObject}`;
-        const ref = values.reference(runtime, 'object', id);
+        const def = definition(name), ref = def.intrinsic ? native.reserve(def) : values.reference(runtime,'object',`object:${heapId}:${generation}:${++nextObject}`);
+        const id=referenceKey(ref);if(id===null)throw new Error('Native class allocation requires a current canonical reference');
         const state = {ref, def, generation, fields: new Map([...def.fields.keys()].map(key => [key, values.UNDEFINED]))};
         const token = Object.freeze({state, generation});
         state.construction = token; objects.set(id, state); return {ref, def, token};
@@ -88,19 +90,20 @@ module.exports = function createObjectHeap(runtime, values) {
         state.construction = null; return ref;
     }
     function abort(ref, token) {
-        const id = values.referenceId(runtime, ref, 'object'), state = objects.get(id);
+        const id = referenceKey(ref), state = objects.get(id);
         if (state?.construction === token) objects.delete(id);
     }
     function get(ref, key) {
         const state = object(ref);
         if (!state.fields.has(key)) throw new Error(`Unknown class field ${key}`);
-        return state.fields.get(key);
+        return state.def.fields.get(key)?.native ? native.get(ref,key) : state.fields.get(key);
     }
-    function set(ref, key, value) {
+    function set(ref, key, value, _token, util) {
         const state = object(ref), field = state.def.fields.get(key);
         if (!field) throw new Error(`Unknown class field ${key}`);
         // readonly/visibility are TypeScript declaration checks, not runtime
         // immutability. Construction tokens still own allocation completion.
+        if(field.native)return native.set(ref,key,hold(value),util);
         state.fields.set(key, hold(value));
     }
     function method(ref, name) {

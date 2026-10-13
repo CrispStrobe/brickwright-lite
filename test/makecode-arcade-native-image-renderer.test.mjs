@@ -7,6 +7,7 @@ const BWValues = createRequire(import.meta.url)(VM_SRC + '/util/bw-values');
 const Arcade = loadExtensionClass('arcade');
 function fixture() {
     const runtime = new EventEmitter(), drawables = new Map(), skins = new Map(), destroyed = [];
+    runtime.startHats = () => []; // This renderer fixture has no project scripts.
     let nextDrawable = 0, nextSkin = 0, nextOrder = 0;
     runtime.renderer = {
         createDrawable(group) { const id = ++nextDrawable; drawables.set(id, {group}); return id; },

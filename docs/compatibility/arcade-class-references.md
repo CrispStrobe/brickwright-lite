@@ -70,6 +70,37 @@ The selected SDK requires parent declarations before children, explicit
 constructors for initialized fields, and super first when a derived constructor
 has initialized fields or parameter properties. Invalid placement, duplicate
 inherited fields and inaccessible or reduced-visibility overrides are diagnosed.
-SDK intrinsic Sprite/renderable/dialog bases, generic bases and callback-dependent
+SDK renderable/dialog bases, generic bases and callback-dependent
 inheritance require separate asset, runtime and callable qualification. Ordinary
 inheritance does not admit those extension packages or complete games.
+
+## Bounded SDK Sprite subclasses
+
+Source subclasses of `Sprite` and `sprites.ExtendableSprite` use the same native
+Sprite handle as factories, created callbacks and `sprites.allOfKind`. There is
+no separate object wrapper. The class heap retains custom fields and dynamic
+method dispatch on that handle. Explicit and inherited constructors survive
+Code, Blocks, source export, reimport and fresh SB3 execution.
+
+Constructor services retain the selected SDK order. BaseSprite registers the
+scene-local public `id` before Sprite image initialization. Sprite invokes virtual
+`setImage` and `setKind` without adding physics or invoking created handlers.
+ExtendableSprite then selects the supplied kind, adds physics, invokes created
+handlers and assigns its protected dimension flag. Parameter properties and
+field initialization are visible to these virtual calls. Created handlers may
+change the current scene; registration, physics and kind-list ownership retain
+their original boundaries. Yielding constructors remain subject to Stop and
+restart cancellation.
+
+The admitted native members are `id`, `z`, position/velocity/acceleration/friction,
+dimensions and edges, flags, lifespan and image; methods are `setImage`, `setKind`,
+`kind`, `setPosition`, `setVelocity` and `destroy`. Custom ordinary methods and
+qualified overrides use the existing class descriptors. Image aliases remain
+live through pixel changes and image replacement.
+
+Canonical handles do not repeat across Stop, restart or new extension instances
+within the same loaded JavaScript realm. Public Sprite ids remain scene-local.
+This does not establish uniqueness across fresh realms or restoration of live
+Sprite values from saved strings. Draw, update and hitbox overrides, direct
+BaseSprite construction, accessors and complete statusbar packages remain
+diagnosed pending their own original/native and graphics qualification.

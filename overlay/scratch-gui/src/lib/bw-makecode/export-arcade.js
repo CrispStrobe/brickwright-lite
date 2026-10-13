@@ -1100,7 +1100,7 @@ class ArcadeEmitter {
         case 'arcade_callFunction': {
             const code = this.literalInput(b, 'NAME');
             const fn = code && (this.fnNames.get(`${this.target.isStage ? '' : this.target.name}:${code}`) || this.fnNames.get(`:${code}`));
-            if (!fn) {this.note('Arcade function reporter needs a known procedure name');return this.na();}
+
             const args=[];let block=this.block(b.inputs?.ARGS?.[1]);
             while (block?.opcode==='arcade_functionArgument') {
                 args.push(this.arrayValue(block,'VALUE'));block=this.block(block.inputs?.REST?.[1]);
@@ -1113,6 +1113,7 @@ class ArcadeEmitter {
             if(!empty)this.note('Arcade function arguments need a fixed argument chain');
             // A value-returning procedure runs in its caller's thread too (see procedures_call).
             const superCall=this.objectClassExport?.superCall?.(code,args);if(superCall!==null&&superCall!==undefined)return superCall;
+            if (!fn) {this.note('Arcade function reporter needs a known procedure name');return this.na();}
             if (this.tokened()) args.unshift('_t');
             if (this.isClonable()) args.unshift('self');
             return `${fn}(${args.join(', ')})`;

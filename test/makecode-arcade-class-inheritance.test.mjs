@@ -57,7 +57,7 @@ test('selected SDK and native admission retain invalid super placement, duplicat
  ['class A {constructor(){}}class B extends A {constructor(){}}let b=new B();',/direct super call/],
  ['class Child extends Base {}class Base {constructor(){}}let x=new Child();',/parent declaration order/]
  ]){await assert.rejects(()=>runPxtArcade(source,{fakeClock:true}));assert.match(arcadeToPseudocode(source).unsupported.join('\n'),pattern);}
- assert.match(arcadeToPseudocode('class A extends Sprite {constructor(){super(image.create(1,1))}}').unsupported.join('\n'),/parent/);
+ assert.match(arcadeToPseudocode('class A extends sprites.BaseSprite {constructor(){super(1)}}').unsupported.join('\n'),/parent/);
  assert.match(arcadeToPseudocode('class A<T>{}class B extends A<number>{}').unsupported.join('\n'),/unsupported/);
 });
 

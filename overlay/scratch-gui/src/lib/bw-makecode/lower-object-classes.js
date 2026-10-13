@@ -1,15 +1,24 @@
+import {SDK_SPRITE_CLASS_NODES,sdkSpriteBase} from './sdk-sprite-class-descriptors.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 
 // Class structure is declarative authoring data. Instances are explicit heap
 // references; no field state, per-class numeric handles or closure snapshots.
 export function lowerObjectClasses(program) {
-    const classes = new Map(program.body.filter(node => node.type === 'Class').map(node => [node.name, node]));
+    const reserved = new Set(SDK_SPRITE_CLASS_NODES.map(node=>node.name).filter(name=>name.startsWith('__bwSDK_')));
+    const usesReserved = node => node && typeof node==='object' &&
+        (reserved.has(node.type==='Identifier'||node.type==='Class'?node.name:null) || reserved.has(node.type==='Class'?node.base:null) ||
+        Object.values(node).some(value=>Array.isArray(value)?value.some(usesReserved):usesReserved(value)));
+    if(usesReserved(program))return {program,unsupported:['Internal SDK class descriptor names are not source constructors or bindings']};
+    const sourceClasses = program.body.filter(node => node.type === 'Class').map(node=>({...node,...(node.base?{base:sdkSpriteBase(node.base)}:{})}));
+    const classes = new Map(sourceClasses.map(node => [node.name, node]));
     if (!classes.size) return {program, unsupported: []};
+    const sdkClasses=sourceClasses.some(node=>['Sprite','__bwSDK_ExtendableSprite'].includes(node.base))?SDK_SPRITE_CLASS_NODES:[];
+    const originalClasses=new Map(classes);classes.clear();for(const node of sdkClasses)classes.set(node.name,node);for(const [name,node]of originalClasses)classes.set(name,node);
     const unsupported = [], admitted = new Map();
     const fail = message => { if (!unsupported.includes(message)) unsupported.push(message); };
     const contains = (node, predicate) => node && typeof node === 'object' && (predicate(node) ||
         Object.values(node).some(value => Array.isArray(value) ? value.some(child => contains(child, predicate)) : contains(value, predicate)));
-    for (const [name, cls] of classes) {
+    for (const [name, cls] of [...sdkClasses.filter(node=>classes.get(node.name)===node).map(node=>[node.name,node]),...sourceClasses.map(node=>[node.name,node])]) {
         const problems = [...(cls.unsupported || [])];
         if(cls.fields.some(field=>field.typeName && !/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\[\])*$/.test(field.typeName)))problems.push('union, callable or opaque field type metadata');
         if(cls.fields.some(field=>contains(field.init,node=>node.type==='Identifier' && node.name==='this')))problems.push('selected Arcade SDK instance-field this initializers');
@@ -29,6 +38,8 @@ export function lowerObjectClasses(program) {
         if(cls.base && [...classes.keys()].indexOf(cls.base)>=[...classes.keys()].indexOf(name))fail(`Selected Arcade SDK requires parent declaration order before ${name}`);
         if(!chain){fail(`Class ${name} requires unsupported or cyclic parent ${cls.base}`);continue;}
         if(!cls.ctor && cls.fields.some(field=>field.init))fail(`Class ${name} initialized fields require an explicit constructor in selected Arcade SDK`);
+        if(cls.sdkIntrinsic)continue;
+        if(chain.some(base=>admitted.get(base)?.sdkIntrinsic) && cls.methods.some(method=>['update','draw','drawSprite','__draw','__drawCore','__update','setHitbox','resetHitbox','recalcSize','setDimensions','__visible','__serialize'].includes(method.name)))fail('SDK Sprite draw/update/hitbox overrides require separate qualification');
         if(cls.base && cls.ctor){
             const body=cls.ctor.originalBody || cls.ctor.body,superCall=node=>node?.type==='ExpressionStatement' && node.expr?.type==='Call' && node.expr.callee?.name==='super';
             if(body.filter(superCall).length!==1)fail('Derived class '+name+' constructor requires one direct super call');
@@ -36,7 +47,7 @@ export function lowerObjectClasses(program) {
             const first=body.findIndex(superCall);if(first>0 && body.slice(0,first).some(node=>contains(node,value=>value.type==='Identifier'&&value.name==='this')))fail('Derived class '+name+' uses this before super');
         }
         for(const field of cls.fields)if(chain.slice(1).some(base=>admitted.get(base).fields.some(other=>other.name===field.name)))fail('Redefinition of inherited class field '+field.name);
-        for(const method of cls.methods){const parent=chain.slice(1).flatMap(base=>admitted.get(base).methods).find(other=>other.name===method.name);if(parent){const visibility=value=>value.modifiers?.find(mode=>['private','protected'].includes(mode)) || 'public',baseMode=visibility(parent),mode=visibility(method);if(baseMode==='private' || baseMode==='public'&&mode!=='public' || baseMode==='protected'&&mode==='private')fail('Class override visibility differs from its accessible base method '+method.name);if(method.params.length!==parent.params.length || method.params.some((param,index)=>JSON.stringify(method.paramTypes?.[param])!==JSON.stringify(parent.paramTypes?.[parent.params[index]])))fail('Class override parameter signature differs from its base method '+method.name);}}
+        for(const method of cls.methods){const parent=chain.slice(1).flatMap(base=>admitted.get(base).methods).find(other=>other.name===method.name);if(parent){const visibility=value=>value.modifiers?.find(mode=>['private','protected'].includes(mode)) || 'public',baseMode=visibility(parent),mode=visibility(method);if(baseMode==='private' || baseMode==='public'&&mode!=='public' || baseMode==='protected'&&mode==='private')fail('Class override visibility differs from its accessible base method '+method.name);if(method.params.length!==parent.params.length || method.params.some((param,index)=>JSON.stringify(typeof method.paramTypes?.[param]==='string'?method.paramTypes[param]:method.paramTypes?.[param]?.text)!==JSON.stringify(typeof parent.paramTypes?.[parent.params[index]]==='string'?parent.paramTypes[parent.params[index]]:parent.paramTypes?.[parent.params[index]]?.text)))fail('Class override parameter signature differs from its base method '+method.name);}}
     }
     if(unsupported.length)return {program,unsupported};
     const fieldOwners=new WeakMap(),methodClasses=new WeakMap();
@@ -88,6 +99,7 @@ export function lowerObjectClasses(program) {
                 graph.add(binding(scope, 'this', true), `class:${node.name}`);
                 if(node.base)graph.add(binding(scope,'super',true),`class:${node.base}`);
                 for (const param of method.params) { binding(scope, param, true); addType(binding(scope, param), method.paramTypes?.[param]); }
+                if(node.sdkIntrinsic)addType(scope.result,method.returnType);
                 memberOwners.set(method, scope); visit(method.body, scope);
             }
             return;
@@ -102,7 +114,8 @@ export function lowerObjectClasses(program) {
         if (node.type === 'Declaration') for (const decl of node.decls) { binding(owner, decl.name, true); addType(binding(owner, decl.name), decl.typeName || (decl.init?.isNew && decl.init.callee?.type==='Identifier' && admitted.has(decl.init.callee.name)?decl.init.callee.name:null)); }
         for (const value of Object.values(node)) if (value && typeof value === 'object') visit(value, owner);
     }
-    visit(program, global);
+    for(const node of sdkClasses)visit(node,global);
+    visit({...program,body:program.body.map(node=>node.type==='Class'?classes.get(node.name):node)}, global);
     const staticType=node=>{
         if(!node)return null;
         if(node.assertedType && node.assertedType!=='any')return typeText(node.assertedType);
@@ -122,6 +135,11 @@ export function lowerObjectClasses(program) {
             const primitive = {Number:'number',String:'string',Boolean:'boolean',Null:'null',Undefined:'undefined'}[node.type];
             if (primitive) graph.add(value, primitive);
             if (node.assertedType !== 'any') addType(value, node.assertedType);
+            if(node.type==='Call' && node.callee?.type==='Member' && node.callee.object?.name==='sprites'){
+                if(['create','createProjectileFromSprite','createProjectileFromSide'].includes(node.callee.name))addType(value,'Sprite');
+                if(node.callee.name==='allOfKind')addType(value,'Sprite[]');
+                if(['onCreated','onDestroyed','onOverlap'].includes(node.callee.name)){const fn=node.args.at(-1);if(fn?.type==='FunctionExpression')for(const param of fn.params)addType(binding(owners.get(fn),param),'Sprite');}
+            }
             if (node.type === 'Call' && node.isNew && node.callee?.type === 'Identifier' && admitted.has(node.callee.name)) {
                 graph.add(value, `class:${node.callee.name}`);
                 const ctor = effectiveCtor(node.callee.name).ctor;
@@ -253,10 +271,10 @@ export function lowerObjectClasses(program) {
     }
     const defaultValue=node=>node?.type==='Number'?Number(node.value):node?.type==='Null'?null:node?.type==='Boolean'?node.value:node?.type==='Unary'?(node.op==='-'?-1:1)*Number(node.argument.value):undefined;
     const body = [];
-    for (const node of program.body) {
+    for (let node of program.body) {
         if(node.type==='Declaration'){const decls=node.decls.filter(decl=>!decl.whenUsed || used.has(decl.name));if(decls.length)body.push(rewrite({...node,decls}));continue;}
         if (node.type !== 'Class' || !admitted.has(node.name)) { body.push(rewrite(node)); continue; }
-        const name = node.name, initName = `__bwClass_${name}_fields`, ctorName = `__bwClass_${name}_constructor`;
+        const name = node.name;node=classes.get(name);const initName = `__bwClass_${name}_fields`, ctorName = `__bwClass_${name}_constructor`;
         const actualCtor=effectiveCtor(name),ctorParams=['__bwSelf',...(actualCtor.ctor?.params||[])],methods=[];
         const ownInitializers=new Map(),initBody=[];
         if(node.base)initBody.push(statement(procedure(signature(`__bwClass_${node.base}_fields`,['__bwSelf']),[{...id('__bwSelf'),bwObjectTypes:['object']}] )));

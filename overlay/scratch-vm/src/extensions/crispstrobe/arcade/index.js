@@ -37,12 +37,13 @@ module.exports = makeExt(`// Name: Arcade
       this._sceneStack = [];this._sceneParents=new WeakMap();this._seeThroughSources=new WeakMap();this._renderingScenes=new WeakSet();this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
       this._sceneBundles = new Set();
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
-      this._objectHeap=dependencies.createObjectHeap(runtime,Scratch.BWValues);
+      this._sdkSpriteClasses=dependencies.sdkSpriteClasses.create(this,Scratch.BWValues);
+      this._objectHeap=dependencies.createObjectHeap(runtime,Scratch.BWValues,this._sdkSpriteClasses.heapHooks);
       this._renderables=new WeakMap();this._screen=null;this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._extensionCreationWaits=[];
       this._scenePushHandlers = [];this._scenePopHandlers = [];
       this._scrollerVersion = 'v0.1.2';
       this._characterAnimationVersion = 'v0.1.0';
-      this._nextSpriteHandle = 0;this._globalElapsedMs = 0;this._nextMultiplayerState=2;
+      this._globalElapsedMs = 0;this._nextMultiplayerState=2;
       this._buttonStates = {};this._controllerConnections={};this._controllerInputs={};this._userControllerEvents=true;this._nativeTextDialogs=[];
       this._activeLegacyAnimations = new Set();
       this._updateHandlers = [];this._intervalHandlers = [];this._buttonHandlers = [];
@@ -123,7 +124,7 @@ module.exports = makeExt(`// Name: Arcade
             }
           }
           this._sceneBundles.clear();this._sceneStack=[];this._sceneParents=new WeakMap();this._seeThroughSources=new WeakMap();this._renderingScenes=new WeakSet();this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
-          this._scenePushHandlers=[];this._scenePopHandlers=[];this._nextSpriteHandle=0;this._globalElapsedMs=0;this._nextMultiplayerState=2;this._buttonStates={};this._controllerConnections={};this._controllerInputs={};this._userControllerEvents=true;this._cancelNativeTextDialogs();
+          this._scenePushHandlers=[];this._scenePopHandlers=[];this._globalElapsedMs=0;this._nextMultiplayerState=2;this._buttonStates={};this._controllerConnections={};this._controllerInputs={};this._userControllerEvents=true;this._cancelNativeTextDialogs();
           this._activeLegacyAnimations=new Set();this._updateHandlers=[];this._intervalHandlers=[];this._buttonHandlers=[];
           this._destroyedHandlers=[];this._overlapHandlers=[];this._foreverHandlers=[];this._countdownHandlers=[];
           this._createdHandlers = [];
@@ -1726,6 +1727,7 @@ module.exports = makeExt(`// Name: Arcade
     _objectProcedure(name,values,util,token) {
       const target=util?.target || util?.thread?.target;
       if(util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))){const error=new Error('Class construction or method invocation was cancelled');error.bwObjectCancelled=true;throw error;}
+      if(this._sdkSpriteClasses.matches(name))return this._sdkSpriteClasses.invoke(name,values,util,token);
       if(!target?.blocks?.getProcedureDefinition(name))throw new Error('Class procedure is not defined: '+name);
       // Dispatch through the real managed-call queue. Its source phase owns
       // runnable eligibility; a Promise continuation must not synchronously
@@ -1760,7 +1762,7 @@ module.exports = makeExt(`// Name: Arcade
       try{return this._objectHeap.get(args.OBJECT,String(args.FIELD));}catch(error){return this._objectError(error);}
     }
     setObjectField(args,util) {
-      try{this._objectHeap.set(args.OBJECT,String(args.FIELD),args.VALUE,util?.thread?.bwObjectConstruction);}catch(error){return this._objectError(error);}
+      try{return this._objectHeap.set(args.OBJECT,String(args.FIELD),args.VALUE,util?.thread?.bwObjectConstruction,util);}catch(error){return this._objectError(error);}
     }
     callObjectMethod(args,util) {
       try {
@@ -1789,7 +1791,9 @@ module.exports = makeExt(`// Name: Arcade
     }
     callFunction(args, util) {
       const runtime = this._runtime, target = util?.target || util?.thread?.target;
-      const name = String(args.NAME), definition = target?.blocks?.getProcedureDefinition(name);
+      const name = String(args.NAME);
+      if(this._sdkSpriteClasses.matches(name)) {try {const values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));if(!Array.isArray(values))throw new Error('SDK Sprite call requires ordered arguments');return this._sdkSpriteClasses.invoke(name,values,util,args.bwObjectConstruction || util?.thread?.bwObjectConstruction);}catch(error){return this._objectError(error);}}
+      const definition = target?.blocks?.getProcedureDefinition(name);
       if (!definition || !runtime?._pushThread) return 0;
       let values;try {values = JSON.parse(String(args.ARGS), (_key,value)=>
         Scratch.BWValues.encode(Scratch.BWValues.decode(value)));} catch {return 0;}
@@ -2611,8 +2615,8 @@ module.exports = makeExt(`// Name: Arcade
         }
       }
     }
-    _finishSpriteCreation(id, util) {
-      const sprite = this._state().sprites[id], runtime = this._runtime,creationKind=sprite._creationKind;
+    _finishSpriteCreation(id, util, creationContext = null) {
+      const sprite = (creationContext?.state || this._state()).sprites[id] || this._spriteValues.get(id), runtime = this._runtime,creationKind=sprite._creationKind;
       // Original create filters callbacks using its supplied argument, not the
       // constructor's -1 fallback for an absent kind.
       if(creationKind==null)return id;
@@ -2629,7 +2633,7 @@ module.exports = makeExt(`// Name: Arcade
       });
       // Snapshot registrations when creation starts, as PXT does before
       // invoking callbacks. Repeated registrations retain separate closures.
-      for (const registration of this._createdHandlers.filter(h => h.kind === creationKind)) {
+      for (const registration of (creationContext?.handlers || this._createdHandlers).filter(h => h.kind === creationKind)) {
         runtime.allScriptsByOpcodeDo('arcade_whenRegisteredCreated', (script, target) => {
           const hat = target.blocks.getBlock(script.blockId);
           const tokenBlock = target.blocks.getBlock(hat.inputs?.TOKEN?.block);
@@ -2783,9 +2787,14 @@ module.exports = makeExt(`// Name: Arcade
       const position = id => {const moved=this.setSpritePosition({ID:id, X:args.X, Y:args.Y},util);return moved?.then ? moved.then(()=>id) : id;};
       return created && typeof created.then === 'function' ? created.then(position) : position(created);
     }
+    _reserveSdkSprite() {const id=dependencies.sdkSpriteClasses.allocateHandle();this._spriteValues.set(id,{id,_sdkBaseOnly:true});return id;}
+    _registerSdkSprite(id) {const sprite=this._spriteValues.get(id),state=this._state();if(sprite._sdkRegistered)throw new Error('SDK BaseSprite was registered twice');sprite._sdkRegistered=true;sprite._sdkScene=state;sprite.pxtId=state.nextSpriteId++;state.sprites[id]=sprite;}
+    _initializeSdkSprite(id,image) {const sprite=this._spriteValues.get(id),width=image.width,height=image.height;sprite._sdkBaseOnly=false;Object.assign(sprite,{x:((160-width)>>1)+width/2,y:((120-height)>>1)+height/2,vx:0,vy:0,ax:0,ay:0,fx:0,fy:0,width,height,flags:0});this._installSpriteFixedPoint(sprite);sprite._creationKind=null;}
+    _spriteKindSets(state=this._state()) {if(!state._nativeKindSets){state._nativeKindSets=new Map();for(const sprite of Object.values(state.sprites))if(sprite.kind>=0){if(!state._nativeKindSets.has(sprite.kind))state._nativeKindSets.set(sprite.kind,[]);state._nativeKindSets.get(sprite.kind).push(sprite);}}return state._nativeKindSets;}
+    _addSpriteKind(sprite,kind,state=this._state()) {if(!(kind>=0))return;const sets=this._spriteKindSets(state);if(!sets.has(kind))sets.set(kind,[]);if(!sets.get(kind).includes(sprite))sets.get(kind).push(sprite);}
     _createSprite(args) {
       const state = this._state(),inputKind=this._kindValue(args.KIND),kind=inputKind==null?-1:inputKind;
-      const id = 'arcade:' + (++this._nextSpriteHandle);state.nextSpriteId++;
+      const id = dependencies.sdkSpriteClasses.allocateHandle();state.nextSpriteId++;
       const sprite = {id, pxtId: state.nextSpriteId - 1, kind, _creationKind:inputKind, x: Number(args.X) || 0, y: Number(args.Y) || 0,
         vx: 0, vy: 0, ax: 0, ay: 0, fx: 0, fy: 0, z: 0, lifespan: 0, flags: 0,
         // Public creation normalizes defaults before entering this private path;
@@ -2796,6 +2805,7 @@ module.exports = makeExt(`// Name: Arcade
       this._installSpriteFixedPoint(sprite);
       sprite._kindInsertion = ++this._kindInsertion;
       state.sprites[id] = sprite;
+      this._addSpriteKind(sprite,kind,state);
       state.physicsEngine.members.push(sprite);
       this._spriteValues.set(id, sprite);
       const template = this._runtime && this._runtime.getSpriteTargetByName &&
@@ -4899,6 +4909,7 @@ module.exports = makeExt(`// Name: Arcade
         (event?.first === String(args.ID) ? event.destroyedSprite : null);
       if (!sprite) return 0;
       const property = String(args.PROPERTY);
+      if(property==='id')return Scratch.BWValues.encode(sprite.pxtId);
       if(property==='flags')return Scratch.BWValues.encode(sprite.flags);
       if (property === 'left') return sprite._fx / 256;
       if (property === 'right') return sprite._fx / 256 + sprite.width;
@@ -4910,7 +4921,8 @@ module.exports = makeExt(`// Name: Arcade
       const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID);
       const kind=this._kindValue(args.KIND);if(kind==null)return;
       if (sprite && sprite.kind !== kind) {
-        sprite.kind = kind; sprite._kindInsertion = ++this._kindInsertion; this._changed();
+        const sets=this._spriteKindSets(),previous=sets.get(sprite.kind),index=previous?.indexOf(sprite)??-1;if(index>=0)previous.splice(index,1);
+        sprite.kind = kind; sprite._kindInsertion = ++this._kindInsertion;this._addSpriteKind(sprite,kind);this._changed();
       }
     }
     spriteOverlaps(args) {
@@ -5281,8 +5293,7 @@ module.exports = makeExt(`// Name: Arcade
       // in scene/physics ownership and continue to receive lifecycle callbacks.
       kind=this._kindValue(kind);if(kind==null || !(kind>=0))return [];
       // SpriteSet.sprites() also drops sprites an effect is destroying.
-      return Object.values(this._state().sprites).filter(s => !(s.flags&2) && s.kind === kind)
-        .sort((a, b) => a._kindInsertion - b._kindInsertion);
+      return (this._spriteKindSets().get(kind)||[]).filter(s=>!(s.flags&2));
     }
     spritesOfKind(args) {
       return Scratch.BWValues.arrayReference(this._runtime, this._spritesOfKind(args.KIND).map(s => s.id));
@@ -5453,6 +5464,7 @@ module.exports = makeExt(`// Name: Arcade
   Scratch.extensions.register(new Arcade(Scratch.vm && Scratch.vm.runtime));
 })(Scratch);
 `, {
+  sdkSpriteClasses: require('./sdk-sprite-classes'),
   createObjectHeap: require('./object-heap'),
   createSceneFrameContexts: require('./scene-frame-contexts'),
   createPollEvents: require('./poll-events'),

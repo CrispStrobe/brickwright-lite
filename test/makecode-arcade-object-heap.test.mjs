@@ -36,7 +36,7 @@ test('objects retain live cross-class identity, aliases, undefined fields, cycle
 test('source class admission keeps readonly, inheritance, accessors and captured callbacks explicit',()=>{
     for(const [source,pattern]of [
         ['class A { constructor(public readonly n:number){} } let a=new A(1);a.n=2;',/Readonly class field/],
-        ['class A extends Sprite {}',/unsupported/],
+        ['class A extends sprites.BaseSprite {}',/unsupported/],
         ['class A {get n(){return 1}}',/accessors/],
         ['class A {callback=()=>1;}',/captured callbacks/]
     ])assert.match(arcadeToPseudocode(source).unsupported.join('\n'),pattern,source);

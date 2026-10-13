@@ -1,3 +1,4 @@
+import {sdkSpriteExportClasses,sdkSpritePublicBase} from './sdk-sprite-class-descriptors.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 
 // Recover reviewable class declarations from explicit authoring blocks, not
@@ -30,6 +31,7 @@ export function prepareObjectClassExport(emitter) {
         }catch(error){emitter.note('Arcade class export requires fixed valid declaration metadata: '+error.message);}
     }
     if(!classes.size)return {classes,procedures,variableTypes:new Map(),localType:()=> 'any',render:()=>[],receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
+    for(const cls of sdkSpriteExportClasses())if(!classes.has(cls.name))classes.set(cls.name,cls);
     const ancestors=name=>{const result=[],seen=new Set();while(name){if(seen.has(name)||!classes.has(name)){emitter.note('Class inheritance export requires declared acyclic parents');return [];}seen.add(name);result.push(classes.get(name));name=classes.get(name).parent;}return result;};
     const resolveMember=(cls,name,method=false)=>ancestors(cls.name).flatMap(base=>method?base.methods:base.fields).find(value=>value.name===name);
     const superHelpers=new Map(),parameterPropertyBlocks=new Set();
@@ -38,7 +40,12 @@ export function prepareObjectClassExport(emitter) {
     const callParameters=(target,value)=>{const names=[];let tail=value.inputs?.ARGS,current=child(target,value,'ARGS');const seen=new Set();while(current?.opcode==='arcade_functionArgument'){if(seen.has(current))return null;seen.add(current);const name=localName(target,child(target,current,'VALUE'));if(!name)return null;names.push(name);tail=current.inputs?.REST;current=child(target,current,'REST');}const slot=tail?.[1];return (Array.isArray(slot)?String(slot[1])==='[]':current?.shadow&&current.fields?.TEXT?.[0]==='[]')?names:null;};
     const addType=(cell,type)=>{if(type.endsWith('[]')){graph.add(cell,'array');addType(graph.element(cell),type.slice(0,-2));}else graph.add(cell,type);};
     for(const cls of classes.values()) {
+        if(cls.intrinsic)continue;
         for(const base of ancestors(cls.name))for(const field of base.fields){addType(`field:${base.name}:${field.name}`,field.type);graph.merge(`field:${cls.name}:${field.name}`,`field:${base.name}:${field.name}`);}
+        for(const base of ancestors(cls.name).filter(base=>base.intrinsic)){
+            const code=[`__bwClass_${base.name}_superConstructor`,...['self',...base.parameters].map(()=>'%s')].join(' ');superHelpers.set(key(cls.target,code),base);
+            for(const method of base.methods)procedures.set(key(cls.target,method.procedure),{cls:base,params:method.parameters,result:method.returnType,native:true});
+        }
         const superCode=[`__bwClass_${cls.name}_superConstructor`,...['self',...cls.parameters].map(()=>'%s')].join(' '),superDef=definitions.get(key(cls.target,superCode));
         if(superDef){
             const calls=[];let b=cls.target.blocks[superDef.block.next];
@@ -60,6 +67,7 @@ export function prepareObjectClassExport(emitter) {
         }
         for(const [code,params,result]of [[cls.initializer,[],'void'],[cls.constructor,cls.parameters,'void'],...cls.methods.map(method=>[method.procedure,method.parameters,method.returnType])]) {
             const k=key(cls.target,code),definition=definitions.get(k);
+            if(code===cls.constructor && ancestors(cls.name).some(base=>base.intrinsic && base.constructor===code))continue;
             if(!definition || definition.parameters.length!==params.length+1){emitter.note(`Arcade class ${cls.name} procedure does not match its declaration`);continue;}
             if(!procedures.has(k))procedures.set(k,{cls,definition,params,result});emitter.managedValueProcedures.add(k);
             addType(`${k}:local:${definition.parameters[0]}`,cls.name);
@@ -133,7 +141,13 @@ export function prepareObjectClassExport(emitter) {
     function receiver(block,write=false,method=false) {
         const target=emitter.target,text=emitter.arrayValue(block,'OBJECT'),name=literal(target,block,method?'METHOD':'FIELD');
         const restricted=[...graph.node(input(target,block,'OBJECT')).types].some(type=>{const cls=classes.get(type),member=cls&&resolveMember(cls,name,method);return member && ((member.visibility && member.visibility!=='public' && emitter.currentClassName!==type) || write&&member.readonly);});
-        return restricted?`(${text} as any)`:text;
+        if(restricted)return `(${text} as any)`;
+        const known=[...graph.node(input(target,block,'OBJECT')).types].map(type=>classes.get(type)).filter(Boolean);
+        if(!known.length || known.some(cls=>!resolveMember(cls,name,method))){
+            const candidates=[...classes.values()].filter(cls=>!cls.intrinsic && resolveMember(cls,name,method));
+            if(candidates.length===1){const member=resolveMember(candidates[0],name,method);return member.visibility!=='public' || write&&member.readonly?`(${text} as any)`:`(${text} as ${candidates[0].name})`;}
+        }
+        return text;
     }
     function superCall(code,args) {
         const cls=classes.get(emitter.currentClassName);if(!cls?.parent)return null;
@@ -163,9 +177,10 @@ export function prepareObjectClassExport(emitter) {
             return lines;
         }
         for(const cls of classes.values()) {
+            if(cls.intrinsic)continue;
             const ctor=definitions.get(key(cls.target,cls.constructor));
             const params=cls.parameters.map((param,index)=>{const field=cls.fields.find(field=>field.parameterProperty&&field.name===param.name);return `${field?(field.visibility||'public')+' '+(field.readonly?'readonly ':''):''}${ctor?.parameters[index+1] || param.name}${param.optional&&!Object.prototype.hasOwnProperty.call(param,'default')?'?':''}: ${param.type}${Object.prototype.hasOwnProperty.call(param,'default')?' = '+JSON.stringify(param.default):''}`;}).join(', ');
-            const lines=[`class ${cls.name}${cls.parent?' extends '+cls.parent:''} {`];
+            const lines=[`class ${cls.name}${cls.parent?' extends '+sdkSpritePublicBase(cls.parent):''} {`];
             for(const field of cls.fields){
                 if(field.parameterProperty)continue;
                 let initializer='';
