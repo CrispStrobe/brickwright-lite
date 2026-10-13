@@ -34,7 +34,7 @@ module.exports = makeExt(`// Name: Arcade
       this._fallbackState = null;
       // Palette is display state shared by every scene, never an image mutation.
       this._projectPalette = null;
-      this._sceneStack = [];this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
+      this._sceneStack = [];this._sceneParents=new WeakMap();this._seeThroughSources=new WeakMap();this._renderingScenes=new WeakSet();this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
       this._sceneBundles = new Set();
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
       this._renderables=new WeakMap();this._screen=null;this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._extensionCreationWaits=[];
@@ -42,7 +42,7 @@ module.exports = makeExt(`// Name: Arcade
       this._scrollerVersion = 'v0.1.2';
       this._characterAnimationVersion = 'v0.1.0';
       this._nextSpriteHandle = 0;this._globalElapsedMs = 0;this._nextMultiplayerState=2;
-      this._buttonStates = {};this._controllerConnections={};this._controllerInputs={};
+      this._buttonStates = {};this._controllerConnections={};this._controllerInputs={};this._userControllerEvents=true;this._nativeTextDialogs=[];
       this._activeLegacyAnimations = new Set();
       this._updateHandlers = [];this._intervalHandlers = [];this._buttonHandlers = [];
       this._destroyedHandlers = [];this._overlapHandlers = [];this._foreverHandlers=[];this._countdownHandlers=[];
@@ -79,8 +79,7 @@ module.exports = makeExt(`// Name: Arcade
       if (runtime && runtime.on) {
         runtime.on('ARCADE_FRAME', elapsedMs => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); this._pumpQuestion(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? elapsedMs : 1000 / 30); this._advance(Number.isFinite(elapsedMs) && elapsedMs >= 0 ? elapsedMs / 1000 : 1 / 30); this._musicHost?.pump(); });
         runtime.on('ARCADE_FRAME_END', () => { this._pumpFunctionCalls(); this._pumpCreationWaits(); this._pumpTerrainWaits(); });
-        runtime.on('ARCADE_BUTTON_DOWN', button => { if(this._dialogs?.[0]?.type!=='ask')this._dialogs?.[0]?.dismiss(); });
-        runtime.on('ARCADE_DIALOG_BUTTON_EDGE',(button,held)=>this._questionButtonEdge(button,held));
+        runtime.on('ARCADE_DIALOG_BUTTON_EDGE',(button,held)=>{if(this._dialogs?.[0]?.type==='ask')this._questionButtonEdge(button,held);else this._nativeDialogButtonEdge(button,held);});
         runtime.on('ARCADE_CONTROLLER_INPUT',(player,button,held)=>this._observeControllerInput(player,button,held));
         runtime.on('ARCADE_CONTROLLER_CONNECTION',(player,connected)=>this._controllerConnectionChanged(player,connected));
         runtime.on('ARCADE_PLAYER_BUTTON_EDGE',(player,button,isDown)=>this._controllerButtonEdge(player,button,isDown));
@@ -92,7 +91,7 @@ module.exports = makeExt(`// Name: Arcade
           for (const pending of this._creationWaits) pending.resolve('');
           this._creationWaits.clear();
           for(const dialog of this._dialogs || [])dialog.resolve(dialog.type==='ask' ? false : undefined);
-          this._dialogs=[];this._showNextDialog();
+          this._dialogs=[];this._cancelNativeTextDialogs();this._showNextDialog();
           for (const call of this._functionCalls) {runtime.sequencer?.retireThread(call.thread);call.resolve(0);}
           this._functionCalls.clear();
           this._terrainEpoch++;this._terrainFrame = null;this._terrainStopped = true;
@@ -122,8 +121,8 @@ module.exports = makeExt(`// Name: Arcade
               runtime.renderer?.destroyDrawable(bundle[key].drawable,'background');runtime.renderer?.destroySkin(bundle[key].skin);
             }
           }
-          this._sceneBundles.clear();this._sceneStack=[];this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
-          this._scenePushHandlers=[];this._scenePopHandlers=[];this._nextSpriteHandle=0;this._globalElapsedMs=0;this._nextMultiplayerState=2;this._buttonStates={};this._controllerConnections={};this._controllerInputs={};
+          this._sceneBundles.clear();this._sceneStack=[];this._sceneParents=new WeakMap();this._seeThroughSources=new WeakMap();this._renderingScenes=new WeakSet();this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
+          this._scenePushHandlers=[];this._scenePopHandlers=[];this._nextSpriteHandle=0;this._globalElapsedMs=0;this._nextMultiplayerState=2;this._buttonStates={};this._controllerConnections={};this._controllerInputs={};this._userControllerEvents=true;this._cancelNativeTextDialogs();
           this._activeLegacyAnimations=new Set();this._updateHandlers=[];this._intervalHandlers=[];this._buttonHandlers=[];
           this._destroyedHandlers=[];this._overlapHandlers=[];this._foreverHandlers=[];this._countdownHandlers=[];
           this._createdHandlers = [];
@@ -1185,15 +1184,18 @@ module.exports = makeExt(`// Name: Arcade
       this._sceneVisible(bundle,true);
       for(const sprite of Object.values(bundle.state.sprites || {})){if(sprite.image)this._renderSpriteImage(sprite.id);this._positionSprite(sprite.id);}
       this._renderPalette();
+      this._showNextDialog();
       this._changed();
     }
     _freshScene(previous) {
       const state={overlapLocks:new Set(),buttons:previous.buttons,controllerButtons:previous.controllerButtons,neopixels:previous.neopixels,light:previous.light,tiltX:previous.tiltX,tiltY:previous.tiltY,serial:previous.serial};
       const bundle={state,_speech:new Map(),_background:null,_backgroundImage:null,_tilemapDrawable:null,_createdHandlers:[],_wallHandlers:[],_legacyWallHandlers:[],_tileHandlers:[],
         _activeLegacyAnimations:new Set(),_imageAnimations:new Map(),_animationUpdateOrder:[],_updateHandlers:[],_intervalHandlers:[],_buttonHandlers:[],_destroyedHandlers:[],_overlapHandlers:[],_foreverHandlers:[],_countdownHandlers:[]};
+      this._sceneParents.set(state,previous);
       return bundle;
     }
     pushScene(args,util) {
+      if(this._particleModule){this._particleModule.particles.clearAll();this._particleModule.particles.disableAll();}
       const old=this._sceneBundle();this._sceneBundles.add(old);this._sceneStack.push(old);this._sceneVisible(old,false);
       this._activateScene(this._freshScene(old.state));
       return this._runTerrainGenerator(this._sceneHandlerSteps(this._scenePushHandlers.slice(),'arcade_whenRegisteredScenePush',util));
@@ -1201,6 +1203,7 @@ module.exports = makeExt(`// Name: Arcade
     popScene(args,util) {
       const old=this._sceneBundle();this._sceneBundles.add(old);this._sceneVisible(old,false);
       const restored=this._sceneStack.pop() || this._freshScene(old.state);this._sceneBundles.delete(restored);this._activateScene(restored);
+      if(this._particleModule)this._particleModule.particles.enableAll();
       return this._runTerrainGenerator(this._sceneHandlerSteps(this._scenePopHandlers.slice(),'arcade_whenRegisteredScenePop',util));
     }
     // Program and extension scene handlers, in registration order.
@@ -1265,6 +1268,7 @@ module.exports = makeExt(`// Name: Arcade
       return this._heldButton(player.index+1,button);
     }
     *_controllerButtonCallbacks(number,button,event,deferred=false) {
+      if(!this._userControllerEvents)return;
       const handlers=this._buttonHandlers.filter(h=>h.player===number && h.button===button && h.event===event);
       for(const handler of handlers){
         if(handler.host){handler.host();continue;}
@@ -1348,7 +1352,10 @@ module.exports = makeExt(`// Name: Arcade
       return this._hudModule;
     }
     _drawHud(state,screen) {return this._runTerrainGenerator(this._drawHudSteps(state,screen));}
-    *_drawHudSteps(state,screen) {
+    *_drawHudSteps(owner,screen) {
+      // A previous scene render runs while the child remains current. PXT's
+      // HUD closure reads that current scene's InfoState, not the parent's.
+      const state=this._state();if(owner!==state && !state.hudInfo)return;
       const {info,players}=this._hud(),hud=state.hudInfo,V=info.Visibility;
       const pass={screen,epoch:this._terrainEpoch};state._hudPass=pass;
       info._setInfoState(hud);this._hudScreen=screen;
@@ -1871,13 +1878,92 @@ module.exports = makeExt(`// Name: Arcade
       if(dialog.armed.a && dialog.held.a)dialog.dismiss(true);
       else if(dialog.armed.b && dialog.held.b)dialog.dismiss(false);
     }
-    splash(args) {
-      return this._queueDialog({type: 'splash', title: String(args.TITLE), subtitle: String(args.SUBTITLE)});
+    _dialogPrimitive(value) {
+      const decoded=Scratch.BWValues.decode(value);
+      if(decoded!==null && !['string','number','boolean','undefined'].includes(typeof decoded))throw new Error('Arcade dialog text needs a supported primitive; opaque inspection is not implemented');
+      // console.inspect's primitive branch in the pinned console.ts.
+      return decoded;
     }
-    showLongText(args) {
-      const layout = String(args.LAYOUT);
-      return this._queueDialog({type: 'longText', title: String(args.TEXT), subtitle: '',
-        layout: ['Left', 'Right', 'Top', 'Bottom', 'Center', 'Full'].includes(layout) ? layout : 'Center'});
+    splash(args,util) {
+      try {return this._startNativeTextDialog('splash',this._dialogPrimitive(args.TITLE),this._dialogPrimitive(args.SUBTITLE),undefined,util);}
+      catch(error){this._runtime?.emit?.('BLOCKS_ERROR',error.message);}
+    }
+    showLongText(args,util) {
+      const layout=String(Scratch.BWValues.decode(args.LAYOUT));
+      if(!['Left','Right','Top','Bottom','Center','Full'].includes(layout)){
+        this._runtime?.emit?.('BLOCKS_ERROR','Arcade long text layout must be a fixed DialogLayout value: '+layout);return;
+      }
+      try {return this._startNativeTextDialog('longText',this._dialogPrimitive(args.TEXT),undefined,layout,util);}
+      catch(error){this._runtime?.emit?.('BLOCKS_ERROR',error.message);}
+    }
+    _nativeDialogButtonEdge(button,held) {
+      if(!['a','b','up','down','left','right','start','select'].includes(button) || typeof held!=='boolean')return;
+      this._state().buttons[button]=held;
+      this._controllerButtonEdge(1,button,held);
+    }
+    _cancelNativeTextDialogs() {
+      for(const dialog of this._nativeTextDialogs || []){dialog.closed=true;dialog.resolve();}
+      this._nativeTextDialogs=[];this._userControllerEvents=true;
+    }
+    _startNativeTextDialog(type,title,subtitle,layout,util) {
+      // BlockUtility is shared across concurrently running VM threads.
+      util={thread:util?.thread,sequencer:util?.sequencer};
+      const epoch=this._terrainEpoch,game=this._gameOverModule().game;
+      const text=String(title),subtext=subtitle?String(subtitle):'';
+      this._userControllerEvents=false;
+      const pushed=this.pushScene({},util),owner=this._state();owner.seeThrough=true;
+      let width=160,height=subtext?42:35,left,top;
+      if(type==='longText'){
+        const sizes={Bottom:[156,45,2,75],Top:[156,45,2,0],Left:[58,120,0,0],Right:[58,120,102,0],Center:[106,106,27,7],Full:[160,120,0,0]};
+        [width,height,left,top]=sizes[layout];
+      }
+      return new Promise(resolve=>{
+        const dialog={type,title:text,subtitle:subtext,layout,body:null,owner,epoch,resolve,closed:false,pressed:true,upPressed:true};
+        this._nativeTextDialogs.push(dialog);this._showNextDialog();
+        const ready=()=>{
+          if(dialog.closed || epoch!==this._terrainEpoch)return;
+          if(this._state()!==owner){this._runtime?.emit?.('BLOCKS_ERROR','Arcade dialog scene changed during creation');dialog.closed=true;resolve();return;}
+          // Original constructs the dialog only after push handlers return.
+          const body=type==='splash'?new game.SplashDialog(width,height):new game.Dialog(width,height);
+          body.setText(text);if(type==='splash' && subtext)body.setSubtext(subtext);dialog.body=body;
+          const created=this.createImageSprite({KIND:-1,IMAGE:this._imageHandle(body.image.raw)},util);
+          const complete=id=>{
+            if(dialog.closed || epoch!==this._terrainEpoch || this._state()!==owner)return;
+            dialog.id=id;
+            if(type==='longText'){this.setSpriteProperty({ID:id,PROPERTY:'left',VALUE:left});this.setSpriteProperty({ID:id,PROPERTY:'top',VALUE:top});}
+            this._updateHandlers.push({host:()=>this._updateNativeTextDialog(dialog,util)});
+            this._showNextDialog();
+          };
+          if(created?.then)created.then(complete).catch(error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error)));else complete(created);
+        };
+        if(pushed?.then)pushed.then(ready).catch(error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error)));else ready();
+      });
+    }
+    _updateNativeTextDialog(dialog,util) {
+      if(dialog.closed || dialog.epoch!==this._terrainEpoch || this._state()!==dialog.owner)return;
+      dialog.body.update();this._refreshImage(dialog.body.image.raw);
+      const current=this._heldButton(1,'a') || (dialog.type==='longText' && this._heldButton(1,'down'));
+      if(current && !dialog.pressed){
+        dialog.pressed=true;
+        if(dialog.type==='longText' && dialog.body.hasNext()){dialog.body.nextPage();this._showNextDialog();}
+        else this._closeNativeTextDialog(dialog,util);
+      } else if(dialog.pressed && !current)dialog.pressed=false;
+      if(dialog.type==='longText'){
+        const previous=this._heldButton(1,'up');
+        if(previous && !dialog.upPressed){dialog.upPressed=true;if(dialog.body.hasPrev()){dialog.body.prevPage();this._showNextDialog();}}
+        else if(dialog.upPressed && !previous)dialog.upPressed=false;
+      }
+    }
+    _closeNativeTextDialog(dialog,util) {
+      if(dialog.closed || dialog.epoch!==this._terrainEpoch || this._state()!==dialog.owner)return;
+      dialog.closed=true;dialog.owner.backgroundImage=null;this._renderBackgroundImage();
+      const popped=this.popScene({},util);
+      const finish=()=>{
+        if(dialog.epoch!==this._terrainEpoch)return;
+        this._nativeTextDialogs=this._nativeTextDialogs.filter(value=>value!==dialog);
+        this._userControllerEvents=true;this._showNextDialog();dialog.resolve();
+      };
+      if(popped?.then)popped.then(finish).catch(error=>this._runtime?.emit?.('BLOCKS_ERROR',String(error)));else finish();
     }
     _queueDialog(fields) {
       return new Promise(resolve => {
@@ -1896,16 +1982,17 @@ module.exports = makeExt(`// Name: Arcade
     }
     _showNextDialog() {
       if (this._runtime) {
-        const dialog=this._dialogs?.[0];
+        const native=(this._nativeTextDialogs || []).findLast(value=>!value.closed && value.owner===this._state());
+        const dialog=native || this._dialogs?.[0];
         if(dialog?.type==='ask' && !dialog.started){
           dialog.started=true;
           for(const button of ['a','b'])dialog.held[button]=this._heldButton(1,button);
         }
         this._runtime.bwArcadeDialogOpen = Boolean(dialog);
-        this._runtime.bwArcadeDialogType = this._dialogs?.[0]?.type || null;
+        this._runtime.bwArcadeDialogType = dialog?.type || null;
         // UI containers compare dialog identity. Publish a snapshot when the
         // guard changes; dismissal still closes over the authoritative queue.
-        this._runtime.emit('ARCADE_DIALOG', dialog ? {...dialog} : null);
+        this._runtime.emit('ARCADE_DIALOG', native ? {type:native.type,title:native.title,subtitle:native.subtitle,layout:native.layout,native:true,page:native.body?.chunkIndex || 0,pages:native.body?.chunks?.length || 1,hasNext:native.body?.hasNext?.() || false,hasPrev:native.body?.hasPrev?.() || false} : dialog ? {...dialog} : null);
       }
     }
     lightLevel() { return Number(this._state().light) || 0; }
@@ -1962,8 +2049,7 @@ module.exports = makeExt(`// Name: Arcade
       const sprite = this._sprite(args.NAME); if (!sprite) return;
       sprite.brightness = this._clamp(args.B, 9); this._changed();
     }
-    _camera() {
-      const state = this._state();
+    _camera(state=this._state()) {
       if (!state.camera) state.camera = {offsetX:0, offsetY:0, drawOffsetX:0, drawOffsetY:0, followId:null};
       return state.camera;
     }
@@ -2046,8 +2132,8 @@ module.exports = makeExt(`// Name: Arcade
       const values=[camera.offsetX+80,camera.offsetY+60,camera.offsetX,camera.offsetX+160,camera.offsetY,camera.offsetY+120];
       return Scratch.BWValues.encode(values[Number(Scratch.BWValues.decode(args.PROPERTY))]);
     }
-    _spriteViewPosition(sprite) {
-      const camera=this._camera(),relative=!!(sprite.flags & spriteFlags.RelativeToCamera);
+    _spriteViewPosition(sprite,state=this._state()) {
+      const camera=this._camera(state),relative=!!(sprite.flags & spriteFlags.RelativeToCamera);
       return {x:Math.floor(sprite._fx/256-(relative?0:camera.drawOffsetX))+sprite.width/2,
         y:Math.floor(sprite._fy/256-(relative?0:camera.drawOffsetY))+sprite.height/2};
     }
@@ -3347,24 +3433,25 @@ module.exports = makeExt(`// Name: Arcade
         this._refreshImage(image);
       }
     }
-    _sceneLayers() {
-      const state=this._state();
+    _sceneLayers(state=this._state()) {
+      const bundle=state===this._state()?null:[...this._sceneBundles].find(bundle=>bundle.state===state);
+      const speechMap=bundle?bundle._speech:this._speech;
       // This internal scene raster is not the global PXT screen. Snapshot
       // reporters remain unavailable until all renderable layers are covered.
       const layers=[],missingSpriteImages=[];
       const tilemap=state.tilemap;
       if(tilemap && (!tilemap.legacy || tilemap.mapImage)) {
-        const renderable=this._ensureTilemapRenderable(tilemap.legacy?'legacy':'modern');
-        layers.push({image:this._tilemapRaster(tilemap),x:0,y:0,z:renderable.z,id:renderable.pxtId});
+        const renderable=this._ensureTilemapRenderable(tilemap.legacy?'legacy':'modern',state);
+        layers.push({image:this._tilemapRaster(tilemap,state),x:0,y:0,z:renderable.z,id:renderable.pxtId});
       }
       for(const sprite of Object.values(state.sprites)) {
         if(sprite.invisible || sprite._destroyed)continue;
         const source=sprite.image || this._imageForSprite(sprite.id,{quiet:true});
         if(!source){missingSpriteImages.push(sprite.id);continue;}
-        const speech=this._speech.get(sprite.id);
+        const speech=speechMap.get(sprite.id);
         if(speech && !speech.legacy && speech.raster)
           layers.push({image:speech.raster,writes:speech.raster.writes,x:0,y:0,z:sprite.z,id:sprite.pxtId});
-        const window=this._spriteRasterWindow(sprite),view=this._spriteViewPosition(sprite);
+        const window=this._spriteRasterWindow(sprite,state),view=this._spriteViewPosition(sprite,state);
         layers.push({image:this._scaledSpriteImage(sprite,window),
           x:view.x-sprite.width/2+window.x,y:view.y-sprite.height/2+window.y,
           z:sprite.z,id:sprite.pxtId});
@@ -3529,11 +3616,11 @@ module.exports = makeExt(`// Name: Arcade
       if(sprite)this._particles().effects.clearParticles(this._particleAnchor(sprite));
       this._changed();
     }
-    _drawParticleSources() {
-      const scene=this._particleScenes.get(this._state());
+    _drawParticleSources(state=this._state()) {
+      const scene=this._particleScenes.get(state);
       const layers=[];
       if(scene?.allSprites.length){
-        const screen=this._particleScreen,camera=this._camera();
+        const screen=this._particleScreen,camera=this._camera(state);
         // scene.render draws allSprites by z then id.
         for(const source of scene.allSprites.slice().sort((a,b)=>a.z-b.z || a.id-b.id)){
           screen.layer={width:160,height:120,pixels:new Uint8Array(160*120),writes:new Uint8Array(160*120)};
@@ -3618,12 +3705,13 @@ module.exports = makeExt(`// Name: Arcade
       this._gameOverEffects=effects;
       const music=this._music().pxt.music;
       this._dialogHost={wrap:raw=>new DialogImage(raw),img,image:{create:(width,height)=>new DialogImage({width,height,pixels:new Uint8Array(Math.max(0,width*height))}),
-          font5:text.image.font5,font8:text.image.font8,font12:text.image.font12}};
+          font5:text.image.font5,font8:text.image.font8,font12:text.image.font12,getFontForText:value=>text.image.getFontForText(value)}};
       this._gameOverPxt=dependencies.initializeGameOver({
         image:this._dialogHost.image,img,screen:{width:160,height:120,isMono:false},effects,music,
         info:{isBetterScore:(next,previous)=>ext._isBetterScore(next,previous)},
         control:{},controller:{},scene:{}
       });
+      this._gameOverPxt.game.eventContext=()=>({deltaTime:ext._state().frameDeltaTime || 0});
       return this._gameOverPxt;
     }
     _gameOverState() {
@@ -4389,41 +4477,56 @@ module.exports = makeExt(`// Name: Arcade
     whenRegisteredShade(args,util) {return this.whenRegisteredWall(args,util);}
     // scene.render with renderables: background, then sprites and renderables
     // by z then id into the screen; each renderable's changes become a layer.
+    *_drawSceneOwnerSteps(owner,screen,active,epoch,output) {
+      if(this._renderingScenes.has(owner))return;
+      this._renderingScenes.add(owner);
+      try {
+        const parent=this._sceneParents.get(owner);
+        if(owner.seeThrough && parent){
+          const parentOutput={layers:[],missingSpriteImages:[]};
+          yield* this._drawSceneOwnerSteps(parent,screen,active,epoch,parentOutput);
+          if(this._state()!==active || epoch!==this._terrainEpoch)return;
+          let source=this._seeThroughSources.get(owner);
+          if(!source){source={z:-Infinity,id:-Infinity};this._seeThroughSources.set(owner,source);}
+          output.layers.push({image:{width:160,height:120,pixels:screen.pixels.slice()},writes:new Uint8Array(160*120).fill(1),x:0,y:0,z:source.z,id:source.id,source});
+          output.missingSpriteImages.push(...parentOutput.missingSpriteImages);
+        } else imageEngine.composeFrame(screen,owner.backgroundColor,owner.backgroundImage,[]);
+        const {layers,missingSpriteImages}=this._sceneLayers(owner);
+        layers.push(...this._drawParticleSources(owner));
+        output.missingSpriteImages.push(...missingSpriteImages);
+        output.layers.push(...layers.filter(layer=>layer.source));
+        const items=[...layers,...(this._renderables.get(owner) || []).map(renderable=>({renderable,z:renderable.z,id:renderable.id}))].sort((a,b)=>a.z-b.z || a.id-b.id);
+        for(const item of items){
+          if(!item.renderable){imageEngine.drawLayer(screen,item);continue;}
+          const before=screen.pixels.slice();
+          if(item.renderable.drawSteps)yield* item.renderable.drawSteps(screen);
+          else if(item.renderable.draw)item.renderable.draw(screen);
+          else yield* this._registeredCallbackSteps([item.renderable],item.renderable.z===-20?'arcade_whenRegisteredPaint':'arcade_whenRegisteredShade',{});
+          if(this._state()!==active || epoch!==this._terrainEpoch)return;
+          const writes=new Uint8Array(screen.pixels.length);
+          for(let i=0;i<writes.length;i++)if(screen.pixels[i]!==before[i])writes[i]=1;
+          output.layers.push({image:{width:160,height:120,pixels:screen.pixels.slice()},writes,x:0,y:0,z:item.z,id:item.id,source:item.renderable});
+          if(active._defaultGameOverPending)return;
+        }
+      } finally {this._renderingScenes.delete(owner);}
+    }
     *_composeSceneSteps() {
       const epoch=this._terrainEpoch,state=this._state(),renderables=this._renderables.get(state);
-      if(!renderables?.length){
+      if(!renderables?.length && !state.seeThrough){
         const frame=this._composeSceneFrame();
-        // PXT renders every frame into the screen image itself, so afterwards
-        // the screen holds the composed frame and earlier writes are gone.
         if(this._screen && frame?.pixels)this._screen.pixels.set(frame.pixels);
         return frame;
       }
-      const {layers,missingSpriteImages}=this._sceneLayers();
-      layers.push(...this._drawParticleSources());
-      const screen=this._screenRaw();
-      imageEngine.composeFrame(screen,state.backgroundColor,state.backgroundImage,[]);
-      const items=[...layers,...renderables.map(renderable=>({renderable,z:renderable.z,id:renderable.id}))]
-        .sort((a,b)=>a.z-b.z || a.id-b.id);
-      const drawn=[];
-      for(const item of items){
-        if(!item.renderable){imageEngine.drawLayer(screen,item);continue;}
-        const before=screen.pixels.slice();
-        if(item.renderable.drawSteps)yield* item.renderable.drawSteps(screen);
-        else if(item.renderable.draw)item.renderable.draw(screen);
-        else yield* this._registeredCallbackSteps([item.renderable],item.renderable.z===-20?'arcade_whenRegisteredPaint':'arcade_whenRegisteredShade',{});
-        if(this._state()!==state || epoch!==this._terrainEpoch)return;
-        const writes=new Uint8Array(screen.pixels.length);
-        for(let i=0;i<writes.length;i++)if(screen.pixels[i]!==before[i])writes[i]=1;
-        drawn.push({image:{width:160,height:120,pixels:screen.pixels.slice()},writes,x:0,y:0,z:item.z,id:item.id,source:item.renderable});
-        if(state._defaultGameOverPending)break;
-      }
+      const screen=this._screenRaw(),output={layers:[],missingSpriteImages:[]};
+      yield* this._drawSceneOwnerSteps(state,screen,state,epoch,output);
+      if(this._state()!==state || epoch!==this._terrainEpoch)return;
       const frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
       frame.pixels.set(screen.pixels);
       frame.coverage=['background','tilemap','sprites','modernSpeech','particles','renderables'];
       frame.remaining=['hud','legacySpeech','effects'];
-      frame.missingSpriteImages=missingSpriteImages;
+      frame.missingSpriteImages=output.missingSpriteImages;
       frame.sequence=(frame.sequence || 0)+1;
-      this._renderOverlayLayers([...layers.filter(layer=>layer.source),...drawn]);
+      this._renderOverlayLayers(output.layers);
       return frame;
     }
     _scalePixelTarget(target) {
@@ -4435,11 +4538,11 @@ module.exports = makeExt(`// Name: Arcade
         this._runtime?.renderer?.updateDrawableProperties?.(target.drawableID, {scale: [75, 75]});
       }
     }
-    _spriteRasterWindow(sprite){
-      const view=this._spriteViewPosition(sprite),left=view.x-sprite.width/2,top=view.y-sprite.height/2;
+    _spriteRasterWindow(sprite,state=this._state()){
+      const view=this._spriteViewPosition(sprite,state),left=view.x-sprite.width/2,top=view.y-sprite.height/2;
       const fullWidth=Math.max(0,sprite.width|0),fullHeight=Math.max(0,sprite.height|0);
       // __drawCore culls using logical bounds before scattering the image.
-      const camera=this._camera(),relative=!!(sprite.flags & spriteFlags.RelativeToCamera);
+      const camera=this._camera(state),relative=!!(sprite.flags & spriteFlags.RelativeToCamera);
       const logicalLeft=sprite._fx/256-(relative?0:camera.drawOffsetX),logicalTop=sprite._fy/256-(relative?0:camera.drawOffsetY);
       if(logicalLeft+sprite.width<0 || logicalTop+sprite.height<0 || logicalLeft>160 || logicalTop>120)
         return {x:0,y:0,width:0,height:0,key:'empty'};
@@ -4809,8 +4912,7 @@ module.exports = makeExt(`// Name: Arcade
       const values=Scratch.BWValues.arrayValue(this._runtime,this.legacyTilesOfType(args));
       if(values.length)return this.placeOnLegacyTile({ID:args.ID,TILE:values[Math.floor(Math.random()*values.length)]},util);
     }
-    _ensureTilemapRenderable(kind) {
-      const state=this._state();
+    _ensureTilemapRenderable(kind,state=this._state()) {
       if(!state.tilemapRenderable || state.tilemapRenderable.kind!==kind)
         state.tilemapRenderable={kind,z:-1,pxtId:state.nextSpriteId++};
       return state.tilemapRenderable;
@@ -4876,11 +4978,11 @@ module.exports = makeExt(`// Name: Arcade
       if (!this._background && this._runtime?.renderer) this.setBackgroundColor({COLOR:this.backgroundColor()});
       this._renderTilemap();this._changed();
     }
-    _tilemapRaster(map) {
+    _tilemapRaster(map,state=this._state()) {
       this._syncLegacyMap(map);
       const image={width:160,height:120,pixels:new Uint8Array(160*120)};
       if(map.legacy && !map.mapImage)return image;
-      const camera=this._camera(),size=map.tileSize,scale=Math.log2(size);
+      const camera=this._camera(state),size=map.tileSize,scale=Math.log2(size);
       const offsetX=camera.drawOffsetX & (size-1),offsetY=camera.drawOffsetY & (size-1);
       const firstX=Math.max(0,camera.drawOffsetX>>scale),firstY=Math.max(0,camera.drawOffsetY>>scale);
       const lastX=Math.min(map.columns,((camera.drawOffsetX+160)>>scale)+1);

@@ -1778,14 +1778,16 @@ class ArcadeTranslator extends BaseTranslator {
                 push(this.note('game.splash() arguments'));
                 return;
             }
-            push(`arcade splash ${this.expr(a[0])} subtitle ${a[1] ? this.expr(a[1]) : '""'}`);
+            if(a.some(value=>!this.primitiveReferences?.has(value))){push(this.note('game.splash() requires proven primitive text; opaque or unknown inspection is not implemented'));return;}
+            push(`arcade splash (${this.arrayElementValue(a[0])}) subtitle (${a[1] ? this.arrayElementValue(a[1]) : '""'})`);
             return;
         case 'game.showLongText':
             if (a.length !== 2 || !/^DialogLayout\.(Left|Right|Top|Bottom|Center|Full)$/.test(this.path(a[1]) || '')) {
                 push(this.note('game.showLongText() layout must be a fixed DialogLayout value'));
                 return;
             }
-            push(`arcade long text ${this.expr(a[0])} layout "${this.path(a[1]).split('.')[1]}"`);
+            if(!this.primitiveReferences?.has(a[0])){push(this.note('game.showLongText() requires proven primitive text; opaque or unknown inspection is not implemented'));return;}
+            push(`arcade long text (${this.arrayElementValue(a[0])}) layout "${this.path(a[1]).split('.')[1]}"`);
             return;
 
         case 'music.playTone':
@@ -3695,7 +3697,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && /^carnival\.(?:startCountdownGame|onGameOverExpanded|customGameOverExpanded)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^game\.(?:gameOver|over|setGameOver\w+)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
-        if(node.type==='Call' && (['game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','scene.cameraLeft','scene.cameraTop','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
+        if(node.type==='Call' && (['game.splash','game.showLongText','game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','scene.cameraLeft','scene.cameraTop','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
         if(node.type==='Call' && /^info(?:\.player[1-4])?\.(?:life|hasLife|setLife|changeLifeBy|onLifeZero)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Member' && ['fx','fy','sx','sy','scale','flags'].includes(node.name))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='toString' && t.spriteReferences.has(node.callee.object))return true;

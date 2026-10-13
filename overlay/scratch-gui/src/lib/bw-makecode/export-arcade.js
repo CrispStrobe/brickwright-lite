@@ -2308,8 +2308,8 @@ class ArcadeEmitter {
         case 'arcade_startCountdown': push(`info.startCountdown(${v('N')})`); return;
         case 'arcade_stopCountdown': push('info.stopCountdown()'); return;
         case 'arcade_splash': {
-            const title = v('TITLE', '""');
-            const subtitle = v('SUBTITLE', '""');
+            const title = this.arrayValue(b,'TITLE');
+            const subtitle = this.arrayValue(b,'SUBTITLE');
             push(subtitle === '""' ? `game.splash(${title})` : `game.splash(${title}, ${subtitle})`);
             return;
         }
@@ -2319,7 +2319,7 @@ class ArcadeEmitter {
                 push(`// ${this.note('Arcade long text layout must be fixed')}`);
                 return;
             }
-            push(`game.showLongText(${v('TEXT', '""')}, DialogLayout.${layout})`);
+            push(`game.showLongText(${this.arrayValue(b,'TEXT')}, DialogLayout.${layout})`);
             return;
         }
         case 'arcade_log': push(`console.log(${this.arrayValue(b, 'TEXT')})`); return;

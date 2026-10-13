@@ -58,7 +58,7 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
         if(fakeClock){await page.clock.install({time:0});await page.clock.pauseAt(0);}
         await page.goto(`http://127.0.0.1:${server.address().port}/simulator.html`);
         if (waitForDisplay) await page.evaluate(observePxtDisplay);
-        await page.evaluate(async ({code,recordSound,recordSongSound})=>{
+        await page.evaluate(async ({code,recordSound,recordSongSound,initialButtons})=>{
             const msg={type:'run',id:'bw-oracle',code,options:{},mute:true};
             pxsim.AudioContextManager.mute(true);
             if(recordSound || recordSongSound){
@@ -81,15 +81,28 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
             }
             const runtime=new pxsim.Runtime(msg);window.__bwPxtRuntime=runtime;
             await runtime.board.initAsync(msg);
+            for(const {button,held} of initialButtons || []){
+                if(typeof runtime.board.setButton!=="function")throw new Error("Original PXT initial button input unavailable");
+                runtime.board.setButton(button,held);
+            }
             runtime.run(()=>{window.__bwPxtDone=true;});
-        },{code:built.outfiles['binary.js'],recordSound,recordSongSound});
+        },{code:built.outfiles['binary.js'],recordSound,recordSongSound,initialButtons:buttonActions?.initial});
         if(buttonActions){
-            if(buttonActions.afterGlobals)await page.waitForFunction(expected=>{
+            const inputReady=expected=>{
                 const values=Object.fromEntries(Object.entries(window.__bwPxtRuntime.globals).map(([key,value])=>[key.replace(/___\d+$/,''),value]));
                 return Object.entries(expected).every(([key,value])=>values[key]===value);
-            },buttonActions.afterGlobals,{timeout:20000});
+            };
+            if(buttonActions.afterGlobals){
+                if(fakeClock){
+                    let elapsed=0;
+                    while(!await page.evaluate(inputReady,buttonActions.afterGlobals)){
+                        if(elapsed>=20000)throw new Error("Original PXT input readiness marker unavailable");
+                        await page.clock.runFor(20);elapsed+=20;
+                    }
+                } else await page.waitForFunction(inputReady,buttonActions.afterGlobals,{timeout:20000});
+            }
             for(const action of buttonActions.steps){
-                if(action.delay)await page.waitForTimeout(action.delay);
+                if(action.delay){if(fakeClock)await page.clock.runFor(action.delay);else await page.waitForTimeout(action.delay);}
                 if(action.button!==undefined)await page.evaluate(({button,held})=>{
                     const board=window.__bwPxtRuntime.board;
                     if(typeof board.setButton!=='function')throw new Error('Original PXT board button input unavailable');
