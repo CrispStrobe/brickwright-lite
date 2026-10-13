@@ -8,7 +8,7 @@ const fileMap = value => value && typeof value === 'object' && !Array.isArray(va
 const safeName = name => name && !name.startsWith('/') && !name.includes('\\') &&
     !name.split('/').some(part => !part || part === '.' || part === '..');
 
-export function tutorialProjectFiles(markdown, mainSource, {name = 'Recovered tutorial'} = {}) {
+export function tutorialProjectFiles(markdown, mainSource, {name = 'Recovered tutorial', target = 'arcade'} = {}) {
     if (typeof markdown !== 'string' || typeof mainSource !== 'string') throw new Error('Tutorial and main.ts must be text.');
     const fences = [];
     let fence = null;
@@ -58,7 +58,7 @@ export function tutorialProjectFiles(markdown, mainSource, {name = 'Recovered tu
         if (!config || typeof config !== 'object' || Array.isArray(config)) throw new Error('Tutorial pxt.json must be an object.');
     }
     if (config.dependencies !== undefined && !fileMap(config.dependencies)) throw new Error('Tutorial dependencies must be a text map.');
-    const deps = {...(config.dependencies || {device: '*'})};
+    const deps = {...(config.dependencies || (target === 'microbit' ? {core: '*'} : {device: '*'}))};
     for (const [key, value] of Object.entries(dependencies)) {
         if (own(deps, key) && deps[key] !== value) throw new Error(`Conflicting tutorial package: ${key}`);
         deps[key] = value;

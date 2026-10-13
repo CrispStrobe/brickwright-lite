@@ -604,3 +604,54 @@ https://github.com/CrispStrobe/brickwright-lite/actions/runs/38150051112 .
 Actual downloads and failed/predecessor observations are archived privately.
 The refreshed merge still needs every enabled exact-head check; the older
 light-shard result is not a full-workflow or merged-main claim.
+
+
+## Tutorial context collection and refreshed gap ranking — 2026-10-11
+
+At source `35c21dd99440c1bd72468f63dae1ba4ff680ff6d`, the locked184 Arcade
+fragments still measure142 translated /41 partial /1 parse failure. Every file
+SHA-256 matches the retained original hash inventory; every blob matches the
+declared private corpus commit. This is static translation only, with no
+original compile or native-behavior claim for those184 inputs. Top diagnostic
+families are unreadable backgrounds (10 projects), unreadable literal tilemaps
+(4), tutorial bundle wrappers (3), song values (3), and sprite operations that
+fall back to stage conversion when their artwork is unavailable. Families
+overlap, so these counts must not be added to estimate closed projects.
+
+The collector previously saved selected code fences without their tutorial
+context. `node scripts/collect-makecode-corpus.mjs --out artifacts/tutorial-corpus
+--projects` now additionally writes separate `<target>-projects/*.mkcd` files,
+using the existing `tutorial-project.js` assembler. With Arcade documentation,
+add `--arcade-docs "$ARCADE_DOCS"` pointing to the pinned target's docs tree.
+It preserves custom TypeScript, exact asset file text, package versions and
+existing project metadata. Main is the explicitly selected code fence; ghost
+programs are not automatically substituted. Fragments remain byte-for-byte
+unchanged, and context projects are a separate denominator. Malformed or
+conflicting context is listed in `manifest.json` collectionFailures and produces
+a nonzero exit; successfully collected files remain available.
+
+The same established CLI is available for a single original fragment:
+`node scripts/makecode.mjs tutorial-to-project tutorial.md --main main.ts
+--target arcade -o context.mkcd`. Normal MakeCode without explicit package
+metadata now receives the micro:bit core dependency through the same helper.
+Seven affected checks passed, including native callback execution and original
+MakeCode comparison. A real pinned micro:bit collection produced215 exact
+baseline fragments plus227 context projects, with zero collection failures.
+
+For the original Arrow Battle document at
+https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/arrow.md ,
+retaining context reduced the selected fragment's five diagnostics to one:
+`carnival.startCountdownGame()`. The original compiler gate is separately
+unavailable offline for its declared arcade-carnival and arrow-images packages.
+This does not close the original fragment, prove a complete game, implement
+carnival, or qualify a rendered GUI journey. Raw original inputs, context
+project, diagnostics and compiler unavailability are archived privately.
+
+Next: qualify recovered projects without replacing the184-fragment census;
+resolve exact declared compiler packages; implement remaining native extension
+APIs one family at a time with original observations. Priority candidates are
+carnival countdown behavior, persistent typed settings arrays, and song values.
+Missing images/maps need actual matching project inputs rather than fabricated
+artwork. Keep GUI authoring/Blocks/pseudocode/export tests alongside each native
+implementation. Current collector lane is stacked on PR796; merge parent lanes
+normally and require all enabled exact-head checks before adoption.

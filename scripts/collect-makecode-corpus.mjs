@@ -1,29 +1,35 @@
 #!/usr/bin/env node
-/** Extract complete lesson/project examples from a pinned PXT target corpus.
+/** Extract lesson/project code fences from a pinned PXT target corpus.
  *
  * Outputs source files and a provenance manifest; never copies them into the
  * shipped app. Use --snippets to include every API fragment as well.
  *
- * node scripts/collect-makecode-corpus.mjs --out DIR [--arcade-docs DIR] [--snippets]
+ * --projects additionally preserves customts/assetjson/package fences as
+ * separate .mkcd projects. It does not replace the original code fragments.
+ * node scripts/collect-makecode-corpus.mjs --out DIR [--arcade-docs DIR] [--snippets] [--projects]
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {untar, CACHE_DIR} from './sync-makecode-runtime.mjs';
+import {tutorialProjectFiles} from '../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js';
+import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 
 const argv = process.argv.slice(2);
 const opt = name => { const i = argv.indexOf(name); return i < 0 ? null : argv[i + 1]; };
 const out = opt('--out');
 const arcadeDocs = opt('--arcade-docs');
 const snippets = argv.includes('--snippets');
-if (!out || argv.some(a => a.startsWith('--') && !['--out', '--arcade-docs', '--snippets'].includes(a))) {
-    console.error('usage: node scripts/collect-makecode-corpus.mjs --out DIR [--arcade-docs DIR] [--snippets]');
+const projects = argv.includes('--projects');
+if (!out || argv.some(a => a.startsWith('--') && !['--out', '--arcade-docs', '--snippets', '--projects'].includes(a))) {
+    console.error('usage: node scripts/collect-makecode-corpus.mjs --out DIR [--arcade-docs DIR] [--snippets] [--projects]');
     process.exit(2);
 }
 
 const hash = b => crypto.createHash('sha256').update(b).digest('hex');
 const entries = [];
+const collectionFailures = [];
 const seen = new Set();
 function add (target, source, text, origin, license) {
     const blocks = [...text.matchAll(/```(?:blocks|typescript|block)\s*\n([\s\S]*?)```/g)];
@@ -41,6 +47,27 @@ function add (target, source, text, origin, license) {
         fs.writeFileSync(path.join(out, target, name), `${code.trim()}\n`);
         entries.push({file: `${target}/${name}`, target, source: `${origin}/${source}#${index}`,
             sourceSha256: hash(Buffer.from(code)), license});
+    }
+    if (projects && selected.length) {
+        const [code, index] = selected.at(-1);
+        const id = hash(Buffer.from(`${source}#${index}`)).slice(0, 16);
+        try {
+            const project = tutorialProjectFiles(text, `${code.trim()}\n`, {target, name: `${target}-${id}`});
+            const envelope = makeCodeProjectFile(project.files, {target, name: `${target}-${id}`});
+            const projectKey = `${target}:project:${JSON.stringify(project.files)}`;
+            if (seen.has(projectKey)) return;
+            seen.add(projectKey);
+            const name = `${target}-${id}.mkcd`, dir = `${target}-projects`;
+            fs.mkdirSync(path.join(out, dir), {recursive: true});
+            fs.writeFileSync(path.join(out, dir, name), envelope);
+            entries.push({file: `${dir}/${name}`, target, source: `${origin}/${source}`,
+                sourceSha256: hash(Buffer.from(text)), sha256: hash(Buffer.from(envelope)),
+                mainKind: 'selected-code-fence', companionFiles: Object.keys(project.files),
+                boundary: 'Selected source with tutorial context; not a complete-game or execution claim.', license});
+        } catch (error) {
+            collectionFailures.push({target, source: `${origin}/${source}`, projectCollection: 'failed',
+                reason: error.message, license});
+        }
     }
 }
 
@@ -71,5 +98,6 @@ if (arcadeDocs) {
 entries.sort((a, b) => a.file.localeCompare(b.file));
 fs.mkdirSync(out, {recursive: true});
 fs.writeFileSync(path.join(out, 'manifest.json'), `${JSON.stringify({schema: 'brickwright/makecode-corpus/v1',
-    generatedAt: new Date().toISOString(), snippets, count: entries.length, entries}, null, 2)}\n`);
-console.log(`${entries.length} MakeCode sources written to ${out}`);
+    generatedAt: new Date().toISOString(), snippets, projects, count: entries.length, entries, collectionFailures}, null, 2)}\n`);
+console.log(`${entries.length} MakeCode files written to ${out}; ${collectionFailures.length} project collections failed`);
+if (collectionFailures.length) process.exitCode = 1;
