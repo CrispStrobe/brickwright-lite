@@ -497,6 +497,8 @@ class ArcadeTranslator extends BaseTranslator {
             this.pre=outerPre;
         }
         if(delegated)super.statement(st,indent,out);
+        const kindBinding=st.type==='ExpressionStatement' && st.expr?.spriteKindName;
+        if(kindBinding)out.push(`${'  '.repeat(indent)}arcade bind sprite kind name ${JSON.stringify(kindBinding)} to (${this.expr({type:'Identifier',name:st.expr.spriteKindBinding})})`);
     }
     arcadeStatement(st, indent, out) {
         if(st.type==='SpriteKindReset'){out.push(`${'  '.repeat(indent)}set ${this.varName(st.name)} to (undefined value)`);return;}
@@ -537,14 +539,14 @@ class ArcadeTranslator extends BaseTranslator {
             for(const d of st.decls){
                 const gaps=this.unsupported.length;
                 if(d.spriteKindLibrary)out.push(`${pad}arcade initialize sprite kind library ${JSON.stringify(d.spriteKindLibrary.library)} version ${JSON.stringify(d.spriteKindLibrary.version)}`);
-                let value=d.spriteKindLibrary?`arcade sprite kind value ${JSON.stringify(d.spriteKindName)}`:d.init?this.arrayElementValue(d.init):d.isArray?this.expr({type:'Undefined'}):'0';
+                let value=d.spriteKindLibrary?`arcade sprite kind value ${JSON.stringify(d.spriteKindName)}`:d.init?this.arrayElementValue(d.init):d.spriteKindName || d.isArray?this.expr({type:'Undefined'}):'0';
                 // An array we could not translate (already named as a gap) stands in as an
                 // EMPTY array, so \`for (const t of unknownArrayFactory())\` runs no times
                 // instead of failing at run time on "Array reference is null or expired".
                 if(d.isArray && d.init && value==='0' && this.unsupported.length>gaps)value='new array reference from ("[]")';
                 if(d.temporary || this.localVars?.has(d.name))out.push(`${pad}arcade set local ${d.name} to (${value})`);
                 else out.push(`${pad}set ${this.varName(d.name)} to (${value})`);
-                if(d.spriteKindName && !d.spriteKindLibrary)out.push(`${pad}arcade bind sprite kind name ${JSON.stringify(d.spriteKindName)} to (${this.expr({type:'Identifier',name:d.name})})`);
+                if(d.spriteKindName && d.init && !d.spriteKindLibrary)out.push(`${pad}arcade bind sprite kind name ${JSON.stringify(d.spriteKindName)} to (${this.expr({type:'Identifier',name:d.name})})`);
             }
             return;
         }
@@ -745,7 +747,7 @@ class ArcadeTranslator extends BaseTranslator {
         }
         const name = this.path(node.callee);
         const a = node.args || [];
-        if(this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='kind' && !a.length && this.spriteReferences?.has(node.callee.object))return `arcade sprite (${this.expr(node.callee.object)}) property kind`;
+        if(this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='kind' && !a.length && this.spriteReferences?.has(node.callee.object))return `arcade property kind of (${this.expr(node.callee.object)})`;
         const fn = node.callee?.type === 'Identifier' && this.returnFunctions?.get(node.callee.name);
         if (fn) {
             if (a.length > fn.params.length || fn.params.slice(a.length).some(name=>!fn.optionalParams?.includes(name))) {this.unsupported.push(`${fn.name}() argument count differs from its declaration`);return '0';}

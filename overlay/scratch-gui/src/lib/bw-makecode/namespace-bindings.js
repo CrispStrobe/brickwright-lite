@@ -260,6 +260,7 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
             const symbol=access(target,scope,shadows);
             if (symbol?.kind === 'enumMember') fail('assignment to an enum member');
             if (symbol?.readonly && symbol.bindingScope!==root) fail(`assignment to readonly namespace binding ${symbol.sourcePath}`);
+            if(symbol?.spriteKind && !symbol.readonly)return {...Object.fromEntries(Object.entries(node).map(([key,value])=>[key,rewrite(value,scope,shadows,false,key)])),spriteKindName:symbol.sourcePath.slice('SpriteKind.'.length),spriteKindBinding:symbol.name};
         }
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, rewrite(value, scope, shadows, false, key)]));
     };

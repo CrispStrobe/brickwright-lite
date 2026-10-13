@@ -45,3 +45,7 @@ test('creation and overlap registrations capture numeric custom kinds at origina
  const result=arcadeToPseudocode('namespace SpriteKind {export const Custom=SpriteKind.create();}let count=0;sprites.onCreated(SpriteKind.Custom,function(sprite){count+=1;});sprites.onOverlap(SpriteKind.Custom,SpriteKind.Player,function(left,right){count+=1;});let hero=sprites.create(img`1`,SpriteKind.Custom);let observed=sprites.allOfKind(SpriteKind.Custom).length;');
  assert.deepEqual(result.unsupported,[]);assert.match(result.code,/arcade register creation kind \(__bwNamespace_SpriteKind_Custom\)/);assert.match(result.code,/arcade register overlap kind \(__bwNamespace_SpriteKind_Custom\) with kind \(arcade sprite kind value "Player"\)/);assert.match(result.code,/arcade sprite array kind \(__bwNamespace_SpriteKind_Custom\)/);
 });
+test('exported let kind declarations remain undefined without binding until explicit assignments run',()=>{
+ const result=arcadeToPseudocode('namespace SpriteKind {export let Custom:number;}let before=SpriteKind.Custom;SpriteKind.Custom=42.5;let after=SpriteKind.Custom;');assert.deepEqual(result.unsupported,[]);
+ assert.equal((result.code.match(/arcade bind sprite kind name "Custom"/g)||[]).length,1);assert.match(result.code,/set __bwNamespace_SpriteKind_Custom to \(undefined value\)/);assert.ok(result.code.indexOf('set before')<result.code.indexOf('arcade bind sprite kind name "Custom"'));assert.ok(result.code.indexOf('set __bwNamespace_SpriteKind_Custom to 42.5')<result.code.indexOf('arcade bind sprite kind name "Custom"'));
+});
