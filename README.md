@@ -386,12 +386,26 @@ TurboWarp's compiler or addon system. In exchange it ships its own electronics,
 debugger, lesson and native-device layers — including direct LEGO Bluetooth —
 without depending on TurboWarp. Brickwright Lite is not a TurboWarp fork.
 
-### Affiliation
+### Affiliation and trademarks
 
-Not affiliated with or endorsed by Scratch / MIT, STC, Arduino or Raspberry Pi,
-nor by the makers of the circuit file formats the Circuit tab imports and
-exports (KiCad, EasyEDA, EAGLE, LTspice). Those names describe file formats
-only; trademarks belong to their owners.
+Brickwright Lite is an independent project. It is **not affiliated with,
+authorized by, sponsored by, or endorsed by** any of the companies or
+organizations whose products, hardware, file formats or trademarks it works
+with or names for compatibility.
+
+In particular, **LEGO®, SPIKE™ and MINDSTORMS® are trademarks of the LEGO
+Group**, which does not sponsor, authorize or endorse this project; the virtual
+SPIKE hub is an independent reimplementation and bundles no LEGO firmware (the
+LEGO MINDSTORMS MicroPython firmware that real-hardware USB use requires is
+supplied by the user). Scratch is a trademark of the Scratch Foundation / MIT;
+micro:bit is a trademark of the Micro:bit Educational Foundation; MakeCode is a
+Microsoft project; and Arduino, Raspberry Pi, STC, Adafruit, Arduboy, and the
+circuit file formats the Circuit tab reads and writes (KiCad, EasyEDA, EAGLE,
+LTspice) are trademarks of their respective owners.
+
+All such names are used only to identify compatible hardware, software and file
+formats. Their use does not imply any affiliation or endorsement, and all
+trademarks remain the property of their respective owners.
 
 The virtual SPIKE hub uses an
 [independent simulator backend](docs/independent-spike/README.md) for Scratch
