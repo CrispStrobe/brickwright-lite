@@ -3706,3 +3706,21 @@ MakeCode export uses `.hash(bits)`. Byte/array/format inspection and a visible
 controller/editor hash journey remain GUI qualification work. Aggregate heap
 collection needs explicit root tracing across variables, arrays, calls, scenes
 and playback; source vocabulary does not establish that resource guarantee.
+
+## Tile probes, image equality and controller waits — 2026-10-13
+
+Native Boolean blocks and Code words now expose sprite-center tile-kind probes
+(five directions, with dynamic input), pixel-based image equality and a command
+that suspends until the next genuine button press. Tile probes compare actual
+image pixels without extending the map's tile list. The original simulator
+image equality algorithm supplies width/height/indexed-pixel semantics. Source
+imports and genuine exports retain these operations and Boolean variable types.
+
+Ten focused controls pass without skips, including actual original/native
+queries, Code/Blocks reconstruction, original exported execution, reimport and
+SB3 replacement. Controller waits cover elapsed frames without input, real
+press/release behavior and disposal of pending native waits at Stop. These are
+native runtime/roundtrip controls; a new dedicated visible dropdown/controller
+journey is still needed to qualify that GUI surface on the shipped build.
+Generated vocabulary contains319 canonical forms. No whole-corpus promotion
+from the new blocks alone.

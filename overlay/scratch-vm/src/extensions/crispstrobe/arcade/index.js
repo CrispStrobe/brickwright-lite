@@ -66,6 +66,7 @@ module.exports = makeExt(`// Name: Arcade
       this._wallHandlers = [];this._legacyWallHandlers = [];
       this._tileHandlers = [];
       this._terrainWaits = new Set();
+      this._nativeButtonWaiters = new Set();
       this._terrainEpoch = 0;
       this._terrainFrame = null;
       this._terrainStopped = false;
@@ -77,6 +78,7 @@ module.exports = makeExt(`// Name: Arcade
         runtime.on('ARCADE_PLAYER_BUTTON_EDGE',(player,button,isDown)=>this._controllerButtonEdge(player,button,isDown));
         runtime.on('KEY_STATE_CHANGED',(key,isDown)=>this._keyboardButtonEdge(key,isDown));
         const cancelCreations = () => {
+          for(const resolve of this._nativeButtonWaiters)resolve();this._nativeButtonWaiters.clear();
           for (const pending of this._creationWaits) pending.resolve('');
           this._creationWaits.clear();
           for(const dialog of this._dialogs || [])dialog.resolve(dialog.type==='ask' ? false : undefined);
@@ -574,6 +576,8 @@ module.exports = makeExt(`// Name: Arcade
             text: 'new Arcade image width [WIDTH] height [HEIGHT]', arguments: {...n('WIDTH', 16), ...n('HEIGHT', 16)} },
           { opcode: 'cloneImage', blockType: Scratch.BlockType.REPORTER,
             text: 'copy Arcade image [IMAGE]', arguments: str('IMAGE', '') },
+          {opcode:'imageEquals',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade image [IMAGE] equals image [OTHER]',arguments:{...str('IMAGE',''),...str('OTHER','')}},
+          {opcode:'waitAnyButton',blockType:Scratch.BlockType.COMMAND,text:'Arcade wait until any button pressed'},
           { opcode: 'imageProperty', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade image [IMAGE] [PROPERTY]', arguments: {...str('IMAGE', ''),
               PROPERTY: {type: Scratch.ArgumentType.STRING, menu: 'imageProperties', defaultValue: 'width'}} },
@@ -698,6 +702,7 @@ module.exports = makeExt(`// Name: Arcade
             text: 'Arcade tile location [LOCATION] [PROPERTY]', arguments: {...str('LOCATION', ''), PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'tileLocationProperties',defaultValue:'column'}} },
           { opcode: 'tileAtLocation', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade tile image at [LOCATION]', arguments: str('LOCATION', '') },
+          {opcode:'spriteTileKindAt',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade sprite [ID] tile kind at [DIRECTION] equals image [IMAGE]',arguments:{...str('ID',''),...str('IMAGE',''),DIRECTION:{type:Scratch.ArgumentType.STRING,menu:'tileDirections',defaultValue:'4'}}},
           { opcode: 'tileIs', blockType: Scratch.BlockType.BOOLEAN,
             text: 'Arcade tile at [LOCATION] is image [IMAGE]', arguments: {...str('LOCATION', ''), ...str('IMAGE', '')} },
           { opcode: 'tileIsWall', blockType: Scratch.BlockType.BOOLEAN,
@@ -774,6 +779,7 @@ module.exports = makeExt(`// Name: Arcade
           ,characterFrameModes: {acceptReporters: false, items: ['loop', 'run']}
           ,characterFacings: {acceptReporters: false, items: ['Up', 'Right', 'Down', 'Left']}
           ,dartActions: {acceptReporters: false, items: ['throwDart', 'stopDart']}
+          ,tileDirections: {acceptReporters:true,items:[{text:'Left',value:'0'},{text:'Top',value:'1'},{text:'Right',value:'2'},{text:'Bottom',value:'3'},{text:'Center',value:'4'}]}
           ,dartSettings: {acceptReporters: false, items: ['setTrace', 'controlWithArrowKeys']}
           ,dartProperties: {acceptReporters: false, items: ['angle', 'pow', 'iter', 'traceColor', 'gravity', 'wind', 'angleRate', 'powerRate']}
           ,corgiModes: {acceptReporters: false, items: ['horizontalMovement', 'verticalMovement', 'updateSprite', 'cameraFollow']}
@@ -2790,6 +2796,11 @@ module.exports = makeExt(`// Name: Arcade
       const image = this._image(args.IMAGE);
       return image ? this.spawnSprite({...args, WIDTH: image.width, HEIGHT: image.height}, util) : '';
     }
+    imageEquals(args) {
+      const image=this._image(args.IMAGE),other=this._image(args.OTHER);
+      if(!image){this._runtime?.emit?.('BLOCKS_ERROR','Arcade expected an image for equality');return false;}
+      return imageEngine.equals(image,other);
+    }
     _image(value) {
       const id = Scratch.BWValues.referenceId(this._runtime, value, 'image');
       return id === null ? null : this._images.get(id);
@@ -3365,7 +3376,8 @@ module.exports = makeExt(`// Name: Arcade
     _arcadePause(ms) {return new Promise(resolve=>this._music().spawn((function*(){yield ms;resolve();})()));}
     // controller.pauseUntilAnyButtonIsPressed: the next button press.
     _nextButtonPress() {return new Promise(resolve=>{(this._buttonPressWaiters || (this._buttonPressWaiters=[])).push(resolve);});}
-    _buttonPressed() {const waiters=this._buttonPressWaiters;this._buttonPressWaiters=[];if(waiters)for(const resolve of waiters)resolve();}
+    waitAnyButton() {return new Promise(resolve=>this._nativeButtonWaiters.add(resolve));}
+    _buttonPressed() {const waiters=this._buttonPressWaiters;this._buttonPressWaiters=[];if(waiters)for(const resolve of waiters)resolve();for(const resolve of this._nativeButtonWaiters)resolve();this._nativeButtonWaiters.clear();}
     async _runGameOver(win,util) {
       const go=this._gameOverState();
       if(go.over)return;
@@ -4335,6 +4347,15 @@ module.exports = makeExt(`// Name: Arcade
     tileIs(args) {
       const map = this._state().tilemap, location = this._tileLocation(args.LOCATION), image = this._image(args.IMAGE);
       return Boolean(map && location && image && this._tileIndex(location,map) === this._tileImageIndex(map,image));
+    }
+    spriteTileKindAt(args) {
+      const sprite=this._sprite(args.ID),map=this._state().tilemap,image=this._image(args.IMAGE);
+      if(!sprite || !map || !image){this._runtime?.emit?.('BLOCKS_ERROR','Arcade tile kind requires a sprite, tile map and image');return false;}
+      const scale=Math.log2(map.tileSize),direction=Number(args.DIRECTION);
+      let column=(sprite._fx/256)>>scale,row=(sprite._fy/256)>>scale;
+      if(direction===0)column--;else if(direction===1)row--;else if(direction===2)column++;else if(direction===3)row++;
+      const tile=this._tileImage(map,this._tileIndex({column,row},map));
+      return tile ? imageEngine.equals(tile,image) : false;
     }
     tileIsWall(args) {
       const map = this._state().tilemap, location = this._tileLocation(args.LOCATION);

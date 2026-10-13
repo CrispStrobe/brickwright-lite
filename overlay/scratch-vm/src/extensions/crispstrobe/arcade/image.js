@@ -2,7 +2,7 @@
 // participates in collisions only after a nonzero pixel is written.
 module.exports = function imageEngine(palette, initializePxtOperations) {
     const operations = initializePxtOperations();
-    const adapter = image => ({_width: image.width, _height: image.height, data: image.pixels,
+    const adapter = image => ({_width: image.width, _height: image.height, _bpp: 4, data: image.pixels,
         makeWritable() {}, color: c => Number(c) & 15,
         pix: (x, y) => (x | 0) + (y | 0) * image.width,
         inRange: (x, y) => (x | 0) >= 0 && (y | 0) >= 0 && (x | 0) < image.width && (y | 0) < image.height,
@@ -145,6 +145,7 @@ module.exports = function imageEngine(palette, initializePxtOperations) {
     const overlapsTwoScaledRotated = (image, x, y, imageSx, imageSy, imageAngle, source, sx, sy, angle) =>
         operations.checkOverlapsTwoScaledRotatedImages(adapter(image), adapter(source),
             collection([x | 0, y | 0, imageSx, imageSy, imageAngle, sx, sy, angle]));
-    return {decode, mutate, scroll, copyFrom, composeFrame, drawLayer, svg, draw, blit, getPixel: (image, x, y) => operations.getPixel(adapter(image), x, y),
+    const equals = (image, other) => operations.equals(adapter(image), other ? adapter(other) : null);
+    return {decode, mutate, scroll, copyFrom, composeFrame, drawLayer, svg, draw, blit, equals, getPixel: (image, x, y) => operations.getPixel(adapter(image), x, y),
         drawScaledRotated, overlapsScaledRotated, overlapsTwoScaledRotated};
 };
