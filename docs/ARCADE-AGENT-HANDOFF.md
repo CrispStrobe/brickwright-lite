@@ -655,3 +655,96 @@ Missing images/maps need actual matching project inputs rather than fabricated
 artwork. Keep GUI authoring/Blocks/pseudocode/export tests alongside each native
 implementation. Current collector lane is stacked on PR796; merge parent lanes
 normally and require all enabled exact-head checks before adoption.
+
+## Original extension compilation and carnival contract — 2026-10-11
+
+The `lane/arcade-extension-project-qualification-20261011` lane is stacked on
+PR798. GitHub package identities now accept repository subfolders, such as
+`github:microsoft/arcade-tutorial-extensions/arrow-images#v0.0.11`. Raw downloads
+place the ref before the folder; compiler matching retains the complete package
+path, so sibling packages cannot satisfy each other's dependencies. License
+reporting checks the package first, then the repository root, and records the
+actual notice URL. File hashes and named fetch refusals remain visible. This is
+compiler input resolution, not native API support or a dependency-pin change.
+
+The audit remains offline by default. To explicitly resolve a complete project's
+GitHub dependencies for the original compiler, run:
+
+```sh
+node scripts/compat-audit.mjs --target arcade --compile --fetch-extensions \
+  --out artifacts/arcade-original-compile.json context.mkcd
+```
+
+`--fetch-extensions` requires `--compile`. JSON records compilerPolicy and each
+fetched package's identity, ref, source hashes and reported license. Node's
+`compile(target, files, {fetchExtensions: true, fetch})` exposes the same path;
+passing a fetch adapter alone keeps fetching disabled. Neither mode vendors or
+persists these packages. Fifteen affected checks passed with no failures/skips,
+including actual original PXT compilation from a subfolder. Recovered Arrow
+Battle now passes the original compiler with five fetched MIT-labeled packages:
+carnival, arrow-images, status-bar, arcade-text and arcade-sprite-util. It still
+has the native diagnostic `carnival.startCountdownGame()`; the184-input census
+is unchanged. Full game execution and the production GUI are unqualified here.
+
+The exact carnival tag v0.0.7 resolves to
+`915caca4a2d83a7071df59407a9987992c083750`. Source and notice:
+https://github.com/microsoft/arcade-carnival/blob/915caca4a2d83a7071df59407a9987992c083750/carnival.ts
+and
+https://github.com/microsoft/arcade-carnival/blob/915caca4a2d83a7071df59407a9987992c083750/LICENSE .
+Its countdown implementation registers only the first end handler, retaining
+that call's style/effect; later calls restart the countdown without replacing
+the handler. Styles include win, lose, score, timed, multiplayer and custom.
+Multiplayer considers defined scores for players1–4 and includes all tied
+winners in its message. Non-lose styles use the extension's custom dialog and
+score/time persistence, rather than core game-over rendering. Preserve source
+defaulting and effects behavior, including the explicit-effect branch, in
+original comparisons before changing anything. A generic `info.startCountdown`
+and `game.gameOver` substitution is insufficient.
+
+Next implementation needs the source-backed scoring/dialog/timer mechanism,
+per-run initialization/reset and scene/event lifetime, regular extension blocks
+and pseudocode metadata, MakeCode export with the correct dependency, SB3
+reopen, and comparisons against the original for unique/tied winners, score and
+time modes, repeat initialization, effects and button restart. Existing native
+core helpers live in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js`
+(`_gameOverModule`, `_runGameOver`, `_infoState`, countdown registrations). Reuse
+their mechanisms where semantics match; do not erase the extension diagnostic
+until the complete selected behavior has a real execution path. Private raw
+inputs, compiler results and local paths belong in the private handoff.
+
+Six original-only carnival controls (unique multiplayer winner, tied players,
+lose, win, score and timed) compile and run for1800 virtual milliseconds without
+simulator errors. Their actual binary output, palette-index frames, source
+files and fetched responses are retained privately as comparison baselines.
+This is original-simulator execution, not a native comparison, complete Arrow
+Battle run, button-restart test or production-browser result.
+
+## Carnival scoring/dialog implementation slice — 2026-10-11
+
+The `lane/arcade-carnival-scoring-core-20261011` lane stacks on PR799 and owns
+new `arcade/carnival-source/*`, `arcade/carnival-pxt.js`,
+`scripts/generate-arcade-carnival.mjs` and
+`test/makecode-arcade-carnival-core.test.mjs`. The exact pinned MIT source/notice
+are retained with their original bytes. A reproducible AST selection and
+fiber-to-Promise adaptation implements the original scoring and custom dialog
+logic, rather than a generic game-over substitute. Eleven contract/generation
+checks pass with no failures/skips. Their observing host doubles qualify source
+control flow and data, not VM rendering, actual durable storage or native game
+equivalence. No corpus row is promoted and carnival diagnostics remain visible.
+
+Next: implement the VM host using native image/font/BaseDialog/renderables,
+scene transitions, countdown-handler replacement, number settings, timer1,
+music and button/reset operations. Verify program cancellation and scene
+lifetime before exposing commands. PR800 separately owns countdown/life-event
+ordering and the paused Playwright oracle; account for its qualified adoption
+without overwriting that lane. The captured original-only carnival frames are
+private reference inputs for subsequent native comparisons. Regular extension
+blocks/pseudocode, fixed/dynamic style handling, MakeCode package export, fresh
+SB3 reopening and a production GUI journey are still required. Original source
+first-registration and explicit-effect branches must remain observable.
+
+The painter-placement peer PR801 stacks on PR794. Preserve that parent history
+and coordinate before changing it. A reviewed map-before-sprite case revealed
+that inserting a new placement immediately after the map can precede sprite
+creation; the peer owns the reported source-order fix. Pending peer PRs and
+reported test totals are not qualified adoption claims.

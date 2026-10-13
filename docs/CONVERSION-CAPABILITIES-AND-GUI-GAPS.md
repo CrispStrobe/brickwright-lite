@@ -3261,6 +3261,32 @@ Missing images/maps need actual matching project inputs rather than fabricated
 artwork. Keep GUI authoring/Blocks/pseudocode/export tests alongside each native
 implementation. Current collector lane is stacked on PR796; merge parent lanes
 normally and require all enabled exact-head checks before adoption.
+
+### GitHub packages in subfolders and original compiler audits — 2026-10-11
+
+Original compilation now resolves MakeCode GitHub packages in repository
+subfolders without losing their full dependency identity. Node compatibility
+audits can explicitly opt into dependency fetching with `--compile
+--fetch-extensions`; default audits remain offline. Reports retain actual source
+hashes, reported license/notice URL and fetch refusals. Fifteen affected checks
+pass, including real PXT compilation with a subfolder package. Recovered Arrow
+Battle now compiles against its actual declared/transitive packages, but native
+`carnival.startCountdownGame` remains unsupported. No corpus row was promoted.
+GUI native carnival blocks, pseudocode, custom scoring/dialog execution, export
+and saved-project comparisons remain open. See the carnival contract in
+[the agent handoff](ARCADE-AGENT-HANDOFF.md#original-extension-compilation-and-carnival-contract--2026-10-11).
+
+### Carnival source-backed scoring/dialog core — 2026-10-11
+
+The pinned MIT carnival v0.0.7 scoring/countdown/dialog source now has a
+reproducible selected module with explicit fiber-to-Promise adaptation. Eleven
+contract/generation checks pass, including ties, negative scores, low-time
+records across module instances, first countdown registration and effect
+defaults. Tests observe host calls; native VM rendering/storage/lifetimes remain
+unqualified. Import diagnostics stay visible. User-facing countdown/game-over
+blocks, pseudocode, correct dependency export, saved-project reopening and
+production GUI controls remain open until host integration and original
+comparisons pass. See the [handoff](ARCADE-AGENT-HANDOFF.md#carnival-scoringdialog-implementation-slice--2026-10-11).
 ## Painted tilemap project persistence browser lane — 2026-10-11
 
 The CI tilemap painter journey now saves the actual GUI project as SB3 and

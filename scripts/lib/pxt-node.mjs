@@ -47,16 +47,30 @@ async function sandbox (target) {
  * Compile a MakeCode project. Same result shape as the browser's compileMakeCode.
  * @param {string} target 'microbit' | 'arcade'
  * @param {object} files {filename: contents}, pxt.json included
- * @param {{native?: boolean, embedSource?: object, hwVariant?: string}} [opts] hwVariant: an
+ * @param {{native?: boolean, embedSource?: object, hwVariant?: string, fetchExtensions?: boolean, fetch?: Function}} [opts] hwVariant: an
  *     Arcade board for a native build (ARCADE_HARDWARE in pxt-runtime.js)
  */
 export async function compile (target, files, opts = {}) {
     const sb = await sandbox(target);
+    const {onDemandExtensions} = await import(pathToFileURL(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js')).href);
+    // CLI audits are offline by default. Fetch only when explicitly requested.
+    const onDemand = await onDemandExtensions(target, files, opts.fetchExtensions === true, opts.fetch);
     const getBaseHex = async sha => {
         const p = path.join(STATIC, target, 'hexcache', `${sha}.hex`);
         return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
     };
-    const r = await sb.bwMakeCode.compile(files, {native: !!opts.native, embedSource: opts.embedSource || null,
-        hwVariant: opts.hwVariant || '', getBaseHex});
-    return JSON.parse(JSON.stringify(r));   // out of the vm's realm
+    try {
+        const r = await sb.bwMakeCode.compile(files, {native: !!opts.native, embedSource: opts.embedSource || null,
+            hwVariant: opts.hwVariant || '', getBaseHex,
+            extensions: onDemand.extensions.map(({id, repo, refs, targets, files: source}) =>
+                ({id, repo, refs, targets, files: source}))});
+        return {...JSON.parse(JSON.stringify(r)), fetchedExtensions: onDemand.extensions.map(e =>
+            ({id: e.id, repo: e.repo, ref: e.refs[0], ...e.fetched}))};
+    } catch (error) {
+        if (error?.code === 'NO_EXTENSION') {
+            error.refused = onDemand.refused;
+            error.fetchedExtensions = onDemand.extensions.map(e => ({id: e.id, repo: e.repo, ref: e.refs[0], ...e.fetched}));
+        }
+        throw error;
+    }
 }
