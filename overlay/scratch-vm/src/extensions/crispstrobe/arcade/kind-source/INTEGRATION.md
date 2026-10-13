@@ -64,9 +64,67 @@ semantics. This registry does not select or infer that order.
   original compiler. Custom metadata rebinding remains explicit and preserves
   already captured numeric identities.
 
-The standalone module and finite original controls do not qualify integration
-with native sprite creation, memberships, event registration, Code, export,
-SB3, or the GUI. Those are subsequent acceptance gates. Numeric NaN strict
-comparison follows JavaScript equality in the helper; NaN/Infinity gameplay,
-allocation exhaustion, and program restart through product controls were not
-executed in these controls.
+## Native boundary and authoring words
+
+The native runtime owns one registry per program. Sprite records and managed
+kind registrations store numbers; `spriteProperty(kind)` returns that number.
+`kindName` is display metadata. Opaque `arcade:n` graphic identifiers and scene
+sprite IDs remain independent from kind allocation.
+
+| Opcode | Canonical phrase | Inputs / result |
+| --- | --- | --- |
+| `createSpriteKind` | `arcade create sprite kind` | Number reporter |
+| `spriteKindValue` | `arcade sprite kind value {NAME}` | String NAME; Number reporter |
+| `bindSpriteKind` | `arcade bind sprite kind name {NAME} to {KIND}` | String NAME; Number KIND; command |
+| `initializeSpriteKindLibrary` | `arcade initialize sprite kind library {LIBRARY} version {VERSION}` | String LIBRARY and VERSION; command |
+
+Named lookup and binding do not allocate. Unknown names are explicit errors.
+Existing KIND field labels normalize to builtin numbers or explicit metadata
+bindings; typed numeric reporter connections preserve their actual values.
+Custom source variables must hold the actual create result, including undefined
+before initialization. A display lookup must not replace such a forward read.
+
+The only admitted library initializer here is `textsprite`, with version
+`v1.3.0` or its exact revision `fa2439314c6633943666a763fdae32a5c67a9ae8`.
+It initializes the complete original Text module once, creating and binding
+Text at that execution phase. A retained Text source file must emit this
+command at its original file phase and then assign its real namespace binding
+from the Text lookup. Repeated calls do not allocate twice. Scene push/pop
+preserve both module and registry; project start recreates them.
+
+Hand-authored projects containing Text operations automatically initialize
+Text before main, because their exported original project includes that
+dependency. An explicit library initializer anywhere in the project suppresses
+automatic initialization, allowing preceding retained library initializers
+to consume IDs in their original order. Other libraries' genuine initializer
+ordering remains the source preparation/lowering pipeline's responsibility.
+
+Original controls additionally established NaN, Infinity and -Infinity sprite
+kinds. NaN and negative Infinity queries are empty; positive Infinity queries
+contain the sprite. Native values and queries agree without consuming IDs.
+Projectile creation uses the original `kind || SpriteKind.Projectile` fallback
+once after decoding; ordinary creation maps typed null/undefined to -1, and
+setKind with those inputs is a no-op. Managed null kind event registration is
+ignored, matching the original APIs.
+
+Focused controls exercise original compiler/runtime, actual native adapter,
+scenes, and runtime project-start reset. The unchanged negative-kind source
+control confirms creation callbacks, image changes and negative query behavior,
+and retains an exact timing failure as an explicit TODO control: its first four original update
+observations contain overlap counts 0,0,1,2, while native observations contain
+0,1,2,3. The same count/scene-clock sequence is reproduced on the frozen
+predecessor runtime before kind integration. Original scene observations are
+0/20/40/60ms; native observations are 40/60/80/100ms using actual 20ms
+helper steps. This predecessor uses a wall timer for its program clock.
+Negative overlap events run in both; their initial frame phases are
+not qualified as equivalent. Managed registration capture is tested separately
+from legacy hats whose dynamically rebound display fields remain unqualified.
+
+The exact failing timing control remains runnable with
+`BW_REQUIRE_EXACT_KIND_TIMING=1 node --test --test-name-pattern="unchanged negative-kind" test/makecode-arcade-kind-native.test.mjs`.
+Without that option, it is a reported TODO failure and is not counted as PASS.
+
+Source initializer lowering, four-word Code/Blocks roundtrips, export, fresh
+SB3, installed GUI, allocation exhaustion, and whole applications remain
+separate acceptance gates. These finite controls do not change the corpus
+classifications or qualify whole-game behavior.
