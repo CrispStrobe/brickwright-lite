@@ -56,3 +56,10 @@ test('primitive aliases in functions and callbacks keep observable return values
  try{run=await runProgram(imported.code,{frames:30});assert.deepEqual(run.errors,[]);assert.equal(read(run).observed,original.observed);assert.equal(original.observed,'xA');}
  finally{run?.vm.quit?.();clearStrayTimers();}
 });
+
+
+test('SDK numeric constants and kind getters compose with strict primitive character conversion',()=>{
+    for(const source of ['let text=String.fromCharCode(scene.UPDATE_PRIORITY)','let text=String.fromCharCode(SpriteKind.Player)','let hero=sprites.create(img`1`,SpriteKind.Player);let text=String.fromCharCode(hero.kind())']) {
+        const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[],source);assert.match(imported.code,/text from char code/);
+    }
+});

@@ -3105,6 +3105,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
     const typeOf = (node, owner) => {
         if (imageOf(node) || isScreen(node) || isScopedAssetFactory(node)) return new Set(['image']);
         if(node?.type==='Number')return new Set(['number']);
+        if(node?.type==='Member' && (Object.prototype.hasOwnProperty.call(ARCADE_SCENE_CONSTANTS,pathOf(node)) || node.object?.type==='Identifier' && node.object.name==='SpriteKind'))return new Set(['number']);
         if(node?.type==='Null')return new Set(['null']);
         if(node?.type==='Undefined')return new Set(['undefined']);
         if(node?.type==='Object')return new Set(['object']);
