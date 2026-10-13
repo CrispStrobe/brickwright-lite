@@ -431,31 +431,11 @@ class ArcadeTranslator extends BaseTranslator {
         return super.single(node, out, pad);
     }
 
-    // Boolean contexts use branches. Scratch's operator_and/operator_or
-    // evaluate both inputs eagerly, including procedure calls and array reads.
+    // An `&&`/`||` lowerLazyValues left in place (a switch label that would
+    // need lines before it): the program needs the runtime value words.
     hasLazyCondition(node) {
         return node?.type==='Binary' && ['&&','||'].includes(node.op) ||
             node?.type==='Unary' && node.op==='!' && this.hasLazyCondition(node.argument);
-    }
-    predicateBranches(node, indent, out, yes, no) {
-        if(node?.type==='Unary' && node.op==='!') {
-            this.predicateBranches(node.argument,indent,out,no,yes);return;
-        }
-        if(node?.type==='Binary' && node.op==='&&') {
-            this.predicateBranches(node.left,indent,out,
-                depth=>this.predicateBranches(node.right,depth,out,yes,no),no);return;
-        }
-        if(node?.type==='Binary' && node.op==='||') {
-            this.predicateBranches(node.left,indent,out,yes,
-                depth=>this.predicateBranches(node.right,depth,out,yes,no));return;
-        }
-        out.push(`${'  '.repeat(indent)}IF ${this.condition(node)} THEN:`);
-        yes(indent+1);out.push(`${'  '.repeat(indent)}ELSE:`);no(indent+1);
-    }
-    predicateCell(node,indent,out,name) {
-        this.predicateBranches(node,indent,out,
-            depth=>out.push(`${'  '.repeat(depth)}arcade set local ${name} to (1)`),
-            depth=>out.push(`${'  '.repeat(depth)}arcade set local ${name} to (0)`));
     }
     /**
      * A statement, with its own lines-before (this.pre) also for the
@@ -491,22 +471,6 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(this.handleTemplates && st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.temporary) {
             out.push(`${'  '.repeat(indent)}arcade set local ${st.expr.left.name} to (${this.arrayElementValue(st.expr.right)})`);return;
-        }
-        if(this.handleTemplates && ['If','While','For'].includes(st.type) && this.hasLazyCondition(st.test)) {
-            let name;do {name=`__bwCondition${++this.temps}`;} while(this.taken?.has(name));
-            this.taken?.add(name);
-            const pad='  '.repeat(indent),read=`not (arcade local ${name} = 0)`;
-            if(st.type==='For' && st.init)this.statement(st.init,indent,out);
-            this.predicateCell(st.test,indent,out,name);
-            if(st.type==='If') {
-                out.push(`${pad}IF ${read} THEN:`);this.block(st.consequent,indent+1,out);
-                if(st.alternate?.length){out.push(`${pad}ELSE:`);this.block(st.alternate,indent+1,out);}
-            } else {
-                out.push(`${pad}REPEAT UNTIL not (${read}):`);this.block(st.body,indent+1,out);
-                if(st.type==='For' && st.update)this.statement({type:'ExpressionStatement',expr:st.update},indent+1,out);
-                this.predicateCell(st.test,indent+1,out,name);
-            }
-            return;
         }
         if (st.type==='Declaration' && this.handleTemplates) {
             const pad='  '.repeat(indent);
@@ -623,6 +587,14 @@ class ArcadeTranslator extends BaseTranslator {
             if(isScratchPredicate(value))return value;
             this.usesArrays=true;return `truthiness of value (${node?.type==='Number' ? `(0 + (${value}))` : value})`;
         }
+        // Text on the fixed-sprite path (E10): MakeCode's "" is false and every
+        // other text ("0" too) true. The base's bare-value test, `not (s = 0)`,
+        // is Scratch's comparison instead: "" = 0 is false (a blank side
+        // compares as text) and "0" = 0 is true, so both came out inverted.
+        // The length is the text's own truthiness. (A number stays `not (v = 0)`:
+        // its Scratch value may be the literal text "0".)
+        if(!this.handleTemplates && node && (this.isText(node) || this.stringReferences?.has(node)))
+            return `not ((length of ${this.operand(node)}) = 0)`;
         return super.condition(node);
     }
 
@@ -4837,24 +4809,35 @@ export function arcadeToPseudocode (files, opts = {}) {
     const renames = t.renameNotes();
     if (renames.length) out.push(...renames, '');
 
-    t.sprites.forEach(sprite => {
-        out.push(`SPRITE ${sprite.name}:`);
-        const scripts = scriptsFor.get(sprite.name);
-        if (sprite === mainSprite && setup.length) {
-            out.push('WHEN flag clicked:');
-            if (sprite.scriptHost) out.push('  hide');
-            out.push(...setup, '');
+    // Destruction callbacks of function-made sprites: their scripts went
+    // after the functions, i.e. on the last sprite, and still do.
+    const lastSprite = t.sprites[t.sprites.length - 1];
+    const callbackLines = [];
+    for (const callback of functionDestructionCallbacks) {
+        const referencesLocal = node => {
+            if (!node || typeof node !== 'object') return false;
+            if (node.type === 'Identifier' && callback.locals.has(node.name)) return true;
+            return Object.values(node).some(value => Array.isArray(value) ?
+                value.some(referencesLocal) : referencesLocal(value));
+        };
+        if (callback.body.some(referencesLocal)) {
+            t.unsupported.push('sprite.onDestroyed() callback captures a function local');
         }
-        for (const script of scripts) out.push(...script, '');
-        if (sprite.backdrop) {
-            out.push('WHEN flag clicked:', '  go to x: 0 y: 0', '  go to back');
-            out.push('  show', '');
-        } else if (!scripts.length && !(sprite === mainSprite && setup.length)) {
-            out.push('WHEN flag clicked:', '  show', '');
-        }
-    });
+        callbackLines.push(`WHEN arcade destruction handler "${callback.token}" runs:`);
+        t.block(callback.body, 1, callbackLines);
+        callbackLines.push('');
+    }
 
-    for (const fn of t.functions) {
+    /**
+     * A Scratch procedure belongs to ONE sprite: a script on another sprite
+     * that calls it finds no such block (a command does nothing, a reporter
+     * gives 0). So a function is defined on every sprite with a script that
+     * calls it, directly or through another function (E10), each copy
+     * translated as that sprite (`self`). One nobody calls stays on the
+     * sprite whose setup runs the program. They used to land after the last
+     * sprite, whatever called them.
+     */
+    const translateFunction = (fn, owner) => {
         const signature = fn.params && fn.params.length ?
             `${fn.name} ${fn.params.map(p => `(${t.varName(p)})`).join(' ')}` : fn.name;
         const lines = [`DEFINE ${signature}:`];
@@ -4871,28 +4854,64 @@ export function arcadeToPseudocode (files, opts = {}) {
         collectLocals(fn.body);
         for (const param of fn.params || []) t.localVars.delete(param);
         t.localHandleVars = functionLocalHandles.get(fn) || new Set();
-        t.self = mainSprite;
+        t.self = owner;
         t.block(fn.body, 1, lines);
         t.self = null;
         t.currentParameters = null;
         t.localVars = null;
-        out.push(...lines, '');
-    }
-
-    for (const callback of functionDestructionCallbacks) {
-        const referencesLocal = node => {
-            if (!node || typeof node !== 'object') return false;
-            if (node.type === 'Identifier' && callback.locals.has(node.name)) return true;
-            return Object.values(node).some(value => Array.isArray(value) ?
-                value.some(referencesLocal) : referencesLocal(value));
-        };
-        if (callback.body.some(referencesLocal)) {
-            t.unsupported.push('sprite.onDestroyed() callback captures a function local');
+        return lines;
+    };
+    const escaped = name => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // The functions these lines call: a command line starting with the name,
+    // or the reporter `arcade call function "name …"`.
+    const calledIn = lines => t.functions.filter(fn => {
+        const name = escaped(fn.name);
+        const command = new RegExp(`^\\s*${name}(?:\\s|$)`), reporter = new RegExp(`arcade call function "${name}(?:\\s|")`);
+        return lines.some(line => command.test(line) || reporter.test(line));
+    });
+    const definesFor = new Map(t.sprites.map(s => [s.name, []]));
+    const defined = new Set();
+    const defineOn = (sprite, roots) => {
+        const done = new Set();
+        const queue = [...roots];
+        while (queue.length) {
+            const fn = queue.shift();
+            if (done.has(fn)) continue;
+            done.add(fn);
+            defined.add(fn);
+            const lines = translateFunction(fn, sprite);
+            definesFor.get(sprite.name).push(lines);
+            queue.push(...calledIn(lines));
         }
-        out.push(`WHEN arcade destruction handler "${callback.token}" runs:`);
-        t.block(callback.body, 1, out);
-        out.push('');
-    }
+    };
+    t.sprites.forEach(sprite => {
+        const lines = [...(sprite === mainSprite ? setup : []), ...scriptsFor.get(sprite.name).flat(),
+            ...(sprite === lastSprite ? callbackLines : [])];
+        defineOn(sprite, calledIn(lines));
+    });
+    // Functions only a translation added (a specialised copy) are found the
+    // same way; any still undefined go on the setup sprite.
+    for (let fn; (fn = t.functions.find(f => !defined.has(f)));) defineOn(mainSprite, [fn]);
+
+    t.sprites.forEach(sprite => {
+        out.push(`SPRITE ${sprite.name}:`);
+        const scripts = scriptsFor.get(sprite.name);
+        if (sprite === mainSprite && setup.length) {
+            out.push('WHEN flag clicked:');
+            if (sprite.scriptHost) out.push('  hide');
+            out.push(...setup, '');
+        }
+        for (const script of scripts) out.push(...script, '');
+        if (sprite.backdrop) {
+            out.push('WHEN flag clicked:', '  go to x: 0 y: 0', '  go to back');
+            out.push('  show', '');
+        } else if (!scripts.length && !(sprite === mainSprite && setup.length)) {
+            out.push('WHEN flag clicked:', '  show', '');
+        }
+        for (const lines of definesFor.get(sprite.name)) out.push(...lines, '');
+        if (sprite === lastSprite) out.push(...callbackLines);
+    });
+
     for (const template of t.projectileTemplates.values()) {
         out.push(`SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide', '');
     }

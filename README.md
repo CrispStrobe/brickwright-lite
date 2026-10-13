@@ -1,218 +1,240 @@
-# Brickwright
-
+# Brickwright Lite
 
 **Build circuits. Program machines. See how they work.**
 
-Brickwright is an open-source visual computing workbench. Build and measure
-circuits, program with blocks or code, run emulated machines, debug them live,
-and follow guided lessons — in a browser or the native app.
+Brickwright Lite is a free, open-source workbench for electronics and
+programming that runs entirely in a web browser, and as a native desktop and
+mobile app. You wire up a circuit on a virtual breadboard and watch it behave,
+write a program as Scratch blocks or as real code, run that program on an
+emulated chip or a real one, step through it in a debugger, and follow guided
+lessons the whole way.
 
-**For learners** discovering electronics and microcontrollers.
-**For teachers** who need a zero-install lab that runs on school Chromebooks.
-**For retro-computer builders** wiring Z80 and 6502 machines on virtual
-breadboards before soldering the real thing.
+- **For learners** meeting electronics and microcontrollers for the first time.
+- **For teachers** who need a zero-install lab that works on a school Chromebook.
+- **For retro-computer and LEGO builders** who want to try a design — a Z80
+  board, an STC flash program, a SPIKE robot — in software before touching the
+  real hardware.
 
-**Live (web):** <https://brickwright-lite.vercel.app> and
+**Try it now (web):** <https://brickwright-lite.vercel.app> ·
 <https://crispstrobe.github.io/brickwright-lite> — both auto-deploy from `main`.
-**Native binaries:** built by CI for macOS, Windows, Linux, iOS and Android
-(see **Actions** / **Releases**).
+**Native apps:** CI builds signed binaries for macOS, Windows, Linux, iOS and
+Android (see the repository's **Actions** and **Releases**).
 
-Target handoff: [current state and actionable lanes](docs/TARGET-NEXT-LANES.md),
-with [historical source-bound performance receipts](docs/TARGET-EMULATOR-PERFORMANCE.md).
+---
 
-For x86 programs, raw floppy/HDD images and DOSBox configs, see [the GUI loading guide](docs/I80386-GUI.md), [backend and format scope](docs/X86-LOADING-SCOPE.md), and [the upstream CLI/GUI loading guide](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-LOADING-GUIDE.md).
+## What you can do
 
-The [x86 checkpoint and next GUI lanes](docs/X86-NEXT-LANES.md) separates reached evidence from pending media, browser acceptance and upstream-adoption tasks.
+### Design and measure circuits
 
-### Source ownership and upstream integrity
+Drag parts onto a breadboard, wire them together, and press the green flag.
+A real analog circuit engine — modified nodal analysis, the same technique
+SPICE uses — solves the whole board every frame, so you see node voltages, how
+brightly each LED lights, the pitch of a buzzer, and live meter readings as you
+change things.
 
-Fast landing does not mean local forking. `bw-board` and `bw-circuit-ui` are
-installed from exact git SHAs; `sb3-creator`, the sole vendored upstream, is
-checked for pinned byte identity, derived rewrites, and matching tracked
-mirrors. Shared behavior lands in its upstream repository first and reaches
-Lite through an explicit pin move. See [the vendoring regime](docs/VENDORING-REGIME.md)
-for the enforced invariants, and [the lane ledger](LANES.md) for the separate
-human coordination and qualification process.
+- A full parts bin: power, resistors, capacitors and other passives, LEDs,
+  transistors and MOSFETs, logic ICs, sensors, displays, motors, servos,
+  meters, and microcontroller boards.
+- **Design-rule checks** catch the mistakes beginners actually make — a missing
+  series resistor, a reversed LED or diode, a short across the supply, a
+  floating input, a GPIO pin driven past a safe voltage.
+- A realistic board view plus an automatically generated schematic.
+- Open and save circuits in the common formats: **KiCad, EasyEDA, EAGLE and
+  LTspice**.
 
-## What it does
+### Program with blocks — or with code, and switch freely
 
-### Circuit Designer and hardware workbench
+The editor is a Scratch-style block canvas. A **Code tab** shows the exact same
+program as text, and you can edit either side; the two stay in sync.
 
-- Place, wire, and simulate parts on breadboards: power, passives, LEDs,
-  transistors, MOSFETs, ICs, sensors, displays, motors, servos, meters, and
-  microcontroller boards.
-- Backed by a real circuit engine (modified nodal analysis): node voltages, LED
-  brightness, buzzer tone, current/voltage warnings, and design-rule checks for
-  common mistakes (missing resistors, reversed polarity, shorts, floating
-  inputs, unsafe GPIO voltage).
-- Realistic board view plus a generated read-only schematic.
-- Supported chips: **8051** (STC12), **AVR** (Arduino Uno/Nano via avr8js),
-  **RP2040** (Raspberry Pi Pico via rp2040js), **6502** (W65C02), **Z80**.
-  Instruction-level emulation, debugger run/pause/step/reset, register and
-  memory inspection.
+- Every project reads and writes in three core forms: **Brickwright Code** (a
+  plain, readable pseudocode), **Python** (an algorithmic subset), and
+  **JavaScript**.
+- The same converter round-trips more: **C**, **BBC BASIC** (numbered or
+  structured), and **MicroPython** in two real dialects — for the **micro:bit**
+  and the **Raspberry Pi Pico** — plus live **Forth** (zForth), **Tcl**
+  (Jim Tcl / partcl) and **Lisp** (`fe`) tabs. It reads hand-written code back
+  too: edit the C or BASIC a program became and import it to blocks again.
+- Beyond the round trip, programs can be **compiled and run on emulated DOS and
+  CP/M machines** through real toolchains — **GW-BASIC** and **uBASIC**,
+  **Pascal** and **Modula-2** (ACK), and **C** (SDCC, including via CP/M) — with
+  **8051 / AVR / ARM / 6502 assembly** listings from the compile service.
+- Conversion is two-way wherever it can be. Anything the target language has no
+  equivalent for is **marked in place and counted in the status line — never
+  silently dropped** — so a program always survives the round trip as a program.
 
-ATtiny88 (including the QFN-32 Blinkenrocket board) deliberately uses the
-permissively licensed avr8js path, extended in `bw-board` with the ATtiny88
-memory map, ports, timers, EEPROM and analog comparator. That target supplies
-instruction/block/over/out stepping, code/yield/write breakpoints, writable
-SRAM, symbols and instruction/memory/device events. LabWired's native AVR core
-is fast (the `bw-board` receipt records a 21.43x median on its AVR loop), but
-the LabWired WASM bridge now admits only its proven ATmega328P/Arduino Uno
-descriptor. Brickwright converts the compiler's Intel HEX to flash bytes and
-the adapter wraps those bytes in an AVR (`EM_AVR`) ELF for LabWired. Its debug
-surface is narrower: instruction step, code breakpoints and read-only memory. It therefore adds an
-optional Uno whole-SoC comparison without pretending to implement ATtiny88;
-ATtiny85/88 raw images and full debugger workflows remain on avr8js.
+The green flag starts the Scratch scripts and the circuit simulation together.
+A **LEGO SPIKE App 3 Python** program can also be imported and run on the
+virtual hub. The full language-and-target table is in
+[the code-tab language/device bridge](docs/CODE-TAB-LANGUAGE-DEVICE-BRIDGE.md).
 
-The pinned hosted RTx receipt clears real time on every established measured
-engine: Z80 186x, 6502 150x, avr8js ATmega328P 13.3x, emu8051 5.23x, rp2040js
-RP2040 1.66x, and LabWired STM32F0 24.2x (three-pass medians, bw-board GitHub
-run 36384508630). The board-level hosted census adds adapter-inclusive Arduboy
-3.93x and ATtiny88 7.09x. Exact LabWired nRF52833/micro:bit v2 and
-ATSAMD51J19A/PyBadge firmware targets are now wired through the debugger with
-address-preserving ELF, Intel HEX and UF2 loading. The optimized, adapter-
-equivalent hosted smoke receipt reaches **3.32x** and **3.78x** respectively
-(seven-run medians, both booted to `OK`); missing board peripherals remain
-explicit rather than being hidden by the CPU result. The public Renode fork now has a qualified exact
-STM32F413VG SPIKE Prime platform. Its latest hosted CPU instruction-loop receipt
-reaches **2.182x median** with a **1.962x minimum**. The EV3 work has a source-built
-AM1808/ARM926 Renode boundary with a native Lite process/debugger adapter, live
-178x128 display, raw ADC and ideal four-motor state. Its hosted CPU instruction
-loop reaches **1.548x median** with a **1.298x minimum**. Both packaged EV3
-debugger/model-input contracts passed hosted CI. Full Linux boot and complete
-motor/peripheral workload RTx remain pending. CP13's micro:bit matrix/button and
-bounded analog-routing slices have landed. The longer active native
-Rust/event-scheduler guest reaches **2.376x hosted median**, **2.272x minimum**
-at 64 MHz; its performance workload exercises GPIO/matrix/buttons, not ADC
-sampling. A historical shared VPS run under
-concurrent build load reached only **0.337x median**; an uncontrolled repeat
-varied widely, so this is not a universal real-time guarantee. These receipts
-are separate from browser WASM/full-application performance; browser, sensor
-and continuous microphone/audio qualification remains in progress.
-The predecessor-main `3456c048` LSM303AGR motion workload **failed the >=1.0x gate**:
-**0.890x median**, **0.887x minimum**, all five samples below real time despite
-passing functional checks. The earlier second-optimization PR observation
-**1.127x median**, **1.123x minimum** remains historical. The first
-optimization's exact-main result remains **1.031x / 1.027x**, and its earlier
-PR result **1.758x / 1.734x**; these are not controlled wall-time A/B runs.
-Runner variation is not a controlled wall-time A/B or universal host guarantee.
-The earlier **0.327x**
-failed hosted baseline and **0.312x** optimized shared-VPS result remain separate
-evidence, not controlled wall-time A/B measurements. The bounded native model
-and both earlier CPU optimizations landed upstream in LabWired `3456c048`.
-Successors now landed at `96b739c2` (discovery miss caching/Nordic pull masks)
-and `ede33fb4` (proper START-latched cumulative ADC scan DMA). Controlled EPYC
-7763 candidate medians **1.037x / 1.023x** clear the floor versus predecessor
-**0.880x / 0.883x**. The combined native qualification passed **314 selected
-executions**, including a real source-built ARM ADC scan guest. Exact remote-main
-`ede33fb4` [run 36725594408](https://github.com/CrispStrobe/labwired-core/actions/runs/36725594408)
-now passed native board qualification on EPYC 9V74: motion **1.290x median /
-1.261x minimum**, all five samples above 1x. The
-[full receipt and retained-ELF provenance](docs/receipts/2026-09-30-microbit-exact-main-ede33/qualification-context.json)
-preserve that exact source and runner; this is not a cross-runner gain or a
-new exact-main all-chip result. Countdown PR136 landed at `8736e1ff`; its isolated
-EPYC 7763 A/B gains **7.79%**, with all ten candidate windows above real time;
-qualification remains historical. Current main `5fb3d7d4` contains countdown and
-the landed GPIO runtime; the exact `ede33fb4` receipt is not a measurement
-of that current main. The earlier optimization cleared all 40 synthetic RTx fixtures,
-while the six historical Nordic relative step-cost failures remain tracked
-without threshold changes. GPIO-only PR137 head `72f8b4cf`
-[passed all 40 RTx and unchanged relative-cost gates](https://github.com/CrispStrobe/labwired-core/actions/runs/36726333551),
-but [its native run](https://github.com/CrispStrobe/labwired-core/actions/runs/36726335356)
-passed 331 functional executions and **failed motion real time (0.995903x median
-on EPYC 7763)**; that is predecessor evidence, not the newer candidate result.
-Fresh PR137 head `8c745a68` has the qualified combined engine:
-[native motion **1.396x median / 1.369x minimum**](https://github.com/CrispStrobe/labwired-core/actions/runs/36733437798),
-all five samples >=1x on EPYC 9V74;
-[all 40 RTx and unchanged relative-cost gates pass](https://github.com/CrispStrobe/labwired-core/actions/runs/36733427626),
-including the six Nordic regressions. Controlled A/B against runtime-main
-`ede33fb4` measured **+8.396746%**, all ten candidate windows >=1x.
-Fresh head `8c745a68` [also passed native qualification on EPYC 7763](https://github.com/CrispStrobe/labwired-core/actions/runs/36772744347):
-motion **1.116x median / 1.051x minimum**, all five samples >=1x with zero
-transport errors; its [fresh paired A/B](https://github.com/CrispStrobe/labwired-core/actions/runs/36772744288)
-passed. This is separate from the earlier EPYC 9V74 observation, not a
-cross-runner gain. Final PR137 head `bd05656f` changes CI only; production is
-identical to qualified `8c745a68`. That earlier head's three workspace shards and aggregate
-passed, but the original twenty-minute gate timed out compiling feature-off
-core after Clippy/default-member checks passed. The
-[fresh split CI run](https://github.com/CrispStrobe/labwired-core/actions/runs/36778919591)
-keeps the commands, twenty-minute budgets and fail-closed aggregate unchanged
-and **passed full Core CI**, including all three shards and aggregate. PR137
-now **landed at `5fb3d7d44cc1487fdab757906ae62222e8798e93`**. Its final-head
-[native qualification](https://github.com/CrispStrobe/labwired-core/actions/runs/36778919418)
-passed on EPYC 7763: motion **1.127x median / 1.117x minimum**, all five >=1x
-with zero transport errors; 349 overlapping functional executions plus both
-benchmarks passed. [Final paired A/B](https://github.com/CrispStrobe/labwired-core/actions/runs/36778919437)
-also passed. [Final-head CorePerf](https://github.com/CrispStrobe/labwired-core/actions/runs/36779028846)
-passed on `bd05656f`: all forty chip medians/minima >=1x and all 78 relative-
-cost board-modes passed unchanged gates, with no regressions, waivers, skips or
-contract failures. The faster nRF51 advisory remains. Exact post-merge
-main measurement remains pending. No browser pin promotion or issue 120 closure
-is claimed.
-Lite's WASM pin and browser integration are unchanged. Full board/audio/browser
-qualification remains pending. See
-[board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md)
-for the exact shipped/candidate matrix and the gaps that remain.
+**Extensions and media.** 23 extensions ship built in (the LEGO family,
+gamepad, arrays, text-to-speech, camera, a bridge to the circuit surface, GPIO,
+and more), plus 150 reviewed extensions available from the gallery on the web.
+A **sound-effects creator** and a full **German** translation sit alongside
+English.
 
-### Block and code editor
+### Draw and edit graphics
 
-- **Scratch-based block editor** with a "Code" tab for Brickwright Code,
-  Python and JavaScript representations. Conversion and generated-view limits
-  are kept explicit instead of promising that every construct round-trips.
-- 23 built-in extensions (LEGO family, gamepad, arrays, CSP, TTS, circuit
-  surface) plus 150 reviewed gallery extensions. Web and native builds allow
-  the gallery by default; a deliberately self-contained artifact can be built
-  with `BW_REMOTE_CODE_POLICY=deny`, or only URL extensions can be removed with
-  `BW_REMOTE_EXTENSIONS_POLICY=deny`.
-- SoundFX creator, costume editor, German i18n.
-- The green flag starts Scratch scripts and the circuit simulation together.
+The costume and sprite editor is Scratch's, extended into a capable vector and
+bitmap design tool.
+
+- **In vector mode:** an **objects panel** that lists every shape to show, hide,
+  lock, rename and reorder; a **properties panel** with exact position, width,
+  height, rotation, opacity and locked aspect ratio; **align and distribute**;
+  **boolean path operations** (unite, subtract, intersect, exclude overlap,
+  divide); **mirror/symmetry**; and shape tools for **rounded rectangles,
+  polygons and stars** next to the usual rectangle, ellipse, line and triangle,
+  with independent bezier handles when you reshape a path.
+- **In bitmap mode:** a **lasso** and a **magic wand** with adjustable
+  tolerance, **layers**, and brush presets with an opacity control.
+- Throughout: an optional pixel grid, a scrollable canvas, recent-colour reuse,
+  and text costumes that rasterise with their real fonts.
+
+### Run and debug emulated machines
+
+Programs run on instruction-level emulators you can **run, pause, single-step,
+reset**, and inspect register-by-register and byte-by-byte in memory.
+
+- **On the breadboard**, with a full debugger: the **8051 / STC** family —
+  **STC89C52RC** (a classic 12-clock 8052), **STC12** and the fast 1-clock
+  **STC15** — **AVR** (Arduino Uno / Nano), **RP2040** (Raspberry Pi Pico),
+  **6502** (W65C02), and **Z80**.
+- **Board and firmware targets** loaded from real `ELF`, Intel `HEX` and `UF2`
+  files: **BBC micro:bit v2**, **Adafruit PyBadge**, **LEGO SPIKE Prime**,
+  **LEGO MINDSTORMS EV3**, **Arduboy**, and **ATtiny** boards.
+- A **Machine Manager** boots whole computers and operating systems from
+  separately distributed disk/ROM images, each introduced by a guided lesson:
+  an **80386 AT PC** running **DOS/FreeDOS**, **ELKS** (a small Unix) on an 8086,
+  **CP/M on a Z80**, **Microsoft BASIC on a 6502** single-board computer (RAM,
+  ROM, VIA, ACIA, screen and keyboard), and a **RISC-V Linux** machine. See the
+  loading guides below for the image and licensing details.
+
+Different targets run on different emulation cores, and each states which
+peripherals it models rather than pretending: the permissively licensed
+**avr8js** (AVR) and **rp2040js** (RP2040) JavaScript cores; **LabWired**, a
+native core compiled to WebAssembly, for the micro:bit and PyBadge; a
+**Renode**-derived boundary for the LEGO SPIKE Prime and MINDSTORMS EV3 firmware
+targets; an LGPL **Bochs** core for the 80386 AT PC (a native 386 core is in
+progress); and small in-house cores for the Z80, 6502 and 8086/80286 machines. Output appears on the **Widgets pane**
+(screens, LEDs, GPIO strips); a **Debug view** adds a serial console and video. The emulators clear real-time speed on the established targets in the
+browser; the exact per-target numbers, the shipped-versus-candidate matrix, and
+the remaining gaps live in
+[board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md).
+
+For x86 programs, raw floppy/HDD images and DOSBox configs, see
+[the GUI loading guide](docs/I80386-GUI.md),
+[what backends and formats are in scope](docs/X86-LOADING-SCOPE.md), the
+[upstream CLI/GUI loading guide](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-LOADING-GUIDE.md),
+and the [x86 checkpoint and next lanes](docs/X86-NEXT-LANES.md), which keeps
+reached evidence separate from pending work.
+
+### Design digital logic — gates, ICs and FPGAs
+
+Two things ship in every build:
+
+- **Verilog → schematic.** Point the renderer at a Verilog/HDL design and it
+  produces a clean SVG schematic with [Yosys](https://yosyshq.net/yosys/) —
+  named modules preserved, one level of hierarchy expanded by default, with
+  control over depth, the top module, and when large repeated arrays stay
+  collapsed (`npm run render:fpga`). It is for reading and documenting how logic
+  is wired.
+- **A Tang Nano 20K** (Gowin GW2AR-18) board you can place and wire on the
+  breadboard with its real pinout, with a 3.3 V design-rule check that catches
+  5 V fed back into a bank pin.
+
+Behind the build flag **`BW_ENABLE_FPGA`** there is a fuller, still-experimental
+**digital-logic lab**: write Verilog, **synthesise** it to a gate netlist
+(locally, in a WebAssembly Yosys worker, or through a hosted service), bind its
+ports to board pins with a Gowin `.cst` constraints file, and drive the LEDs on
+the virtual Tang Nano through the same analog solver that runs the breadboard —
+stepping the clock and mirroring the result into the Widgets view. The same
+design can be read as a **schematic, truth table, waveform, or gate netlist**
+with a node inspector; you can build equivalent logic from **CMOS transistors or
+74-series logic ICs**, and work through guided challenges. Because compiling a
+GPL-licensed source on a server and returning a bitstream would distribute a
+derivative work, the hosted route refuses GPL sources by name and points them at
+the local WebAssembly tier, which conveys nothing off your machine.
+
+Real-hardware bitstream flashing is scaffolded but **not yet functional**, and
+the lab is **off by default**. See [the Tang Nano notes](docs/TANG-NANO.md) for
+the exact state.
 
 ### Bring a MakeCode project in, and take one back out
 
-- Open a MakeCode `.hex`, `.uf2`, `.elf` or `.png` cartridge and get the
-  project, not the machine code: MakeCode embeds its own source in everything
-  it downloads. A **micro:bit** project becomes blocks; a **MakeCode Arcade**
-  game becomes a Scratch project — sprites with their real artwork, overlaps as
-  `touching`, the controller as the arrow keys, levels painted whole as
-  backdrops.
-- A micro:bit **MicroPython** `.hex` (python.microbit.org, uflash) needs no
-  translating at all — the simulator runs it as it is.
-- Import from a MakeCode share link, or save a project as a `.hex` that
-  makecode.microbit.org opens.
-- What has no equivalent here is listed rather than dropped: every refusal is
-  marked in the code and counted in the status line.
+MakeCode embeds its own source inside everything it downloads, so Brickwright
+can open a cartridge and recover the **project**, not just the machine code.
 
-### Guided lessons
+- Open a MakeCode `.hex`, `.uf2`, `.elf` or `.png` file: a **micro:bit**
+  project comes back as blocks; a **MakeCode Arcade** game comes back as a
+  Scratch project — sprites with their real artwork, overlaps mapped to
+  `touching`, the controller mapped to the arrow keys, and levels painted whole
+  as backdrops.
+- A micro:bit **MicroPython** `.hex` (from python.microbit.org or uflash) needs
+  no translating — the simulator runs it as it is.
+- Import from a MakeCode share link, or **save a project as a `.hex`** that
+  makecode.microbit.org opens again.
+- These are not dead imports — they **run**: an imported micro:bit project
+  executes as a Scratch project (and a MicroPython `.hex` directly in the
+  simulator), and an imported Arcade game **plays** through the Scratch renderer
+  and the game console (display, controls, tilt and NeoPixels where present).
+- Anything with no equivalent here is listed, not quietly discarded.
 
-- Three first-run journeys lead to a useful circuit, board, or LEGO project.
-- A searchable English/German catalog teaches circuits, safe measurement,
-  programming representations, debugging, controls, and machine architecture.
-- Lessons stay beside the live project and use prediction, observation, hints,
-  resumable progress, and manual fallbacks rather than a click-through slideshow.
+Both directions are also available from the command line — `bwlite makecode …`
+and `bwlite convert` — using the same readers as the in-app Code tab.
 
-### Native app (Tauri 2)
+### Program real hardware
 
-One Tauri 2 project produces binaries for macOS, Windows, Linux, iOS and
-Android, with a native ScratchLink so LEGO hubs connect over **Bluetooth LE
-and Bluetooth Classic** without a browser or a separate install.
+- **Flash a real STC 8051 board:** choose or retarget the part — **STC89C52RC**,
+  **STC12** (e.g. STC12C5A60S2) or **STC15** (STC15F2K60S2) — with `bwlite
+  devices` / `bwlite retarget`; the installed SDCC compiler turns your
+  pseudocode or C into Intel HEX and `stcgal` flashes it over a serial port. The
+  toolchain models each part's own timers and second UART baud source, and the
+  1-clock STC12/STC15 cores run far faster than the classic 12-clock STC89.
+- **Program real LEGO bricks — the whole lineage.** Blocks transpile to the
+  code each brick actually runs and connect over its real transport:
+  **SPIKE Prime / Robot Inventor** and **EV3** (Python / ev3dev2, plus EV3
+  `.lms` bytecode), **NXT** (NXC), and **Boost**, **WeDo 2.0** and **Powered
+  Up** over Bluetooth LE or Classic — and the classic 1998 **MINDSTORMS RCX**,
+  whose blocks compile to `.rcx` bytecode through an in-browser **NQC**
+  compiler and download to the brick over a **Web Serial infrared tower** (you
+  supply the RCX's own firmware). The native app's own ScratchLink provides
+  BLE + Bluetooth Classic (plus a WiFi/USB bridge for SPIKE) with no browser or
+  separate install.
 
-- Offline asset library, camera + microphone, native `.sb3` save/load/share,
-  file associations and deep links.
+### Learn with guided lessons
+
+Three first-run journeys each lead to a working circuit, board, or LEGO
+project. A searchable English/German catalog then teaches circuits, safe
+measurement, the programming representations, debugging, controls, and machine
+architecture. Lessons sit beside the live project and use prediction,
+observation, hints, resumable progress, and manual fallbacks — not a
+click-through slideshow.
+
+### Use it as a native app
+
+One Tauri 2 project produces apps for **macOS, Windows, Linux, iOS and
+Android**. They add an offline asset library, camera and microphone access,
+native `.sb3` save/load/share, file associations and deep links, and the native
+Bluetooth transports above.
+
+---
 
 ## Quick start
 
-**Terminal CLI:** `bwlite` is the command for this repository; the older `bw`
-command belongs to the separate `sb3-creator` compiler repository. A `.bw`
-file is Brickwright pseudocode. After the web-build setup has populated
-`packages/`, run
-`npm link` once to put `bwlite` on your PATH (or use `npm run cli --`).
+### Command line
+
+`bwlite` is this repository's CLI (the older `bw` command belongs to the
+separate `sb3-creator` compiler repo). A `.bw` file is Brickwright pseudocode.
+After the web-build setup has populated `packages/`, run `npm link` once to put
+`bwlite` on your PATH (or use `npm run cli --`).
 
 ```bash
 bwlite --help
 bwlite spike probe
 bwlite spike run scripts/spike/example-usb-stream.bw
 bwlite convert program.bw --to sb3 --out program.sb3
-bwlite convert program.bw --to c --out program.c
+bwlite convert program.bw --to c   --out program.c
 bwlite read program.c --out recovered.bw
 bwlite 8051 build program.bw --out program.ihx
 bwlite 8051 flash program.ihx --port /dev/cu.usbserial-XXXX
@@ -220,133 +242,130 @@ bwlite toolchain status
 bwlite machine validate machine.json
 ```
 
-`convert` reads `.bw`, `.sb3`, `.c`, `.py`, `.js`, and `.bas` and can write
-pseudocode, SB3, C, host C, Python, JavaScript, MicroPython, or BASIC. It uses
-the same pinned `SB3Creator` and language readers as the Code tab. The older
-`compile PROGRAM.bw --to ...` command remains an alias for conversion; use
-`toolchain compile FILE.c --mode local|online` for the separate 8051 compiler.
-`devices` and `retarget` expose the compiler's device mapping. `toolchain`,
-`machine`, `fpga`, and `makecode` forward to their existing repository CLIs;
-`machine` manages emulator configurations and boot plans, while interactive
-chip emulation and debugging still run in the app. `8051 build` uses installed
-SDCC to make Intel HEX from STC pseudocode or C; `8051 flash` uses installed
-`stcgal` and requires an explicit serial port. Flashing an STC also requires
-its usual cold power cycle into the ISP bootloader.
+`convert` reads `.bw`, `.sb3`, `.c`, `.py`, `.js` and `.bas`, and writes
+pseudocode, SB3, C, host C, Python, JavaScript, MicroPython or BASIC — using the
+same pinned `SB3Creator` and language readers as the Code tab. `8051 build`
+uses installed SDCC; `8051 flash` uses installed `stcgal` and an explicit
+serial port (and the STC's usual cold power-cycle into its ISP bootloader).
+`machine` manages emulator configurations and boot plans; `toolchain`, `fpga`
+and `makecode` forward to their repository CLIs.
 
-SPIKE USB needs LEGO MINDSTORMS MicroPython firmware and Python with `pyserial`.
-The [CLI guide](docs/CLI.md) maps old `bw` references to the current Lite
-commands. The [USB guide](scripts/spike/README-usb-stream.md) covers the Mac/iPad WLAN
-bridge; the [MINDSTORMS guide](docs/mindstorms-lms.md) covers `.lms` import and
-export.
+SPIKE over USB needs LEGO MINDSTORMS MicroPython firmware and Python with
+`pyserial`. See the [CLI guide](docs/CLI.md) (it maps old `bw` references to
+current commands), the [USB bridge guide](scripts/spike/README-usb-stream.md),
+and the [MINDSTORMS `.lms` guide](docs/mindstorms-lms.md).
 
-**Web build:**
+### Build the web app
 
 ```bash
-npm ci --ignore-scripts --no-audit --no-fund      # root tooling + pinned engine/UI packages (Node 22)
-npm run vendor                                   # fetch pinned sources into packages/
-node scripts/integrate.mjs                       # overlay our delta
+npm ci --ignore-scripts --no-audit --no-fund   # root tooling + pinned engine/UI packages (Node 22)
+npm run vendor                                 # fetch pinned sources into packages/
+node scripts/integrate.mjs                     # overlay our changes
 cd packages/scratch-gui
 npm install --ignore-scripts --legacy-peer-deps
-node ../../scripts/apply-vm-overlay.mjs          # built-in extensions + upstream fixes
-node ../../scripts/apply-paint-overlay.mjs       # the extended costume designer
-node ../../scripts/apply-render-overlay.mjs      # text costumes wait for the lazy render fonts
-NODE_ENV=production npm run build                # -> build/
+node ../../scripts/apply-vm-overlay.mjs         # built-in extensions + upstream fixes
+node ../../scripts/apply-paint-overlay.mjs      # the extended costume designer
+node ../../scripts/apply-render-overlay.mjs     # text costumes wait for the lazy render fonts
+NODE_ENV=production npm run build               # -> build/
 ```
 
-**Native app** (needs the web `build/` first):
+### Build the native app (needs the web `build/` first)
 
 ```bash
 cd apps/tauri && npm ci
-npx tauri dev                 # desktop
-npx tauri android build --apk # or:  npx tauri ios build
+npx tauri dev                   # desktop
+npx tauri android build --apk   # or:  npx tauri ios build
 ```
-
-**Verilog to SVG** (needs Yosys):
-
-```bash
-npm run render:fpga -- design.v --output render --title "My circuit"
-```
-
-The renderer preserves named modules and expands one hierarchy level by
-default. Use `--expand-depth 0` for macro boxes, `--expand-depth 2` to expose
-another level, or `--top module_name` when a file contains several candidates.
-Large repeated arrays stay collapsed automatically; adjust that threshold with
-`--max-expanded-instances`.
 
 For an installable physical-iPad development package, use the production asset
 pipeline even when signing with an Apple Development profile:
 
 ```bash
-cd apps/tauri
-npm run ios:device-build
+cd apps/tauri && npm run ios:device-build
 ```
 
-Do not package a device app with `tauri ios dev --no-dev-server`. That command
-still compiles Tauri in development mode, where `tauri://localhost` expects a
-live development endpoint instead of serving the embedded web build. The
-result installs successfully but cannot open its start page offline.
+Do not package a device app with `tauri ios dev --no-dev-server`: it compiles
+Tauri in development mode, where `tauri://localhost` expects a live dev server
+instead of serving the embedded web build, so the app installs but cannot open
+its start page offline. CI builds every
+platform in `.github/workflows/release.yml` (desktop) and `mobile.yml` (Android
+APK + iOS simulator).
 
-CI does this for all platforms: `.github/workflows/release.yml` (desktop) and
-`mobile.yml` (Android APK + iOS simulator).
+### Render Verilog to SVG (needs Yosys)
+
+```bash
+npm run render:fpga -- design.v --output render --title "My circuit"
+```
+
+Use `--expand-depth 0` for macro boxes, `--expand-depth 2` to expose another
+level, `--top module_name` when a file has several candidates, and
+`--max-expanded-instances` to adjust when large arrays collapse.
+
+---
 
 ## Roadmap
 
 - [x] Permissive base pinned and verified (BSD-3 / Apache-2.0 / MIT).
-- [x] Code tab — blocks / pseudocode / Python / JS.
+- [x] Code tab — blocks / pseudocode / Python / JS (plus C, BASIC, MicroPython,
+      and the Forth/Tcl/Lisp DOS benches).
 - [x] SoundFX creator; German i18n.
 - [x] 23 built-in extensions everywhere; 150 additional gallery extensions on the web.
 - [x] Tauri native app for all five platforms.
 - [x] Native ScratchLink — BLE + Bluetooth Classic + WiFi bridge.
 - [x] Native save/load/share, offline library, camera + microphone.
 - [x] Circuit Designer: breadboards, schematic, DRC, autosave, undo/redo.
-- [x] 8051/AVR/RP2040/6502/Z80 instruction-level emulation and debugging.
+- [x] 8051 / AVR / RP2040 / 6502 / Z80 instruction-level emulation and debugging.
+- [x] Signed macOS and iOS builds uploaded to App Store Connect / TestFlight.
 - [ ] Hardware-verify each LEGO transport against real hardware (macOS BLE done).
 - [ ] Complete Arduino Uno/Nano peripheral fidelity and source-level debugger.
-- [ ] RP2040/MicroPython compilation path for Pico.
+- [ ] RP2040/MicroPython compilation path for the Pico.
 - [ ] Schematic symbol coverage beyond the generated projection.
-- [x] Signed macOS and iOS builds uploaded to App Store Connect/TestFlight.
+
+See [the target handoff](docs/TARGET-NEXT-LANES.md) for the current state and
+actionable lanes, [PLAN.md](PLAN.md) for the working sequence, and
+[ROADMAP.md](ROADMAP.md) for the engineering backlog.
+
+---
 
 ## How it's built: vendor + overlay
 
-We freeze on pinned versions of the pre-relicense Scratch stack, own full
-copies of changed files in `overlay/`, and copy them over the vendored sources
-at build time:
+Brickwright Lite is built on the last BSD-3-licensed release of the Scratch
+editor stack (see **Licensing** below for why). Rather than fork those
+repositories, it **pins exact versions, keeps its own copies of only the files
+it changes in `overlay/`, and copies them over the vendored sources at build
+time**:
 
 ```
-overlay/scratch-gui/   <- gui files we own
-overlay/scratch-vm/    <- built-in extensions + registration
-apps/tauri/            <- the Tauri 2 native app
+overlay/scratch-gui/      <- GUI files we own
+overlay/scratch-vm/       <- built-in extensions + registration
+apps/tauri/               <- the Tauri 2 native app
 scripts/
-  vendor.mjs           <- fetch pinned sources into packages/ (gitignored)
-  integrate.mjs        <- copy overlay/ over the vendored gui
-  apply-vm-overlay.mjs <- lay the vm overlay onto node_modules/scratch-vm
+  vendor.mjs              <- fetch pinned sources into packages/ (gitignored)
+  integrate.mjs           <- copy overlay/ over the vendored GUI
+  apply-vm-overlay.mjs    <- lay the VM overlay onto node_modules/scratch-vm
   apply-paint-overlay.mjs <- the extended costume designer
-  apply-render-overlay.mjs <- SVGSkin waits for the lazy render-fonts chunk when an SVG has text
+  apply-render-overlay.mjs<- text costumes wait for the lazy render-fonts chunk
 ```
 
-`packages/` has ignore rules, but many files there are already tracked in Git.
-For files present in both the GUI overlay and the tracked GUI tree, edit the
-overlay and refresh the tracked mirror with `node scripts/integrate.mjs` in the
-same change. The overlay/package equality test checks committed copies.
-`vendor.mjs` populates packages whose `package.json` is absent; its cache check
-does not verify every existing file against the pinned upstream contents.
+The runtime is layered: `sb3-creator` converts between representations, local
+or hosted compilers produce executable images, `bw-circuit-ui` builds circuits,
+`bw-board` supplies machines and debug adapters, and `bw-debug` records,
+inspects and replays. A project saves Scratch content plus Brickwright Code,
+Circuit and Controller state in one `.sb3` sidecar.
 
-The main runtime layers are `sb3-creator` for representation conversion,
-local or hosted compiler routes for executable images, `bw-circuit-ui` for
-circuit construction, `bw-board` for machines and debug adapters, and
-`bw-debug` for recording, inspection and replay. The language/device matrix
-describes supported paths. Project saves carry Scratch content plus Brickwright
-Code, Circuit and Controller state in an `.sb3` sidecar. Tauri supplies native
-file, serial and ScratchLink transports around the web application.
-
-[PLAN.md](PLAN.md) records the current sequence; [ROADMAP.md](ROADMAP.md)
-contains the scoped session tracks and engineering backlog. Check
+**Upstream integrity.** `bw-board` and `bw-circuit-ui` are installed from exact
+git SHAs; `sb3-creator`, the only vendored upstream, is checked for pinned byte
+identity and matching tracked mirrors. Shared behavior lands in its upstream
+repository first and reaches Lite through an explicit pin move. The enforced
+invariants are in [the vendoring regime](docs/VENDORING-REGIME.md); check
 [LANES.md](LANES.md) before claiming implementation.
+
+---
 
 ## Development and tests
 
-Install the root dependencies with Node 22 or newer, then run the bounded
-source-only suite without preparing the generated GUI tree:
+With Node 22 or newer, run the bounded source-only suite without preparing the
+generated GUI tree:
 
 ```bash
 npm ci --ignore-scripts --no-audit --no-fund
@@ -354,38 +373,42 @@ npm run check:setup
 npm run test:source
 ```
 
-Root tests import owned GUI modules from `overlay/scratch-gui`; generated
-`packages/scratch-gui/src` is not a test input. The registered GUI-scope hook
-resolves bare GUI dependencies from the prepared GUI package. Tests that need
-those dependencies or assembled build artifacts still require `vendor`,
-`integrate`, the GUI dependency install, and the VM/paint/render overlay steps.
-Use `npm run check:setup -- --integrated` to verify that runtime before those
-tests. `BW_INTEGRATED_ROOT` may explicitly select a prepared external dependency
-and build root, but it does not replace the source under test.
+Root tests import owned GUI modules from `overlay/scratch-gui`; the generated
+`packages/scratch-gui/src` is not a test input. Tests that need vendored
+dependencies or assembled build artifacts still require the full `vendor`,
+`integrate`, GUI dependency install, and VM/paint/render overlay steps; run
+`npm run check:setup -- --integrated` to verify that runtime first.
+
+---
 
 ## Simulator and oracle policy
 
-The browser and shipped app use only permissive execution paths. External
-emulators are developer-side test oracles, never bundled:
+The browser and the shipped app use **only permissively licensed execution
+paths**. External emulators are developer-side test oracles — they cross-check
+our results in CI and are **never bundled** into the product or its dependency
+graph:
 
-- `ucsim-stc` (GPL) — STC/8051 oracle, paired with the MIT `emu8051-stc`
+- `ucsim-stc` (GPL) — an STC/8051 oracle, paired with the MIT `emu8051-stc`
   differential runner.
-- `simavr` — optional external AVR hardware/peripheral oracle.
+- `simavr` — an optional external AVR hardware/peripheral oracle.
 - MIT `cemeyer/avr-emu` and `Gregwar/avrel` — independent CPU-level cross-checks.
 
-GPL/AGPL oracle code stays outside the product and dependency graph.
+GPL/AGPL oracle code stays outside the product entirely.
+
+---
 
 ## Licensing
 
-Brickwright's application code is BSD-3-Clause. The shipped dependency set is
-open source under BSD-3-Clause, Apache-2.0, MIT, and MPL-2.0; no GPL or AGPL code
-is bundled. See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the exact
-file and package inventory.
+Brickwright Lite's application code is **BSD-3-Clause**. The shipped dependency
+set is open source under BSD-3-Clause, Apache-2.0, MIT and MPL-2.0 — **no GPL or
+AGPL code is bundled**. [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) has the
+exact file-and-package inventory.
 
 ### Why this base
 
-Scratch Foundation relicensed the whole stack BSD-3-Clause -> AGPL-3.0 on
-2024-11-25 (scratch-gui commit `3de24da0`). We pin the **last BSD-3 commit**:
+The Scratch Foundation relicensed its whole stack from BSD-3-Clause to AGPL-3.0
+on 2024-11-25 (scratch-gui commit `3de24da0`). Brickwright Lite pins the **last
+BSD-3 commit** of each component:
 
 | Component | Pin | License |
 |---|---|---|
@@ -398,53 +421,67 @@ Scratch Foundation relicensed the whole stack BSD-3-Clause -> AGPL-3.0 on
 > **Do not** swap in `scratch-blocks@2.x` — it is a ground-up Blockly rewrite
 > incompatible with the v4 GUI.
 
-No GPL code is bundled. Web and native editions can opt into separately
-distributed GPL tools or media, with their licence and corresponding source
-shown at the point of download. These user-initiated downloads remain separate
-from the BSD-3 application. A review-specific, self-contained build can disable
-remote toolchains, machine images and extension JavaScript at compile time with
-`BW_REMOTE_CODE_POLICY=deny`; the normal build policy is `allow`. The narrower
-`BW_REMOTE_EXTENSIONS_POLICY`, `BW_REMOTE_TOOLCHAINS_POLICY`, and
-`BW_REMOTE_MACHINE_IMAGES_POLICY` variables independently override the umbrella,
-so review-channel restrictions do not unnecessarily disable unrelated features.
+Web and native editions can opt into **separately distributed** GPL tools or
+media, with each tool's license and corresponding source shown at the point of
+download; those user-initiated downloads stay separate from the BSD-3
+application. A review-specific, self-contained build can disable remote
+toolchains, machine images and extension JavaScript at compile time with
+`BW_REMOTE_CODE_POLICY=deny` (the normal build policy is `allow`). The narrower
+`BW_REMOTE_EXTENSIONS_POLICY`, `BW_REMOTE_TOOLCHAINS_POLICY` and
+`BW_REMOTE_MACHINE_IMAGES_POLICY` variables override that umbrella
+independently, so a review channel does not disable unrelated features.
 
 ### The bundled extensions
 
-23 extensions under `overlay/scratch-vm/src/extensions/crispstrobe/`:
-**20 MPL-2.0 and 3 MIT**. MPL-2.0 is file-level weak copyleft — covered files
-may be combined into a Larger Work under other terms, provided the MPL files
-stay MPL and their source stays available (it is in this repository).
+The 23 extensions under `overlay/scratch-vm/src/extensions/crispstrobe/` are
+**20 MPL-2.0 and 3 MIT**. MPL-2.0 is file-level weak copyleft: the files may be
+combined into a larger work under other terms, provided the MPL files stay MPL
+and their source stays available — it is, in this repository. The upstream
+`TurboWarp/extensions` gallery's GPL-3.0 covers its images, dev server and
+website, not the extension code, and none of that is vendored here.
 
-The upstream `TurboWarp/extensions` gallery's GPL-3.0 covers images, dev
-server and website — the infrastructure, not the extension code. None of
-that is vendored here.
-
-**How that was established** (re-runnable, not trust-based):
+This was established by re-runnable checks, not by trust:
 
 | check | result |
 |---|---|
-| licence header of every bundled extension | 20 MPL-2.0, 3 MIT, 0 GPL |
-| our 21 gallery extensions vs 129 third-party, distinctive lines >= 60 chars | **0 shared of 3,114** |
+| license header of every bundled extension | 20 MPL-2.0, 3 MIT, 0 GPL |
+| our 21 gallery extensions vs 129 third-party, distinctive lines ≥ 60 chars | **0 shared of 3,114** |
 | bundled vs upstream TurboWarp's own extensions | **0 shared** |
 | bundled vs every copyleft-flagged third-party extension | **0 shared of 424** |
 | gallery images / dev server / site code vendored | **none** |
 
-### Tradeoff vs mainline Brickwright
+### How this differs from mainline Brickwright and from TurboWarp
 
-Brickwright owns a frozen integration of the last BSD Scratch stack (so upstream
-security and compatibility fixes must be ported deliberately) and does not use
-TurboWarp's compiler or addon system. In exchange, the product can ship its own
-electronics, debugger, lesson, and native-device layers—including direct LEGO
-Bluetooth—without depending on TurboWarp. Brickwright Lite is not a TurboWarp
-fork.
+Brickwright Lite freezes a BSD-licensed Scratch stack (so upstream security and
+compatibility fixes must be ported deliberately) and does **not** use
+TurboWarp's compiler or addon system. In exchange it ships its own electronics,
+debugger, lesson and native-device layers — including direct LEGO Bluetooth —
+without depending on TurboWarp. Brickwright Lite is not a TurboWarp fork.
 
-### Affiliation
+### Affiliation and trademarks
 
-Not affiliated with or endorsed by Scratch / MIT, STC, Arduino, or
-Raspberry Pi, nor by the makers of the circuit file formats the Circuit tab
-imports and exports (KiCad, EasyEDA, EAGLE, LTspice). Those names describe
-file formats only. Trademarks belong to their owners.
+Brickwright Lite is an independent project. **Not affiliated with or endorsed
+by Scratch, MIT, LEGO, STC, Arduino, or Raspberry Pi, nor by the makers of the
+circuit file formats the Circuit tab imports and exports (KiCad, EasyEDA, EAGLE,
+LTspice). All trademarks belong to their owners.** It is likewise not authorized
+or sponsored by any company whose products, hardware, file formats or trademarks
+it names for compatibility.
 
-The virtual SPIKE hub uses an [independent simulator backend](docs/independent-spike/README.md)
-for Scratch/native programs, with shared arena state and deterministic motor control.
-Supported LEGO SPIKE App 3 Python imports run through the same virtual hub.
+In particular, **LEGO®, SPIKE™ and MINDSTORMS® are trademarks of the LEGO
+Group**, which does not sponsor, authorize or endorse this project; the virtual
+SPIKE hub is an independent reimplementation and bundles no LEGO firmware (the
+LEGO MINDSTORMS MicroPython firmware that real-hardware USB use requires is
+supplied by the user). Scratch is a trademark of the Scratch Foundation / MIT;
+micro:bit is a trademark of the Micro:bit Educational Foundation; MakeCode is a
+Microsoft project; and Arduino, Raspberry Pi, STC, Adafruit, Arduboy, and the
+circuit file formats the Circuit tab reads and writes (KiCad, EasyEDA, EAGLE,
+LTspice) are trademarks of their respective owners.
+
+All such names are used only to identify compatible hardware, software and file
+formats. Their use does not imply any affiliation or endorsement, and all
+trademarks remain the property of their respective owners.
+
+The virtual SPIKE hub uses an
+[independent simulator backend](docs/independent-spike/README.md) for Scratch
+and native programs, with shared arena state and deterministic motor control;
+supported LEGO SPIKE App 3 Python imports run through the same virtual hub.
