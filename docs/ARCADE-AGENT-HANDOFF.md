@@ -75,6 +75,11 @@ Next priorities are typed Settings persistence, original-supported library and
 class operations, execution residuals, and visible authoring journeys. Continue
 through those areas without counting focused controls as whole-game success.
 
+The [native frame scheduler contract](ARCADE-FRAME-SCHEDULER.md) records the
+open startup and pause/callback phase limits and the claimed implementation
+envelope. Merge that lane claim before changing the product hook; finite
+prototype traces do not close its exact timing or installed-GUI gates.
+
 ## Current-state refresh — 2026-10-11
 
 The earlier runtime and documentation stack through scrolling is integrated into
