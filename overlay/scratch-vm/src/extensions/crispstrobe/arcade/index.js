@@ -27,6 +27,7 @@ module.exports = makeExt(`// Name: Arcade
   class Arcade {
     constructor(runtime) {
       this._runtime = runtime;
+      this._resetProgramClock();
       this._bufferSuspended = false;
       this._speechEngine = dependencies.createSpeechEngine(dependencies.initializeSpeech, dependencies.fonts,
         dependencies.initializeNativeLegacy);
@@ -97,10 +98,12 @@ module.exports = makeExt(`// Name: Arcade
           this._terrainWaits.clear();
           if(this._foreverTimer!==undefined)clearTimeout(this._foreverTimer);this._foreverTimer=undefined;
         };
+        runtime.on('PROJECT_STOP_ALL', () => this._stopProgramClock());
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
         runtime.on('PROJECT_STOP_ALL', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._musicHost?.stopAll();});
         runtime.on('RUNTIME_DISPOSED', () => {this._bufferSuspended=true;this._musicHost?.reset();this._musicHost=null;this._musicIds=new Map();this._musicValues=new Map();this._musicGeneration=dependencies.buffers.newHeapId();this._carnivalHost?.cancel();this._carnivalHost=null;this._bufferHeap=null;cancelCreations();this._clearTilemap();this._tileLocations.clear();this._animationAssetCache.clear();for(const id of this._imageSkins.keys())this._clearImage(id);});
         const reset = () => {
+          this._resetProgramClock();
           cancelCreations();
           this._terrainStopped = false;
           this._projectPalette = null;
@@ -183,6 +186,8 @@ module.exports = makeExt(`// Name: Arcade
         color2: '#D63878',
         color3: '#C42870',
         blocks: [
+          {opcode:'sceneMillis',blockType:Scratch.BlockType.REPORTER,text:'Arcade scene runtime milliseconds'},
+          {opcode:'programMillis',blockType:Scratch.BlockType.REPORTER,text:'Arcade program runtime milliseconds'},
           {opcode:'textSpriteCreate',blockType:Scratch.BlockType.REPORTER,text:'Arcade create text sprite [TEXT] background [BACKGROUND] foreground [FOREGROUND]',arguments:{...str('TEXT','Hello'),...n('BACKGROUND',0),...n('FOREGROUND',1)}},
           {opcode:'textSpriteSetText',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set text [TEXT]',arguments:{...str('ID',''),...str('TEXT','Hello')}},
           {opcode:'textSpriteSetMaxFontHeight',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set max font height [HEIGHT]',arguments:{...str('ID',''),...n('HEIGHT',8)}},
@@ -867,6 +872,34 @@ module.exports = makeExt(`// Name: Arcade
         }
       };
     }
+
+    // An owned runtime may inject {now:()=>milliseconds} for deterministic
+    // controls. Production uses the platform monotonic clock when available;
+    // this epoch is independent of Scratch's resettable project timer.
+    _resetProgramClock() {
+      const supplied=this._runtime?.bwArcadeProgramClock;
+      const now=supplied===undefined ? (()=>globalThis.performance?.now?.() ?? Date.now()) :
+        supplied && typeof supplied.now==='function' ? supplied.now.bind(supplied) : null;
+      const epoch={now,start:undefined,last:0,active:true};this._programClockEpoch=epoch;
+      if(!now)throw new Error('Arcade program clock source needs a now function');
+      const start=now();
+      if(this._programClockEpoch!==epoch || !Number.isFinite(start))throw new Error('Arcade program clock initialization is invalid');
+      epoch.start=start;
+    }
+    _programMillis() {
+      const epoch=this._programClockEpoch;if(!epoch || !Number.isFinite(epoch.start))throw new Error('Arcade program clock is not initialized');if(!epoch.active)return epoch.last;
+      const now=epoch.now();
+      if(this._programClockEpoch!==epoch)throw new Error('Arcade program clock run changed during read');
+      if(!Number.isFinite(now) || now<epoch.start+epoch.last)throw new Error('Arcade program clock source is invalid or moved backwards');
+      return epoch.last=Math.floor(now-epoch.start);
+    }
+    _stopProgramClock() {
+      const epoch=this._programClockEpoch;
+      try{this._programMillis();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',error.message);}
+      if(this._programClockEpoch===epoch)epoch.active=false;
+    }
+    programMillis() {try{return this._programMillis();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',error.message);return Scratch.BWValues.encode(undefined);}}
+    sceneMillis() {return this._state().elapsedMs || 0;}
 
     _state() {
       if (this._runtime) {
