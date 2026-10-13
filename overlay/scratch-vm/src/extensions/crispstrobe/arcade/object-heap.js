@@ -15,10 +15,14 @@ module.exports = function createObjectHeap(runtime, values) {
     };
     runtime?.on?.('PROJECT_START', reset);runtime?.on?.('PROJECT_LOADED', loaded);runtime?.on?.('RUNTIME_DISPOSED', suspend);
     function live() { if (disposed) throw new Error('Class object heap is disposed'); }
-    function definition(name) {
+    function definition(name,seen=new Set()) {
         live(); const def = classes.get(name);
         if (!def) throw new Error(`Class ${name} is not declared in this project run`);
-        return def;
+        if (!def.parent) return def;
+        if (seen.has(name)) throw new Error('Cyclic class inheritance');
+        seen.add(name);const base=definition(def.parent,seen);
+        for(const field of def.fields.keys())if(base.fields.has(field))throw new Error('Redefinition of inherited class field '+field);
+        return Object.freeze({...def,fields:new Map([...base.fields,...def.fields]),methods:new Map([...base.methods,...def.methods])});
     }
     function object(ref) {
         live(); const id = values.referenceId(runtime, ref, 'object');
@@ -41,20 +45,21 @@ module.exports = function createObjectHeap(runtime, values) {
     function register(spec) {
         live();
         if (!spec || typeof spec !== 'object' || Array.isArray(spec) ||
-            Object.keys(spec).some(key => !['name', 'fields', 'initializer', 'constructor', 'parameters', 'methods'].includes(key)))
+            Object.keys(spec).some(key => !['name', 'parent', 'fields', 'initializer', 'constructor', 'parameters', 'methods'].includes(key)))
             throw new Error('Invalid class declaration');
         if (typeof spec.name !== 'string' || !/^[A-Za-z_]\w*$/.test(spec.name) || classes.has(spec.name))
             throw new Error('Invalid or duplicate class declaration name');
+        if (spec.parent!==undefined && (typeof spec.parent!=='string' || !/^[A-Za-z_]\w*$/.test(spec.parent)))throw new Error('Invalid class parent name');
         if (!Array.isArray(spec.fields) || !Array.isArray(spec.parameters) || !Array.isArray(spec.methods))
             throw new Error('Class fields, parameters and methods must be declared');
         const validType=type=>typeof type==='string' && /^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\[\])*$/.test(type);
-        const validParameters=params=>Array.isArray(params) && params.every(param=>param && /^[A-Za-z_]\w*$/.test(param.name||'') && validType(param.type) && typeof param.optional==='boolean' && Object.keys(param).every(key=>['name','type','optional'].includes(key))) && new Set(params.map(param=>param.name)).size===params.length;
+        const validParameters=params=>Array.isArray(params) && params.every(param=>param && /^[A-Za-z_]\w*$/.test(param.name||'') && validType(param.type) && typeof param.optional==='boolean' && (param.default===undefined || param.optional && (param.default===null || typeof param.default==='boolean' || typeof param.default==='number'&&Number.isFinite(param.default))) && Object.keys(param).every(key=>['name','type','optional','default'].includes(key))) && new Set(params.map(param=>param.name)).size===params.length;
         if(!validParameters(spec.parameters))throw new Error('Invalid declared constructor parameters');
         const fields = new Map(), methods = new Map();
         for (const field of spec.fields) {
             if (!field || typeof field.name !== 'string' || !/^[A-Za-z_]\w*$/.test(field.name) || fields.has(field.name) ||
-                Object.keys(field).some(key => !['name', 'type', 'readonly', 'visibility'].includes(key)) ||
-                !validType(field.type) || typeof field.readonly !== 'boolean' || field.visibility !== undefined && !['public','private','protected'].includes(field.visibility)) throw new Error('Invalid declared class field');
+                Object.keys(field).some(key => !['name', 'type', 'readonly', 'visibility', 'initializer', 'parameterProperty'].includes(key)) ||
+                field.parameterProperty!==undefined && typeof field.parameterProperty!=='boolean' || field.initializer!==undefined && typeof field.initializer!=='string' || !validType(field.type) || typeof field.readonly !== 'boolean' || field.visibility !== undefined && !['public','private','protected'].includes(field.visibility)) throw new Error('Invalid declared class field');
             fields.set(field.name, Object.freeze({...field}));
         }
         for (const method of spec.methods) {

@@ -16,7 +16,7 @@ export function prepareObjectClassExport(emitter) {
             const code=proto.mutation.proccode,parameters=JSON.parse(proto.mutation.argumentnames||'[]');
             definitions.set(key(target,code),{target,block,code,parameters});
         }
-        if(block.opcode!=='arcade_declareClass')continue;
+        if(!['arcade_declareClass','arcade_declareSubclass'].includes(block.opcode))continue;
         try {
             const name=literal(target,block,'NAME'),fields=JSON.parse(literal(target,block,'FIELDS')),
                 parameters=JSON.parse(literal(target,block,'PARAMETERS')),methods=JSON.parse(literal(target,block,'METHODS'));
@@ -26,17 +26,42 @@ export function prepareObjectClassExport(emitter) {
             for(const field of fields){if(!/^[A-Za-z_]\w*$/.test(field?.name||'') || names.has(field.name) || !validType(field.type) || typeof field.readonly!=='boolean' || field.visibility!==undefined&&!['public','private','protected'].includes(field.visibility))throw Error('invalid field');names.add(field.name);}
             for(const param of parameters)if(!/^[A-Za-z_]\w*$/.test(param?.name||'') || !validType(param.type))throw Error('invalid constructor parameter');
             for(const method of methods)if(!/^[A-Za-z_]\w*$/.test(method?.name||'') || names.has(method.name) || !validType(method.returnType) || method.visibility!==undefined&&!['public','private','protected'].includes(method.visibility) || !Array.isArray(method.parameters) || method.parameters.some(param=>!validType(param.type)||!/^[A-Za-z_]\w*$/.test(param.name)))throw Error('invalid method');
-            classes.set(name,{name,target,fields,parameters,methods,initializer:literal(target,block,'INITIALIZER'),constructor:literal(target,block,'CONSTRUCTOR')});
+            classes.set(name,{name,parent:block.opcode==='arcade_declareSubclass'?literal(target,block,'BASE'):null,target,fields,parameters,methods,initializer:literal(target,block,'INITIALIZER'),constructor:literal(target,block,'CONSTRUCTOR')});
         }catch(error){emitter.note('Arcade class export requires fixed valid declaration metadata: '+error.message);}
     }
     if(!classes.size)return {classes,procedures,variableTypes:new Map(),localType:()=> 'any',render:()=>[],receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
+    const ancestors=name=>{const result=[],seen=new Set();while(name){if(seen.has(name)||!classes.has(name)){emitter.note('Class inheritance export requires declared acyclic parents');return [];}seen.add(name);result.push(classes.get(name));name=classes.get(name).parent;}return result;};
+    const resolveMember=(cls,name,method=false)=>ancestors(cls.name).flatMap(base=>method?base.methods:base.fields).find(value=>value.name===name);
+    const superHelpers=new Map(),parameterPropertyBlocks=new Set();
+    const localName=(target,block)=>block?.opcode==='arcade_getLocal'?literal(target,block,'NAME'):/^argument_reporter_/.test(block?.opcode||'')?block.fields.VALUE?.[0]:null;
+
+    const callParameters=(target,value)=>{const names=[];let tail=value.inputs?.ARGS,current=child(target,value,'ARGS');const seen=new Set();while(current?.opcode==='arcade_functionArgument'){if(seen.has(current))return null;seen.add(current);const name=localName(target,child(target,current,'VALUE'));if(!name)return null;names.push(name);tail=current.inputs?.REST;current=child(target,current,'REST');}const slot=tail?.[1];return (Array.isArray(slot)?String(slot[1])==='[]':current?.shadow&&current.fields?.TEXT?.[0]==='[]')?names:null;};
     const addType=(cell,type)=>{if(type.endsWith('[]')){graph.add(cell,'array');addType(graph.element(cell),type.slice(0,-2));}else graph.add(cell,type);};
     for(const cls of classes.values()) {
-        for(const field of cls.fields)addType(`field:${cls.name}:${field.name}`,field.type);
+        for(const base of ancestors(cls.name))for(const field of base.fields){addType(`field:${base.name}:${field.name}`,field.type);graph.merge(`field:${cls.name}:${field.name}`,`field:${base.name}:${field.name}`);}
+        const superCode=[`__bwClass_${cls.name}_superConstructor`,...['self',...cls.parameters].map(()=>'%s')].join(' '),superDef=definitions.get(key(cls.target,superCode));
+        if(superDef){
+            const calls=[];let b=cls.target.blocks[superDef.block.next];
+
+            while(b){if(b.opcode!=='arcade_setLocal'||literal(cls.target,b,'NAME')!=='__bwDiscardObjectResult')break;const value=child(cls.target,b,'VALUE');if(value?.opcode!=='arcade_callFunction')break;calls.push({name:literal(cls.target,value,'NAME'),parameters:callParameters(cls.target,value)});b=cls.target.blocks[b.next];}
+            if(!b && calls.length===2 && calls[0].name===cls.initializer && calls[1].name===cls.constructor && JSON.stringify(calls[0].parameters)===JSON.stringify(superDef.parameters.slice(0,1)) && JSON.stringify(calls[1].parameters)===JSON.stringify(superDef.parameters)){superHelpers.set(key(cls.target,superCode),cls);procedures.set(key(cls.target,superCode),{cls,definition:superDef,params:cls.parameters,result:'void',superHelper:true});}
+            else emitter.note('Class super constructor helper must retain only its declared initializer and constructor calls');
+        }
+        const ctorDef=definitions.get(key(cls.target,cls.constructor));let prefix=ctorDef&&cls.target.blocks[ctorDef.block.next];
+        for(const field of cls.fields.filter(field=>field.parameterProperty)){
+            if(prefix?.opcode==='arcade_setObjectField' && literal(cls.target,prefix,'FIELD')===field.name && localName(cls.target,child(cls.target,prefix,'OBJECT'))===ctorDef.parameters[0] && localName(cls.target,child(cls.target,prefix,'VALUE'))===field.name){parameterPropertyBlocks.add(prefix);prefix=cls.target.blocks[prefix.next];}
+            else emitter.note('Class parameter property export requires its declared initial argument binding');
+        }
+        if(cls.parent || cls.fields.some(field=>field.initializer)){
+            const init=definitions.get(key(cls.target,cls.initializer)),self=init?.parameters[0];let current=init&&cls.target.blocks[init.block.next],valid=!!init;
+            if(cls.parent){const value=current&&child(cls.target,current,'VALUE');valid=valid && current?.opcode==='arcade_setLocal' && literal(cls.target,current,'NAME')==='__bwDiscardObjectResult' && value?.opcode==='arcade_callFunction' && literal(cls.target,value,'NAME')===classes.get(cls.parent)?.initializer && JSON.stringify(callParameters(cls.target,value))===JSON.stringify([self]);current=current&&cls.target.blocks[current.next];}
+            for(const field of cls.fields.filter(field=>field.initializer)){const value=current&&child(cls.target,current,'VALUE');valid=valid && current?.opcode==='arcade_setObjectField' && literal(cls.target,current,'FIELD')===field.name && localName(cls.target,child(cls.target,current,'OBJECT'))===self && value?.opcode==='arcade_callFunction' && literal(cls.target,value,'NAME')===field.initializer && JSON.stringify(callParameters(cls.target,value))==='[]';current=current&&cls.target.blocks[current.next];}
+            if(!valid || current)emitter.note('Class field initializer export requires exactly its declared parent and field calls');
+        }
         for(const [code,params,result]of [[cls.initializer,[],'void'],[cls.constructor,cls.parameters,'void'],...cls.methods.map(method=>[method.procedure,method.parameters,method.returnType])]) {
             const k=key(cls.target,code),definition=definitions.get(k);
             if(!definition || definition.parameters.length!==params.length+1){emitter.note(`Arcade class ${cls.name} procedure does not match its declaration`);continue;}
-            procedures.set(k,{cls,definition,params,result});emitter.managedValueProcedures.add(k);
+            if(!procedures.has(k))procedures.set(k,{cls,definition,params,result});emitter.managedValueProcedures.add(k);
             addType(`${k}:local:${definition.parameters[0]}`,cls.name);
             params.forEach((param,index)=>addType(`${k}:local:${definition.parameters[index+1]}`,param.type));
             if(result!=='void')addType(`${k}:result`,result);
@@ -91,7 +116,7 @@ export function prepareObjectClassExport(emitter) {
                 const field=literal(target,block,'FIELD');
                 if(op==='arcade_objectField')graph.merge(value,`field:${name}:${field}`);
                 if(op==='arcade_setObjectField')graph.merge(`field:${name}:${field}`,input(target,block,'VALUE'));
-                if(op==='arcade_callObjectMethod'){const method=cls.methods.find(method=>method.name===literal(target,block,'METHOD'));if(method){graph.merge(value,`${key(target,method.procedure)}:result`);bind(target,method.procedure,args(target,block),1);}}
+                if(op==='arcade_callObjectMethod'){const method=resolveMember(cls,literal(target,block,'METHOD'),true);if(method){graph.merge(value,`${key(target,method.procedure)}:result`);bind(target,method.procedure,args(target,block),1);}}
             }
             if(op==='arrays_createReference'){graph.add(value,'array');let item=child(target,block,'VALUES');while(item?.opcode==='arrays_referenceValues'){graph.merge(graph.element(value),input(target,item,'VALUE'));item=child(target,item,'REST');}}
             if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(op))graph.merge(value,graph.element(input(target,block,'ARRAY')));
@@ -107,15 +132,27 @@ export function prepareObjectClassExport(emitter) {
     const localType=(key,name)=>typeOf(`${key}:local:${name}`);
     function receiver(block,write=false,method=false) {
         const target=emitter.target,text=emitter.arrayValue(block,'OBJECT'),name=literal(target,block,method?'METHOD':'FIELD');
-        const restricted=[...graph.node(input(target,block,'OBJECT')).types].some(type=>{const cls=classes.get(type),member=(method?cls?.methods:cls?.fields)?.find(value=>value.name===name);return member && ((member.visibility && member.visibility!=='public' && emitter.currentClassName!==type) || write&&member.readonly);});
+        const restricted=[...graph.node(input(target,block,'OBJECT')).types].some(type=>{const cls=classes.get(type),member=cls&&resolveMember(cls,name,method);return member && ((member.visibility && member.visibility!=='public' && emitter.currentClassName!==type) || write&&member.readonly);});
         return restricted?`(${text} as any)`:text;
     }
+    function superCall(code,args) {
+        const cls=classes.get(emitter.currentClassName);if(!cls?.parent)return null;
+        const parentChain=ancestors(cls.parent),k=key(emitter.target,code),helper=superHelpers.get(k),procedure=procedures.get(k);
+        if(helper && parentChain.some(parent=>parent.name===helper.name)){
+            if(args[0]!==emitter.currentClassReceiver || !emitter.currentClassConstructor){emitter.note('Super constructor export requires the active constructor receiver');return 'undefined';}
+            return `super(${args.slice(1).join(', ')})`;
+        }
+        if(procedure && parentChain.some(parent=>parent.name===procedure.cls.name)){const method=procedure.cls.methods.find(method=>method.procedure===code);
+            if(method && args[0]===emitter.currentClassReceiver)return `super.${method.name}(${args.slice(1).join(', ')})`;
+        }
+        return null;
+    }
     function render() {
-        const saved={target:emitter.target,blocks:emitter.blocks,currentLocalNames:emitter.currentLocalNames,currentClassName:emitter.currentClassName};
+        const saved={target:emitter.target,blocks:emitter.blocks,currentLocalNames:emitter.currentLocalNames,currentClassName:emitter.currentClassName,currentClassReceiver:emitter.currentClassReceiver,currentClassConstructor:emitter.currentClassConstructor};
         const out=[];
         function body(code,cls,parameters,constructor=false) {
             const k=key(cls.target,code),def=definitions.get(k);if(!def)return [];
-            emitter.target=cls.target;emitter.blocks=cls.target.blocks;emitter.currentLocalNames=new Set();emitter.currentClassName=cls.name;
+            emitter.target=cls.target;emitter.blocks=cls.target.blocks;emitter.currentLocalNames=new Set();emitter.currentClassName=cls.name;emitter.currentClassReceiver=def.parameters[0];emitter.currentClassConstructor=constructor;
             let lines=emitter.body(def.block.next,[],[],false);
             const locals=[...emitter.currentLocalNames].filter(name=>!def.parameters.includes(name));
             lines=[...locals.map(name=>`    let ${name}: ${localType(k,name)} = undefined`),...lines];
@@ -127,12 +164,25 @@ export function prepareObjectClassExport(emitter) {
         }
         for(const cls of classes.values()) {
             const ctor=definitions.get(key(cls.target,cls.constructor));
-            const params=cls.parameters.map((param,index)=>`${ctor?.parameters[index+1] || param.name}${param.optional?'?':''}: ${param.type}`).join(', ');
-            const lines=[`class ${cls.name} {`,...cls.fields.map(field=>`    ${field.visibility && field.visibility!=='public'?field.visibility+' ':''}${field.readonly?'readonly ':''}${field.name}: ${field.type}`),
-                `    constructor(${params}) {`,...body(cls.initializer,cls,[],true),...body(cls.constructor,cls,cls.parameters,true),'    }'];
+            const params=cls.parameters.map((param,index)=>{const field=cls.fields.find(field=>field.parameterProperty&&field.name===param.name);return `${field?(field.visibility||'public')+' '+(field.readonly?'readonly ':''):''}${ctor?.parameters[index+1] || param.name}${param.optional&&!Object.prototype.hasOwnProperty.call(param,'default')?'?':''}: ${param.type}${Object.prototype.hasOwnProperty.call(param,'default')?' = '+JSON.stringify(param.default):''}`;}).join(', ');
+            const lines=[`class ${cls.name}${cls.parent?' extends '+cls.parent:''} {`];
+            for(const field of cls.fields){
+                if(field.parameterProperty)continue;
+                let initializer='';
+                if(field.initializer){const code=field.initializer,k=key(cls.target,code),def=definitions.get(k),fn=emitter.fnNames.get(k);
+                    if(!def||def.parameters.length||!fn)emitter.note('Class field initializer export requires its fixed zero-argument procedure');
+                    else initializer=` = ${fn}()`;
+                }
+                lines.push(`    ${field.visibility && field.visibility!=='public'?field.visibility+' ':''}${field.readonly?'readonly ':''}${field.name}: ${field.type}${initializer}`);
+            }
+            const implicit=cls.parent && cls.constructor===classes.get(cls.parent)?.constructor;
+            if(!implicit){
+                const legacy=cls.parent || cls.fields.some(field=>field.initializer)?[]:body(cls.initializer,cls,[],true);
+                lines.push(`    constructor(${params}) {`,...legacy,...body(cls.constructor,cls,cls.parameters,true),'    }');
+            }
             for(const method of cls.methods) {
                 const def=definitions.get(key(cls.target,method.procedure));
-                const params=method.parameters.map((param,index)=>`${def?.parameters[index+1] || param.name}${param.optional?'?':''}: ${param.type}`).join(', ');
+                const params=method.parameters.map((param,index)=>`${def?.parameters[index+1] || param.name}${param.optional&&!Object.prototype.hasOwnProperty.call(param,'default')?'?':''}: ${param.type}${Object.prototype.hasOwnProperty.call(param,'default')?' = '+JSON.stringify(param.default):''}`).join(', ');
                 const script=body(method.procedure,cls,method.parameters),returns=script.some(line=>/^\s*return\s+\S/.test(line));
                 const result=method.returnType==='any'?typeOf(`${key(cls.target,method.procedure)}:result`):method.returnType;
                 lines.push(`    ${method.visibility && method.visibility!=='public'?method.visibility+' ':''}${method.name}(${params})${returns?': '+result:''} {`,...script,'    }');
@@ -141,5 +191,5 @@ export function prepareObjectClassExport(emitter) {
         }
         Object.assign(emitter,saved);return out;
     }
-    return {classes,procedures,variableTypes,localType,render,receiver};
+    return {classes,procedures,variableTypes,localType,render,receiver,superCall,parameterPropertyBlocks};
 }

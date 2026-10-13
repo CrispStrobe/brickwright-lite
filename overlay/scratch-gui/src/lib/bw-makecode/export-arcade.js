@@ -1112,6 +1112,7 @@ class ArcadeEmitter {
             const empty=Array.isArray(shadow)?String(shadow[1])==='[]':current?.fields?.TEXT?.[0]==='[]';
             if(!empty)this.note('Arcade function arguments need a fixed argument chain');
             // A value-returning procedure runs in its caller's thread too (see procedures_call).
+            const superCall=this.objectClassExport?.superCall?.(code,args);if(superCall!==null&&superCall!==undefined)return superCall;
             if (this.tokened()) args.unshift('_t');
             if (this.isClonable()) args.unshift('self');
             return `${fn}(${args.join(', ')})`;
@@ -1698,8 +1699,8 @@ class ArcadeEmitter {
         case 'arcade_placeOnRandomTile': push(`tiles.placeOnRandomTile(${v('ID')}, ${v('IMAGE')})`);return;
         case 'arcade_setscore':push(`info.setScore(${v('N')})`);return;
         case 'arcade_changescore':push(`info.changeScoreBy(${v('N')})`);return;
-        case 'arcade_declareClass':return;
-        case 'arcade_setObjectField':push(`;${this.objectClassExport.receiver(b,true)}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`);return;
+        case 'arcade_declareClass':case 'arcade_declareSubclass':return;
+        case 'arcade_setObjectField':if(this.currentClassConstructor&&this.objectClassExport?.parameterPropertyBlocks.has(b))return;push(`;${this.objectClassExport.receiver(b,true)}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`);return;
         case 'data_setvariableto': {
             const scratchName = this.field(b, 'VARIABLE');
             const info = this.infoVariable(scratchName);
@@ -2089,6 +2090,7 @@ class ArcadeEmitter {
             return;
         }
         case 'arcade_setLocal': {
+            if(this.currentClassConstructor){const computed=this.arrayValue(b,'VALUE');if(/^super\(/.test(computed)){push(computed);return;}}
             const name = this.literalInput(b, 'NAME');
             if (!name || !/^[A-Za-z_]\w*$/.test(name) || !this.currentLocalNames) {
                 push(`// ${this.note('Arcade local assignment needs a fixed name inside a procedure')}`);

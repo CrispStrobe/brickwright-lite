@@ -1963,6 +1963,7 @@ class ArcadeTranslator extends BaseTranslator {
             this.pre.push(`arcade set object (arcade local ${receiver}) field (${this.expr(a[1])}) to (arcade local ${next})`);
             return `arcade local ${a[4].value==='old'?old:next}`;
         }
+        if(name==='__bwObjects.procedure' && a.length===2)return `arcade call function (${this.expr(a[0])}) arguments (${this.objectArguments(a[1])})`;
         if(name==='__bwObjects.create' && a.length===2)return `arcade new object class (${this.expr(a[0])}) arguments (${this.objectArguments(a[1])})`;
         if(name==='__bwObjects.get' && a.length===2)return `arcade object (${this.expr(a[0])}) field (${this.expr(a[1])})`;
         if(name==='__bwObjects.call' && a.length===3)return `arcade object (${this.expr(a[0])}) call method (${this.expr(a[1])}) arguments (${this.objectArguments(a[2])})`;
@@ -1970,6 +1971,8 @@ class ArcadeTranslator extends BaseTranslator {
     }
     objectStatement(node,push) {
         const name=this.path(node?.callee),a=node?.args || [];
+        if(name==='__bwObjects.declareSubclass' && a.length===7){push(`arcade declare subclass (${this.expr(a[0])}) of (${this.expr(a[1])}) fields (${this.expr(a[2])}) initializer (${this.expr(a[3])}) constructor (${this.expr(a[4])}) parameters (${this.expr(a[5])}) methods (${this.expr(a[6])})`);return true;}
+        if(name==='__bwObjects.procedure'){push(`arcade set local __bwDiscardObjectResult to (${this.objectExpression(node)})`);return true;}
         if(name==='__bwObjects.declare' && a.length===6){push(`arcade declare class (${this.expr(a[0])}) fields (${this.expr(a[1])}) initializer (${this.expr(a[2])}) constructor (${this.expr(a[3])}) parameters (${this.expr(a[4])}) methods (${this.expr(a[5])})`);return true;}
         if(name==='__bwObjects.set' && a.length===3){push(`arcade set object (${this.expr(a[0])}) field (${this.expr(a[1])}) to (${this.arrayElementValue(a[2])})`);return true;}
         if(name==='__bwObjects.assign'){push(`arcade set local __bwDiscardObjectResult to (${this.objectExpression(node)})`);return true;}
@@ -4610,7 +4613,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
     const parsed = lowerSourceLoopControl(inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
-        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true, retainParentheses: true, retainWhenUsed:true})))), source), source), source), source))));
+        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true, retainParentheses: true, retainWhenUsed:true, retainClassHeritage:true})))), source), source), source), source))));
     const containsPaletteCall = node => {
         if(!node || typeof node!=='object')return false;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='setPalette' &&

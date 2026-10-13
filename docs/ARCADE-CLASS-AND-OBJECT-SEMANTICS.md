@@ -4,8 +4,9 @@ Status: lane claim merged. The initial reference heap, constructors and methods
 are implemented with original/native and authoring controls. Read the
 [qualified scope](compatibility/arcade-class-references.md) and
 [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) for current support.
-Inheritance, accessors, statics, captured callables and installed editor closure
-remain separate steps; this contract does not claim full class compatibility.
+Ordinary inheritance and virtual/super dispatch have focused controls. Accessors,
+statics, instanceof, captured callables and installed editor closure remain
+separate steps; this contract does not claim full class compatibility.
 
 ## Why a separate reference model is needed
 

@@ -403,6 +403,7 @@ module.exports = makeExt(`// Name: Arcade
           { opcode: 'stopControllingSprite', blockType: Scratch.BlockType.COMMAND,
             text: 'Arcade controller [CONTROLLER] stop controlling sprite [ID]',
             arguments: {CONTROLLER: {type: Scratch.ArgumentType.STRING, menu: 'controllerNumbers', defaultValue: '1'}, ...str('ID', '')} },
+          {opcode:'declareSubclass',blockType:Scratch.BlockType.COMMAND,text:'Arcade declare subclass [NAME] of [BASE] fields [FIELDS] initializer [INITIALIZER] constructor [CONSTRUCTOR] parameters [PARAMETERS] methods [METHODS]',arguments:{...str('NAME','Child'),...str('BASE','Record'),...str('FIELDS','[]'),...str('INITIALIZER',''),...str('CONSTRUCTOR',''),...str('PARAMETERS','[]'),...str('METHODS','[]')}},
           {opcode:'declareClass',blockType:Scratch.BlockType.COMMAND,text:'Arcade declare class [NAME] fields [FIELDS] initializer [INITIALIZER] constructor [CONSTRUCTOR] parameters [PARAMETERS] methods [METHODS]',arguments:{...str('NAME','Record'),...str('FIELDS','[]'),...str('INITIALIZER',''),...str('CONSTRUCTOR',''),...str('PARAMETERS','[]'),...str('METHODS','[]')}},
           {opcode:'createObject',blockType:Scratch.BlockType.REPORTER,text:'Arcade new object class [CLASS] arguments [ARGS]',arguments:{...str('CLASS','Record'),...str('ARGS','[]')}},
           {opcode:'objectField',blockType:Scratch.BlockType.REPORTER,text:'Arcade object [OBJECT] field [FIELD]',arguments:{...str('OBJECT',''),...str('FIELD','value')}},
@@ -1718,6 +1719,10 @@ module.exports = makeExt(`// Name: Arcade
       try {this._objectHeap.register({name:String(args.NAME),fields:JSON.parse(String(args.FIELDS)),initializer:String(args.INITIALIZER),constructor:String(args.CONSTRUCTOR),parameters:JSON.parse(String(args.PARAMETERS)),methods:JSON.parse(String(args.METHODS))});}
       catch(error){return this._objectError(error);}
     }
+    declareSubclass(args) {
+      try {this._objectHeap.register({name:String(args.NAME),parent:String(args.BASE),fields:JSON.parse(String(args.FIELDS)),initializer:String(args.INITIALIZER),constructor:String(args.CONSTRUCTOR),parameters:JSON.parse(String(args.PARAMETERS)),methods:JSON.parse(String(args.METHODS))});}
+      catch(error){return this._objectError(error);}
+    }
     _objectProcedure(name,values,util,token) {
       const target=util?.target || util?.thread?.target;
       if(util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))){const error=new Error('Class construction or method invocation was cancelled');error.bwObjectCancelled=true;throw error;}
@@ -1740,7 +1745,7 @@ module.exports = makeExt(`// Name: Arcade
         allocation=this._objectHeap.allocate(String(args.CLASS));
         const {ref,def,token}=allocation;
         if(values.length>def.parameters.length)throw new Error('Class constructor has too many arguments');
-        while(values.length<def.parameters.length)values.push(Scratch.BWValues.UNDEFINED);
+        while(values.length<def.parameters.length){const param=def.parameters[values.length];values.push(Object.prototype.hasOwnProperty.call(param,'default')?Scratch.BWValues.encode(param.default):Scratch.BWValues.UNDEFINED);}
         const invokeConstructor=()=>{if(!this._objectHeap.constructionActive(ref,token)){const error=new Error('Class construction was cancelled by project replacement');error.bwObjectCancelled=true;throw error;}return def.constructor?this._objectProcedure(def.constructor,[ref,...values],util,token):undefined;};
         const finish=()=>{if(util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))){this._objectHeap.abort(ref,token);return Scratch.BWValues.UNDEFINED;}return this._objectHeap.finish(ref,token);};
         const failed=error=>{this._objectHeap.abort(ref,token);return error.bwObjectCancelled || util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))?Scratch.BWValues.UNDEFINED:this._objectError(error);};
@@ -1763,7 +1768,7 @@ module.exports = makeExt(`// Name: Arcade
         let values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
         if(!Array.isArray(values))throw new Error('Class method arguments must be an ordered argument list');
         if(values.length>method.parameters.length)throw new Error('Class method has too many arguments');
-        while(values.length<method.parameters.length)values.push(Scratch.BWValues.UNDEFINED);
+        while(values.length<method.parameters.length){const param=method.parameters[values.length];values.push(Object.prototype.hasOwnProperty.call(param,'default')?Scratch.BWValues.encode(param.default):Scratch.BWValues.UNDEFINED);}
         return this._objectProcedure(method.procedure,[args.OBJECT,...values.map(value=>this._objectHeap.hold(value))],util,util?.thread?.bwObjectConstruction);
       }catch(error){return this._objectError(error);}
     }

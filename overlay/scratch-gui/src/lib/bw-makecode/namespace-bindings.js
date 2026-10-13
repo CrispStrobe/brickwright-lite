@@ -264,7 +264,7 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
                 return typeof type==='string'?resolved:{...type,text:resolved};
             };
             const member=fn=>fn?{...fn,paramTypes:Object.fromEntries(Object.entries(fn.paramTypes || {}).map(([name,type])=>[name,classType(type)])),returnType:classType(fn.returnType),body:rewriteBody(fn.body,scope,childShadows(shadows,[...(fn.params || []),...functionVars(fn.body)]))}:fn;
-            return {...node,name:namespaceBody?symbol?.name || node.name:node.name,fields:node.fields.map(field=>({...field,typeName:classType(field.typeName),init:rewrite(field.init,scope,shadows)})),ctor:member(node.ctor),methods:node.methods.map(member)};
+            return {...node,...(node.base?{base:classType(node.base)}:{}),name:namespaceBody?symbol?.name || node.name:node.name,fields:node.fields.map(field=>({...field,typeName:classType(field.typeName),init:rewrite(field.init,scope,shadows)})),ctor:member(node.ctor),methods:node.methods.map(member)};
         }
         if (node.type === 'FunctionDeclaration' || node.type === 'FunctionExpression') {
             const local = childShadows(shadows, [...(node.params || []), ...functionVars(node.body)]);

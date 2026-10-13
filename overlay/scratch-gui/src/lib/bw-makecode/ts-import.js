@@ -497,6 +497,11 @@ class Parser {
         this.expect('class');
         const name = this.at('ident') ? this.next().value : '';
         const node = {type: 'Class', name, fields: [], methods: [], ctor: null, unsupported: []};
+        if (this.retainClassHeritage && this.eat('ident','extends')) {
+            if (!this.at('ident')) throw new Error('MakeCode TS: class parent requires a name');
+            node.base=this.next().value;
+            while(this.eat('punct','.'))node.base+='.'+this.expect('ident').value;
+        }
         if (!this.at('punct', '{')) {
             // `class A extends B`, `implements`, generics: no lowering here.
             node.unsupported.push(`class ${name} with a heritage clause`);
@@ -552,7 +557,7 @@ class Parser {
                         type: 'Assignment', op: '=', left: {type: 'Member', object: {type: 'Identifier', name: 'this'}, name},
                         right: {type: 'Identifier', name}
                     }}));
-                    node.ctor = {params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, parameterProperties: properties,
+                    node.ctor = {...(this.retainClassHeritage?{originalBody:body}:{}),params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, parameterProperties: properties,
                         body: [...this.defaultStatements(params), ...assignments, ...body]};
                 }
                 else node.methods.push({name: member, kind: 'method', params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, returnType, body:[...this.defaultStatements(params),...body], isStatic, modifiers});
@@ -1250,5 +1255,6 @@ export function parseMakeCodeTs (source, opts = {}) {
     parser.parameterDefaults = Boolean(opts.parameterDefaults);
     parser.retainParentheses = Boolean(opts.retainParentheses);
     parser.retainWhenUsed = Boolean(opts.retainWhenUsed);
+    parser.retainClassHeritage = Boolean(opts.retainClassHeritage);
     return parser.parseProgram();
 }
