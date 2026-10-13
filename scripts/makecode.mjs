@@ -21,9 +21,9 @@
  *
  * TARGETS (task A6). --target is microbit, arcade, calliopemini (alias
  * calliope) or ev3 — the targets whose translators the app's Code tab uses.
- * A Calliope mini goes through the micro:bit exporter (pxt-calliope is a
- * pxt-microbit derivative) with pxt-calliope's own default packages; an EV3
- * project through export-ev3.js. A file's own target wins on import; --target
+ * A Calliope mini goes through export-calliope.js (the micro:bit walk with
+ * pxt-calliope's differences and its own default packages); an EV3 project
+ * through export-ev3.js. A file's own target wins on import; --target
  * names it for a bare main.ts and for the export commands.
  *
  * Exit codes: 0 done, 1 the program does not compile / refused, 2 bad usage,
@@ -150,17 +150,15 @@ async function toMakeCode (file, target) {
         const out = exportToMakeCodeEv3(project, {name});
         return {ts: out.ts, files: out.files, unsupported: out.unsupported, warnings, name};
     }
+    if (target === 'calliopemini') {
+        // The micro:bit walk with pxt-calliope's differences (export-calliope.js).
+        const {exportToMakeCodeCalliope} = await lib('bw-makecode/export-calliope.js');
+        const out = exportToMakeCodeCalliope(project, {name});
+        return {ts: out.ts, files: out.files, unsupported: out.unsupported, warnings, name};
+    }
     const {exportToMakeCode} = await lib('bw-makecode/export.js');
     const out = exportToMakeCode(project, {name, target});
-    const files = {...out.files};
-    if (target === 'calliopemini') {
-        // The micro:bit exporter writes pxt-microbit's new-project packages;
-        // pxt-calliope has no `microphone` package, so give it its own set.
-        const pxt = JSON.parse(files['pxt.json']);
-        pxt.dependencies = DEFAULT_DEPENDENCIES.calliopemini;
-        files['pxt.json'] = `${JSON.stringify(pxt, null, 4)}\n`;
-    }
-    return {ts: out.ts, files, unsupported: out.unsupported, warnings, name};
+    return {ts: out.ts, files: out.files, unsupported: out.unsupported, warnings, name};
 }
 
 function report (out) {

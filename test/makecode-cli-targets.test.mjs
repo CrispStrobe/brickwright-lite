@@ -59,6 +59,9 @@ test('a Calliope mini .hex becomes an .sb3 that keeps its target, and exports as
         'pxt-calliope has no micro:bit `microphone` package');
     assert.match(files['main.ts'], /function startNummer\(\)[\s\S]*basic\.showString\("#6"\)/,
         'the program, through the shared micro:bit API');
+    // pxt-calliope has no `pauseUntil` (pxt-microbit's core poll.ts): a `wait until` is its polling loop.
+    assert.doesNotMatch(files['main.ts'], /pauseUntil/);
+    assert.match(files['main.ts'], /while \(!\(.+\)\) \{\n\s+basic\.pause\(20\)\n\s+\}/);
 });
 
 test('an EV3 .uf2 becomes an .sb3 and exports back in pxt-ev3\'s own words', async () => {
