@@ -198,8 +198,29 @@ try {
     await page.waitForFunction(id => window.Blockly.getMainWorkspace().getBlockById(id).getFieldValue('TEXT') === 'PLAY', field.id);
     report.journeys.push('Code keyboard edit READY→START and visible Blocks field edit START→PLAY');
 
+    // The Game Console occupies the target pane. Use the visible Stage action
+    // before choosing artwork, just as a user returning from play would.
+    await page.getByTitle('Scratch Stage', {exact: true}).click();
+    await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
+        .some(target => target.isOriginal && target.getName() === 'hero' && target.getCostumes().length > 0));
+    const artwork = await page.evaluate(() => {
+        const targets = window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.filter(target => target.isOriginal);
+        const hero = targets.find(target => target.getName() === 'hero');
+        return {targets: targets.map(target => ({name: target.getName(),
+            costumes: target.getCostumes().map(costume => ({name: costume.name, assetId: costume.assetId}))})),
+        svg: hero.getCostumes()[0].asset.decodeText()};
+    });
+    const heroPixels = svgToPixels(artwork.svg);
+    assert.ok(heroPixels, 'the original hero artwork survived the Code and Blocks edits');
+    assert.equal(heroPixels.width, 4); assert.equal(heroPixels.height, 4); assert.equal(heroPixels.pixels[5], 7);
+    report.artworkBeforePaint = {targets: artwork.targets, svgSha256: digest(Buffer.from(artwork.svg)),
+        width: heroPixels.width, height: heroPixels.height, pixel: heroPixels.pixels[5]};
+    const heroSelector = page.locator('[class*="sprite-selector-item_sprite-selector-item"]').filter({hasText: 'hero'}).first();
+    await heroSelector.waitFor({state: 'visible'});
+    report.journeys.push('Visible Scratch Stage action restores the sprite pane; original hero artwork remains after Code and Blocks edits');
+
     // Select the real imported sprite and paint its actual imported costume.
-    await page.locator('[class*="sprite-selector-item_sprite-selector-item"]').filter({hasText: 'hero'}).first().click();
+    await heroSelector.click();
     await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.editingTarget.getName() === 'hero');
     await page.getByRole('tab', {name: /Costumes/, exact: true}).click();
     if (!await page.getByTestId('bw-pixel-canvas').isVisible()) await page.getByTestId('bw-pixel-toggle').click();
