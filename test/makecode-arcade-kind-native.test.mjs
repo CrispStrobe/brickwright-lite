@@ -14,7 +14,7 @@ async function native(source='scene.setBackgroundColor(0)') {
     assert.deepEqual(imported.unsupported,[]);
     const run=await runProgram(imported.code,{frames:0,uploads:imported.costumes,storage:true});
     const {default:dispatch}=await importGuiDependency('scratch-vm/src/dispatch/central-dispatch.js');
-    const adapter=Object.values(dispatch.services).findLast(s=>s?._inst&&s.getInfo?.().id==='arcade');
+    const adapter=Object.values(dispatch.services).findLast(s=>s?._inst?._runtime===run.vm.runtime && s.getInfo?.().id==='arcade');
     assert.ok(adapter?._inst);
     assert.deepEqual(run.errors,[]);
     return {...run,adapter,ext:adapter._inst};
@@ -209,7 +209,7 @@ test('actual hand-authored Text Code preinitializes its dependency before main a
     assert.deepEqual(imported.unsupported,[]);
     const run=await runProgram(imported.code,{frames:5,uploads:imported.costumes,storage:true});
     const {default:dispatch}=await importGuiDependency('scratch-vm/src/dispatch/central-dispatch.js');
-    const adapter=Object.values(dispatch.services).findLast(s=>s?._inst&&s.getInfo?.().id==='arcade');
+    const adapter=Object.values(dispatch.services).findLast(s=>s?._inst?._runtime===run.vm.runtime && s.getInfo?.().id==='arcade');
     try {
         assert.deepEqual(run.errors,[]);
         assert.equal(adapter.spriteKindValue({NAME:'Text'}),1003);
