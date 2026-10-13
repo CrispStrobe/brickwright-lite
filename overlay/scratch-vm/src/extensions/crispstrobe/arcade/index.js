@@ -5448,12 +5448,9 @@ module.exports = makeExt(`// Name: Arcade
   Scratch.extensions.register(new Arcade(Scratch.vm && Scratch.vm.runtime));
 })(Scratch);
 `, {
-<<<<<<< HEAD
   createObjectHeap: require('./object-heap'),
-=======
   createSceneFrameContexts: require('./scene-frame-contexts'),
   createPollEvents: require('./poll-events'),
->>>>>>> e29c1bc89e (Run Arcade scene frames and dialog polls on owned program timers)
   createKindRegistry: require('./kind-registry'),
   createTextSpriteHost: require('./text-sprite-host'),
   initializeTextSprite: require('./text-sprite-pxt'),
