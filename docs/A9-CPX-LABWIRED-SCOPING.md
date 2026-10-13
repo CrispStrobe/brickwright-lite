@@ -122,3 +122,13 @@ samd-peripherals pins as the PyBadge lane, labwired docs/boards/pybadge-native.m
 Separate lane, scoping only — no code. Not part of A9's device world or translator. The licence question
 above is the owner's to decide before any step that would execute the CDN firmware base; steps C0–C1 can
 proceed on own-built test firmware regardless.
+
+## Owner decision on the licence question (2026-10-13): options (b) + (c)
+- **(c) now:** the LabWired CPX lane runs only our own test firmware (built from source, with symbols, so
+  "reached main" and each C-step's observable are provable). The pinned CDN CPX base is **never executed**,
+  in Lite or in LabWired; it stays download-only as today.
+- **(b) later:** a CPX image built from source (pxt-adafruit / codal-circuit-playground / codal-samd, all MIT)
+  on a permissive replacement for the eight ASF4 files linked into the app image — shared with the SAMD51
+  lane's planned replacement — is the only real-firmware image admitted, once its linker map shows no
+  chip-restricted byte (base-licences.js "verified-free" rule).
+- Option (a) — a ruling that running the CDN image in an emulator is permitted use — is not taken.
