@@ -30,7 +30,8 @@ async function sandbox (target, fresh = false) {
     const quiet = () => {};
     const sb = {
         setTimeout, clearTimeout, setInterval, clearInterval, setImmediate, clearImmediate,
-        TextEncoder: util.TextEncoder, TextDecoder: util.TextDecoder, Buffer, atob,
+        // crypto: the glue's emulatorBase hashes a base with crypto.subtle, as the browser worker does.
+        TextEncoder: util.TextEncoder, TextDecoder: util.TextDecoder, Buffer, atob, crypto: globalThis.crypto,
         console: {log: quiet, debug: quiet, info: quiet, warn: quiet, error: quiet},
         pxtTargetBundle: JSON.parse(fs.readFileSync(path.join(dir, 'target.json'), 'utf8'))
     };
@@ -50,8 +51,9 @@ async function sandbox (target, fresh = false) {
  * Compile a MakeCode project. Same result shape as the browser's compileMakeCode.
  * @param {string} target 'microbit' | 'arcade'
  * @param {object} files {filename: contents}, pxt.json included
- * @param {{native?: boolean, embedSource?: object, hwVariant?: string, fetchExtensions?: boolean, fetch?: Function}} [opts] hwVariant: an
- *     Arcade board for a native build (ARCADE_HARDWARE in pxt-runtime.js)
+ * @param {{native?: boolean, emulator?: boolean, embedSource?: object, hwVariant?: string, fetchExtensions?: boolean, fetch?: Function}} [opts] hwVariant: an
+ *     Arcade board for a native build (ARCADE_HARDWARE in pxt-runtime.js); emulator: a micro:bit V2
+ *     image on the Bluetooth-free emulator bases (a refused base throws code BASE_REFUSED)
  */
 async function runCompiler (target, files, opts = {}, projectInputs = false) {
     // PXT retains compiler/package state across projects, including failed
@@ -62,14 +64,22 @@ async function runCompiler (target, files, opts = {}, projectInputs = false) {
     const {onDemandExtensions} = await import(pathToFileURL(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js')).href);
     // CLI audits are offline by default. Fetch only when explicitly requested.
     const onDemand = await onDemandExtensions(target, files, opts.fetchExtensions === true, opts.fetch);
+    // opts.emulator: the micro:bit V2 image the EMULATOR runs (compileMakeCodeForEmulator's
+    // CLI twin) — the 'mbcodal' variant linked onto a Bluetooth-free base from hexcache-emu/,
+    // through the same emulatorBase check the worker applies in the browser; never hexcache/.
+    const {EMULATOR_CLEAN_BASES} = opts.emulator ? await import(pathToFileURL(
+        path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js')).href) : {};
+    if (opts.emulator && target !== 'microbit') throw new Error(`MakeCode ${target} has no emulator firmware bases (only the micro:bit V2 does)`);
     const getBaseHex = async sha => {
-        const p = path.join(STATIC, target, 'hexcache', `${sha}.hex`);
-        return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null;
+        const p = path.join(STATIC, target, opts.emulator ? 'hexcache-emu' : 'hexcache', `${sha}.hex`);
+        if (!fs.existsSync(p)) return null;
+        const text = fs.readFileSync(p, 'utf8');
+        return opts.emulator ? sb.bwMakeCode.emulatorBase(text, EMULATOR_CLEAN_BASES) : text;
     };
     try {
-        const r = await sb.bwMakeCode.compile(files, {native: !!opts.native, embedSource: opts.embedSource || null,
+        const r = await sb.bwMakeCode.compile(files, {native: !!opts.native || !!opts.emulator, embedSource: opts.embedSource || null,
             projectInputs,
-            hwVariant: opts.hwVariant || '', getBaseHex,
+            hwVariant: opts.hwVariant || '', getBaseHex, ...(opts.emulator ? {appVariant: 'mbcodal'} : {}),
             extensions: onDemand.extensions.map(({id, repo, refs, targets, files: source}) =>
                 ({id, repo, refs, targets, files: source}))});
         return {...JSON.parse(JSON.stringify(r)), fetchedExtensions: onDemand.extensions.map(e =>

@@ -427,7 +427,7 @@ Code tab translates, and runs a micro:bit or Calliope program without the app.
 
 | `--target` | to-sb3 | to-ts / to-project | to-hex (firmware) | run |
 |---|---|---|---|---|
-| `microbit` | yes | yes | universal V1 + V2 `.hex` | yes, the V1 board model |
+| `microbit` | yes | yes | universal V1 + V2 `.hex` | yes, the V1 board model; `--board v2` the V2 |
 | `calliopemini` (`calliope`) | yes | yes, export-calliope.js | `.hex` | yes, the V1 board model |
 | `arcade` | yes | yes | `.uf2` for a `--board` | refused by name |
 | `ev3` | yes | yes, export-ev3.js | `.uf2` | refused by name |
@@ -452,8 +452,41 @@ serial are real, its RGB LED, motor driver and pin labels are not modelled.
 Found while building it: a program that reads an analog pin faults with a
 BusFault at `0x4000_7500`, the nRF51 ADC, which LabWired's nRF51822 descriptor
 does not model yet. `run` reports the fault and exits 1; it does not fake a
-reading. The micro:bit V2 (nRF52833) runs MakeCode only on a Bluetooth-free
-base, which task A8 wires in.
+reading.
+
+### The micro:bit V2: `run --board v2` and the Code tab's ▶ Run on the emulated micro:bit V2 (task A8)
+
+The V2 (nRF52833) has no emulated SoftDevice: the official V2 base carries
+Nordic's S113, MBR and bootloader, which the emulator never runs. So a V2 run
+is compiled for the EMULATOR: `compileMakeCodeForEmulator` in the app, and its
+CLI twin `compile(target, files, {emulator: true})` in scripts/lib/pxt-node.mjs,
+link the program onto a Bluetooth-free base (the `mbcodal` variant only,
+through the same `emulatorBase` check), and the plain V2 `.hex` that results
+becomes an ELF where its own records say (vector table at 0) for LabWired's
+`microbit-v2` board. A universal `.hex` is refused on `--board v2`: its V2
+section is linked onto the official base. A Calliope program is a V1 program.
+
+The bases reach a build from the published release `makecode-emu-bases-1` of
+this repository: the build workflow's own bytes (run 38091323448), pinned by
+sha256 in `MICROBIT_EMU_BASES`, with the manifest and the components' licence
+texts beside them. `npm run sync:makecode` fetches them unless a local build is
+present, and serves only the pinned bytes (test/makecode-emu-bases-fetch.test.mjs).
+The workflow that BUILDS them syncs with `--no-emu-fetch`, so the published
+copy can never stand in for the build it is meant to reproduce.
+
+In the Code tab, a micro:bit MakeCode project has **▶ Run on the emulated
+micro:bit V2**: the image goes to the Debug pane on the `board:microbit-v2`
+LabWired board through the same firmware hand-off a compiled sketch takes, and
+the LED matrix shows in Widgets.
+
+Measured with the CLI: the program's 5x5 picture is drawn, in guest time. Its
+SERIAL is not reported, by name: CODAL's `NRF52Serial::putc` hands the UARTE's
+EasyDMA a pointer to a stack byte and returns at once; LabWired's UARTE reads
+the transmit buffer when the transfer completes, a frame later, by which time
+that stack slot holds other data, so the bytes it captures are not the ones the
+program wrote (silicon fetches the byte when the transfer starts). `run --board
+v2` withholds serial (`serial: null`, `serialWithheld` in `--json`), and the
+Code tab says so; the engine fix is task A10.
 
 ## Two things found on the way that are not built here
 
