@@ -33,8 +33,28 @@ creation handlers and preserves retained destroyed references, tile-map edge
 placement and camera offsets. FreeThrow passes 44 raw and 90 authoring route
 controls across Code, same/fresh SB3 and prepared export/reimport. Full GUI
 qualification and unresolved asset licences still prevent whole-game promotion.
-Combined integration checks and the refreshed 41-project audit are in progress;
-the structural census below is the last completed audit, not a new-head result.
+The integrated inheritance/callback/heap/reload gate passes 16 controls. The
+full ordinary inheritance candidate passes 17 original/native authoring controls;
+[producer PR126](https://github.com/CrispStrobe/sb3-creator/pull/126) remains under
+independent CI review. Canonical mirrors and the 363-word inventory agree.
+Constructor and method string defaults are refused by the selected original SDK;
+native admission preserves those errors.
+
+The clean `947130db87` audit newly compiles all 41 contexts and retains **29
+original-valid / 12 original-invalid / 19 strict structural candidates**, with
+unchanged compiler results, binaries and resolved inputs. Separate evidence-bound
+source-context repairs produce **37 original-valid / 24 structural candidates**:
+they recover exact earlier tutorial setup or author-declared dependency contexts,
+retain unchanged main/assets and preserve the failed envelopes. They do not
+rewrite the immutable raw census or establish complete games.
+
+Hero passes 101 and the recovered projectile demo passes 195 finite original/native
+and authoring route controls. Genuine Corgio browser journeys verify imported map
+and art, controller-to-win behavior, Code roundtrip, all coral costume pixels,
+actual tile pixel editing, level painting, undo/redo and Save with unchanged walls
+and other cells. Painted-level controller repetition, fresh-project device/pane
+restoration and the matching later timer build remain unresolved. These observed
+routes do not promote the 41 raw partial projects to full GUI compatibility.
 
 
 The draft [integration PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888)
