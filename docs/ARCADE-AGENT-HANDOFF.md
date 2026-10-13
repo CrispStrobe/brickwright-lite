@@ -1495,3 +1495,515 @@ controls, with zero skips. This includes the actual VM source-site literal
 identity control and original exported mutable-song sound bytes. Producer's
 canonical dialect suite passes341 controls with exact298-opcode fixture coverage.
 The component CI jobs were still queued when this checkpoint was recorded.
+
+## Buffer editor/controller proof preparation — 2026-10-12
+
+The separate `lane/arcade-buffer-gui-proof-20261012` retains PR810's in-flight
+hosted diagnostic head. Its new fixture/controller test exercises actual native
+keyboard events, Blocks/Code reconstruction and export from `vm.toJSON()`;
+original Arcade buttons verify byte/numeric/copy/custom-argument observables.
+Original compilation exposed a global `hex` name collision; `hex` and `img` now
+use the existing reserved-name allocator. Matching serialized Buffer sidecar
+placeholders are discarded as initializers, like image references, so exported
+variables retain Buffer types and source reconstructs the values.
+
+`scripts/verify-arcade-buffer-browser.mjs` uses visible Code/To blocks, native
+16-format dropdown/numeric-shadow edits, controller A/B/down, From blocks,
+File save/replacement/reopen and the actual MakeCode download. Original PXT runs
+that download under its real buttons and compares the bytes. VM/Blockly access
+observes only. The additive light-shard gate writes its own JSON/screenshots/
+SB3/MakeCode artifact and a provisional zero-reading budget registered by the
+existing generator. Browser execution remains pending; do not claim acceptance
+from script presence or local gate contracts.
+
+Focused fixture plus gate contracts pass22/22, no skips; Buffer runtime/vendor
+regression batch passes19/19, no skips. A separate actual serialized-project
+export control passes after the sidecar fix. No full local app build was used.
+Arrays PR34 received a test-format-only followup598fc966: sparse preparation had
+omitted its repository Prettier configuration. Actual Arrays source is unchanged;
+the targeted pin now records that candidate. The informational gallery validator
+reports the same34 errors as current main; raw baseline/candidate logs are private.
+All enabled final-head component checks still need a fresh review before merging.
+
+Importer owner: read [ARCADE-BUFFER-IMPORT-CONTRACT.md](ARCADE-BUFFER-IMPORT-CONTRACT.md)
+for AST/opcode mapping, scope/typing/initialization rules, original controls and
+immutable-context rerun criteria. Namespace Buffer import remains diagnosed.
+
+## UTF8 Buffer construction continuation — 2026-10-12
+
+The missing UTF8 constructor is now represented by `arcade_bufferFromUTF8`
+and Code `arcade byte buffer from UTF8 text TEXT`. Its runtime creates fresh
+mutable bytes using the pinned PXT simulator's TextEncoder path. It counts
+encoded bytes before allocation, including paired and unpaired surrogates,
+rather than relying on JavaScript character length. Export emits genuine
+`Buffer.fromUTF8`, preserves literal numeric text and records a Buffer type.
+Producer [PR97](https://github.com/CrispStrobe/sb3-creator/pull/97) adds the
+independent canonical fixture; the census advances from298 to299.
+
+The focused byte tests compare Unicode, embedded NUL, BOM and malformed byte
+sequences against executed original PXT. Native tests cover dynamic text,
+mutation through an alias, Blocks/Code reconstruction, serialized-project
+export/original execution and reopening the actual SB3 archive. A JSON project
+without its assets is not an SB3 reopening control. The first such harness
+attempt failed in costume loading; preserve that failure separately from the
+corrected archive path. The original immutable corpus count is unchanged.
+
+The prior PR810 build failure was the exact producer guard in
+`test/lego-spike-roundtrip.test.mjs` still naming the preceding compiler.
+Commit `bf5d99f74a` advances that guard only after re-running its unchanged SPIKE
+artifact assertions. PR834 includes that fix by normal merge; earlier failed
+logs remain private. Hosted checks and the visible Buffer journey still require
+exact-head results before merge or product qualification.
+
+## Buffer public API audit and readonly continuation — 2026-10-12
+
+An original compiler control rejected four-argument `Buffer.write`; those extra
+parameters are internal simulator arguments. The isolated proposed range word
+is withdrawn and does not enter the candidate. Original source declarations
+(`base/shims.d.ts` in the pinned target bundle) expose only `write(dstOffset, src)`.
+Select fragments with the public detached `slice` operation before writing.
+The failed experiment and its parser precedence failure are retained privately.
+
+The next genuine missing public method is `Buffer.isReadOnly()`. The native
+`arcade_bufferIsReadOnly` Boolean reports the generated original algorithm's
+state; Code spells it `arcade byte buffer BUFFER is read only`. The facade,
+block metadata and exporter retain actual Boolean values, including guarded
+mutation. Literal aliases remain readonly; slices, hex decodes, UTF8 decodes and
+allocated buffers are mutable. Its producer adds one canonical form,299→300.
+The import contract now lists the remaining public Buffer declarations so the
+next worker does not mistake internal simulator parameters for a public API.
+Hosted GUI/feature qualification and E10 import remain separate requirements.
+
+Readonly checkpoint:20 affected original/native/producer-identity/SPIKE controls
+pass with zero skips; producer canonical controls343pass with zero skips.
+The exporter recognizes the readonly reporter both in its type graph and Boolean
+condition classification, avoiding a numeric comparison around Boolean guards.
+Earlier malformed test grammar and an incorrect live-variable initializer
+expectation are retained privately. Actual archive reopening rebuilds the scoped
+heap. Product browser qualification and the184-input classification are unchanged.
+
+## Buffer concatenation, equality and byte search — 2026-10-12
+
+The continuation implements public `Buffer.concat(other)`, `equals(other)` and
+`indexOf(other)` through three functions extracted from the consumed original
+`base/buffer.ts` in Arcade4.2.1's target bundle. The reproducible generator records
+complete/selected source hashes and preserves original expressions/control flow.
+Its six indexed Buffer reads call the existing original `getByte` shim after
+transpilation. This explicit adaptation preserves PXT out-of-range zero reads;
+plain JavaScript typed-array indexing would change empty-needle search results.
+`Buffer.create` is injected as the bounded allocator, so concatenation checks
+combined size before allocation and creates fresh mutable storage.
+
+Native blocks and Code spellings are listed in the generated vocabulary; typed
+export emits the genuine instance APIs. Equality remains Boolean in guards and
+variables, search remains a number, and concatenation yields a scoped Buffer.
+Explicit null equality follows the original helper at the runtime boundary;
+unknown, foreign and stale references retain named diagnostics. This is not a
+new general null-literal/import capability claim. Static `Buffer.concat(Buffer[])`
+is a separate remaining array integration task.
+
+Checkpoint:25 affected controls pass with zero skips, including original PXT
+empty/zero/bounds/null comparisons, detached/readonly concatenation, allocation
+limits, native aliasing, Code reconstruction, actual saved SB3 reopening,
+serialized export/original execution and exact producer/SPIKE artifact identity.
+The producer's303 canonical forms have346 passing controls and zero skips.
+Hosted build/browser qualification and E10 import remain pending; the locked
+184-input corpus classification is unchanged142translated/41partial/1parsefailure.
+
+## Full-build provenance failures — 2026-10-12
+
+[PR834 Build38279944717](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38279944717)
+failed four fast-suite controls: an obsolete282-opcode expectation, an uncensused
+offline URL assertion, missing scoped Arrays license evidence, and omission of
+the scoped Arrays pin from the pin-chain key inventory. The corpus inputs and
+417 generated-program expectations were unchanged. The comparison candidate has
+303 canonical forms; older candidates require their own exact counts.
+
+The correction reads the shipped Arrays source header without evaluating code,
+requires its MPL-2.0 notice, and checks its exact per-file repository/commit
+receipt. Missing/malformed bundles and missing/wrong notices fail explicitly.
+The URL census identifies the injected offline test assertion; production fetch
+validation remains separate. Twenty-two affected controls pass with zero skips.
+This is focused gate repair, not a new full-build or GUI qualification.
+
+The same run's heavy browser job failed during dependency installation with
+ECONNRESET before product checks. Its light browser diagnostic was still pending
+at this checkpoint and must finish before advancing that source head. Preserve
+both failures privately. Hosted candidate checks and the locked142/41/1 corpus
+classification remain independent acceptance requirements.
+
+## Particle composition assertion — 2026-10-12
+
+[PR810 Build38279930848](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38279930848)
+also failed a fire-frame assertion. Total fire-color counts need not exceed
+sprite-color counts when particles overlap the sprite. The replacement requires
+positive visible emission and compares every actual original-source pixel write
+with the composed scene frame. Ghost/dissolve, lifetime, handlers, cleanup and
+original-PXT comparisons remain. All eight particle controls pass with zero skips;
+a deliberate missing composition layer is rejected by the exact-pixel assertion.
+No product algorithm or random distribution changed. Parent provenance fixes are
+prepared with the exact298-word table and original scoped Arrays commit; wait for
+its surviving focused diagnostic before advancing its head. Candidate full-build
+and Buffer browser qualification remain pending; no corpus promotion occurred.
+
+## Buffer browser first execution — 2026-10-12
+
+[PR834 light browser job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38279944717/job/114927678175)
+reached visible authored native blocks without page/block errors, then timed out
+opening the format menu after a coordinate click. It completed no controller or
+archive/export cycles; this is failed GUI qualification. The followup clicks the
+identified authored SVG dropdown through Playwright's visibility/hit-target
+checks, following the existing schema browser control, and retains a failure
+screenshot and field observations. Hosted rerun must establish the result.
+
+The surviving parent focused diagnostic passed before its source was advanced.
+PR810 now includes prepared provenance fixes and the exact particle pixel check.
+PR834 incorporates those fixes with298 canonical forms and its own selected598fc
+Arrays source notice. Eighteen parser/fetch controls pass with zero skips; the
+browser script passes syntax/whitespace checks. No corpus classification changed.
+
+## Buffer number-format size authoring — 2026-10-12
+
+The continuation extracts genuine `Buffer.sizeOfNumberFormat` from the pinned
+common-package source. No parallel format table is maintained in runtime code.
+Native `arcade_bufferFormatSize`, the shared16-format menu, canonical Code form
+and typed export are added; producer PR100 advances303→304 canonical forms.
+Numeric custom-function returns and invalid-format zero behavior are explicit
+controls. The importer remains E10's lane.
+
+The controls also exposed a weak older literal-return fixture: two malformed
+argument inputs both returned zero, satisfying an identity comparison. It now
+uses the actual empty JSON argument array and checks returned Buffer bytes and
+length before identity. Preserve both failing harness attempts privately: the
+first awaited an optimized-away original completion marker; the second used the
+malformed function argument input. Neither licenses a wider compatibility claim.
+
+Format-size checkpoint:28 distinct affected controls pass with zero skips
+(5 unchanged parser/corpus,10 numeric-byte/helper,1 exact SPIKE artifact,
+2 format-size and10 Buffer value controls). The final12-control run includes
+the strengthened literal-return fixture and original execution of exported
+numeric functions. Producer347 controls pass with zero skips. Generator and
+whitespace checks pass. Hosted acceptance and the locked142/41/1 census remain
+unchanged. Static Buffer-array concat, number arrays, Base64, chunking, packing,
+hashing and aggregate resource limits remain on the source-derived backlog.
+
+## Buffer number-array bridge — 2026-10-12
+
+Original `Buffer.fromArray`, `buffer.toArray` and static `Buffer.concat` now have
+native reporters, shared menu/Code forms and typed export. Producer PR101
+adds304→307 canonical forms. The source extractor retains original loops and
+records full/selected hashes; six indexed Buffer reads and one write use original
+byte shims. Number-array reads are not treated as Buffer reads. Native references
+are scoped, copies detach storage and static concat preserves readonly inputs.
+
+The native authoring check exposed fixed numeric JSON reference constructors
+that ran but were refused on export. They now emit parsed numeric source
+literals (retaining negative zero syntax); other unsupported constructor forms
+retain diagnostics. Export adds number[]/Buffer[] constraints through the
+existing graph. No E10 shared inference/importer source was changed.
+
+Five algorithm/guard controls passed in the first batch; its authoring fixture
+initially used an invalid mutation spelling, then text values instead of numeric
+reporters, and had a malformed replacement during correction. All attempts
+remain private. The corrected fixture then exposed the real fixed-array export
+gap. After implementing it, all6 array controls pass, zero skips, including
+original exported execution, custom array return, Code reconstruction and actual
+fresh SB3. Together24 distinct affected controls pass with zero skips; producer
+350 controls pass. Hosted checks and locked142/41/1 classification are separate.
+
+Readonly PR836's original heavy browser passed; light failed at the same Buffer
+dropdown. Both completed before gate/actionability fixes were propagated with
+its own300-word census. Preserve the failure. The UTF8 heavy diagnostic still
+survived at this checkpoint; do not advance that head while it runs. Next source
+APIs: Base64, chunked alias/copy semantics, pack/unpack, hash and aggregate heap
+resource handling. Namespace importer integration and actual GUI evidence remain
+required before any whole-game or corpus promotion.
+
+## Buffer Base64 continuation — 2026-10-12
+
+Candidate `lane/arcade-buffer-base64-20261012` is stacked on
+[PR843](https://github.com/CrispStrobe/brickwright-lite/pull/843). It adds native
+`arcade_bufferFromBase64` and `arcade_bufferToBase64`, their Code spellings and
+typed MakeCode export. Producer [PR102](https://github.com/CrispStrobe/sb3-creator/pull/102)
+contains the independent vocabulary fixtures; its exact pin is in
+`vendor-pins.json` and the canonical census is309.
+
+The generator retains the original MIT alphabet, encoding, parsing and Buffer
+construction from the consumed target. Nine Buffer reads, four writes and ten
+string reads have checked adaptations. PXT string indexing uses `charAt`, so
+unpadded `AQ` decodes to `010000`; `AQIDBA=` is rejected by original MakeCode.
+The first test wrongly included that rejected form among accepted inputs and
+used a fictional undefined sentinel; corrected fixtures preserve both failure
+logs privately. No product fallback or parser weakening was needed.
+
+The affected six-file batch passes29/29 without skips; producer controls pass
+352/352 without skips. It covers original byte/Unicode/array/format behavior,
+Base64 tails and URL-safe input, original malformed-input rejection, native
+mutable aliases and readonly encoding, custom string returns, Code/Blocks
+reconstruction, original typed exported execution and actual fresh SB3 reopening.
+Both generators regenerate exactly. Hosted builds and visible GUI proof remain
+pending; namespace imports, the byte inspector and whole-game recensus are open.
+
+The older UTF8 candidate [PR835](https://github.com/CrispStrobe/brickwright-lite/pull/835)
+now retains the parent provenance/dropdown fixes by normal merge after its
+previous diagnostics finished. That predecessor's heavy browser shard passed;
+its build and light failures remain evidence. Fresh checks use merge `b662f2ecaf`,
+299 canonical forms and the UTF8 producer pin. Never apply309 to older candidates.
+
+Next Buffer slices: original chunking/UTF8 chunk boundaries, packing and unpacking
+format parsing, then hash and aggregate heap lifetime. E10 keeps AST/namespace
+import and shared type helper ownership. Locked184 originals remain142 translated,
+41 partial and1 parse failure; authenticated41 contexts remain7/33/1.
+
+## Buffer chunking continuation — 2026-10-12
+
+Candidate `lane/arcade-buffer-chunking-20261012` stacks on
+[PR844](https://github.com/CrispStrobe/brickwright-lite/pull/844). Producer
+[PR103](https://github.com/CrispStrobe/sb3-creator/pull/103) supplies311 canonical
+forms with its exact pin in `vendor-pins.json`. Native `arcade_bufferChunked`
+and `arcade_bufferChunkedFromUTF8` return scoped Buffer[] values through Code,
+blocks and typed original MakeCode export, including custom returns.
+
+Original helpers are source-extracted, with checked signed division and two
+bounded collection pushes before the next output allocation. A fitting Buffer
+is returned by identity, retaining readonly status. Multiple chunks detach.
+Fractional slices, UTF16 search offsets, surrogate splitting, BOM/NUL and
+malformed surrogates match executed original traces. Named guards bound unsafe
+nonprogressing sizes, UTF8 inputs, individual bytes and chunk collections.
+See [the import contract](ARCADE-BUFFER-IMPORT-CONTRACT.md) for limits and commands.
+
+The first six-file batch passed29 controls and failed one authoring fixture:
+it omitted the existing word `text` in `from hex text`. Correcting that fixture
+gives the sixth chunk control; its native Code/Blocks, Buffer[] custom returns,
+original exported execution and fresh SB3 pass. A separate existing Base64
+authoring/archive regression also passes. Distinct affected controls31, zero
+skips; producer354, zero skips. Both generators reproduce exactly. This is
+focused source qualification, not a full product build or visible GUI proof.
+
+The completed PR834 followup has a passing heavy browser shard and passing unit
+suite. Its build job was cancelled after30 minutes before distribution guards
+completed; do not call it a passed build or a new unit failure. Its light shard
+failed when the Buffer menu selector found no element. Saved observations show
+the field atx1122, clipped beyond the workspace atx865. The original Scratch
+Blocks field initializer also places a shadow's dropdown attribute on its root,
+not a child. Preserve the public failures and private screenshot/JSON; the
+visible field journey needs corrected user panning and selector qualification.
+
+Next source slices are pack/unpack/format parsing, hash and aggregate heap
+lifetime. E10 retains AST/import/shared type helpers. The immutable184 census
+remains142/41/1; authenticated41 contexts remain7/33/1 until a true recensus.
+
+## Buffer shadow-menu browser correction — 2026-10-12
+
+The completed [PR834 light followup](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38290533343/job/114968997925)
+failed before any edit/controller cycle: the selector looked for a child
+dropdown under the shadow root. Scratch Blocks `Field.init` places the argument
+attribute on the shadow root itself. The captured field coordinates were also
+beyond the clipped workspace, despite lying inside the page viewport.
+
+The browser script now selects that actual shadow root, pans with real mouse
+wheel events before dropdown and numeric edits, and waits until the observed
+field is inside the editing area and its block receives the click point. It
+records both positions, preserving failed JSON/screenshot evidence. It does not
+set fields, reposition Blockly programmatically or mutate the VM. Syntax and
+whitespace checks pass; fresh hosted visible journey remains required before
+acceptance.
+
+The same run's unit suite passed; its full build job was cancelled after30
+minutes before final distribution guards. Heavy browser passed. These outcomes
+do not qualify the full build or make a failed GUI journey a success.
+
+Chunking integration retains the corrected shadow-root selector and real user
+panning from PR834. The predecessor build job was still queued with no steps
+when this necessary browser correction was carried forward; no surviving
+browser diagnostic was interrupted. Native source controls remain31 passing
+and the selected canonical fixture remains311; exact-head hosted acceptance
+for the combined tree is pending.
+
+Older integration errata: sparse restoration accidentally resurrected the
+frozen282 fixture on UTF8/comparison integrations. Direct execution verifies
+their actual tables at299/303. Corrected heads2074beaf5a and d2a1fd569a retain
+their own producer pins and those independent fixtures. Their intermediate
+heads are unqualified history, not passed acceptance. During merge resolution,
+read automatically merged files from the index and validate each selected table
+against its fixture before pushing; do not restore the predecessor over it.
+
+CI qualification followup: the completed PR834 unit suite passed but left too
+little time for its remaining build guards within the30-minute job. Audit the
+actual durations and separate expensive original PXT compilation/simulator
+controls into a required shard with the same complete file/skip census and
+deployment dependency. Do not remove controls, hide failures or treat an
+incomplete distribution guard as passed to recover the budget.
+
+## Buffer packing checkpoint — 2026-10-12
+
+Native blocks and pseudocode expose `Buffer.packedSize`, `Buffer.pack`,
+`.unpack` and `.packAt` through genuine typed MakeCode export, scoped number
+arrays and custom returns. Selected original format parsing is retained, with
+bounded format length, repetition/work and unpack-result allocation. The
+[Buffer contract](ARCADE-BUFFER-IMPORT-CONTRACT.md#packing-and-unpacking-continuation)
+contains exact vocabulary, parser semantics, controls and remaining GUI tasks.
+
+Seven packing controls pass with zero skips, including original simulator byte
+comparisons, Code/Blocks reconstruction and actual fresh SB3. The preceding
+30 affected controls passed in the first batch; its three new failures remain
+preserved privately. They exposed Chromium/Node NaN payload differences,
+original panic108 versus native detailed failure transport, and a fixture
+variable named `size` colliding with an existing pseudocode command. Exact
+missing-float byte comparison now executes the retained facade in Chromium;
+no artificial NaN byte pattern was added. The authoring fixture uses
+`packedWidth`. Producer controls pass358/358; canonical vocabulary is315.
+
+The latest PR834 build and heavy browser shard passed. Its light browser shard
+was still pending at this checkpoint. No fresh visible editor success or full
+corpus promotion is claimed. Next source slice: original Buffer hash, then
+aggregate live heap/lifetime; E10 import, byte/format/array inspection and
+whole-app/controller/graphics qualification remain separate. Locked184 remains
+142 translated /41 partial /1 parse failure until genuine recensus.
+
+## Buffer controller-key browser followup — 2026-10-12
+
+[PR845 light browser](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38306464578/job/115012657444)
+completed both real shadow edits with all16 format choices and reached the
+controller cycle. Initial state and A's numeric write passed; the B phase timed
+out. The pane sends keyboard `z` for B, while the authored fixture listened for
+`b`. Its original-export alias mapping alone did not establish pane behavior.
+
+The fixture now listens for the pane's actual `z`. Its native control verifies
+an ordinary `b` press leaves phase1 and source bytes unchanged, then `z` copies
+and edits detached bytes; original exported A/B/down behavior remains required.
+The browser failure report now includes observed values at the failure boundary
+so later timeouts preserve the reached state. No VM/keyboard state is injected
+into the visible browser journey. Heavy and FPGA passed at the failed head;
+build was pending. This correction still needs fresh hosted editor proof.
+
+## Original Buffer hash checkpoint — 2026-10-12
+
+Candidate `lane/arcade-buffer-hash-20261012` is stacked on
+[controller correction PR847](https://github.com/CrispStrobe/brickwright-lite/pull/847).
+The producer is `feat/arcade-buffer-hash-20261012`, stacked on
+[packing PR104](https://github.com/CrispStrobe/sb3-creator/pull/104).
+Native `.hash(bits)` uses unadapted FNV-1/folding functions extracted from the
+consumed common simulator; its generated file records source hashes and the
+existing Microsoft MIT notice is extended explicitly.
+
+Three new hash controls pass, including original width/byte matrices, native
+refusal and aliases, typed numeric custom returns, actual original exported
+execution and fresh SB3. Seven packing controls pass on the corrected runtime;
+16 other selected controls passed in the first batch. Producer359 passes, no
+skips, selected vocabulary316. Preserve initial failures: wrong block-argument
+helper prevented extension registration, a native fixture supplied TEXT instead
+of HEX, and a return-type regex omitted permitted whitespace. Those controls
+were corrected and rerun; no original algorithm was patched.
+
+PR845 heavy/FPGA passed; light failed at the known B fixture mapping and full
+build failed at30 minutes. The separate controller correction requires fresh
+hosted proof. Audit full build durations and preserve every test/deployment gate
+when separating expensive original simulator checks. Buffer memory roots and
+collection acceptance are now specified in the Buffer contract. Locked184 is
+still142 translated /41 partial /1 parse failure; no whole-app promotion.
+
+## Required unit workload split checkpoint — 2026-10-12
+
+Candidate `lane/arcade-unit-shards-20261012` follows original hash
+[PR849](https://github.com/CrispStrobe/brickwright-lite/pull/849). Two mandatory
+unit legs partition the complete fast suite; original local full commands and
+corpus membership remain intact. Each leg retains the original runner, GUI
+resolution, file census and skip-pointer audits. Pages and external main
+publication require both legs. Preparation is intentionally identical to the
+build and enforced by a source contract; the build alone owns Pages artifacts.
+See [CI qualification](ARCADE-CI-QUALIFICATION.md) for selection, full commands,
+observed failure origins and exact hosted acceptance criteria.
+
+Focused source controls pass40 with zero failures; four pre-existing flasher
+source controls skip in the local environment without their checkout. These
+are not substituted for actual hosted shard runs. The first batch's sparse
+missing-input failures and a contract regex that matched an existing optional
+preparation diagnostic are preserved privately. Materialize exact tracked
+inputs and test the mandatory runner's error policy separately from unchanged
+optional setup diagnostics. No test gate or historical receipt was weakened.
+Next: complete hosted build/unit/editor proof, then live Buffer collection.
+The immutable corpus remains142 translated /41 partial /1 parse failure.
+
+## Hosted shard/editor followup — 2026-10-13
+
+[PR850](https://github.com/CrispStrobe/brickwright-lite/pull/850)'s first split
+build passed6m57s, unit1 passed16m24s, and unit2 failed16m57s on two audit
+assumptions. Heavy/FPGA passed; light failed on export download. Do not merge
+or treat that combined source as accepted. The checkout audit now validates
+both job-local flasher inputs; the step-ID audit resolves per job with explicit
+cross-job, forward, duplicate, self-outcome and multiline adversaries. Focused
+controls pass28, zero failures/skips. Initial local followup failure counted
+build's separately literal-pinned compiler as another dynamic flasher site;
+its independent full pin remains enforced by the checkout census.
+
+The light script reached real edits, native/controller cycles, Code/Blocks,
+and save/replacement/reopen before the collapsed export action stopped it.
+Open the actual Code actions menu; handle event/action promises together so
+errors reach the final receipt path. Original failed artifact lacks JSON; do
+not fabricate it from control flow. Fresh hosted exported original execution
+still required. Public CI guide records exact run URL and method.
+
+Remote main refreshed to b54f292f88 (peer PR821 merge) during this followup.
+These fixes remain on the isolated candidate; no unrelated main source was
+silently mixed into its tested tree. Integrate refreshed main in a separately
+reviewed step after fixing the current diagnostic, then qualify actual consumer
+pins and the immutable app census. Locked184 remains142/41/1.
+
+## Buffer reset/disposal ownership — 2026-10-13
+
+Candidate `lane/arcade-buffer-lifetime-20261013` follows
+[unit/audit PR850](https://github.com/CrispStrobe/brickwright-lite/pull/850).
+Buffer/music IDs now include distinct heap namespaces, preventing same-runtime
+owner collisions and cleared-registry resurrection. Buffer allocation bodies
+are suspended at disposal and reopened at successful project load. VM clear
+uses disposal internally: do not make the suspension permanent or reopen it
+with green flag alone. Disposal also releases Buffer-backed playable roots,
+resets queued audio and resolves paused callers. Shared value/import helpers
+remain unchanged.
+
+Four lifecycle controls pass, including actual same-VM SB3 replacement. The
+preceding25 affected lifecycle/value/original-song controls pass without skips;
+26 distinct controls are covered across runs. The initial pre-fix run preserves
+Buffer ID collision/resurrection failures and a fixture observation that read
+an adapter property instead of its underlying instance. Tests now use the real
+instance for root observations; no raw receipt is rewritten.
+
+Root collection during a live run and aggregate allocation reservations remain
+open. The Buffer contract records specific runtime roots and serialized custom
+argument values that a weak registry would miss. Full hosted/editor acceptance
+is pending; immutable app classifications remain142/41/1. Lower-stack landing
+is handled separately using normal merges; work continues on this top candidate.
+
+## Buffer editor proof and storage continuation — 2026-10-13
+
+The fresh PR850 head f30e57cfa2 passed all enabled source/unit/browser checks in
+[run38342374353](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38342374353).
+The passing Buffer browser artifact11789541637 proves actual format/value edits,
+three A/B/down cycles, Code/Blocks reconstruction, File save/replacement/reopen
+and genuine MakeCode download running in original Arcade with matching bytes.
+The original ZIP and all members are preserved privately. This supersedes the
+pending GUI/export observation above; preserve the earlier failed receipts.
+It does not qualify subsequent candidates or close namespace import coverage.
+
+Next child `lane/arcade-buffer-storage-20261013` follows lifetime PR853 without
+changing that pending head. It removes a second copy of original detached slice
+storage and encodes UTF-8 directly into the prechecked destination. Readonly,
+detachment, typed-array construction and original simulator values are required
+controls. Root-aware collection and aggregate reservation remain open, with
+serialized values and music fibers needing explicit ownership. Continue the
+ordered method in the Buffer contract. Locked184 remains142/41/1.
+
+## Buffer root inventory — 2026-10-13
+
+Child `lane/arcade-buffer-roots-20261013` follows storage PR855. The internal
+read-only memory snapshot distinguishes registry retention from graph roots,
+counts backing stores once and follows reachable scoped arrays and serialized
+JSON. Owner roots cover target values/block fields, thread and custom-call
+slots, callback captures, retained scenes, playable objects and literal sites.
+Inspect the Buffer contract for its limits and exact scope. The walk never
+sweeps; both root-coverage and collection authorization remain false even when
+the supplied graph was fully visited. Generator/host closures still need
+explicit leases, followed by preallocation reservation and controlled tracing.
+Shared BWValues and serialization source are untouched. Whole-app142/41/1
+remains unchanged; parent and child hosted results are separate evidence.

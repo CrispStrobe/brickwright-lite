@@ -1477,6 +1477,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 | Original MakeCode files in the `.sb3`, kept but marked stale (task F10 of docs/OPEN-TASKS-2026-09-29.md; owner decision 2026-10-12) | VPS Claude (opus) | base `origin/main`; a new overlay module `overlay/scratch-vm/src/serialization/bw-makecode-original.js` (+ its save/load hooks in `scripts/apply-vm-overlay.mjs`), where an import records the original (`scripts/makecode.mjs to-sb3`, the GUI MakeCode import), the export's choice between original and regenerated files, the WIP test `test/arcade-metadata-sb3.test.mjs` re-ported plus a stale-case test; this row and the task file. Not the importer's translation (E10) nor the Arcade runtime/painter lanes. | **DONE 2026-10-12 — Lite PR #832 (merge `414b25e6`).** An imported MakeCode project saves its own files as `bwMakeCode` {version 2, target, name, files, fingerprint} (overlay module `serialization/bw-makecode-original.js`; two idempotent hooks in `apply-vm-overlay.mjs`: toJSON after E5's extensionURLs, deserializeProject load + settle after installTargets). The importer writes it unfingerprinted; the VM's first load fingerprints the program from its own serialization (blocks without positions/comments, variable/list/broadcast names, costume/sound assets, target names, extensions — not runtime state, so running the game is not an edit). CLI `to-ts`/`to-project`/`to-hex` export the original while current and say when it is stale; the Code tab records it only for a build of the unedited translation, and its run/download subject, Arcade `.mkcd` and micro:bit exports use it only while current; the source zip says when the program changed. `test/arcade-metadata-sb3.test.mjs` (the WIP test re-ported + stale case + GUI wiring): 4/4, red under never-stale, no-settle, position-counts and not-saved mutations. |
 | F10's GUI path in a real browser (task F10.1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `origin/main`; `scripts/verify-makecode.mjs` (Arcade import section only), plus status text. No new CI step, budget or census entry; no runtime/importer change unless the browser check finds a real F10 defect. | **DONE 2026-10-13** (branch `lane/f10-1-gui-check-20261013`). Five new checks in `scripts/verify-makecode.mjs` section 2d′, after the Arcade run: ⇦ To blocks keeps `bwMakeCode` with a 16-hex fingerprint; the real `.sb3` save → reopen brings the same files and fingerprint back; ⤓ Arcade export of the unchanged project writes the original `main.ts` byte for byte; after deleting a script's top block the original is still saved; and the export then comes from the blocks. No new CI step. Found while reading 2d: since F10, ▶ Run as MakeCode Arcade on an unchanged import compiles the ORIGINAL files, so 2d no longer exercises the Scratch → Arcade exporter for this fixture; the post-edit export check covers that exporter again. |
+| MakeCode CLI + emulation: Calliope/EV3 CLI targets, `makecode run` on LabWired, micro:bit V2 emulated MakeCode (tasks A6, A7, A8 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `origin/main`; `scripts/makecode.mjs`, new `scripts/lib/makecode-run.mjs`, tests `test/makecode-cli-*.test.mjs`; for A8 the `pxt-runtime.js` emulator call sites, the Code-tab MakeCode run/emulate action and the Debug pane's firmware attach, plus the emu-bases serving step. Not the importer/translators themselves (Arcade lane), not Arcade export. One PR per task, in order A6, A7, A8. | **CLAIMED 2026-10-13.** |
 | The GUI package's avr8js follows bw-board's fork (task B15 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `origin/main`; `packages/scratch-gui/package.json`, `scripts/integrate.mjs`'s avr8js default (via `scripts/lib/avr8js-spec.mjs`), one focused test; this row and the task file. Not B14 (gearmotor reverse, 7-segment minus) nor B9 (ESP32 LEDC). | **DONE 2026-10-12 — Lite PR (this branch, `lane/b14-pwm-closeout-avr8js-20261012`).** `packages/scratch-gui/package.json` declares `github:CrispStrobe/avr8js#feea84c4`, the commit bw-board pins (#413), instead of npm `^0.21.0`; `scripts/integrate.mjs` writes it from one constant, `scripts/lib/avr8js-spec.mjs`. `test/avr8js-one-version.test.mjs` holds the constant equal to the installed bw-board's declared avr8js, checks the GUI package.json and integrate.mjs use it, and where the GUI package is installed that it resolves the fork build (`-bw.N`): 2/2 locally with the GUI installed. **Follow-up 2026-10-12:** the tracked `packages/scratch-gui/package-lock.json` still locked npm 0.21.0 (and a nested copy under bw-board), so `worktree-deps verify` failed in every fresh worktree; it now locks the fork commit once at the top level, as installed, and the test checks the lockfile too (3/3; red on the old lockfile). |
 | Arcade importer gaps found by E9: text truthiness, shared functions across sprites, unreachable predicateBranches (task E10 of docs/OPEN-TASKS-2026-09-29.md; starts after C8) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; `overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js` + helpers, export side only if a round trip needs it, focused tests; this row and the task file. | **CLAIMED 2026-10-12.** |
 
@@ -3270,3 +3271,55 @@ model pin or workflow changes. Any required shared-file or dependency extension
 needs a separately recorded coordinated envelope before implementation. Do not
 fetch restricted images, fabricate reference storage/mapping or infer physical
 safety, full G02 coverage or distribution closure from bounded simulations.
+
+## Arcade Buffer hash and live-memory continuation — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-buffer-hash-20261012`, stacked on PR847.
+Retain original common-package simulator FNV-1 and k-bit folding functions;
+expose native scoped Buffer reporter, Code vocabulary and genuine typed export.
+E10 retains importer/shared type helpers. Hash controls include original width
+coercion, aliases, readonly reads, reset and actual fresh SB3. Aggregate memory
+closure requires root inventory/reservations/reachability collection across
+arrays, active calls, callbacks, scenes and playback; do not replace that task
+with a counter of all historical allocations. See the Buffer contract.
+Hosted GUI, full build and immutable-app recensus remain separate gates.
+
+## Arcade required unit workload split — 2026-10-12
+
+CLAIMED — Codex, `lane/arcade-unit-shards-20261012`, stacked on original
+Buffer hash. Partition the complete fast suite into two required, separately
+audited unit legs; keep local full-suite behavior, corpus, all skip/file/GUI
+checks, build/distribution authority and exact-head publication requirements.
+Both Pages deployment and external main validation must require both legs.
+Preserve the actual30-minute PR845 build failure. Qualification contract:
+[Arcade CI qualification](docs/ARCADE-CI-QUALIFICATION.md). Hosted duration and
+editor success remain pending; E10 importer and other source owners unchanged.
+
+## Buffer heap namespace and disposal boundary — 2026-10-13
+
+CLAIMED — Codex, `lane/arcade-buffer-lifetime-20261013`, stacked on PR850.
+Own Buffer/music registry namespace and disposal/replacement boundary only.
+Preserve within-owner aliases, original song byte sharing and same-VM project
+replacement. Existing import/shared value helper ownership remains separate.
+Live root tracing and aggregate allocation budgets remain explicit next work;
+no whole-app corpus promotion follows from reset/disposal controls. Lower
+Arcade integration branches are landing separately by normal merges.
+
+## Arcade Buffer destination storage — 2026-10-13
+
+CLAIMED — Codex, `lane/arcade-buffer-storage-20261013`, stacked on PR853.
+Remove redundant detached-slice and UTF-8 copies while retaining original
+simulator semantics and before-allocation byte limits. No new public opcode
+or producer pin. Live-run tracing, serialization roots and aggregate allocation
+reservations remain separate work. Parent PR850 exact head f30e57cfa2 passed
+all enabled checks, including the native editor/controller/reopen/export proof;
+this new source needs independent qualification. Whole-app142/41/1 unchanged.
+
+## Arcade Buffer root inspection — 2026-10-13
+
+CLAIMED — Codex, `lane/arcade-buffer-roots-20261013`, stacked on PR855.
+Implement read-only root traversal, backing-store accounting, scoped nested
+arrays and serialized reference observations with bounded incomplete results.
+No automatic sweep, complete-root claim, new opcode or producer pin change.
+Explicit hidden-owner leases and preallocation reservations remain required.
+Scope and followup method are in the Buffer contract;142/41/1 unchanged.

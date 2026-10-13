@@ -26,6 +26,7 @@ module.exports = makeExt(`// Name: Arcade
   class Arcade {
     constructor(runtime) {
       this._runtime = runtime;
+      this._bufferSuspended = false;
       this._speechEngine = dependencies.createSpeechEngine(dependencies.initializeSpeech, dependencies.fonts,
         dependencies.initializeNativeLegacy);
       this._fallbackState = null;
@@ -89,7 +90,7 @@ module.exports = makeExt(`// Name: Arcade
         };
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
         runtime.on('PROJECT_STOP_ALL', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._musicHost?.stopAll();});
-        runtime.on('RUNTIME_DISPOSED', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._bufferHeap=null;cancelCreations();this._clearTilemap();this._tileLocations.clear();this._animationAssetCache.clear();for(const id of this._imageSkins.keys())this._clearImage(id);});
+        runtime.on('RUNTIME_DISPOSED', () => {this._bufferSuspended=true;this._musicHost?.reset();this._musicHost=null;this._musicIds=new Map();this._musicValues=new Map();this._musicGeneration=dependencies.buffers.newHeapId();this._carnivalHost?.cancel();this._carnivalHost=null;this._bufferHeap=null;cancelCreations();this._clearTilemap();this._tileLocations.clear();this._animationAssetCache.clear();for(const id of this._imageSkins.keys())this._clearImage(id);});
         const reset = () => {
           cancelCreations();
           this._terrainStopped = false;
@@ -116,7 +117,7 @@ module.exports = makeExt(`// Name: Arcade
           for (const id of this._speech.keys()) this._clearSpeech(id, undefined, true);
           this._clearParticleOverlays();this._particleScenes=new WeakMap();this._particleAnchors=new WeakMap();
           this._renderables=new WeakMap();this._screen=null;
-          this._musicHost?.reset();this._musicIds=new Map();this._musicValues=new Map();
+          this._musicHost?.reset();this._musicIds=new Map();this._musicValues=new Map();this._musicGeneration=dependencies.buffers.newHeapId();
           this._bufferHeap = null;
           this._sevensegIds=new Map();this._sevensegValues=new Map();
           this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._scrollerModule=null;this._characterAnimationModule=null;
@@ -152,6 +153,7 @@ module.exports = makeExt(`// Name: Arcade
           // restoration repopulates them after successful deserialization.
           runtime.bwArcadeAnimationResources = new Map();
           reset();
+          this._bufferSuspended = false;
         });
         runtime.on('PROJECT_START', reset);
         runtime.on('targetWasRemoved', target => {
@@ -264,10 +266,27 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'songPlayable',blockType:Scratch.BlockType.REPORTER,text:'Arcade song playable hex [HEX]',arguments:str('HEX','00780004080100')},
           {opcode:'createBuffer',blockType:Scratch.BlockType.REPORTER,text:'Arcade create byte buffer size [SIZE]',arguments:n('SIZE',8)},
           {opcode:'bufferFromHex',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from hex text [HEX]',arguments:str('HEX','01020304')},
+          {opcode:'bufferFromUTF8',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from UTF8 text [TEXT]',arguments:str('TEXT','Hello')},
           {opcode:'bufferLiteral',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer literal hex [HEX]',arguments:str('HEX','01020304')},
           {opcode:'bufferLength',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] length',arguments:str('BUFFER','')},
+          {opcode:'bufferIsReadOnly',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade byte buffer [BUFFER] is read only',arguments:str('BUFFER','')},
+          {opcode:'bufferConcat',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] concatenated with byte buffer [OTHER]',arguments:{...str('BUFFER',''),...str('OTHER','')}},
+          {opcode:'bufferEquals',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade byte buffer [BUFFER] equals byte buffer [OTHER]',arguments:{...str('BUFFER',''),...str('OTHER','')}},
+          {opcode:'bufferHash',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] hash [BITS] bits',arguments:{...str('BUFFER',''),...n('BITS',32)}},
+          {opcode:'bufferIndexOf',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] index of byte buffer [OTHER]',arguments:{...str('BUFFER',''),...str('OTHER','')}},
           {opcode:'bufferGetByte',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] byte at [OFFSET]',arguments:{...str('BUFFER',''),...n('OFFSET',0)}},
           {opcode:'bufferSetByte',blockType:Scratch.BlockType.COMMAND,text:'Arcade set byte buffer [BUFFER] byte at [OFFSET] to [VALUE]',arguments:{...str('BUFFER',''),...n('OFFSET',0),...n('VALUE',0)}},
+          {opcode:'bufferFromBase64',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from Base64 text [TEXT]',arguments:str('TEXT','AQID')},
+          {opcode:'bufferChunked',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] chunks of at most [SIZE] bytes',arguments:{...str('BUFFER',''),...n('SIZE',256)}},
+          {opcode:'bufferChunkedFromUTF8',blockType:Scratch.BlockType.REPORTER,text:'Arcade UTF8 text [TEXT] byte buffer chunks of at most [SIZE] bytes',arguments:{...str('TEXT','hello'),...n('SIZE',256)}},
+          {opcode:'bufferPackedSize',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer packed format [FORMAT] size',arguments:str('FORMAT','<BH')},
+          {opcode:'bufferPack',blockType:Scratch.BlockType.REPORTER,text:'Arcade pack number array [ARRAY] as byte buffer format [FORMAT]',arguments:{...str('ARRAY',''),...str('FORMAT','<BH')}},
+          {opcode:'bufferUnpack',blockType:Scratch.BlockType.REPORTER,text:'Arcade unpack byte buffer [BUFFER] format [FORMAT] at [OFFSET]',arguments:{...str('BUFFER',''),...str('FORMAT','<BH'),...n('OFFSET',0)}},
+          {opcode:'bufferPackAt',blockType:Scratch.BlockType.COMMAND,text:'Arcade pack number array [ARRAY] into byte buffer [BUFFER] at [OFFSET] format [FORMAT]',arguments:{...str('ARRAY',''),...str('BUFFER',''),...n('OFFSET',0),...str('FORMAT','<BH')}},
+          {opcode:'bufferFromArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from number array [ARRAY]',arguments:str('ARRAY','')},
+          {opcode:'bufferToArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] to number array format [FORMAT]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt8LE'}}},
+          {opcode:'bufferConcatArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade concatenate byte buffers in array [ARRAY]',arguments:str('ARRAY','')},
+          {opcode:'bufferFormatSize',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer number format [FORMAT] size',arguments:{FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt16LE'}}},
           {opcode:'bufferGetNumber',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] number [FORMAT] at [OFFSET]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt16LE'},...n('OFFSET',0)}},
           {opcode:'bufferSetNumber',blockType:Scratch.BlockType.COMMAND,text:'Arcade set byte buffer [BUFFER] number [FORMAT] at [OFFSET] to [VALUE]',arguments:{...str('BUFFER',''),FORMAT:{type:Scratch.ArgumentType.STRING,menu:'bufferFormats',defaultValue:'UInt16LE'},...n('OFFSET',0),...n('VALUE',0)}},
           {opcode:'bufferSlice',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] slice at [OFFSET] length [LENGTH]',arguments:{...str('BUFFER',''),...n('OFFSET',0),...n('LENGTH',-1)}},
@@ -275,6 +294,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'bufferFill',blockType:Scratch.BlockType.COMMAND,text:'Arcade fill byte buffer [BUFFER] with [VALUE] at [OFFSET] length [LENGTH]',arguments:{...str('BUFFER',''),...n('VALUE',0),...n('OFFSET',0),...n('LENGTH',-1)}},
           {opcode:'bufferShift',blockType:Scratch.BlockType.COMMAND,text:'Arcade shift byte buffer [BUFFER] by [AMOUNT] at [OFFSET] length [LENGTH]',arguments:{...str('BUFFER',''),...n('AMOUNT',1),...n('OFFSET',0),...n('LENGTH',-1)}},
           {opcode:'bufferRotate',blockType:Scratch.BlockType.COMMAND,text:'Arcade rotate byte buffer [BUFFER] by [AMOUNT] at [OFFSET] length [LENGTH]',arguments:{...str('BUFFER',''),...n('AMOUNT',1),...n('OFFSET',0),...n('LENGTH',-1)}},
+          {opcode:'bufferToBase64',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] to Base64 text',arguments:str('BUFFER','')},
           {opcode:'bufferToHex',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] to hex',arguments:str('BUFFER','')},
           {opcode:'bufferToText',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer [BUFFER] to UTF8 text',arguments:str('BUFFER','')},
           {opcode:'songFromBuffer',blockType:Scratch.BlockType.REPORTER,text:'Arcade song playable byte buffer [BUFFER]',arguments:str('BUFFER','')},
@@ -3787,8 +3807,8 @@ module.exports = makeExt(`// Name: Arcade
     }
     _musicHandle(value) {
       if(!value)return '';
-      if(!this._musicIds)this._musicIds=new Map(),this._musicValues=new Map();
-      if(!this._musicIds.has(value)){const id='arcade-music:'+(this._musicIds.size+1);this._musicIds.set(value,id);this._musicValues.set(id,value);}
+      if(!this._musicIds)this._musicIds=new Map(),this._musicValues=new Map(),this._musicGeneration=dependencies.buffers.newHeapId();
+      if(!this._musicIds.has(value)){const id='arcade-music:'+this._musicGeneration+':'+(this._musicIds.size+1);this._musicIds.set(value,id);this._musicValues.set(id,value);}
       return Scratch.BWValues.reference(this._runtime,'music',this._musicIds.get(value));
     }
     // A music value of the given PXT class, or an explicit error.
@@ -3841,12 +3861,17 @@ module.exports = makeExt(`// Name: Arcade
     }
     namedSongPlayable(args) { return this.songPlayable(args); }
     _bufferState() {
-      if(!this._bufferHeap)this._bufferHeap={values:new Map(),ids:new WeakMap(),literals:new Map(),next:0};
+      if(this._bufferSuspended)throw new Error('Arcade byte buffer owner is disposed; load a project before allocating');
+      if(!this._bufferHeap)this._bufferHeap={generation:dependencies.buffers.newHeapId(),values:new Map(),ids:new WeakMap(),literals:new Map(),next:0};
       return this._bufferHeap;
+    }
+    _bufferMemorySnapshot(extraRoots=[],limits={}) {
+      return dependencies.bufferMemory.inspect({...limits,runtime:this._runtime,values:Scratch.BWValues,
+        heap:this._bufferHeap,roots:[...dependencies.bufferMemory.ownerRoots(this),...extraRoots]});
     }
     _bufferReference(bytes) {
       const heap=this._bufferState();let id=heap.ids.get(bytes);
-      if(id===undefined){id='buffer:'+ ++heap.next;heap.ids.set(bytes,id);heap.values.set(id,bytes);}
+      if(id===undefined){id='buffer:'+heap.generation+':'+ ++heap.next;heap.ids.set(bytes,id);heap.values.set(id,bytes);}
       return Scratch.BWValues.reference(this._runtime,'buffer',id);
     }
     _buffer(value) {
@@ -3855,10 +3880,11 @@ module.exports = makeExt(`// Name: Arcade
       return bytes;
     }
     _bufferGuard(action) {
-      try{return action();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error));return Scratch.BWValues.UNDEFINED;}
+      try{if(this._bufferSuspended)throw new Error('Arcade byte buffer owner is disposed; load a project before allocating');return action();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',String(error?.message || error));return Scratch.BWValues.UNDEFINED;}
     }
     createBuffer(args) {return this._bufferGuard(()=>this._bufferReference(new dependencies.buffers.PxtBuffer(Scratch.Cast.toNumber(args.SIZE))));}
     bufferFromHex(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.fromHex(Scratch.BWValues.decode(args.HEX))));}
+    bufferFromUTF8(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.fromUTF8(Scratch.BWValues.decode(args.TEXT))));}
     bufferLiteral(args,util) {
       return this._bufferGuard(()=>{
         const block=util?.thread?.peekStack?.(),heap=this._bufferState();
@@ -3869,8 +3895,36 @@ module.exports = makeExt(`// Name: Arcade
       });
     }
     bufferLength(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).length);}
+    bufferIsReadOnly(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).isReadOnly());}
+    bufferConcat(args) {return this._bufferGuard(()=>this._bufferReference(this._buffer(args.BUFFER).concat(this._buffer(args.OTHER))));}
+    bufferEquals(args) {
+      return this._bufferGuard(()=>{
+        const resolve=value=>Scratch.BWValues.decode(value)==null?null:this._buffer(value);
+        return dependencies.buffers.equals(resolve(args.BUFFER),resolve(args.OTHER));
+      });
+    }
+    bufferHash(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).hash(Number(args.BITS)));}
+    bufferIndexOf(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).indexOf(this._buffer(args.OTHER)));}
     bufferGetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getByte(Scratch.Cast.toNumber(args.OFFSET)));}
     bufferSetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).setByte(Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE)));}
+    _bufferArray(value) {
+      const array=Scratch.BWValues.arrayValue(this._runtime,value);
+      if(!array)throw new Error('Arcade buffer input array is not available in this project run');
+      if(array.length>dependencies.buffers.MAX_BUFFER_BYTES)throw new RangeError('Arcade buffer exceeds byte allocation limit');
+      return array;
+    }
+    bufferFromBase64(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.fromBase64(Scratch.BWValues.decode(args.TEXT))));}
+    _bufferChunks(chunks) {return Scratch.BWValues.arrayReference(this._runtime,chunks.map(bytes=>this._bufferReference(bytes)));}
+    bufferChunked(args) {return this._bufferGuard(()=>this._bufferChunks(this._buffer(args.BUFFER).chunked(Scratch.Cast.toNumber(args.SIZE))));}
+    bufferChunkedFromUTF8(args) {return this._bufferGuard(()=>this._bufferChunks(dependencies.buffers.chunkedFromUTF8(Scratch.BWValues.decode(args.TEXT),Scratch.Cast.toNumber(args.SIZE))));}
+    bufferPackedSize(args) {return this._bufferGuard(()=>dependencies.buffers.packedSize(Scratch.BWValues.decode(args.FORMAT)));}
+    bufferPack(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.pack(Scratch.BWValues.decode(args.FORMAT),this._bufferArray(args.ARRAY).map(value=>Scratch.BWValues.decode(value)))));}
+    bufferUnpack(args) {return this._bufferGuard(()=>Scratch.BWValues.arrayReference(this._runtime,this._buffer(args.BUFFER).unpack(Scratch.BWValues.decode(args.FORMAT),Scratch.Cast.toNumber(args.OFFSET))));}
+    bufferPackAt(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).packAt(Scratch.Cast.toNumber(args.OFFSET),Scratch.BWValues.decode(args.FORMAT),this._bufferArray(args.ARRAY).map(value=>Scratch.BWValues.decode(value))));}
+    bufferFromArray(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.fromArray(this._bufferArray(args.ARRAY).map(value=>Scratch.BWValues.decode(value)))));}
+    bufferToArray(args) {return this._bufferGuard(()=>Scratch.BWValues.arrayReference(this._runtime,this._buffer(args.BUFFER).toArray(args.FORMAT)));}
+    bufferConcatArray(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.concatArrays(this._bufferArray(args.ARRAY).map(value=>this._buffer(value)))));}
+    bufferFormatSize(args) {return this._bufferGuard(()=>dependencies.buffers.sizeOfNumberFormat(args.FORMAT));}
     bufferGetNumber(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getNumber(args.FORMAT,Scratch.Cast.toNumber(args.OFFSET)));}
     bufferSetNumber(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).setNumber(args.FORMAT,Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE)));}
     bufferSlice(args) {return this._bufferGuard(()=>this._bufferReference(this._buffer(args.BUFFER).slice(Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH))));}
@@ -3878,6 +3932,7 @@ module.exports = makeExt(`// Name: Arcade
     bufferFill(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).fill(Scratch.Cast.toNumber(args.VALUE),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH)));}
     bufferShift(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).shift(Scratch.Cast.toNumber(args.AMOUNT),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH)));}
     bufferRotate(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).rotate(Scratch.Cast.toNumber(args.AMOUNT),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH)));}
+    bufferToBase64(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).toBase64());}
     bufferToHex(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).toHex());}
     bufferToText(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).toString());}
     songFromBuffer(args) {return this._bufferGuard(()=>this._musicHandle(this._music().createSongBuffer(this._buffer(args.BUFFER))));}
@@ -4657,6 +4712,7 @@ module.exports = makeExt(`// Name: Arcade
   initializeText: require('./text-pxt'),
   createMusic: require('./music'),
   buffers: require('./buffer'),
+  bufferMemory: require('./buffer-memory'),
   initializeMusic: require('./music-pxt'),
   helpers: require('./helpers-pxt'),
   createCarnivalHost: require('./carnival-host'),
