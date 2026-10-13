@@ -96,7 +96,7 @@ test('readable names never collide with the game\'s own sprites', () => {
         unsupported: []
     });
     assert.deepEqual(named.sprites, ['Game', 'background', 'background2', 'background3']);
-    assert.match(named.code, /template "background2" kind \(arcade sprite kind value "Player"\)/);
+    assert.match(named.code, /template "background2" kind "Player"/);
     assert.match(named.code, /array "background3Image" index \(0\) template "background3"/);
     const plain = {code: 'SPRITE hero:\n', costumes: [], sprites: ['hero'], unsupported: []};
     assert.equal(nameArtworkSprites(plain), plain, 'a program without helper sprites is untouched');
