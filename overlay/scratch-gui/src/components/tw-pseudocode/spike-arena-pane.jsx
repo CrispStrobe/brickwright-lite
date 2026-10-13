@@ -562,6 +562,7 @@ class SpikeArenaPane extends React.Component {
     }
 
     async start () {
+        if (this.disposed) return;
         const session = this.firmwareSession;
         if (session?.storageSupported && !session.closed &&
             ((session.loaded && session.programState === 1) || [3, 4, 5].includes(session.programState))) {
@@ -591,7 +592,14 @@ class SpikeArenaPane extends React.Component {
             this.setState({status: 'running'});
             return;
         }
-        await this.stopProgram();
+        const bridge = this.bridge;
+        const execution = this.state.execution;
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.programIntent === intent &&
+            this.bridge === bridge && this.state.execution === execution;
+        await stopped;
+        if (!current()) return;
         this.hubState.setSimulationEnabled(true);
         this.bridge.reset();
         let message = '';
@@ -600,9 +608,10 @@ class SpikeArenaPane extends React.Component {
             try {
                 await this.connect();
             } catch (error) {
-                this.setState({message: this.t('connectFailed', {error: error.message})});
+                if (current()) this.setState({message: this.t('connectFailed', {error: error.message})});
                 return;
             }
+            if (!current()) return;
             this.bridge.reset();
             this.vm.greenFlag();
         } else message = this.t('noProgram');
@@ -613,6 +622,9 @@ class SpikeArenaPane extends React.Component {
     }
 
     async stopProgram ({restart = false} = {}) {
+        // Invalidate a pending native Start even when Reset retains its bridge
+        // and execution backend, or a backend selection returns to native.
+        this.programIntent = {};
         const firmware = this.firmwareSession;
         this.firmwareSession = null;
         if (firmware) await firmware.stop();
