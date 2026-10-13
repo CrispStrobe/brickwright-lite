@@ -93,17 +93,21 @@ reset**, and inspect register-by-register and byte-by-byte in memory.
 - **Board and firmware targets** loaded from real `ELF`, Intel `HEX` and `UF2`
   files: **BBC micro:bit v2**, **Adafruit PyBadge**, **LEGO SPIKE Prime**,
   **LEGO MINDSTORMS EV3**, **Arduboy**, and **ATtiny** boards.
-- A **Machine Manager** holds bootable machine configurations and boot plans.
-  Retro computers and operating systems — **x86 PCs running DOS/FreeDOS** and
-  more — boot from separately distributed disk/ROM images; see the loading
-  guides below.
+- A **Machine Manager** boots whole computers and operating systems from
+  separately distributed disk/ROM images, each introduced by a guided lesson:
+  an **x86 AT PC** running **DOS/FreeDOS**, **ELKS** (a small Unix) on an 8086,
+  **CP/M on a Z80**, **Microsoft BASIC on a 6502** single-board computer (RAM,
+  ROM, VIA, ACIA, screen and keyboard), and a **RISC-V Linux** machine. See the
+  loading guides below for the image and licensing details.
 
-Different targets use different emulation cores: some run on the permissively
-licensed **avr8js** JavaScript core, others on a native emulation core compiled
-to WebAssembly. Either way, each target states which peripherals it models and
-which it does not, instead of pretending. Output appears on the **Widgets
-pane** (screens, LEDs, GPIO strips); a **Debug view** adds a serial console and
-video. The emulators clear real-time speed on the established targets in the
+Different targets run on different emulation cores, and each states which
+peripherals it models rather than pretending: the permissively licensed
+**avr8js** (AVR) and **rp2040js** (RP2040) JavaScript cores; **LabWired**, a
+native core compiled to WebAssembly, for the micro:bit and PyBadge; a
+**Renode**-derived boundary for the LEGO SPIKE Prime and MINDSTORMS EV3 firmware
+targets; an LGPL **Bochs** core for the x86 PC; and small in-house cores for the
+Z80, 6502 and 8086/80286 machines. Output appears on the **Widgets pane**
+(screens, LEDs, GPIO strips); a **Debug view** adds a serial console and video. The emulators clear real-time speed on the established targets in the
 browser; the exact per-target numbers, the shipped-versus-candidate matrix, and
 the remaining gaps live in
 [board targets and emulator performance](docs/TARGET-EMULATOR-PERFORMANCE.md).
@@ -160,7 +164,14 @@ can open a cartridge and recover the **project**, not just the machine code.
   no translating — the simulator runs it as it is.
 - Import from a MakeCode share link, or **save a project as a `.hex`** that
   makecode.microbit.org opens again.
+- These are not dead imports — they **run**: an imported micro:bit project
+  executes as a Scratch project (and a MicroPython `.hex` directly in the
+  simulator), and an imported Arcade game **plays** through the Scratch renderer
+  and the game console (display, controls, tilt and NeoPixels where present).
 - Anything with no equivalent here is listed, not quietly discarded.
+
+Both directions are also available from the command line — `bwlite makecode …`
+and `bwlite convert` — using the same readers as the in-app Code tab.
 
 ### Program real hardware
 
