@@ -92,6 +92,9 @@ class CameraCapture {
         this._store = new ScannerStore();
         this._shareAddress = '';
         this._unwatchDevices = null;
+        // Peer sessions (task E11) take a requested photo through this instance; only in a
+        // BW_ENABLE_PEERS=1 build (a DefinePlugin literal, `=== true` keeps node off).
+        if (process.env.BW_ENABLE_PEERS === true && runtime) runtime.__brickwrightCameraCapture = this;
         if (runtime && typeof runtime.on === 'function') {
             const subscribe = runtime.on.bind(runtime);
             subscribe(Runtime.PROJECT_STOP_ALL, () => this.stopCamera());

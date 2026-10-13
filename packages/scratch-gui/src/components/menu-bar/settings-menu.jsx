@@ -162,6 +162,12 @@ const SettingsMenu = ({canChangeLanguage, canChangeTheme, isRtl, onRequestClose,
                             id="gui.menuBar.scratchLinkTransport"
                         />
                     </MenuItem>
+                    {/* Peer sessions (task E11): only in a BW_ENABLE_PEERS=1 build, only in the app. */}
+                    {process.env.BW_ENABLE_PEERS === true && window.__TAURI__ ? (
+                        <MenuItem onClick={() => { emit('bw-open-peer-sessions'); onRequestClose(); }}>
+                            Peer sessions…
+                        </MenuItem>
+                    ) : null}
                     <MenuItem onClick={() => { emit('bw-open-virtual-spike'); onRequestClose(); }}>
                         <FormattedMessage
                             defaultMessage="Virtual SPIKE Prime…"
