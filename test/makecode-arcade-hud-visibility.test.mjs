@@ -20,12 +20,13 @@ const timing='let ends=0;let lives=0;info.onCountdownEnd(function(){ends++;});in
 test('hidden countdown postpones expiry, while hidden life still delivers life-zero: original/native/editable roundtrips',async()=>{
  const source=hero+timing;const original=await runPxtArcade(source,{fakeClock:true});assert.equal(original.hiddenEnds,0);assert.equal(original.visibleEnds,1);assert.equal(original.hiddenLives,1);
  const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);const runs=[];
+ const drive=async vm=>{let now=0;vm.stopAll();vm.runtime.bwArcadeProgramClock={now:()=>now};vm.runtime.updateCurrentMSecs=()=>{vm.runtime.currentMSecs=now;};vm.runtime.currentMSecs=0;vm.greenFlag();for(let i=0;i<60;i++){now=i*20;await stepFrames(vm,1,i?20:0);}};
  const check=run=>{assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);for(const name of ['hiddenEnds','hiddenLives','visibleEnds','done'])assert.equal(values(run)[name],original[name],name);};
- try{const native=await runProgram(imported.code,{frames:60,uploads:imported.costumes,storage:true});runs.push(native);check(native);const archive=Buffer.from(await(await native.vm.saveProjectSb3()).arrayBuffer());await native.vm.loadProject(archive);native.vm.greenFlag();await stepFrames(native.vm,60);check(native);
- const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(archive);fresh.vm.greenFlag();await stepFrames(fresh.vm,60);check(fresh);
- const code=await runProgram(native.creator.decompile(),{frames:60,uploads:imported.costumes,storage:true});runs.push(code);check(code);
+ try{const native=await runProgram(imported.code,{frames:0,uploads:imported.costumes,storage:true});runs.push(native);await drive(native.vm);check(native);const archive=Buffer.from(await(await native.vm.saveProjectSb3()).arrayBuffer());await native.vm.loadProject(archive);await drive(native.vm);check(native);
+ const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(archive);await drive(fresh.vm);check(fresh);
+ const code=await runProgram(native.creator.decompile(),{frames:0,uploads:imported.costumes,storage:true});runs.push(code);await drive(code.vm);check(code);
  const exported=projectToArcade(native.creator.project,{costumeSvg:(target,costume)=>native.creator.assets.get(costume.assetId)?.data});assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/info.showCountdown\(false\)/);const oracle=await runPxtArcade(exported.files,{fakeClock:true});for(const key of ['hiddenEnds','hiddenLives','visibleEnds'])assert.equal(oracle[key]??oracle['Game_'+key],original[key],key+' exported');
- const reimported=arcadeToPseudocode(exported.files);assert.deepEqual(reimported.unsupported,[]);const again=await runProgram(reimported.code,{frames:60,uploads:reimported.costumes,storage:true});runs.push(again);check(again);
+ const reimported=arcadeToPseudocode(exported.files);assert.deepEqual(reimported.unsupported,[]);const again=await runProgram(reimported.code,{frames:0,uploads:reimported.costumes,storage:true});runs.push(again);await drive(again.vm);check(again);
  }finally{for(const run of runs)run.vm.quit();clearStrayTimers();}
 });
 test('actual native HUD metadata exposes fixed menu and Boolean connector; unsupported selectors stay diagnosed',()=>{
