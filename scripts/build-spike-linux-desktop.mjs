@@ -8,6 +8,7 @@ import {copyFile, cp, mkdir, readdir, readFile, realpath, lstat, writeFile, chmo
 import {dirname, join, resolve, relative, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {freezeResourceProfile} from './lib/spike-resource-profile.mjs';
+import {requireStagingModes, normalizePackageModes} from './lib/spike-linux-package-modes.mjs';
 
 const [supportArg, runtimeArg, frontendArg, outputArg, ...options] = process.argv.slice(2);
 let prepareOnly = false;
@@ -80,6 +81,7 @@ async function inventory (root, directory = root) {
 await inventory(frontend);
 if (!frontendInventory['index.html'] || !frontendInventory['capability-broker.html']) throw new Error('Frontend lacks desktop broker assets');
 await mkdir(output, {mode: 0o700}); // Every existing output is preserved, including partial builds.
+await requireStagingModes(output);
 const targetDirectory = resolve(process.env.BW_LINUX_BUILD_TARGET_DIR || join(output, 'target'));
 // Tauri uses productName as PackageInfo.name when resolving Linux resources.
 const appConfig = JSON.parse(await readFile(join(repo, 'apps/tauri/src-tauri/tauri.conf.json'), 'utf8'));
@@ -168,6 +170,7 @@ await mkdir(join(packageRoot, 'DEBIAN'));
 const cargo = await readFile(join(repo, 'apps/tauri/src-tauri/Cargo.toml'), 'utf8');
 const version = /^version = "([0-9]+\.[0-9]+\.[0-9]+)"$/m.exec(cargo)?.[1];if (!version) throw new Error('Invalid app package version');
 await writeFile(join(packageRoot, 'DEBIAN/control'), `Package: brickwright\nVersion: ${version}\nArchitecture: amd64\nMaintainer: Brickwright contributors\nDepends: libgtk-3-0, libwebkit2gtk-4.1-0, libstdc++6, zlib1g\nDescription: Brickwright local SPIKE simulation desktop\n`);
+await normalizePackageModes(packageRoot, resourceName);
 const deb = join(output, `brickwright_${version}_amd64.deb`);
 execFileSync('dpkg-deb', ['--build', '--root-owner-group', '--threads-max=2', packageRoot, deb], {stdio: 'inherit'});
 await writeFile(join(output, 'package-receipt.json'), JSON.stringify({schemaVersion: 1,
