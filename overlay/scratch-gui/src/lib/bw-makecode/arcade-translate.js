@@ -1727,7 +1727,7 @@ class ArcadeTranslator extends BaseTranslator {
                 push(`arcade keep ${handle} in screen ${this.expr(a[1])}`);
             }
             else if (node.callee.name === 'setFlag' &&
-                ['Invisible', 'Ghost', 'GhostThroughWalls', 'GhostThroughTiles', 'DestroyOnWall', 'RelativeToCamera'].some(flag =>
+                ['Invisible', 'Ghost', 'GhostThroughWalls', 'GhostThroughTiles', 'DestroyOnWall', 'RelativeToCamera', 'ShowPhysics'].some(flag =>
                     this.path(a[0]) === `SpriteFlag.${flag}`)) {
                 if(a.length!==2)push(this.note(`SpriteFlag.${a[0].name} requires a flag and one Boolean value`));
                 else push(`arcade set flag ${a[0].name} of ${handle} to ${this.expr(a[1])}`);

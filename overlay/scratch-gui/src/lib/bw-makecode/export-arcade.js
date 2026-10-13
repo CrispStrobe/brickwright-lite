@@ -2312,7 +2312,7 @@ class ArcadeEmitter {
         case 'arcade_setSpriteFlag': {
             const flag = this.field(b, 'FLAG');
             if (!['AutoDestroy', 'StayInScreen', 'BounceOnWall', 'DestroyOnWall', 'Invisible', 'Ghost',
-                'GhostThroughSprites', 'GhostThroughWalls', 'GhostThroughTiles', 'RelativeToCamera'].includes(flag)) {
+                'GhostThroughSprites', 'GhostThroughWalls', 'GhostThroughTiles', 'RelativeToCamera', 'ShowPhysics'].includes(flag)) {
                 push(`// ${this.note(`Unsupported Arcade sprite flag ${flag}`)}`);
                 return;
             }

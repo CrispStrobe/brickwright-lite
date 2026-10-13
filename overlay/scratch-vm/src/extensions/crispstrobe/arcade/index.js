@@ -21,7 +21,7 @@ module.exports = makeExt(`// Name: Arcade
   const animationResourceMenuItems = dependencies.animationResourceMenuItems;
   const {RotatedBoundingBox, rasterWindow: rotatedRasterWindow, rasterFootprint: rotatedRasterFootprint} = dependencies.initializeRotation();
 
-  const spriteFlags = {AutoDestroy: 4, StayInScreen: 8, DestroyOnWall: 16, BounceOnWall: 32, Invisible: 128, RelativeToCamera: 512,
+  const spriteFlags = {AutoDestroy: 4, StayInScreen: 8, DestroyOnWall: 16, BounceOnWall: 32, ShowPhysics: 64, Invisible: 128, RelativeToCamera: 512,
     GhostThroughTiles: 1024, GhostThroughWalls: 2048, GhostThroughSprites: 4096, Ghost: 7168};
 
   class Arcade {
@@ -3500,6 +3500,35 @@ module.exports = makeExt(`// Name: Arcade
         this._refreshImage(image);
       }
     }
+    // PXT game/sprite.ts drawDebug ShowPhysics layout (MIT; retained PXT notice).
+    // A reusable non-handle raster belongs to the sprite; glyphs use the actual
+    // selected SDK font5 through the existing licensed image-print bridge.
+    _spritePhysicsLayer(sprite,state=this._state()) {
+      if(!(sprite.flags & spriteFlags.ShowPhysics) || sprite.invisible || sprite._destroyed)return null;
+      const camera=this._camera(state),relative=!!(sprite.flags & spriteFlags.RelativeToCamera);
+      const left=sprite._fx/256-(relative?0:camera.drawOffsetX),top=sprite._fy/256-(relative?0:camera.drawOffsetY);
+      if(left+sprite.width<0 || top+sprite.height<0 || left>160 || top>120)return null;
+      let layer=sprite._physicsLayer;
+      if(!layer){
+        const pixels=new Uint8Array(160*120),writes=new Uint8Array(160*120);
+        layer=sprite._physicsLayer={image:{width:160,height:120,pixels},writes,x:0,y:0,z:sprite.z,id:sprite.pxtId,source:{z:sprite.z,id:sprite.pxtId}};
+      }
+      if(layer.source.z!==sprite.z)this._particleOrderDirty=true;
+      layer.z=layer.source.z=sprite.z;
+      layer.image.pixels.fill(0);layer.writes.fill(0);
+      const text=this._pxtText(),font=text.image.font5,image=layer.image;
+      const target={_width:image.width,_height:image.height,data:image.pixels,makeWritable(){},color:c=>Number(c)&15};
+      const wrapper={width:image.width,height:image.height,
+        drawIcon:(icon,x,y,color)=>text.drawIcon(target,{data:icon},x,y,color),
+        fillRect:(x,y,w,h,color)=>imageEngine.draw(image,'fillRect',x,y,w,h,color)};
+      const print=(value,x,y)=>text.helpers.imagePrint(wrapper,value,x,y,1,font);
+      let tx=Math.floor(left),ty=Math.floor(top)+sprite.height+2;
+      print(String(sprite.x>>0)+','+String(sprite.y>>0),tx,ty);tx-=font.charWidth;
+      if(sprite.vx || sprite.vy){ty+=font.charHeight+2;print('v'+String(sprite.vx>>0)+','+String(sprite.vy>>0),tx,ty);}
+      if(sprite.ax || sprite.ay){ty+=font.charHeight+2;print('a'+String(sprite.ax>>0)+','+String(sprite.ay>>0),tx,ty);}
+      for(let i=0;i<layer.writes.length;i++)if(image.pixels[i])layer.writes[i]=1;
+      return layer;
+    }
     _sceneLayers(state=this._state()) {
       const bundle=state===this._state()?null:[...this._sceneBundles].find(bundle=>bundle.state===state);
       const speechMap=bundle?bundle._speech:this._speech;
@@ -3522,6 +3551,8 @@ module.exports = makeExt(`// Name: Arcade
         layers.push({image:this._scaledSpriteImage(sprite,window),
           x:view.x-sprite.width/2+window.x,y:view.y-sprite.height/2+window.y,
           z:sprite.z,id:sprite.pxtId});
+        const physics=this._spritePhysicsLayer(sprite,state);
+        if(physics)layers.push(physics);
       }
       return {layers,missingSpriteImages};
     }
@@ -3529,7 +3560,7 @@ module.exports = makeExt(`// Name: Arcade
       const state=this._state(),{layers,missingSpriteImages}=this._sceneLayers();
       const frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
       const particles=this._drawParticleSources();layers.push(...particles);
-      this._renderOverlayLayers(particles);
+      this._renderOverlayLayers(layers.filter(layer=>layer.source));
       imageEngine.composeFrame(frame,state.backgroundColor,state.backgroundImage,layers);
       frame.coverage=['background','tilemap','sprites','modernSpeech','particles'];
       frame.remaining=['renderables','hud','legacySpeech','effects'];
