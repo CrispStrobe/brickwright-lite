@@ -53,6 +53,11 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
     const namespaceScopes = new WeakMap();
     const enumScopes = new WeakMap();
     const errors = [];
+    const warnings = [];
+    const warn=message=>{if(!warnings.includes(message))warnings.push(message);};
+    const classSymbols=[];
+    const methodSymbols=new Map();
+    let activeClass=null;
     const fail = message => { if (!errors.includes(message)) errors.push(message); };
     const declare = (scope, name, symbol) => {
         const external = (scope.external || scope.shared?.external)?.symbols.get(name);
@@ -94,6 +99,9 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
                 declare(scope, st.name, {kind: 'enum', scope: child, exported: Boolean(st.exported)});
                 enumScopes.set(st, child);
                 for (const member of st.members) declare(child, member.name, {kind: 'enumMember', exported: true, value: undefined});
+            } else if (st.type === 'Class') {
+                const symbol={kind:'value',classNode:st,bindingScope:scope,name:scope===root?st.name:fresh([...scope.path,st.name]),exported:Boolean(st.exported)};
+                classSymbols.push(symbol);declare(scope,st.name,symbol);
             } else if (st.type === 'FunctionDeclaration') {
                 declare(scope, st.name, {kind: 'value', bindingScope:scope, functionNode:st, procedure: scope !== root, name: scope === root ? st.name : fresh([...scope.path, st.name]), exported: Boolean(st.exported)});
             } else if (st.type === 'Declaration') {
@@ -184,6 +192,7 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
                 for (const decl of st.decls) {
                     const value = constant(decl.init, scope);
                     if (value !== undefined) scope.symbols.get(decl.name).constant = value;
+                    if(decl.init?.type==='Number' || decl.init?.type==='Unary' && ['+','-'].includes(decl.init.op) && decl.init.argument?.type==='Number')scope.symbols.get(decl.name).hoistedLiteral=decl.init;
                 }
             }
             if (st.type !== 'Enum') continue;
@@ -237,12 +246,18 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
             if (symbol?.kind === 'invalid') return node;
             if (symbol?.kind === 'value') {
                 if (symbol.procedure && context !== 'callee') fail(`namespace procedure ${symbol.name} used as a runtime function value`);
+                if(symbol.hoistedLiteral && symbol.bindingScope!==root && context!=='write')return {...symbol.hoistedLiteral};
                 return {type: 'Identifier', name: symbol.name, assetPath: symbol.sourcePath};
             }
             if (symbol?.kind === 'enumMember' && symbol.value !== undefined) return {type: 'Number', value: symbol.value};
             if (symbol && ['namespace', 'enum'].includes(symbol.kind)) fail(`${symbol.kind} ${symbol.scope.path.join('.')} used as a runtime object`);
         }
         if(spriteKinds && node.type==='ExpressionStatement' && node.expr?.type==='Call' && node.expr.callee?.type==='Member' && node.expr.callee.object?.name==='SpriteKind' && node.expr.callee.name==='create')return {type:'Declaration',kind:'let',decls:[{name:fresh(['SpriteKind','discard']),typeName:'number',init:rewrite(node.expr,scope,shadows)}]};
+        if(node.type==='Class'){
+            const symbol=scope.symbols.get(node.name);
+            const member=fn=>fn?{...fn,body:rewriteBody(fn.body,scope,childShadows(shadows,[...(fn.params || []),...functionVars(fn.body)]))}:fn;
+            return {...node,name:namespaceBody?symbol?.name || node.name:node.name,fields:node.fields.map(field=>({...field,init:rewrite(field.init,scope,shadows)})),ctor:member(node.ctor),methods:node.methods.map(member)};
+        }
         if (node.type === 'FunctionDeclaration' || node.type === 'FunctionExpression') {
             const local = childShadows(shadows, [...(node.params || []), ...functionVars(node.body)]);
             return {...node, ...(node.type === 'FunctionDeclaration' && namespaceBody ? {name:scope.symbols.get(node.name)?.name || node.name} : {}), body: rewriteBody(node.body, scope, local)};
@@ -262,43 +277,106 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
             if (symbol?.readonly && symbol.bindingScope!==root) fail(`assignment to readonly namespace binding ${symbol.sourcePath}`);
             if(symbol?.spriteKind && !symbol.readonly)return {...Object.fromEntries(Object.entries(node).map(([key,value])=>[key,rewrite(value,scope,shadows,false,key)])),spriteKindName:symbol.sourcePath.slice('SpriteKind.'.length),spriteKindBinding:symbol.name};
         }
-        return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, rewrite(value, scope, shadows, false, key)]));
+        return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, rewrite(value,scope,shadows,false,node.type==='Assignment' && key==='left' || node.type==='Update' && key==='argument'?'write':key)]));
     };
-    // A namespace's exported properties are installed by its initializer,
-    // unlike top-level functions. Reject reads/calls made before installation
-    // rather than changing a failing or undefined read into a hoisted value.
+    // The selected PXT compiler hoists procedures and numeric literal constants.
+    // Mutable values and executable initializers retain declaration order.
+    // Deferred bodies are checked when their statically known calls execute.
     const initialized = new Set();
     const activeCalls = new Set();
     const traceBody = (body, scope, shadows, lexical = false) => {
         const active = lexical ? childShadows(shadows, lexicalNames(body)) : shadows;
         for (const st of body) {
             if (st.type === 'Namespace' && namespaceScopes.has(st)) {traceBody(st.body, namespaceScopes.get(st), active);continue;}
-            if (st.type === 'FunctionDeclaration') {initialized.add(scope.symbols.get(st.name));continue;}
+            if (st.type === 'FunctionDeclaration') {if(!lexical)initialized.add(scope.symbols.get(st.name));continue;}
+            if(st.type==='Class'){for(const field of st.fields)if(field.isStatic)trace(field.init,scope,active);if(!lexical)initialized.add(scope.symbols.get(st.name));continue;}
             if (st.type === 'Declaration') {
-                for (const decl of st.decls) {trace(decl.init, scope, active);initialized.add(scope.symbols.get(decl.name));}
+                for (const decl of st.decls) {
+                    trace(decl.init,scope,active);
+                    if(!lexical){const symbol=scope.symbols.get(decl.name);if(symbol){symbol.classAlias=access(decl.init,scope,active)?.classNode?access(decl.init,scope,active):null;symbol.instanceClass=classOf(decl.init,scope,active);if(decl.init?.type==='FunctionExpression'){symbol.functionNode=decl.init;symbol.bindingScope=scope;}symbol.callAlias=methodOf(decl.init,scope,active) || access(decl.init,scope,active)?.functionNode && access(decl.init,scope,active);initialized.add(symbol);}}
+                }
                 continue;
             }
             trace(st, scope, active);
         }
     };
+    const classOf=(node,scope,shadows)=>{
+        if(node?.type==='New' || node?.type==='Call' && (node.isNew || node.constructorCall))return access(node.callee,scope,shadows)?.classNode?access(node.callee,scope,shadows):access(node.callee,scope,shadows)?.classAlias || null;
+        if(node?.type==='Identifier' && node.name==='this')return activeClass;
+        return access(node,scope,shadows)?.instanceClass || null;
+    };
+    const methodOf=(node,scope,shadows,kind='method')=>{
+        if(node?.type!=='Member')return null;
+        const receiver=access(node.object,scope,shadows),owner=receiver?.classNode?receiver:classOf(node.object,scope,shadows);
+        if(!owner)return null;
+        const method=owner.classNode.methods.find(method=>method.name===node.name && method.kind===kind && Boolean(method.isStatic)===Boolean(receiver?.classNode));
+        if(!method)return null;
+        if(!methodSymbols.has(method))methodSymbols.set(method,{functionNode:method,bindingScope:owner.bindingScope,classOwner:owner});
+        return methodSymbols.get(method);
+    };
+    const invoke=symbol=>{
+        if(!symbol?.functionNode || activeCalls.has(symbol))return;
+        activeCalls.add(symbol);const previous=activeClass;activeClass=symbol.classOwner || null;
+        const fn=symbol.functionNode;
+        traceBody(fn.body,symbol.bindingScope,childShadows(new Set(),[...(fn.params || []),...functionVars(fn.body)]),true);
+        activeClass=previous;activeCalls.delete(symbol);
+    };
+    const pendingReads=(node,scope,shadows)=>{
+        if(!node || typeof node!=='object')return false;
+        if(Array.isArray(node))return node.some(value=>pendingReads(value,scope,shadows));
+        if(['FunctionDeclaration','FunctionExpression','Class'].includes(node.type))return false;
+        if(['Identifier','Member'].includes(node.type)){const symbol=access(node,scope,shadows);if(symbol?.bindingScope && symbol.bindingScope!==root && !symbol.functionNode && !symbol.hoistedLiteral && !symbol.spriteKind && !initialized.has(symbol))return true;}
+        return Object.values(node).some(value=>pendingReads(value,scope,shadows));
+    };
+    const unprovedMethod=(name)=>{
+        for(const owner of classSymbols)for(const method of owner.classNode.methods){
+            if(method.name===name && pendingReads(method.body,owner.bindingScope,childShadows(new Set(),[...method.params,...functionVars(method.body)])))warn(`namespace initialization order in deferred class method ${owner.classNode.name}.${name} is unproved for a dynamic receiver; class runtime support remains separately diagnosed`);
+        }
+    };
     const trace = (node, scope, shadows) => {
         if (!node || typeof node !== 'object') return;
         if (Array.isArray(node)) {node.forEach(value=>trace(value,scope,shadows));return;}
-        if (['FunctionExpression','FunctionDeclaration','Enum'].includes(node.type)) return;
+        if (['FunctionExpression','FunctionDeclaration','Enum','Class'].includes(node.type)) return;
         if (['Identifier','Member'].includes(node.type)) {
             const symbol=access(node,scope,shadows);
-            if (!symbol?.spriteKind && symbol?.bindingScope && symbol.bindingScope!==root && !initialized.has(symbol) &&
+            if (!symbol?.functionNode && !symbol?.hoistedLiteral && !symbol?.spriteKind && symbol?.bindingScope && symbol.bindingScope!==root && !initialized.has(symbol) &&
                 (node.type==='Member' || !symbol.functionNode)) fail(`namespace binding ${symbol.name} used before initialization`);
         }
-        if (node.type==='Call') {
-            const symbol=access(node.callee,scope,shadows);
+        if(node.type==='Assignment'){
+            trace(node.right,scope,shadows);
+            const setter=methodOf(node.left,scope,shadows,'set');
+            if(setter)invoke(setter);else trace(node.left,scope,shadows);
+            const target=access(node.left,scope,shadows);
+            if(target?.kind==='value'){target.classAlias=node.op==='=' && access(node.right,scope,shadows)?.classNode?access(node.right,scope,shadows):null;target.instanceClass=node.op==='='?classOf(node.right,scope,shadows):null;target.callAlias=node.op==='='?methodOf(node.right,scope,shadows) || access(node.right,scope,shadows)?.callAlias:null;}
+            return;
+        }
+        if(node.type==='Member'){
+            const getter=methodOf(node,scope,shadows,'get');
+            if(getter)invoke(getter);
+            else if(!methodOf(node,scope,shadows))unprovedMethod(node.name);
+        }
+        if(node.type==='New' || node.type==='Call' && (node.isNew || node.constructorCall)){
             trace(node.callee,scope,shadows);node.args.forEach(arg=>trace(arg,scope,shadows));
-            if (symbol?.functionNode && !activeCalls.has(symbol)) {
-                activeCalls.add(symbol);
-                const fn=symbol.functionNode;
-                traceBody(fn.body,symbol.bindingScope,childShadows(new Set(),[...fn.params,...functionVars(fn.body)]),true);
-                activeCalls.delete(symbol);
+            const owner=classOf(node,scope,shadows);
+            if(!owner){
+                for(const candidate of classSymbols){
+                    const bodies=[...candidate.classNode.fields.map(field=>field.init),candidate.classNode.ctor?.body,...candidate.classNode.methods.map(method=>method.body)];
+                    if(bodies.some(body=>pendingReads(body,candidate.bindingScope,new Set())))warn(`namespace initialization order in deferred class ${candidate.classNode.name} is unproved for a dynamic constructor; class runtime support remains separately diagnosed`);
+                }
             }
+            if(owner && !activeCalls.has(owner)){
+                activeCalls.add(owner);const previous=activeClass;activeClass=owner;
+                for(const field of owner.classNode.fields)if(!field.isStatic)trace(field.init,owner.bindingScope,shadows);
+                if(owner.classNode.ctor)invoke({functionNode:owner.classNode.ctor,bindingScope:owner.bindingScope,classOwner:owner});
+                activeClass=previous;activeCalls.delete(owner);
+            }
+            return;
+        }
+        if (node.type==='Call') {
+            const symbol=access(node.callee,scope,shadows) || methodOf(node.callee,scope,shadows);
+            trace(node.callee,scope,shadows);node.args.forEach(arg=>trace(arg,scope,shadows));
+            invoke(symbol?.callAlias || symbol);
+            if(!symbol?.functionNode && !symbol?.callAlias && node.callee?.type==='Member')unprovedMethod(node.callee.name);
             return;
         }
         if (node.type==='Block') {traceBody(node.body,scope,shadows,true);return;}
@@ -316,5 +394,5 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
         const kindDeclarations=body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls.filter(decl=>decl.spriteKindName));
         body.unshift(...kindDeclarations.map(decl=>({type:'SpriteKindReset',name:decl.name})));
     }
-    return errors.length ? {program: null, unsupported: errors} : {program:{...program, body}, unsupported: []};
+    return errors.length ? {program:null,unsupported:errors,warnings} : {program:{...program,body},unsupported:[],warnings};
 };

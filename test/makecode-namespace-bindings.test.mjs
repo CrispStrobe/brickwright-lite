@@ -52,7 +52,7 @@ let answer=States.Inner.value+Direction.Next;`);
 test('unsafe namespace uses and nonconstant enums keep explicit diagnostics', () => {
     for(const [source,diagnostic] of [
         ['namespace A { let hidden=1 } let x=A.hidden;',/private/],
-        ['let x=A.f(); namespace A { export function f(){return 1} }',/before initialization/],
+        ['let x=A.f(); namespace A { export function f(){return value} export let value=1 }',/before initialization/],
         ['function f(){return A.x} let x=f(); namespace A { export let x=1 }',/before initialization/],
         ['namespace A { export let value=1 } let x=A;',/runtime object/],
         ['namespace A { export let value=1 } let x=A["value"];',/runtime object/],

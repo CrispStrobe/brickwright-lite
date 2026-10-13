@@ -4551,7 +4551,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const withAnimationDiagnostics = result => {
         result = nameArtworkSprites(result);
         let code = result.code;
-        const sourceWarnings=parsed.sourceWarnings || [];
+        const sourceWarnings=[...(parsed.sourceWarnings || []),...(namespaceBindings.warnings || [])];
         if(sourceWarnings.length)code=code.replace(/^(DEVICE ARCADE.*)$/m, (_,header)=>header+'\n'+sourceWarnings.map(warning=>'# source warning: '+warning).join('\n'));
         if(scrollerVersion===LEGACY_SCROLLER_REVISION)code=code.replace(/^WHEN flag clicked:$/m, `WHEN flag clicked:\n  arcade use background scroll version "${scrollerVersion}"`);
         if(characterVersion===LEGACY_CHARACTER_REVISION)code=code.replace(/^WHEN flag clicked:$/m, `WHEN flag clicked:\n  arcade use character animation version "${characterVersion}"`);

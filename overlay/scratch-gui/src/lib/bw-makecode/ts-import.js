@@ -871,7 +871,10 @@ class Parser {
         const names = [this.expect('ident').value];
         while (this.eat('punct', '.')) names.push(this.expect('ident').value);
         let node = {type: 'Namespace', name: names.pop(), body: this.parseBlock()};
-        while (names.length) node = {type: 'Namespace', name: names.pop(), body: [node]};
+        while (names.length) {
+            // Dotted namespace syntax implicitly exports every inner segment.
+            node = {type: 'Namespace', name: names.pop(), body: [{...node, exported: true}]};
+        }
         return node;
     }
 
