@@ -887,6 +887,20 @@ class MicrobitTranslator extends BaseTranslator {
             this.block(bodyOf(a[0]), indent, out);
             return;
 
+        case 'motors.dualMotorPower': {
+            // A Calliope project keeps its motors; on the micro:bit the call
+            // is named and refused as before (below).
+            const which = a[0] && a[0].type === 'Member' ? a[0].name : null;
+            const motors = {A: ['A'], B: ['B'], AB: ['A', 'B']}[which];
+            if (this.board === 'calliopemini' && motors && a[1]) {
+                const power = this.single(a[1], out, pad);
+                for (const m of motors) push(`calliope motor ${m} power ${power} %`);
+                return;
+            }
+            push(this.note(`${name}() — ${CALLIOPE_ONLY[name]}`));
+            return;
+        }
+
         default:
             if (CALLIOPE_ONLY[name]) {
                 push(this.note(`${name}() — ${CALLIOPE_ONLY[name]}`));
@@ -1103,6 +1117,7 @@ const UNPOLLABLE_HANDLERS = {};
 export function microbitToPseudocode (source, opts = {}) {
     const ast = parseMakeCodeTs(source);
     const t = new MicrobitTranslator();
+    t.board = opts.board || null;
     t.aliases = new Map();
     // Before anything is emitted: a variable this program has to be
     // renamed must not land on a name the program already uses.
@@ -1232,7 +1247,9 @@ export function microbitToPseudocode (source, opts = {}) {
         t.statement(st, 1, main);
     }
 
-    const out = ['DEVICE MICROBIT', ''];
+    // A Calliope project stays a Calliope project: its motor words have no
+    // meaning on the micro:bit, and MakeCode compiles it for its own board.
+    const out = [opts.board === 'calliopemini' ? 'DEVICE CALLIOPEMINI' : 'DEVICE MICROBIT', ''];
     if (opts.name) {
         // The Calliope runs the same core API; the DEVICE line is the
         // closest board we model, and saying so beats implying the
