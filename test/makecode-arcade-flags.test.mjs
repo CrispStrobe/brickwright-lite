@@ -43,15 +43,19 @@ test('Ghost is a composite mask and Invisible changes rendering without disablin
     assert.equal(target.visible, true); assert.equal(sprite.flags, 0);
 });
 
-test('projectile default AutoDestroy survives changes to other flags', () => {
+test('projectile default AutoDestroy survives changes to other flags', async () => {
+    const original=await runPxtArcade('let projectile=sprites.createProjectileFromSide(img`1`,30,0);let defaultFlags=projectile.flags;projectile.setFlag(SpriteFlag.Invisible,true);let hiddenFlags=projectile.flags;projectile.setFlag(SpriteFlag.AutoDestroy,false);let afterClear=projectile.flags;let wallFlag=SpriteFlag.DestroyOnWall;wallFlag+=0;let retainsWall=(projectile.flags & SpriteFlag.DestroyOnWall)!=0',{fakeClock:true});
     const {rt, ext} = setup();
     const id = ext.spawnProjectile({TEMPLATE: '', KIND: 'Projectile', MODE: 'side', VX: 30, VY: 0, WIDTH: 1, HEIGHT: 1});
+    assert.equal(rt.bwArcadeDeviceState.sprites[id].flags,original.defaultFlags);
     ext.setSpriteFlag({ID: id, FLAG: 'Invisible', ON: 1});
-    assert.equal(rt.bwArcadeDeviceState.sprites[id].flags, 132);
+    assert.equal(rt.bwArcadeDeviceState.sprites[id].flags,original.hiddenFlags);
     assert.equal(rt.bwArcadeDeviceState.sprites[id].autoDestroy, true);
     ext.setSpriteAutoDestroy({ID: id, ON: 'false'});
-    assert.equal(rt.bwArcadeDeviceState.sprites[id].flags, 128);
+    assert.equal(rt.bwArcadeDeviceState.sprites[id].flags,original.afterClear);
     assert.equal(rt.bwArcadeDeviceState.sprites[id].autoDestroy, false);
+    assert.equal((rt.bwArcadeDeviceState.sprites[id].flags & original.wallFlag)!==0,original.retainsWall);
+    assert.equal(original.retainsWall,true,'clearing AutoDestroy retains the SDK DestroyOnWall default');
 });
 
 test('flag literals and computed Booleans survive Code, Blocks, MakeCode compile and reimport', async () => {
