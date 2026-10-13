@@ -48,7 +48,11 @@ const readCode = () => editor().evaluate(element => element.cmTile.root.view.sta
 const applyBlocks = async () => {
     const prior = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
     await page.getByRole('button', {name: /To blocks/}).first().click();
-    await page.waitForFunction(id => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== id,
+    await page.waitForFunction(id => {
+        // loadProject removes the old stage before installing the new one.
+        const next=window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id;
+        return Boolean(next && next !== id);
+    },
         prior, {timeout: 30000});
     await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible'});
     await page.waitForFunction(() => {
