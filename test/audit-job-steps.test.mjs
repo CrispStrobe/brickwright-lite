@@ -264,3 +264,37 @@ test('a null step assigned ELSEWHERE triggers the re-read too (the loop is not n
     assert.equal(code, 0);
     assert.equal(reads, 2);
 });
+
+
+test('missing API step array is retried until the complete shard records arrive', async () => {
+    let reads = 0, waits = 0;
+    const {log, error} = sinks();
+    const code = await run(async () => [{name: 'browser (heavy)', run_attempt: 1,
+        steps: ++reads === 1 ? [] : inHeavy}],
+    {jobName: 'browser (heavy)', attempt: 1, shard: 'heavy', workflowText: SYNTH_YML},
+    {log, error, sleep: async ms => {assert.equal(ms, 10000); waits++;}});
+    assert.equal(code, 0); assert.equal(reads, 2); assert.equal(waits, 1);
+});
+
+test('a permanently missing own or other-shard record cannot produce a partial green', async () => {
+    for (const missing of ['Browser benchmark — 8086 desktop and mobile', 'Browser gate — editor', AUDIT]) {
+        let waits = 0;
+        const {out, log, error} = sinks();
+        const code = await run(async () => [{name: 'browser (heavy)', run_attempt: 1,
+            steps: inHeavy.filter(s => s.name !== missing)}],
+        {jobName: 'browser (heavy)', attempt: 1, shard: 'heavy', workflowText: SYNTH_YML},
+        {log, error, sleep: async () => {waits++;}});
+        assert.equal(code, 1); assert.equal(waits, 6);
+        assert.match(out.errors.join('\n'), /unaudited/);
+        assert.ok(out.errors.join('\n').includes(missing));
+    }
+});
+
+test('duplicate gate records remain unauditable even if both claim success', async () => {
+    const {out, log, error} = sinks();
+    const code = await run(async () => [{name: 'browser (heavy)', run_attempt: 1,
+        steps: [...inHeavy, step('Browser benchmark — 8086 desktop and mobile', 'success')]}],
+    {jobName: 'browser (heavy)', attempt: 1, shard: 'heavy', workflowText: SYNTH_YML},
+    {log, error, sleep: async () => {}});
+    assert.equal(code, 1); assert.match(out.errors.join('\n'), /2 records/);
+});
