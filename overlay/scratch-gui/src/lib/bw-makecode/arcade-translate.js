@@ -286,6 +286,8 @@ class ArcadeTranslator extends BaseTranslator {
         this.bufferReferences = references.buffers;this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
         this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.inferredSpriteParameters = references.parameters;
+        this.primitiveReferences=references.primitives;
+        this.strictStringReferences=references.strictStrings;
         this.spriteResultFunctions = references.spriteFunctions;
         this.spriteResultBindings = new Set();
         const bindings = [];
@@ -791,7 +793,8 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(node.callee?.type==='Member' && node.callee.name==='concat' && this.stringReferences?.has(node.callee.object)) {
             if(a.length!==1) {this.note('String.concat() requires exactly one argument');return 'undefined value';}
-            if([this.imageReferences,this.spriteReferences,this.arrayReferences,this.bufferReferences,this.sceneReferences].some(refs=>refs?.has(a[0]))) {this.note('String.concat() object conversion is not implemented');return 'undefined value';}
+            if(!this.strictStringReferences?.has(node.callee.object)) {this.note('String.concat() receiver must be a proven string value');return 'undefined value';}
+            if(!this.primitiveReferences?.has(a[0])) {this.note('String.concat() requires a proven primitive argument; object, reference or unknown conversion is not implemented');return 'undefined value';}
             return `concatenate text (${this.arrayElementValue(node.callee.object)}) with (${this.arrayElementValue(a[0])})`;
         }
         if (node.callee?.type==='Member' && node.callee.name==='toString' && this.spriteReferences?.has(node.callee.object)) {
@@ -881,7 +884,7 @@ class ArcadeTranslator extends BaseTranslator {
         case 'randint': return `pick random ${this.mathOperand(a[0])} to ${this.mathOperand(a[1])}`;
         case 'String.fromCharCode':
             if(a.length!==1 || this.bindsName('String')) {this.note('String.fromCharCode() requires its unshadowed single-argument primitive conversion');return 'undefined value';}
-            if([this.imageReferences,this.spriteReferences,this.arrayReferences,this.bufferReferences,this.sceneReferences].some(refs=>refs?.has(a[0]))) {this.note('String.fromCharCode() object conversion is not implemented');return 'undefined value';}
+            if(!this.primitiveReferences?.has(a[0])) {this.note('String.fromCharCode() requires a proven primitive argument; object, reference or unknown conversion is not implemented');return 'undefined value';}
             return `text from char code (${this.arrayElementValue(a[0])})`;
         case 'game.runtime':
         case 'control.millis':
@@ -3081,10 +3084,16 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         ['FunctionDeclaration','FunctionExpression'].includes(node.type) && (node.params||[]).includes('screen') ||
         node.type==='FunctionDeclaration' && node.name==='screen');
     const isScreen=node=>node?.type==='Identifier' && node.name==='screen' && !screenDeclared;
+    const mathDeclared=entries.some(({node})=>node.type==='Declaration' && node.decls?.some(decl=>decl.name==='Math') ||
+        ['FunctionDeclaration','FunctionExpression'].includes(node.type) && (node.params || []).includes('Math'));
     const typeOf = (node, owner) => {
         if (imageOf(node) || isScreen(node) || isScopedAssetFactory(node)) return new Set(['image']);
         if(node?.type==='Number')return new Set(['number']);
         if(node?.type==='Null')return new Set(['null']);
+        if(node?.type==='Undefined')return new Set(['undefined']);
+        if(node?.type==='Object')return new Set(['object']);
+        if(node?.type==='Identifier' && ['NaN','Infinity'].includes(node.name) && !global.bindings.has(node.name))return new Set(['number']);
+        if(node?.type==='Member' && node.object?.name==='Math' && !mathDeclared && ['E','LN2','LN10','LOG2E','LOG10E','PI','SQRT1_2','SQRT2'].includes(node.name))return new Set(['number']);
         if(node?.type==='Member' && node.object?.name==='CameraProperty' && Object.prototype.hasOwnProperty.call(CAMERA_PROPERTIES,node.name))return new Set(['number']);
         if(node?.type==='Member' && node.object?.name==='TileDirection' && Object.prototype.hasOwnProperty.call(TILE_DIRECTIONS,node.name))return new Set(['number']);
         if(node?.type==='Member' && node.object?.name==='CollisionDirection' && Object.prototype.hasOwnProperty.call(COLLISION_DIRECTIONS,node.name))return new Set(['number']);
@@ -3120,6 +3129,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(api==='characterAnimations.ruleToString' && node.args.length===1)return new Set(['string']);
             if(['characterAnimations.rule','characterAnimations._predicate','characterAnimations._direction'].includes(api))return new Set(['number']);
             if(api==='characterAnimations.matchesRule')return new Set(['boolean']);
+            if(!mathDeclared && /^Math\.(?:abs|min|max|pow|round|floor|ceil|trunc|sign|sqrt|sin|cos|tan|asin|acos|atan|atan2|log|exp|random|randomRange|imul|idiv)$/.test(api || ''))return new Set(['number']);
             if(['mp.playerSelector','mp.getPlayerByNumber','mp.getPlayerByIndex','mp.getPlayerBySprite'].includes(api))return new Set(['player']);
             const settingRead=/^(?:settings|blockSettings)\.(read(Number|String|NumberArray|Buffer)|exists|list)$/.exec(api||'');
             if(settingRead){
@@ -3201,6 +3211,11 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
     // Join array element constraints as a graph, so nested arrays and aliases
     // retain their element types without unrolling recursive array types.
     const graph = new ValueTypeGraph();
+    const primitiveTypes=new Set(['number','string','boolean','null','undefined']);
+    const applyPrimitiveAnnotation=(value,annotation)=>{
+        const types=String(annotation || '').replace(/\s+/g,'').split('|');
+        if(types.length && types.every(type=>primitiveTypes.has(type)))for(const type of types)graph.add(value,type);
+    };
     const cell = (node, owner) => {
         if(isScreen(node)){const value=binding(owner,node.name);graph.add(value,'Image');return value;}
         if(node?.type === 'Identifier')return binding(owner,node.name);
@@ -3213,21 +3228,25 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
     for (const fn of functions.values()) {
         fn.resultCell = Symbol('procedure result');
         applyDeclaredValueType(graph, fn.resultCell, fn.node.returnType);
+        applyPrimitiveAnnotation(fn.resultCell,fn.node.returnType);
     }
     for (const {node, owner} of entries) {
         if (['FunctionDeclaration', 'FunctionExpression'].includes(node.type)) {
             for (const name of node.params || []) {
                 applyDeclaredValueType(graph, binding(owner, name), node.paramTypes?.[name]?.text);
+                applyPrimitiveAnnotation(binding(owner,name),node.paramTypes?.[name]?.text);
             }
         }
         if (node.type === 'Declaration') for (const decl of node.decls) {
             applyDeclaredValueType(graph, binding(owner, decl.name), decl.typeName);
+            applyPrimitiveAnnotation(binding(owner,decl.name),decl.typeName);
         }
     }
     for (const {node,owner} of entries) {
         const value=cell(node,owner);
+        applyPrimitiveAnnotation(value,node.assertedType);
         for (const type of typeOf(node,owner)) {
-            const name={image:'Image',sprite:'Sprite',tile:'TileLocation','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio','text-sprite':'TextSprite',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',array:'array'}[type];
+            const name={image:'Image',sprite:'Sprite',tile:'TileLocation','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio','text-sprite':'TextSprite',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',null:'null',undefined:'undefined',object:'object',any:'unknown',array:'array'}[type];
             if(name)graph.add(value,name);
         }
         if(node.type==='Template' && node.tag==='hex' || node.type==='Call' && ['control.createBuffer','control.createBufferFromUTF8','Buffer.fromHex','Buffer.fromUTF8','settings.readBuffer','blockSettings.readBuffer'].includes(pathOf(node.callee)))graph.add(value,'Buffer');
@@ -3239,9 +3258,13 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(node.type==='Declaration')for(const decl of node.decls){
             const variable=binding(owner,decl.name);
             if(decl.isArray)graph.add(variable,'array');
+            if(!decl.init && !graph.node(variable).types.size)graph.add(variable,'unknown');
             connect(variable,cell(decl.init,owner));
         }
         if(node.type==='Assignment' && node.op==='=')connect(cell(node.left,owner),cell(node.right,owner));
+        if(node.type==='Conditional'){
+            connect(value,cell(node.consequent,owner));connect(value,cell(node.alternate,owner));
+        }
         if(node.type==='Return')for(const fn of functions.values())if(fn.owner===owner)connect(fn.resultCell,cell(node.value,owner));
         if(node.type==='Call' && node.callee?.type==='Identifier'){
             const fn=functions.get(node.callee.name);
@@ -3269,6 +3292,23 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(receiver && op==='clone' && !node.args.length && graph.has(receiver,'Image'))graph.add(value,'Image');
         }
     } while(revision!==graph.revision);
+    // Unknown value leaves must survive joins with known primitive branches.
+    // An assertion adds metadata but never erases an observed object/reference.
+    for(const {node,owner} of entries){
+        const asserted=String(node.assertedType || '').replace(/\s+/g,'').split('|');
+        const primitiveAssertion=asserted.every(type=>primitiveTypes.has(type));
+        const receiver=node.callee?.type==='Member' && cell(node.callee.object,owner);
+        const arrayResult=receiver && graph.has(receiver,'array') && ['get','pop','shift','removeAt','_pickRandom'].includes(node.callee.name);
+        const unknownCall=node.type==='Call' && !typeOf(node,owner).size && !arrayResult && !(node.callee?.type==='Identifier' && functions.has(node.callee.name));
+        const unknownMember=node.type==='Member' && !typeOf(node,owner).size;
+        if(!primitiveAssertion && (unknownCall || unknownMember) || ['Identifier','Call','Member','Index','Object'].includes(node.type) && !graph.node(cell(node,owner)).types.size)graph.add(cell(node,owner),'unknown');
+    }
+    const primitives=new WeakSet(),strictStrings=new WeakSet();
+    for(const {node,owner} of entries){
+        const types=graph.node(cell(node,owner)).types;
+        if(types.size && [...types].every(type=>primitiveTypes.has(type)))primitives.add(node);
+        if(types.has('string') && [...types].every(type=>primitiveTypes.has(type)))strictStrings.add(node);
+    }
     const data = new WeakSet();
     for (const {node, owner} of entries) {
         const value=cell(node,owner);
@@ -3294,7 +3334,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {textSprites, buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {primitives,strictStrings,textSprites, buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
