@@ -460,7 +460,7 @@ class SpikeArenaPane extends React.Component {
         } else this.setState({status: 'running', message});
     }
 
-    async startFirmware (program = null, {source = null, onOutput = () => {}, onCompleted = () => {}, onError = () => {}, onProgramState = () => {}, onStopped = () => {}} = {}) {
+    async startFirmware (program = null, {source = null, onOutput = () => {}, onStarting = () => {}, onCompleted = () => {}, onError = () => {}, onProgramState = () => {}, onStopped = () => {}} = {}) {
         if (this.disposed) throw new Error("The arena pane is closed");
         if (!this.bridge) return;
         const micro = this.state.execution === 'micropython';
@@ -520,9 +520,12 @@ class SpikeArenaPane extends React.Component {
         session.onProgramState = this.firmwareProgramObserver(session, onProgramState);
         session.onStopped = this.firmwareStoppedObserver(session, backend, program, onStopped);
         session.onError = this.firmwareErrorObserver(session, onError);
-        this.setState({status: 'starting', storageSupported: false, programState: null, message: this.locale === 'de' ? 'Simulation wird gestartet…' : 'Starting firmware simulation…'});
+        const startingMessage = this.locale === 'de' ? 'Simulation wird gestartet…' : 'Starting firmware simulation…';
+        this.setState({status: 'starting', storageSupported: false, programState: null, message: startingMessage});
         try {
-            await session.start();
+            const startup = session.start();
+            onStarting(startingMessage);
+            await startup;
             this.firmwareStartedState(session, program || source !== null ? (this.locale === 'de' ? 'Code-Programm läuft in der ARM-Firmware.' : 'Code program running in ARM firmware.') : (this.locale === 'de' ?
                 'Die eingebaute Fahrdemo läuft.' : 'Running the built-in driving demo.'));
         } catch (error) {
