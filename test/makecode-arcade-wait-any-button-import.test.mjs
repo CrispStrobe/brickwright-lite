@@ -4,7 +4,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
-const source='let before=1;controller.pauseUntilAnyButtonIsPressed();let after=2';
+const source='let before=1;before+=0;controller.pauseUntilAnyButtonIsPressed();let after=2;after+=0';
 const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 test('controller wait imports suspend until a genuine button press and roundtrip',async()=>{
     const original=await runPxtArcade(source,{buttonActions:{afterGlobals:{before:1},steps:[{button:5,held:true,delay:80},{button:5,held:false,delay:80}]}});

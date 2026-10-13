@@ -25,7 +25,8 @@ let unequal=actor.tileKindAt(direction,img\`1\`)
 let defaultCenter=actor.tileKindAt(99,copied)
 let imageSame=copied.equals(img\`5\`)
 let imageDifferent=copied.equals(img\`5 5\`)
-let done=1`;
+let done=1
+done+=0`;
 const keys=['left','top','right','bottom','center','copiedCenter','unequal','defaultCenter','imageSame','imageDifferent','done'];
 
 test('tileKindAt source contract queries center coordinates and compares actual Image pixels',()=>{
