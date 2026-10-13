@@ -11,6 +11,7 @@ import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 // extension adapter; they do not claim source-import/export or GUI qualification.
 async function native(source='scene.setBackgroundColor(0)') {
     const imported=arcadeToPseudocode(source);
+    assert.deepEqual(imported.unsupported,[]);
     const run=await runProgram(imported.code,{frames:0,uploads:imported.costumes,storage:true});
     const {default:dispatch}=await importGuiDependency('scratch-vm/src/dispatch/central-dispatch.js');
     const adapter=Object.values(dispatch.services).findLast(s=>s?._inst&&s.getInfo?.().id==='arcade');
@@ -221,7 +222,7 @@ test('actual hand-authored Text Code preinitializes its dependency before main a
 });
 
 test('original absent-kind creation has kind -1 but does not invoke an explicit -1 creation handler',async()=>{
-    const registration='let created=0\nsprites.onCreated(-1,function(sprite){created+=1})';
+    const registration='let created=0\nsprites.onCreated(-1,function(sprite){created+=1;sprite.image.fill(6)})';
     const original=await runPxtArcade(registration+`
 let absent=sprites.create(img\`2\`)
 let first=created
