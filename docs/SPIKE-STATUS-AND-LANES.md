@@ -52,6 +52,29 @@ were retained. Raw results stay private. The normal source merge tree matched
 the reviewed tree and preserved independently merged vendor changes. G02's
 chooser/final-sampling/generation/late-poll cases and G05 closure remain open.
 
+## Stale firmware cleanup follow-up — 2026-10-13
+
+[PR879](https://github.com/CrispStrobe/brickwright-lite/pull/879) merged finite
+native Start and chooser intent guards. Its separately reviewed installed
+consumer [`f1772cf0`](https://github.com/CrispStrobe/brickwright-lite/commit/f1772cf0fe96988f7a4a3c665a478ef8fac4b065)
+qualified seven UI cases and own-NuttX Code Stop during startup. These observations
+do not qualify every later main package or close G02.
+
+A later actual installed run on that consumer completed an owned NuttX program
+and reproduced another lifecycle gap. After the old pane's firmware session
+closed, delaying only the real Stop return allowed a new pane to start the
+shared VM. The disposed pane's resumed cleanup then called `stopAll` on that VM.
+Original VM calls were observed and invoked; no guest implementation was substituted.
+
+The source candidate fences shared cleanup after firmware teardown using pane
+disposal, Stop revision and bridge identity. Stale teardown errors are suppressed;
+current Stop and current errors retain their behavior. All 14 actual-method
+controls pass, and five deliberate guard/error mutations fail. Hosted checks
+and fresh candidate installed teardown/replacement and positive Stop qualification
+remain pending. Earlier cold-start failures are preserved and unexplained;
+startup succeeding on the new diagnostic does not resolve their cause.
+Firmware, Runtime, model pins and startup deadlines remain unchanged.
+
 ## Installed dual-ultrasonic checkpoint — 2026-10-12
 
 [PR755](https://github.com/CrispStrobe/brickwright-lite/pull/755) is merged at
