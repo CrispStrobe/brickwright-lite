@@ -261,3 +261,26 @@ test('explicit concurrent physical deltas survive pending owner completion',asyn
  assert.deepEqual(elapsed,[0,20]);assert.equal(r.value(),2);assert.equal(r.driver.queuedDelta,null);
  }finally{close(r);}
 });
+
+for(const action of ['stop','load'])test('actual '+action+' cancels an owned browser-turn continuation without a physical frame',async()=>{
+ const r=await setup({budgetMs:1},`SPRITE Game:
+WHEN arcade source starts:
+  set loops to 0
+  arcade repeat while (1 = 1):
+    change loops by 1`);
+ let frames=0;r.vm.runtime.on('ARCADE_FRAME',()=>frames++);
+ let cancel,resolveCancel;cancel=new Promise(resolve=>{resolveCancel=resolve;});
+ let pendingSeen=false;
+ try{
+  const request=r.vm.runtime._step(0);
+  setTimeout(async()=>{
+   try{pendingSeen=!!r.driver.pending;if(action==='load')await r.vm.loadProject(r.buffer);else r.vm.stopAll();resolveCancel();}
+   catch(error){resolveCancel(error);}
+  },0);
+  const outcome=await request,error=await cancel;if(error)throw error;
+  assert.equal(pendingSeen,true,'actual host timer observes the pending physical owner');
+  assert.equal(outcome.cancelled,true);assert.equal(frames,0);
+  assert.equal(r.driver.pending,null);assert.equal(r.driver.queuedDelta,null);
+  assert.equal(r.vm.runtime.threads.length,0);
+ }finally{close(r);}
+});
