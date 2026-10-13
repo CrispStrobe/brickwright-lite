@@ -1,3 +1,4 @@
+import {prepareObjectClassExport} from './object-class-export.js';
 import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
 import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
 const LEGACY_CHARACTER_REVISION=LEGACY_CHARACTER_NATIVE_IDENTITY.revision;
@@ -982,6 +983,19 @@ class ArcadeEmitter {
         return this.condition(b, name);
     }
 
+    objectArgumentValues(b) {
+        const args=[];let current=this.block(b.inputs?.ARGS?.[1]),tail=b.inputs?.ARGS;
+        const seen=new Set();
+        while(current?.opcode==='arcade_functionArgument' && !seen.has(current)){seen.add(current);args.push(this.arrayValue(current,'VALUE'));tail=current.inputs?.REST;current=this.block(tail?.[1]);}
+        const shadow=tail?.[1],empty=Array.isArray(shadow)?String(shadow[1])==='[]':current?.shadow && current?.fields?.TEXT?.[0]==='[]';
+        if(!empty)this.note('Class arguments require a fixed ordered argument chain');
+        return args;
+    }
+    objectFieldName(b,slot='FIELD') {
+        const name=this.literalInput(b,slot);
+        if(!name || !/^[A-Za-z_]\w*$/.test(name)){this.note('Class export requires a fixed declared field or method name');return '_unsupportedField';}
+        return name;
+    }
     isBoolean (b) {
         return !!b && ['arrays_valueTruthy','arrays_valueCompare','arrays_referenceRemove','arrays_referenceTruthy', 'arrays_contains', 'operator_and', 'operator_or', 'operator_not', 'operator_gt', 'operator_lt', 'operator_equals',
             'sensing_touchingobject', 'sensing_keypressed', 'sensing_mousedown', 'data_listcontainsitem',
@@ -1076,6 +1090,13 @@ class ArcadeEmitter {
             return `sprites.createProjectile(${image}, ${vx}, ${vy}, ${this.kindExpr(b, 'KIND')})`;
         }
         case 'arcade_imagesOverlap': return `${v('IMAGE')}.overlapsWith(${v('SOURCE')}, ${v('X')}, ${v('Y')})`;
+        case 'arcade_createObject': {
+            const name=this.literalInput(b,'CLASS');
+            if(!this.objectClassExport?.classes.has(name)){this.note('Object export requires a fixed declared class');return this.na();}
+            return `new ${name}(${this.objectArgumentValues(b).join(', ')})`;
+        }
+        case 'arcade_objectField':return `${this.arrayValue(b,'OBJECT')}.${this.objectFieldName(b)}`;
+        case 'arcade_callObjectMethod':return `${this.arrayValue(b,'OBJECT')}.${this.objectFieldName(b,'METHOD')}(${this.objectArgumentValues(b).join(', ')})`;
         case 'arcade_callFunction': {
             const code = this.literalInput(b, 'NAME');
             const fn = code && (this.fnNames.get(`${this.target.isStage ? '' : this.target.name}:${code}`) || this.fnNames.get(`:${code}`));
@@ -1677,6 +1698,8 @@ class ArcadeEmitter {
         case 'arcade_placeOnRandomTile': push(`tiles.placeOnRandomTile(${v('ID')}, ${v('IMAGE')})`);return;
         case 'arcade_setscore':push(`info.setScore(${v('N')})`);return;
         case 'arcade_changescore':push(`info.changeScoreBy(${v('N')})`);return;
+        case 'arcade_declareClass':return;
+        case 'arcade_setObjectField':push(`${this.arrayValue(b,'OBJECT')}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`);return;
         case 'data_setvariableto': {
             const scratchName = this.field(b, 'VARIABLE');
             const info = this.infoVariable(scratchName);
@@ -3191,6 +3214,7 @@ class ArcadeEmitter {
                 }
             }
         }
+        this.objectClassExport=prepareObjectClassExport(this);
         const imageParameterTypes = this.imageProcedureParameters();
         // Instance destruction callbacks are registered by a command in the
         // startup script. Compile their bodies first, then insert each body at
@@ -3326,6 +3350,7 @@ class ArcadeEmitter {
                     if (!proto || !proto.mutation) continue;
                     const names = JSON.parse(proto.mutation.argumentnames || '[]').map(ident);
                     const key = `${t.isStage ? '' : t.name}:${proto.mutation.proccode}`;
+                    if(this.objectClassExport.procedures.has(key))continue;
                     const types = imageParameterTypes.get(key) || [];
                     const params = names.map((n, i) => `${n}: ${types[i] || 'any'}`);
                     // It runs in its caller's thread, so it checks the caller's run token.
@@ -3372,6 +3397,7 @@ class ArcadeEmitter {
             if (!this.usedDestroyedCallbacks.has(token)) this.note(`Arcade sprite destruction callback ${token} has no registration`);
         }
         // Declarations: every variable the program touched, then the sprites.
+        const objectClasses=this.objectClassExport.render();
         const decls = [...new Set(this.globals.values())];
         if(this.requiresTextSpritePackage)this.customSpriteKinds.delete('Text');
         if (this.boundSpriteKinds.size) {
@@ -3379,7 +3405,11 @@ class ArcadeEmitter {
             for (const kind of this.boundSpriteKinds) out.push(`    export let ${kind}: number`);
             out.push('}');
         }
+        out.push(...objectClasses);
         for (const n of decls) {
+            const objectType=this.objectClassExport?.variableTypes.get(n);
+            if(objectType && (this.objectClassExport.classes.has(objectType) || /\[\]$/.test(objectType) && this.objectClassExport.classes.has(objectType.slice(0,-2)))){out.push(`let ${n}: ${objectType} = null`);continue;}
+            if(['number','boolean','string'].includes(objectType)){out.push(`let ${n}: ${objectType} = ${objectType==='string'?'\"\"':objectType==='boolean'?'false':'0'}`);continue;}
             const kinds = this.kinds.get(n) || new Set(['number']);
             // A variable given both text and numbers is `any` — Scratch's own
             // variables are untyped, and that is the honest translation.

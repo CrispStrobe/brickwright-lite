@@ -37,6 +37,7 @@ module.exports = makeExt(`// Name: Arcade
       this._sceneStack = [];this._sceneParents=new WeakMap();this._seeThroughSources=new WeakMap();this._renderingScenes=new WeakSet();this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
       this._sceneBundles = new Set();
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
+      this._objectHeap=dependencies.createObjectHeap(runtime,Scratch.BWValues);
       this._renderables=new WeakMap();this._screen=null;this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._extensionCreationWaits=[];
       this._scenePushHandlers = [];this._scenePopHandlers = [];
       this._scrollerVersion = 'v0.1.2';
@@ -402,6 +403,11 @@ module.exports = makeExt(`// Name: Arcade
           { opcode: 'stopControllingSprite', blockType: Scratch.BlockType.COMMAND,
             text: 'Arcade controller [CONTROLLER] stop controlling sprite [ID]',
             arguments: {CONTROLLER: {type: Scratch.ArgumentType.STRING, menu: 'controllerNumbers', defaultValue: '1'}, ...str('ID', '')} },
+          {opcode:'declareClass',blockType:Scratch.BlockType.COMMAND,text:'Arcade declare class [NAME] fields [FIELDS] initializer [INITIALIZER] constructor [CONSTRUCTOR] parameters [PARAMETERS] methods [METHODS]',arguments:{...str('NAME','Record'),...str('FIELDS','[]'),...str('INITIALIZER',''),...str('CONSTRUCTOR',''),...str('PARAMETERS','[]'),...str('METHODS','[]')}},
+          {opcode:'createObject',blockType:Scratch.BlockType.REPORTER,text:'Arcade new object class [CLASS] arguments [ARGS]',arguments:{...str('CLASS','Record'),...str('ARGS','[]')}},
+          {opcode:'objectField',blockType:Scratch.BlockType.REPORTER,text:'Arcade object [OBJECT] field [FIELD]',arguments:{...str('OBJECT',''),...str('FIELD','value')}},
+          {opcode:'setObjectField',blockType:Scratch.BlockType.COMMAND,text:'Arcade set object [OBJECT] field [FIELD] to [VALUE]',arguments:{...str('OBJECT',''),...str('FIELD','value'),...str('VALUE','0')}},
+          {opcode:'callObjectMethod',blockType:Scratch.BlockType.REPORTER,text:'Arcade object [OBJECT] call method [METHOD] arguments [ARGS]',arguments:{...str('OBJECT',''),...str('METHOD','calculate'),...str('ARGS','[]')}},
           { opcode: 'functionArgument', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade function argument [VALUE] followed by [REST]', arguments: {...str('VALUE', '0'), ...str('REST', '[]')} },
           { opcode: 'callFunction', blockType: Scratch.BlockType.REPORTER,
@@ -1686,6 +1692,62 @@ module.exports = makeExt(`// Name: Arcade
         }
       }
     }
+    _objectError(error) {
+      this._runtime?.emit?.('BLOCKS_ERROR',error);return Scratch.BWValues.UNDEFINED;
+    }
+    declareClass(args) {
+      try {this._objectHeap.register({name:String(args.NAME),fields:JSON.parse(String(args.FIELDS)),initializer:String(args.INITIALIZER),constructor:String(args.CONSTRUCTOR),parameters:JSON.parse(String(args.PARAMETERS)),methods:JSON.parse(String(args.METHODS))});}
+      catch(error){return this._objectError(error);}
+    }
+    _objectProcedure(name,values,util,token) {
+      const target=util?.target || util?.thread?.target;
+      if(util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))){const error=new Error('Class construction or method invocation was cancelled');error.bwObjectCancelled=true;throw error;}
+      if(!target?.blocks?.getProcedureDefinition(name))throw new Error('Class procedure is not defined: '+name);
+      // Dispatch through the real managed-call queue. Its source phase owns
+      // runnable eligibility; a Promise continuation must not synchronously
+      // re-enter execute's shared BlockUtility with a different caller.
+      return this.callFunction({NAME:name,ARGS:JSON.stringify(values,Scratch.BWValues.jsonReplacer),bwObjectConstruction:token},
+        {thread:util?.thread,target,sequencer:null});
+    }
+    createObject(args,util) {
+      // BlockUtility is reused by the sequencer. Promise continuations retain
+      // the actual calling thread, not whichever thread last used that utility.
+      util={thread:util?.thread,target:util?.target || util?.thread?.target,sequencer:util?.sequencer,bwObjectUtility:util};
+      let allocation;
+      try {
+        let values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
+        if(!Array.isArray(values))throw new Error('Class constructor arguments must be an ordered argument list');
+        values=values.map(value=>this._objectHeap.hold(value));
+        allocation=this._objectHeap.allocate(String(args.CLASS));
+        const {ref,def,token}=allocation;
+        if(values.length>def.parameters.length)throw new Error('Class constructor has too many arguments');
+        while(values.length<def.parameters.length)values.push(Scratch.BWValues.UNDEFINED);
+        const invokeConstructor=()=>{if(!this._objectHeap.constructionActive(ref,token)){const error=new Error('Class construction was cancelled by project replacement');error.bwObjectCancelled=true;throw error;}return def.constructor?this._objectProcedure(def.constructor,[ref,...values],util,token):undefined;};
+        const finish=()=>{if(util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))){this._objectHeap.abort(ref,token);return Scratch.BWValues.UNDEFINED;}return this._objectHeap.finish(ref,token);};
+        const failed=error=>{this._objectHeap.abort(ref,token);return error.bwObjectCancelled || util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))?Scratch.BWValues.UNDEFINED:this._objectError(error);};
+        const initial=def.initializer?this._objectProcedure(def.initializer,[ref],util,token):undefined;
+        if(initial && typeof initial.then==='function')return initial.then(invokeConstructor).then(finish).catch(failed);
+        const body=invokeConstructor();
+        if(body && typeof body.then==='function')return body.then(finish).catch(failed);
+        return finish();
+      }catch(error){if(allocation)this._objectHeap.abort(allocation.ref,allocation.token);return this._objectError(error);}
+    }
+    objectField(args) {
+      try{return this._objectHeap.get(args.OBJECT,String(args.FIELD));}catch(error){return this._objectError(error);}
+    }
+    setObjectField(args,util) {
+      try{this._objectHeap.set(args.OBJECT,String(args.FIELD),args.VALUE,util?.thread?.bwObjectConstruction);}catch(error){return this._objectError(error);}
+    }
+    callObjectMethod(args,util) {
+      try {
+        const method=this._objectHeap.method(args.OBJECT,String(args.METHOD));
+        let values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
+        if(!Array.isArray(values))throw new Error('Class method arguments must be an ordered argument list');
+        if(values.length>method.parameters.length)throw new Error('Class method has too many arguments');
+        while(values.length<method.parameters.length)values.push(Scratch.BWValues.UNDEFINED);
+        return this._objectProcedure(method.procedure,[args.OBJECT,...values.map(value=>this._objectHeap.hold(value))],util,util?.thread?.bwObjectConstruction);
+      }catch(error){return this._objectError(error);}
+    }
     functionArgument(args) {
       let rest;try {rest = JSON.parse(String(args.REST));} catch {rest = [];}
       return JSON.stringify([args.VALUE, ...(Array.isArray(rest) ? rest : [])], Scratch.BWValues.jsonReplacer);
@@ -1712,9 +1774,14 @@ module.exports = makeExt(`// Name: Arcade
       const thread = runtime._pushThread(definition, target);
       // A sentinel caller frame retains arguments/locals while the native
       // sequencer replaces body frames. Each invocation owns its own cells.
+      // The caller frame carries cells but has no executable block. Reusing
+      // the definition ID here reruns a falling-through void body without its
+      // parameters before the managed-call pump can observe completion.
+      thread.stack[0] = null;
       thread.stackFrames[0].waitingReporter = name;
       thread.stackFrames[0].params = Object.fromEntries(names.map((n,i)=>[n,i < values.length ? values[i] : defaults[i]]));
       thread.pushStack(definition);
+      thread.bwObjectConstruction = args.bwObjectConstruction || util.thread?.bwObjectConstruction;
       thread.bwArcadeEvent = util.thread?.bwArcadeEvent;
       thread.bwArcadeCaptures = util.thread?.bwArcadeCaptures;
       thread.bwFunctionNames = new Set(util.thread?.bwFunctionNames || []);
@@ -5335,6 +5402,7 @@ module.exports = makeExt(`// Name: Arcade
   Scratch.extensions.register(new Arcade(Scratch.vm && Scratch.vm.runtime));
 })(Scratch);
 `, {
+  createObjectHeap: require('./object-heap'),
   createKindRegistry: require('./kind-registry'),
   createTextSpriteHost: require('./text-sprite-host'),
   initializeTextSprite: require('./text-sprite-pxt'),

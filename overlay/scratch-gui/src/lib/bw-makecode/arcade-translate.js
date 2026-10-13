@@ -1,3 +1,4 @@
+import {lowerObjectClasses} from './lower-object-classes.js';
 import {foldPxtNumeric,pxtFoldedNumberCode} from './pxt-numeric-fold.js';
 import {TEXT_SPRITE_INITIALIZER} from './text-source-admission.generated.js';
 import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
@@ -292,6 +293,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.boundSourceGlobals=new Set(node.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls.map(decl=>decl.name)));
         this.sourceFunctions=new Map(node.body.filter(fn=>fn.type==='FunctionDeclaration').map(fn=>[fn.name,fn]));
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value), value => !!this.assetKindLookup && value?.type === 'Template' && ['assets.image', 'assets.tile'].includes(value.tag));
+        this.objectReferences = references.objects;
         this.bufferReferences = references.buffers;this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
         this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.inferredSpriteParameters = references.parameters;
@@ -651,6 +653,7 @@ class ArcadeTranslator extends BaseTranslator {
     }
 
     callExpression (node) {
+        const objectValue=this.objectExpression(node);if(objectValue!==null)return objectValue;
         if(this.textSpriteStatement(node,node.args||[],line=>this.pre.push(line)))return 'undefined value';
         const importedBuffer=this.bufferExpression(node);
         if(importedBuffer!==null)return importedBuffer;
@@ -1343,6 +1346,7 @@ class ArcadeTranslator extends BaseTranslator {
         const push = line => out.push(pad + line);
         const name = this.path(node.callee);
         const a = node.args || [];
+        if(this.objectStatement(node,push))return;
         if(name?.startsWith('mp.') && (this.boundSourceGlobals?.has('mp') || this.sourceFunctions?.has('mp') || this.localVars?.has('mp') || this.currentParameters?.has('mp') || this.capturedBindings.has('mp'))) {push(this.note(`${name} refers to a shadowed mp binding`));return;}
         if(['mp.setPlayerState','mp.changePlayerStateBy'].includes(name) && a.length===3){push(name==='mp.setPlayerState'?`arcade set state (${this.expr(a[1])}) of player (${this.expr(a[0])}) to (${this.expr(a[2])})`:`arcade change state (${this.expr(a[1])}) of player (${this.expr(a[0])}) by (${this.expr(a[2])})`);return;}
         if(name==='mp.moveWithButtons' && a.length>=1 && a.length<=3){push(`arcade move player (${this.expr(a[0])}) with buttons vx (${a[1]?this.expr(a[1]):100}) vy (${a[2]?this.expr(a[2]):100})`);return;}
@@ -1939,6 +1943,39 @@ class ArcadeTranslator extends BaseTranslator {
 
     // effects.<name> as one of PXT's ParticleEffect instances.
     /** A program binding (global, function, local, parameter or capture) named `name`. */
+    objectArguments(node) {
+        if(node?.type!=='Array'){this.unsupported.push('Class arguments require an explicit ordered argument list');return '"[]"';}
+        let rest='"[]"';
+        for(let i=node.items.length-1;i>=0;i--)rest=`arcade function argument (${this.arrayElementValue(node.items[i])}) rest (${rest})`;
+        return rest;
+    }
+    objectExpression(node) {
+        const name=this.path(node?.callee),a=node?.args || [];
+        if(name==='__bwObjects.assign' && a.length===5) {
+            const fresh=base=>{let name;do{name='__bwObject'+base+'_'+(this.objectTemporaryCounter=(this.objectTemporaryCounter||0)+1);}while(this.taken?.has(name));this.taken?.add(name);return name;};
+            const receiver=fresh('Receiver'),old=fresh('Old'),next=fresh('Next');
+            this.pre.push(`arcade set local ${receiver} to (${this.expr(a[0])})`);
+            this.pre.push(`arcade set local ${old} to (arcade object (arcade local ${receiver}) field (${this.expr(a[1])}))`);
+            const op=a[2].value,increment=['++','--'].includes(op);
+            const left=increment?`convert value (arcade local ${old}) op "+"`:`arcade local ${old}`;
+            const right=this.arrayElementValue(a[3]);
+            this.pre.push(`arcade set local ${next} to (calculate value (${left}) op ${JSON.stringify(increment?op==='++'?'+':'-':op)} with (${right}))`);
+            this.pre.push(`arcade set object (arcade local ${receiver}) field (${this.expr(a[1])}) to (arcade local ${next})`);
+            return `arcade local ${a[4].value==='old'?old:next}`;
+        }
+        if(name==='__bwObjects.create' && a.length===2)return `arcade new object class (${this.expr(a[0])}) arguments (${this.objectArguments(a[1])})`;
+        if(name==='__bwObjects.get' && a.length===2)return `arcade object (${this.expr(a[0])}) field (${this.expr(a[1])})`;
+        if(name==='__bwObjects.call' && a.length===3)return `arcade object (${this.expr(a[0])}) call method (${this.expr(a[1])}) arguments (${this.objectArguments(a[2])})`;
+        return null;
+    }
+    objectStatement(node,push) {
+        const name=this.path(node?.callee),a=node?.args || [];
+        if(name==='__bwObjects.declare' && a.length===6){push(`arcade declare class (${this.expr(a[0])}) fields (${this.expr(a[1])}) initializer (${this.expr(a[2])}) constructor (${this.expr(a[3])}) parameters (${this.expr(a[4])}) methods (${this.expr(a[5])})`);return true;}
+        if(name==='__bwObjects.set' && a.length===3){push(`arcade set object (${this.expr(a[0])}) field (${this.expr(a[1])}) to (${this.arrayElementValue(a[2])})`);return true;}
+        if(name==='__bwObjects.assign'){push(`arcade set local __bwDiscardObjectResult to (${this.objectExpression(node)})`);return true;}
+        if(name==='__bwObjects.call'){push(`arcade set local __bwDiscardObjectResult to (${this.objectExpression(node)})`);return true;}
+        return false;
+    }
     settingsExpression(node) {
         if(!this.handleTemplates || node?.type!=='Call')return null;
         let api=this.path(node.callee);
@@ -3081,7 +3118,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
  * Passing a resource does not copy it. Forwarded parameters and local aliases
  * reach a fixed point, including recursive procedures and callback callers. */
 const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () => false) => {
-    const textSprites=new WeakSet();
+    const textSprites=new WeakSet(), objects=new WeakSet();
     const buffers = new WeakSet(), players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), sevensegDigits = new WeakSet(), sevensegCounters = new WeakSet(), darts = new WeakSet(), corgis = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
     const entries = [];
     const functions = new Map();
@@ -3149,6 +3186,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
     const mathDeclared=entries.some(({node})=>node.type==='Declaration' && node.decls?.some(decl=>decl.name==='Math') ||
         ['FunctionDeclaration','FunctionExpression'].includes(node.type) && (node.params || []).includes('Math'));
     const typeOf = (node, owner) => {
+        if(node?.bwObjectTypes?.length)return new Set(node.bwObjectTypes);
         if (imageOf(node) || isScreen(node) || isScopedAssetFactory(node)) return new Set(['image']);
         if(node?.type==='Number')return new Set(['number']);
         if(node?.type==='Member' && (Object.prototype.hasOwnProperty.call(ARCADE_SCENE_CONSTANTS,pathOf(node)) || node.object?.type==='Identifier' && node.object.name==='SpriteKind'))return new Set(['number']);
@@ -3379,6 +3417,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
     const data = new WeakSet();
     for (const {node, owner} of entries) {
         const value=cell(node,owner);
+        if(graph.has(value,'object'))objects.add(node);
         if(graph.has(value,'Buffer'))buffers.add(node);
         if(graph.has(value,'SpriteData'))data.add(node);
         if (graph.has(value,'array')) arrays.add(node);
@@ -3401,7 +3440,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {primitives,strictStrings,textSprites, buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {objects,primitives,strictStrings,textSprites, buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
@@ -3801,7 +3840,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     if(['scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile'].some(name=>mapCalls.has(name)) &&
         ['tiles.setTilemap','tiles.setCurrentTilemap','scene.setTileMapLevel','tiles.getTilesByType','tiles.tileAtLocationEquals','tiles.setTileAt','tiles.setWallAt','tiles.placeOnRandomTile'].some(name=>mapCalls.has(name)))
         t.unsupported.push('Mixing legacy color-coded maps with modern map replacement, image lookup or per-location mutation is not yet supported');
-    const requiresSpriteRuntime = forceSpriteRuntime || !!ast.loweredSourceLoopControl || usesRuntimeSpriteMethods(ast);
+    const requiresSpriteRuntime = !!ast.bwObjectClasses || forceSpriteRuntime || !!ast.loweredSourceLoopControl || usesRuntimeSpriteMethods(ast);
     const callbackLocals = new Map();
     const createAssignments = [];
     const localCreateAssignments = [];
@@ -4571,7 +4610,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
     const parsed = lowerSourceLoopControl(inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
-        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true, retainParentheses: true})))), source), source), source), source))));
+        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true, retainParentheses: true, retainWhenUsed:true})))), source), source), source), source))));
     const containsPaletteCall = node => {
         if(!node || typeof node!=='object')return false;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='setPalette' &&
@@ -4630,7 +4669,9 @@ export function arcadeToPseudocode (files, opts = {}) {
             if (image && !Object.prototype.hasOwnProperty.call(assets, decl.name)) assets[decl.name] = image;
         }
     }
-    const callbacks = lowerStaticCallbackHelpers(namespaceBindings.program || parsed, {registrationSpec:sceneRegistrationSpec});
+    const objectClasses = lowerObjectClasses(namespaceBindings.program || parsed);
+    projectInputDiagnostics.push(...objectClasses.unsupported);
+    const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:sceneRegistrationSpec});
     projectInputDiagnostics.push(...callbacks.unsupported);
     const ast = lowerLazyValues(callbacks.program);
     const flattened = namespaceBindings.program ? ast : null;

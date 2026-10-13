@@ -67,7 +67,12 @@ export function tokenize (src) {
     const out = [];
     let i = 0;
     let line = 1;
-    const push = (type, value) => out.push({type, value, line});
+    let pendingWhenUsed=false;
+    const push = (type, value) => {
+        const whenUsed=pendingWhenUsed && ['const','let','var'].includes(type);
+        out.push({type,value,line,...(whenUsed?{whenUsed:true}:{})});
+        if(type!=='export')pendingWhenUsed=false;
+    };
 
     while (i < src.length) {
         const c = src[i];
@@ -81,7 +86,9 @@ export function tokenize (src) {
             continue;
         }
         if (c === '/' && src[i + 1] === '/') {
+            const start=i;
             while (i < src.length && src[i] !== '\n') i++;
+            if(/^\/\/%.*\bwhenUsed(?:\s|=true\b|$)/.test(src.slice(start,i)))pendingWhenUsed=true;
             continue;
         }
         if (c === '/' && src[i + 1] === '*') {
@@ -502,6 +509,7 @@ class Parser {
         while (!this.at('punct', '}') && !this.at('eof')) {
             if (this.eat('punct', ';')) continue;
             let isStatic = false;
+            const modifiers = [];
             for (;;) {
                 const t = this.peek();
                 const nextIsName = this.peek(1).type === 'ident' || MODIFIERS.has(this.peek(1).value) ||
@@ -509,6 +517,7 @@ class Parser {
                 if ((t.type === 'public' || t.type === 'private' || t.type === 'static' ||
                     (t.type === 'ident' && MODIFIERS.has(t.value))) && nextIsName) {
                     if (t.type === 'static') isStatic = true;
+                    else modifiers.push(t.value);
                     this.next();
                     continue;
                 }
@@ -543,10 +552,10 @@ class Parser {
                         type: 'Assignment', op: '=', left: {type: 'Member', object: {type: 'Identifier', name: 'this'}, name},
                         right: {type: 'Identifier', name}
                     }}));
-                    node.ctor = {params, paramTypes, parameterProperties: properties,
+                    node.ctor = {params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, parameterProperties: properties,
                         body: [...this.defaultStatements(params), ...assignments, ...body]};
                 }
-                else node.methods.push({name: member, kind: 'method', params, paramTypes, returnType, body, isStatic});
+                else node.methods.push({name: member, kind: 'method', params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, returnType, body:[...this.defaultStatements(params),...body], isStatic, modifiers});
                 continue;
             }
             this.eat('punct', '?');
@@ -554,7 +563,7 @@ class Parser {
             const typeName = this.lastType;
             let init = null;
             if (this.eat('punct', '=')) init = this.parseExpression();
-            node.fields.push({name: member, typeName, init, isStatic});
+            node.fields.push({name: member, typeName, init, isStatic, modifiers});
         }
         this.expect('punct', '}');
         node.calls = this.callsSince(start);
@@ -591,7 +600,8 @@ class Parser {
 
     parseDeclaration () {
         const start = this.pos;
-        const kind = this.next().value;
+        const token=this.next(),kind=token.value;
+        const whenUsed=this.retainWhenUsed && token.whenUsed;
         const decls = [];
         let destructured = false;
         do {
@@ -602,7 +612,7 @@ class Parser {
             const typeName = this.lastType;
             let init = null;
             if (this.eat('punct', '=')) init = this.parseExpression();
-            decls.push({name: pattern.name, pattern, init, isArray, typeName});
+            decls.push({name: pattern.name, pattern, init, isArray, typeName,...(whenUsed?{whenUsed:true}:{})});
         } while (this.eat('punct', ','));
         this.eat('punct', ';');
         // A destructuring declaration keeps its RHS once, and ordered property
@@ -1239,5 +1249,6 @@ export function parseMakeCodeTs (source, opts = {}) {
     const parser = new Parser(tokenize(source));
     parser.parameterDefaults = Boolean(opts.parameterDefaults);
     parser.retainParentheses = Boolean(opts.retainParentheses);
+    parser.retainWhenUsed = Boolean(opts.retainWhenUsed);
     return parser.parseProgram();
 }

@@ -255,8 +255,16 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
         if(spriteKinds && node.type==='ExpressionStatement' && node.expr?.type==='Call' && node.expr.callee?.type==='Member' && node.expr.callee.object?.name==='SpriteKind' && node.expr.callee.name==='create')return {type:'Declaration',kind:'let',decls:[{name:fresh(['SpriteKind','discard']),typeName:'number',init:rewrite(node.expr,scope,shadows)}]};
         if(node.type==='Class'){
             const symbol=scope.symbols.get(node.name);
-            const member=fn=>fn?{...fn,body:rewriteBody(fn.body,scope,childShadows(shadows,[...(fn.params || []),...functionVars(fn.body)]))}:fn;
-            return {...node,name:namespaceBody?symbol?.name || node.name:node.name,fields:node.fields.map(field=>({...field,init:rewrite(field.init,scope,shadows)})),ctor:member(node.ctor),methods:node.methods.map(member)};
+            const classType=type=>{
+                const text=typeof type==='string'?type:type?.text;if(!text)return type;
+                const suffix=/((?:\[\])*)$/.exec(text)[1],name=text.slice(0,text.length-suffix.length);
+                if(!/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$/.test(name))return type;
+                const ref=name.split('.').reduce((object,name)=>object?{type:'Member',object,name}:{type:'Identifier',name},null);
+                const target=access(ref,scope,shadows),resolved=target?.classNode?target.name+suffix:text;
+                return typeof type==='string'?resolved:{...type,text:resolved};
+            };
+            const member=fn=>fn?{...fn,paramTypes:Object.fromEntries(Object.entries(fn.paramTypes || {}).map(([name,type])=>[name,classType(type)])),returnType:classType(fn.returnType),body:rewriteBody(fn.body,scope,childShadows(shadows,[...(fn.params || []),...functionVars(fn.body)]))}:fn;
+            return {...node,name:namespaceBody?symbol?.name || node.name:node.name,fields:node.fields.map(field=>({...field,typeName:classType(field.typeName),init:rewrite(field.init,scope,shadows)})),ctor:member(node.ctor),methods:node.methods.map(member)};
         }
         if (node.type === 'FunctionDeclaration' || node.type === 'FunctionExpression') {
             const local = childShadows(shadows, [...(node.params || []), ...functionVars(node.body)]);
