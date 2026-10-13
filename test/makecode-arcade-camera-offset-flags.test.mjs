@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 const Arcade=loadExtensionClass('arcade');
 test('deprecated camera reporters read draw offsets without updating the camera',async()=>{
@@ -24,4 +26,21 @@ test('camera offsets, readable flags and info-only life source select their nati
  assert.match(value.code,/arcade camera draw offset x/);assert.match(value.code,/arcade camera draw offset y/);assert.match(value.code,/arcade property flags of/);assert.match(value.code,/arcade set life player/);
  for(const body of ['info.setLife(0)','let lives=info.life()','info.changeLifeBy(-1)'])assert.match(arcadeToPseudocode(body).code,/arcade (?:set life|life player|change life)/,body);
  for(const body of ['let edge=scene.cameraLeft(1)','let edge=scene.cameraTop(1)'])assert.ok(arcadeToPseudocode(body).unsupported.some(x=>x.includes('requires no arguments')),body);
+});
+
+test('camera draw offsets and flags survive original/native/Code/SB3/export/reimport',async()=>{
+ const source='let oldLeft=scene.cameraLeft();let oldTop=scene.cameraTop();let actor=sprites.create(img`1`,SpriteKind.Player);let initial=actor.flags;actor.setFlag(SpriteFlag.Ghost,true);actor.setFlag(SpriteFlag.Invisible,true);let masked=actor.flags;actor.setFlag(SpriteFlag.Ghost,false);let cleared=actor.flags;actor.destroy();let destroyed=actor.flags;let done=1;console.log(initial);console.log(masked);console.log(cleared);console.log(destroyed);console.log(oldLeft);console.log(oldTop);console.log(done)';
+ const names=['initial','masked','cleared','destroyed','oldLeft','oldTop','done'];
+ const original=await runPxtArcade(source,{fakeClock:true});
+ const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
+ const runs=[];const check=run=>{assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);const values=Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));for(const name of names)assert.equal(values[name],original[name],name);};
+ try{
+  const native=await runProgram(imported.code,{frames:12,uploads:imported.costumes,storage:true});runs.push(native);check(native);
+  const code=await runProgram(native.creator.decompile(),{frames:12,uploads:imported.costumes,storage:true});runs.push(code);check(code);
+  const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(native.buffer);fresh.vm.greenFlag();await stepFrames(fresh.vm,12);check(fresh);
+  const exported=projectToArcade(native.creator.project,{costumeSvg:(target,costume)=>native.creator.assets.get(costume.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+  assert.match(exported.files['main.ts'],/scene.cameraLeft\(\)/);assert.match(exported.files['main.ts'],/scene.cameraTop\(\)/);
+  const exportedOriginal=await runPxtArcade(exported.files,{fakeClock:true});for(const name of names)assert.equal(exportedOriginal[name]??exportedOriginal['Game_'+name],original[name],name+' exported');
+  const reimported=arcadeToPseudocode(exported.files);assert.deepEqual(reimported.unsupported,[]);const again=await runProgram(reimported.code,{frames:12,uploads:reimported.costumes,storage:true});runs.push(again);check(again);
+ }finally{for(const run of runs)run.vm.quit();clearStrayTimers();}
 });

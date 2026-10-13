@@ -107,8 +107,8 @@ const sections = code => Object.fromEntries(code.split(/^(?=SPRITE )/m).filter(s
 test('a function is defined on the sprite whose script calls it, not after the last sprite', async () => {
     const {imported, creator, lite} = await importAndRun(FUNCTIONS);
     // Numeric kind semantics select native sprite handles. Function ownership
-    // must follow its script caller; showScore remains explicitly diagnosed.
-    assert.deepEqual(imported.unsupported, ['info.showScore()']);
+    // must follow its script caller; HUD visibility is supported natively.
+    assert.deepEqual(imported.unsupported, []);
     const byOwner=sections(imported.code);
     const owner=Object.keys(byOwner).find(name=>/call function "dbl %s"/.test(byOwner[name]));
     assert.ok(owner,'the setup script calls dbl');
