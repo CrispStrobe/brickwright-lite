@@ -26,6 +26,7 @@ const StageComponent = props => {
         arcadeDialog,
         micIndicator,
         question,
+        arcadePrompt,
         stageSize,
         useEditorDragStyle,
         onDeactivateColorPicker,
@@ -109,6 +110,7 @@ const StageComponent = props => {
                             >
                                 <Question
                                     question={question}
+                                    arcadePrompt={arcadePrompt}
                                     onQuestionAnswered={onQuestionAnswered}
                                 />
                             </div>
@@ -152,6 +154,10 @@ StageComponent.propTypes = {
     onDoubleClick: PropTypes.func,
     onQuestionAnswered: PropTypes.func,
     question: PropTypes.string,
+    arcadePrompt: PropTypes.shape({
+        answerLength: PropTypes.number.isRequired,
+        numbersOnly: PropTypes.bool.isRequired
+    }),
     stageSize: PropTypes.oneOf(Object.keys(STAGE_DISPLAY_SIZES)).isRequired,
     useEditorDragStyle: PropTypes.bool
 };
