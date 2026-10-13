@@ -14,8 +14,9 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 The integration branch now includes managed class/object references and static
 visibility metadata using producer [PR125](https://github.com/CrispStrobe/sb3-creator/pull/125),
-which merged after its enabled checks passed. Ordinary inheritance is implemented and qualified below. Structured class
-authoring and SDK intrinsic subclasses remain separate gaps. Source-entry
+which merged after its enabled checks passed. Ordinary inheritance and the bounded
+SDK Sprite subclass slice are implemented and qualified below. Structured class
+authoring, drawing overrides and other intrinsic subclasses remain separate gaps. Source-entry
 palette editing and exact array helper recognition are repaired; scoped Arrays
 bundle provenance matches the selected immutable dependency.
 
@@ -40,6 +41,30 @@ four enabled checks passed; its reviewed and landed trees match. Canonical mirro
 and the 363-word inventory agree.
 Constructor and method string defaults are refused by the selected original SDK;
 native admission preserves those errors.
+
+The bounded SDK Sprite subclass slice retains canonical native Sprite identity,
+scene-local public IDs, image aliases and virtual constructor ordering. Raw Sprite
+and ExtendableSprite constructors retain their different physics and creation
+services. The frozen original/native/authoring suite passes 27 controls; after
+reserved internal descriptor refusal, the final SDK suite passes 11. Affected
+object-heap and renderer suites pass 13 and five respectively. Four source
+mutations are detected, and 503 source, VM and SDK inputs remain unchanged across
+the final gate. Four focused controls pass on integration. Handle lifetime is
+qualified within one loaded JavaScript realm; it does not establish persistent
+live handles across fresh realms. Drawing, update and hitbox overrides and
+status-bar accessors remain named admission boundaries.
+
+Saved-project device publication now listens to actual project load, preserves
+newer explicit board selection and rejects late callbacks. Whole-project loads
+clear stale STC metadata; sprite imports retain it. Twelve headless controls
+pass, including real SB3 save/reload and sprite import. Fresh production GUI
+restoration is still pending. Read [the device-pane contract](ARCADE-SB3-DEVICE-PANE.md).
+
+Static SDK namespace receivers survive conditional argument lowering with
+lexical shadow checks. Fourteen controls pass. A separate selected-PXT argument
+staging mismatch remains: the original compiler can stage a later conditional
+before an earlier argument call. The passing bounded namespace case does not
+qualify that broader evaluation order.
 
 The clean `947130db87` audit newly compiles all 41 contexts and retains **29
 original-valid / 12 original-invalid / 19 strict structural candidates**, with
@@ -72,7 +97,10 @@ an explicit CI consumer of the completed official build. Source/SDK manifests,
 official run/job/artifact identities, archive safety and extracted asset bytes
 are checked before the real editor journey. The 47 workflow controls pass,
 including partitioning, deployment dependencies and unchanged wait ceilings.
-Actual hosted browser qualification on that new artifact remains pending.
+Actual hosted browser qualification on that new artifact remains pending. The first hosted
+attempt stopped in the prerequisite SPIKE artifact test because its exact
+producer-pin assertion was stale. The assertion now names the adopted qualified
+pin and the complete SPIKE artifact test passes; a fresh official build is required.
 The browser audit also retries missing API step records and refuses permanent
 absence or duplicates; 27 focused controls pass.
 
