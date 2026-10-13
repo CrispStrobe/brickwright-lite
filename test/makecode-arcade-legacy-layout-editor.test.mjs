@@ -7,8 +7,82 @@ import {runProgram, stepFrames} from './helpers/bw-vm.mjs';
 import {getCostumeDocument, setCostumeDocument} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
 import {findLegacyTileDefinitions, writeLegacyTileDefinition} from '../overlay/scratch-gui/src/lib/bw-makecode/legacy-layout-editor.js';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {imageToSvg} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 
 const SOURCE = 'scene.setTile(1,img`7`,true)\nscene.setTileMap(img`1 0\n0 1`,TileScale.Four)\n';
+const frameSelection = (index, extra = '') => `DEVICE ARCADE
+SPRITE Game:
+WHEN flag clicked:
+  arcade set color-coded map image (arcade frame image array "levels" index (${index}) template "Levels" start 0 count 2) scale (2)
+${extra}
+SPRITE Levels:
+WHEN flag clicked:
+  hide
+`;
+const frameUploads = [1, 2].map((colour, index) => ({sprite: 'Levels', name: `level${index + 1}`,
+    mode: index ? 'add' : 'replace', svg: imageToSvg({width: 2, height: 2, pixels: [colour, colour, colour, colour]})}));
+test('a static frame selection edits the selected costume and preserves wrapped frame indexing', async () => {
+    const run = await runProgram(frameSelection(-1), {frames: 2, uploads: frameUploads, storage: true});
+    try {
+        const [ref] = findTilemapBlocks(run.vm);
+        assert.equal(ref.editable, true, ref.reason);
+        assert.deepEqual(ref.data.indices, [2, 2, 2, 2]);
+        const holder = run.vm.runtime.getSpriteTargetByName('Levels');
+        const firstAsset = holder.getCostumes()[0].assetId;
+        assert.equal(writeTilemapBlock(run.vm, ref, paintCell(ref.data, 1, 0, 3)), true);
+        assert.equal(holder.getCostumes()[0].assetId, firstAsset, 'other animation frames remain unchanged');
+        run.vm.greenFlag(); await stepFrames(run.vm, 3);
+        assert.deepEqual(Array.from(run.vm.runtime.bwArcadeDeviceState.tilemap.indices), [2, 3, 2, 2]);
+        const saved = await run.vm.saveProjectSb3(); await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
+        assert.deepEqual(findTilemapBlocks(run.vm)[0].data.indices, [2, 3, 2, 2]);
+        const out = projectToArcade(JSON.parse(run.vm.toJSON()), {costumeSvg: (target, costume) =>
+            run.vm.runtime.getSpriteTargetByName(target.name)?.getCostumes().find(candidate => candidate.name === costume.name)?.asset?.decodeText()});
+        assert.deepEqual(out.unsupported, []);
+        const original = await runPxtArcade({...out.files, 'main.ts': out.files['main.ts'] + '\nlet selectedFrameCell = scene.getTile(1,0).tileSet\n'},
+            {waitForGlobals: {selectedFrameCell: 3}});
+        assert.equal(original.selectedFrameCell, 3);
+        const container = run.vm.runtime.getTargetById(findTilemapBlocks(run.vm)[0].targetId).blocks;
+        const blocks = container._blocks;
+        const frame = Object.values(blocks).find(block => block.opcode === 'arcade_frameImage');
+        for (const [index, expected] of [[3.4, [2, 3, 2, 2]], [-0.6, [2, 3, 2, 2]], [2.49, [1, 1, 1, 1]]]) {
+            container.changeBlock({id: frame.inputs.INDEX.shadow, element: 'field', name: 'NUM', value: String(index)});
+            assert.deepEqual(findTilemapBlocks(run.vm)[0].data.indices, expected);
+            run.vm.greenFlag(); await stepFrames(run.vm, 3);
+            assert.deepEqual(Array.from(run.vm.runtime.bwArcadeDeviceState.tilemap.indices), expected,
+                `authoring selection matches runtime rounded/wrapped index ${index}`);
+        }
+    } finally { run.vm.quit?.(); }
+});
+
+test('conflicting descriptors for a shared frame key refuse edits to an unrelated costume', async () => {
+    const run = await runProgram(frameSelection(0, '  arcade set color-coded map image (arcade frame image array "levels" index (0) template "Other" start 0 count 1) scale (2)\nSPRITE Other:\nWHEN flag clicked:\n  hide'),
+        {frames: 2, uploads: [...frameUploads, {sprite: 'Other', name: 'other', mode: 'replace', svg: frameUploads[1].svg}], storage: true});
+    try {
+        const refs = findTilemapBlocks(run.vm);
+        assert.equal(refs.length, 2);
+        assert.ok(refs.every(ref => !ref.editable && ref.reason === 'mutableFrames'));
+        assert.deepEqual(Array.from(run.vm.runtime.bwArcadeDeviceState.tilemap.indices), [1, 1, 1, 1],
+            'runtime first-use frame binding is retained, rather than assumed to follow the later template');
+    } finally { run.vm.quit?.(); }
+});
+
+test('switching between identical frames cannot redirect a stale painter save', async () => {
+    const uploads = frameUploads.map(upload => ({...upload, svg: frameUploads[0].svg}));
+    const run = await runProgram(frameSelection(-1), {frames: 2, uploads, storage: true});
+    try {
+        const [ref] = findTilemapBlocks(run.vm);
+        const holder = run.vm.runtime.getSpriteTargetByName('Levels');
+        assert.equal(holder.getCostumes()[0].assetId, holder.getCostumes()[1].assetId);
+        const container = run.vm.runtime.getTargetById(ref.targetId).blocks;
+        const frame = Object.values(container._blocks).find(block => block.opcode === 'arcade_frameImage');
+        container.changeBlock({id: frame.inputs.INDEX.shadow, element: 'field', name: 'NUM', value: '0'});
+        assert.equal(writeTilemapBlock(run.vm, ref, paintCell(ref.data, 0, 0, 3)), false);
+        assert.deepEqual(findTilemapBlocks(run.vm)[0].data.indices, [1, 1, 1, 1]);
+        assert.equal(writeTilemapBlock(run.vm, findTilemapBlocks(run.vm)[0], paintCell(ref.data, 0, 0, 3)), true);
+        assert.equal(holder.getCostumes()[1].assetId, ref.artworkAssetId, 'the earlier selected frame remains untouched');
+    } finally { run.vm.quit?.(); }
+});
+
 test('single-assignment image aliases edit source artwork and preserve live pixel mutations', async () => {
     const imported = arcadeToPseudocode('let layout = img`1 0\n0 1`\nlet alias = layout\n' +
         'alias.setPixel(0,0,4)\nlet tileArt = img`7`\nscene.setTile(1,tileArt,true)\nscene.setTileMap(alias,TileScale.Four)');
