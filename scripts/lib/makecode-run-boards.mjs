@@ -101,6 +101,11 @@ export async function runBoards ({boards, seconds = 5, sliceMs = 50, presses = [
     const {createDebugTarget} = await bwBoard('debug-target-factory.js');
     const {LABWIRED_CATALOG, LABWIRED_BOARDS} = await bwBoard('labwired-catalog.js');
     if (typeof wasm.AirBus !== 'function') throw new BoardsUnsupported('the synced engine has no shared radio air');
+    // An older bw-board ignores `labAir` without a word, and every board would
+    // sit on a private air: a pair that runs and never hears each other. The
+    // Calliope mini board entered bw-board after the shared air did, so its
+    // presence is the marker that the option is honoured.
+    if (!LABWIRED_BOARDS['calliope-mini-v1']) throw new BoardsUnsupported('the installed bw-board predates the shared radio air');
     const air = sharedAir ? new wasm.AirBus() : null;
     const emit = e => { if (onEvent) onEvent(e); };
 
