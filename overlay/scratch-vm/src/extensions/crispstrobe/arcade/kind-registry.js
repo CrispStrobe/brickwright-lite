@@ -22,6 +22,9 @@ module.exports = function createKindRegistry() {
         return kind;
     }
     function normalize(value) {
+        // Original optional kind arguments distinguish absence from any ID.
+        // create defaults to -1; setKind ignores null/undefined in its caller.
+        if (value === null || value === undefined) return value;
         if (typeof value === 'number') return value;
         if (typeof value === 'string') {
             if (names.has(value)) return names.get(value);

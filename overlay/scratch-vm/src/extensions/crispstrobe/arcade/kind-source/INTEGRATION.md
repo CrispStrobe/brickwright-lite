@@ -52,8 +52,14 @@ semantics. This registry does not select or infer that order.
   This exclusion does not apply to event handlers: original `onCreated(-2)`
   fired, and `onOverlap(-2, Projectile)` fired on each observed overlapping
   frame while `allOfKind(-2)` remained empty.
-- Unknown names, empty fields, and missing bindings must produce a diagnostic;
-  normalization never invents a kind or advances allocation.
+- Unknown authoring names, empty fields, and missing name bindings must produce a diagnostic;
+  normalization never invents a kind or advances allocation. Genuine typed
+  null/undefined inputs pass through unchanged: original `sprites.create(img)`
+  and `sprites.create(img, null)` defaulted to -1, while `sprite.setKind(null)`
+  left its kind unchanged. Reading a later declared namespace kind before its
+  initializer executed was valid original source and created a -1 sprite.
+  Preserve source variable absence; do not replace it with an unresolved GUI
+  label or numeric zero. These API defaults belong to their callers.
 - Original builtin kinds are constants; assigning Player was refused by the
   original compiler. Custom metadata rebinding remains explicit and preserves
   already captured numeric identities.

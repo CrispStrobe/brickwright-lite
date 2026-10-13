@@ -64,3 +64,13 @@ test('fractional and negative numeric kinds keep original values without rounded
     assert.equal(Object.is(kinds.normalize(-0), -0), true);
     assert.equal(kinds.same(Number.NaN, Number.NaN), false, 'numeric handler comparison keeps original strict equality');
 });
+
+test('typed absent kinds preserve original default/no-op inputs without allocating an ID', () => {
+    const kinds = createRegistry();
+    assert.equal(kinds.normalize(undefined), undefined);
+    assert.equal(kinds.normalize(null), null);
+    // Caller-specific create/setKind behavior remains separate from identity.
+    assert.equal(kinds.create(), 1003);
+    assert.throws(() => kinds.normalize('undefined'), /Unregistered/);
+    assert.throws(() => kinds.normalize('null'), /Unregistered/);
+});
