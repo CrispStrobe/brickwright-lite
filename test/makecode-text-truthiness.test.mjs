@@ -71,11 +71,11 @@ if (s) { r10 = 1 } else { r10 = 2 }
 const MAKECODE = [2, 1, 1, 2, 1, 1, 2, 2, 1, 1];
 // Before E12, Lite's VM (micro:bit and EV3 alike): 9 of the 9 readings wrong.
 const BEFORE = [1, 2, 2, 1, 0, 2, 1, 1, 2, 1];
-// The re-export types every procedure parameter `: number` (export.js), so
-// `f("")` does not compile there whatever the condition: that program leaves
-// the two parameter calls out (r8 = r9 = 0).
-const WITHOUT_PARAMETER_CALLS = READINGS.replace(PARAMETER_CALLS, '');
-const MAKECODE_WITHOUT = [2, 1, 1, 2, 1, 1, 2, 0, 0, 1];
+// Until E13 the re-export typed every procedure parameter `: number`
+// (export.js), so `f("")` did not compile there and these comparisons left
+// r8/r9 out. export.js now infers `p: string` from the calls
+// (procedureParameterTypes; test/makecode-parameter-types.test.mjs), and all
+// ten readings are compared after re-export.
 const PRINT = Array.from({length: 10}, (_, i) => `serial.writeValue("r${i + 1}", r${i + 1})`).join('\n') + '\n';
 
 const readings = run => {
@@ -120,11 +120,12 @@ for (const [name, target] of Object.entries(TARGETS)) {
 
 test('micro:bit: the original and the re-export read the same in pxt-microbit\'s simulator', {skip: SKIP_SIM, timeout: 300000}, async () => {
     assert.deepEqual(await simReadings(READINGS + PRINT), MAKECODE);
-    const run = await runProgram(microbitToPseudocode(WITHOUT_PARAMETER_CALLS + PRINT).code, {frames: 30});
-    assert.deepEqual(readings(run), MAKECODE_WITHOUT);
+    const run = await runProgram(microbitToPseudocode(READINGS + PRINT).code, {frames: 30});
+    assert.deepEqual(readings(run), MAKECODE);
     const ex = exportToMakeCode(run.creator.project);
     assert.doesNotMatch(ex.ts, /\b[st] == 0\b/);
-    assert.deepEqual(await simReadings(ex.ts), MAKECODE_WITHOUT);
+    assert.match(ex.ts, /^function f\(p: string\) \{$/m);
+    assert.deepEqual(await simReadings(ex.ts), MAKECODE);
 });
 
 let ev3Sandbox = null;
@@ -149,13 +150,13 @@ async function compileEv3 (ts) {
 
 test('EV3: pxt-ev3 compiles the original and the re-export, which reads MakeCode\'s truth', {skip: SKIP_EV3, timeout: 300000}, async () => {
     assert.equal((await compileEv3(READINGS)).success, true);
-    const run = await runProgram(ev3ToPseudocode(WITHOUT_PARAMETER_CALLS).code, {frames: 30});
-    assert.deepEqual(readings(run), MAKECODE_WITHOUT);
+    const run = await runProgram(ev3ToPseudocode(READINGS).code, {frames: 30});
+    assert.deepEqual(readings(run), MAKECODE);
     const ex = exportToMakeCodeEv3(run.creator.project);
     const compiled = await compileEv3(ex.ts);
     assert.equal(compiled.success, true, JSON.stringify((compiled.diagnostics || []).slice(0, 3)));
     // No EV3 API in it: pxt-core's semantics, run in the micro:bit simulator.
-    assert.deepEqual(await simReadings(`${ex.ts}\n${PRINT}`), MAKECODE_WITHOUT);
+    assert.deepEqual(await simReadings(`${ex.ts}\n${PRINT}`), MAKECODE);
 });
 
 test('a number keeps `not (n = 0)`; only text and string-typed references change', () => {
