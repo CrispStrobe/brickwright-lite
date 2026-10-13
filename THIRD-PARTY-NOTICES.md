@@ -359,6 +359,24 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
+### Only in a build with the `peers` Cargo feature (off by default)
+
+Peer sessions (task E11, docs/PEERS-SECURITY-REVIEW.md) add these crates, all from the
+RustCrypto project, only when the app is built with `--features peers`. No shipped build sets
+it, so the generated list below (default features) does not contain them; a build that does
+set it distributes them under their MIT option:
+
+- aead 0.5.2 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/traits
+- chacha20 0.9.1 (Apache-2.0 OR MIT) -- https://github.com/RustCrypto/stream-ciphers
+- chacha20poly1305 0.10.1 (Apache-2.0 OR MIT) -- https://github.com/RustCrypto/AEADs/tree/master/chacha20poly1305
+- cipher 0.4.4 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/traits
+- hkdf 0.12.4 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/KDFs/
+- hmac 0.12.1 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/MACs
+- inout 0.1.4 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/utils
+- opaque-debug 0.3.1 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/utils
+- poly1305 0.8.0 (Apache-2.0 OR MIT) -- https://github.com/RustCrypto/universal-hashes
+- universal-hash 0.5.1 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/traits
+
 <!-- BEGIN GENERATED RUST CRATE LIST: run `node scripts/gen-rust-notices.mjs` to refresh, do not hand-edit below this line -->
 
 - adler2 2.0.1 (0BSD OR MIT OR Apache-2.0) -- https://github.com/oyvindln/adler2

@@ -57,7 +57,7 @@ const BITWISE = {
  * Reads are fine (`show text x` reads the variable), so this is only about
  * where the name is WRITTEN.
  */
-const NOT_A_VARIABLE = new Set(['x', 'y', 'size', 'volume', 'tempo']);
+const NOT_A_VARIABLE = new Set(['x', 'y', 'size', 'volume', 'tempo', 'answer', 'timer', 'loudness', 'username']);
 
 /**
  * Function names that the pseudocode reads as one of its own statements, not

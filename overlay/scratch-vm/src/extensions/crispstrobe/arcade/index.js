@@ -67,6 +67,7 @@ module.exports = makeExt(`// Name: Arcade
       this._tileHandlers = [];
       this._terrainWaits = new Set();
       this._nativeButtonWaiters = new Set();
+      this._textPromptWaits = new Set();this._textPromptTail=Promise.resolve();
       this._terrainEpoch = 0;
       this._terrainFrame = null;
       this._terrainStopped = false;
@@ -79,6 +80,8 @@ module.exports = makeExt(`// Name: Arcade
         runtime.on('KEY_STATE_CHANGED',(key,isDown)=>this._keyboardButtonEdge(key,isDown));
         const cancelCreations = () => {
           for(const resolve of this._nativeButtonWaiters)resolve();this._nativeButtonWaiters.clear();
+          for(const cancel of this._textPromptWaits)cancel();this._textPromptWaits.clear();
+          this._textPromptTail=Promise.resolve();runtime.bwArcadeTextPrompt=null;
           for (const pending of this._creationWaits) pending.resolve('');
           this._creationWaits.clear();
           for(const dialog of this._dialogs || [])dialog.resolve(dialog.type==='ask' ? false : undefined);
@@ -1542,20 +1545,41 @@ module.exports = makeExt(`// Name: Arcade
       const cell = util?.thread?.bwArcadeCaptures?.get(String(args.NAME));
       if (cell) cell.values[cell.key] = args.VALUE;
     }
-    _askForString(args, util) {
+    _askForString(args, util, answerLength=12, numbersOnly=false) {
       const ask = this._runtime && this._runtime.getOpcodeFunction &&
         this._runtime.getOpcodeFunction('sensing_askandwait');
       const answer = this._runtime && this._runtime.getOpcodeFunction &&
         this._runtime.getOpcodeFunction('sensing_answer');
       if (!ask || !answer || !util || !util.target) return '';
-      return Promise.resolve(ask({QUESTION: String(args.QUESTION)}, util)).then(() => String(answer()));
+      const epoch=this._terrainEpoch;
+      const operation=this._textPromptTail.then(async()=>{
+        if(epoch!==this._terrainEpoch)return '';
+        await this.pushScene({},util);
+        if(epoch!==this._terrainEpoch)return '';
+        let cancel, restored=false;
+        const cancelled=new Promise(resolve=>{cancel=()=>resolve(false);this._textPromptWaits.add(cancel);});
+        this._runtime.bwArcadeTextPrompt={answerLength,numbersOnly};
+        try {
+          const completed=await Promise.race([Promise.resolve(ask({QUESTION:String(args.QUESTION)},util)).then(()=>true),cancelled]);
+          if(!completed || epoch!==this._terrainEpoch)return '';
+          const reply=String(answer()).substr(0,answerLength);
+          restored=true;
+          await this.popScene({},util);
+          return reply;
+        }finally{
+          this._textPromptWaits.delete(cancel);
+          if(epoch===this._terrainEpoch){
+            this._runtime.bwArcadeTextPrompt=null;
+            if(!restored)await this.popScene({},util);
+          }
+        }
+      });
+      this._textPromptTail=operation.catch(()=>{});
+      return operation;
     }
     askForString(args, util) { return this._askForString(args, util); }
     askForNumber(args, util) {
-      return Promise.resolve(this._askForString(args, util)).then(reply => {
-        const value = Number(reply);
-        return Number.isFinite(value) ? value : 0;
-      });
+      return Promise.resolve(this._askForString(args, util,6,true)).then(reply => parseFloat(reply));
     }
     // PXT game.ask waits 500 ms, then requires release before A/B confirmation.
     // Behaviour reference: microsoft/pxt-common-packages libs/game/ask.ts (MIT).

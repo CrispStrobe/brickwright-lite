@@ -175,6 +175,16 @@ jobs:
       - name: cargo clippy
         run: cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
 
+      # Peer sessions (task E11) compile only with the `peers` feature, which no shipped build
+      # sets. Build it here anyway, so the gated code cannot rot unseen: its protocol tests
+      # (handshake, nonce counters, pre-authentication limits, address and consent policy)
+      # run, and clippy holds it to the same bar as the default build.
+      - name: cargo test --features peers (peer sessions, off by default)
+        run: 'cargo test --manifest-path src-tauri/Cargo.toml --features peers peer::'
+
+      - name: cargo clippy --features peers
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --features peers -- -D warnings
+
   # The only gate that LAUNCHES the app. Everything else tests a model of this boundary: the Node
   # suites read Rust and JSON as text, the browser gates stub __TAURI_INTERNALS__ themselves, and
   # release.yml builds the app and stops. tauri-driver drives the real binary, so every invoke
