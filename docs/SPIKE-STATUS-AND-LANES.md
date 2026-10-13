@@ -33,7 +33,7 @@ passed all seven enabled hosted checks, including
 [Build38359601487](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38359601487).
 Its emitted CI checkout has exactly the same tracked tree. Offline native
 compilation passed, and independent installer verification matched all 180 files
-and 23 directories, their bytes/modes and root ownership to staging. Retained
+and 23 directories and their bytes/modes to staging, and checked root ownership. Retained
 Runtime, firmware and support payloads remained unchanged.
 
 The actual installed Code Stop check passed before the first firmware frame:

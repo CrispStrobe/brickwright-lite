@@ -1002,10 +1002,11 @@ startup on a freshly built installed consumer, followed by cleanup and a new
 run; host controls alone do not close this lane. No importer, painter, peer,
 firmware, Runtime/model pin or workflow edits.
 
-Source candidate: localized cold-start feedback exposes Code Stop after session
-startup invocation. Fourteen Node 22 feedback controls pass; four notification,
-terminal and retained-upload mutants fail. Hosted and fresh installed Code Stop
-qualification remain pending; this claim is not closed by host controls.
+At source candidate publication, localized cold-start feedback exposed Code Stop
+after session startup invocation. Fourteen Node 22 feedback controls passed;
+four notification, terminal and retained-upload mutants failed. Hosted and fresh
+installed qualification remained pending then; host controls alone did not close
+this claim.
 
 Closed by PR860, merge5e69e8ac85c006a0d5724e3be17bc3d03729f88b; tested source
 da37339468a1080d22812b8747eb9659ac85d6c5. All seven enabled checks passed;
