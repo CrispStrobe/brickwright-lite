@@ -1,3 +1,4 @@
+import {LEGACY_CHARACTER_SOURCE_TEXT,LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
 import {LEGACY_SCROLLER_SOURCE_TEXT,LEGACY_SCROLLER_NATIVE_IDENTITY} from './legacy-scroller-source-admission.generated.js';
 import {TEXT_SPRITE_SOURCE_TEXT,TEXT_SPRITE_INITIALIZER,TEXT_SPRITE_NATIVE_IDENTITY} from './text-source-admission.generated.js';
 import {SPRITE_DATA_SOURCE_TEXT,SPRITE_DATA_NATIVE_IDENTITY,SPRITE_DATA_NATIVE_APIS} from './native-source-admission.generated.js';
@@ -36,7 +37,16 @@ const LEGACY_SCROLLER_RECEIPT=Object.freeze({
     initialization:'complete namespace enum/class/function installation in native host; lazy state and registrations begin at original first API operation',
     boundary:'exact main.ts only; no layer APIs or additional executable files admitted'
 });
+const LEGACY_CHARACTER_RECEIPT=Object.freeze({
+    adapter:'arcade-character-animations-v0.0.2',source:LEGACY_CHARACTER_NATIVE_IDENTITY,
+    libraryNamespace:'characterAnimations',libraryVersion:LEGACY_CHARACTER_NATIVE_IDENTITY.revision,
+    apis:Object.freeze(['loopFrames','runFrames','setCharacterAnimationsEnabled','setCharacterState','clearCharacterState','matchesRule','rule','ruleToString','_predicate','_animationFrames']),
+    nativeOpcodes:Object.freeze(['setCharacterAnimationVersion','characterFrames','setCharacterAnimationsEnabled','setCharacterState','clearCharacterState','characterMatchesRule','characterRule','characterRuleToString']),
+    initialization:'complete original namespace constants/class/function installation in native host; scene state and registrations begin lazily at original first operation',
+    boundary:'exact main.ts only; original fifth rule predicate behavior retained; modern controller/facing APIs and additional executable files not admitted'
+});
 export const admitArcadeNativeSource=({packageId,filename,source}={}) =>
+    packageId===LEGACY_CHARACTER_NATIVE_IDENTITY.packageId && filename===LEGACY_CHARACTER_NATIVE_IDENTITY.filename && source===LEGACY_CHARACTER_SOURCE_TEXT ? LEGACY_CHARACTER_RECEIPT :
     packageId===LEGACY_SCROLLER_NATIVE_IDENTITY.packageId && filename===LEGACY_SCROLLER_NATIVE_IDENTITY.filename && source===LEGACY_SCROLLER_SOURCE_TEXT ? LEGACY_SCROLLER_RECEIPT :
     packageId===TEXT_SPRITE_NATIVE_IDENTITY.packageId && filename===TEXT_SPRITE_NATIVE_IDENTITY.filename && source===TEXT_SPRITE_SOURCE_TEXT ? TEXT_SPRITE_RECEIPT :
     packageId===SPRITE_DATA_NATIVE_IDENTITY.packageId &&

@@ -1,3 +1,5 @@
+import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
+const LEGACY_CHARACTER_REVISION=LEGACY_CHARACTER_NATIVE_IDENTITY.revision;
 /**
  * A Scratch project -> MakeCode Arcade TypeScript: the way back from
  * arcade-translate.js, and the way OUT for a game made here.
@@ -121,9 +123,20 @@ class ArcadeEmitter {
             const slot=block.inputs?.VERSION?.[1],shadow=typeof slot==='string'?target.blocks[slot]:null;
             const version=Array.isArray(slot) && slot[0]===10?String(slot[1]):shadow?.shadow?String(Object.values(shadow.fields || {})[0]?.[0]):this.field(block,'VERSION');
             let parent=target.blocks[block.parent];
-            while(parent && ['looks_hide','arcade_setPalette'].includes(parent.opcode))parent=target.blocks[parent.parent];
+            while(parent && ['looks_hide','arcade_setPalette','arcade_setCharacterAnimationVersion'].includes(parent.opcode))parent=target.blocks[parent.parent];
             if(!['v0.1.2',LEGACY_SCROLLER_REVISION].includes(version) || parent?.opcode!=='event_whenflagclicked')this.note('Arcade background scroll version must be a fixed selection at the start of a green-flag script');
             else this.scrollerVersion=version;
+        }
+        this.characterVersion='v0.1.0';
+        const characterSelectors=project.targets.flatMap(target=>Object.values(target.blocks || {}).filter(block=>block.opcode==='arcade_setCharacterAnimationVersion').map(block=>({target,block})));
+        if(characterSelectors.length>1)this.note('Arcade export requires one character animation version selection');
+        for(const {target,block} of characterSelectors) {
+            const slot=block.inputs?.VERSION?.[1],shadow=typeof slot==='string'?target.blocks[slot]:null;
+            const version=Array.isArray(slot) && slot[0]===10?String(slot[1]):shadow?.shadow?String(Object.values(shadow.fields || {})[0]?.[0]):this.field(block,'VERSION');
+            let parent=target.blocks[block.parent];
+            while(parent && ['looks_hide','arcade_setPalette','arcade_setBackgroundScrollVersion'].includes(parent.opcode))parent=target.blocks[parent.parent];
+            if(!['v0.1.0',LEGACY_CHARACTER_REVISION].includes(version) || parent?.opcode!=='event_whenflagclicked')this.note('Arcade character animation version must be a fixed selection at the start of a green-flag script');
+            else this.characterVersion=version;
         }
         this.requiresCharacterAnimationsPackage = false;
         this.warnings = [];
@@ -1215,6 +1228,7 @@ class ArcadeEmitter {
             this.requiresCharacterAnimationsPackage = true;
             return `characterAnimations.rule(${names.map(name => `Predicate.${name}`).join(', ')})`;
         }
+        case 'arcade_characterRuleToString': this.requiresCharacterAnimationsPackage = true; return `characterAnimations.ruleToString(${v('RULE')})`;
         case 'arcade_characterMatchesRule': this.requiresCharacterAnimationsPackage = true; return `characterAnimations.matchesRule(${v('SPRITE')}, ${v('RULE')})`;
         case 'arcade_backgroundScrollOffset':
             this.requiresScrollerPackage = true;
@@ -1826,14 +1840,15 @@ class ArcadeEmitter {
         case 'arcade_setCharacterAnimationsEnabled': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setCharacterAnimationsEnabled(${v('SPRITE')}, ${this.boolValue(b, 'ENABLED')})`); return;
         case 'arcade_setCharacterState': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setCharacterState(${v('SPRITE')}, ${v('RULE')})`); return;
         case 'arcade_clearCharacterState': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.clearCharacterState(${v('SPRITE')})`); return;
-        case 'arcade_setCharacterController': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setController(${v('SPRITE')}, ${this.boolValue(b, 'ENABLED')})`); return;
-        case 'arcade_lockCharacterFacing': {
+        case 'arcade_setCharacterAnimationVersion':this.requiresCharacterAnimationsPackage=true;return;
+        case 'arcade_setCharacterController': if(this.characterVersion===LEGACY_CHARACTER_REVISION){push(`// ${this.note('Legacy character animations do not implement arcade_setCharacterController')}`);return;} this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setController(${v('SPRITE')}, ${this.boolValue(b, 'ENABLED')})`); return;
+        case 'arcade_lockCharacterFacing': { if(this.characterVersion===LEGACY_CHARACTER_REVISION){push(`// ${this.note('Legacy character animations do not implement arcade_lockCharacterFacing')}`);return;}
             const direction = this.field(b, 'DIRECTION');
             if (!['Up', 'Right', 'Down', 'Left'].includes(direction)) { push(`// ${this.note(`Unsupported character facing ${direction}`)}`); return; }
             this.requiresCharacterAnimationsPackage = true;
             push(`characterAnimations.lockFacingDirection(${v('SPRITE')}, characterAnimations.FacingDirection.${direction})`); return;
         }
-        case 'arcade_unlockCharacterFacing': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.unlockFacingDirection(${v('SPRITE')})`); return;
+        case 'arcade_unlockCharacterFacing': if(this.characterVersion===LEGACY_CHARACTER_REVISION){push(`// ${this.note('Legacy character animations do not implement arcade_unlockCharacterFacing')}`);return;} this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.unlockFacingDirection(${v('SPRITE')})`); return;
         case 'arcade_setBackgroundLayerZ': if(this.scrollerVersion===LEGACY_SCROLLER_REVISION){push(`// ${this.note('Legacy Arcade background scroll does not support layer z-index')}`);return;} this.requiresScrollerPackage = true; push(`scroller.setLayerZIndex(${v('LAYER')}, ${v('Z')})`); return;
         case 'arcade_textSpriteSetText': case 'arcade_textSpriteSetMaxFontHeight': case 'arcade_textSpriteSetIcon':
         case 'arcade_textSpriteSetBorder': case 'arcade_textSpriteSetOutline': case 'arcade_textSpriteUpdate': {
@@ -2629,7 +2644,7 @@ class ArcadeEmitter {
                 }
                 if(value.opcode==='arcade_spriteDataReadBoolean'){const id=Symbol('sprite data boolean');booleans.add(id);return id;}
                 if(['arrays_stringFromCharCode','arrays_stringConcat'].includes(value.opcode)){const id=Symbol('string primitive');strings.add(id);return id;}
-                if(value.opcode==='arcade_spriteToString') {const id=Symbol('sprite text');strings.add(id);return id;}
+                if(['arcade_spriteToString','arcade_characterRuleToString'].includes(value.opcode)) {const id=Symbol('sprite text');strings.add(id);return id;}
                 if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferFromBase64','arcade_bufferLiteral','arcade_bufferSlice','arcade_bufferConcat','arcade_bufferFromArray','arcade_bufferConcatArray','arcade_bufferPack'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
                 if(['arcade_bufferToArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8','arcade_bufferUnpack'].includes(value.opcode)){const id=`${key}:buffer-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(['arcade_bufferLength','arcade_bufferHash','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf','arcade_bufferFormatSize','arcade_bufferPackedSize'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
@@ -3470,7 +3485,7 @@ export function projectToArcade (project, opts = {}) {
         'main.ts': projectTs,
         ...assetFiles,
         'pxt.json': `${JSON.stringify({
-            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresTextSpritePackage ? {'arcade-text':'github:microsoft/arcade-text#fa2439314c6633943666a763fdae32a5c67a9ae8'} : {}), ...(e.requiresSpriteDataPackage ? {'arcade-sprite-data':'github:microsoft/arcade-sprite-data#332026d12c46286c7afe59bc4829ccf08471d5b1'} : {}), ...(e.requiresCarnivalPackage ? {'arcade-carnival':'github:microsoft/arcade-carnival#v0.0.7'} : {}), ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': e.scrollerVersion===LEGACY_SCROLLER_REVISION?`github:riknoll/arcade-background-scroll#${LEGACY_SCROLLER_REVISION}`:'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': 'github:microsoft/arcade-character-animations#v0.1.0'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
+            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresTextSpritePackage ? {'arcade-text':'github:microsoft/arcade-text#fa2439314c6633943666a763fdae32a5c67a9ae8'} : {}), ...(e.requiresSpriteDataPackage ? {'arcade-sprite-data':'github:microsoft/arcade-sprite-data#332026d12c46286c7afe59bc4829ccf08471d5b1'} : {}), ...(e.requiresCarnivalPackage ? {'arcade-carnival':'github:microsoft/arcade-carnival#v0.0.7'} : {}), ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': e.scrollerVersion===LEGACY_SCROLLER_REVISION?`github:riknoll/arcade-background-scroll#${LEGACY_SCROLLER_REVISION}`:'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': `github:microsoft/arcade-character-animations#${e.characterVersion}`} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
             files: [...Object.keys(assetFiles), 'main.ts'], preferredEditor: 'tsprj',
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`
