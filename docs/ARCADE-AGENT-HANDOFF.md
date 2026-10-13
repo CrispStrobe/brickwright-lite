@@ -2219,3 +2219,55 @@ MakeCode Blockly decompilation. The owned full IDE game gate remains pending
 hosted execution. PR877 unit shard 2 failed because the generated character
 admission module was unused there; the next integration wires it into actual
 admission, translation and export. Its production graph must pass hosted checks.
+
+## HUD, camera and terminal integration after numeric kinds
+
+Root continuation is `lane/arcade-camera-flags-info-selection-20261013`,
+stacked on [PR883](https://github.com/CrispStrobe/brickwright-lite/pull/883).
+Latest main `0e1ff551b64cce3ff12903b9d989eaf31a4b3a5a` is merged normally;
+its CLI/Calliope and LabWired changes remain intact.
+
+- Matching producer `1567ea01771ef95b70a1f54cf3c40c9d5f00962f` supplies 351
+  forms. Its 490 local checks and all enabled PR119 checks passed; Pages
+  publication is a declared non-PR step.
+- HUD score/life/countdown visibility uses the original setters, explicit flags
+  and countdown visibility behavior. Source variables named `score` or `lives`
+  are renamed consistently so export preserves ordinary variables rather than
+  treating them as legacy HUD values. See the
+  [HUD contract](compatibility/arcade-hud-visibility.md).
+- Default loss captures the original final zero HUD and retains explicitly
+  configured sound/effects. Custom life/countdown callbacks run at the original
+  HUD drawing boundary; waits and scene replacement preserve ownership.
+- `scene.cameraLeft()` and `scene.cameraTop()` read raw drawing offsets without
+  triggering modern camera updates. Sprite `flags` is a numeric readable field,
+  including the destruction bit on retained references. Direct flag writes
+  remain diagnosed; the original SDK field is mutable, not readonly.
+
+The combined HUD/default/custom/visibility batch passes 25 controls with no
+skips and two explicitly failing timing TODOs. Camera/flags and latest main
+regressions pass 11 controls, including original/native/Code/SB3/export/reimport.
+Initial callback phase remains 20ms native versus 0ms original in the timing
+controls; it is not fixed by this integration.
+
+Fresh unchanged-context structural qualification on `d6db08184` admits 17 of
+29 contexts that compile against the selected Arcade 4.2.1/PXT13.2.1 SDK. Eleven
+valid contexts retain API/semantic blockers and one retains a parser failure.
+Seven context rows have explicit producer warnings; warnings are now recorded
+and prevent structural success. Twelve other contexts report original compiler
+diagnostics for the selected SDK. That is not a blanket claim about their
+historical editors: obsolete instance overlap APIs still need historical source
+and SDK qualification. Raw 142/41/1 counts remain unchanged.
+
+Genuine Maze has 35 original/native comparisons: win at3940ms, loss at10000ms,
+final HUD, dialog/cursor pixels and sounds. Its production GUI, editing, saved
+project and export/reimport journey is prepared privately and still unrun.
+The owned Text Sprite GUI journey's first hosted attempt failed at a stage-ID
+read during project replacement; source now waits for a valid replacement ID.
+The full journey must rerun. See
+[run38396998964](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38396998964);
+build/partial job successes do not establish a full workflow pass.
+
+Next active areas are validated tile-map factory aliases/null/order; explicit
+source-loop eligibility and frame scheduling; and original native splash/long
+text rendering and controller input. Their respective controls and lane claims
+remain separate from whole-game promotions.
