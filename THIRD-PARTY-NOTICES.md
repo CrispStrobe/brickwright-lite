@@ -359,6 +359,24 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 ```
 
+### Only in a build with the `peers` Cargo feature (off by default)
+
+Peer sessions (task E11, docs/PEERS-SECURITY-REVIEW.md) add these crates, all from the
+RustCrypto project, only when the app is built with `--features peers`. No shipped build sets
+it, so the generated list below (default features) does not contain them; a build that does
+set it distributes them under their MIT option:
+
+- aead 0.5.2 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/traits
+- chacha20 0.9.1 (Apache-2.0 OR MIT) -- https://github.com/RustCrypto/stream-ciphers
+- chacha20poly1305 0.10.1 (Apache-2.0 OR MIT) -- https://github.com/RustCrypto/AEADs/tree/master/chacha20poly1305
+- cipher 0.4.4 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/traits
+- hkdf 0.12.4 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/KDFs/
+- hmac 0.12.1 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/MACs
+- inout 0.1.4 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/utils
+- opaque-debug 0.3.1 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/utils
+- poly1305 0.8.0 (Apache-2.0 OR MIT) -- https://github.com/RustCrypto/universal-hashes
+- universal-hash 0.5.1 (MIT OR Apache-2.0) -- https://github.com/RustCrypto/traits
+
 <!-- BEGIN GENERATED RUST CRATE LIST: run `node scripts/gen-rust-notices.mjs` to refresh, do not hand-edit below this line -->
 
 - adler2 2.0.1 (0BSD OR MIT OR Apache-2.0) -- https://github.com/oyvindln/adler2
@@ -1968,6 +1986,34 @@ runtime, and carries no GCC-runtime copyleft.
   them. Loaded at run time and driven by `runDosToolchain('jim', …)` over the
   bw-board 8086 DOS bench, which mounts the user's program as `PROG.TCL` and
   the library as `JIMLIB.TCL`.
+
+## zForth (DOS-native Forth) — MIT
+
+The code tab's "Forth (zForth on DOS)" language runs a real 16-bit MS-DOS
+interpreter on the 8086 DOS bench. The interpreter is **zForth** by **Ico
+Doornekamp (zevv)**, a tiny embeddable Forth — a small C VM plus a Forth-source
+bootstrap (`core.zf`) defining the language (`:`/`;`, `if/else/fi`,
+`begin/until/again`, `."`, `.`, `emit`, `cr`) — distributed under the **MIT
+licence**.
+
+It is compiled — unmodified except for an added `PROG.FTH`-reading DOS
+front-end (`dosmain.c`) that also embeds `core.zf` — to a 16-bit MS-DOS `.EXE`
+with `ia16-elf-gcc` (the tkchia GCC port for 16-bit x86). That GCC port is GPL,
+but it is a **build-time tool only**: the shipped binary is MIT zForth linked
+against the permissive newlib + libi86 runtime, and carries no GCC-runtime
+copyleft.
+
+- **Upstream:** https://github.com/zevv/zForth (commit
+  `41db72d165c1539d57f3f79970fc57ea881a79dc`)
+- **Licence:** MIT, (c) Ico Doornekamp
+- **What ships:** `static/roms/forth.exe` — the built interpreter (with
+  `core.zf` embedded; the stock `misc.zf` FizzBuzz demo and `memaccess.zf`
+  load-time asserts excluded so nothing prints at startup), with
+  `forth.provenance.json` beside it. Packaged as the media-lab project
+  `projects/forth-dos` (its `fetch.sh` reproduces this binary byte-for-byte).
+  Loaded at run time and driven by `runDosToolchain('forth', …)` over the
+  bw-board 8086 DOS bench, which mounts the user's program as `PROG.FTH`. Blocks
+  ⇄ Forth is `overlay/scratch-gui/src/lib/bw-lang/forth.js`.
 
 ## Free 80386 AT firmware (Bochs BIOS + LGPL VGABios) — LGPL-2.1
 

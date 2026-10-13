@@ -40,6 +40,10 @@ mod native_broker_transport;
 // webview exists; the topology gate forbids registering a partial boundary.
 #[allow(dead_code)]
 mod native_policy;
+// Peer sessions (task E11): only with the `peers` Cargo feature, OFF by default.
+// docs/PEERS-SECURITY-REVIEW.md; test/peers-gate.test.mjs holds the default build to none of it.
+#[cfg(feature = "peers")]
+mod peer;
 mod pico;
 mod scratchlink;
 mod share_server;
@@ -105,6 +109,8 @@ pub fn run_with_context(context: tauri::Context<tauri::Wry>) {
     #[cfg(desktop)]
     let builder = builder.manage(pico::PicoSerial(std::sync::Mutex::new(None)));
     let builder = builder.manage(share_server::ShareServerState::default());
+    #[cfg(feature = "peers")]
+    let builder = builder.manage(peer::PeerState::default());
 
     #[cfg(desktop)]
     let native_policy = native_policy::NativePolicyState::new();
@@ -149,6 +155,16 @@ pub fn run_with_context(context: tauri::Context<tauri::Wry>) {
             scratchlink::bridge::scratchlink_bridge_open,
             scratchlink::bridge::scratchlink_bridge_send,
             scratchlink::bridge::scratchlink_bridge_close,
+            #[cfg(feature = "peers")]
+            peer::peer_status,
+            #[cfg(feature = "peers")]
+            peer::peer_enable,
+            #[cfg(feature = "peers")]
+            peer::peer_disable,
+            #[cfg(feature = "peers")]
+            peer::peer_send,
+            #[cfg(feature = "peers")]
+            peer::peer_reply,
             // Transport only, desktop only. Registration is not authority: every one of these
             // is unreachable until `native_broker_ready` grants the runtime capabilities, and
             // mobile never compiles them in at all.
@@ -178,6 +194,12 @@ pub fn run_with_context(context: tauri::Context<tauri::Wry>) {
         .manage(scratchlink::bridge::BridgeState::default())
         .manage(fileio::Documents::default())
         .setup(move |app| {
+            // The reviewed peer capability exists only in a `peers` build; see build.rs.
+            #[cfg(feature = "peers")]
+            {
+                use tauri::Manager;
+                app.add_capability(include_str!("../runtime-capabilities/peers.json"))?;
+            }
             #[cfg(desktop)]
             native_broker::create(app, native_policy.clone())?;
             #[cfg(desktop)]

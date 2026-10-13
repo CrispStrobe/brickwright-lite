@@ -49,7 +49,10 @@ export async function runDosProgram(opts = {}) {
         files,
         keys: asKeyBytes(opts.keys),
         variant: opts.variant,
-        onChar: ch => chars.push(ch)
+        onChar: ch => chars.push(ch),
+        // Observe every 8086 OUT/IN. A DOS Forth `pin!` does an OUT to 0x378+pin
+        // (dosmain.c), so this is how a Code-tab program drives a device.
+        onPortAccess: typeof opts.onPortAccess === 'function' ? opts.onPortAccess : undefined
     });
     const max = opts.maxSteps || 20_000_000;
     let steps = 0;
@@ -95,7 +98,8 @@ export async function compileAndRunOnDos(opts = {}) {
 
     const compile = await runDosProgram({
         bytes: opts.compiler, format: opts.compilerFormat || 'exe', files,
-        keys: opts.compileKeys, variant: opts.variant, maxSteps: opts.maxSteps
+        keys: opts.compileKeys, variant: opts.variant, maxSteps: opts.maxSteps,
+        onPortAccess: opts.onPortAccess
     });
 
     const output = opts.outputName ? (files.get(opts.outputName) || null) : null;
@@ -103,7 +107,8 @@ export async function compileAndRunOnDos(opts = {}) {
 
     const run = await runDosProgram({
         bytes: output, format: /\.exe$/i.test(opts.outputName) ? 'exe' : 'com', files,
-        keys: opts.runKeys, variant: opts.variant, maxSteps: opts.maxSteps
+        keys: opts.runKeys, variant: opts.variant, maxSteps: opts.maxSteps,
+        onPortAccess: opts.onPortAccess
     });
     return {stage: 'run', compile, run, files, output};
 }
