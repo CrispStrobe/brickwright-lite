@@ -34,6 +34,7 @@ export function createAssetKindLookup(files,{fileOrder=Object.keys(files || {})}
             for(const entry of entries) {
                 const asset=entry[kind];
                 addAliases(kind==='image'?images:tiles,asset,entry.aliases,kind==='image'?'imageId':'tileId');
+                if(kind==='image' && !entry.factoryRegistered)continue;
                 // Read factory candidates directly, so ambiguous member aliases
                 // cannot discard an earlier factory result or select a later one.
                 for(const name of new Set([factoryId(kind,entry.key),entry.factoryDisplayName].filter(name=>typeof name==='string' && name))) {

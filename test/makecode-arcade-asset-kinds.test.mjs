@@ -81,3 +81,16 @@ test('lookup preserves first original factory result even when display names col
         'pxt.json':JSON.stringify({name:'asset-order-control',dependencies:{device:'*'},files:['images.g.jres','main.ts']})});
     assert.equal(original.pixel,2);assert.equal(createAssetKindLookup({'images.g.jres':JSON.stringify(gallery)}).lookup('image','hero').pixels[0],original.pixel);
 });
+
+test('factory registration distinguishes inherited resource decoding from original emitted image factories',async()=>{
+    const gallery={'*':{mimeType:'image/x-mkcd-f4',namespace:'myImages'},
+        inherited:{data:entry(11).data},short:entry(12).data,explicit:entry(13)};
+    const files={'images.g.jres':JSON.stringify(gallery),'main.ts':
+        'let inheritedMissing=assets.image`inherited`===null;let shortMissing=assets.image`short`===null;let explicitPixel=assets.image`explicit`.getPixel(0,0);explicitPixel+=0;',
+        'pxt.json':JSON.stringify({name:'factory-mime-control',dependencies:{device:'*'},files:['images.g.jres','main.ts']})};
+    const original=await runPxtArcade(files),lookup=createAssetKindLookup(files);
+    assert.equal(lookup.lookup('image','inherited')===null,original.inheritedMissing,JSON.stringify(original));
+    assert.equal(lookup.lookup('image','short')===null,original.shortMissing,JSON.stringify(original));
+    assert.equal(lookup.lookup('image','explicit').pixels[0],original.explicitPixel);
+    assert.equal(lookup.images.inherited.pixels[0],11,'resource decoding remains available to member readers');
+});

@@ -173,7 +173,10 @@ export function parseImageAssetEntries (text) {
         const imageId = entry.id || (key.includes('.') ? key : `${String(namespace).replace(/\.$/, '')}.${key}`);
         const displayName = typeof entry.displayName === 'string' && entry.displayName ? entry.displayName : key;
         images.push({key,image:{...decoded,imageId,displayName},
-            aliases:[...new Set([key,imageId,key.split('.').pop(),displayName])],factoryDisplayName:entry.displayName});
+            aliases:[...new Set([key,imageId,key.split('.').pop(),displayName])],factoryDisplayName:entry.displayName,
+            // emitProjectImages accepts shorthand strings, but object entries
+            // require their own image MIME; inherited JRES decoding is broader.
+            factoryRegistered:typeof raw==='string' || entry.mimeType==='image/x-mkcd-f4'});
     }
     return images;
 }
