@@ -803,6 +803,10 @@ export class Emitter {
             // Ours is a percentage, MakeCode's range is 0..1023.
             push(`pins.analogWritePin(AnalogPin.${PIN(f('PIN'))}, Math.round(${v('PCT')} * 1023 / 100))`);
             return;
+        case 'microbitplus_motorpower':
+            // The Calliope mini's on-board driver; pxt-microbit has no `motors`.
+            push(`motors.dualMotorPower(Motor.${f('MOTOR') === 'B' ? 'B' : 'A'}, ${v('POWER', '0')})`);
+            return;
         case 'microbitplus_setpull':
             push(`pins.setPull(DigitalPin.${PIN(f('PIN'))}, ${PULL[f('MODE')] || 'PinPullMode.PullNone'})`);
             return;

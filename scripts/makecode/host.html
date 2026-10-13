@@ -59,9 +59,16 @@
   var say = function (msg) { try { parentWin.postMessage(msg, '*'); } catch (e) { /* detached */ } };
   var config = null;
   var driver = null;
+  // Several boards in one project: each board has its own host page, and the
+  // page that frames them relays radio between them. pxtsim's own answer to a
+  // radio packet is to open a SECOND frame running the same program (MakeCode's
+  // two-micro:bit view); `nestedEditorSim` makes it hand the packet to the
+  // parent instead, which is what a board with a real peer needs.
+  var peerRadio = false;
   function ensureDriver () {
-    if (driver) return driver;
+    if (driver) { driver.options.nestedEditorSim = peerRadio; return driver; }
     driver = new pxsim.SimulatorDriver(document.getElementById('sim'), {
+      nestedEditorSim: peerRadio,
       // Absolute: pxtsim resolves a relative simUrl against the ORIGIN, not this
       // page (measured: 'simulator.html' loaded /simulator.html, a 404).
       simUrl: new URL('simulator.html', location.href).href,
@@ -76,7 +83,11 @@
   window.addEventListener('message', function (e) {
     var m = e.data || {};
     if (e.source === parentWin) {
-      if (m.type === 'bw-makecode-run') { run(m.js); startPins(); }
+      if (m.type === 'bw-makecode-run') { peerRadio = !!m.peerRadio; run(m.js); startPins(); }
+      // A peer board's radio packet, as its simulator posted it: into ours.
+      else if (m.type === 'bw-makecode-radio-in' && m.packet && m.packet.type === 'radiopacket' && driver) {
+        driver.postMessage(m.packet);
+      }
       else if (m.type === 'bw-makecode-stop' && driver) driver.stop();
       else if (m.type === 'bw-makecode-pin-in' && m.pins) {
         for (var k in m.pins) pendingIn[k] = Number(m.pins[k]) || 0;
@@ -143,8 +154,27 @@
   }
   // bw-pin-report:end
   var pinPrev = {};
+  // The Calliope mini's motor driver. MakeCode's simulator accepts
+  // motors.dualMotorPower and does nothing with it (its body is empty), so the
+  // call is the only place the program's motor power exists: it is reported
+  // from there, and the simulator's own function still runs. Motor: 0 A, 1 B,
+  // 2 both (the target's Motor enum). A call made before the first poll after
+  // a start (33 ms) is not seen.
+  function watchMotors (w) {
+    var m = w && w.pxsim && w.pxsim.motors;
+    if (!m || typeof m.dualMotorPower !== 'function' || m.dualMotorPower.bwWatched) return;
+    var original = m.dualMotorPower;
+    m.dualMotorPower = function (motor, percent) {
+      var power = Math.max(0, Math.min(100, Number(percent) || 0));
+      var which = motor === 0 ? ['A'] : motor === 1 ? ['B'] : ['A', 'B'];
+      for (var i = 0; i < which.length; i++) say({type: 'bw-makecode-motor', motor: which[i], power: power});
+      return original.apply(this, arguments);
+    };
+    m.dualMotorPower.bwWatched = true;
+  }
   function poll () {
     var w = simWindow();
+    watchMotors(w);
     var b = simBoard(w);
     var ec = b && b.edgeConnectorState;
     if (!ec || !ec.pins) return;

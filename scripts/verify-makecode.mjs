@@ -119,7 +119,9 @@ try {
     await openCodeActions(page);
     await page.waitForSelector('[data-testid="bw-open-file"]', {timeout: 30000});
 
-    const input = page.locator('input[type="file"][accept*=".hex"]');
+    // The importer's own input (.mkcd is its alone): the Debug pane's Firmware…
+    // input also takes a .hex once a LabWired session is showing (section 1c).
+    const input = page.locator('input[type="file"][accept*=".hex"][accept*=".mkcd"]');
     const offersHex = await input.count() > 0;
     check('the Open button offers .hex', offersHex,
         offersHex ? '' : 'this build predates the MakeCode importer');
@@ -191,6 +193,50 @@ try {
         // pxt packs the project 16-byte aligned, so its magic sits in one record.
         check('with the project embedded, so MakeCode reopens it',
             /41140E2FB82FA2BB/i.test(hex), '');
+    }
+
+    // ── 1c. …and as REAL FIRMWARE on the emulated micro:bit V2 (task A8) ──
+    // MakeCode's compiler links the program onto a Bluetooth-free base
+    // (compileMakeCodeForEmulator), and the image runs on LabWired's micro:bit V2
+    // board in the Debug pane. Needs the emulator bases and the LabWired engine
+    // served (both synced in CI's build); absent, said by name.
+    const served = async rel => page.evaluate(async r => (await fetch(r, {method: 'HEAD'}).catch(() => null))?.ok === true, rel);
+    const emuServed = runtime && await served('static/makecode/microbit/hexcache-emu/354b97da4696027afdaa3977420ec181bfc88a2faa2d2c0174842767718551e7.hex') &&
+        await served('static/labwired/labwired_wasm_bg.wasm');
+    if (!emuServed) {
+        console.log('SKIP the emulated micro:bit V2 run: the emulator bases or the LabWired engine are not in this build ' +
+            '(npm run sync:makecode, npm run sync:labwiredwasm)');
+    } else {
+        // The Debug pane's own phase (data-debug-phase), not a status word found
+        // by its text: other panes show one too, and the word follows the locale.
+        const statusText = () => page.evaluate(() => {
+            const panel = [...document.querySelectorAll('[data-debug-panel]')].find(n => n.offsetParent !== null);
+            return panel ? panel.getAttribute('data-debug-phase') || '' : '';
+        });
+        await clickAction('bw-makecode-emulate');
+        // The status words are transient: sample them all, as verify-labwired-engine.mjs does.
+        const seen = [];
+        await waitFor(async () => {
+            const t = await statusText();
+            if (t && seen[seen.length - 1] !== t) seen.push(t);
+            return t;
+        }, t => /^(running|error)$/.test(t), 60000, 200);
+        // An error phase has a sentence beside it; a gate that fails without
+        // quoting it sends the reader to a browser to find out why.
+        const phaseLine = () => page.evaluate(() => {
+            const panel = [...document.querySelectorAll('[data-debug-panel]')].find(n => n.offsetParent !== null);
+            const word = panel && [...panel.querySelectorAll('strong')].find(n => n.parentElement.style.alignItems === 'baseline');
+            return word ? word.parentElement.innerText.replace(/\s+/g, ' ') : '';
+        });
+        const trail = `${seen.join('  ·  ')}${seen.includes('error') ? ` — ${await phaseLine()}` : ''}`.slice(0, 600);
+        check('▶ Run on the emulated micro:bit V2 reaches a running LabWired session', seen.includes('running'), trail);
+        check('and never the error phase', seen.length > 0 && !seen.includes('error'), trail);
+        const body = await page.evaluate(() => document.body.innerText);
+        check('on the micro:bit V2 board, from the emulator image (not the official base)',
+            /microbit-v2 board \(nrf52833/i.test(body) && /microbit-v2-emu\.elf/.test(body),
+            (body.match(/[^\n]*microbit-v2[^\n]*/i) || [''])[0].slice(0, 160));
+        check('the status names what the V2 model does not do faithfully yet (serial)',
+            /serial output is not faithful|serielle Ausgabe ist auf diesem Board-Modell noch nicht/.test(await paneText()), '');
     }
 
     // ── 2. an Arcade game brings its sprites ──────────────────────────
@@ -478,6 +524,55 @@ try {
         const drawn = frame ? await waitFor(() => frame.evaluate(() => document.querySelectorAll('svg *').length).catch(() => 0),
             n => n > 20, 60000) : 0;
         check('and the brick is drawn', drawn > 20, `${drawn} svg elements`);
+    }
+
+    // ── 2f. two boards in one program run side by side and share one radio ──
+    // The tutorial pair (a micro:bit remote, a Calliope mini car) as one program
+    // with two board sections. This is the only place the multi-board pane is
+    // rendered by the real build: its unit tests build the boards, and
+    // verify-multi-board-radio.mjs drives the simulator host pages from a
+    // plain page.
+    if (runtime) {
+        // State, not just event: the one-board program of 2e is still on screen,
+        // and a one-board program must not get the multi-board pane.
+        const multi = page.locator('[data-testid="bw-makecode-multi-pane"]');
+        check('a one-board program runs without the multi-board pane', await multi.count() === 0);
+        await input.setInputFiles(join(root, 'test', 'fixtures', 'multi-board', 'radio-pair.bw'));
+        const pairCode = await waitFor(
+            () => page.evaluate(() => {
+                const editor = document.querySelector('.cm-content') || document.querySelector('textarea');
+                return editor ? (editor.innerText || editor.value || '') : '';
+            }),
+            t => /AS Remote:/.test(t) && /AS Car:/.test(t), 20000);
+        check('a program with two board sections opens in the Code tab',
+            /AS Remote:/.test(pairCode) && /AS Car:/.test(pairCode), pairCode.split('\n').slice(0, 2).join(' / '));
+        await clickAction('bw-makecode-run');
+        await multi.waitFor({state: 'visible', timeout: 90000}).catch(() => {});
+        const shown = await page.locator('[data-testid="bw-makecode-board"]').evaluateAll(
+            els => els.map(e => `${e.dataset.board}:${e.dataset.target}`)).catch(() => []);
+        check('▶ Run opens one simulator per board, each for its own target',
+            shown.join(' ') === 'Remote:microbit Car:calliopemini', shown.join(' ') || 'no multi-board pane');
+        const remote = await simFrame('microbit');
+        const car = await simFrame('calliopemini');
+        check('both simulator frames exist', !!remote && !!car);
+        if (remote && car) {
+            const press = (button, down) => remote.evaluate(([b, d]) => {
+                pxsim.board().buttonPairState[b].pressed = d; // eslint-disable-line no-undef
+            }, [button, down]).catch(() => {});
+            const motors = () => page.evaluate(() => {
+                const read = m => document.querySelector(`[data-testid="bw-makecode-motor-${m}"]`)?.dataset.power;
+                return `A=${read('A')} B=${read('B')}`;
+            });
+            // The remote sends on every loop, so the car's first motor report arrives unprompted.
+            const idle = await waitFor(motors, t => t === 'A=0 B=0', 45000);
+            check('the car reports its motors, both stopped, with no button held', idle === 'A=0 B=0', idle);
+            await press('aBtn', true);
+            const held = await waitFor(motors, t => t === 'A=50 B=0', 20000);
+            check('holding A on the remote drives the car\'s motor A over the radio', held === 'A=50 B=0', held);
+            await press('aBtn', false);
+            const released = await waitFor(motors, t => t === 'A=0 B=0', 20000);
+            check('releasing A stops it', released === 'A=0 B=0', released);
+        }
     }
 
     // ── 3. a file with nothing in it says so, rather than failing ─────
