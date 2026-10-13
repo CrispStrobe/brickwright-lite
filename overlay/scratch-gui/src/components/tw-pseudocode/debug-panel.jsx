@@ -741,6 +741,13 @@ class DebugPanel extends React.Component {
     _runSketch (detail) {
         const {firmware, kind, labwiredChip} = detail || {};
         if (!firmware || (!firmware.text && !(firmware.bytes && firmware.bytes.length))) return;
+        // One hand-off reaches this panel more than once: the Circuit tab stashes
+        // it and re-dispatches it a frame later so a panel that was still mounting
+        // cannot miss it. The same image, already starting or running here, is not
+        // restarted — tearing down an attach that is still loading its engine
+        // reports that attach's failure over the run that replaced it.
+        if (this._userFirmware === firmware && this._runnerPromise &&
+            !this._runnerStoppedExplicitly && this.state.ui.phase !== 'error') return;
         this._userFirmware = firmware;
         this._teardownRunner();
         return new Promise(resolve => this.setState({
