@@ -159,6 +159,35 @@ var bwMakeCode = {
         bwMakeCode.configure();
         var before = bwMakeCode.netAttempts.length;
         var cfg = JSON.parse(files['pxt.json']);
+        var generatedRootFiles = {};
+        var generatedRootProvenance = [];
+        var authoredFiles = files;
+        for (var rootName of (cfg.files || [])) {
+            if (!/\\.g\\.jres$/.test(rootName) || typeof authoredFiles[rootName] !== 'string') continue;
+            var companion = rootName.replace(/\\.jres$/, '.ts');
+            if (Object.prototype.hasOwnProperty.call(authoredFiles, companion)) continue;
+            var rootGallery = JSON.parse(authoredFiles[rootName]);
+            var hasMaps = Object.keys(rootGallery).some(function (key) {
+                return rootGallery[key] && rootGallery[key].mimeType === 'application/mkcd-tilemap';
+            });
+            var hasImages = rootName === 'images.g.jres' || Object.keys(rootGallery).some(function (key) {
+                var entry = rootGallery[key];
+                return key !== '*' && entry && !entry.tilemapTile && entry.mimeType &&
+                    entry.mimeType !== 'application/mkcd-tilemap';
+            });
+            var emitted = [];
+            for (var emitter of (hasMaps ? ['emitTilemapsFromJRes'] : []).concat(hasImages ? ['emitProjectImages'] : [])) {
+                var text = pxt[emitter](rootGallery);
+                if (typeof text !== 'string') throw new Error('Original PXT asset emitter did not return TypeScript');
+                emitted.push(text);
+                generatedRootProvenance.push({input: rootName, file: companion, emitter: 'pxt.' + emitter,
+                    versions: Object.assign({}, pxt.appTarget.versions || {}),
+                    workerSha256: typeof __bwOriginalWorkerSha256 === 'string' ? __bwOriginalWorkerSha256 : null});
+            }
+            if (emitted.length) generatedRootFiles[companion] = emitted.join('\\n');
+        }
+        cfg.files = Object.keys(generatedRootFiles).concat(cfg.files || []);
+        files = Object.assign({}, authoredFiles, generatedRootFiles);
         cfg.binaryonly = true;
         files = Object.assign({}, files, {'pxt.json': JSON.stringify(cfg, null, 4)});
         if (files['main.ts'] === undefined) files['main.ts'] = '';
@@ -253,19 +282,6 @@ var bwMakeCode = {
             var palette = typeof paletteHex === 'string' && /^(?:[0-9a-f]{6})+$/i.test(paletteHex) ?
                 paletteHex.match(/.{6}/g).map(function (color) { return '#' + color; }) :
                 runtime && Array.isArray(runtime.palette) ? runtime.palette.slice() : null;
-            var generatedRootFiles = {};
-            var generatedRootProvenance = [];
-            for (var rootName of (cfg.files || [])) {
-                if (!/\\.g\\.jres$/.test(rootName) || typeof files[rootName] !== 'string') continue;
-                var companion = rootName.replace(/\\.jres$/, '.ts');
-                if (Object.prototype.hasOwnProperty.call(files, companion)) continue;
-                var rootGallery = JSON.parse(files[rootName]);
-                if (!Object.keys(rootGallery).some(function (key) {
-                    return rootGallery[key] && rootGallery[key].mimeType === 'application/mkcd-tilemap';
-                })) continue;
-                generatedRootFiles[companion] = pxt.emitTilemapsFromJRes(rootGallery);
-                generatedRootProvenance.push({input: rootName, file: companion, emitter: 'pxt.emitTilemapsFromJRes'});
-            }
             var runtimeConfig = {palette: palette};
             return {packages: packageInputs, sourceOrder: sourceOrder, jres: resources, runtimeConfig: runtimeConfig,
                 rootResourceIds: rootResourceIds, generatedRootFiles: generatedRootFiles,
@@ -303,6 +319,7 @@ var bwMakeCode = {
         return {
             success: !!res.success,
             outfiles: res.outfiles || {},
+            generatedRootFiles: generatedRootFiles, generatedRootProvenance: generatedRootProvenance,
             diagnostics: (res.diagnostics || []).map(function (d) {
                 var m = d.messageText;
                 while (m && typeof m === 'object') m = m.messageText;

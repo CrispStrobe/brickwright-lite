@@ -4,6 +4,7 @@ import {resolveProjectInputs,compile,hasRuntime,getTutorialTilemapGenerator} fro
 import {prepareArcadeDependencyInputs} from '../overlay/scratch-gui/src/lib/bw-makecode/dependency-project.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {encodeTileImage} from '../overlay/scratch-gui/src/lib/bw-makecode/tile-assets.js';
+import {runArcadeSim} from '../scripts/lib/makecode-arcade-sim.mjs';
 import {runProgram,clearStrayTimers} from './helpers/bw-vm.mjs';
 const skip=hasRuntime('arcade')?false:'Original Arcade worker not synced';
 function project() {
@@ -46,4 +47,30 @@ test('original root companions are never overwritten by generated views',{skip},
     assert.deepEqual(resolved.generatedRootFiles,{});
     assert.equal(prepareArcadeDependencyInputs(original,resolved).files['tilemap.g.ts'],original['tilemap.g.ts']);
     assert.throws(()=>prepareArcadeDependencyInputs(original,{...resolved,generatedRootFiles:{'tilemap.g.ts':'changed'}}),/overwrite project file/);
+});
+
+test('original image factories initialize before custom authored asset users',{skip},async()=>{
+    const image=encodeTileImage({width:16,height:16,pixels:new Uint8Array(256).fill(7)});
+    const original={'images.g.jres':JSON.stringify({hero:{mimeType:'image/x-mkcd-f4',data:image,displayName:'hero'},
+        '*':{mimeType:'image/x-mkcd-f4',dataEncoding:'base64',namespace:'myImages'}}),
+        'custom.ts':'namespace Art { export let hero=assets.image`hero` }',
+        'main.ts':'scene.setBackgroundColor(2)\nlet hero=sprites.create(Art.hero,SpriteKind.Player)\nhero.setPosition(40,50)\nhero.setVelocity(0,0)',
+        'pxt.json':JSON.stringify({dependencies:{device:'*'},files:['custom.ts','main.ts','images.g.jres']})};
+    const before=JSON.stringify(original);
+    const resolved=await resolveProjectInputs('arcade',original);
+    assert.match(resolved.generatedRootFiles['images.g.ts'],/_registerFactory/);
+    assert.equal(resolved.generatedRootProvenance[0].emitter,'pxt.emitProjectImages');
+    assert.match(resolved.generatedRootProvenance[0].workerSha256,/^[a-f0-9]{64}$/);
+    const prepared=prepareArcadeDependencyInputs(original,resolved);
+    assert.equal(JSON.stringify(original),before);
+    const compiled=await compile('arcade',original);assert.equal(compiled.success,true,JSON.stringify(compiled.diagnostics));
+    assert.equal(compiled.generatedRootFiles['images.g.ts'],resolved.generatedRootFiles['images.g.ts']);
+    const actual=await runArcadeSim(compiled.outfiles['binary.js'],{ms:300});
+    assert.equal(actual.error,null);assert.ok(Array.from(actual.screen()).includes(7),'original asset pixels must actually render');
+    const imported=arcadeToPseudocode(prepared.files);assert.deepEqual(imported.unsupported,[]);
+    try {
+        const run=await runProgram(imported.code,{frames:15,uploads:imported.costumes,storage:true});
+        assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+        assert.deepEqual(Array.from(run.vm.runtime.bwArcadeDeviceState.sceneFrame.pixels),Array.from(actual.screen()));
+    }finally{clearStrayTimers();}
 });
