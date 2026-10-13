@@ -54,3 +54,28 @@ test('real SDK SplashDialog retains fields, image identity/pixels, resize and al
         assert.deepEqual(fresh.errors, []); check(fresh, original, 'fresh VM SB3');
     } finally {for (const run of runs) run.vm.quit(); clearStrayTimers();}
 });
+
+// Frozen actual selected-original matrix is independently recorded in the
+// original reference lane: default-frame zero images exist, negative sizes
+// return undefined. This does not admit arbitrary null receiver operations.
+test('default-frame BaseDialog zero and negative allocation preserve original bounded observations', async () => {
+    const cases = [[0,0,false,0,0],[0,3,false,0,3],[3,0,false,3,0],[-1,2,true,-1,-1],[2,-1,true,-1,-1]];
+    const runs = [];
+    try {
+        for (const [width,height,missing,w,h] of cases) {
+            const source = `let dialog=new game.BaseDialog(${width},${height})\nlet probeImage=dialog.image\nlet missing=probeImage==undefined\nlet w=missing?-1:probeImage.width\nlet h=missing?-1:probeImage.height`;
+            const run = await execute(arcadeToPseudocode(source), runs);
+            const actual = globals(run);
+            for (const [name,value] of Object.entries({missing,w,h})) assert.equal(BW.decode(actual[name] ?? actual[name+'_']),value,`${width},${height} ${name}`);
+        }
+    } finally {for (const run of runs) run.vm.quit(); clearStrayTimers();}
+});
+
+test('Dialog source ownership and unqualified Font/subclass operations keep named diagnostics', () => {
+    assert.deepEqual(arcadeToPseudocode('namespace game {let dialog=new SplashDialog(160,35);dialog.setText("TITLE")}').unsupported, []);
+    assert.deepEqual(arcadeToPseudocode('class SplashDialog {value=3;constructor(){}}let dialog=new SplashDialog();let value=dialog.value;').unsupported, []);
+    for (const source of ['let dialog=new SplashDialog(160,35)', 'let dialog=new __bwSDK_SplashDialog(160,35)']) assert.ok(arcadeToPseudocode(source).unsupported.length>0, source);
+    assert.match(arcadeToPseudocode('class Custom extends game.SplashDialog {}let dialog=new Custom(160,35)').unsupported.join('\n'), /separate.*qualification|separately qualified/);
+    for (const source of ['let dialog=new game.BaseDialog(160,35,undefined,image.font5)', 'let dialog=new game.BaseDialog(160,35);dialog.resize(160,35,undefined,image.font5)'])
+        assert.match(arcadeToPseudocode(source).unsupported.join('\n'), /Font/);
+});
