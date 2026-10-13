@@ -247,6 +247,11 @@ try {
     await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click();
     await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-editor"] .cm-content')
         ?.cmTile.root.view.state.doc.toString().includes('arcade create text sprite'));
+    // The previous Code buffer can already contain a text-sprite command while
+    // From blocks is still regenerating it. Wait for the actual edited source,
+    // then retain the same exact assertion and original export qualification.
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-editor"] .cm-content')
+        ?.cmTile.root.view.state.doc.toString().includes('arcade create text sprite text "PLAY"'));
     report.reopenedCode = await readCode(); assert.match(report.reopenedCode, /"PLAY"/);
     await openCodeActions(page);
     const [exported] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
