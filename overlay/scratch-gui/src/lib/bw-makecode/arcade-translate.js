@@ -1131,6 +1131,13 @@ class ArcadeTranslator extends BaseTranslator {
             this.usesArrays=true;
             return `compare value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`;
         }
+        if(this.handleTemplates && (node?.type==='Binary' && ['&','|','^','<<','>>','>>>'].includes(node.op) || node?.type==='Unary' && node.op==='~')) {
+            const operands=node.type==='Binary'?[node.left,node.right]:[node.argument];
+            if(operands.some(value=>!this.primitiveReferences?.has(value))){this.unsupported.push('Bitwise operation requires proven primitive operands; opaque reference, object or unknown conversion is not implemented');return 'undefined value';}
+            this.usesArrays=true;
+            return node.type==='Binary'?`calculate value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`:
+                `convert value (${this.arrayElementValue(node.argument)}) op "~"`;
+        }
         if(this.handleTemplates && node?.type==='Binary' && ['+','-','*','/','%','**'].includes(node.op)) {
             if([node.left,node.right].some(value=>this.spriteReferences?.has(value)))this.unsupported.push('sprite arithmetic conversion requires ToPrimitive support');
             if([node.left,node.right].some(value=>this.playerReferences?.has(value)))this.unsupported.push('player arithmetic conversion requires ToPrimitive support');
@@ -3139,8 +3146,8 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(node?.type==='Member' && node.object?.name==='CollisionDirection' && Object.prototype.hasOwnProperty.call(COLLISION_DIRECTIONS,node.name))return new Set(['number']);
         if(node?.type==='String')return new Set(['string']);
         if(node?.type==='Boolean' || node?.type==='Unary' && node.op==='!' || node?.type==='Binary' && ['==','!=','===','!==','<','>','<=','>='].includes(node.op))return new Set(['boolean']);
-        if(node?.type==='Unary' && ['+','-'].includes(node.op))return new Set(['number']);
-        if(node?.type==='Binary' && ['-','*','/','%','**'].includes(node.op))return new Set(['number']);
+        if(node?.type==='Unary' && ['+','-','~'].includes(node.op))return new Set(['number']);
+        if(node?.type==='Binary' && ['-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(node.op))return new Set(['number']);
         if(node?.type==='Binary' && node.op==='+') {
             const left=typeOf(node.left,owner),right=typeOf(node.right,owner);
             if(left.has('string')||right.has('string'))return new Set(['string']);
@@ -3719,7 +3726,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(t.bufferReferences.has(node))return true;
         if(node.type==='Declaration' && node.decls.some(decl=>decl.isArray && !decl.init))return true;
         const constantNumber=value=>value?.type==='Number'?Number(value.value):value?.type==='Unary' && value.op==='-' && value.argument?.type==='Number'?-Number(value.argument.value):value?.type==='Member' && value.object?.name==='Math' && value.name==='PI'?Math.PI:NaN;
-        if(node.type==='Binary' && node.op==='**')return true;
+        if(node.type==='Binary' && ['**','&','|','^','<<','>>','>>>'].includes(node.op) || node.type==='Unary' && node.op==='~')return true;
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
         if(node.type==='Unary' && ['+','-'].includes(node.op))return true;

@@ -1133,14 +1133,14 @@ class ArcadeEmitter {
         case 'arrays_valueBinary':
         case 'arrays_valueUnary': {
             const op=this.field(b,'OP') || this.literalInput(b,'OP'),unary=b.opcode==='arrays_valueUnary',compare=b.opcode==='arrays_valueCompare';
-            const names={'+':'Add','-':'Subtract','*':'Multiply','/':'Divide','%':'Remainder','**':'Power','==':'Equal','!=':'NotEqual','===':'StrictEqual','!==':'StrictNotEqual','<':'Less','>':'Greater','<=':'LessEqual','>=':'GreaterEqual'};
-            if(!names[op] || unary && !['+','-'].includes(op)){this.note(`unsupported value operation ${op}`);return this.na();}
+            const names={'+':'Add','-':'Subtract','*':'Multiply','/':'Divide','%':'Remainder','**':'Power','&':'BitAnd','|':'BitOr','^':'BitXor','<<':'ShiftLeft','>>':'ShiftRight','>>>':'UnsignedShiftRight','~':'BitNot','==':'Equal','!=':'NotEqual','===':'StrictEqual','!==':'StrictNotEqual','<':'Less','>':'Greater','<=':'LessEqual','>=':'GreaterEqual'};
+            if(!names[op] || unary && !['+','-','~'].includes(op)){this.note(`unsupported value operation ${op}`);return this.na();}
             const key=(unary?'Unary':compare?'Compare':'Binary')+names[op];
             if(!this.valueOperationHelpers.has(key)){
                 let name='__bw'+key;
                 const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.spriteVar.values(),...this.artVar.values(),...this.valueOperationHelpers.values()].map(x=>typeof x==='string'?x:x.name));
                 while(occupied.has(name))name+='_';
-                this.valueOperationHelpers.set(key,{name,source:unary?`function ${name}(value: any): number { return ${op==='-'?'-1 * value':'+value'} }`:`function ${name}(left: any, right: any): ${compare?'boolean':op==='+'?'any':'number'} { return left ${op} right }`});
+                this.valueOperationHelpers.set(key,{name,source:unary?`function ${name}(value: any): number { return ${op==='-'?'-1 * value':op==='~'?'~value':'+value'} }`:`function ${name}(left: any, right: any): ${compare?'boolean':op==='+'?'any':'number'} { return left ${op} right }`});
             }
             const helper=this.valueOperationHelpers.get(key).name;
             return unary?`${helper}(${this.arrayValue(b,'VALUE')})`:`${helper}(${this.arrayValue(b,'LEFT')}, ${this.arrayValue(b,'RIGHT')})`;

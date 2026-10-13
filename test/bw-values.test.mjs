@@ -252,7 +252,7 @@ const paritySession = values => {
     }));
     operands.forEach((v, i) => { for (const op of ['+', '-']) run(`unary ${op} #${i}`, () => values.unary(op, v)); });
     run('compare unknown op', () => values.compare(1, '<>', 2));
-    run('binary unknown op', () => values.binary(1, '**', 2));
+    run('binary unknown op', () => values.binary(1, '??', 2));
     const list = [1, refs.imgB, undefined, imgA, '1', NaN];
     delete list[2];
     for (const [v, from] of [[imgA, 0], [refs.json, 0], ['1', 0], [1, 0], [undefined, 0], [NaN, 0], [imgA, 4], [imgA, -3], [imgA, Infinity]]) {

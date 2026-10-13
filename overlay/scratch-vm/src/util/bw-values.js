@@ -213,6 +213,10 @@ const makeValues = () => {
   const binary = (left, op, right) => {
     const a = decode(left);
     const b = decode(right);
+    if (["&", "|", "^", "<<", ">>", ">>>"].includes(op) &&
+        [a, b].some(value => value !== null && !["number", "string", "boolean", "undefined"].includes(typeof value))) {
+      throw new Error("Bitwise conversion requires primitive values, not opaque references or objects");
+    }
     switch (op) {
       case "+":
         return a + b;
@@ -226,6 +230,18 @@ const makeValues = () => {
         return a % b;
       case "**":
         return a ** b;
+      case "&":
+        return a & b;
+      case "|":
+        return a | b;
+      case "^":
+        return a ^ b;
+      case "<<":
+        return a << b;
+      case ">>":
+        return a >> b;
+      case ">>>":
+        return a >>> b;
       default:
         throw new Error("Unknown value arithmetic " + op);
     }
@@ -234,6 +250,12 @@ const makeValues = () => {
     const a = decode(value);
     if (op === "+") return +a;
     if (op === "-") return -a;
+    if (op === "~") {
+      if (a !== null && !["number", "string", "boolean", "undefined"].includes(typeof a)) {
+        throw new Error("Bitwise conversion requires primitive values, not opaque references or objects");
+      }
+      return ~a;
+    }
     throw new Error("Unknown unary value arithmetic " + op);
   };
   const compare = (left, op, right) => {
