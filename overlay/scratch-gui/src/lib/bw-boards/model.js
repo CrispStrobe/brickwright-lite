@@ -27,8 +27,18 @@ export function readBoards (project) {
     if (!project) return null;
     if (Array.isArray(project.boards)) return wellFormed(project.boards) ? project.boards : null;
     const stage = Array.isArray(project.targets) ? project.targets.find(t => t.isStage) : null;
-    if (!stage || !stage.comments) return null;
-    for (const comment of Object.values(stage.comments)) {
+    return stage ? boardsFromComments(stage.comments) : null;
+}
+
+/**
+ * The list a Stage's comments carry, or null. Takes the comments of an sb3
+ * target or of a live runtime target: both are objects whose values have `text`.
+ * @param {object} comments the Stage's comments, by id
+ * @returns {Array<{name: string, stc: object, targets: Array<string>}> | null}
+ */
+export function boardsFromComments (comments) {
+    if (!comments) return null;
+    for (const comment of Object.values(comments)) {
         const text = comment && typeof comment.text === 'string' ? comment.text : '';
         const at = text.indexOf(BOARDS_MAGIC);
         if (at === -1) continue;
@@ -40,6 +50,20 @@ export function readBoards (project) {
         }
     }
     return null;
+}
+
+/**
+ * Whether the sprite of that name is the board's (the Stage is the first board's).
+ * @param {Array<object>} boards the list from readBoards
+ * @param {number} index the board's position in the list
+ * @param {string} spriteName the sprite's name
+ * @returns {boolean} true when the board owns it
+ */
+export function ownsSprite (boards, index, spriteName) {
+    if (index < 0 || index >= boards.length) return false;
+    if (boards[index].targets.includes(spriteName)) return true;
+    if (index) return false;
+    return !boards.some((b, i) => (i && b.name === spriteName) || b.targets.includes(spriteName));
 }
 
 /**
@@ -57,17 +81,7 @@ export function readBoards (project) {
 export function boardTargets (project, boards, name) {
     const index = boards.findIndex(b => b.name === name);
     if (index < 0) return [];
-    const claimed = new Set();
-    boards.forEach((b, i) => {
-        if (i) claimed.add(b.name);
-        for (const n of b.targets) claimed.add(n);
-    });
-    const own = new Set(boards[index].targets);
-    return (project.targets || []).filter(t => {
-        if (t.isStage) return index === 0;
-        if (own.has(t.name)) return true;
-        return index === 0 && !claimed.has(t.name);
-    });
+    return (project.targets || []).filter(t => (t.isStage ? index === 0 : ownsSprite(boards, index, t.name)));
 }
 
 /**
