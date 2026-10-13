@@ -64,6 +64,7 @@ test('TextSprite source preserves original pixels, aliases, deferred property re
     try{
         const run=await runProgram(imported.code,{frames:150,uploads:imported.costumes,storage:true});check(run);
         const archive=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());await run.vm.loadProject(archive);run.vm.greenFlag();await stepFrames(run.vm,150);check(run);
+        const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});fresh.vm.stopAll();await fresh.vm.loadProject(archive);fresh.vm.greenFlag();await stepFrames(fresh.vm,150);check(fresh);fresh.vm.quit?.();
         check(await runProgram(run.creator.decompile(),{frames:150,uploads:imported.costumes,storage:true}));
         const exported=projectToArcade(run.creator.project,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
         assert.equal(JSON.parse(exported.files['pxt.json']).dependencies['arcade-text'],'github:microsoft/arcade-text#fa2439314c6633943666a763fdae32a5c67a9ae8');
