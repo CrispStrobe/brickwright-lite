@@ -3863,3 +3863,22 @@ its provisional budget is registered with zero readings until actual runs
 supply measurements. Failure artifacts retain the journey, sample, screenshot
 and exact file hashes; a selector or presentation failure must not be changed
 into a pass by loading projects through VM APIs or skipping the affected editor.
+
+## Authoring additions after Text Sprite — acceptance status
+
+The canonical vocabulary now contains345 forms, including separate program and
+scene clocks, explicit background-scroll and character-animation versions,
+character-rule strings and primitive SDK character/concatenation operations.
+Background-scroll and clock source/native/export integration has focused
+roundtrip controls. Character-version source/export integration remains active.
+
+Blocks and Code must expose each operation with correct input types and readable
+version choices. The owned Text Sprite game journey exercises actual Code and
+Blocks edits, Pixel art, controller input, SB3 reopen and MakeCode roundtrips in
+CI. Its hosted result is pending. Do not mark graphics/authoring completeness
+from native opcode availability or original-simulator tests.
+
+Still required: numeric SpriteKind creation, dependency initializer ordering,
+kind display names separate from runtime IDs, captured event IDs, null/default
+kind semantics, and direct authoring of dynamic kinds. Also retain the open
+general object-coercion, class/callable and scheduler/debugger boundaries.

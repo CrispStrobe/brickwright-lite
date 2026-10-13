@@ -573,3 +573,24 @@ After these, implement the older character-animation rules, Story/parser and
 remaining callable/class/string operations in dependency order. Requalify each
 complete authentic project with controller input and GUI editing before changing
 its prepared result; preserve the immutable raw census separately.
+
+## Current ordered work after clocks and primitive strings
+
+Exact legacy background-scroll source/native/export, separate program/scene
+clocks and primitive SDK strings now have focused controls. The Gallery helper
+has an actual hosted read-only-token proof. Whole-game and production-IDE
+qualification remain separate; the immutable raw41 partials/1 parser failure
+are unchanged.
+
+1. Complete exact older character-animation source and export selection.
+2. Replace placeholder SpriteKind IDs with original allocation and initializer
+   order, native numeric membership, captured events and original defaults.
+3. Re-run authentic prepared inputs against the matching345-form producer,
+   retaining unchanged originals, invalid contexts and all named diagnostics.
+4. Execute candidate complete games with controller input; compare original
+   observations and then exercise Blocks/Code/Pixel save/export/reimport.
+5. Continue Story, classes and callable semantics by the remaining actual
+   diagnostics. Promote only complete observed projects, preserving raw counts.
+
+The new owned-game GUI gate is a production-build light-browser step. Pending
+hosted execution cannot be reported as acceptance or a corpus promotion.
