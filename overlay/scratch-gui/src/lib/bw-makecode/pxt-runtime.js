@@ -244,7 +244,17 @@ var bwMakeCode = {
             }
             var resources = {};
             for (var key in resourceIds) if (copts.jres && copts.jres[key]) resources[key] = copts.jres[key];
-            return {packages: packageInputs, sourceOrder: sourceOrder, jres: resources,
+            // MainPackage.getJRes snapshots the effective palette actually
+            // consumed by this compilation. appTarget.runtime may subsequently
+            // change as PXT visits packages, so prefer the compiler resource.
+            var originalPalette = copts.jres && copts.jres.__palette;
+            var paletteHex = originalPalette && originalPalette.dataEncoding === 'hex' && originalPalette.data;
+            var runtime = pxt.appTarget && pxt.appTarget.runtime;
+            var palette = typeof paletteHex === 'string' && /^(?:[0-9a-f]{6})+$/i.test(paletteHex) ?
+                paletteHex.match(/.{6}/g).map(function (color) { return '#' + color; }) :
+                runtime && Array.isArray(runtime.palette) ? runtime.palette.slice() : null;
+            var runtimeConfig = {palette: palette};
+            return {packages: packageInputs, sourceOrder: sourceOrder, jres: resources, runtimeConfig: runtimeConfig,
                 rootResourceIds: rootResourceIds,
                 netAttempts: bwMakeCode.netAttempts.slice(before)};
         }

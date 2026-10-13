@@ -80,7 +80,10 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
         names.push(path);
         provenance.push({id, file, path, generated});
     }
-    files['pxt.json'] = JSON.stringify({...cfg, files: [...names, ...cfg.files,
+    const effectivePalette = resolved.runtimeConfig?.palette;
+    files['pxt.json'] = JSON.stringify({...cfg,
+        ...(effectivePalette ? {palette: [...effectivePalette]} : {}), files: [...names, ...cfg.files,
         `${ROOT}resources.jres`]});
-    return {files, originalFiles, provenance, skippedPackages, fetchedExtensions: resolved.fetchedExtensions || []};
+    return {files, originalFiles, provenance, skippedPackages, runtimeConfig: resolved.runtimeConfig || null,
+        fetchedExtensions: resolved.fetchedExtensions || []};
 }
