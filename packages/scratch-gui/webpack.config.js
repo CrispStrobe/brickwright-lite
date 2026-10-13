@@ -153,6 +153,13 @@ const baseConfig = new ScratchWebpackConfigBuilder(
         // runtime toggle could not promise. Enabling it by DEFAULT is a separate,
         // later decision that may never be taken -- see docs/TANG-NANO.md.
         'process.env.BW_ENABLE_FPGA': JSON.stringify(process.env.BW_ENABLE_FPGA === '1'),
+        // Peer sessions (task E11, docs/PEERS-SECURITY-REVIEW.md): LAN sharing between two
+        // apps, OFF unless a build asks for it. A BUILD-TIME boolean so an off build carries no
+        // peer code at all: every consumer tests `process.env.BW_ENABLE_PEERS === true`, which
+        // webpack folds, and node (where process.env holds strings) always reads as off.
+        // Pair it with the app's `peers` Cargo feature. scripts/verify-no-peer-surface.mjs
+        // checks the emitted default build; test/peers-gate.test.mjs checks the sources.
+        'process.env.BW_ENABLE_PEERS': JSON.stringify(process.env.BW_ENABLE_PEERS === '1'),
         // Distribution policy, selected at BUILD TIME. This is intentionally not inferred from
         // Tauri: Android, Windows and direct-download desktop builds have different store rules,
         // and even Apple's educational-code exception is a submission decision rather than a

@@ -180,7 +180,13 @@ const lazyBuiltinExtensions = {
     cameracapture: () => import(/* webpackChunkName: "ext-cameracapture" */ '../extensions/crispstrobe/cameracapture/index.js'),
     ev3: () => import(/* webpackChunkName: "ext-ev3" */ '../extensions/scratch3_ev3/index.js'),
     boost: () => import(/* webpackChunkName: "ext-boost" */ '../extensions/scratch3_boost/index.js'),
-    gdxfor: () => import(/* webpackChunkName: "ext-gdxfor" */ '../extensions/scratch3_gdx_for/index.js')
+    gdxfor: () => import(/* webpackChunkName: "ext-gdxfor" */ '../extensions/scratch3_gdx_for/index.js'),
+    // Peer sessions (task E11): only in a build made with BW_ENABLE_PEERS=1 (a DefinePlugin
+    // literal, so a default build carries neither the entry nor the chunk). In node, where
+    // process.env holds strings, `=== true` keeps it off.
+    ...(process.env.BW_ENABLE_PEERS === true ? {
+        peersessions: () => import(/* webpackChunkName: "ext-peersessions" */ '../extensions/crispstrobe/peers/index.js')
+    } : {})
 };
 
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
