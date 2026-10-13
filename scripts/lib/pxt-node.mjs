@@ -52,7 +52,7 @@ async function sandbox (target) {
  *     Arcade board for a native build (ARCADE_HARDWARE in pxt-runtime.js); emulator: a micro:bit V2
  *     image on the Bluetooth-free emulator bases (a refused base throws code BASE_REFUSED)
  */
-export async function compile (target, files, opts = {}) {
+async function runCompiler (target, files, opts = {}, projectInputs = false) {
     const sb = await sandbox(target);
     const {onDemandExtensions} = await import(pathToFileURL(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js')).href);
     // CLI audits are offline by default. Fetch only when explicitly requested.
@@ -71,6 +71,7 @@ export async function compile (target, files, opts = {}) {
     };
     try {
         const r = await sb.bwMakeCode.compile(files, {native: !!opts.native || !!opts.emulator, embedSource: opts.embedSource || null,
+            projectInputs,
             hwVariant: opts.hwVariant || '', getBaseHex, ...(opts.emulator ? {appVariant: 'mbcodal'} : {}),
             extensions: onDemand.extensions.map(({id, repo, refs, targets, files: source}) =>
                 ({id, repo, refs, targets, files: source}))});
@@ -84,3 +85,11 @@ export async function compile (target, files, opts = {}) {
         throw error;
     }
 }
+
+export const compile = (target, files, opts = {}) => runCompiler(target, files, opts);
+
+/** Original PXT package installation and generated inputs, without compilation.
+ * Includes only GitHub packages supplied through the extension resolver, not
+ * target libraries. Remote fetching remains explicitly opt-in.
+ */
+export const resolveProjectInputs = (target, files, opts = {}) => runCompiler(target, files, opts, true);

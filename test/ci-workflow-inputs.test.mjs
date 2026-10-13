@@ -26,6 +26,13 @@ const allowedFlasher = site => site.file === '.github/workflows/build.yml'
     && site.ref === '${{ steps.stc_flasher_pin.outputs.sha }}';
 const allowed = site => allowedGlobal(site) || allowedFlasher(site);
 
+function assertFlasherValidation(body, name) {
+    assert.match(body, /id: stc_flasher_pin\n\s+if:[^\n]+\n\s+run: \|\n\s+node -e .*stc-compiler-flasher.*\/\^\[0-9a-f\]\{40\}\$\//, name);
+    assert.ok(body.indexOf('id: stc_flasher_pin') < body.indexOf('repository: CrispStrobe/stc-compiler'), name);
+    assert.equal(assertCheckoutPins(new Map([['.github/workflows/build.yml',body]]),allowed).filter(allowedFlasher).length,1,name);
+    assert.match(body,/ref: \$\{\{ steps\.stc_flasher_pin\.outputs\.sha \}\}/,name);
+}
+
 test('every external workflow checkout has a full pin or validated vendor-pin output', t => {
     const sites = assertCheckoutPins(workflows, allowed);
     const workflow = workflows.get('.github/workflows/vendor-freshness.yml');
@@ -36,7 +43,13 @@ test('every external workflow checkout has a full pin or validated vendor-pin ou
     const build = workflows.get('.github/workflows/build.yml');
     assert.match(build, /id: stc_flasher_pin\n\s+if:[^\n]+\n\s+run: \|\n\s+node -e .*stc-compiler-flasher.*\/\^\[0-9a-f\]\{40\}\$\//);
     assert.ok(build.indexOf('id: stc_flasher_pin') < build.indexOf('repository: CrispStrobe/stc-compiler'));
-    assert.deepEqual(sites.filter(allowedFlasher).map(site => site.repository), ['CrispStrobe/stc-compiler']);
+    assert.deepEqual(sites.filter(allowedFlasher).map(site => site.repository), ['CrispStrobe/stc-compiler','CrispStrobe/stc-compiler']);
+    const jobs = new Map([...build.matchAll(/^  (unit|build):\n([\s\S]*?)(?=^  [a-z][\w-]*:|$(?![\s\S]))/gm)].map(m=>[m[1],m[2]]));
+    assert.deepEqual([...jobs.keys()].sort(), ['build','unit']);
+    for (const [name,body] of jobs) {
+        assertFlasherValidation(body, name);
+        assert.throws(()=>assertFlasherValidation(body.replace('id: stc_flasher_pin','id: unchecked'),name));
+    }
     t.diagnostic(`Audited ${sites.length} external checkout sites across ${workflows.size} workflows`);
 });
 

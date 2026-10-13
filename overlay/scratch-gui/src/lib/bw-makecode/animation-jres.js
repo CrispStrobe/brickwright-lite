@@ -9,7 +9,10 @@
  * Names/IDs are native asset references, not Brickwright editable-source UUIDs.
  */
 export const ANIMATION_JRES_MIME = 'application/mkcd-animation';
-export const ANIMATION_JRES_LIMITS = Object.freeze({dimension: 160, frames: 64, packedBytes: 1024 * 1024, identityCharacters: 160});
+// Native dimensions are u16, independent of the 160x120 display. Resource
+// budgets bound the complete decoded timeline before allocating any frames.
+export const ANIMATION_JRES_LIMITS = Object.freeze({dimension: 65535, frames: 64,
+    packedBytes: 1024 * 1024, decodedPixels: 2 * 1024 * 1024, identityCharacters: 160});
 export class AnimationJresError extends Error {
     constructor (code, message) { super(message); this.name = 'AnimationJresError'; this.code = code; }
 }
@@ -28,7 +31,11 @@ const layout = (width, height, count, interval) => {
     integer(height, ANIMATION_JRES_LIMITS.dimension, 'DIMENSIONS', 'height');
     integer(count, ANIMATION_JRES_LIMITS.frames, 'FRAME_COUNT', 'frame count');
     integer(interval, 65535, 'INTERVAL', 'intervalMs');
-    const stride = Math.ceil(width * height / 2), size = 8 + stride * count;
+    const pixels = width * height;
+    if (pixels * count > ANIMATION_JRES_LIMITS.decodedPixels) {
+        fail('RESOURCE_LIMIT', 'Animation exceeds decoded pixel limit');
+    }
+    const stride = Math.ceil(pixels / 2), size = 8 + stride * count;
     if (size > ANIMATION_JRES_LIMITS.packedBytes) fail('RESOURCE_LIMIT', 'Animation exceeds packed resource byte limit');
     return {stride, size};
 };

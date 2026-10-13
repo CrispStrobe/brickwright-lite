@@ -25,7 +25,7 @@ import {blankLayer, clearSelectedPixels, composeLayers, containsCell, cropLayers
     resizeLayers, selectionRect, sourceFrames, sourceLayers,
     stampBrushInto, transformPixels, wandSelection} from '../../lib/bw-pixel-layers.js';
 import {
-    ARCADE_PALETTE, MAX_PIXEL_DIMENSION, editablePixelSize, rasterEditorSize, isUnmarkedArcadeBackdrop,
+    ARCADE_PALETTE, MAX_PIXEL_DIMENSION, editablePixelLayerBudget, editablePixelSize, rasterEditorSize, isUnmarkedArcadeBackdrop,
     svgToPixels, quantizeRgba, floodFill, toImgLiteral, parsePaletteFile, sliceSpriteSheet
 } from '../../lib/bw-makecode/pixel-image.js';
 import {parseExactImgLiteral} from '../../lib/bw-makecode/arcade-assets.js';
@@ -52,7 +52,8 @@ const L10N = {
         'px.showLiteral': 'Show Arcade img', 'px.importLiteral': 'Import Arcade img',
         'px.applyLiteral': 'Add as layer', 'px.closeLiteral': 'Close',
         'px.invalidLiteral': 'Paste one complete Arcade img literal with equal-length rows and valid colours.',
-        'px.largeLiteral': 'Arcade image exceeds the 160×160 pixel-editor limit.',
+        'px.pixelBudget': 'Too many pixels across frames and layers. Reduce the size or remove frames or layers.',
+        'px.largeLiteral': 'Arcade image exceeds the 512×512 pixel-editor limit.',
         'px.translucentLiteral': 'Arcade img cannot represent partly transparent layers. Set their opacity to 0% or 100% first.',
         'px.literalHint': 'The imported image becomes a new editable layer. Existing layers are kept.',
         'px.copyLiteral': 'Copy', 'px.literalLabel': 'Arcade img literal',
@@ -85,7 +86,7 @@ const L10N = {
         'px.sheetFrameWidth': 'Frame width (PNG px)', 'px.sheetFrameHeight': 'Frame height (PNG px)',
         'px.sheetScale': 'PNG pixels per art pixel', 'px.sheetPreview': 'Preview slices',
         'px.sheetReplace': 'Replace frames with slices', 'px.sheetClose': 'Close sheet import',
-        'px.sheetInvalid': 'Use a PNG with 2–64 complete frames, each at most 160×160 art pixels.',
+        'px.sheetInvalid': 'Use a PNG with 2–64 complete frames, each at most 512×512 art pixels.',
         'px.sheetHint': 'Rows are read left to right. Colours match the current palette; replacing frames is undoable.',
         'px.frameNumber': 'Frame {number}', 'px.frameName': 'Frame name',
         'px.lasso': 'Lasso', 'px.wand': 'Magic wand',
@@ -112,7 +113,8 @@ const L10N = {
         'px.showLiteral': 'Arcade-img anzeigen', 'px.importLiteral': 'Arcade-img importieren',
         'px.applyLiteral': 'Als Ebene hinzufügen', 'px.closeLiteral': 'Schließen',
         'px.invalidLiteral': 'Ein vollständiges Arcade-img mit gleich langen Zeilen und gültigen Farben einfügen.',
-        'px.largeLiteral': 'Das Arcade-Bild überschreitet die Grenze von 160×160 Pixeln.',
+        'px.pixelBudget': 'Zu viele Pixel in Bildern und Ebenen. Größe verkleinern oder Bilder oder Ebenen entfernen.',
+        'px.largeLiteral': 'Das Arcade-Bild überschreitet die Grenze von 512×512 Pixeln.',
         'px.translucentLiteral': 'Arcade-img unterstützt keine teilweise transparenten Ebenen. Deckkraft zuerst auf 0 % oder 100 % setzen.',
         'px.literalHint': 'Das importierte Bild wird eine neue bearbeitbare Ebene. Bestehende Ebenen bleiben erhalten.',
         'px.copyLiteral': 'Kopieren', 'px.literalLabel': 'Arcade-img-Literal',
@@ -146,7 +148,7 @@ const L10N = {
         'px.sheetFrameWidth': 'Bildbreite (PNG-Pixel)', 'px.sheetFrameHeight': 'Bildhöhe (PNG-Pixel)',
         'px.sheetScale': 'PNG-Pixel pro Grafikpixel', 'px.sheetPreview': 'Schnitte vorschauen',
         'px.sheetReplace': 'Bilder durch Schnitte ersetzen', 'px.sheetClose': 'Import schließen',
-        'px.sheetInvalid': 'Ein PNG mit 2–64 vollständigen Bildern bis 160×160 Grafikpixel verwenden.',
+        'px.sheetInvalid': 'Ein PNG mit 2–64 vollständigen Bildern bis 512×512 Grafikpixel verwenden.',
         'px.sheetHint': 'Zeilen werden von links gelesen. Farben nutzen die aktuelle Palette; Ersetzen kann rückgängig gemacht werden.',
         'px.frameNumber': 'Bild {number}', 'px.frameName': 'Bildname',
         'px.lasso': 'Lasso', 'px.wand': 'Zauberstab',
@@ -536,6 +538,10 @@ class PixelArtEditor extends React.Component {
 
     addFrame (duplicate = false) {
         if (this.state.frames.length >= 64) return;
+        const counts = this.materializeFrames().reduce((sum, frame) => sum + frame.layers.length, 0) + 2 * this.state.layers.length;
+        if (!editablePixelLayerBudget(this.state.w, this.state.h, counts)) {
+            this.setState({status: t(this.props.locale || browserLocale(), 'px.pixelBudget')}); return;
+        }
         this.stopPlayback();
         this.remember();
         const id = `frame-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -1060,6 +1066,10 @@ class PixelArtEditor extends React.Component {
     resize (w, h, scale = this.state.scale) {
         const W = Math.max(1, Math.min(MAX_PIXEL_DIMENSION, w | 0));
         const H = Math.max(1, Math.min(MAX_PIXEL_DIMENSION, h | 0));
+        const counts = this.materializeFrames().reduce((sum, frame) => sum + frame.layers.length, 0) + this.state.layers.length;
+        if (!editablePixelLayerBudget(W, H, counts)) {
+            this.setState({status: t(this.props.locale || browserLocale(), 'px.pixelBudget')}); return;
+        }
         if (W === this.state.w && H === this.state.h && scale === this.state.scale) return;
         this.remember();
         this.setState(state => {
@@ -1221,6 +1231,10 @@ class PixelArtEditor extends React.Component {
 
     addLayer () {
         const {w, h, layers} = this.state;
+        const counts = this.materializeFrames().reduce((sum, frame) => sum + frame.layers.length, 0) + layers.length + 2;
+        if (!editablePixelLayerBudget(w, h, counts)) {
+            this.setState({status: t(this.props.locale || browserLocale(), 'px.pixelBudget')}); return;
+        }
         this.remember();
         const id = `pixels-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
         const layer = blankLayer(id, `${t(this.props.locale || browserLocale(), 'px.layers')} ${layers.length + 1}`, w, h);

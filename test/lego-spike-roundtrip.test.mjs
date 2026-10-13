@@ -273,9 +273,20 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 50721b3b (2026-10-10): darts and corgio words; runtime words unchanged.
     // -> 6e548a69 (2026-10-10): background scroller words; runtime words unchanged.
     // -> 44d11124 (2026-10-10): character animation words, with producer main merged; runtime words unchanged.
-    // -> b2195604 (2026-10-12): generic GPIO pin dialect (set pin N / read pin N -> bwgpio_*), main merged; runtime words unchanged.
+    // -> 06341e3d (2026-10-11): three Carnival grammar words; all SPIKE artifact assertions rerun.
+    // -> c7096355 (2026-10-12): song playable word; canonical SPIKE artifact assertions rerun.
+    // -> 2e830a48 (2026-10-12): sixteen Arcade Buffer words; the SPIKE artifact
+    // assertions below are re-run against the exact adopted producer.
+    // -> b76c61cd (2026-10-12): UTF8 Buffer word; unchanged SPIKE artifact re-qualified.
+    // -> eecbbc71 (2026-10-12): Buffer readonly Boolean; SPIKE artifact re-qualified.
+    // -> 5aa81ec0 (2026-10-12): Buffer concat/equality/search; SPIKE artifact re-qualified.
+    // -> c63863d9 (2026-10-12): Buffer format-size reporter; re-qualify unchanged SPIKE artifact.
+    // -> 647aed7e (2026-10-12): Buffer array bridge; re-qualify unchanged SPIKE artifact.
+    // -> 4fc50baa (2026-10-12): Base64 Buffer vocabulary; SPIKE artifact unchanged.
+    // -> 9541e81f (2026-10-12): Buffer chunking vocabulary; SPIKE artifact unchanged.
+    // -> c94f428d (2026-10-12): Buffer packing vocabulary; SPIKE artifact unchanged.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'b2195604fc130a64f6214dfcb508ba5981023684');
+        '2bc0bcb9a862918358529afb5f3614e491b47c35');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

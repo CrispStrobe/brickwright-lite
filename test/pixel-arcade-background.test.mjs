@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import JSZip from 'jszip';
 import {deflateSync, inflateSync} from 'node:zlib';
 import {scopeAfter} from './helpers/js-scope.mjs';
-import {ARCADE_PALETTE, editablePixelSize, MAX_PIXEL_DIMENSION, rasterEditorSize, isUnmarkedArcadeBackdrop, quantizeRgba,
+import {ARCADE_PALETTE, editablePixelSize, editablePixelLayerBudget, MAX_PIXEL_DIMENSION, rasterEditorSize, isUnmarkedArcadeBackdrop, quantizeRgba,
     pixelsToSvg, svgToPixels, sliceSpriteSheet, toImgLiteral} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {parseExactImgLiteral} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-assets.js';
 import {blankLayer, resizeLayers, composeLayers, layersDocument, layersToSvg, sourceLayers, sourceFrames} from '../overlay/scratch-gui/src/lib/bw-pixel-layers.js';
@@ -32,7 +32,7 @@ const decodedRgba=Buffer.concat(Array.from({length:120},(_,y)=>decoded.subarray(
 
 test('160×120 indexed backgrounds retain every pixel through SVG and Arcade literals',()=>{
     assert.ok(editablePixelSize(160,120));assert.ok(editablePixelSize(128,128));
-    for(const size of [[161,120],[160,161],[0,120],[-1,1],[1.5,2],[Infinity,1]])assert.equal(editablePixelSize(...size),false);
+    for(const size of [[513,120],[160,513],[0,120],[-1,1],[1.5,2],[Infinity,1]])assert.equal(editablePixelSize(...size),false);
     const svg=pixelsToSvg(image,{scale:3});
     const reopened=svgToPixels(svg);assert.equal(reopened.scale,3);assert.deepEqual(reopened.pixels,image.pixels);
     assert.deepEqual(parseExactImgLiteral(toImgLiteral(image)).pixels,image.pixels);
@@ -51,11 +51,11 @@ test('PNG raster pixels and 3× stage renders retain background dimensions and c
 test('sprite sheets permit complete full-screen frames and reject invalid/oversize cells',()=>{
     const sheet=new Uint8Array(160*240*4);sheet.set(rgba);sheet.set(rgba,rgba.length);
     assert.deepEqual(sliceSpriteSheet(sheet,160,240,160,120).frames.map(f=>f.pixels),[image.pixels,image.pixels]);
-    for(const args of [[-160,240,160,120],[160,240,-160,120],[160,240,160,121],[161,240,161,120]])assert.equal(sliceSpriteSheet(sheet,...args),null);
+    for(const args of [[-160,240,160,120],[160,240,-160,120],[160,240,160,121],[513,240,513,120]])assert.equal(sliceSpriteSheet(sheet,...args),null);
 });
 
 const bind=(signature,parameters,bindings)=>new Function(...Object.keys(bindings),`return function(${parameters}) ${scopeAfter(source,signature)}`)(...Object.values(bindings));
-const resize=bind('resize (w, h, scale = this.state.scale) {','w,h,scale=this.state.scale',{MAX_PIXEL_DIMENSION,resizeLayers,composeLayers});
+const resize=bind('resize (w, h, scale = this.state.scale) {','w,h,scale=this.state.scale',{MAX_PIXEL_DIMENSION,editablePixelLayerBudget,resizeLayers,composeLayers});
 const save=bind('save (resourceOverride) {','resourceOverride',{layersToSvg,layersDocument,setCostumeDocument,syncAnimationResources});
 const dirty=bind('hasUnsavedChanges () {','',{});
 
@@ -94,7 +94,7 @@ test('160×120 layered animation persists through SB3 and rejects malformed/over
     const inspected=await inspectArtwork(await saved.arrayBuffer());assert.equal(inspected.outcome,'loaded');
     const reopened={...costume};assert.equal(applyArtwork(inspected,{runtime:{targets:[{isOriginal:true,isStage:true,sprite:{costumes:[reopened]}}]}}).count,1);
     assert.deepEqual(getCostumeDocument(reopened),doc);
-    for(const mutate of [value=>{value.width=161;value.pixels=Array(161*120).fill(0);},value=>{value.pixels.pop();},value=>{value.pixels[0]=16;}]){
+    for(const mutate of [value=>{value.width=513;value.pixels=Array(513*120).fill(0);},value=>{value.pixels.pop();},value=>{value.pixels[0]=16;}]){
         const bad=structuredClone(doc);mutate(bad.layers[0].content.value);assert.throws(()=>setCostumeDocument({},bad),/invalid pixel source/);
     }
 });

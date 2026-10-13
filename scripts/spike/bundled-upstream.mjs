@@ -54,7 +54,7 @@ export const UPSTREAM_REPO = 'CrispStrobe/extensions';
  * extension and is pinned by sha like every other package.
  */
 export const MAP = {
-    arrays: 'extensions/CrispStrobe/arrays.js',
+    arrays: {repo: 'CrispStrobe/extensions', pin: 'arrays-values', path: 'extensions/CrispStrobe/arrays.js'},
     csp: 'extensions/CrispStrobe/csp.js',
     circuit: 'extensions/CrispStrobe/circuit.js',
     // ev3lms and legoev3direct were mapped here until 2026-09-21. They were the

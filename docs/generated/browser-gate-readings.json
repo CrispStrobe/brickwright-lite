@@ -10,7 +10,7 @@
  "cap": 8,
  "minReadings": 5,
  "steps": {
-  "Browser gate — native broker packaged assets": {
+  "Browser gate \u2014 native broker packaged assets": {
    "n": 20,
    "p95": 3,
    "max": {
@@ -121,7 +121,7 @@
     }
    ]
   },
-  "Browser gate — named 386 media reaches Widgets and reports attach failures": {
+  "Browser gate \u2014 named 386 media reaches Widgets and reports attach failures": {
    "n": 20,
    "p95": 7,
    "max": {
@@ -232,13 +232,13 @@
     }
    ]
   },
-  "Browser gate — native SPIKE mission, shared motor envelope and 3D arena": {
+  "Browser gate \u2014 native SPIKE mission, shared motor envelope and 3D arena": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — the debugger-only pane and its round trip": {
+  "Browser gate \u2014 the debugger-only pane and its round trip": {
    "n": 20,
    "p95": 12,
    "max": {
@@ -349,7 +349,7 @@
     }
    ]
   },
-  "Browser gate — debugger recording, reverse and fork history": {
+  "Browser gate \u2014 debugger recording, reverse and fork history": {
    "n": 20,
    "p95": 44,
    "max": {
@@ -460,7 +460,7 @@
     }
    ]
   },
-  "Browser gate — the example journey (Lane U)": {
+  "Browser gate \u2014 the example journey (Lane U)": {
    "n": 20,
    "p95": 5,
    "max": {
@@ -571,7 +571,7 @@
     }
    ]
   },
-  "Browser gate — what is wrong with the stage after a load": {
+  "Browser gate \u2014 what is wrong with the stage after a load": {
    "n": 20,
    "p95": 9,
    "max": {
@@ -682,7 +682,7 @@
     }
    ]
   },
-  "Browser gate — a program's chip refusal reaches the debug panel": {
+  "Browser gate \u2014 a program's chip refusal reaches the debug panel": {
    "n": 20,
    "p95": 4,
    "max": {
@@ -793,7 +793,7 @@
     }
    ]
   },
-  "Browser gate — Machine Loader preset reaches the debugger": {
+  "Browser gate \u2014 Machine Loader preset reaches the debugger": {
    "n": 20,
    "p95": 6,
    "max": {
@@ -904,7 +904,7 @@
     }
    ]
   },
-  "Browser gate — the Machine Manager library modal": {
+  "Browser gate \u2014 the Machine Manager library modal": {
    "n": 20,
    "p95": 2,
    "max": {
@@ -1015,7 +1015,7 @@
     }
    ]
   },
-  "Browser gate — a modal is reachable on a phone-sized screen": {
+  "Browser gate \u2014 a modal is reachable on a phone-sized screen": {
    "n": 20,
    "p95": 3,
    "max": {
@@ -1126,7 +1126,7 @@
     }
    ]
   },
-  "Browser gate — the controller pane works on a phone": {
+  "Browser gate \u2014 the controller pane works on a phone": {
    "n": 20,
    "p95": 3,
    "max": {
@@ -1237,7 +1237,7 @@
     }
    ]
   },
-  "Browser gate — controls are hittable on a phone": {
+  "Browser gate \u2014 controls are hittable on a phone": {
    "n": 20,
    "p95": 7,
    "max": {
@@ -1348,7 +1348,7 @@
     }
    ]
   },
-  "Browser gate — the editor fits a phone in both orientations": {
+  "Browser gate \u2014 the editor fits a phone in both orientations": {
    "n": 20,
    "p95": 5,
    "max": {
@@ -1459,7 +1459,7 @@
     }
    ]
   },
-  "Browser gate — CP/M 2.2 boots from the Machine Manager to A>": {
+  "Browser gate \u2014 CP/M 2.2 boots from the Machine Manager to A>": {
    "n": 20,
    "p95": 18,
    "max": {
@@ -1570,7 +1570,7 @@
     }
    ]
   },
-  "Browser gate — debugger run-to and synchronized inspection": {
+  "Browser gate \u2014 debugger run-to and synchronized inspection": {
    "n": 20,
    "p95": 4,
    "max": {
@@ -1681,7 +1681,7 @@
     }
    ]
   },
-  "Browser gate — service worker failure modes": {
+  "Browser gate \u2014 service worker failure modes": {
    "n": 20,
    "p95": 25,
    "max": {
@@ -1792,7 +1792,7 @@
     }
    ]
   },
-  "Browser gate — independent vector handles drag separately on desktop and iPad": {
+  "Browser gate \u2014 independent vector handles drag separately on desktop and iPad": {
    "n": 1,
    "p95": 5,
    "max": {
@@ -1808,7 +1808,7 @@
     }
    ]
   },
-  "Browser gate — paint recent colors": {
+  "Browser gate \u2014 paint recent colors": {
    "n": 1,
    "p95": 4,
    "max": {
@@ -1824,7 +1824,7 @@
     }
    ]
   },
-  "Browser gate — pixel crop": {
+  "Browser gate \u2014 pixel crop": {
    "n": 1,
    "p95": 4,
    "max": {
@@ -1840,7 +1840,7 @@
     }
    ]
   },
-  "Browser gate — pixel colour slots": {
+  "Browser gate \u2014 pixel colour slots": {
    "n": 1,
    "p95": 5,
    "max": {
@@ -1856,7 +1856,7 @@
     }
    ]
   },
-  "Browser gate — circuit UX": {
+  "Browser gate \u2014 circuit UX": {
    "n": 20,
    "p95": 21,
    "max": {
@@ -1967,7 +1967,7 @@
     }
    ]
   },
-  "Browser gate — render fonts arrive with the first text costume, not before": {
+  "Browser gate \u2014 render fonts arrive with the first text costume, not before": {
    "n": 20,
    "p95": 4,
    "max": {
@@ -2078,7 +2078,7 @@
     }
    ]
   },
-  "Browser gate — circuit rendering and placement": {
+  "Browser gate \u2014 circuit rendering and placement": {
    "n": 20,
    "p95": 6,
    "max": {
@@ -2189,7 +2189,7 @@
     }
    ]
   },
-  "Browser gate — physical 74C922 keypad encoder": {
+  "Browser gate \u2014 physical 74C922 keypad encoder": {
    "n": 20,
    "p95": 4,
    "max": {
@@ -2300,7 +2300,7 @@
     }
    ]
   },
-  "Browser gate — the DRC can sum chip current": {
+  "Browser gate \u2014 the DRC can sum chip current": {
    "n": 20,
    "p95": 3,
    "max": {
@@ -2411,7 +2411,7 @@
     }
    ]
   },
-  "Browser gate — view buttons": {
+  "Browser gate \u2014 view buttons": {
    "n": 20,
    "p95": 15,
    "max": {
@@ -2522,7 +2522,7 @@
     }
    ]
   },
-  "Browser gate — editor": {
+  "Browser gate \u2014 editor": {
    "n": 20,
    "p95": 19,
    "max": {
@@ -2633,7 +2633,7 @@
     }
    ]
   },
-  "Browser gate — unpinned extension sandbox": {
+  "Browser gate \u2014 unpinned extension sandbox": {
    "n": 20,
    "p95": 2,
    "max": {
@@ -2744,7 +2744,7 @@
     }
    ]
   },
-  "Browser gate — game gallery and hardware examples": {
+  "Browser gate \u2014 game gallery and hardware examples": {
    "n": 20,
    "p95": 6,
    "max": {
@@ -2855,7 +2855,7 @@
     }
    ]
   },
-  "Browser gate — both BASIC profiles execute on real machines": {
+  "Browser gate \u2014 both BASIC profiles execute on real machines": {
    "n": 20,
    "p95": 3,
    "max": {
@@ -2966,7 +2966,7 @@
     }
    ]
   },
-  "Browser gate — 8086 local assembly, CGA, keyboard and 8255": {
+  "Browser gate \u2014 8086 local assembly, CGA, keyboard and 8255": {
    "n": 20,
    "p95": 8,
    "max": {
@@ -3077,7 +3077,7 @@
     }
    ]
   },
-  "Browser gate — 386 local DOSBox HDD boot in Widgets": {
+  "Browser gate \u2014 386 local DOSBox HDD boot in Widgets": {
    "n": 20,
    "p95": 7,
    "max": {
@@ -3188,7 +3188,7 @@
     }
    ]
   },
-  "Browser gate — machine Widgets keyboard, mouse and fullscreen": {
+  "Browser gate \u2014 machine Widgets keyboard, mouse and fullscreen": {
    "n": 20,
    "p95": 2,
    "max": {
@@ -3299,7 +3299,7 @@
     }
    ]
   },
-  "Browser gate — 8086 .COM / .img export (N10)": {
+  "Browser gate \u2014 8086 .COM / .img export (N10)": {
    "n": 20,
    "p95": 3,
    "max": {
@@ -3410,7 +3410,7 @@
     }
    ]
   },
-  "Browser gate — micro:bit WebUSB flash button (N9)": {
+  "Browser gate \u2014 micro:bit WebUSB flash button (N9)": {
    "n": 20,
    "p95": 4,
    "max": {
@@ -3521,7 +3521,7 @@
     }
    ]
   },
-  "Browser benchmark — 8086 desktop and mobile": {
+  "Browser benchmark \u2014 8086 desktop and mobile": {
    "n": 20,
    "p95": 208,
    "max": {
@@ -3632,7 +3632,7 @@
     }
    ]
   },
-  "Browser gate — declared extension capability broker": {
+  "Browser gate \u2014 declared extension capability broker": {
    "n": 20,
    "p95": 3,
    "max": {
@@ -3743,7 +3743,7 @@
     }
    ]
   },
-  "Browser gate — first-run chooser and guided journeys": {
+  "Browser gate \u2014 first-run chooser and guided journeys": {
    "n": 20,
    "p95": 8,
    "max": {
@@ -3854,7 +3854,7 @@
     }
    ]
   },
-  "Browser gate — LEGO SPIKE archive and Code-tab round trip": {
+  "Browser gate \u2014 LEGO SPIKE archive and Code-tab round trip": {
    "n": 20,
    "p95": 17,
    "max": {
@@ -3965,7 +3965,7 @@
     }
    ]
   },
-  "Browser gate — SPIKE Prime German palette renders without a Blockly index error": {
+  "Browser gate \u2014 SPIKE Prime German palette renders without a Blockly index error": {
    "n": 20,
    "p95": 3,
    "max": {
@@ -4076,7 +4076,7 @@
     }
    ]
   },
-  "Browser gate — four-surface project save, reopen and vanilla replacement": {
+  "Browser gate \u2014 four-surface project save, reopen and vanilla replacement": {
    "n": 20,
    "p95": 7,
    "max": {
@@ -4187,7 +4187,7 @@
     }
    ]
   },
-  "Browser gate — costume artwork survives save/reload and records first-open performance": {
+  "Browser gate \u2014 costume artwork survives save/reload and records first-open performance": {
    "n": 20,
    "p95": 5,
    "max": {
@@ -4298,7 +4298,7 @@
     }
    ]
   },
-  "Browser gate — paint workspace and bitmap brush opacity": {
+  "Browser gate \u2014 paint workspace and bitmap brush opacity": {
    "n": 1,
    "p95": 7,
    "max": {
@@ -4314,7 +4314,7 @@
     }
    ]
   },
-  "Browser gate — vector path topology survives save and reopen": {
+  "Browser gate \u2014 vector path topology survives save and reopen": {
    "n": 1,
    "p95": 4,
    "max": {
@@ -4330,7 +4330,7 @@
     }
    ]
   },
-  "Browser gate — vector pen creates curves on desktop and closes paths on iPad": {
+  "Browser gate \u2014 vector pen creates curves on desktop and closes paths on iPad": {
    "n": 1,
    "p95": 7,
    "max": {
@@ -4346,7 +4346,7 @@
     }
    ]
   },
-  "Browser gate — bitmap layers preserve independent pixels and flatten for Scratch": {
+  "Browser gate \u2014 bitmap layers preserve independent pixels and flatten for Scratch": {
    "n": 1,
    "p95": 10,
    "max": {
@@ -4362,7 +4362,7 @@
     }
    ]
   },
-  "Browser gate — editable pixel source survives save and reopen": {
+  "Browser gate \u2014 editable pixel source survives save and reopen": {
    "n": 20,
    "p95": 15,
    "max": {
@@ -4473,7 +4473,7 @@
     }
    ]
   },
-  "Browser gate — first Sounds-tab interactivity": {
+  "Browser gate \u2014 first Sounds-tab interactivity": {
    "n": 20,
    "p95": 2,
    "max": {
@@ -4584,7 +4584,7 @@
     }
    ]
   },
-  "Browser gate — P21 Code importer activation, retry and state": {
+  "Browser gate \u2014 P21 Code importer activation, retry and state": {
    "n": 20,
    "p95": 12,
    "max": {
@@ -4695,7 +4695,7 @@
     }
    ]
   },
-  "Browser gate — the renderer accepts the table the arrays blocks describe": {
+  "Browser gate \u2014 the renderer accepts the table the arrays blocks describe": {
    "n": 20,
    "p95": 2,
    "max": {
@@ -4806,7 +4806,7 @@
     }
    ]
   },
-  "Browser gate — a missing extension chunk costs its blocks, not the project": {
+  "Browser gate \u2014 a missing extension chunk costs its blocks, not the project": {
    "n": 20,
    "p95": 5,
    "max": {
@@ -4917,7 +4917,7 @@
     }
    ]
   },
-  "Browser gates — About, intro, interaction, and schematic rendering": {
+  "Browser gates \u2014 About, intro, interaction, and schematic rendering": {
    "n": 20,
    "p95": 19,
    "max": {
@@ -5028,7 +5028,7 @@
     }
    ]
   },
-  "Browser gates — Code chrome, Controller, faceplates, and Instruments": {
+  "Browser gates \u2014 Code chrome, Controller, faceplates, and Instruments": {
    "n": 20,
    "p95": 26,
    "max": {
@@ -5139,7 +5139,7 @@
     }
    ]
   },
-  "Browser gate — Aurora-65 keyboard, OLED and VGA workstation": {
+  "Browser gate \u2014 Aurora-65 keyboard, OLED and VGA workstation": {
    "n": 20,
    "p95": 8,
    "max": {
@@ -5250,7 +5250,7 @@
     }
    ]
   },
-  "Browser gate — debugger dock and serial input": {
+  "Browser gate \u2014 debugger dock and serial input": {
    "n": 20,
    "p95": 28,
    "max": {
@@ -5361,7 +5361,7 @@
     }
    ]
   },
-  "Browser gate — language x device matrix badge and panel": {
+  "Browser gate \u2014 language x device matrix badge and panel": {
    "n": 20,
    "p95": 2,
    "max": {
@@ -5472,7 +5472,7 @@
     }
    ]
   },
-  "Browser gate — the heavy engine is not downloaded on first load": {
+  "Browser gate \u2014 the heavy engine is not downloaded on first load": {
    "n": 20,
    "p95": 3,
    "max": {
@@ -5583,7 +5583,7 @@
     }
    ]
   },
-  "Browser gate — the labwired heavy tier actually executes": {
+  "Browser gate \u2014 the labwired heavy tier actually executes": {
    "n": 20,
    "p95": 90,
    "max": {
@@ -5694,7 +5694,7 @@
     }
    ]
   },
-  "Browser gate — with no engine artifact, the tier is not offered": {
+  "Browser gate \u2014 with no engine artifact, the tier is not offered": {
    "n": 20,
    "p95": 45,
    "max": {
@@ -5805,7 +5805,7 @@
     }
    ]
   },
-  "Browser gate — offline 8051 compile and debugger evidence": {
+  "Browser gate \u2014 offline 8051 compile and debugger evidence": {
    "n": 20,
    "p95": 6,
    "max": {
@@ -5916,7 +5916,7 @@
     }
    ]
   },
-  "Browser gate — the DEFAULT route is hosted, and says so (Lane GPL)": {
+  "Browser gate \u2014 the DEFAULT route is hosted, and says so (Lane GPL)": {
    "n": 20,
    "p95": 5,
    "max": {
@@ -6027,7 +6027,7 @@
     }
    ]
   },
-  "Browser gate — offline linked 8051 assembly listings": {
+  "Browser gate \u2014 offline linked 8051 assembly listings": {
    "n": 20,
    "p95": 7,
    "max": {
@@ -6138,7 +6138,7 @@
     }
    ]
   },
-  "Browser gate — an AVR lesson bench starts offline on its shipped image": {
+  "Browser gate \u2014 an AVR lesson bench starts offline on its shipped image": {
    "n": 20,
    "p95": 35,
    "max": {
@@ -6249,7 +6249,7 @@
     }
    ]
   },
-  "Browser gate — promoted pinned extension worker": {
+  "Browser gate \u2014 promoted pinned extension worker": {
    "n": 20,
    "p95": 2,
    "max": {
@@ -6360,7 +6360,7 @@
     }
    ]
   },
-  "Browser gate — the native Web Bluetooth shim": {
+  "Browser gate \u2014 the native Web Bluetooth shim": {
    "n": 20,
    "p95": 2,
    "max": {
@@ -6471,7 +6471,7 @@
     }
    ]
   },
-  "Browser gate — MakeCode import": {
+  "Browser gate \u2014 MakeCode import": {
    "n": 20,
    "p95": 12,
    "max": {
@@ -6582,7 +6582,7 @@
     }
    ]
   },
-  "Browser gate — micro:bit MicroPython tab and simulator": {
+  "Browser gate \u2014 micro:bit MicroPython tab and simulator": {
    "n": 20,
    "p95": 18,
    "max": {
@@ -6693,7 +6693,7 @@
     }
    ]
   },
-  "Browser gate — Pico MicroPython simulator Run lights the LED (N3c)": {
+  "Browser gate \u2014 Pico MicroPython simulator Run lights the LED (N3c)": {
    "n": 20,
    "p95": 10,
    "max": {
@@ -6804,7 +6804,7 @@
     }
    ]
   },
-  "Browser gate — Pico ▶ Run refuses by name with no firmware (N3c)": {
+  "Browser gate \u2014 Pico \u25b6 Run refuses by name with no firmware (N3c)": {
    "n": 20,
    "p95": 4,
    "max": {
@@ -6915,7 +6915,7 @@
     }
    ]
   },
-  "Browser gate — micro:bit debugger, block and line stepping": {
+  "Browser gate \u2014 micro:bit debugger, block and line stepping": {
    "n": 20,
    "p95": 18,
    "max": {
@@ -7026,7 +7026,7 @@
     }
    ]
   },
-  "Browser gate — Arduboy console runs a compiled game": {
+  "Browser gate \u2014 Arduboy console runs a compiled game": {
    "n": 20,
    "p95": 6,
    "max": {
@@ -7137,205 +7137,223 @@
     }
    ]
   },
-  "Browser gate — responsive editor, dismissible messages, movable lessons and image targets": {
+  "Browser gate \u2014 responsive editor, dismissible messages, movable lessons and image targets": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — the green flag keeps a program's first pin write": {
+  "Browser gate \u2014 the green flag keeps a program's first pin write": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — fe and Tcl tabs convert through blocks and run on DOS": {
+  "Browser gate \u2014 fe and Tcl tabs convert through blocks and run on DOS": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade rotation, data, controller and file roundtrip": {
+  "Browser gate \u2014 Arcade rotation, data, controller and file roundtrip": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Code artwork edits persist through Blocks and project reopen": {
+  "Browser gate \u2014 Code artwork edits persist through Blocks and project reopen": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade native Blocks fields survive editing and project reopen": {
+  "Browser gate \u2014 Arcade native Blocks fields survive editing and project reopen": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade full-screen background authoring and original export": {
+  "Browser gate \u2014 Arcade full-screen background authoring and original export": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade animation resources across Pixel Code Blocks and original export": {
+  "Browser gate \u2014 Arcade animation resources across Pixel Code Blocks and original export": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade animation frames through Code, Blocks and the controller": {
+  "Browser gate \u2014 Arcade animation frames through Code, Blocks and the controller": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade camera follow, centre and reset draw sprites, tiles and HUD": {
+  "Browser gate \u2014 Arcade camera follow, centre and reset draw sprites, tiles and HUD": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade friction and velocity under the controller": {
+  "Browser gate \u2014 Arcade friction and velocity under the controller": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade image reads and writes stay inside their bounds": {
+  "Browser gate \u2014 Arcade image reads and writes stay inside their bounds": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade physics for several sprites at once": {
+  "Browser gate \u2014 Arcade physics for several sprites at once": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade physics engine settings and the no-progress diagnostic": {
+  "Browser gate \u2014 Arcade physics engine settings and the no-progress diagnostic": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade sprite scaling through the controller": {
+  "Browser gate \u2014 Arcade sprite scaling through the controller": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade scene push and pop keep each world and its retained diagnostic": {
+  "Browser gate \u2014 Arcade scene push and pop keep each world and its retained diagnostic": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade speech bubbles render on the stage": {
+  "Browser gate \u2014 Arcade speech bubbles render on the stage": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade splash screen shows on the stage and a button dismisses it": {
+  "Browser gate \u2014 Arcade splash screen shows on the stage and a button dismisses it": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade sprite values agree with the pinned simulator": {
+  "Browser gate \u2014 Arcade sprite values agree with the pinned simulator": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade terrain collisions under the controller": {
+  "Browser gate \u2014 Arcade terrain collisions under the controller": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade terrain wall-hit events": {
+  "Browser gate \u2014 Arcade terrain wall-hit events": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade tile data reads and writes": {
+  "Browser gate \u2014 Arcade tile data reads and writes": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade viewport and camera clamping": {
+  "Browser gate \u2014 Arcade viewport and camera clamping": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade callback completion and elapsed frame clock": {
+  "Browser gate \u2014 Arcade callback completion and elapsed frame clock": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade nested frame registration and live captures": {
+  "Browser gate \u2014 Arcade nested frame registration and live captures": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade controller registration, replacement and repeats": {
+  "Browser gate \u2014 Arcade controller registration, replacement and repeats": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade life-zero and countdown registration with revival": {
+  "Browser gate \u2014 Arcade life-zero and countdown registration with revival": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade forever registration with live captures and yielding": {
+  "Browser gate \u2014 Arcade forever registration with live captures and yielding": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade sprite registrations, live captures and yielding destruction": {
+  "Browser gate \u2014 Arcade sprite registrations, live captures and yielding destruction": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade instance destruction live captures and yielding order": {
+  "Browser gate \u2014 Arcade instance destruction live captures and yielding order": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade parallel launches with nested live captures": {
+  "Browser gate \u2014 Arcade parallel launches with nested live captures": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade tile map painter edits a real level and the game uses it": {
+  "Browser gate \u2014 Arcade tile map painter edits a real level and the game uses it": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade named tiles across painter SB3 and MakeCode export": {
+  "Browser gate \u2014 Arcade named tiles across painter SB3 and MakeCode export": {
    "n": 0,
    "p95": null,
    "max": null,
    "readings": []
   },
-  "Browser gate — Arcade legacy colour layouts through artwork SB3 and export": {
+  "Browser gate \u2014 Arcade legacy colour layouts through artwork SB3 and export": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Arcade carnival dialogs, controller restart and saved records": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Arcade sprites placed on a tile map in the painter start there": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
+  "Browser gate \u2014 Arcade Buffer editor controller and original export": {
    "n": 0,
    "p95": null,
    "max": null,
