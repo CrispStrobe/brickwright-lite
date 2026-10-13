@@ -99,6 +99,7 @@ on:
       - 'docs/LESSON-REVIEW-WAVE-7.md'
       - 'docs/LEGO-ARCHITECTURE.md'
       - 'docs/PICO-KALUMA-BOOT.md'
+      - 'docs/PEERS-SECURITY-REVIEW.md'
       - 'docs/RCX-FIRMWARE.md'
       - 'docs/SPIKE-CONSOLIDATION.md'
       - 'docs/SPIKE-ARENA.md'
@@ -159,7 +160,9 @@ jobs:
   # still gets `build` (the unit and source suites, so `git bisect` keeps working
   # and a red commit is still named) and `corpus`, and skips the heavy tail —
   # browser, fpga-surface, deploy, verify-gui — which the tip's own run re-covers
-  # anyway. ~24 of the ~36 min, without losing the per-commit signal the per-sha
+  # anyway, unless main advanced only through excluded documentation (which has
+  # NO replacement Build). That case retains the full tail. ~24 of the ~36 min,
+  # without losing the per-commit signal the per-sha
   # design exists to protect.
   #
   # PRs are never superseded by this: the check is main-only and defaults to
@@ -171,6 +174,9 @@ jobs:
     outputs:
       superseded: ${{ steps.check.outputs.superseded }}
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22 }
       - id: check
         env:
           GH_TOKEN: ${{ github.token }}
@@ -184,21 +190,7 @@ jobs:
             echo "superseded=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          tip=$(gh api "repos/${GITHUB_REPOSITORY}/commits/main" -q .sha)
-          if [ -z "$tip" ]; then
-            # A failed lookup must not silently skip the heavy jobs: an unknown
-            # answer runs everything, which is the expensive direction on purpose.
-            echo "::warning::could not read main's tip — running the full set"
-            echo "superseded=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ "$tip" = "$SHA" ]; then
-            echo "this commit IS main's tip — full run"
-            echo "superseded=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::superseded by ${tip} — running build+corpus only, skipping the heavy tail"
-            echo "superseded=true" >> "$GITHUB_OUTPUT"
-          fi
+          node scripts/verify-vercel-main-checks.mjs "$SHA" --superseded >> "$GITHUB_OUTPUT"
 
   build:
     runs-on: ubuntu-latest
@@ -782,6 +774,13 @@ jobs:
       - name: Guard — no GPL payload reaches the build output
         if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
         run: node scripts/verify-no-gpl-in-build.mjs packages/scratch-gui/build
+
+      # Peer sessions (task E11, docs/PEERS-SECURITY-REVIEW.md) are a build-time opt-in,
+      # BW_ENABLE_PEERS=1, which this build does not set. Like the GPL guard this asks about the
+      # REAL emitted bytes: no peer marker in any file, and the scan must see the editor bundle.
+      - name: Guard — the default build carries no peer-session code
+        if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
+        run: node scripts/verify-no-peer-surface.mjs packages/scratch-gui/build
 
       # The heavy tier is 20 MB and MUST stay out of the first load. That is a
       # question about a real build, so it cannot be a unit test — `npm test`

@@ -133,3 +133,23 @@ cargo test --locked --offline --manifest-path tools/renode-arena-proof/Cargo.tom
 Execution through this closed test transport still requires the exact staged
 package pins. It exercises the native runtime boundary, but does not establish
 installed-GUI or Tauri ACL acceptance.
+
+
+## Linux staging permissions
+
+Use a new output directory on a filesystem that preserves Unix permission modes.
+Preparation verifies its private mode before copying resources or compiling the
+native application. Mounts with fixed modes are refused with an explicit staging
+error; choose a POSIX staging directory and archive the completed package and
+receipts afterward. Build targets also need executable filesystem support.
+
+Before Debian assembly, the builder sets directories to `0755`, ordinary resource
+and control files to `0644`, and only the desktop application and Renode executable
+to `0755`. This makes resources readable after installation assigns root ownership,
+independently of the build umask or input modes. Symlinks, special files and missing
+native executables are refused. File contents, source pins and digest seals remain
+unchanged. These checks do not close component provenance or redistribution review.
+
+```sh
+node --test test/spike-linux-package-modes.test.mjs test/spike-linux-package.test.mjs
+```

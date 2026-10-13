@@ -48,7 +48,7 @@ export function excludedDocumentation (filename, entries) {
     return !included;
 }
 
-export function documentationComparison (comparison, base, sha, entries) {
+function completeAncestralComparison (comparison, base, sha) {
     // GitHub caps comparison files at 300 and commits at 250. Reject even the
     // boundary rather than accepting a potentially truncated authority receipt.
     if (comparison?.status !== 'ahead' || comparison.base_commit?.sha !== base ||
@@ -58,6 +58,12 @@ export function documentationComparison (comparison, base, sha, entries) {
         comparison.commits.at(-1)?.sha !== sha || !Array.isArray(comparison.files) ||
         comparison.files.length >= 300) return false;
     return comparison.files.every(file => ['added', 'modified', 'removed', 'renamed'].includes(file.status) &&
+        typeof file.filename === 'string' &&
+        (file.status !== 'renamed' || typeof file.previous_filename === 'string'));
+}
+
+export function documentationComparison (comparison, base, sha, entries) {
+    return completeAncestralComparison(comparison, base, sha) && comparison.files.every(file =>
         excludedDocumentation(file.filename, entries) &&
         (file.status !== 'renamed' || (typeof file.previous_filename === 'string' &&
             excludedDocumentation(file.previous_filename, entries))));
@@ -70,6 +76,28 @@ async function githubJson (repo, endpoint, token, request) {
     });
     if (!response.ok) throw new Error(`GitHub validation API returned ${response.status}`);
     return response.json();
+}
+
+// Supersession may save the heavy tail only when a newer main tree actually
+// needs its own Build. An excluded documentation push has no replacement run.
+// Unknown/truncated evidence runs everything; it never authorizes a skip.
+export async function mainSupersession (repo, sha, token, entries, request = fetch) {
+    try {
+        const tip = await githubJson(repo, 'commits/main', token, request);
+        if (!/^[a-f0-9]{40}$/.test(tip?.sha || '')) throw new Error('Missing main commit identity');
+        if (tip.sha === sha) return {superseded: false, reason: 'This commit is main'};
+        const comparison = await githubJson(repo, `compare/${sha}...${tip.sha}`, token, request);
+        // Share the publication validator's identity and completeness authority.
+        if (!completeAncestralComparison(comparison, sha, tip.sha)) {
+            throw new Error('Incomplete or non-ancestral main comparison');
+        }
+        const docsOnly = documentationComparison(comparison, sha, tip.sha, entries);
+        return {superseded: !docsOnly, reason: docsOnly ?
+            'Main advanced only through Build-excluded documentation; retain full qualification' :
+            `Superseded by Build-relevant main ${tip.sha}`};
+    } catch (error) {
+        return {superseded: false, reason: `Cannot establish supersession; run all checks: ${error.message}`};
+    }
 }
 
 export async function loadValidation (repo, sha, token, entries, request = fetch) {
@@ -125,6 +153,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     if (!token) throw new Error('GH_TOKEN is required for validation');
     const policy = parsePushPaths(readFileSync(new URL('../.github/workflows/build.yml', import.meta.url), 'utf8'));
     if (policy.hasPathsIgnore || !policy.entries.length) throw new Error('Unsupported Build paths policy');
+    if (process.argv.includes('--superseded')) {
+        const result = await mainSupersession(repo, sha, token, policy.entries);
+        console.error(result.reason);
+        console.log(`superseded=${result.superseded}`);
+        process.exit(0);
+    }
     const {runs, jobs, buildSha} = await loadValidation(repo, sha, token, policy.entries);
     const problems = validationProblems(runs, jobs, sha, {buildSha});
     if (process.argv.includes('--eligibility')) {
