@@ -25,7 +25,8 @@ The retained PXT MIT copyright/license notice remains in
 `scratch-gui/static/licenses/pxt-core.MIT.txt`.
 
 `test/makecode-arcade-clamp-order.test.mjs` checks actual original SDK execution,
-three side-effecting arguments with order123, fractional/reversed bounds,
+three side-effecting arguments with order123, three mutating array-pop
+reporter inputs in their actual VM evaluation order, fractional/reversed bounds,
 NaN/raw primitive selection, zero signs, native/Code, same and fresh SB3,
 original export, reimport, metadata order and refusal boundaries. The producer's
 `test/arcade-clamp-order.test.mjs` checks independent ordered inputs, negative
