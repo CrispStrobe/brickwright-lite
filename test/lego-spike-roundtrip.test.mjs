@@ -288,9 +288,9 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 504abe93 (2026-10-13): producer main (2bc0bcb9) with the SEVENSEG8 show_number minus placement (B14, sb3-creator #109); runtime words unchanged.
     // -> 110787e7 (2026-10-13): tile/image/controller words; rerun SPIKE artifact assertions.
     // -> 0088c75b (2026-10-13): normal producer main merge; same artifact gate.
-    // -> 10274b3c (2026-10-13): explicit Arcade source HAT/LOOP; rerun every SPIKE artifact assertion.
+    // -> e1a40796 (2026-10-13): explicit Arcade source HAT/LOOP and AST census fix; rerun every SPIKE artifact assertion.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '10274b3c7c6f36edc5252455fc3001d2436b553e');
+        'e1a40796b75ce5a7e8c0186aa2319060e640d991');
 
 
     const creator = new SB3Creator();
