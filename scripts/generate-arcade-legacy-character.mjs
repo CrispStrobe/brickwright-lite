@@ -40,3 +40,13 @@ if (process.argv.includes('--check')) {
     if (readFileSync(path, 'utf8') !== output) throw new Error('Legacy character animation generated module differs');
     console.log('Verified complete original character animation v0.0.2');
 } else writeFileSync(path, output);
+
+const admissionPath = resolve(root, 'overlay/scratch-gui/src/lib/bw-makecode/legacy-character-source-admission.generated.js');
+const admission = `// Generated from the complete retained MIT character animation v0.0.2; do not edit.
+// Regenerate: node scripts/generate-arcade-legacy-character.mjs
+export const LEGACY_CHARACTER_SOURCE_TEXT=${JSON.stringify(source)};
+export const LEGACY_CHARACTER_NATIVE_IDENTITY=Object.freeze(${JSON.stringify(identity)});
+`;
+if (process.argv.includes('--check')) {
+    if (readFileSync(admissionPath, 'utf8') !== admission) throw new Error('Legacy character admission source differs');
+} else writeFileSync(admissionPath, admission);
