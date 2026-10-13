@@ -22,11 +22,16 @@ checks passed. The typed bitwise and writable-property vocabulary in
 [PR124](https://github.com/CrispStrobe/sb3-creator/pull/124) is also merged.
 Refresh the consumer's independent checks before adoption.
 
-The clean `dc3fc0d684` audit retains every importer warning as a blocker:
-**29 selected-SDK compile-valid, 12 compiler diagnostics; 18 of the 29 admit
-without unsupported elements, importer warnings or producer warnings; 11 remain
+The clean `455b529e9c` audit retains every importer warning as a blocker:
+**29 selected-SDK compile-valid, 12 compiler diagnostics; 19 of the 29 admit
+without unsupported elements, importer warnings or producer warnings; 10 remain
 blocked**. This establishes structural admission. The immutable raw census and
 the fewer-than20-partial goal remain unchanged pending complete-game evidence.
+The prior `dc3fc0d684` checkpoint admitted 18. Static event forwarding admits
+Free Throw; declared SDK reference inference preserves Winter's unused typed
+sprite helper under the stricter bitwise checker. Opaque and unknown operands
+remain diagnosed. Four bitwise controls pass, including original execution,
+Code, export/reimport and fresh SB3.
 
 The [scheduler claim](https://github.com/CrispStrobe/brickwright-lite/pull/881)
 and [class claim](https://github.com/CrispStrobe/brickwright-lite/pull/889) are
@@ -59,6 +64,16 @@ known callable value, and opaque/stored callable values remain diagnosed. Origin
 Code, fresh SB3 and export/reimport controls cover button yields and overlaps.
 The real FreeThrow prepared project has zero conversion or producer diagnostics;
 its complete-game, asset-notice and GUI gates remain separate.
+
+Bounded complete-source authoring routes for Maze and Corgio also pass: Code,
+saved project reload in the same and fresh VM, actual artwork-aware export,
+original SDK execution and native reimport. The tested controller paths retain
+Maze's win/loss and Corgio's win, sampled full gameplay pixels and sound. These
+are runtime and serialization results. Actual editor edits, installed controller
+use and cadence remain separate requirements. Cherry Pickr retains a precise
+Splash-resume timing failure: original condition polling and immediate native
+continuation produce different startup and terminal times. Preserve that failure
+while implementing shared polling semantics; do not add a game-specific delay.
 
 Class implementation follows explicit reference identity, original constructor
 order and receiver binding. Parser support alone does not admit runtime classes.

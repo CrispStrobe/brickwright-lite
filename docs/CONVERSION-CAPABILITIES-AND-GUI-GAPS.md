@@ -4054,3 +4054,20 @@ The owned graphics journey now switches through the existing Scratch Stage actio
 after using the Game Console, then observes surviving hero artwork before painting.
 Its earlier hidden sprite-pane timeout is retained; source preparation is separate
 from the matching hosted browser verdict.
+
+### Declared SDK references and genuine game authoring
+
+Uncalled helpers retain their declared SDK parameter, local and result types
+through the member-inference fixed point. For example, a `Sprite` parameter's
+`flags & SpriteFlag.StayInScreen` remains a primitive operation without requiring
+the helper to be called first. Unknown aliases, opaque operands and shadowed
+flag bindings still produce explicit diagnostics. Original/Code/export/reimport/
+fresh-SB3 bitwise controls pass.
+
+Maze and Corgio pass bounded runtime authoring routes, including real artwork-aware
+export, original execution and reimport. **GUI closure remains open:** import the
+genuine game, use the actual controller, inspect and edit its artwork and level,
+switch Code/Blocks, save and freshly reopen, export through the UI and run the
+exported game in the original SDK. Corgio's built-in animation and authored tile
+art are distinct editor capabilities and need separate witnesses. These runtime
+routes do not establish editor usability or change the corpus partial count.
