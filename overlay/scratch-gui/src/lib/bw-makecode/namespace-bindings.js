@@ -1,4 +1,5 @@
 import {ARCADE_NAMESPACE_MEMBERS} from './arcade-namespace-members.js';
+import {ARCADE_SCENE_CONSTANTS} from './arcade-scene-constants.js';
 
 /** Lower TypeScript namespace bindings without merging their lexical scopes.
  * Namespace objects are not general JavaScript objects: only statically named
@@ -44,7 +45,7 @@ export const lowerNamespaceBindings = program => {
             for (const [name, container] of ARCADE_NAMESPACE_MEMBERS[key]) {
                 const memberPath = [...path, name];
                 scope.symbols.set(name, container ? {kind: 'namespace', exported: true,
-                    scope: externalScope(memberPath)} : {kind: 'external', exported: true, path: memberPath});
+                    scope: externalScope(memberPath)} : {kind: 'external', exported: true, path: memberPath, constant: ARCADE_SCENE_CONSTANTS[memberPath.join('.')]});
             }
         }
         return externalScopes.get(key);
@@ -150,6 +151,10 @@ export const lowerNamespaceBindings = program => {
         }
         if (['Identifier', 'Member'].includes(node?.type)) {
             const symbol = access(node, scope);
+            if (!symbol && node.type==='Member' && node.object?.type==='Identifier' && !lookup(scope,node.object.name)) {
+                const path=node.object.name+'.'+node.name;
+                if(Object.prototype.hasOwnProperty.call(ARCADE_SCENE_CONSTANTS,path))return ARCADE_SCENE_CONSTANTS[path];
+            }
             if (symbol?.kind === 'enumMember') return symbol.value;
             if (symbol?.constant !== undefined) return symbol.constant;
         }

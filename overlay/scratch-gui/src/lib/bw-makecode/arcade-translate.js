@@ -83,6 +83,7 @@ import {prepareAnimationImport} from '../bw-animation-import.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {lowerLazyValues} from './lower-lazy-values.js';
 import {lowerNamespaceBindings} from './namespace-bindings.js';
+import {ARCADE_SCENE_CONSTANTS} from './arcade-scene-constants.js';
 import {lowerStaticCallbackHelpers} from './static-callback-helpers.js';
 import {arcadeProjectSource} from './project-source.js';
 import {parseMakeCodeTs} from './ts-import.js';
@@ -1149,6 +1150,10 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(this.handleTemplates && node?.type==='Call' && /^(darts|corgio)\.create$/.test(this.path(node.callee)||'') && !this.bindsName(this.path(node.callee).split('.')[0]))
             return this.spriteExtensionCreate(node);
+        if(node?.type==='Member' && Object.prototype.hasOwnProperty.call(ARCADE_SCENE_CONSTANTS,this.path(node))) {
+            if(this.bindsName('scene')){this.note(`${this.path(node)} refers to a shadowed scene binding`);return 'undefined value';}
+            return String(ARCADE_SCENE_CONSTANTS[this.path(node)]);
+        }
         if(this.handleTemplates && node?.type==='Member' && this.isSevensegDisplay(node.object)) {
             const counter=this.sevensegCounterReferences?.has(node.object);
             if((counter?['x','y','count']:['x','y','width','height','value']).includes(node.name))return `arcade seven segment (${this.expr(node.object)}) property ${node.name}`;
@@ -2402,6 +2407,7 @@ class ArcadeTranslator extends BaseTranslator {
         const pad = '  '.repeat(indent);
         const push = line => out.push(pad + line);
         const dataTarget=expr.type==='Assignment'?expr.left:expr.type==='Update'?expr.argument:null;
+        if(dataTarget?.type==='Member' && Object.prototype.hasOwnProperty.call(ARCADE_SCENE_CONSTANTS,this.path(dataTarget))){push(this.note(`${this.path(dataTarget)} assignment requires a mutable object; SDK Scene constants are readonly`));return;}
         if(dataTarget?.type==='Member' && this.playerReferences?.has(dataTarget.object)){push(this.note(`mp.Player.${dataTarget.name} assignment requires native player member support`));return;}
         if(dataTarget?.type==='Member' && this.dataReferences?.has(dataTarget.object) && !this.spriteReferences?.has(dataTarget.object)) {
             push(this.note(`Sprite.data.${dataTarget.name} assignment requires arbitrary object member support`));return;
