@@ -45,6 +45,9 @@ export class EngineMissing extends Error {
 /** micro:bit universal-hex board IDs of the V1 (nRF51822) section. */
 const V1_BOARD_IDS = new Set([0x9900, 0x9901]);
 
+/** The board models `run` drives: bw-board LABWIRED_BOARDS names. */
+export const BOARDS = Object.freeze(['microbit-v1', 'microbit-v2']);
+
 /**
  * A micro:bit universal hex cut down to its V1 section, as a plain Intel HEX;
  * any other hex is returned unchanged.
@@ -86,6 +89,17 @@ export function hasFirmware (text) {
     return false;
 }
 
+/** A plain nRF52833 Intel HEX (the emulator image, vector table at 0) as an ARM ELF. */
+async function v2Elf (text) {
+    const {hexToSegments} = await bwBoard('hex-app-region.js');
+    const {binToElf} = await bwBoard('bin-to-elf.js');
+    const [first, ...rest] = hexToSegments(text);
+    if (!first || first.addr !== 0 || first.data.length < 8) {
+        throw new Error('this .hex has no vector table at 0 — it is not a micro:bit V2 emulator image');
+    }
+    return binToElf(first.data, {loadAddress: 0, extraSegments: rest.map(s => ({address: s.addr, bytes: s.data}))});
+}
+
 let engine = null;
 
 /** The instantiated engine module (cached), or throws EngineMissing. */
@@ -116,7 +130,8 @@ function matrixRows (frame) {
 }
 
 /**
- * Run a V1 / Calliope firmware for `seconds` of guest time.
+ * Run a micro:bit firmware for `seconds` of guest time: a V1 / Calliope image on
+ * `microbit-v1`, or a micro:bit V2 EMULATOR image (Bluetooth-free base) on `microbit-v2`.
  *
  * @param {object} args
  * @param {string} args.hex Intel HEX text (a universal micro:bit hex, or a plain nRF51 hex)
@@ -124,18 +139,31 @@ function matrixRows (frame) {
  * @param {number} [args.sliceMs=50] how often the matrix is sampled, in guest ms
  * @param {function(string):void} [args.onSerial] each serial byte, as text, as it arrives
  * @param {function({t:number, rows:string[]}):void} [args.onMatrix] each changed matrix picture
+ * @param {string} [args.board='microbit-v1'] one of BOARDS
  * @returns {Promise<{serial: string, frames: Array<{t:number, rows:string[]}>, fault: object|null,
  *   guestSeconds: number, universal: boolean}>}
  */
-export async function runNrf51 ({hex, seconds = 5, sliceMs = 50, onSerial, onMatrix}) {
+export async function runNrf51 ({hex, seconds = 5, sliceMs = 50, onSerial, onMatrix, board: boardName = 'microbit-v1'}) {
+    if (!BOARDS.includes(boardName)) throw new Error(`no MakeCode run board '${boardName}' (${BOARDS.join(', ')})`);
     const wasm = await loadEngine();
     const {createDebugTarget} = await bwBoard('debug-target-factory.js');
     const {LABWIRED_CATALOG, LABWIRED_BOARDS} = await bwBoard('labwired-catalog.js');
-    const board = LABWIRED_BOARDS['microbit-v1'];
+    const board = LABWIRED_BOARDS[boardName];
     const chip = LABWIRED_CATALOG[board.chip];
-    const {hex: plain, universal} = v1Section(hex);
+    // V1: the V1 section of a universal hex. V2: the emulator image is already a plain
+    // nRF52833 hex (compileMakeCodeForEmulator) — a universal one is refused, never cut:
+    // its V2 section links onto the official base, with Nordic's SoftDevice.
+    if (boardName === 'microbit-v2' && /^:0400000A/im.test(hex)) {
+        throw new Error('a universal micro:bit hex is for a real board: its V2 section carries Nordic\'s SoftDevice, which ' +
+            'the emulator does not run — compile the program for the emulator instead');
+    }
+    const {hex: plain, universal} = boardName === 'microbit-v1' ? v1Section(hex) : {hex, universal: false};
+    // V1: the factory keeps the S110 application window of the .hex itself. V2 has no
+    // SoftDevice: the engine takes an ELF, so the image's own segments become one,
+    // loaded where the .hex puts them (vector table at 0) — no address is guessed.
+    const firmware = boardName === 'microbit-v1' ? new TextEncoder().encode(plain) : await v2Elf(plain);
     const {target, adapter} = await createDebugTarget('labwired', {
-        wasm, chip, firmware: new TextEncoder().encode(plain), labwiredBoard: board});
+        wasm, chip, firmware, labwiredBoard: board});
     let serial = '';
     adapter.onSerial(b => {
         const c = String.fromCharCode(b);

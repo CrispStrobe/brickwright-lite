@@ -73,6 +73,9 @@ test('the CLI refuses a press given to a one-board program, and outside run', ()
     const r = run(['run', one, '--press', 'Remote:A@1-2']);
     assert.equal(r.status, 2, r.stderr);
     assert.match(r.stderr, /--press is for a program with several boards/);
+    const v2 = run(['run', PAIR, '--board', 'v2']);
+    assert.equal(v2.status, 2, v2.stderr);
+    assert.match(v2.stderr, /--board is for a program with one board/);
     const e = run(['to-ts', PAIR, '--press', 'Remote:A@1-2']);
     assert.equal(e.status, 2, e.stderr);
     assert.match(e.stderr, /--press is for run/);

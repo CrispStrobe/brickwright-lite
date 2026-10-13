@@ -26,7 +26,7 @@
  * through export-ev3.js. A file's own target wins on import; --target
  * names it for a bare main.ts and for the export commands.
  *
- *   node scripts/makecode.mjs run <in.hex|in.ts|in.sb3|in.bw> [--target microbit|calliopemini] [--seconds N] [--json]
+ *   node scripts/makecode.mjs run <in.hex|in.ts|in.sb3|in.bw> [--target microbit|calliopemini] [--board v1|v2] [--seconds N] [--json]
  *   node scripts/makecode.mjs run <boards.bw|boards.sb3> [--press <Board>:<A|B>@<from>-<to>]... [--seconds N] [--json]
  *       (a program with several boards: every board its own machine, their radios on one simulated air)
  *       Runs the program on LabWired's micro:bit V1 board (nRF51822, Nordic
@@ -34,7 +34,10 @@
  *       loaded), headless, for N seconds of guest time (default 5): prints the
  *       serial console as it arrives and the 5x5 LED matrix when it changes.
  *       A firmware .hex runs as it is; a .ts/.sb3/.bw, or a .hex that only
- *       carries a project, is compiled first (task A7).
+ *       carries a project, is compiled first (task A7). --board v2 runs a
+ *       micro:bit program on the V2 board (nRF52833), compiled for the
+ *       emulator onto the Bluetooth-free bases; a universal hex is refused
+ *       there (its V2 section carries Nordic's SoftDevice) (task A8).
  *
  * Exit codes: 0 done, 1 the program does not compile / refused / faulted, 2 bad usage,
  * 3 the runtime (or, for run, the LabWired engine) is not synced. What was not translated is always printed.
@@ -59,7 +62,7 @@ const USAGE = `usage:
   node scripts/makecode.mjs to-hex <in.sb3|in.bw> [-o out.hex|out.uf2] [--target TARGET] [--board variant] [--source]
   node scripts/makecode.mjs to-ts  <in.sb3|in.bw> [-o out.ts]  [--target TARGET]
   node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|in.mkcd|share-url> [-o out.sb3] [--bw out.bw] [--target TARGET] [--fetch-extensions]
-  node scripts/makecode.mjs run <in.hex|in.ts|in.sb3|in.bw> [--target microbit|calliopemini] [--seconds N] [--json]
+  node scripts/makecode.mjs run <in.hex|in.ts|in.sb3|in.bw> [--target microbit|calliopemini] [--board v1|v2] [--seconds N] [--json]
   node scripts/makecode.mjs run <boards.bw|boards.sb3> [--press <Board>:<A|B>@<from>-<to>]... [--seconds N] [--json]
 TARGET: microbit (default), arcade, calliopemini (or calliope), ev3`;
 
@@ -93,7 +96,12 @@ function args (argv) {
     }
     if (!out.cmd || !out.input) throw Object.assign(new Error('missing command or input'), {usage: true});
     if (!TARGETS.includes(out.target)) throw Object.assign(new Error(`unknown --target ${out.target} (${TARGETS.join(', ')})`), {usage: true});
-    if (out.board && out.target !== 'arcade') throw Object.assign(new Error('--board is for Arcade only'), {usage: true});
+    if (out.cmd === 'run') {
+        if (out.board && !RUN_BOARDS[out.board]) throw Object.assign(new Error(`run --board is v1 or v2, not ${out.board}`), {usage: true});
+        if (out.board === 'v2' && out.target !== 'microbit') {
+            throw Object.assign(new Error(`--board v2 is the micro:bit V2; a ${out.target} runs on --board v1`), {usage: true});
+        }
+    } else if (out.board && out.target !== 'arcade') throw Object.assign(new Error('--board is for Arcade only'), {usage: true});
     if (!(out.seconds > 0 && out.seconds <= 600)) throw Object.assign(new Error('--seconds must be between 0 and 600'), {usage: true});
     if (out.press.length && out.cmd !== 'run') throw Object.assign(new Error('--press is for run'), {usage: true});
     if (out.fetchExtensions && out.cmd !== 'to-sb3') throw Object.assign(new Error('--fetch-extensions is for to-sb3'), {usage: true});
@@ -354,8 +362,29 @@ async function main () {
     return 2;
 }
 
-/** The targets `run` has a board model for: nRF51822 + S110 (task A7). */
+/** The targets `run` has a board model for: nRF51822 + S110 (task A7), and the micro:bit V2 (A8). */
 const RUN_TARGETS = ['microbit', 'calliopemini'];
+
+/**
+ * `run --board`: v1 (default) is the nRF51822 + S110 model, which takes MakeCode's
+ * own firmware (a universal hex's V1 section). v2 is the nRF52833: the program is
+ * compiled for the EMULATOR (pxt-node compile {emulator: true}, the CLI twin of
+ * compileMakeCodeForEmulator) onto the Bluetooth-free bases, because the official
+ * V2 base carries Nordic's SoftDevice, which the emulator never runs (task A8).
+ */
+const RUN_BOARDS = {v1: {board: 'microbit-v1', name: 'micro:bit V1'}, v2: {board: 'microbit-v2', name: 'micro:bit V2'}};
+
+/**
+ * Serial on the V2 board model is NOT reported: CODAL's NRF52Serial::putc points
+ * the UARTE's EasyDMA at a stack byte and returns at once, and LabWired's UARTE
+ * reads that buffer when the transfer COMPLETES, a frame later, by which time the
+ * stack slot holds other data (silicon fetches it at STARTTX). The bytes it
+ * captures are not what the program wrote, so they are withheld, by name, until
+ * the engine fix lands (task A10 of docs/OPEN-TASKS-2026-09-29.md).
+ */
+const V2_SERIAL_WITHHELD = 'serial is not reported on the V2 board model yet: LabWired\'s nRF52 UARTE reads the ' +
+    'transmit buffer when the transfer completes, not when it starts, and CODAL\'s serial sends from a stack ' +
+    'byte that is gone by then (task A10)';
 
 /** The files of a program to compile for `run`, from a .ts, an .sb3/.bw, or a project-only .hex. */
 async function programFiles (a) {
@@ -381,6 +410,8 @@ async function programFiles (a) {
  * machines whose radios share one simulated air (lib/makecode-run-boards.mjs).
  */
 async function runBoardsCommand (a, project) {
+    // --board picks the model for a one-board run; here every board has its own.
+    if (a.board) throw Object.assign(new Error('--board is for a program with one board; each board of this program runs on its own model'), {usage: true});
     const many = await import('./lib/makecode-run-boards.mjs');
     const {boardMakeCodeProjects} = await lib('bw-boards/makecode-boards.js');
     const {exportToMakeCode} = await lib('bw-makecode/index.js');
@@ -449,6 +480,8 @@ async function runCommand (a) {
         if (readBoards(project)) return runBoardsCommand(a, project);
     }
     if (a.press.length) throw Object.assign(new Error('--press is for a program with several boards'), {usage: true});
+    const rb = RUN_BOARDS[a.board || 'v1'];
+    const v2 = rb.board === 'microbit-v2';
     let hex = /\.hex$/i.test(a.input) ? fs.readFileSync(a.input, 'utf8') : null;
     let target = a.target;
     if (!hex || !run.hasFirmware(hex)) {
@@ -466,7 +499,21 @@ async function runCommand (a) {
             return 1;
         }
         if (!hasRuntime(target)) { console.error('the MakeCode runtime is not synced — run `npm run sync:makecode`'); return 3; }
-        const r = await compile(target, program.files, {native: true});
+        if (v2 && target !== 'microbit') {
+            console.error(`refused: --board v2 is the micro:bit V2; this ${target} program runs on --board v1`);
+            return 1;
+        }
+        let r;
+        try {
+            r = await compile(target, program.files, v2 ? {emulator: true} : {native: true});
+        } catch (e) {
+            if (e.code === 'BASE_REFUSED') {
+                console.error(`refused: firmware base ${e.baseSha256} is not a clean emulator base — the emulator runs only ` +
+                    'the Bluetooth-free bases (base-licences.js)');
+                return 1;
+            }
+            throw e;
+        }
         if (!r.success) {
             for (const d of r.diagnostics.slice(0, 10)) console.error(`  ${d.file}:${d.line + 1}: ${d.message}`);
             console.error(`MakeCode did not compile the program (${r.diagnostics.length} error(s))`);
@@ -474,7 +521,11 @@ async function runCommand (a) {
         }
         const {firmwareFile} = await lib('bw-makecode/pxt-runtime.js');
         const firmware = firmwareFile(r.outfiles);
-        if (!firmware) { console.error('MakeCode compiled no firmware file'); return 1; }
+        if (!firmware) {
+            console.error(v2 ? 'MakeCode compiled no firmware file — for the V2 board the Bluetooth-free emulator bases must be ' +
+                'synced (`npm run sync:makecode` fetches them)' : 'MakeCode compiled no firmware file');
+            return 1;
+        }
         hex = new TextDecoder().decode(firmware.bytes);
     } else if (!RUN_TARGETS.includes(target)) {
         console.error(`refused: run has a board model for the micro:bit and the Calliope mini, not ${target}`);
@@ -487,19 +538,21 @@ async function runCommand (a) {
     const live = !a.json;
     let result;
     try {
-        result = await run.runNrf51({hex, seconds: a.seconds,
-            onSerial: live ? c => { if (c !== '\0') process.stdout.write(c); } : null,
+        if (v2) console.error(`  note: ${V2_SERIAL_WITHHELD}`);
+        result = await run.runNrf51({hex, seconds: a.seconds, board: rb.board,
+            onSerial: live && !v2 ? c => { if (c !== '\0') process.stdout.write(c); } : null,
             onMatrix: live ? f => process.stdout.write(`\n[${f.t.toFixed(2)} s] LED matrix\n${f.rows.map(r => `  ${r}`).join('\n')}\n`) : null});
     } catch (e) {
         if (e.code === 'NO_ENGINE') { console.error(e.message); return 3; }
+        if (/universal micro:bit hex|no vector table at 0/.test(e.message)) { console.error(`refused: ${e.message}`); return 1; }
         throw e;
     }
     if (a.json) {
-        process.stdout.write(`${JSON.stringify({target, board: 'microbit-v1', universal: result.universal,
-            guestSeconds: result.guestSeconds, serial: result.serial.replace(/\0/g, ''), frames: result.frames,
-            fault: result.fault})}\n`);
+        process.stdout.write(`${JSON.stringify({target, board: rb.board, universal: result.universal,
+            guestSeconds: result.guestSeconds, serial: v2 ? null : result.serial.replace(/\0/g, ''),
+            ...(v2 ? {serialWithheld: V2_SERIAL_WITHHELD} : {}), frames: result.frames, fault: result.fault})}\n`);
     } else {
-        process.stdout.write(`\n— ran ${result.guestSeconds.toFixed(2)} s of guest time on the micro:bit V1 board model\n`);
+        process.stdout.write(`\n— ran ${result.guestSeconds.toFixed(2)} s of guest time on the ${rb.name} board model\n`);
     }
     if (result.fault) { console.error(`fault: ${result.fault.cause}${result.fault.message ? ` — ${result.fault.message}` : ''}`); return 1; }
     return 0;

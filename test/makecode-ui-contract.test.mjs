@@ -60,25 +60,31 @@ test('all five entry points share one lazily-loaded chunk', () => {
     assert.deepEqual([...new Set(chunks)], ['bw-makecode'], 'one chunk, not eight');
 });
 
-test('MakeCode\'s compiler is loaded on demand, in its own chunk, by the ▶ and ⤓ actions and the Arcade board list only', () => {
+test('MakeCode\'s compiler is loaded on demand, in its own chunk, by the ▶, emulate and ⤓ actions and the Arcade board list only', () => {
     // pxt-runtime.js is small, but what it drives (the compiler worker and the
     // target bundle, several MB) must not ride on the importer's chunk.
     assert.doesNotMatch(source, /^import .*bw-makecode\/pxt-runtime\.js/m);
     const chunks = [...source.matchAll(/webpackChunkName: "([^"]+)" \*\/ '\.\.\/\.\.\/lib\/bw-makecode\/pxt-runtime\.js'/g)]
         .map(m => m[1]);
-    // Four, deliberately: the Arcade board picker's list (loadArcadeBoards) is the
-    // fourth, and it rides the same chunk — it reads pxt-arcade's served hardware
-    // list through pxt-runtime.js, so the importer's own chunk stays compiler-free.
-    // Six since a project can hold several boards: compiling every board for
-    // the side-by-side simulators, and for the per-board firmware download.
-    assert.equal(chunks.length, 6, 'run in the simulator, build the firmware, run this project as Arcade, list the Arcade boards, ' +
+    // Seven, deliberately. The Arcade board picker's list (loadArcadeBoards)
+    // rides the same chunk — it reads pxt-arcade's served hardware list through
+    // pxt-runtime.js, so the importer's own chunk stays compiler-free — and so
+    // does the micro:bit V2 emulator build (runOnEmulatedMicrobit). Two more
+    // since a project can hold several boards: compiling every board for the
+    // side-by-side simulators, and for the per-board firmware download.
+    assert.equal(chunks.length, 7, 'run in the simulator, run on the emulated micro:bit V2, build the firmware, ' +
+        'run this project as Arcade, list the Arcade boards, ' +
         'and the two multi-board actions (run every board, build every board\'s firmware)');
     assert.deepEqual([...new Set(chunks)], ['bw-makecode-pxt']);
     for (const [method, testid] of [['runInMakeCode ()', 'bw-makecode-run'], ['downloadMakeCodeFirmware ()', 'bw-makecode-firmware'],
         ['runAsArcade ()', 'bw-makecode-arcade-run']]) {
         assert.ok(scopeAfter(source, `async ${method} {`).includes('compileMakeCode('), `${method} does not compile`);
         assert.match(source, new RegExp(`data-testid="${testid}"`), `no ${testid} button`);
-    }    assert.ok(scopeAfter(source, 'async loadArcadeBoards () {').includes('arcadeBoards('), 'loadArcadeBoards does not read the served board list');
+    }
+    assert.ok(scopeAfter(source, 'async runOnEmulatedMicrobit () {').includes('compileMakeCodeForEmulator('),
+        'runOnEmulatedMicrobit () does not compile for the emulator');
+    assert.match(source, /data-testid="bw-makecode-emulate"/, 'no bw-makecode-emulate button');
+    assert.ok(scopeAfter(source, 'async loadArcadeBoards () {').includes('arcadeBoards('), 'loadArcadeBoards does not read the served board list');
 });
 
 test('an Arcade download builds for the board the picker chose, and refuses "no board" by name', () => {
