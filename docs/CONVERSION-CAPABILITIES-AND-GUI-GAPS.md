@@ -4033,7 +4033,7 @@ A real production editor journey is prepared in [`scripts/verify-arcade-numeric-
 
 | Capability | Conversion/runtime evidence | Remaining GUI qualification |
 |---|---|---|
-| Writable sprite flags | Raw primitive masks, complete bitwise compound syntax, Destroyed guards, retained callbacks and clipping-bit maintenance. Full flags export gate pending. | Create/read/write flags through property dropdowns; connected Boolean/string/number values, edited masks, save/reopen and original export. |
+| Writable sprite flags | Raw primitive masks, complete bitwise compound syntax, Destroyed guards, retained callbacks and clipping-bit maintenance. Seven full original/native/Code/SB3/export/reimport profiles pass; successful reload preserves phase ownership. | Create/read/write flags through property dropdowns; connected Boolean/string/number values, edited masks, save/reopen and original export. |
 | Typed bitwise values | Explicit primitive operations preserve unsigned shifts, wrapped counts and once-only arguments. Opaque reference conversion is diagnosed. | Author all six binary operators and unary complement through Code and connected blocks; preserve unsigned values on save/reopen. |
 | ShowPhysics | Per-sprite original font labels follow sprite order, camera, visibility and lifecycle; full-pixel and Code/SB3/export/reimport controls pass. | Toggle through flag blocks and Code; visibly verify label layering, camera movement and edited sprite art in the actual Stage. General debugger graphics remain open. |
 | Frame phases | Actual VM source work, physical frame ownership, shared work budget and Stop/load controls pass; strict callback clocks/pixels/sound pass. | Matching production GUI with source yields, dialogs, controller inputs and restart; explicit native debugger and cadence qualification remain open. |
@@ -4041,3 +4041,16 @@ A real production editor journey is prepared in [`scripts/verify-arcade-numeric-
 The prepared numeric/settings/loop editor journey is additive. Passing focused
 controls or importing a block graph does not establish palette usability or a
 complete-game corpus promotion.
+
+### Static event helper authoring
+
+Known inline or named callables can pass through specialized helpers into the
+existing supported event registration schema. Managed procedures preserve yields
+and callback lifetime; caller-local captures and stored dynamic callables remain
+explicit boundaries. Original/Code/fresh SB3/export/reimport controls pass. GUI
+work still needs readable procedure and callback edits through actual controls.
+
+The owned graphics journey now switches through the existing Scratch Stage action
+after using the Game Console, then observes surviving hero artwork before painting.
+Its earlier hidden sprite-pane timeout is retained; source preparation is separate
+from the matching hosted browser verdict.

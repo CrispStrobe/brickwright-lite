@@ -18,9 +18,9 @@ guards, ordered clamp and typed bitwise operations. Producer
 [PR121](https://github.com/CrispStrobe/sb3-creator/pull/121),
 [PR122](https://github.com/CrispStrobe/sb3-creator/pull/122) and
 [PR123](https://github.com/CrispStrobe/sb3-creator/pull/123) merged after all enabled
-checks passed. The next typed bitwise and writable-property vocabulary is
-[PR124](https://github.com/CrispStrobe/sb3-creator/pull/124); refresh its checks
-and the consumer's checks independently before adoption.
+checks passed. The typed bitwise and writable-property vocabulary in
+[PR124](https://github.com/CrispStrobe/sb3-creator/pull/124) is also merged.
+Refresh the consumer's independent checks before adoption.
 
 The clean `dc3fc0d684` audit retains every importer warning as a blocker:
 **29 selected-SDK compile-valid, 12 compiler diagnostics; 18 of the 29 admit
@@ -33,8 +33,13 @@ and [class claim](https://github.com/CrispStrobe/brickwright-lite/pull/889) are
 merged. Actual product phase controls cover source bootstrap, due continuations,
 a shared work budget, owned host-turn continuation, managed callers and Stop/load
 cancellation. The combined scheduler, bitwise and writable-flags backend gate
-passes 32 controls. Eight strict terminal/callback controls match original
+passes 32 controls. An additional actual reload control verifies that a cached
+driver resumes only after successful project load and detached drivers stay
+disposed; the combined phase/lifecycle gate passes 25 tests. Eight strict terminal/callback controls match original
 program and scene clocks, full pixels and sound. Earlier failures remain retained.
+The headless fixture now follows the production duplicate-extension guard.
+Earlier source disposal during load permanently disabled the cached phase driver;
+the product fix rearms a new generation on successful load.
 Matching installed GUI, native debugging and original 50 fps versus compatibility
 mode 30 fps behavior remain open; these controls do not promote whole games.
 
@@ -43,9 +48,17 @@ numeric/settings/loop editor journey requires a matching production artifact.
 [ShowPhysics](compatibility/arcade-show-physics.md) has original full-pixel and
 Code/SB3/export/reimport controls; general debugger graphics remain separate.
 [Writable flags](compatibility/arcade-writable-flags.md) preserve raw primitives,
-destruction masks and clipping state; full export qualification remains pending.
+destruction masks and clipping state; seven original/native/Code/SB3/export/reimport profiles pass, including raw
+string/null/undefined values and clock-bound stationary physics.
 [Typed bitwise values](compatibility/arcade-bitwise-values.md) preserve unsigned
 shifts and once-only argument order, with explicit opaque-reference diagnostics.
+
+Statically bound callable helpers now forward into the existing SDK event
+registration schema through managed procedure calls. Truth guards preserve the
+known callable value, and opaque/stored callable values remain diagnosed. Original,
+Code, fresh SB3 and export/reimport controls cover button yields and overlaps.
+The real FreeThrow prepared project has zero conversion or producer diagnostics;
+its complete-game, asset-notice and GUI gates remain separate.
 
 Class implementation follows explicit reference identity, original constructor
 order and receiver binding. Parser support alone does not admit runtime classes.
