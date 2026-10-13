@@ -3832,3 +3832,34 @@ geometry and subsequent resizing survive editable roundtrips. These controls
 do not establish complete null-image method behavior or zero-image collision
 semantics. Exact legacy scroller version controls and distinct scene/program
 clock blocks are next; do not silently map older libraries to modern behavior.
+
+
+### Owned TextSprite game: full IDE acceptance lane
+
+The owned fixture in `test/fixtures/arcade-owned-text-game.mjs` combines an
+original gallery image, TextSprite creation/text changes and visible A/B input.
+Its artwork and game source are authored for this repository. The original
+TextSprite dependency remains pinned to
+[microsoft/arcade-text fa2439314c6633943666a763fdae32a5c67a9ae8](https://github.com/microsoft/arcade-text/tree/fa2439314c6633943666a763fdae32a5c67a9ae8)
+with its retained MIT attribution.
+
+`scripts/verify-arcade-owned-game-gui.mjs` is the full production IDE gate:
+import `.mkcd`, edit Code by keyboard, edit an actual native Blocks text field,
+paint the imported costume, use the visible controller, save an actual SB3,
+reopen in a fresh browser context, export MakeCode and reimport the downloaded
+file. It compares presented sprite/TextSprite pixels and scalar state with the
+unchanged original PXT compiler and simulator. The offline oracle supplies the
+exact retained dependency bytes; the actual GUI files use ordinary MakeCode
+pinned dependency manifests. VM/Blockly access observes state and coordinates;
+program edits use the real controls. The production renderer supplies frame
+observations; it is neither replaced nor stubbed.
+
+Hosted full-IDE status: **pending**. The separate original simulator fixture
+controls pass; they are not a whole-IDE or arbitrary-project result. A dedicated
+TextSprite inspector, broader asset/callback/editor interactions and complete
+authentic project execution remain separate gaps. The raw corpus partial count
+is unchanged. The new light-shard step reuses the existing production build;
+its provisional budget is registered with zero readings until actual runs
+supply measurements. Failure artifacts retain the journey, sample, screenshot
+and exact file hashes; a selector or presentation failure must not be changed
+into a pass by loading projects through VM APIs or skipping the affected editor.
