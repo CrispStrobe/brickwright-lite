@@ -480,6 +480,55 @@ try {
         check('and the brick is drawn', drawn > 20, `${drawn} svg elements`);
     }
 
+    // ── 2f. two boards in one program run side by side and share one radio ──
+    // The tutorial pair (a micro:bit remote, a Calliope mini car) as one program
+    // with two board sections. This is the only place the multi-board pane is
+    // rendered by the real build: its unit tests build the boards, and
+    // verify-multi-board-radio.mjs drives the simulator host pages from a
+    // plain page.
+    if (runtime) {
+        // State, not just event: the one-board program of 2e is still on screen,
+        // and a one-board program must not get the multi-board pane.
+        const multi = page.locator('[data-testid="bw-makecode-multi-pane"]');
+        check('a one-board program runs without the multi-board pane', await multi.count() === 0);
+        await input.setInputFiles(join(root, 'test', 'fixtures', 'multi-board', 'radio-pair.bw'));
+        const pairCode = await waitFor(
+            () => page.evaluate(() => {
+                const editor = document.querySelector('.cm-content') || document.querySelector('textarea');
+                return editor ? (editor.innerText || editor.value || '') : '';
+            }),
+            t => /AS Remote:/.test(t) && /AS Car:/.test(t), 20000);
+        check('a program with two board sections opens in the Code tab',
+            /AS Remote:/.test(pairCode) && /AS Car:/.test(pairCode), pairCode.split('\n').slice(0, 2).join(' / '));
+        await clickAction('bw-makecode-run');
+        await multi.waitFor({state: 'visible', timeout: 90000}).catch(() => {});
+        const shown = await page.locator('[data-testid="bw-makecode-board"]').evaluateAll(
+            els => els.map(e => `${e.dataset.board}:${e.dataset.target}`)).catch(() => []);
+        check('▶ Run opens one simulator per board, each for its own target',
+            shown.join(' ') === 'Remote:microbit Car:calliopemini', shown.join(' ') || 'no multi-board pane');
+        const remote = await simFrame('microbit');
+        const car = await simFrame('calliopemini');
+        check('both simulator frames exist', !!remote && !!car);
+        if (remote && car) {
+            const press = (button, down) => remote.evaluate(([b, d]) => {
+                pxsim.board().buttonPairState[b].pressed = d; // eslint-disable-line no-undef
+            }, [button, down]).catch(() => {});
+            const motors = () => page.evaluate(() => {
+                const read = m => document.querySelector(`[data-testid="bw-makecode-motor-${m}"]`)?.dataset.power;
+                return `A=${read('A')} B=${read('B')}`;
+            });
+            // The remote sends on every loop, so the car's first motor report arrives unprompted.
+            const idle = await waitFor(motors, t => t === 'A=0 B=0', 45000);
+            check('the car reports its motors, both stopped, with no button held', idle === 'A=0 B=0', idle);
+            await press('aBtn', true);
+            const held = await waitFor(motors, t => t === 'A=50 B=0', 20000);
+            check('holding A on the remote drives the car\'s motor A over the radio', held === 'A=50 B=0', held);
+            await press('aBtn', false);
+            const released = await waitFor(motors, t => t === 'A=0 B=0', 20000);
+            check('releasing A stops it', released === 'A=0 B=0', released);
+        }
+    }
+
     // ── 3. a file with nothing in it says so, rather than failing ─────
     await input.setInputFiles(join(fixtures, 'README.md'));
     text = await waitFor(paneText, t => /README/.test(t), 15000);
