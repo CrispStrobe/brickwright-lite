@@ -4613,7 +4613,7 @@ export function arcadeToPseudocode (files, opts = {}) {
             if (image && !Object.prototype.hasOwnProperty.call(assets, decl.name)) assets[decl.name] = image;
         }
     }
-    const callbacks = lowerStaticCallbackHelpers(namespaceBindings.program || parsed);
+    const callbacks = lowerStaticCallbackHelpers(namespaceBindings.program || parsed, {registrationSpec:sceneRegistrationSpec});
     projectInputDiagnostics.push(...callbacks.unsupported);
     const ast = lowerLazyValues(callbacks.program);
     const flattened = namespaceBindings.program ? ast : null;
