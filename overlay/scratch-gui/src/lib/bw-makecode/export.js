@@ -52,7 +52,9 @@ const BOOLEAN_REPORTERS = new Set([
     'sensing_keypressed', 'sensing_touchingobject',
     'microbitplus_spritetouching', 'microbitplus_spritetouchingedge', 'microbitplus_spritedeleted',
     'microbitplus_isgameover', 'microbitplus_isrunning', 'microbitplus_ispaused',
-    'microbitplus_imagepixel', 'microbitplus_point'
+    'microbitplus_imagepixel', 'microbitplus_point',
+    // A `<p>` parameter, declared `p: boolean` (procedureParameterTypes).
+    'argument_reporter_boolean'
 ]);
 
 /** The dialect's sprite property word -> MakeCode's LedSpriteProperty member. */
@@ -275,14 +277,29 @@ export class Emitter {
         } catch (e) { ids = []; }
         let i = 0;
         const args = [];
+        const types = (this.parameterTypes && this.parameterTypes.get(proccode)) || [];
         const words = proccode.replace(/%[sbn]/g, token => {
             const input = b.inputs && b.inputs[ids[i++]];
             args.push(token === '%b' ?
                 (input ? this.reporter(this.block(input[1])) : 'false') :
-                (input ? this.value(b, ids[i - 1], '0') : '0'));
+                this.argument(b, ids[i - 1], types[i - 1] || 'number'));
             return '';
         });
         return {name: this.variableName(words.trim().replace(/\s+/g, '_')), args};
+    }
+
+    /**
+     * A call's argument for a parameter of this type (procedureParameterTypes).
+     * Scratch's `"5"` (a text literal that reads as a number) in a number
+     * parameter is 5; a missing argument is the type's zero.
+     */
+    argument (b, id, type) {
+        const input = b.inputs && b.inputs[id];
+        const slot = input && input[1];
+        if (!input) return type === 'string' ? '""' : '0';
+        if (type === 'number' && Array.isArray(slot) && (slot[0] === 10 || slot[0] === 11) &&
+            NUMERIC_TEXT.test(String(slot[1]).trim())) return String(Number(String(slot[1]).trim()));
+        return this.value(b, id, '0');
     }
 
     /** The `procedures_prototype` inside a definition's custom-block input. */
@@ -865,7 +882,7 @@ const TEXT_REPORTERS = new Set(['operator_join', 'operator_letter_of', 'microbit
  * text reporter), and never changes by a number. Anything mixed stays a
  * number, as before.
  */
-function textVariables (blocks, emitter, textArrays = new Set()) {
+function textVariables (blocks, emitter, textArrays = new Set(), parameterType = () => null) {
     const kinds = new Map();
     const mark = (name, kind) => {
         const k = kinds.get(name) || new Set();
@@ -884,10 +901,198 @@ function textVariables (blocks, emitter, textArrays = new Set()) {
         } else {
             const r = typeof slot === 'string' ? blocks[slot] : null;
             const fromTextArray = r && r.opcode === 'arrays_get' && textArrays.has(arrayNameOf(r, blocks, emitter));
-            mark(name, r && (TEXT_REPORTERS.has(r.opcode) || fromTextArray) ? 'text' : 'number');
+            // A procedure parameter typed `string` (procedureParameterTypes) is text too.
+            const fromTextParameter = r && r.opcode === 'argument_reporter_string_number' && parameterType(slot) === 'string';
+            mark(name, r && (TEXT_REPORTERS.has(r.opcode) || fromTextArray || fromTextParameter) ? 'text' : 'number');
         }
     }
     return new Set([...kinds].filter(([, k]) => k.size === 1 && k.has('text')).map(([name]) => name));
+}
+
+/** A literal that reads as a number: `"5"` in a call's text slot is Scratch's 5. */
+const NUMERIC_TEXT = /^-?\d+(\.\d+)?$/;
+
+/**
+ * Inputs whose value is used as a NUMBER: arithmetic. A parameter read here
+ * is a number (a text there is concatenated by TypeScript, not added).
+ */
+const NUMBER_SLOTS = {
+    operator_add: ['NUM1', 'NUM2'], operator_subtract: ['NUM1', 'NUM2'], operator_multiply: ['NUM1', 'NUM2'],
+    operator_divide: ['NUM1', 'NUM2'], operator_mod: ['NUM1', 'NUM2'], operator_mathop: ['NUM'],
+    operator_round: ['NUM'], operator_random: ['FROM', 'TO'], data_changevariableby: ['VALUE']
+};
+/** Inputs emitted as they are into a MakeCode `string` parameter: a number there does not compile. */
+const TEXT_SLOTS = {
+    microbitplus_showtext: ['TEXT'], microbitplus_scrolltext: ['TEXT'], microbitplus_radiosendstr: ['TEXT']
+};
+/**
+ * Inputs read as text that a number also satisfies (textOperand writes
+ * `("" + n)`): a hint, not a requirement. `length of p` is how the importer
+ * writes a string parameter's truth (E12), so it is what keeps `p: string`.
+ */
+const TEXT_HINT_SLOTS = {operator_length: ['STRING'], operator_letter_of: ['STRING']};
+
+/**
+ * Each custom block's parameter types, for MakeCode's `function f(p: T)`
+ * (task E13). A Scratch procedure argument has no type — the dialect's
+ * `(p)` is `%s`, text or number — and export.js declared every one
+ * `: number`, so `f("")` did not compile. The type is inferred, per
+ * parameter, from what the calls pass and how the body reads it:
+ *
+ *   %b (a `<p>` parameter)                   boolean
+ *   a call passes text (a non-numeric literal, `""` too, a text variable
+ *     or reporter, a string parameter)       text
+ *   a call passes a number, or the body does
+ *     arithmetic with it                     number
+ *   the body shows/sends it as text          needs text
+ *   the body takes its length / a letter,
+ *     or a call passes a numeric literal
+ *     typed as text (`"5"`)                  hints (text / number)
+ *
+ * text and number both → `any` (pxt-microbit and pxt-ev3 accept it); a
+ * number where text is needed → `any`; text or needs-text → `string`;
+ * number → `number`; else the hints: a length/letter use → `string`, else
+ * `number` (also for a parameter nothing tells about — as before).
+ *
+ * A parameter passed on to another procedure's parameter carries its
+ * kinds there, and takes back a text hint when that one is text (`relay(q)`
+ * calling `show(q)`, show also given "hi": q is text too) — spread to a
+ * fixed point, which only ever adds kinds, so it ends. A variable set from a
+ * parameter, and a parameter given a variable, are settled by the caller,
+ * which iterates this with textVariables until neither changes.
+ *
+ * @returns {{types: Map<string, Array<string>>, parameterType: function(string): ?string}}
+ *   types by proccode, in argument order; parameterType(reporterId) for an
+ *   `argument_reporter_string_number` block
+ */
+export function procedureParameterTypes (blocks, emitter, textVars = new Set(), textArrays = new Set()) {
+    const defs = new Map();                      // proccode -> {names, tokens}
+    const definitionOf = new Map();              // definition block id -> proccode
+    for (const [id, b] of Object.entries(blocks)) {
+        if (!b || b.opcode !== 'procedures_definition') continue;
+        const proto = emitter.prototypeOf(b);
+        if (!proto) continue;
+        const proccode = String((proto.mutation || {}).proccode || '');
+        defs.set(proccode, {names: emitter.parameterNames(proto), tokens: proccode.match(/%[sbn]/g) || []});
+        definitionOf.set(id, proccode);
+    }
+    // Where each reporter is plugged in. Not from `parent`: SB3Creator points a
+    // nested reporter's parent at the stack block around it, not at the
+    // reporter whose input holds it.
+    const holder = new Map();                    // reporter id -> [block, input name]
+    for (const b of Object.values(blocks)) {
+        for (const [name, input] of Object.entries((b && b.inputs) || {})) {
+            if (Array.isArray(input) && typeof input[1] === 'string') holder.set(input[1], [b, name]);
+        }
+    }
+    const scopeCache = new Map();
+    // The definition a block sits in: up its parents to the top of its script.
+    const scopeOf = id => {
+        if (scopeCache.has(id)) return scopeCache.get(id);
+        let at = id;
+        for (let guard = 0; blocks[at] && blocks[at].parent && guard < 100000; guard++) at = blocks[at].parent;
+        const scope = definitionOf.get(at) || null;
+        scopeCache.set(id, scope);
+        return scope;
+    };
+    const indexIn = (proccode, name) => {
+        const def = defs.get(proccode);
+        return def ? def.names.indexOf(emitter.variableName(name)) : -1;
+    };
+    // The parameter an `argument_reporter_string_number` reads, as `${proccode}\0${index}`.
+    const parameterOf = id => {
+        const r = blocks[id];
+        if (!r || r.opcode !== 'argument_reporter_string_number') return null;
+        const scope = scopeOf(id);
+        const i = scope === null ? -1 : indexIn(scope, emitter.field(r, 'VALUE'));
+        return i < 0 ? null : `${scope}\0${i}`;
+    };
+    // What a value passed in a call is.
+    const kindOf = slot => {
+        if (Array.isArray(slot)) {
+            const [type, text] = slot;
+            if (type === 10 || type === 11) {
+                if (/^(true|false)$/.test(String(text))) return 'number';     // value() writes 1 / 0
+                return NUMERIC_TEXT.test(String(text).trim()) ? 'numeric-text' : 'text';
+            }
+            if (type === 12) return textVars.has(emitter.variableName(text)) ? 'text' : 'number';
+            return type >= 4 && type <= 8 ? 'number' : null;
+        }
+        const r = typeof slot === 'string' ? blocks[slot] : null;
+        if (!r) return null;
+        if (TEXT_REPORTERS.has(r.opcode)) return 'text';
+        if (r.opcode === 'data_variable') return textVars.has(emitter.variableName(r.fields.VARIABLE[0])) ? 'text' : 'number';
+        if (r.opcode === 'arrays_get') return textArrays.has(arrayNameOf(r, blocks, emitter)) ? 'text' : 'number';
+        if (r.opcode === 'argument_reporter_string_number') return null;    // a flow, below
+        return 'number';
+    };
+    const evidence = new Map();                  // `${proccode}\0${i}` -> Set of kinds
+    const kinds = key => {
+        if (!evidence.has(key)) evidence.set(key, new Set());
+        return evidence.get(key);
+    };
+    const note = (proccode, i, kind) => {
+        if (i >= 0 && kind) kinds(`${proccode}\0${i}`).add(kind);
+    };
+    const flows = [];                            // [from parameter, to parameter]
+    for (const [id, b] of Object.entries(blocks)) {
+        if (!b) continue;
+        if (b.opcode === 'procedures_call') {
+            const proccode = String((b.mutation || {}).proccode || '');
+            let ids = [];
+            try { ids = JSON.parse((b.mutation || {}).argumentids || '[]'); } catch (e) { ids = []; }
+            const tokens = proccode.match(/%[sbn]/g) || [];
+            tokens.forEach((token, i) => {
+                const input = b.inputs && b.inputs[ids[i]];
+                if (token === '%b' || !input) return;
+                const from = typeof input[1] === 'string' ? parameterOf(input[1]) : null;
+                if (from) flows.push([from, `${proccode}\0${i}`]);
+                else note(proccode, i, kindOf(input[1]));
+            });
+        }
+        // A parameter read inside its own definition (not the prototype's own reporters).
+        if (b.opcode !== 'argument_reporter_string_number' || !holder.has(id)) continue;
+        const [parent, name] = holder.get(id);
+        if (parent.opcode === 'procedures_prototype') continue;
+        const scope = scopeOf(id);
+        if (scope === null) continue;
+        const i = indexIn(scope, emitter.field(b, 'VALUE'));
+        const display = parent.opcode === 'microbit_display' && name === 'VALUE' && emitter.field(parent, 'MODE') === 'text';
+        if ((NUMBER_SLOTS[parent.opcode] || []).includes(name)) note(scope, i, 'number');
+        else if ((TEXT_SLOTS[parent.opcode] || []).includes(name) || display) note(scope, i, 'needs-text');
+        else if ((TEXT_HINT_SLOTS[parent.opcode] || []).includes(name)) note(scope, i, 'text-hint');
+    }
+    const CARRIED = ['text', 'number', 'numeric-text'];
+    const TEXTUAL = ['text', 'needs-text', 'text-hint'];
+    for (let changed = true; changed;) {
+        changed = false;
+        for (const [from, to] of flows) {
+            const a = kinds(from);
+            const b = kinds(to);
+            for (const k of CARRIED) if (a.has(k) && !b.has(k)) changed = !!b.add(k);
+            if (TEXTUAL.some(k => b.has(k)) && !a.has('text-hint')) changed = !!a.add('text-hint');
+        }
+    }
+    const types = new Map();
+    for (const [proccode, {tokens}] of defs) {
+        types.set(proccode, tokens.map((token, i) => {
+            if (token === '%b') return 'boolean';
+            const k = evidence.get(`${proccode}\0${i}`) || new Set();
+            const text = k.has('text');
+            const number = k.has('number');
+            if ((text || k.has('needs-text')) && number) return 'any';
+            if (text || k.has('needs-text')) return 'string';
+            if (number) return 'number';
+            return k.has('text-hint') ? 'string' : 'number';
+        }));
+    }
+    const parameterType = id => {
+        const key = parameterOf(id);
+        if (!key) return null;
+        const [proccode, i] = key.split('\0');
+        return (types.get(proccode) || [])[Number(i)] || null;
+    };
+    return {types, parameterType};
 }
 
 /** An `arrays` block's array name, sanitised as the emitter does, without recording it. */
@@ -1032,7 +1237,20 @@ export function projectToMakeCodeTs (project, opts = {}) {
         // variable that only ever holds text is declared as text: `let t = 0`
         // then `t = "COLD"` is a program MakeCode refuses (census 2026-09-27).
         const textArrays = textArrayNames(blocks, emitter);
-        const text = textVariables(blocks, emitter, textArrays);
+        // A variable set from a text parameter is text, and a parameter given a
+        // text variable is text: the two are settled together (E13).
+        let text = textVariables(blocks, emitter, textArrays);
+        let parameters = procedureParameterTypes(blocks, emitter, text, textArrays);
+        for (let round = 0; round < 16; round++) {
+            const nextText = textVariables(blocks, emitter, textArrays, parameters.parameterType);
+            const next = procedureParameterTypes(blocks, emitter, nextText, textArrays);
+            const same = nextText.size === text.size && [...nextText].every(n => text.has(n)) &&
+                JSON.stringify([...next.types]) === JSON.stringify([...parameters.types]);
+            text = nextText;
+            parameters = next;
+            if (same) break;
+        }
+        emitter.parameterTypes = parameters.types;
         const sprites = spriteNames(blocks, emitter);
         const images = imageNames(blocks, emitter);
         emitter.spriteVars = sprites.vars;
@@ -1062,15 +1280,15 @@ export function projectToMakeCodeTs (project, opts = {}) {
             if (block.opcode === 'procedures_definition') {
                 const proto = emitter.prototypeOf(block);
                 if (!proto) continue;
-                const {name, args} = emitter.procedure(proto);
+                const {name} = emitter.procedure(proto);
                 const names = emitter.parameterNames(proto);
+                const types = emitter.parameterTypes.get(String((proto.mutation || {}).proccode || '')) || [];
                 emitter.inFunction = true;
                 definitions.push(
-                    `function ${name}(${names.map(n => `${n}: number`).join(', ')}) {`,
+                    `function ${name}(${names.map((n, i) => `${n}: ${types[i] || 'number'}`).join(', ')}) {`,
                     ...emitter.stack(block.next, 1),
                     '}');
                 emitter.inFunction = false;
-                void args;
                 continue;
             }
             // A radio hat is MakeCode's handler, registered where it stands:
