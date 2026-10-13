@@ -10,6 +10,33 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ## Latest source qualification — 2026-10-13
 
+### Latest integration work
+
+The integration branch now includes managed class/object references and static
+visibility metadata using producer [PR125](https://github.com/CrispStrobe/sb3-creator/pull/125),
+which merged after its enabled checks passed. Structured class authoring,
+inheritance and SDK intrinsic subclasses remain separate gaps. Source-entry
+palette editing and exact array helper recognition are repaired; scoped Arrays
+bundle provenance matches the selected immutable dependency.
+
+[Scene timer authority](compatibility/arcade-scene-timer-authority.md) now uses
+per-scene workers, shared condition polling and owned source wait deadlines.
+The isolated implementation passes 72 strict controls without skipped tests or
+TODOs. Recorded genuine Cherry startup and countdown boundaries match the
+unchanged original, including game over at 60,140 ms. The full probe's final
+unsupported event observer failed; the saved timing rows passed a separate
+read-only audit. This does not establish unseeded trajectory, full graphics or
+installed GUI cadence.
+
+Projectile finalization now applies the selected SDK's default flags after
+creation handlers and preserves retained destroyed references, tile-map edge
+placement and camera offsets. FreeThrow passes 44 raw and 90 authoring route
+controls across Code, same/fresh SB3 and prepared export/reimport. Full GUI
+qualification and unresolved asset licences still prevent whole-game promotion.
+Combined integration checks and the refreshed 41-project audit are in progress;
+the structural census below is the last completed audit, not a new-head result.
+
+
 The draft [integration PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888)
 contains source startup and positive-condition loops, invocation-local
 `break`/`continue` guards, native text dialogs, StringArray settings, null tilemap
