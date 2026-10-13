@@ -46,6 +46,7 @@ let unicode=snapshot(label)
 label.setText(null)
 let empty=snapshot(label)
 let sameKind=label.kind()==SpriteKind.Text
+let actualKind=label.kind();actualKind+=0
 `;
     const expected = await runPxtArcade({'main.ts': source, 'text.ts': original,
         'pxt.json': JSON.stringify({name: 'text-host-oracle', dependencies: {device: '*'}, files: ['text.ts','main.ts']})});
@@ -70,7 +71,8 @@ let sameKind=label.kind()==SpriteKind.Text
     native.textSpriteSetText({ID:id,TEXT:null}); check('empty');
     assert.equal(expected.createdCount, 0, 'original textsprite.create does not invoke sprites.create handlers');
     assert.equal(expected.sameKind, true);
-    assert.equal(ext._spriteValues.get(label.__bwId).kind, 'Text');
+    assert.equal(ext._spriteValues.get(label.__bwId).kind, expected.actualKind);
+    assert.equal(ext._kindRegistry.displayName(expected.actualKind), 'Text');
     assert.equal(ext._state().physicsEngine.members.filter(s => s.id === label.__bwId).length, 1);
     assert.deepEqual(errors, []);
 });

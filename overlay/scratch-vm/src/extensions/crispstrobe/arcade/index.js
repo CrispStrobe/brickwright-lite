@@ -52,6 +52,7 @@ module.exports = makeExt(`// Name: Arcade
       this._spriteValues = new Map();
       this._playerValues = new Map();this._nextPlayerValue=0;
       this._sceneValues=new Map();this._physicsEngines=new Map();this._nextSceneValue=0;this._nextPhysicsEngine=0;
+      this._kindRegistry=dependencies.createKindRegistry();
       this._kindInsertion = 0;
       this._animations = new Map();
       this._nextAnimationId = 0;
@@ -134,7 +135,7 @@ module.exports = makeExt(`// Name: Arcade
           this._bufferHeap = null;
           this._sevensegIds=new Map();this._sevensegValues=new Map();
           this._scrollerVersion='v0.1.2';this._characterAnimationVersion='v0.1.0';
-          this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._scrollerModule=null;this._characterAnimationModule=null;
+          this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._scrollerModule=null;this._characterAnimationModule=null;this._textSpriteModule=null;
           this._carnivalHost?.cancel();this._carnivalHost=null;this._gameOver=null;this._buttonPressWaiters=[];
           this._clearBackground();
           for (const id of this._imageSkins.keys()) this._clearImage(id);
@@ -142,6 +143,7 @@ module.exports = makeExt(`// Name: Arcade
           this._spriteValues.clear();
           this._playerValues.clear();this._nextPlayerValue=0;
           this._sceneValues.clear();this._physicsEngines.clear();this._nextSceneValue=0;this._nextPhysicsEngine=0;
+          this._kindRegistry.reset();
           this._kindInsertion = 0;
           this._animations.clear();
           this._imageAnimations.clear();
@@ -169,7 +171,7 @@ module.exports = makeExt(`// Name: Arcade
           reset();
           this._bufferSuspended = false;
         });
-        runtime.on('PROJECT_START', reset);
+        runtime.on('PROJECT_START',()=>{reset();this._initializeImplicitTextKinds();});
         runtime.on('targetWasRemoved', target => {
           for (const [id, entry] of this._imageSkins) if (entry.target === target) this._clearImage(id);
           for (const [id, entry] of this._speech) if (entry.target === target) this._clearSpeech(id);
@@ -705,7 +707,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'setScenePhysicsEngine',blockType:Scratch.BlockType.COMMAND,text:'set Arcade physics engine of scene [SCENE] to [ENGINE]',arguments:{...str('SCENE',''),...str('ENGINE','')}},
           { opcode: 'spriteProperty', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade sprite [ID] [PROPERTY]',
-            arguments: { ...str('ID', ''), PROPERTY: {type: Scratch.ArgumentType.STRING, menu: 'spriteProperties', defaultValue: 'x'} } },
+            arguments: { ...str('ID', ''), PROPERTY: {type: Scratch.ArgumentType.STRING, menu: 'readableSpriteProperties', defaultValue: 'x'} } },
           { opcode: 'setSpriteKind', blockType: Scratch.BlockType.COMMAND,
             text: 'set Arcade sprite [ID] kind [KIND]',
             arguments: { ...str('ID', ''), ...str('KIND', 'Player') } },
@@ -751,6 +753,10 @@ module.exports = makeExt(`// Name: Arcade
             text: 'place Arcade sprite [ID] on tile [LOCATION]', arguments: {...str('ID', ''), ...str('LOCATION', '')} },
           { opcode: 'placeOnRandomTile', blockType: Scratch.BlockType.COMMAND,
             text: 'place Arcade sprite [ID] on random tile image [IMAGE]', arguments: {...str('ID', ''), ...str('IMAGE', '')} },
+          {opcode:'createSpriteKind',blockType:Scratch.BlockType.REPORTER,text:'Arcade create sprite kind'},
+          {opcode:'spriteKindValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade sprite kind value [NAME]',arguments:str('NAME','Player')},
+          {opcode:'bindSpriteKind',blockType:Scratch.BlockType.COMMAND,text:'Arcade bind sprite kind name [NAME] to [KIND]',arguments:{...str('NAME','Custom'),...n('KIND',1003)}},
+          {opcode:'initializeSpriteKindLibrary',blockType:Scratch.BlockType.COMMAND,text:'Arcade initialize sprite kind library [LIBRARY] version [VERSION]',arguments:{...str('LIBRARY','textsprite'),...str('VERSION','v1.3.0')}},
           { opcode: 'spritesOfKind', blockType: Scratch.BlockType.REPORTER,
             text: 'array of Arcade sprites of kind [KIND]', arguments: str('KIND', 'Player') },
           { opcode: 'spriteCount', blockType: Scratch.BlockType.REPORTER,
@@ -852,6 +858,9 @@ module.exports = makeExt(`// Name: Arcade
           ,spriteProperties: {acceptReporters: false, items: ['x', 'y', 'left', 'right', 'top', 'bottom',
             'vx', 'vy', 'ax', 'ay', 'fx', 'fy', 'sx', 'sy', 'scale', 'width', 'height', 'z', 'lifespan',
             'rotation', 'rotationDegrees', 'data']}
+          ,readableSpriteProperties: {acceptReporters:false,items:['x','y','left','right','top','bottom',
+            'vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan',
+            'rotation','rotationDegrees','data','kind']}
           ,eventSprites: {acceptReporters: false, items: ['first', 'second']}
           ,cameraProperties: {acceptReporters: true, items: [{text:'x',value:'0'}, {text:'y',value:'1'}, {text:'left',value:'2'}, {text:'right',value:'3'}, {text:'top',value:'4'}, {text:'bottom',value:'5'}]}
           ,collisionDirections: {acceptReporters: true, items: [{text:'left',value:'0'}, {text:'top',value:'1'}, {text:'right',value:'2'}, {text:'bottom',value:'3'}]}
@@ -970,8 +979,13 @@ module.exports = makeExt(`// Name: Arcade
     settingsRemove(args){return this._settingsGuard(()=>this._settingsStore().call('remove',Scratch.BWValues.decode(args.KEY)));}
     settingsClear(){return this._settingsGuard(()=>this._settingsStore().call('clear'));}
 
+    _initializeImplicitTextKinds() {
+      const blocks=(this._runtime?.targets || []).flatMap(target=>Object.values(target.blocks?._blocks || {}));
+      const explicit=blocks.some(block=>block.opcode==='arcade_initializeSpriteKindLibrary');
+      if(!explicit && blocks.some(block=>String(block.opcode).startsWith('arcade_textSprite')))this._textSprites();
+    }
     _textSprites() {
-      if(!this._textSpriteModule)this._textSpriteModule=dependencies.createTextSpriteHost(this,imageEngine,dependencies.initializeTextSprite);
+      if(!this._textSpriteModule)this._textSpriteModule=dependencies.createTextSpriteHost(this,imageEngine,host=>dependencies.initializeTextSprite({...host,createKind:()=>this._kindRegistry.bindName('Text',this._kindRegistry.create())}));
       return this._textSpriteModule;
     }
     _textSprite(value) {
@@ -1251,8 +1265,8 @@ module.exports = makeExt(`// Name: Arcade
         yield* this._registeredCallbackSteps([handler.mp?handler.mp.registration:handler],handler.mp?'arcade_whenRegisteredMultiplayerButton':'arcade_whenRegisteredButton',handler.mp?{player:handler.playerValue}:{},undefined,deferred);
       }
     }
-    registerDestroyedHandler(args,util) {this._destroyedHandlers.push(this._handlerRegistration(args,util));}
-    registerOverlapHandler(args,util) {this._overlapHandlers.push({...this._handlerRegistration(args,util),otherKind:String(args.OTHER_KIND)});}
+    registerDestroyedHandler(args,util) {if(this._kindValue(args.KIND)==null)return;this._destroyedHandlers.push(this._handlerRegistration(args,util));}
+    registerOverlapHandler(args,util) {const kind=this._kindValue(args.KIND),otherKind=this._kindValue(args.OTHER_KIND);if(kind==null || otherKind==null)return;this._overlapHandlers.push({...this._handlerRegistration(args,util),kind,otherKind});}
     startParallelHandler(args,util) {
       // Queue one independent fiber per call. The caller must not await it;
       // captures retain the enclosing cells, including after that call returns.
@@ -1670,12 +1684,13 @@ module.exports = makeExt(`// Name: Arcade
       const captures = new Map(util?.thread?.bwArcadeCaptures || []);
       const values = this._localParams(util);
       for (const key of String(args.CAPTURES || '').split(/\\s+/).filter(Boolean)) if (values) captures.set(key, {values, key});
-      this._createdHandlers.push({kind: String(args.KIND), token: String(args.TOKEN), captures});
+      const kind=this._kindValue(args.KIND);if(kind==null)return;
+      this._createdHandlers.push({kind, token: String(args.TOKEN), captures});
     }
     _terrainRegistration(args, util) {
       const captures = new Map(util?.thread?.bwArcadeCaptures || []), values = this._localParams(util);
       for (const key of String(args.CAPTURES || '').split(/\\s+/).filter(Boolean)) if (values) captures.set(key, {values, key});
-      return {kind: String(args.KIND), token: String(args.TOKEN), captures};
+      return {kind:this._kindValue(args.KIND), token: String(args.TOKEN), captures};
     }
     registerLegacyWallHandler(args,util) {
       const index=Number(Scratch.BWValues.decode(args.INDEX));
@@ -2303,9 +2318,12 @@ module.exports = makeExt(`// Name: Arcade
       }
     }
     _finishSpriteCreation(id, util) {
-      const sprite = this._state().sprites[id], runtime = this._runtime;
+      const sprite = this._state().sprites[id], runtime = this._runtime,creationKind=sprite._creationKind;
+      // Original create filters callbacks using its supplied argument, not the
+      // constructor's -1 fallback for an absent kind.
+      if(creationKind==null)return id;
       if (!runtime?.allScriptsByOpcodeDo || !runtime?._pushThread || !Array.isArray(runtime.threads)) {
-        this._emitSpriteHat('arcade_whenSpriteCreated', {KIND: sprite.kind}, id, '');
+        this._emitSpriteHat('arcade_whenSpriteCreated', {KIND: creationKind}, id, '');
         return id;
       }
       const handlers = [];
@@ -2313,11 +2331,11 @@ module.exports = makeExt(`// Name: Arcade
         const hat = target.blocks.getBlock(script.blockId);
         const kindBlock = target.blocks.getBlock(hat.inputs?.KIND?.block);
         const fixedKind = kindBlock?.opcode === 'text' ? kindBlock.fields.TEXT?.value : null;
-        if (fixedKind === null || String(fixedKind) === sprite.kind) handlers.push({script, target});
+        if (fixedKind === null || this._kindValue(fixedKind) === creationKind) handlers.push({script, target});
       });
       // Snapshot registrations when creation starts, as PXT does before
       // invoking callbacks. Repeated registrations retain separate closures.
-      for (const registration of this._createdHandlers.filter(h => h.kind === sprite.kind)) {
+      for (const registration of this._createdHandlers.filter(h => h.kind === creationKind)) {
         runtime.allScriptsByOpcodeDo('arcade_whenRegisteredCreated', (script, target) => {
           const hat = target.blocks.getBlock(script.blockId);
           const tokenBlock = target.blocks.getBlock(hat.inputs?.TOKEN?.block);
@@ -2325,7 +2343,7 @@ module.exports = makeExt(`// Name: Arcade
         });
       }
       if (!handlers.length) return id;
-      const event = {first: id, second: '', KIND: sprite.kind};
+      const event = {first: id, second: '', KIND: creationKind};
       let thread;
       // Fast callbacks execute in the same fiber turn. The VM's BlockUtility
       // is shared, so restore its caller context after every nested execution.
@@ -2472,14 +2490,15 @@ module.exports = makeExt(`// Name: Arcade
       return created && typeof created.then === 'function' ? created.then(position) : position(created);
     }
     _createSprite(args) {
-      const state = this._state();
+      const state = this._state(),inputKind=this._kindValue(args.KIND),kind=inputKind==null?-1:inputKind;
       const id = 'arcade:' + (++this._nextSpriteHandle);state.nextSpriteId++;
-      const sprite = {id, pxtId: state.nextSpriteId - 1, kind: String(args.KIND), x: Number(args.X) || 0, y: Number(args.Y) || 0,
+      const sprite = {id, pxtId: state.nextSpriteId - 1, kind, _creationKind:inputKind, x: Number(args.X) || 0, y: Number(args.Y) || 0,
         vx: 0, vy: 0, ax: 0, ay: 0, fx: 0, fy: 0, z: 0, lifespan: 0, flags: 0,
         // Public creation normalizes defaults before entering this private path;
         // native image constructors may supply genuine zero dimensions.
         width: args.WIDTH===0?0:Math.max(1,Number(args.WIDTH)||16),
         height: args.HEIGHT===0?0:Math.max(1,Number(args.HEIGHT)||16)};
+      Object.defineProperty(sprite,'kindName',{enumerable:true,get:()=>this._kindRegistry.displayName(sprite.kind)});
       this._installSpriteFixedPoint(sprite);
       sprite._kindInsertion = ++this._kindInsertion;
       state.sprites[id] = sprite;
@@ -2513,7 +2532,7 @@ module.exports = makeExt(`// Name: Arcade
       return id;
     }
     spawnProjectile(args, util) {
-      args = {...args};
+      args = {...args, KIND:this._kindValue(args.KIND) || this._kindRegistry.builtin('Projectile')};
       // PXT creates at the scene center, runs creation handlers, then applies
       // projectile motion and edge/source placement using the resulting size.
       const created = this.createSprite({TEMPLATE: args.TEMPLATE, KIND: args.KIND,
@@ -2771,7 +2790,7 @@ module.exports = makeExt(`// Name: Arcade
           return block?.fields?.TEXT?.value ?? Object.values(block?.fields || {})[0]?.value;
         };
         const kind=argument('A'),otherKind=argument('B');
-        if(kind!==undefined && otherKind!==undefined)handlers.push({kind:String(kind),otherKind:String(otherKind),script,target,legacy:true});
+        if(kind!==undefined && otherKind!==undefined)handlers.push({kind:this._kindValue(kind),otherKind:this._kindValue(otherKind),script,target,legacy:true});
       });
       return handlers;
     }
@@ -3899,7 +3918,7 @@ module.exports = makeExt(`// Name: Arcade
       class ExtendableSprite {
         constructor(image,kind){
           const raw=image?.raw || {width:16,height:16,pixels:new Uint8Array(256)},width=raw.width,height=raw.height;
-          const id=ext._createSprite({KIND:String(kind),TEMPLATE:'',WIDTH:width,HEIGHT:height,X:((160-width)>>1)+width/2,Y:((120-height)>>1)+height/2});
+          const id=ext._createSprite({KIND:kind,TEMPLATE:'',WIDTH:width,HEIGHT:height,X:((160-width)>>1)+width/2,Y:((120-height)>>1)+height/2});
           Object.defineProperty(this,'__bwId',{value:id});
           ext._assignSpriteRaster(ext._state().sprites[id],raw);
           ext._extensionSprites.set(id,this);
@@ -3982,12 +4001,12 @@ module.exports = makeExt(`// Name: Arcade
     createDart(args,util) {
       const image=this._image(args.IMAGE);
       if(!image){this._runtime?.emit?.('BLOCKS_ERROR','Arcade darts need an image.');return '';}
-      return this._withExtension(util,module=>module.darts.create(new (this._spriteExtensionImage())(image),String(args.KIND),
+      return this._withExtension(util,module=>module.darts.create(new (this._spriteExtensionImage())(image),this._kindValue(args.KIND),
         Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y)).__bwId);
     }
     _spriteExtensionImage() {return Object.getPrototypeOf(this._spriteExtensions().corgio._corgi_still[0]).constructor;}
     createCorgi(args,util) {
-      return this._withExtension(util,module=>module.corgio.create(String(args.KIND),Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y)).__bwId);
+      return this._withExtension(util,module=>module.corgio.create(this._kindValue(args.KIND),Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y)).__bwId);
     }
     dartAction(args,util) {
       const dart=this._extensionSprite(args.SPRITE,'Dart'),action=String(args.ACTION);
@@ -4049,9 +4068,9 @@ module.exports = makeExt(`// Name: Arcade
         image:{create:(width,height)=>new SevensegImage({width,height,pixels:new Uint8Array(width*height)})},
         sprites:{create:(image,kind)=>{
           const width=image.width,height=image.height;
-          const id=ext._createSprite({KIND:String(kind),TEMPLATE:'',WIDTH:width,HEIGHT:height,X:((160-width)>>1)+width/2,Y:((120-height)>>1)+height/2});
+          const id=ext._createSprite({KIND:kind,TEMPLATE:'',WIDTH:width,HEIGHT:height,X:((160-width)>>1)+width/2,Y:((120-height)>>1)+height/2});
           ext._assignSpriteRaster(ext._state().sprites[id],image.raw);
-          ext._emitSpriteHat('arcade_whenSpriteCreated',{KIND:String(kind)},id,'');
+          ext._emitSpriteHat('arcade_whenSpriteCreated',{KIND:ext._state().sprites[id].kind},id,'');
           return spriteOf(id);
         }}});
       this._sevensegModule={...module,flush(){for(const raw of drawn)ext._refreshImage(raw);drawn.clear();}};
@@ -4522,8 +4541,9 @@ module.exports = makeExt(`// Name: Arcade
     }
     setSpriteKind(args) {
       const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID);
-      if (sprite && sprite.kind !== String(args.KIND)) {
-        sprite.kind = String(args.KIND); sprite._kindInsertion = ++this._kindInsertion; this._changed();
+      const kind=this._kindValue(args.KIND);if(kind==null)return;
+      if (sprite && sprite.kind !== kind) {
+        sprite.kind = kind; sprite._kindInsertion = ++this._kindInsertion; this._changed();
       }
     }
     spriteOverlaps(args) {
@@ -4862,12 +4882,25 @@ module.exports = makeExt(`// Name: Arcade
         this._tilemapDrawable = null;
       }
     }
+    _kindValue(value) {return this._kindRegistry.normalize(Scratch.BWValues.decode(value));}
+    createSpriteKind() {return this._kindRegistry.create();}
+    spriteKindValue(args) {
+      const name=String(Scratch.BWValues.decode(args.NAME)),entry=this._kindRegistry.bindings().find(binding=>binding.name===name);
+      if(!entry)throw new TypeError('Unregistered sprite kind name: '+name);
+      return entry.kind;
+    }
+    bindSpriteKind(args) {this._kindRegistry.bindName(String(Scratch.BWValues.decode(args.NAME)),this._kindValue(args.KIND));}
+    initializeSpriteKindLibrary(args) {
+      const library=String(Scratch.BWValues.decode(args.LIBRARY)),version=String(Scratch.BWValues.decode(args.VERSION));
+      if(library!=='textsprite' || !['v1.3.0','fa2439314c6633943666a763fdae32a5c67a9ae8'].includes(version))throw new Error('Arcade sprite kind library initializer is not implemented: '+library+'@'+version);
+      this._textSprites();
+    }
     _spritesOfKind(kind) {
       // PXT allOfKind explicitly excludes negative kinds. Those sprites stay
       // in scene/physics ownership and continue to receive lifecycle callbacks.
-      if(Number(kind)<0)return [];
+      kind=this._kindValue(kind);if(kind==null || !(kind>=0))return [];
       // SpriteSet.sprites() also drops sprites an effect is destroying.
-      return Object.values(this._state().sprites).filter(s => !s._destroyed && !s._destroying && s.kind === String(kind))
+      return Object.values(this._state().sprites).filter(s => !s._destroyed && !s._destroying && s.kind === kind)
         .sort((a, b) => a._kindInsertion - b._kindInsertion);
     }
     spritesOfKind(args) {
@@ -4876,11 +4909,11 @@ module.exports = makeExt(`// Name: Arcade
     spriteCount(args) { return this._spritesOfKind(args.KIND).length; }
     whenSpriteCreated(args, util) {
       const event = this._currentEvent || (util && util.thread && util.thread.bwArcadeEvent);
-      return Boolean(event && String(event.KIND) === String(args.KIND));
+      return Boolean(event && event.KIND === this._kindValue(args.KIND));
     }
     whenSpriteDestroyed(args, util) {
       const event = this._currentEvent || (util && util.thread && util.thread.bwArcadeEvent);
-      return Boolean(event && String(event.KIND) === String(args.KIND));
+      return Boolean(event && event.KIND === this._kindValue(args.KIND));
     }
     whenRegisteredCreated(args, util) {
       const event = util?.thread?.bwArcadeEvent;
@@ -4893,7 +4926,7 @@ module.exports = makeExt(`// Name: Arcade
     whenSpritesOverlap(args, util) {
       const event = this._currentEvent || (util && util.thread && util.thread.bwArcadeEvent);
       const first=this._spriteValues.get(event?.first),second=this._spriteValues.get(event?.second);
-      return Boolean(event && first && second && !first._destroyed && !second._destroyed && !((first.flags|second.flags)&(spriteFlags.GhostThroughSprites|spriteFlags.RelativeToCamera)) && String(event.A)===String(args.A) && String(event.B)===String(args.B));
+      return Boolean(event && first && second && !first._destroyed && !second._destroyed && !((first.flags|second.flags)&(spriteFlags.GhostThroughSprites|spriteFlags.RelativeToCamera)) && event.A===this._kindValue(args.A) && event.B===this._kindValue(args.B));
     }
     eventSprite(args, util) {
       return util && util.thread && util.thread.bwArcadeEvent?.[args.WHICH] || '';
@@ -5017,6 +5050,7 @@ module.exports = makeExt(`// Name: Arcade
   Scratch.extensions.register(new Arcade(Scratch.vm && Scratch.vm.runtime));
 })(Scratch);
 `, {
+  createKindRegistry: require('./kind-registry'),
   createTextSpriteHost: require('./text-sprite-host'),
   initializeTextSprite: require('./text-sprite-pxt'),
   createProgramSettings: require('./program-settings').createProgramSettings,

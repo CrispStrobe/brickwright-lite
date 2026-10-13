@@ -1,3 +1,5 @@
+import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
+const LEGACY_CHARACTER_REVISION=LEGACY_CHARACTER_NATIVE_IDENTITY.revision;
 /**
  * A Scratch project -> MakeCode Arcade TypeScript: the way back from
  * arcade-translate.js, and the way OUT for a game made here.
@@ -121,9 +123,20 @@ class ArcadeEmitter {
             const slot=block.inputs?.VERSION?.[1],shadow=typeof slot==='string'?target.blocks[slot]:null;
             const version=Array.isArray(slot) && slot[0]===10?String(slot[1]):shadow?.shadow?String(Object.values(shadow.fields || {})[0]?.[0]):this.field(block,'VERSION');
             let parent=target.blocks[block.parent];
-            while(parent && ['looks_hide','arcade_setPalette'].includes(parent.opcode))parent=target.blocks[parent.parent];
+            while(parent && ['looks_hide','arcade_setPalette','arcade_setCharacterAnimationVersion'].includes(parent.opcode))parent=target.blocks[parent.parent];
             if(!['v0.1.2',LEGACY_SCROLLER_REVISION].includes(version) || parent?.opcode!=='event_whenflagclicked')this.note('Arcade background scroll version must be a fixed selection at the start of a green-flag script');
             else this.scrollerVersion=version;
+        }
+        this.characterVersion='v0.1.0';
+        const characterSelectors=project.targets.flatMap(target=>Object.values(target.blocks || {}).filter(block=>block.opcode==='arcade_setCharacterAnimationVersion').map(block=>({target,block})));
+        if(characterSelectors.length>1)this.note('Arcade export requires one character animation version selection');
+        for(const {target,block} of characterSelectors) {
+            const slot=block.inputs?.VERSION?.[1],shadow=typeof slot==='string'?target.blocks[slot]:null;
+            const version=Array.isArray(slot) && slot[0]===10?String(slot[1]):shadow?.shadow?String(Object.values(shadow.fields || {})[0]?.[0]):this.field(block,'VERSION');
+            let parent=target.blocks[block.parent];
+            while(parent && ['looks_hide','arcade_setPalette','arcade_setBackgroundScrollVersion'].includes(parent.opcode))parent=target.blocks[parent.parent];
+            if(!['v0.1.0',LEGACY_CHARACTER_REVISION].includes(version) || parent?.opcode!=='event_whenflagclicked')this.note('Arcade character animation version must be a fixed selection at the start of a green-flag script');
+            else this.characterVersion=version;
         }
         this.requiresCharacterAnimationsPackage = false;
         this.warnings = [];
@@ -185,6 +198,8 @@ class ArcadeEmitter {
         this.imageVars = new Set();
         this.handleVars = new Set();
         this.customSpriteKinds = new Set();
+        this.boundSpriteKinds = new Set();
+        this.hasTextKindLibrary = false;
         this.eventLocationName = null;
         this.eventHandles = null;
         this.eventKind = null;
@@ -778,16 +793,68 @@ class ArcadeEmitter {
         return reporter && (this.isBoolean(reporter) || reporter.opcode==='data_variable') ? this.expr(reporter) : this.value(b,name);
     }
 
+    namedKind (name) {
+        if (['Player','Projectile','Food','Enemy'].includes(name)) return `SpriteKind.${name}`;
+        if (name==='Text' && this.hasTextKindLibrary) {this.requiresTextSpritePackage=true;return 'SpriteKind.Text';}
+        if (this.boundSpriteKinds.has(name)) return `SpriteKind.${name}`;
+        this.note(`Arcade sprite kind name ${JSON.stringify(name)} needs an explicit numeric binding`);
+        return this.na();
+    }
+
     kindExpr (b, name) {
         const kind = this.literalInput(b, name);
-        // Negative PXT kinds are uncollected numeric identities, not custom names.
-        if (kind !== null && Number.isFinite(Number(kind)) && Number(kind) < 0) return String(Number(kind));
-        if (!kind || !/^[A-Za-z_]\w*$/.test(kind)) {
-            this.note(`Arcade kind in ${name} must be a fixed name`);
-            return 'SpriteKind.Player';
+        if (kind!==null) {
+            const text=kind.trim();
+            if (/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) return String(Number(text));
+            return this.namedKind(kind);
         }
-        if (!['Player', 'Enemy', 'Food', 'Projectile'].includes(kind)) this.customSpriteKinds.add(kind);
-        return `SpriteKind.${kind}`;
+        // Connected numeric/nullable reporters are evaluated once by the SDK.
+        // They must never allocate a new kind or become a string label.
+        return this.arrayValue(b,name);
+    }
+
+    collectKindBindings () {
+        const previous=this.blocks;
+        this.hasTextKindLibrary=this.project.targets.some(target=>Object.values(target.blocks || {}).some(block=>/^arcade_textSprite/.test(block.opcode) || block.opcode==='arcade_initializeSpriteKindLibrary' && Array.isArray(block.inputs?.LIBRARY?.[1]) && block.inputs.LIBRARY[1][1]==='textsprite'));
+        for(const target of this.project.targets) {
+            this.blocks=target.blocks || {};
+            for(const block of Object.values(this.blocks)) {
+                if(/^arcade_textSprite/.test(block.opcode))this.hasTextKindLibrary=true;
+                if(block.opcode==='arcade_initializeSpriteKindLibrary') {
+                    const library=this.literalInput(block,'LIBRARY'),version=this.literalInput(block,'VERSION');
+                    if(library==='textsprite' && version==='v1.3.0')this.hasTextKindLibrary=true;
+                    else this.note('Arcade kind library export requires exact Text Sprite v1.3.0');
+                }
+                if(block.opcode==='arcade_bindSpriteKind') {
+                    const name=this.literalInput(block,'NAME');
+                    if(name===null || !/^[A-Za-z_]\w*$/.test(name))this.note('Arcade kind binding export requires a fixed MakeCode identifier');
+                    else if(['Player','Projectile','Food','Enemy'].includes(name) || name==='Text' && this.hasTextKindLibrary)this.note('Arcade builtin/library kind bindings are readonly on MakeCode export');
+                    else this.boundSpriteKinds.add(name);
+                }
+            }
+        }
+        this.validateKindLibraryPlacement();
+        this.blocks=previous;
+    }
+
+    validateKindLibraryPlacement () {
+        for(const target of this.project.targets) {
+            const blocks=target.blocks || {};
+            for(const [id,initializer] of Object.entries(blocks)) {
+                if(initializer.opcode!=='arcade_initializeSpriteKindLibrary')continue;
+                let ancestor=initializer,seen=new Set([id]);
+                while(ancestor.parent && blocks[ancestor.parent] && !seen.has(ancestor.parent)){seen.add(ancestor.parent);ancestor=blocks[ancestor.parent];}
+                if(ancestor.opcode!=='event_whenflagclicked'){this.note('Arcade sprite kind library initialization must be on startup before kind allocation');continue;}
+                const hasAllocation=(block,visited=new Set())=>{
+                    if(!block || visited.has(block))return false;visited.add(block);
+                    if(block.opcode==='arcade_createSpriteKind' || /^arcade_textSprite/.test(block.opcode) || ['procedures_call','arcade_callFunction','control_if','control_if_else','control_repeat','control_repeat_until','control_forever'].includes(block.opcode))return true;
+                    return Object.values(block.inputs || {}).some(input=>typeof input?.[1]==='string' && hasAllocation(blocks[input[1]],visited));
+                };
+                let current=ancestor.next,walk=new Set();
+                while(current && current!==id && !walk.has(current)){walk.add(current);const block=blocks[current];if(hasAllocation(block)){this.note('Arcade sprite kind library export cannot move initialization across kind allocation or conditional/procedure execution');break;}current=block?.next;}
+                if(current!==id && !walk.has(current))this.note('Arcade sprite kind library initializer is not a direct startup command');
+            }
+        }
     }
 
     // ── inputs ───────────────────────────────────────────────────────────
@@ -1005,6 +1072,12 @@ class ArcadeEmitter {
             if (this.isClonable()) args.unshift('self');
             return `${fn}(${args.join(', ')})`;
         }
+        case 'arcade_createSpriteKind':return 'SpriteKind.create()';
+        case 'arcade_spriteKindValue': {
+            const name=this.literalInput(b,'NAME');
+            if(name===null){this.note('Arcade kind lookup export requires a fixed registered name');return this.na();}
+            return this.namedKind(name);
+        }
         case 'arrays_stringFromCharCode':return `${this.use('sdkStrings','__bwSdkCharCode')}(${this.arrayValue(b,'CODE')})`;
         case 'arrays_stringConcat':return `${this.use('sdkStrings','__bwSdkConcat')}(<any>${this.arrayValue(b,'TEXT')}, ${this.arrayValue(b,'OTHER')})`;
         case 'arrays_namedReference': return this.namedArray(b);
@@ -1215,6 +1288,7 @@ class ArcadeEmitter {
             this.requiresCharacterAnimationsPackage = true;
             return `characterAnimations.rule(${names.map(name => `Predicate.${name}`).join(', ')})`;
         }
+        case 'arcade_characterRuleToString': this.requiresCharacterAnimationsPackage = true; return `characterAnimations.ruleToString(${v('RULE')})`;
         case 'arcade_characterMatchesRule': this.requiresCharacterAnimationsPackage = true; return `characterAnimations.matchesRule(${v('SPRITE')}, ${v('RULE')})`;
         case 'arcade_backgroundScrollOffset':
             this.requiresScrollerPackage = true;
@@ -1289,6 +1363,7 @@ class ArcadeEmitter {
         case 'arcade_spriteToString': return `${v('ID')}.toString()`;
         case 'arcade_spriteProperty': {
             const property = this.field(b, 'PROPERTY');
+            if(property==='kind')return `${v('ID')}.kind()`;
             if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data'].includes(property)){this.note(`Arcade sprite property ${property} is unsupported`);return this.na();}
             return `${v('ID')}.${property}`;
         }
@@ -1526,6 +1601,18 @@ class ArcadeEmitter {
         if (/^data_(addtolist|deletealloflist|deleteoflist|insertatlist|replaceitemoflist)$/.test(b.opcode) && this.listStmt(b, push)) return;
         if (this.newStmt(b, push, me, depth, out)) return;
         switch (b.opcode) {
+        case 'arcade_bindSpriteKind': {
+            const name=this.literalInput(b,'NAME');
+            if(!this.boundSpriteKinds.has(name)){push(`// ${this.note('Arcade kind binding needs an exported mutable named kind')}`);return;}
+            push(`SpriteKind.${name} = ${this.arrayValue(b,'KIND')}`);return;
+        }
+        case 'arcade_initializeSpriteKindLibrary': {
+            if(this.literalInput(b,'LIBRARY')!=='textsprite' || this.literalInput(b,'VERSION')!=='v1.3.0') {push(`// ${this.note('Unsupported Arcade sprite kind library version')}`);return;}
+            this.requiresTextSpritePackage=true;
+            // The dependency initializer executes before main. Its placement is
+            // checked separately; emitting another create() would double-allocate.
+            return;
+        }
         case 'arcade_addAnimationFrame':this.requiresAnimationPackage=true;push(`${v('ANIMATION')}.addAnimationFrame(${v('IMAGE')})`);return;
         case 'arcade_attachAnimation':this.requiresAnimationPackage=true;push(`animation.attachAnimation(${v('ID')}, ${v('ANIMATION')})`);return;
         case 'arcade_setAnimationAction':this.requiresAnimationPackage=true;push(`animation.setAction(${v('ID')}, ${this.arrayValue(b,'ACTION')})`);return;
@@ -1826,14 +1913,15 @@ class ArcadeEmitter {
         case 'arcade_setCharacterAnimationsEnabled': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setCharacterAnimationsEnabled(${v('SPRITE')}, ${this.boolValue(b, 'ENABLED')})`); return;
         case 'arcade_setCharacterState': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setCharacterState(${v('SPRITE')}, ${v('RULE')})`); return;
         case 'arcade_clearCharacterState': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.clearCharacterState(${v('SPRITE')})`); return;
-        case 'arcade_setCharacterController': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setController(${v('SPRITE')}, ${this.boolValue(b, 'ENABLED')})`); return;
-        case 'arcade_lockCharacterFacing': {
+        case 'arcade_setCharacterAnimationVersion':this.requiresCharacterAnimationsPackage=true;return;
+        case 'arcade_setCharacterController': if(this.characterVersion===LEGACY_CHARACTER_REVISION){push(`// ${this.note('Legacy character animations do not implement arcade_setCharacterController')}`);return;} this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setController(${v('SPRITE')}, ${this.boolValue(b, 'ENABLED')})`); return;
+        case 'arcade_lockCharacterFacing': { if(this.characterVersion===LEGACY_CHARACTER_REVISION){push(`// ${this.note('Legacy character animations do not implement arcade_lockCharacterFacing')}`);return;}
             const direction = this.field(b, 'DIRECTION');
             if (!['Up', 'Right', 'Down', 'Left'].includes(direction)) { push(`// ${this.note(`Unsupported character facing ${direction}`)}`); return; }
             this.requiresCharacterAnimationsPackage = true;
             push(`characterAnimations.lockFacingDirection(${v('SPRITE')}, characterAnimations.FacingDirection.${direction})`); return;
         }
-        case 'arcade_unlockCharacterFacing': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.unlockFacingDirection(${v('SPRITE')})`); return;
+        case 'arcade_unlockCharacterFacing': if(this.characterVersion===LEGACY_CHARACTER_REVISION){push(`// ${this.note('Legacy character animations do not implement arcade_unlockCharacterFacing')}`);return;} this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.unlockFacingDirection(${v('SPRITE')})`); return;
         case 'arcade_setBackgroundLayerZ': if(this.scrollerVersion===LEGACY_SCROLLER_REVISION){push(`// ${this.note('Legacy Arcade background scroll does not support layer z-index')}`);return;} this.requiresScrollerPackage = true; push(`scroller.setLayerZIndex(${v('LAYER')}, ${v('Z')})`); return;
         case 'arcade_textSpriteSetText': case 'arcade_textSpriteSetMaxFontHeight': case 'arcade_textSpriteSetIcon':
         case 'arcade_textSpriteSetBorder': case 'arcade_textSpriteSetOutline': case 'arcade_textSpriteUpdate': {
@@ -2628,8 +2716,9 @@ class ArcadeEmitter {
                     return id;
                 }
                 if(value.opcode==='arcade_spriteDataReadBoolean'){const id=Symbol('sprite data boolean');booleans.add(id);return id;}
+                if(['arcade_createSpriteKind','arcade_spriteKindValue'].includes(value.opcode)){const id=Symbol('sprite kind number');numbers.add(id);return id;}
                 if(['arrays_stringFromCharCode','arrays_stringConcat'].includes(value.opcode)){const id=Symbol('string primitive');strings.add(id);return id;}
-                if(value.opcode==='arcade_spriteToString') {const id=Symbol('sprite text');strings.add(id);return id;}
+                if(['arcade_spriteToString','arcade_characterRuleToString'].includes(value.opcode)) {const id=Symbol('sprite text');strings.add(id);return id;}
                 if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferFromBase64','arcade_bufferLiteral','arcade_bufferSlice','arcade_bufferConcat','arcade_bufferFromArray','arcade_bufferConcatArray','arcade_bufferPack'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
                 if(['arcade_bufferToArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8','arcade_bufferUnpack'].includes(value.opcode)){const id=`${key}:buffer-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(['arcade_bufferLength','arcade_bufferHash','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf','arcade_bufferFormatSize','arcade_bufferPackedSize'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
@@ -2963,6 +3052,7 @@ class ArcadeEmitter {
     // ── the program ──────────────────────────────────────────────────────
     emit () {
         const out = [];
+        this.collectKindBindings();
         // Scratch's Stage composites transparent backdrop pixels over white.
         // Native Arcade primitives own their scene defaults instead; do not
         // change those programs merely because they also have a Scratch Stage.
@@ -3242,9 +3332,9 @@ class ArcadeEmitter {
         // Declarations: every variable the program touched, then the sprites.
         const decls = [...new Set(this.globals.values())];
         if(this.requiresTextSpritePackage)this.customSpriteKinds.delete('Text');
-        if (this.customSpriteKinds.size) {
+        if (this.boundSpriteKinds.size) {
             out.push('namespace SpriteKind {');
-            for (const kind of this.customSpriteKinds) out.push(`    export const ${kind} = SpriteKind.create()`);
+            for (const kind of this.boundSpriteKinds) out.push(`    export let ${kind}: number`);
             out.push('}');
         }
         for (const n of decls) {
@@ -3470,7 +3560,7 @@ export function projectToArcade (project, opts = {}) {
         'main.ts': projectTs,
         ...assetFiles,
         'pxt.json': `${JSON.stringify({
-            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresTextSpritePackage ? {'arcade-text':'github:microsoft/arcade-text#fa2439314c6633943666a763fdae32a5c67a9ae8'} : {}), ...(e.requiresSpriteDataPackage ? {'arcade-sprite-data':'github:microsoft/arcade-sprite-data#332026d12c46286c7afe59bc4829ccf08471d5b1'} : {}), ...(e.requiresCarnivalPackage ? {'arcade-carnival':'github:microsoft/arcade-carnival#v0.0.7'} : {}), ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': e.scrollerVersion===LEGACY_SCROLLER_REVISION?`github:riknoll/arcade-background-scroll#${LEGACY_SCROLLER_REVISION}`:'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': 'github:microsoft/arcade-character-animations#v0.1.0'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
+            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresTextSpritePackage ? {'arcade-text':'github:microsoft/arcade-text#fa2439314c6633943666a763fdae32a5c67a9ae8'} : {}), ...(e.requiresSpriteDataPackage ? {'arcade-sprite-data':'github:microsoft/arcade-sprite-data#332026d12c46286c7afe59bc4829ccf08471d5b1'} : {}), ...(e.requiresCarnivalPackage ? {'arcade-carnival':'github:microsoft/arcade-carnival#v0.0.7'} : {}), ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': e.scrollerVersion===LEGACY_SCROLLER_REVISION?`github:riknoll/arcade-background-scroll#${LEGACY_SCROLLER_REVISION}`:'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': `github:microsoft/arcade-character-animations#${e.characterVersion}`} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
             files: [...Object.keys(assetFiles), 'main.ts'], preferredEditor: 'tsprj',
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`
