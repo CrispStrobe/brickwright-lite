@@ -1341,7 +1341,14 @@ jobs:
       # would have shown. Deploying is unaffected: the `deploy` job needs `build`
       # to have succeeded, so an artifact from a red run can be downloaded and
       # never published.
-      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+      - name: Write GUI build source manifest
+        if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
+        env:
+          BW_GUI_GIT_EXECUTABLE: /usr/bin/git
+          BW_GUI_REVIEWED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/write-gui-build-manifest.mjs packages/scratch-gui/build
+      - name: Upload GUI Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         if: ${{ !cancelled() && steps.build_editor.outcome == 'success' }}
         with: { path: packages/scratch-gui/build }
 
@@ -3004,8 +3011,84 @@ jobs:
           if-no-files-found: warn
 
 
+  arcade-numeric-authoring:
+    name: Arcade numeric authoring (official build)
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    env:
+      BW_GUI_GIT_EXECUTABLE: /usr/bin/git
+      BW_GUI_RUN_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      BW_GUI_REVIEWED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with: {node-version: 22}
+      - name: Install gate inputs without building or syncing another SDK
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Admit completed producer and acquire sole original archive
+        id: admitted_gui
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/admit-official-gui-artifact.mjs test-results/numeric-gui-admission
+      - name: Bind compiler to admitted artifact SDK
+        env:
+          BW_ADMITTED_SITE: ${{ steps.admitted_gui.outputs.site }}
+        run: |
+          node --input-type=module - <<'JS'
+          import assert from 'node:assert/strict';
+          import {mkdir,symlink,lstat,realpath} from 'node:fs/promises';
+          import path from 'node:path';
+          const parent=path.resolve('packages/scratch-gui/static');
+          const expected=path.join(process.env.BW_ADMITTED_SITE,'static/makecode');
+          const link=path.join(parent,'makecode');
+          await mkdir(parent,{recursive:true});
+          try {await lstat(link);assert.equal(await realpath(link),await realpath(expected),'Existing SDK must already be admitted SDK');}
+          catch(error){if(error.code!=='ENOENT')throw error;await symlink(expected,link);}
+          JS
+      - name: Install Playwright Chromium for production UI and original SDK
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Serve the admitted original app
+        env:
+          BW_ADMITTED_SITE: ${{ steps.admitted_gui.outputs.site }}
+        run: |
+          python3 -m http.server 8617 --directory "$BW_ADMITTED_SITE" &
+          echo "$!" > test-results/numeric-gui-admission/server.pid
+          node --input-type=module - <<'JS'
+          // Same 30-second readiness bound as the existing browser server.
+          const deadline=Date.now()+30000;
+          for(;;){
+            let ready=false;try{ready=(await fetch('http://localhost:8617/',{signal:AbortSignal.timeout(Math.max(1,deadline-Date.now()))})).status===200;}catch{}
+            if(ready)break;
+            if(Date.now()>=deadline)throw new Error('Admitted site did not become ready');
+            await new Promise(resolve=>setTimeout(resolve,100));
+          }
+          JS
+      - name: Actual production IDE numeric/settings/source-loop authoring
+        env:
+          PROOF_URL: http://localhost:8617/
+          BW_GUI_BUILD_RECEIPT: ${{ steps.admitted_gui.outputs.receiptPath }}
+          BW_GUI_BUILD_ARCHIVE: ${{ steps.admitted_gui.outputs.archivePath }}
+          BW_NUMERIC_GUI_REPORT_DIR: test-results/arcade-numeric-authoring-gui
+        run: node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-numeric-authoring-gui.mjs
+      - name: Retain admission and journey failures
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: arcade-numeric-authoring-proof
+          path: |
+            test-results/numeric-gui-admission/metadata.json
+            test-results/numeric-gui-admission/admission.json
+            test-results/numeric-gui-admission/failure.json
+            test-results/numeric-gui-admission/receipt.json
+            test-results/numeric-gui-admission/*.acquisition.json
+            test-results/arcade-numeric-authoring-gui
+          if-no-files-found: error
+
   deploy:
-    needs: [build, unit, corpus, browser, fpga-surface, guard]
+    needs: [build, unit, corpus, browser, fpga-surface, arcade-numeric-authoring, guard]
     # TWO RATCHETS READ THESE EXACT CHARACTERS, so the line's shape is load-bearing
     # even though Actions treats `needs` as an unordered set and ignores comments:
     #   - pages-deploy-ordering matches /needs:\s*(?:build|\[\s*build\b...)/, so
