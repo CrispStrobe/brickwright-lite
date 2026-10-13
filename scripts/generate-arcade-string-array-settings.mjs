@@ -4,6 +4,14 @@ import {createRequire} from 'node:module';
 import {resolve} from 'node:path';
 const root=resolve(import.meta.dirname,'..'),source=readFileSync(resolve(root,'src/compat/arcade-string-array-settings.ts'),'utf8');
 const ts=createRequire(resolve(root,'packages/scratch-gui/package.json'))('typescript');
+const ast=ts.createSourceFile('arcade-string-array-settings.ts',source,ts.ScriptTarget.Latest,true);
+const module=ast.statements[0];
+if(ast.statements.length!==1 || !ts.isModuleDeclaration(module) || module.name.text!=='bwStringArraySettings' ||
+    !ts.isModuleBlock(module.body) || module.body.statements.length!==2 ||
+    new Set(module.body.statements.map(member=>member.name?.text)).size!==2 ||
+    module.body.statements.some(member=>!ts.isFunctionDeclaration(member) || !['read','write'].includes(member.name?.text) ||
+        !member.modifiers?.some(modifier=>modifier.kind===ts.SyntaxKind.ExportKeyword)))
+    throw Error('Owned StringArray replacement must contain only its two exported functions, with no module initializers');
 const compiled=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2018},reportDiagnostics:true});
 if(compiled.diagnostics?.some(d=>d.category===ts.DiagnosticCategory.Error))throw Error('StringArray helper transpilation failed');
 const sha=createHash('sha256').update(source).digest('hex');
