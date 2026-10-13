@@ -73,9 +73,9 @@ G02 still needs its remaining chooser/startup/final-sampling, generation and
 late-poll adversaries; G03 responsive controls and G05 distribution closure remain
 separate lanes. The source merge's
 [main Build](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38305155209)
-passed build, corpus, light/heavy browser, FPGA and deployment checks. Its
-post-deployment GUI verification was still queued at this checkpoint; completion
-of that final publication check is not claimed.
+passed its build, corpus, light/heavy browser, FPGA, deployment and published-GUI
+verification checks. The separate native and vendor main checks also passed.
+These results remain bound to that source merge rather than every later main.
 
 ## What works
 

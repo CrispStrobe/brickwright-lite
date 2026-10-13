@@ -72,6 +72,14 @@ export default [
         featured: true
     },
     {
+        name: 'GPIO Pins',
+        extensionId: 'bwgpio',
+        iconURL: 'static/extension-posters/csp.png',
+        insetIconURL: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHJlY3Qgd2lkdGg9IjQ4IiBoZWlnaHQ9IjQ4IiByeD0iOCIgZmlsbD0iIzJFOEVCOCIvPjx0ZXh0IHg9IjI0IiB5PSIyMCIgZm9udC1zaXplPSIxMCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iI2ZmZiIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiPkdQSU88L3RleHQ+PGcgZmlsbD0iI2ZmZiI+PHJlY3QgeD0iOSIgeT0iMzAiIHdpZHRoPSI0IiBoZWlnaHQ9IjkiLz48cmVjdCB4PSIxNiIgeT0iMzAiIHdpZHRoPSI0IiBoZWlnaHQ9IjkiLz48cmVjdCB4PSIyMyIgeT0iMzAiIHdpZHRoPSI0IiBoZWlnaHQ9IjkiLz48cmVjdCB4PSIzMCIgeT0iMzAiIHdpZHRoPSI0IiBoZWlnaHQ9IjkiLz48cmVjdCB4PSIzNyIgeT0iMzAiIHdpZHRoPSIyIiBoZWlnaHQ9IjkiLz48L2c+PC9zdmc+',
+        description: 'Set and read generic GPIO pins (0–7) — lights the Widgets pane strip; round-trips with the DOS Forth bench.',
+        featured: true
+    },
+    {
         name: 'Arcade',
         extensionId: 'arcade',
         iconURL: 'static/extension-posters/gamepad.png',
@@ -379,6 +387,16 @@ export default [
         ),
         featured: true
     },
+    // Peer sessions (task E11): only in a BW_ENABLE_PEERS=1 build, and usable only in the app.
+    ...(process.env.BW_ENABLE_PEERS === true ? [{
+        name: 'Peer Sessions',
+        extensionId: 'peersessions',
+        iconURL: videoSensingIconURL,
+        insetIconURL: videoSensingInsetIconURL,
+        description: 'Take photos and share projects with paired Brickwright sessions.',
+        featured: true,
+        disabled: typeof window === 'undefined' || !window.__TAURI__
+    }] : []),
     {
         name: (
             <FormattedMessage

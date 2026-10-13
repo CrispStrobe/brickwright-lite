@@ -184,6 +184,63 @@ test('forth: the GPIO words pin!/pin@ read back as set pin / read pin (the devic
     assert.ok(r.pseudocode.includes('IF ((read pin 3) > 0) THEN:'), r.pseudocode);
 });
 
+test('forth: the GPIO blocks generate pin! / pin@ (blocks → Forth)', () => {
+    // The pseudocode the reader writes compiles to the bwgpio_setpin/_readpin
+    // blocks (sb3-creator), and the generator turns those back into pin!/pin@.
+    // This closes the half that was missing: a pin block can now become Forth.
+    const src = [
+        'WHEN flag clicked:',
+        '  set pin 3 high',
+        '  set pin 5 low',
+        '  set pin 2 to 42',
+        '  IF ((read pin 3) > 0) THEN:',
+        '    set pin 4 high',
+        ''
+    ].join('\n');
+    const r = generateForth(project(src));
+    assert.equal(r.ok, true, JSON.stringify(r.reasons));
+    assert.deepEqual(r.warnings, []);
+    assert.ok(r.forth.includes('3 1 pin!'), r.forth);
+    assert.ok(r.forth.includes('5 0 pin!'), r.forth);
+    assert.ok(r.forth.includes('2 42 pin!'), r.forth);
+    assert.ok(r.forth.includes('4 1 pin!'), r.forth);
+    assert.ok(/3 pin@ 0 > if/.test(r.forth), r.forth);
+});
+
+test('forth: set/read pin pseudocode compiles to the bwgpio opcodes', () => {
+    const p = project([
+        'WHEN flag clicked:',
+        '  set pin 3 high',
+        '  set pin 2 to 42',
+        '  IF ((read pin 5) > 0) THEN:',
+        '    set pin 1 low',
+        ''
+    ].join('\n'));
+    const json = JSON.stringify(p);
+    assert.ok(json.includes('bwgpio_setpin'), 'expected a bwgpio_setpin block');
+    assert.ok(json.includes('bwgpio_readpin'), 'expected a bwgpio_readpin block');
+});
+
+test('forth: GPIO pins round-trip Forth → pseudocode → blocks → Forth', () => {
+    const forthSrc = [
+        ': main',
+        '  3 1 pin!',
+        '  5 0 pin!',
+        '  2 42 pin!',
+        '  3 pin@ 0 > if',
+        '    4 1 pin!',
+        '  fi',
+        ';',
+        'main', ''
+    ].join('\n');
+    const pseudo = forthToPseudocode(forthSrc).pseudocode;
+    const r = generateForth(project(pseudo));
+    assert.equal(r.ok, true, JSON.stringify(r.reasons));
+    for (const w of ['3 1 pin!', '5 0 pin!', '2 42 pin!', '4 1 pin!', '3 pin@']) {
+        assert.ok(r.forth.includes(w), `round-trip dropped "${w}":\n${r.forth}`);
+    }
+});
+
 const REFUSE = {
     customArgs: {
         src: 'DEFINE double (n):\n  set result to (n * 2)\nWHEN flag clicked:\n  double 5\n',
