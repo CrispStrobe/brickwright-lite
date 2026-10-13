@@ -1924,3 +1924,28 @@ inputs and test the mandatory runner's error policy separately from unchanged
 optional setup diagnostics. No test gate or historical receipt was weakened.
 Next: complete hosted build/unit/editor proof, then live Buffer collection.
 The immutable corpus remains142 translated /41 partial /1 parse failure.
+
+## Hosted shard/editor followup — 2026-10-13
+
+[PR850](https://github.com/CrispStrobe/brickwright-lite/pull/850)'s first split
+build passed6m57s, unit1 passed16m24s, and unit2 failed16m57s on two audit
+assumptions. Heavy/FPGA passed; light failed on export download. Do not merge
+or treat that combined source as accepted. The checkout audit now validates
+both job-local flasher inputs; the step-ID audit resolves per job with explicit
+cross-job, forward, duplicate, self-outcome and multiline adversaries. Focused
+controls pass28, zero failures/skips. Initial local followup failure counted
+build's separately literal-pinned compiler as another dynamic flasher site;
+its independent full pin remains enforced by the checkout census.
+
+The light script reached real edits, native/controller cycles, Code/Blocks,
+and save/replacement/reopen before the collapsed export action stopped it.
+Open the actual Code actions menu; handle event/action promises together so
+errors reach the final receipt path. Original failed artifact lacks JSON; do
+not fabricate it from control flow. Fresh hosted exported original execution
+still required. Public CI guide records exact run URL and method.
+
+Remote main refreshed to b54f292f88 (peer PR821 merge) during this followup.
+These fixes remain on the isolated candidate; no unrelated main source was
+silently mixed into its tested tree. Integrate refreshed main in a separately
+reviewed step after fixing the current diagnostic, then qualify actual consumer
+pins and the immutable app census. Locked184 remains142/41/1.

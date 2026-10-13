@@ -61,3 +61,32 @@ runtime or throughput. Obtain every enabled exact-head check, both complete
 unit censuses, completed emitted-build guards and the visible editor journey
 before acceptance. Preserve named failures and compare measured durations.
 No whole-app MakeCode compatibility promotion follows from sharding CI.
+
+## First hosted split and audit correction — 2026-10-13
+
+[First split run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38314745493)
+completed build in6m57s and unit legs in16m24s/16m57s. Heavy browser and FPGA
+passed. Unit1 passed; unit2 reported two source-audit failures. The full candidate
+was not qualified. These observations establish reached job durations, not a
+repeatable performance ratio or completed editor acceptance.
+
+The checkout census assumed one dynamically pinned flasher checkout; the new
+unit and retained build each legitimately require one. Both job bodies now
+independently prove the full-SHA validator precedes their checkout. Extra moving
+or unknown refs still fail. Build's separate literal-pinned compiler checkout
+remains distinct and must retain its own full pin.
+
+The old step-outcome audit flattened all IDs across a workflow. A build step
+with the same ID overwrote the earlier unit step and produced false forward
+references. `scripts/lib/workflow-step-refs.mjs` resolves declarations and
+conditions per job. Controls reject sibling-only IDs, later local declarations,
+duplicate local IDs, same-step outcomes and multiline missing references;
+identical IDs in separate jobs are valid. Every workflow is still checked.
+
+The light browser reached actual Buffer field edits, all three controller
+cycles, Code reconstruction and saved-project replacement/reopen, then timed
+out waiting for an export download. Its export action was inside a collapsed
+Code actions menu. The script now opens that menu and handles action/event
+promises together so failure observation and screenshot recording can complete.
+The original artifact contains SB3 and a reached screenshot but no failure JSON;
+preserve that absence. Fresh full GUI export/original-runtime proof is required.

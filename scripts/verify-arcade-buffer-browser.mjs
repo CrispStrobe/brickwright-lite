@@ -114,22 +114,24 @@ try {
   assert.match(decompiled,/number UInt16BE at 0/);assert.match(decompiled,/number \(format\) at 0 to 43981/);
   report.decompiled=decompiled;await apply();await cycle('code-blocks-reconstruction');
   await page.getByText('File',{exact:true}).first().click();
-  const saved=page.waitForEvent('download');await page.getByText('Save to your computer',{exact:true}).click();
-  const archive=path.join(path.dirname(out),'buffer-edits.sb3');await(await saved).saveAs(archive);
+  const [saved]=await Promise.all([page.waitForEvent('download'),page.getByText('Save to your computer',{exact:true}).click()]);
+  const archive=path.join(path.dirname(out),'buffer-edits.sb3');await saved.saveAs(archive);
   const zip=await JSZip.loadAsync(await fs.readFile(archive));const project=JSON.parse(await zip.file('project.json').async('text'));
   const blocks=project.targets.flatMap(t=>Object.values(t.blocks));
   assert.ok(blocks.some(b=>b.opcode==='arcade_menu_bufferFormats'&&b.fields.bufferFormats[0]==='UInt16BE'));
   // Replace with the unedited source before loading, so the reopened edit cannot
   // pass by reading the already edited workspace or retained mutable heap.
   await codeTab();await editor.fill(BUFFER_CONTROLLER_CODE);await apply();
-  await page.getByText('File',{exact:true}).first().click();const chooser=page.waitForEvent('filechooser');
-  await page.getByText('Load from your computer',{exact:true}).click();await(await chooser).setFiles(archive);
+  await page.getByText('File',{exact:true}).first().click();const [chooser]=await Promise.all([page.waitForEvent('filechooser'),page.getByText('Load from your computer',{exact:true}).click()]);
+  await chooser.setFiles(archive);
   const replace=page.getByRole('button',{name:'Replace',exact:true});if(await replace.isVisible().catch(()=>false))await replace.click();
   await page.waitForFunction(()=>window.Blockly.getMainWorkspace().getAllBlocks(false).some(b=>b.type==='arcade_menu_bufferFormats'&&b.getFieldValue('bufferFormats')==='UInt16BE'));
   await cycle('saved-and-reopened');report.journey.push('real controller A/B/down → Code/Blocks reconstruction → File save/replacement/reopen → controller repeat');
   await page.screenshot({path:path.join(path.dirname(out),'buffer-native-blocks.png')});
-  await codeTab();const exported=page.waitForEvent('download');await page.getByTestId('bw-makecode-arcade-export').click();
-  const download=await exported;assert.match(download.suggestedFilename(),/\.mkcd$/);
+  await codeTab();const actions=page.getByTestId('bw-code-actions');
+  if(await actions.getAttribute('open')===null)await actions.locator('summary').click();
+  await page.getByTestId('bw-makecode-arcade-export').waitFor({state:'visible'});
+  const [download]=await Promise.all([page.waitForEvent('download'),page.getByTestId('bw-makecode-arcade-export').click()]);assert.match(download.suggestedFilename(),/\.mkcd$/);
   const mkcd=path.join(path.dirname(out),'buffer-export.mkcd');await download.saveAs(mkcd);
   const embedded=await unpackMakeCodeSource(await fs.readFile(mkcd));assert.ok(embedded.files?.['main.ts']);
   await fs.writeFile(path.join(path.dirname(out),'buffer-export.ts'),embedded.files['main.ts']);
