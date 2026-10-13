@@ -4744,7 +4744,12 @@ module.exports = makeExt(`// Name: Arcade
     }
     tileLocationProperty(args) {
       const location = this._tileLocation(args.LOCATION);
-      if (!location) return 0;
+      if (!location) throw new TypeError('Expected type Location but received type null. Did you forget to assign a variable?');
+      const property=String(args.PROPERTY);
+      if (property==='column' || property==='col') return location.column;
+      if (property==='row') return location.row;
+      if (!this._state().tilemapInitialized)
+        throw new TypeError("Cannot read properties of undefined (reading 'fields')");
       const map = this._state().tilemap, size = map?.tileSize || this._state().tilemapScale || 16;
       const scale = Math.log2(size), x = location.column << scale, y = location.row << scale;
       switch (String(args.PROPERTY)) {
@@ -4756,7 +4761,9 @@ module.exports = makeExt(`// Name: Arcade
       case 'top': return y;
       case 'right': return x + size;
       case 'bottom': return y + size;
-      case 'tileSet': return map ? this._tileIndex(location, map) : 0;
+      case 'tileSet':
+        if (!map) throw new TypeError('Expected type TileMapData but received type null. Did you forget to assign a variable?');
+        return this._tileIndex(location, map);
       default: return 0;
       }
     }
@@ -4800,8 +4807,12 @@ module.exports = makeExt(`// Name: Arcade
       return map.views[index];
     }
     tilesOfType(args) {
-      const map = this._state().tilemap, index = this._tileImageIndex(map, this._image(args.IMAGE));
-      const locations = [];
+      const state=this._state(),map=state.tilemap,image=this._image(args.IMAGE);
+      // PXT distinguishes an absent scene TileMap from a TileMap whose data
+      // was cleared. Its image lookup dereferences null data in the latter.
+      if (image && !map && state.tilemapInitialized)
+        throw new TypeError("Cannot read properties of null (reading 'fields')");
+      const index=this._tileImageIndex(map,image),locations = [];
       if (index >= 0) for (let column = 0; column < map.columns; column++)
         for (let row = 0; row < map.rows; row++) if (map.indices[row*map.columns+column] === index)
           locations.push(this.tileLocation({COLUMN:column, ROW:row}));
@@ -4809,12 +4820,15 @@ module.exports = makeExt(`// Name: Arcade
     }
     tileAtLocation(args) {
       const map = this._state().tilemap, location = this._tileLocation(args.LOCATION);
-      if (!map || !location) return this._imageHandle({width:0,height:0,pixels:new Uint8Array(0)});
+      if (!location || !this._state().tilemapInitialized) return Scratch.BWValues.encode(null);
+      if (!map) throw new TypeError('Expected type TileMapData but received type null. Did you forget to assign a variable?');
       return this._imageHandle(this._tileImage(map, this._tileIndex(location, map)));
     }
     tileIs(args) {
       const map = this._state().tilemap, location = this._tileLocation(args.LOCATION), image = this._image(args.IMAGE);
-      return Boolean(map && location && image && this._tileIndex(location,map) === this._tileImageIndex(map,image));
+      if (!location || !image || !this._state().tilemapInitialized) return false;
+      if (!map) throw new TypeError('Expected type TileMapData but received type null. Did you forget to assign a variable?');
+      return this._tileIndex(location,map) === this._tileImageIndex(map,image);
     }
     spriteTileKindAt(args) {
       const sprite=this._sprite(args.ID),map=this._state().tilemap,image=this._image(args.IMAGE);
@@ -4948,11 +4962,11 @@ module.exports = makeExt(`// Name: Arcade
     }
     setTilemap(args) {
       const decoded = Scratch.BWValues.decode(args.DATA);
-      if (decoded === null || decoded === '') {this._ensureTilemapRenderable('modern');delete this._state().tilemap;this._clearTilemap();this._changed();return;}
+      if (decoded === null || decoded === '') {this._ensureTilemapRenderable('modern');this._state().tilemapInitialized=true;delete this._state().tilemap;this._clearTilemap();this._changed();return;}
       let data;
       try {
         data = JSON.parse(String(decoded));
-        if (data === null) {this._ensureTilemapRenderable('modern');delete this._state().tilemap;this._clearTilemap();this._changed();return;}
+        if (data === null) {this._ensureTilemapRenderable('modern');this._state().tilemapInitialized=true;delete this._state().tilemap;this._clearTilemap();this._changed();return;}
         if (!Number.isInteger(data.columns) || !Number.isInteger(data.rows) || data.columns < 0 || data.rows < 0 ||
           data.columns > 65535 || data.rows > 65535 || ![4,8,16,32].includes(data.tileSize) ||
           !Array.isArray(data.indices) || data.indices.length !== data.columns*data.rows ||
