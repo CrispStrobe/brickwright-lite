@@ -175,6 +175,7 @@ module.exports = makeExt(`// Name: Arcade
           for (const [id, entry] of this._imageSkins) if (entry.target === target) this._clearImage(id);
           for (const [id, entry] of this._speech) if (entry.target === target) this._clearSpeech(id);
         });
+        runtime._attachArcadeFramePhase?.(this);
       }
     }
 
@@ -1144,6 +1145,7 @@ module.exports = makeExt(`// Name: Arcade
       this._physicsEngines.set(id,engine);return engine;
     }
     _ensureSceneEngine(state) {
+      if(state.elapsedMs===undefined)state.elapsedMs=0;
       if(this._sceneValues.get(state._sceneValueId)!==state){state._sceneValueId='arcade-scene:'+(++this._nextSceneValue);this._sceneValues.set(state._sceneValueId,state);}
       if(this._physicsEngines.get(state.physicsEngine?.id)!==state.physicsEngine || !state.physicsEngine)state.physicsEngine=this._newPhysicsEngine();
     }
@@ -1718,6 +1720,7 @@ module.exports = makeExt(`// Name: Arcade
       thread.bwFunctionNames = new Set(util.thread?.bwFunctionNames || []);
       const recursive = thread.bwFunctionNames.has(name) || util.thread?.stack.some(id=>target.blocks.getBlock(id)?.mutation?.proccode===name);
       thread.bwFunctionNames.add(name);
+      runtime._arcadeFramePhase?.linkManagedCall(thread,util.thread);
       if (util.sequencer === runtime.sequencer && !recursive) {
         const caller = util.thread, sequencer = util.sequencer, active = sequencer.activeThread;
         try {

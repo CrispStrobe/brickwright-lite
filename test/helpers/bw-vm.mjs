@@ -190,7 +190,7 @@ function variableSnapshot (vm) {
  */
 export async function stepFrames(vm, frames, frameMs = 1000 / 30) {
     for (let i = 0; i < frames; i++) {
-        vm.runtime._step(frameMs);
+        await vm.runtime._step(frameMs);
         await new Promise(resolve => setImmediate(resolve));
     }
 }

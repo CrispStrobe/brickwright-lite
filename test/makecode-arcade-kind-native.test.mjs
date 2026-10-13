@@ -170,7 +170,9 @@ game.onUpdate(function(){
     const run=await runProgram(imported.code,{frames:0,uploads:imported.costumes,storage:true});
     const value=name=>run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name===name)?.value;
     try {
-        for(let i=0;value('traceDone')!==true&&i<30;i++)await stepFrames(run.vm,1,20);
+        let now=0;run.vm.stopAll();run.vm.runtime.bwArcadeProgramClock={now:()=>now};
+        run.vm.runtime.updateCurrentMSecs=()=>{run.vm.runtime.currentMSecs=now;};run.vm.runtime.currentMSecs=0;run.vm.greenFlag();
+        for(let i=0;value('traceDone')!==true&&i<30;i++){now=i*20;await stepFrames(run.vm,1,i?20:0);}
         assert.deepEqual(run.errors,[]);
         const nativeTrace=String(value('trace')).split(';').filter(Boolean).map(row=>row.split(',').map(Number));
         const originalTrace=original.trace.split(';').filter(Boolean).map(row=>row.split(',').map(Number));

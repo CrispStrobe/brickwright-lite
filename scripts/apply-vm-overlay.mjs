@@ -15,6 +15,7 @@ import {patchArcadeSettingsSB3} from './lib/arcade-settings-sb3-hooks.mjs';
 const ROOT = process.cwd();
 const SRC = path.join(ROOT, 'overlay', 'scratch-vm');
 const DEST = path.join(ROOT, 'packages', 'scratch-gui', 'node_modules', 'scratch-vm');
+const vmOnly = process.argv.includes('--vm-only');
 
 if (!existsSync(DEST)) {
     console.error(`node_modules/scratch-vm missing at ${DEST} — run npm install first.`);
@@ -43,13 +44,41 @@ const arcadeFramePatched = `    _step (arcadeDeltaMs) {
         this._arcadeFrameTime = arcadeNow;
         this.emit('ARCADE_FRAME', arcadeElapsed);
 `;
-if (!rt.includes(arcadeFramePatched)) {
+const arcadePhaseKernel = arcadeFramePatched.replace('    _step (arcadeDeltaMs)',
+    '    _stepArcadeKernel (arcadeDeltaMs)');
+if (!rt.includes(arcadeFramePatched) && !rt.includes(arcadePhaseKernel)) {
     const anchor = rt.includes(arcadeFrameLegacy) ? arcadeFrameLegacy : arcadeFrameAnchor;
     if (!rt.includes(anchor)) throw new Error('runtime.js Arcade frame anchor not found');
     rt = rt.replace(anchor, arcadeFramePatched);
     writeFileSync(runtimePath, rt);
     console.log('  patched runtime.js (elapsed Arcade frame clock)');
 }
+// Delegate only projects with explicit source entry/loops or native callback
+// hats. Other projects retain the original synchronous sequencer entry.
+const arcadePhaseImport = "const ArcadeFramePhase = require('../extensions/crispstrobe/arcade/frame-phase');\n";
+if (!rt.includes(arcadePhaseImport)) {
+    const importAnchor = "const Thread = require('./thread');\n";
+    if (!rt.includes(importAnchor)) throw new Error('runtime.js Arcade phase import anchor not found');
+    rt = rt.replace(importAnchor, importAnchor + arcadePhaseImport);
+}
+const arcadePhaseEntry = `    _attachArcadeFramePhase (extension) {
+        if (this._arcadeFramePhase?.ext === extension) return;
+        this._arcadeFramePhase?.detach();
+        this._arcadeFramePhase = new ArcadeFramePhase(this, extension);
+    }
+
+    _step (arcadeDeltaMs) {
+        const phase = this._arcadeFramePhase;
+        if (phase?.hasSourceProject()) return phase.requestStep(arcadeDeltaMs);
+        return this._stepArcadeKernel(arcadeDeltaMs);
+    }
+
+`;
+if (!rt.includes(arcadePhaseKernel)) {
+    if (!rt.includes(arcadeFramePatched)) throw new Error('runtime.js Arcade phase entry anchor not found');
+    rt = rt.replace(arcadeFramePatched, arcadePhaseEntry + arcadePhaseKernel);
+}
+writeFileSync(runtimePath, rt);
 for (const anchor of ['        this.emit(Runtime.PROJECT_START);', '        this.currentStepTime = interval;']) {
     const patched = '        this._arcadeFrameTime = undefined;\n' + anchor;
     if (!rt.includes(patched)) {
@@ -616,6 +645,12 @@ if (vm2.includes('Brickwright E3b: only a Scratch 1 signature')) {
 // Trim locale data: editor-msgs.js is 3.9 MiB with 80 locales; brickwright-lite ships only
 // en + de. Extract those two at build-prep time so webpack aliases to a 81 KiB file instead.
 // This runs here (post-install) because node_modules/scratch-l10n is needed.
+// Focused source qualification may use an owned VM projection with other
+// dependencies linked read-only. Stop before worker builds or GUI/locale writes.
+if (vmOnly) {
+    console.log('  VM-only overlay complete; GUI and linked locale dependencies untouched');
+    process.exit(0);
+}
 const GUI = path.join(ROOT, 'packages', 'scratch-gui');
 
 // scratch-gui's webpack config copies extension-worker.js from scratch-vm's prebuilt dist tree.
