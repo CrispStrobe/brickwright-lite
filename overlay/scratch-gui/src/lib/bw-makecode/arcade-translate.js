@@ -652,6 +652,8 @@ class ArcadeTranslator extends BaseTranslator {
     callExpression (node) {
         const importedBuffer=this.bufferExpression(node);
         if(importedBuffer!==null)return importedBuffer;
+        const settingsValue=this.settingsExpression(node);
+        if(settingsValue!==null)return settingsValue;
         const dataApi=this.path(node.callee),dataArgs=node.args||[];
         const dataRead=/^sprites\.readData(Number|String|Boolean|Sprite)$/.exec(dataApi||'');
         if(this.handleTemplates && dataRead && !this.bindsName('sprites')) {
@@ -1271,6 +1273,7 @@ class ArcadeTranslator extends BaseTranslator {
                 return;
             }
         }
+        if(this.settingsStatement(name,a,push))return;
         // Lite's own export's stop machinery, lifted back by liftExporterStops.
         if (name === '__bwStopAll') { push('stop all'); return; }
         if (name === '__bwStopOthers') { push('stop other scripts in sprite'); return; }
@@ -1831,6 +1834,29 @@ class ArcadeTranslator extends BaseTranslator {
 
     // effects.<name> as one of PXT's ParticleEffect instances.
     /** A program binding (global, function, local, parameter or capture) named `name`. */
+    settingsExpression(node) {
+        if(!this.handleTemplates || node?.type!=='Call')return null;
+        const api=this.path(node.callee),match=/^(settings|blockSettings)\.(read(Number|String|NumberArray|Buffer)|exists|list|remove|clear|write(Number|String|NumberArray|Buffer))$/.exec(api||'');
+        if(!match || this.bindsName(match[1]))return null;
+        const method=match[2],a=node.args||[];
+        if(method==='exists' && a.length===1)return `arcade setting (${this.expr(a[0])}) exists`;
+        if(method==='list' && a.length<=(match[1]==='blockSettings'?0:1))return `arcade read setting (${a[0]?this.expr(a[0]):'""'}) type List`;
+        if(match[3] && a.length===1)return `arcade read setting (${this.expr(a[0])}) type ${match[3]}`;
+        if(this.settingsStatement(api,a,line=>this.pre.push(line)))return 'undefined value';
+        this.note(`${api} arguments do not match the original Settings API`);return 'undefined value';
+    }
+    settingsStatement(api,a,push) {
+        if(!this.handleTemplates)return false;
+        const match=/^(settings|blockSettings)\.(write(Number|String|NumberArray|Buffer)|remove|clear)$/.exec(api||'');
+        if(!match || this.bindsName(match[1]))return false;
+        const method=match[2];
+        if(match[3] && a.length===2)push(`arcade write setting (${this.expr(a[0])}) type ${match[3]} value (${this.arrayElementValue(a[1])})`);
+        else if(method==='remove' && a.length===1)push(`arcade remove setting (${this.expr(a[0])})`);
+        else if(method==='clear' && !a.length)push('arcade clear user settings');
+        else push(this.note(`${api} arguments do not match the original Settings API`));
+        return true;
+    }
+
     bufferFormat(node) {
         if(node?.type==='Member' && node.object?.name==='NumberFormat' && !this.bindsName('NumberFormat')) {
             if(BUFFER_FORMATS.includes(node.name))return node.name;
@@ -3016,6 +3042,14 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
         if (node?.type === 'Call') {
             const api = pathOf(node.callee);
             if(['mp.playerSelector','mp.getPlayerByNumber','mp.getPlayerByIndex','mp.getPlayerBySprite'].includes(api))return new Set(['player']);
+            const settingRead=/^(?:settings|blockSettings)\.(read(Number|String|NumberArray|Buffer)|exists|list)$/.exec(api||'');
+            if(settingRead){
+                if(settingRead[1]==='list')return new Set(['array','string-array']);
+                if(settingRead[1]==='exists')return new Set(['boolean']);
+                if(settingRead[2]==='NumberArray')return new Set(['array','number-array']);
+                if(settingRead[2]==='Number')return new Set(['number']);
+                if(settingRead[2]==='String')return new Set(['string']);
+            }
             const dataRead=/^sprites\.readData(Number|String|Boolean|Sprite)$/.exec(api||'');
             if(dataRead && node.args.length===2)return new Set([dataRead[1].toLowerCase()]);
             if(api==='mp.getPlayerSprite')return new Set(['sprite']);
@@ -3114,7 +3148,7 @@ const inferImageReferences = (ast, pathOf, imageOf) => {
             const name={image:'Image',sprite:'Sprite',tile:'TileLocation','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',array:'array'}[type];
             if(name)graph.add(value,name);
         }
-        if(node.type==='Template' && node.tag==='hex' || node.type==='Call' && ['control.createBuffer','control.createBufferFromUTF8','Buffer.fromHex','Buffer.fromUTF8'].includes(pathOf(node.callee)))graph.add(value,'Buffer');
+        if(node.type==='Template' && node.tag==='hex' || node.type==='Call' && ['control.createBuffer','control.createBufferFromUTF8','Buffer.fromHex','Buffer.fromUTF8','settings.readBuffer','blockSettings.readBuffer'].includes(pathOf(node.callee)))graph.add(value,'Buffer');
         if(node.type==='Call' && pathOf(node.callee)==='mp.allPlayers'){graph.add(value,'array');graph.add(graph.element(value),'Player');}
         if(node.type==='Call' && pathOf(node.callee)==='sprites.allOfKind'){graph.add(value,'array');graph.add(graph.element(value),'Sprite');}
         if(node.type==='Call' && pathOf(node.callee)==='scene.getTilesByType'){graph.add(value,'array');graph.add(graph.element(value),'LegacyTile');}
@@ -3520,6 +3554,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
         if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || ['game.ask','game.askForString','game.askForNumber','controller.pauseUntilAnyButtonIsPressed'].includes(t.path(node.callee))))return true;
+        if(node.type==='Call' && /^(?:settings|blockSettings)\.(?:(?:write|read)(?:Number|String|NumberArray|Buffer)|exists|list|remove|clear)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^sprites\.(?:(?:set|read)Data(?:Number|String|Boolean|Sprite)|changeDataNumberBy)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && t.path(node.callee)==='MultiplayerState.create')return true;
         if(node.type==='Call' && /^controller\.player[1-4]\.(?:moveSprite|stopControllingSprite)$/.test(t.path(node.callee)||''))return true;

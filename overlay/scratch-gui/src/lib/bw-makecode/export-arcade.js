@@ -864,7 +864,7 @@ class ArcadeEmitter {
     isBoolean (b) {
         return !!b && ['arrays_valueTruthy','arrays_valueCompare','arrays_referenceRemove','arrays_referenceTruthy', 'arrays_contains', 'operator_and', 'operator_or', 'operator_not', 'operator_gt', 'operator_lt', 'operator_equals',
             'sensing_touchingobject', 'sensing_keypressed', 'sensing_mousedown', 'data_listcontainsitem',
-            'arcade_spriteDataReadBoolean', 'arcade_bufferIsReadOnly', 'arcade_bufferEquals', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_spriteTileKindAt', 'arcade_imageEquals', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
+            'arcade_settingsExists', 'arcade_spriteDataReadBoolean', 'arcade_bufferIsReadOnly', 'arcade_bufferEquals', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_spriteTileKindAt', 'arcade_imageEquals', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
     }
 
     menuField (b, input, field) {
@@ -1093,6 +1093,13 @@ class ArcadeEmitter {
         case 'arcade_bufferToText': return `${v('BUFFER')}.toString()`;
         case 'arcade_songFromBuffer': return `music.createSong(${v('BUFFER')})`;
         case 'arcade_cloneImage': return `${v('IMAGE')}.clone()`;
+        case 'arcade_settingsRead': {
+            const type=this.menuField(b,'TYPE','settingReadTypes') || this.literalInput(b,'TYPE');
+            if(type==='List')return `settings.list(${v('KEY')})`;
+            if(!['Number','String','NumberArray','Buffer'].includes(type)){this.note('Settings requires a fixed supported read type');return 'undefined';}
+            return `settings.read${type}(${v('KEY')})`;
+        }
+        case 'arcade_settingsExists': return `settings.exists(${v('KEY')})`;
         case 'arcade_spriteDataRead': {
             this.requiresSpriteDataPackage=true;
             const type=this.menuField(b,'TYPE','spriteDataReadTypes') || this.literalInput(b,'TYPE');
@@ -2146,6 +2153,13 @@ class ArcadeEmitter {
             return;
         }
         case 'arcade_log': push(`console.log(${this.arrayValue(b, 'TEXT')})`); return;
+        case 'arcade_settingsWrite': {
+            const type=this.menuField(b,'TYPE','settingWriteTypes') || this.literalInput(b,'TYPE');
+            if(!['Number','String','NumberArray','Buffer'].includes(type)){push(this.note('Settings requires a fixed supported write type'));return;}
+            push(`settings.write${type}(${v('KEY')}, ${v('VALUE')})`);return;
+        }
+        case 'arcade_settingsRemove': push(`settings.remove(${v('KEY')})`);return;
+        case 'arcade_settingsClear': push('settings.clear()');return;
         case 'arcade_spriteDataSet': {
             this.requiresSpriteDataPackage=true;
             const type=this.menuField(b,'TYPE','spriteDataTypes') || this.literalInput(b,'TYPE');
@@ -2534,6 +2548,13 @@ class ArcadeEmitter {
                 if (!value) return null;
                 if(value.opcode==='arrays_namedReference'){const id='named-array:'+literal(blocks,value,'NAME');arrays.add(id);return id;}
                 if(['arrays_parseLegacyValue','arrays_jsonValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
+                if(value.opcode==='arcade_settingsExists'){const id=Symbol('setting exists');booleans.add(id);return id;}
+                if(value.opcode==='arcade_settingsRead'){
+                    const menu=inputBlock(blocks,value,'TYPE'),type=menu?.fields?.settingReadTypes?.[0] || literal(blocks,value,'TYPE'),id=Symbol('setting value');
+                    if(type==='Number')numbers.add(id);else if(type==='String')strings.add(id);else if(type==='Buffer')graphBufferValues.add(id);
+                    else if(type==='NumberArray' || type==='List'){arrays.add(id);const item=Symbol('setting array item');(type==='NumberArray'?numbers:strings).add(item);elements.push([id,item]);}
+                    else anys.add(id);return id;
+                }
                 if(value.opcode==='arcade_spriteDataRead') {
                     const menu=inputBlock(blocks,value,'TYPE'),type=menu?.fields?.spriteDataReadTypes?.[0] || literal(blocks,value,'TYPE');
                     const id=Symbol('sprite data value');
@@ -2671,6 +2692,11 @@ class ArcadeEmitter {
                         // even when CAPTURES only names newly owned locals.
                         captureLinks.push([`${scope}:capture:${name}`,!explicit.has(name) || captured && !local?`${key}:capture:${name}`:localKey(name)]);
                     }
+                }
+                if(block.opcode==='arcade_settingsWrite'){
+                    const menu=inputBlock(blocks,block,'TYPE'),type=menu?.fields?.settingWriteTypes?.[0] || literal(blocks,block,'TYPE'),value=ref(inputBlock(blocks,block,'VALUE'));
+                    if(type==='NumberArray' && value){arrays.add(value);const item=Symbol('setting write item');numbers.add(item);elements.push([value,item]);}
+                    if(type==='Buffer' && value)graphBufferValues.add(value);
                 }
                 if(block.opcode==='arcade_setSpriteProperty' && literal(blocks,block,'PROPERTY')==='data') {
                     const id=Symbol('sprite data assignment');dataProperties.push([ref(inputBlock(blocks,block,'ID')),id]);

@@ -292,6 +292,11 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'bufferUnpack',blockType:Scratch.BlockType.REPORTER,text:'Arcade unpack byte buffer [BUFFER] format [FORMAT] at [OFFSET]',arguments:{...str('BUFFER',''),...str('FORMAT','<BH'),...n('OFFSET',0)}},
           {opcode:'bufferPackAt',blockType:Scratch.BlockType.COMMAND,text:'Arcade pack number array [ARRAY] into byte buffer [BUFFER] at [OFFSET] format [FORMAT]',arguments:{...str('ARRAY',''),...str('BUFFER',''),...n('OFFSET',0),...str('FORMAT','<BH')}},
           {opcode:'bufferFromArray',blockType:Scratch.BlockType.REPORTER,text:'Arcade byte buffer from number array [ARRAY]',arguments:str('ARRAY','')},
+          {opcode:'settingsWrite',blockType:Scratch.BlockType.COMMAND,text:'Arcade write setting [KEY] type [TYPE] value [VALUE]',arguments:{...str('KEY',''),...str('VALUE',''),TYPE:{type:Scratch.ArgumentType.STRING,menu:'settingWriteTypes',defaultValue:'Number'}}},
+          {opcode:'settingsRead',blockType:Scratch.BlockType.REPORTER,text:'Arcade read setting [KEY] type [TYPE]',arguments:{...str('KEY',''),TYPE:{type:Scratch.ArgumentType.STRING,menu:'settingReadTypes',defaultValue:'Number'}}},
+          {opcode:'settingsExists',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade setting [KEY] exists',arguments:str('KEY','')},
+          {opcode:'settingsRemove',blockType:Scratch.BlockType.COMMAND,text:'Arcade remove setting [KEY]',arguments:str('KEY','')},
+          {opcode:'settingsClear',blockType:Scratch.BlockType.COMMAND,text:'Arcade clear user settings'},
           {opcode:'spriteDataSet',blockType:Scratch.BlockType.COMMAND,text:'Arcade set sprite [ID] data [KEY] type [TYPE] to [VALUE]',arguments:{...str('ID',''),...str('KEY',''),...str('VALUE',''),TYPE:{type:Scratch.ArgumentType.STRING,menu:'spriteDataTypes',defaultValue:'Number'}}},
           {opcode:'spriteDataRead',blockType:Scratch.BlockType.REPORTER,text:'Arcade sprite [ID] data [KEY] type [TYPE]',arguments:{...str('ID',''),...str('KEY',''),TYPE:{type:Scratch.ArgumentType.STRING,menu:'spriteDataReadTypes',defaultValue:'Number'}}},
           {opcode:'spriteDataReadBoolean',blockType:Scratch.BlockType.BOOLEAN,text:'Arcade sprite [ID] boolean data [KEY]',arguments:{...str('ID',''),...str('KEY','')}},
@@ -835,6 +840,8 @@ module.exports = makeExt(`// Name: Arcade
           ,animationProperties: {acceptReporters: false, items: ['image', 'action', 'interval']}
           ,animationTypes: {acceptReporters: true, items: [{text:'all',value:'0'}, {text:'image',value:'1'}, {text:'movement',value:'2'}]}
           ,imageProperties: {acceptReporters: false, items: ['width', 'height']}
+          ,settingWriteTypes:{acceptReporters:false,items:['Number','String','NumberArray','Buffer']}
+          ,settingReadTypes:{acceptReporters:false,items:['Number','String','NumberArray','Buffer','List']}
           ,spriteDataTypes:{acceptReporters:false,items:['Number','String','Boolean','Sprite']}
           ,spriteDataReadTypes:{acceptReporters:false,items:['Number','String','Sprite']}
           ,bufferFormats: {acceptReporters: true, items: Object.keys(dependencies.buffers.NumberFormat).filter(key=>!/^\\d+$/.test(key))}
@@ -874,6 +881,38 @@ module.exports = makeExt(`// Name: Arcade
       });
       return state._mpPlayers;
     }
+    _settingsStore() {
+      const stage=this._runtime.getTargetForStage();
+      if(!this._settingsBinding || this._settingsBinding.stage!==stage){
+        const options={changed:()=>this._runtime.emitProjectChanged?.()};
+        if(Object.prototype.hasOwnProperty.call(this._runtime,'bwArcadeSettingsStorage'))options.storage=this._runtime.bwArcadeSettingsStorage;
+        this._settingsBinding={stage,store:dependencies.createProgramSettings(stage,options)};
+      }
+      return this._settingsBinding.store;
+    }
+    _settingsGuard(work,boolean=false){try{return work();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',error.message);return boolean?false:Scratch.BWValues.encode(undefined);}}
+    settingsWrite(args){return this._settingsGuard(()=>{
+      const type=args.TYPE,key=Scratch.BWValues.decode(args.KEY);
+      let value=Scratch.BWValues.decode(args.VALUE);
+      if(type==='NumberArray'){value=Scratch.BWValues.arrayValue(this._runtime,args.VALUE);if(!value || value.some(v=>typeof Scratch.BWValues.decode(v)!=='number'))throw new Error('Arcade settings require a number array');value=value.map(v=>Scratch.BWValues.decode(v));}
+      else if(type==='Buffer')value=this._buffer(args.VALUE);
+      else if(type==='Number' && typeof value!=='number' || type==='String' && typeof value!=='string')throw new Error('Arcade setting value type does not match');
+      if(!['Number','String','NumberArray','Buffer'].includes(type))throw new Error('Arcade setting type is not supported');
+      this._settingsStore().call('write'+type,key,value);
+    });}
+    settingsRead(args){return this._settingsGuard(()=>{
+      const type=args.TYPE,key=Scratch.BWValues.decode(args.KEY);
+      if(!['Number','String','NumberArray','Buffer','List'].includes(type))throw new Error('Arcade setting read type is not supported');
+      const value=this._settingsStore().call(type==='List'?'list':'read'+type,key);
+      if(type==='List')return Scratch.BWValues.arrayReference(this._runtime,value.data);
+      if(type==='NumberArray' && Array.isArray(value))return Scratch.BWValues.arrayReference(this._runtime,value);
+      if(type==='Buffer' && value)return this._bufferReference(value);
+      return Scratch.BWValues.encode(value);
+    });}
+    settingsExists(args){return this._settingsGuard(()=>this._settingsStore().call('exists',Scratch.BWValues.decode(args.KEY)),true);}
+    settingsRemove(args){return this._settingsGuard(()=>this._settingsStore().call('remove',Scratch.BWValues.decode(args.KEY)));}
+    settingsClear(){return this._settingsGuard(()=>this._settingsStore().call('clear'));}
+
     // Original v0.0.5 helpers run unchanged over the owned Sprite data object.
     // The facade supplies its historical data() accessor; values retain aliases.
     _spriteDataCall(args,method,value) {
@@ -4817,6 +4856,7 @@ module.exports = makeExt(`// Name: Arcade
   Scratch.extensions.register(new Arcade(Scratch.vm && Scratch.vm.runtime));
 })(Scratch);
 `, {
+  createProgramSettings: require('./program-settings').createProgramSettings,
   initializeSpriteData: require('./sprite-data-pxt'),
   createSpeechEngine: require('./speech'),
   initializeSpeech: require('./speech-pxt'),

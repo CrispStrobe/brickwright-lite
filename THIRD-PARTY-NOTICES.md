@@ -2216,3 +2216,14 @@ Copyright (c) Microsoft Corporation. Original source, license and provenance:
 `overlay/scratch-vm/src/extensions/crispstrobe/arcade/sprite-data-source/`.
 The adapter covers the original nine Number, String, Boolean and
 Sprite methods; arbitrary object data and Image/array methods are separate.
+
+## Arcade typed Settings byte storage
+
+The generated `settings-pxt.js` retains the pinned Arcade 4.2.1 bundle's
+PXT common-package Settings, MessagePack and simulator storage algorithms
+under MIT, copyright Microsoft Corporation. Existing pxt-common-packages
+notices apply; input SHA256 values are retained in the generated header.
+`scripts/generate-arcade-settings.mjs --check` verifies the reviewed inputs.
+The application storage host uses the existing program-owned identity, device
+records and portable SB3 snapshots; physical flash and SDK startup scopes are
+separate qualification boundaries.
