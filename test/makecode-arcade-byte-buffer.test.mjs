@@ -79,3 +79,115 @@ test('byte allocation limits apply before allocation and unsupported numeric for
     subarray.setByte(0, 9); assert.equal(bytes[2], 9);
     assert.equal(subarray.length, 4);
 });
+
+test('UTF8 construction and decoding match original MakeCode for Unicode and malformed bytes', async () => {
+    const {fromUTF8, fromHex} = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer.js');
+    const texts = ['', '0012', 'A\0B', 'A€🙂', '\ud800', '\udc00', '\ud800A', '\ufeffA'];
+    const malformed = ['efbbbf41', 'c0af', 'e282', 'eda080', 'f0808080', '80', '00ff41'];
+    const source = 'let encoded = ""\nlet decoded = ""\n' + texts.map(text =>
+        `encoded += Buffer.fromUTF8(${JSON.stringify(text)}).toHex() + ";"`
+    ).join('\n') + '\n' + malformed.map(hex =>
+        `decoded += Buffer.fromHex("${hex}").toString() + ";"`
+    ).join('\n');
+    const original = await runPxtArcade(source);
+    assert.equal(texts.map(text => fromUTF8(text).toHex() + ';').join(''), original.encoded);
+    assert.equal(malformed.map(hex => fromHex(hex).toString() + ';').join(''), original.decoded);
+    const bytes = fromUTF8('A€🙂');
+    assert.equal(bytes.length, 8);
+    bytes.setByte(0, 66);
+    assert.equal(bytes.toString(), 'B€🙂');
+});
+
+test('UTF8 allocation bounds count encoded bytes before invoking TextEncoder', () => {
+    const {fromUTF8} = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer.js');
+    assert.equal(fromUTF8('a'.repeat(MAX_BUFFER_BYTES)).length, MAX_BUFFER_BYTES);
+    assert.equal(fromUTF8('🙂'.repeat(MAX_BUFFER_BYTES / 4)).length, MAX_BUFFER_BYTES);
+    const OriginalEncoder = globalThis.TextEncoder;
+    globalThis.TextEncoder = class {encode() {assert.fail('oversized input reached byte allocation');}};
+    try {
+        for (const text of ['a'.repeat(MAX_BUFFER_BYTES + 1), '€'.repeat(Math.floor(MAX_BUFFER_BYTES / 3) + 1),
+            '🙂'.repeat(MAX_BUFFER_BYTES / 4 + 1), '\ud800'.repeat(Math.floor(MAX_BUFFER_BYTES / 3) + 1)])
+            assert.throws(() => fromUTF8(text), /byte allocation limit/);
+        assert.throws(() => fromUTF8(12), /Expected UTF8 text/);
+    } finally {globalThis.TextEncoder = OriginalEncoder;}
+});
+
+test('public Buffer readonly introspection matches original construction, aliases and detached slices', async () => {
+    const {fromHex, fromUTF8, literal} = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer.js');
+    const source = `let fixed = hex\`01020304\`
+let alias = fixed
+let copy = fixed.slice(1, 2)
+let dynamic = Buffer.fromHex("01020304")
+let utf8 = Buffer.fromUTF8("A€")
+let allocated = control.createBuffer(4)
+let fixedReadonly = fixed.isReadOnly()
+let aliasReadonly = alias.isReadOnly()
+let copyReadonly = copy.isReadOnly()
+let dynamicReadonly = dynamic.isReadOnly()
+let utf8Readonly = utf8.isReadOnly()
+let allocatedReadonly = allocated.isReadOnly()
+copy[0] = 99
+let fixedHex = fixed.toHex()
+let copyHex = copy.toHex()`;
+    const original = await runPxtArcade(source);
+    const fixed = literal('01020304'), alias = fixed, copy = fixed.slice(1, 2);
+    const actual = {fixedReadonly:fixed.isReadOnly(), aliasReadonly:alias.isReadOnly(),
+        copyReadonly:copy.isReadOnly(), dynamicReadonly:fromHex('01020304').isReadOnly(),
+        utf8Readonly:fromUTF8('A€').isReadOnly(), allocatedReadonly:new PxtBuffer(4).isReadOnly()};
+    copy.setByte(0, 99);
+    actual.fixedHex = fixed.toHex(); actual.copyHex = copy.toHex();
+    for (const [name, value] of Object.entries(actual)) assert.equal(value, original[name], name);
+    assert.throws(() => alias.setByte(0, 99), /read only buffer/);
+});
+
+test('original common-package Buffer helpers regenerate with checked indexed reads', () => {
+    execFileSync(process.execPath, ['scripts/generate-arcade-buffer-helpers.mjs', '--check'], {stdio:'pipe'});
+});
+
+test('Buffer byte search and equality match original for empty needles, zeros, bounds and null', async () => {
+    const {fromHex, equals} = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer.js');
+    const cases = [['',''], ['0102000301',''], ['010203',''], ['010203','01020304'],
+        ['0102010203','010203'], ['010203','02'], ['010203','ff'], ['0000','00'],
+        ['010203','010203'], ['010203','010204']];
+    const source = 'let trace = ""\nlet left: Buffer = null\nlet right: Buffer = null\n' + cases.flatMap(([a,b]) => [
+        `left = Buffer.fromHex("${a}")`, `right = Buffer.fromHex("${b}")`,
+        'trace += left.indexOf(right) + ":" + left.equals(right) + ";"'
+    ]).join('\n') + '\nlet absent: Buffer = null\nlet bothAbsent = absent.equals(null)\nlet oneAbsent = left.equals(null)';
+    const original = await runPxtArcade(source);
+    const trace = cases.map(([a,b]) => {
+        const left = fromHex(a), right = fromHex(b);
+        return left.indexOf(right) + ':' + left.equals(right) + ';';
+    }).join('');
+    assert.equal(trace, original.trace);
+    assert.equal(trace.split(';')[1], '2:false');
+    assert.equal(trace.split(';')[2], '3:false');
+    assert.equal(equals(null, null), original.bothAbsent);
+    assert.equal(fromHex('010203').equals(null), original.oneAbsent);
+});
+
+test('Buffer concatenation matches original detached mutable result and respects allocation limits', async () => {
+    const {fromHex, literal} = require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/buffer.js');
+    const original = await runPxtArcade(`let left = hex\`010203\`
+let right = Buffer.fromHex("aabb")
+let combined = left.concat(right)
+let another = left.concat(right)
+let concatenated = combined.toHex()
+let readonlyResult = combined.isReadOnly()
+let distinctResults = combined !== another
+combined[0] = 99
+right[0] = 77
+let afterLeft = left.toHex()
+let afterRight = right.toHex()
+let afterCombined = combined.toHex()
+let afterAnother = another.toHex()
+let empty = Buffer.fromHex("").concat(Buffer.fromHex("")).length`);
+    const left = literal('010203'), right = fromHex('aabb'), combined = left.concat(right), another = left.concat(right);
+    const actual = {concatenated:combined.toHex(), readonlyResult:combined.isReadOnly(), distinctResults:combined !== another};
+    combined.setByte(0, 99); right.setByte(0, 77);
+    Object.assign(actual, {afterLeft:left.toHex(), afterRight:right.toHex(), afterCombined:combined.toHex(),
+        afterAnother:another.toHex(), empty:fromHex('').concat(fromHex('')).length});
+    for (const [name,value] of Object.entries(actual)) assert.equal(value,original[name],name);
+    const big = new PxtBuffer(MAX_BUFFER_BYTES);
+    assert.equal(big.concat(new PxtBuffer(0)).length, MAX_BUFFER_BYTES);
+    assert.throws(() => big.concat(new PxtBuffer(1)), /byte allocation limit/);
+});
