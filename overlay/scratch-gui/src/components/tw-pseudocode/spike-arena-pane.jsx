@@ -2,6 +2,7 @@ import React from 'react';
 import {compileFirmwareProgram} from '../../lib/spike-arena/firmware-program.js';
 import {RenodeArenaSession} from '../../lib/spike-arena/renode-arena-session.js';
 import {encodePython, encodeInstructions} from '../../lib/spike-nuttx/upload-protocol.js';
+import {dualUltrasonicRobot} from '../../lib/spike-nuttx/motor-topology.js';
 import {encodeSource} from '../../lib/spike-micropython/raw-repl.js';
 import {createNativeRenodeCapabilities} from 'scratch-vm/src/extension-support/native-renode-capability.js';
 import {connectVirtualSpike} from '../../lib/virtual-hub/connect-virtual-spike.js';
@@ -472,6 +473,10 @@ class SpikeArenaPane extends React.Component {
             throw new Error(this.locale === 'de' ? 'Sechs Motoren benötigen NuttX oder MicroPython im Sandkasten.' :
                 'Six motors require NuttX or MicroPython in the sandbox.');
         }
+        if (topology === 'dual-ultrasonic' && (!this.state.sandbox || this.state.execution !== 'nuttx')) {
+            throw new Error(this.locale === 'de' ? 'Zwei Ultraschallsensoren benötigen NuttX im Sandkasten.' :
+                'Dual ultrasonic requires NuttX in the sandbox.');
+        }
         // Compile before stopping a running session: unsupported blocks never run a demo.
         if (['program', 'nuttx'].includes(this.state.execution) && !program && source === null) program = compileFirmwareProgram(this.vm, {topology});
         if (source !== null) (micro ? encodeSource : encodePython)(source);
@@ -497,6 +502,11 @@ class SpikeArenaPane extends React.Component {
         if (this.disposed) throw new Error('The arena pane is closed');
         this.hubState.setSimulationEnabled(true);
         if (topology === 'six-motors') this.bridge = new ArenaHubBridge({hubState: this.hubState, world: this.world, robot: {sensors: []}});
+        if (topology === 'dual-ultrasonic') {
+            this.hubState.setPort('D', 'none');
+            this.bridge = new ArenaHubBridge({hubState: this.hubState, world: this.world, robot: dualUltrasonicRobot()});
+        }
+        this.arenaFirmwareTopology = topology;
         this.bridge.reset();
         const capabilities = this.nativeCapabilities();
         const backend = micro ? 'micropython' : source !== null || this.state.execution === 'nuttx' ? 'nuttx' : 'guest';
@@ -603,10 +613,11 @@ class SpikeArenaPane extends React.Component {
         const firmware = this.firmwareSession;
         this.firmwareSession = null;
         if (firmware) await firmware.stop();
-        if (this.state.topology === 'six-motors' && this.bridge?.robot.sensors.length === 0 && this.world) {
+        if (this.bridge && this.world && ['six-motors', 'dual-ultrasonic'].includes(this.arenaFirmwareTopology)) {
             this.hubState.setPort('F', 'none');
             this.bridge = new ArenaHubBridge({hubState: this.hubState, world: this.world});
         }
+        this.arenaFirmwareTopology = null;
         this.clock.uninstall();
         if (restart) this.setState({status: 'ready'});
         const external = this.hubState?.externalBackend;
@@ -643,7 +654,7 @@ class SpikeArenaPane extends React.Component {
     }
 
     async loadReferenceSolution () {
-        if (this.state.topology === 'six-motors') {
+        if (this.state.topology !== 'default') {
             this.setState({message: this.locale === 'de' ? 'Lektionsvorlagen benötigen die Standardgeräte mit Sensoren.' : 'Lesson templates require the default devices with sensors.'});
             return;
         }
@@ -803,7 +814,7 @@ class SpikeArenaPane extends React.Component {
                         <select aria-label={this.locale === 'de' ? 'Ausführung' : 'Execution'} data-testid="bw-spike-arena-execution"
                             value={this.state.execution} disabled={status === 'choosing' || status === 'starting'} onChange={async event => {
                                 const execution = event.target.value; await this.stopProgram();
-                                if (!this.disposed) this.setState({execution, topology: ['nuttx', 'micropython'].includes(execution) ? this.state.topology : 'default', status: 'ready', message: ''});
+                                if (!this.disposed) this.setState({execution, topology: execution === 'nuttx' || (execution === 'micropython' && this.state.topology !== 'dual-ultrasonic') ? this.state.topology : 'default', status: 'ready', message: ''});
                             }}>
                             <option value="native">{this.locale === 'de' ? 'Simulator' : 'Simulator'}</option>
                             <option value="renode" disabled={!this.props.renodeCapabilities && !window.__TAURI_INTERNALS__}>
@@ -834,11 +845,16 @@ class SpikeArenaPane extends React.Component {
                                 onChange={event => {
                                     if (this.firmwareSession || this.state.status === 'starting') return;
                                     const topology = event.target.value;
-                                    if (topology === 'default' || (topology === 'six-motors' && this.state.sandbox)) this.setState({topology});
+                                    if (topology === 'default' || (topology === 'six-motors' && this.state.sandbox) ||
+                                        (topology === 'dual-ultrasonic' && this.state.sandbox && this.state.execution === 'nuttx')) this.setState({topology});
                                 }}>
                                 <option value="default">{this.locale === 'de' ? 'Standard: A/B-Motoren und Sensoren' : 'Default: A/B motors and sensors'}</option>
                                 <option value="six-motors" disabled={!this.state.sandbox}>{this.locale === 'de' ? 'Sechs Motoren A–F (Sandkasten)' : 'Six motors A–F (sandbox)'}</option>
+                                <option value="dual-ultrasonic" disabled={!this.state.sandbox || this.state.execution !== 'nuttx'}>{this.locale === 'de' ? 'Ultraschall E/F (NuttX-Sandkasten)' : 'Ultrasonic E/F (NuttX sandbox)'}</option>
                             </select>
+                            {this.state.topology === 'dual-ultrasonic' ? <span style={{fontSize: 12, flex: '1 1 240px'}} data-testid="bw-spike-dual-ultrasonic-hint">
+                                {this.locale === 'de' ? 'Benötigt ein aktuelles NuttX-Paket mit adressierten Sensoren. A/B bewegen den Roboter, C ist Farbe, E/F sind Abstand, D ist frei.' : 'Requires an updated NuttX package with addressed sensors. A/B drive the rover, C is color, E/F are distance, D is detached.'}
+                            </span> : null}
                             {this.state.topology === 'six-motors' ? <span style={{fontSize: 12, flex: '1 1 240px'}} data-testid="bw-spike-six-motor-hint">
                                 {this.state.execution === 'micropython' ? (this.locale === 'de' ? 'Benötigt ein Image mit bwspike und aktualisierte Simulator-Unterstützung. Motoren A–F über bwspike verwenden. A/B bewegen den Roboter; C–F sind zusätzliche Motoren. Keine Arena-Sensoren.' : 'Requires an image containing bwspike and updated simulator support. Use bwspike for motors A–F. A/B drive the rover; C–F are extra motors. No arena sensors.') : this.locale === 'de' ? 'Benötigt ein NuttX-Paket mit sechs Motoren. Scratch-Motorbefehle unterstützen A–F; Positionsbewegungen verwenden einen Motor. Mehrportbefehle laufen nacheinander, ohne synchronisierten Start. A/B bewegen den Roboter; C–F sind zusätzliche Motoren. Keine Arena-Sensoren.' :
                                     'Requires a six-motor NuttX package. Scratch motor commands support A–F; position moves use one motor. Multiport commands execute sequentially, without synchronized starts. A/B drive the rover; C–F are extra motors. No arena sensors.'}

@@ -1,0 +1,14 @@
+{
+  "note": "zForth (Ico Doornekamp / zevv), a tiny embeddable Forth \u2014 a small C VM plus a Forth-source bootstrap (core.zf) that defines the language \u2014 cross-compiled to a 16-bit MS-DOS MZ .EXE with ia16-elf-gcc. DOS-native: runs on the bw-board 8086 DOS bench, reads PROG.FTH via INT 21h, prints via the C library. dosmain.c embeds core.zf (language only; misc.zf FizzBuzz demo + memaccess.zf asserts excluded), prints a banner, then reads/evaluates PROG.FTH. The program body the Code tab generates lives in a `: main \u2026 ; main` word (zForth if/else/fi + begin/until are compile-only). zf_cell is float \u2192 medium model (like fe.exe). Packaged as media-lab project projects/forth-dos; fetch.sh reproduces it byte-for-byte. ia16-elf-gcc is GPL but build-time only; the binary links permissive newlib + libi86. GPIO bridge: dosmain.c also defines two prelude words, pin! ( pin value -- ) and pin@ ( pin -- value ), implemented as user syscalls (132/133 sys) that do an 8086 OUT/IN to 0x378+pin (the classic LPT1 data port; 8 pins 0x378..0x37f). They are inert unless a program calls them, so every existing Forth program is byte-for-byte unchanged except for the two extra words; the banner is unchanged. The i8086 bench fires machine.hooks.onPortAccess on every OUT, so a `set pin N high/low` Code-tab program lights an 8-pin GPIO strip widget (the bw-fpga-leds/bw-fpga-output pump). Reproduced byte-for-byte by media-lab projects/forth-dos (lane/forth-dos-gpio-20261012, PR #32).",
+  "rom": "forth.exe",
+  "upstream": "github.com/zevv/zForth",
+  "commit": "41db72d165c1539d57f3f79970fc57ea881a79dc",
+  "license": "MIT",
+  "holder": "Ico Doornekamp (zevv)",
+  "buildTool": "ia16-elf-gcc -mcmodel=medium -march=any_186 -O2",
+  "bytes": 124096,
+  "sha256": "b941d46c3172df9876027bc2b8472382bd4cb04a85654ff2c8f30ff10dc0774d",
+  "licenseFile": "../licenses/zForth.MIT.txt",
+  "licenseSha256": "236c96ba448f732e78bc2fcf2fa64b4c56c181300df776cbaa3a1d407c3f888e",
+  "upstreamLicense": "https://github.com/zevv/zForth/blob/41db72d165c1539d57f3f79970fc57ea881a79dc/LICENSE"
+}

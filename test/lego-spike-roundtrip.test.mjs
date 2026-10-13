@@ -273,9 +273,11 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 50721b3b (2026-10-10): darts and corgio words; runtime words unchanged.
     // -> 6e548a69 (2026-10-10): background scroller words; runtime words unchanged.
     // -> 44d11124 (2026-10-10): character animation words, with producer main merged; runtime words unchanged.
+    // -> b2195604 (2026-10-12): generic GPIO pin dialect (set pin N / read pin N -> bwgpio_*), main merged; runtime words unchanged.
     // -> 06341e3d (2026-10-11): three Carnival grammar words; all SPIKE artifact assertions rerun.
+    // -> e8c6dd5a (2026-10-13): producer main with both of the above merged (sb3-creator #93); all SPIKE artifact assertions rerun.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '06341e3dd0f5ddfbed6764ec5afe03b04b65e265');
+        'e8c6dd5a6c0b26e6538424f4c26a857b386f3c17');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
