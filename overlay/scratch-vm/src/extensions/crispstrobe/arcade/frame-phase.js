@@ -17,11 +17,18 @@ class ArcadeFramePhase {
         this.nativeCallbackOpcodes=new Set(ext.getInfo().blocks.filter(b=>b.blockType==='hat').map(b=>'arcade_'+b.opcode));
         this.cancel=()=>{this.generation++;this.pending=null;this.queuedDelta=null;};
         this.dispose=()=>{this.disposed=true;this.cancel();};
-        for(const event of ['PROJECT_START','PROJECT_STOP_ALL','PROJECT_LOADED'])runtime.on(event,this.cancel);
+        // Runtime.dispose clears a project during loadProject as well as on
+        // teardown. A successful load reuses this runtime and cached extension;
+        // only its new generation may resume scheduling. Detached drivers no
+        // longer receive this event and cannot be revived by a later load.
+        this.loaded=()=>{this.cancel();this.disposed=false;};
+        for(const event of ['PROJECT_START','PROJECT_STOP_ALL'])runtime.on(event,this.cancel);
+        runtime.on('PROJECT_LOADED',this.loaded);
         runtime.on('RUNTIME_DISPOSED',this.dispose);
     }
     detach() {
-        for(const event of ['PROJECT_START','PROJECT_STOP_ALL','PROJECT_LOADED'])this.runtime.off(event,this.cancel);
+        for(const event of ['PROJECT_START','PROJECT_STOP_ALL'])this.runtime.off(event,this.cancel);
+        this.runtime.off('PROJECT_LOADED',this.loaded);
         this.runtime.off('RUNTIME_DISPOSED',this.dispose);
         this.dispose();
     }
