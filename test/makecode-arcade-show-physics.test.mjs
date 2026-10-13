@@ -42,3 +42,24 @@ test('actual renderer overlays reuse one drawable, follow z order, and clean up 
  a.setSpriteFlag({ID:id,FLAG:'ShowPhysics',ON:false});a._composeSceneFrame();assert.equal(a._inst._particleOverlays.size,0);assert.ok(calls.destroySkin>=1);assert.ok(calls.destroyDrawable>=1);
  a.setSpriteFlag({ID:id,FLAG:'ShowPhysics',ON:true});a._composeSceneFrame();assert.equal(a._inst._particleOverlays.size,1);a.destroySprite({ID:id});a._composeSceneFrame();assert.equal(a._inst._particleOverlays.size,0);
 });
+
+test('supported ShowPhysics source survives native Code, fresh SB3, original export and reimport with its exact mask',async()=>{
+ const {arcadeToPseudocode}=await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
+ const {projectToArcade}=await import('../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js');
+ const {runProgram,stepFrames,clearStrayTimers}=await import('./helpers/bw-vm.mjs');
+ const files={'main.ts':'let actor=sprites.create(img`2222\n2222\n2222\n2222`,SpriteKind.Player);actor.setPosition(40,50);actor.setFlag(SpriteFlag.ShowPhysics,true);let flags=actor.flags;let ready=1;ready+=0;','pxt.json':JSON.stringify({name:'owned-show-physics-roundtrip',dependencies:{device:'*'},files:['main.ts']})};
+ const original=await runPxtArcade(files);assert.equal(original.flags,64);assert.equal(original.ready,1);
+ const imported=arcadeToPseudocode(files);assert.deepEqual(imported.unsupported,[]);assert.match(imported.code,/arcade set flag ShowPhysics/);
+ const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^(?:Game_)+/,''),v.value]));
+ const check=run=>{assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);assert.equal(values(run).flags,64);assert.equal(values(run).ready,1);};
+ const runs=[];
+ try{
+  const native=await runProgram(imported.code,{frames:50,storage:true,uploads:imported.costumes});runs.push(native);check(native);
+  const code=await runProgram(native.creator.decompile(),{frames:50,storage:true,uploads:imported.costumes});runs.push(code);check(code);
+  const archive=Buffer.from(await(await native.vm.saveProjectSb3()).arrayBuffer());await native.vm.loadProject(archive);native.vm.greenFlag();await stepFrames(native.vm,50);check(native);
+  const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(archive);fresh.vm.greenFlag();await stepFrames(fresh.vm,50);assert.deepEqual(fresh.errors,[]);assert.equal(values(fresh).flags,64);assert.equal(values(fresh).ready,1);
+  const exported=projectToArcade(native.creator.project,{costumeSvg:(t,c)=>native.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/setFlag\(SpriteFlag\.ShowPhysics,/);
+  const out=await runPxtArcade(exported.files);assert.equal(out.flags??out.Game_flags,64);assert.equal(out.ready??out.Game_ready,1);
+  const again=arcadeToPseudocode(exported.files);assert.deepEqual(again.unsupported,[]);const reimport=await runProgram(again.code,{frames:50,storage:true,uploads:again.costumes});runs.push(reimport);check(reimport);
+ }finally{for(const run of runs)run.vm.quit();clearStrayTimers();}
+});
