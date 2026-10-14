@@ -28,8 +28,10 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
     const save=(value,prefix)=>{const name=fresh();prefix.push(declaration(name,value));return id(name);};
     const namespaces=staticSdkNamespaceReceivers(program);
     const namespace=node=>namespaces.has(node);
-    // A compound target is evaluated before its right operand. Calls can
-    // mutate the receiver, index or old value even when neither side is lazy.
+    // Selected PXT keeps ordinary target reads deferred while a lazy RHS emits
+    // its statements; complex indexes can also be read twice. Calls can mutate
+    // the receiver, index or old value. Preserve this measured staging instead
+    // of applying ordinary JavaScript compound-assignment sequencing here.
     const hasEffects=node=>{
         if(!node || typeof node!=='object' || node.type==='FunctionExpression')return false;
         if(node.type==='Call'){
