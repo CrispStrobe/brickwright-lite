@@ -7,7 +7,7 @@ import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
  * Source: microsoft/pxt v13.2.1 pxtcompiler/emitter/emitter.ts (MIT).
  * The original selected worker execution remains the semantic authority.
  */
-export function lowerPxtStagedValues(program) {
+export function lowerPxtStagedValues(program, {isStaticResource = () => false} = {}) {
     const names=new Set();
     const scan=node=>{
         if(!node || typeof node!=='object')return;
@@ -66,6 +66,12 @@ export function lowerPxtStagedValues(program) {
     };
     function expression(node) {
         if(!node)return {prefix:[],value:node};
+        // Fully decoded SDK resource factories are compile-time values. Keep
+        // their literal aggregate representation for resource lowering instead
+        // of turning its private tile list into an unrelated runtime array.
+        // The caller must validate the complete factory, and lexical namespace
+        // resolution prevents a user method from gaining this treatment.
+        if(node.type==='Call' && namespace(node.callee?.object) && isStaticResource(node))return {prefix:[],value:node};
         if(node.type==='FunctionExpression')return {prefix:[],value:{...node,body:body(node.body),...(node.originalBody?{originalBody:body(node.originalBody)}:{})}};
         if(node.type==='Update' && ['Identifier','Member','Index'].includes(node.argument?.type)) {
             changed=true;
