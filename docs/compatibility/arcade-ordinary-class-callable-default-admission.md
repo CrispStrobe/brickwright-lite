@@ -19,7 +19,12 @@ The first profile covers ordinary, explicitly constructed typed classes with
 straight-line constructors and methods; callable fields storing owned Arrows;
 and a method with one unconstrained type parameter such as
 `apply<T>(action: (state: State) => T): T`. Concrete invocations must independently
-prove Number or String results and exact argument signatures. Renamed classes,
+prove Number or String results and exact argument signatures. Every actual call
+must have its complete argument mapping: missing, extra or optional arguments
+cannot be filled from annotations. Non-void callback/method results require
+proved returns on every admitted path; implicit fallthrough is genuine Undefined
+and must never be fabricated as Number, String or a callable. Constructors and
+proved void calls retain their actual undefined completion. Renamed classes,
 methods, fields, parameters and locals have identical eligibility. No particular
 class name, helper spelling, package or source annotation grants eligibility.
 
@@ -82,7 +87,7 @@ Required refusals include:
   method, nested function, generic constraint, foreign reference or unknown API.
 - An annotated State producer returning Sprite, Font, Array or an opaque value;
   an alias cycle without allocation; a later foreign or incompatible writer.
-- One shared generic procedure invoked with a wrong callback argument or result;
+- One shared generic procedure invoked with a wrong callback argument or result, missing actual arguments or a non-void body falling through Undefined;
   changed constructor callable signature; missing or duplicated parameter mapping.
 - A callback formal overwritten with String, an unbound local read, a forward
   read, readonly assignment from a constructor-created Arrow, or private access
