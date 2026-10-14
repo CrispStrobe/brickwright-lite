@@ -4362,3 +4362,18 @@ This section supersedes the earlier pending scalar/default and numeric GUI entri
 | Directed scalar export flow | Assignment, argument and result constraints preserve original types without merging opaque references into scalar/index privileges | Show precise type diagnostics at edited blocks and Code locations; signature completion |
 
 The canonical inventory now has 370 forms at merged supplier `8796b76eeb6d89a40d8f73bdffd8e78984796770`. Combined scalar/staging/accessor/field/flag controls pass 11 tests; the new source requires fresh official GUI qualification. Typed Sprite/Image/array/class reference preinitialization is separately claimed and not yet admitted. Captured callable values, dynamic callee order, event bus, multiplayer registration and full custom rendering remain ongoing. A class/accessor designer and Pixel image/animation/tile-map workflows still need genuine game edit/replay evidence. Preserve the existing detailed surface/task records above.
+
+## Circle drawing portable checkpoint — 2026-10-14
+
+Image and Sprite-image circle commands have separate radius inputs and fixed
+outline/fill menus in the 393-command canonical vocabulary. The selected original
+57-case pixel matrix, aliases/clones, Code, same/fresh saved-project, executed
+MakeCode export and reimport control passes. Editing the standard radius input
+is reflected in Code, saved execution and export. See the
+[circle contract and evidence boundary](ARCADE-CIRCLE-DRAWING.md).
+
+Remaining GUI work: expose both commands clearly in the palette and Code
+completion, exercise radius edits through actual Scratch Blocks, test connected
+Image/Sprite references and handler parameters, and preserve authored costume
+pixels separately from live circle mutations in the graphics editor. Browser
+authoring remains pending; native schema presence is not its completion.

@@ -236,3 +236,23 @@ with typed Image writers; the complete native
 artwork/editor/save test passes against byte-identical retained original input
 and observations, without another original execution. These are focused results,
 not a new full-shard count or a corpus promotion.
+
+## Subsequent composed checks
+
+The [focused check at composed source](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38630804698/job/116083332275)
+`28bb7c07051d8f8990ba96de11ab18859f5c44d0` reports 496 controls:
+495 pass and one fails. The failure is the tracked extension-manager mirror
+being stale relative to the lazy-loader source. The mirror is now refreshed
+from that owned source, together with the newly adopted canonical compiler
+mirrors. The unchanged HEAD-blob identity gate passes locally. Other current
+hosted diagnostics still need their exact-source results.
+
+The named Array procedure-result export gap now has a narrow current-graph
+proof: uniquely bound target-owned zero-argument procedures must have complete
+scalar return producers. Unknown, native-reference, mixed, parameter-dependent,
+recursive, missing and duplicate bindings stay refused. Nine affected pure
+controls and the original named-operation native/export/reimport control pass.
+One actual changed export preserves all five original values, including five
+argument evaluations and the distinct NaN includes/indexOf results. All nine
+SDK/bridge guards remain unchanged; this grants no general callable or Any
+result admission. The original export and reimport refusals remain retained.

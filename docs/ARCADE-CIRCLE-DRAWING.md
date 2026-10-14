@@ -67,9 +67,21 @@ predicted and landed trees match. The consumer adopts merge
 retaining its existing STM32 changes and all other dependency pins. The generated
 vocabulary has 393 canonical commands and 398 spellings including aliases.
 
-Three focused native pixel, Blocks-schema and import controls pass. Full native
-portable qualification is still in progress: the first complete-matrix route
-was terminated before reporting a result. Preserve that failure and locate its
-first incomplete phase before claiming Code, project or export compatibility.
-Edited Blocks inputs and visible browser authoring remain pending. The pixel
-checkpoint does not admit a whole extension or game.
+Three focused native pixel, Blocks-schema and import controls pass. The full
+portable control additionally passes native execution, Code reconstruction,
+same-session and fresh-session saved SB3, executed MakeCode export and reimport.
+The exported program exactly matches the actual compiler input. Its 60 Images
+match all 4,860 complete original pixels, including aliases and clones. All nine
+SDK/bridge guards remain unchanged. A separate edited standard radius input
+control passes: Code, saved-project execution and exported source use radius
+three and match the selected original radius-three pixels.
+
+The initial full-route probe failed because its observer read the extension
+wrapper instead of the native instance and then formatted a large VM object.
+A later ownership check exposed the shared dispatch service name after another
+VM loaded. The corrected observer captures each actual native instance
+immediately and checks its runtime owner across reloads. Preserve these failures;
+they do not establish a drawing implementation fault or authorize SDK changes.
+
+Visible browser authoring and graphics-editor journeys remain pending. These
+focused controls do not admit a whole extension or game.
