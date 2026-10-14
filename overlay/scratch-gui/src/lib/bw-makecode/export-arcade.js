@@ -2360,6 +2360,13 @@ class ArcadeEmitter {
         }
         case 'arcade_returnValue': push(`return ${this.arrayValue(b,'VALUE')}`);return;
         case 'arcade_setImagePixel': push(`${v('IMAGE')}.setPixel(${v('X')}, ${v('Y')}, ${v('COLOR')})`);return;
+        case 'arcade_drawImageCircle':
+        case 'arcade_drawSpriteCircle': {
+            const operation=this.field(b,'OP');
+            if(!['drawCircle','fillCircle'].includes(operation)){this.note(`Unsupported Arcade circle operation ${operation}`);return;}
+            const image=b.opcode==='arcade_drawImageCircle'?v('IMAGE'):`${v('ID')}.image`;
+            push(`${image}.${operation}(${v('X')}, ${v('Y')}, ${v('RADIUS')}, ${v('COLOR')})`);return;
+        }
         case 'arcade_drawImage': {
             const op=this.field(b,'OP');if(!['fillRect','drawLine'].includes(op)){this.note(`Unsupported Arcade drawing operation ${op}`);return;}
             push(`${v('IMAGE')}.${op}(${v('X')}, ${v('Y')}, ${v('W')}, ${v('H')}, ${v('COLOR')})`);return;

@@ -6,7 +6,7 @@ import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const source = readFileSync(resolve(root, 'packages/scratch-gui/static/makecode/arcade/sim/common-sim.js'), 'utf8');
-const methods = ['setPixel', 'getPixel', 'fillRect', 'drawLineLow', 'drawLineHigh', 'drawLine', 'drawImageCore', 'drawImage', 'drawTransparentImage', 'overlapsWith', 'equals'];
+const methods = ['setPixel', 'getPixel', 'fillRect', 'drawLineLow', 'drawLineHigh', 'drawLine', 'drawImageCore', 'drawImage', 'drawTransparentImage', 'overlapsWith', 'equals', 'fillCircle'];
 const declarations = methods.map(name => {
     const start = source.indexOf(`function ${name}(img`);
     if (start < 0) throw new Error(`Missing pinned PXT method ${name}`);
@@ -32,7 +32,17 @@ const rotation = source.slice(rotationStart, rotationEnd + rotationEndMarker.len
 for (const name of ['parseShearArgs', 'drawScaledRotatedImage', '_checkOverlapsScaledRotatedImage', '_checkOverlapsTwoScaledRotatedImages']) {
     if (!rotation.includes(`function ${name}(`)) throw new Error(`Missing pinned PXT method ${name}`);
 }
-const hash = createHash('sha256').update(declarations).update(rotation).digest('hex');
+// Image.drawCircle is a TypeScript helper rather than a simulator shim.
+// Retain the selected helper body and its integer/radius-zero behavior.
+const imageSource=JSON.parse(readFileSync(resolve(root,'packages/scratch-gui/static/makecode/arcade/target.json'),'utf8')).bundledpkgs.screen['image.ts'];
+const circleSignature='export function imageDrawCircle(img: Image, cx: number, cy: number, r: number, col: number)';
+const circleStart=imageSource.indexOf(circleSignature);
+if(circleStart<0)throw new Error('Missing pinned PXT Image.drawCircle helper');
+const circleBody=imageSource.indexOf('{',circleStart);let circleDepth=1,circleEnd=circleBody+1;
+while(circleDepth && circleEnd<imageSource.length){if(imageSource[circleEnd]==='{')circleDepth++;if(imageSource[circleEnd]==='}')circleDepth--;circleEnd++;}
+if(circleDepth)throw new Error('Unclosed pinned PXT Image.drawCircle helper');
+const circle=imageSource.slice(circleStart,circleEnd).replace(circleSignature,'function drawCircle(img, cx, cy, r, col)');
+const hash = createHash('sha256').update(declarations).update(rotation).update(circle).digest('hex');
 const output = `// Generated from pinned pxt-common-packages simulator image algorithms (MIT).
 // Copyright (c) Microsoft Corporation. See static/licenses/pxt-common-packages.MIT.txt.
 // Source algorithms SHA-256: ${hash}
@@ -40,7 +50,8 @@ const output = `// Generated from pinned pxt-common-packages simulator image alg
 module.exports = function initializePxtImageOperations() {
 ${declarations}
 ${rotation}
-return {setPixel, getPixel, fillRect, drawLine, drawImage, drawTransparentImage, overlapsWith, equals,
+${circle}
+return {setPixel, getPixel, fillRect, drawLine, drawCircle, fillCircle, drawImage, drawTransparentImage, overlapsWith, equals,
     drawScaledRotatedImage, checkOverlapsScaledRotatedImage: _checkOverlapsScaledRotatedImage,
     checkOverlapsTwoScaledRotatedImages: _checkOverlapsTwoScaledRotatedImages};
 };
@@ -48,8 +59,8 @@ return {setPixel, getPixel, fillRect, drawLine, drawImage, drawTransparentImage,
 const target = resolve(root, 'overlay/scratch-vm/src/extensions/crispstrobe/arcade/image-pxt.js');
 if (process.argv.includes('--check')) {
     if (readFileSync(target, 'utf8') !== output) throw new Error('image-pxt.js differs from the pinned PXT simulator — run scripts/generate-arcade-image-operations.mjs');
-    console.log(`Verified eleven image operations (${hash.slice(0,12)}) against the pinned PXT simulator.`);
+    console.log(`Verified thirteen image operations (${hash.slice(0,12)}) against the pinned PXT simulator.`);
 } else {
     writeFileSync(target, output);
-    console.log(`Generated eleven image operations (${hash.slice(0,12)}).`);
+    console.log(`Generated thirteen image operations (${hash.slice(0,12)}).`);
 }

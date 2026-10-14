@@ -10,8 +10,8 @@ not widen that separate admission gate. Live Font references remain a later
 separate slice.
 
 Primary sources are the MIT Microsoft PXT image helpers and simulator:
-[image helpers](https://github.com/microsoft/pxt-common-packages/blob/master/libs/screen/image.ts),
-[simulator image operations](https://github.com/microsoft/pxt-common-packages/blob/master/libs/base/sim/image.ts).
+[image helpers](https://github.com/microsoft/pxt-common-packages/blob/v14.1.4/libs/screen/image.ts),
+[simulator image operations](https://github.com/microsoft/pxt-common-packages/blob/v14.1.4/libs/screen/sim/image.ts).
 Use the pinned SDK's actual bytes and retain its Microsoft copyright and MIT
 notice. Current upstream source is context; actual behavior must come from the
 selected original SDK and immutable qualification inputs.

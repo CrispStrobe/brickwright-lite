@@ -667,6 +667,10 @@ module.exports = makeExt(`// Name: Arcade
           { opcode: 'spritePixel', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade sprite [ID] image pixel x [X] y [Y]',
             arguments: {...str('ID', ''), ...n('X', 0), ...n('Y', 0)} },
+          {opcode:'drawSpriteCircle',blockType:Scratch.BlockType.COMMAND,
+            text:'Arcade sprite [ID] image circle [OP] center x [X] y [Y] radius [RADIUS] color [COLOR]',
+            arguments:{...str('ID',''),OP:{type:Scratch.ArgumentType.STRING,menu:'imageCircleOperations',defaultValue:'drawCircle'},
+              ...n('X',0),...n('Y',0),...n('RADIUS',4),...n('COLOR',1)}},
           { opcode: 'drawSpriteImage', blockType: Scratch.BlockType.COMMAND,
             text: 'Arcade sprite [ID] image [OP] x [X] y [Y] width / end x [W] height / end y [H] color [COLOR]',
             arguments: {...str('ID', ''), OP: {type: Scratch.ArgumentType.STRING,
@@ -690,6 +694,10 @@ module.exports = makeExt(`// Name: Arcade
             text: 'set Arcade image [IMAGE] pixel x [X] y [Y] color [COLOR]', arguments: {...str('IMAGE', ''), ...n('X', 0), ...n('Y', 0), ...n('COLOR', 1)} },
           { opcode: 'imagePixel', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade image [IMAGE] pixel x [X] y [Y]', arguments: {...str('IMAGE', ''), ...n('X', 0), ...n('Y', 0)} },
+          {opcode:'drawImageCircle',blockType:Scratch.BlockType.COMMAND,
+            text:'Arcade image [IMAGE] circle [OP] center x [X] y [Y] radius [RADIUS] color [COLOR]',
+            arguments:{...str('IMAGE',''),OP:{type:Scratch.ArgumentType.STRING,menu:'imageCircleOperations',defaultValue:'drawCircle'},
+              ...n('X',0),...n('Y',0),...n('RADIUS',4),...n('COLOR',1)}},
           { opcode: 'drawImage', blockType: Scratch.BlockType.COMMAND,
             text: 'Arcade image [IMAGE] [OP] x [X] y [Y] width / end x [W] height / end y [H] color [COLOR]',
             arguments: {...str('IMAGE', ''), OP: {type: Scratch.ArgumentType.STRING,menu:'imageDrawOperations',defaultValue:'fillRect'},
@@ -958,6 +966,7 @@ module.exports = makeExt(`// Name: Arcade
           ,spriteDataReadTypes:{acceptReporters:false,items:['Number','String','Sprite']}
           ,bufferFormats: {acceptReporters: true, items: Object.keys(dependencies.buffers.NumberFormat).filter(key=>!/^\\d+$/.test(key))}
           ,imageBlitOperations: {acceptReporters: false, items: ['drawImage', 'drawTransparentImage']},
+          imageCircleOperations: {acceptReporters:false,items:['drawCircle','fillCircle']},
           imageDrawOperations: {acceptReporters: false, items: ['fillRect', 'drawLine']},
           imageOperations: {acceptReporters: false, items: ['fill', 'replace', 'flipX', 'flipY']},
           spriteFlags: {acceptReporters: false, items: Object.keys(spriteFlags)}
@@ -3619,6 +3628,13 @@ module.exports = makeExt(`// Name: Arcade
       const image = this._image(args.IMAGE);
       return image ? imageEngine.getPixel(image, args.X, args.Y) : 0;
     }
+    drawImageCircle(args) {
+      const image = this._image(args.IMAGE);
+      if(image && ['drawCircle','fillCircle'].includes(String(args.OP))) {
+        imageEngine.draw(image,String(args.OP),args.X,args.Y,args.RADIUS,args.COLOR);
+        this._refreshImage(image);
+      }
+    }
     drawImage(args) {
       const image = this._image(args.IMAGE);
       if (image && ['fillRect', 'drawLine'].includes(String(args.OP))) {
@@ -3871,6 +3887,13 @@ module.exports = makeExt(`// Name: Arcade
     spritePixel(args) {
       const image = this._imageForSprite(args.ID);
       return image ? imageEngine.getPixel(image, args.X, args.Y) : 0;
+    }
+    drawSpriteCircle(args) {
+      const image = this._imageForSprite(args.ID);
+      if(image && ['drawCircle','fillCircle'].includes(String(args.OP))) {
+        imageEngine.draw(image,String(args.OP),args.X,args.Y,args.RADIUS,args.COLOR);
+        this._refreshImage(image);
+      }
     }
     drawSpriteImage(args) {
       const image = this._imageForSprite(args.ID);
