@@ -1126,6 +1126,7 @@ class ArcadeEmitter {
         }
         case 'arrays_stringFromCharCode':return `${this.use('sdkStrings','__bwSdkCharCode')}(${this.arrayValue(b,'CODE')})`;
         case 'arrays_stringConcat':return `${this.use('sdkStrings','__bwSdkConcat')}(<any>${this.arrayValue(b,'TEXT')}, ${this.arrayValue(b,'OTHER')})`;
+        case 'arrays_stringCharCodeAt':return `(<string>${this.arrayValue(b,'TEXT')}).charCodeAt(<any>${this.arrayValue(b,'INDEX')})`;
         case 'arrays_namedReference': return this.namedArray(b);
         case 'arrays_parseLegacyValue': return this.legacyArrayInput(b);
         case 'arrays_jsonValue': return `${this.legacyValueHelper('json')}(${this.arrayValue(b,'VALUE')})`;
@@ -1175,6 +1176,8 @@ class ArcadeEmitter {
         case 'arrays_referenceRemove':return `${this.referenceArrayValue(b)}.removeElement(${this.arrayValue(b,'VALUE')})`;
         case 'arrays_referenceRandom':return `Math.pickRandom(${this.referenceArrayValue(b)})`;
         case 'arrays_referenceLength':return `${this.referenceArrayValue(b)}.length`;
+        case 'arrays_referenceSlice':return `${this.referenceArrayValue(b)}.slice(<any>${this.arrayValue(b,'START')}, <any>${this.arrayValue(b,'END')})`;
+        case 'arrays_referenceConcat':return `${this.referenceArrayValue(b)}.concat(${this.referenceArrayValue(b,'OTHER')})`;
         case 'arrays_referenceIndexOf':return `${this.referenceArrayValue(b)}.indexOf(${this.arrayValue(b,'VALUE')}, ${v('INDEX')})`;
         case 'arrays_referenceTake': {
             const op=this.literalInput(b,'OP');
@@ -2711,7 +2714,7 @@ class ArcadeEmitter {
      * resource aliases. Constraint edges carry types through forwarded calls. */
     imageProcedureParameters () {
         const graphTextSpriteValues=new Set(),graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
-        const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],lookupTypes=[];
+        const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],lookupTypes=[],arrayCopies=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
         const inputBlock = (blocks, b, name) => {
             const input=b.inputs?.[name]?.[1];
@@ -2786,6 +2789,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_spriteDataReadBoolean'){const id=Symbol('sprite data boolean');booleans.add(id);return id;}
                 if(['arcade_createSpriteKind','arcade_spriteKindValue'].includes(value.opcode)){const id=Symbol('sprite kind number');numbers.add(id);return id;}
                 if(['arrays_stringFromCharCode','arrays_stringConcat'].includes(value.opcode)){const id=Symbol('string primitive');strings.add(id);return id;}
+                if(value.opcode==='arrays_stringCharCodeAt'){const id=Symbol('character code number');numbers.add(id);return id;}
                 if(['arcade_spriteToString','arcade_characterRuleToString'].includes(value.opcode)) {const id=Symbol('sprite text');strings.add(id);return id;}
                 if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferFromBase64','arcade_bufferLiteral','arcade_bufferSlice','arcade_bufferConcat','arcade_bufferFromArray','arcade_bufferConcatArray','arcade_bufferPack'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
                 if(['arcade_bufferToArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8','arcade_bufferUnpack'].includes(value.opcode)){const id=`${key}:buffer-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
@@ -2847,9 +2851,9 @@ class ArcadeEmitter {
                 }
                 if(value.opcode==='arcade_animationAssetInterval'){const id=Symbol('animation interval');numbers.add(id);return id;}
                 if(value.opcode==='arcade_spritesOfKind'){const id=`${key}:sprite-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
-                if (['arrays_createReference','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(value.opcode)) {
+                if (['arrays_createReference','arrays_referenceSlice','arrays_referenceConcat','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(value.opcode)) {
                     const id=`${key}:array-value:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
-                    if(value.opcode==='arrays_createReference')arrays.add(id);return id;
+                    if(['arrays_createReference','arrays_referenceSlice','arrays_referenceConcat'].includes(value.opcode))arrays.add(id);return id;
                 }
                 if (['arcade_playerSprite','arcade_spawnSprite','arcade_spawnProjectile','arcade_spawnImageSprite','arcade_spawnImageProjectile','arcade_eventSprite', 'arcade_createSprite', 'arcade_createImageSprite'].includes(value.opcode)) {
                     const id = `${key}:sprite:${Object.keys(blocks).find(id => blocks[id] === value)}`;
@@ -2904,6 +2908,10 @@ class ArcadeEmitter {
                 if(block.opcode==='arrays_createReference'){
                     const array=ref(block);let current=inputBlock(blocks,block,'VALUES');
                     while(current?.opcode==='arrays_referenceValues'){elements.push([array,ref(inputBlock(blocks,current,'VALUE'))]);current=inputBlock(blocks,current,'REST');}
+                }
+                if(['arrays_referenceSlice','arrays_referenceConcat'].includes(block.opcode)){
+                    arrayCopies.push([ref(inputBlock(blocks,block,'ARRAY')),ref(block)]);
+                    if(block.opcode==='arrays_referenceConcat')arrayCopies.push([ref(inputBlock(blocks,block,'OTHER')),ref(block)]);
                 }
                 if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom','arrays_referenceRemove','arrays_mutateReference','arrays_referenceLength','arrays_referenceIndexOf','arrays_referenceTruthy'].includes(block.opcode)){
                     const array=ref(inputBlock(blocks,block,'ARRAY'));if(array)arrays.add(array);
@@ -2961,6 +2969,9 @@ class ArcadeEmitter {
         for(const [receiver,value] of dataProperties)if(receiver)graph.merge(graph.property(receiver,'data'),value);
         for(const [,value] of dataProperties)if(!graph.node(value).types.size)graph.add(value,'any');
         for(const [array,value] of elements)if(array && value){graph.add(array,'array');graph.merge(graph.element(array),value);}
+        for(const [source,copy] of arrayCopies)if(source && copy){
+            graph.add(source,'array');graph.add(copy,'array');graph.merge(graph.element(source),graph.element(copy));
+        }
         for(const [id,type] of specialTypes)graph.add(id,type);
         const inferValueOperations=()=>{
             let revision;

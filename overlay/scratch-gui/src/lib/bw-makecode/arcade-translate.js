@@ -89,6 +89,8 @@ import {prepareAnimationImport} from '../bw-animation-import.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {lowerSourceLoopControl} from './lower-source-loop-control.js';
 import {lowerLazyValues} from './lower-lazy-values.js';
+import {arrayCopyCall} from './array-copy-calls.js';
+import {indexedStringValue} from './indexed-string-values.js';
 import {lowerNamespaceBindings} from './namespace-bindings.js';
 import {ARCADE_SCENE_CONSTANTS} from './arcade-scene-constants.js';
 import {lowerStaticCallbackHelpers} from './static-callback-helpers.js';
@@ -724,6 +726,10 @@ class ArcadeTranslator extends BaseTranslator {
         }
         const name = this.path(node.callee);
         const a = node.args || [];
+        const arrayCopy = arrayCopyCall(this,node);
+        if(arrayCopy!==null)return arrayCopy;
+        const indexedString = indexedStringValue(this,node);
+        if(indexedString!==null)return indexedString;
         if(this.handleTemplates && node.callee?.type==='Member' && node.callee.name==='kind' && !a.length && this.spriteReferences?.has(node.callee.object))return `arcade property kind of (${this.expr(node.callee.object)})`;
         const fn = node.callee?.type === 'Identifier' && this.returnFunctions?.get(node.callee.name);
         if (fn) {
@@ -1027,6 +1033,8 @@ class ArcadeTranslator extends BaseTranslator {
      * though writing it is not.
      */
     valueExpr (node) {
+        const indexedString=indexedStringValue(this,node);
+        if(indexedString!==null)return indexedString;
         const music=this.musicValue(node);
         if(music!==null)return music;
         if(node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='Math' &&
@@ -3139,6 +3147,8 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         const key=String(annotation || '');
         applyDeclaredValueType(declaredGraph,key,key);
         for(const name of declaredGraph.node(key).types)if(declaredNames[name])value.add(declaredNames[name]);
+        if(declaredGraph.has(key,'array'))for(const name of declaredGraph.node(declaredGraph.element(key)).types)
+            if(declaredNames[name])value.add(`${declaredNames[name]}-array`);
     };
     const binding = (owner, name, declare = false) => {
         if (declare) {
@@ -3217,6 +3227,17 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if (node?.type === 'Array') return new Set(['array',...node.items.flatMap(item=>[...typeOf(item,owner)].filter(t=>['image','sprite','tile','number','string','scene','physics-engine'].includes(t)).map(t=>`${t}-array`))]);
         if (node?.type === 'Index') return new Set([...typeOf(node.object,owner)].filter(t=>['image-array','sprite-array','tile-array','legacy-tile-array','number-array','string-array','scene-array','physics-engine-array'].includes(t)).map(t=>t.slice(0,-6)));
         if (node?.type === 'Identifier') return binding(owner, node.name);
+        if(node?.type==='Member' && node.name==='length' && node.object?.type==='Index' && typeOf(node.object,owner).has('string'))return new Set(['number']);
+        if(node?.type==='Call' && node.callee?.type==='Member') {
+            const receiver=typeOf(node.callee.object,owner),operation=node.callee.name;
+            if(receiver.has('string') && operation==='charCodeAt')return new Set(['number']);
+            if(receiver.has('array') && ['slice','concat'].includes(operation)) {
+                const result=new Set(['array',...[...receiver].filter(type=>type.endsWith('-array'))]);
+                if(operation==='concat' && node.args.length===1)for(const type of typeOf(node.args[0],owner))
+                    if(type.endsWith('-array'))result.add(type);
+                return result;
+            }
+        }
         if(node?.type==='Member' && ['index','number'].includes(node.name) && typeOf(node.object,owner).has('player'))return new Set(['number']);
         if(node?.type==='Member' && ['maxSpeed','minStep','maxStep'].includes(node.name) && typeOf(node.object,owner).has('physics-engine'))return new Set(['number']);
         if(node?.type==='Member' && node.name==='physicsEngine' && typeOf(node.object,owner).has('scene'))return new Set(['physics-engine']);
@@ -3392,6 +3413,10 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(node.type!=='Call')continue;
             const receiver=node.callee?.type==='Member' && cell(node.callee.object,owner),op=node.callee?.name;
             if(receiver && graph.has(receiver,'array')){
+                if(['slice','concat'].includes(op)){
+                    graph.add(value,'array');connect(graph.element(value),graph.element(receiver));
+                    if(op==='concat' && node.args.length===1)connect(graph.element(value),graph.element(cell(node.args[0],owner)));
+                }
                 if(['push','unshift','insertAt','set'].includes(op))connect(graph.element(receiver),cell(node.args[['insertAt','set'].includes(op)?1:0],owner));
                 if(['pop','shift','removeAt','get'].includes(op) || op==='_pickRandom' && !node.args.length)connect(value,graph.element(receiver));
             }
