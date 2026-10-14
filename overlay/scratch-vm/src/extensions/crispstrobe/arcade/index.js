@@ -4182,6 +4182,10 @@ module.exports = makeExt(`// Name: Arcade
           renderer.updateDrawableScale(entry.drawableId,[300,300]);
           this._particleOverlays.set(layer.source,entry);created=true;
         }else if(entry.svg!==svg){renderer.updateSVGSkin(entry.skinId,svg,[80,60]);entry.svg=svg;}
+        // Debug rasters have a synthetic cache key but share their sprite's
+        // place in the scene, just as the CPU composition layers do.
+        const owner=layer.bwSceneSprite || layer.source;
+        if(entry.owner!==owner){entry.owner=owner;this._particleOrderDirty=true;}
       }
       if(created || this._particleOrderDirty){this._particleOrderDirty=false;this._orderSpriteDrawables();}
     }
@@ -5154,7 +5158,7 @@ module.exports = makeExt(`// Name: Arcade
       const drawableOf=sprite=>this._imageSkins.get(sprite.id)?.drawableId ?? state.spriteTargets[sprite.id]?.drawableID;
       // Particle sources share the sprites' z then id order.
       const entries=[...Object.values(state.sprites).map(sprite=>({owner:sprite,z:sprite.z,id:sprite.pxtId,drawable:drawableOf(sprite)})),
-        ...[...this._particleOverlays].map(([source,entry])=>({owner:source,z:source.z,id:source.id,drawable:entry.drawableId}))];
+        ...[...this._particleOverlays].map(([source,entry])=>({owner:entry.owner || source,z:source.z,id:source.id,drawable:entry.drawableId}))];
       if(!entries.some(entry=>entry.drawable!=null))return;
       const order=this._sceneFlags.currentOrder(state);
       for(const entry of entries.sort((a,b)=>order.indexOf(a.owner)-order.indexOf(b.owner)))
