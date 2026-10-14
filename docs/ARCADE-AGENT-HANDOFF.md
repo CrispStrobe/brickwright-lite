@@ -10,6 +10,13 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ## Latest source qualification — 2026-10-14
 
+The next shared lane is [typed stored callbacks](ARCADE-STORED-CALLABLE-NEXT-SLICE.md).
+Generic class-method parsing now preserves actual names, type parameters,
+constraints, defaults and bodies instead of misreading them as fields. Six
+independent parser controls pass. Generic runtime lowering remains explicitly
+refused while invocation-local types and the actual captured-receiver bridge
+are implemented; this is a prerequisite, not a whole-library promotion.
+
 Physical [ExtendableSprite updates](ARCADE-EXTENDABLE-SPRITE-UPDATE.md) now retain
 constructor/image pauses, undefined fields, base destruction followed by the
 same public update, independent scene workers, scene-change delta lookup and

@@ -1,5 +1,23 @@
 # Conversion capabilities and GUI closure ledger
 
+## Generic class methods and stored callbacks — parser prerequisite
+
+Generic method names, ordered type parameters, constraints/defaults and method
+bodies are now retained by the TypeScript parser. Six independent parser checks
+pass; execution remains explicitly refused pending the
+[typed stored callback bridge](ARCADE-STORED-CALLABLE-NEXT-SLICE.md).
+
+| User surface | Required remaining work |
+| --- | --- |
+| Code | Editable generic signatures and callable fields, invocation-local diagnostics, completion and help |
+| Blocks and pseudocode | Typed class/callback declarations, real receiver and signature inputs, rename and current-body export |
+| Saved projects | Preserve declaration identity and actual callback ownership through same and fresh VM reload |
+| Graphics | StatusBar updates must retain the same Sprite/image and actual render order after callback completion |
+| Debugger | Show captured receivers, undefined fields and callback references without widening or granting invocation authority |
+
+This parser change grants no generic runtime or whole StatusBar/Sprite Utils
+compatibility. Existing bounded numeric callable qualification is separate.
+
 ## Physical class updates and standalone Array values — 2026-10-14
 
 The [Sprite update contract](ARCADE-EXTENDABLE-SPRITE-UPDATE.md) qualifies the
@@ -88,7 +106,7 @@ or reference type from these words.
 | Surface | Observed feature support | Remaining GUI work |
 | --- | --- | --- |
 | Blocks | Fixed dropdown fields retain edited math, Text Sprite and Sprite Data choices. Scalar declarations bind connected stock variables. Event fields carry player/value edits. | Reference and callable authoring need their separate source and supplier gates; validate declaration placement and rename behavior in editor actions. |
-| Code | Numeric and event authoring each pass all five official GUI journeys, including Code and fresh SB3. | The current 384-operation source/reference, font and repeat changes need fresh editor qualification. Add signature/completion help for current words and typed reference/callable flows only after admission. |
+| Code | Numeric and event authoring each pass all five official GUI journeys, including Code and fresh SB3. | The current 385-operation source/reference, font and repeat changes need fresh editor qualification. Add signature/completion help for current words and typed reference/callable flows only after admission. |
 | Graphics | Imported sprite/background art and animation costumes remain editable; native factory duplication is corrected and inline literal-array grouping retains ordered costumes. | Fresh hosted edited-animation pixels, saved/reopened levels, tile asset identities, legacy maps and sprite placement remain independent gates. No class-specific graphics designer is qualified. |
 | Controller and stage | Numeric original comparisons include complete rendered frames; event input/waiter/player edits pass bounded official comparisons. | Repeat delay/interval, defaults and all 24 advertised player/button pairs have bounded original/native/Code/SB3/export controls. Their prepared real palette/controller-pane journey still needs matching hosted proof. Full source cadence and complete corpus games remain unqualified. |
 | Debugger and lifecycle | Focused tests retain Stop, restart, stale ownership, scalar/reference and callback cancellation assertions. | Add visible typed-cell/object/callable inspection without converting unknown values or editing retained execution state. |
