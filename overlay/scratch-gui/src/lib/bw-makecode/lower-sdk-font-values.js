@@ -5,7 +5,7 @@ import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
 // name does not allocate a Font, and no class/member result is guessed.
 export function lowerSdkFontValues(program) {
     const sdk=staticSdkNamespaceReceivers(program),fields=new Map(SDK_FONT_FIELDS.map(field=>[field.name,field.type]));
-    const writing=new WeakSet(),owners=new WeakMap(),cells=new WeakMap(),types=new Map(),edges=[],scales=[],texts=[],derived=[],prints=[],functions=new Map(),calls=[],unsupported=[];
+    const writing=new WeakSet(),owners=new WeakMap(),cells=new WeakMap(),types=new Map(),edges=[],scales=[],texts=[],derived=[],prints=[],classes=new Map(),classCalls=[],classWrites=new Set(),functions=new Map(),calls=[],unsupported=[];
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const intrinsic=(name,args,type)=>({type:'Call',callee:{type:'Identifier',name:'__bwSdkFont_'+name},args,bwFontIntrinsic:name,...(type?{bwFontType:type}:{} )});
     const scope=parent=>({parent,bindings:new Map()});
@@ -35,7 +35,7 @@ export function lowerSdkFontValues(program) {
         }
         if(node.type==='FunctionExpression'){add(current,'Opaque');body(node.body,owner,{params:node.params,result:key()});return;}
         if(node.type==='Class'){
-            add(current,'Opaque');for(const field of node.fields||[])visit(field.init,owner);
+            const name=binding(owner,node.name);classes.set(name,(classes.get(name)||0)+1);add(current,'Opaque');for(const field of node.fields||[])visit(field.init,owner);
             for(const method of [node.ctor,...(node.methods||[])].filter(Boolean))body(method.body,owner,{params:method.params,result:key()});return;
         }
         if(node.type==='If'){visit(node.test,owner);body(node.consequent,owner);body(node.alternate,owner);return;}
@@ -49,8 +49,9 @@ export function lowerSdkFontValues(program) {
         if(node.type==='Return'){visit(node.value,owner);let fn=owner;while(fn&&!fn.result)fn=fn.parent;if(fn){if(node.value)edge(cell(node.value),fn.result);else add(fn.result,'Undefined');}return;}
         if(node.type==='Assignment'&&node.op==='='&&node.left?.type==='Identifier')writing.add(node.left);
         for(const value of Object.values(node))if(value&&typeof value==='object')visit(value,owner);
-        if(node.type==='Assignment'){if(node.op==='=')edge(cell(node.right),cell(node.left));else if(node.left?.type==='Identifier')derived.push({result:binding(owners.get(node.left),node.left.name),type:'Number',operands:[cell(node.left),cell(node.right)],signature:['+=','-=','*=','/=','%=','&=','|=','^=','<<=','>>=','>>>='].includes(node.op),domain:'Number'});else add(cell(node.left),'Opaque');edge(cell(node.right),current);return;}
-        if(node.type==='Update'&&node.argument?.type==='Identifier'){derived.push({result:binding(owners.get(node.argument),node.argument.name),type:'Number',operands:[cell(node.argument)],signature:['++','--'].includes(node.op),domain:'Number'});edge(cell(node.argument),current);return;}
+        if(node.type==='Assignment'){if(node.left?.type==='Identifier')classWrites.add(binding(owners.get(node.left),node.left.name));if(node.op==='=')edge(cell(node.right),cell(node.left));else if(node.left?.type==='Identifier')derived.push({result:binding(owners.get(node.left),node.left.name),type:'Number',operands:[cell(node.left),cell(node.right)],signature:['+=','-=','*=','/=','%=','&=','|=','^=','<<=','>>=','>>>='].includes(node.op),domain:'Number'});else add(cell(node.left),'Opaque');edge(cell(node.right),current);return;}
+        if(node.type==='Update'&&node.argument?.type==='Identifier'){classWrites.add(binding(owners.get(node.argument),node.argument.name));derived.push({result:binding(owners.get(node.argument),node.argument.name),type:'Number',operands:[cell(node.argument)],signature:['++','--'].includes(node.op),domain:'Number'});edge(cell(node.argument),current);return;}
+        if(node.type==='Call'&&node.isNew&&node.callee?.type==='Identifier'){classCalls.push({value:current,name:binding(owner,node.callee.name)});return;}
         if(node.type==='Member'&&sdk.has(node)&&['image.font5','image.font8','image.font12'].includes(path(node)))add(current,'Font');
         else if(node.type==='Call'&&!node.isNew&&sdk.has(node.callee)&&path(node.callee)==='image.getFontForText'&&node.args.length===1)texts.push({node,argument:cell(node.args[0]),result:current});
         else if(node.type==='Call'&&!node.isNew&&sdk.has(node.callee)&&path(node.callee)==='image.scaledFont'&&node.args.length===2)scales.push({node,receiver:cell(node.args[0]),result:current});
@@ -84,6 +85,7 @@ export function lowerSdkFontValues(program) {
         for(const value of Object.values(node))if(value&&typeof value==='object')known=entry(value,known);return known;
     }
     entry(program);
+    for(const call of classCalls)add(call.value,classes.get(call.name)===1&&!classWrites.has(call.name)?'ClassInstance':'Opaque');
     const resultFunctions=new Map([...functions].filter(([,fn])=>fn).map(([name,fn])=>[fn.result,name])),callGraph=new Map();
     for(const call of calls){let owner=owners.get(call.node);while(owner&&!owner.result)owner=owner.parent;const origin=resultFunctions.get(owner?.result);if(origin){if(!callGraph.has(origin))callGraph.set(origin,new Set());callGraph.get(origin).add(call.callee);}}
     const cyclic=(origin,current=origin,seen=new Set())=>{if(seen.has(current))return false;seen.add(current);for(const next of callGraph.get(current)||[])if(next===origin||cyclic(origin,next,seen))return true;return false;};
@@ -100,7 +102,7 @@ export function lowerSdkFontValues(program) {
     let invalidated;do{invalidated=false;for(const item of derived)if(!item.signature||!item.operands.every(operand=>types.get(operand)?.size===1&&types.get(operand).has(item.domain)))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
     for(const item of scales){if(!isFont(item.receiver))fail('SDK scaledFont requires a proven current Font producer');const size=types.get(cell(item.node.args[1]));if(size?.size!==1 || !size.has('Number'))fail('SDK scaledFont size requires a proven Number producer');}
     for(const item of texts)if(types.get(item.argument)?.size!==1 || !types.get(item.argument).has('String'))fail('SDK Font selection requires a proven actual String producer');
-    for(const {node,center,fontIndex}of prints){const exact=(value,type)=>types.get(cell(value))?.size===1&&types.get(cell(value)).has(type);if(node.isNew||node.args.length!==fontIndex+1)fail('SDK Font print requires its exact selected signature');if(!exact(node.callee.object,'Image'))fail('SDK Font print IMAGE requires a proven actual Image producer');if(!exact(node.args[0],'String'))fail('SDK Font print TEXT requires a proven actual String producer');if(!exact(node.args[fontIndex],'Font'))fail('SDK Font print FONT requires a proven actual Font producer');for(const [index,name]of center?[[1,'Y'],[2,'COLOR']]:[[1,'X'],[2,'Y'],[3,'COLOR']])if(!exact(node.args[index],'Number'))fail('SDK Font print '+name+' requires a proven actual Number producer');}
+    for(const {node,center,fontIndex}of prints){if(types.get(cell(node.callee.object))?.size===1&&types.get(cell(node.callee.object)).has('ClassInstance'))continue;if(!types.get(cell(node.callee.object))?.has('Image')&&!types.get(cell(node.args[fontIndex]))?.has('Font'))continue;const exact=(value,type)=>types.get(cell(value))?.size===1&&types.get(cell(value)).has(type);if(node.isNew||node.args.length!==fontIndex+1)fail('SDK Font print requires its exact selected signature');if(!exact(node.callee.object,'Image'))fail('SDK Font print IMAGE requires a proven actual Image producer');if(!exact(node.args[0],'String'))fail('SDK Font print TEXT requires a proven actual String producer');if(!exact(node.args[fontIndex],'Font'))fail('SDK Font print FONT requires a proven actual Font producer');for(const [index,name]of center?[[1,'Y'],[2,'COLOR']]:[[1,'X'],[2,'Y'],[3,'COLOR']])if(!exact(node.args[index],'Number'))fail('SDK Font print '+name+' requires a proven actual Number producer');}
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
     const rewrite=(node,target=false)=>{
         if(!node||typeof node!=='object')return node;if(Array.isArray(node))return node.map(value=>rewrite(value,target));

@@ -180,3 +180,11 @@ test('optional Font multiplier reads do not provide a guaranteed Number operand'
     assert.ok(lower('let f=image.font8;let next=image.scaledFont(f,f.multiplier)').unsupported.some(message=>/Number producer/.test(message)));
     assert.ok(lower('let f=image.font8;let pic=image.create(8,8);pic.print("A",f.multiplier,0,3,f)').unsupported.some(message=>/Number producer/.test(message)));
 });
+
+
+test('ordinary class print methods without Font or Image producers retain their own method scope',()=>{
+    assert.deepEqual(lower('class Printer{constructor(){}print(a:number,b:number,c:number,d:number,e:number):number{return a+b+c+d+e}}let printer=new Printer();let value=printer.print(1,2,3,4,5)').unsupported,[]);
+    assert.deepEqual(lower('class Reader{constructor(){}print(a:number,b:number,c:number,d:number,font:image.Font){return a}}let reader=new Reader();let alias=reader;let font=image.font8;let value=alias.print(1,2,3,4,font)').unsupported,[]);
+    assert.deepEqual(lower('class Reader{constructor(){}print(font:image.Font){return font.charWidth}}let reader=new Reader();let value=reader.print(image.font8)').unsupported,[]);
+    assert.ok(lower('class Reader{constructor(){}}let receiver:any=new Reader();receiver=image.create(8,8);receiver.print("A",0,0,3,image.font8)').unsupported.some(message=>/Image producer/.test(message)));
+});
