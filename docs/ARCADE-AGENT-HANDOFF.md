@@ -18,7 +18,10 @@ is merged at `7f74d75f3a574b5f74b5c62351326cd5d2e64c2a`: all four enabled
 checks passed and the declared Pages job skipped. Reviewed, predicted and landed
 trees match. Local consumer adoption uses the normal three-way sync and retains
 existing STM32 changes. Current vocabulary: 393 commands, 398 spellings.
-Arrays remains `4db2813d366af8a110fc79599afb55d1cd42d8df`; other pins are unchanged.
+Arrays remains `4db2813d366af8a110fc79599afb55d1cd42d8df`. Later main adoption
+[PR929](https://github.com/CrispStrobe/brickwright-lite/pull/929) brings the
+qualified Board `370be6994dcc6ffcef852f8f1d67861e3e98dd70` and Circuit UI
+`9593a12056e72c10686232bb448f97471f98feec`; normal composition preserves them.
 
 Reached, with original failures retained:
 
@@ -55,9 +58,14 @@ Next ordered work:
    edited current-body export, reimport and actual selected originals. The
    private real-VM prototype passes Number/String invocation, captured receiver
    ownership, pause and Stop; it is not admitted into this consumer.
-2. Land [default numeric callable admission](https://github.com/CrispStrobe/brickwright-lite/blob/d435dc53b4f05a02261c7dd96c544d2548f66550/docs/compatibility/arcade-numeric-callable-default-admission.md)
-   claim [PR931](https://github.com/CrispStrobe/brickwright-lite/pull/931) after all
-   exact-head checks before product wiring. Default source admission stays closed.
+2. [Default numeric callable admission](compatibility/arcade-numeric-callable-default-admission.md)
+   claim [PR931](https://github.com/CrispStrobe/brickwright-lite/pull/931) merged
+   with all 11 enabled checks successful and reviewed/landed tree equality.
+   The local consumer now admits only proven Number factories returning captured
+   zero-argument Number arrows. Its 17 composed controls pass; current edited
+   export bytes match retained executed originals with all nine guards unchanged.
+   Wider class/generic/typeof forms remain separately gated. Hosted consumer
+   qualification and dedicated visible authoring are still required.
 3. Implement [live Font values](compatibility/arcade-live-font-values.md) from
    measured selected-original records and glyph data. Fonts are mutable; an
    immutable descriptor does not make the value immutable. A native prototype
