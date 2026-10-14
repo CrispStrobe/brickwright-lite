@@ -121,6 +121,7 @@ export const SB3_CREATOR_FILES = Object.freeze([
     ['ev3Dialect.js', 'src/utils/ev3Dialect.js'],
     ['cpxDialect.js', 'src/utils/cpxDialect.js'],
     ['arcadeDialect.js', 'src/utils/arcadeDialect.js'],
+    ['cpxDialect.js', 'src/utils/cpxDialect.js'],
     ['pinRoleParts.js', 'src/utils/pinRoleParts.js'],
 ]);
 

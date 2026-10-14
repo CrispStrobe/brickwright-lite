@@ -99,8 +99,8 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the qualified Arcade word table (385 opcodes)', () => {
-    assert.equal(ARCADE_DIALECT_OPS.length, 385);
+test('the pinned parser has the qualified Arcade word table (391 opcodes)', () => {
+    assert.equal(ARCADE_DIALECT_OPS.length, 391);
     const qualifiedWords = [
         {op: 'arcade_sourceTypeOf', kind: 'reporter', words: 'arcade source type of {VALUE}'},
         {op: 'arcade_buttonRepeatProperty', kind: 'reporter', words: 'arcade player {PLAYER:1|2|3|4} button {BUTTON:A|B|up|down|left|right} repeat property {PROPERTY:repeatDelay|repeatInterval}'},
@@ -112,9 +112,9 @@ test('the pinned parser has the qualified Arcade word table (385 opcodes)', () =
         assert.equal(rows.length, 1, expected.op);
         assert.deepEqual(rows.map(({op, kind, words}) => ({op, kind, words})), [expected]);
     }
-    for (const opcode of ['arcade_declareCallable', 'arcade_runCallableDispatch',
+    for (const opcode of ['arcade_declareSourceCallable', 'arcade_declareCallable', 'arcade_runCallableDispatch',
         'arcade_whenCallableDispatched', 'arcade_createCallable', 'arcade_callCallable']) {
-        assert.equal(ARCADE_DIALECT_OPS.includes(opcode), false, 'unqualified callable word: ' + opcode);
+        assert.equal(ARCADE_DIALECT_OPS.includes(opcode), true, 'qualified callable ABI word: ' + opcode);
     }
     for (const opcode of ['arcade_declareClass', 'arcade_declareSubclass', 'arcade_createObject',
         'arcade_objectField', 'arcade_setObjectField', 'arcade_callObjectMethod', 'arcade_whenSourceStarts', 'arcade_sourceWhile', 'arcade_setHudVisibility', 'arcade_cameraDrawOffset', 'arcade_setPalette', 'arcade_registerInstanceDestroyedHandler',

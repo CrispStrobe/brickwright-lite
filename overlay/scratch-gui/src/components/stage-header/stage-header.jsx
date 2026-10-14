@@ -21,6 +21,7 @@ import circuitIcon from './icon--circuit.svg';
 import debuggerSoloIcon from './icon--debugger-solo.svg';
 import microbitIcon from './icon--microbit.svg';
 import arcadeIcon from './icon--arcade.svg';
+import cpxIcon from './icon--cpx.svg';
 import controllerIcon from './icon--controller.svg';
 import scratchStageIcon from './icon--scratch-stage.svg';
 
@@ -73,6 +74,11 @@ const messages = defineMessages({
         description: 'Button to show the Arduboy console in the right pane',
         id: 'gui.stageHeader.arduboyConsole'
     },
+    cpxBoard: {
+        defaultMessage: 'Circuit Playground',
+        description: 'Button to show the Circuit Playground Express board in the right pane',
+        id: 'gui.stageHeader.cpxBoard'
+    },
     arcadeConsole: {
         defaultMessage: 'Game Console',
         description: 'Button to show the MakeCode Arcade or PyBadge console',
@@ -101,6 +107,7 @@ const viewForDock = dock => {
     if (dock === 'solo' || dock === 'right') return 'solo';
     if (dock === 'microbit') return 'microbit';
     if (dock === 'arcade') return 'arcade';
+    if (dock === 'cpx') return 'cpx';
     if (dock === 'arduboy') return 'arduboy';
     if (dock === 'makecode') return 'makecode';
     if (dock === 'controller') return 'controller';
@@ -133,6 +140,8 @@ const StageViewButtons = ({intl, vm}) => {
         (appliedProjectDevice(vm.runtime)) === 'arduboy');
     const [deviceIsArcade, setDeviceIsArcade] = useState(() => ['arcade', 'pybadge', 'pybadge-lc', 'samd51']
         .includes(appliedProjectDevice(vm.runtime)));
+    const [deviceIsCpx, setDeviceIsCpx] = useState(() =>
+        appliedProjectDevice(vm.runtime) === 'cpx');
     useEffect(() => {
         const sync = event => {
             const {key, value} = event.detail || {};
@@ -144,6 +153,7 @@ const StageViewButtons = ({intl, vm}) => {
                 setDeviceIsMicrobit(MICROPYTHON_DEVICES.includes(value));
                 setDeviceIsArduboy(value === 'arduboy');
                 setDeviceIsArcade(['arcade', 'pybadge', 'pybadge-lc', 'samd51'].includes(value));
+                setDeviceIsCpx(value === 'cpx');
             }
         };
         window.addEventListener('bw-settings-change', sync);
@@ -194,6 +204,13 @@ const StageViewButtons = ({intl, vm}) => {
                         iconClassName: styles.stageButtonIcon,
                         isSelected: view === 'arcade',
                         title: intl.formatMessage(messages.arcadeConsole)
+                    }] : []),
+                    ...(deviceIsCpx ? [{
+                        handleClick: () => { setCircuitView({fullWidth: true, dock: 'cpx'}); setView('cpx'); },
+                        icon: cpxIcon,
+                        iconClassName: styles.stageButtonIcon,
+                        isSelected: view === 'cpx',
+                        title: intl.formatMessage(messages.cpxBoard)
                     }] : []),
                     ...(deviceIsArduboy ? [{
                         handleClick: () => { setCircuitView({fullWidth: true, dock: 'arduboy'}); setView('arduboy'); },

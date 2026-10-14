@@ -293,6 +293,7 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 288731b8 (2026-10-13): qualified native class descriptors; rerun every SPIKE artifact assertion.
     // -> a1fa275d (2026-10-14): canonical array-copy words and Settings native dropdown fields; rerun every SPIKE artifact assertion.
     // -> 7c84f8b0 (2026-10-14): merged Settings/Scene supplier; rerun every SPIKE artifact assertion.
+    // -> 0e486e0f (2026-10-14): qualified CPX supplier support is retained in the later d4324e20 source; rerun every SPIKE artifact assertion.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
         'd4324e2091447a8d65eb1ea062e712680946bc37');
 

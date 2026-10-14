@@ -55,6 +55,9 @@ export const UPSTREAM_REPO = 'CrispStrobe/extensions';
  */
 export const MAP = {
     arrays: {repo: 'CrispStrobe/extensions', pin: 'arrays-values', path: 'extensions/CrispStrobe/arrays.js'},
+    // Circuit Playground Express device world (task A9), scoped to its own pin
+    // so adding it moves no other bundled extension.
+    circuitplayground: {repo: 'CrispStrobe/extensions', pin: 'circuitplayground', path: 'extensions/CrispStrobe/circuitplayground.js'},
     csp: 'extensions/CrispStrobe/csp.js',
     circuit: 'extensions/CrispStrobe/circuit.js',
     // ev3lms and legoev3direct were mapped here until 2026-09-21. They were the

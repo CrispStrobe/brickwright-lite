@@ -126,6 +126,13 @@
             "bytes": 15127,
             "repo": "CrispStrobe/bw-board",
             "commit": "c5078499ebcde97ce615689667244b37c76eb22f"
+        },
+        "circuitplayground": {
+            "path": "extensions/CrispStrobe/circuitplayground.js",
+            "sha256": "4d672a90e85bcb0be63b4e3cd62b65d3aed9f3ad26586ac7a189d82f52d5e633",
+            "bytes": 43097,
+            "repo": "CrispStrobe/extensions",
+            "commit": "0c4e3b4a0cee57d65474082938c352818426eebb"
         }
     }
 }
