@@ -4111,8 +4111,65 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     const imageValueCostumes = [];
     const builtinImageResources = new Map();
     const sharedFrameResources = new Map();
+    const stagedImageGroups = new Map(), stagedImageAliases = new Map(), artworkNames = {};
+    const artworkUserName = name => /^__bwNamespace_[A-Za-z0-9]+_([A-Za-z_]\w*)$/.exec(name || '')?.[1] ||
+        (typeof name==='string' && !/^__/.test(name)?name:null);
+    const visitArtworkSource = (node, visit, seen = new Set()) => {
+        if (!node || typeof node !== 'object' || seen.has(node)) return;
+        seen.add(node);visit(node);
+        for (const value of Object.values(node)) {
+            if (Array.isArray(value)) value.forEach(child=>visitArtworkSource(child,visit,seen));
+            else visitArtworkSource(value,visit,seen);
+        }
+    };
+    visitArtworkSource(ast,node=>{
+        if(node.type!=='Template' || node.tag!=='img' || typeof node.bwImageArrayGroup!=='string')return;
+        const {bwImageArrayGroup:id,bwImageArrayIndex:index,bwImageArrayCount:count}=node,image=t.imageOf(node);
+        if(!image || !Number.isInteger(index) || !Number.isInteger(count) || count<2 || index<0 || index>=count)return;
+        if(!stagedImageGroups.has(id))stagedImageGroups.set(id,{count,members:new Map(),nodes:[],invalid:false});
+        const group=stagedImageGroups.get(id),prior=group.members.get(index);
+        if(group.count!==count || prior && (prior.width!==image.width || prior.height!==image.height ||
+            prior.pixels.length!==image.pixels.length || prior.pixels.some((pixel,i)=>pixel!==image.pixels[i])))group.invalid=true;
+        group.members.set(index,image);group.nodes.push(node);
+    });
+    for(const [id,group] of stagedImageGroups) {
+        if(group.invalid || group.members.size!==group.count){stagedImageGroups.delete(id);continue;}
+        stagedImageAliases.set(id,new Set([id]));
+    }
+    // Union assignments conservatively: a reused name must not label a later
+    // image group as if it belonged to a unique animation/actor.
+    let artworkAliasesChanged;
+    do {
+        artworkAliasesChanged=false;
+        visitArtworkSource(ast,node=>{
+            const entries=node.type==='Declaration'?node.decls.map(d=>[d.name,d.init]):
+                node.type==='Assignment' && node.op==='=' && node.left?.type==='Identifier'?[[node.left.name,node.right]]:[];
+            for(const [name,value]of entries)if(value?.type==='Identifier' && stagedImageAliases.has(value.name)) {
+                const ids=stagedImageAliases.get(name)||new Set();
+                for(const id of stagedImageAliases.get(value.name))if(!ids.has(id)){ids.add(id);artworkAliasesChanged=true;}
+                stagedImageAliases.set(name,ids);
+                for(const id of ids)if(artworkUserName(name) && !stagedImageGroups.get(id).label)stagedImageGroups.get(id).label=artworkUserName(name);
+            }
+        });
+    }while(artworkAliasesChanged);
+    visitArtworkSource(ast,node=>{
+        if(node.type!=='Call' || !['animation.runImageAnimation','characterAnimations.loopFrames','characterAnimations.runFrames'].includes(nameOf(node)))return;
+        const frames=node.args?.[1],ids=frames?.type==='Identifier' && stagedImageAliases.get(frames.name);
+        const actor=node.args?.[0];
+        if(ids?.size===1 && actor?.type==='Identifier' && artworkUserName(actor.name)) {
+            const group=stagedImageGroups.get([...ids][0]);if(!group.label)group.label=artworkUserName(actor.name)+'Animation';
+        }
+    });
+    for(const group of stagedImageGroups.values()) {
+        const name=`__arcadeBackground${imageValueCostumes.length+1}`;
+        const resource={name,key:`${name}Image`,count:group.count,fresh:true};
+        for(let index=0;index<group.count;index++)imageValueCostumes.push({sprite:name,name:`${name}-frame-${index}`,svg:imageToSvg(group.members.get(index)),mode:index?'add':'replace'});
+        for(const node of group.nodes)t.imageValueResources.set(node,{...resource,value:{type:'Number',value:node.bwImageArrayIndex}});
+        if(group.label)artworkNames[name]=group.label;
+    }
     const collectImageValues = (node, parent) => {
         if (!node || typeof node !== 'object') return;
+        if (t.imageValueResources.has(node)) return;
         if (node.type==='Declaration' && node.decls.every(d=>frameArrays.has(d.name))) return;
         // Map resources are embedded in tile data; they are not sprite image values.
         if(node.type==='Call' && nameOf(node)==='tiles.createTilemap')return;
@@ -4364,7 +4421,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     }
     for (const name of imageTemplates) {spriteNames.push(name);out.push(`SPRITE ${name}:`, 'WHEN flag clicked:', '  hide', '');}
     return {sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
-        unsupported: [...new Set(t.unsupported)], costumes, sprites: spriteNames};
+        unsupported: [...new Set(t.unsupported)], costumes, sprites: spriteNames, artworkNames};
 };
 
 /** Top-level projectile creation with a named handle. PXT starts side
@@ -4501,6 +4558,7 @@ export function nameArtworkSprites (result) {
         return /^__/.test(variable) ? null : variable;
     };
     const labelOf = name => {
+        if(result.artworkNames?.[name])return userName(result.artworkNames[name]) || result.artworkNames[name];
         for (const line of lines) {
             const at = line.indexOf(quote(name));
             if (at < 0) continue;

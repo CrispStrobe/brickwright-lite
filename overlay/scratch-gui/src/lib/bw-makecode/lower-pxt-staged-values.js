@@ -118,7 +118,14 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false} =
             const items=node.items.map(expression);
             changed=true;
             const prefix=[],array=save({...node,items:[]},prefix);
-            for(const item of items)prefix.push(...item.prefix,{type:'ExpressionStatement',expr:{type:'Call',callee:{type:'Member',object:array,name:'push'},args:[item.value]}});
+            const imageGroup=node.items.length>=2 && node.items.every(item=>item?.type==='Template' && item.tag==='img');
+            // Scalars only: preserve the source-site artwork relationship without
+            // adding AST children, skipping evaluation or sharing runtime images.
+            if(imageGroup)prefix[0].decls[0].init.bwImageArrayGroup=array.name;
+            for(const [index,item] of items.entries()) {
+                const value=imageGroup?{...item.value,bwImageArrayGroup:array.name,bwImageArrayIndex:index,bwImageArrayCount:items.length}:item.value;
+                prefix.push(...item.prefix,{type:'ExpressionStatement',expr:{type:'Call',callee:{type:'Member',object:array,name:'push'},args:[value]}});
+            }
             return {prefix,value:array};
         }
         if(node.type==='Call' && node.isNew){
