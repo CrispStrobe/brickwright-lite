@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {setImmediate as nextTurn} from 'node:timers/promises';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
@@ -74,7 +75,13 @@ test('a real input edge wakes its callback before the next scene frame and Stop 
  const source='let starts=0;let ends=0;controller._setUserEventsEnabled(true);controller.A.onEvent(ControllerButtonEvent.Pressed,function(){starts++;pause(40);ends++});let ready=1;ready+=0;',runs=[];
  try{
   const run=await execute(arcadeToPseudocode(source),runs),clock=run.vm.runtime.bwArcadeProgramClock;
-  await clock.advanceTo(10);run.vm.postIOData('keyboard',{key:' ',isDown:true});await run.vm.runtime._arcadeFramePhase.continuation;
+  await clock.advanceTo(10);run.vm.postIOData('keyboard',{key:' ',isDown:true});
+  // The event bus queues registration dispatch before requesting its source
+  // continuation. Awaiting the old continuation can precede that dispatch.
+  const edgeStarted=performance.now();
+  while(globals(run).starts!==1){assert.ok(performance.now()-edgeStarted<5000,'registered input callback starts');await nextTurn();}
+  await run.vm.runtime._arcadeFramePhase.continuation;
+  assert.equal(clock.now(),10,'observing queued dispatch never advances the actual timer platform');
   assert.equal(globals(run).starts,1,'actual callback executes at the real10ms edge before20ms frame');assert.equal(globals(run).ends,0);assert.equal(run.vm.runtime.bwArcadeDeviceState.elapsedMs,0);
   run.vm.stopAll();await clock.advanceTo(100);assert.equal(globals(run).ends,0);assert.equal(run.vm.runtime.threads.length,0);
   run.vm.postIOData('keyboard',{key:' ',isDown:false});await run.vm.runtime._arcadeFramePhase.continuation;
