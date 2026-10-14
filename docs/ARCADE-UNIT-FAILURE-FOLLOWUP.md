@@ -40,6 +40,16 @@ execution. This entry remains open; a focused native observation reaching
 `ABC` does not establish equivalent scheduling or close the hosted failure.
 The other shard remains without a completed census.
 
+The same exact yielding-wall source has since been compiled and executed once
+in the unchanged pinned original simulator. Ordinary native manual and timed
+cadences both match its `ABC` order, caller completion and final velocity `-40`.
+The affected test now uses ordinary timed cadence for its real 30 ms wait,
+instead of compressing 160 manually supplied physical frames into that wait.
+All three original comparisons remain unchanged, and all nine SDK/bridge
+byte guards remain unchanged. This is a test-cadence correction; it does not
+claim a runtime scheduler patch or a new full-shard result. The original
+hosted `AABC` failure remains preserved for comparison.
+
 New physical Sprite lifecycle and independent Array-reference support have
 focused native and selected-original evidence, recorded in the
 [handoff](ARCADE-AGENT-HANDOFF.md). Their combined hosted unit and browser
