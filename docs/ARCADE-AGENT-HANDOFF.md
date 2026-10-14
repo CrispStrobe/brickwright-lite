@@ -54,6 +54,15 @@ qualified within one loaded JavaScript realm; it does not establish persistent
 live handles across fresh realms. Drawing, update and hitbox overrides and
 status-bar accessors remain named admission boundaries.
 
+The bounded SDK dialog bridge now preserves BaseDialog/SplashDialog object and
+image identity through the existing managed class vocabulary. Seven integrated
+controls pass: actual original/native complete image pixels, Code, original
+export, reimport and same/fresh SB3, including fractional truncation and
+zero/negative default-frame dimensions. Seven unrelated diagnostics remain in
+the genuine multiplayer splash source. Oversized fault continuation, custom
+frame/font/subclass and production GUI behavior retain their explicit boundaries
+in [the dialog contract](compatibility/arcade-sdk-dialog-objects.md).
+
 Saved-project device publication now listens to actual project load, preserves
 newer explicit board selection and rejects late callbacks. Whole-project loads
 clear stale STC metadata; sprite imports retain it. Twelve headless controls

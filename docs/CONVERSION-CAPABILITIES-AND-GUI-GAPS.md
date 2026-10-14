@@ -4099,3 +4099,34 @@ follow the selected SDK, without an extra creation-time screen clamp. Original,
 Code, saved-project, export and reimport controls pass. GUI acceptance still needs
 controller-driven creation, flag inspection and wall destruction in an edited
 game; these focused controls do not promote a complete project.
+
+
+## Bounded SDK Sprite and dialog authoring — 2026-10-14
+
+The qualified class bridge now handles the selected SDK's raw `Sprite` and
+`sprites.ExtendableSprite` constructors, canonical Sprite references, image
+aliases and virtual constructor ordering. Unsupported drawing, update and
+hitbox overrides and status-bar accessors remain explicit diagnostics. Internal
+handles are qualified across restart in one loaded JavaScript realm; public
+Sprite IDs remain scene-local. The integrated focused lifetime/admission gate
+passes four controls. This does not provide a visual class designer.
+
+The same object provider composition now admits bounded `game.BaseDialog` and
+`game.SplashDialog` construction, methods and image references through the
+existing managed class words. Original/native full image pixels, Code,
+export/reimport and same/fresh SB3 match, including fractional resize truncation
+and zero/negative default-frame dimensions. Seven integrated controls pass.
+[The dialog contract](compatibility/arcade-sdk-dialog-objects.md) retains the
+oversized fault-continuation, custom frame/font, subclass and GUI boundaries.
+The genuine multiplayer splash project still has seven other API diagnostics;
+this slice does not remove or hide them.
+
+| Surface | Existing qualified route | GUI work still required |
+| --- | --- | --- |
+| Code | Typed class construction and method calls, explicit SDK base descriptors; Code and SB3 roundtrips | Discoverable signatures and autocomplete, readable field/reference diagnostics, supported-base and override guidance |
+| Blocks | Existing managed class allocation/get/set/call/return words execute and export | Structured class/base selector and field/method editor; typed Sprite/Image sockets; usable constructor and default-argument controls rather than opaque descriptor text |
+| Graphics | Canonical Sprite images and dialog images retain identity; complete pixel comparisons | Inspect shared images and owner lifetimes; edit dialog frame/cursor/font assets; qualify actual renderer and restart behavior in the production GUI |
+| Debugger | Constructor/method cancellation and same-realm stale-handle controls | Object/field watches, scene ownership and destroyed-reference display; no claim that source-level controls already provide these views |
+
+Whole-game and whole-GUI qualification remain separate from these bounded
+implementation controls. The raw partial count is unchanged.
