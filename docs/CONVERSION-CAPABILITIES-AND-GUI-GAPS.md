@@ -44,6 +44,39 @@ Captured callable services remain unadmitted. Unused `whenUsed` fixed-instance
 selection and later instantiation need an editor contract that retains the
 original declarations without executing unused initializers.
 
+## Newly exposed source value and invocation gaps — 2026-10-14
+
+- **Procedure commands:** a source function named `show` loses its invocations
+  to the built-in visibility command. [The explicit-call contract](https://github.com/CrispStrobe/brickwright-lite/pull/911)
+  retains actual Scratch procedure labels and argument types, adds unambiguous
+  Code spelling and requires native/Code/SB3/export/pixel checks. No implementation
+  or closure is claimed before the ownership claim and source qualification.
+- **Arrays text items:** the supplier candidate returns text scalars without
+  JSON quotation marks; native/Code/saved controls and original export pass.
+  Reimport remains blocked because source `typeof` currently loses its operator.
+  Aggregate JSON APIs keep their separate contracts. [The source-type contract](https://github.com/CrispStrobe/brickwright-lite/pull/913)
+  requires real value/ownership authority and editable source/export proof.
+- **Sprite value representation:** legacy native Sprite handles are plain
+  strings. A literal equal to a live handle cannot be identified as an object
+  from its spelling or registry membership. Track a proper source value/carrier
+  migration and saved-project compatibility before broad `typeof`, equality or
+  coercion claims. Ambiguous values must not gain authority from a guessed kind.
+- **String-producing APIs:** actual `game.askForString` String return provenance
+  now survives arrays and scalar preinitialization. A genuine original simulator
+  DOM input and native QUESTION/ANSWER controls pass source, Code, same/fresh SB3,
+  exported original and reimport. Visible hosted prompt/widget authoring remains
+  a separate gate.
+- **Console inspection:** selected `console.inspect` returns a String without
+  dispatching logs. Original controls retain fractional/negative array truncation,
+  empty default class-key enumeration and one custom `toString` evaluation. A
+  new reporter needs its own source/ownership/GUI contract; speech is not an
+  implementation of inspection.
+- **Map and throws:** a valid retained context still needs callable `map` support.
+  Its `throw` syntax is currently misparsed into two unrelated statements. Preserve
+  the original exception behavior and implement parser/runtime/export support
+  before claiming that fragment works. The context's licence and incomplete
+  game setup remain separate recorded boundaries.
+
 ## Arcade tile map painter — 2026-10-11 (U03, first slice)
 
 A MakeCode Arcade level arrives as a `set Arcade tilemap` block whose input is

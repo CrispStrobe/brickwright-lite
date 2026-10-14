@@ -72,6 +72,17 @@ audit; do not mix their denominators. An incomplete interactive fragment still
 lacks its actor initialization, even though it structurally translates. No
 whole-game or GUI qualification follows from these structural counts.
 
+### Prompt String provenance
+
+The selected SDK's `game.askForString` has String result authority. Three strict
+scope/provenance controls and one original/native/Code/same and fresh SB3/export/
+reimport case pass, including a read before declaration, entered text, character
+code and array alias identity. The original uses the simulator's real DOM input
+and Enter handler; native uses the ordinary QUESTION/ANSWER path. No SDK answer
+stub or broad array/Any inference is introduced. Hosted visible prompt controls
+remain open. This repairs a retained typed string receiver diagnostic; its map
+and exception diagnostics remain explicit.
+
 ### Initializer and virtual-slot qualification
 
 `whenUsed` declarations now retain their emitted initializer effects as one
