@@ -9,31 +9,39 @@ not a second active owner. SPIKE G01, CPU and hardware ownership remain separate
 ## Current authoring and qualification boundary — 2026-10-14
 
 Start with [the current source/methodology handoff](ARCADE-AGENT-HANDOFF.md).
-The fresh immutable raw audit is **143 translated / 40 partial / one parse
-failure out of 184** at clean `971f041222`; no whole corpus game is GUI-qualified. Historical counts
-in dated sections below describe older profiles. Preserve separate original
-compilation, native execution, export and GUI verdicts. Snake still has a known
-procedure-call rendering failure despite its cleared static numeric diagnostic.
+The fresh immutable raw audit is **147 translated / 36 partial / one parse
+failure out of 184** at clean `5470796506`; no whole corpus game is GUI-qualified.
+Historical counts in dated sections below describe older profiles. Preserve separate original
+compilation, native execution, export and GUI verdicts. Snake now draws through
+explicit procedure calls, but its observed frame delta and random-position
+comparison remain open.
 The separate canonical full-context profile is 29 original-valid, 19 strict
 structural candidates and 10 valid contexts blocked; none are GUI-promoted.
 
-Current canonical supplier has **380 authoring forms** at
-`bac884ccaaceae9d9dfd832d08089f05c4719237`. Newly qualified source capabilities
+Current canonical supplier has **384 distinct operations and 389 spellings
+including five aliases** at `08612be429512583e9c23564a589b9872ba28073`.
+Newly qualified source capabilities
 include typed scalar declaration cells with actual variable binding, selected
 PXT evaluation order, accessor bodies and virtual halves, staged field
 initializers, bounded selected-SDK sprite flags, control event registration /
-raise / wait, multiplayer controller events and raw connection assignment.
-Each word's signature is available from the committed generated inventory;
-use that inventory and native block metadata when extending Code completion,
+raise / wait, multiplayer controller events, raw connection assignment, live
+font metrics and fixed button repeat properties. Each word's signature is
+available from the committed generated inventory.
+
+The repeat-composed source removes five delay/interval diagnostics in exactly
+four raw projects, with no other changed rows or regressions. The remaining
+36 partial rows retain 120 diagnostic occurrences across 92 distinct families;
+the unchanged parse failure is separate. Counts measure static translation only.
+Use that inventory and native block metadata when extending Code completion,
 help, menus and editor controls. Do not infer support for every dynamic callee
 or reference type from these words.
 
 | Surface | Observed feature support | Remaining GUI work |
 | --- | --- | --- |
 | Blocks | Fixed dropdown fields retain edited math, Text Sprite and Sprite Data choices. Scalar declarations bind connected stock variables. Event fields carry player/value edits. | Reference and callable authoring need their separate source and supplier gates; validate declaration placement and rename behavior in editor actions. |
-| Code | Numeric and event authoring each pass all five official GUI journeys, including Code and fresh SB3. | The new 380-form source/reference changes need fresh editor qualification. Add signature/completion help for current words and typed reference/callable flows only after admission. |
+| Code | Numeric and event authoring each pass all five official GUI journeys, including Code and fresh SB3. | The current 384-operation source/reference, font and repeat changes need fresh editor qualification. Add signature/completion help for current words and typed reference/callable flows only after admission. |
 | Graphics | Imported sprite/background art and animation costumes remain editable; native factory duplication is corrected and inline literal-array grouping retains ordered costumes. | Fresh hosted edited-animation pixels, saved/reopened levels, tile asset identities, legacy maps and sprite placement remain independent gates. No class-specific graphics designer is qualified. |
-| Controller and stage | Numeric original comparisons include complete rendered frames; event input/waiter/player edits pass bounded official comparisons. | Repeat delay/interval are still missing, with [a merged implementation claim](https://github.com/CrispStrobe/brickwright-lite/pull/904). Full source cadence and complete corpus games remain unqualified. |
+| Controller and stage | Numeric original comparisons include complete rendered frames; event input/waiter/player edits pass bounded official comparisons. | Repeat delay/interval, defaults and all 24 advertised player/button pairs have bounded original/native/Code/SB3/export controls. Their prepared real palette/controller-pane journey still needs matching hosted proof. Full source cadence and complete corpus games remain unqualified. |
 | Debugger and lifecycle | Focused tests retain Stop, restart, stale ownership, scalar/reference and callback cancellation assertions. | Add visible typed-cell/object/callable inspection without converting unknown values or editing retained execution state. |
 
 [Build 38514362889](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38514362889)
