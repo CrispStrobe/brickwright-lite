@@ -1,6 +1,6 @@
 ## Precision meter supplier package adoption — 2026-10-14
 
-CLAIM — Codex bwcx, branch lane/precision-meter-package-adoption-20261014,
+DONE candidate — Codex bwcx, branch lane/precision-meter-package-adoption-20261014,
 exact base10886fb9ace046cdd29979018c957f038232349b, isolated task worktree.
 PR915 is merged; preserve its seated-terminal/census behavior unchanged.
 Adopt the compatible qualified pair: Board370be6994dcc6ffcef852f8f1d67861e3e98dd70
@@ -27,7 +27,14 @@ change. Metadata generation/pure controls only locally; actual installed CLI,
 pin/content/single-engine/provenance gates and existing production circuit
 browser journey must pass in hosted full CI before landing. No precision GUI
 control, physical-model accuracy, licensed-guest execution or deployment claim.
-Merge this claim before implementation; use the current full-CI protocol.
+Claim PR927 merged before implementation. The candidate adds the ideal-supply
+500-ohm/2.2-uF linear startup control with unchanged 0.5-uV point and 1-uV mean
+bounds, alongside all existing finite-source cases. Local metadata tests and
+independent continuous-oracle quadrature are not installed-package evidence;
+source views used only for generation are not installed-content verification.
+Landing requires the new exact-head full-CI qualification, including installed
+package identity, actual CLI readings/receipts and the existing circuit browser
+journey. Supplier results above do not substitute for that consumer result.
 
 ## Explicit procedure calls in Code — 2026-10-14
 
