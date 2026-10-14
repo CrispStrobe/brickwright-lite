@@ -51,9 +51,12 @@ This does not qualify a complete corpus game or the installed GUI.
 
 Named/dynamic callbacks remain diagnosed until the canonical callable service
 is qualified. Background/idle listeners, timestamp APIs, runtime debugger pause,
-notify-one delivery and controller menu/any-button getters are not qualified.
-The helper contains the selected notify-one mapping, but it has no original
-comparison gate yet. This target does not expose `control.eventValue`,
+controller menu/any-button getters are not qualified.
+The selected Arcade board does not configure EventBus.setNotify. Consequently
+raising DAL notify-one source 1022 does not remap to notify source 1023. Actual
+source 1023 broadcasts both waiting fibers. A retained original counterexample
+and native/Code/same/fresh SB3 controls verify this distinction; generic board
+notify-one configuration is not exposed or claimed. This target does not expose `control.eventValue`,
 `control.eventTimestamp` or `EventCreationMode`; conversion retains diagnostics
 for those names. No generic source-fault propagation or arbitrary raw object
 argument contract follows from primitive controls.

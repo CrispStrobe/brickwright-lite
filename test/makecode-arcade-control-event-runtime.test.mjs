@@ -76,3 +76,14 @@ test('default numeric zero source/value block shadows dispatch a single zero wil
   assert.equal((await finish(run)).observed,1);
  }finally{run?.vm.quit();clearStrayTimers();}
 });
+test('selected Arcade leaves notify-one unconfigured and broadcasts actual source through Code and SB3',async()=>{
+ const source='let trace="";control.runInParallel(function(){control.waitForEvent(1023,44);trace+="A"});control.runInParallel(function(){control.waitForEvent(1023,44);trace+="B"});pause(20);control.raiseEvent(1022,44);pause(20);let first=trace;control.raiseEvent(1023,44);pause(20);let observed=trace;first+="";observed+="";';
+ const runs=[];const check=async r=>{const g=await finish(r,100);assert.equal(g.first,'');assert.equal(g.observed,'AB');};
+ try{
+  const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
+  const run=await runProgram(imported.code,{frames:0,storage:true,frameAuthority:'timed'});runs.push(run);await check(run);
+  const code=await runProgram(run.creator.decompile(),{frames:0,storage:true,frameAuthority:'timed'});runs.push(code);await check(code);
+  const bytes=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());await run.vm.loadProject(bytes);await check(run);
+  const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true,frameAuthority:'timed'});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(bytes);await check(fresh);
+ }finally{for(const run of runs)run.vm.quit();clearStrayTimers();}
+});

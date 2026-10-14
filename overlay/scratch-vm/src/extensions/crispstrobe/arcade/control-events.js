@@ -43,10 +43,10 @@ module.exports = function createControlEvents({dispatch, enqueue, paused = () =>
             }
         }
     };
-    const push = async (q, payload, epoch, notifyOne = false) => {
+    const push = async (q, payload, epoch) => {
         if (epoch !== generation)return;
-        const waiters = notifyOne ? q.waiters.splice(0, 1) : q.waiters;
-        if (!notifyOne)q.waiters = [];
+        const waiters = q.waiters;
+        q.waiters = [];
         // Waiters are notified before testing whether this queue has handlers.
         for (const waiter of waiters)waiter.resolve(payload);
         if (waiters.length)await Promise.resolve();
@@ -92,11 +92,11 @@ module.exports = function createControlEvents({dispatch, enqueue, paused = () =>
         // Enqueue rather than await: a source raise returns before its callback.
         raise(source, value, payload = null) {
             if (paused())return;
-            const notifyOne = source === 1022;
-            if (notifyOne)source = 1023;
+            // Arcade never configures EventBus.setNotify: DAL constants alone
+            // do not activate notify-one remapping in this selected board.
             const epoch = generation, targets = matching(source, value);
             enqueue(async () => {
-                try {for (const target of targets) {if (epoch !== generation)return;if (target)await push(target, payload, epoch, notifyOne);else await Promise.resolve();}}
+                try {for (const target of targets) {if (epoch !== generation)return;if (target)await push(target, payload, epoch);else await Promise.resolve();}}
                 catch (error) {if (epoch === generation)onError(error);}
             });
         },
