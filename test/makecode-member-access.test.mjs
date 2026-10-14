@@ -85,7 +85,10 @@ for (const [target, translate] of Object.entries(TARGETS)) {
             const expected = target === 'Arcade' && what.startsWith('s.concat') ?
                 (what.endsWith('.length') ? `set r to length of \\(${arcadeConcat}\\)` : `set r to ${arcadeConcat}`) :
                 line(ref(target, 's'), ref(target, 'i'));
-            assert.match(code, new RegExp(`^\\s*\\(?${expected}\\)?$`, 'm'), code);
+            // Arcade value assignments wrap the reporter, not the command.
+            const assignment = target === 'Arcade' ?
+                `set r to \\(?${expected.slice('set r to '.length)}\\)?` : expected;
+            assert.match(code, new RegExp(`^\\s*${assignment}$`, 'm'), code);
         });
     }
 }
