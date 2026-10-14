@@ -61,12 +61,19 @@ has not been reached.
 Next ordered work:
 
 1. Complete [stored class callbacks](ARCADE-STORED-CALLABLE-NEXT-SLICE.md) through
-   edited current-body export, reimport and actual selected originals. The
-   private real-VM prototype passes Number/String invocation, captured receiver
-   ownership, pause and Stop; it is not admitted into this consumer.
+   broader default and visible editor admission. The
+   [explicit prototype](compatibility/arcade-class-stored-callbacks.md) is now
+   composed with current consumer source. It passes Number/String invocation,
+   captured receiver ownership, pause/Stop, Code, same/fresh saved project,
+   edited current-body export and native reimport. Two selected-original programs
+   pass: source `3 / ok / 3`, edited export `8 / ok / 8`, with unchanged SDK guards.
+   Composed control batches pass 81 and 66 tests; eleven root controls confirm
+   current-body conversion and the retained default boundary. Class callbacks
+   remain explicitly opted in; general default and GUI admission are closed.
    Independent review found generated discard temporaries could overwrite
-   authored parameters. Close all three affected families with fresh allocation,
-   current-body export and actual native regression controls before originals.
+   authored parameters. All three affected families now use fresh allocation;
+   current-body export and actual native regression controls preserve the
+   authored values. The earlier failures remain in the private evidence.
 2. [Default numeric callable admission](compatibility/arcade-numeric-callable-default-admission.md)
    claim [PR931](https://github.com/CrispStrobe/brickwright-lite/pull/931) merged
    with all 11 enabled checks successful and reviewed/landed tree equality.
