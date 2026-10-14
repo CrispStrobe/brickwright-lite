@@ -51,7 +51,7 @@ Reached, with original failures retained:
   function control observes actual 199/200 ms deadlines and Stop/restart.
 
 The fresh immutable 184-input audit at
-`3f714c5d642b951dcf2740eeac9032b2e7b43832` remains **147 translated / 36 partial /
+`57ba525fc6120922f4e656d657b35ecec44841e1` remains **147 translated / 36 partial /
 1 parse failure**. All 184 committed input blobs and the unchanged content
 multiset were verified. This is pure translation, not runtime/whole-game
 qualification. The separately frozen authentic 41-context denominator remains

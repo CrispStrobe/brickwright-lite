@@ -29,6 +29,14 @@ the yielding-wall scheduling entry or establish a new full-shard result.
 
 ## Current exact-source qualification failures
 
+Later integration `249dc22ddee151159b72b36d183b5f2545db0949` passes all
+496 [hosted focused controls](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38645260700/job/116132025480),
+with zero failures, skips or TODOs. Its
+[gallery browser check](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38645261066/job/116130412892)
+also succeeds. These results close the earlier focused mirror failure; full
+unit shards, production build and Arcade browser journeys remain separately
+pending. Retain the historical failures below.
+
 Three further focused controls now pass after correcting stale expectations.
 The optional-argument control checks the explicit `CALL:` syntax and still
 executes the procedure with an omitted argument, producing exactly three
