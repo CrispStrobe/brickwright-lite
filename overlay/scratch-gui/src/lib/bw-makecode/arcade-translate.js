@@ -4866,8 +4866,13 @@ export function arcadeToPseudocode (files, opts = {}) {
     const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && assetKindLookup && ['assets.image','assets.tile'].includes(node.tag) ? lookupAssetTemplate(assetKindLookup,node.tag,node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ?
         assets[tileImagePath(node)] || assets[node.name] || (BUILTIN_IMAGES[tileImagePath(node)] ? decodeMkcdImage(BUILTIN_IMAGES[tileImagePath(node)]) : null) :
         node?.type==='Identifier' ? assets[node.name] : null;
-    const stagedSource = lowerPxtStagedValues(lowerLiveFontMetrics(namespaceBindings.program || parsed), {
-        isStaticResource: node => !!decodeTilemap(node,tileImageOf,tileImagePath)
+    const fontSource = lowerLiveFontMetrics(namespaceBindings.program || parsed);
+    const queryReferences = inferImageReferences(fontSource,tileImagePath,tileImageOf,
+        node => !!assetKindLookup && node?.type==='Template' && ['assets.image','assets.tile'].includes(node.tag));
+    const stagedSource = lowerPxtStagedValues(fontSource, {
+        isStaticResource: node => !!decodeTilemap(node,tileImageOf,tileImagePath),
+        isArrayQuery: node => node.callee?.type==='Member' &&
+            ['indexOf','removeElement'].includes(node.callee.name) && queryReferences.arrays.has(node.callee.object)
     });
     stagedSource.sourceReferenceDeclarations = sourceReferenceDeclarations(stagedSource);
     const objectClasses = lowerObjectClasses(stagedSource);

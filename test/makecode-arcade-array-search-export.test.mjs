@@ -56,7 +56,7 @@ function check(run) {
 function evidence(name,data) {
     if(!process.env.BW_ARRAY_QUERY_EVIDENCE_DIR)return;
     fs.mkdirSync(process.env.BW_ARRAY_QUERY_EVIDENCE_DIR,{recursive:true});
-    fs.writeFileSync(path.join(process.env.BW_ARRAY_QUERY_EVIDENCE_DIR,name+'.json'),JSON.stringify(data));
+    fs.writeFileSync(path.join(process.env.BW_ARRAY_QUERY_EVIDENCE_DIR,'bridge-'+name+'.json'),JSON.stringify(data));
 }
 async function execute(imported,frames=60) {
     assert.deepEqual(imported.unsupported,[]);

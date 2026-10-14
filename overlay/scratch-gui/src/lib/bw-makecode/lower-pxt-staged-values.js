@@ -8,7 +8,7 @@ import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
  * Source: microsoft/pxt v13.2.1 pxtcompiler/emitter/emitter.ts (MIT).
  * The original selected worker execution remains the semantic authority.
  */
-export function lowerPxtStagedValues(program, {isStaticResource = () => false} = {}) {
+export function lowerPxtStagedValues(program, {isStaticResource = () => false, isArrayQuery = () => false} = {}) {
     const names=new Set();
     const scan=node=>{
         if(!node || typeof node!=='object')return;
@@ -152,6 +152,15 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false} =
             const method=node.callee?.type==='Member' && !namespace(node.callee.object);
             const dynamic=!method && node.callee?.type!=='Identifier' && !namespace(node.callee?.object);
             const result=sequence(method?[node.callee.object,...node.args]:dynamic?[node.callee,...node.args]:node.args);
+            if(method && isArrayQuery(node)) {
+                // The portable array query word presents its needle before its
+                // receiver. Snapshot selected-PXT ordinary operand evaluation
+                // after the existing eager staging, so field order cannot
+                // reorder calls or observe a receiver reassigned by the needle.
+                changed=true;
+                const prefix=[...result.prefix],values=result.values.map(value=>save(value,prefix));
+                return {prefix,value:{...node,callee:{...node.callee,object:values[0]},args:values.slice(1)}};
+            }
             return {prefix:result.prefix,value:{...node,callee:method?{...node.callee,object:result.values[0]}:dynamic?result.values[0]:node.callee,args:method || dynamic?result.values.slice(1):result.values}};
         }
         return {prefix:[],value:node};
