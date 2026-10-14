@@ -46,6 +46,13 @@ all retained binary/source/hash identities unchanged before updating provenance;
 use canonical record/vendor writers where available. No binary, firmware,
 media, runtime source, profile or workflow behavior change. Preserve the original
 red and all latest-main CPX/producer pins; qualify the combined forward head.
+Both original shards completed:4074/4/14 and3214/1/5 pass/fail/skip. The fifth
+failure is the controller record already included above. The new ideal-supply
+CLI case passes120 actual samples: maximum point error4.278440269 nV and mean
+error1.461372356 nV. All eight repaired JSON records change only their Board-pin
+field; supplier ROM/source/assembler/controller ranges and retained bytes are
+unchanged. Canonical BIOS recording verifies the same source/ROM and zero source
+commits behind the pin; no binary was rebuilt or replaced. Combined CI is pending.
 
 ## Explicit procedure calls in Code — 2026-10-14
 
