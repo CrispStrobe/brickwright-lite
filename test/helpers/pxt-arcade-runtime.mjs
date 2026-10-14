@@ -29,10 +29,16 @@ export function observePxtDisplay(sim = globalThis.pxsim) {
     return observer;
 }
 
-export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, waitForDisplay = false, buttonActions = null, recordSound = false, recordSongSound = false, waitForMain = true, fakeClock = false, inspectImageGlobals = [], observeEntropy = false} = {}) {
+export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, waitForDisplay = false, buttonActions = null, recordSound = false, recordSongSound = false, waitForMain = true, fakeClock = false, inspectImageGlobals = [], observeEntropy = false, onCompilation = null} = {}) {
     if (waitForDisplay && !inspectDisplay) throw new Error('Display readiness requires display inspection');
+    if(onCompilation!==null && typeof onCompilation!=='function')throw new Error('Compilation observer must be a function');
     const files=typeof source === 'string' ? {'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})} : {...source};
     const built=await compile('arcade',files);
+    // Retain authority from the exact compilation used by this guest, including
+    // rejected inputs. The observer receives copies and cannot alter the guest.
+    if(onCompilation!==null) {
+        await onCompilation(structuredClone({files,built}));
+    }
     if(!built.success)throw new Error(JSON.stringify(built.diagnostics));
     const root=path.join(STATIC,'arcade/sim');
     const server=createServer(async(req,res)=>{
