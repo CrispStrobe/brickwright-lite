@@ -10,6 +10,30 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ## Latest source qualification — 2026-10-13
 
+### Integrated accessor and Scene slices — 2026-10-14
+
+The ordinary getter/setter slice is integrated without the experimental general
+PXT staging or scalar prototypes. It retains inherited virtual halves, real
+accessor bodies and aliases, managed cancellation, source restrictions and
+receiver/quoted-string hygiene. Five integrated descriptor controls and one full
+original/native compound-assignment authoring route pass. Full
+isolated qualification and remaining package/GUI work are recorded in
+[the accessor contract](compatibility/arcade-class-accessor-scope.md).
+
+The [Scene flag/controller slice](compatibility/arcade-scene-flags-controller.md)
+now preserves the selected SDK's conditional z/public-ID selection sort, live
+render masks, transparent parent artwork and real controller state. Eleven
+isolated authoring, four rendering and 24 phase controls pass. One full
+original/native authoring control passes on integration. The native Scene flag
+palette default now has a numeric editor shadow while connected reporters
+retain their actual primitive values. Production GUI qualification remains open.
+The combined merged Settings/Scene supplier pin has 369 canonical forms.
+
+Official source-manifest checks continue to reject changed tracked build inputs.
+The latest rejected build identified one stale migration mirror; it is corrected.
+The existing committed mirror gate now runs in the bounded source suite before
+heavy integration, preserving the final manifest check.
+
 ### Settings and array authoring — 2026-10-14
 
 The latest official GUI build passed artifact admission, then exposed a real
@@ -34,8 +58,8 @@ successful enabled checks and matching reviewed/landed trees. Their three
 array/string reporters preserve shallow copy identity, nested aliases and
 selected PXT UTF16 indexing semantics. Integration now vendors those canonical
 bytes through the standard scoped bundle generator and adds the isolated
-array-copy/import/export slice. The vocabulary now contains 366 canonical
-forms. Reporter availability is not whole-game qualification.
+array-copy/import/export slice. This array slice added three canonical
+forms; the combined current supplier inventory is recorded above. Reporter availability is not whole-game qualification.
 
 The official integration unit failure audit is ongoing. Distinct failing test
 blocks must be counted from actual failure records, excluding repeated log

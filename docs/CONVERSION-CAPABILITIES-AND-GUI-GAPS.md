@@ -4130,3 +4130,49 @@ this slice does not remove or hide them.
 
 Whole-game and whole-GUI qualification remain separate from these bounded
 implementation controls. The raw partial count is unchanged.
+
+
+## Instance accessors, Scene flags and Settings fields — 2026-10-14
+
+Ordinary instance getters and setters now execute their managed bodies. Inherited
+getter and setter halves resolve independently; source readonly/default/super
+restrictions, real reference aliases, cancellation and quoted-source hygiene
+remain enforced. There is no extra backing field for an accessor. The isolated
+qualified slice passes its original/native/Code/export/reimport/SB3 and rejection
+controls; five descriptor/admission controls and one full original/native
+compound-assignment authoring route pass on integration. Read
+[the accessor contract](compatibility/arcade-class-accessor-scope.md).
+Complete statusbar and spriteutils packages still require their captured-callable,
+base-service, timer, asset and graphics qualification; the story's BaseSprite
+virtual methods remain separate work.
+
+Scene flags and user controller gating now have three native palette and Code
+operations, preserving conditional SDK sorting, live rendering flags, parent
+artwork ownership and actual input state. Eleven isolated authoring controls,
+four rendering controls and 24 phase controls pass; one complete original/native
+Scene authoring control passes on integration. The palette default uses a
+numeric shadow; connected primitive reporters retain their actual value.
+This reduces the genuine custom-splash source's remaining diagnostics from seven
+to four, without whole-game promotion. See
+[the Scene contract](compatibility/arcade-scene-flags-controller.md).
+
+Settings read/write type selections now use native fixed dropdown fields. Known
+legacy literal menu shadows migrate before replacing the project; computed or
+malformed selections produce named diagnostics. Export and type inference read
+the same native field or validated literal. Twelve native menu/load controls,
+13 original/native/Code/saved-project/export/reimport Settings controls and four
+serialization-version/export refusal controls pass. These repairs still need a
+fresh official production GUI journey.
+
+| Surface | Qualified capability | GUI work still required |
+| --- | --- | --- |
+| Code | Accessor descriptor/body roundtrips; Scene operations; Settings field roundtrips | Source/class completion and signature help; readable invalid declaration/member messages; source versus ordinary Scratch initialization guidance |
+| Blocks | Managed property get/set operations, Scene flag/reference sockets, real fixed Settings type dropdowns | Structured class/accessor editor with typed sockets and visibility; discoverable Scene flags and live scene selection; fresh visible dropdown/edit/save acceptance |
+| Graphics | Parent artwork renders through transparent scenes; accessor Image/Sprite aliases retain identity | Full subclass draw/update/hitbox services; actual game/editor replay after artwork edits; shared image inspection and editor owner/lifetime controls |
+| Debugger | Real accessor bodies, managed continuation cancellation and source-backed Scene ordering | Object/accessor watches without accidental evaluations; live scene/flag visualization; read-only and lifecycle diagnostics |
+
+The canonical inventory now contains 369 forms. Source-scalar initialization and
+directed export typing are a separately claimed implementation, with no default
+adoption or whole-corpus qualification yet. Low-level event bus, multiplayer
+registration and captured callable fields remain explicit pending slices. The
+raw corpus still has 41 partial projects; these bounded checks do not change it.
