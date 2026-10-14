@@ -46,8 +46,10 @@ timeout and genuine controller input. The original fixed 70 ms source and its
 timed regression remain unchanged. A loaded browser need not service a positive
 scene frame during that wallclock interval; earlier cold-start failures remain
 recorded, and this browser-profile change is not a scheduler repair. The new
-profile has a native timed preflight; selected-original execution is a separate
-pending check.
+profile passes native timed preflight and actual selected-original execution:
+both observe `before=15`, `after=12.609375`, with both following handlers and
+the inline caller reading that same final position. All nine selected SDK and
+bridge byte guards remain unchanged. Its browser qualification remains separate.
 
 ### Integration refresh
 
