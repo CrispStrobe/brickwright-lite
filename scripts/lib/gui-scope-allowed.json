@@ -32,5 +32,15 @@
       "test/spike-arena-3d-pane.test.mjs"
     ],
     "why": "the pane test loads the real 3D view module (arena-view3d.js), which imports three's orbit control, and asserts its no-WebGL fallback"
+  },
+  "typescript": {
+    "tests": [
+      "test/makecode-arcade-controller-bindings.test.mjs",
+      "test/makecode-arcade-discarded-projectiles.test.mjs",
+      "test/makecode-arcade-generated-images.test.mjs",
+      "test/makecode-arcade-named-handles.test.mjs",
+      "test/makecode-arcade-overlap-only.test.mjs"
+    ],
+    "why": "The selected-original SpriteKind declaration oracle transpiles the exact hashed SDK source; TypeScript is resolved from the integrated GUI dependency scope, including on a clean CI runner."
   }
 }
