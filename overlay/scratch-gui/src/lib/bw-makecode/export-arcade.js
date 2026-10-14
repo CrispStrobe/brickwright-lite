@@ -787,7 +787,7 @@ class ArcadeEmitter {
             let id=Array.isArray(slot) && [12,13].includes(slot[0]) ? slot[2] : null;
             const reporter=typeof slot==='string' && this.block(slot);
             if(reporter?.opcode==='data_variable')id=reporter.fields?.VARIABLE?.[1];
-            if(id)return this.mixedValueVariableIds.has(id);
+            if(id)return this.mixedValueVariableIds.has(id) || this.arrayVariableTypes.get(id)==='any';
             if(reporter?.opcode==='arcade_getLocal')return this.mixedValueArrayLocalBlocks.has(reporter);
             // A cast receiver is any[]. Its indexed/pop/random element is any,
             // so an outer array operation needs its own explicit array access.
