@@ -46,6 +46,9 @@ native timer control passes, but its browser cause is not established. Preserve
 the failure and collect actual clock/worker diagnostics instead of weakening
 motion assertions.
 
+[The ordered remaining-semantics plan](ARCADE-REMAINING-SHARED-SEMANTICS.md)
+records primary source URLs/hashes and Blocks/Code/graphics acceptance contracts.
+
 ### Current immutable corpus audit
 
 The fresh raw audit at clean `5470796506f6d7bd5d44433b65e17bcd4282cd6a`
