@@ -1336,6 +1336,32 @@ class ArcadeEmitter {
         }
         case 'arcade_spriteOverlaps': return `${v('A')}.overlapsWith(${v('B')})`;
         case 'operator_length': return `("" + ${v('STRING')}).length`;
+        // A character of a text (task E17). `letter` counts from 1, PXT's
+        // index from 0. String_::charAt gives "" out of range (index < 0 or
+        // >= length), as Scratch's letter does for a whole index. It is
+        // `s.charAt(i)`, not `s[i]` (the same shim): PXT refuses an indexer
+        // of type `any` ("non-numeric indexer"), and an exported variable
+        // often is one. A literal index is folded and `letter (i + 1)` — how
+        // the importer reads `s.charAt(i)` — goes back as `charAt(i)`, so a
+        // round trip stays put. (A fractional index between 0 and 1, or NaN,
+        // is where they part: charAt truncates it to 0, Scratch gives "".)
+        case 'operator_letter_of': {
+            // Text whatever it holds, as `length of` reads it: a literal or
+            // a join is text already, anything else is made text.
+            const raw = v('STRING');
+            const block = name => {
+                const slot = b.inputs?.[name]?.[1];
+                return typeof slot === 'string' ? this.block(slot) : null;
+            };
+            const text = /^"/.test(raw) || block('STRING')?.opcode === 'operator_join' ? raw : `("" + ${raw})`;
+            const n = this.literalNumber(b, 'LETTER');
+            if (n !== null && Number.isInteger(n)) return `${text}.charAt(${n - 1})`;
+            const at = block('LETTER');
+            if (at && at.opcode === 'operator_add' && this.literalNumber(at, 'NUM2') === 1) {
+                return `${text}.charAt(${this.value(at, 'NUM1')})`;
+            }
+            return `${text}.charAt(${v('LETTER')} - 1)`;
+        }
         case 'operator_gt': return `(${v('OPERAND1')} > ${v('OPERAND2')})`;
         case 'operator_lt': return `(${v('OPERAND1')} < ${v('OPERAND2')})`;
         case 'operator_equals': {
@@ -2531,9 +2557,9 @@ class ArcadeEmitter {
                     return id;
                 }
                 if(value.opcode==='arrays_specialValue'){const id=Symbol('special value');specialTypes.push([id,literal(blocks,value,'KIND')]);return id;}
-                if(this.isBoolean(value) || ['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','operator_random','operator_join','planetemaths_min','planetemaths_max'].includes(value.opcode)) {
+                if(this.isBoolean(value) || ['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','operator_random','operator_join','operator_letter_of','operator_length','planetemaths_min','planetemaths_max'].includes(value.opcode)) {
                     const id=`${key}:primitive:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
-                    (this.isBoolean(value)?booleans:value.opcode==='operator_join'?strings:numbers).add(id);return id;
+                    (this.isBoolean(value)?booleans:['operator_join','operator_letter_of'].includes(value.opcode)?strings:numbers).add(id);return id;
                 }
                 if (/^argument_reporter_/.test(value.opcode)) return `${key}:param:${value.fields.VALUE[0]}`;
                 if (value.opcode === 'arcade_getCaptured')return `${key}:capture:${literal(blocks,value,'NAME')}`;
