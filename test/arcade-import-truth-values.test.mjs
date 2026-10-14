@@ -237,3 +237,22 @@ test('loop condition choices observe actual held input through original, Code, S
         }
     }
 });
+
+
+test('controller lexical shadowing cannot grant keyboard or native button state on either source path',()=>{
+    const shadows=[
+        'function f(controller:any){pauseUntil(()=>controller.left.isPressed())}f(0)',
+        'let controller=0;pauseUntil(()=>controller.left.isPressed())',
+        'function f(){let controller=0;pauseUntil(()=>controller.left.isPressed())}f()',
+    ];
+    for(const prefix of ['', 'let hero=sprites.create(img`1`,SpriteKind.Player);']){
+        for(const source of shadows){
+            const imported=arcadeToPseudocode(prefix+source);
+            assert.ok(imported.unsupported.some(message=>/shadowed controller binding/.test(message)),prefix+source);
+            assert.doesNotMatch(imported.code,/key left arrow pressed\?|arcade player .*button .* pressed/);
+        }
+        const supported=arcadeToPseudocode(prefix+'pauseUntil(()=>controller.left.isPressed())');
+        assert.deepEqual(supported.unsupported,[]);
+        assert.deepEqual(parse(supported.code).c.warnings,[]);
+    }
+});

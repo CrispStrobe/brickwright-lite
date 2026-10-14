@@ -1011,7 +1011,7 @@ class ArcadeTranslator extends BaseTranslator {
             // changes which intentionally do not mutate Scratch keyboard IO.
             const button = /^controller\.(\w+)\.isPressed$/.exec(name || '');
             if (button && CONTROLLER_KEYS[button[1]]) {
-                if(this.handleTemplates && (this.boundSourceGlobals?.has('controller') || this.sourceFunctions?.has('controller') || this.localVars?.has('controller') || this.currentParameters?.has('controller') || this.capturedBindings.has('controller'))){this.unsupported.push(`${name} refers to a shadowed controller binding`);return 'undefined value';}
+                if(this.bindsName('controller')){this.unsupported.push(`${name} refers to a shadowed controller binding`);return 'undefined value';}
                 if(this.handleTemplates && button[1]==='menu'){this.unsupported.push('controller.menu.isPressed requires a qualified SDK menu button state reporter');return 'undefined value';}
                 if(this.handleTemplates && Object.prototype.hasOwnProperty.call({A:0,B:1,up:2,right:3,down:4,left:5},button[1]))return `arcade player (arcade player by number 1) button (${{A:0,B:1,up:2,right:3,down:4,left:5}[button[1]]}) pressed`;
                 return `key ${CONTROLLER_KEYS[button[1]]} pressed?`;
