@@ -152,7 +152,9 @@ test('source Font reads cannot borrow later or branch-only initialization',()=>{
         'function read(){let font:image.Font;let width=font.charWidth;font=image.font8;return width}let result=read()',
         'let font:image.Font;let alias=font;font=image.font8;let width=alias.charWidth',
         'let font:image.Font;if(true)font=image.font8;let width=font.charWidth',
-        'let font:image.Font;while(false){font=image.font8}let width=font.charWidth'
+        'let font:image.Font;while(false){font=image.font8}let width=font.charWidth',
+        'let font:image.Font;let ignored=true?(font=image.font8):0;let width=font.charWidth',
+        'let font:image.Font;let ignored=false&&(font=image.font8);let width=font.charWidth'
     ])assert.ok(lower(source).unsupported.some(message=>/producer authority/.test(message)),source);
     for(const source of [
         'let font:image.Font;font=image.font8;let width=font.charWidth',

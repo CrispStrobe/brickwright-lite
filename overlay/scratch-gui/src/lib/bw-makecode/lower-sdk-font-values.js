@@ -77,6 +77,8 @@ export function lowerSdkFontValues(program) {
         if(node.type==='Class'){for(const field of node.fields||[])entry(field.init,new Set());for(const method of [node.ctor,...(node.methods||[])].filter(Boolean)){const methodOwner=owners.get(method.body?.[0])||owner;entry(method.body,new Set((method.params||[]).map(name=>binding(methodOwner,name))));}return known;}
         if(node.type==='Declaration'){for(const decl of node.decls){known=entry(decl.init,known);if(decl.init)known=new Set([...known,binding(owner,decl.name)]);}return known;}
         if(node.type==='Assignment'){known=entry(node.right,known);if(node.left?.type==='Identifier'&&node.op==='=')known=new Set([...known,binding(owners.get(node.left),node.left.name)]);else known=entry(node.left,known);return known;}
+        if(node.type==='Conditional'){known=entry(node.test,known);const left=entry(node.consequent,new Set(known)),right=entry(node.alternate,new Set(known));return new Set([...left].filter(value=>right.has(value)));}
+        if(node.type==='Logical'||node.type==='Binary'&&['&&','||','??'].includes(node.op)){known=entry(node.left,known);entry(node.right,new Set(known));return known;}
         if(node.type==='If'){known=entry(node.test,known);const left=entry(node.consequent,new Set(known)),right=entry(node.alternate,new Set(known));return new Set([...left].filter(value=>right.has(value)));}
         if(['For','ForOf','While'].includes(node.type)){known=entry(node.init,known);entry(node.test,known);entry(node.iterable,known);const inside=entry(node.body,new Set(known));entry(node.update,inside);return known;}
         for(const value of Object.values(node))if(value&&typeof value==='object')known=entry(value,known);return known;
