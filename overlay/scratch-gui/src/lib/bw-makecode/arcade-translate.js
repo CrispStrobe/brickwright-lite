@@ -92,6 +92,7 @@ import {lowerSourceLoopControl} from './lower-source-loop-control.js';
 import {lowerLazyValues} from './lower-lazy-values.js';
 import {arrayCopyCall} from './array-copy-calls.js';
 import {indexedStringValue} from './indexed-string-values.js';
+import {lowerPxtStagedValues} from './lower-pxt-staged-values.js';
 import {lowerNamespaceBindings} from './namespace-bindings.js';
 import {ARCADE_SCENE_CONSTANTS} from './arcade-scene-constants.js';
 import {lowerStaticCallbackHelpers} from './static-callback-helpers.js';
@@ -4727,7 +4728,8 @@ export function arcadeToPseudocode (files, opts = {}) {
             if (image && !Object.prototype.hasOwnProperty.call(assets, decl.name)) assets[decl.name] = image;
         }
     }
-    const objectClasses = lowerObjectClasses(namespaceBindings.program || parsed);
+    const stagedSource = lowerPxtStagedValues(namespaceBindings.program || parsed);
+    const objectClasses = lowerObjectClasses(stagedSource);
     projectInputDiagnostics.push(...objectClasses.unsupported);
     const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:sceneRegistrationSpec});
     projectInputDiagnostics.push(...callbacks.unsupported);
