@@ -1,0 +1,67 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "05daecc59716e66c6c892fea8f450f5769c04bc2",
+  "base": "88a63b41432e6be3415f1a275a95b896e384c598",
+  "scope": "Indexed custom artwork SVG, graphics editor source load, native template image mutation, SB3 storage and Arcade project export. No project-wide palette command or importer promotion.",
+  "format": {
+    "root": "data-bw-palette: comma-separated 15 opaque RGB colors; index zero is implicitly transparent",
+    "runs": "data-bw-color-index: decimal 1 through 15, checked against the visible fill",
+    "grid": "data-bw-pixel-scale; native decoding validates dimensions and integer grid coordinates",
+    "legacy": "Default SVG bytes retained; legacy graphics clipping behavior unchanged"
+  },
+  "local": {
+    "passed": 54,
+    "failed": 0,
+    "skipped": 0,
+    "files": [
+      "test/makecode-indexed-palette.test.mjs",
+      "test/makecode-pixel-image.test.mjs",
+      "test/makecode-arcade-image-mutation.test.mjs",
+      "test/pixel-arcade-background.test.mjs",
+      "test/makecode-arcade-native-image-renderer.test.mjs",
+      "test/makecode-export-arcade.test.mjs",
+      "test/makecode-arcade-stage-composition.test.mjs"
+    ],
+    "newControls": [
+      "duplicate RGB entries remain distinct indices",
+      "opaque black indices remain distinct from transparency",
+      "scale 1/3/4/8 cross-reader agreement",
+      "malformed or inconsistent metadata rejection",
+      "legacy default SVG byte compatibility",
+      "actual graphics load method uses source palette without raster conversion",
+      "actual native template sprite mutation preserves duplicate index identity and renderer fills",
+      "SB3 save/reopen export accepted by original Arcade compiler",
+      "Stage costume palette discovery"
+    ],
+    "originalFailures": [
+      "New legacy test passed custom-art dimensions to decoder; corrected fixture dimensions",
+      "Strict custom bounds guard initially changed legacy fractional-grid clipping; guard restricted to declared custom palettes",
+      "Native image is lazily decoded; test now invokes public spritePixel before inspection and uses actual TO replacement argument",
+      "Stage test had no authored backdrop switch; corrected authored fixture"
+    ]
+  },
+  "gui": {
+    "sourceGraphicsLoad": true,
+    "freshProductionBuild": false,
+    "visibleBrowser": false,
+    "limitation": "Source method qualification and native renderer controls do not qualify a fresh integrated browser bundle."
+  },
+  "corpus": {
+    "freshCensus": false,
+    "lastOriginal184ImportOnly": {
+      "translated": 102,
+      "partial": 81,
+      "malformed": 1
+    },
+    "originalInputsChanged": false
+  },
+  "remaining": [
+    "Project-wide palette startup/import and dynamic changes across background, tilemap, speech and scene layers",
+    "Code and Blocks project palette authoring and project-wide GUI selector",
+    "Custom palette import diagnostic retained until runtime coverage is qualified",
+    "Fresh integrated GUI build/browser and all enabled exact-head hosted checks"
+  ],
+  "producerPin": "49903b5d38d967b64da34a3ca1dd1e228d06b98f",
+  "producerChanged": false,
+  "merge": "Not merged; stacked draft qualification required"
+}

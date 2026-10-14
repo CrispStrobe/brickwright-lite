@@ -1,0 +1,45 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt, good for two stages of four: it turns east
+# straight after pressing the button, without backing off. The rover's
+# corner jams against the button and the turn never finishes.
+GLOBAL target
+
+DEFINE turn right to target:
+  set movement speed 15
+  start moving steering 100
+  wait until spike angle yaw > (target - 3)
+  stop movement
+
+DEFINE turn left to target:
+  set movement speed 15
+  start moving steering -100
+  wait until spike angle yaw < (target + 3)
+  stop movement
+
+WHEN flag clicked:
+  set movement motors A B
+  reset yaw
+  REPEAT UNTIL spike color C is red:
+    IF spike color C is black THEN:
+      start tank 8 30
+    ELSE:
+      start tank 30 8
+  stop movement
+  set target to -90
+  turn left to target
+  set movement speed 30
+  start moving steering 0
+  wait until spike force sensor E pressed
+  stop movement
+  set target to 0
+  turn right to target
+  set movement speed 30
+  move forward 40 cm
+  move backward 6 cm
+  set target to 90
+  turn right to target
+  set movement speed 30
+  start moving steering 0
+  wait until spike distance D < 15
+  stop movement

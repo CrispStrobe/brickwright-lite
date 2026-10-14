@@ -1,0 +1,23 @@
+{
+  "id": "rb02-face-the-ridge",
+  "title": {"en": "Face the ridge", "de": "Blick zum Bergrücken"},
+  "intro": {
+    "en": "The camera mast looks forward. Turn the rover on the spot a quarter turn to the RIGHT so it faces the ridge, and stay where you are. Spinning one wheel forward and the other backward turns the rover in place; the hub's yaw angle tells you how far you have turned.",
+    "de": "Die Kamera schaut nach vorn. Drehe den Rover auf der Stelle eine Vierteldrehung nach RECHTS, sodass er zum Bergrücken schaut, und bleib dabei am Platz. Dreht sich ein Rad vorwärts und das andere rückwärts, dreht sich der Rover auf der Stelle; der Gierwinkel des Hubs zeigt, wie weit."
+  },
+  "hints": [
+    {"en": "On this rover the left motor (A) is mounted mirrored: for the left wheel to go forward, motor A turns counterclockwise.", "de": "Der linke Motor (A) ist gespiegelt eingebaut: Damit das linke Rad vorwärts fährt, dreht Motor A gegen den Uhrzeigersinn."},
+    {"en": "Reset the yaw first, then wait until it passes 90 degrees. A slower turn stops more precisely.", "de": "Setze zuerst den Gierwinkel zurück und warte, bis er 90 Grad überschreitet. Langsamer drehen hält genauer an."}
+  ],
+  "mat": {"width": 100, "height": 100, "background": "orange", "paint": "#d9825b",
+    "shapes": [{"color": "violet", "paint": "#8d5a4a", "shape": {"type": "rect", "x": 50, "y": 94, "w": 100, "h": 12}}]},
+  "zones": [
+    {"id": "pad", "role": "area", "shape": {"type": "circle", "x": 50, "y": 45, "r": 4}, "label": {"en": "turning pad", "de": "Drehplatz"}}
+  ],
+  "start": {"x": 50, "y": 45, "heading": 0},
+  "timeLimitMs": 10000,
+  "success": [{"type": "heading", "target": 90, "tolerance": 6, "maxDrift": 3}],
+  "failure": [{"type": "stayIn", "zone": "pad"}],
+  "solution": "rb02-face-the-ridge.bw",
+  "wrong": "rb02-face-the-ridge.wrong.bw"
+}

@@ -1,0 +1,70 @@
+/*
+ * The draggable divider between the editor column and the stage column.
+ *
+ * It replaces a 9px-monospace debug button that cycled xs/s/m/l/xl from the
+ * corner of the stage — the only way to resize that column, and one whose xs
+ * step collapsed the column to a 28px strip that read as breakage rather than
+ * as a size.
+ *
+ * The hit area is deliberately wider than the line. A 1px rule is the right
+ * amount of ink and the wrong amount of target, so the element is 9px of
+ * grabbable width drawing a 1px line down its middle.
+ */
+
+.divider {
+    flex: 0 0 auto;
+    width: 9px;
+    /* Fills the row's height without being able to stretch it: the rail bug
+       came from a tall child driving the row, and a divider has no content of
+       its own that could ever justify growing the row. */
+    align-self: stretch;
+    min-height: 0;
+    position: relative;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: col-resize;
+    /* Above the stage column's own chrome, so the grab always lands here. */
+    z-index: 20;
+    /* A drag that leaves the element must not select the editor behind it. */
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* The line itself. Quiet at rest — this sits between two busy surfaces all day
+   and should not read as a third one. */
+.divider::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 4px;
+    width: 1px;
+    background: rgba(0, 0, 0, 0.15);
+    transition: background 120ms ease, box-shadow 120ms ease;
+}
+
+.divider:hover::after,
+.divider:focus-visible::after,
+.divider.dragging::after {
+    background: #4c97ff;
+    box-shadow: 0 0 0 1px rgba(76, 151, 255, 0.35);
+}
+
+.divider:focus-visible {
+    outline: none;
+}
+
+/* While dragging, the pointer owns the whole window: the cursor must not flip
+   back to a text caret when it crosses the editor, and nothing underneath
+   should take hover styling. Set on <body> by the component. */
+:global(body.bw-pane-dragging) {
+    cursor: col-resize !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+}
+
+:global(body.bw-pane-dragging) iframe {
+    pointer-events: none;
+}

@@ -1,0 +1,64 @@
+{
+  "creator": "Yosys 0.69 (git sha1 9f75ca1f9, Release, Clang /workspace/YoWASP/yosys/wasi-sdk-33.0-x86_64-linux/share/cmake/../..//bin/clang++ 22.1.0)",
+  "modules": {
+    "design": {
+      "attributes": {"top": "00000000000000000000000000000001", "src": "design.v:1.1-9.10"},
+      "ports": {
+        "clk": {"direction": "input", "bits": [2]},
+        "addr": {"direction": "input", "bits": [3, 4]},
+        "din": {"direction": "input", "bits": [5, 6, 7, 8]},
+        "we": {"direction": "input", "bits": [9]},
+        "q": {"direction": "output", "bits": [10, 11, 12, 13]}
+      },
+      "cells": {
+        "mem_ram": {
+          "hide_name": 0,
+          "type": "$mem_v2",
+          "parameters": {
+            "ABITS": "00000000000000000000000000000010",
+            "INIT": "xxxxxxxxxxxxxxxx",
+            "MEMID": "\\mem_ram",
+            "OFFSET": "00000000000000000000000000000000",
+            "RD_ARST_VALUE": "xxxx",
+            "RD_CE_OVER_SRST": "0",
+            "RD_CLK_ENABLE": "1",
+            "RD_CLK_POLARITY": "1",
+            "RD_COLLISION_X_MASK": "0",
+            "RD_INIT_VALUE": "xxxx",
+            "RD_PORTS": "00000000000000000000000000000001",
+            "RD_SRST_VALUE": "xxxx",
+            "RD_TRANSPARENCY_MASK": "0",
+            "RD_WIDE_CONTINUATION": "0",
+            "SIZE": "00000000000000000000000000000100",
+            "WIDTH": "00000000000000000000000000000100",
+            "WR_CLK_ENABLE": "1",
+            "WR_CLK_POLARITY": "1",
+            "WR_PORTS": "00000000000000000000000000000001",
+            "WR_PRIORITY_MASK": "0",
+            "WR_WIDE_CONTINUATION": "0"
+          },
+          "attributes": {"src": "design.v:2.13-2.20"},
+          "port_directions": {
+            "RD_ADDR": "input", "RD_ARST": "input", "RD_CLK": "input",
+            "RD_DATA": "output", "RD_EN": "input", "RD_SRST": "input",
+            "WR_ADDR": "input", "WR_CLK": "input", "WR_DATA": "input", "WR_EN": "input"
+          },
+          "connections": {
+            "RD_ADDR": [3, 4], "RD_ARST": ["0"], "RD_CLK": [2],
+            "RD_DATA": [10, 11, 12, 13], "RD_EN": ["1"], "RD_SRST": ["0"],
+            "WR_ADDR": [3, 4], "WR_CLK": [2], "WR_DATA": [5, 6, 7, 8],
+            "WR_EN": [9, 9, 9, 9]
+          }
+        }
+      },
+      "netnames": {
+        "addr": {"hide_name": 0, "bits": [3, 4], "attributes": {"src": "design.v:1.38-1.42"}},
+        "clk": {"hide_name": 0, "bits": [2], "attributes": {"src": "design.v:1.21-1.24"}},
+        "din": {"hide_name": 0, "bits": [5, 6, 7, 8], "attributes": {"src": "design.v:1.56-1.59"}},
+        "q": {"hide_name": 0, "bits": [10, 11, 12, 13], "attributes": {"src": "design.v:1.84-1.85"}},
+        "w_ram": {"hide_name": 0, "bits": [10, 11, 12, 13], "attributes": {"src": "design.v:3.13-3.18"}},
+        "we": {"hide_name": 0, "bits": [9], "attributes": {"src": "design.v:1.67-1.69"}}
+      }
+    }
+  }
+}

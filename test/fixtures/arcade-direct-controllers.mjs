@@ -1,0 +1,13 @@
+export const DIRECT_CONTROLLERS_SOURCE = `let first=sprites.create(img\`11\`,SpriteKind.Player)
+let second=sprites.create(img\`22\`,SpriteKind.Player)
+let third=sprites.create(img\`33\`,SpriteKind.Player)
+let fourth=sprites.create(img\`44\`,SpriteKind.Player)
+first.setPosition(20,20)
+second.setPosition(50,40)
+third.setPosition(80,60)
+fourth.setPosition(110,80)
+controller.player1.moveSprite(first,30,0)
+controller.player2.moveSprite(second)
+controller.player3.moveSprite(third,60,0)
+controller.player4.moveSprite(fourth,80,80)
+controller.B.onEvent(ControllerButtonEvent.Pressed,function(){controller.player2.stopControllingSprite(second)})`;

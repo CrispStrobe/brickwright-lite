@@ -1,0 +1,9 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: waiting for a colour that is not on the mat.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  start moving steering 0
+  wait until spike color C is red
+  stop movement

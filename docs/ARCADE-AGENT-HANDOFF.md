@@ -1,0 +1,2014 @@
+# Arcade compatibility: fresh-agent handoff and methodology
+
+Updated 2026-10-11. The current-state refresh below supersedes the older
+2026-10-10 checkpoints retained later in this guide. This is the public
+entry point for continuing MakeCode compatibility work without chat history.
+Read the optional, gitignored `docs/ARCADE-AGENT-HANDOFF.local.md` for the
+operator's actual checkouts, tools, private corpus and original receipts.
+Historical checkpoints below are observations, not permission to assume that
+branches, checks, ownership or dependency pins remain unchanged.
+
+The [native frame scheduler contract](ARCADE-FRAME-SCHEDULER.md) records the
+open startup and pause/callback phase limits and the claimed implementation
+envelope. Merge that lane claim before changing the product hook; finite
+prototype traces do not close its exact timing or installed-GUI gates.
+
+## Current-state refresh — 2026-10-11
+
+The earlier runtime and documentation stack through scrolling is integrated into
+main. PR773/774 were closed rather than individually merged; their commits are
+ancestors of main through subsequent stack integration. The old template-clone
+layer failure was repaired in [PR775](https://github.com/CrispStrobe/brickwright-lite/pull/775),
+with successful light/heavy browser checks in
+https://github.com/CrispStrobe/brickwright-lite/actions/runs/38051987912 .
+Do not repeat that already completed lane based on section6's historical state.
+
+Subsequent merged work includes particles, screen painting, music, core values,
+game over, terrain/translator gaps, sevenseg, darts/corgio, scroller, character
+animations, the original HUD and original-compiler extension fetching (PR776–788).
+Original-compiler fetching does **not** implement editable native extension blocks.
+The producer pin at the refreshed baseline is
+`44d11124a725d209387ec524c6871d0356add3f3`; read current pins before any adoption.
+[PR785](https://github.com/CrispStrobe/brickwright-lite/pull/785) reports142 of184
+translating. [PR789](https://github.com/CrispStrobe/brickwright-lite/pull/789)
+reports the unchanged, hash-verified **142 translated /41 partial /1 error**
+census. These reports supersede109/74/1; a fresh exact-source audit remains needed.
+
+The following authoring lanes are now merged, with enabled latest-head checks
+successful and DONE claims in LANES:
+
+- https://github.com/CrispStrobe/brickwright-lite/pull/789 : readable art names,
+  multi-costume animation holders and paint-editor edits reaching native games.
+- https://github.com/CrispStrobe/brickwright-lite/pull/790 : tilemap painter,
+  new-level creation and its real-pointer browser journey in the CI light shard.
+- https://github.com/CrispStrobe/brickwright-lite/pull/791 : two-way fe/Tcl rescue
+  and lazy-converter race repair preserving typed Code and debugger state.
+
+The active Arcade lane is `lane/arcade-painted-project-roundtrip-20261011`,
+claimed on main at `11529ce16d597d0d78d57731f1ce4fbddfb194cf`.
+Its existing CI browser journey now additionally checks actual downloaded SB3
+contents, fresh-context GUI reopening, every map/wall/tile pixel and block ID,
+restored painter editing/undo, exact native startup map state, original MakeCode
+compilation/rendering and actual downloaded MakeCode file reimport. Reported
+hashes identify the fixture, probe, SB3 and MakeCode downloads; served script URLs
+identify the consumer bundle. A prepared-build local pass is not exact-source
+hosted qualification. Archive originals and inspect the latest-head light-shard
+result before closing the lane. The original rendering check establishes that
+export compiled and drew a frame; it does not prove whole-game frame equality.
+
+Remaining tilemap authoring work: exported `myTiles` names/asset identity,
+legacy colour-coded maps and painter sprite placement. Native editable support
+for remaining third-party extensions and exact-source ranking of41 partials
+remain separate lanes. The circuit green-flag first-write failure is owned by
+another session; preserve that lane's assertions/bounds and diagnose failures
+without treating unrelated browser retries as a feature fix.
+
+## 1. Two-line starter prompt
+
+> Read `docs/ARCADE-AGENT-HANDOFF.md`, its local companion when available, and the linked capability/lane records before editing.
+> Refresh remote heads/checks, claim an isolated next lane, and close it across runtime, authoring, interchange and real GUI evidence; preserve failures and exact identities.
+
+The local companion contains an absolute-path version usable from the operator's
+workspace root. Neither prompt requires earlier conversation or session logs.
+
+## 2. Objective and meaning of completion
+
+A user must be able to build an Arcade game in Brickwright Code/pseudocode,
+Blocks and the graphics/resource editors, run it natively, save/reload it, export
+it and run the export in original MakeCode Arcade. Importing the original again
+must preserve assets, values, behavior and editable authoring. Conversion-only
+support is insufficient. Normal MakeCode/micro:bit and Scratch-format conversion
+remain separate measured targets. TurboWarp-specific compatibility is not
+established by an SB3 structural audit.
+
+Do not obtain `partial = 0` by hiding diagnostics, dropping inputs, replacing
+unsupported constructs with comments/no-ops or reclassifying untested features.
+`translated` means the importer reported no named gaps; it does not mean a game
+is behaviorally equivalent or fully editable. Full authoring and execution gates
+must also pass. Some hardware-specific capabilities require an explicit target
+boundary, rather than a fabricated browser equivalent.
+
+## 3. Authoritative records and complete capability inventory
+
+Read these in order. They contain the existing implementation history, API
+families, graphics/GUI gaps, asset contracts and planned acceptance criteria;
+this guide explains how to work and how to interpret their evidence.
+
+| Record | Role | Full repository URL |
+| --- | --- | --- |
+| [LANES.md](../LANES.md) | Ownership, branch claims and checkpoints | https://github.com/CrispStrobe/brickwright-lite/blob/main/LANES.md |
+| [Capability and GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) | Complete conversion/runtime/authoring capability write-up and separate remaining GUI gaps | https://github.com/CrispStrobe/brickwright-lite/blob/main/docs/CONVERSION-CAPABILITIES-AND-GUI-GAPS.md |
+| [Arcade compatibility plan](ARCADE-COMPAT-PLAN.md) | Export mappings, named refusals and authoring closure | https://github.com/CrispStrobe/brickwright-lite/blob/main/docs/ARCADE-COMPAT-PLAN.md |
+| [Screen/render contract](ARCADE-SCREEN-RENDER-CONTRACT.md) | Indexed frame, render ordering and S01–S05 prerequisites | https://github.com/CrispStrobe/brickwright-lite/blob/main/docs/ARCADE-SCREEN-RENDER-CONTRACT.md |
+| [Animation interchange](ARCADE-ANIMATION-INTERCHANGE.md) | Images, resources, animation bindings and preservation | https://github.com/CrispStrobe/brickwright-lite/blob/main/docs/ARCADE-ANIMATION-INTERCHANGE.md |
+| [Public API census](generated/MAKECODE-PUBLIC-API-CENSUS.md) | Pinned declaration candidates; not a support denominator | https://github.com/CrispStrobe/brickwright-lite/blob/main/docs/generated/MAKECODE-PUBLIC-API-CENSUS.md |
+| [Authoring vocabulary](generated/ARCADE-AUTHORING-VOCABULARY.md) | Generated editable words and coverage joins | https://github.com/CrispStrobe/brickwright-lite/blob/main/docs/generated/ARCADE-AUTHORING-VOCABULARY.md |
+| [Historical compatibility audit](generated/ARCADE-COMPAT-AUDIT.md) | Per-input diagnostics at its recorded older source | https://github.com/CrispStrobe/brickwright-lite/blob/main/docs/generated/ARCADE-COMPAT-AUDIT.md |
+| [Historical permutations](generated/CONVERSION-ROUNDTRIPS.md) | Structural/asset roundtrip report, not behavioral proof | https://github.com/CrispStrobe/brickwright-lite/blob/main/docs/generated/CONVERSION-ROUNDTRIPS.md |
+| [Receipts](receipts/) | Exact tested source and bounded observations | https://github.com/CrispStrobe/brickwright-lite/tree/main/docs/receipts |
+
+`main` links are discovery links: these stacked changes may not be merged there.
+For the complete implemented snapshot through scrolling, use
+https://github.com/CrispStrobe/brickwright-lite/tree/86a6335e55abea0c233d63118d4295e39a848842 .
+Open the same relative paths at that immutable commit if main lacks them.
+Older generated reports, plan paragraphs and private corpus READMEs retain their
+historical counts. Do not silently treat them as a fresh census.
+
+## 4. Repositories, pins and original sources
+
+- Consumer: https://github.com/CrispStrobe/brickwright-lite . Native VM,
+  importer/exporter, GUI, overlay integration and qualification scripts.
+- Producer: https://github.com/CrispStrobe/sb3-creator . Shared Code parser,
+  decompiler, dialect/opcode/menu schema and generated examples. Do not fork a
+  second parser into Lite to make a test pass.
+- Producer snapshot: https://github.com/CrispStrobe/sb3-creator/tree/eca752b7011656b9e73917bc6f816ffed24ad4b9 .
+  This is the current Arcade stack's `vendor-pins.json` producer pin, not a
+  statement about producer main or unrelated dependency pins.
+- Producer image scroll/copy work: https://github.com/CrispStrobe/sb3-creator/pull/82
+  and https://github.com/CrispStrobe/sb3-creator/pull/83 . Refresh actual state.
+- Original Arcade source: https://github.com/microsoft/pxt-arcade/tree/2d7d59b5226e8a1a1e05e8042dd9f5248ed68fea
+  (`v4.2.1`). Core: https://github.com/microsoft/pxt/tree/v13.2.1 .
+- Normal MakeCode source: https://github.com/microsoft/pxt-microbit/tree/v9.1.1
+  and https://github.com/microsoft/pxt/tree/v13.0.1 .
+- Original editor: https://arcade.makecode.com/ . Hosted original execution in
+  tests uses the pinned local simulator, not whatever editor version is live.
+
+Read `vendor-pins.json`, the prepared runtime's `VERSIONS.json` and notices at
+startup. The pinned Arcade declaration bundle recorded SHA-256
+`6f35aadf1456436b3318d2f2339cc3d1add6e6c3b0bf8566f86d7f7bb4f7722e`.
+Prefer exact pinned target contents over a newer upstream API when qualifying
+this source. Dependencies and pin moves must be reviewed and explicit.
+
+## 5. Latest measured corpus and what it proves
+
+The locked original Arcade set contains **184 inputs**: **109 translated,
+74 partial, 1 malformed**. Latest importer-changing evidence is
+[the follow receipt](receipts/2026-10-09-arcade-sprite-follow.json), tested source
+`3c4493c1eb8f68343234e86141ebd9c9e8a277f8`, preserving all184 original hashes.
+Subsequent render/speech fixes did not rerank that corpus. Do not infer an
+improvement from passing runtime tests or the hosted dialect corpus gate.
+
+Other denominators are distinct: original MakeCode inputs across both targets,
+full tutorial projects, captured importer test inputs, shipped Brickwright
+examples, Scratch-format SB3 fixtures and conversion permutations. Assets absent
+from plain text are an explicit structural loss, not proof that the SB3 exporter
+cannot preserve assets. Original-PXT compile failure is separate from importer
+failure and exported compile failure. Record all of them.
+
+## 6. Active stack and current blocking check
+
+All three recent implementation PRs remain **draft/open**, not merged:
+
+| PR | Branch | Reviewed implementation | Current published head |
+| --- | --- | --- | --- |
+| https://github.com/CrispStrobe/brickwright-lite/pull/771 | `lane/arcade-native-legacy-bubble-20261009` | `d51cf93c7bcfd0bc62b9c9035d686651208939d8`; assertion repair `5c7b0435f7c3bf4175d4fb62c09f3bcb31c03c88` | `4e68ebbb8f96b3724ef96c4f84adbc24bf3e4c4e` |
+| https://github.com/CrispStrobe/brickwright-lite/pull/772 | `lane/arcade-speech-hitbox-20261010` | `f6b48a499dce678c91cef052fcde424c90a6413a` | `25ae4f5d5e03caef043acb45d3e2456f7b968e19` |
+| https://github.com/CrispStrobe/brickwright-lite/pull/773 | `lane/arcade-native-speech-scroll-20261010` | `7b158d559d92041a3d6893c29b2851dc6e5b8747` | `86a6335e55abea0c233d63118d4295e39a848842` |
+
+PR773 is based on PR772's branch; PR772 on PR771; PR771 on PR770's
+`lane/arcade-negative-kind-20261009`. Earlier PRs remain part of the stack.
+Inspect bases and merge state before integrating any of it.
+
+**First next task: investigate the real hosted light-browser pixel failure.**
+The PR773 exact-head build, corpus, check, heavy browser and FPGA surface passed;
+light browser failed. Deploy and verify-gui skipped downstream of that failure.
+PR771/772 light checks also failed; earlier notes saying queued are superseded.
+
+- Official run: https://github.com/CrispStrobe/brickwright-lite/actions/runs/38025509301 .
+- Failed job: https://github.com/CrispStrobe/brickwright-lite/actions/runs/38025509301/job/114146423199 .
+- Artifact metadata: https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11662660346 .
+- Official artifact ZIP endpoint: https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11662660346/zip .
+- Artifact name `arcade-rotation-browser`; report `current.json`.
+- Failure is `waitLayerPixel` at script line657, called at664 in that exact head:
+  initial sprite-layer centre RGB `[255,33,33]` was not observed in30seconds.
+- Fixture `test/fixtures/arcade-sprite-layer-routing.mjs`; red Player/front z1
+  and yellow Enemy/back z0 at80,60. `layerReady=true`, `layerPhase=0` were present.
+- Report contained two native sprites, device `arcade`, stepping true,
+  no page errors, no block errors and no diagnostic entries. The preceding
+  multiplayer journey had completed. These observations do not establish why
+  the renderer pixel failed; do not call it a flake or waive the assertion.
+
+Inspect the actual report/screenshot and native indexed centre pixel, drawable
+z ordering, canvas backing size/readiness, palette, visible device-pane pixels
+and actual loaded bundle identity. Determine whether source, presentation or
+harness is wrong. Preserve the original failure and keep the intended pixel and
+controller checks. Do not fix a failure solely by increasing its timeout.
+
+## 7. Historical render prerequisites and evidence map
+
+Each link is a separate lane and bounded receipt, not a merge or full-game claim.
+
+| Area | PR | Public receipt |
+| --- | --- | --- |
+| Native follow; last109/74/1 ranking | https://github.com/CrispStrobe/brickwright-lite/pull/759 | [follow](receipts/2026-10-09-arcade-sprite-follow.json) |
+| Sprite properties/layer routing | https://github.com/CrispStrobe/brickwright-lite/pull/760 | [layers](receipts/2026-10-09-arcade-sprite-layers.json) |
+| Original numeric sign | https://github.com/CrispStrobe/brickwright-lite/pull/761 | Capability ledger's numeric sign section |
+| Native info/browser typed observations | https://github.com/CrispStrobe/brickwright-lite/pull/762 | [browser repair](receipts/2026-10-09-arcade-info-browser-repair.json) |
+| Image.scroll | https://github.com/CrispStrobe/brickwright-lite/pull/763 | [scroll](receipts/2026-10-09-arcade-image-scroll.json) |
+| Image.copyFrom | https://github.com/CrispStrobe/brickwright-lite/pull/764 | [copy](receipts/2026-10-09-arcade-image-copyfrom.json) |
+| Indexed background/sprites | https://github.com/CrispStrobe/brickwright-lite/pull/765 | [frame](receipts/2026-10-09-arcade-indexed-frame.json) |
+| Native indexed tile layers | https://github.com/CrispStrobe/brickwright-lite/pull/766 | [tiles](receipts/2026-10-09-arcade-indexed-tiles.json) |
+| Modern speech compositor | https://github.com/CrispStrobe/brickwright-lite/pull/767 | [modern speech](receipts/2026-10-09-arcade-indexed-modern-speech.json) |
+| Global speech deadlines | https://github.com/CrispStrobe/brickwright-lite/pull/768 | [clock](receipts/2026-10-09-arcade-speech-global-clock.json) |
+| Legacy camera bridge | https://github.com/CrispStrobe/brickwright-lite/pull/769 | [camera](receipts/2026-10-09-arcade-legacy-speech-camera.json) |
+| Negative numeric sprite kinds | https://github.com/CrispStrobe/brickwright-lite/pull/770 | [negative kinds](receipts/2026-10-09-arcade-negative-kind.json) |
+| Native legacy bubble identity/callbacks | https://github.com/CrispStrobe/brickwright-lite/pull/771 | [ownership](receipts/2026-10-09-arcade-native-legacy-bubble.json), [hosted gate repair](receipts/2026-10-10-arcade-hosted-gate-repair.json) |
+| Scaled/rotated owner placement | https://github.com/CrispStrobe/brickwright-lite/pull/772 | [hitbox](receipts/2026-10-10-arcade-speech-hitbox.json) |
+| Frame-replayed native scrolling | https://github.com/CrispStrobe/brickwright-lite/pull/773 | [scrolling](receipts/2026-10-10-arcade-native-speech-scroll.json) |
+
+The complete earlier conversion additions (types, references, arrays, closures,
+classes/namespaces, callbacks, scenes, controllers/multiplayer, physics, assets,
+animations, palettes, tiles, dialogs and resource editors) are written in the
+capability ledger. Follow its per-feature sources/tests instead of treating this
+recent speech-focused table as the entire app's capability list.
+
+## 8. Source ownership map
+
+| Layer | Files/directory | Rule |
+| --- | --- | --- |
+| Arcade import | `overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js` | Typed/literal/asset translation and named unsupported diagnostics |
+| Arcade export | `overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js`, `arcade-runtime.js` | Native PXT output/helpers; compile and run the real export |
+| Values/types/resources | Same directory: `value-type-graph.js`, `declared-value-types.js`, `pixel-image.js`, `arcade-assets.js`, `arcade-animation-assets.js` | Preserve alias/type/asset identities and exact pixels |
+| Native Arcade VM | `overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js` | Factory-generated extension, native scene/physics/image/callback state |
+| Speech bridge | Same directory: `speech.js`, `speech-pxt.js`, `speech-native-legacy.js`, `speech-fonts.json` | Retained original glyph/renderer source; attributed resumable adaptation |
+| Images/rotation | Same directory: `image.js`, `image-pxt.js`, `rotation-pxt.js` | Actual indexed images and original math/geometry |
+| Shared authoring | Producer repo plus Lite `overlay/scratch-gui/src/lib/sb3-creator.js`, `arcadeDialect.js` | Change producer then official sync; no private parser fork |
+| Controller/display | `overlay/scratch-gui/src/components/tw-pseudocode/arcade-device-pane.jsx`, `overlay/scratch-gui/src/lib/bw-arcade-device-frame.js` | Real user controls and renderer-backed display |
+| Graphics/resources | `overlay/scratch-paint/`, `overlay/scratch-gui/` resource/editor integrations | Layered source, UUIDs, image/animation/tile metadata, palette and SB3 persistence |
+| Original oracle | `test/helpers/pxt-arcade-runtime.mjs`, `scripts/lib/pxt-node.mjs` | Actual pinned compiler, simulator and fibers |
+| Integration helpers | `scripts/apply-vm-overlay.mjs`, `scripts/integrate.mjs`, `test/helpers/bw-integrated.mjs`, `scripts/lib/register-gui-scope.mjs` | Source ownership and explicit prepared dependency root |
+
+Edit tracked overlay sources, not only ignored prepared `packages/` files.
+The factory serializes exported functions into the extension: a helper that
+works through a module-scope Babel binding may vanish in the actual bundle.
+Qualify both fresh development and production extension bundles.
+
+## 9. Repeatable implementation cycle
+
+1. Read applicable AGENTS files and these records. Inspect remotes, branch,
+   worktrees, status, producer pins and current checks. Refresh narrow refs.
+   Confirm the lane has not already been completed elsewhere.
+2. Work in an owned isolated tree; record claim, affected files, branch/base and
+   acceptance criteria in `LANES.md`. Follow its claim coordination rules.
+   Do not reset, stash, clean, switch or overwrite somebody else's dirty tree.
+3. Rank actual named corpus gaps. Pick one semantic family and an unchanged
+   original app that needs it. Write the exact contract from pinned original
+   source, including edge cases, ordering, timing and invalid/null/undefined data.
+4. Demonstrate the current failure against actual original execution. Preserve
+   source/inputs, command, versions, logs and original outcome. A harness failure
+   is evidence about the harness, not an app bug.
+5. Implement the native semantics. If new authoring words/schema are necessary,
+   add them to shared producer, parser/decompiler, native Blocks metadata and
+   runtime, then update importer/exporter and graphics/resource persistence.
+   Reuse arrays extensions where appropriate, with real identity semantics.
+6. Test original native behavior, authoring roundtrips, assets and browser users
+   separately. Run affected regressions, not an indiscriminate local full build.
+7. Commit implementation; record its immutable tested SHA. Keep prose/receipt
+   checkpoint separate so the receipt never claims its own future hash was tested.
+8. Normal push and draft PR with explicit base/stack and bounded evidence.
+   Use a body file/structured argument, preserving real newlines. Archive raw
+   private originals plus source patch/receipt/checksums before disposal.
+9. Refresh all enabled exact-head checks. Merge only with authorization, all
+   required checks successful, reviewed head matching and declared skip policy;
+   use `gh pr merge ... --match-head-commit <reviewed-SHA>`. A green older head,
+   subset of jobs or broad heavy shard does not clear a failed Arcade journey.
+10. Re-measure the unchanged locked corpus when importer coverage actually
+    changes. Record hashes, denominator and changed rows; update all capability,
+    GUI, lane, receipt and handoff sections affected by the new evidence.
+
+Parallel agents require explicit authorization, isolated worktrees and disjoint
+file ownership. Do not delegate overlapping edits to the central importer or VM
+class. Root integrates and reviews; a read-only independent audit is useful when
+it can compare an exact final source/evidence boundary.
+
+## 10. Original-PXT comparisons and clock methodology
+
+`runPxtArcade` compiles `main.ts`/`pxt.json` with the prepared pinned target, serves
+its actual simulator in Chromium, uses the original runtime/class dispatch/fiber
+scheduler and returns scalar globals. Supply dependencies for optional packages
+(e.g. multiplayer or color-coded tilemap). Use `waitForGlobals` for callbacks
+that continue after main returns. The helper's completion is not a full-game win.
+
+For complete planes, capture original `screen.getPixel(x,y)` into19200 palette
+indices after the frame rendered. Prefer indexed values over RGB: custom
+palettes, duplicate RGB colors and explicit color-zero writes can hide errors.
+Compare native `bwArcadeDeviceState.sceneFrame.pixels`, coordinates, IDs, flags,
+image dimensions, aliases and memberships independently. Hashes alone need
+collision/boundary awareness; preserve actual pixels for failures.
+
+For scrolling, the fixture registers an original diagnostic-priority150 handler
+(after render90), records every original `game.eventContext().deltaTime`, captures
+every observed bubble image and samples completed stage planes. Speech is
+created after three update callbacks, not only at startup. Replay those exact
+deltas through native `ARCADE_FRAME` events after authored initialization. Compare
+all observed bubble pixels, the full samples and an actual return to the initial
+image after scrolling. Test default speed, duration-dependent speed and both
+6x8/12x12 font selections. Arbitrary wall-clock pauses and a different number of
+native frames are not a valid timing comparison.
+
+Current result at `7b158d559`:45 distinct checks, zero failures/skips. Shared
+batch44 plus final3 repeats/strengthens two cases and adds international text.
+Final traces replay921 frames, compare915 bubble images/1303328 pixels and
+41 full planes/787200 pixels. This does not qualify suspension/modal clocks,
+yielding scrolling constructors, complex reentry or shipped GUI presentation.
+See `test/makecode-arcade-native-speech-scroll.test.mjs` for the runnable method.
+
+## 11. Native pitfalls established by original execution
+
+- Negative kinds keep scene/physics/creation callback identity, but original
+  `allOfKind(-1)` is empty. Do not exclude negative sprites from overlaps.
+  Observe bubbles through `sprites.onCreated(-1, ...)`.
+- The legacy bubble is a real independent sprite/image with its own ID, z and
+  callbacks. Creation handlers see blank artwork before Ghost/camera/text.
+- Original owner destruction leaves the independent legacy bubble alive; owner
+  updates and its expiry stop. Earlier assumed automatic cleanup was corrected.
+- Native flags differ from the glyph bridge: RelativeToCamera512 maps to2;
+  native Ghost7168 corresponds to all three ghost-through flags.
+- Restore the originating shared BlockUtility thread/sequencer around Promise
+  continuation and creation completion. Do not use whichever callback last
+  mutated the shared utility. Respect project epoch and canceled callers.
+- Copy global deadline semantics separately from per-scene suspended frame clocks.
+  Capture native hitbox top before yielding constructor callbacks; scale/rotation
+  and blank artwork invalidate a display-width mask-row guess.
+- Initial scrolling hold reads the owning scene current delta, including
+  creation within an update callback and resumption after optional allocation.
+- Compare booleans as booleans, arrays/handles by semantic identity, NaN and
+  signed-zero where relevant. Do not normalize failures to success defaults.
+- Native images exist at spawn. Image mutation must preserve shared aliases,
+  clone isolation, actual pixel buffers, hitboxes and renderer skin cleanup.
+- `sceneFrame.coverage` currently includes background/tilemap/sprites/modernSpeech;
+  renderables/HUD/legacySpeech/effects remain gated in `remaining`. Do not expose
+  global `screen.clone()` as a background copy or advertise a completed screen API.
+
+## 12. Authoring, assets and conversion permutations
+
+For every newly supported family check the complete chain:
+
+- Original TypeScript/project import to readable pseudocode, without named gaps.
+- Pseudocode to native Blocks with correct argument/menu sockets and reporters.
+- Blocks back to Code, including callbacks, captures, references and aliases.
+- Native execution with actual costumes/resource uploads.
+- SB3 save/load/green flag with exact indexed images and source/metadata intact.
+- MakeCode export plus original compile and execution with real dependencies.
+- Reimport that export and run again; include repeated/permuted conversions.
+- Real GUI file chooser/Code entry, To blocks, Blocks editing, graphics/resources,
+  controller pane, Stop/restart, save/reload and exported file reopen.
+
+Pass `uploads: imported.costumes, storage: true` to `runProgram` for asset tests.
+Keep plain-text `.bw` limitations distinct from binary SB3 preservation. Sprite
+images, animation frame/resource identity, JRES/factory assets, palette metadata,
+tile maps/wall layers/scales and layered editor sources need their own receipts.
+The animation interchange document and ledger provide these contracts.
+
+## 13. Commands and integration discipline
+
+Run from the owned consumer root with Node22 and the prepared dependencies.
+Machine-specific binary/dependency/corpus locations are in the local companion.
+After **every VM source edit, including formatting**, apply the overlay before
+fresh bundle tests:
+
+```sh
+node scripts/apply-vm-overlay.mjs
+node --test --test-concurrency=1 --import ./scripts/lib/register-gui-scope.mjs test/makecode-arcade-native-speech-scroll.test.mjs
+node --test --test-concurrency=1 --import ./scripts/lib/register-gui-scope.mjs test/arcade-browser-bundle.test.mjs
+```
+
+Other focused tests: `test/makecode-arcade-native-legacy-bubble.test.mjs`,
+`makecode-arcade-speech-hitbox.test.mjs`, `makecode-arcade-speech-hitbox-roundtrip.test.mjs`,
+`makecode-arcade-legacy-speech-camera.test.mjs`, `makecode-arcade-speech-global-clock.test.mjs`
+and `arcade-speech-render.test.mjs`, all under `test/`.
+
+Producer adoption is explicit and sequential:
+
+```sh
+node scripts/sync-sb3creator.mjs --dir "$ARCADE_PRODUCER" --pin
+node scripts/sync-sb3creator.mjs --dir "$ARCADE_PRODUCER" --check
+npm run integrate
+```
+
+`ARCADE_PRODUCER` is a reviewed local source checkout, not an arbitrary current
+main. The producer must be committed at its reviewed SHA before sync; `--pin`
+is a deliberate dependency adoption. Check both overlay/prepared mirrors and
+run producer tests and the consumer dialect gate. Source tests use owned source;
+`BW_INTEGRATED_ROOT` is an explicit dependency override, not source substitution.
+A stale prepared extension cannot qualify current source.
+
+The existing CLI reports unsupported elements and compiles with original PXT:
+
+```sh
+node scripts/makecode.mjs to-sb3 input.mkcd -o artifacts/imported.sb3 --bw artifacts/imported.bw --target arcade
+node scripts/makecode.mjs to-project artifacts/imported.sb3 -o artifacts/exported.mkcd --target arcade
+node scripts/makecode.mjs to-ts artifacts/imported.sb3 -o artifacts/exported.ts --target arcade
+node scripts/makecode.mjs to-hex artifacts/imported.sb3 -o artifacts/game.uf2 --target arcade --board rp2040
+node scripts/compat-audit.mjs --target arcade --out artifacts/audit.json --corpus-commit "$ARCADE_CORPUS_SHA" --compile --execute "$ARCADE_CORPUS"
+node scripts/conversion-roundtrips.mjs --out artifacts/roundtrips.json --corpus-commit "$ARCADE_CORPUS_SHA" --compile "$ARCADE_CORPUS"
+```
+
+These are examples, not a command to build hardware firmware or perform flashing
+for the current speech lane. CLI exit codes:0 complete,1 compile/refusal failure,
+2 usage error,3 unsynced runtime. `--execute` audit smoke is bounded, not semantic
+proof. The corpus-commit argument is a declaration; verify its tree and file
+hashes independently. The report distinguishes start/end source/pin/version
+identity and records dirty state; do not describe dirty-source results as clean.
+
+`collect-makecode-corpus.mjs --out ...` collects inputs/provenance, while
+`capture-arcade-import-corpus.mjs` captures current test importer inputs for the
+dialect gate. They are different corpora. Do not rewrite the locked original184
+inputs to make a regression disappear or regenerate fixtures without review.
+
+## 14. Real browser qualification
+
+Primary journey: `scripts/verify-arcade-rotation-browser.mjs`. Despite its name,
+it now also covers imports, typed helpers, arrays, multiplayer, palettes,
+following/layers, scroll/copy, tiles and dialogs. It opens files, uses visible
+Code/Blocks and real controller controls, records runtime diagnostics and saves
+screenshots. Other focused `verify-arcade-*.mjs` scripts cover resource/schema,
+animation, terrain, scenes, physics and graphics families.
+
+For an already built source-matching app:
+
+```sh
+PROOF_URL=http://127.0.0.1:8620/ node scripts/verify-arcade-rotation-browser.mjs --out artifacts/arcade-browser/current.json
+```
+
+The loopback URL is an example port, not a claim that a matching server is active.
+Check served bundle identity and build profile. Run actual PNG decode readiness
+and canvas dimensions before samples; do not replace intended palette/image
+assertions with generic nonblank checks. Headless native indexed frames do not
+prove the GUI compositor presented those pixels. Read job artifacts, not only a
+summary or heavy-shard success. Use hosted full builds on the constrained host.
+
+## 15. Evidence storage, licensing and publication
+
+Public Markdown/receipts hold source URLs, public relative paths, exact SHAs,
+contracts and bounded conclusions. Operator paths, credentials, hosts, raw logs,
+private receipt URLs and corpus locations belong in the ignored local companion
+or private evidence repository. The companion path is excluded by `.gitignore`;
+never force-add it. Review diffs for accidental absolute paths/private links.
+
+Preserve failed and passing invocations separately. Record source SHA, base and
+producer pins, input hashes/manifest, original target/core versions, test counts,
+actual build profile, original/native outputs, raw logs and check identities.
+Archive explicit filenames with SHA256SUMS and a source patch to the final docs
+head. Avoid broad artifact globs. If a failed oracle was overwritten, state that
+only its failure log remains; never reconstruct a trace and call it original.
+
+PXT source is used under its retained license/attribution, with notices preserved.
+`speech-native-legacy.js` is an attributed resumable adaptation, not unchanged
+original source or a clean-room rewrite. `speech-pxt.js` and font data are retained
+comparison sources. Inspect `THIRD-PARTY-NOTICES.md` and exact corpus manifest
+licenses before redistributing assets. User requested independent implementations
+for missing TurboWarp-specific features: do not copy its implementation to fill
+those gaps or claim SB3 structural tests establish TurboWarp equivalence. Existing
+Scratch/PXT-derived components retain their own notices; no blanket clean-room
+or license-clearance claim.
+
+## 16. Next lanes and acceptance criteria
+
+1. **Hosted layer/display failure:** preserve the exact failed report; prove the
+   correct native indexed pixels and real visible centre palette pixel, then
+   pass A/B z-change cycles and the complete source-matching browser journey.
+2. **Speech reentry/scene/suspension:** original/native yielding creation and
+   destruction, nested say/clear/destroy, owner/scene changes, project reset,
+   long scrolling across suspension/modal changes, exact frame/ID/callback order.
+3. **Live-image hitbox timing:** original mutation revision/cache/refresh order,
+   scaled/rotated/blank image changes and constructor offset snapshots; do not
+   assume recomputation at every API call is original behavior.
+4. **Completed screen composition:** S01 closure, real global image identity
+   and `screen.clone`, paint/shade/renderables ordered by z/id, HUD and effects;
+   compare actual original planes before changing the coverage marker.
+5. **Authoring/resource closure:** implement ledger GUI gaps across menus,
+   Code/Blocks, graphics, tiles/animation/JRES/palette persistence, full authored
+   game -> save -> export -> original run -> reimport -> edit/run.
+6. **Corpus closure:** rank actual remaining named gaps, implement one family
+   at a time, remeasure unchanged inputs and preserve changed rows. Repeat across
+   extensions and normal MakeCode without substituting parser success for games.
+
+Each lane finishes with concrete editable/runtime/original/GUI evidence and a
+bounded receipt. Do not estimate a zero-partial date from these test counts.
+
+## Named tile resources — 2026-10-11
+
+The tile identity lane adds `tileId` and `displayName` to native map images. Namespace source paths and JRES resource IDs survive conversion; the painter exposes a tile-name input, and its rename operation is undoable. Pixel edits, tile-size changes and SB3 map literals preserve this metadata. Different named assets with identical pixels stay distinct. Conflicting edits to one ID export separate suffixed resources with a warning.
+
+Full MakeCode project exports now include `tilemap.g.jres` and `tilemap.g.ts`, listed in `pxt.json`; map expressions refer to those named resources. Standalone TypeScript instead contains inline namespace declarations so it runs without companion files. Custom display labels are retained in full project exports; standalone TypeScript retains the qualified ID and pixels but currently derives its label from the identifier on reimport. Saving a named tile edit now updates matching copies across maps and targets. Divergent copies remain independent; ambiguous edits or a stale map reference refuse the save before any block changes.
+
+The image resource codec follows the original PXT 4bpp format: each column is padded to a 32-bit boundary. Original-runtime qualification reads an edited pixel from the emitted JRES, rather than checking generated text alone. Format reference: https://github.com/microsoft/pxt/blob/v13.2.1/pxtlib/tilemap.ts .
+
+Verification: 80 distinct conversion, namespace, native-runtime, original-PXT and CLI tests passed across the affected batch and CLI followup. Two original batch failures were absent example files in the sparse checkout; the full seven-test CLI followup passed after restoring tracked examples. Failed attempts are preserved in private evidence. The additional null-image guard is covered by a subsequent focused rerun.
+
+Run `node --test --test-concurrency=1 --import ./scripts/lib/register-gui-scope.mjs test/makecode-arcade-tilemap-editor.test.mjs test/makecode-arcade-tile-data.test.mjs` with prepared dependencies and pinned MakeCode SDKs. Run `PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-tile-identity.mjs` against a fresh source build. This browser gate uses actual Code import, painter rename/pixel controls, File save/load in a fresh context, and downloaded MakeCode export/reimport; observations and artifacts go to `test-results/arcade-tile-identity/`. CI registers it on the light browser shard. Its exact-source browser and remaining hosted checks are pending; this is not a full-compatibility or merge claim.
+
+Remaining painter lanes include legacy colour-coded map authoring and sprite placement. Existing native legacy-map execution is already supported. Continue with the refreshed `LANES.md` ownership contracts and retain all refusals until behavior is qualified.
+
+Shared-asset followup: the real browser fixture now uses one tile in two differently shaped levels and checks both uses after painter save, fresh SB3 load and MakeCode reimport. Native/original tests verify one exported resource per ID, unchanged unrelated level geometry, shared undo/save, and refusal of stale or ambiguous edits. Fresh hosted qualification remains pending.
+
+### Next legacy painter implementation boundary
+
+Inspect the real imported block graph first: a literal colour-coded map currently becomes `arcade_setLegacyTilemap` fed by `arcade_cloneImage`/`arcade_frameImage` referencing editable template artwork, rather than a JSON modern map. Tile definitions use `arcade_setLegacyTile`, and wall flags belong to a colour index. Image variables can remain live aliases and can change during the game; scene-local definitions can change independently. Do not replace these operations with a static modern map merely to make the painter work.
+
+Add a colour-index layout view bound to the actual source artwork, with actual save/reopen/export evidence. Qualify direct literals and stable artwork-backed expressions first, while listing computed/dynamic sources with an explicit editability reason. Definition pixel/wall editing must preserve index-wide wall semantics, scene scope, definition timing and aliases. Native legacy execution already exists and is tested; this lane concerns authoring. Use the existing `test/fixtures/arcade-legacy-tilemap.mjs`, `arcade-legacy-tile-values.mjs` and `arcade-legacy-tile-collisions.mjs` as adversarial behavior boundaries before adding GUI support. Sprite placement is a separate subsequent task and must use real live sprite handles with deliberate script timing.
+
+## Legacy colour-index layout authoring — 2026-10-11
+
+Branch `lane/arcade-legacy-layout-authoring-20261011` is stacked on PR793, in a separate owned worktree. Its helper `legacy-layout-editor.js` reads the actual artwork-backed `arcade_setLegacyTilemap` reporter graph. The Tile maps panel lists supported legacy layouts beside modern levels and provides the sixteen colour indexes, paint/erase/fill, resize, undo/redo and save. It labels this as a colour-index layout, rather than a preview of runtime tile definitions. Walls and tile artwork remain in their original colour-tile blocks, and the original scale is retained.
+
+Save changes the existing costume asset and its simple source document without changing the legacy script, its image expression, scene timing, tile definitions or selected target. Shared frame references keep pointing to that artwork. Single flat vector-asset or pixel-layer documents are preserved. Rich multi-layer/animated/locked artwork is explicitly delegated to Pixel; computed images/scales, missing/ambiguous artwork and runtime frame overrides have distinct listed reasons. Current layout editing follows the Pixel document bound of 160 pixels per dimension. Computed definition images/indices, computed wall authoring and complex alias/expression authoring remain gaps, not compatibility claims.
+
+Checks exercise real import/native execution, unchanged block graphs, stale artwork refusal, single-layer source/SB3 persistence, resized native execution, actual original-PXT export/index/wall results, and preservation of unsupported multi-layer artwork. Run `node --test --test-concurrency=1 --import ./scripts/lib/register-gui-scope.mjs test/makecode-arcade-legacy-layout-editor.test.mjs` with prepared dependencies. The dedicated `PROOF_URL=http://localhost:8617/ node scripts/verify-arcade-legacy-layout.mjs` browser journey uses real controls, File SB3 save/fresh-context load, native execution and actual downloaded MakeCode reimport; its fresh-build result remains pending. Observations go to `test-results/arcade-legacy-layout/`. CI adds a light-shard gate with a registered provisional budget.
+
+Fresh agents: refresh source/PR heads and `LANES.md` first, inspect the exact-source checks and the optional gitignored local companion, and continue from the actual report boundary. Claude owns sprite placement and circuit pin adoption; coordinate shared painter JSX/model changes with that session before implementation. Do not alter its pin or assertions to qualify this lane.
+
+Final local lane qualification: all36 focused legacy authoring, modern/shared tile editor, tile data, exporter/original-runtime and browser-budget checks pass, with0 skips. JSX/script syntax, budget registration and added-prose privacy checks pass. Earlier sparse-checkout and source-document assumption failures are preserved privately. The new GUI controls still require their own fresh hosted browser run; do not infer that result from the headless tests.
+
+### Legacy definition artwork and wall authoring followup
+
+The same PR794 lane now includes `legacy-tile-definition-editor.jsx`. It lists each `arcade_setLegacyTile` command separately, retaining its index, script location and scene timing. Stable artwork gets a pixel palette/canvas, undo/redo and save; literal numeric wall predicates get a checkbox. Saving changes the existing definition's image resource and literal predicate operands. It never inserts a global definition, rewrites a computed predicate, changes scene timing, or flattens a rich source document. Reload refreshes stale source references explicitly.
+
+Definition operations are `findLegacyTileDefinitions` and `writeLegacyTileDefinition` in `legacy-layout-editor.js`. Artwork editing and wall editability are separate: a computed wall remains in its own block while static artwork can be edited. A computed index or image is listed with its reason. Save checks source identity, current index and wall fingerprint before mutation. Native tests verify that the wall change affects every matching colour cell, source/SB3 persistence, original MakeCode tile pixel3 and wall false, stale-save refusal and saved undo back to the initial definition. The existing browser gate now exercises the actual definition pixel/wall controls before fresh File load and downloaded MakeCode reimport. Fresh GUI and enabled hosted results remain pending.
+
+Definition followup qualification: all38 affected tests passed,0 skips; a final5-test focused rerun passed after validation guards. JSX/script syntax and unchanged workflow budget registration passed. Actual fresh-build browser controls remain queued and are not qualified by those unit/runtime results. Remaining authoring gaps include computed definition indices/images, computed wall expressions, richer layer/animation sources and broader source-alias resolution.
+
+
+## Legacy authored image aliases — 2026-10-11
+
+The image-source editor follows a single authored variable assignment and alias
+chains when each initializer precedes its use on the same command chain. It
+edits the original artwork, preserving assignment blocks and later pixel
+mutations. The painter previews authored pixels rather than a live image
+snapshot. Reassignment, computed creation and sources outside the preceding
+chain remain explicitly unavailable in this editor; Code/Blocks execution is
+unchanged. Definition artwork follows the same rules.
+
+A native/SB3/original-MakeCode regression exposed saved image-reference text
+being treated as a string during export. Export now honors version1 image
+reference sidecars only when the standard field still matches their placeholder.
+Per-run resources initialize as null and authored assignments recreate them;
+external edits to the standard field remain intact. No runtime handle or resource
+is copied into a MakeCode project. The real GUI legacy journey now uses variable
+and alias sources, retaining pointer edits, SB3 reopening and MakeCode reimport.
+Exact-source browser qualification is pending; no original-corpus promotion or
+whole-game equivalence is claimed.
+
+Persistence PR792 is merged at `18b2929a8479bcec880660b94c13bbb6c991741a`.
+Its seven enabled checks and all34 hosted painter observations passed:
+https://github.com/CrispStrobe/brickwright-lite/actions/runs/38146762544 .
+Reviewed head `eae43ccbad345a5d123026d6a615a83828a6de89`; expected and actual
+merge tree `4470f89493e6c944ef62359888a9053df514c325` match. Conditional PR
+deployment jobs skipped as configured. Original compilation/rendering is
+qualified for this fixture; full-game equivalence is not established.
+
+Alias lane continuation: branch `lane/arcade-legacy-image-aliases-20261011`,
+stacked on [PR794](https://github.com/CrispStrobe/brickwright-lite/pull/794).
+Source ownership is `legacy-layout-editor.js` and `export-arcade.js` under
+`overlay/scratch-gui/src/lib/bw-makecode/`; regression coverage is
+`test/makecode-arcade-legacy-layout-editor.test.mjs` and
+`test/makecode-export-arcade.test.mjs`. Run with the existing GUI scope hook and
+Node22 as described above. The existing light-shard gate
+`scripts/verify-arcade-legacy-layout.mjs` covers alias-based painter controls.
+Sixteen affected checks passed, plus seven final focused checks with sidecar
+external-edit protection. Preserve the initial original-simulator crash receipt;
+do not replace it with the successful result. Before merging, collect every
+enabled exact-head check, inspect actual browser artifacts, integrate parent
+PRs normally, then compare the reviewed and merged trees. Do not merge a child
+PR into its feature parent.
+
+
+## Static legacy frame selection — 2026-10-11
+
+The legacy artwork editor supports literal valid multi-costume ranges, selecting
+the same frame as native execution: round the index, wrap it into the range,
+and add the starting costume offset. Other costumes remain unchanged. Layout
+and tile-definition saves retain the selected costume slot as well as its asset
+identity; an old save cannot redirect to another identical frame after the
+selection changes.
+
+Frame keys are shared runtime bindings. If another reporter uses the same key
+with a conflicting or computed template/range, the painter reports
+`mutableFrames` rather than assuming that the later reporter owns its template.
+Computed selections remain explicit refusals. No runtime expression, frame key,
+image alias or animation sequence is rewritten.
+
+Ten focused checks passed with zero failures/skips, including native state,
+SB3 reload, original MakeCode execution, positive fractional/negative wrapped
+indexes and identical-frame stale-save protection. A final conflicting-template
+fixture check also passed. Source ownership is
+`overlay/scratch-gui/src/lib/bw-makecode/legacy-layout-editor.js`; regression
+coverage is `test/makecode-arcade-legacy-layout-editor.test.mjs`.
+The lane `lane/arcade-legacy-frame-selection-20261011` is stacked on
+[PR795](https://github.com/CrispStrobe/brickwright-lite/pull/795). Fresh
+exact-source browser checks and normal parent integration remain required;
+these headless observations do not qualify a new frame-range GUI journey or
+rerank the original corpus. No painter JSX/model or peer-owned placement changes.
+
+Named-tile PR793 now includes main through a normal merge at
+`aa6b54ae9d7416977d8953b0d73f41d34af692ff`. The preceding source
+`4fb23b92b59b7b875d0cb1a690765ded4d778660` passed its light shard and all11
+named-tile browser observations in
+https://github.com/CrispStrobe/brickwright-lite/actions/runs/38150051112 .
+Actual downloads and failed/predecessor observations are archived privately.
+The refreshed merge still needs every enabled exact-head check; the older
+light-shard result is not a full-workflow or merged-main claim.
+
+
+## Tutorial context collection and refreshed gap ranking — 2026-10-11
+
+At source `35c21dd99440c1bd72468f63dae1ba4ff680ff6d`, the locked184 Arcade
+fragments still measure142 translated /41 partial /1 parse failure. Every file
+SHA-256 matches the retained original hash inventory; every blob matches the
+declared private corpus commit. This is static translation only, with no
+original compile or native-behavior claim for those184 inputs. Top diagnostic
+families are unreadable backgrounds (10 projects), unreadable literal tilemaps
+(4), tutorial bundle wrappers (3), song values (3), and sprite operations that
+fall back to stage conversion when their artwork is unavailable. Families
+overlap, so these counts must not be added to estimate closed projects.
+
+The collector previously saved selected code fences without their tutorial
+context. `node scripts/collect-makecode-corpus.mjs --out artifacts/tutorial-corpus
+--projects` now additionally writes separate `<target>-projects/*.mkcd` files,
+using the existing `tutorial-project.js` assembler. With Arcade documentation,
+add `--arcade-docs "$ARCADE_DOCS"` pointing to the pinned target's docs tree.
+It preserves custom TypeScript, exact asset file text, package versions and
+existing project metadata. Main is the explicitly selected code fence; ghost
+programs are not automatically substituted. Fragments remain byte-for-byte
+unchanged, and context projects are a separate denominator. Malformed or
+conflicting context is listed in `manifest.json` collectionFailures and produces
+a nonzero exit; successfully collected files remain available.
+
+The same established CLI is available for a single original fragment:
+`node scripts/makecode.mjs tutorial-to-project tutorial.md --main main.ts
+--target arcade -o context.mkcd`. Normal MakeCode without explicit package
+metadata now receives the micro:bit core dependency through the same helper.
+Seven affected checks passed, including native callback execution and original
+MakeCode comparison. A real pinned micro:bit collection produced215 exact
+baseline fragments plus227 context projects, with zero collection failures.
+
+For the original Arrow Battle document at
+https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/arrow.md ,
+retaining context reduced the selected fragment's five diagnostics to one:
+`carnival.startCountdownGame()`. The original compiler gate is separately
+unavailable offline for its declared arcade-carnival and arrow-images packages.
+This does not close the original fragment, prove a complete game, implement
+carnival, or qualify a rendered GUI journey. Raw original inputs, context
+project, diagnostics and compiler unavailability are archived privately.
+
+Next: qualify recovered projects without replacing the184-fragment census;
+resolve exact declared compiler packages; implement remaining native extension
+APIs one family at a time with original observations. Priority candidates are
+carnival countdown behavior, persistent typed settings arrays, and song values.
+Missing images/maps need actual matching project inputs rather than fabricated
+artwork. Keep GUI authoring/Blocks/pseudocode/export tests alongside each native
+implementation. Current collector lane is stacked on PR796; merge parent lanes
+normally and require all enabled exact-head checks before adoption.
+
+## Original extension compilation and carnival contract — 2026-10-11
+
+The `lane/arcade-extension-project-qualification-20261011` lane is stacked on
+PR798. GitHub package identities now accept repository subfolders, such as
+`github:microsoft/arcade-tutorial-extensions/arrow-images#v0.0.11`. Raw downloads
+place the ref before the folder; compiler matching retains the complete package
+path, so sibling packages cannot satisfy each other's dependencies. License
+reporting checks the package first, then the repository root, and records the
+actual notice URL. File hashes and named fetch refusals remain visible. This is
+compiler input resolution, not native API support or a dependency-pin change.
+
+The audit remains offline by default. To explicitly resolve a complete project's
+GitHub dependencies for the original compiler, run:
+
+```sh
+node scripts/compat-audit.mjs --target arcade --compile --fetch-extensions \
+  --out artifacts/arcade-original-compile.json context.mkcd
+```
+
+`--fetch-extensions` requires `--compile`. JSON records compilerPolicy and each
+fetched package's identity, ref, source hashes and reported license. Node's
+`compile(target, files, {fetchExtensions: true, fetch})` exposes the same path;
+passing a fetch adapter alone keeps fetching disabled. Neither mode vendors or
+persists these packages. Fifteen affected checks passed with no failures/skips,
+including actual original PXT compilation from a subfolder. Recovered Arrow
+Battle now passes the original compiler with five fetched MIT-labeled packages:
+carnival, arrow-images, status-bar, arcade-text and arcade-sprite-util. It still
+has the native diagnostic `carnival.startCountdownGame()`; the184-input census
+is unchanged. Full game execution and the production GUI are unqualified here.
+
+The exact carnival tag v0.0.7 resolves to
+`915caca4a2d83a7071df59407a9987992c083750`. Source and notice:
+https://github.com/microsoft/arcade-carnival/blob/915caca4a2d83a7071df59407a9987992c083750/carnival.ts
+and
+https://github.com/microsoft/arcade-carnival/blob/915caca4a2d83a7071df59407a9987992c083750/LICENSE .
+Its countdown implementation registers only the first end handler, retaining
+that call's style/effect; later calls restart the countdown without replacing
+the handler. Styles include win, lose, score, timed, multiplayer and custom.
+Multiplayer considers defined scores for players1–4 and includes all tied
+winners in its message. Non-lose styles use the extension's custom dialog and
+score/time persistence, rather than core game-over rendering. Preserve source
+defaulting and effects behavior, including the explicit-effect branch, in
+original comparisons before changing anything. A generic `info.startCountdown`
+and `game.gameOver` substitution is insufficient.
+
+Next implementation needs the source-backed scoring/dialog/timer mechanism,
+per-run initialization/reset and scene/event lifetime, regular extension blocks
+and pseudocode metadata, MakeCode export with the correct dependency, SB3
+reopen, and comparisons against the original for unique/tied winners, score and
+time modes, repeat initialization, effects and button restart. Existing native
+core helpers live in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js`
+(`_gameOverModule`, `_runGameOver`, `_infoState`, countdown registrations). Reuse
+their mechanisms where semantics match; do not erase the extension diagnostic
+until the complete selected behavior has a real execution path. Private raw
+inputs, compiler results and local paths belong in the private handoff.
+
+Six original-only carnival controls (unique multiplayer winner, tied players,
+lose, win, score and timed) compile and run for1800 virtual milliseconds without
+simulator errors. Their actual binary output, palette-index frames, source
+files and fetched responses are retained privately as comparison baselines.
+This is original-simulator execution, not a native comparison, complete Arrow
+Battle run, button-restart test or production-browser result.
+
+## Carnival scoring/dialog implementation slice — 2026-10-11
+
+The `lane/arcade-carnival-scoring-core-20261011` lane stacks on PR799 and owns
+new `arcade/carnival-source/*`, `arcade/carnival-pxt.js`,
+`scripts/generate-arcade-carnival.mjs` and
+`test/makecode-arcade-carnival-core.test.mjs`. The exact pinned MIT source/notice
+are retained with their original bytes. A reproducible AST selection and
+fiber-to-Promise adaptation implements the original scoring and custom dialog
+logic, rather than a generic game-over substitute. Eleven contract/generation
+checks pass with no failures/skips. Their observing host doubles qualify source
+control flow and data, not VM rendering, actual durable storage or native game
+equivalence. No corpus row is promoted and carnival diagnostics remain visible.
+
+Next: implement the VM host using native image/font/BaseDialog/renderables,
+scene transitions, countdown-handler replacement, number settings, timer1,
+music and button/reset operations. Verify program cancellation and scene
+lifetime before exposing commands. PR800 separately owns countdown/life-event
+ordering and the paused Playwright oracle; account for its qualified adoption
+without overwriting that lane. The captured original-only carnival frames are
+private reference inputs for subsequent native comparisons. Regular extension
+blocks/pseudocode, fixed/dynamic style handling, MakeCode package export, fresh
+SB3 reopening and a production GUI journey are still required. Original source
+first-registration and explicit-effect branches must remain observable.
+
+The painter-placement peer PR801 stacks on PR794. Preserve that parent history
+and coordinate before changing it. A reviewed map-before-sprite case revealed
+that inserting a new placement immediately after the map can precede sprite
+creation; the peer owns the reported source-order fix. Pending peer PRs and
+reported test totals are not qualified adoption claims.
+
+## Carnival native host, authoring and saved records — 2026-10-11
+
+The next slice implements `carnival.startCountdownGame` and
+`carnival.onGameOverExpanded` with fixed `WinTypes` styles and optional fixed
+screen effects. It connects the retained original scoring/dialog module to the
+real VM's image/font renderer, scene stack, countdown callbacks, clocks, music,
+button wait and restart. Ordinary Arcade extension blocks and pseudocode expose
+both operations. Import/export retains the actual carnival API and declares
+`github:microsoft/arcade-carnival#v0.0.7` in exported `pxt.json`.
+
+For example, type this into Code and use To blocks:
+
+```text
+arcade set score player (1) to (7)
+arcade carnival countdown (15) style Score effect unset
+```
+
+The countdown and game-over blocks offer Win, Lose, Score, Timed, Multi and
+Custom styles. `Custom` here means the original `WinTypes.Custom` branch;
+`customGameOverExpanded` with arbitrary text/scoring/sound is still diagnosed.
+Dynamic styles and shadowed namespaces remain diagnosed. Timer HUD, carnival
+ball helpers and additional extension APIs remain separate work.
+
+`arcade/program-settings.js` stores number records under a program identity on
+the Stage. SB3 carries a validated `bwArcadeSettings` sidecar, including exact
+special numeric values, without adding learner variables. On a device with
+usable localStorage, the latest records for that identity take precedence over
+an older imported snapshot. A different device starts from the SB3 snapshot.
+Without a device backend, records persist only in saved projects. Copying a
+project retains its identity; a genuinely new project receives a new identity.
+Quota/write failures propagate and leave both live values and snapshots intact.
+This is app-owned record storage, not cloud sync or a general settings blocks UI.
+
+Serializer integration in `scripts/lib/arcade-settings-sb3-hooks.mjs` patches
+both the target-flattening and serialization boundaries plus restoration.
+Changing only `serializeTarget` loses live Stage metadata. The focused SB3 test
+injects these exact hooks into the actual serializer in memory, saves an actual
+archive and loads it into another VM. It does not modify dependency files or
+qualify a production browser build.
+
+Qualification: 32 affected runtime/core/info-registration/export checks passed;
+the expanded 11-test host suite also passed, without failures or skips. It
+covers countdown first registration and later replacement, direct game over,
+stop/restart cancellation, number records and actual SB3 reopening. Six source
+controls (unique/tied multiplayer winners, lose, win, score and timed) exported,
+compiled with the original PXT compiler and ran without native/original errors.
+The original render helper aliases two black palette entries (0/15); comparing
+displayed colours yields exact opaque dialog text/body in rows 40–76 after
+excluding the animated cursor at x145–159/y69–76. Each full rectangle still has
+42 cursor-phase pixel differences, preserved in private receipts. Exported
+original dialog rectangles match the original baseline without differences.
+These are bounded comparisons, not whole-game or cursor-timing equivalence.
+
+The candidate branch is `lane/arcade-carnival-runtime-host-20261011`, stacked on
+[PR802](https://github.com/CrispStrobe/brickwright-lite/pull/802). It normally
+integrates the exact [PR800](https://github.com/CrispStrobe/brickwright-lite/pull/800)
+candidate `a078a5e452991a69abb21c7a9bb6de3ae6c18e86` for countdown ordering.
+That is isolated qualification, not adoption of an unmerged peer candidate on
+main. Parent/peer hosted checks and final integration remain mandatory.
+
+Next: a hosted production GUI journey through these blocks, dialog/controller
+restart, saved project reload and original export. Then add the remaining
+custom API/timer/helper capabilities with original controls. Preserve current
+184-input census (142 translated / 41 partial / 1 parse failure) until an
+immutable-input audit actually reruns; these tests do not promote corpus rows.
+Private receipt URLs, commands and local paths live in the private handoff;
+`docs/ARCADE-AGENT-HANDOFF.local.md` is ignored operational context.
+
+### Carnival production browser journey — 2026-10-11
+
+`scripts/verify-arcade-carnival-browser.mjs` is now registered on the heavy
+browser shard, with a generated zero-reading provisional budget. Run it against
+an already built production app:
+
+```sh
+BW_BASE_URL=http://localhost:8617/ node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-carnival-browser.mjs
+```
+
+It imports an owned two-line MakeCode control using Code Open, observes the
+translated pseudocode, clicks To blocks, checks the visible carnival block,
+runs with the green flag, observes real native dialog pixels/score, restarts
+through controller A, and saves through File. The downloaded archive must carry
+exact program records. A fresh browser context with no carnival device records
+loads that file through File, checks restored blocks/records and runs them again.
+The gate records tested source, loaded scripts, screenshots, archive hash and
+errors under `test-results/arcade-carnival-browser/`. `BW_CARNIVAL_REPORT_DIR`
+overrides that output directory; `BW_EXPECT_GUI_BUNDLE` can require a named
+bundle. It observes VM state and does not inject runtime/serializer operations.
+
+The native button-restart control passes; all 12 host checks passed in the
+expanded suite. Thirteen budget/timeout checks pass after registering the new
+gate. The initial budget failures (missing registration) remain in private
+receipts. Syntax checks pass. The production journey has **not yet executed**;
+hosted build/browser qualification is pending, not inferred from these checks.
+No app build or dependency mutation was performed locally. Palette/body controls
+and corpus counts retain the previously documented boundaries.
+
+
+## Carnival custom game-over authoring — 2026-10-11
+
+The `lane/arcade-carnival-custom-gameover-20261011` candidate stacks on PR803
+without changing its qualification head. `carnival.customGameOverExpanded` now
+uses the retained original module, actual native Melody handles, game-over sound
+configuration, scene/dialog renderer and program record store. An ordinary block
+and pseudocode command expose message, fixed effect, melody reporter, fixed
+scoring type and optional score. General playable objects are not Melody values;
+invalid supplied sounds raise runtime errors instead of falling back silently.
+
+Example, authored directly in Code and convertible to blocks:
+
+```text
+arcade set score to (7)
+arcade carnival custom game over message ("Well done!") effect hearts sound (arcade melody baDing) use sound 1 scoring LScore score (3) use score 1
+```
+
+`use sound` and `use score` are boolean inputs, separate from the values. A false
+flag represents an omitted MakeCode argument; a true score flag preserves zero.
+Scoring menu: unset, None, HScore, LScore, HTime, LTime. The retained original
+source owns defaulting, elapsed-time scoring and record comparison. The exporter
+folds fixed flags and emits ordinary conditional statements for editable flags;
+these reimport through the existing native control blocks. No helper shim or
+replacement generic dialog is exported. Dynamic scoring types remain diagnosed;
+remaining timer/HUD and ball helpers remain unsupported.
+
+Qualification: 31 core/host/custom checks pass, plus one focused invalid-sound
+check. Controls include omission, zero, low/high/unjudged score, timed zero and
+editable presence flags. Six original and exported-original controls compile
+and execute with the real PXT SDK and captured public package responses. After
+aligning the native test's Scratch wait clock and Arcade frame clock, all six
+native dialog rectangles (all x, rows40–76) match displayed original colours at
+4000ms; exported-original rectangles match their original baselines. Original
+RGB readback aliases palette indices0/15 to black as previously documented.
+Unchanged original/reference frames are reused for the corrected clock pass;
+actual initial failures and raw frames remain private. This does not qualify
+whole-game behavior, general cursor timing or audible sound output.
+
+Tests: `test/makecode-arcade-carnival-custom.test.mjs`; production paths are
+`arcade/carnival-host.js`, native `arcade/index.js`, `arcadeDialect.js`,
+`bw-makecode/arcade-translate.js` and `bw-makecode/export-arcade.js` under overlay.
+The selected pinned source/generator is unchanged. The production custom-block
+GUI journey and final hosted checks remain pending. Parent PR803's independent
+browser journey is queued; do not label it passed. Corpus counts remain unchanged
+until an actual immutable-input audit. Private paths, source receipts and commands
+remain in the private handoff and ignored local Markdown.
+
+
+### Refreshed immutable import census and recovered Arrow Battle — 2026-10-11
+
+At custom-runtime source `bb95f4dfb6a94f0ddd6d36f0864553842a6137e3`, a fresh
+184-input import audit still reports 142 translated / 41 partial / 1 parse
+failure. Every input blob matches the immutable original corpus commit, and the
+content-multiset hash matches the preceding census. The audit is static import
+only; compilation/execution gates are separate. Its expected nonzero exit due
+to partial inputs is preserved, not treated as a passing all-apps result.
+
+The previously recovered Arrow Battle **project**, with its real assets and
+declared dependencies, now imports with zero unsupported diagnostics. Its raw
+tutorial fragment remains in the original 184-input denominator. This is not
+full Arrow Battle gameplay qualification; the original compiler result was
+recorded in the earlier package lane. Do not replace a fragment with the richer
+project or count this separate one-project audit as a corpus promotion.
+
+The leading census gaps are unreadable background artwork (10 inputs), literal
+map data (4), bundles wrapper APIs (3 each), song values (3) and several sprite
+operations in the older translation path (3 each). Next: recover explicit
+project context/assets without rewriting original fragments, classify each
+remaining input's real dependencies, then implement the remaining song/wrapper
+and native-mode gaps with original controls. Keep census and context-project
+results separate, and qualify runtime/Blocks/GUI/export for each accepted API.
+
+## Carnival shared-parser integration repair — 2026-10-11
+
+Lite PR #803's first hosted build failed before browser execution: its two new
+Carnival words differed from the pinned producer, the tracked packages mirror
+was stale, and the dialect census still expected 277 operations. These failures
+are integration defects, not evidence that the browser journey passed.
+
+The repair adds the three Carnival words (including the custom game-over word
+used by stacked PR #804) to the shared producer in
+[sb3-creator PR #93](https://github.com/CrispStrobe/sb3-creator/pull/93). Lite
+explicitly adopts producer commit `06341e3dd0f5ddfbed6764ec5afe03b04b65e265`,
+refreshes its tracked mirror and generated authoring inventory, and expects 280
+dialect operations. The producer's Arcade dialect suite passed 323 tests.
+The extra custom word in this parent is grammar support; its runtime and GUI
+implementation remains in PR #804.
+
+Vendor identity and exact-delta gates remain intact: the adopted producer and
+Lite copies must match after the existing import rewrites. No downstream
+exception or new normalization is introduced. Hosted consumer build/browser
+qualification remains pending at this checkpoint. The immutable corpus result
+remains 142 translated, 41 partial, and one parse failure; this synchronization
+repair does not close a corpus gap.
+
+## Song implementation next lane — 2026-10-11
+
+### Source and present gap
+
+The consumed target is Arcade 4.2.1 / PXT 13.2.1, built from
+[Arcade commit 2d7d59b5226e8a1a1e05e8042dd9f5248ed68fea](https://github.com/microsoft/pxt-arcade/commit/2d7d59b5226e8a1a1e05e8042dd9f5248ed68fea).
+Use the exact bundled strings in
+`packages/scratch-gui/static/makecode/arcade/target.json`, package `mixer`,
+not a moving copy of common-packages main. The upstream source repository is
+[Microsoft pxt-common-packages](https://github.com/microsoft/pxt-common-packages);
+retain its MIT notice and record hashes of every consumed bundled source.
+
+`scripts/generate-arcade-music.mjs` currently replaces `createSong` with an
+explicit refusal and installs an empty `_stopAllSongs` function. The runtime
+host is `overlay/scratch-vm/src/extensions/crispstrobe/arcade/music.js`; the
+generated module is `arcade/music-pxt.js`. Do not erase these limits by accepting
+a buffer without implementing scheduling and sound instructions.
+
+The bundled `instrument.ts` already contains the song/track/note/instrument
+encoding and instrument rendering. `sequencer.ts` contains a real TypeScript
+sequencer and a distinct simulator-shim wrapper. `Song.play` selects the latter
+when `control.deviceDalVersion()` equals `sim`; the other path uses the
+TypeScript sequencer. Choose and document a real host path, with faithful
+clock/fiber suspension, rather than routing to absent native shims.
+
+### Ordered acceptance
+
+1. Generate retained song/instrument/sequencer logic using the existing fiber
+   lowering and explicit host adapters. Add the needed buffer, clock and
+   pause-until contracts. Verify playback completion, replacement, looping,
+   global stop, restart and disposal.
+2. Compare actual scheduled mixer instruction buffers against the original
+   target for melodic, drum and polyphonic songs, tempo changes, empty tracks,
+   and loop boundaries. Preserve failures; headless instruction equality is
+   not audible output qualification. Check malformed input bounds explicitly.
+3. Add `music.createSong(hex...)` as a genuine playable value, normal Blocks
+   reporter and shared pseudocode word. Preserve exact song bytes through
+   MakeCode export/reimport and SB3 save/reopen; inspect existing playable
+   dispatch before adding a separate execution mechanism.
+4. Provide editable song assets with note grid, tracks/instruments, tempo,
+   measures, preview and undo/redo. Preserve naming and edits in both SB3 and
+   MakeCode projects. Record unfinished editor capability in the GUI ledger.
+5. Run the real production editor journey: import, edit, play with controller
+   widgets, save/reopen, export, compile and run the resulting MakeCode
+   project. Re-audit the locked 184 inputs independently; three original
+   projects mention `createSong`, and unrelated missing assets/extensions
+   may keep each partial. Report the actual census, not an assumed reduction.
+
+### Vendor repair qualification checkpoint
+
+At Lite parent `065a86dbd6da751709f7779874a55567a52c0996`, all 11 focused
+parser/vendor checks and the separate HEAD mirror check pass. At custom
+`1cbac9ad44ce957794d3eb2491b8150fc1320bd7`, all 12 checks pass without skips.
+All 18 mapped source files were compared at producer
+`06341e3dd0f5ddfbed6764ec5afe03b04b65e265`; the 3750-file gallery matches.
+Fresh hosted build/browser checks remain queued, so do not merge or claim
+production GUI qualification from these local results.
+
+## Native song sequencing implementation slice — 2026-10-11
+
+### Implemented source and host behavior
+
+Branch `lane/arcade-song-runtime-20261011` is stacked on PR804. The generated
+music module now retains the pinned mixer `instrument.ts` and `sequencer.ts`
+in addition to the five existing files. Input hashes and MIT attribution are
+in `overlay/scratch-vm/src/extensions/crispstrobe/arcade/music-pxt.js`.
+`scripts/generate-arcade-music.mjs --check` reproduces that source. The explicit
+`createSong` refusal and empty stop-songs placeholder are removed.
+
+The host uses the original TypeScript sequencer through its non-simulator
+branch; it does not call absent simulator-native song shims. `pauseUntil` is
+lowered as an explicit primitive and polls on the Arcade clock. Positive music
+pauses keep absolute deadlines, with bounded catch-up after a clock jump and
+zero-duration polls deferred to the next pump. Existing melody/tone/effect
+control tests cover the shared scheduler change.
+
+One declared generation adaptation skips empty note streams before reading a
+current event; otherwise the retained decoder can read into the following track.
+`arcade/song-buffer.js` checks version-zero structure, positive timing, complete
+instruments/drum steps/events, tick ordering/extents and drum references. It
+refuses malformed data without changing song bytes. Mutable buffers are checked
+again at each scheduled tick; failure ends sequencing and releases waiting
+callers with the host error still visible.
+
+### Evidence and limits
+
+The focused tests cover melodic polyphony, drum and mixed tracks, envelope/LFO
+modulation, volume/tempo, until-done/background/looping behavior, replacement,
+global stop/reset, empty tracks, truncated streams and invalid edits. Four real
+MakeCode programs compile and run in the complete original simulator; every
+active instruction byte matches. The simulator's melodic buffers have an extra
+zero record after the terminator. The comparison requires the entire unused
+tail to be zero and compares all active bytes exactly; it does not normalize
+frequencies, envelopes, waveform, duration, volume or order.
+
+The oracle now has an opt-in `recordSongSound` observer on the original
+`AudioContextManager.playInstructionsAsync` sink, because songs bypass the
+existing melody queue observer. It calls the original sink unchanged. Initial
+empty-capture failures and the subsequent padding-only comparison failures are
+preserved privately. This is headless instruction/control-flow evidence, not
+audible speaker output or a production GUI song journey.
+
+The native backend uses the pinned hardware-path single-current-song behavior.
+The simulator has a distinct sequencer backend; simultaneous-song semantics and
+other binary format versions are not qualified by this slice. Version-zero
+validation must not be labelled support for every song format.
+
+### Required continuation
+
+The following song-values slice implements importer value lowering, the normal
+Arcade reporter block, shared producer pseudocode word, MakeCode export/reimport
+and SB3 roundtrips. Editable song assets and a production GUI journey remain
+required as specified in the song lane above.
+The locked corpus census remains 142/41/1; runtime primitives alone do not change
+its classification.
+
+### Separate parent integration repair
+
+The next hosted failure in PR804 was an old exact producer-pin assertion in
+`test/lego-spike-roundtrip.test.mjs`. The canonical executable artifact test was
+rerun against `06341e3dd0f5ddfbed6764ec5afe03b04b65e265` and passed. The assertion
+was updated without weakening artifact checks. Repair is on PR803 at
+`4e7fcfff80e8a4966e42ce41a19a85c6f7376dd9`, normally merged into PR804 at
+`9e0456303180e7d93901e84b635228210ac9a404`. Fresh hosted checks remain required.
+
+### Native song source qualification checkpoint
+
+[PR806](https://github.com/CrispStrobe/brickwright-lite/pull/806) tested code
+`117a5b31230ae282aa4adee89bed2ab627fc0a6d`: 29 affected checks pass with no
+skips (12 song, six existing music, 11 Carnival source/control checks). The
+separate HEAD overlay/packages mirror check passes. Production build/browser
+qualification remains pending; the runtime source tree and hosted app result
+are separate evidence. No importer classification was promoted.
+
+
+## Song values and conversion slice — 2026-10-12
+
+### Implementation and authoring
+
+``music.createSong(hex`...`)`` lowers to the normal `arcade_songPlayable`
+reporter. Code uses `arcade song playable hex "00780004080100"`; a string
+expression is also accepted. Connect the reporter to the existing music-play
+block. The runtime creates the native typed playable through the validated PXT
+song codec and sequencer, rather than interpreting a separate song format.
+
+`music.createSong(Buffer.fromHex(expression))` preserves a dynamic hex string.
+Literal reporter values export as ``music.createSong(hex`...`)``; expression
+inputs export through `Buffer.fromHex`. Literal export validates hex before
+embedding it in TypeScript. Unsupported constructor forms retain diagnostics;
+invalid runtime bytes emit a visible block error and return no playable.
+General Buffer variables, mutation and other binary versions remain open.
+
+The shared producer word is in
+[sb3-creator PR94](https://github.com/CrispStrobe/sb3-creator/pull/94), stacked on
+[PR93](https://github.com/CrispStrobe/sb3-creator/pull/93). The adopted pin is
+`c70963552a0ceac9456633cac24e9c62d922cde2`; the inventory now contains 281
+Arcade words. All 18 mapped files match the sync's own transformation; the
+permitted downstream delta set remains empty.
+
+### Reproducible checks
+
+`test/makecode-arcade-song-values.test.mjs` contains five checks:
+
+- Real imported-song VM playback and until-done continuation.
+- Exact literal-byte export and execution in the complete original MakeCode
+  simulator, comparing active instruction bytes.
+- Dynamic-string Code/Blocks/export/reimport plus actual SB3 save and reopening
+  in a fresh VM; the exported dynamic program also runs in original MakeCode.
+- Unsupported constructor forms, malformed hex and invalid native timing retain
+  diagnostics or visible runtime errors; the normal reporter is discoverable.
+- Editing a reporter's bytes changes exported tempo; unsafe malformed literal
+  text is refused.
+
+The combined song-values, native-song, existing-music, canonical SPIKE artifact,
+dialect and vendor-identity checks pass: 35 tests, no failures or skips. The
+shared producer's independent grammar checks pass: 324 tests. These checks do
+not establish a production browser authoring journey or audible output.
+
+### Remaining GUI and integration work
+
+Provide named song assets and an editor for tracks, notes, instruments, drums,
+volume and tempo. Save edits transactionally and exercise creation, playback,
+export, original MakeCode import and SB3 reopening through the actual GUI.
+General Buffer operations, simultaneous-song semantics and version-one songs
+need separate qualification. Do not count an editable hex input as a song editor.
+
+The parent runtime's hosted run
+[38173020786](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38173020786)
+is red: the build failed a particle-effect image assertion, the light browser
+shard failed painted-level save/reopen execution, and the heavy shard stopped
+before the Arcade journeys. The native-song checks did not fail. These failures
+remain integration blockers; their causes must be established before a full
+production claim. Preserve the original failures rather than rerunning them out
+of the evidence record.
+
+
+### Locked corpus checkpoint
+
+The clean source `79b873478ca65972a45cb70471c0e0e797f6e139` was audited against
+all 184 originals at corpus commit
+`c67f4854610ccc823682280b4d1fbdf737f4a585`. Every original Git blob matched;
+content-multiset SHA256 is
+`a3dc8c21a33a9fb5e1808d2b2b2d2dbc2f7ce1ab33655b7b4cb14a16894b9f03`.
+Source, vendor pins and MakeCode SDK identities were unchanged at both endpoints.
+The census remains **142 translated / 41 partial / 1 parse failure**. This is
+static translation, not compilation or execution of the complete corpus.
+
+The three song cases use ``music.createSong(assets.song`countdown`)``, rather
+than literal hex. Their standalone sources do not supply the named song bytes.
+Resolve song assets from complete project manifests/JRES and preserve their names
+and bytes through authoring/export. Keep the missing-asset diagnostic when only
+a source snippet is provided; never manufacture a countdown song to make the
+census green. These projects also have unrelated artwork and wrapper gaps.
+
+
+## Named song asset candidate — 2026-10-12
+
+The normal `arcade_namedSongPlayable` reporter / Code word
+`arcade song named "countdown" hex "..."` preserves the display name and exact
+version-zero bytes in ordinary blocks and SB3. Native song JRES entries use
+`application/mkcd-song` and raw hex, as in pinned PXT13.2.1 generateSong and
+emitProjectImages. Complete project imports resolve ID, short ID and display-name
+aliases; missing, ambiguous or malformed entries remain diagnosed. The exporter
+writes native song JRES, manifest entries and a song factory. The single-file
+TypeScript export embeds its factory. Export refuses conflicting bytes under
+one name or nonliteral named asset inputs. Internal JRES IDs are regenerated;
+original display names and bytes survive.
+
+Seven focused song checks pass, including complete-original MakeCode execution
+of both file-map and single-file exports and an actual SB3 save/load into a fresh
+VM. First fixture omitted pxt.json on its separate single-file compile and failed;
+the required manifest was restored and that failed run is preserved privately.
+Producer325 grammar checks pass at f079238eeb7d8ac6474048e748208fb7f954198f in
+[sb3-creator PR95](https://github.com/CrispStrobe/sb3-creator/pull/95), stacked
+on PR94. Broader combined gates and hosted production qualification remain open.
+Unused song library entries, general Buffer operations and a graphical song
+editor are not supplied by this slice. Full binary validation stays in the native
+codec; the interchange boundary checks lexical bytes/version and asset identity.
+
+The operator requested rescue of the ended Claude session during this slice.
+Work remains on `lane/arcade-named-song-assets-20261012`, separately from the
+rescue integration branch. Resume the named-song combined checks and GUI work
+once the rescue is checkpointed. PR807's build/corpus checks passed; its light
+shard failed painted-level reopening and heavy failed waiting for the visible
+Carnival countdown block. Those exact failures are preserved and not production
+completion. The prior PR806 heavy failure is a separate earlier failure.
+## Claude session rescue — 2026-10-12
+
+The operator reports that the Claude session has ended. Its useful work is
+committed and pushed; there are no uncommitted tracked changes in its green-flag,
+placement or countdown worktrees. Three diagnostic prototypes were preserved
+privately, not promoted to production scripts.
+
+The isolated `integrate/claude-arcade-rescue-20261012` branch merges these exact
+candidates, preserving their original history:
+
+- [PR801](https://github.com/CrispStrobe/brickwright-lite/pull/801),
+  `f97f3606a5cfcfd0ad7dc02e548736f6ab29dcd6`: sprite placement in the tile painter,
+  including its PR793/794 parents. All seven enabled hosted checks succeeded.
+- [PR797](https://github.com/CrispStrobe/brickwright-lite/pull/797),
+  `2a0f1e657163e25bf6ed1512fa6fb0ebe6a26b79`: exact bw-board package adoption
+  `9c8777d5` and derived pins/receipts/lockfiles. Build and heavy browser passed;
+  light failed saved-painted-level execution after reopening.
+- [PR800](https://github.com/CrispStrobe/brickwright-lite/pull/800),
+  `a078a5e452991a69abb21c7a9bb6de3ae6c18e86`: native countdown event ordering and
+  deterministic original simulator clock. Build and heavy browser passed; light
+  failed the same painted-level check.
+
+The original PR797/800 failure logs establish the shared failed assertion;
+they do not establish that either source change caused it. Both failures remain
+preserved. A separate active worker owns the painted-level installation and
+original-display readiness proof repair. Do not overwrite or duplicate that
+worker's source or claim its unpublished result.
+
+This integration has documentation conflicts resolved while retaining lane
+histories; executable source merged without conflicts. Fresh combined hosted
+qualification is required before main adoption. PR801's green parent-specific
+result does not qualify the new main-based combination. The original branches
+and worktrees remain available. PR789/790/791 are already integrated and need no
+second salvage. Song and Carnival descendants remain separate candidates.
+
+
+Combined focused checkpoint: source `47982918f` passes20 checks, no failures or
+skips: placement model with real runtime/export, info/countdown registration,
+original-simulator terrain trajectories and HEAD tracked mirrors. This does not
+qualify the full package/GUI combination. Reuse the original exact-head source
+and retain its failed browser logs; require fresh hosted enabled checks before
+merging the new main-based rescue candidate.
+
+
+## Combined candidate and census reconciliation — 2026-10-12
+
+This is the current integration checkpoint; preceding entries record their
+original slices. `lane/arcade-complete-integration-20261012` includes every
+recorded Arcade candidate head in PR793–807, plus rescue PR810
+and named-song source `5db728c509d79fceeb047677c47e2bde48738b91`. Exact Git
+ancestry was checked for all15 open relevant PR heads. Native source, ordinary
+Blocks/Code words, graphics editor changes and their candidate tests are now
+in one owned tree. This does not mean they have reached main or passed the full
+production gates. Independently active painter/display proof repairs remain
+outside this integration until their owners publish qualified results.
+
+Exact audited main: `38b6bc3adbe636eb3b46dda6aa831e28a5df61fb`.
+Exact audited combined source: `1ff099af6c0b65c81c5d15c663e38f252551b991`.
+Both clean audits keep **142 translated /41 partial /1 parse failure** over the
+same184 originals at `c67f4854610ccc823682280b4d1fbdf737f4a585`, content
+multiset SHA256 `a3dc8c21a33a9fb5e1808d2b2b2d2dbc2f7ce1ab33655b7b4cb14a16894b9f03`.
+Both source/vendor/SDK endpoint identities match. A subsequent main ledger-only
+commit `51eea45fb` is integrated without altering source or the audited inputs.
+
+### Why earlier counts look better
+
+An older real report at clean source
+`14934fb23ac8a68b6d9227d3325ff5609f7e25f2` uses a compiler-dependent top-level
+stage:101 translated,29 partial,53 original-compiler failures and1 parse failure.
+Its separate static translation field is109 translated /74 partial /1 parse
+failure. Its original compile field is130 pass /54 fail, including the failed
+parse input. These independent gates must not be collapsed into "29 apps still
+not working" or compared directly with today's import-only41 partial.
+
+Today's raw rows also mark183 inputs `translated: true` because they produced
+translation output, including41 with diagnostics. The complete static status
+remains142 translated, not183 fully supported. Neither static tally establishes
+actual native gameplay, full-game equivalence or current original compilation.
+The old report's content multiset matches the184 originals; its declared commit
+field alone does not verify the original Git tree. The report remains archived
+privately with its original provenance and failures.
+
+### Qualification and next steps
+
+52 combined checks passed; two vendor-declaration checks initially failed only
+because the sparse tree lacked the tracked declaration Markdown. Materializing
+that unchanged HEAD blob and rerunning those two yielded2 pass,0 skips. Thus
+all54 selected checks passed across the preserved attempts, without modifying
+assertions or source. A prior incomplete invocation saw only3 materialized tests;
+it is preserved and is not the combined qualification. Always assert requested
+test files exist and materialize their tracked dependencies before invoking Node.
+
+Checks cover native songs/MakeCode/SB3, named-song files and single-file exports,
+Carnival custom game-over, placement runtime/export, countdown ordering, ordinary
+dialect inventory, canonical SPIKE artifact, all18 producer mappings, empty
+vendor deltas and HEAD mirrors. Pin producer f079238e and engine9c8777d5 together.
+Keep named song-editor GUI and missing context/wrapper operations on the open
+ledger. Publish this exact combined tree on PR810, refresh all hosted checks,
+and adopt main only after every enabled required check succeeds. Main's existing
+painter red and the independently active repair are not waived by focused checks.
+
+## Ordered zero-partial campaign — 2026-10-12
+
+The approved [partial closure plan](ARCADE-PARTIAL-CLOSURE-PLAN.md) contains
+the complete 41-row original diagnostic checklist, ordered batches, editor
+acceptance criteria and corpus-preservation rules. Start with qualification
+of the combined candidate, then authentic project context. PR810 final-head
+build/corpus passed but both browsers failed; no main-adoption claim yet.
+
+### First closure batch receipts — 2026-10-12
+
+At clean49d3cc5a8, originals remain142/41/1 and separate authentic contexts
+measure7/33/1 over41. All41 context projects retain exact original main.ts.
+The reusable recovery CLI and tutorial package-pin refinement are candidate
+source, with8 focused tests and3 CLI controls passing. Private unchanged first
+failure and corrected41-context receipts are archived in the private corpus
+repo.38 declared external dependency specifications form the next context
+frontier. No gameplay, graphical song-editor or main-adoption claim is made.
+
+### Dependency compiler loading checkpoint — 2026-10-12
+
+Continue with the bounded loader section in
+[the closure plan](ARCADE-PARTIAL-CLOSURE-PLAN.md). Both previously size-refused
+real packages now resolve; the pizza context compiles in original Arcade, while
+the Hawks snippet exposes an undeclared `harry`. Preserve that failure and the
+original corpus. Fetch reports include exact hashes, retained UTF-8 byte counts
+and explicit compiler-only editor-history exclusions. Source recovery has not
+yet supplied native import assets or qualified gameplay/editor/roundtrip parity.
+Respect the independent E10 importer ownership recorded in LANES.md.
+
+### Native package-input bridge — 2026-10-12
+
+The closure plan now documents `resolveProjectInputs`, the independent
+`dependency-project.js` bridge and CLI `to-sb3 --fetch-extensions`. Original PXT
+generates dependency inputs; the bridge preserves root galleries, namespaces,
+source order and exact image pixels. SB3 conversion records dependency
+provenance. A component control runs real Brickwright, exports to original Arcade
+and reimports with exact pixels/positions. This is not a full-game GUI receipt.
+
+Next implement namespace Buffer constants/dynamic song-buffer flow, wider native
+animations and source-backed factory scopes, then measure all context projects.
+Keep incomplete-source failures and private original receipts. Coordinate
+importer work with E10; the graphical import/network-choice/provenance UI is
+still open, as recorded in the GUI ledger.
+
+## Bounded native animation dimensions — 2026-10-12
+
+`animation-jres.js` now reads/writes the native u16 dimensions independently
+of Arcade's 160x120 display. The unchanged 1MiB packed resource and 64-frame
+budgets are joined by an explicit 2Mi decoded-pixel budget checked before
+frame allocation. Timing, palette, identity, canonical encoding and unused
+nibble checks remain enforced. Ten codec controls pass against the retained
+original PXT encoder/decoder, including exact 161x121/32-frame bytes and pixels,
+u16 endpoint dimensions, and header-only oversized-resource refusals.
+
+This closes the codec's screen-size restriction, not full wide-artwork support.
+Pixel document publication/import still uses `editablePixelSize` (160x160);
+SVG-to-pixel reading separately permits512x512. Next work must align those
+bounds with total document/layer/frame budgets, preserve artwork outside the
+viewport, qualify native clipping/collision and run genuine editor/save/reopen/
+MakeCode export journeys. Do not silently crop, rescale or drop unsupported art.
+
+PR810 source1007dea43 passed both browser shards, corpus, FPGA and companion
+checks in Build38237496710, but its build job failed two policy controls:
+unclassified immutable tutorial fetch and computed CLI module consumption.
+The candidate uses a literal lazy import for the existing dependency consumer
+and declares validated manifest SHA input in the fetch census. Recovery CLI
+controls reject branches, tags and abbreviated/nonhex revisions before network.
+No dead-module exception or fetch waiver was added. Fresh hosted qualification
+is required; the locked original census remains142/41/1.
+
+Authentic follow-up at source6c93fb987 decodes/re-encodes the real Hawks
+TrampolineDunk resource exactly:161x121,32frames,75ms,311720packed bytes.
+Prepared native diagnostics drop from1 to0 for that recovered context; original
+PXT still fails the unchanged snippet's undeclared `harry`. This does not
+change the locked original census or establish game execution.40 affected
+codec/dependency/native-import/companion/export controls pass, plus14 corrected
+policy/recovery controls; the preceding census failures are preserved.
+
+## Wide artwork authoring candidate — 2026-10-12
+
+Pixel indexed artwork and native animation resource lookup now support up
+to512x512, matching the existing SVG reader. An8Mi indexed-pixel budget covers
+all document frames/layers and the active-frame copy; the16MiB serialized
+document and64MiB artwork-bundle limits still apply. Native JRES export keeps
+its separate1MiB packed limit and reports oversized resources explicitly.
+
+Wide documents require artwork bundle8. Library installation and subsequent
+saves keep that version; old bundle7 readers preserve source byte for byte
+as future data. Narrow documents keep their existing minimum versions.
+Resize, new frame/layer and sheet slicing check pixel budgets before allocating
+new buffers, with English/German feedback. Imports check budgets before
+constructing editable frame copies. IDs, timing and external pixels are retained.
+
+A161x121/32-frame synthetic native project executes in the real VM, saves and
+reopens into a fresh VM, exports/reimports exact source and compiles/runs in
+original PXT. Native viewport clipping and offscreen frame pixels are checked.
+Actual Pixel load/resize/Undo/Redo controls verify no shrinking and refusal
+before oversized allocation. Historical bundle7 preservation also passes.
+The hosted animation browser gate now adds a two-frame wide import, visible
+Pixel corner painting outside the Arcade viewport, playback, bundle8 save/
+reopen and original-compiler GUI export. That new GUI journey is PENDING,
+not a completed browser receipt. Original184-input census142/41/1 unchanged.
+
+The focused wide-sprite oracle now compares the original simulator and native
+VM: offscreen edge collisions in both argument orders, transparent neighbours,
+pixel edits and all19200 presented screen pixels. It repeats the checks through
+Code reconstruction, SB3 reload, original execution of exported MakeCode and
+native reimport. `test/arcade-wide-artwork.test.mjs` contains the portable control.
+Original display readiness is observed after completion. The first fixture's
+constant completion marker was optimized away; its timeout is preserved and
+the corrected mutable marker passes. No runtime adjustment was needed.
+
+Next: collect the exact-head hosted wide-artwork journey; resolve namespace
+Buffer/song semantics in coordination with the importer owner and complete
+graphical dependency import and authoring evidence. The original census and
+pending browser acceptance are not promoted by this focused oracle.
+
+## Byte-buffer runtime foundation — 2026-10-12
+
+`scripts/generate-arcade-buffers.mjs` extracts the complete buffer methods from
+the pinned pxt-core13.2.1 simulator, records their SHA256 and verifies exact
+regeneration. The generated `buffer-pxt.js` retains original numeric, byte,
+slice/write/fill/shift/rotate algorithms. `buffer.js` supplies a bounded mutable
+Uint8Array facade; the mixer now uses it instead of its four-format adapter.
+The original Microsoft MIT notice is shipped and recorded in the notices.
+
+`test/makecode-arcade-byte-buffer.test.mjs` executes original MakeCode programs
+and compares all16 number formats, aliasing, detached copies, self-overlapping
+writes, range operations, clipping and UTF8. Allocation guards run before byte
+allocation; unsupported numeric formats fail explicitly. Song/mixer regressions
+remain required. The first original fixture used the shim's four-argument write
+shape where the public TypeScript method takes two arguments; compilation
+refused it. The corrected public call retains the overlapping-copy assertion.
+That original failed attempt is preserved privately.
+
+Next: wire distinct session-scoped Buffer values and native Blocks/Code words,
+then coordinate importer/helper changes with E10 and preserve exact MakeCode
+export operations. Namespace Buffer/song diagnostics remain until that complete
+path works. This foundation does not establish graphical byte/song editing,
+installed GUI acceptance or a changed original corpus census.
+
+## Buffer value authoring and exact export followup — 2026-10-12
+
+This continuation supplies a genuine `buffer` reference kind to BWValues and
+its own-fork Arrays fallback. Arcade keeps a scoped mutable byte heap: variable,
+custom-block and array aliases name the same bytes; slice copies are detached.
+Project start/load/disposal drops the heap; foreign/stale references diagnose an
+unavailable buffer. The per-allocation bound remains1MiB, not an aggregate heap
+or whole-process memory guarantee. Saved runtime references do not reconstruct
+heap contents: authored programs rebuild their buffers when reopened and run.
+
+Sixteen native Arcade words cover construction, dynamic hex, readonly literals,
+length, byte and all16 NumberFormat reads/writes, slice/write/fill/shift/rotate,
+hex/UTF8 output and `music.createSong(buffer)`. The canonical words are in
+`docs/generated/ARCADE-AUTHORING-VOCABULARY.md`; `bufferFormats` is a genuine
+reporter-accepting dropdown. Export preserves hex strings with leading zeroes,
+uses actual NumberFormat members, infers Buffer parameters and Buffer[] aliases,
+and declares Buffer variables correctly. Dynamic numeric format reporters work.
+The Buffer atom is added only to the value graph's existing two whitelists;
+importer/namespace/type-lowering ownership stays with E10.
+
+Original execution caught and corrected a literal-identity error: identical
+hex literals at distinct source sites are different objects; repeated execution
+of one source site returns the same literal. The runtime caches by source block
+and target, rather than hex content. Literal byte mutation follows the original
+readonly check; numeric setter behavior is delegated to the original algorithms.
+A song keeps its actual buffer, so mutation changes its subsequent playback.
+
+Owned producer candidate: https://github.com/CrispStrobe/sb3-creator/pull/96
+(stacked on the named-song branch; not a main adoption claim). Arrays fallback:
+https://github.com/CrispStrobe/extensions/pull/34 . Lite records exact candidate
+pins. Targeted `vendor-bundles.mjs --only arrays` preserves every other bundle
+and receipt; its offline test invokes the actual script with one immutable-source
+fetch and checks same-repository per-file pin metadata. Full component and final
+Lite hosted qualification remains required before normal exact-head integration.
+
+Focused controls are `test/makecode-arcade-buffer-values.test.mjs`,
+`test/makecode-arcade-byte-buffer.test.mjs`, song runtime/value regressions,
+`test/bw-values.test.mjs`, `test/vendor-bundles-targeted.test.mjs` and the bundled
+source gate. They execute native VM Blocks/Code reconstruction, custom arguments,
+array aliasing, SB3 fresh reload, all16 menu formats and actual original exported
+PXT programs, including real sound-instruction bytes. Failed controls are retained
+privately. No importer diagnostic or locked corpus classification is promoted.
+
+Next: coordinate E10 namespace Buffer/hex construction and mutable song flow;
+add the GUI byte inspector and visible errors; exercise the new Buffer words in
+the hosted editor before declaring GUI acceptance. Original142/41/1 remains the
+last full immutable184-input census. Authenticated41-context results remain
+7translated/33partial/1parsefailure; static classifications are not game failures.
+
+### Hosted wide artwork proof received
+
+Exact PR810 head387337ad5's Build38256137458 completed all enabled checks,
+including both browser shards. The official `arcade-animation-resource-browser`
+artifact11754784220 records a161x121 two-frame animation: stable UUID, offscreen
+corner edit, bundle version8, actual SB3 reopening, original PXT compilation and
+38962 compared pixels. This supersedes the preceding pending wide-GUI note;
+it does not qualify subsequent Buffer edits or claim a production deployment.
+Permanent run: https://github.com/CrispStrobe/brickwright-lite/actions/runs/38256137458
+Artifact API: https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11754784220/zip
+
+Buffer followup local checkpoint: the seven named suites above pass54 distinct
+controls, with zero skips. This includes the actual VM source-site literal
+identity control and original exported mutable-song sound bytes. Producer's
+canonical dialect suite passes341 controls with exact298-opcode fixture coverage.
+The component CI jobs were still queued when this checkpoint was recorded.
+
+## Buffer editor/controller proof preparation — 2026-10-12
+
+The separate `lane/arcade-buffer-gui-proof-20261012` retains PR810's in-flight
+hosted diagnostic head. Its new fixture/controller test exercises actual native
+keyboard events, Blocks/Code reconstruction and export from `vm.toJSON()`;
+original Arcade buttons verify byte/numeric/copy/custom-argument observables.
+Original compilation exposed a global `hex` name collision; `hex` and `img` now
+use the existing reserved-name allocator. Matching serialized Buffer sidecar
+placeholders are discarded as initializers, like image references, so exported
+variables retain Buffer types and source reconstructs the values.
+
+`scripts/verify-arcade-buffer-browser.mjs` uses visible Code/To blocks, native
+16-format dropdown/numeric-shadow edits, controller A/B/down, From blocks,
+File save/replacement/reopen and the actual MakeCode download. Original PXT runs
+that download under its real buttons and compares the bytes. VM/Blockly access
+observes only. The additive light-shard gate writes its own JSON/screenshots/
+SB3/MakeCode artifact and a provisional zero-reading budget registered by the
+existing generator. Browser execution remains pending; do not claim acceptance
+from script presence or local gate contracts.
+
+Focused fixture plus gate contracts pass22/22, no skips; Buffer runtime/vendor
+regression batch passes19/19, no skips. A separate actual serialized-project
+export control passes after the sidecar fix. No full local app build was used.
+Arrays PR34 received a test-format-only followup598fc966: sparse preparation had
+omitted its repository Prettier configuration. Actual Arrays source is unchanged;
+the targeted pin now records that candidate. The informational gallery validator
+reports the same34 errors as current main; raw baseline/candidate logs are private.
+All enabled final-head component checks still need a fresh review before merging.
+
+Importer owner: read [ARCADE-BUFFER-IMPORT-CONTRACT.md](ARCADE-BUFFER-IMPORT-CONTRACT.md)
+for AST/opcode mapping, scope/typing/initialization rules, original controls and
+immutable-context rerun criteria. Namespace Buffer import remains diagnosed.
+
+## UTF8 Buffer construction continuation — 2026-10-12
+
+The missing UTF8 constructor is now represented by `arcade_bufferFromUTF8`
+and Code `arcade byte buffer from UTF8 text TEXT`. Its runtime creates fresh
+mutable bytes using the pinned PXT simulator's TextEncoder path. It counts
+encoded bytes before allocation, including paired and unpaired surrogates,
+rather than relying on JavaScript character length. Export emits genuine
+`Buffer.fromUTF8`, preserves literal numeric text and records a Buffer type.
+Producer [PR97](https://github.com/CrispStrobe/sb3-creator/pull/97) adds the
+independent canonical fixture; the census advances from298 to299.
+
+The focused byte tests compare Unicode, embedded NUL, BOM and malformed byte
+sequences against executed original PXT. Native tests cover dynamic text,
+mutation through an alias, Blocks/Code reconstruction, serialized-project
+export/original execution and reopening the actual SB3 archive. A JSON project
+without its assets is not an SB3 reopening control. The first such harness
+attempt failed in costume loading; preserve that failure separately from the
+corrected archive path. The original immutable corpus count is unchanged.
+
+The prior PR810 build failure was the exact producer guard in
+`test/lego-spike-roundtrip.test.mjs` still naming the preceding compiler.
+Commit `bf5d99f74a` advances that guard only after re-running its unchanged SPIKE
+artifact assertions. PR834 includes that fix by normal merge; earlier failed
+logs remain private. Hosted checks and the visible Buffer journey still require
+exact-head results before merge or product qualification.
+
+## Buffer public API audit and readonly continuation — 2026-10-12
+
+An original compiler control rejected four-argument `Buffer.write`; those extra
+parameters are internal simulator arguments. The isolated proposed range word
+is withdrawn and does not enter the candidate. Original source declarations
+(`base/shims.d.ts` in the pinned target bundle) expose only `write(dstOffset, src)`.
+Select fragments with the public detached `slice` operation before writing.
+The failed experiment and its parser precedence failure are retained privately.
+
+The next genuine missing public method is `Buffer.isReadOnly()`. The native
+`arcade_bufferIsReadOnly` Boolean reports the generated original algorithm's
+state; Code spells it `arcade byte buffer BUFFER is read only`. The facade,
+block metadata and exporter retain actual Boolean values, including guarded
+mutation. Literal aliases remain readonly; slices, hex decodes, UTF8 decodes and
+allocated buffers are mutable. Its producer adds one canonical form,299→300.
+The import contract now lists the remaining public Buffer declarations so the
+next worker does not mistake internal simulator parameters for a public API.
+Hosted GUI/feature qualification and E10 import remain separate requirements.
+
+Readonly checkpoint:20 affected original/native/producer-identity/SPIKE controls
+pass with zero skips; producer canonical controls343pass with zero skips.
+The exporter recognizes the readonly reporter both in its type graph and Boolean
+condition classification, avoiding a numeric comparison around Boolean guards.
+Earlier malformed test grammar and an incorrect live-variable initializer
+expectation are retained privately. Actual archive reopening rebuilds the scoped
+heap. Product browser qualification and the184-input classification are unchanged.
+
+## Buffer concatenation, equality and byte search — 2026-10-12
+
+The continuation implements public `Buffer.concat(other)`, `equals(other)` and
+`indexOf(other)` through three functions extracted from the consumed original
+`base/buffer.ts` in Arcade4.2.1's target bundle. The reproducible generator records
+complete/selected source hashes and preserves original expressions/control flow.
+Its six indexed Buffer reads call the existing original `getByte` shim after
+transpilation. This explicit adaptation preserves PXT out-of-range zero reads;
+plain JavaScript typed-array indexing would change empty-needle search results.
+`Buffer.create` is injected as the bounded allocator, so concatenation checks
+combined size before allocation and creates fresh mutable storage.
+
+Native blocks and Code spellings are listed in the generated vocabulary; typed
+export emits the genuine instance APIs. Equality remains Boolean in guards and
+variables, search remains a number, and concatenation yields a scoped Buffer.
+Explicit null equality follows the original helper at the runtime boundary;
+unknown, foreign and stale references retain named diagnostics. This is not a
+new general null-literal/import capability claim. Static `Buffer.concat(Buffer[])`
+is a separate remaining array integration task.
+
+Checkpoint:25 affected controls pass with zero skips, including original PXT
+empty/zero/bounds/null comparisons, detached/readonly concatenation, allocation
+limits, native aliasing, Code reconstruction, actual saved SB3 reopening,
+serialized export/original execution and exact producer/SPIKE artifact identity.
+The producer's303 canonical forms have346 passing controls and zero skips.
+Hosted build/browser qualification and E10 import remain pending; the locked
+184-input corpus classification is unchanged142translated/41partial/1parsefailure.
+
+## Full-build provenance failures — 2026-10-12
+
+[PR834 Build38279944717](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38279944717)
+failed four fast-suite controls: an obsolete282-opcode expectation, an uncensused
+offline URL assertion, missing scoped Arrays license evidence, and omission of
+the scoped Arrays pin from the pin-chain key inventory. The corpus inputs and
+417 generated-program expectations were unchanged. The comparison candidate has
+303 canonical forms; older candidates require their own exact counts.
+
+The correction reads the shipped Arrays source header without evaluating code,
+requires its MPL-2.0 notice, and checks its exact per-file repository/commit
+receipt. Missing/malformed bundles and missing/wrong notices fail explicitly.
+The URL census identifies the injected offline test assertion; production fetch
+validation remains separate. Twenty-two affected controls pass with zero skips.
+This is focused gate repair, not a new full-build or GUI qualification.
+
+The same run's heavy browser job failed during dependency installation with
+ECONNRESET before product checks. Its light browser diagnostic was still pending
+at this checkpoint and must finish before advancing that source head. Preserve
+both failures privately. Hosted candidate checks and the locked142/41/1 corpus
+classification remain independent acceptance requirements.
+
+## Particle composition assertion — 2026-10-12
+
+[PR810 Build38279930848](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38279930848)
+also failed a fire-frame assertion. Total fire-color counts need not exceed
+sprite-color counts when particles overlap the sprite. The replacement requires
+positive visible emission and compares every actual original-source pixel write
+with the composed scene frame. Ghost/dissolve, lifetime, handlers, cleanup and
+original-PXT comparisons remain. All eight particle controls pass with zero skips;
+a deliberate missing composition layer is rejected by the exact-pixel assertion.
+No product algorithm or random distribution changed. Parent provenance fixes are
+prepared with the exact298-word table and original scoped Arrays commit; wait for
+its surviving focused diagnostic before advancing its head. Candidate full-build
+and Buffer browser qualification remain pending; no corpus promotion occurred.
+
+## Buffer browser first execution — 2026-10-12
+
+[PR834 light browser job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38279944717/job/114927678175)
+reached visible authored native blocks without page/block errors, then timed out
+opening the format menu after a coordinate click. It completed no controller or
+archive/export cycles; this is failed GUI qualification. The followup clicks the
+identified authored SVG dropdown through Playwright's visibility/hit-target
+checks, following the existing schema browser control, and retains a failure
+screenshot and field observations. Hosted rerun must establish the result.
+
+The surviving parent focused diagnostic passed before its source was advanced.
+PR810 now includes prepared provenance fixes and the exact particle pixel check.
+PR834 incorporates those fixes with298 canonical forms and its own selected598fc
+Arrays source notice. Eighteen parser/fetch controls pass with zero skips; the
+browser script passes syntax/whitespace checks. No corpus classification changed.
+
+## Buffer number-format size authoring — 2026-10-12
+
+The continuation extracts genuine `Buffer.sizeOfNumberFormat` from the pinned
+common-package source. No parallel format table is maintained in runtime code.
+Native `arcade_bufferFormatSize`, the shared16-format menu, canonical Code form
+and typed export are added; producer PR100 advances303→304 canonical forms.
+Numeric custom-function returns and invalid-format zero behavior are explicit
+controls. The importer remains E10's lane.
+
+The controls also exposed a weak older literal-return fixture: two malformed
+argument inputs both returned zero, satisfying an identity comparison. It now
+uses the actual empty JSON argument array and checks returned Buffer bytes and
+length before identity. Preserve both failing harness attempts privately: the
+first awaited an optimized-away original completion marker; the second used the
+malformed function argument input. Neither licenses a wider compatibility claim.
+
+Format-size checkpoint:28 distinct affected controls pass with zero skips
+(5 unchanged parser/corpus,10 numeric-byte/helper,1 exact SPIKE artifact,
+2 format-size and10 Buffer value controls). The final12-control run includes
+the strengthened literal-return fixture and original execution of exported
+numeric functions. Producer347 controls pass with zero skips. Generator and
+whitespace checks pass. Hosted acceptance and the locked142/41/1 census remain
+unchanged. Static Buffer-array concat, number arrays, Base64, chunking, packing,
+hashing and aggregate resource limits remain on the source-derived backlog.
+
+## Buffer number-array bridge — 2026-10-12
+
+Original `Buffer.fromArray`, `buffer.toArray` and static `Buffer.concat` now have
+native reporters, shared menu/Code forms and typed export. Producer PR101
+adds304→307 canonical forms. The source extractor retains original loops and
+records full/selected hashes; six indexed Buffer reads and one write use original
+byte shims. Number-array reads are not treated as Buffer reads. Native references
+are scoped, copies detach storage and static concat preserves readonly inputs.
+
+The native authoring check exposed fixed numeric JSON reference constructors
+that ran but were refused on export. They now emit parsed numeric source
+literals (retaining negative zero syntax); other unsupported constructor forms
+retain diagnostics. Export adds number[]/Buffer[] constraints through the
+existing graph. No E10 shared inference/importer source was changed.
+
+Five algorithm/guard controls passed in the first batch; its authoring fixture
+initially used an invalid mutation spelling, then text values instead of numeric
+reporters, and had a malformed replacement during correction. All attempts
+remain private. The corrected fixture then exposed the real fixed-array export
+gap. After implementing it, all6 array controls pass, zero skips, including
+original exported execution, custom array return, Code reconstruction and actual
+fresh SB3. Together24 distinct affected controls pass with zero skips; producer
+350 controls pass. Hosted checks and locked142/41/1 classification are separate.
+
+Readonly PR836's original heavy browser passed; light failed at the same Buffer
+dropdown. Both completed before gate/actionability fixes were propagated with
+its own300-word census. Preserve the failure. The UTF8 heavy diagnostic still
+survived at this checkpoint; do not advance that head while it runs. Next source
+APIs: Base64, chunked alias/copy semantics, pack/unpack, hash and aggregate heap
+resource handling. Namespace importer integration and actual GUI evidence remain
+required before any whole-game or corpus promotion.
+
+## Buffer Base64 continuation — 2026-10-12
+
+Candidate `lane/arcade-buffer-base64-20261012` is stacked on
+[PR843](https://github.com/CrispStrobe/brickwright-lite/pull/843). It adds native
+`arcade_bufferFromBase64` and `arcade_bufferToBase64`, their Code spellings and
+typed MakeCode export. Producer [PR102](https://github.com/CrispStrobe/sb3-creator/pull/102)
+contains the independent vocabulary fixtures; its exact pin is in
+`vendor-pins.json` and the canonical census is309.
+
+The generator retains the original MIT alphabet, encoding, parsing and Buffer
+construction from the consumed target. Nine Buffer reads, four writes and ten
+string reads have checked adaptations. PXT string indexing uses `charAt`, so
+unpadded `AQ` decodes to `010000`; `AQIDBA=` is rejected by original MakeCode.
+The first test wrongly included that rejected form among accepted inputs and
+used a fictional undefined sentinel; corrected fixtures preserve both failure
+logs privately. No product fallback or parser weakening was needed.
+
+The affected six-file batch passes29/29 without skips; producer controls pass
+352/352 without skips. It covers original byte/Unicode/array/format behavior,
+Base64 tails and URL-safe input, original malformed-input rejection, native
+mutable aliases and readonly encoding, custom string returns, Code/Blocks
+reconstruction, original typed exported execution and actual fresh SB3 reopening.
+Both generators regenerate exactly. Hosted builds and visible GUI proof remain
+pending; namespace imports, the byte inspector and whole-game recensus are open.
+
+The older UTF8 candidate [PR835](https://github.com/CrispStrobe/brickwright-lite/pull/835)
+now retains the parent provenance/dropdown fixes by normal merge after its
+previous diagnostics finished. That predecessor's heavy browser shard passed;
+its build and light failures remain evidence. Fresh checks use merge `b662f2ecaf`,
+299 canonical forms and the UTF8 producer pin. Never apply309 to older candidates.
+
+Next Buffer slices: original chunking/UTF8 chunk boundaries, packing and unpacking
+format parsing, then hash and aggregate heap lifetime. E10 keeps AST/namespace
+import and shared type helper ownership. Locked184 originals remain142 translated,
+41 partial and1 parse failure; authenticated41 contexts remain7/33/1.
+
+## Buffer chunking continuation — 2026-10-12
+
+Candidate `lane/arcade-buffer-chunking-20261012` stacks on
+[PR844](https://github.com/CrispStrobe/brickwright-lite/pull/844). Producer
+[PR103](https://github.com/CrispStrobe/sb3-creator/pull/103) supplies311 canonical
+forms with its exact pin in `vendor-pins.json`. Native `arcade_bufferChunked`
+and `arcade_bufferChunkedFromUTF8` return scoped Buffer[] values through Code,
+blocks and typed original MakeCode export, including custom returns.
+
+Original helpers are source-extracted, with checked signed division and two
+bounded collection pushes before the next output allocation. A fitting Buffer
+is returned by identity, retaining readonly status. Multiple chunks detach.
+Fractional slices, UTF16 search offsets, surrogate splitting, BOM/NUL and
+malformed surrogates match executed original traces. Named guards bound unsafe
+nonprogressing sizes, UTF8 inputs, individual bytes and chunk collections.
+See [the import contract](ARCADE-BUFFER-IMPORT-CONTRACT.md) for limits and commands.
+
+The first six-file batch passed29 controls and failed one authoring fixture:
+it omitted the existing word `text` in `from hex text`. Correcting that fixture
+gives the sixth chunk control; its native Code/Blocks, Buffer[] custom returns,
+original exported execution and fresh SB3 pass. A separate existing Base64
+authoring/archive regression also passes. Distinct affected controls31, zero
+skips; producer354, zero skips. Both generators reproduce exactly. This is
+focused source qualification, not a full product build or visible GUI proof.
+
+The completed PR834 followup has a passing heavy browser shard and passing unit
+suite. Its build job was cancelled after30 minutes before distribution guards
+completed; do not call it a passed build or a new unit failure. Its light shard
+failed when the Buffer menu selector found no element. Saved observations show
+the field atx1122, clipped beyond the workspace atx865. The original Scratch
+Blocks field initializer also places a shadow's dropdown attribute on its root,
+not a child. Preserve the public failures and private screenshot/JSON; the
+visible field journey needs corrected user panning and selector qualification.
+
+Next source slices are pack/unpack/format parsing, hash and aggregate heap
+lifetime. E10 retains AST/import/shared type helpers. The immutable184 census
+remains142/41/1; authenticated41 contexts remain7/33/1 until a true recensus.
+
+## Buffer shadow-menu browser correction — 2026-10-12
+
+The completed [PR834 light followup](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38290533343/job/114968997925)
+failed before any edit/controller cycle: the selector looked for a child
+dropdown under the shadow root. Scratch Blocks `Field.init` places the argument
+attribute on the shadow root itself. The captured field coordinates were also
+beyond the clipped workspace, despite lying inside the page viewport.
+
+The browser script now selects that actual shadow root, pans with real mouse
+wheel events before dropdown and numeric edits, and waits until the observed
+field is inside the editing area and its block receives the click point. It
+records both positions, preserving failed JSON/screenshot evidence. It does not
+set fields, reposition Blockly programmatically or mutate the VM. Syntax and
+whitespace checks pass; fresh hosted visible journey remains required before
+acceptance.
+
+The same run's unit suite passed; its full build job was cancelled after30
+minutes before final distribution guards. Heavy browser passed. These outcomes
+do not qualify the full build or make a failed GUI journey a success.
+
+Chunking integration retains the corrected shadow-root selector and real user
+panning from PR834. The predecessor build job was still queued with no steps
+when this necessary browser correction was carried forward; no surviving
+browser diagnostic was interrupted. Native source controls remain31 passing
+and the selected canonical fixture remains311; exact-head hosted acceptance
+for the combined tree is pending.
+
+Older integration errata: sparse restoration accidentally resurrected the
+frozen282 fixture on UTF8/comparison integrations. Direct execution verifies
+their actual tables at299/303. Corrected heads2074beaf5a and d2a1fd569a retain
+their own producer pins and those independent fixtures. Their intermediate
+heads are unqualified history, not passed acceptance. During merge resolution,
+read automatically merged files from the index and validate each selected table
+against its fixture before pushing; do not restore the predecessor over it.
+
+CI qualification followup: the completed PR834 unit suite passed but left too
+little time for its remaining build guards within the30-minute job. Audit the
+actual durations and separate expensive original PXT compilation/simulator
+controls into a required shard with the same complete file/skip census and
+deployment dependency. Do not remove controls, hide failures or treat an
+incomplete distribution guard as passed to recover the budget.
+
+## Buffer packing checkpoint — 2026-10-12
+
+Native blocks and pseudocode expose `Buffer.packedSize`, `Buffer.pack`,
+`.unpack` and `.packAt` through genuine typed MakeCode export, scoped number
+arrays and custom returns. Selected original format parsing is retained, with
+bounded format length, repetition/work and unpack-result allocation. The
+[Buffer contract](ARCADE-BUFFER-IMPORT-CONTRACT.md#packing-and-unpacking-continuation)
+contains exact vocabulary, parser semantics, controls and remaining GUI tasks.
+
+Seven packing controls pass with zero skips, including original simulator byte
+comparisons, Code/Blocks reconstruction and actual fresh SB3. The preceding
+30 affected controls passed in the first batch; its three new failures remain
+preserved privately. They exposed Chromium/Node NaN payload differences,
+original panic108 versus native detailed failure transport, and a fixture
+variable named `size` colliding with an existing pseudocode command. Exact
+missing-float byte comparison now executes the retained facade in Chromium;
+no artificial NaN byte pattern was added. The authoring fixture uses
+`packedWidth`. Producer controls pass358/358; canonical vocabulary is315.
+
+The latest PR834 build and heavy browser shard passed. Its light browser shard
+was still pending at this checkpoint. No fresh visible editor success or full
+corpus promotion is claimed. Next source slice: original Buffer hash, then
+aggregate live heap/lifetime; E10 import, byte/format/array inspection and
+whole-app/controller/graphics qualification remain separate. Locked184 remains
+142 translated /41 partial /1 parse failure until genuine recensus.
+
+## Buffer controller-key browser followup — 2026-10-12
+
+[PR845 light browser](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38306464578/job/115012657444)
+completed both real shadow edits with all16 format choices and reached the
+controller cycle. Initial state and A's numeric write passed; the B phase timed
+out. The pane sends keyboard `z` for B, while the authored fixture listened for
+`b`. Its original-export alias mapping alone did not establish pane behavior.
+
+The fixture now listens for the pane's actual `z`. Its native control verifies
+an ordinary `b` press leaves phase1 and source bytes unchanged, then `z` copies
+and edits detached bytes; original exported A/B/down behavior remains required.
+The browser failure report now includes observed values at the failure boundary
+so later timeouts preserve the reached state. No VM/keyboard state is injected
+into the visible browser journey. Heavy and FPGA passed at the failed head;
+build was pending. This correction still needs fresh hosted editor proof.
+
+## Original Buffer hash checkpoint — 2026-10-12
+
+Candidate `lane/arcade-buffer-hash-20261012` is stacked on
+[controller correction PR847](https://github.com/CrispStrobe/brickwright-lite/pull/847).
+The producer is `feat/arcade-buffer-hash-20261012`, stacked on
+[packing PR104](https://github.com/CrispStrobe/sb3-creator/pull/104).
+Native `.hash(bits)` uses unadapted FNV-1/folding functions extracted from the
+consumed common simulator; its generated file records source hashes and the
+existing Microsoft MIT notice is extended explicitly.
+
+Three new hash controls pass, including original width/byte matrices, native
+refusal and aliases, typed numeric custom returns, actual original exported
+execution and fresh SB3. Seven packing controls pass on the corrected runtime;
+16 other selected controls passed in the first batch. Producer359 passes, no
+skips, selected vocabulary316. Preserve initial failures: wrong block-argument
+helper prevented extension registration, a native fixture supplied TEXT instead
+of HEX, and a return-type regex omitted permitted whitespace. Those controls
+were corrected and rerun; no original algorithm was patched.
+
+PR845 heavy/FPGA passed; light failed at the known B fixture mapping and full
+build failed at30 minutes. The separate controller correction requires fresh
+hosted proof. Audit full build durations and preserve every test/deployment gate
+when separating expensive original simulator checks. Buffer memory roots and
+collection acceptance are now specified in the Buffer contract. Locked184 is
+still142 translated /41 partial /1 parse failure; no whole-app promotion.
+
+## Required unit workload split checkpoint — 2026-10-12
+
+Candidate `lane/arcade-unit-shards-20261012` follows original hash
+[PR849](https://github.com/CrispStrobe/brickwright-lite/pull/849). Two mandatory
+unit legs partition the complete fast suite; original local full commands and
+corpus membership remain intact. Each leg retains the original runner, GUI
+resolution, file census and skip-pointer audits. Pages and external main
+publication require both legs. Preparation is intentionally identical to the
+build and enforced by a source contract; the build alone owns Pages artifacts.
+See [CI qualification](ARCADE-CI-QUALIFICATION.md) for selection, full commands,
+observed failure origins and exact hosted acceptance criteria.
+
+Focused source controls pass40 with zero failures; four pre-existing flasher
+source controls skip in the local environment without their checkout. These
+are not substituted for actual hosted shard runs. The first batch's sparse
+missing-input failures and a contract regex that matched an existing optional
+preparation diagnostic are preserved privately. Materialize exact tracked
+inputs and test the mandatory runner's error policy separately from unchanged
+optional setup diagnostics. No test gate or historical receipt was weakened.
+Next: complete hosted build/unit/editor proof, then live Buffer collection.
+The immutable corpus remains142 translated /41 partial /1 parse failure.
+
+## Hosted shard/editor followup — 2026-10-13
+
+[PR850](https://github.com/CrispStrobe/brickwright-lite/pull/850)'s first split
+build passed6m57s, unit1 passed16m24s, and unit2 failed16m57s on two audit
+assumptions. Heavy/FPGA passed; light failed on export download. Do not merge
+or treat that combined source as accepted. The checkout audit now validates
+both job-local flasher inputs; the step-ID audit resolves per job with explicit
+cross-job, forward, duplicate, self-outcome and multiline adversaries. Focused
+controls pass28, zero failures/skips. Initial local followup failure counted
+build's separately literal-pinned compiler as another dynamic flasher site;
+its independent full pin remains enforced by the checkout census.
+
+The light script reached real edits, native/controller cycles, Code/Blocks,
+and save/replacement/reopen before the collapsed export action stopped it.
+Open the actual Code actions menu; handle event/action promises together so
+errors reach the final receipt path. Original failed artifact lacks JSON; do
+not fabricate it from control flow. Fresh hosted exported original execution
+still required. Public CI guide records exact run URL and method.
+
+Remote main refreshed to b54f292f88 (peer PR821 merge) during this followup.
+These fixes remain on the isolated candidate; no unrelated main source was
+silently mixed into its tested tree. Integrate refreshed main in a separately
+reviewed step after fixing the current diagnostic, then qualify actual consumer
+pins and the immutable app census. Locked184 remains142/41/1.
+
+## Buffer reset/disposal ownership — 2026-10-13
+
+Candidate `lane/arcade-buffer-lifetime-20261013` follows
+[unit/audit PR850](https://github.com/CrispStrobe/brickwright-lite/pull/850).
+Buffer/music IDs now include distinct heap namespaces, preventing same-runtime
+owner collisions and cleared-registry resurrection. Buffer allocation bodies
+are suspended at disposal and reopened at successful project load. VM clear
+uses disposal internally: do not make the suspension permanent or reopen it
+with green flag alone. Disposal also releases Buffer-backed playable roots,
+resets queued audio and resolves paused callers. Shared value/import helpers
+remain unchanged.
+
+Four lifecycle controls pass, including actual same-VM SB3 replacement. The
+preceding25 affected lifecycle/value/original-song controls pass without skips;
+26 distinct controls are covered across runs. The initial pre-fix run preserves
+Buffer ID collision/resurrection failures and a fixture observation that read
+an adapter property instead of its underlying instance. Tests now use the real
+instance for root observations; no raw receipt is rewritten.
+
+Root collection during a live run and aggregate allocation reservations remain
+open. The Buffer contract records specific runtime roots and serialized custom
+argument values that a weak registry would miss. Full hosted/editor acceptance
+is pending; immutable app classifications remain142/41/1. Lower-stack landing
+is handled separately using normal merges; work continues on this top candidate.
+
+## Buffer editor proof and storage continuation — 2026-10-13
+
+The fresh PR850 head f30e57cfa2 passed all enabled source/unit/browser checks in
+[run38342374353](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38342374353).
+The passing Buffer browser artifact11789541637 proves actual format/value edits,
+three A/B/down cycles, Code/Blocks reconstruction, File save/replacement/reopen
+and genuine MakeCode download running in original Arcade with matching bytes.
+The original ZIP and all members are preserved privately. This supersedes the
+pending GUI/export observation above; preserve the earlier failed receipts.
+It does not qualify subsequent candidates or close namespace import coverage.
+
+Next child `lane/arcade-buffer-storage-20261013` follows lifetime PR853 without
+changing that pending head. It removes a second copy of original detached slice
+storage and encodes UTF-8 directly into the prechecked destination. Readonly,
+detachment, typed-array construction and original simulator values are required
+controls. Root-aware collection and aggregate reservation remain open, with
+serialized values and music fibers needing explicit ownership. Continue the
+ordered method in the Buffer contract. Locked184 remains142/41/1.
+
+## Buffer root inventory — 2026-10-13
+
+Child `lane/arcade-buffer-roots-20261013` follows storage PR855. The internal
+read-only memory snapshot distinguishes registry retention from graph roots,
+counts backing stores once and follows reachable scoped arrays and serialized
+JSON. Owner roots cover target values/block fields, thread and custom-call
+slots, callback captures, retained scenes, playable objects and literal sites.
+Inspect the Buffer contract for its limits and exact scope. The walk never
+sweeps; both root-coverage and collection authorization remain false even when
+the supplied graph was fully visited. Generator/host closures still need
+explicit leases, followed by preallocation reservation and controlled tracing.
+Shared BWValues and serialization source are untouched. Whole-app142/41/1
+remains unchanged; parent and child hosted results are separate evidence.

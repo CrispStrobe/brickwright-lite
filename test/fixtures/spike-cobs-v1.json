@@ -1,0 +1,15 @@
+{
+  "license": "Apache-2.0",
+  "source": "CrispStrobe/brickwright-spike-firmware@2df35372b27de51b169cdea9c4ce2f1560fcc491/protocol/fixtures/spike-cobs-v1.json",
+  "format": "spike-cobs-xor-v1",
+  "vectors": [
+    {"name": "empty", "payload_hex": "", "frame_hex": "0002"},
+    {"name": "delimiter-zero", "payload_hex": "00", "frame_hex": "000002"},
+    {"name": "delimiter-one", "payload_hex": "01", "frame_hex": "540002"},
+    {"name": "delimiter-two", "payload_hex": "02", "frame_hex": "a80002"},
+    {"name": "xor-byte", "payload_hex": "03", "frame_hex": "070002"},
+    {"name": "all-delimiters", "payload_hex": "00010203", "frame_hex": "0054a8070002"},
+    {"name": "info-request", "payload_hex": "00", "frame_hex": "000002"},
+    {"name": "notification-request-100ms", "payload_hex": "286400", "frame_hex": "062b670002"}
+  ]
+}

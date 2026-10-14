@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "b89ab32796ef0bd41a4aea3e0267849231a05e10",
+  "base": "2520dd873469af8a59168987100d2c726770490a",
+  "implemented": [
+    "Preserve legacy owner world coordinates and original logical/draw camera offsets",
+    "Map native RelativeToCamera and destroyed owner flags into the retained original renderer",
+    "Subtract bubble draw offsets only for world sprites"
+  ],
+  "local": {
+    "passed": 41,
+    "failed": 0,
+    "skipped": 0,
+    "newChecks": 9,
+    "regressionChecks": 32,
+    "originalBubblePlanes": 8,
+    "pixelsPerPlane": 19200,
+    "nativeOriginalComparedPixels": 153600,
+    "originalExportPlaneComparison": 1,
+    "log": "arcade-legacy-speech-camera-qualified.log",
+    "boundary": "Original PXT Chromium full bubble planes with invisible owners, x/y/z comparisons and live relative flag changes; native bridge, editable Code/Blocks, executed MakeCode export/reimport, speech/clock/frame regressions and both fresh extension bundles. No unified shipped GUI or native bubble ownership claim."
+  },
+  "correctedContract": {
+    "allOfKindNegativeOne": "empty array",
+    "onCreatedNegativeOne": "receives original bubble",
+    "originalFailure": "Initial observation indexed the empty negative-kind collection; retained privately and corrected to observe the original creation callback."
+  },
+  "remaining": [
+    "Native bubble IDs, yielding creation/destruction callbacks and lifecycle",
+    "Legacy z/id composition and unified GUI presentation",
+    "HUD/effects/render callbacks and completed global screen API",
+    "Clock-aligned animated/modal speech qualification",
+    "All enabled exact-head hosted checks"
+  ],
+  "corpus": {
+    "remeasured": false,
+    "importerUnchanged": true,
+    "latestTranslated": 109,
+    "latestPartial": 74,
+    "latestMalformed": 1
+  }
+}

@@ -1,0 +1,10 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: it trusts "straight ahead". With the worn
+# left tyre the rover curves left and leaves the path.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  start moving steering 0
+  wait until spike color C is green
+  stop movement

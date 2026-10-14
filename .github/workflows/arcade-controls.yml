@@ -1,0 +1,41 @@
+name: PXT Arcade controls
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'scripts/makecode/**'
+      - 'scripts/verify-arcade-controls.mjs'
+      - 'scripts/lib/arcade-controls.mjs'
+      - 'scripts/sync-makecode-runtime.mjs'
+      - 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js'
+      - 'test/makecode-arcade-controls.test.mjs'
+      - '.github/workflows/arcade-controls.yml'
+permissions:
+  contents: read
+jobs:
+  controls:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Layout and ledger contracts
+        run: node --test test/makecode-arcade-controls.test.mjs test/target-checkpoint-ledger.test.mjs
+      - name: Sync pinned MakeCode runtimes
+        run: node scripts/sync-makecode-runtime.mjs
+      - name: Install isolated browser tooling
+        run: |
+          npm install --prefix "$RUNNER_TEMP/arcade-tools" --ignore-scripts --no-audit --no-fund playwright@1.62.1
+          "$RUNNER_TEMP/arcade-tools/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Actual PXT game mouse/touch/keyboard/restart proof
+        env:
+          BW_PLAYWRIGHT_MODULE: ${{ runner.temp }}/arcade-tools/node_modules/playwright/index.mjs
+        run: node scripts/verify-arcade-controls.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ !cancelled() }}
+        with:
+          name: pxt-arcade-controls
+          path: test-results/arcade-controls/
+          if-no-files-found: warn

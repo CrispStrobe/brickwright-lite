@@ -1,0 +1,543 @@
+name: mobile
+
+on:
+  workflow_dispatch:
+    inputs:
+      sign_ios:
+        description: >-
+          Also build a SIGNED iOS IPA. Off by default because it talks to
+          App Store Connect and will create/download an Apple signing
+          certificate and provisioning profile for the team.
+        type: boolean
+        default: false
+      device_ipa:
+        description: >-
+          Build a SIDELOADABLE iOS IPA for the registered test iPad
+          (ad-hoc / "release-testing" export). Unlike the App Store IPA
+          from sign_ios, this one embeds a profile that names the device,
+          so `xcrun devicectl device install app` accepts it.
+        type: boolean
+        default: false
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Build web bundle (vendor + integrate + webpack)
+        run: bash scripts/vercel-build.sh || (echo "retrying web build" && bash scripts/vercel-build.sh)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: web-build
+          path: packages/scratch-gui/build
+          retention-days: 3
+
+  android:
+    needs: build-web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: web-build
+          path: packages/scratch-gui/build
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: 17
+      # v3.2.2's `packages` default was 'tools platform-tools', and Google has
+      # REMOVED the legacy `tools` package from the SDK repository — so
+      # sdkmanager exits 1 with `Warning: Failed to find package 'tools'` and
+      # the whole android job dies before it builds anything. Nothing in this
+      # repo changed; the remote repository did. It took out v0.1.17 and
+      # v0.1.18 (runs 36234004552 and 36237451888), while ios-signed succeeded
+      # on both — so tagging released iOS and silently released no Android.
+      #
+      # v4.0.4 dropped `tools` from the default (and moves to node24, which
+      # also clears the Node 20 deprecation warning this step was emitting).
+      # `packages` is ALSO named explicitly rather than left to the default:
+      # the default is what broke us, and a default we did not choose can
+      # change again without notice.
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
+        with:
+          packages: platform-tools
+      - name: Install Android NDK
+        run: |
+          sdkmanager "ndk;27.0.12077973"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> "$GITHUB_ENV"
+
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable branch head, 2026-08-24
+        with:
+          toolchain: stable
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - name: Install app dependencies
+        working-directory: apps/tauri
+        run: npm ci
+
+      - name: Build Android APK (debug, unsigned)
+        working-directory: apps/tauri
+        run: |
+          npx tauri android init --ci
+          # `tauri android init` templates TAURI'S OWN logo into gen/android and
+          # never looks at src-tauri/icons/android, so every APK shipped the
+          # default launcher icon.
+          node scripts/patch-mobile-icons.mjs android
+          # tauri-plugin-blec's Android library requires minSdk 26; the generated
+          # project defaults to 24, which fails the manifest merge.
+          sed -i 's/minSdk = 24/minSdk = 26/' src-tauri/gen/android/app/build.gradle.kts
+          # Allow cleartext ws:// to LAN bridge servers (bridge-mode hardware
+          # over WiFi). The manifest ships a ${usesCleartextTraffic} placeholder.
+          sed -i 's/${usesCleartextTraffic}/true/' src-tauri/gen/android/app/src/main/AndroidManifest.xml
+          # Camera + microphone for getUserMedia (Video Sensing, loudness, record
+          # a sound). MODIFY_AUDIO_SETTINGS is required or the WebView gets the mic
+          # grant but still fails with NotReadableError. Features are required=false
+          # so devices without a camera can still install.
+          MANIFEST=src-tauri/gen/android/app/src/main/AndroidManifest.xml
+          sed -i 's#<uses-permission android:name="android.permission.INTERNET" />#<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n    <uses-feature android:name="android.hardware.microphone" android:required="false" />#' "$MANIFEST"
+          # Request the runtime camera/mic permissions on launch (Tauri never does).
+          cp android-overlay/MainActivity.kt \
+            src-tauri/gen/android/app/src/main/java/com/crispstrobe/brickwright/MainActivity.kt
+          npx tauri android build --apk --debug
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: brickwright-android-apk
+          path: apps/tauri/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: warn
+          retention-days: 7
+
+      # On a tag, attach the APK to the same draft GitHub Release the desktop
+      # bundles go to (release.yml), so all platforms appear together.
+      - name: Attach APK to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        with:
+          tag_name: ${{ github.ref_name }}
+          draft: true
+          files: apps/tauri/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+
+  ios:
+    needs: build-web
+    runs-on: macos-latest
+    # Simulator-only, so no Apple signing certificate or developmentTeam is
+    # needed. A real-device/TestFlight build still would be. This job is
+    # blocking: it used to be continue-on-error, which hid a genuine link
+    # failure (missing ExternalAccessory) for a month.
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: web-build
+          path: packages/scratch-gui/build
+
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable branch head, 2026-08-24
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - name: Install app dependencies
+        working-directory: apps/tauri
+        run: npm ci
+
+      # Frameworks come from bundle.iOS.frameworks in tauri.conf.json, and the
+      # iOS-only Info.plist keys (ATS local networking, MFi accessory protocols,
+      # camera/mic/speech usage strings) from src-tauri/Info.ios.plist — both
+      # survive project regeneration, so there is nothing to patch here. Anything
+      # this step would have to fix up belongs in one of those two files instead,
+      # or local builds silently differ from CI.
+      - name: Build iOS app (simulator, unsigned)
+        working-directory: apps/tauri
+        run: |
+          npx tauri ios init --ci
+          # PrivacyInfo.xcprivacy has no tauri.conf equivalent, so it is patched
+          # straight into the generated pbxproj. Deliberately NOT via project.yml
+          # + `xcodegen generate`: regenerating discards the signing settings the
+          # tauri CLI writes into the pbxproj, which breaks the signed job.
+          node scripts/patch-ios-privacy.mjs
+          # Same shape, different asset: `tauri ios init` templates Tauri's own
+          # logo into gen/apple's AppIcon.appiconset and never looks at
+          # src-tauri/icons/ios, so every build — including the ones testers
+          # installed from TestFlight — carried the Tauri icon, not the robot.
+          node scripts/patch-mobile-icons.mjs ios
+          npx tauri ios build --target aarch64-sim
+
+      # Guard the two things that were silently missing before: the frameworks
+      # Xcode must link itself (Rust's autolink hints are dropped for staticlibs)
+      # and the merged Info.plist keys. Cheap, and fails loudly rather than
+      # producing an app that dies on first BLE or camera use.
+      - name: Verify frameworks and Info.plist made it into the app
+        working-directory: apps/tauri
+        run: |
+          set -euo pipefail
+          PROJ=src-tauri/gen/apple/project.yml
+          for fw in CoreBluetooth ExternalAccessory; do
+            grep -q "$fw.framework" "$PROJ" || { echo "::error::$fw.framework missing from $PROJ"; exit 1; }
+          done
+          APP=$(find src-tauri/gen/apple/build -type d -name '*.app' | head -1)
+          [ -n "$APP" ] || { echo "::error::no .app produced"; exit 1; }
+          # Apple requires the privacy manifest at the bundle ROOT, not nested.
+          [ -f "$APP/PrivacyInfo.xcprivacy" ] \
+            || { echo "::error::PrivacyInfo.xcprivacy missing from the app bundle root"; exit 1; }
+          PLIST="$APP/Info.plist"
+          for key in NSAppTransportSecurity UISupportedExternalAccessoryProtocols \
+                     NSBluetoothAlwaysUsageDescription NSCameraUsageDescription \
+                     NSMicrophoneUsageDescription; do
+            /usr/libexec/PlistBuddy -c "Print :$key" "$PLIST" >/dev/null 2>&1 \
+              || { echo "::error::$key missing from the built app's Info.plist"; exit 1; }
+          done
+
+          # The icon is the one thing no test looks at and every tester sees.
+          # Assert the SOURCE that went into the asset catalog is ours (the
+          # compiled Assets.car is not readable without actool), and that actool
+          # emitted a bundle-root icon at all.
+          SET=src-tauri/gen/apple/Assets.xcassets/AppIcon.appiconset
+          cmp -s src-tauri/icons/ios/AppIcon-512@2x.png "$SET/AppIcon-512@2x.png" \
+            || { echo "::error::the app icon set is not ours — patch-mobile-icons did not run"; exit 1; }
+          ls "$APP"/AppIcon*.png >/dev/null 2>&1 \
+            || { echo "::error::no AppIcon*.png in the built app — actool compiled no icon"; exit 1; }
+          echo "frameworks + Info.plist keys + robot app icon present in $APP"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: brickwright-ios-sim
+          path: apps/tauri/src-tauri/gen/apple/build/**/*.app
+          if-no-files-found: warn
+          retention-days: 7
+
+  # Signed, App-Store-shaped IPA. Opt-in — runs on a version tag, or on a manual
+  # dispatch with sign_ios=true.
+  #
+  # MANUAL signing: the tauri CLI reads IOS_CERTIFICATE / IOS_CERTIFICATE_PASSWORD
+  # / IOS_MOBILE_PROVISION itself, imports the cert into a temporary keychain,
+  # installs the profile, and sets CODE_SIGN_STYLE=Manual +
+  # PROVISIONING_PROFILE_SPECIFIER + a matching ExportOptions.plist. That avoids
+  # automatic provisioning entirely, which is what previously failed: `tauri ios
+  # build` runs -exportArchive WITHOUT the -authenticationKey* flags, so the
+  # export could not talk to Apple ("No Accounts" / "No profiles ... were found")
+  # no matter what the archive step had cached.
+  #
+  # The Apple Distribution identity is shared between macOS and iOS, so the
+  # existing MACOS_CERT_P12 is reused rather than storing a second copy.
+  ios-signed:
+    needs: build-web
+    if: ${{ github.event_name == 'push' || inputs.sign_ios }}
+    runs-on: macos-latest
+    env:
+      IOS_CERTIFICATE: ${{ secrets.MACOS_CERT_P12 }}
+      IOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERT_P12_PASSWORD }}
+      IOS_MOBILE_PROVISION: ${{ secrets.IOS_PROFILE_APP_BASE64 }}
+      APPLE_DEVELOPMENT_TEAM: N9XSJ4M3GT
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: web-build
+          path: packages/scratch-gui/build
+
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable branch head, 2026-08-24
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - name: Install app dependencies
+        working-directory: apps/tauri
+        run: npm ci
+
+      - name: Build signed IPA
+        working-directory: apps/tauri
+        run: |
+          set -euo pipefail
+          for v in IOS_CERTIFICATE IOS_CERTIFICATE_PASSWORD IOS_MOBILE_PROVISION; do
+            [ -n "${!v:-}" ] || { echo "::error::$v is not set — cannot sign."; exit 1; }
+          done
+
+          npx tauri ios init --ci
+          node scripts/patch-ios-privacy.mjs
+          node scripts/patch-mobile-icons.mjs ios
+
+          # The CLI's IOS_* variables import the certificate but do not touch the
+          # Xcode project, so install the profile where Xcode looks for it and
+          # point the project at it by name.
+          PROFDIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFDIR"
+          echo "$IOS_MOBILE_PROVISION" | base64 --decode > "$RUNNER_TEMP/app.mobileprovision"
+          security cms -D -i "$RUNNER_TEMP/app.mobileprovision" > "$RUNNER_TEMP/app.plist"
+          UUID=$(plutil -extract UUID raw -o - "$RUNNER_TEMP/app.plist")
+          NAME=$(plutil -extract Name raw -o - "$RUNNER_TEMP/app.plist")
+          cp "$RUNNER_TEMP/app.mobileprovision" "$PROFDIR/$UUID.mobileprovision"
+          echo "installed provisioning profile '$NAME' ($UUID)"
+
+          node scripts/patch-ios-signing.mjs "$APPLE_DEVELOPMENT_TEAM" "$NAME"
+
+          npx tauri ios build --export-method app-store-connect
+
+      - name: Verify the IPA is really signed
+        working-directory: apps/tauri
+        run: |
+          set -euo pipefail
+          IPA=$(find src-tauri/gen/apple/build -name '*.ipa' | head -1)
+          [ -n "$IPA" ] || { echo "::error::no .ipa produced"; exit 1; }
+          echo "IPA: $IPA"
+          WORK=$(mktemp -d); unzip -q "$IPA" -d "$WORK"
+          APP=$(find "$WORK/Payload" -maxdepth 1 -name '*.app' | head -1)
+          [ -f "$APP/PrivacyInfo.xcprivacy" ] \
+            || { echo "::error::PrivacyInfo.xcprivacy missing from the IPA"; exit 1; }
+          [ -f "$APP/embedded.mobileprovision" ] \
+            || { echo "::error::no embedded provisioning profile — the app is not distribution-signed"; exit 1; }
+          ls "$APP"/AppIcon*.png >/dev/null 2>&1 \
+            || { echo "::error::no AppIcon*.png in the IPA — this is the build testers install"; exit 1; }
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          echo "signed, privacy manifest present, profile embedded, app icon present"
+          echo "IPA=apps/tauri/$IPA" >> "$GITHUB_ENV"
+
+      # Validate + upload to App Store Connect -- only on real version tags,
+      # never on workflow_dispatch test runs, matching release.yml (macOS).
+      #
+      # Until 2026-08-17 this job stopped at "signed IPA in a GitHub artifact":
+      # it built and verified a distribution-signed build and then never sent it
+      # to Apple, so iOS TestFlight silently stayed on whatever was uploaded by
+      # hand (0.1.0, 2026-08-05) while macOS moved on. Tagging looked like it
+      # released both platforms and only released one.
+      #
+      # THE GUARD NOW SAYS WHAT THE COMMENT ABOVE SAYS. It read
+      # `startsWith(github.ref, 'refs/tags/')` alone -- and a workflow_dispatch
+      # ON A TAG satisfies that, so a manual test run did attempt a real App
+      # Store upload, which is the one thing the comment says must never happen.
+      #
+      # Measured: run 34031659129, workflow_dispatch on v0.1.15. Build, signing
+      # and validation all succeeded; Apple refused the upload with
+      #
+      #   status 409  ENTITY_ERROR.ATTRIBUTE.INVALID.DUPLICATE
+      #   The bundle version must be higher than the previously uploaded
+      #   version: '0.1.15'.
+      #
+      # The correct answer, reported as a failed `ios-signed` job -- which reads
+      # as a signing problem, two steps after signing demonstrably succeeded.
+      #
+      # ONLY THIS STEP IS GATED ON THE EVENT. The tester-notes and TestFlight
+      # steps below are idempotent and their comments say a re-run is the
+      # recovery path, so a dispatch over a tag still repairs those for a build
+      # Apple already has. It just no longer tries to upload that build twice.
+      - name: Validate + upload to App Store Connect
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APPSTORE_API_KEY_P8 }}" | base64 --decode \
+            > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_API_KEY_ID }}.p8
+
+          BUNDLE_VERSION=$(node -p "require('./apps/tauri/src-tauri/tauri.conf.json').version")
+          echo "Uploading iOS $BUNDLE_VERSION from $IPA"
+
+          # --apple-id is REQUIRED here, unlike the macOS validate in
+          # release.yml. Without it altool resolves the app from bundle id +
+          # platform, and that lookup fails for iOS because this app record has
+          # no iOS appStoreVersion yet (macOS has one, which is why the macOS
+          # job gets away with omitting it):
+          #   ERROR: Cannot determine the Apple ID from Bundle ID
+          #   'com.crispstrobe.brickwright' and platform 'IOS'. (19)
+          xcrun altool --validate-app -f "$IPA" \
+            --type ios \
+            --apple-id ${{ vars.APPSTORE_APP_ID }} \
+            --bundle-id com.crispstrobe.brickwright \
+            --api-key ${{ secrets.APPSTORE_API_KEY_ID }} \
+            --api-issuer ${{ secrets.APPSTORE_API_ISSUER_ID }}
+
+          xcrun altool --upload-package "$IPA" \
+            --type ios \
+            --apple-id ${{ vars.APPSTORE_APP_ID }} \
+            --bundle-id com.crispstrobe.brickwright \
+            --bundle-version "$BUNDLE_VERSION" \
+            --bundle-short-version-string "$BUNDLE_VERSION" \
+            --api-key ${{ secrets.APPSTORE_API_KEY_ID }} \
+            --api-issuer ${{ secrets.APPSTORE_API_ISSUER_ID }}
+
+      # The "What to Test" text testers actually read. `docs/app-store-metadata.md`
+      # is its source and a gate asserts the sections for this version exist --
+      # but nothing ever SENT them, so 0.1.7 and 0.1.8 both reached App Store
+      # Connect with whatsNew EMPTY in both locales while that gate stayed green.
+      # Polls, because a build is only patchable once Apple finishes processing.
+      - name: Send tester notes to App Store Connect
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          APPSTORE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
+          APPSTORE_APP_ID: ${{ vars.APPSTORE_APP_ID }}
+        # --platform IOS: one app record carries both platforms and
+        # release.yml uploads the macOS build on the same tag, so an
+        # unqualified "wait for a VALID build" is a race. It lost on
+        # 0.1.10 and that build's notes went out empty.
+        run: node scripts/push-tester-notes.mjs --platform IOS
+
+      # ...and then actually put it in front of testers. Uploading a build and
+      # annotating it distributes it to nobody: the group assignment and the
+      # Beta App Review submission were done by hand from a document, per
+      # release, which is why on 2026-08-26 the EXTERNAL group held every version
+      # up to 0.1.9 while the INTERNAL group still held 0.1.0 — nine releases of
+      # internal testers looking at the first build ever made.
+      #
+      # Idempotent, so a re-run after a partial failure is the recovery. It also
+      # covers the macOS build, which shares this app record and is uploaded by
+      # release.yml on the same tag.
+      - name: Distribute to TestFlight (internal + external)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          APPSTORE_API_KEY_P8: ${{ secrets.APPSTORE_API_KEY_P8 }}
+          APPSTORE_APP_ID: ${{ vars.APPSTORE_APP_ID }}
+        run: node scripts/testflight-submit.mjs
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        # Never let the artifact sink the release: the upload above is the point,
+        # and a hit artifact-storage quota has already failed a run whose IPA was
+        # perfectly good (WordUniverse, 2026-08-17).
+        continue-on-error: true
+        with:
+          name: brickwright-ios-ipa
+          path: apps/tauri/src-tauri/gen/apple/build/**/*.ipa
+          if-no-files-found: error
+          retention-days: 7
+
+  # Sideloadable, device-installable IPA. Opt-in via workflow_dispatch.
+  #
+  # WHY THIS EXISTS, given ios-signed already produces a signed IPA: that one is
+  # an App Store package. Its profile carries get-task-allow=false and NO
+  # ProvisionedDevices, so iOS refuses it outright —
+  #   xcrun devicectl device install app  ->  the app cannot be installed
+  # and the only route onto hardware is TestFlight. The `ios` job is worse for
+  # this purpose: it targets aarch64-sim, which a physical iPad cannot run at
+  # all. So neither existing job could answer "put this build on the iPad", and
+  # BLE against real LEGO hardware stayed unverifiable from CI.
+  #
+  # This job exports "release-testing" (Xcode 15's name for ad-hoc) against a
+  # profile that names the test iPad by UDID. Deliberately reuses the SAME
+  # Apple Distribution cert as ios-signed (MACOS_CERT_P12) rather than adding a
+  # development certificate: ad-hoc is a distribution method, so no second
+  # private key has to be exported into CI secrets. The only new secret is the
+  # profile itself.
+  #
+  # To add another device: register it, regenerate the IOS_APP_ADHOC profile
+  # with the extra device, and refresh IOS_PROFILE_ADHOC_BASE64. A device that
+  # is not in the profile cannot install the IPA, however it is signed.
+  ios-device:
+    needs: build-web
+    if: ${{ inputs.device_ipa }}
+    runs-on: macos-latest
+    env:
+      IOS_CERTIFICATE: ${{ secrets.MACOS_CERT_P12 }}
+      IOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERT_P12_PASSWORD }}
+      IOS_MOBILE_PROVISION: ${{ secrets.IOS_PROFILE_ADHOC_BASE64 }}
+      APPLE_DEVELOPMENT_TEAM: N9XSJ4M3GT
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: web-build
+          path: packages/scratch-gui/build
+
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c # stable branch head, 2026-08-24
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: apps/tauri/src-tauri
+
+      - name: Install app dependencies
+        working-directory: apps/tauri
+        run: npm ci
+
+      - name: Build sideloadable IPA
+        working-directory: apps/tauri
+        run: |
+          set -euo pipefail
+          for v in IOS_CERTIFICATE IOS_CERTIFICATE_PASSWORD IOS_MOBILE_PROVISION; do
+            [ -n "${!v:-}" ] || { echo "::error::$v is not set — cannot sign."; exit 1; }
+          done
+
+          npx tauri ios init --ci
+          node scripts/patch-ios-privacy.mjs
+          node scripts/patch-mobile-icons.mjs ios
+
+          PROFDIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFDIR"
+          echo "$IOS_MOBILE_PROVISION" | base64 --decode > "$RUNNER_TEMP/app.mobileprovision"
+          security cms -D -i "$RUNNER_TEMP/app.mobileprovision" > "$RUNNER_TEMP/app.plist"
+          UUID=$(plutil -extract UUID raw -o - "$RUNNER_TEMP/app.plist")
+          NAME=$(plutil -extract Name raw -o - "$RUNNER_TEMP/app.plist")
+          cp "$RUNNER_TEMP/app.mobileprovision" "$PROFDIR/$UUID.mobileprovision"
+          echo "installed provisioning profile '$NAME' ($UUID)"
+
+          # Fail here rather than after a 20-minute build: an App Store profile
+          # in this secret would produce an IPA no device can install, and the
+          # symptom would only appear at install time on someone's desk.
+          plutil -extract ProvisionedDevices xml1 -o - "$RUNNER_TEMP/app.plist" >/dev/null 2>&1 \
+            || { echo "::error::IOS_PROFILE_ADHOC_BASE64 has no ProvisionedDevices — that is an App Store profile, not an ad-hoc one."; exit 1; }
+
+          node scripts/patch-ios-signing.mjs "$APPLE_DEVELOPMENT_TEAM" "$NAME"
+
+          npx tauri ios build --target aarch64 --export-method release-testing
+
+      - name: Verify the IPA can actually be installed on a device
+        working-directory: apps/tauri
+        run: |
+          set -euo pipefail
+          IPA=$(find src-tauri/gen/apple/build -name '*.ipa' | head -1)
+          [ -n "$IPA" ] || { echo "::error::no .ipa produced"; exit 1; }
+          WORK=$(mktemp -d); unzip -q "$IPA" -d "$WORK"
+          APP=$(find "$WORK/Payload" -maxdepth 1 -name '*.app' | head -1)
+          security cms -D -i "$APP/embedded.mobileprovision" > "$WORK/embedded.plist"
+
+          # The whole point of this job: without ProvisionedDevices the IPA is
+          # an App Store package and devicectl will reject it.
+          plutil -extract ProvisionedDevices xml1 -o - "$WORK/embedded.plist" \
+            || { echo "::error::the built IPA names no devices — it cannot be sideloaded"; exit 1; }
+          echo "devices named in the embedded profile:"
+          plutil -extract ProvisionedDevices xml1 -o - "$WORK/embedded.plist" | grep '<string>'
+
+          [ -f "$APP/PrivacyInfo.xcprivacy" ] \
+            || { echo "::error::PrivacyInfo.xcprivacy missing from the IPA"; exit 1; }
+          ls "$APP"/AppIcon*.png >/dev/null 2>&1 \
+            || { echo "::error::no AppIcon*.png in the IPA"; exit 1; }
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          echo "ad-hoc signed, device-provisioned, privacy manifest and icon present"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: brickwright-ios-device-ipa
+          path: apps/tauri/src-tauri/gen/apple/build/**/*.ipa
+          if-no-files-found: error
+          retention-days: 7

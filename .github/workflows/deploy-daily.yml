@@ -1,0 +1,132 @@
+name: Vercel production deploy
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Build (permissive base)", "debugger-focused", "vendor-freshness"]
+    types: [completed]
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'
+      timezone: Europe/Berlin
+
+# Automatic, manual and nightly runs must never race to assign the production
+# domains. Keep the earlier deployment running and queue the later request.
+concurrency:
+  group: vercel-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  eligible:
+    name: Check automatic deployment eligibility
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: main
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/verify-vercel-main-checks.mjs "$(git rev-parse HEAD)" --eligibility >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy current BrickWright Lite
+    needs: eligible
+    # Earlier completed supporting checks are eligibility decisions, not failed
+    # publications. The last successful validation event schedules the deploy.
+    if: >-
+      !cancelled() && (github.event_name != 'workflow_run' || needs.eligible.outputs.ready == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # workflow_dispatch allows choosing a ref in the UI. Production does
+          # not: every trigger publishes the canonical current main.
+          ref: main
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      - name: Check deployment credentials
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          : "${VERCEL_TOKEN:?VERCEL_TOKEN is not configured}"
+          : "${VERCEL_ORG_ID:?VERCEL_ORG_ID is not configured}"
+          : "${VERCEL_PROJECT_ID:?VERCEL_PROJECT_ID is not configured}"
+
+      - name: Install the pinned Vercel CLI
+        run: npm install --global vercel@50.1.3 --no-audit --no-fund
+
+      - name: Pull production settings
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+
+      # Build the tree, then publish it only if `main` still points at what we
+      # built. An older tree must never overwrite a newer one — that guard is
+      # not negotiable and is unchanged.
+      #
+      # What IS new is convergence. Previously a single attempt skipped the
+      # publish when `main` moved and the job still exited 0, so "the deploy
+      # succeeded" and "the site was updated" were different facts with the
+      # same green tick. On 2026-09-20 three consecutive dispatches published
+      # NOTHING and all reported success; one lost by 26 seconds. The site sat
+      # on an old bundle while every signal said otherwise.
+      #
+      # So: re-fetch, rebuild and retry. A build is ~3 minutes, so three
+      # attempts cover roughly ten minutes of merge traffic, and each attempt
+      # publishes a strictly newer tree than the last would have. If every
+      # attempt loses, FAIL — a red job that published nothing is honest, and
+      # the next scheduled run picks it up. Never exit 0 without publishing.
+      - name: Build and publish the current main, retrying while main advances
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          attempts=3
+          for attempt in $(seq 1 "$attempts"); do
+            git fetch --quiet origin main
+            git checkout --quiet --force FETCH_HEAD
+            local_sha=$(git rev-parse HEAD)
+            node scripts/verify-vercel-main-checks.mjs "$local_sha"
+            echo "::group::attempt $attempt/$attempts — building $local_sha"
+            vercel build --prod --token="$VERCEL_TOKEN"
+            echo "::endgroup::"
+
+            remote_sha=$(git ls-remote origin refs/heads/main | awk '{print $1}')
+            test -n "$remote_sha"
+            echo "checkout=$local_sha remote-main=$remote_sha"
+            if [ "$local_sha" = "$remote_sha" ]; then
+              vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+              node scripts/verify-vercel-live-version.mjs "$local_sha"
+              echo "::notice::published $local_sha to the production domains"
+              exit 0
+            fi
+            echo "::notice::main advanced $local_sha -> $remote_sha during attempt $attempt; rebuilding the newer tree"
+          done
+          echo "::error::main advanced during all $attempts attempts, so nothing was published. \
+          This is a busy-repository outcome, not a broken tree: re-run when merges settle, or let the schedule catch it."
+          exit 1

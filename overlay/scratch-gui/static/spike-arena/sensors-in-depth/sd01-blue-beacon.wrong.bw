@@ -1,0 +1,10 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: it stops on the first colour that is not the
+# white of the ice, which is the yellow stripe.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  start moving steering 0
+  wait until not (spike color C is white)
+  stop movement

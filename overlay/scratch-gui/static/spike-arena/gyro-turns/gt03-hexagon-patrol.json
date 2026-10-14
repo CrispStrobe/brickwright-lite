@@ -1,0 +1,173 @@
+{
+  "id": "gt03-hexagon-patrol",
+  "title": {
+    "en": "Hexagon patrol",
+    "de": "Sechseck-Runde"
+  },
+  "intro": {
+    "en": "Six sensor posts stand in a hexagon around the fish pond, 30 cm apart. Visit them in order, driving right round the pond and back to where you started. Let the program work out the turn: a full circle shared by six corners.",
+    "de": "Sechs Messpfosten stehen im Sechseck um den Fischteich, jeweils 30 cm voneinander entfernt. Besuche sie der Reihe nach, einmal ganz um den Teich herum und zurück zum Start. Lass das Programm den Drehwinkel ausrechnen: ein ganzer Kreis, verteilt auf sechs Ecken."
+  },
+  "hints": [
+    {
+      "en": "At each corner the rover turns by 360 / 6 degrees. Store that in a variable.",
+      "de": "An jeder Ecke dreht sich der Rover um 360 / 6 Grad. Speichere das in einer Variable."
+    },
+    {
+      "en": "That is the angle the rover turns, not the inside angle of the hexagon (120 degrees).",
+      "de": "Das ist der Winkel, um den sich der Rover dreht, nicht der Innenwinkel des Sechsecks (120 Grad)."
+    },
+    {
+      "en": "Reset the yaw before every turn.",
+      "de": "Setze den Gierwinkel vor jeder Drehung zurück."
+    }
+  ],
+  "mat": {
+    "width": 110,
+    "height": 90,
+    "background": "white",
+    "paint": "#e9ecef",
+    "shapes": [
+      {
+        "color": "blue",
+        "paint": "#a5d8ff",
+        "shape": {
+          "type": "circle",
+          "x": 50.0,
+          "y": 46.0,
+          "r": 9
+        }
+      }
+    ]
+  },
+  "zones": [
+    {
+      "id": "post-1",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 65.0,
+        "y": 20.0,
+        "r": 6
+      },
+      "label": {
+        "en": "post 1",
+        "de": "Pfosten 1"
+      }
+    },
+    {
+      "id": "post-2",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 80.0,
+        "y": 46.0,
+        "r": 6
+      },
+      "label": {
+        "en": "post 2",
+        "de": "Pfosten 2"
+      }
+    },
+    {
+      "id": "post-3",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 65.0,
+        "y": 72.0,
+        "r": 6
+      },
+      "label": {
+        "en": "post 3",
+        "de": "Pfosten 3"
+      }
+    },
+    {
+      "id": "post-4",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 35.0,
+        "y": 72.0,
+        "r": 6
+      },
+      "label": {
+        "en": "post 4",
+        "de": "Pfosten 4"
+      }
+    },
+    {
+      "id": "post-5",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 20.0,
+        "y": 46.0,
+        "r": 6
+      },
+      "label": {
+        "en": "post 5",
+        "de": "Pfosten 5"
+      }
+    },
+    {
+      "id": "post-6",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 35.0,
+        "y": 20.0,
+        "r": 6
+      },
+      "label": {
+        "en": "post 6",
+        "de": "Pfosten 6"
+      }
+    },
+    {
+      "id": "pond",
+      "role": "hazard",
+      "shape": {
+        "type": "circle",
+        "x": 50.0,
+        "y": 46.0,
+        "r": 9
+      },
+      "label": {
+        "en": "fish pond",
+        "de": "Fischteich"
+      }
+    }
+  ],
+  "start": {
+    "x": 35,
+    "y": 20,
+    "heading": 0
+  },
+  "timeLimitMs": 40000,
+  "success": [
+    {
+      "type": "sequence",
+      "zones": [
+        "post-1",
+        "post-2",
+        "post-3",
+        "post-4",
+        "post-5",
+        "post-6"
+      ]
+    }
+  ],
+  "failure": [
+    {
+      "type": "avoid",
+      "zone": "pond"
+    },
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "gt03-hexagon-patrol.bw",
+  "wrong": "gt03-hexagon-patrol.wrong.bw"
+}

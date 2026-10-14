@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "e85bc17e9f42d66987c0b71ecb172b655217f4de",
+  "base": "ace40e825",
+  "implemented": [
+    "Speech creation/raster animation/expiry use existing global simulated clock",
+    "Modern and legacy speech deadlines continue across owning-scene suspension",
+    "Scene-local update/physics clocks remain suspended independently"
+  ],
+  "local": {
+    "passed": 32,
+    "failed": 0,
+    "skipped": 0,
+    "newClockChecks": 4,
+    "regressionChecks": 28,
+    "originalPxtPlanes": 3,
+    "pixelsPerPlane": 19200,
+    "comparedPixels": 57600,
+    "log": "arcade-speech-global-clock-qualified.log",
+    "boundary": "Original PXT Chromium long/short scene-pause expiry comparisons, native scene/clock controls, speech/Code/Blocks/export/indexed-frame tests and both fresh extension bundles. No full shipped GUI or modal/wall-clock alignment claim."
+  },
+  "nativeClockControl": {
+    "childCreatedAtGlobalMs": 1000,
+    "childLocalMs": 0,
+    "childDeadlineMs": 1500,
+    "subsequentSuspensionMs": 600,
+    "expiredOnResume": true,
+    "parentSceneClockSuspended": true
+  },
+  "legacyBoundary": "Only expiry after a long suspension is compared; active native legacy bubble identity/collections/callbacks/frame pixels remain unimplemented",
+  "remaining": [
+    "Native legacy bubble identity, kind collections, callback and lifecycle contract",
+    "Clock-aligned animated speech full-frame and modal/wall-time comparisons",
+    "HUD/effects/render callback composition and unified frame GUI presentation",
+    "All enabled exact-head hosted checks and full shipped GUI qualification"
+  ],
+  "corpus": {
+    "remeasured": false,
+    "importerUnchanged": true,
+    "latestTranslated": 109,
+    "latestPartial": 74,
+    "latestMalformed": 1
+  }
+}

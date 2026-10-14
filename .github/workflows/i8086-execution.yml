@@ -1,0 +1,45 @@
+name: 8086 execution profile
+on:
+  push:
+    branches: ['perf/i8086-execution']
+  workflow_dispatch:
+    inputs:
+      block-mode:
+        description: Benchmark-only block executor
+        type: choice
+        default: none
+        options: [none, decoded, wasm, ram, pit]
+permissions:
+  contents: read
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: abc4634dad85b570ea64b979fcb67d32194c3fd3
+          path: baseline
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: Amey-Thakur/8086-ASSEMBLY-LANGUAGE-PROGRAMS
+          ref: aa8f32aee87c68db1fb9b1f6005b494884df8935
+          path: corpus
+          sparse-checkout: Source Code/Sorting
+      - run: node --experimental-default-type=module --test test/i8086-execution-workload.test.mjs
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/profile-i8086-execution.mjs
+        env:
+          I8086_BASELINE: baseline
+          I8086_BLOCK_MODE: ${{ inputs.block-mode || 'none' }}
+          I8086_CORPUS_ROOT: corpus
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: i8086-execution
+          path: artifacts/i8086-execution

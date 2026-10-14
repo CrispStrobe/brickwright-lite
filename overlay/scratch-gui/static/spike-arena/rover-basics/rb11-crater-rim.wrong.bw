@@ -1,0 +1,11 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: steering -40 curves far too tightly and the
+# rover's body swings into the crater.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  reset yaw
+  start moving steering -40
+  wait until spike angle yaw < -176
+  stop movement

@@ -1,0 +1,102 @@
+{
+  "id": "sd05-crate-maze",
+  "title": {
+    "en": "Feel the way",
+    "de": "Den Weg ertasten"
+  },
+  "intro": {
+    "en": "A snowstorm blinds the cameras. Crates block the way to the beacon: drive until the bumper's force sensor touches the first crate, back off, turn right, drive until you touch the second crate, back off, turn left, and drive on until you touch the beacon.",
+    "de": "Ein Schneesturm macht die Kameras blind. Kisten versperren den Weg zum Funkfeuer: Fahre, bis der Kraftsensor an der Stoßstange die erste Kiste berührt, setze zurück, biege rechts ab, fahre, bis du die zweite Kiste berührst, setze zurück, biege links ab und fahre weiter, bis du das Funkfeuer berührst."
+  },
+  "hints": [
+    {
+      "en": "Back off about 8 cm before every turn: the rover's corners stick out further than its bumper.",
+      "de": "Setze vor jeder Drehung etwa 8 cm zurück: Die Ecken des Rovers stehen weiter vor als seine Stoßstange."
+    },
+    {
+      "en": "Write the drive-until-touch part once, as a defined block, and use it three times.",
+      "de": "Schreibe das Fahren-bis-zur-Berührung einmal als eigenen Block und verwende es dreimal."
+    }
+  ],
+  "mat": {
+    "width": 170,
+    "height": 120,
+    "background": "white",
+    "paint": "#e7eff6",
+    "shapes": []
+  },
+  "objects": [
+    {
+      "id": "crate-1",
+      "shape": {
+        "type": "rect",
+        "x": 100,
+        "y": 22,
+        "w": 12,
+        "h": 30
+      },
+      "color": "#8d6e63",
+      "label": {
+        "en": "first crate",
+        "de": "erste Kiste"
+      }
+    },
+    {
+      "id": "crate-2",
+      "shape": {
+        "type": "rect",
+        "x": 75,
+        "y": 110,
+        "w": 30,
+        "h": 12
+      },
+      "color": "#8d6e63",
+      "label": {
+        "en": "second crate",
+        "de": "zweite Kiste"
+      }
+    },
+    {
+      "id": "beacon",
+      "shape": {
+        "type": "rect",
+        "x": 160,
+        "y": 86,
+        "w": 8,
+        "h": 20
+      },
+      "color": "#f08c00",
+      "label": {
+        "en": "beacon",
+        "de": "Funkfeuer"
+      }
+    }
+  ],
+  "start": {
+    "x": 20,
+    "y": 22,
+    "heading": 0
+  },
+  "timeLimitMs": 40000,
+  "success": [
+    {
+      "type": "touch",
+      "object": "crate-1"
+    },
+    {
+      "type": "touch",
+      "object": "crate-2"
+    },
+    {
+      "type": "touch",
+      "object": "beacon"
+    }
+  ],
+  "failure": [
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "sd05-crate-maze.bw",
+  "wrong": "sd05-crate-maze.wrong.bw"
+}

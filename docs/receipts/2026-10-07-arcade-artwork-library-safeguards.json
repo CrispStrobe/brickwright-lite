@@ -1,0 +1,76 @@
+{
+  "source": "0a187a8c62ef19543d5fb89f598bdd6843c67014",
+  "producerPin": "983aa61f2fa44901074763b7347588b4e210fc77",
+  "initialBytes": 4357538,
+  "limit": 4467136,
+  "statsSha256": "991b4e0311f728d99c9f9e8edff2c6936d6b5637532b1bc3b236816c5bdded07",
+  "bundle": "gui.e7e4a630.js",
+  "spriteTargetPane": {
+    "chunk": 757,
+    "initial": false
+  },
+  "tests": {
+    "regression": {
+      "passed": 83,
+      "skipped": 1,
+      "skip": "full vendor repository history unavailable"
+    },
+    "adoptedProducerContracts": {
+      "passed": 27,
+      "skipped": 1,
+      "skip": "unrelated STC compiler directory unavailable"
+    },
+    "auditShardTimeoutPinning": {
+      "passed": 52,
+      "skipped": 0
+    },
+    "finalMirrorAndHandoff": {
+      "passed": 22,
+      "skipped": 0
+    }
+  },
+  "browser": {
+    "journeys": 16,
+    "pageErrors": 0,
+    "librarySafeguards": {
+      "artworkGroup": true,
+      "renamePreservesSource": true,
+      "visibilityDisabled": true,
+      "blocksUnavailable": true,
+      "soundsUnavailable": true,
+      "duplicateRenewsIdentity": true,
+      "deleteAndUndoRestoresIdentity": true,
+      "libraries": [
+        {
+          "name": "Robot artwork",
+          "visible": false,
+          "scripts": 0,
+          "role": {
+            "version": 1,
+            "kind": "arcade-animation"
+          }
+        },
+        {
+          "name": "Robot artwork2",
+          "visible": false,
+          "scripts": 0,
+          "role": {
+            "version": 1,
+            "kind": "arcade-animation"
+          }
+        }
+      ],
+      "sb3Reopened": true
+    },
+    "originalPixelsCompared": 19200
+  },
+  "browserHarnessSha256": "d94bc0ff6b69b3bb8466c2becf50d7117b7a5d4044ff858f37f07a2ac819e263",
+  "preservedFailures": [
+    "over-budget first build",
+    "categorized-to-flyout Blockly transition",
+    "incorrect deletion button selector",
+    "predecessor hosted build and unaudited browser jobs"
+  ],
+  "boundary": "Synthetic library navigation/lifecycle/save/reopen/Code/Blocks/controller journey. Original Assets editing/download, costume and sprite-file source transport, duplicate resource native-export naming and corpus-wide compatibility remain open. No corpus reclassification.",
+  "hostedFinalHead": "pending"
+}

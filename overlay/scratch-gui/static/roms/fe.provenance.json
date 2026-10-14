@@ -1,0 +1,11 @@
+{
+  "note": "fe (rxi), a tiny MIT Lisp (~900 lines of portable C: lambdas, closures, macros, mark-and-sweep GC over a fixed object pool), cross-compiled to a 16-bit MS-DOS MZ .EXE with ia16-elf-gcc. It is DOS-NATIVE: it runs on the bw-board 8086 DOS service bench, reads PROG.FE via INT 21h, and prints via the C library. Packaged as media-lab project projects/fe-dos (fetch.sh reproduces this byte-for-byte). Build tool ia16-elf-gcc is GPL but build-time only; the binary links permissive newlib + libi86. Built -mcmodel=medium (fe + newlib soft-float %g just exceeds a small-model 64K code segment).",
+  "rom": "fe.exe",
+  "upstream": "github.com/rxi/fe",
+  "commit": "ed4cda96bd582cbb08520964ba627efb40f3dd91",
+  "license": "MIT",
+  "holder": "rxi",
+  "buildTool": "ia16-elf-gcc -mcmodel=medium -march=any_186 -O2",
+  "bytes": 83632,
+  "sha256": "c9170ccc7c59ab0f1a0a45929f97ce86b65248714c734b0b88d5bd0bc7d7c72e"
+}

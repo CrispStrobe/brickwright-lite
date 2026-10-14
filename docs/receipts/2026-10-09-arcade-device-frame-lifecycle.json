@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-09",
+  "testedSource": "c0c707f7f",
+  "producerPin": "8afc288e68cc411f642ad6b4b2d9863c5d856ca7",
+  "local": {
+    "canvasBrowser": {
+      "script": "scripts/verify-arcade-device-frame.mjs",
+      "result": "PASS",
+      "observed": [
+        "zero width clears",
+        "zero height clears",
+        "detached clears",
+        "restored source draws on same destination",
+        "no page errors"
+      ]
+    },
+    "contracts": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0
+    },
+    "producerCheckoutIntegrity": {
+      "passed": 2,
+      "failed": 0
+    }
+  },
+  "previousHosted": {
+    "source": "c68661e2c32fe97587176bf6eca9df58e99d8265",
+    "run": "https://github.com/CrispStrobe/brickwright-lite/actions/runs/37918731553",
+    "build": "SUCCESS",
+    "heavyBrowser": "SUCCESS",
+    "lightBrowser": "FAILURE",
+    "observed": {
+      "directControllers": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "truncation": {
+        "spriteX": 35,
+        "spriteY": 40,
+        "argumentCalls": 2
+      }
+    },
+    "failures": [
+      "zero-size canvas drawImage exception during question journey",
+      "panel toggle intercepts graphics editor entry"
+    ]
+  },
+  "producerPreviousFailure": "https://github.com/CrispStrobe/sb3-creator/actions/runs/37918366609/job/113779999021",
+  "pending": [
+    "fresh shipped full-app browser/controller and graphics journeys",
+    "producer full sibling-dependent hosted suite"
+  ],
+  "corpus": {
+    "translated": 106,
+    "partial": 77,
+    "malformed": 1,
+    "boundary": "Unchanged import-only census; this display/workflow change does not requalify all games"
+  }
+}

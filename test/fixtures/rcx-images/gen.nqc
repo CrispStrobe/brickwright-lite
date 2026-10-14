@@ -1,0 +1,24 @@
+// Generated from a BrickWright project for the LEGO RCX.
+// Compile with NQC:  nqc -d program.nqc
+//
+// Power is 0..7 (not a percentage) and Wait() is in centiseconds;
+// both are already converted here.
+
+task main() {
+    // Sensor types, hoisted so the program does not depend on how the
+    // brick was left by whatever ran before it. Your own 'set sensor'
+    // blocks still appear below, where you placed them — a type change
+    // part-way through a program is a real thing to want.
+    SetSensor(SENSOR_1, SENSOR_TOUCH);
+
+    SetSensor(SENSOR_1, SENSOR_TOUCH);
+    SetPower(OUT_A + OUT_C, 7);
+    while(true) {
+        if ((SENSOR_1 == 1)) {
+            Off(OUT_A + OUT_C);
+            PlayTone(440, 50);
+        } else {
+            OnFwd(OUT_A + OUT_C);
+        }
+    }
+}

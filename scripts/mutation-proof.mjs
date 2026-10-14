@@ -1,0 +1,239 @@
+#!/usr/bin/env node
+/**
+ * Mutation proofs for every enforcement layer, as a runnable thing rather than a claim.
+ *
+ * CP5 asks for "mutation proofs for every enforcement layer". Those have been produced all along,
+ * by hand, in commit messages — which means the claim decays the moment someone edits a guard,
+ * and nobody finds out. This applies each mutation to a real enforcement point and requires the
+ * named suite to go RED. A mutation that leaves the suite green is reported as a HOLE: either the
+ * guard is unprotected, or the mutation does not do what its author thought.
+ *
+ * Two results are interesting and both are printed:
+ *   RED    the suite caught it. The guard is pinned.
+ *   GREEN  the suite did NOT catch it — a gap, or an independently-sufficient sibling defence.
+ *
+ * The second is not automatically a defect: `native_broker_bootstrap`'s null prototype and its
+ * `typeof` guard are each sufficient alone, so removing either leaves the suite green. That was
+ * found by exactly this method and is recorded in the table below, because a mutation runner that
+ * hides its non-findings teaches the same false confidence as a gate that cannot fail.
+ *
+ * Usage: node scripts/mutation-proof.mjs [--only <substring>]
+ * Exit 1 if any mutation marked `expect: 'red'` failed to turn its suite red.
+ */
+import {execFileSync} from 'node:child_process';
+import {readFileSync, writeFileSync} from 'node:fs';
+import path from 'node:path';
+
+const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
+
+/**
+ * layer   the enforcement point, in words
+ * file    the file to mutate
+ * find    exact text to replace (must occur exactly once)
+ * with    the weakened form
+ * suite   the test file that must go red
+ * expect  'red'  — the suite must catch it (a green run fails this script)
+ *         'green-known' — documented as not individually caught, with a reason
+ */
+const MUTATIONS = [
+    {
+        layer: 'Milestone 0: inferred buzzer kind is proved by electrical behavior',
+        file: 'node_modules/bw-circuit-ui/src/model/infer-seated.js',
+        find: "      const buz = circuit.addPart('buzzer', {}, 0, 0, pin.name);",
+        with: "      const buz = circuit.addPart('led', {}, 0, 0, pin.name);",
+        suite: 'test/seated-buzzer-equivalence.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'realm: the resource is looked up, never taken from the payload',
+        file: 'apps/tauri/src-tauri/src/native_broker_bootstrap.js',
+        find: "exact(fields, ['operation', 'args'])",
+        with: "(fields && typeof fields === 'object')",
+        suite: 'test/native-broker-bootstrap.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'realm: a retired session is inert for every kind',
+        file: 'apps/tauri/src-tauri/src/native_broker_bootstrap.js',
+        find: "        let state = sessions.get(delivery.session);\n        if (!state && retired.has(delivery.session)) return safeReply(delivery,\n            {kind: 'failure', request_kind: delivery.kind, code: 'stale-reply'});\n        if (delivery.kind === 'capability') {",
+        with: "        let state = sessions.get(delivery.session);\n        if (delivery.kind === 'capability') {",
+        suite: 'test/native-broker-bootstrap.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'diagnostics: redaction is a whitelist, not a filter',
+        file: 'overlay/scratch-gui/src/lib/capability-diagnostics.js',
+        find: '    for (const field of fields) out[field] = scalar(source ? source[field] : undefined);',
+        with: '    for (const field of Object.keys(source || {})) out[field] = scalar(source[field]);',
+        suite: 'test/capability-diagnostics.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'diagnostics: no object is stringified into the DOM',
+        file: 'overlay/scratch-gui/src/lib/capability-diagnostics.js',
+        find: "    if (typeof value === 'object') return '';   // no object survives to the DOM",
+        with: '    if (typeof value === "object") return String(value);',
+        suite: 'test/capability-diagnostics.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'micro:bit flasher: only the nRF52833 part authority is admitted',
+        file: 'overlay/scratch-gui/src/lib/flasher.js',
+        find: 'FICR_PART: 0x10000100, PART_NRF52833: 0x52833',
+        with: 'FICR_PART: 0x10000100, PART_NRF52833: 0x52832',
+        suite: 'test/microbit-daplink-flash.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'micro:bit flasher: the nRF52833 erase-page size drives every touched page',
+        file: 'overlay/scratch-gui/src/lib/flasher.js',
+        find: 'PAGE_SIZE: 0x1000,      // 4 KiB, FICR.CODEPAGESIZE',
+        with: 'PAGE_SIZE: 0x2000,      // mutation: wrong 8 KiB page',
+        suite: 'test/microbit-daplink-flash.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'micro:bit flasher: a wrong part is refused before any erase command',
+        file: 'overlay/scratch-gui/src/lib/flasher.js',
+        find: "      throw new Error(`the attached target is not an nRF52833 (FICR.INFO.PART=0x${part.toString(16)}); `\n        + 'this flashes the micro:bit V2 only');",
+        with: "      await mem.write32(NRF.NVMC_ERASEPAGE, 0);\n      throw new Error(`the attached target is not an nRF52833 (FICR.INFO.PART=0x${part.toString(16)}); `\n        + 'this flashes the micro:bit V2 only');",
+        suite: 'test/microbit-daplink-flash.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'JS caller: the editor names an operation and never a lease',
+        file: 'overlay/scratch-vm/src/extension-support/native-platform-capability.js',
+        find: "                payload: JSON.stringify({kind: 'capability', operation: OPERATION, args})",
+        with: "                payload: JSON.stringify({kind: 'capability', operation: OPERATION, args, resource: 'platform/default'})",
+        suite: 'test/native-platform-capability.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'JS caller: a reply that is not a capability result is refused',
+        file: 'overlay/scratch-vm/src/extension-support/native-platform-capability.js',
+        find: "                reply.kind !== 'capability' || typeof reply.result !== 'string') {",
+        with: '                false) {',
+        suite: 'test/native-platform-capability.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'sweep detector: every shape still fires',
+        file: 'scripts/audit-gate-shapes.mjs',
+        find: "        if (reaches && !soundEmpty && !soundDomain) {",
+        with: '        if (false) {',
+        suite: 'test/gate-shapes.test.mjs',
+        expect: 'red'
+    },
+    {
+        // TWO SITES SINCE 2026-09-07, and the harness found that itself rather
+        // than silently mutating the first match: the anchor stopped being
+        // unique the moment aliasInvokes gained the same wrapper clause
+        // runInvokesGate already had. Proved separately because they ARE
+        // separate enforcement — one lets a wrapped `node scripts/x.mjs`
+        // count, the other a wrapped `npm run verify:x`, and either can rot
+        // without the other. Each anchor now carries the line that follows it,
+        // which is what makes it unique.
+        layer: 'gate coverage: a wrapper-invoked gate counts (direct node)',
+        file: 'test/gate-coverage.test.mjs',
+        find: "    `(?:${WRAPPERS}\\\\s+)*` +\n    `node",
+        with: '    `` +\n    `node',
+        suite: 'test/gate-coverage.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'gate coverage: a wrapper-invoked gate counts (npm alias)',
+        file: 'test/gate-coverage.test.mjs',
+        find: "        `(?:${WRAPPERS}\\\\s+)*` +\n        `npm",
+        with: '        `` +\n        `npm',
+        suite: 'test/gate-coverage.test.mjs',
+        expect: 'red'
+    },
+    {
+        // The other half of this lane. A mention is not coverage, and the
+        // regression that matters is a LOOSENING: restore the substring rule
+        // and every real gate still passes, so only a fixture catches it.
+        layer: 'gate coverage: a gate a test only NAMES is not exercised',
+        file: 'test/gate-coverage.test.mjs',
+        find: "    if (sources.some(source => exercisedIn(source, gate))) return 'test';",
+        with: "    if (sources.some(({text}) => text.includes(gate))) return 'test';",
+        suite: 'test/gate-coverage.test.mjs',
+        expect: 'red'
+    },
+    {
+        layer: 'realm: the operation table has a null prototype',
+        file: 'apps/tauri/src-tauri/src/native_broker_bootstrap.js',
+        // ANCHOR ONLY THE THING THE MUTATION IS ABOUT. This used to quote the
+        // whole one-entry table, so every lane that added a capability name
+        // (#481, #487, #504) silently invalidated it — the runner then reported
+        // SKIP ... the mutation is stale and exited 1, which reads as a broken
+        // gate rather than an out-of-date quotation. `__proto__: null` is what
+        // this mutation removes; the entries after it are not its subject.
+        find: "Object.freeze({__proto__: null,",
+        with: "Object.freeze({",
+        suite: 'test/native-broker-bootstrap.test.mjs',
+        expect: 'green-known',
+        because: 'the `typeof resource !== "string"` guard is independently sufficient — a ' +
+            'prototype name resolves to Object.prototype or a function, neither a string. ' +
+            'Removing BOTH is what turns the suite red.'
+    }
+];
+
+const runSuite = suite => {
+    try {
+        execFileSync(process.execPath, ['--test', suite],
+            {cwd: root, encoding: 'utf8', stdio: 'pipe', timeout: 900000});
+        return 'green';
+    } catch {
+        return 'red';
+    }
+};
+
+let failures = 0;
+let stale = 0;
+const results = [];
+for (const m of MUTATIONS) {
+    if (only && !m.layer.includes(only)) continue;
+    const full = path.join(root, m.file);
+    const original = readFileSync(full, 'utf8');
+    const count = original.split(m.find).length - 1;
+    if (count !== 1) {
+        console.log(`SKIP  ${m.layer}\n      anchor occurs ${count} times in ${m.file} — the mutation is stale`);
+        failures++;
+        stale++;
+        continue;
+    }
+    writeFileSync(full, original.replace(m.find, m.with));
+    let outcome;
+    try {
+        outcome = runSuite(m.suite);
+    } finally {
+        writeFileSync(full, original);   // always restore, even if the runner throws
+    }
+    const ok = m.expect === 'red' ? outcome === 'red' : outcome === 'green';
+    results.push({...m, outcome, ok});
+    if (!ok) failures++;
+    console.log(`${outcome.toUpperCase().padEnd(5)} ${ok ? ' ' : '!'} ${m.layer}`);
+    if (m.expect === 'green-known') console.log(`        known: ${m.because}`);
+    if (!ok) {
+        console.log(`        EXPECTED ${m.expect} — the guard is not pinned by ${m.suite}, ` +
+            'or the mutation does not weaken what its author thought');
+    }
+}
+
+// REPORT THE STALE ONES IN THE RATIO, NOT ONLY IN THE EXIT CODE. A stale
+// mutation `continue`s before joining `results`, so it used to be invisible
+// here while still counting toward `failures`: the run printed
+// "14/14 mutations behaved as documented" and exited 1. That reads as a
+// runner bug, and it cost a real investigation — the honest line says how
+// many never ran, and names the different remedy, because a stale anchor is
+// a quotation to update, not a guard that failed to fire.
+console.log(`\n${results.filter(r => r.ok).length}/${results.length} mutations behaved as documented`
+    + (stale ? `, and ${stale} did not run at all (stale anchor)` : ''));
+if (stale) {
+    console.log('A mutation whose anchor no longer matches proves nothing: requote it against the current source.');
+}
+if (failures > stale) {
+    console.log('A mutation that does not turn its suite red is a gate that cannot fail.');
+}
+if (failures) process.exit(1);

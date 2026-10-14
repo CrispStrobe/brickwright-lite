@@ -1,0 +1,220 @@
+/**
+ * An imported MakeCode micro:bit program RUNS, and reaches the extension.
+ *
+ * The Arcade counterpart of this gate lives in
+ * makecode-arcade-runs.test.mjs; this is the device half, and it can ask
+ * for more. An Arcade translation only has to start and change
+ * something, because its blocks are core Scratch. A micro:bit
+ * translation lowers onto lite's OWN bundled extension, so the bar is
+ * the one example-vm-execution.test.mjs sets for hardware programs:
+ * a bundled extension method must actually be invoked. Variables
+ * changing is not enough — that is the defect class that whole gate was
+ * built for, where a program assigns variables enthusiastically and
+ * drives nothing.
+ *
+ * The device referee cannot stand in here: trace-oracle refuses
+ * `microbit_display` outright, and flags a translated `basic.forever` as
+ * a zero-time spin because it models a chip rather than Scratch's
+ * per-frame yield.
+ */
+
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync, existsSync} from 'node:fs';
+import {join} from 'node:path';
+
+import {SOURCE, INTEGRATED, REPO} from './helpers/bw-integrated.mjs';
+import {microbitToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/microbit-translate.js';
+import {unpackMakeCodeSource} from '../overlay/scratch-gui/src/lib/bw-makecode/embedded-source.js';
+
+const CAN_RUN = existsSync(join(INTEGRATED, 'node_modules', 'scratch-vm', 'src', 'index.js')) &&
+    existsSync(join(SOURCE, 'src', 'lib', 'sb3-creator.js'));
+const {runProgram} = CAN_RUN ? await import('./helpers/bw-vm.mjs') : {};
+const SKIP = CAN_RUN ? false : 'needs the integrated tree and its scratch-vm — run `npm run integrate` and install';
+
+const mainTs = async name => (await unpackMakeCodeSource(
+    new Uint8Array(readFileSync(join(REPO, 'test', 'fixtures', 'makecode', name))))).files['main.ts'];
+
+test('an imported micro:bit program drives the real extension', {skip: SKIP}, async () => {
+    // The fixture reads pin P0 in a forever loop and displays it, so the
+    // proof is not that blocks exist but that analogread is CALLED.
+    const {code, unsupported} = microbitToPseudocode(await mainTs('microbit-blocks.hex'));
+    assert.deepEqual(unsupported, [], 'this project needs no excuses');
+
+    const run = await runProgram(code, {frames: 30});
+    assert.deepEqual(run.errors, [], 'the VM reported block errors');
+    assert.ok(run.threadsStarted > 0, 'the green flag started nothing');
+    assert.ok(run.loadedExtensions.has('microbitplus'),
+        `microbitplus was not loaded; got ${[...run.loadedExtensions].join(', ') || 'nothing'}`);
+    assert.ok(run.calls.get('microbitplus_analogread') > 0,
+        'the pin read never reached the extension — blocks that exist but never run');
+});
+
+test('a translated gesture and touch program reaches its blocks', {skip: SKIP}, async () => {
+    // These two were REFUSED until sb3-creator b4a8129 closed the round
+    // trip. Compiling was the first proof; this is the second — the
+    // reporters have to be real blocks the VM can evaluate.
+    const {code, unsupported} = microbitToPseudocode(`
+        basic.forever(function () {
+            if (input.isGesture(Gesture.Shake)) { basic.clearScreen() }
+            if (input.pinIsPressed(TouchPin.P1)) { basic.showNumber(1) }
+        })
+    `);
+    assert.deepEqual(unsupported, []);
+
+    const run = await runProgram(code, {frames: 20});
+    assert.deepEqual(run.errors, []);
+    assert.ok(run.loadedOpcodes.has('microbitplus_isgesture'), 'the gesture block survived packaging');
+    assert.ok(run.loadedOpcodes.has('microbitplus_istouch'), 'and the touch block');
+    assert.ok(run.extensionCalls > 0, 'and the extension was actually reached');
+});
+
+test('an imported Calliope program drives the arrays extension', {skip: SKIP}, async () => {
+    // The Calliope half of the same bar. This fixture builds an array of
+    // pictures and reads it by index, and arrays were the construct that
+    // used to collapse to `set liste to 0` — so "it compiled" proves
+    // nothing here. The array blocks have to be loaded AND called.
+    const {importArtefact} = await import(
+        '../overlay/scratch-gui/src/lib/bw-makecode/index.js');
+    const result = await importArtefact(
+        new Uint8Array(readFileSync(join(REPO, 'test', 'fixtures', 'makecode', 'calliope-images.hex'))),
+        {name: 'calliope-images.hex'});
+    assert.equal(result.lang, 'pseudocode');
+
+    const run = await runProgram(result.code, {frames: 30});
+    assert.deepEqual(run.errors, [], 'the VM reported block errors');
+    assert.ok(run.threadsStarted > 0, 'the green flag started nothing');
+    assert.ok(run.loadedExtensions.has('arrays'),
+        `arrays was not loaded; got ${[...run.loadedExtensions].join(', ') || 'nothing'}`);
+    assert.ok(run.loadedOpcodes.has('arrays_create1D') || run.loadedOpcodes.has('arrays_createEmpty'),
+        'no array was ever created — the declaration collapsed again');
+    assert.ok(run.extensionCalls > 0, 'blocks that exist but never run');
+});
+
+test('a translated bitwise program reaches the bitops extension', {skip: SKIP}, async () => {
+    // `x & 255` used to compile to a string literal whose text was
+    // `x & 255`. Compiling is not the proof; being CALLED is.
+    const {code, unsupported} = microbitToPseudocode(`
+        let maske = 0
+        basic.forever(function () {
+            maske = (maske << 1) & 255
+            basic.showNumber(maske)
+        })
+    `);
+    assert.deepEqual(unsupported, []);
+
+    const run = await runProgram(code, {frames: 20});
+    assert.deepEqual(run.errors, []);
+    assert.ok(run.loadedExtensions.has('bitops'),
+        `bitops was not loaded; got ${[...run.loadedExtensions].join(', ') || 'nothing'}`);
+    assert.ok(run.calls.get('bitops_and') > 0, 'the mask never reached the extension');
+    assert.ok(run.calls.get('bitops_shl') > 0, 'the shift never reached the extension');
+});
+
+test('an imported game keeps score in the real extension, and pins.map computes', {skip: SKIP}, async () => {
+    // Census batch 1: game.addScore/score and pins.map were refused or lost
+    // on import. The display calls are the simulator's to draw, but a score
+    // and a mapped number are plain values the editor can show — so they
+    // have to be RIGHT here, not just reached.
+    const {code, unsupported} = microbitToPseudocode(`
+        let shown = 0
+        let mapped = 0
+        game.addScore(2)
+        game.addScore(3)
+        game.setScore(game.score() + 1)
+        shown = game.score()
+        mapped = pins.map(512, 0, 1024, 0, 4)
+        led.plotBarGraph(shown, 10)
+        led.toggle(1, 1)
+        led.setBrightness(128)
+        led.stopAnimation()
+    `);
+    assert.deepEqual(unsupported, []);
+
+    const run = await runProgram(code, {frames: 10});
+    assert.deepEqual(run.errors, [], 'the VM reported block errors');
+    for (const opcode of ['microbitplus_addscore', 'microbitplus_setscore', 'microbitplus_score', 'microbitplus_map',
+        'microbitplus_plotbargraph', 'microbitplus_toggle', 'microbitplus_setbrightness', 'microbitplus_stopanimation']) {
+        assert.ok(run.calls.get(opcode) > 0, `${opcode} never reached the extension`);
+    }
+    const value = name => {
+        for (const target of run.vm.runtime.targets) {
+            for (const variable of Object.values(target.variables || {})) if (variable.name === name) return Number(variable.value);
+        }
+        return null;
+    };
+    assert.equal(value('shown'), 6, 'the score the extension kept');
+    assert.equal(value('mapped'), 2, 'pins.map(512, 0, 1024, 0, 4)');
+});
+
+test('imported music keeps MakeCode\'s time in the real extension; the new blocks all reach it', {skip: SKIP}, async () => {
+    // Census batch 2: music.beat was frozen to its 120 bpm length on import,
+    // so a program that changed the tempo kept the old beat. A beat and a
+    // note frequency are plain numbers, so the editor has to get them RIGHT.
+    const {code, unsupported} = microbitToPseudocode(`
+        let quarter = 0
+        let slow = 0
+        let tempo = 0
+        let a = 0
+        quarter = music.beat(BeatFraction.Quarter)
+        music.setTempo(60)
+        slow = music.beat(BeatFraction.Whole)
+        music.changeTempoBy(40)
+        tempo = music.tempo()
+        a = music.noteFrequency(Note.A)
+        music.rest(10)
+        music._playDefaultBackground(music.builtInPlayableMelody(Melodies.JumpUp), music.PlaybackMode.InBackground)
+    `);
+    assert.deepEqual(unsupported, []);
+
+    const run = await runProgram(code, {frames: 10});
+    assert.deepEqual(run.errors, [], 'the VM reported block errors');
+    for (const opcode of ['microbitplus_beat', 'microbitplus_settempo', 'microbitplus_changetempo', 'microbitplus_tempo',
+        'microbitplus_notefreq', 'microbitplus_rest', 'microbitplus_playmelody']) {
+        assert.ok(run.calls.get(opcode) > 0, `${opcode} never reached the extension`);
+    }
+    const value = name => {
+        for (const target of run.vm.runtime.targets) {
+            for (const variable of Object.values(target.variables || {})) if (variable.name === name) return Number(variable.value);
+        }
+        return null;
+    };
+    assert.equal(value('quarter'), 125, 'a quarter beat at 120 bpm');
+    assert.equal(value('slow'), 1000, 'a whole beat at 60 bpm');
+    // `tempo` is a word the pseudocode keeps for Scratch, so it arrives renamed.
+    assert.equal(value('tempo_'), 100, 'changeTempoBy(40) from 60');
+    assert.equal(value('a'), 440, 'Note.A');
+});
+
+test('imported sound, logo and signal-strength calls reach the real extension', {skip: SKIP}, async () => {
+    // Census batch 3. The sound is the simulator's; here the blocks must load
+    // and be reached, and the reporters read their quiet values.
+    const {code, unsupported} = microbitToPseudocode(`
+        let rssi = 5
+        let logo = 5
+        music.play(music.tonePlayable(262, 10), music.PlaybackMode.InBackground)
+        music.play(music.builtinPlayableSoundEffect(soundExpression.giggle), music.PlaybackMode.InBackground)
+        music.playSoundEffect(music.createSoundEffect(WaveShape.Sine, 500, 100, 255, 0, 10, SoundExpressionEffect.None, InterpolationCurve.Linear), SoundExpressionPlayMode.InBackground)
+        rssi = radio.receivedPacket(RadioPacketProperty.SignalStrength)
+        if (input.logoIsPressed()) {
+            logo = 1
+        } else {
+            logo = 0
+        }
+    `);
+    assert.deepEqual(unsupported, []);
+    const run = await runProgram(code, {frames: 10});
+    assert.deepEqual(run.errors, [], 'the VM reported block errors');
+    for (const opcode of ['microbitplus_playtonemode', 'microbitplus_playsound', 'microbitplus_playsoundeffect',
+        'microbitplus_radiorssi', 'microbitplus_islogo']) {
+        assert.ok(run.calls.get(opcode) > 0, `${opcode} never reached the extension`);
+    }
+    const value = name => {
+        for (const target of run.vm.runtime.targets) {
+            for (const variable of Object.values(target.variables || {})) if (variable.name === name) return Number(variable.value);
+        }
+        return null;
+    };
+    assert.equal(value('rssi'), 0);
+    assert.equal(value('logo'), 0);
+});

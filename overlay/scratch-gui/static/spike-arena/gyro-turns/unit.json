@@ -1,0 +1,17 @@
+{
+  "id": "gyro-turns",
+  "title": {
+    "en": "Gyro turns",
+    "de": "Kreiselsensor-Drehungen"
+  },
+  "intro": {
+    "en": "Four missions in a greenhouse dome, all steered by the hub's gyro sensor: an exact half turn of a right angle, driving straight on a worn wheel, a hexagon patrol, and turning round when the yaw angle wraps at 180 degrees.",
+    "de": "Vier Missionen in einer Gewächshauskuppel, alle mit dem Kreiselsensor des Hubs gesteuert: ein genauer halber rechter Winkel, geradeaus fahren mit einem abgenutzten Rad, eine Sechseck-Runde und umkehren, wenn der Gierwinkel bei 180 Grad umspringt."
+  },
+  "challenges": [
+    "gt01-half-a-right-angle",
+    "gt02-worn-wheel",
+    "gt03-hexagon-patrol",
+    "gt04-about-turn"
+  ]
+}

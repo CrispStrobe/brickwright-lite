@@ -1,0 +1,12 @@
+/* The desktop costume panel has a minimum width. Let its pixel workspace use
+   the tablet viewport so the first tools and the canvas do not get clipped. */
+@media (max-width: 900px) {
+    .bw-pixel-editor {
+        position: fixed !important;
+        inset: 93px 0 0 !important;
+        width: 100vw !important;
+        height: calc(100dvh - 93px) !important;
+        z-index: 30;
+        background: #fff;
+    }
+}

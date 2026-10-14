@@ -1,0 +1,633 @@
+/**
+ * The BrickWright pseudocode <-> MakeCode Arcade / array-reference block map.
+ *
+ * A MakeCode Arcade program imported into BrickWright (Lite's
+ * `arcade-translate.js`) is written in these words. Each word is one block of
+ * the `arcade` extension (sprites, images, tiles, scenes, handlers, a call
+ * frame's locals) or one of the `arrays` extension's REFERENCE blocks (a
+ * JavaScript array shared by identity, with MakeCode's own value semantics —
+ * `undefined`, `===`, `+` that concatenates text). The table is the whole
+ * contract: sb3Creator.js parses a line against it and decompiles a block
+ * through it, so a word cannot be readable in one direction and not the
+ * other (the same design as ev3Dialect.js).
+ *
+ * A word's spelling is literal words and slots:
+ *
+ *   {NAME}               a value input. A slot that ends at the next keyword
+ *                        is lazy and reads up to that keyword OUTSIDE any
+ *                        (…) or "…" (the parser matches through matchTopLevel),
+ *                        so it may hold a bracketed expression or an
+ *                        unbracketed reporter; the last slot takes the rest of
+ *                        the line, as `set X to <expression>` does.
+ *   {NAME:a|b|c}         a field; the word IS the stored value (matched
+ *                        case-insensitively, stored as spelled here)
+ *   {NAME:"a"|"b"}       a field written as quoted text
+ *   {NAME:text:a|b}      a TEXT input written as a bare word (`mode side`)
+ *   {NAME:menu:axes:x|y} a reporter input with native menu shadow; bare menu
+ *                        choices or a value expression (quote text literals)
+ *   {NAME:name}          a TEXT input written as an identifier
+ *                        (`arcade local count` stores "count")
+ *   {NAME:cond}          a value input that also takes a condition: a
+ *                        comparison / and / or / not / Boolean word is built
+ *                        as a Boolean block (a sprite flag set from `a > b`)
+ *   {NAME:bool}          a Boolean input: a condition as above, a number
+ *                        literal becomes `1 = 1` / `0 = 1`, any other value v
+ *                        becomes `not (v = 0)` (MakeCode's truthiness of a
+ *                        number)
+ *
+ * `kind` is command | reporter | boolean | hat. A hat is spelled with a
+ * leading `when` and written back as `WHEN …:`. `alias: true` marks a
+ * shorter spelling the parser also reads (an optional trailing argument
+ * left out); `defaults` fills what it leaves out, and the decompiler always
+ * writes the full word, so the round trip reaches a fixed point. `early:
+ * true` marks a reporter whose slots may hold a signed number or an
+ * unbracketed expression, so parseValue tries it BEFORE splitting the text
+ * at an operator (`arcade projectile … vx -50 vy 0 …`).
+ *
+ * Reporters and booleans start with `arcade` or name an array reference /
+ * value explicitly, so none of them can read as a variable; a value that
+ * starts with `arcade` and is no word here is refused, not made a variable.
+ */
+
+// rotationDegrees before rotation: the alternation takes the first that matches.
+// rotation is PXT's Sprite.rotation (radians), rotationDegrees its degrees form,
+// data the sprite's \`data\` value (any value, not only a number).
+const PROPERTIES = 'x|y|left|right|top|bottom|vx|vy|ax|ay|fx|fy|sx|sy|scale|width|height|z|lifespan|rotationDegrees|rotation|data';
+const FLAGS = 'AutoDestroy|StayInScreen|BounceOnWall|Invisible|Ghost|GhostThroughSprites|GhostThroughWalls|'
+    + 'GhostThroughTiles|DestroyOnWall|RelativeToCamera';
+const LAYOUTS = '"Left"|"Right"|"Top"|"Bottom"|"Center"|"Full"';
+const SCREEN_EFFECTS = 'confetti|hearts|smiles|blizzard|bubbles|starField|clouds|none';
+const EFFECTS = `spray|trail|fountain|rings|fire|warmRadial|coolRadial|halo|ashes|disintegrate|${SCREEN_EFFECTS}`;
+const PROJECTILE_MODES = 'text:side|kind|sprite|kind-source';
+// PXT mixer music: named Melody instances, Sounds members and enum members.
+const MELODIES = 'baDing|wawawawaa|jumpUp|jumpDown|powerUp|powerDown|magicWand|siren|pewPew|knock|footstep|thump|'
+    + 'smallCrash|bigCrash|zapped|buzzer|sonar|spooky|beamUp';
+const SOUNDS = 'PowerUp|PowerDown|JumpUp|JumpDown|BaDing|Wawawawaa|MagicWand|Siren';
+const BUFFER_FORMATS = 'Int8LE|UInt8LE|Int16LE|UInt16LE|Int32LE|UInt32LE|Int8BE|UInt8BE|Int16BE|UInt16BE|Int32BE|UInt32BE|Float32LE|Float32BE|Float64LE|Float64BE';
+const BEATS = 'Whole|Half|Quarter|Eighth|Sixteenth|Double|Breve|Triplet';
+// PXT image effects (effects.ImageEffect) and every background effect game over takes.
+const IMAGE_EFFECTS = 'dissolve|melt|slash|splatter';
+const BACKGROUND_EFFECTS = `${SCREEN_EFFECTS}|${IMAGE_EFFECTS}`;
+// The seven segment extension (sevenseg) enums, as their member names.
+// The darts and corgio extensions' adjustable fields.
+const DART_PROPERTIES = 'angle|pow|iter|traceColor|gravity|wind|angleRate|powerRate';
+const CORGI_PROPERTIES = 'maxMoveVelocity|gravity|jumpVelocity|maxJump|decelerationRate';
+const SEGMENT_STYLES = 'Blank|Thin|Narrow|Medium|Thick';
+const SEGMENT_SCALES = 'Full|Half';
+const SEGMENT_CHARACTERS = 'ZERO|ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|A|B|C|D|E|F|H|J|L|o|P|r|U|Y|Hyphen|Degree';
+
+const w = (op, kind, words, extra = {}) => Object.freeze({ op, kind, words, ...extra });
+
+export const ARCADE_WORDS = Object.freeze([
+    // ---- mutable byte buffers ------------------------------------------------
+    w('arcade_createBuffer', 'reporter', 'arcade create byte buffer size {SIZE}'),
+    w('arcade_bufferFromHex', 'reporter', 'arcade byte buffer from hex text {HEX}'),
+    w('arcade_bufferFromBase64', 'reporter', 'arcade byte buffer from Base64 text {TEXT}'),
+    w('arcade_bufferFromUTF8', 'reporter', 'arcade byte buffer from UTF8 text {TEXT}'),
+    w('arcade_bufferLiteral', 'reporter', 'arcade byte buffer literal hex {HEX}'),
+    w('arcade_bufferLength', 'reporter', 'arcade byte buffer {BUFFER} length'),
+    w('arcade_bufferIsReadOnly', 'boolean', 'arcade byte buffer {BUFFER} is read only'),
+    w('arcade_bufferConcat', 'reporter', 'arcade byte buffer {BUFFER} concatenated with byte buffer {OTHER}'),
+    w('arcade_bufferEquals', 'boolean', 'arcade byte buffer {BUFFER} equals byte buffer {OTHER}'),
+    w('arcade_bufferHash', 'reporter', 'arcade byte buffer {BUFFER} hash {BITS} bits'),
+    w('arcade_bufferIndexOf', 'reporter', 'arcade byte buffer {BUFFER} index of byte buffer {OTHER}'),
+    w('arcade_bufferGetByte', 'reporter', 'arcade byte buffer {BUFFER} byte at {OFFSET}'),
+    w('arcade_bufferSetByte', 'command', 'arcade set byte buffer {BUFFER} byte at {OFFSET} to {VALUE}'),
+    w('arcade_bufferChunked', 'reporter', 'arcade byte buffer {BUFFER} chunks of at most {SIZE} bytes'),
+    w('arcade_bufferChunkedFromUTF8', 'reporter', 'arcade UTF8 text {TEXT} byte buffer chunks of at most {SIZE} bytes'),
+    w('arcade_bufferPackedSize', 'reporter', 'arcade byte buffer packed format {FORMAT} size'),
+    w('arcade_bufferPack', 'reporter', 'arcade pack number array {ARRAY} as byte buffer format {FORMAT}'),
+    w('arcade_bufferUnpack', 'reporter', 'arcade unpack byte buffer {BUFFER} format {FORMAT} at {OFFSET}'),
+    w('arcade_bufferPackAt', 'command', 'arcade pack number array {ARRAY} into byte buffer {BUFFER} at {OFFSET} format {FORMAT}'),
+    w('arcade_bufferFromArray', 'reporter', 'arcade byte buffer from number array {ARRAY}'),
+    w('arcade_bufferToArray', 'reporter', `arcade byte buffer {BUFFER} to number array format {FORMAT:menu:bufferFormats:${BUFFER_FORMATS}}`),
+    w('arcade_bufferConcatArray', 'reporter', 'arcade concatenate byte buffers in array {ARRAY}'),
+    w('arcade_bufferFormatSize', 'reporter', `arcade byte buffer number format {FORMAT:menu:bufferFormats:${BUFFER_FORMATS}} size`),
+    w('arcade_bufferGetNumber', 'reporter', `arcade byte buffer {BUFFER} number {FORMAT:menu:bufferFormats:${BUFFER_FORMATS}} at {OFFSET}`),
+    w('arcade_bufferSetNumber', 'command', `arcade set byte buffer {BUFFER} number {FORMAT:menu:bufferFormats:${BUFFER_FORMATS}} at {OFFSET} to {VALUE}`),
+    w('arcade_bufferSlice', 'reporter', 'arcade byte buffer {BUFFER} slice at {OFFSET} length {LENGTH}'),
+    w('arcade_bufferWrite', 'command', 'arcade write byte buffer {BUFFER} at {OFFSET} from {SOURCE}'),
+    w('arcade_bufferFill', 'command', 'arcade fill byte buffer {BUFFER} with {VALUE} at {OFFSET} length {LENGTH}'),
+    w('arcade_bufferShift', 'command', 'arcade shift byte buffer {BUFFER} by {AMOUNT} at {OFFSET} length {LENGTH}'),
+    w('arcade_bufferRotate', 'command', 'arcade rotate byte buffer {BUFFER} by {AMOUNT} at {OFFSET} length {LENGTH}'),
+    w('arcade_bufferToHex', 'reporter', 'arcade byte buffer {BUFFER} to hex'),
+    w('arcade_bufferToBase64', 'reporter', 'arcade byte buffer {BUFFER} to Base64 text'),
+    w('arcade_bufferToText', 'reporter', 'arcade byte buffer {BUFFER} to UTF8 text'),
+    w('arcade_songFromBuffer', 'reporter', 'arcade song playable byte buffer {BUFFER}'),
+    // ---- hats ---------------------------------------------------------------
+    w('arcade_whenUpdate', 'hat', 'when arcade updates'),
+    w('arcade_whenInterval', 'hat', 'when arcade every {PERIOD} ms'),
+    w('arcade_whenRegisteredUpdate', 'hat', 'when arcade update handler {TOKEN} runs'),
+    w('arcade_whenRegisteredPaint', 'hat', 'when arcade paint handler {TOKEN} runs'),
+    w('arcade_whenRegisteredShade', 'hat', 'when arcade shade handler {TOKEN} runs'),
+    w('arcade_whenRegisteredInterval', 'hat', 'when arcade interval handler {TOKEN} runs'),
+    w('arcade_whenRegisteredMultiplayerButton', 'hat', 'when arcade multiplayer button handler {TOKEN} runs'),
+    w('arcade_whenRegisteredButton', 'hat', 'when arcade button handler {TOKEN} runs'),
+    w('arcade_whenRegisteredInstanceDestroyed', 'hat', 'when arcade instance destruction handler {TOKEN} runs'),
+    w('arcade_whenRegisteredKindDestroyed', 'hat', 'when arcade destroyed kind handler {TOKEN} runs'),
+    w('arcade_whenRegisteredOverlap', 'hat', 'when arcade overlap handler {TOKEN} runs'),
+    w('arcade_whenRegisteredScenePush', 'hat', 'when arcade scene push handler {TOKEN} runs'),
+    w('arcade_whenRegisteredScenePop', 'hat', 'when arcade scene pop handler {TOKEN} runs'),
+    w('arcade_whenParallelHandler', 'hat', 'when arcade parallel handler {TOKEN} runs'),
+    w('arcade_whenRegisteredForever', 'hat', 'when arcade forever handler {TOKEN} runs'),
+    w('arcade_whenRegisteredLifeZero', 'hat', 'when arcade life zero handler {TOKEN} runs'),
+    w('arcade_whenRegisteredCountdown', 'hat', 'when arcade countdown handler {TOKEN} runs'),
+    w('arcade_whenRegisteredLegacyWall', 'hat', 'when arcade color wall handler {TOKEN} runs'),
+    w('arcade_whenRegisteredWall', 'hat', 'when arcade wall handler {TOKEN} runs'),
+    w('arcade_whenRegisteredTile', 'hat', 'when arcade tile handler {TOKEN} runs'),
+    w('arcade_whenRegisteredCreated', 'hat', 'when arcade creation handler {TOKEN} runs'),
+    w('arcade_whenRegisteredDestroyed', 'hat', 'when arcade destruction handler {TOKEN} runs'),
+    w('arcade_whenSpriteCreated', 'hat', 'when arcade kind {KIND} created'),
+    w('arcade_whenSpriteDestroyed', 'hat', 'when arcade kind {KIND} destroyed'),
+    w('arcade_whenSpritesOverlap', 'hat', 'when arcade kinds {A} and {B} overlap'),
+    w('arcade_whenCountdownEnds', 'hat', 'when arcade countdown ends'),
+
+    // ---- commands: score, life, scenes, camera --------------------------------
+    w('arcade_playerLookup', 'reporter', 'arcade player by {MODE:number|index} {VALUE}'),
+    w('arcade_allPlayers', 'reporter', 'arcade all players'),
+    w('arcade_playerSprite', 'reporter', 'arcade sprite of player {PLAYER}'),
+    w('arcade_registerMultiplayerButtonHandler', 'command', 'arcade register multiplayer button {BUTTON} event {EVENT} as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_eventPlayer', 'reporter', 'arcade event player'),
+    w('arcade_playerButtonPressed', 'boolean', 'arcade player {PLAYER} button {BUTTON} pressed'),
+    w('arcade_createPlayerState', 'reporter', 'arcade create player state key'),
+    w('arcade_getPlayerState', 'reporter', 'arcade state {KEY} of player {PLAYER}'),
+    w('arcade_setPlayerState', 'command', 'arcade set state {KEY} of player {PLAYER} to {VALUE}'),
+    w('arcade_changePlayerState', 'command', 'arcade change state {KEY} of player {PLAYER} by {VALUE}'),
+    w('arcade_movePlayerWithButtons', 'command', 'arcade move player {PLAYER} with buttons vx {VX} vy {VY}'),
+    w('arcade_setPlayerSprite', 'command', 'arcade set sprite of player {PLAYER} to {ID}'),
+    w('arcade_playerBySprite', 'reporter', 'arcade player of sprite {ID}'),
+    w('arcade_playerProperty', 'reporter', 'arcade player {READ:safe|member} property {PROPERTY} of {PLAYER}'),
+    w('arcade_setscore', 'command', 'arcade set score to {N}'),
+    w('arcade_changescore', 'command', 'arcade change score by {N}'),
+    w('arcade_setPlayerScore', 'command', 'arcade set score player {PLAYER} to {VALUE}'),
+    w('arcade_changePlayerScore', 'command', 'arcade change score player {PLAYER} by {VALUE}'),
+    w('arcade_setLife', 'command', 'arcade set life player {PLAYER} to {VALUE}'),
+    w('arcade_changeLife', 'command', 'arcade change life player {PLAYER} by {VALUE}'),
+    w('arcade_pushScene', 'command', 'arcade push scene'),
+    w('arcade_popScene', 'command', 'arcade pop scene'),
+    w('arcade_followSprite', 'command', 'arcade sprite {ID} follow {TARGET} speed {SPEED} turn rate {TURN}'),
+    w('arcade_unfollowSprite', 'command', 'arcade sprite {ID} stop following'),
+    w('arcade_cameraShake', 'command', 'arcade shake camera by {AMPLITUDE} pixels for {DURATION} ms'),
+    w('arcade_centerCameraAt', 'command', 'arcade center camera x {X} y {Y}'),
+    w('arcade_cameraFollowSprite', 'command', 'arcade camera follow sprite {ID}'),
+    w('arcade_setPalette', 'command', 'arcade set palette hex {DATA}'),
+    w('arcade_setBackgroundColor', 'command', 'arcade set background color to {COLOR}'),
+    w('arcade_setBackgroundImage', 'command', 'arcade set background image {IMAGE}'),
+    w('arcade_startCountdown', 'command', 'arcade start countdown {N}'),
+    w('arcade_stopCountdown', 'command', 'arcade stop countdown'),
+    w('arcade_splash', 'command', 'arcade splash {TITLE} subtitle {SUBTITLE}'),
+    w('arcade_showLongText', 'command', `arcade long text {TEXT} layout {LAYOUT:${LAYOUTS}}`),
+    w('arcade_log', 'command', 'arcade log {TEXT}'),
+
+    // ---- commands: handler registration (the handler is a procedure token) -----
+    w('arcade_registerUpdateHandler', 'command', 'arcade register update as {TOKEN} capturing {CAPTURES}'),
+    // game.onPaint / game.onShade: scene renderables drawn with the sprites by z.
+    w('arcade_registerPaintHandler', 'command', 'arcade register paint as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerShadeHandler', 'command', 'arcade register shade as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_startParallelHandler', 'command', 'arcade run parallel as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerForeverHandler', 'command', 'arcade register forever as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerCountdownHandler', 'command', 'arcade register countdown as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerIntervalHandler', 'command', 'arcade register interval {INTERVAL} as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerButtonHandler', 'command',
+        'arcade register button {BUTTON} event {EVENT} as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerDestroyedHandler', 'command',
+        'arcade register destroyed kind {KIND} as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerOverlapHandler', 'command',
+        'arcade register overlap kind {KIND} with kind {OTHER_KIND} as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerScenePushHandler', 'command', 'arcade register scene push as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerScenePopHandler', 'command', 'arcade register scene pop as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerLifeZeroHandler', 'command',
+        'arcade register life zero player {PLAYER} as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerLifeZeroHandler', 'command', 'arcade register life zero as {TOKEN} capturing {CAPTURES}',
+        { alias: true, defaults: { PLAYER: '1' } }),
+    w('arcade_registerLegacyWallHandler', 'command', 'arcade register color wall kind {KIND} index {INDEX} as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerWallHandler', 'command', 'arcade register wall kind {KIND} as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerTileHandler', 'command',
+        'arcade register tile kind {KIND} image {IMAGE} as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerSpriteCreated', 'command', 'arcade register creation kind {KIND} as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerSpriteCreated', 'command', 'arcade register creation kind {KIND} as {TOKEN}',
+        { alias: true, defaults: { CAPTURES: '""' } }),
+    w('arcade_registerInstanceDestroyedHandler', 'command', 'arcade register instance destruction of {ID} as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_registerSpriteDestroyed', 'command', 'arcade register destruction of {ID} as {TOKEN}'),
+
+    // ---- commands: a call frame's locals and captures --------------------------
+    w('arcade_setCaptured', 'command', 'arcade set captured {NAME:name} to {VALUE}'),
+    w('arcade_setLocal', 'command', 'arcade set local {NAME:name} to {VALUE}'),
+    w('arcade_returnValue', 'command', 'arcade return value {VALUE}'),
+
+    // ---- commands: sprites ------------------------------------------------------
+    // Particle effects (PXT effects.ParticleEffect / ScreenEffect instances).
+    // Before `arcade destroy {ID}`, whose last slot would read the rest.
+    w('arcade_destroySpriteWithEffect', 'command',
+        `arcade destroy {ID} with effect {EFFECT:${EFFECTS}} for {DURATION} ms`),
+    w('arcade_startSpriteEffect', 'command', `arcade start effect {EFFECT:${EFFECTS}} on {ID} for {DURATION} ms`),
+    w('arcade_startScreenEffect', 'command',
+        `arcade start screen effect {EFFECT:${SCREEN_EFFECTS}} for {DURATION} ms`),
+    w('arcade_endScreenEffect', 'command', `arcade end screen effect {EFFECT:${SCREEN_EFFECTS}}`),
+    w('arcade_clearSpriteEffects', 'command', 'arcade clear effects on {ID}'),
+    w('arcade_destroySprite', 'command', 'arcade destroy {ID}'),
+    w('arcade_spriteSay', 'command',
+        'arcade say {ID} text {TEXT} for {DURATION} ms animated {ANIMATED:bool} text color {FOREGROUND} '
+        + 'box color {BACKGROUND} mode {MODE:"text"|"legacy"}'),
+    w('arcade_setSpritePosition', 'command', 'arcade set position of {ID} x {X} y {Y}'),
+    w('arcade_setSpriteScaleCore', 'command',
+        'arcade scale core of {ID} x {SX} y {SY} anchor {ANCHOR} proportional {PROPORTIONAL:cond}'),
+    // Before `arcade set scale of … to …` (the property word): `anchor` ends it.
+    w('arcade_setSpriteScale', 'command', 'arcade set scale of {ID} to {VALUE} anchor {ANCHOR}'),
+    w('arcade_changeSpriteScale', 'command', 'arcade change scale of {ID} by {VALUE} anchor {ANCHOR}'),
+    w('arcade_setSpriteProperty', 'command', `arcade set {PROPERTY:${PROPERTIES}} of {ID} to {VALUE}`),
+    w('arcade_controlSprite', 'command', 'arcade control sprite {ID} vx {VX} vy {VY}'),
+    w('arcade_controlSpriteByController', 'command', 'arcade controller {CONTROLLER:1|2|3|4} move sprite {ID} vx {VX} vy {VY}'),
+    w('arcade_stopControllingSprite', 'command', 'arcade controller {CONTROLLER:1|2|3|4} stop controlling sprite {ID}'),
+    w('arcade_setSpriteImage', 'command', 'arcade set image of {ID} to {IMAGE}'),
+    w('arcade_setSpritePixel', 'command', 'arcade set pixel of {ID} x {X} y {Y} color {COLOR}'),
+    w('arcade_drawSpriteImage', 'command',
+        'arcade draw {OP:fillRect|drawLine} of {ID} x {X} y {Y} width {W} height {H} color {COLOR}'),
+    w('arcade_mutateSpriteImage', 'command',
+        'arcade image {OP:fill|replace|flipX|flipY} of {ID} color {COLOR} replacement {TO}'),
+    w('arcade_setSpriteCostume', 'command', 'arcade set costume of {ID} to {COSTUME}'),
+    w('arcade_setSpriteFlag', 'command', `arcade set flag {FLAG:${FLAGS}} of {ID} to {ON:cond}`),
+    w('arcade_setSpriteStayInScreen', 'command', 'arcade keep {ID} in screen {ON:cond}'),
+    w('arcade_setSpriteAutoDestroy', 'command', 'arcade auto destroy {ID} outside screen {ON:cond}'),
+    w('arcade_setSpriteBounceOnWall', 'command', 'arcade bounce {ID} on wall {ON:cond}'),
+    w('arcade_setSpriteGhostThroughSprites', 'command', 'arcade ghost {ID} through sprites {ON:cond}'),
+    w('arcade_setSpriteKind', 'command', 'arcade set kind of {ID} to {KIND}'),
+
+    // ---- commands: images --------------------------------------------------------
+    w('arcade_copyImageFrom', 'command', 'arcade copy pixels into image {IMAGE} from {SOURCE}'),
+    w('arcade_scrollImage', 'command', 'arcade scroll image {IMAGE} x {X} y {Y}'),
+    w('arcade_mutateImage', 'command',
+        'arcade mutate image {OP:fill|replace|flipX|flipY} {IMAGE} color {COLOR} replacement {TO}'),
+    w('arcade_blitImage', 'command',
+        'arcade blit image {OP:drawImage|drawTransparentImage} {IMAGE} source {SOURCE} x {X} y {Y}'),
+    w('arcade_setImagePixel', 'command', 'arcade set image pixel {IMAGE} x {X} y {Y} color {COLOR}'),
+    // Image.print; font auto is image.getFontForText's choice.
+    w('arcade_printImageText', 'command',
+        'arcade print {TEXT} on image {IMAGE} x {X} y {Y} color {COLOR} font {FONT:auto|normal|small|large}'),
+    w('arcade_drawImage', 'command',
+        'arcade draw image {OP:fillRect|drawLine} {IMAGE} x {X} y {Y} width {W} height {H} color {COLOR}'),
+
+    // ---- commands: game over and image screen effects ------------------------------
+    // The legacy game.over(win, effect?) spelling first; "unset" is no effect argument.
+    w('arcade_legacyGameOver', 'command', `arcade legacy game over win {WIN:bool} effect {EFFECT:unset|${BACKGROUND_EFFECTS}}`),
+    w('arcade_gameOver', 'command', 'arcade game over win {WIN:bool}'),
+    w('arcade_carnivalCountdown', 'command', `arcade carnival countdown {SECONDS} style {STYLE:Win|Lose|Score|Timed|Multi|Custom} effect {EFFECT:unset|${BACKGROUND_EFFECTS}}`),
+    w('arcade_carnivalGameOver', 'command', `arcade carnival game over style {STYLE:Win|Lose|Score|Timed|Multi|Custom} effect {EFFECT:unset|${BACKGROUND_EFFECTS}}`),
+    w('arcade_carnivalCustomGameOver', 'command', `arcade carnival custom game over message {MESSAGE} effect {EFFECT:unset|${BACKGROUND_EFFECTS}} sound {SOUND} use sound {HAS_SOUND:bool} scoring {SCORING:unset|None|HScore|LScore|HTime|LTime} score {SCORE} use score {HAS_SCORE:bool}`),
+    w('arcade_setGameOverEffect', 'command', `arcade set game over effect {EFFECT:${BACKGROUND_EFFECTS}} for win {WIN:bool}`),
+    w('arcade_setGameOverMessage', 'command', 'arcade set game over message {MESSAGE} for win {WIN:bool}'),
+    w('arcade_setGameOverPlayable', 'command', 'arcade set game over sound {PLAYABLE} looping {LOOPING:bool} for win {WIN:bool}'),
+    w('arcade_setGameOverScoringType', 'command', 'arcade set game over scoring {TYPE:HighScore|LowScore|None}'),
+    w('arcade_startImageEffect', 'command', `arcade start image effect {EFFECT:${IMAGE_EFFECTS}} times {TIMES} delay {DELAY} ms`),
+
+    // ---- commands: background scrolling (arcade-background-scroll extension) -----
+    w('arcade_scrollBackgroundWithCamera', 'command', 'arcade scroll background with camera {MODE:OnlyHorizontal|OnlyVertical|BothDirections} layer {LAYER}'),
+    w('arcade_scrollBackgroundWithSpeed', 'command', 'arcade scroll background vx {VX} vy {VY} layer {LAYER}'),
+    w('arcade_setBackgroundScrollMultipliers', 'command', 'arcade set background scroll multipliers x {X} y {Y} layer {LAYER}'),
+    w('arcade_setBackgroundScrollOffset', 'command', 'arcade set background scroll offset x {X} y {Y} layer {LAYER}'),
+    // The z word first: a layer slot reads up to the first matching word.
+    w('arcade_setBackgroundLayerZ', 'command', 'arcade set background layer {LAYER} z {Z}'),
+    w('arcade_setBackgroundLayerImage', 'command', 'arcade set background layer {LAYER} image {IMAGE}'),
+
+    // ---- commands: character animations (arcade-character-animations extension) ----
+    w('arcade_characterFrames', 'command', 'arcade character {MODE:loop|run} frames of {SPRITE} images {FRAMES} interval {INTERVAL} rule {RULE}'),
+    w('arcade_setCharacterAnimationsEnabled', 'command', 'arcade set character animations of {SPRITE} enabled {ENABLED:bool}'),
+    w('arcade_setCharacterState', 'command', 'arcade set character state of {SPRITE} to {RULE}'),
+    w('arcade_clearCharacterState', 'command', 'arcade clear character state of {SPRITE}'),
+    w('arcade_setCharacterController', 'command', 'arcade set character controller of {SPRITE} enabled {ENABLED:bool}'),
+    w('arcade_lockCharacterFacing', 'command', 'arcade lock character facing of {SPRITE} to {DIRECTION:Up|Right|Down|Left}'),
+    w('arcade_unlockCharacterFacing', 'command', 'arcade unlock character facing of {SPRITE}'),
+
+    // ---- commands: darts and corgio (sprite extensions) -----------------------------
+    // Word order: the longer spellings first, so a sprite slot cannot read a later word.
+    w('arcade_setDartProperty', 'command', `arcade set dart {SPRITE} property {PROPERTY:${DART_PROPERTIES}} to {VALUE}`),
+    w('arcade_dartSwitch', 'command', 'arcade dart {SPRITE} {SETTING:setTrace|controlWithArrowKeys} {ON:bool}'),
+    w('arcade_dartAction', 'command', 'arcade dart {SPRITE} {ACTION:throwDart|stopDart}'),
+    w('arcade_setCorgiProperty', 'command', `arcade set corgi {SPRITE} property {PROPERTY:${CORGI_PROPERTIES}} to {VALUE}`),
+    w('arcade_corgiAddPhrase', 'command', 'arcade corgi {SPRITE} add phrase {TEXT}'),
+    w('arcade_corgiControl', 'command', 'arcade corgi {SPRITE} {MODE:horizontalMovement|verticalMovement|updateSprite|cameraFollow} {ON:bool}'),
+    w('arcade_corgiBark', 'command', 'arcade corgi {SPRITE} bark'),
+
+    // ---- commands: seven segment digits and counters (sevenseg extension) ---------
+    // Property first and color last: a display slot reads up to the first matching word.
+    w('arcade_sevensegSetProperty', 'command', 'arcade set seven segment {DISPLAY} property {PROPERTY:x|y|value|count} to {VALUE}'),
+    w('arcade_sevensegSetCharacter', 'command', `arcade set seven segment {DISPLAY} character {CHARACTER:${SEGMENT_CHARACTERS}}`),
+    w('arcade_sevensegSetRadix', 'command', 'arcade set seven segment {DISPLAY} radix {RADIX:Decimal|Hex|Octal|Alpha}'),
+    w('arcade_sevensegSetScale', 'command', `arcade set seven segment {DISPLAY} scale {SCALE:${SEGMENT_SCALES}}`),
+    w('arcade_sevensegSetColor', 'command', 'arcade set seven segment {DISPLAY} color {COLOR}'),
+    w('arcade_sevensegAddDigit', 'command', 'arcade add seven segment digit to {DISPLAY}'),
+
+    // ---- commands: music (PXT mixer) ------------------------------------------------
+    // "play sound effect" before "play sound", whose last slot would read the rest.
+    w('arcade_playMusic', 'command', 'arcade play music {PLAYABLE} mode {MODE:UntilDone|InBackground|LoopingInBackground}'),
+    w('arcade_playMelody', 'command', 'arcade play melody {MELODY} mode {MODE:play|playUntilDone|loop}'),
+    w('arcade_playSoundEffect', 'command', 'arcade play sound effect {EFFECT} mode {MODE:UntilDone|InBackground}'),
+    w('arcade_playSound', 'command', 'arcade play sound {SOUND} until done {UNTIL_DONE:bool}'),
+    w('arcade_playTone', 'command', 'arcade play tone {FREQUENCY} Hz for {DURATION} ms'),
+    w('arcade_ringTone', 'command', 'arcade ring tone {FREQUENCY} Hz'),
+    w('arcade_rest', 'command', 'arcade rest for {DURATION} ms'),
+    w('arcade_setMusicVolume', 'command', 'arcade set music volume to {VOLUME}'),
+    w('arcade_setTempo', 'command', 'arcade set tempo to {TEMPO} bpm'),
+    w('arcade_changeTempo', 'command', 'arcade change tempo by {TEMPO} bpm'),
+    w('arcade_stopAllSounds', 'command', 'arcade stop all sounds'),
+
+    // ---- commands: physics engines, animations, tiles -----------------------------
+    w('arcade_setScenePhysicsEngine', 'command', 'arcade set physics engine of scene {SCENE} to {ENGINE}'),
+    w('arcade_setPhysicsEngineProperty', 'command',
+        'arcade set physics engine property {PROPERTY:maxSpeed|minStep|maxStep} of {ENGINE} to {VALUE}'),
+    w('arcade_addAnimationFrame', 'command', 'arcade add animation frame {ANIMATION} image {IMAGE}'),
+    w('arcade_attachAnimation', 'command', 'arcade attach animation {ANIMATION} to sprite {ID}'),
+    w('arcade_setAnimationAction', 'command', 'arcade set animation action of {ID} to {ACTION}'),
+    w('arcade_setAnimationInterval', 'command', 'arcade set animation interval {ANIMATION} to {INTERVAL}'),
+    w('arcade_runImageAnimation', 'command', 'arcade animate sprite {ID} frames {FRAMES} interval {INTERVAL} loop {LOOP:cond}'),
+    w('arcade_stopAnimation', 'command', 'arcade stop animations of {ID} type {TYPE}'),
+    w('arcade_setLegacyTilemap', 'command', 'arcade set color-coded map image {IMAGE} scale {SCALE}'),
+    w('arcade_setLegacyTile', 'command', 'arcade set color tile {INDEX} image {IMAGE} wall {WALL}'),
+    w('arcade_setLegacyTileAt', 'command', 'arcade set color tile {TILE} index {INDEX}'),
+    w('arcade_placeOnLegacyTile', 'command', 'arcade on color tile {TILE} place sprite {ID}'),
+    w('arcade_placeOnRandomLegacyTile', 'command', 'arcade place sprite {ID} on random color tile {INDEX}'),
+    w('arcade_setTilemap', 'command', 'arcade set tilemap data {DATA}'),
+    w('arcade_setWallAt', 'command', 'arcade set tile wall {LOCATION} to {WALL:cond}'),
+    w('arcade_setTileAt', 'command', 'arcade set tile {LOCATION} image {IMAGE}'),
+    w('arcade_placeOnRandomTile', 'command', 'arcade place sprite {ID} on random tile image {IMAGE}'),
+    w('arcade_placeOnTile', 'command', 'arcade place sprite {ID} on tile {LOCATION}'),
+
+    // ---- commands: array references ------------------------------------------------
+    w('arrays_mutateReference', 'command', 'mutate array reference {ARRAY} op {OP} index {INDEX} value {VALUE}'),
+
+    // ---- reporters read before operator splitting (signed or spaced slots) ---------
+    w('arcade_functionArgument', 'reporter', 'arcade function argument {VALUE} rest {REST}', { early: true }),
+    w('arcade_callFunction', 'reporter', 'arcade call function {NAME} arguments {ARGS}', { early: true }),
+    w('arcade_spawnSprite', 'reporter',
+        'arcade spawn template {TEMPLATE} kind {KIND} x {X} y {Y} width {WIDTH} height {HEIGHT}', { early: true }),
+    w('arcade_spawnImageProjectile', 'reporter',
+        `arcade projectile image {IMAGE} template {TEMPLATE} kind {KIND} vx {VX} vy {VY} mode {MODE:${PROJECTILE_MODES}} `
+        + 'source {SOURCE}', { early: true }),
+    w('arcade_spawnImageProjectile', 'reporter',
+        `arcade projectile image {IMAGE} template {TEMPLATE} kind {KIND} vx {VX} vy {VY} mode {MODE:${PROJECTILE_MODES}}`,
+        { early: true, alias: true, defaults: { SOURCE: '""' } }),
+    w('arcade_spawnProjectile', 'reporter',
+        'arcade projectile template {TEMPLATE} kind {KIND} vx {VX} vy {VY} width {WIDTH} height {HEIGHT} '
+        + `mode {MODE:${PROJECTILE_MODES}} source {SOURCE}`, { early: true }),
+    w('arcade_spawnProjectile', 'reporter',
+        'arcade projectile template {TEMPLATE} kind {KIND} vx {VX} vy {VY} width {WIDTH} height {HEIGHT} '
+        + `mode {MODE:${PROJECTILE_MODES}}`, { early: true, alias: true, defaults: { SOURCE: '""' } }),
+    w('arcade_ask', 'reporter', 'arcade ask yes {TITLE} subtitle {SUBTITLE}', { early: true }),
+    w('arcade_askForNumber', 'reporter', 'arcade ask number {QUESTION}', { early: true }),
+    w('arcade_askForString', 'reporter', 'arcade ask text {QUESTION}', { early: true }),
+
+    // ---- reporters: sprites ------------------------------------------------------------
+    w('arcade_createSprite', 'reporter', 'arcade create template {TEMPLATE} kind {KIND} width {WIDTH} height {HEIGHT}'),
+    w('arcade_createImageSprite', 'reporter', 'arcade create image {IMAGE} template {TEMPLATE} kind {KIND}'),
+    w('arcade_spawnImageSprite', 'reporter', 'arcade spawn image {IMAGE} template {TEMPLATE} kind {KIND} x {X} y {Y}'),
+    w('arcade_spriteToString', 'reporter', 'arcade text of sprite {ID}'),
+    w('arcade_spritePixel', 'reporter', 'arcade pixel of {ID} x {X} y {Y}'),
+    w('arcade_spriteImage', 'reporter', 'arcade image of {ID}'),
+    w('arcade_spriteProperty', 'reporter', `arcade property {PROPERTY:${PROPERTIES}} of {ID}`),
+    w('arcade_spritesOfKind', 'reporter', 'arcade sprite array kind {KIND}'),
+    w('arcade_spriteCount', 'reporter', 'arcade count kind {KIND}'),
+    w('arcade_controllerStep', 'reporter', 'arcade controller {AXIS:menu:axes:x|y} step {STEP}'),
+    w('arcade_eventSprite', 'reporter', 'arcade event {WHICH:first|second}'),
+    w('arcade_eventLocation', 'reporter', 'arcade event location'),
+    w('arcade_getCaptured', 'reporter', 'arcade captured {NAME:name}'),
+    w('arcade_getLocal', 'reporter', 'arcade local {NAME:name}'),
+    w('arcade_getscore', 'reporter', 'arcade score'),
+    // `has score` before `score`: the lazy slot would read "(1) has" as the player.
+    w('arcade_hasLife', 'boolean', 'arcade player {PLAYER} has life'),
+    w('arcade_hasPlayerScore', 'boolean', 'arcade player {PLAYER} has score'),
+    w('arcade_getPlayerScore', 'reporter', 'arcade player {PLAYER} score'),
+    w('arcade_getLife', 'reporter', 'arcade life player {PLAYER}'),
+    w('arcade_backgroundImage', 'reporter', 'arcade background image'),
+    w('arcade_screenImage', 'reporter', 'arcade screen image'),
+    w('arcade_backgroundColor', 'reporter', 'arcade background color'),
+    w('arcade_truncateNumber', 'reporter', 'arcade truncate {NUM}', {early: true}),
+    w('arcade_signNumber', 'reporter', 'arcade sign of {NUM}', {early: true}),
+    w('arcade_cameraProperty', 'reporter', 'arcade camera property {PROPERTY}'),
+
+    // ---- reporters: scenes, physics engines, animations ------------------------------------
+    w('arcade_currentScene', 'reporter', 'arcade current scene'),
+    w('arcade_scenePhysicsEngine', 'reporter', 'arcade physics engine of scene {SCENE}'),
+    w('arcade_createPhysicsEngine', 'reporter',
+        'arcade create physics engine max speed {MAX_SPEED} min step {MIN_STEP} max step {MAX_STEP}'),
+    w('arcade_physicsEngineProperty', 'reporter',
+        'arcade physics engine property {PROPERTY:maxSpeed|minStep|maxStep} of {ENGINE}'),
+    w('arcade_createAnimation', 'reporter', 'arcade create animation action {ACTION} interval {INTERVAL}'),
+    w('arcade_animationProperty', 'reporter', 'arcade animation {PROPERTY:image|action|interval} of {ANIMATION}'),
+
+    // ---- reporters and booleans: tiles -------------------------------------------------------
+    w('arcade_legacyTileLocation', 'reporter', 'arcade color tile column {COLUMN} row {ROW}'),
+    w('arcade_legacyTilesOfType', 'reporter', 'arcade color tile array index {INDEX}'),
+    w('arcade_legacyTileProperty', 'reporter', 'arcade color tile {PROPERTY:x|y|tileSet} of {TILE}'),
+    w('arcade_tileHitFrom', 'reporter', 'arcade sprite {ID} wall hit index {DIRECTION}'),
+    w('arcade_tileLocation', 'reporter', 'arcade tile location column {COLUMN} row {ROW}'),
+    w('arcade_tilesOfType', 'reporter', 'arcade tile array image {IMAGE}'),
+    w('arcade_tileLocationProperty', 'reporter',
+        'arcade tile {PROPERTY:column|row|x|y|left|right|top|bottom|tileSet} of {LOCATION}'),
+    w('arcade_tileIs', 'boolean', 'arcade tile {LOCATION} equals image {IMAGE}'),
+    w('arcade_tileIsWall', 'boolean', 'arcade tile {LOCATION} is wall'),
+    w('arcade_isHittingTile', 'boolean', 'arcade sprite {ID} hitting wall {DIRECTION}'),
+
+    // ---- reporters: base helpers and event context ------------------------------------------------
+    // PXT's own parseInt (base/pxt-helpers.ts); the radix spelling first.
+    w('arcade_parseIntegerRadix', 'reporter', 'arcade parse integer {TEXT} radix {RADIX}'),
+    w('arcade_parseInteger', 'reporter', 'arcade parse integer {TEXT}'),
+    w('arcade_frameDeltaTime', 'reporter', 'arcade frame delta time'),
+
+    // ---- reporters: background scrolling (arcade-background-scroll extension) ----
+    w('arcade_backgroundScrollOffset', 'reporter', 'arcade background scroll offset {AXIS:x|y} layer {LAYER}'),
+
+    // ---- reporters: character animations (arcade-character-animations extension) ---
+    // A rule is the original's predicate names, space separated.
+    w('arcade_characterRule', 'reporter', 'arcade character rule {PREDICATES}'),
+    w('arcade_characterMatchesRule', 'boolean', 'arcade character {SPRITE} matches rule {RULE}'),
+
+    // ---- reporters: darts and corgio (sprite extensions) ----------------------------
+    w('arcade_createDart', 'reporter', 'arcade create dart image {IMAGE} kind {KIND} x {X} y {Y}'),
+    w('arcade_createCorgi', 'reporter', 'arcade create corgi kind {KIND} x {X} y {Y}'),
+    w('arcade_dartProperty', 'reporter', `arcade dart {SPRITE} property {PROPERTY:${DART_PROPERTIES}}`),
+    w('arcade_corgiProperty', 'reporter', `arcade corgi {SPRITE} property {PROPERTY:${CORGI_PROPERTIES}}`),
+
+    // ---- reporters: seven segment digits and counters (sevenseg extension) ---------
+    w('arcade_sevensegDigit', 'reporter', `arcade seven segment digit style {STYLE:${SEGMENT_STYLES}} value {VALUE}`),
+    w('arcade_sevensegCounter', 'reporter', `arcade seven segment counter style {STYLE:${SEGMENT_STYLES}} scale {SCALE:${SEGMENT_SCALES}} digits {DIGITS}`),
+    w('arcade_sevensegProperty', 'reporter', 'arcade seven segment {DISPLAY} property {PROPERTY:x|y|width|height|value|count}'),
+
+    // ---- reporters: music --------------------------------------------------------------------------
+    w('arcade_melodyPlayable', 'reporter', 'arcade melody playable {MELODY}'),
+    w('arcade_stringPlayable', 'reporter', 'arcade string playable {MELODY} at {TEMPO} bpm'),
+    w('arcade_tonePlayable', 'reporter', 'arcade tone playable {FREQUENCY} Hz for {DURATION} ms'),
+    w('arcade_songPlayable', 'reporter', 'arcade song playable hex {HEX}'),
+    w('arcade_namedSongPlayable', 'reporter', 'arcade song named {NAME} hex {HEX}'),
+    w('arcade_soundEffect', 'reporter',
+        'arcade sound effect wave {WAVE:Sine|Sawtooth|Triangle|Square|Noise} from {START_FREQUENCY} Hz to {END_FREQUENCY} Hz '
+        + 'volume {START_VOLUME} to {END_VOLUME} for {DURATION} ms effect {EFFECT:None|Vibrato|Tremolo|Warble} '
+        + 'curve {CURVE:Linear|Curve|Logarithmic}'),
+    w('arcade_namedMelody', 'reporter', `arcade melody {NAME:${MELODIES}}`),
+    w('arcade_soundMelody', 'reporter', `arcade sound {SOUND:${SOUNDS}}`),
+    w('arcade_beat', 'reporter', `arcade beat {FRACTION:${BEATS}}`),
+    w('arcade_musicVolume', 'reporter', 'arcade music volume'),
+    w('arcade_musicTempo', 'reporter', 'arcade music tempo'),
+
+    // ---- reporters and booleans: images -------------------------------------------------------
+    w('arcade_createImage', 'reporter', 'arcade new image width {WIDTH} height {HEIGHT}'),
+    w('arcade_cloneImage', 'reporter', 'arcade copy image {IMAGE}'),
+    w('arcade_imageProperty', 'reporter', 'arcade image {PROPERTY:width|height} of {IMAGE}'),
+    w('arcade_imagePixel', 'reporter', 'arcade image pixel {IMAGE} x {X} y {Y}'),
+    w('arcade_imagesOverlap', 'boolean', 'arcade images overlap {IMAGE} source {SOURCE} x {X} y {Y}'),
+    w('arcade_animationAssetFrames', 'reporter',
+        'arcade animation frames resource {RESOURCE:menu:animationAssets:none}', {literalMenu: true}),
+    w('arcade_animationAssetFreshFrames', 'reporter',
+        'arcade animation fresh frames resource {RESOURCE:menu:animationAssets:none}', {literalMenu: true}),
+    w('arcade_animationAssetInterval', 'reporter',
+        'arcade animation interval resource {RESOURCE:menu:animationAssets:none}', {literalMenu: true}),
+    w('arcade_frameImage', 'reporter',
+        'arcade frame image array {KEY} index {INDEX} template {TEMPLATE} start {START} count {COUNT}'),
+    // Last of the arcade words: its first slot follows `arcade` directly.
+    w('arcade_spriteOverlaps', 'boolean', 'arcade {A} overlaps {B}'),
+
+    // ---- array references and MakeCode values (the arrays extension) --------------------------
+    w('arrays_namedReference', 'reporter', 'reference to named array {NAME}'),
+    w('arrays_parseLegacyValue', 'reporter', 'parse array input {VALUE}'),
+    w('arrays_jsonValue', 'reporter', 'JSON text of value {VALUE}'),
+    w('arrays_specialValue', 'reporter', '{KIND:undefined|null} value'),
+    w('arrays_valueBinary', 'reporter', 'calculate value {LEFT} op {OP:"+"|"-"|"*"|"/"|"%"} with {RIGHT}'),
+    w('arrays_valueUnary', 'reporter', 'convert value {VALUE} op {OP:"+"|"-"}'),
+    w('arrays_valueTruthy', 'boolean', 'truthiness of value {VALUE}'),
+    w('arrays_valueCompare', 'boolean', 'compare value {LEFT} op {OP:"=="|"!="|"==="|"!=="|"<"|">"|"<="|">="} with {RIGHT}'),
+    w('arrays_referenceValues', 'reporter', 'array value {VALUE} rest {REST}'),
+    w('arrays_createReference', 'reporter', 'new array reference from {VALUES}'),
+    w('arrays_referenceTruthy', 'boolean', 'truthiness of item {INDEX} of array reference {ARRAY}'),
+    w('arrays_referenceItem', 'reporter', 'item {INDEX} of array reference {ARRAY}'),
+    w('arrays_referenceLength', 'reporter', 'length of array reference {ARRAY}'),
+    w('arrays_referenceRandom', 'reporter', 'random item of array reference {ARRAY}'),
+    w('arrays_referenceRemove', 'boolean', 'remove value {VALUE} from array reference {ARRAY}'),
+    w('arrays_referenceTake', 'reporter', '{OP:text:pop|shift|removeAt} from array reference {ARRAY} index {INDEX}'),
+    w('arrays_referenceIndexOf', 'reporter', 'index of {VALUE} in array reference {ARRAY} from {INDEX}'),
+    w('arrays_referenceIndexOf', 'reporter', 'index of {VALUE} in array reference {ARRAY}',
+        { alias: true, defaults: { INDEX: '0' } })
+]);
+
+/** Every opcode the table spells (aliases share their opcode). */
+export const ARCADE_DIALECT_OPS = Object.freeze([...new Set(ARCADE_WORDS.map((e) => e.op))]);
+
+// ---- the slot grammar ------------------------------------------------------------
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const compiled = new Map();
+/**
+ * A word's parts and the regular expression the parser matches it with
+ * (through matchTopLevel, so keywords count only outside (…) and "…").
+ */
+export function compileArcadeWord(entry) {
+    if (compiled.has(entry)) return compiled.get(entry);
+    const parts = entry.words.split(/\s+/).map((tok) => {
+        const m = /^\{([A-Z0-9_]+)(?::(.+))?\}$/.exec(tok);
+        if (!m) return { literal: tok };
+        const [, slot, spec] = m;
+        if (!spec) return { slot, value: true };
+        if (spec === 'name') return { slot, name: true };
+        if (spec === 'cond' || spec === 'bool') return { slot, value: true, [spec]: true };
+        if (spec.startsWith('menu:')) {
+            const [, menu, choices] = spec.split(':');
+            return {slot, menu, choices: choices.split('|')};
+        }
+        if (spec.startsWith('text:')) return { slot, text: true, choices: spec.slice(5).split('|') };
+        const choices = spec.split('|');
+        if (choices.every((c) => /^".*"$/.test(c))) return { slot, field: true, quoted: true, choices: choices.map((c) => c.slice(1, -1)) };
+        return { slot, field: true, choices };
+    });
+    const last = parts.length - 1;
+    const source = parts.map((p, i) => {
+        if (p.literal !== undefined) return escapeRe(p.literal);
+        if (p.name) return '([A-Za-z_]\\w*)';
+        if (p.quoted) return '("[^"]*")';
+        if (p.choices && !p.menu) return `(${p.choices.map(escapeRe).join('|')})`;
+        return i === last ? '(.+)' : '(.+?)';
+    }).join('\\s+');
+    const shape = { parts, re: new RegExp(`^${source}$`, 'i'), first: parts[0] };
+    compiled.set(entry, shape);
+    return shape;
+}
+
+/** The lower-case words a reporter/boolean of the table can begin with (a cheap first filter). */
+export const ARCADE_FIRST_WORDS = Object.freeze(new Set(ARCADE_WORDS.flatMap((e) => {
+    const { first } = compileArcadeWord(e);
+    return first.literal !== undefined ? [first.literal.toLowerCase()] : first.choices.map((c) => c.toLowerCase());
+})));
+
+/** The entries of the given kinds, in table order (the order is the precedence). */
+export function arcadeWordsOf(kinds) {
+    return ARCADE_WORDS.filter((e) => kinds.includes(e.kind));
+}
+
+/** The entry a block is written back as: the first non-alias word for its opcode. */
+const byOpcode = new Map();
+for (const e of ARCADE_WORDS) if (!e.alias && !byOpcode.has(e.op)) byOpcode.set(e.op, e);
+export function arcadeWordFor(opcode) {
+    return byOpcode.get(opcode) || null;
+}
+
+/**
+ * Write a block back as its word. `read` supplies the slot read-outs:
+ * read.value(input), read.text(input) (raw text), read.field(field),
+ * read.menu(input, menuName) (bare choice or value expression),
+ * read.cond(input) (a Boolean input as condition text, parenthesised).
+ */
+export function spellArcadeWord(entry, read) {
+    const words = compileArcadeWord(entry).parts.map((p) => {
+        if (p.literal !== undefined) return p.literal;
+        if (p.field) {
+            const stored = read.field(p.slot);
+            return p.quoted ? `"${stored}"` : stored;
+        }
+        if (p.menu) {
+            const value = read.menu(p.slot, p.menu);
+            return entry.literalMenu && !p.choices.includes(value) && !/^["(]/.test(value) ? JSON.stringify(value) : value;
+        }
+        if (p.name || p.text) return read.text(p.slot);
+        if (p.bool || p.cond) return read.cond(p.slot);
+        return read.value(p.slot);
+    }).join(' ');
+    return entry.kind === 'hat' ? `WHEN ${words.replace(/^when\s+/i, '')}:` : words;
+}
+
+/**
+ * Migrate the five historical Arcade/Arrays slot-shape mismatches before a
+ * project enters native Blocks. Mutates only recognized, valid menu literals;
+ * returns whether it changed the block. Native fields/inputs win. Reporter
+ * expressions in old direct-menu slots cannot be represented by a dropdown
+ * and are deliberately left untouched for diagnostics, rather than guessed.
+ */
+export function normalizeArcadeBlockSchema(block) {
+    const entry = arcadeWordFor(block?.opcode);
+    if (!entry) return false;
+    const direct = /^arrays_(specialValue|valueBinary|valueUnary|valueCompare)$/.test(entry.op);
+    if (!direct && entry.op !== 'arcade_controllerStep') return false;
+    let changed = false;
+    for (const part of compileArcadeWord(entry).parts) {
+        if (!part.slot || !part.choices) continue;
+        const name = part.slot;
+        const field = block.fields?.[name];
+        const input = block.inputs?.[name];
+        if (direct && part.field && input) {
+            const literal = input[1];
+            const legacy = Array.isArray(literal) && literal[0] === 10 && part.choices.includes(literal[1]);
+            if (field && part.choices.includes(field[0])) {
+                delete block.inputs[name];
+                changed = true;
+            } else if (!field && legacy) {
+                block.fields ||= {};
+                block.fields[name] = [literal[1], null];
+                delete block.inputs[name];
+                changed = true;
+            }
+        } else if (entry.op === 'arcade_controllerStep' && name === 'AXIS' && field && part.choices.includes(field[0])) {
+            block.inputs ||= {};
+            if (!input) block.inputs[name] = [1, [10, field[0]]];
+            delete block.fields[name];
+            changed = true;
+        }
+    }
+    return changed;
+}

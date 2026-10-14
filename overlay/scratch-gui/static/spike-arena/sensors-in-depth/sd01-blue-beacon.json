@@ -1,0 +1,122 @@
+{
+  "id": "sd01-blue-beacon",
+  "title": {
+    "en": "The blue marker",
+    "de": "Die blaue Markierung"
+  },
+  "intro": {
+    "en": "The runway to the hangar is crossed by stripes in several colours. The hangar door opens only when the rover waits on the BLUE stripe. Drive forward and stop on blue - not on the first colour you meet.",
+    "de": "Die Rollbahn zum Hangar wird von Streifen in mehreren Farben gekreuzt. Das Hangartor öffnet sich nur, wenn der Rover auf dem BLAUEN Streifen wartet. Fahre los und halte auf Blau - nicht auf der ersten Farbe, die dir begegnet."
+  },
+  "hints": [
+    {
+      "en": "The colour sensor reports one colour at a time. Ask it about exactly the colour you want.",
+      "de": "Der Farbsensor meldet immer eine Farbe. Frag ihn genau nach der Farbe, die du suchst."
+    },
+    {
+      "en": "Beyond the blue stripe the ice is thin: do not drive past it.",
+      "de": "Hinter dem blauen Streifen ist das Eis dünn: fahre nicht darüber hinaus."
+    }
+  ],
+  "mat": {
+    "width": 170,
+    "height": 70,
+    "background": "white",
+    "paint": "#e7eff6",
+    "shapes": [
+      {
+        "color": "yellow",
+        "shape": {
+          "type": "rect",
+          "x": 55,
+          "y": 35,
+          "w": 4,
+          "h": 70
+        }
+      },
+      {
+        "color": "green",
+        "shape": {
+          "type": "rect",
+          "x": 80,
+          "y": 35,
+          "w": 4,
+          "h": 70
+        }
+      },
+      {
+        "color": "blue",
+        "shape": {
+          "type": "rect",
+          "x": 110,
+          "y": 35,
+          "w": 4,
+          "h": 70
+        }
+      },
+      {
+        "color": "azure",
+        "paint": "#a5d8ff",
+        "shape": {
+          "type": "rect",
+          "x": 155,
+          "y": 35,
+          "w": 30,
+          "h": 70
+        }
+      }
+    ]
+  },
+  "zones": [
+    {
+      "id": "hangar-mark",
+      "role": "goal",
+      "shape": {
+        "type": "rect",
+        "x": 104,
+        "y": 35,
+        "w": 10,
+        "h": 70
+      },
+      "label": {
+        "en": "blue stripe",
+        "de": "blauer Streifen"
+      }
+    },
+    {
+      "id": "thin-ice",
+      "role": "hazard",
+      "shape": {
+        "type": "rect",
+        "x": 155,
+        "y": 35,
+        "w": 30,
+        "h": 70
+      },
+      "label": {
+        "en": "thin ice",
+        "de": "dünnes Eis"
+      }
+    }
+  ],
+  "start": {
+    "x": 20,
+    "y": 35,
+    "heading": 0
+  },
+  "timeLimitMs": 15000,
+  "success": [
+    {
+      "type": "stopIn",
+      "zone": "hangar-mark"
+    }
+  ],
+  "failure": [
+    {
+      "type": "avoid",
+      "zone": "thin-ice"
+    }
+  ],
+  "solution": "sd01-blue-beacon.bw",
+  "wrong": "sd01-blue-beacon.wrong.bw"
+}

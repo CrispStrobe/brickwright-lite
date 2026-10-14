@@ -1,0 +1,96 @@
+{
+  "date": "2026-10-08",
+  "testedSource": "7c1a3859c1714ccd85b089bb4190aed6d8de1569",
+  "auditSourceDirty": false,
+  "tests": {
+    "affected": 30,
+    "gateCoverage": 14,
+    "failed": 0,
+    "skipped": 0
+  },
+  "implementation": {
+    "callbackBindings": [
+      "inline functions/arrows",
+      "global named functions",
+      "forwarded statically bound helper parameters"
+    ],
+    "preserved": [
+      "full helper control flow",
+      "multiple callbacks",
+      "argument/result values",
+      "global captures",
+      "forwarding",
+      "recursion",
+      "yields",
+      "early returns",
+      "block and loop shadowing",
+      "source-order single argument evaluation"
+    ],
+    "additionalFix": "Procedure-local for initializers now use normal declaration value translation instead of text-valued counters"
+  },
+  "differentialRoutes": [
+    "original PXT runtime",
+    "Code\u2192Blocks",
+    "native export\u2192original PXT runtime",
+    "native export\u2192BW reimport",
+    "SB3 save/reload"
+  ],
+  "build": {
+    "errors": 0,
+    "guiBundle": "gui.2f8fb86b.js",
+    "initialBytes": 4360502,
+    "unchangedInitialLimit": 4467136
+  },
+  "browser": {
+    "status": "passed",
+    "pageErrors": [],
+    "rotationSamples": 12,
+    "callbackHelpers": {
+      "nativeFileImport": true,
+      "codeToBlocks": true,
+      "trace": 123,
+      "total": 12,
+      "recursive": 20,
+      "chosen": 12,
+      "controllerResult": 50,
+      "spriteX": 27
+    },
+    "priorJourneys": [
+      "rotation",
+      "projectiles",
+      "destroy-kind",
+      "Code artwork ownership",
+      "multifile source",
+      "typed helper arrays"
+    ]
+  },
+  "baseline184ImportOnly": {
+    "translated": 96,
+    "partial": 87,
+    "malformed": 1
+  },
+  "recoveredTutorialAudit": {
+    "count": 10,
+    "partial": 10,
+    "originalCompilerUnavailable": 10,
+    "partialFragmentsStepped": 10,
+    "blockErrors": 0,
+    "frames": 24,
+    "diagnosticOccurrences": 63,
+    "previousDiagnosticOccurrences": 65,
+    "handlerRefusalsRemovedFrom": [
+      "arcade-5d0c02f598d4eda3",
+      "arcade-67958b6a5a875e41",
+      "arcade-e4b668bd7d79aed0"
+    ],
+    "behavioralEquivalence": "not-measured"
+  },
+  "boundary": [
+    "Static nonescaping callable specialization, not full first-class closures",
+    "Caller-local captures, stored/dynamic callable values, nested callable arguments, callable type aliases and namespace-function values remain gaps",
+    "Original higher-order abstraction is not reconstructed in Code/Blocks; generated ordinary procedures are editable",
+    "Callable blocks, closure authoring and procedure rename reference qualification remain GUI work",
+    "Tutorial package/namespace/multiplayer/countdown/sound gaps remain explicit; no full-game claim"
+  ],
+  "privateEvidence": "compat-corpora/reports/2026-10-08/arcade-static-callback-helpers/"
+}

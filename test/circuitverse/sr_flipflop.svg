@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="744" height="295">
+<style>
+            .gate { fill: #f8f9fa; stroke: #343a40; stroke-width: 2px; }
+            .wire { fill: none; stroke: #495057; stroke-width: 2px; stroke-linejoin: round; }
+            .label { font-family: sans-serif; font-size: 10px; fill: #212529; text-anchor: middle; dominant-baseline: middle; }
+            .pin { fill: #495057; }
+            .port-label { font-family: sans-serif; font-size: 7px; fill: #6c757d; }
+        </style>
+<g transform="translate(50, 50)">
+  <path class="wire" d="M 408 49.666666666666664 L 418 49.666666666666664 L 418 109.66666666666666 L 460 109.66666666666666" />
+  <path class="wire" d="M 296 43 L 348 43" />
+  <path class="wire" d="M 296 103 L 306 103 L 306 56.33333333333333 L 348 56.33333333333333" />
+  <path class="wire" d="M 408 49.666666666666664 L 418 49.666666666666664 L 418 12 L 82 12 L 82 32 L 124 32" />
+  <path class="wire" d="M 72 42 L 124 42" />
+  <path class="wire" d="M 72 102 L 82 102 L 82 52 L 124 52" />
+  <path class="wire" d="M 184 42 L 194 42 L 194 93 L 236 93" />
+  <path class="wire" d="M 184 103 L 236 103" />
+  <path class="wire" d="M 184 163 L 194 163 L 194 113 L 236 113" />
+  <path class="wire" d="M 408 49.666666666666664 L 460 49.666666666666664" />
+  <path class="wire" d="M 520 109.66666666666666 L 572 109.66666666666666" />
+  <rect class="gate" rx="3" x="12" y="22" width="60" height="40" />
+  <text class="label" x="42" y="42">CONST</text>
+  <circle class="pin" cx="12" cy="42" r="2" />
+  <circle class="pin" cx="72" cy="42" r="2" />
+  <rect class="gate" rx="3" x="124" y="83" width="60" height="40" />
+  <text class="label" x="154" y="103">CONST</text>
+  <circle class="pin" cx="124" cy="103" r="2" />
+  <circle class="pin" cx="184" cy="103" r="2" />
+  <rect class="gate" rx="3" x="124" y="143" width="60" height="40" />
+  <text class="label" x="154" y="163">IN</text>
+  <circle class="pin" cx="124" cy="163" r="2" />
+  <circle class="pin" cx="184" cy="163" r="2" />
+  <rect class="gate" rx="3" x="12" y="82" width="60" height="40" />
+  <text class="label" x="42" y="102">IN</text>
+  <circle class="pin" cx="12" cy="102" r="2" />
+  <circle class="pin" cx="72" cy="102" r="2" />
+  <rect class="gate" rx="3" x="236" y="23" width="60" height="40" />
+  <text class="label" x="266" y="43">IN</text>
+  <circle class="pin" cx="236" cy="43" r="2" />
+  <circle class="pin" cx="296" cy="43" r="2" />
+  <polygon class="gate" points="460,89.66666666666666 512,109.66666666666666 460,129.66666666666666" />
+  <circle class="gate" cx="516" cy="109.66666666666666" r="4" />
+  <circle class="pin" cx="460" cy="109.66666666666666" r="2" />
+  <text class="port-label" x="464" y="112.66666666666666">a</text>
+  <circle class="pin" cx="520" cy="109.66666666666666" r="2" />
+  <rect class="gate" x="348" y="29.666666666666664" width="60" height="40" />
+  <polygon class="wire" points="348,54.66666666666666 358,59.66666666666666 348,64.66666666666666" />
+  <text class="label" x="378" y="44.666666666666664">DFF</text>
+  <circle class="pin" cx="348" cy="56.33333333333333" r="2" />
+  <text class="port-label" x="352" y="59.33333333333333">d</text>
+  <circle class="pin" cx="348" cy="43" r="2" />
+  <text class="port-label" x="352" y="46">clk</text>
+  <circle class="pin" cx="408" cy="49.666666666666664" r="2" />
+  <polygon class="gate" points="124,22 184,32 184,52 124,62" />
+  <text class="label" x="154" y="42">MUX</text>
+  <circle class="pin" cx="124" cy="52" r="2" />
+  <text class="port-label" x="128" y="55">sel</text>
+  <circle class="pin" cx="124" cy="32" r="2" />
+  <text class="port-label" x="128" y="35">d0</text>
+  <circle class="pin" cx="124" cy="42" r="2" />
+  <text class="port-label" x="128" y="45">d1</text>
+  <circle class="pin" cx="184" cy="42" r="2" />
+  <polygon class="gate" points="236,83 296,93 296,113 236,123" />
+  <text class="label" x="266" y="103">MUX</text>
+  <circle class="pin" cx="236" cy="113" r="2" />
+  <text class="port-label" x="240" y="116">sel</text>
+  <circle class="pin" cx="236" cy="93" r="2" />
+  <text class="port-label" x="240" y="96">d0</text>
+  <circle class="pin" cx="236" cy="103" r="2" />
+  <text class="port-label" x="240" y="106">d1</text>
+  <circle class="pin" cx="296" cy="103" r="2" />
+  <rect class="gate" rx="3" x="460" y="29.666666666666664" width="60" height="40" />
+  <text class="label" x="490" y="49.666666666666664">OUT</text>
+  <circle class="pin" cx="460" cy="49.666666666666664" r="2" />
+  <circle class="pin" cx="520" cy="49.666666666666664" r="2" />
+  <rect class="gate" rx="3" x="572" y="89.66666666666666" width="60" height="40" />
+  <text class="label" x="602" y="109.66666666666666">OUT</text>
+  <circle class="pin" cx="572" cy="109.66666666666666" r="2" />
+  <circle class="pin" cx="632" cy="109.66666666666666" r="2" />
+</g>
+</svg>

@@ -1,0 +1,216 @@
+/**
+ * Closed, semantic capability vocabulary. Values describe public broker operations, never native
+ * command names. Adding an operation is a security review: unknown names and wildcards fail closed.
+ */
+const {validArenaInputs, validArenaProgram, validNuttxPacket, validNuttxStorageSubmit} = require('./arena-inputs');
+const {validProgramUart} = require('./spike-program-uart-contract');
+const VOCABULARY_VERSION = 1;
+const MAX_DIAGNOSTICS = 256;
+const OPERATIONS = Object.freeze({
+    'platform.kind.read': Object.freeze({
+        validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])
+    }),
+    'renode.spike.micropython.image.choose': Object.freeze({validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.spike.session.start': Object.freeze({
+        validate: args => isPlainRecord(args) && (hasOnlyKeys(args, []) || (hasOnlyKeys(args, ['backend']) && ['guest', 'nuttx', 'micropython'].includes(args.backend)) || (hasOnlyKeys(args, ['backend', 'topology']) && ((args.backend === 'nuttx' && ['default', 'six-motors', 'dual-ultrasonic'].includes(args.topology)) || (args.backend === 'micropython' && args.topology === 'six-motors'))))
+    }),
+    'renode.spike.session.close': Object.freeze({
+        validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])
+    }),
+    'renode.spike.run': Object.freeze({validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.spike.pause': Object.freeze({validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.spike.reset': Object.freeze({validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.spike.step': Object.freeze({validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.spike.registers.read': Object.freeze({validate: args =>
+        isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.spike.memory.read': Object.freeze({validate: args => isPlainRecord(args) &&
+        hasOnlyKeys(args, ['address', 'length']) && Number.isInteger(args.address) && args.address >= 0 &&
+        args.address <= 0xffffffff && Number.isInteger(args.length) && args.length >= 1 && args.length <= 4096}),
+    'renode.spike.arena.inputs.write': Object.freeze({validate: validArenaInputs}),
+    'renode.spike.program.packet': Object.freeze({validate: validNuttxPacket}),
+    'renode.spike.micropython.uart.read': Object.freeze({validate: args => validProgramUart('read', args)}),
+    'renode.spike.micropython.uart.write': Object.freeze({validate: args => validProgramUart('write', args)}),
+    'renode.spike.micropython.uart.close': Object.freeze({validate: args => validProgramUart('close', args)}),
+    'renode.spike.program.storage.submit': Object.freeze({validate: validNuttxStorageSubmit}),
+    'renode.spike.arena.program.load': Object.freeze({validate: validArenaProgram}),
+    'renode.spike.state.read': Object.freeze({validate: args =>
+        isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.spike.breakpoint.set': Object.freeze({validate: args => isPlainRecord(args) &&
+        hasOnlyKeys(args, ['address']) && Number.isInteger(args.address) && args.address >= 0 &&
+        args.address <= 0xffffffff}),
+    'renode.spike.breakpoint.clear': Object.freeze({validate: args => isPlainRecord(args) &&
+        hasOnlyKeys(args, ['address']) && Number.isInteger(args.address) && args.address >= 0 &&
+        args.address <= 0xffffffff}),
+    'renode.ev3.session.start': Object.freeze({validate: args =>
+        isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.ev3.session.close': Object.freeze({validate: args =>
+        isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.ev3.run': Object.freeze({validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.ev3.pause': Object.freeze({validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.ev3.reset': Object.freeze({validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.ev3.step': Object.freeze({validate: args => isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.ev3.registers.read': Object.freeze({validate: args =>
+        isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.ev3.memory.read': Object.freeze({validate: args => isPlainRecord(args) &&
+        hasOnlyKeys(args, ['address', 'length']) && Number.isInteger(args.address) && args.address >= 0 &&
+        args.address <= 0xffffffff && Number.isInteger(args.length) && args.length >= 1 && args.length <= 4096}),
+    'renode.ev3.state.read': Object.freeze({validate: args =>
+        isPlainRecord(args) && hasOnlyKeys(args, [])}),
+    'renode.ev3.button.set': Object.freeze({validate: args => isPlainRecord(args) &&
+        hasOnlyKeys(args, ['button', 'pressed']) &&
+        ['center', 'left', 'back', 'right', 'down', 'up'].includes(args.button) && typeof args.pressed === 'boolean'}),
+    'renode.ev3.analog.set-channel': Object.freeze({validate: args => isPlainRecord(args) &&
+        hasOnlyKeys(args, ['channel', 'value']) && Number.isInteger(args.channel) && args.channel >= 0 &&
+        args.channel <= 15 && Number.isInteger(args.value) && args.value >= 0 && args.value <= 1023}),
+    'renode.ev3.breakpoint.set': Object.freeze({validate: args => isPlainRecord(args) &&
+        hasOnlyKeys(args, ['address']) && Number.isInteger(args.address) && args.address >= 0 &&
+        args.address <= 0xffffffff}),
+    'renode.ev3.breakpoint.clear': Object.freeze({validate: args => isPlainRecord(args) &&
+        hasOnlyKeys(args, ['address']) && Number.isInteger(args.address) && args.address >= 0 &&
+        args.address <= 0xffffffff}),
+    'project.metadata.read': Object.freeze({
+        validate: args => {
+            if (!isPlainRecord(args) || !hasOnlyKeys(args, ['field'])) return false;
+            return args.field === 'title' || args.field === 'locale';
+        }
+    })
+});
+
+const isPlainRecord = value => Boolean(value) && typeof value === 'object' &&
+    Object.getPrototypeOf(value) === Object.prototype;
+const hasOnlyKeys = (value, allowed) => {
+    const keys = Object.keys(value);
+    return keys.length === allowed.length && keys.every(key => allowed.includes(key));
+};
+
+class CapabilityBroker {
+    /**
+     * @param {object} handlers semantic operation handlers, keyed by vocabulary operation
+     */
+    constructor (handlers = {}) {
+        this._handlers = Object.assign(Object.create(null), handlers);
+        this._sessions = new WeakMap();
+        this._diagnostics = [];
+        this._diagnosticSequence = 0;
+    }
+
+    _record (session, event, code, operation) {
+        const hostRecord = session && session.hostRecord;
+        const entry = Object.freeze({
+            seq: this._diagnosticSequence++,
+            time: Date.now(),
+            event,
+            workerId: hostRecord ? hostRecord.workerId : null,
+            slug: hostRecord ? hostRecord.slug : null,
+            declared: session ? session.declaredSnapshot : Object.freeze([]),
+            operation: OPERATIONS[operation] ? operation : null,
+            code
+        });
+        this._diagnostics.push(entry);
+        if (this._diagnostics.length > MAX_DIAGNOSTICS) {
+            this._diagnostics.splice(0, this._diagnostics.length - MAX_DIAGNOSTICS);
+        }
+    }
+
+    _refuse (session, code, message, operation) {
+        this._record(session, 'refused', code, operation);
+        const error = new Error(message);
+        error.code = code;
+        throw error;
+    }
+
+    /** A frozen, redacted copy suitable for product diagnostics. */
+    diagnostics () {
+        return Object.freeze(this._diagnostics.slice());
+    }
+
+    /** Bind authorization to the worker object and manager-created immutable host record. */
+    attach (worker, hostRecord) {
+        if (!worker || !hostRecord || !Object.isFrozen(hostRecord) || hostRecord.protocol !== 1 ||
+            !Number.isInteger(hostRecord.workerId) || !Array.isArray(hostRecord.capabilities) ||
+            !Object.isFrozen(hostRecord.capabilities)) {
+            throw new Error('Capability broker requires an immutable host worker record');
+        }
+        if (this._sessions.has(worker)) throw new Error('Capability worker is already attached');
+        const declared = new Set();
+        for (const capability of hostRecord.capabilities) {
+            if (typeof capability !== 'string' || capability.includes('*') || !OPERATIONS[capability]) {
+                throw new Error(`Unknown capability declaration: ${String(capability)}`);
+            }
+            declared.add(capability);
+        }
+        const declaredSnapshot = Object.freeze(Array.from(declared).sort());
+        const session = {hostRecord, declared, declaredSnapshot, lastRequestId: -1, active: true};
+        this._sessions.set(worker, session);
+        this._record(session, 'attached', 'worker-attached', null);
+    }
+
+    /** Permanently revoke the worker's current session. The same object cannot submit more requests. */
+    revoke (worker) {
+        const session = this._sessions.get(worker);
+        if (session) {
+            session.active = false;
+            this._record(session, 'revoked', 'worker-revoked', null);
+        }
+        // Keep an inactive WeakMap tombstone. It is garbage-collected with the worker, retains
+        // attribution for refused stale calls, and prevents the same transport object from being
+        // rebound to a fresh authority after revocation.
+    }
+
+    /**
+     * Validate and execute one semantic request. Authorization comes exclusively from the WeakMap
+     * entry for `worker`; caller-supplied URL, slug, digest, worker ID, or reply fields are invalid.
+     */
+    async request (worker, envelope) {
+        const session = this._sessions.get(worker);
+        if (!session || !session.active) {
+            return this._refuse(session, 'invalid-session', 'Capability worker is not active', null);
+        }
+        if (!isPlainRecord(envelope) ||
+            !hasOnlyKeys(envelope, ['protocol', 'requestId', 'operation', 'args'])) {
+            return this._refuse(session, 'invalid-envelope', 'Invalid capability request envelope', null);
+        }
+        if (envelope.protocol !== VOCABULARY_VERSION || !Number.isSafeInteger(envelope.requestId) ||
+            envelope.requestId < 0 || typeof envelope.operation !== 'string') {
+            return this._refuse(session, 'invalid-envelope', 'Invalid capability request envelope', null);
+        }
+        if (envelope.requestId <= session.lastRequestId) {
+            return this._refuse(session, 'replayed-request', 'Replayed capability request', envelope.operation);
+        }
+        if (envelope.requestId !== session.lastRequestId + 1) {
+            return this._refuse(session, 'out-of-order-request', 'Out-of-order capability request',
+                envelope.operation);
+        }
+        session.lastRequestId = envelope.requestId;
+
+        const definition = OPERATIONS[envelope.operation];
+        if (!definition || envelope.operation.includes('*')) {
+            return this._refuse(session, 'unknown-operation', 'Unknown capability operation', envelope.operation);
+        }
+        if (!session.declared.has(envelope.operation)) {
+            return this._refuse(session, 'undeclared-operation', 'Capability was not declared', envelope.operation);
+        }
+        if (!definition.validate(envelope.args)) {
+            return this._refuse(session, 'invalid-arguments', 'Invalid capability arguments', envelope.operation);
+        }
+        const handler = this._handlers[envelope.operation];
+        if (typeof handler !== 'function') {
+            return this._refuse(session, 'unavailable-operation', 'Capability operation is unavailable',
+                envelope.operation);
+        }
+
+        let result;
+        try {
+            result = await handler(Object.freeze(Object.assign({}, envelope.args)), session.hostRecord);
+        } catch {
+            return this._refuse(session, 'operation-failed', 'Capability operation failed', envelope.operation);
+        }
+        if (!session.active || this._sessions.get(worker) !== session) {
+            return this._refuse(session, 'stale-reply', 'Stale capability reply after revocation', envelope.operation);
+        }
+        this._record(session, 'allowed', 'operation-allowed', envelope.operation);
+        return result;
+    }
+}
+
+module.exports = {CapabilityBroker, MAX_DIAGNOSTICS, OPERATIONS, VOCABULARY_VERSION};

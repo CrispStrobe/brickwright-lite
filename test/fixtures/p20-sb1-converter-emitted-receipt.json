@@ -1,0 +1,17 @@
+{
+  "schema": "brickwright/p20-sb1-converter-emitted/v1",
+  "hostedRun": 34058754836,
+  "commit": "c0893500f91b86b60bdcc6bac8ca40fd861fee1d",
+  "package": {
+    "name": "scratch-sb1-converter",
+    "version": "1.0.317",
+    "integrity": "sha512-1APiiOuWzI0r3a9s3I2OZthAXZJWvy4dp5gxlNyR1RhsakeqfU45t+88ITla88CvUA15uWEYvkC1GsEewUBIHQ=="
+  },
+  "chunk": "sb1-converter.3ef272d0de5c57251335.js",
+  "emittedBytes": 43171,
+  "gzipBytes": 14086,
+  "sha256": "a1135f6b88555da7af399161959a77f2981d13eba5b55ef43847d996a4667d84",
+  "floorBytes": 76800,
+  "clearsFloor": false,
+  "errors": []
+}

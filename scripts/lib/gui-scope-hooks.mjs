@@ -1,0 +1,71 @@
+/**
+ * Module-resolution hooks: give root tests the GUI package's dependency scope.
+ *
+ * overlay/scratch-gui/src is the GUI's source — integrate.mjs copies it into
+ * packages/scratch-gui/src, where its bare imports (avr8js, rp2040js, jszip…)
+ * resolve from that package's node_modules. A root test that imports an overlay
+ * module directly is therefore importing GUI code from outside the GUI's
+ * resolution scope; node walks up from overlay/… and finds nothing, and the
+ * test fails on a clean runner with "Cannot find package 'avr8js'". It passed
+ * on this VPS only because a stray node_modules two directories above the
+ * worktree happened to hold avr8js — which is how the boundary went unnoticed.
+ *
+ * These hooks are the boundary, stated once: when a BARE specifier fails to
+ * resolve, retry it from packages/scratch-gui/package.json. Nothing else —
+ * relative and absolute specifiers are never touched. The default scope is
+ * packages/scratch-gui; BW_INTEGRATED_ROOT may explicitly relocate it for a
+ * prepared external dependency tree. The corpus job runs without node_modules
+ * at all, so there the fallback finds nothing and behaviour is unchanged.
+ *
+ * VISIBLE, NOT SILENT: with BW_GUI_SCOPE_LOG=<file> every re-resolution is
+ * appended as `specifier\tparentURL\ttestFile` (the test file is the one node
+ * --test handed this process), the unit-test step prints the sorted summary, and
+ * scripts/check-gui-scope.mjs fails the step when a specifier or a test is not
+ * in scripts/lib/gui-scope-allowed.json. Measured first, then declared: the
+ * boundary grows only by review.
+ *
+ * Registered from scripts/lib/register-gui-scope.mjs via `node --import`.
+ * test/gui-scope-resolution.test.mjs proves both halves (fails without,
+ * resolves with) and that the unit-test invocation carries the --import.
+ */
+import {existsSync, appendFileSync} from 'node:fs';
+import {fileURLToPath, pathToFileURL} from 'node:url';
+import path from 'node:path';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const guiRoot = process.env.BW_INTEGRATED_ROOT ? path.resolve(process.env.BW_INTEGRATED_ROOT) :
+    path.join(repoRoot, 'packages', 'scratch-gui');
+const guiPackageJson = path.join(guiRoot, 'package.json');
+const guiParentURL = pathToFileURL(guiPackageJson).href;
+const guiHasDeps = existsSync(path.join(guiRoot, 'node_modules'));
+const logFile = process.env.BW_GUI_SCOPE_LOG || '';
+// Hooks run on their own thread, whose argv does not carry the test file; the
+// main thread (register-gui-scope.mjs) reads it from process.argv and hands it
+// over through register()'s data → initialize().
+let testLabel = '(no test file in argv)';
+export function initialize (data) {
+    if (data && data.testFile) {
+        const rel = path.relative(repoRoot, path.resolve(data.testFile)).replace(/\\/g, '/');
+        testLabel = rel.startsWith('..') ? path.resolve(data.testFile) : rel; // outside the repo: say where
+    }
+}
+
+const isBare = specifier => !/^(?:\.{1,2}\/|\/|[a-zA-Z]:[\\/]|file:|node:|data:|#)/.test(specifier);
+const NOT_FOUND = new Set(['ERR_MODULE_NOT_FOUND', 'ERR_PACKAGE_PATH_NOT_EXPORTED']);
+
+export async function resolve (specifier, context, nextResolve) {
+    try {
+        return await nextResolve(specifier, context);
+    } catch (err) {
+        if (!guiHasDeps || !isBare(specifier) || !NOT_FOUND.has(err && err.code)) throw err;
+        if (context.parentURL === guiParentURL) throw err; // already retried once
+        // node merges the override INTO the context object it handed us, so the
+        // importer has to be read before the retry or the log names the wrong file.
+        const importer = context.parentURL || '(entry)';
+        const result = await nextResolve(specifier, {...context, parentURL: guiParentURL});
+        if (logFile) {
+            try { appendFileSync(logFile, `${specifier}\t${importer}\t${testLabel}\n`); } catch { /* the log is a courtesy, never a failure */ }
+        }
+        return result;
+    }
+}

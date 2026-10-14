@@ -1,0 +1,36 @@
+{
+  "$comment": "The GUI-scope boundary, declared. Each key is a bare specifier that scripts/lib/gui-scope-hooks.mjs re-resolves from packages/scratch-gui for a ROOT test; `tests` lists every root test that causes it (repo-relative). scripts/check-gui-scope.mjs fails the CI unit step by name on any specifier or test not here. Exact list, no wildcards. The original boundary was measured 2026-09-06 in run 34012073586; Track A adds the named tests whose owned overlay imports cross the same dependency boundary. Adding an entry is a review decision made in the same commit as the import.",
+  "avr8js": {
+    "tests": [
+      "test/arduboy.test.mjs",
+      "test/avr-debug-live-event-breakpoint.test.mjs",
+      "test/debug-js-core-step-depth-live.test.mjs",
+      "test/microbit-pins-drive-circuit.test.mjs",
+      "test/shipped-lesson-images.test.mjs",
+      "test/z80-cycle-provider-integration.test.mjs"
+    ],
+    "why": "owned board/Arduboy sources import the AVR adapter, debug target or chip table; avr8js belongs to the GUI package rather than the root test package"
+  },
+  "rp2040js": {
+    "tests": [
+      "test/debug-js-core-step-depth-live.test.mjs",
+      "test/rp2040-bootrom.test.mjs",
+      "test/rp2040-image.test.mjs",
+      "test/shipped-lesson-images.test.mjs"
+    ],
+    "why": "owned RP2040 adapter/debug sources execute the GUI package's rp2040js core"
+  },
+  "three": {
+    "tests": [
+      "test/spike-arena-3d-pane.test.mjs",
+      "test/spike-arena-3d.test.mjs"
+    ],
+    "why": "the SPIKE arena's 3D scene builder (lib/spike-arena/arena-scene3d.js) and view import three, a GUI-package dependency lazy-loaded with the 3D view; the tests build the scene headless"
+  },
+  "three/addons/controls/OrbitControls.js": {
+    "tests": [
+      "test/spike-arena-3d-pane.test.mjs"
+    ],
+    "why": "the pane test loads the real 3D view module (arena-view3d.js), which imports three's orbit control, and asserts its no-WebGL fallback"
+  }
+}

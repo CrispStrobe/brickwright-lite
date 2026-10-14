@@ -1,0 +1,22 @@
+{
+  "vcc": 15,
+  "parts": [
+    {"id": "vp", "kind": "vsource", "params": {"volts": 15}, "x": 130, "y": 90},
+    {"id": "vn", "kind": "vsource", "params": {"volts": 15}, "x": 130, "y": 470},
+    {"id": "vin", "kind": "vsource", "params": {"volts": 1}, "x": 310, "y": 250},
+    {"id": "gnd", "kind": "gnd", "params": {}, "x": 310, "y": 470},
+    {"id": "u1", "kind": "lm741", "params": {}, "x": 560, "y": 270},
+    {"id": "load", "kind": "resistor", "params": {"ohms": 100000}, "x": 800, "y": 300}
+  ],
+  "wires": [
+    {"from": "vp", "fromTerminal": "pos", "to": "u1", "toTerminal": "vpos"},
+    {"from": "vp", "fromTerminal": "neg", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "vn", "fromTerminal": "pos", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "vn", "fromTerminal": "neg", "to": "u1", "toTerminal": "vneg"},
+    {"from": "vin", "fromTerminal": "neg", "to": "gnd", "toTerminal": "gnd"},
+    {"from": "vin", "fromTerminal": "pos", "to": "u1", "toTerminal": "inp"},
+    {"from": "u1", "fromTerminal": "out", "to": "u1", "toTerminal": "inn"},
+    {"from": "u1", "fromTerminal": "out", "to": "load", "toTerminal": "a"},
+    {"from": "load", "fromTerminal": "b", "to": "gnd", "toTerminal": "gnd"}
+  ]
+}

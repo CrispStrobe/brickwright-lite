@@ -1,0 +1,125 @@
+# Build the Pascal→.COM compile image and publish it to GHCR — then PROVE it.
+#
+# services/pascal-ack-compiler/Dockerfile is a two-stage build: the first stage
+# builds ACK (the Amsterdam Compiler Kit, BSD-3) FROM SOURCE at the pinned
+# commit and the second serves a node:http /compile endpoint that shells
+# `ack -mmsdos86 -O`. This box is too small to build ACK or Docker locally, so
+# the image is built HERE, on CI, and pushed to the GitHub Container Registry.
+#
+# The point of this workflow is "one command from live": once it is green the
+# published image compiles Pascal, and services/pascal-ack-compiler/DEPLOY.md is
+# a single `deploy` away from a running endpoint. So a build that merely SUCCEEDS
+# is not enough — the second job pulls the PUSHED image, runs it, POSTs a Pascal
+# `writeln('HELLO')` to /compile, and fails the workflow unless a real .COM comes
+# back. That is the difference between "an image published" and "an image that
+# compiles Pascal".
+name: pascal-ack-image
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'services/pascal-ack-compiler/**'
+      - '.github/workflows/pascal-ack-image.yml'
+
+concurrency:
+  group: pascal-ack-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/crispstrobe/pascal-ack-compiler
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image_sha_tag: ${{ steps.tags.outputs.sha_tag }}
+    steps:
+      - name: Check out the service source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - name: Log in to GHCR
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349 # v3.7.1
+      - name: Compute the immutable sha tag
+        id: tags
+        run: |
+          echo "sha_tag=${IMAGE}:sha-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+      - name: Build the ACK image and push to GHCR
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
+        with:
+          context: services/pascal-ack-compiler
+          file: services/pascal-ack-compiler/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+
+  smoke-test:
+    # PROOF the PUBLISHED image compiles Pascal. A build that merely succeeds
+    # could still ship an image whose ack cannot run; this job pulls what was
+    # pushed, runs it, and asserts a real .COM comes back for a tiny program.
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pull the published image
+        run: docker pull "${{ needs.build-and-push.outputs.image_sha_tag }}"
+      - name: Run the published image
+        run: docker run -d --name pac -p 8080:8080 "${{ needs.build-and-push.outputs.image_sha_tag }}"
+      - name: Wait for /health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/health >/dev/null 2>&1; then
+              echo "healthy after $((i*2))s"; curl -fsS http://localhost:8080/health; echo; exit 0
+            fi
+            sleep 2
+          done
+          echo "server never became healthy"; docker logs pac || true; exit 1
+      - name: Compile Pascal and assert a .COM comes back
+        run: |
+          set -euo pipefail
+          src=$'program hello(output);\nbegin\n  writeln(\x27HELLO\x27)\nend.\n'
+          payload=$(jq -n --arg s "$src" '{source:$s}')
+          resp=$(curl -fsS -m 60 -X POST http://localhost:8080/compile \
+            -H 'content-type: application/json' -d "$payload")
+          echo "$resp" | jq '{success, format, bytes, errors}'
+          ok=$(echo "$resp"   | jq -r '.success')
+          fmt=$(echo "$resp"  | jq -r '.format')
+          bytes=$(echo "$resp" | jq -r '.bytes')
+          if [ "$ok" != "true" ]; then
+            echo "FAIL: the published image did NOT compile Pascal"; docker logs pac || true; exit 1
+          fi
+          [ "$fmt" = "com" ] || { echo "FAIL: format is '$fmt', not 'com'"; exit 1; }
+          [ "$bytes" -gt 0 ] || { echo "FAIL: a zero-byte .COM"; exit 1; }
+          echo "$resp" | jq -r '.base64' | base64 -d > out.com
+          actual=$(stat -c%s out.com)
+          [ "$actual" -eq "$bytes" ] || { echo "FAIL: byte count mismatch ($actual != $bytes)"; exit 1; }
+          if ! grep -qa HELLO out.com; then
+            echo "FAIL: the compiled .COM does not contain the writeln string"; exit 1
+          fi
+          echo "PASS: the published image compiled Pascal to a ${bytes}-byte .COM containing HELLO"
+      - name: Stop the container
+        if: always()
+        run: docker rm -f pac || true

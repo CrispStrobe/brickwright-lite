@@ -1,0 +1,32 @@
+[
+  {
+    "id": "gui.gui.shouldDeleteSprite",
+    "description": "Message to indicate whether selected sprite should be deleted.",
+    "defaultMessage": "Are you sure you want to delete this sprite?"
+  },
+  {
+    "id": "gui.gui.shouldDeleteCostume",
+    "description": "Message to indicate whether selected costume should be deleted.",
+    "defaultMessage": "Are you sure you want to delete this costume?"
+  },
+  {
+    "id": "gui.gui.shouldDeleteSound",
+    "description": "Message to indicate whether selected sound should be deleted.",
+    "defaultMessage": "Are you sure you want to delete this sound?"
+  },
+  {
+    "id": "gui.gui.confirm",
+    "description": "Yes - should delete the sprite",
+    "defaultMessage": "yes"
+  },
+  {
+    "id": "gui.gui.cancel",
+    "description": "No - cancel deletion",
+    "defaultMessage": "no"
+  },
+  {
+    "id": "gui.gui.deleteAssetHeading",
+    "description": "Heading of confirmation prompt to delete asset",
+    "defaultMessage": "Confirm Asset Deletion"
+  }
+]

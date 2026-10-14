@@ -1,0 +1,95 @@
+{
+  "_provenance": {
+    "what": "the electricity-diode lesson object as it shipped BEFORE its repair",
+    "extractedFrom": "39d1eb42593e688b355bd0ef4ecb89d5f6b8a38f — the parent of 310a31278, which repaired it",
+    "path": "overlay/scratch-gui/src/components/gui/lesson-waves/electricity-1.json",
+    "why": "Vendored rather than read out of git at test time. CI clones at depth 1 (actions/checkout@v4 with no fetch-depth), so the parent commit is not in the runner object store and `git show` failed on every main run. A gate that reads git history also breaks on the next squash or force-push. Re-derive with: git show 39d1eb42593e688b355bd0ef4ecb89d5f6b8a38f:overlay/scratch-gui/src/components/gui/lesson-waves/electricity-1.json"
+  },
+  "lesson": {
+    "id": "electricity-diode",
+    "version": 1,
+    "exampleId": "42-diode-rectifier",
+    "loadMode": "circuit-only",
+    "wave": "electricity-1",
+    "topic": "diodes",
+    "domains": [
+      "circuits",
+      "components",
+      "instruments"
+    ],
+    "depth": "foundation",
+    "ageGuidance": "11+",
+    "minutes": 18,
+    "environment": "simulation",
+    "languages": [],
+    "prerequisites": [
+      "electricity-polarity"
+    ],
+    "copy": {
+      "en": {
+        "title": "A diode selects a direction",
+        "objective": "Use input and output traces to explain half-wave rectification and forward voltage."
+      },
+      "de": {
+        "title": "Eine Diode wählt eine Richtung",
+        "objective": "Erkläre mit Eingangs- und Ausgangskurve Einweggleichrichtung und Durchlassspannung."
+      }
+    },
+    "checkpoints": [
+      {
+        "id": "predict",
+        "copy": {
+          "en": {
+            "action": "Sketch the output for positive and negative input halves.",
+            "explain": "The diode conducts mainly for one polarity, turning alternating input into one-direction pulses.",
+            "hint": "Mark the diode's forward direction on the schematic first.",
+            "manual": "I sketched the output"
+          },
+          "de": {
+            "action": "Skizziere den Ausgang für positive und negative Eingangshälften.",
+            "explain": "Die Diode leitet hauptsächlich bei einer Polung und erzeugt so gerichtete Impulse.",
+            "hint": "Markiere zuerst die Durchlassrichtung im Schaltbild.",
+            "manual": "Ich habe den Ausgang skizziert"
+          }
+        }
+      },
+      {
+        "id": "observe",
+        "observe": {
+          "event": "circuit-ready"
+        },
+        "copy": {
+          "en": {
+            "action": "Compare input and output traces over a full cycle.",
+            "explain": "The conducting half is also reduced by the diode's forward voltage.",
+            "hint": "Measure corresponding peaks rather than estimating from screen height.",
+            "manual": "I compared a full cycle"
+          },
+          "de": {
+            "action": "Vergleiche Eingangs- und Ausgangskurve über eine volle Periode.",
+            "explain": "Die leitende Hälfte wird zusätzlich um die Durchlassspannung der Diode kleiner.",
+            "hint": "Miss zugehörige Spitzenwerte statt nur die Bildhöhe zu schätzen.",
+            "manual": "Ich habe eine volle Periode verglichen"
+          }
+        }
+      },
+      {
+        "id": "explain",
+        "copy": {
+          "en": {
+            "action": "Explain why this output is not smooth DC.",
+            "explain": "Rectification controls direction; filtering and regulation are separate jobs.",
+            "hint": "Describe what happens between successive positive peaks.",
+            "manual": "I explained the pulsing output"
+          },
+          "de": {
+            "action": "Erkläre, warum dieser Ausgang keine glatte Gleichspannung ist.",
+            "explain": "Gleichrichtung bestimmt die Richtung; Glättung und Regelung sind eigene Aufgaben.",
+            "hint": "Beschreibe, was zwischen zwei positiven Spitzen geschieht.",
+            "manual": "Ich habe den pulsierenden Ausgang erklärt"
+          }
+        }
+      }
+    ]
+  }
+}

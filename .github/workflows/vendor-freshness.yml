@@ -1,0 +1,202 @@
+# Vendored trees must not rot silently.
+#
+# The sync scripts have always had --check modes that exit non-zero on
+# drift; nothing ran them, which is how the designer's vendored copy
+# shipped 41 files behind upstream (the entire retro DIP set missing)
+# without any machine noticing. This workflow is the machine that
+# notices: on every push AND nightly, clone the upstreams and run every
+# check. The nightly matters — upstream can move while lite is idle, and
+# a push-only gate would stay green on a stale tree until the next
+# unrelated commit.
+name: vendor-freshness
+
+on:
+  push:
+    branches: [main]
+    # Same nine top-level prose files build.yml skips, and for the same
+    # measured reason: on 2026-08-25 the fleet's ledger pushes starved this
+    # workflow's queue so completely that five consecutive runs sat `queued`
+    # and never started at all. A run that never starts is not a gate.
+    #
+    # THE HEADER ABOVE ARGUES FOR RUNNING ON EVERY PUSH. It still holds, and
+    # this does not weaken it, because the two reasons it gives are untouched:
+    #
+    #   the PUSH run is an INTEGRITY gate — does the vendored tree match
+    #     vendor-pins.json? Its inputs are vendor-pins.json, overlay/** and
+    #     scripts/**. None of the nine names below can change any of them.
+    #   the NIGHTLY run is the staleness alarm, and `paths-ignore` narrows only
+    #     the `push` trigger. `schedule` is not path-filtered, so upstream
+    #     moving while lite is idle is still caught at 04:17 exactly as before.
+    #
+    # NOT top-level `*.md` and emphatically not `**.md`: sync-examples.mjs
+    # --check compares overlay/scratch-gui/examples/** file for file, and that
+    # tree contains intro.md, intro.de.md, EXPECTED.md and its OWN README.md /
+    # README.de.md — a different file from the repo-root README.md below. Those
+    # must keep triggering this workflow, or the vendored gallery can drift in
+    # exactly the way the header describes.
+    paths-ignore:
+      - 'BLOCKED.md'
+      - 'BUILD.md'
+      - 'CLAUDE.md'
+      - 'HANDOFF.md'
+      - 'LANES.md'
+      - 'MBIT-BUILD.md'
+      - 'PLAN.md'
+      - 'README.md'
+      - 'ROADMAP.md'
+  pull_request:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+# Do not leave one full upstream checkout/sweep queued for every superseded PR
+# commit. Every non-PR run needs its own group: even with cancel-in-progress
+# false, GitHub keeps at most one PENDING run in a concurrency group and replaces
+# an older pending run when another arrives. That starved twelve push verdicts
+# before this was keyed by run id (ROADMAP 2.1).
+concurrency:
+  group: vendor-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          path: brickwright-lite
+      # Validate all pins together; no partial outputs or fallback to HEAD.
+      - name: Read reviewed vendor pins
+        id: vendor_pins
+        run: node brickwright-lite/scripts/ci-vendor-pins.mjs >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: CrispStrobe/sb3-creator
+          ref: ${{ steps.vendor_pins.outputs.sb3-creator }}
+          path: sb3-creator
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+
+      # Each check exits non-zero on drift; run ALL of them even after a
+      # failure so one report names every stale tree, then fail once.
+      #
+      # ONLY sb3-creator IS COPIED IN ANY MORE. bw-board and bw-circuit-ui became
+      # npm packages on 2026-09-12: vendor-pins.json still pins them, integrate.mjs
+      # and scripts/pin-packages.mjs derive the package.json specs from the pin,
+      # and npm installs that sha. Matching lock metadata does NOT establish
+      # installed content identity. build.yml verifies both root and GUI package
+      # payloads against independently fetched pinned Git sources before either
+      # build, plus checks preserved upstream notices. Do not duplicate those
+      # source fetches here; this job owns only the copied sb3-creator transform.
+      # THE TRANSPILER'S CHECK IS SOUND AND ITS ALLOWANCE IS NOT. Unlike the two
+      # steps above, sync-sb3creator.mjs --check EXITS 0 on a healthy tree and
+      # genuinely verifies its own transform: it flattens src/utils/<name>.js to
+      # src/lib/sb3-creator-<name>.js and rewrites the relative imports, and
+      # thirteen of the fourteen mapped files match after that rewrite. Byte
+      # identity against upstream would be the WRONG question here and would go
+      # red on the sync doing exactly what it is for -- which is why this tree
+      # is not a third corpus of test/vendor-identity.test.mjs.
+      #
+      # What it cannot say is which deltas are intended. `--allow-stale`, passed
+      # below, makes staleness non-fatal outright, so the permitted set is a
+      # COUNT: unbounded, unnamed and unreasoned. It prints "1 intentional
+      # downstream file delta(s) allowed" -- and a sync that half-finished and
+      # left five would print the same sentence with a 5 in it, the message
+      # itself calling the accident intentional.
+      #
+      # EXIT SEMANTICS: fails if and only if the set of files the sync reports
+      # STALE differs from the set declared in
+      # docs/VENDOR-DIVERGENCE-SB3-CREATOR.md -- in EITHER direction, so a delta
+      # that converges must leave the list rather than sit there forever.
+      - name: sb3-creator deltas are the declared ones
+        if: always()
+        run: |
+          set -euo pipefail
+          pins=brickwright-lite/vendor-pins.json
+          [ -f "$pins" ] || pins=lego/brickwright-lite/vendor-pins.json
+          pin=$(jq -r '.["sb3-creator"] // empty' "$pins")
+          case "$pin" in
+            [0-9a-f]*) [ ${#pin} -eq 40 ] || { echo "::error::sb3-creator pin is not a 40-hex sha: $pin"; exit 1; } ;;
+            *) echo "::error::no sb3-creator pin in $pins"; exit 1 ;;
+          esac
+          # Re-read HEAD rather than trust the checkout -- see the board-engine
+          # step for why a ::warning:: fallback is not a stop.
+          head=$(git -C sb3-creator rev-parse HEAD)
+          if [ "$head" != "$pin" ]; then
+            echo "::error::sb3-creator is at $head but vendor-pins.json says $pin -- the pinned checkout did not land, so this gate would judge the wrong tree"
+            exit 1
+          fi
+          cd brickwright-lite
+          SB3_CREATOR_DIR="$GITHUB_WORKSPACE/sb3-creator" node --test test/vendor-sb3creator-deltas.test.mjs
+
+      # THE ONLY PLACE THE sb3-creator IDENTITY JUDGE RUNS. It landed in
+      # 4461b4f43 with no step invoking it, so it skipped in build.yml (no
+      # sb3-creator tree there) and ran nowhere at all -- caught by T13's skip
+      # census, which reds a skip with no pointer as "a gate nobody runs". It
+      # belongs here for the same reason the deltas test and the bw-circuit-ui
+      # corpus do: this workflow already checks out all three upstreams at their
+      # pins, and duplicating a 14-file clone into every push and PR of build.yml
+      # would buy nothing.
+      #
+      # A SEPARATE STEP, NOT AN ARGUMENT TO THE ONE ABOVE, because renaming that
+      # step would invalidate the LANES pointer that quotes its name verbatim and
+      # the step census recorded under it. The pin equality this needs is already
+      # enforced by that step (it exits 1 before this one runs on a mismatch) AND
+      # by the test itself, which skips rather than judges a tree off the pin.
+      #
+      # WHICH IS EXACTLY WHY THE SKIP IS A FAILURE HERE. Everywhere else a skip
+      # means "verified somewhere else"; here there is no somewhere else, so a
+      # skip means the gate ran nowhere while reporting success -- the state this
+      # step was added to end. `node --test` exits 0 on a skip, so the TAP is
+      # read rather than the exit code.
+      - name: sb3-creator vendored files are byte-identical at the pin
+        if: always()
+        run: |
+          set -euo pipefail
+          cd brickwright-lite
+          SB3_CREATOR_DIR="$GITHUB_WORKSPACE/sb3-creator" \
+            node --test test/sb3-creator-vendor-identity.test.mjs | tee /tmp/sb3-identity.tap
+          skipped=$(grep -c '# SKIP' /tmp/sb3-identity.tap || true)
+          if [ "$skipped" != "0" ]; then
+            grep '# SKIP' /tmp/sb3-identity.tap || true
+            echo "::error::the sb3-creator identity judge SKIPPED $skipped subtest(s) in the one step that runs it -- it is pinned and checked out here, so a skip is a gate executing nowhere, not a gate deferring to somewhere else"
+            exit 1
+          fi
+
+      # Kept: it is the thing that verifies the transform, and it passes.
+      - name: sb3-creator transpiler
+        run: node brickwright-lite/scripts/sync-sb3creator.mjs --check --dir sb3-creator --allow-stale
+        if: always()
+      - name: examples gallery
+        run: node brickwright-lite/scripts/sync-examples.mjs --check --dir sb3-creator --allow-stale
+        if: always()
+      - name: runtime extension gallery content pins
+        run: node brickwright-lite/scripts/sync-gallery-pins.mjs --check
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      # Report-only: the hosted C/assembler snapshot is pinned to a stc-compiler
+      # sha, but the DEPLOYED service can drift from it. This asks the live
+      # /health what it actually serves and writes the diff to the job summary.
+      # It never fails the run — a network hiccup is "could not compare", and a
+      # real difference is a note for a human, not a red build.
+      - name: hosted service targets vs snapshot (report only)
+        run: node brickwright-lite/scripts/check-hosted-live.mjs
+        if: always()
+
+      # Report-only, same contract as the hosted-service step above. The two
+      # sha-pinned npm upstreams (bw-board, bw-circuit-ui) are installed by sha,
+      # and build.yml verifies the pinned payloads — but nothing notices a pin
+      # falling BEHIND upstream master. That lag is exactly how bw-circuit-ui's
+      # regenerated sidecar index (registering tang_nano_20k) sat on master while
+      # Lite's FPGA demo board stayed electrically dead. This asks GitHub how far
+      # each pin is behind and warns; it never fails — bumping is a deliberate,
+      # reviewed act (scripts/pin-packages.mjs), and a network hiccup is a
+      # "could not compare", not a red build.
+      - name: vendor pin freshness — bw-board / bw-circuit-ui behind master (report only)
+        run: node brickwright-lite/scripts/check-pin-drift.mjs
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

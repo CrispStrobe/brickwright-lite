@@ -1,0 +1,19 @@
+.dialog {
+    width: min(52rem, 92vw);
+    max-height: 85vh;
+    overflow: auto;
+    padding: 1.5rem;
+    border: 1px solid #777;
+    border-radius: .75rem;
+    color: #222;
+    background: white;
+    font: 14px/1.5 system-ui, sans-serif;
+}
+.dialog::backdrop { background: rgba(0, 0, 0, .45); }
+.dialog h2 { margin-top: 0; padding-right: 5rem; }
+.dialog button, .dialog select { padding: .4rem; margin: .25rem; }
+.dialog table { width: 100%; border-collapse: collapse; }
+.dialog th, .dialog td { padding: .4rem; border-bottom: 1px solid #ccc; text-align: left; }
+.dialog pre { white-space: pre-wrap; }
+.close { position: absolute; top: 1rem; right: 1rem; }
+.row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; }

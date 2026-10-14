@@ -1,0 +1,10 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "native-broker-ack",
+  "description": "The only broker grant present at startup: the broker webview may acknowledge that its immutable receiver is installed. Every transport permission is withheld until that acknowledgement arrives, and none of them appear here.",
+  "local": true,
+  "windows": [],
+  "webviews": ["capability-broker"],
+  "platforms": ["linux", "macOS", "windows"],
+  "permissions": ["allow-native-broker-ready"]
+}

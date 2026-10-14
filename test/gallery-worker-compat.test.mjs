@@ -1,0 +1,183 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {readFileSync} from 'node:fs';
+import path from 'node:path';
+import vm from 'node:vm';
+
+import {
+    RUNTIME_WORKER_DEFERRED,
+    RUNTIME_WORKER_PROVEN,
+    censusEntry,
+    validateGalleryContract
+} from '../scripts/sync-gallery-pins.mjs';
+
+const root = path.join(import.meta.dirname, '..');
+const extensionsRoot = path.join(import.meta.dirname, 'fixtures', 'gallery-worker-sources');
+const fixture = JSON.parse(readFileSync(path.join(import.meta.dirname, 'fixtures/gallery-worker-compat.json')));
+const pins = JSON.parse(readFileSync(path.join(root,
+    'overlay/scratch-vm/src/extension-support/gallery-pins.json')));
+const sha256 = source => createHash('sha256').update(source).digest('hex');
+
+const Cast = Object.freeze({
+    toNumber: value => {
+        const number = Number(value);
+        return Number.isNaN(number) ? 0 : number;
+    },
+    toString: value => String(value),
+    toBoolean: value => !(value === false || value === 0 || value === '' || String(value).toLowerCase() === 'false'),
+    compare: (a, b) => String(a).localeCompare(String(b)),
+    isWhiteSpace: value => String(value).trim().length === 0
+});
+
+const enumProxy = new Proxy({}, {get: (_target, property) => String(property)});
+const translate = Object.assign(message => typeof message === 'object' ? (message.default || '') : message,
+    {setup: () => {}});
+
+function load (source, restricted, fetchFixture) {
+    const registrations = [];
+    const consoleEvents = [];
+    const capturedConsole = Object.fromEntries(['log', 'info', 'warn', 'error', 'debug', 'clear', 'group',
+        'groupCollapsed', 'groupEnd', 'time', 'timeLog', 'timeEnd'].map(name =>
+        [name, (...args) => consoleEvents.push([name, ...args])]));
+    const fetchCalls = [];
+    const deterministicFetch = async (url, options) => {
+        fetchCalls.push(JSON.parse(JSON.stringify({url: String(url), ...(options ? {options} : {})})));
+        return {
+            ok: true,
+            status: 200,
+            text: async () => fetchFixture ? fetchFixture.responseText : '',
+            json: async () => JSON.parse(fetchFixture ? fetchFixture.responseText : '{}'),
+            arrayBuffer: async () => new TextEncoder().encode(fetchFixture ? fetchFixture.responseText : '').buffer
+        };
+    };
+    const Scratch = {
+        ArgumentType: enumProxy,
+        BlockType: enumProxy,
+        TargetType: enumProxy,
+        Cast,
+        translate,
+        fetch: deterministicFetch,
+        extensions: {register: extension => registrations.push(extension), unsandboxed: !restricted,
+            isPenguinMod: false}
+    };
+    const context = vm.createContext({Scratch, console: capturedConsole, TextEncoder, TextDecoder, URL, Blob,
+        setTimeout, clearTimeout, atob, btoa});
+    if (!restricted) {
+        context.window = context;
+        context.document = {};
+        context.navigator = {};
+    }
+    vm.runInContext(source.toString('utf8'), context, {timeout: 1000});
+    assert.equal(registrations.length, 1, 'source must register exactly one extension');
+    return {extension: registrations[0], context, consoleEvents, fetchCalls};
+}
+
+function normalizedInfo (extension) {
+    return JSON.parse(JSON.stringify(extension.getInfo()));
+}
+
+for (const entry of fixture.cases) {
+    test(`worker compatibility parity: ${entry.slug}`, async () => {
+        const pin = pins.extensions[entry.slug];
+        assert.ok(pin, `missing pin for ${entry.slug}`);
+        const sourcePath = path.join(extensionsRoot, `${entry.slug}.js`);
+        const source = readFileSync(sourcePath);
+        assert.equal(sha256(source), pin.repo, 'immutable repository bytes must match the reviewed pin');
+        const oldRealm = load(source, false, entry.fetch);
+        const workerRealm = load(source, true, entry.fetch);
+        const oldAdapter = oldRealm.extension;
+        const worker = workerRealm.extension;
+        assert.equal(workerRealm.context.Scratch.extensions.unsandboxed, false);
+        for (const ambient of ['window', 'document', 'navigator', 'WebSocket', 'Worker', 'SharedWorker',
+            '__TAURI__', '__TAURI_INTERNALS__']) {
+            assert.equal(workerRealm.context[ambient], undefined, `worker must not expose ${ambient}`);
+        }
+        assert.equal(workerRealm.context.Scratch.vm, undefined, 'worker must not expose Scratch.vm');
+        assert.equal(workerRealm.context.Scratch.runtime, undefined, 'worker must not expose Scratch.runtime');
+        assert.deepEqual(normalizedInfo(worker), normalizedInfo(oldAdapter), 'getInfo parity');
+        assert.equal(typeof worker[entry.opcode], 'function', `missing representative opcode ${entry.opcode}`);
+        const expected = await oldAdapter[entry.opcode](structuredClone(entry.args));
+        const actual = await worker[entry.opcode](structuredClone(entry.args));
+        assert.deepEqual(actual, expected, 'representative opcode parity');
+        if (Object.hasOwn(entry, 'expected')) assert.deepEqual(actual, entry.expected, 'representative oracle');
+        assert.deepEqual(workerRealm.consoleEvents, oldRealm.consoleEvents, 'console side-effect parity');
+        if (entry.console) assert.deepEqual(workerRealm.consoleEvents, entry.console, 'console side-effect oracle');
+        assert.deepEqual(workerRealm.fetchCalls, oldRealm.fetchCalls, 'fetch side-effect parity');
+        if (entry.fetch) assert.deepEqual(workerRealm.fetchCalls, entry.fetch.calls, 'deterministic fetch oracle');
+        if (entry.after) {
+            const oldAfter = await oldAdapter[entry.after.opcode](structuredClone(entry.after.args));
+            const workerAfter = await worker[entry.after.opcode](structuredClone(entry.after.args));
+            assert.deepEqual(workerAfter, oldAfter, 'post-opcode state parity');
+            assert.deepEqual(workerAfter, entry.after.expected, 'post-opcode state oracle');
+        }
+    });
+}
+
+test('runtime worker cohort is deterministic, complete and tied to the immutable snapshot', () => {
+    assert.equal(fixture.commit, pins.commit);
+    assert.deepEqual(fixture.cases.map(entry => entry.slug), RUNTIME_WORKER_PROVEN);
+    assert.equal(new Set(RUNTIME_WORKER_PROVEN).size, RUNTIME_WORKER_PROVEN.length);
+});
+
+test('generator rejects promoting a reviewed deferral without runtime proof', () => {
+    const mutated = structuredClone(pins);
+    const slug = Object.keys(RUNTIME_WORKER_DEFERRED)[0];
+    mutated.extensions[slug].migration = {
+        status: 'worker', reason: 'runtime parity proven by gallery worker compatibility corpus'
+    };
+    assert.throws(() => validateGalleryContract(mutated, Object.keys(mutated.extensions)),
+        new RegExp(`worker gallery entry ${slug} lacks generator-owned runtime proof`));
+});
+
+test('generator refuses a runtime-proven worker which gains an ambient requirement', () => {
+    assert.throws(() => censusEntry(RUNTIME_WORKER_PROVEN[0], 'document.body'),
+        /runtime-proven worker .* acquired ambient requirements: dom/);
+});
+
+test('generator refuses downgrading a runtime-proven worker back to an unmeasured candidate', () => {
+    const mutated = structuredClone(pins);
+    mutated.extensions[RUNTIME_WORKER_PROVEN[0]].migration = {status: 'candidate', reason: null};
+    assert.throws(() => validateGalleryContract(mutated, Object.keys(mutated.extensions)),
+        /runtime-proven gallery entry .* was downgraded from worker/);
+});
+
+test('generator refuses erasing an exact zero-capability runtime deferral', () => {
+    for (const slug of Object.keys(RUNTIME_WORKER_DEFERRED)) {
+        const mutated = structuredClone(pins);
+        mutated.extensions[slug].migration = {status: 'candidate', reason: null};
+        assert.throws(() => validateGalleryContract(mutated, Object.keys(mutated.extensions)),
+            new RegExp(`runtime-deferred gallery entry ${slug.replace('/', '\\/')} was downgraded to candidate`));
+    }
+});
+
+test('published migration counts distinguish proven, awaiting-proof and ambient deferrals', () => {
+    const counts = Object.values(pins.extensions).reduce((result, pin) => {
+        result[pin.migration.status] = (result[pin.migration.status] || 0) + 1;
+        return result;
+    }, {});
+    // worker 25 / deferred 98 / candidate 1 = 124. The candidate is bitops:
+    // of the four upstreamed on 2026-09-20 it is the only one touching no
+    // host API at all, so it is awaiting runtime proof rather than blocked.
+    // The other three read the VM runtime or the Web Speech API and are
+    // deferred with a reason each.
+    // 24/104/1 = 129 after the 2026-10-06 sync. The worker cohort stayed 24
+    // (it fell 25 -> 24 at the TurboWarp sync of 2026-09-21 when upstream
+    // delisted CubesterYT/TurboHook in favour of CubesterYT/Webhooks); the new
+    // arrival CrispStrobe/circuitcubes is deferred (Web Bluetooth), so only the
+    // deferred count moved 103 -> 104.
+    assert.deepEqual(counts, {worker: 24, deferred: 104, candidate: 1});
+});
+
+test('worker-safe fetch requirements remain measured while their proven cohort stays promoted', () => {
+    for (const slug of ['0832/rxFS2', 'fetch', 'utilities']) {
+        assert.deepEqual(pins.extensions[slug].capabilities, ['fetch-import']);
+        assert.equal(pins.extensions[slug].migration.status, 'worker');
+        const mutated = structuredClone(pins);
+        mutated.extensions[slug].migration = {
+            status: 'deferred', reason: 'static scan requires review: fetch-import'
+        };
+        assert.throws(() => validateGalleryContract(mutated, Object.keys(mutated.extensions)),
+            new RegExp(`runtime-proven gallery entry ${slug.replace('/', '\\/')} was downgraded from worker`));
+    }
+});

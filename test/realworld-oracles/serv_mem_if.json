@@ -1,0 +1,887 @@
+{
+  "creator": "Yosys 0.69+post (git sha1 143eb14f9cc55d6f8927e68523b0c9d2166ed02c, Release, AppleClang clang++ 21.0.0.21000101)",
+  "modules": {
+    "serv_mem_if": {
+      "attributes": {
+        "dynports": "00000000000000000000000000000001",
+        "hdlname": "serv_mem_if",
+        "src": "serv_mem_if.v:8.1-59.10"
+      },
+      "parameter_default_values": {
+        "B": "00000000000000000000000000000000",
+        "W": "00000000000000000000000000000001",
+        "WITH_CSR": "1"
+      },
+      "ports": {
+        "i_clk": {
+          "direction": "input",
+          "bits": [ 2 ]
+        },
+        "i_bytecnt": {
+          "direction": "input",
+          "bits": [ 3, 4 ]
+        },
+        "i_lsb": {
+          "direction": "input",
+          "bits": [ 5, 6 ]
+        },
+        "o_misalign": {
+          "direction": "output",
+          "bits": [ 7 ]
+        },
+        "i_signed": {
+          "direction": "input",
+          "bits": [ 8 ]
+        },
+        "i_word": {
+          "direction": "input",
+          "bits": [ 9 ]
+        },
+        "i_half": {
+          "direction": "input",
+          "bits": [ 10 ]
+        },
+        "i_mdu_op": {
+          "direction": "input",
+          "bits": [ 11 ]
+        },
+        "i_bufreg2_q": {
+          "direction": "input",
+          "bits": [ 12 ]
+        },
+        "o_rd": {
+          "direction": "output",
+          "bits": [ 13 ]
+        },
+        "o_wb_sel": {
+          "direction": "output",
+          "bits": [ 14, 15, 16, 17 ]
+        }
+      },
+      "cells": {
+        "$and$serv_mem_if.v:38$5": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:38.3-38.25"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 10 ],
+            "B": [ 18 ],
+            "Y": [ 19 ]
+          }
+        },
+        "$and$serv_mem_if.v:40$7": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:40.47-40.65"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 8 ],
+            "B": [ 20 ],
+            "Y": [ 21 ]
+          }
+        },
+        "$and$serv_mem_if.v:42$11": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:42.54-42.71"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 10 ],
+            "B": [ 6 ],
+            "Y": [ 22 ]
+          }
+        },
+        "$and$serv_mem_if.v:44$18": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:44.54-44.72"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 10 ],
+            "B": [ 23 ],
+            "Y": [ 24 ]
+          }
+        },
+        "$and$serv_mem_if.v:57$23": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:57.37-57.65"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5 ],
+            "B": [ 25 ],
+            "Y": [ 26 ]
+          }
+        },
+        "$and$serv_mem_if.v:57$24": {
+          "hide_name": 1,
+          "type": "$and",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:57.70-57.87"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 6 ],
+            "B": [ 9 ],
+            "Y": [ 27 ]
+          }
+        },
+        "$eq$serv_mem_if.v:37$2": {
+          "hide_name": 1,
+          "type": "$logic_not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000010",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:37.3-37.21"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 3, 4 ],
+            "Y": [ 28 ]
+          }
+        },
+        "$eq$serv_mem_if.v:42$9": {
+          "hide_name": 1,
+          "type": "$eq",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000010",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000010",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:42.26-42.40"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5, 6 ],
+            "B": [ "1", "1" ],
+            "Y": [ 29 ]
+          }
+        },
+        "$eq$serv_mem_if.v:43$13": {
+          "hide_name": 1,
+          "type": "$eq",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000010",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000010",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:43.26-43.40"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5, 6 ],
+            "B": [ "0", "1" ],
+            "Y": [ 30 ]
+          }
+        },
+        "$eq$serv_mem_if.v:44$15": {
+          "hide_name": 1,
+          "type": "$eq",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000010",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:44.26-44.40"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5, 6 ],
+            "B": [ "1" ],
+            "Y": [ 31 ]
+          }
+        },
+        "$eq$serv_mem_if.v:45$20": {
+          "hide_name": 1,
+          "type": "$logic_not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000010",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:45.26-45.40"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 5, 6 ],
+            "Y": [ 14 ]
+          }
+        },
+        "$logic_not$serv_mem_if.v:38$4": {
+          "hide_name": 1,
+          "type": "$logic_not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:38.12-38.25"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 4 ],
+            "Y": [ 18 ]
+          }
+        },
+        "$logic_not$serv_mem_if.v:44$17": {
+          "hide_name": 1,
+          "type": "$logic_not",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:44.63-44.72"
+          },
+          "port_directions": {
+            "A": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 6 ],
+            "Y": [ 23 ]
+          }
+        },
+        "$or$serv_mem_if.v:35$1": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:35.2-36.8"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 11 ],
+            "B": [ 9 ],
+            "Y": [ 32 ]
+          }
+        },
+        "$or$serv_mem_if.v:35$3": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:35.2-37.22"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 32 ],
+            "B": [ 28 ],
+            "Y": [ 33 ]
+          }
+        },
+        "$or$serv_mem_if.v:35$6": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:35.2-38.26"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 33 ],
+            "B": [ 19 ],
+            "Y": [ 34 ]
+          }
+        },
+        "$or$serv_mem_if.v:42$10": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:42.25-42.50"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 29 ],
+            "B": [ 9 ],
+            "Y": [ 35 ]
+          }
+        },
+        "$or$serv_mem_if.v:42$12": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:42.25-42.72"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 35 ],
+            "B": [ 22 ],
+            "Y": [ 17 ]
+          }
+        },
+        "$or$serv_mem_if.v:43$14": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:43.25-43.50"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 30 ],
+            "B": [ 9 ],
+            "Y": [ 16 ]
+          }
+        },
+        "$or$serv_mem_if.v:44$16": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:44.25-44.50"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 31 ],
+            "B": [ 9 ],
+            "Y": [ 36 ]
+          }
+        },
+        "$or$serv_mem_if.v:44$19": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:44.25-44.73"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 36 ],
+            "B": [ 24 ],
+            "Y": [ 15 ]
+          }
+        },
+        "$or$serv_mem_if.v:57$22": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:57.49-57.64"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 9 ],
+            "B": [ 10 ],
+            "Y": [ 25 ]
+          }
+        },
+        "$or$serv_mem_if.v:57$25": {
+          "hide_name": 1,
+          "type": "$or",
+          "parameters": {
+            "A_SIGNED": "00000000000000000000000000000000",
+            "A_WIDTH": "00000000000000000000000000000001",
+            "B_SIGNED": "00000000000000000000000000000000",
+            "B_WIDTH": "00000000000000000000000000000001",
+            "Y_WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:57.36-57.88"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 26 ],
+            "B": [ 27 ],
+            "Y": [ 7 ]
+          }
+        },
+        "$procdff$29": {
+          "hide_name": 1,
+          "type": "$dff",
+          "parameters": {
+            "CLK_POLARITY": "1",
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:47.4-50.7"
+          },
+          "port_directions": {
+            "CLK": "input",
+            "D": "input",
+            "Q": "output"
+          },
+          "connections": {
+            "CLK": [ 2 ],
+            "D": [ 37 ],
+            "Q": [ 20 ]
+          }
+        },
+        "$procmux$27": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:48.11-48.20|serv_mem_if.v:48.7-49.35"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 20 ],
+            "B": [ 12 ],
+            "S": [ 34 ],
+            "Y": [ 37 ]
+          }
+        },
+        "$ternary$serv_mem_if.v:40$8": {
+          "hide_name": 1,
+          "type": "$mux",
+          "parameters": {
+            "WIDTH": "00000000000000000000000000000001"
+          },
+          "attributes": {
+            "src": "serv_mem_if.v:40.18-40.67"
+          },
+          "port_directions": {
+            "A": "input",
+            "B": "input",
+            "S": "input",
+            "Y": "output"
+          },
+          "connections": {
+            "A": [ 21 ],
+            "B": [ 12 ],
+            "S": [ 34 ],
+            "Y": [ 13 ]
+          }
+        }
+      },
+      "netnames": {
+        "$0\\signbit[0:0]": {
+          "hide_name": 1,
+          "bits": [ 37 ],
+          "attributes": {
+            "src": "serv_mem_if.v:47.4-50.7"
+          }
+        },
+        "$and$serv_mem_if.v:38$5_Y": {
+          "hide_name": 1,
+          "bits": [ 19 ],
+          "attributes": {
+            "src": "serv_mem_if.v:38.3-38.25"
+          }
+        },
+        "$and$serv_mem_if.v:40$7_Y": {
+          "hide_name": 1,
+          "bits": [ 21 ],
+          "attributes": {
+            "src": "serv_mem_if.v:40.47-40.65"
+          }
+        },
+        "$and$serv_mem_if.v:42$11_Y": {
+          "hide_name": 1,
+          "bits": [ 22 ],
+          "attributes": {
+            "src": "serv_mem_if.v:42.54-42.71"
+          }
+        },
+        "$and$serv_mem_if.v:44$18_Y": {
+          "hide_name": 1,
+          "bits": [ 24 ],
+          "attributes": {
+            "src": "serv_mem_if.v:44.54-44.72"
+          }
+        },
+        "$and$serv_mem_if.v:57$23_Y": {
+          "hide_name": 1,
+          "bits": [ 26 ],
+          "attributes": {
+            "src": "serv_mem_if.v:57.37-57.65"
+          }
+        },
+        "$and$serv_mem_if.v:57$24_Y": {
+          "hide_name": 1,
+          "bits": [ 27 ],
+          "attributes": {
+            "src": "serv_mem_if.v:57.70-57.87"
+          }
+        },
+        "$eq$serv_mem_if.v:37$2_Y": {
+          "hide_name": 1,
+          "bits": [ 28 ],
+          "attributes": {
+            "src": "serv_mem_if.v:37.3-37.21"
+          }
+        },
+        "$eq$serv_mem_if.v:42$9_Y": {
+          "hide_name": 1,
+          "bits": [ 29 ],
+          "attributes": {
+            "src": "serv_mem_if.v:42.26-42.40"
+          }
+        },
+        "$eq$serv_mem_if.v:43$13_Y": {
+          "hide_name": 1,
+          "bits": [ 30 ],
+          "attributes": {
+            "src": "serv_mem_if.v:43.26-43.40"
+          }
+        },
+        "$eq$serv_mem_if.v:44$15_Y": {
+          "hide_name": 1,
+          "bits": [ 31 ],
+          "attributes": {
+            "src": "serv_mem_if.v:44.26-44.40"
+          }
+        },
+        "$logic_not$serv_mem_if.v:38$4_Y": {
+          "hide_name": 1,
+          "bits": [ 18 ],
+          "attributes": {
+            "src": "serv_mem_if.v:38.12-38.25"
+          }
+        },
+        "$logic_not$serv_mem_if.v:44$17_Y": {
+          "hide_name": 1,
+          "bits": [ 23 ],
+          "attributes": {
+            "src": "serv_mem_if.v:44.63-44.72"
+          }
+        },
+        "$or$serv_mem_if.v:35$1_Y": {
+          "hide_name": 1,
+          "bits": [ 32 ],
+          "attributes": {
+            "src": "serv_mem_if.v:35.2-36.8"
+          }
+        },
+        "$or$serv_mem_if.v:35$3_Y": {
+          "hide_name": 1,
+          "bits": [ 33 ],
+          "attributes": {
+            "src": "serv_mem_if.v:35.2-37.22"
+          }
+        },
+        "$or$serv_mem_if.v:42$10_Y": {
+          "hide_name": 1,
+          "bits": [ 35 ],
+          "attributes": {
+            "src": "serv_mem_if.v:42.25-42.50"
+          }
+        },
+        "$or$serv_mem_if.v:44$16_Y": {
+          "hide_name": 1,
+          "bits": [ 36 ],
+          "attributes": {
+            "src": "serv_mem_if.v:44.25-44.50"
+          }
+        },
+        "$or$serv_mem_if.v:57$22_Y": {
+          "hide_name": 1,
+          "bits": [ 25 ],
+          "attributes": {
+            "src": "serv_mem_if.v:57.49-57.64"
+          }
+        },
+        "dat_valid": {
+          "hide_name": 0,
+          "bits": [ 34 ],
+          "attributes": {
+            "src": "serv_mem_if.v:34.9-34.18"
+          }
+        },
+        "i_bufreg2_q": {
+          "hide_name": 0,
+          "bits": [ 12 ],
+          "attributes": {
+            "single_bit_vector": "00000000000000000000000000000001",
+            "src": "serv_mem_if.v:27.21-27.32"
+          }
+        },
+        "i_bytecnt": {
+          "hide_name": 0,
+          "bits": [ 3, 4 ],
+          "attributes": {
+            "src": "serv_mem_if.v:17.22-17.31"
+          }
+        },
+        "i_clk": {
+          "hide_name": 0,
+          "bits": [ 2 ],
+          "attributes": {
+            "src": "serv_mem_if.v:15.21-15.26"
+          }
+        },
+        "i_half": {
+          "hide_name": 0,
+          "bits": [ 10 ],
+          "attributes": {
+            "src": "serv_mem_if.v:23.21-23.27"
+          }
+        },
+        "i_lsb": {
+          "hide_name": 0,
+          "bits": [ 5, 6 ],
+          "attributes": {
+            "src": "serv_mem_if.v:18.22-18.27"
+          }
+        },
+        "i_mdu_op": {
+          "hide_name": 0,
+          "bits": [ 11 ],
+          "attributes": {
+            "src": "serv_mem_if.v:25.21-25.29"
+          }
+        },
+        "i_signed": {
+          "hide_name": 0,
+          "bits": [ 8 ],
+          "attributes": {
+            "src": "serv_mem_if.v:21.21-21.29"
+          }
+        },
+        "i_word": {
+          "hide_name": 0,
+          "bits": [ 9 ],
+          "attributes": {
+            "src": "serv_mem_if.v:22.21-22.27"
+          }
+        },
+        "o_misalign": {
+          "hide_name": 0,
+          "bits": [ 7 ],
+          "attributes": {
+            "src": "serv_mem_if.v:19.22-19.32"
+          }
+        },
+        "o_rd": {
+          "hide_name": 0,
+          "bits": [ 13 ],
+          "attributes": {
+            "single_bit_vector": "00000000000000000000000000000001",
+            "src": "serv_mem_if.v:28.22-28.26"
+          }
+        },
+        "o_wb_sel": {
+          "hide_name": 0,
+          "bits": [ 14, 15, 16, 17 ],
+          "attributes": {
+            "src": "serv_mem_if.v:30.22-30.30"
+          }
+        },
+        "signbit": {
+          "hide_name": 0,
+          "bits": [ 20 ],
+          "attributes": {
+            "src": "serv_mem_if.v:32.8-32.15"
+          }
+        }
+      }
+    }
+  }
+}

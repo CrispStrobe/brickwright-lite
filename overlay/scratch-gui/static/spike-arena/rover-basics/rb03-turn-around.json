@@ -1,0 +1,66 @@
+{
+  "id": "rb03-turn-around",
+  "title": {
+    "en": "Turn around",
+    "de": "Umdrehen"
+  },
+  "intro": {
+    "en": "A dust storm is coming from behind! Turn the rover on the spot to face the other way (180°) without leaving the turning pad. Tip: two quarter turns, with the yaw reset before each one, make a half turn.",
+    "de": "Von hinten zieht ein Staubsturm auf! Drehe den Rover auf der Stelle in die Gegenrichtung (180°), ohne den Drehplatz zu verlassen. Tipp: Zwei Vierteldrehungen, vor jeder den Gierwinkel zurücksetzen, ergeben eine halbe Drehung."
+  },
+  "hints": [
+    {
+      "en": "A \"define\" block lets you name the quarter turn and use it twice.",
+      "de": "Mit einem eigenen Block kannst du die Vierteldrehung benennen und zweimal verwenden."
+    },
+    {
+      "en": "The yaw angle jumps from 180 to -180, so waiting for \"yaw > 180\" never ends.",
+      "de": "Der Gierwinkel springt von 180 auf -180; auf „Gier > 180“ zu warten, endet nie."
+    }
+  ],
+  "mat": {
+    "width": 100,
+    "height": 100,
+    "background": "orange",
+    "paint": "#d9825b",
+    "shapes": []
+  },
+  "zones": [
+    {
+      "id": "pad",
+      "role": "area",
+      "shape": {
+        "type": "circle",
+        "x": 50,
+        "y": 50,
+        "r": 4
+      },
+      "label": {
+        "en": "turning pad",
+        "de": "Drehplatz"
+      }
+    }
+  ],
+  "start": {
+    "x": 50,
+    "y": 50,
+    "heading": 0
+  },
+  "timeLimitMs": 12000,
+  "success": [
+    {
+      "type": "heading",
+      "target": 180,
+      "tolerance": 6,
+      "maxDrift": 3
+    }
+  ],
+  "failure": [
+    {
+      "type": "stayIn",
+      "zone": "pad"
+    }
+  ],
+  "solution": "rb03-turn-around.bw",
+  "wrong": "rb03-turn-around.wrong.bw"
+}

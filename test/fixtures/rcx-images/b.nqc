@@ -1,0 +1,8 @@
+task main()
+{
+  start second;
+}
+task second()
+{
+  OnFwd(OUT_A);
+}

@@ -1,0 +1,118 @@
+{
+  "date": "2026-10-08",
+  "buildSource": "5ad83632c4e4a6da68e3883dfb0837bdbf08c045",
+  "producer": "0de6ae91758353af89ce64b06717a4294cd6bb05",
+  "producerChanged": false,
+  "change": [
+    "Life-zero and countdown callbacks register at authored sites without a scene-stack selector",
+    "Callback-bearing programs use native player life/score/hasLife/hasScore state",
+    "Replacement and shared live captures retained; assigned zero/negative life invokes correct player handler and revival rearms",
+    "Four callback browser journeys wired into hosted CI; preload-aware gate inventory and legacy Tile source resolution repaired"
+  ],
+  "tests": {
+    "qualifiedDistinct": 88,
+    "failedAfterReruns": 0,
+    "skipped": 0,
+    "arcadeTests": 61,
+    "gateInventoryTests": 14,
+    "sourcePolicyAndTileTests": 13,
+    "originalAndExportedPxt": {
+      "trace": "L9M10T10",
+      "lifeNow": 2,
+      "secondNow": 3,
+      "lifeHits": 1,
+      "secondHits": 1,
+      "timerHits": 1
+    },
+    "repeatInputOriginalAndNative": {
+      "trace": "L9M10T10L10M11T11",
+      "lifeHits": 2,
+      "secondHits": 2,
+      "timerHits": 2
+    },
+    "roundtrips": [
+      "Native execution",
+      "Blocks decompile to Code",
+      "MakeCode export and reimport",
+      "SB3 reload"
+    ],
+    "testMigration": "Replaced obsolete fixed-target coordinate/velocity/geometry/trigonometry/matrix assertions with native VM observations; newest timed spawn observed separately from immediate first spawn"
+  },
+  "build": {
+    "bundle": "gui.b9f5aa3d.js",
+    "errors": 0,
+    "warnings": 2,
+    "initialBytes": 4360790,
+    "previousInitialBytes": 4360790,
+    "initialLimit": 4467136,
+    "bootPayload": "passed"
+  },
+  "browser": {
+    "status": "passed",
+    "samples": [
+      {
+        "trace": "L9M10T10",
+        "lifeHits": 1,
+        "secondHits": 1,
+        "timerHits": 1,
+        "lifeNow": 2,
+        "secondNow": 3,
+        "ready": true,
+        "initialHasLife": false
+      },
+      {
+        "trace": "L9M10T10L10M11T11",
+        "lifeHits": 2,
+        "secondHits": 2,
+        "timerHits": 2,
+        "lifeNow": 2,
+        "secondNow": 3,
+        "ready": true,
+        "initialHasLife": false
+      }
+    ],
+    "errors": [],
+    "blockErrors": [],
+    "flow": "Native file import, Code, Blocks, flag and visible A revival/countdown repeat",
+    "previousJourneysOnSameBundle": {
+      "callback-completion": {
+        "status": "passed",
+        "errors": [],
+        "blockErrors": []
+      },
+      "update-registration": {
+        "status": "passed",
+        "errors": [],
+        "blockErrors": []
+      },
+      "button-registration": {
+        "status": "passed",
+        "errors": [],
+        "blockErrors": []
+      }
+    }
+  },
+  "corpus": {
+    "immutableInputs": 184,
+    "translated": 102,
+    "partial": 81,
+    "malformed": 1,
+    "changedDiagnosticRows": 0,
+    "measurement": "Import diagnostics only; no full-game equivalence claim"
+  },
+  "retainedFailures": [
+    "Initial14-test run had3 stale representation failures",
+    "Broader61-test run had16 obsolete fixed-target/legacy-hat expectations; migrated native checks pass",
+    "First75-test run had one gate-inventory failure because it did not recognize Node --import; parser now accepts preload plus entry and rejects preload-only/echo forms",
+    "Preceding controller hosted CI failures preserved; no overall green integration claim"
+  ],
+  "remaining": [
+    "Forever and sprite overlap/destruction registration paths still need unification",
+    "Initial scene-worker phase versus VM tick, push/pop and whole-loop pause/obstacle timing",
+    "Legacy authored hats and remaining variable-based info paths outside callback-bearing/native scene programs",
+    "U03 map painter/resource lifecycle and dedicated callback guidance plus artwork/palette/effect/music gaps",
+    "Hosted integration cleanup: preceding controller head failed44 unit tests and heavy camera/pixel/physics/speech browser gates; affected repairs here need a fresh hosted run",
+    "Exact-head hosted CI and stacked integration"
+  ],
+  "publication": "Draft stacked on Lite733; unmerged"
+}

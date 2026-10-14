@@ -1,0 +1,113 @@
+{
+  "id": "rb11-crater-rim",
+  "title": {
+    "en": "Round the crater rim",
+    "de": "Um den Kraterrand"
+  },
+  "intro": {
+    "en": "Scientists want pictures of a crater from every side. Drive half way round it on one smooth left-hand curve, never touching the rim, and stop at the marker on the far side. Steering makes the curve: the more you steer, the tighter it gets.",
+    "de": "Die Forschenden möchten Bilder des Kraters von allen Seiten. Fahre auf einer einzigen gleichmäßigen Linkskurve halb um ihn herum, ohne den Rand zu berühren, und halte an der Markierung auf der anderen Seite. Die Lenkung macht die Kurve: Je stärker du lenkst, desto enger wird sie."
+  },
+  "hints": [
+    {
+      "en": "\"start moving steering\" keeps driving on a curve until you stop it; negative steering curves left.",
+      "de": "„starte Bewegung mit Lenkung“ fährt eine Kurve, bis du anhältst; negative Lenkung biegt nach links ab."
+    },
+    {
+      "en": "Half way round is a 180 degree turn. Driving left makes the yaw go negative.",
+      "de": "Halb herum ist eine Drehung um 180 Grad. Nach links fahren macht den Gierwinkel negativ."
+    }
+  ],
+  "mat": {
+    "width": 110,
+    "height": 100,
+    "background": "orange",
+    "paint": "#d9825b",
+    "shapes": [
+      {
+        "color": "black",
+        "paint": "#5b3a2e",
+        "shape": {
+          "type": "circle",
+          "x": 40,
+          "y": 48,
+          "r": 10
+        }
+      }
+    ]
+  },
+  "zones": [
+    {
+      "id": "crater",
+      "role": "hazard",
+      "shape": {
+        "type": "circle",
+        "x": 40,
+        "y": 48,
+        "r": 10
+      },
+      "label": {
+        "en": "crater",
+        "de": "Krater"
+      }
+    },
+    {
+      "id": "east-side",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 62,
+        "y": 48,
+        "r": 7
+      },
+      "label": {
+        "en": "east side",
+        "de": "Ostseite"
+      }
+    },
+    {
+      "id": "far-side",
+      "role": "goal",
+      "shape": {
+        "type": "circle",
+        "x": 40,
+        "y": 25,
+        "r": 7
+      },
+      "label": {
+        "en": "far-side marker",
+        "de": "Markierung gegenüber"
+      }
+    }
+  ],
+  "start": {
+    "x": 40,
+    "y": 70,
+    "heading": 0
+  },
+  "timeLimitMs": 20000,
+  "success": [
+    {
+      "type": "sequence",
+      "zones": [
+        "east-side",
+        "far-side"
+      ]
+    },
+    {
+      "type": "stopIn",
+      "zone": "far-side"
+    }
+  ],
+  "failure": [
+    {
+      "type": "avoid",
+      "zone": "crater"
+    },
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "rb11-crater-rim.bw",
+  "wrong": "rb11-crater-rim.wrong.bw"
+}

@@ -1,0 +1,139 @@
+#!/usr/bin/env node
+/**
+ * Did the test run REPORT ON what it was handed?
+ *
+ * Two lies this repo has already caught in its own runner, each once by luck:
+ *
+ *   - build.yml:363 (run 32779945069): a `describe` body threw while the suite
+ *     was being CONSTRUCTED. The runner printed `not ok 662 …` and then
+ *     `# tests 1014  # pass 1013  # fail 0`, and the step went green.
+ *   - 2026-09-05, a node_modules-less worktree: every acorn-dependent file
+ *     threw on import, printed `not ok`, and the summary said `# tests 0
+ *     # fail 0` — "nothing to see" rather than "nothing ran".
+ *
+ * The workflow's grep for `^not ok` catches the first shape. Nothing catches a
+ * suite that VANISHES: a file the glob stopped matching, or one that produced
+ * zero tests, is the same green with a smaller number, and no grep sees it.
+ *
+ * So, from the TAP the runner printed and the per-file census written alongside
+ * it by scripts/lib/test-census-reporter.mjs (node's own reporters flatten a
+ * multi-file run — TAP and junit both lose the file):
+ *
+ *   1. the summary exists — a runner that died before summarising is not green;
+ *   2. any `not ok` at any depth is COUNTED: `# fail` + `# cancelled` > 0;
+ *   3. every file scripts/list-tests.mjs says belongs to this set appears in the
+ *      census with at least one test, and nothing else appears — a file that
+ *      vanished, or that constructed nothing, is a failure by name;
+ *   4. `# tests` is at least the file count (each file carries ≥1 test);
+ *   5. (T13, 2026-09-07) every test the run SKIPPED points at the one place it
+ *      does execute — a dated box run or a workflow — under "Skips that
+ *      execute elsewhere" in LANES.md, keyed by file and the VERBATIM reason;
+ *      a skip with no pointer is "a gate nobody runs" and the step is red by
+ *      name. The census carries the file for each skip (the TAP does not);
+ *      the TAP's `# SKIP` count must equal the census's, so the census cannot
+ *      under-report. Measured before the rule: 18 tests had never executed in
+ *      any of 20 green main runs, five files with no record of running anywhere.
+ *
+ * The list of files comes from the same module the npm scripts use, so the
+ * runner and its auditor cannot disagree about what was supposed to run.
+ *
+ *   node scripts/check-test-run.mjs --set fast --tap /tmp/unit.tap --census test-results/fast.census.json [--max-stdout-bytes N]
+ */
+import {existsSync, readFileSync} from 'node:fs';
+import path from 'node:path';
+import {listTests} from './list-tests.mjs';
+import {parsePointers, judgeSkips, skipsFromCensus, tapSkips, HEADING} from './lib/skip-pointers.mjs';
+
+const args = Object.fromEntries(process.argv.slice(2).map((a, i, all) => a.startsWith('--') ? [a.slice(2), all[i + 1]] : null).filter(Boolean));
+const set = args.set || 'fast';
+if (!args.tap) {
+    console.error('usage: check-test-run.mjs --set fast|corpus|all --tap <file> --census <file>');
+    process.exit(2);
+}
+const expected = listTests(set, args.shard ?? null);
+let failed = 0;
+const check = (name, ok, detail = '') => {
+    console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? ` — ${detail}` : ''}`);
+    if (!ok) failed++;
+};
+
+// --- TAP ---
+const tap = readFileSync(args.tap, 'utf8');
+const lines = tap.split('\n');
+const summary = {};
+for (const l of lines) {
+    const m = l.match(/^# (tests|suites|pass|fail|cancelled|skipped|todo) (\d+)$/);
+    if (m) summary[m[1]] = Number(m[2]);
+}
+check('the runner printed a summary', 'tests' in summary && 'fail' in summary,
+    'tests' in summary ? `tests ${summary.tests}, pass ${summary.pass}, fail ${summary.fail}, cancelled ${summary.cancelled ?? 0}`
+        : 'no `# tests` / `# fail` lines — the runner died before summarising, and a partial TAP reads as green to a grep');
+const notOk = lines.filter(l => /^\s*not ok \d+/.test(l));
+const counted = (summary.fail ?? 0) + (summary.cancelled ?? 0);
+check('every `not ok` is counted by the summary', notOk.length === 0 || counted > 0,
+    notOk.length === 0 ? 'no failures' : counted > 0 ? `${notOk.length} not-ok line(s), summary counts ${counted}`
+        : `${notOk.length} not-ok line(s) but # fail 0 / # cancelled 0 — a suite threw while being CONSTRUCTED (build.yml:363): ${notOk[0].trim().slice(0, 100)}`);
+check(`# tests is at least the ${expected.length} files in set "${set}"`, (summary.tests ?? 0) >= expected.length,
+    `${summary.tests ?? 0} tests reported`);
+
+// --- census: per-file accounting ---
+if (!args.census) {
+    check('a census file was given', false, 'pass --census <file> written by scripts/lib/test-census-reporter.mjs');
+} else if (!existsSync(args.census)) {
+    check('the census reporter wrote its file', false,
+        `${args.census} does not exist — the reporter was not on the command line, or the runner died before finishing`);
+} else {
+    let census;
+    try { census = JSON.parse(readFileSync(args.census, 'utf8')); } catch (e) { census = null; }
+    check('the census file parses', Boolean(census && census.files),
+        census ? `${Object.keys(census.files || {}).length} files, ${census.events} events` : 'not JSON');
+    if (census && census.files) {
+        const byBase = new Map(Object.entries(census.files).map(([f, c]) => [path.basename(f), c]));
+        const missing = expected.filter(f => !byBase.has(path.basename(f)));
+        const empty = expected.filter(f => byBase.has(path.basename(f)) && byBase.get(path.basename(f)).tests === 0);
+        const unexpected = [...byBase.keys()].filter(b => !expected.some(f => path.basename(f) === b));
+        check(`every one of the ${expected.length} files in set "${set}" reported tests`, missing.length === 0 && empty.length === 0,
+            [...missing.map(f => `${f}: not in the run — vanished from the glob or never started`),
+                ...empty.map(f => `${f}: 0 tests — constructed nothing`)].join('; ') || `${byBase.size} files, all with tests`);
+        check('nothing ran that the set does not list', unexpected.length === 0,
+            unexpected.length ? unexpected.join(', ') : 'no strays');
+        // RAW BYTES ON THE RUNNER'S TRANSPORT (2026-09-07). Under node --test a
+        // child's console output goes raw to fd 1, the pipe the runner's own
+        // v8 frames use; the parent resyncs by scanning for the next header,
+        // and a burst of raw text moves the chunk boundaries until one lands
+        // inside a header and the file dies with "Unable to deserialize cloned
+        // data" at 1:1. The virtual-SPIKE e2e files did this twice in CI (their
+        // bundled extension logged ~1.7 KB on load); measured 11 failures in 81
+        // runs on Node 20 before the writer was silenced. So: the writers are
+        // NAMED here on every run, and above the budget the step is red — a
+        // test that needs to print goes through t.diagnostic(), which is framed.
+        const writers = Object.entries(census.files).filter(([, c]) => (c.stdoutBytes || 0) > 0)
+            .sort((x, y) => y[1].stdoutBytes - x[1].stdoutBytes);
+        const budget = Number(args['max-stdout-bytes'] ?? 0);
+        const over = writers.filter(([, c]) => c.stdoutBytes > budget);
+        check(`no file wrote more than ${budget} raw byte(s) to the runner's stdout pipe`, over.length === 0,
+            over.length ? over.map(([f, c]) => `${path.basename(f)} wrote ${c.stdoutBytes} B raw — route it through t.diagnostic() or capture the console (test/helpers/quiet-console.mjs); raw bytes on the transport are the deserialize flake`).join('; ')
+                : (writers.length ? `${writers.length} file(s) wrote raw stdout within budget: ${writers.map(([f, c]) => `${path.basename(f)} ${c.stdoutBytes} B`).join(', ')}` : 'no raw stdout from any file'));
+        // --- skips: every one points at where it executes (T13) ---
+        const skips = skipsFromCensus(census);
+        const inTap = tapSkips(tap);
+        check('the census records every skip the TAP printed', skips.length === inTap.length,
+            `TAP # SKIP lines ${inTap.length}, census skips ${skips.length}` + (skips.length !== inTap.length ? ' — the reporter lost skips, or the TAP and the census are from different runs' : ''));
+        const lanesPath = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'LANES.md');
+        const pointers = existsSync(lanesPath) ? parsePointers(readFileSync(lanesPath, 'utf8')) : [];
+        const verdict = judgeSkips(skips, pointers, {root: path.join(path.dirname(new URL(import.meta.url).pathname), '..')});
+        const problems = [...verdict.unpointed, ...verdict.moved, ...verdict.undated, ...verdict.deadWorkflow];
+        check(`every skipped test (${skips.length}) points at the place it executes ("${HEADING}", ${pointers.length} pointer(s))`, problems.length === 0,
+            problems.length ? '\n      ' + problems.join('\n      ') : (skips.length ? skips.map(s => `${path.basename(s.file)}: ${s.name.slice(0, 50)}`).join('; ') : 'nothing skipped'));
+        const censusFailed = Object.values(census.files).reduce((a, c) => a + c.failed, 0);
+        check('the census and the summary agree on whether anything failed',
+            (censusFailed > 0) === (counted > 0),
+            `census failed ${censusFailed}, summary fail+cancelled ${counted}`);
+    }
+}
+
+if (failed) {
+    console.error(`\n${failed} check(s) failed: the run did not report on what it was handed.`);
+    process.exit(1);
+}
+console.log('\ncheck-test-run: the run accounts for its files');

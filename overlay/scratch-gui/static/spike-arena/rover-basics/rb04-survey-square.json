@@ -1,0 +1,110 @@
+{
+  "id": "rb04-survey-square",
+  "title": {
+    "en": "Survey square",
+    "de": "Vermessungsquadrat"
+  },
+  "intro": {
+    "en": "Mission control wants a 50 cm survey square. Drive to each of the four flags in turn - east, south, west, and back home to the start - turning right at every corner.",
+    "de": "Die Missionskontrolle möchte ein Vermessungsquadrat mit 50 cm Seitenlänge. Fahre nacheinander zu allen vier Fahnen - nach Osten, Süden, Westen und zurück zum Start - und biege an jeder Ecke rechts ab."
+  },
+  "hints": [
+    {
+      "en": "A square is the same side and the same corner, four times: use \"repeat 4\".",
+      "de": "Ein Quadrat ist viermal dieselbe Seite und dieselbe Ecke: Nimm „wiederhole 4“."
+    },
+    {
+      "en": "Wait until the rover has finished its side before turning.",
+      "de": "Warte, bis der Rover seine Seite beendet hat, bevor er abbiegt."
+    }
+  ],
+  "mat": {
+    "width": 120,
+    "height": 120,
+    "background": "orange",
+    "paint": "#d9825b",
+    "shapes": []
+  },
+  "zones": [
+    {
+      "id": "flag-east",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 80,
+        "y": 30,
+        "r": 7
+      },
+      "label": {
+        "en": "east flag",
+        "de": "Ostfahne"
+      }
+    },
+    {
+      "id": "flag-south",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 80,
+        "y": 80,
+        "r": 7
+      },
+      "label": {
+        "en": "south flag",
+        "de": "Südfahne"
+      }
+    },
+    {
+      "id": "flag-west",
+      "role": "checkpoint",
+      "shape": {
+        "type": "circle",
+        "x": 30,
+        "y": 80,
+        "r": 7
+      },
+      "label": {
+        "en": "west flag",
+        "de": "Westfahne"
+      }
+    },
+    {
+      "id": "home",
+      "role": "goal",
+      "shape": {
+        "type": "circle",
+        "x": 30,
+        "y": 30,
+        "r": 7
+      },
+      "label": {
+        "en": "home",
+        "de": "Start"
+      }
+    }
+  ],
+  "start": {
+    "x": 30,
+    "y": 30,
+    "heading": 0
+  },
+  "timeLimitMs": 40000,
+  "success": [
+    {
+      "type": "sequence",
+      "zones": [
+        "flag-east",
+        "flag-south",
+        "flag-west",
+        "home"
+      ]
+    }
+  ],
+  "failure": [
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "rb04-survey-square.bw",
+  "wrong": "rb04-survey-square.wrong.bw"
+}

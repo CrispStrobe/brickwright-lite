@@ -1,0 +1,46 @@
+{
+  "source": "9f6ace3da69883dc8acdbb0c4566d00ae0274972",
+  "initialBytes": 4466111,
+  "limit": 4467136,
+  "proof": [
+    {
+      "name": "arcade-animation-assets.js",
+      "modules": [
+        {
+          "chunks": [
+            2182
+          ],
+          "initial": false
+        }
+      ]
+    },
+    {
+      "name": "animation-jres.js",
+      "modules": [
+        {
+          "chunks": [
+            2182
+          ],
+          "initial": false
+        }
+      ]
+    },
+    {
+      "name": "animation-companion.js",
+      "modules": [
+        {
+          "chunks": [
+            2182
+          ],
+          "initial": false
+        }
+      ]
+    }
+  ],
+  "format": "brickwright-arcade-animation-deferred-proof",
+  "version": 1,
+  "build": "production React profiling",
+  "webpackOwnershipGate": "passed",
+  "statsSha256": "95ee438ec7996e26e6c0472ef2810619507147008206984f84b187d636e23971",
+  "boundary": "Module ownership and emitted bytes only; hosted final-head qualification remains required."
+}

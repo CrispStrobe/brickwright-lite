@@ -1,0 +1,11 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: a line follower with no exit. At the red disc
+# it is "not on black", so it keeps steering right and drives off the trail.
+WHEN flag clicked:
+  set movement motors A B
+  FOREVER:
+    IF spike color C is black THEN:
+      start tank 8 30
+    ELSE:
+      start tank 30 8

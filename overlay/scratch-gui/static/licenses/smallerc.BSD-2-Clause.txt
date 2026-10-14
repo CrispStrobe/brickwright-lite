@@ -1,0 +1,77 @@
+SmallerC toolchain — licences for the code shipped as WebAssembly in
+    src/lib/smallerc-wasm/dist/  (smlrc.wasm, smlrpp.wasm, headers.js)
+
+Two separate works ship here under two separate copyrights. Both are
+reproduced IN FULL below, because binary redistribution is what both
+licences attach their conditions to.
+
+  * smlrc.wasm and headers.js are SmallerC, (c) Alexey Frunze  — BSD-2-Clause
+  * smlrpp.wasm is ucpp, (c) Thomas Pornin  — a 3-condition BSD variant
+
+No changes were made to either source tree. The WASM build is a plain
+cross-compilation; the build script and its pinned inputs are recorded in
+src/lib/smallerc-wasm/BUILD-INFO.md.
+
+================================================================================
+1. SmallerC — BSD-2-Clause — the core compiler (smlrc) and its headers
+   https://github.com/alexfru/SmallerC
+================================================================================
+
+Copyright (c) 2012-2021, Alexey Frunze
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+================================================================================
+2. ucpp — the preprocessor (smlrpp)
+   Bundled inside the SmallerC source tree at v0100/ucpp/.
+
+   NOTE ON THE CONDITION NUMBERING: upstream numbers its conditions 1, 2 and 4
+   (there is no 3). The third condition is the no-endorsement clause, which is
+   what makes this a three-condition BSD variant rather than BSD-2-Clause.
+   The text is reproduced exactly as upstream wrote it, numbering included.
+================================================================================
+
+C preprocessor (c) Thomas Pornin 1999 - 2002
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+4. The name of the authors may not be used to endorse or promote
+   products derived from this software without specific prior written
+   permission.
+
+THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
+IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHORS OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT
+OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
+BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
+OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

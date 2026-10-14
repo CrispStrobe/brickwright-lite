@@ -1,0 +1,268 @@
+# LEGO architecture — one measured round-trip slice and the remaining gaps
+
+*Internal technical doc, English-only (per the bilingual rule: user-facing getting-started
+docs are EN/DE, implementation contracts stay English). Written 2026-08-19.*
+
+## What already exists (so we don't rebuild it)
+
+A complete, MPL-2.0, CrispStrobe-authored LEGO extension suite lives in
+`overlay/scratch-vm/src/extensions/crispstrobe/`:
+
+| Hub | Extensions | Transport | Deliverable (codegen) |
+|---|---|---|---|
+| Spike Prime / Robot Inventor | `spikeprime` (was five ids; see `SPIKE-CONSOLIDATION.md`) | Web BLE / Scratch Link BLE / Scratch Link BT / bridge, auto-detected | SPIKE Python |
+| EV3 | `ev3comprehensive`, `ev3dev` (id `scratchtoev3`) | Web Serial / Scratch Link / WS bridge / HTTP, auto-detected | EV3 Python (ev3dev2), LMS bytecode |
+| NXT | `legonxt` | BTC / Scratch Link / bridge | NXC |
+| Boost | `legoboostunified` | BLE / Scratch Link / bridge / GATT | transpile |
+| WeDo 2.0 | `wedo2unified` | BLE / Scratch Link / GATT | transpile |
+| Powered Up | `legopoweredup` | BLE / Scratch Link / GATT | transpile |
+| **RCX** | `legorcx` | **Web Serial to an infrared tower** | **NQC → `.rcx` bytecode, compiled in the browser** |
+
+These do two things: **connect** to a real hub, and **transpile** the Scratch blocks
+(including their own extension blocks) to code the hub runs. The per-hardware transpilers
+that produce the on-brick code live in a separate repo, `github.com/CrispStrobe/extensions`
+(e.g. `ev3dev_py_transpile.js` → real ev3dev2); `sb3Creator.js` already knows this split —
+its emitter distinguishes a `simulator` mode from an `ondevice` mode, and `ondevice`
+(ev3dev) defers to those per-hardware transpilers.
+
+### The RCX is the odd one out, and it is worth saying how
+
+*Added 2026-09-21. The rest of this document predates it by a month and describes a family
+of hubs reached over BLE or serial, each handed source that something else compiles. The
+RCX breaks that shape in three ways, and anyone reasoning about "the LEGO extensions" as a
+set will be wrong about this one.*
+
+**It compiles here, not elsewhere.** Every other row in the table emits source and leaves
+compilation to a service, a desktop tool or the brick itself. NQC is MPL-2.0, so it is
+vendored as WebAssembly (`lib/nqc-wasm/`, upstream `jverne/nqc`) and runs in the browser.
+The build is byte-identical to the native `nqc` on eight fixture programs. The whole RCX
+path therefore takes **no network at any step**, which none of the others can say.
+
+**We drive the wire ourselves.** There is no BLE stack and no Scratch Link to defer to: the
+RCX speaks one infrared protocol and nothing else. `lib/rcx/rcx-protocol.js` frames commands
+and `lib/rcx/rcx-serial.js` opens the port at 2400 8-O-1. Both are **clean-room** — the
+existing browser implementation is GPL-3.0 and infrared cannot be moved to a server the way
+a compiler can — and both were written by an agent that had not read it, from contracts in
+`docs/RCX-IR-PROTOCOL.md`. They are checked against NQC's own `rcxlib` as an oracle: frames
+opcode-for-opcode, line settings against what NQC asks its port for, and refusals against
+what NQC rejects (`test/rcx-nqc-oracle.test.mjs`).
+
+**The user must supply the firmware, and nobody can fix that.** NQC's bytecode runs on LEGO's
+standard RCX firmware, which is proprietary and not redistributable. The free replacements
+(brickOS-bibo MPL-2.0, TinyVM MPL-1.0) are **not substitutes**: none executes
+standard-firmware bytecode, so each replaces the VM and therefore the compiler. See
+`docs/RCX-FIRMWARE.md`. A brick with no firmware answers exactly like a brick that is switched
+off, which is why the download path says so by name rather than reporting a timeout.
+
+There is also no LEGO tower in production any more, so `docs/RCX-IR-TOWER-FIRMWARE.md` and
+`firmware/ir-tower/` are a portable replacement — one 38 kHz carrier gated by the host's TX
+line, which is baud-agnostic by construction and so ports as one timer and two pins.
+
+| What | Where |
+|---|---|
+| Blocks → NQC | the extension's own transpiler, upstream |
+| NQC → `.rcx` | `lib/nqc-wasm/` (MPL-2.0, vendored), via `runtime.nqcCompile` |
+| `.rcx` → framed commands | `lib/rcx/rcx-protocol.js` (clean room) |
+| Commands → a tower | `lib/rcx/rcx-serial.js`, via `runtime.rcxDownload` |
+| Typing NQC directly | the Code tab's NQC tab (ROADMAP 4.8) |
+| A tower to buy or build | `firmware/ir-tower/` |
+
+**On GPL:** `ev3dev` is GPL, but our `ev3dev` extension (MPL-2.0) *generates/streams* Python
+that runs on the user's own ev3dev brick — it does not vendor or link ev3dev's code. Same for
+`legonxt` (emits NXC, compiled elsewhere) and `ev3comprehensive` (LMS bytecode). We produce code for
+their runtime; we never embed their runtime. The GPL boundary is never crossed.
+
+The **faceplate campaign** (bw-circuit-ui widgets + bw-board faces + the LCD/RGB widgets in
+flight) adds the **offline visual face** for these hubs — what a learner sees when no hardware
+is connected.
+
+That is the ground truth. One useful SPIKE Prime slice crosses the first gap, and SPIKE now
+also has a real virtual-hub slice. The generic multi-hub architecture remains open. The
+dated status matrix below is the concise current inventory; the older gap narratives remain
+because they explain the design and the measured boundaries.
+
+## Current status by hub (SPIKE simulation updated 2026-10-04)
+
+| Hub family | Pseudocode ⇄ extension blocks | Virtual brick/world | Deliverable editor |
+|---|---|---|---|
+| SPIKE Prime / Robot Inventor | **PARTIAL:** 30 of the pinned 84-opcode compiler surface are bidirectional; 21 host controls and 4 hats are deliberately classified; 29 learner operations remain. The shipped consolidated extension has 101 opcodes, so refreshing that pinned census is itself open work. | **PARTIAL:** shared six-port state, motor/display outputs, editable sensor/IMU/battery inputs, BLE and classic adapters, panel, and extension E2E tests exist under `lib/virtual-hub/`. Deterministic motor/encoder dynamics and the shared 2D/3D arena support browser Scratch/native and supported SPIKE3 Python conversion. Configured desktop routes observe ARM guest, full NuttX/embedded Python, or supplied upstream MicroPython execution; API breadth and physical calibration remain bounded. | Python is editable through the existing `.py` mode; no SPIKE-API completion or lint. |
+| EV3 stock firmware | **PARTIAL (2026-09-29, task B4):** `DEVICE EV3` maps 48 of the pinned 74 `ev3comprehensive` opcodes both ways (sb3-creator `ev3Dialect.js`, one table read by parser and decompiler); the other 26 are classified (host-control 10, transport-control 14, core-duplicate 2). MakeCode EV3 programs import into it (`lib/bw-makecode/ev3-translate.js`, census section in `docs/generated/MAKECODE-CENSUS.md`). | **OPEN:** no virtual EV3 transport, state or world model — so the importer is proven by round trip + pxt-ev3 recompile, not by a side-by-side run. | LMS bytecode is intentionally not a hand-editable format. |
+| EV3 on ev3dev | **OPEN:** on-brick transpilation exists, but no BrickWright forward/reverse block map. | **OPEN.** | Python is editable; no ev3dev2 API awareness. |
+| NXT | **OPEN:** extension/transpiler exists; no BrickWright map. | **OPEN.** | NXC has no first-class language mode. |
+| Boost / WeDo 2.0 / Powered Up | **OPEN:** extensions/transpilers exist; no BrickWright maps. | **OPEN:** no shared LPF2 virtual transport/state despite their common protocol family. | Their generated deliverables have no hub-aware mode. |
+| RCX | **DEFERRED BY DESIGN:** direct extension → NQC is the useful route; a sprite-wide pseudocode map is not currently justified. | **BLOCKED FOR A DEFAULT:** emulation needs user-supplied proprietary ROM/firmware. | **DONE:** NQC is available in the Code tab. |
+
+---
+
+
+### The EV3 family is two extensions, not four (2026-09-21)
+
+`ev3lms` and `legoev3direct` were retired into `ev3comprehensive`. All three
+spoke the same direct-command protocol to the same stock LEGO firmware; what
+was split between them was a block surface, a working live implementation and
+a compiler. `ev3comprehensive` had 47 of its 74 blocks with no live-mode body
+at all and three more answering with constants, while `legoev3direct` — listed
+below it in the picker — had 41 blocks and none hollow. The unified extension
+is 82 blocks with none hollow, over four transports chosen by auto-detection.
+
+`ev3dev` stays separate and that is deliberate: it is a different operating
+system on the brick, with its own vocabulary. Folding it in would put 54 blocks
+that cannot work into every stock-firmware user's palette.
+
+Old projects migrate at load through
+`overlay/scratch-gui/src/lib/ev3-legacy-migration.js`; retired ids also resolve
+in the extension manager, for the paths that do not go through the project
+loader.
+
+## Gap 1 (highest priority) — pseudocode ⇄ Scratch-with-LEGO-blocks (partial)
+
+**Measured status on 2026-08-31.** The two worlds now meet for a deliberately bounded
+`spikeprime` dialect. sb3-creator `bcc65cde` emits and decompiles 30 canonical opcodes; its real
+CLI output is a ZIP project with the pinned extension URL, and Scratch VM executes a controlled
+motor → distance reporter → display → stop chain. Lite vendors that contract and drives the same
+archive through its File menu and Code ⇄ Blocks UI.
+
+The denominator is not hidden: the canonical extension had **84** opcodes at extensions commit
+`c681d995`, and has **101** since the five SPIKE ids were merged into it
+(`SPIKE-CONSOLIDATION.md`) — the 84 unchanged, plus the 14 blocks the four folded-in
+extensions had and three the merge makes possible. The executable census classifies them as **30 mapped, 21 host-control blocks, 4 event
+hats, and 29 learner-facing gaps**. The five other SPIKE-family extension IDs had different block
+schemas and were not aliases for this map; they are now one extension, and
+`overlay/scratch-gui/src/lib/spike-legacy-migration.js` is the table that
+says which of their opcodes became which.
+
+**The remaining islands.** Outside that measured slice, two authoring worlds still do not meet:
+
+- `.bw` (BrickWright dialect) transpiles to `c | micropython | python | sb3` via
+  `bw` in the separate `sb3-creator` repository, or via `bwlite convert` in
+  this repository (see the [CLI guide](CLI.md)). Only the canonical SPIKE slice
+  produces measured LEGO blocks.
+- The LEGO extensions transpile *Scratch-with-LEGO-blocks* ⇄ *hub code*.
+
+There is not yet a general edge for EV3, NXT, Boost, WeDo, Powered Up, the other SPIKE schemas,
+or the 29 canonical learner-facing SPIKE operations outside the current dialect.
+
+**What's missing, concretely:**
+- **Forward:** extend the proven device-aware emitter beyond `--device spikeprime` so ev3/nxt/…
+  emit projects whose blocks are the hub extension's opcodes — mapping the
+  dialect's motor / sensor / display / wait verbs to each hub's block set. The scaffolding is
+  there: `sb3Creator.js` already reconciles `project.extensions` with the opcodes actually used,
+  and already maps some extensions' field-blocks (the `stc12` pin blocks). What's missing is a
+  **per-hub block-map** (dialect verb → extension opcode + arg shape), anchored on each
+  extension's `getInfo` block set.
+- **Reverse:** extend the compiler reader (`bw read` upstream, `bwlite read` here)
+  beyond the 30 mapped `spikeprime` opcodes. Each remaining hub needs
+  its own block → dialect-verb table; incompatible extension IDs must not be collapsed by name.
+
+**Why it's the priority (above Gap 2):** it is the missing joint that connects the whole stack
+— pseudocode ⇄ blocks ⇄ hub. The SPIKE slice proves pseudocode ⇄ blocks for its measured set.
+It does not prove a physical connection or on-brick deployment, and it does not justify a
+family-wide claim; those boundaries remain owned by each extension and transport.
+
+**Lives in:** `sb3-creator` (`sb3Creator.js` forward emitter + a reverse table), the
+`CrispStrobe/extensions` per-hardware transpilers, and the compiler used by
+both `bw` and `bwlite`. Needs a per-hub block-map
+authored from each extension's `getInfo`.
+
+---
+
+## Gap 2 (lower priority) — an editor for the hub deliverables
+
+The Code tab edits `.bw`, `.py`, `.js`, `.c`, `.bas` (`cm-lang-basic.js`), and `.asm`
+(`cm-lang-asm.js`). But the LEGO-hub *deliverables* have no first-class editor:
+
+- **NXC** (NXT) — its own C-like language, no CodeMirror mode.
+- **LMS bytecode** (EV3 original firmware) — a binary artifact, not hand-editable by design.
+- **SPIKE Python / ev3dev Python** — these *are* Python, so `.py` opens them, but there is no
+  hub-API-aware mode (completion/lint for the SPIKE or ev3dev2 APIs).
+
+**Proposed:** a `cm-lang-nxc` mode, and optionally SPIKE/ev3dev Python API awareness layered on
+the existing Python editor. Explicitly ranked **below Gap 1** by the owner — round-tripping
+pseudocode matters more than hand-editing the generated hub code.
+
+**Lives in:** `lite` (Code tab, `cm-lang-*`).
+
+---
+
+## Gap 3 — a stateful brick + world model behind the faces (partial for SPIKE)
+
+The generic faces remain a **view**, not a family-wide simulation. But the earlier blanket
+statement that there is no LEGO brick model is obsolete: SPIKE has one under
+`overlay/scratch-gui/src/lib/virtual-hub/`. `VirtualSpikeHubState` holds display, six motors,
+six sensor ports, IMU, buttons, battery and connection state. The panel edits the world;
+the BLE and classic adapters expose that same state to the real bundled extension; commands
+write motor/display state; focused and extension-level tests exercise both directions.
+
+The remaining boundary is API breadth, physical calibration and reuse by other hub
+families. SPIKE motor position advances under one deterministic clock; firmware
+routes publish observed motor state through the same hub and arena. The generic `bw-board/src/face.js`
+render binding (`matrix | lcd | level | needle`) is also not yet a view over the virtual hub.
+
+The pattern to follow already exists on the STC12 side: `stc12SimulatorDriver` in
+`sb3Creator.js` turns the emitted program into a **simulated board** ("boundary A"), attached
+via `bw_board`. A LEGO brick sim is the same idea with a richer model.
+
+**What a real simulation needs:**
+
+1. **Brick state** — held, not just rendered:
+   - display contents (matrix pixels / LCD framebuffer / status-light colour),
+   - actuator state per port: servo angle, motor speed **and** position, sound, LED,
+   - so the face shows the *current* state, and the program can read it back.
+
+2. **A world model** — what the sensors receive, per port:
+   - colour, distance/ultrasonic, IR signal, touch/button, gyro/tilt, reflected light, force.
+   The sensor blocks read from this world, not from thin air.
+
+3. **Bidirectional drive** — two directions must both work:
+   - **code → world:** the program mutates actuator + display state (outputs),
+   - **world → code:** sensor reads come from the world, and the world is settable **both by
+     the program's environment and by UI widgets** — the learner pokes a colour, a distance, an
+     IR code, a button press, a servo/motor override, and the running program sees it.
+
+4. **Feedback loop** — actuator state can feed sensor state: a motor's commanded speed
+   integrates to a rotation the encoder/position sensor then reports; a servo's angle is its own
+   readback. Outputs are not write-only.
+
+**Next shape:** extract a small protocol-neutral hub-state contract from the proven SPIKE
+implementation rather than designing a second model from scratch. Keep protocol adapters
+hub-specific. Reuse SPIKE’s deterministic actuator feedback, then adopt EV3 as
+the first second-family proof and the LPF2 family as the first shared-protocol proof. Input
+widgets write the world; display/gauge widgets read the brick model. Port counts, sensor
+kinds and ranges must be derived from the same device descriptors used by Gap 1.
+
+**Lives in:** `lite` faces + `bw-circuit-ui` widgets + `bw-board` device model, following
+`sb3-creator`'s simulator-driver pattern.
+
+---
+
+## Priority order
+
+1. **Gap 1** — the pseudocode ⇄ LEGO-blocks joint (connects the whole stack).
+2. **Gap 3** — extend SPIKE API coverage and calibration, extract the contract, then add EV3 and LPF2 family sims.
+3. **Gap 2** — the NXC / hub-API editor (nice-to-have; `.py` already covers the Python
+   deliverables).
+
+Gaps 1 and 3 share the same anchor: a per-hub device model (ports, sensor/motor kinds, display,
+value ranges) authored from each extension's `getInfo`. Writing that model once serves the
+block-map (Gap 1), the sim (Gap 3), and the faces (the current campaign).
+
+### Where the RCX sits in that order — mostly outside it
+
+*Added 2026-09-21.* The RCX tier is complete end to end and does not depend on any of the
+three gaps above: it compiles and downloads without a device model, a block-map or a sim,
+because it produces a `.rcx` for a real brick rather than driving one live. The gaps it does
+bear on are worth stating so nobody looks for work that is not there:
+
+* **Gap 1 does not apply as written.** There is no pseudocode ⇄ RCX-blocks joint and the
+  remaining half of ROADMAP 4.8 (`generateNQC`, a whole Scratch project → NQC) is
+  deliberately unbuilt: the extension already transpiles its own blocks, which is what an
+  RCX user needs, and a brick with 32 variables, three outputs and a five-digit LCD cannot
+  meaningfully run a sprite program. Revisit only if someone asks.
+* **Gap 3 would apply, and nothing is started.** A simulated RCX is a real possibility —
+  `brickEmu` emulates the H8/300 — but it needs LEGO's ROM and firmware, which nobody may
+  redistribute, so it is bring-your-own and cannot be a default.
+* **What the RCX tier still lacks is hardware, not code.** No brick and no tower has been
+  touched: the protocol is verified against NQC's own frames, the tower firmware against a
+  simulation, and the RP2040 port has never been compiled. Those are the first things a
+  person with the hardware should check, and they are recorded as unverified rather than
+  implied in `docs/RCX-IR-TOWER-FIRMWARE.md`.

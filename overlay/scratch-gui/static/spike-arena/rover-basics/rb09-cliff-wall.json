@@ -1,0 +1,75 @@
+{
+  "id": "rb09-cliff-wall",
+  "title": {
+    "en": "Stop at the cliff",
+    "de": "Halt vor der Felswand"
+  },
+  "intro": {
+    "en": "Park the rover close to the cliff so the drill can reach it: its front must end between 5 and 15 cm from the rock face, and it must never touch it. Use the distance sensor on the front.",
+    "de": "Parke den Rover nah an der Felswand, damit der Bohrer sie erreicht: Seine Front muss 5 bis 15 cm vor dem Fels stehen, und er darf ihn nie berühren. Nutze den Abstandssensor vorn."
+  },
+  "hints": [
+    {
+      "en": "The distance sensor reports centimetres in the blocks.",
+      "de": "Der Abstandssensor meldet in den Blöcken Zentimeter."
+    },
+    {
+      "en": "Closer than 5 cm the sensor has no reading at all.",
+      "de": "Näher als 5 cm hat der Sensor gar keinen Messwert."
+    }
+  ],
+  "mat": {
+    "width": 150,
+    "height": 100,
+    "background": "orange",
+    "paint": "#d9825b",
+    "shapes": []
+  },
+  "walls": [
+    {
+      "shape": {
+        "type": "rect",
+        "x": 142,
+        "y": 50,
+        "w": 8,
+        "h": 100
+      }
+    }
+  ],
+  "zones": [
+    {
+      "id": "drill-spot",
+      "role": "goal",
+      "shape": {
+        "type": "rect",
+        "x": 119,
+        "y": 50,
+        "w": 10,
+        "h": 100
+      },
+      "label": {
+        "en": "drilling distance",
+        "de": "Bohrabstand"
+      }
+    }
+  ],
+  "start": {
+    "x": 20,
+    "y": 50,
+    "heading": 0
+  },
+  "timeLimitMs": 15000,
+  "success": [
+    {
+      "type": "stopIn",
+      "zone": "drill-spot"
+    }
+  ],
+  "failure": [
+    {
+      "type": "noWallContact"
+    }
+  ],
+  "solution": "rb09-cliff-wall.bw",
+  "wrong": "rb09-cliff-wall.wrong.bw"
+}

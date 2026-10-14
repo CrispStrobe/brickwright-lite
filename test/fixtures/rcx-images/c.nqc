@@ -1,0 +1,9 @@
+sub helper()
+{
+  OnFwd(OUT_A);
+}
+task main()
+{
+  helper();
+  helper();
+}

@@ -1,0 +1,48 @@
+{
+  "schema": "brickwright/p18-connection-modal-attribution/v1",
+  "evidence": {
+    "run": 34059625658,
+    "headSha": "60a4b9bb3ea77e2445b6cefc4c1eb7181a9322e2",
+    "webpackHash": "056e6af76a94b16e972a"
+  },
+  "baseline": {
+    "run": 34056846253,
+    "initialBytes": 4351060
+  },
+  "candidate": {
+    "initialBytes": 4224748,
+    "initialReductionBytes": 126312,
+    "namedChunk": {
+      "name": "connection-modal",
+      "chunkId": 3255,
+      "initial": false,
+      "asset": {
+        "name": "chunks/connection-modal.js",
+        "bytes": 75446
+      },
+      "sourceBytes": 108024.42000000001,
+      "owners": [
+        {"owner": "app:components/connection-modal", "bytes": 78893.42000000001},
+        {"owner": "app:containers", "bytes": 16223},
+        {"owner": "app:components/progress-ring", "bytes": 6718},
+        {"owner": "app:lib/microbit-update.js", "bytes": 6170},
+        {"owner": "app:other", "bytes": 20}
+      ]
+    },
+    "namedChunkGroup": {
+      "name": "connection-modal",
+      "chunks": [1455, 3255],
+      "assets": [
+        {"name": "chunks/1455.7f560d7fe652d9d9418c.js", "bytes": 52693},
+        {"name": "chunks/connection-modal.js", "bytes": 75446}
+      ],
+      "emittedBytes": 128139
+    }
+  },
+  "emittedFloorBytes": 76800,
+  "shortfallBytes": 1354,
+  "namedAssetClearsFloor": false,
+  "chunkGroupClearsFloor": true,
+  "retryAcceptancePassed": false,
+  "accepted": false
+}

@@ -1,0 +1,11 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: the right idea at full speed. Between two
+# gyro readings the rover spins so far that it stops well past 45 degrees.
+WHEN flag clicked:
+  set movement motors A B
+  reset yaw
+  set movement speed 100
+  start moving steering 100
+  wait until spike angle yaw > 43
+  stop movement

@@ -1,0 +1,10 @@
+DEVICE SPIKE
+
+# Sensors in depth 1 - the blue marker (reference solution).
+# Waiting for one named colour ignores every other stripe.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  start moving steering 0
+  wait until spike color C is blue
+  stop movement

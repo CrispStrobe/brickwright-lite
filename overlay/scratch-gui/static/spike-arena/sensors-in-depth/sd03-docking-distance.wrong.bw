@@ -1,0 +1,11 @@
+DEVICE SPIKE
+
+# A deliberately wrong attempt: it waits for the reading to be EXACTLY 20.
+# This faster rover skips 20 between sensor samples in this scene and
+# drives on into the wall. Equality can sometimes be observed at other speeds.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 60
+  start moving steering 0
+  wait until spike distance D = 20
+  stop movement

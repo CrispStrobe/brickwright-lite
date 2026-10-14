@@ -1,0 +1,46 @@
+{
+  "schema": "brickwright-lite.i80386-doom-widgets-browser-receipt.v1",
+  "date": "2026-09-28",
+  "passed": true,
+  "scope": "One strict headless Chromium replay of external FreeDOS 1.4 and a short Doom timedemo through the Lite Widgets VGA screen and keyboard",
+  "source": {
+    "liteCommit": "1439e6ee42d2b0ecd332d2628ee770fff3a95aaf",
+    "boardPin": "d983253edbffd56ff18ded41387a15932d48f347",
+    "probeSha256": "39303ab0fee22e2f00e29cb2d47273a87c074f9fb0bad075938421b0fc9647c8",
+    "buildIndexSha256": "3f79fbcef0cfcda6f447bcd76837a5551228c10094fdf12d3889ff3fdd87b368",
+    "buildManifestSha256": "8edf3afb959b1b7afe24cd04d7444476739b2eb1da2ba0db7a72f6c48221f357"
+  },
+  "mediaSha256": {
+    "freedosFloppy": "03df6088be016e57a6c44275f5bb9ab0244db71de1360957fd76ba83243b6a77",
+    "doomHdd": "5ffd1e792e80f5412b713413cd760f4114b6f1d9c527292369c806b716102a8d",
+    "bundledBios": "6481181809b58a9f805346a7ecf9bebdaf5b322c32825fb49ee89da51552c4ac",
+    "bundledVgaRom": "76af53f14955df3edd6365daa64393e91fafe55241c2c00384ff05b740431da1"
+  },
+  "observations": {
+    "mediaAttached": {"floppyBytes": 1228800, "hddBytes": 10653696},
+    "widgetsVideoAndKeyboardAttached": true,
+    "keyboardCommandEchoed": "C:\\>doom -timedemo astra -nosound",
+    "firstAcceptedGraphics": {
+      "width": 320,
+      "height": 200,
+      "guestUniqueRgbColors": 150,
+      "guestLitPixels": 63366,
+      "guestRgbSha256": "bcaa8d93ba122cbfffb0a0689080add1dec233c9097289a5b2de2efa1ee740e0",
+      "widgetsUniqueRgbColors": 150,
+      "widgetsLitPixels": 63366,
+      "widgetsRgbSha256": "bcaa8d93ba122cbfffb0a0689080add1dec233c9097289a5b2de2efa1ee740e0",
+      "privatePpmSha256": "4352a8b09fd06c373901967977261cd76b16ec89357318d4681b958136ade4ee",
+      "privateCanvasPngSha256": "8733c7117c081653b6d8ae5c16a821be0659552c20fa0f3710e8dcbcbae8852c"
+    },
+    "acceptedGraphicsCaptures": 3,
+    "timedemoResult": "timed 24 gametics in 1465 realtics",
+    "returnedToPrompt": "C:\\>",
+    "elapsedSeconds": 762.165,
+    "browserErrors": []
+  },
+  "privateRawReportSha256": "9aa92b6b373552e6e9af32b797bded8be79c04dd59df32e01d28e59fc3ae7868",
+  "limits": [
+    "This is one bounded browser run with external, locally supplied guest media; it is not a bundled game or general compatibility claim.",
+    "The raw report, media, guest RGB frame, and browser screenshots remain private and are not included in this repository."
+  ]
+}

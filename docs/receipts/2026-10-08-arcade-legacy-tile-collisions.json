@@ -1,0 +1,128 @@
+{
+  "date": "2026-10-08",
+  "testedImplementation": "a46ecc7537aaaadaeb3f2c0d2ebd0aaf5e0733fc",
+  "buildSource": "054b0ee62456351d9d0dc387ea071d97014e27bd",
+  "producer": {
+    "repo": "CrispStrobe/sb3-creator",
+    "source": "0de6ae91758353af89ce64b06717a4294cd6bb05",
+    "pr": 70,
+    "wordsAdded": 3,
+    "testsPassed": 1
+  },
+  "APIs": [
+    "scene.onHitTile",
+    "scene.tileHitFrom",
+    "Sprite.tileHitFrom"
+  ],
+  "semantics": [
+    "scene-owned numeric color-index wall registrations",
+    "legacy callbacks run before modern wall callbacks",
+    "legacy handler filter snapshot; modern filter observes changed sprite kind",
+    "live lexical captures, sequential yielding callbacks and nested registrations",
+    "obstacle index snapshot survives edits of the live map image",
+    "null sprite reports0; sprite without obstacle reports-1",
+    "named collision direction menu in Blocks"
+  ],
+  "tests": {
+    "affectedAndRegressionsPassed": 22,
+    "finalDirectionMenuAffectedRerunPassed": 2,
+    "producerPassed": 1,
+    "canonicalSpikeArtifact": "Included unchanged artifact assertions in22 regressions",
+    "failed": 0,
+    "skipped": 0,
+    "boundary": "Passing regressions use zero velocity while the collision callback pauses; separate nonzero-velocity timing probe fails and is retained"
+  },
+  "build": {
+    "errors": 0,
+    "warnings": 2,
+    "guiBundle": "gui.6891b0d9.js",
+    "initialBytes": 4360525,
+    "previousInitialBytes": 4360525,
+    "unchangedInitialLimit": 4467136,
+    "bootPayload": "passed"
+  },
+  "browser": {
+    "status": "passed",
+    "pageErrors": [],
+    "legacyTileCollisions": {
+      "nativeFileImport": true,
+      "codeToBlocks": true,
+      "order": "ABCABC",
+      "count": 25,
+      "hitIndex": 2,
+      "afterMapEdit": 2,
+      "parentSceneHits": 1,
+      "kindMutationOrder": "ABFABLF"
+    },
+    "promotedOriginalApps": [
+      {
+        "file": "arcade-38daed1ab8038d15.ts",
+        "nativeFileImport": true,
+        "codeToBlocks": true,
+        "visibleController": true,
+        "observed": {
+          "x": 50,
+          "y": 50,
+          "originIndex": 15
+        }
+      },
+      {
+        "file": "arcade-6782c0ede72e9f93.ts",
+        "nativeFileImport": true,
+        "codeToBlocks": true,
+        "visibleController": true,
+        "observed": {
+          "x": 24,
+          "y": 56,
+          "originIndex": 9
+        }
+      }
+    ],
+    "priorJourneys": "All preceding production journeys pass"
+  },
+  "corpus": {
+    "original184ImportOnly": {
+      "translated": 102,
+      "partial": 81,
+      "malformed": 1
+    },
+    "previous": {
+      "translated": 100,
+      "partial": 83,
+      "malformed": 1
+    },
+    "promotedSources": 2,
+    "promotedQualification": "Original/exported PXT plus explicit observer/input-driving suffix match finite collision observables; unchanged originals step240 native frames without block errors/warnings and respond to visible production GUI controls",
+    "completeGameEquivalence": false
+  },
+  "timingGap": {
+    "status": "open qualification gap",
+    "case": "nonzero velocity during yielding explicit collision",
+    "originalFinalX": 15,
+    "nativeFinalX": 11.16796875,
+    "boundary": "Original wall clock versus forced native VM frames; compare common clocks before deciding shared scheduling/physics changes",
+    "matching": [
+      "orderABC",
+      "count12",
+      "hitDuring2",
+      "hitAfterMapEdit2",
+      "hitAfter-1"
+    ],
+    "discardedExperiment": "Scene ownership lock matched position but changed obstacle clearing; removed completely"
+  },
+  "retainedFailures": [
+    "Nonzero-velocity pause changes final position under the current differential clocks",
+    "Setting nonzero velocity immediately after the pause also differed",
+    "Experimental scene ownership lock changed hitAfter from original-1 to2; experiment removed"
+  ],
+  "remaining": [
+    "callback movement during nonzero-velocity yields: common-clock and shared scheduler qualification",
+    "mixed modern/legacy map semantics",
+    "dedicated map painter, color palette/index controls and resource edit lifecycle",
+    "invalid/dynamic scales beyond standard enums",
+    "missing package artwork, custom palettes, effects and music",
+    "full-game semantic and screen comparison",
+    "exact-head hosted CI and stacked integration"
+  ],
+  "publication": "Draft stacked PR; not merged"
+}

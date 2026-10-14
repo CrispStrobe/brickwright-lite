@@ -1,0 +1,8 @@
+task main() {
+    SetSensor(SENSOR_1, SENSOR_TOUCH);
+    SetPower(OUT_A, 7);
+    OnFwd(OUT_A);
+    until (SENSOR_1 == 1);
+    Off(OUT_A);
+    PlayTone(440, 50);
+}

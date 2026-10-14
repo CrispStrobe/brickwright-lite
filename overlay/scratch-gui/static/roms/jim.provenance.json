@@ -1,0 +1,20 @@
+{
+  "note": "Jim Tcl (msteveb/jimtcl), a small but complete Tcl (lists, dicts, namespaces, expr with 64-bit integers, doubles and the math functions, strings, regexp, format/scan, upvar/uplevel, apply/lambda, try), built from its single-file bootstrap amalgamation autosetup/jimsh0.c as a 16-bit MS-DOS MZ .EXE with ia16-elf-gcc -mcmodel=medium. DOS-NATIVE: it runs on the bw-board 8086 DOS service bench, reads PROG.TCL via INT 21h and defines Jim's Tcl-coded library commands on first use from JIMLIB.TCL (jimlib.tcl). tools/jim-dos/mkdos.py lists every change to the amalgamation (16-bit int fixes, the namespace extension, Tcl 8.5's puts channel / entier / max / min, a stack-bounded recursion check, a heap that cannot grow into the stack, a 64 KB data-segment diet); tools/jim-dos/build.sh reproduces these bytes with the toolchain below. The toolchain is GPL and build-time only; the binary is BSD-2 Jim Tcl linked against newlib + libi86.",
+  "rom": "jim.exe",
+  "library": "jimlib.tcl",
+  "upstream": "github.com/msteveb/jimtcl",
+  "commit": "5bac7c99ad65864c87da513e22e2f01703fa4e03",
+  "jimsh0Sha256": "d6ca32738df8d690b74c103d770661c689184333ea4ab21df03cf15bc2cc186d",
+  "license": "BSD-2-Clause",
+  "holder": "Salvatore Sanfilippo, Steve Bennett and the Jim Tcl authors",
+  "buildTool": "ia16-elf-gcc -mcmodel=medium -march=any_186 -Os -ffunction-sections -fdata-sections -mcs-jump-tables -DJIM_DOS_STACK=12288 -DJIM_DOS_STACK_MARGIN=1536 -DJIM_MATH_FUNCTIONS -Wl,--gc-sections -lm",
+  "toolchain": {
+    "binutils-ia16-elf": "2.39-20260423.22-ppa260423231~noble",
+    "gcc-ia16-elf": "6.3.0-20260612.00-ppa260612104~noble",
+    "libi86-ia16-elf": "20260727-stage1gcc6.3.0-20260612.00-binutils2.39-20260423.22-ppa260727151~noble",
+    "libnewlib-ia16-elf": "2.4.0-20260316.15-stage1gcc6.3.0-20260612.00-binutils2.39-20260423.22-ppa260612104~noble"
+  },
+  "bytes": 297488,
+  "sha256": "6793b5dd53a27bf23c4a9c71dd995b0a3089da7760e251f6ef7827120df23d46",
+  "librarySha256": "086616f19cbe451d11e5110fd89116e6adea5b321f7e300e0a0e826b433fd0d7"
+}
