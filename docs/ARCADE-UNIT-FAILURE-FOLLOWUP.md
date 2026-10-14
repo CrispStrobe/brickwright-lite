@@ -47,6 +47,13 @@ after a frame. Existing clone controls now observe the actual render boundary;
 z writes do not prematurely sort the scene's update list. The original failure
 is preserved. Visible browser layering remains pending.
 
+The yielding-function control now uses the existing independent timer platform:
+the result is undefined at 199 ms and equals seven at 200 ms. Stop at 100 ms
+cancels the pending result, and restart repeats the same deadline observations.
+This focused control passes. Its earlier manual physics frames did not advance
+the real pause clock, so their count was insufficient evidence of elapsed time.
+No runtime pause implementation or original comparison was changed.
+
 At `12d8bc43327309003a9de9c69c06a7c60cac2cea`, the
 [completed first unit shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38618756907/job/116045316170)
 reports 4,610 tests: 4,548 pass, 46 fail, 14 skip and two TODO. The
