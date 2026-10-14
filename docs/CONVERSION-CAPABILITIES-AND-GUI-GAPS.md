@@ -4393,3 +4393,29 @@ and Blocks, and test fresh saved-project, edited signature and original export
 journeys through the production editor. Native default admission is not that
 visible authoring qualification. Keep wider callbacks and Font interface values
 in their own contracts and ownership lanes.
+
+## Class callback and Font editor work still required
+
+Class callback conversion is a separately qualified prototype. An editor must
+let users create typed callable fields, choose parameter/result types, capture
+the actual receiver, and edit the current body. Code and Blocks must rebuild
+their binding plan from the actual declarations and procedure graph when a
+binding is renamed or a signature changes. Serialized plan metadata alone is
+not a usable authoring interface or proof that the body still matches it.
+Generated temporaries must remain distinct from every authored parameter and
+local; include adversarial names in the browser authoring journey.
+
+Live Font interface values are a separate supplier/consumer lane. Required
+Blocks inputs include a fixed font selector and connected Font values for
+text selection, scaling, printing and centered printing. Code completion must
+show `image.Font` as a record with fields, rather than inventing a constructor
+or inheritance. Expose unsupported mutations as named diagnostics while the
+read slice is qualified; the underlying MakeCode fields and glyph storage are
+mutable, and later support must preserve shared backing storage.
+
+The graphics editor needs text previews using the selected live Font, readable
+metrics, and a distinction between authored pixels and runtime image changes.
+Acceptance includes visible connected-input edits, aliases, Code reconstruction,
+same/fresh saved projects, executed export and reimport. Headless native pixels,
+palette descriptors and a prepared browser script do not establish these
+visible editor journeys.
