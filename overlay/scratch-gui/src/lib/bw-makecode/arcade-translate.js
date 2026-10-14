@@ -1,3 +1,4 @@
+import {classCallableSourceGate} from './class-callable-source-gate.js';
 import {callableSourceGate} from './callable-source-gate.js';
 import {lowerCallableValues} from './lower-callable-values.js';
 import {validateClassCallablePlan} from './class-callable-plan.js';
@@ -4892,10 +4893,14 @@ export function arcadeToPseudocode (files, opts = {}) {
     const callableSourceParsed=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true});
     const callableEligibility=callableSourceGate(callableSourceParsed,{normalize:true});
     const callableEnabled=opts.callableLexicalPrototype===true || callableEligibility.eligible;
+    const classEligibility=classCallableSourceGate(callableSourceParsed);
+    const classEnabled=opts.classCallablePrototype===true || classEligibility.eligible;
     // Ordinary programs retain their ordinary parse. Only the proved numeric
     // surface uses lexical metadata and the existing callable lowering path.
-    const callableSourceInput=opts.classCallablePrototype===true ? callableSourceParsed : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
-    if(!opts.callableLexicalPrototype&&!opts.classCallablePrototype)projectInputDiagnostics.push(...callableEligibility.unsupported);
+    const callableSourceInput=classEnabled ? callableSourceParsed : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
+    if(!opts.callableLexicalPrototype&&!opts.classCallablePrototype&&!classEligibility.eligible){
+        projectInputDiagnostics.push(...callableEligibility.unsupported,...classEligibility.unsupported);
+    }
     const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput,true));
     const parsed = lowerSourceLoopControl(inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
         lowerAnimationAssets(namedArrayInputs.program))), source), source), source), source))));
@@ -4993,10 +4998,10 @@ export function arcadeToPseudocode (files, opts = {}) {
     });
     stagedSource.sourceReferenceDeclarations = sourceReferenceDeclarations(stagedSource);
     stagedSource.sourceCallableDeclarations=callableEnabled?sourceCallableDeclarations(stagedSource).declarations:[];
-    const callables=opts.classCallablePrototype===true?lowerCallableValues(stagedSource,{classPrototype:true}):callableEnabled?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
+    const callables=classEnabled?lowerCallableValues(stagedSource,{classPrototype:true}):callableEnabled?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
     projectInputDiagnostics.push(...callables.unsupported);
-    const objectClasses = lowerObjectClasses(callables.program,{classCallablePrototype:opts.classCallablePrototype===true});
-    if(opts.classCallablePrototype===true && !callables.unsupported.length && !objectClasses.unsupported.length) {
+    const objectClasses = lowerObjectClasses(callables.program,{classCallablePrototype:classEnabled});
+    if(classEnabled && !callables.unsupported.length && !objectClasses.unsupported.length) {
         try {objectClasses.program.bwCallableLexicalPlan=callables.finishClassPlan(objectClasses.program.bwClassCallableProcedures || []);}
         catch(error){objectClasses.unsupported.push(String(error.message));}
     }

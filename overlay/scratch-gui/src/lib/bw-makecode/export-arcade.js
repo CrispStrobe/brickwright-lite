@@ -1,3 +1,5 @@
+import {classCallableSourceGate} from './class-callable-source-gate.js';
+import {classCallableDefaultProjectGate} from './class-callable-default-project-gate.js';
 import {parseMakeCodeTs} from './ts-import.js';
 import {callableSourceGate} from './callable-source-gate.js';
 import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes} from './callable-export-graph.js';
@@ -3312,7 +3314,7 @@ class ArcadeEmitter {
     }
 
     prepareCallableExport() {
-        this.callableExports=new Map();this.callableGlobals=new Map();
+        this.callableExports=new Map();this.callableGlobals=new Map();this.classCallableDefaultTargets=new Set();
         for(const target of this.project.targets) {
             const blocks=target.blocks || {},literal=(block,name)=>{
                 const slot=block.inputs?.[name]?.[1];
@@ -3324,7 +3326,12 @@ class ArcadeEmitter {
             if(!declarations.length)continue;
             let envelope;try {envelope=JSON.parse(literal(declarations[0],'METADATA'));} catch(_){this.note('Callable export requires fixed lexical declaration metadata');continue;}
             try {
-                const graph=inspectCallableExportGraph(target,envelope.plan,literal,envelope.version===2&&this.opts.classCallablePrototype?{classProvider:this.objectClassExport.classCallableProvider(target)}:{});
+                let graph;
+                if(envelope.version===2&&!this.opts.classCallablePrototype){
+                    const proof=classCallableDefaultProjectGate(target,this.project,this.objectClassExport,literal);
+                    if(!proof.eligible)throw Error(proof.unsupported.join('; ')||'Class callable default project is unproved');
+                    graph=proof.graph;this.classCallableDefaultTargets.add(target);
+                }else graph=inspectCallableExportGraph(target,envelope.plan,literal,envelope.version===2&&this.opts.classCallablePrototype?{classProvider:this.objectClassExport.classCallableProvider(target)}:{});
                 validateCallableCurrentBodyTypes(graph,literal);
                 if(this.clonable.has(target.name))throw Error('Callable lexical export on clone targets is not qualified');
                 for(const [bindingId,row] of graph.globalBindings) {
@@ -3932,9 +3939,10 @@ export function projectToArcade (project, opts = {}) {
     if(e.callableExports.size && !opts.callableLexicalPrototype && !opts.classCallablePrototype) {
         // Approval covers the complete reconstructed current program, including
         // adjacent functions; lexical metadata cannot grant a broader surface.
-        const gate=callableSourceGate(parseMakeCodeTs(projectTs,{parameterDefaults:true,
-            retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainCallableMetadata:true}));
-        if(!gate.eligible)e.note('Callable default export requires the bounded numeric factory surface');
+        const reconstructed=parseMakeCodeTs(projectTs,{parameterDefaults:true,
+            retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainCallableMetadata:true});
+        const gate=e.classCallableDefaultTargets.size?classCallableSourceGate(reconstructed):callableSourceGate(reconstructed);
+        if(!gate.eligible)e.note(e.classCallableDefaultTargets.size?'Class callable default export requires the proved complete ordinary-class source surface':'Callable default export requires the bounded numeric factory surface');
         for(const diagnostic of gate.unsupported)e.note(diagnostic);
     }
     return {ts, files, unsupported: e.unsupported, warnings: e.warnings};
