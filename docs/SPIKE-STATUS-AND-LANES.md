@@ -6,6 +6,26 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Native startup observation candidate — 2026-10-13
+
+The merged [PR891](https://github.com/CrispStrobe/brickwright-lite/pull/891)
+claim covers a native-only startup trace candidate. Closed phase/result names
+and monotonic elapsed milliseconds distinguish session lock, launch, RSP
+connection, interrupt handle, state connection/readiness, applicable identity
+checks and attachment. Errors and early returns close the active phase as failed.
+The trace emits at most 24 records per call and accepts no paths, arguments,
+leases, image identities or backend error text. Public error responses and
+startup/session deadlines are unchanged; logging I/O errors are ignored.
+
+Three extracted standard-library controls pass, and three deliberate mutations
+are detected: mislabelling failure as completion, adding failure after success,
+and removing the log ceiling. These controls do not compile or qualify the full
+native app. Affected native compilation, exact-head hosted gates and fresh
+installed cold-start, Stop/reset/close/recovery and owned-guest observations
+remain required. Earlier generic cold-start failures are preserved and their
+cause remains unknown. No timeout increase or firmware/Runtime/model adoption
+is proposed by this observation work.
+
 ## Code Stop startup feedback candidate — 2026-10-13
 
 The source candidate adds a cold-start notification through the existing arena
