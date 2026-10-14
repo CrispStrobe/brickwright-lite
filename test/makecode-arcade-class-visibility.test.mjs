@@ -30,6 +30,13 @@ test('readonly and visibility remain static metadata while valid any access pres
   const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));fresh.vm.greenFlag();await stepFrames(fresh.vm,100);check(fresh);
  }finally{runs.forEach(run=>run.vm.quit());clearStrayTimers();}
 });
+test('staged class updates preserve any receiver restrictions without refusing ordinary writes',()=>{
+ const head='class A {constructor(public n:number){}} let a=new A(1);';
+ for(const tail of ['let n=(a as any).n++;n+=0;','(a as any).n--;','let alias:any=a;alias.n++;'])
+  assert.match(arcadeToPseudocode(head+tail).unsupported.join('\n'),/unary update on any class properties/);
+ for(const tail of ['let n=a.n++;n+=0;','a.n--;','(a as any).n=2;'])
+  assert.deepEqual(arcadeToPseudocode(head+tail).unsupported,[]);
+});
 test('invalid typed visibility and readonly accesses retain the selected original static errors',async()=>{
  for(const [source,pattern]of [
   ['class A {constructor(public readonly n:number){}} let a=new A(1);(a as any).n=7;a.n=2;',/Readonly class field/],

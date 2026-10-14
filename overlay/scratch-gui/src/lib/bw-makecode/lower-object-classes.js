@@ -294,7 +294,19 @@ export function lowerObjectClasses(program) {
     const signature = (name, params) => [name, ...params.map(() => '%s')].join(' ');
     const types = node => [...graph.node(cell(node)).types].map(type => type.startsWith('class:') ? 'object' : type === 'Image' ? 'image' : type === 'Sprite' ? 'sprite' : type === 'Buffer' ? 'buffer' : type);
     const visibility = member => member.modifiers?.find(value => ['private','protected'].includes(value)) || 'public';
-    const anyReceiver = node => node.assertedType === 'any' || node.type === 'Identifier' && anyBindings.has(binding(owners.get(node) || global,node.name));
+    // Staging captures a receiver once. Its temporary keeps the source cast's
+    // type authority; it must not turn an any receiver into a typed receiver.
+    const temporaryOrigins=new Map();
+    for(const node of entries)if(node.type==='Declaration')for(const decl of node.decls)
+        if(decl.temporary && decl.init)temporaryOrigins.set(binding(owners.get(node)||global,decl.name),decl.init);
+    const anyReceiver = (node,seen=new Set()) => {
+        if(node.assertedType==='any')return true;
+        if(node.type!=='Identifier')return false;
+        const key=binding(owners.get(node)||global,node.name);
+        if(anyBindings.has(key))return true;
+        if(seen.has(key)||!temporaryOrigins.has(key))return false;
+        seen.add(key);return anyReceiver(temporaryOrigins.get(key),seen);
+    };
     const access = (receiver,name,members,context) => {
         if(anyReceiver(receiver))return;
         for(const member of members){const owner=fieldOwners.get(member)||methodClasses.get(member),mode=visibility(member);
@@ -348,6 +360,8 @@ export function lowerObjectClasses(program) {
             fail(`Class receiver method ${node.callee.name} is not declared for every possible receiver`);
         }
         if (node.type === 'Assignment' && node.left?.type === 'Member' && classNames(node.left.object).length) {
+            if(['++','--'].includes(node.bwPxtSourceUpdate) && anyReceiver(node.left.object))
+                fail('Selected Arcade SDK does not support unary update on any class properties');
             const names = classNames(node.left.object);
             const fields = names.map(name => findField(name,node.left.name));
             if (fields.some(field => !field)) { fail(`Unknown declared class field ${node.left.name}`); return node; }

@@ -82,7 +82,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false} =
             const target=lvalue(node.argument,true),prefix=[...target.prefix];
             const previous=save({type:'Unary',op:'+',argument:target.value},prefix);
             const next=save({type:'Binary',op:node.op==='++'?'+':'-',left:previous,right:{type:'Number',value:'1'}},prefix);
-            prefix.push({type:'ExpressionStatement',expr:{type:'Assignment',op:'=',left:target.value,right:next,valuePreserving:true}});
+            prefix.push({type:'ExpressionStatement',expr:{type:'Assignment',op:'=',left:target.value,right:next,valuePreserving:true,bwPxtSourceUpdate:node.op}});
             return {prefix,value:node.prefix?next:previous};
         }
 
@@ -213,7 +213,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false} =
                 const target=lvalue(st.expr.argument,true),prefix=[...target.prefix];
                 const previous=save({type:'Unary',op:'+',argument:target.value},prefix);
                 return [...prefix,{...st,expr:{type:'Assignment',op:'=',left:target.value,
-                    right:{type:'Binary',op:st.expr.op==='++'?'+':'-',left:previous,right:{type:'Number',value:'1'}}}}];
+                    right:{type:'Binary',op:st.expr.op==='++'?'+':'-',left:previous,right:{type:'Number',value:'1'}},bwPxtSourceUpdate:st.expr.op}}];
             }
             // Standalone identifier updates already have editable statement
             // blocks; only consumed update results need invocation cells.
