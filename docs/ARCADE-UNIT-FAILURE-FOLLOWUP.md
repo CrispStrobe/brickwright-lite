@@ -18,6 +18,25 @@ and checks decoded dimensions and the resulting score change. These are test
 expectation corrections, with no runtime patch, complete-game promotion or
 new full-shard result. The historical forty-entry list below remains intact.
 
+## Later completed shard and pending qualification
+
+The [later completed unit shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38595437543/job/115960919223)
+at `9879c62f023755d88168cdaa17acf441c3a4c422` reports 3,570 tests:
+3,522 pass, 41 fail, five skip and two TODO. It retains the forty historical
+failures below and additionally fails
+[`makecode-arcade-terrain-event-runtime.test.mjs`](../test/makecode-arcade-terrain-event-runtime.test.mjs):
+“a yielding wall callback holds its explicit movement caller until completion”.
+The observed callback order is `AABC`, compared with `ABC` in that original
+execution. This entry remains open; a focused native observation reaching
+`ABC` does not establish equivalent scheduling or close the hosted failure.
+The other shard remains without a completed census.
+
+New physical Sprite lifecycle and independent Array-reference support have
+focused native and selected-original evidence, recorded in the
+[handoff](ARCADE-AGENT-HANDOFF.md). Their combined hosted unit and browser
+qualification is pending. These changes do not revise the immutable corpus's
+36 partial inputs or turn focused controls into a full-shard result.
+
 ## Method for closing each entry
 
 1. Read the named test and identify which route first fails: original source,
