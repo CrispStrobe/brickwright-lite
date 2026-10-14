@@ -285,7 +285,7 @@ const specs = [
     ],
     "initializer": "__bwClass___bwSDK_ExtendableSprite_fields %s",
     "constructor": "__bwClass___bwSDK_ExtendableSprite_constructor %s %s %s",
-    "methods": []
+    "methods": [{"name":"update","procedure":"__bwClass___bwSDK_ExtendableSprite_update %s %s","parameters":[{"name":"deltaTimeMillis","type":"number","optional":false}],"returnType":"void","visibility":"public"}]
   }
 ];
 const definitions=new Map(specs.map(spec=>[spec.name,Object.freeze({...spec,fields:new Map(spec.fields.map(field=>[field.name,field])),methods:new Map(spec.methods.map(method=>[method.name,method]))})]));
@@ -302,7 +302,7 @@ function create(ext,values){
   if(op==='fields')return;
   if(op==='constructor'){
    active();
-   if(found.spec.intrinsic==='BaseSprite'){s.z=Number(args[1]);ext._registerSdkSprite(ref);return;}
+   if(found.spec.intrinsic==='BaseSprite'){s.z=Number(args[1]);ext._registerSdkSprite(ref,util);return;}
    if(found.spec.intrinsic==='ExtendableSprite'){
     const complete=()=>{const scene=ext._state(),handlers=ext._createdHandlers;return chain(callVirtual(ref,'setKind',[args[2]],util,token),()=>{active();scene.physicsEngine.members.push(s);s._creationKind=ext._kindValue(args[2]);return chain(ext._finishSpriteCreation(ref,{...util,sequencer:ext._runtime.sequencer},{state:scene,handlers}),()=>{active();s.hasCustomDimensions=false;});});};
     return chain(invoke('__bwClass_Sprite_constructor %s %s',[ref,args[1]],util,token),complete);
@@ -313,6 +313,7 @@ function create(ext,values){
    ext._initializeSdkSprite(ref,image);
    return chain(callVirtual(ref,'setImage',[args[1]],util,token),()=>{active();return chain(callVirtual(ref,'setKind',[-1],util,token),()=>{active();s.layer=1;s.lifespan=undefined;});});
   }
+  if(op==='update')return;
   if(op==='setImage')return ext.setSpriteImage({ID:ref,IMAGE:args[1]});
   if(op==='setFlag'){
    const flags=values.truth(args[2])?values.binary(s.flags,'|',args[1]):values.binary(s.flags,'&',values.unary('~',args[1]));
@@ -329,6 +330,15 @@ function create(ext,values){
  };
  const callVirtual=(ref,name,args,util,token)=>{const method=ext._objectHeap.method(ref,name);return ext._objectProcedure(method.procedure,[ref,...args],util,token);};
  const chain=(value,next)=>value&&typeof value.then==='function'?value.then(next):next();
- return {matches:name=>operations.has(name),invoke,heapHooks:{definition:name=>definitions.get(name),reserve:()=>ext._reserveSdkSprite(),external:ref=>typeof ref==='string'&&ext._spriteValues.has(ref),externalClass:ref=>sprite(ref)._sdkBaseOnly?'__bwSDK_BaseSprite':'Sprite',get(ref,key){const s=sprite(ref);if(key==='image')return s.image?ext._imageHandle(s.image):values.UNDEFINED;if(key==='id')return values.encode(s.pxtId);if(key==='hasCustomDimensions')return values.encode(s.hasCustomDimensions);return values.encode(ext.spriteProperty({ID:ref,PROPERTY:key}));},set(ref,key,value,util){if(key==='id'){sprite(ref).pxtId=Number(value);return;}if(key==='hasCustomDimensions'){sprite(ref).hasCustomDimensions=values.decode(value);return;}return ext.setSpriteProperty({ID:ref,PROPERTY:key,VALUE:value},util);}}};
+ const reserve=def=>{
+  for(const name of ['draw','drawSprite','__draw','__drawCore','__update','setHitbox','resetHitbox','recalcSize','setDimensions','__visible','__serialize'])
+   if(def.methods.has(name))throw new Error('SDK Sprite draw/update/hitbox override is not qualified: '+name);
+  const update=def.methods.get('update');
+  if(update && (def.intrinsic!=='ExtendableSprite' || update.parameters.length!==1 ||
+      update.parameters[0].type!=='number' || update.parameters[0].optional || update.returnType!=='void' || (update.visibility || 'public')!=='public'))
+   throw new Error('ExtendableSprite update requires one Number argument and a public void method');
+  return ext._reserveSdkSprite();
+ };
+ return {matches:name=>operations.has(name),invoke,heapHooks:{definition:name=>definitions.get(name),reserve,external:ref=>typeof ref==='string'&&ext._spriteValues.has(ref),externalClass:ref=>sprite(ref)._sdkBaseOnly?'__bwSDK_BaseSprite':'Sprite',get(ref,key){const s=sprite(ref);if(key==='image')return s.image?ext._imageHandle(s.image):values.UNDEFINED;if(key==='id')return values.encode(s.pxtId);if(key==='hasCustomDimensions')return values.encode(s.hasCustomDimensions);return values.encode(ext.spriteProperty({ID:ref,PROPERTY:key}));},set(ref,key,value,util){if(key==='id'){sprite(ref).pxtId=Number(value);return;}if(key==='hasCustomDimensions'){sprite(ref).hasCustomDimensions=values.decode(value);return;}return ext.setSpriteProperty({ID:ref,PROPERTY:key,VALUE:value},util);}}};
 }
 module.exports={create,allocateHandle:()=> 'arcade:'+(++nextCanonicalSprite)};

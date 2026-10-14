@@ -13,6 +13,7 @@ module.exports = makeExt(`// Name: Arcade
   "use strict";
 
   const dependencies = Scratch.BWExtensionDependencies;
+  const spriteUpdateHosts = new WeakMap();
   const speechPalette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609',
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
@@ -41,6 +42,9 @@ module.exports = makeExt(`// Name: Arcade
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
       this._sdkObjectClasses=dependencies.sdkObjectClasses.create(this,Scratch.BWValues);
       this._objectHeap=dependencies.createObjectHeap(runtime,Scratch.BWValues,this._sdkObjectClasses.heapHooks);
+      const spriteUpdates=dependencies.spriteUpdateActivation.create(this);
+      spriteUpdateHosts.set(this,spriteUpdates);
+      this._sdkSpriteUpdates=Object.freeze({claim:spriteUpdates.claim,hasSceneUpdates:spriteUpdates.hasSceneUpdates});
       this._renderables=new WeakMap();this._screen=null;this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._extensionCreationWaits=[];
       this._scenePushHandlers = [];this._scenePopHandlers = [];
       this._scrollerVersion = 'v0.1.2';
@@ -1223,6 +1227,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     _ensureSceneEngine(state) {
       if(state.elapsedMs===undefined)state.elapsedMs=0;
+      if(state.frameDeltaTime===undefined)state.frameDeltaTime=0;
       if(!Object.hasOwn(state,'flags'))state.flags=0;
       if(!Object.getOwnPropertyDescriptor(state,'seeThrough')?.get){
         const previous=state.seeThrough;
@@ -2749,11 +2754,12 @@ module.exports = makeExt(`// Name: Arcade
         renderer.setDrawableOrder(entry.drawableId, renderer.getDrawableOrder(entry.target.drawableID) + 1, 'sprite');
       }
     }
-    *_advanceSpeechSteps(dt) {
+    *_advanceSpeechSteps(dt,only) {
       // PXT speech deadlines and animation time use control.millis/game.runtime,
       // which continue while the owning scene is suspended.
       const now = this._globalElapsedMs, state = this._state();
       for (const [id, entry] of this._speech) {
+        if(only!==undefined ? id!==only : state.sprites[id]===this._spriteValues.get(id))continue;
         const owner = this._speechOwner(id, entry.target);
         if (!owner || entry.end !== null && now + 1e-6 >= entry.end) {
           const work=this._clearSpeech(id);if(work && typeof work.then==='function')yield work;
@@ -2973,7 +2979,7 @@ module.exports = makeExt(`// Name: Arcade
       return created && typeof created.then === 'function' ? created.then(position) : position(created);
     }
     _reserveSdkSprite() {const id=dependencies.sdkSpriteClasses.allocateHandle();this._spriteValues.set(id,{id,_sdkBaseOnly:true});return id;}
-    _registerSdkSprite(id) {const sprite=this._spriteValues.get(id),state=this._state();if(sprite._sdkRegistered)throw new Error('SDK BaseSprite was registered twice');sprite._sdkRegistered=true;sprite._sdkScene=state;sprite.pxtId=state.nextSpriteId++;state.sprites[id]=sprite;this._sceneFlags.register(state,sprite);}
+    _registerSdkSprite(id,util) {const sprite=this._spriteValues.get(id),state=this._state();if(sprite._sdkRegistered)throw new Error('SDK BaseSprite was registered twice');spriteUpdateHosts.get(this).register(sprite,util);sprite._sdkRegistered=true;sprite._sdkScene=state;sprite.pxtId=state.nextSpriteId++;state.sprites[id]=sprite;this._sceneFlags.register(state,sprite);}
     _initializeSdkSprite(id,image) {const sprite=this._spriteValues.get(id),width=image.width,height=image.height;sprite._sdkBaseOnly=false;Object.assign(sprite,{x:((160-width)>>1)+width/2,y:((120-height)>>1)+height/2,vx:0,vy:0,ax:0,ay:0,fx:0,fy:0,width,height,flags:0});this._installSpriteFixedPoint(sprite);sprite._creationKind=null;}
     _spriteKindSets(state=this._state()) {if(!state._nativeKindSets){state._nativeKindSets=new Map();for(const sprite of Object.values(state.sprites))if(sprite.kind>=0){if(!state._nativeKindSets.has(sprite.kind))state._nativeKindSets.set(sprite.kind,[]);state._nativeKindSets.get(sprite.kind).push(sprite);}}return state._nativeKindSets;}
     _addSpriteKind(sprite,kind,state=this._state()) {if(!(kind>=0))return;const sets=this._spriteKindSets(state);if(!sets.has(kind))sets.set(kind,[]);if(!sets.get(kind).includes(sprite))sets.get(kind).push(sprite);}
@@ -2981,7 +2987,7 @@ module.exports = makeExt(`// Name: Arcade
       const state = this._state(),inputKind=this._kindValue(args.KIND),kind=inputKind==null?-1:inputKind;
       const id = dependencies.sdkSpriteClasses.allocateHandle();state.nextSpriteId++;
       const sprite = {id, pxtId: state.nextSpriteId - 1, kind, _creationKind:inputKind, x: Number(args.X) || 0, y: Number(args.Y) || 0,
-        vx: 0, vy: 0, ax: 0, ay: 0, fx: 0, fy: 0, z: 0, lifespan: 0, flags: 0,
+        vx: 0, vy: 0, ax: 0, ay: 0, fx: 0, fy: 0, z: 0, lifespan: undefined, flags: 0,
         // Public creation normalizes defaults before entering this private path;
         // native image constructors may supply genuine zero dimensions.
         width: args.WIDTH===0?0:Math.max(1,Number(args.WIDTH)||16),
@@ -5134,6 +5140,7 @@ module.exports = makeExt(`// Name: Arcade
       const property = String(args.PROPERTY);
       if(property==='id')return Scratch.BWValues.encode(sprite.pxtId);
       if(property==='flags')return Scratch.BWValues.encode(sprite.flags);
+      if(property==='lifespan')return Scratch.BWValues.encode(sprite.lifespan);
       if (property === 'left') return sprite._fx / 256;
       if (property === 'right') return sprite._fx / 256 + sprite.width;
       if (property === 'top') return sprite._fy / 256;
@@ -5605,27 +5612,31 @@ module.exports = makeExt(`// Name: Arcade
       this._advanceAnimations(dt);
       this._updateCamera();
       // Extension frame handlers at PXT's pre-render priority (after the camera).
-      this._runFrameHandlers(state);
+      this._runFrameHandlers(state,19,55);
+      const updateCamera=this._camera();
+      yield* spriteUpdateHosts.get(this).steps(state,sprite=>this._sdkSpriteBaseUpdateSteps(sprite,dt,updateCamera));
+      if(this._state()!==state || epoch!==this._terrainEpoch)return;
+      this._runFrameHandlers(state,55);
       if(state.tilemap?.legacy)this._renderTilemap(true);
-      for(const sprite of Object.values(state.sprites)){
-        const camera=this._camera(),relative=!!(sprite.flags & spriteFlags.RelativeToCamera),ox=relative?0:camera.drawOffsetX,oy=relative?0:camera.drawOffsetY;
-        if (sprite.autoDestroy && (sprite.x + sprite.width / 2 < ox ||
-          sprite.x - sprite.width / 2 > ox+160 || sprite.y + sprite.height / 2 < oy ||
-          sprite.y - sprite.height / 2 > oy+120)) {
-          this.destroySprite({ID: sprite.id});
-          continue;
-        }
-        if (sprite.lifespan > 0) {
-          sprite.lifespan -= dt * 1000;
-          if (sprite.lifespan <= 0) { this.destroySprite({ID: sprite.id, _core: true}); continue; }
-        }
-      }
       yield* this._advanceSpeechSteps(dt);
       if(this._state()!==state)return;
       yield* this._composeSceneSteps();
       if(this._state()!==state || epoch!==this._terrainEpoch || state._defaultGameOverPending)return;
       this._changed();
       this._startFrameHats();
+    }
+    *_sdkSpriteBaseUpdateSteps(sprite,dt,camera) {
+      // Selected Sprite.__update orders lifespan, AutoDestroy, then speech.
+      // Its caller still invokes ExtendableSprite.update after destruction.
+      if(sprite.lifespan!==undefined){sprite.lifespan-=dt*1000;if(sprite.lifespan<=0){
+        sprite.lifespan=undefined;const work=this.destroySprite({ID:sprite.id,_core:true});if(work?.then)yield work;
+      }}
+      const relative=!!(sprite.flags & spriteFlags.RelativeToCamera),ox=relative?0:camera.drawOffsetX,oy=relative?0:camera.drawOffsetY;
+      if(sprite.autoDestroy && (sprite.x+sprite.width/2<ox || sprite.x-sprite.width/2>ox+160 ||
+          sprite.y+sprite.height/2<oy || sprite.y-sprite.height/2>oy+120)){
+        const work=this.destroySprite({ID:sprite.id});if(work?.then)yield work;
+      }
+      yield* this._advanceSpeechSteps(dt,sprite.id);
     }
     // PXT's HUD pass raises the life-zero events and then ends the countdown,
     // after the frame's updates and physics. Default terminal actions wait for
@@ -5692,6 +5703,7 @@ module.exports = makeExt(`// Name: Arcade
   sdkSpriteClasses: require('./sdk-sprite-classes'),
   sdkObjectClasses: require('./sdk-object-classes'),
   sceneFlags: require('./scene-flags'),
+  spriteUpdateActivation: require('./sprite-update-activation'),
   createObjectHeap: require('./object-heap'),
   sourceReferenceTypes: require('./source-reference-types'),
   createSourceScalarCells: require('./source-scalar-cells'),

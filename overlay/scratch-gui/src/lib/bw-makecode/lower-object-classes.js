@@ -57,7 +57,15 @@ export function lowerObjectClasses(program) {
         if(chain.some(base=>admitted.get(base)?.sdkIntrinsic==='BaseDialog') && cls.methods.some(method=>
             ['resize','drawBorder','clearInterior','drawPartial','fastFill','drawCursorRow','setText','setFont','cursorRowHeight','rowHeight','textAreaWidth','textAreaHeight'].includes(method.name)))
             fail('SDK BaseDialog constructor or layout override requires separate native dispatch qualification');
-        if(chain.some(base=>['BaseSprite','Sprite','ExtendableSprite'].includes(admitted.get(base)?.sdkIntrinsic)) && cls.methods.some(method=>['update','draw','drawSprite','__draw','__drawCore','__update','setHitbox','resetHitbox','recalcSize','setDimensions','__visible','__serialize'].includes(method.name)))fail('SDK Sprite draw/update/hitbox overrides require separate qualification');
+        const extendable=chain.some(base=>admitted.get(base)?.sdkIntrinsic==='ExtendableSprite');
+        // A source method without a returned expression has an inferred void
+        // result. Preserve that proven signature in editable class metadata;
+        // an unresolved result must not weaken native update validation.
+        if(extendable)for(const method of cls.methods.filter(method=>method.name==='update'))
+            if(!method.returnType && !contains(method.body,node=>node.type==='Return' && node.value))method.returnType='void';
+        if(chain.some(base=>['BaseSprite','Sprite','ExtendableSprite'].includes(admitted.get(base)?.sdkIntrinsic)) && cls.methods.some(method=>
+            ['update','draw','drawSprite','__draw','__drawCore','__update','setHitbox','resetHitbox','recalcSize','setDimensions','__visible','__serialize'].includes(method.name) && !(extendable && method.name==='update')))
+            fail('SDK Sprite draw/update/hitbox overrides require separate qualification');
         if(cls.base && cls.ctor){
             const body=cls.ctor.originalBody || cls.ctor.body,superCall=node=>node?.type==='ExpressionStatement' && node.expr?.type==='Call' && node.expr.callee?.name==='super';
             if(body.filter(superCall).length!==1)fail('Derived class '+name+' constructor requires one direct super call');

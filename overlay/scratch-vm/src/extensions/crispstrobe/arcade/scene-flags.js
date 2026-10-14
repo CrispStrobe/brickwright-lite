@@ -30,7 +30,11 @@ function create() {
             }
             return entries;
         },
-        currentOrder(scene) {return list(scene).slice();}
+        currentOrder(scene) {return list(scene).slice();},
+        // Selected scene.ts iterates the actual allSprites array. Removal can
+        // shift the next entry; creation can append an entry during this pass.
+        // Rendering sorts this same array for the following update pass.
+        *iterate(scene) {const entries=list(scene);for(let i=0;i<entries.length;i++)yield entries[i];}
     };
 }
 module.exports={create,NeedsSorting,SeeThrough,IsRendering};

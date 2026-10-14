@@ -36,9 +36,29 @@ class ArcadeFramePhase {
     }
     linkManagedCall(thread,caller) {
         if(caller)this.managedLinks.set(thread,{caller,generation:this.generation});
+        else if(this.spriteUpdateLoan) {
+            const loan=this.spriteUpdateLoan;
+            if(loan.used || loan.generation!==this.generation || this.disposed ||
+                !this.active || !this.phaseContext || thread.target!==loan.target ||
+                thread.blockContainer!==loan.target.blocks || thread.topBlock!==loan.definition ||
+                !this.runtime.threads.includes(thread))
+                throw new Error('Native Sprite update spawned a foreign or duplicate method');
+            loan.used=true;this.sourceAuthority.set(thread,this.generation);
+        }
+    }
+    withSpriteUpdate(entry,invoke) {
+        if(this.spriteUpdateLoan)throw new Error('Native Sprite update activation cannot reenter');
+        const loan=this.ext._sdkSpriteUpdates.claim(entry,this);
+        this.spriteUpdateLoan={...loan,used:false};
+        try {
+            const result=invoke();
+            if(!this.spriteUpdateLoan.used)throw new Error('Native Sprite update did not spawn its managed method');
+            return result;
+        } finally {this.spriteUpdateLoan=null;}
     }
     hasSourceProject() {
         if(this.disposed)return false;
+        if(this.ext._sdkSpriteUpdates?.hasSceneUpdates())return true;
         return this.runtime.targets.some(target=>Object.values(target.blocks?._blocks || {}).some(block=>
             block.opcode==='arcade_sourceWhile'||block.opcode==='arcade_whenSourceStarts'||this.nativeCallbackOpcodes.has(block.opcode)));
     }

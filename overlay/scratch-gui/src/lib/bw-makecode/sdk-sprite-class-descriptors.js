@@ -209,7 +209,7 @@ export const SDK_SPRITE_CLASS_NODES = [
         ]
       }
     ],
-    "methods": [],
+    "methods": [{"name":"update","params":["deltaTimeMillis"],"paramTypes":{"deltaTimeMillis":"number"},"returnType":"void"}],
     "ctor": {
       "params": [
         "spriteImage",
