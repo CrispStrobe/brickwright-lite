@@ -4,7 +4,7 @@ import {pathToFileURL} from 'node:url';
 import {readFileSync} from 'node:fs';
 import {parsePushPaths} from './lib/doc-triggers.mjs';
 
-export const REQUIRED_BUILD_JOBS = ['build', 'unit (1/4)', 'unit (2/4)', 'unit (3/4)', 'unit (4/4)', 'browser (light)', 'browser (heavy)', 'corpus', 'fpga surface (flag-on)'];
+export const REQUIRED_BUILD_JOBS = ['build', 'unit (1/2)', 'unit (2/2)', 'browser (light)', 'browser (heavy)', 'corpus', 'fpga surface (flag-on)'];
 
 const latestPush = (runs, path, sha) => runs.filter(run => run.path === path && run.head_sha === sha &&
     run.head_branch === 'main' && run.event === 'push').sort((a, b) => b.id - a.id)[0];

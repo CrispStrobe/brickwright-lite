@@ -291,15 +291,13 @@ jobs:
   # Each shard retains identical integrated prerequisites and its own audited
   # file/skip/GUI-resolution census. No Pages artifact is produced here.
   unit:
-    name: unit (${{ matrix.shard }}/4)
+    name: unit (${{ matrix.shard }}/2)
     needs: scope
     if: needs.scope.outputs.fast == 'true'
-    # FOUR SHARDS since 2026-10-14: two took ~8.5 min of tests each after ~4 min
-    # of shared preparation; four keep each job near 8 min.
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -775,7 +773,7 @@ jobs:
       - name: Run unit tests
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.unit_playwright.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' }}
         env:
-          BW_TEST_SHARD: ${{ matrix.shard }}/4
+          BW_TEST_SHARD: ${{ matrix.shard }}/2
           STC_COMPILER_FLASHER_DIR: ${{ github.workspace }}/.stc-compiler-flasher
         run: |
           if ! grep -q '"test"' package.json; then

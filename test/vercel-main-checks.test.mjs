@@ -101,7 +101,7 @@ test('Build guard uses the tested documentation-aware selector without changing 
     assert.match(guard, /\[ "\$EVENT" != "push" \] \|\| \[ "\$REF" != "refs\/heads\/main" \]/);
     assert.match(guard, /node scripts\/verify-vercel-main-checks\.mjs "\$SHA" --superseded >> "\$GITHUB_OUTPUT"/);
     assert.doesNotMatch(guard, /superseded=true/);
-    assert.deepEqual(REQUIRED_BUILD_JOBS, ['build', 'unit (1/4)', 'unit (2/4)', 'unit (3/4)', 'unit (4/4)', 'browser (light)', 'browser (heavy)', 'corpus', 'fpga surface (flag-on)']);
+    assert.deepEqual(REQUIRED_BUILD_JOBS, ['build', 'unit (1/2)', 'unit (2/2)', 'browser (light)', 'browser (heavy)', 'corpus', 'fpga surface (flag-on)']);
 });
 
 test('three executable supersession mutants fail the real selector assertions', async () => {
