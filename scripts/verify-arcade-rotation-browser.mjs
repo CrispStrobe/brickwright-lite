@@ -383,7 +383,8 @@ let discardedReady=true`;
     };
     page.once('dialog', confirmAssignedReload);
     await (await assignedChooser).setFiles(assignedPath);
-    await page.waitForFunction(({name, asset, stage}) => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== stage &&
+    await page.waitForFunction(({name, asset, stage}) => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage()?.id &&
+        window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== stage &&
         window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.some(target => target.isOriginal && target.getName() === name && target.sprite.costumes[0]?.asset.assetId === asset),
     {name: assignedBinding[2], asset: editedAssignedAsset, stage: beforeAssignedReloadStage});
     page.off('dialog', confirmAssignedReload);
