@@ -6,6 +6,98 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Qualified G02 lifecycle boundaries — 2026-10-14
+
+Four focused changes have landed, each with a separately frozen installed
+consumer. These observations qualify the named source and owned guest scenarios;
+they do not qualify every later package assembled from main.
+
+- [PR895](https://github.com/CrispStrobe/brickwright-lite/pull/895), tested
+  consumer `b776bef598ae4608d93fa8c07ce17a842abc7dde`: after the old pane's real
+  firmware Stop returns, its resumed cleanup cannot stop a replacement VM.
+  The installed case retains positive Stop, Reset/Start and fresh guest recovery.
+- [PR898](https://github.com/CrispStrobe/brickwright-lite/pull/898), tested
+  consumer `3be3c02ed72ac79d5dbf447100073cc46fd88e56`: the fresh native package
+  passes two owned-NuttX startups, teardown/replacement and subsequent recovery.
+  The closed startup trace records two complete transactions. Its shared EV3
+  path separately passes both exact public guest tests in
+  [run38516801049](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38516801049),
+  with one executed test and no failures or ignored tests in each invocation.
+  The EV3 workflow's Runtime pin remains separate from the NuttX package pin.
+- [PR905](https://github.com/CrispStrobe/brickwright-lite/pull/905), tested
+  consumer `ecc0ccb36006c871ab3e40109d7c92f6268e8c8a`: Stop invoked synchronously
+  by the real final-frame or NuttX program-state observer suppresses a later
+  completion callback. Each installed case observes the real owned guest reach
+  COMPLETE, invokes the original pane Stop, verifies ownership/clock/session
+  release, then completes a different guest session normally and stops it.
+  The baseline frame case had reproduced Stop requested → completion → stopped;
+  both candidate cases produce only Stop requested → stopped. This concerns late
+  notification after Stop, not a claim of continued guest execution after Stop.
+- [PR912](https://github.com/CrispStrobe/brickwright-lite/pull/912), tested
+  consumer `2d5e560b0357c924b434916e590a24070397fa22`, merged as
+  `c5e31b8324fea454afe08ad682f8b98f2ab43596`: closure checks between observers
+  and after an awaited packet input-write reply suppress later native input
+  requests or frame callbacks after Stop. Both installed own-NuttX race cases
+  pass: Stop from real Python output, and Stop while a real correlated STOP
+  packet's following input-write return is held. Each releases all owned
+  configuration, external backend, clock and pane session references, then
+  completes a distinct fresh guest and stops it normally.
+
+PR912 also passes eight installed GUI regressions on that same consumer:
+native Start, backend change, Reset and closure; real Code Stop during pending
+native startup followed by a completed fresh guest; and real native chooser
+cancellation with normal return, Reset and closure. The seven native/chooser
+cases do not execute an additional firmware guest. The chooser cases cancel the
+actual dialog without selecting an image; they do not qualify selected-image
+admission or every chooser/error race. Startup cancellation admits no program
+packet before Stop, exits the owned emulator and restores defaults and ownership.
+
+All 41 affected session controls pass; six new controls fail on the baseline,
+and removing each new closure guard is detected. All nine enabled exact-head
+hosted checks passed, with only the declared deployment/verification jobs skipped.
+Independent readers bind all ten installed cases to the source, application and
+configuration hashes and captured controls. Both new race cases retain two
+complete 14-record native startup transactions. The predicted and landed merge
+trees match, and the landed implementation/test blobs match the qualified source.
+The first recovery fixture failed when marker-only Python could not convert into
+an empty Pseudo buffer; its corrected successor clears the real editor, selects
+Pseudo and waits for the accepted selection before the unchanged recovery program.
+That failure and resource-wait expirations remain preserved. No product assertion,
+deadline, resource threshold or dependency pin changed to obtain these passes.
+
+PR905's 34 affected session controls pass; three new controls fail on the
+baseline, and removing either closure fence is detected. Its nine enabled
+exact-head hosted checks passed, including both unit shards and all browser
+legs; deployment/verification jobs are conditional. Independent readers checked
+all 180 installer files and 23 directories against staged bytes, permissions and
+root ownership, and bound native/frontend inputs to the reviewed consumer.
+Retained firmware, Runtime and support payloads did not change. Original build,
+fixture and startup failures remain preserved in private evidence.
+
+G02 remains open for deferred-storage observer reentry, selected-image and chooser
+error races, and its complete installed startup/final-sampling, UART-generation
+and late-poll matrix across supported backends. The older opaque
+cold-start failures remain unexplained; successful new startups do not diagnose
+them. No timeout increase, dependency adoption, physical/reference compatibility,
+release or G05 licence/source-to-binary clearance follows from these receipts.
+Continue G02 before G03's sandbox/editor usability matrix and the later lanes.
+
+## Stop from a terminal frame callback candidate — 2026-10-14
+
+A focused host control found that firmware polling could notify completion after
+its frame observer had synchronously stopped the session. The NuttX program-state
+observer could invalidate the session at the same boundary. The candidate checks
+closure after each observer so Stop wins before any subsequent completion callback.
+
+Three new authored-boundary controls fail on the baseline: the legacy program
+frame, the NuttX frame, and the NuttX program-state callback. All 34 affected
+session controls pass with the candidate, including existing MicroPython final
+sampling and generation cases. Removing either fence is detected. These are
+actual-method host controls, not guest or hardware evidence. At candidate
+publication, fresh source-bound installed own-guest cancellation/recovery and
+enabled exact-head CI remained required; the qualified follow-up is above. No native/Rust, firmware, Runtime, model pin, request
+deadline or physical-accuracy change is proposed.
+
 ## Native startup observation candidate — 2026-10-13
 
 The merged [PR891](https://github.com/CrispStrobe/brickwright-lite/pull/891)
@@ -20,9 +112,9 @@ startup/session deadlines are unchanged; logging I/O errors are ignored.
 Three extracted standard-library controls pass, and three deliberate mutations
 are detected: mislabelling failure as completion, adding failure after success,
 and removing the log ceiling. These controls do not compile or qualify the full
-native app. Affected native compilation, exact-head hosted gates and fresh
-installed cold-start, Stop/reset/close/recovery and owned-guest observations
-remain required. Earlier generic cold-start failures are preserved and their
+native app. At candidate publication, affected native compilation, exact-head
+hosted gates and fresh installed cold-start, Stop/reset/close/recovery and
+owned-guest observations remained required; the qualified follow-up is above. Earlier generic cold-start failures are preserved and their
 cause remains unknown. No timeout increase or firmware/Runtime/model adoption
 is proposed by this observation work.
 
@@ -89,9 +181,9 @@ Original VM calls were observed and invoked; no guest implementation was substit
 The source candidate fences shared cleanup after firmware teardown using pane
 disposal, Stop revision and bridge identity. Stale teardown errors are suppressed;
 current Stop and current errors retain their behavior. All 14 actual-method
-controls pass, and five deliberate guard/error mutations fail. Hosted checks
-and fresh candidate installed teardown/replacement and positive Stop qualification
-remain pending. Earlier cold-start failures are preserved and unexplained;
+controls pass, and five deliberate guard/error mutations fail. At candidate
+publication, hosted checks and fresh installed teardown/replacement and positive
+Stop qualification remained pending; the qualified follow-up is above. Earlier cold-start failures are preserved and unexplained;
 startup succeeding on the new diagnostic does not resolve their cause.
 Firmware, Runtime, model pins and startup deadlines remain unchanged.
 
@@ -363,8 +455,10 @@ The candidate also invalidates pending image choices on Stop, backend changes
 and newer chooser requests. Stale selections and errors return cancellation;
 current selection, cancellation and errors retain their existing behavior.
 Focused actual-method controls include backend round trips and disposal.
-Exact-head CI and a fresh installed candidate package remain required. Broader
-G02 teardown, installed chooser, final-sampling and generation closure remains open.
+At candidate publication, exact-head CI and a fresh installed candidate package
+remained required. The qualified follow-up above records the frozen consumers
+and finite cases now completed. Selected-image/error, deferred-storage,
+final-sampling, generation and late-poll closure across backends remains open.
 
 ### G03 — Qualify usable sandbox and responsive editor controls
 

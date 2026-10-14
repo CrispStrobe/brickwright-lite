@@ -1,4 +1,61 @@
+## Explicit procedure calls in Code — 2026-10-14
+
+PROPOSED — Codex Arcade integration. Product edits begin after this claim lands.
+The unchanged Snake source defines and calls `show`; the current Code parser
+silently interprets those calls as Scratch's visibility command, leaving the
+rendering procedure uncalled through save/export. Preserve both operations.
+Envelope: canonical producer generic statement parser and pseudocode decompiler,
+focused producer call controls, Arcade source function statement emission and
+procedure ownership scan, matching generated mirrors/pin and focused original/
+native/Code/SB3/export controls; this ledger and linked contract. Do not edit
+peer-owned Arrays scalar-return, controller-repeat, callable or font hunks.
+[Contract](docs/ARCADE-EXPLICIT-PROCEDURE-CALLS.md).
+
 # Who is doing what — merge the claim before implementation
+
+## CI fast and thorough tiers — 2026-10-14
+
+PROPOSED — VPS Claude (opus), `lane/ci-tiers-20261014`. Owner decision
+2026-10-14: PR pushes run a fast tier; the thorough tier runs on main, dispatch
+and PRs labelled `ci:full`; documentation-only PRs skip both code tiers.
+Envelope: `.github/workflows/build.yml` (triggers, `concurrency:`, job-level
+`if:`/`needs:`, unit shard count 2 -> 4, new `change scope` and
+`full CI requested` jobs); new `scripts/ci-docs-only.mjs` and
+`test/ci-docs-only.test.mjs`; check-name lists in
+`scripts/verify-vercel-main-checks.mjs` and `scripts/gen-ci-skips.mjs`;
+`test/unit-shards.test.mjs` and `test/vercel-main-checks.test.mjs` (assert the
+four shard names); the repository label `ci:full`. No step, version, threshold,
+budget, receipt or pinned action changes. Docs-only is exactly the build push
+`paths:` filter applied to the PR's files. Merge this claim before the
+implementation is pushed.
+## Arcade source typeof values — 2026-10-14
+
+PROPOSED — Codex Arcade value integration, `lane/arcade-source-typeof-20261014`.
+Contract: [source typeof values](docs/compatibility/arcade-source-typeof-values.md).
+Own a narrow source type service and reporter, canonical producer vocabulary
+and tests based on the qualified producer foundation, and the corresponding
+Arcade expression/export hooks and focused qualification. This is an E15
+scalar-item export/reimport prerequisite. Preserve aggregate JSON transport,
+legacy input parsing, native reference identity and atomic source declarations.
+Coordinate native index and converter hunks with their current owners.
+Qualify selected original primitive, array, object and owned native-reference
+results; function labels and captured actions require their actual qualified
+metadata. Other callable or reference representations keep explicit diagnostics.
+Merge this claim before product edits. Keep callable source admission,
+class GUI authoring, scheduling and independent board ownership in their
+existing lanes. Producer adoption requires exact-head qualification and review.
+
+## Arcade live font metrics — 2026-10-14
+
+PROPOSED — `docs/arcade-live-font-metrics-20261014`.
+Contract: [live font metrics](docs/ARCADE-LIVE-FONT-METRICS.md).
+Own new metric helper/classification/tests and narrow Arcade source/scalar/type,
+native reporter/menu, export, canonical fixed-field vocabulary and pin hunks.
+Read actual selected font objects; preserve shadow/opaque guards, editable
+Code/Blocks/SB3 and original export rendering. Coordinate repeat, callable,
+reference and active converter/runtime owners. No product implementation before
+this claim is merged; no guessed constants, font-reference admission or whole-game
+promotion.
 
 ## Arcade controller repeat properties — 2026-10-14
 
@@ -1619,6 +1676,16 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
   unchanged.
 
 ## CLAIMS — work in progress
+
+| Arrays extension: text items without JSON quotes (task E15 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; upstream CrispStrobe/extensions arrays.js + tests; Lite extensions-bundle pin surfaces + BWValues parity tests; this row and the task file. | **CLAIMED 2026-10-14.** |
+
+| MakeCode export: type text results and string globals (task E16 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; `overlay/scratch-gui/src/lib/bw-makecode/export.js` + focused tests + census; this row and the task file. | **CLAIMED 2026-10-14.** |
+
+| Arcade export: `letter of` (task E17 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; `overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js` only if no open Arcade PR covers it; this row and the task file. | **CLAIMED 2026-10-14.** |
+
+| DONE — Seated MCUs with no terminals in the gallery (task B17 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; measurement first; fix in designer seating (bw-circuit-ui) or gallery data (sb3-creator/Lite) upstream-first; census test; this row and the task file. | **DONE 2026-10-14 — Lite PR #915 (`lane/b17-seated-terminals`).** Found by B16 (#885). Upstream merged first: bw-circuit-ui #83 `9a1f06e5` (PR CI 38535170657: test, interaction-gate, kicad-oracle, spice-oracle green; master CI 38541394186 on `9a1f06e5` green). Lite pins bw-circuit-ui `9a1f06e5` (vendor-pins, root + packages/scratch-gui package.json/locks, package notices, eight package-adoption tests, i80386 workflow; old sha gone outside history). **Measured first** through the designer's load path (Node: `fromJSON` + nets/`_syncNetlist` with the app's engine injection; Chromium: the dev designer's circuitData effect): the 16 A2 benches (79-82 x default/stc89c52rc/stc12c5a60s2/stc15f2k60s2) store `"terminals": []`, and 0 of their 160 wired GPIO legs moved when driven (82-a2-led-row showed portByte 0, all LEDs lit; 79's display blank). Every other seated MCU (863 after load: STC, AVR, Pico, STM32, machine chips) already answered; the 608 declared-subset ones had undeclared but unwired legs. **Root cause**: bw-board drives only declared terminals; `Circuit.fromJSON` kept a seated part's stored list verbatim. **Fix**: `withSeatLegs`, so every seated leg is a terminal. After: 160/160 legs answer; LED row portByte 165 `01011010`; display `"       0"` (all three chips, Node + Chromium). Whole-gallery blast radius: no load-error or power-on voltage change except the stc15 A2 split pin nets merging; two schematic baselines redrawn (supply-pin order, looked at). **Gates**: cui `test/seated-legs-are-terminals.test.js` (7 families; mutation 7/7 red); Lite `test/b17-seated-mcu-legs-drive.test.mjs` (census; red at `5f336b24`: 624 MCUs / 160 legs); B16 test relies on the load path. |
+
+| Compiled-C keypad key 6 on stc12/stc15; 16-bit `show number` overflow (task B18 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; upstream stc-compiler and sb3-creator C target; Lite pin surfaces + tests; this row and the task file. | **CLAIMED 2026-10-14.** |
 
 | DONE — Importer: member access on string/array parameters resolved by name (`s.length` → variable `length`) (task E14 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktree `wt/e14-member-access` | base `6e204eec5` (impl `6275c33b2`, merged with main); paths `overlay/scratch-gui/src/lib/bw-makecode/translate-base.js`, new `test/makecode-member-access.test.mjs`; this row and the task file. No per-target translator changed; export-arcade.js not touched (open Arcade PRs). MakeCode census not regenerated: its counts did not move. | **DONE 2026-10-14 — Lite PR #902.** Found by E13 (#896). A member no rule knew was returned as its bare name (a variable holding 0); now translated (`.length`/`[i]`/`charAt`/`concat` of declared text and `: string` record fields, Math's constants, arrays `_pickRandom`/`unshift`) or refused by name, read (`unknownMember`) or written (`memberTarget`, naming the calls). Three-way: micro:bit/EV3 13 readings, Lite VM `0 0 2 2 2 1 2 2 0 0 12 0 0` → `5 0 1 1 1 5 1 1 2718 1414 73 5 1` = pxt-microbit sim = re-export in the sim (refused by pxt before; EV3 re-export compiled by pxt-ev3); Arcade 9 readings = pxt-arcade 4.2.1 sim (was 9 of 9 wrong). Silent fallbacks (property as a variable): micro:bit docs 7 → 0, EV3 0 → 0, Arcade corpus 1 → 0. Census (default and --snippets, full runs before and after): every stage count identical, 0 rows change stage. Tests `test/makecode-member-access.test.mjs` (54), 13 mutations red; MakeCode/Arcade suites 1589 tests 0 fail (5 LabWired skips); gates no-nul, fetch-pinning, ci-skip-census, browser-gate-*, build-trigger-paths, gate-shapes, overlay-packages-pairs, declared-pins-wired, check-mirrors, gate-coverage, no-dead-overlay-modules, notices-coverage, skips-are-counted, wait-census, workflow-trigger-coverage green. Found, not fixed: Lite's arrays extension returns text items JSON-quoted (length of `"abc"` is 5); export-arcade.js lacks `letter of`; export.js types hoisted text copies as number. |
 
@@ -3437,6 +3504,25 @@ candidate, whose hosted merge gates are still pending. No startup failure
 attribution, deadline fix or full G02 completion is claimed.
 
 ## SPIKE remaining lifecycle boundaries — 2026-10-13
+
+Continuation candidate `lane/spike-g02-output-stop-20261014` stays in this
+merged session/test envelope. Six actual-method controls fail on the baseline:
+poll and packet hub/output callbacks, packet program-state callback, and a late
+packet input-write reply after Stop. Closure fences prevent subsequent input
+requests and observer publication while preserving correlated packet replies
+for serialized cancellation. All 41 affected controls pass, including the live
+packet publication control; removing each of the six new fences is detected.
+These use authored native boundaries. Fresh installed own-guest observer Stop,
+late-reply cleanup/recovery and all enabled exact-head checks remain required.
+No firmware, Runtime, model, native/Rust, deadline or workflow change; no full
+G02, physical or release claim.
+
+Continuation candidate `lane/spike-g02-terminal-fences-20261014` addresses
+synchronous Stop from final frame/program-state callbacks within this same
+session/test envelope. Three baseline failures, 34 passing affected host
+controls and two detected fence mutations are recorded. Fresh installed own
+NuttX cancellation/recovery and exact-head CI remain pending; no full G02 claim.
+
 
 CLAIMED — Codex SPIKE integration, `lane/spike-g02-lifecycle-20261013`.
 Envelope: `overlay/scratch-gui/src/lib/spike-arena/renode-arena-session.js`,
