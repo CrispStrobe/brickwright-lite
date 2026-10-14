@@ -598,3 +598,80 @@ for (const boundary of ['frame', 'program-state']) {
         } finally { await session.stop(); }
     });
 }
+
+
+// Full session/upload methods with an authored, delayed native boundary.
+// These controls exercise observer cancellation, not guest execution.
+const observerBoundarySession = async ({boundary, path}) => {
+    const b = bridge(); const events = []; let sequence = 0; let state = 0;
+    let armed = false; let stopping; let releaseInputs; let inputsEntered;
+    const pendingInputs = new Promise(resolve => { inputsEntered = resolve; });
+    const requestStop = () => { if (!stopping) stopping = session.stop(); };
+    const frame = () => {
+        const value = programFrame(); value.seq = ++sequence; value.clockNs = sequence * 1000000;
+        value.target.firmware = 'brickwright-nuttx';
+        value.target.capabilities.push('nuttx-program/v1', 'nuttx-program-storage/v1');
+        value.lifecycle.nuttxProgram = {state, error: 0};
+        value.lifecycle.nuttxProgramOutput = {sequence: armed ? 1 : 0, text: armed ? 'observed output' : '', truncated: false};
+        return value;
+    };
+    const capabilities = Object.fromEntries(['session.start', 'session.close', 'state.read', 'run',
+        'arena.inputs.write', 'program.packet'].map(operation => [`renode.spike.${operation}`, async args => {
+        if (operation === 'state.read') return JSON.stringify(frame());
+        if (operation === 'arena.inputs.write' && armed) {
+            events.push({event: 'inputs', closed: session.closed});
+            if (boundary === 'pending-input') { inputsEntered(); await new Promise(resolve => {releaseInputs = resolve;}); }
+        }
+        if (operation !== 'program.packet') return 'ready';
+        const packet = args.bytes;
+        if (packet[2] === 2 || packet[2] === 9) state = 1;
+        if (packet[2] === 3) state = 2;
+        if (packet[2] === 4) state = 4;
+        const value = frame(); const reply = new Uint8Array(20); const view = new DataView(reply.buffer);
+        reply.set([0x71, 1, packet[2], state]); view.setUint32(4, 1, true); view.setUint16(14, 1, true);
+        value.lifecycle.nuttxProgramReply = [...reply]; return JSON.stringify(value);
+    }]));
+    const session = new RenodeArenaSession({bridge: b, capabilities, backend: 'nuttx', source: 'print(1)',
+        onFrame: () => { if (armed) events.push({event: 'frame', closed: session.closed}); },
+        onOutput: () => {
+            if (!armed) return;
+            events.push({event: 'output', closed: session.closed});
+            if (boundary === 'output') requestStop();
+        }, onProgramState: () => {
+            if (!armed) return;
+            events.push({event: 'program-state', closed: session.closed});
+            if (boundary === 'program-state') requestStop();
+        }});
+    const unsubscribe = b.hubState.subscribe(() => { if (armed && boundary === 'hub') requestStop(); });
+    await session.start(); clearTimeout(session.timer); armed = true; state = 3;
+    const pending = path === 'poll' ? session.poll() : session.programClient.status();
+    if (boundary === 'pending-input') { await pendingInputs; requestStop(); releaseInputs(); }
+    await pending;
+    if (stopping) await stopping;
+    clearTimeout(session.timer); unsubscribe();
+    return {session, events};
+};
+
+for (const [path, boundary] of [['poll', 'output'], ['poll', 'hub'], ['packet', 'output'],
+    ['packet', 'program-state'], ['packet', 'hub'], ['packet', 'pending-input']]) {
+    test(`observer lifecycle ${path}: Stop at ${boundary} prevents later publication and inputs`, async () => {
+        const {session, events} = await observerBoundarySession({boundary, path});
+        try {
+            assert.equal(session.closed, true);
+            assert.deepEqual(events.filter(event => event.closed), [],
+                'No observer or input request may begin after synchronous Stop');
+            assert.equal(session.adapter.bridge.hubState.externalBackend, null);
+            assert.equal(session.adapter.bridge.hubState.configurationOwner, null);
+            assert.equal(session.adapter.bridge.hubState.clockOwner, null);
+        } finally { await session.stop(); }
+    });
+}
+
+test('observer lifecycle live packet still publishes state, output, input and frame', async () => {
+    const {session, events} = await observerBoundarySession({boundary: 'none', path: 'packet'});
+    try {
+        assert.equal(session.closed, false);
+        assert.deepEqual(events.map(event => event.event), ['program-state', 'output', 'inputs', 'frame']);
+        assert.ok(events.every(event => event.closed === false));
+    } finally { await session.stop(); }
+});
