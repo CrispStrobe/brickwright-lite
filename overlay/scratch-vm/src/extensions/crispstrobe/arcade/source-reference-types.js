@@ -37,6 +37,7 @@ function catalogue(targets) {
 }
 function resolve(type, classes) {
     if(typeof type!=='string'||!type)throw Error('Source reference type must be a fixed supported type');
+    if(type==='image.Font')return {name:type,kind:'object',key:'__bwSDK_Font:record:1'};
     if(type==='Sprite'||type==='Image')return {name:type,kind:type.toLowerCase(),key:type};
     if(type.endsWith('[]')){
         const element=type.slice(0,-2);

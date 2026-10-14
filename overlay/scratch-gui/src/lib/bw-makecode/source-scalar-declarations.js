@@ -43,7 +43,7 @@ export function sourceScalarDeclarations(program) {
         if (node.type === 'Identifier') return bind(scope, node.name);
         if (cells.has(node)) return cells.get(node);
         const cell = `expression:${++sequence}`; cells.set(node, cell);
-        const primitive = {FontMetric: 'Number', Number: 'Number', Boolean: 'Boolean', String: 'String', Undefined: 'Undefined', Null: 'Null'}[node.type];
+        const primitive = node.bwFontIntrinsic==='field' && node.bwFontType==='number' ? 'Number' : {FontMetric: 'Number', Number: 'Number', Boolean: 'Boolean', String: 'String', Undefined: 'Undefined', Null: 'Null'}[node.type];
         if (primitive) {add(cell, primitive); return cell;}
         if (node.type === 'Declaration') {
             for (const declaration of node.decls) {

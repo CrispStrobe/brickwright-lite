@@ -1,4 +1,4 @@
-import {SDK_FONT_RECORD_NAME,SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
+import {SDK_FONT_RECORD_NAME,SDK_FONT_FIELDS,sdkFontRecordType} from './sdk-font-value-descriptors.js';
 
 // Interface metadata activates the existing field graph. It never emits a
 // class declaration, constructor, initializer or inheritance relationship.
@@ -12,3 +12,5 @@ export const hasSdkFontValues=project=>project.targets.some(target=>Object.value
 export function seedSdkFontValueType(block,cell,addType) {
     if(SDK_FONT_VALUE_OPCODES.includes(block.opcode))addType(cell,SDK_FONT_RECORD_NAME);
 }
+
+export const sdkFontGraphType=type=>sdkFontRecordType(type);

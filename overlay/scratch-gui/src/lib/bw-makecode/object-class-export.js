@@ -1,4 +1,4 @@
-import {hasSdkFontValues,seedSdkFontValueType} from './sdk-font-export-types.js';
+import {hasSdkFontValues,seedSdkFontValueType,sdkFontGraphType} from './sdk-font-export-types.js';
 import {sdkExportClasses,sdkClassPublicName,sdkClassName} from './sdk-class-descriptors.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 
@@ -33,7 +33,7 @@ export function prepareObjectClassExport(emitter) {
     }
     const builtinNames=new Set(sdkExportClasses().map(cls=>cls.name));
     const builtinObject=emitter.project.targets.some(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_createObject' && builtinNames.has(literal(target,block,'CLASS'))));
-    if(!classes.size && !builtinObject && !hasSdkFontValues(emitter.project))return {classes,procedures,variableTypes:new Map(),valueTypes:()=>new Set(),localType:()=> 'any',render:()=>[],receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
+    if(!classes.size && !builtinObject && !hasSdkFontValues(emitter.project))return {classes,procedures,variableTypes:new Map(),valueTypes:()=>new Set(),inputTypes:()=>new Set(),fontGlyphInput:()=>false,localType:()=> 'any',render:()=>[],receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
     for(const cls of sdkExportClasses())if(!classes.has(cls.name))classes.set(cls.name,cls);
     const ancestors=name=>{const result=[],seen=new Set();while(name){if(seen.has(name)||!classes.has(name)){emitter.note('Class inheritance export requires declared acyclic parents');return [];}seen.add(name);result.push(classes.get(name));name=classes.get(name).parent;}return result;};
     const resolveMember=(cls,name,method=false)=>ancestors(cls.name).flatMap(base=>method?base.methods:base.fields).find(value=>value.name===name);
@@ -49,7 +49,7 @@ export function prepareObjectClassExport(emitter) {
     const localName=(target,block)=>block?.opcode==='arcade_getLocal'?literal(target,block,'NAME'):/^argument_reporter_/.test(block?.opcode||'')?block.fields.VALUE?.[0]:null;
 
     const callParameters=(target,value)=>{const names=[];let tail=value.inputs?.ARGS,current=child(target,value,'ARGS');const seen=new Set();while(current?.opcode==='arcade_functionArgument'){if(seen.has(current))return null;seen.add(current);const name=localName(target,child(target,current,'VALUE'));if(!name)return null;names.push(name);tail=current.inputs?.REST;current=child(target,current,'REST');}const slot=tail?.[1];return (Array.isArray(slot)?String(slot[1])==='[]':current?.shadow&&current.fields?.TEXT?.[0]==='[]')?names:null;};
-    const addType=(cell,type)=>{if(type.endsWith('[]')){graph.add(cell,'array');addType(graph.element(cell),type.slice(0,-2));}else graph.add(cell,type);};
+    const addType=(cell,type)=>{type=sdkFontGraphType(type);if(type.endsWith('[]')){graph.add(cell,'array');addType(graph.element(cell),type.slice(0,-2));}else graph.add(cell,type);};
     for(const cell of emitter.sourceReferenceCells?.values() || [])addType('var:'+cell.id,cell.type);
     for(const cls of classes.values()) {
         if(cls.intrinsic)continue;
@@ -231,5 +231,5 @@ export function prepareObjectClassExport(emitter) {
         Object.assign(emitter,saved);return out;
     }
     const valueTypes=(target,block)=>new Set(graph.node(cell(target,block)).types);
-    return {classes,procedures,variableTypes,valueTypes,localType,render,receiver,superCall,parameterPropertyBlocks,publicName:sdkClassPublicName,hasType:type=>classes.has(sdkClassName(type.replace(/(?:\[\])+$/,'')))};
+    return {classes,procedures,variableTypes,valueTypes,inputTypes:(target,block,name)=>new Set(graph.node(input(target,block,name)).types),fontGlyphInput:(target,block,name)=>graph.node(input(target,block,name))===graph.node('field:__bwSDK_Font:data'),localType,render,receiver,superCall,parameterPropertyBlocks,publicName:sdkClassPublicName,hasType:type=>classes.has(sdkClassName(type.replace(/(?:\[\])+$/,'')))};
 }

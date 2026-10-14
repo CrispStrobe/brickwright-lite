@@ -1,3 +1,4 @@
+import {lowerSdkFontValues} from './lower-sdk-font-values.js';
 import {callableSourceGate} from './callable-source-gate.js';
 import {lowerCallableValues} from './lower-callable-values.js';
 import {sourceCallableDeclarations} from './source-callable-declarations.js';
@@ -273,7 +274,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.pendingClone = outer;
     }
 
-    get nativeValues () {return !!this.handleTemplates || this.referenceArrayProgram;}
+    get nativeValues () {return !!this.handleTemplates || this.referenceArrayProgram || this.fontValueProgram;}
 
     sprite (name) {
         return this.sprites.find(s => s.name === name) || null;
@@ -310,10 +311,11 @@ class ArcadeTranslator extends BaseTranslator {
         this.sourceReferenceTypes=new Map((node.sourceReferenceDeclarations || sourceReferenceDeclarations(node)).map(({name,type})=>[name,type]));
         this.sourceFunctions=new Map(node.body.filter(fn=>fn.type==='FunctionDeclaration').map(fn=>[fn.name,fn]));
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value), value => !!this.assetKindLookup && value?.type === 'Template' && ['assets.image', 'assets.tile'].includes(value.tag));
-        this.objectReferences = references.objects;
+        this.objectReferences = references.objects;this.fontReferences=references.fonts;
         this.bufferReferences = references.buffers;this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
         this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.referenceArrayProgram=containsAst(node,value=>value.type==='Array' || references.arrays.has(value));
+        this.fontValueProgram=containsAst(node,value=>!!value.bwFontIntrinsic);
         this.provenArrayReferences=references.provenArrays;
         this.inferredSpriteParameters = references.parameters;
         this.primitiveReferences=references.primitives;
@@ -1736,6 +1738,14 @@ class ArcadeTranslator extends BaseTranslator {
             if (a.length !== 3 || !source) { push(this.note(`${name}() needs an image source and x/y offsets`));return; }
             push(`arcade blit image ${node.callee.name} (${resource}) source (${source}) x (${this.expr(a[1])}) y (${this.expr(a[2])})`);return;
         }
+        if(resource && ['print','printCenter'].includes(node.callee.name)){
+            const center=node.callee.name==='printCenter',fontIndex=center?3:4;
+            if(a.length===fontIndex+1 && this.fontReferences?.has(a[fontIndex])){
+                const text=this.expr(a[0]),color=this.expr(a[fontIndex-1]),font=this.expr(a[fontIndex]);
+                push(center?`arcade print centered (${text}) on image (${resource}) y (${this.expr(a[1])}) color (${color}) using font (${font})`:
+                    `arcade print (${text}) on image (${resource}) x (${this.expr(a[1])}) y (${this.expr(a[2])}) color (${color}) using font (${font})`);return;
+            }
+        }
         if(resource && node.callee.name==='print') {
             // Image.print(text, x, y, color?, font?): an omitted font is chosen by
             // image.getFontForText, an omitted color is 1.
@@ -2064,6 +2074,12 @@ class ArcadeTranslator extends BaseTranslator {
     }
     objectExpression(node) {
         const name=this.path(node?.callee),a=node?.args || [];
+        if(node.bwFontIntrinsic && name==='__bwSdkFont_'+node.bwFontIntrinsic){
+            if(node.bwFontIntrinsic==='constant' && a.length===1)return `arcade font value ${a[0].value}`;
+            if(node.bwFontIntrinsic==='getFontForText' && a.length===1)return `arcade font for text (${this.expr(a[0])})`;
+            if(node.bwFontIntrinsic==='scaledFont' && a.length===2)return `arcade scaled font (${this.expr(a[0])}) by (${this.expr(a[1])})`;
+            if(node.bwFontIntrinsic==='field' && a.length===2)return `arcade object (${this.expr(a[0])}) field (${this.expr(a[1])})`;
+        }
         if(node.bwCallableIntrinsic==='create' && name==='__bwCallables.create' && a.length===1) {
             const procedure=this.callableProcedures?.get(a[0]?.value);
             if(!procedure){this.unsupported.push('Callable creation requires its exact emitted source procedure');return 'undefined value';}
@@ -2091,6 +2107,12 @@ class ArcadeTranslator extends BaseTranslator {
     }
     objectStatement(node,push) {
         const name=this.path(node?.callee),a=node?.args || [];
+        if(node.bwFontIntrinsic && name==='__bwSdkFont_'+node.bwFontIntrinsic){
+            if(node.bwFontIntrinsic==='constant' && a.length===1)return `arcade font value ${a[0].value}`;
+            if(node.bwFontIntrinsic==='getFontForText' && a.length===1)return `arcade font for text (${this.expr(a[0])})`;
+            if(node.bwFontIntrinsic==='scaledFont' && a.length===2)return `arcade scaled font (${this.expr(a[0])}) by (${this.expr(a[1])})`;
+            if(node.bwFontIntrinsic==='field' && a.length===2)return `arcade object (${this.expr(a[0])}) field (${this.expr(a[1])})`;
+        }
         if(node.bwCallableIntrinsic==='invoke' && name==='__bwCallables.invoke'){push(`arcade set local __bwDiscardCallableResult to (${this.objectExpression(node)})`);return true;}
         if(name==='__bwObjects.declareSubclass' && a.length===7){push(`arcade declare subclass (${this.expr(a[0])}) of (${this.expr(a[1])}) fields (${this.expr(a[2])}) initializer (${this.expr(a[3])}) constructor (${this.expr(a[4])}) parameters (${this.expr(a[5])}) methods (${this.expr(a[6])})`);return true;}
         if(name==='__bwObjects.procedure'){push(`arcade set local __bwDiscardObjectResult to (${this.objectExpression(node)})`);return true;}
@@ -3340,6 +3362,9 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
     const mathDeclared=entries.some(({node})=>node.type==='Declaration' && node.decls?.some(decl=>decl.name==='Math') ||
         ['FunctionDeclaration','FunctionExpression'].includes(node.type) && (node.params || []).includes('Math'));
     const typeOf = (node, owner) => {
+        if(node?.bwFontIntrinsic && node.bwFontType==='image.Font')return new Set(['font']);
+        if(node?.bwFontIntrinsic==='field' && node.bwFontType==='number')return new Set(['number']);
+        if(node?.bwFontIntrinsic==='field' && node.bwFontType==='Buffer')return new Set(['buffer']);
         if(node?.bwObjectTypes?.length)return new Set(node.bwObjectTypes);
         if (imageOf(node) || isScreen(node) || isScopedAssetFactory(node)) return new Set(['image']);
         if(node?.type==='Number')return new Set(['number']);
@@ -3503,18 +3528,18 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
     const connect = (left,right) => {if(left && right)graph.merge(left,right);};
     for (const fn of functions.values()) {
         fn.resultCell = Symbol('procedure result');
-        applyDeclaredValueType(graph, fn.resultCell, fn.node.returnType);
+        if(fn.node.returnType!=='image.Font')applyDeclaredValueType(graph, fn.resultCell, fn.node.returnType);
         applyPrimitiveAnnotation(fn.resultCell,fn.node.returnType);
     }
     for (const {node, owner} of entries) {
         if (['FunctionDeclaration', 'FunctionExpression'].includes(node.type)) {
             for (const name of node.params || []) {
-                applyDeclaredValueType(graph, binding(owner, name), node.paramTypes?.[name]?.text);
+                if(node.paramTypes?.[name]?.text!=='image.Font')applyDeclaredValueType(graph, binding(owner, name), node.paramTypes?.[name]?.text);
                 applyPrimitiveAnnotation(binding(owner,name),node.paramTypes?.[name]?.text);
             }
         }
         if (node.type === 'Declaration') for (const decl of node.decls) {
-            applyDeclaredValueType(graph, binding(owner, decl.name), decl.typeName);
+            if(decl.typeName!=='image.Font')applyDeclaredValueType(graph, binding(owner, decl.name), decl.typeName);
             applyPrimitiveAnnotation(binding(owner,decl.name),decl.typeName);
         }
     }
@@ -3522,9 +3547,12 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         const value=cell(node,owner);
         applyPrimitiveAnnotation(value,node.assertedType);
         for (const type of typeOf(node,owner)) {
-            const name={image:'Image',sprite:'Sprite',tile:'TileLocation','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio','text-sprite':'TextSprite',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',null:'null',undefined:'undefined',object:'object',any:'unknown',array:'array'}[type];
+            const name={font:'Font',buffer:'Buffer',image:'Image',sprite:'Sprite',tile:'TileLocation','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio','text-sprite':'TextSprite',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',null:'null',undefined:'undefined',object:'object',any:'unknown',array:'array'}[type];
             if(name)graph.add(value,name);
         }
+        if(node.bwFontType==='image.Font' && ['constant','getFontForText','scaledFont'].includes(node.bwFontIntrinsic))graph.add(value,'Font');
+        if(node.bwFontIntrinsic==='field' && node.bwFontType==='number')graph.add(value,'number');
+        if(node.bwFontIntrinsic==='field' && node.bwFontType==='Buffer')graph.add(value,'Buffer');
         if(node.type==='Template' && node.tag==='hex' || node.type==='Call' && ['control.createBuffer','control.createBufferFromUTF8','Buffer.fromHex','Buffer.fromUTF8','settings.readBuffer','blockSettings.readBuffer'].includes(pathOf(node.callee)))graph.add(value,'Buffer');
         if(node.type==='Call' && pathOf(node.callee)==='mp.allPlayers'){graph.add(value,'array');graph.add(graph.element(value),'Player');}
         if(node.type==='Call' && pathOf(node.callee)==='sprites.allOfKind'){graph.add(value,'array');graph.add(graph.element(value),'Sprite');}
@@ -3534,7 +3562,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(node.type==='Declaration')for(const decl of node.decls){
             const variable=binding(owner,decl.name);
             if(decl.isArray)graph.add(variable,'array');
-            if(!decl.init && !graph.node(variable).types.size)graph.add(variable,'unknown');
+            if(!decl.init && !decl.bwFontProducer && !graph.node(variable).types.size)graph.add(variable,'unknown');
             connect(variable,cell(decl.init,owner));
         }
         if(node.type==='Assignment' && node.op==='=')connect(cell(node.left,owner),cell(node.right,owner));
@@ -3594,9 +3622,10 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(!sourceTypeOfOpaque.has(graph.node(cell(node,owner))) && types.size && [...types].every(type=>sourceTypeOfKinds.has(type)) &&
             (!types.has('object') || node.bwObjectTypes?.includes('object')))sourceTypeOfOperands.add(node);
     }
-    const data = new WeakSet();
+    const data = new WeakSet(),fonts=new WeakSet();
     for (const {node, owner} of entries) {
         const value=cell(node,owner);
+        if(graph.has(value,'Font') && [...graph.node(value).types].every(type=>['Font','null','undefined'].includes(type)))fonts.add(node);
         if(graph.has(value,'object'))objects.add(node);
         if(graph.has(value,'Buffer'))buffers.add(node);
         if(graph.has(value,'SpriteData'))data.add(node);
@@ -3620,7 +3649,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {objects,primitives,strictStrings,sourceTypeOfOperands,provenArrays,textSprites, buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {fonts,objects,primitives,strictStrings,sourceTypeOfOperands,provenArrays,textSprites, buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
@@ -4947,7 +4976,9 @@ export function arcadeToPseudocode (files, opts = {}) {
     const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && assetKindLookup && ['assets.image','assets.tile'].includes(node.tag) ? lookupAssetTemplate(assetKindLookup,node.tag,node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ?
         assets[tileImagePath(node)] || assets[node.name] || (BUILTIN_IMAGES[tileImagePath(node)] ? decodeMkcdImage(BUILTIN_IMAGES[tileImagePath(node)]) : null) :
         node?.type==='Identifier' ? assets[node.name] : null;
-    const fontSource = lowerLiveFontMetrics(namespaceBindings.program || parsed);
+    const fontValues = lowerSdkFontValues(namespaceBindings.program || parsed);
+    projectInputDiagnostics.push(...fontValues.unsupported);
+    const fontSource = lowerLiveFontMetrics(fontValues.program);
     const queryReferences = inferImageReferences(fontSource,tileImagePath,tileImageOf,
         node => !!assetKindLookup && node?.type==='Template' && ['assets.image','assets.tile'].includes(node.tag));
     const stagedSource = lowerPxtStagedValues(fontSource, {
@@ -5526,7 +5557,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     // ── assemble
     const out = [];
     out.push('DEVICE ARCADE', '');
-    if(t.referenceArrayProgram){
+    if(t.referenceArrayProgram || t.fontValueProgram){
         const globals=ast.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls)
             .filter(decl=>!decl.temporary && !t.sprite(decl.name) && !(decl.init?.type==='Call' && t.path(decl.init.callee)==='sprites.create'));
         out.push(...globals.map(decl=>`GLOBAL ${t.varName(decl.name)}`),'');
