@@ -1443,11 +1443,8 @@ class ArcadeTranslator extends BaseTranslator {
                 if(fn.params.slice(a.length).some(param=>!fn.optionalParams?.includes(param)))this.unsupported.push(`${name}() argument count differs from its declaration`);
                 while(actual.length<fn.params.length)actual.push({type:'Undefined'});
             }
-            const values=actual.map(arg=>{
-                const value=this.arrayElementValue(arg);
-                return /^[-\w.]+$/.test(value) || /^"(?:[^"\\]|\\.)*"$/.test(value) ? value : `(${value})`;
-            });
-            push(['CALL',name,...values].join(' '));return;
+            const values=actual.map(arg=>`(${this.arrayElementValue(arg)})`);
+            push(`CALL: (${[name,...values].join(' ')})`);return;
         }
 
         if(['pauseUntil','control.waitUntil'].includes(name)) {
@@ -5502,7 +5499,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     // or the reporter `arcade call function "name …"`.
     const calledIn = lines => t.functions.filter(fn => {
         const name = escaped(fn.name);
-        const command = new RegExp(`^\\s*(?:CALL\\s+)?${name}(?:\\s|$)`), reporter = new RegExp(`arcade call function "${name}(?:\\s|")`);
+        const command = new RegExp(`^\\s*(?:CALL:?\\s+(?:\\(\\s*)?)?${name}(?:\\s|\\)|$)`), reporter = new RegExp(`arcade call function "${name}(?:\\s|")`);
         return lines.some(line => command.test(line) || reporter.test(line));
     });
     const definesFor = new Map(t.sprites.map(s => [s.name, []]));
