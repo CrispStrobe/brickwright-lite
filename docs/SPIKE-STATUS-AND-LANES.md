@@ -6,6 +6,50 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Qualified G02 lifecycle boundaries — 2026-10-14
+
+Three focused changes have landed, each with a separately frozen installed
+consumer. These observations qualify the named source and owned guest scenarios;
+they do not qualify every later package assembled from main.
+
+- [PR895](https://github.com/CrispStrobe/brickwright-lite/pull/895), tested
+  consumer `b776bef598ae4608d93fa8c07ce17a842abc7dde`: after the old pane's real
+  firmware Stop returns, its resumed cleanup cannot stop a replacement VM.
+  The installed case retains positive Stop, Reset/Start and fresh guest recovery.
+- [PR898](https://github.com/CrispStrobe/brickwright-lite/pull/898), tested
+  consumer `3be3c02ed72ac79d5dbf447100073cc46fd88e56`: the fresh native package
+  passes two owned-NuttX startups, teardown/replacement and subsequent recovery.
+  The closed startup trace records two complete transactions. Its shared EV3
+  path separately passes both exact public guest tests in
+  [run38516801049](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38516801049),
+  with one executed test and no failures or ignored tests in each invocation.
+  The EV3 workflow's Runtime pin remains separate from the NuttX package pin.
+- [PR905](https://github.com/CrispStrobe/brickwright-lite/pull/905), tested
+  consumer `ecc0ccb36006c871ab3e40109d7c92f6268e8c8a`: Stop invoked synchronously
+  by the real final-frame or NuttX program-state observer suppresses a later
+  completion callback. Each installed case observes the real owned guest reach
+  COMPLETE, invokes the original pane Stop, verifies ownership/clock/session
+  release, then completes a different guest session normally and stops it.
+  The baseline frame case had reproduced Stop requested → completion → stopped;
+  both candidate cases produce only Stop requested → stopped. This concerns late
+  notification after Stop, not a claim of continued guest execution after Stop.
+
+PR905's 34 affected session controls pass; three new controls fail on the
+baseline, and removing either closure fence is detected. Its nine enabled
+exact-head hosted checks passed, including both unit shards and all browser
+legs; deployment/verification jobs are conditional. Independent readers checked
+all 180 installer files and 23 directories against staged bytes, permissions and
+root ownership, and bound native/frontend inputs to the reviewed consumer.
+Retained firmware, Runtime and support payloads did not change. Original build,
+fixture and startup failures remain preserved in private evidence.
+
+G02 remains open for its complete installed chooser/startup/final-sampling,
+UART-generation and late-poll matrix across supported backends. The older opaque
+cold-start failures remain unexplained; successful new startups do not diagnose
+them. No timeout increase, dependency adoption, physical/reference compatibility,
+release or G05 licence/source-to-binary clearance follows from these receipts.
+Continue G02 before G03's sandbox/editor usability matrix and the later lanes.
+
 ## Stop from a terminal frame callback candidate — 2026-10-14
 
 A focused host control found that firmware polling could notify completion after
@@ -17,9 +61,9 @@ Three new authored-boundary controls fail on the baseline: the legacy program
 frame, the NuttX frame, and the NuttX program-state callback. All 34 affected
 session controls pass with the candidate, including existing MicroPython final
 sampling and generation cases. Removing either fence is detected. These are
-actual-method host controls, not guest or hardware evidence. Fresh source-bound
-installed own-guest cancellation/recovery and enabled exact-head CI remain
-required before adoption. No native/Rust, firmware, Runtime, model pin, request
+actual-method host controls, not guest or hardware evidence. At candidate
+publication, fresh source-bound installed own-guest cancellation/recovery and
+enabled exact-head CI remained required; the qualified follow-up is above. No native/Rust, firmware, Runtime, model pin, request
 deadline or physical-accuracy change is proposed.
 
 ## Native startup observation candidate — 2026-10-13
@@ -36,9 +80,9 @@ startup/session deadlines are unchanged; logging I/O errors are ignored.
 Three extracted standard-library controls pass, and three deliberate mutations
 are detected: mislabelling failure as completion, adding failure after success,
 and removing the log ceiling. These controls do not compile or qualify the full
-native app. Affected native compilation, exact-head hosted gates and fresh
-installed cold-start, Stop/reset/close/recovery and owned-guest observations
-remain required. Earlier generic cold-start failures are preserved and their
+native app. At candidate publication, affected native compilation, exact-head
+hosted gates and fresh installed cold-start, Stop/reset/close/recovery and
+owned-guest observations remained required; the qualified follow-up is above. Earlier generic cold-start failures are preserved and their
 cause remains unknown. No timeout increase or firmware/Runtime/model adoption
 is proposed by this observation work.
 
@@ -105,9 +149,9 @@ Original VM calls were observed and invoked; no guest implementation was substit
 The source candidate fences shared cleanup after firmware teardown using pane
 disposal, Stop revision and bridge identity. Stale teardown errors are suppressed;
 current Stop and current errors retain their behavior. All 14 actual-method
-controls pass, and five deliberate guard/error mutations fail. Hosted checks
-and fresh candidate installed teardown/replacement and positive Stop qualification
-remain pending. Earlier cold-start failures are preserved and unexplained;
+controls pass, and five deliberate guard/error mutations fail. At candidate
+publication, hosted checks and fresh installed teardown/replacement and positive
+Stop qualification remained pending; the qualified follow-up is above. Earlier cold-start failures are preserved and unexplained;
 startup succeeding on the new diagnostic does not resolve their cause.
 Firmware, Runtime, model pins and startup deadlines remain unchanged.
 
