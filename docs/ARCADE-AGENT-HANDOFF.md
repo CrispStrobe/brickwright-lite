@@ -12,7 +12,7 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ### Current immutable corpus audit
 
-The fresh raw audit at clean `59169130c8e38f4700fc9e63a286299f90860e55`
+The fresh raw audit at clean `3867e7d8493d7e7932552b70c11a399002496735`
 reports **184 inputs: 142 translated, 41 partial, one parse failure**.
 Corpus commit is `c67f4854610ccc823682280b4d1fbdf737f4a585`; input content
 multiset SHA-256 is
@@ -61,6 +61,12 @@ MIT [PXT emitter](https://github.com/microsoft/pxt/blob/v13.2.1/pxtcompiler/emit
 `fixpointVTables`/`markVTableUsed` rules: used virtual roots reach overrides in
 used tables, without making every declared class or method executable.
 Implicit inherited constructors use the actual ancestor constructor procedure.
+A staged class update retains its original update operation and the actual
+temporary receiver binding, preserving the selected SDK restriction on `any`
+property updates. Ordinary typed updates and permitted `any` assignments are
+not refused. The unchanged inheritance authoring regression and six selected
+original static-error controls pass; 21 text-member shape controls now inspect
+the reporter inside the actual assignment grouping.
 
 The unchanged TeamData and initializer-order regressions pass, including two
 allocations rather than all fixed instances. Four new scalar/accessor/virtual

@@ -10,7 +10,7 @@ not a second active owner. SPIKE G01, CPU and hardware ownership remain separate
 
 Start with [the current source/methodology handoff](ARCADE-AGENT-HANDOFF.md).
 The fresh immutable raw audit is **142 translated / 41 partial / one parse
-failure out of 184**; no whole corpus game is GUI-qualified. Historical counts
+failure out of 184** at clean `3867e7d84`; no whole corpus game is GUI-qualified. Historical counts
 in dated sections below describe older profiles. Preserve separate original
 compilation, native execution, export and GUI verdicts.
 
