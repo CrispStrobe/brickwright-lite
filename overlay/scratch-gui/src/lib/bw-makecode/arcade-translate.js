@@ -496,9 +496,20 @@ class ArcadeTranslator extends BaseTranslator {
     arcadeStatement(st, indent, out) {
         if(st.type==='SpriteKindReset'){out.push(`${'  '.repeat(indent)}set ${this.varName(st.name)} to (undefined value)`);return;}
         if(st?.type==='ExpressionStatement' && this.bufferStatement(st.expr,indent,out))return;
+        if(st?.type==='ExpressionStatement' && st.expr?.type==='Call' && this.path(st.expr.callee)==='controller._setUserEventsEnabled' && !this.bindsName('controller')){
+            const pad='  '.repeat(indent);
+            if(st.expr.args.length!==1)out.push(pad+this.note('controller._setUserEventsEnabled requires one Boolean argument'));
+            else out.push(`${pad}arcade set user controller events enabled ${this.boolSlot(st.expr.args[0])}`);return;
+        }
         const target=st?.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left;
         if(target?.type==='Member' && (this.physicsEngineReferences?.has(target.object) || this.sceneReferences?.has(target.object))) {
             const n=st.expr,pad='  '.repeat(indent);
+            if(this.sceneReferences?.has(target.object) && target.name==='flags'){
+                if(!this.primitiveReferences?.has(n.right)){out.push(pad+this.note('Scene.flags assignment requires a proven primitive value; opaque conversion is not implemented'));return;}
+                const result=n.op==='='?this.expr(n.right):['+=','-=','*=','/=','%=','|=','&=','^=','<<=','>>=','>>>='].includes(n.op)?this.expr({type:'Binary',op:n.op.slice(0,-1),left:target,right:n.right}):null;
+                if(result===null)out.push(pad+this.note(`Scene.flags assignment ${n.op} is not implemented`));
+                else out.push(`${pad}arcade scene (${this.expr(target.object)}) set flags to (${result})`);return;
+            }
             if(this.sceneReferences?.has(target.object) && target.name==='physicsEngine' && n.op==='=' && !['Null','Undefined'].includes(n.right?.type) && this.physicsEngineReferences?.has(n.right)) {
                 out.push(`${pad}arcade set physics engine of scene (${this.expr(target.object)}) to (${this.expr(n.right)})`);return;
             }
@@ -1069,6 +1080,7 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if(node?.type==='Member' && this.sceneReferences?.has(node.object)) {
             if(node.name==='physicsEngine')return `arcade physics engine of scene (${this.expr(node.object)})`;
+            if(node.name==='flags')return `arcade flags of scene (${this.expr(node.object)})`;
             this.unsupported.push(`Arcade Scene.${node.name} requires native Scene member support`);return 'undefined value';
         }
         if(node?.type==='Member' && this.physicsEngineReferences?.has(node.object)) {
@@ -3241,6 +3253,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(node?.type==='Member' && ['index','number'].includes(node.name) && typeOf(node.object,owner).has('player'))return new Set(['number']);
         if(node?.type==='Member' && ['maxSpeed','minStep','maxStep'].includes(node.name) && typeOf(node.object,owner).has('physics-engine'))return new Set(['number']);
         if(node?.type==='Member' && node.name==='physicsEngine' && typeOf(node.object,owner).has('scene'))return new Set(['physics-engine']);
+        if(node?.type==='Member' && node.name==='flags' && typeOf(node.object,owner).has('scene'))return new Set(['number']);
         if(node?.type==='Member' && ['fx','fy','sx','sy','scale','flags'].includes(node.name) && typeOf(node.object,owner).has('sprite'))return new Set(['number']);
         if (node?.type === 'Member' && node.name === 'image' && (typeOf(node.object, owner).has('sprite') || typeOf(node.object, owner).has('animation'))) return new Set(['image']);
         if (node?.type === 'Member' && ['action','interval'].includes(node.name) && typeOf(node.object,owner).has('animation')) return new Set(['number']);
@@ -3827,7 +3840,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && /^carnival\.(?:startCountdownGame|onGameOverExpanded|customGameOverExpanded)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^game\.(?:gameOver|over|setGameOver\w+)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
-        if(node.type==='Call' && (['game.splash','game.showLongText','game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','scene.cameraLeft','scene.cameraTop','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
+        if(node.type==='Call' && (['controller._setUserEventsEnabled','game.splash','game.showLongText','game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','scene.cameraLeft','scene.cameraTop','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
         if(node.type==='Call' && /^info(?:\.player[1-4])?\.(?:life|hasLife|setLife|changeLifeBy|onLifeZero)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Member' && ['fx','fy','sx','sy','scale','flags'].includes(node.name))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='toString' && t.spriteReferences.has(node.callee.object))return true;

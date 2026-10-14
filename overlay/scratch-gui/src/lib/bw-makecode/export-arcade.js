@@ -1450,6 +1450,7 @@ class ArcadeEmitter {
             this.note('Arcade player member reads require fixed index/number properties; safe reads permit dynamic selectors');return this.na();
         }
         case 'arcade_currentScene': return 'game.currentScene()';
+        case 'arcade_sceneFlags': return `${v('SCENE')}.flags`;
         case 'arcade_scenePhysicsEngine': return `(${v('SCENE')}.physicsEngine as ArcadePhysicsEngine)`;
         case 'arcade_createPhysicsEngine': return `new ArcadePhysicsEngine(${this.arrayValue(b,'MAX_SPEED')}, ${this.arrayValue(b,'MIN_STEP')}, ${this.arrayValue(b,'MAX_STEP')})`;
         case 'arcade_physicsEngineProperty': {
@@ -1681,6 +1682,8 @@ class ArcadeEmitter {
         case 'arcade_movePlayerWithButtons': this.requiresMultiplayerPackage=true;push(`mp.moveWithButtons(${v('PLAYER')}, ${v('VX')}, ${v('VY')})`);return;
         case 'arcade_setPlayerSprite': this.requiresMultiplayerPackage=true;push(`mp.setPlayerSprite(${v('PLAYER')}, ${v('ID')})`);return;
         case 'arcade_setScenePhysicsEngine': push(`${v('SCENE')}.physicsEngine = ${v('ENGINE')}`);return;
+        case 'arcade_setSceneFlags': push(`${v('SCENE')}.flags = ${v('VALUE')}`);return;
+        case 'arcade_setUserEventsEnabled': push(`controller._setUserEventsEnabled(${this.boolValue(b,'ENABLED')})`);return;
         case 'arcade_setPhysicsEngineProperty': {
             const property=b.fields?.PROPERTY?.[0];
             if(!['maxSpeed','minStep','maxStep'].includes(property)){this.note(`Arcade PhysicsEngine property ${property} is unsupported`);return;}
@@ -2839,7 +2842,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_playerProperty'){const id=Symbol('player property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_currentScene'){const id=Symbol('scene value');graphSceneValues.add(id);return id;}
                 if(['arcade_scenePhysicsEngine','arcade_createPhysicsEngine'].includes(value.opcode)){const id=Symbol('physics engine value');graphPhysicsEngineValues.add(id);return id;}
-                if(value.opcode==='arcade_physicsEngineProperty'){const id=Symbol('physics engine numeric property');numbers.add(id);return id;}
+                if(['arcade_physicsEngineProperty','arcade_sceneFlags'].includes(value.opcode)){const id=Symbol('physics engine numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_createAnimation'){const id=Symbol('animation value');graphAnimationValues.add(id);return id;}
                 if(value.opcode==='arcade_sevensegDigit'){const id=Symbol('seven segment digit');graphSevensegDigitValues.add(id);return id;}
                 if(value.opcode==='arcade_sevensegCounter'){const id=Symbol('seven segment counter');graphSevensegCounterValues.add(id);return id;}

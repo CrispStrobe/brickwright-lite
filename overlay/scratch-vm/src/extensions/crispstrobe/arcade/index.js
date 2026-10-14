@@ -36,6 +36,7 @@ module.exports = makeExt(`// Name: Arcade
       this._projectPalette = null;
       this._sceneStack = [];this._sceneParents=new WeakMap();this._seeThroughSources=new WeakMap();this._renderingScenes=new WeakSet();this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
       this._sceneBundles = new Set();
+      this._sceneFlags=dependencies.sceneFlags.create();
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
       this._sdkObjectClasses=dependencies.sdkObjectClasses.create(this,Scratch.BWValues);
       this._objectHeap=dependencies.createObjectHeap(runtime,Scratch.BWValues,this._sdkObjectClasses.heapHooks);
@@ -717,6 +718,9 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'physicsEngineProperty',blockType:Scratch.BlockType.REPORTER,text:'Arcade physics engine [ENGINE] property [PROPERTY]',arguments:{...str('ENGINE',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'physicsEngineProperties',defaultValue:'maxSpeed'}}},
           {opcode:'setPhysicsEngineProperty',blockType:Scratch.BlockType.COMMAND,text:'set Arcade physics engine [ENGINE] property [PROPERTY] to [VALUE]',arguments:{...str('ENGINE',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'physicsEngineProperties',defaultValue:'maxSpeed'},...n('VALUE',500)}},
           {opcode:'setScenePhysicsEngine',blockType:Scratch.BlockType.COMMAND,text:'set Arcade physics engine of scene [SCENE] to [ENGINE]',arguments:{...str('SCENE',''),...str('ENGINE','')}},
+          {opcode:'sceneFlags',blockType:Scratch.BlockType.REPORTER,text:'Arcade flags of scene [SCENE]',arguments:str('SCENE','')},
+          {opcode:'setSceneFlags',blockType:Scratch.BlockType.COMMAND,text:'Arcade scene [SCENE] set flags to [VALUE]',arguments:{...str('SCENE',''),...str('VALUE','0')}},
+          {opcode:'setUserEventsEnabled',blockType:Scratch.BlockType.COMMAND,text:'Arcade set user controller events enabled [ENABLED]',arguments:{ENABLED:{type:Scratch.ArgumentType.BOOLEAN}}},
           { opcode: 'spriteProperty', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade sprite [ID] [PROPERTY]',
             arguments: { ...str('ID', ''), PROPERTY: {type: Scratch.ArgumentType.STRING, menu: 'readableSpriteProperties', defaultValue: 'x'} } },
@@ -1172,6 +1176,13 @@ module.exports = makeExt(`// Name: Arcade
     }
     _ensureSceneEngine(state) {
       if(state.elapsedMs===undefined)state.elapsedMs=0;
+      if(!Object.hasOwn(state,'flags'))state.flags=0;
+      if(!Object.getOwnPropertyDescriptor(state,'seeThrough')?.get){
+        const previous=state.seeThrough;
+        Object.defineProperty(state,'seeThrough',{enumerable:true,configurable:true,
+          get(){return !!(this.flags & 2);},set(value){this.flags=value?this.flags|2:this.flags&~2;}});
+        if(previous)state.flags |= 2;
+      }
       if(this._sceneValues.get(state._sceneValueId)!==state){state._sceneValueId='arcade-scene:'+(++this._nextSceneValue);this._sceneValues.set(state._sceneValueId,state);}
       if(this._physicsEngines.get(state.physicsEngine?.id)!==state.physicsEngine || !state.physicsEngine)state.physicsEngine=this._newPhysicsEngine();
       if(this._sourceSceneTimers())this._sceneFrameContexts().register(state);
@@ -1179,6 +1190,9 @@ module.exports = makeExt(`// Name: Arcade
     _sceneValue(value) {return this._sceneValues.get(Scratch.BWValues.referenceId(this._runtime,value,'scene'));}
     _engineValue(value) {return this._physicsEngines.get(Scratch.BWValues.referenceId(this._runtime,value,'physics-engine'));}
     currentScene() {return Scratch.BWValues.reference(this._runtime,'scene',this._state()._sceneValueId);}
+    sceneFlags(args) {const scene=this._sceneValue(args.SCENE);if(!scene)return this._objectError(new Error('Arcade scene flags require a live Scene reference'));return Scratch.BWValues.encode(scene.flags);}
+    setSceneFlags(args,util) {const scene=this._sceneValue(args.SCENE);if(!scene)return this._objectError(new Error('Arcade scene flags require a live Scene reference'));scene.flags=this._mathArgument(args,'VALUE',util,'Arcade scene flags require a primitive value');this._changed();}
+    setUserEventsEnabled(args) {this._userControllerEvents=!!Scratch.BWValues.decode(args.ENABLED);}
     scenePhysicsEngine(args) {const scene=this._sceneValue(args.SCENE);return scene?Scratch.BWValues.reference(this._runtime,'physics-engine',scene.physicsEngine.id):Scratch.BWValues.encode(undefined);}
     createPhysicsEngine(args) {
       const defaults=[500,2,4];
@@ -1350,7 +1364,7 @@ module.exports = makeExt(`// Name: Arcade
         // PXT's InfoState; the native player state objects are its playerStates.
         state.hudInfo=this._hud().info._newInfoState();
         state.hudInfo.playerStates=state.players;
-        this._renderablesOf(state).push({z:100,id:state.infoRenderable.pxtId,drawSteps:screen=>this._drawHudSteps(state,screen)});
+        this._addSceneRenderable(state,{z:100,id:state.infoRenderable.pxtId,drawSteps:screen=>this._drawHudSteps(state,screen)});
       }
       return state;
     }
@@ -1495,6 +1509,11 @@ module.exports = makeExt(`// Name: Arcade
       if(this._terrainStopped)return;
       const pending=this._runTerrainGenerator(this._controllerButtonCallbacks(number,button,held?2049:2048,true));
       pending?.catch?.(error=>this._runtime?.emit?.('BLOCKS_ERROR',error.message));
+      // The real edge already registered a ready user callback. Dispatch it
+      // as a source continuation at this program time, without a scene frame.
+      if(pending?.then && this._runtime?._arcadeFramePhase?.hasSourceProject()){
+        this._runtime._arcadeFramePhase.requestContinuation().catch(error=>this._runtime.emit('BLOCKS_ERROR',error.message));
+      }
     }
     *_sceneButtons(dt) {
       const state=this._state();
@@ -2404,7 +2423,7 @@ module.exports = makeExt(`// Name: Arcade
         get width(){return sprite.width;},get height(){return sprite.height;},
         get x(){return sprite.x;},set x(value){sprite.x=value;},
         get y(){return sprite.y;},set y(value){sprite.y=value;},
-        get z(){return sprite.z;},set z(value){sprite.z=value;},
+        get z(){return sprite.z;},set z(value){ext.setSpriteProperty({ID:id,PROPERTY:'z',VALUE:value});},
         get left(){return sprite._fx/256;},set left(value){sprite.x=value+sprite.width/2;},
         get right(){return sprite._fx/256+sprite.width;},set right(value){sprite.x=value-sprite.width/2;},
         get top(){return sprite._fy/256;},
@@ -2788,7 +2807,7 @@ module.exports = makeExt(`// Name: Arcade
       return created && typeof created.then === 'function' ? created.then(position) : position(created);
     }
     _reserveSdkSprite() {const id=dependencies.sdkSpriteClasses.allocateHandle();this._spriteValues.set(id,{id,_sdkBaseOnly:true});return id;}
-    _registerSdkSprite(id) {const sprite=this._spriteValues.get(id),state=this._state();if(sprite._sdkRegistered)throw new Error('SDK BaseSprite was registered twice');sprite._sdkRegistered=true;sprite._sdkScene=state;sprite.pxtId=state.nextSpriteId++;state.sprites[id]=sprite;}
+    _registerSdkSprite(id) {const sprite=this._spriteValues.get(id),state=this._state();if(sprite._sdkRegistered)throw new Error('SDK BaseSprite was registered twice');sprite._sdkRegistered=true;sprite._sdkScene=state;sprite.pxtId=state.nextSpriteId++;state.sprites[id]=sprite;this._sceneFlags.register(state,sprite);}
     _initializeSdkSprite(id,image) {const sprite=this._spriteValues.get(id),width=image.width,height=image.height;sprite._sdkBaseOnly=false;Object.assign(sprite,{x:((160-width)>>1)+width/2,y:((120-height)>>1)+height/2,vx:0,vy:0,ax:0,ay:0,fx:0,fy:0,width,height,flags:0});this._installSpriteFixedPoint(sprite);sprite._creationKind=null;}
     _spriteKindSets(state=this._state()) {if(!state._nativeKindSets){state._nativeKindSets=new Map();for(const sprite of Object.values(state.sprites))if(sprite.kind>=0){if(!state._nativeKindSets.has(sprite.kind))state._nativeKindSets.set(sprite.kind,[]);state._nativeKindSets.get(sprite.kind).push(sprite);}}return state._nativeKindSets;}
     _addSpriteKind(sprite,kind,state=this._state()) {if(!(kind>=0))return;const sets=this._spriteKindSets(state);if(!sets.has(kind))sets.set(kind,[]);if(!sets.get(kind).includes(sprite))sets.get(kind).push(sprite);}
@@ -2805,6 +2824,7 @@ module.exports = makeExt(`// Name: Arcade
       this._installSpriteFixedPoint(sprite);
       sprite._kindInsertion = ++this._kindInsertion;
       state.sprites[id] = sprite;
+      this._sceneFlags.register(state,sprite);
       this._addSpriteKind(sprite,kind,state);
       state.physicsEngine.members.push(sprite);
       this._spriteValues.set(id, sprite);
@@ -2906,6 +2926,7 @@ module.exports = makeExt(`// Name: Arcade
         if (this._runtime.stopForTarget) this._runtime.stopForTarget(target);
       }
       delete state.spriteTargets[id];
+      this._sceneFlags.remove(state,sprite);
       delete state.sprites[id];
       const token = sprite._destroyedRegistration ?? state.spriteDestroyedHandlers?.[id];
       if (state.spriteDestroyedHandlers) delete state.spriteDestroyedHandlers[id];
@@ -2925,6 +2946,11 @@ module.exports = makeExt(`// Name: Arcade
       if(name==='flags'){
         sprite.flags=this._mathArgument(args,'VALUE',util,'Arcade sprite flags require a primitive value');
         this._syncSpriteFlagState(sprite);this._updateSpriteFlagVisibility(sprite);this._positionSprite(sprite.id);this._changed();return;
+      }
+      if(name==='z'){
+        const value=this._mathArgument(args,'VALUE',util,'Arcade sprite z requires a primitive value');
+        if(sprite.z!==value){sprite.z=value;this._sceneFlags.dirty(this._state());this._particleOrderDirty=true;}
+        this._orderSpriteDrawables();this._changed();return;
       }
       const value = Number(args.VALUE);
       if(['sx','sy','scale'].includes(name)){
@@ -2947,7 +2973,6 @@ module.exports = makeExt(`// Name: Arcade
         if(['sx','sy','scale','rotation','rotationDegrees'].includes(name))this._renderSpriteImageIfPresent(sprite);
         this._clampSprite(sprite);
         if (['sx','sy','scale','rotation','rotationDegrees','x', 'y', 'left', 'right', 'top', 'bottom'].includes(name)) this._positionSprite(String(args.ID));
-        if(name==='z')this._orderSpriteDrawables();
         this._changed();
       };
       return moved?.then ? moved.then(finish) : finish();
@@ -3324,7 +3349,11 @@ module.exports = makeExt(`// Name: Arcade
     // that is not pixel art (a vector costume has no Arcade image).
     _imageForSprite(id, {quiet = false} = {}) {
       const sprite = this._spriteValues.get(String(id)) || this._sprite(id);
-      const target = this._state().spriteTargets?.[id];
+      // A referenced sprite retains its own artwork while another Scene is
+      // active (including SeeThrough rendering). Resolve the actual retained
+      // target owner before decoding; never invent an image for a missing one.
+      const target = this._state().spriteTargets?.[id] || [...this._sceneBundles]
+        .find(bundle=>bundle.state.sprites?.[id]===sprite)?.state.spriteTargets?.[id];
       if (!sprite) return null;
       if (sprite.image) return sprite.image;
       if (!target) return null;
@@ -3660,44 +3689,52 @@ module.exports = makeExt(`// Name: Arcade
       for(let i=0;i<layer.writes.length;i++)if(image.pixels[i])layer.writes[i]=1;
       return layer;
     }
-    _sceneLayers(state=this._state()) {
+    _layersForSceneSprite(sprite,state) {
+      const layers=[],missingSpriteImages=[];
       const bundle=state===this._state()?null:[...this._sceneBundles].find(bundle=>bundle.state===state);
       const speechMap=bundle?bundle._speech:this._speech;
+        if(sprite.invisible || sprite._destroyed)return {layers,missingSpriteImages};
+        const source=sprite.image || this._imageForSprite(sprite.id,{quiet:true});
+        if(!source){missingSpriteImages.push(sprite.id);return {layers,missingSpriteImages};}
+        const speech=speechMap.get(sprite.id);
+        if(speech && !speech.legacy && speech.raster)
+          layers.push({image:speech.raster,writes:speech.raster.writes,x:0,y:0,z:sprite.z,id:sprite.pxtId,bwSceneSprite:sprite});
+        const window=this._spriteRasterWindow(sprite,state),view=this._spriteViewPosition(sprite,state);
+        layers.push({image:this._scaledSpriteImage(sprite,window),
+          x:view.x-sprite.width/2+window.x,y:view.y-sprite.height/2+window.y,
+          z:sprite.z,id:sprite.pxtId,bwSceneSprite:sprite});
+        const physics=this._spritePhysicsLayer(sprite,state);
+        if(physics){physics.bwSceneSprite=sprite;layers.push(physics);}
+      return {layers,missingSpriteImages};
+    }
+    _sceneLayers(state=this._state()) {
       // This internal scene raster is not the global PXT screen. Snapshot
       // reporters remain unavailable until all renderable layers are covered.
       const layers=[],missingSpriteImages=[];
       const tilemap=state.tilemap;
       if(tilemap && (!tilemap.legacy || tilemap.mapImage)) {
         const renderable=this._ensureTilemapRenderable(tilemap.legacy?'legacy':'modern',state);
-        layers.push({image:this._tilemapRaster(tilemap,state),x:0,y:0,z:renderable.z,id:renderable.pxtId});
+        layers.push({image:this._tilemapRaster(tilemap,state),x:0,y:0,z:renderable.z,id:renderable.pxtId,bwSceneSprite:renderable});
       }
       for(const sprite of Object.values(state.sprites)) {
-        if(sprite.invisible || sprite._destroyed)continue;
-        const source=sprite.image || this._imageForSprite(sprite.id,{quiet:true});
-        if(!source){missingSpriteImages.push(sprite.id);continue;}
-        const speech=speechMap.get(sprite.id);
-        if(speech && !speech.legacy && speech.raster)
-          layers.push({image:speech.raster,writes:speech.raster.writes,x:0,y:0,z:sprite.z,id:sprite.pxtId});
-        const window=this._spriteRasterWindow(sprite,state),view=this._spriteViewPosition(sprite,state);
-        layers.push({image:this._scaledSpriteImage(sprite,window),
-          x:view.x-sprite.width/2+window.x,y:view.y-sprite.height/2+window.y,
-          z:sprite.z,id:sprite.pxtId});
-        const physics=this._spritePhysicsLayer(sprite,state);
-        if(physics)layers.push(physics);
+        const found=this._layersForSceneSprite(sprite,state);layers.push(...found.layers);missingSpriteImages.push(...found.missingSpriteImages);
       }
       return {layers,missingSpriteImages};
     }
     _composeSceneFrame() {
-      const state=this._state(),{layers,missingSpriteImages}=this._sceneLayers();
-      const frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
-      const particles=this._drawParticleSources();layers.push(...particles);
-      this._renderOverlayLayers(layers.filter(layer=>layer.source));
-      imageEngine.composeFrame(frame,state.backgroundColor,state.backgroundImage,layers);
-      frame.coverage=['background','tilemap','sprites','modernSpeech','particles'];
-      frame.remaining=['renderables','hud','legacySpeech','effects'];
-      frame.missingSpriteImages=missingSpriteImages;
-      frame.sequence=(frame.sequence || 0)+1;
-      return frame;
+      const state=this._state();
+      if(!this._sceneFlags.begin(state))return state.sceneFrame;
+      try {
+        const {layers,missingSpriteImages}=this._sceneLayers(),frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
+        const particles=this._drawParticleSources();layers.push(...particles);
+        const order=this._sceneFlags.order(state,this._sceneSpriteObjects(state)),rank=item=>order.indexOf(item.bwSceneSprite || item.source);
+        layers.sort((a,b)=>rank(a)-rank(b));
+        imageEngine.composeFrame(frame,state.backgroundColor,state.backgroundImage,[]);
+        for(const layer of layers)imageEngine.drawLayer(frame,layer);
+        this._renderOverlayLayers(layers.filter(layer=>layer.source));
+        frame.coverage=['background','tilemap','sprites','modernSpeech','particles'];frame.remaining=['renderables','hud','legacySpeech','effects'];
+        frame.missingSpriteImages=missingSpriteImages;frame.sequence=(frame.sequence || 0)+1;return frame;
+      } finally {this._sceneFlags.finish(state);}
     }
     // Particle effects run the generated PXT particle sources, factories and
     // effects. The host gives them the current native scene, the shared sprite
@@ -3737,7 +3774,7 @@ module.exports = makeExt(`// Name: Arcade
       class BaseSprite {
         constructor(z){this.z=z;ext._particleScene().addSprite(this);}
         get z(){return this._z;}
-        set z(v){if(this._z!==v){this._z=v;ext._particleOrderDirty=true;}}
+        set z(v){if(this._z!==v){this._z=v;ext._sceneFlags.dirty(ext._state());ext._particleOrderDirty=true;}}
         __visible(){return true;}
         __draw(camera){if(this.__visible())this.__drawCore(camera);}
         __drawCore(){}
@@ -3773,10 +3810,10 @@ module.exports = makeExt(`// Name: Arcade
       if(!scene){
         // Kept beside, not inside, the published device state: sources hold
         // anchors and factories that are not serializable.
-        scene={particleSources:undefined,allSprites:[],flags:0,update:null,intervals:[],
+        scene={particleSources:undefined,allSprites:[],get flags(){return state.flags;},set flags(value){state.flags=value;},update:null,intervals:[],
           get camera(){return ext._camera();},
           background:{hasBackgroundImage:()=>!!state.backgroundImage},
-          addSprite(sprite){this.allSprites.push(sprite);sprite.id=state.nextSpriteId++;}};
+          addSprite(sprite){this.allSprites.push(sprite);sprite.id=state.nextSpriteId++;ext._sceneFlags.register(state,sprite);}};
         this._particleScenes.set(state,scene);
       }
       return scene;
@@ -4039,7 +4076,7 @@ module.exports = makeExt(`// Name: Arcade
       await this._arcadePause(400);
       if(this._state()!==scene)return;
       const dialog=new game.GameOverDialog(win,message,judged,scores,previousBest,undefined);
-      this._renderablesOf(scene).push({z:100,id:scene.nextSpriteId++,draw:screen=>{
+      this._addSceneRenderable(scene,{z:100,id:scene.nextSpriteId++,draw:screen=>{
         dialog.update();
         imageEngine.blit(screen,dialog.image.raw,'drawTransparentImage',0,(120-dialog.image.height)>>1);
       }});
@@ -4102,7 +4139,7 @@ module.exports = makeExt(`// Name: Arcade
           createRenderable:(z,draw)=>{
             const state=ext._state(),renderable={z,id:state.nextSpriteId++,draw:screen=>draw({
               drawTransparentImage:(image,x,y)=>{if(image?.raw)imageEngine.blit(screen,image.raw,'drawTransparentImage',x,y);}})};
-            ext._renderablesOf(state).push(renderable);
+            ext._addSceneRenderable(state,renderable);
             return renderable;
           },
           // PXT's background always has an image: a blank screen-sized one until set.
@@ -4332,7 +4369,7 @@ module.exports = makeExt(`// Name: Arcade
               const camera=ext._camera(),target={setPixel:(x,y,c)=>imageEngine.draw(screen,'setPixel',x,y,c)};
               draw(target,{offsetX:camera.drawOffsetX ?? camera.offsetX,offsetY:camera.drawOffsetY ?? camera.offsetY});
             }};
-            ext._renderablesOf(state).push(renderable);
+            ext._addSceneRenderable(state,renderable);
             return {destroy:()=>{const list=ext._renderablesOf(state),index=list.indexOf(renderable);if(index>=0)list.splice(index,1);}};
           }
         },
@@ -4694,11 +4731,13 @@ module.exports = makeExt(`// Name: Arcade
       if(!list){list=[];this._renderables.set(state,list);}
       return list;
     }
+    _addSceneRenderable(state,renderable) {this._renderablesOf(state).push(renderable);this._sceneFlags.register(state,renderable);return renderable;}
+    _sceneSpriteObjects(state) {return [...Object.values(state.sprites),...(state.tilemapRenderable?[state.tilemapRenderable]:[]),...(this._particleScenes.get(state)?.allSprites || []),...(this._renderables.get(state) || [])];}
     _registerRenderable(args,util,z) {
       // scene.createRenderable: a scene sprite with its own id, drawn with the
       // sprites by z then id. game.onPaint is ON_PAINT_Z -20, onShade ON_SHADE_Z 80.
       const state=this._state();
-      this._renderablesOf(state).push({...this._handlerRegistration(args,util),z,id:state.nextSpriteId++});
+      this._addSceneRenderable(state,{...this._handlerRegistration(args,util),z,id:state.nextSpriteId++});
     }
     registerPaintHandler(args,util) {this._registerRenderable(args,util,-20);}
     registerShadeHandler(args,util) {this._registerRenderable(args,util,80);}
@@ -4707,7 +4746,7 @@ module.exports = makeExt(`// Name: Arcade
     // scene.render with renderables: background, then sprites and renderables
     // by z then id into the screen; each renderable's changes become a layer.
     *_drawSceneOwnerSteps(owner,screen,active,epoch,output) {
-      if(this._renderingScenes.has(owner))return;
+      if(this._renderingScenes.has(owner) || !this._sceneFlags.begin(owner))return;
       this._renderingScenes.add(owner);
       try {
         const parent=this._sceneParents.get(owner);
@@ -4720,27 +4759,32 @@ module.exports = makeExt(`// Name: Arcade
           output.layers.push({image:{width:160,height:120,pixels:screen.pixels.slice()},writes:new Uint8Array(160*120).fill(1),x:0,y:0,z:source.z,id:source.id,source});
           output.missingSpriteImages.push(...parentOutput.missingSpriteImages);
         } else imageEngine.composeFrame(screen,owner.backgroundColor,owner.backgroundImage,[]);
-        const {layers,missingSpriteImages}=this._sceneLayers(owner);
-        layers.push(...this._drawParticleSources(owner));
-        output.missingSpriteImages.push(...missingSpriteImages);
-        output.layers.push(...layers.filter(layer=>layer.source));
-        const items=[...layers,...(this._renderables.get(owner) || []).map(renderable=>({renderable,z:renderable.z,id:renderable.id}))].sort((a,b)=>a.z-b.z || a.id-b.id);
-        for(const item of items){
-          if(!item.renderable){imageEngine.drawLayer(screen,item);continue;}
-          const before=screen.pixels.slice();
-          if(item.renderable.drawSteps)yield* item.renderable.drawSteps(screen);
-          else if(item.renderable.draw)item.renderable.draw(screen);
-          else yield* this._registeredCallbackSteps([item.renderable],item.renderable.z===-20?'arcade_whenRegisteredPaint':'arcade_whenRegisteredShade',{});
-          if(this._state()!==active || epoch!==this._terrainEpoch)return;
-          const writes=new Uint8Array(screen.pixels.length);
-          for(let i=0;i<writes.length;i++)if(screen.pixels[i]!==before[i])writes[i]=1;
-          output.layers.push({image:{width:160,height:120,pixels:screen.pixels.slice()},writes,x:0,y:0,z:item.z,id:item.id,source:item.renderable});
-          if(active._defaultGameOverPending)return;
+        const objects=this._sceneFlags.order(owner,this._sceneSpriteObjects(owner));
+        for(const object of objects){
+          let layers=[];
+          if(Object.values(owner.sprites).includes(object)){
+            const found=this._layersForSceneSprite(object,owner);layers=found.layers;output.missingSpriteImages.push(...found.missingSpriteImages);
+          } else if(object===owner.tilemapRenderable){
+            layers=this._sceneLayers(owner).layers.filter(layer=>layer.bwSceneSprite===object);
+          } else if((this._particleScenes.get(owner)?.allSprites || []).includes(object)){
+            layers=this._drawParticleSources(owner).filter(layer=>layer.source===object);
+          } else {
+            const before=screen.pixels.slice();
+            if(object.drawSteps)yield* object.drawSteps(screen);
+            else if(object.draw)object.draw(screen);
+            else yield* this._registeredCallbackSteps([object],object.z===-20?'arcade_whenRegisteredPaint':'arcade_whenRegisteredShade',{});
+            if(this._state()!==active || epoch!==this._terrainEpoch)return;
+            const writes=new Uint8Array(screen.pixels.length);for(let i=0;i<writes.length;i++)if(screen.pixels[i]!==before[i])writes[i]=1;
+            output.layers.push({image:{width:160,height:120,pixels:screen.pixels.slice()},writes,x:0,y:0,z:object.z,id:object.id,source:object});
+            if(active._defaultGameOverPending)return;
+          }
+          for(const layer of layers){imageEngine.drawLayer(screen,layer);if(layer.source)output.layers.push(layer);}
         }
-      } finally {this._renderingScenes.delete(owner);}
+      } finally {this._renderingScenes.delete(owner);this._sceneFlags.finish(owner);}
     }
     *_composeSceneSteps() {
       const epoch=this._terrainEpoch,state=this._state(),renderables=this._renderables.get(state);
+      if(state.flags & 4)return state.sceneFrame;
       if(!renderables?.length && !state.seeThrough){
         const frame=this._composeSceneFrame();
         if(this._screen && frame?.pixels)this._screen.pixels.set(frame.pixels);
@@ -4839,10 +4883,11 @@ module.exports = makeExt(`// Name: Arcade
       // Arcade sprite owns a drawable; a clone-only game still needs z order.
       const drawableOf=sprite=>this._imageSkins.get(sprite.id)?.drawableId ?? state.spriteTargets[sprite.id]?.drawableID;
       // Particle sources share the sprites' z then id order.
-      const entries=[...Object.values(state.sprites).map(sprite=>({z:sprite.z,id:sprite.pxtId,drawable:drawableOf(sprite)})),
-        ...[...this._particleOverlays].map(([source,entry])=>({z:source.z,id:source.id,drawable:entry.drawableId}))];
+      const entries=[...Object.values(state.sprites).map(sprite=>({owner:sprite,z:sprite.z,id:sprite.pxtId,drawable:drawableOf(sprite)})),
+        ...[...this._particleOverlays].map(([source,entry])=>({owner:source,z:source.z,id:source.id,drawable:entry.drawableId}))];
       if(!entries.some(entry=>entry.drawable!=null))return;
-      for(const entry of entries.sort((a,b)=>a.z-b.z || a.id-b.id))
+      const order=this._sceneFlags.currentOrder(state);
+      for(const entry of entries.sort((a,b)=>order.indexOf(a.owner)-order.indexOf(b.owner)))
         if(entry.drawable!=null)renderer.setDrawableOrder(entry.drawable,Infinity,'sprite');
     }
     _renderSpriteImage(id,window) {
@@ -5159,8 +5204,10 @@ module.exports = makeExt(`// Name: Arcade
       if(values.length)return this.placeOnLegacyTile({ID:args.ID,TILE:values[Math.floor(Math.random()*values.length)]},util);
     }
     _ensureTilemapRenderable(kind,state=this._state()) {
-      if(!state.tilemapRenderable || state.tilemapRenderable.kind!==kind)
-        state.tilemapRenderable={kind,z:-1,pxtId:state.nextSpriteId++};
+      if(!state.tilemapRenderable || state.tilemapRenderable.kind!==kind){
+        if(state.tilemapRenderable)this._sceneFlags.remove(state,state.tilemapRenderable);
+        state.tilemapRenderable={kind,z:-1,pxtId:state.nextSpriteId++};this._sceneFlags.register(state,state.tilemapRenderable);
+      }
       return state.tilemapRenderable;
     }
     _legacyMap() {
@@ -5466,6 +5513,7 @@ module.exports = makeExt(`// Name: Arcade
 `, {
   sdkSpriteClasses: require('./sdk-sprite-classes'),
   sdkObjectClasses: require('./sdk-object-classes'),
+  sceneFlags: require('./scene-flags'),
   createObjectHeap: require('./object-heap'),
   createSceneFrameContexts: require('./scene-frame-contexts'),
   createPollEvents: require('./poll-events'),
