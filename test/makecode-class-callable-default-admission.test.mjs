@@ -49,3 +49,20 @@ test('default class admission retains neighboring unknown source and current for
         const result=projectToArcade(project);assert.ok(result.unsupported.length);
     }finally{run.vm.quit();clearStrayTimers();}
 });
+
+test('renamed classes and a yielding callback retain actual receiver identity and serial completion',async()=>{
+    const renamed=source.replace(/State/g,'Record').replace(/Holder/g,'Container')
+        .replace('new Holder(state)','new Container(state)')
+        .replace('s.value+=2;return s.value','s.value+=2;pause(1);return s.value');
+    const imported=arcadeToPseudocode({'main.ts':renamed});assert.deepEqual(imported.unsupported,[]);
+    const run=await runProgram(imported.code,{frames:80});
+    try{
+        check(run,3);
+        const project=JSON.parse(run.vm.toJSON()),exported=projectToArcade(project);
+        assert.deepEqual(exported.unsupported,[]);
+        assert.match(exported.ts,/pause\(/);
+        const importedAgain=arcadeToPseudocode(exported.files);assert.deepEqual(importedAgain.unsupported,[]);
+        const again=await runProgram(importedAgain.code,{frames:80});
+        try{check(again,3);}finally{again.vm.quit();}
+    }finally{run.vm.quit();clearStrayTimers();}
+});
