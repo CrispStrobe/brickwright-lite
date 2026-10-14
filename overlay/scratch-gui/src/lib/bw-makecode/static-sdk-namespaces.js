@@ -1,12 +1,13 @@
 import {ARCADE_NAMESPACE_MEMBERS} from './arcade-namespace-members.js';
 
 /** Static SDK namespace receivers are names, not runtime objects to snapshot.
+ * An optional explicitly selected builtin identifier uses the same lexical rules.
  * Resolve them at each lexical use; a parameter or local with the same name
  * remains an ordinary receiver. This classification does not admit any API.
  */
-export function staticSdkNamespaceReceivers(program) {
+export function staticSdkNamespaceReceivers(program, {builtinIdentifiers = []} = {}) {
     const references = new WeakSet();
-    const namespaces = new Set(Object.keys(ARCADE_NAMESPACE_MEMBERS).map(name => name.split('.')[0]));
+    const namespaces = new Set([...Object.keys(ARCADE_NAMESPACE_MEMBERS).map(name => name.split('.')[0]), ...builtinIdentifiers]);
     const declarations = statements => {
         const names = new Set();
         for (const statement of statements || []) {

@@ -1,5 +1,7 @@
+import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 /** Directed scalar source flow. This inventory does not admit reference APIs. */
 export function sourceScalarDeclarations(program) {
+    const sdkNumericCalls=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['randint']});
     const types = new Map(), edges = [], expressions = [], functions = new Map();
     const globals = new Map();
     const cells = new WeakMap();
@@ -72,7 +74,8 @@ export function sourceScalarDeclarations(program) {
                 const inner = functionScopes.get(fn.name);
                 arguments_.forEach((argument, index) => edge(argument, `${inner.key}:${fn.params[index]}`));
                 edge(`${inner.key}:result`, cell);
-            } else add(cell, 'Unknown');
+            } else if(node.callee?.type==='Identifier' && node.callee.name==='randint' && node.args?.length===2 && !node.isNew && sdkNumericCalls.has(node.callee))add(cell,'Number');
+            else add(cell, 'Unknown');
         } else if (node.type === 'Binary' || node.type === 'Logical') {
             const left = visit(node.left, scope), right = visit(node.right, scope);
             if (['===', '!==', '==', '!=', '<', '>', '<=', '>='].includes(node.op)) add(cell, 'Boolean');

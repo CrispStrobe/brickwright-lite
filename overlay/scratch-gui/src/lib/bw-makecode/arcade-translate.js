@@ -1,3 +1,4 @@
+import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {sourceReferenceDeclarations} from './source-reference-declarations.js';
 import {sourceScalarDeclarations} from './source-scalar-declarations.js';
 import {lowerObjectClasses} from './lower-object-classes.js';
@@ -3186,6 +3187,7 @@ const inferProcedureHandleParameters = (ast, functions, globalHandles, pathOf) =
  * Passing a resource does not copy it. Forwarded parameters and local aliases
  * reach a fixed point, including recursive procedures and callback callers. */
 const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () => false) => {
+    const sdkNumericCalls=staticSdkNamespaceReceivers(ast,{builtinIdentifiers:['randint']});
     const textSprites=new WeakSet(), objects=new WeakSet();
     const buffers = new WeakSet(), players = new WeakSet(), references = new WeakSet(), tiles = new WeakSet(), legacyTiles = new WeakSet(), sprites = new WeakSet(), animations = new WeakSet(), sevensegDigits = new WeakSet(), sevensegCounters = new WeakSet(), darts = new WeakSet(), corgis = new WeakSet(), scenes = new WeakSet(), physicsEngines = new WeakSet(), nulls = new WeakSet(), arrays = new WeakSet(), numbers = new WeakSet(), strings = new WeakSet(), booleans = new WeakSet();
     const entries = [];
@@ -3310,6 +3312,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             (typeOf(node.object,owner).has('sevenseg-digit') || typeOf(node.object,owner).has('sevenseg-counter'))) return new Set(['number']);
         if (node?.type === 'Call') {
             const api = pathOf(node.callee);
+            if(api==='randint' && node.callee?.type==='Identifier' && node.args.length===2 && !node.isNew && sdkNumericCalls.has(node.callee))return new Set(['number']);
             if(api==='SpriteKind.create' || node.callee?.type==='Member' && node.callee.name==='kind' && typeOf(node.callee.object,owner).has('sprite'))return new Set(['number']);
             if(api==='characterAnimations.ruleToString' && node.args.length===1)return new Set(['string']);
             if(['characterAnimations.rule','characterAnimations._predicate','characterAnimations._direction'].includes(api))return new Set(['number']);
