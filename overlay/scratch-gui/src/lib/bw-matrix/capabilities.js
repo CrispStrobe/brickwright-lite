@@ -306,7 +306,6 @@ export const DEVICES = Object.freeze([
         pickerCompile: false,
         pickerEmulator: 'esp8266',
         sim: [eng('esp8266', ['bin'], {
-            tier: '2a',
             note: 'bw-board esp8266 kind over the esp8266js fork; SDK-free firmware only, GPIO and serial'
         })],
         silicon: []
@@ -584,6 +583,8 @@ const MPY = shipped('py', 'MicroPython', 'none', {
 });
 const CPY = shipped('py', 'CircuitPython', 'none', {evidence: EVIDENCE.DECLARED, tier: '3'});
 const TS = via('ts', {evidence: EVIDENCE.DECLARED});
+/** ESP8266 lowering lands on its C cell, which is open until the hosted esp8266 target is in the snapshot. */
+const ESP_C = viaOpen('c', 'N13', {note: 'lands on the ESP8266 C cell, open until the hosted esp8266 target is deployed'});
 
 /**
  * cells[family][language] = { native, lowered[] }.
@@ -658,19 +659,22 @@ export const CELLS = Object.freeze({
         micropython: {native: no('flash', `${F030}; ${MPY_MIN}`), lowered: [via('c')]}
     },
     esp8266: {
-        pseudocode: {native: AST, lowered: [via('c')]},
-        python: {native: no('licence', ESP_SDK), lowered: [via('c')]},
-        javascript: {native: no('licence', `${ESP_SDK} (Espruino's ESP8266 port links it too)`), lowered: [via('c')]},
+        pseudocode: {native: AST, lowered: [ESP_C]},
+        python: {native: no('licence', ESP_SDK), lowered: [ESP_C]},
+        javascript: {native: no('licence', `${ESP_SDK} (Espruino's ESP8266 port links it too)`), lowered: [ESP_C]},
         c: {
-            native: open('bin', 'xtensa-lx106-elf-gcc + bw8266 runtime', 'hosted', null, {
+            native: open('bin', 'xtensa-lx106-elf-gcc + bw8266 runtime', 'hosted', 'N13', {
                 note: 'the stc-compiler esp8266 target exists on its main branch but is not in the pinned '
                     + 'hosted snapshot (not deployed); the image runs in bw-board\'s esp8266 kind'
             }),
-            lowered: [via('c')]
+            lowered: [ESP_C]
         },
-        basic: {native: no('no-port', 'no permissively licensed BASIC for the ESP8266 without the SDK found'), lowered: [via('c')]},
-        asm: {native: no('no-port', 'no LX106 assembler route in the ASM tab'), lowered: []},
-        micropython: {native: no('licence', ESP_SDK), lowered: [via('c')]}
+        basic: {native: no('no-port', 'no permissively licensed BASIC for the ESP8266 without the SDK found'), lowered: [ESP_C]},
+        asm: {
+            native: open('bin', 'xtensa-lx106-elf-as', 'hosted', null, {note: 'no LX106 assembler route in the ASM tab yet'}),
+            lowered: []
+        },
+        micropython: {native: no('licence', ESP_SDK), lowered: [ESP_C]}
     },
     microbit: {
         pseudocode: {native: AST, lowered: [via('micropython')]},
