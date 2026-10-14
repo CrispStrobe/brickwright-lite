@@ -295,7 +295,7 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 7c84f8b0 (2026-10-14): merged Settings/Scene supplier; rerun every SPIKE artifact assertion.
     // -> 0e486e0f (2026-10-14): qualified CPX supplier support is retained in the later d4324e20 source; rerun every SPIKE artifact assertion.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'd4324e2091447a8d65eb1ea062e712680946bc37');
+        '7f74d75f3a574b5f74b5c62351326cd5d2e64c2a');
 
 
     const creator = new SB3Creator();

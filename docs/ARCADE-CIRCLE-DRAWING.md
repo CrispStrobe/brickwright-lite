@@ -58,8 +58,18 @@ palette. Rectangle/line comparison cases confirm the same eight-bit pixel
 color conversion. The generated native pixel operations match this matrix;
 source integrity and the existing clipped drawing control also pass.
 
-Two explicit canonical commands are proposed in
+Two explicit canonical commands are merged through
 [sb3-creator PR146](https://github.com/CrispStrobe/sb3-creator/pull/146).
-491 affected producer controls pass locally. Supplier checks, normal adoption,
-full native/editor/project/export routes and visible browser authoring remain
-pending. The pixel checkpoint does not admit a whole extension or game.
+All four enabled exact-head checks passed; the declared Pages job skipped.
+494 affected producer controls pass on the composed supplier source. Reviewed,
+predicted and landed trees match. The consumer adopts merge
+`7f74d75f3a574b5f74b5c62351326cd5d2e64c2a` through the normal three-way sync,
+retaining its existing STM32 changes and all other dependency pins. The generated
+vocabulary has 393 canonical commands and 398 spellings including aliases.
+
+Three focused native pixel, Blocks-schema and import controls pass. Full native
+portable qualification is still in progress: the first complete-matrix route
+was terminated before reporting a result. Preserve that failure and locate its
+first incomplete phase before claiming Code, project or export compatibility.
+Edited Blocks inputs and visible browser authoring remain pending. The pixel
+checkpoint does not admit a whole extension or game.
