@@ -200,6 +200,8 @@ test('SDK screen and Image dimensions plus primitive concatenation provide actua
 });
 test('shadowed screen and opaque dimensions or concatenation never gain Font print authority',()=>{
     for(const source of [
+        'screen=unknown();screen.print("A",0,0,3,image.font5)',
+        'screen=image.create(8,8);screen.print("A",0,0,3,image.font5)',
         'let screen:any;screen.print("A",0,0,3,image.font5)',
         'function draw(screen:any){screen.print("A",0,0,3,image.font5)}',
         'function draw(){screen.print("A",0,0,3,image.font5);let screen:any}',
