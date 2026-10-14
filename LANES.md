@@ -1,3 +1,34 @@
+## Precision meter supplier package adoption — 2026-10-14
+
+CLAIM — Codex bwcx, branch lane/precision-meter-package-adoption-20261014,
+exact base10886fb9ace046cdd29979018c957f038232349b, isolated task worktree.
+PR915 is merged; preserve its seated-terminal/census behavior unchanged.
+Adopt the compatible qualified pair: Board370be6994dcc6ffcef852f8f1d67861e3e98dd70
+and CUI9593a12056e72c10686232bb448f97471f98feec. Board executable source
+f7212733 passes CI38526574704/Harris38526574700/xv638526574737; CUI source
+933633d passes all four jobs in CI38545121692 with132 precision tests and67
+browser scenarios. Both supplier closeouts preserve tested executable bytes;
+their default-branch CI also passes. No source copy or consumer fork.
+
+Envelope: this ledger; vendor-pins.json; root and packages/scratch-gui package
+specifications/locks; the two static/licenses/bw-packages.sources.json mirrors;
+docs/generated/{I8086-CAPABILITY-REPORT.md,LANGUAGE-DEVICE-MATRIX.md,bw-board-census.json};
+the overlay/packages bw-matrix/census-snapshot.js mirrors; exact package-pin
+assertions in test/{adp7118-limiter-package-adoption,adp7118-package-adoption,
+cli-op-kcl-package-adoption,lm324-package-adoption,lm741-package-adoption,
+lt1001-package-adoption,lt1763-package-adoption,scope-reset-package-adoption}.test.mjs;
+only the supplier SHA bindings in .github/workflows/i80386-freedos-circuits-direct-actual.yml.
+The existing limiter test additionally gets an ideal-supply linear startup
+control, retaining all existing interactive/precision/reference/work/refusal
+cases. Use the canonical pin writer and regenerate derived surfaces; preserve
+all other dependency pins and license bytes. No workflow trigger/job/step,
+engine/model/profile/default, translator, device, gallery or application source
+change. Metadata generation/pure controls only locally; actual installed CLI,
+pin/content/single-engine/provenance gates and existing production circuit
+browser journey must pass in hosted full CI before landing. No precision GUI
+control, physical-model accuracy, licensed-guest execution or deployment claim.
+Merge this claim before implementation; use the current full-CI protocol.
+
 ## Explicit procedure calls in Code — 2026-10-14
 
 PROPOSED — Codex Arcade integration. Product edits begin after this claim lands.
