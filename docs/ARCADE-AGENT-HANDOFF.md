@@ -113,6 +113,14 @@ pin and the complete SPIKE artifact test passes; a fresh official build is requi
 The browser audit also retries missing API step records and refuses permanent
 absence or duplicates; 27 focused controls pass.
 
+The editor-startup claim [PR893](https://github.com/CrispStrobe/brickwright-lite/pull/893)
+merged after all 12 enabled checks passed. The Costumes tab now checks tile-map
+block presence through a pure helper; the full painter and its decoding/parser
+remain lazy. Twenty-five controls preserve existing discovery for modern,
+legacy, computed, malformed and non-editable maps and avoid artwork decoding.
+The original startup byte budget is unchanged; a fresh production measurement
+is still required.
+
 The draft [integration PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888)
 contains source startup and positive-condition loops, invocation-local
 `break`/`continue` guards, native text dialogs, StringArray settings, null tilemap
