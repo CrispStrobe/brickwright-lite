@@ -55,7 +55,7 @@ Next ordered work:
    edited current-body export, reimport and actual selected originals. The
    private real-VM prototype passes Number/String invocation, captured receiver
    ownership, pause and Stop; it is not admitted into this consumer.
-2. Land [default numeric callable admission](compatibility/arcade-numeric-callable-default-admission.md)
+2. Land [default numeric callable admission](https://github.com/CrispStrobe/brickwright-lite/blob/d435dc53b4f05a02261c7dd96c544d2548f66550/docs/compatibility/arcade-numeric-callable-default-admission.md)
    claim [PR931](https://github.com/CrispStrobe/brickwright-lite/pull/931) after all
    exact-head checks before product wiring. Default source admission stays closed.
 3. Implement [live Font values](compatibility/arcade-live-font-values.md) from
