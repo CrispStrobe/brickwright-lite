@@ -85,7 +85,7 @@ test('actual VM font objects survive scene ownership and reset on restart and sa
  const imported=arcadeToPseudocode(liveFontMetricsCase.source),creator=new Creator();creator.parse(imported.code);upload(creator,imported);
  const buffer=Buffer.from(await(await creator.generateSB3()).arrayBuffer()),run=await execute(buffer);
  try{
-  const old=run.native._pxtText();old.image.font5.charHeight=9;assert.equal(run.native.fontMetric({FONT:'font5',PROPERTY:'charHeight'}),9);
+  const old=run.native._pxtText();let conversions=0;assert.throws(()=>run.native.fontMetric({FONT:{toString(){conversions++;return 'font5'}},PROPERTY:'charHeight'}),/builtin FONT/);assert.equal(conversions,0);assert.equal(run.native._pxtText(),old);old.image.font5.charHeight=9;assert.equal(run.native.fontMetric({FONT:'font5',PROPERTY:'charHeight'}),9);
   await run.native.pushScene({});await run.native.popScene({});assert.equal(run.native._pxtText(),old);
   const restart=async()=>{const clock=createArcadeDiscreteTimers();run.vm.runtime.bwArcadeProgramClock=clock;run.vm.runtime.updateCurrentMSecs=()=>{run.vm.runtime.currentMSecs=clock.now();};run.vm.greenFlag();for(let time=0;time<=100;time+=20){await clock.advanceTo(time);await stepFrames(run.vm,1,20);}};
   run.vm.stopAll();await restart();assert.notEqual(run.native._pxtText(),old);assert.equal(run.native.fontMetric({FONT:'font5',PROPERTY:'charHeight'}),5);

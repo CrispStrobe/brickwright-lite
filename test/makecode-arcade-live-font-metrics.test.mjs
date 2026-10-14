@@ -22,3 +22,13 @@ test('native metric fields share the live original renderer objects across scene
  assert.throws(()=>native.fontMetric({FONT:'font5',PROPERTY:'charHeight'},{thread:{peekStack:()=> 'metric'},target:{blocks:{getBlock:()=>({inputs:{FONT:{block:'dynamic'}}})}}}),/fixed fields/);
  for(const args of [{FONT:'custom',PROPERTY:'charHeight'},{FONT:'font5',PROPERTY:'width'}])assert.throws(()=>native.fontMetric(args),/builtin FONT/);
 });
+
+test('native fixed font selectors reject opaque values without invoking toString',()=>{
+ const runtime=new EventEmitter();runtime.targets=[];runtime.startHats=()=>[];const native=new(loadExtensionClass('arcade'))(runtime)._inst;
+ const originalModule=native._textModule;let conversions=0;const opaque={toString(){conversions++;return 'font5'}};
+ for(const FONT of [opaque,['font5'],new String('font5'),undefined,null,5])assert.throws(()=>native.fontMetric({FONT,PROPERTY:'charHeight'}),/builtin FONT/);
+ const property={toString(){conversions++;return 'charHeight'}};
+ for(const PROPERTY of [property,['charHeight'],new String('charHeight'),undefined,null,5])assert.throws(()=>native.fontMetric({FONT:'font5',PROPERTY}),/numeric PROPERTY/);
+ assert.equal(conversions,0);assert.equal(native._textModule,originalModule,'invalid selectors cannot initialize or change renderer font objects');
+ assert.equal(native.fontMetric({FONT:'font5',PROPERTY:'charHeight'}),5);
+});

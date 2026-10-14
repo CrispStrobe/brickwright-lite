@@ -4842,7 +4842,7 @@ module.exports = makeExt(`// Name: Arcade
       const block=util?.target?.blocks?.getBlock?.(util?.thread?.peekStack?.());
       if(block?.inputs?.FONT || block?.inputs?.PROPERTY)
         throw new Error('Arcade font metric selectors must be fixed fields, not connected reporters.');
-      const font=String(args.FONT),property=String(args.PROPERTY);
+      const font=args.FONT,property=args.PROPERTY;
       if(!['font5','font8','font12'].includes(font) || !['charWidth','charHeight'].includes(property))
         throw new Error('Arcade font metric requires a builtin FONT and numeric PROPERTY.');
       return this._pxtText().image[font][property];
