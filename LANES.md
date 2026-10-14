@@ -1,3 +1,20 @@
+## Bounded numeric callable default admission — 2026-10-14
+
+PROPOSED — Codex Arcade integration. Merge this claim before default admission
+product edits or adoption. Own `callable-source-gate.js`, the callable selection
+hooks in `arcade-translate.js`, the callable export selection hooks in
+`export-arcade.js`, and new focused default-admission tests. Coordinate these
+hooks with existing parser, class, reference, typeof and current-body owners.
+The version 1 numeric factory profile and six-word ABI remain the boundary;
+class/version 2, generic, receiver and host callback admission are excluded.
+
+Require actual AST eligibility, current editable body/owner/variable-ID validation,
+selected-original source and edited-export receipts, native lifecycle refusals,
+and Code/same/fresh SB3/export/reimport proof before enabling the default path.
+Preserve unrelated diagnostics and ordinary source conversion. No callable
+`typeof`, whole-game, hosted GUI or general higher-order callback claim follows.
+See [the bounded admission contract](docs/compatibility/arcade-numeric-callable-default-admission.md).
+
 ## ESP8266 device (sb3-creator + bw-board pin adoption) — 2026-10-14
 
 CLAIM — Claude, branch feat/esp8266-device-20261014, [local path omitted]
@@ -28,7 +45,7 @@ implementation; implementation lands only after full CI and owner review.
 
 ## Precision meter supplier package adoption — 2026-10-14
 
-CLAIM — Codex bwcx, branch lane/precision-meter-package-adoption-20261014,
+DONE candidate — Codex bwcx, branch lane/precision-meter-package-adoption-20261014,
 exact base10886fb9ace046cdd29979018c957f038232349b, isolated task worktree.
 PR915 is merged; preserve its seated-terminal/census behavior unchanged.
 Adopt the compatible qualified pair: Board370be6994dcc6ffcef852f8f1d67861e3e98dd70
@@ -55,7 +72,33 @@ change. Metadata generation/pure controls only locally; actual installed CLI,
 pin/content/single-engine/provenance gates and existing production circuit
 browser journey must pass in hosted full CI before landing. No precision GUI
 control, physical-model accuracy, licensed-guest execution or deployment claim.
-Merge this claim before implementation; use the current full-CI protocol.
+Claim PR927 merged before implementation. The candidate adds the ideal-supply
+500-ohm/2.2-uF linear startup control with unchanged 0.5-uV point and 1-uV mean
+bounds, alongside all existing finite-source cases. Local metadata tests and
+independent continuous-oracle quadrature are not installed-package evidence;
+source views used only for generation are not installed-content verification.
+Landing requires the new exact-head full-CI qualification, including installed
+package identity, actual CLI readings/receipts and the existing circuit browser
+journey. Supplier results above do not substitute for that consumer result.
+
+Red1 provenance-only envelope extension: the hosted exact651b3c0929 unit shard
+reports4074 pass/4 fail/14 skip; all four failures identify old Board-pin records.
+Refresh overlay static/dos/msdos200-base.provenance.json, static/roms/{cpm-roms,
+free-386-bios,i8086-bios,i8086-demos}.provenance.json and scratch-vm's
+extension-support/bundled-upstream-pins.json, plus the existing tracked DOS/CPM
+package twins. Prove the supplier asset/assembler/controller source ranges and
+all retained binary/source/hash identities unchanged before updating provenance;
+use canonical record/vendor writers where available. No binary, firmware,
+media, runtime source, profile or workflow behavior change. Preserve the original
+red and all latest-main CPX/producer pins; qualify the combined forward head.
+Both original shards completed:4074/4/14 and3214/1/5 pass/fail/skip. The fifth
+failure is the controller record already included above. The new ideal-supply
+CLI case passes120 actual samples: maximum point error4.278440269 nV and mean
+error1.461372356 nV. All eight repaired JSON records change only their Board-pin
+field; supplier ROM/source/assembler/controller ranges and retained bytes are
+unchanged. Canonical BIOS recording verifies the same source/ROM and zero source
+commits behind the pin; no binary was rebuilt or replaced. Combined CI is pending.
+
 ## Callable lexical export prototype — six-word declaration ABI
 
 The callable lane now owns a connected-variable source declaration in addition

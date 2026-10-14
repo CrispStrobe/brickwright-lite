@@ -8,6 +8,72 @@ operator's actual checkouts, tools, private corpus and original receipts.
 Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
 
+## Current continuation checkpoint — 2026-10-14
+
+Start with [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888),
+its exact head/checks and `LANES.md`; this consumer is not merged. Refresh main
+before implementation and preserve independently owned device/session changes.
+The canonical supplier [PR146](https://github.com/CrispStrobe/sb3-creator/pull/146)
+is merged at `7f74d75f3a574b5f74b5c62351326cd5d2e64c2a`: all four enabled
+checks passed and the declared Pages job skipped. Reviewed, predicted and landed
+trees match. Local consumer adoption uses the normal three-way sync and retains
+existing STM32 changes. Current vocabulary: 393 commands, 398 spellings.
+Arrays remains `4db2813d366af8a110fc79599afb55d1cd42d8df`; other pins are unchanged.
+
+Reached, with original failures retained:
+
+- [Circle drawing](ARCADE-CIRCLE-DRAWING.md): 57 selected original cases plus
+  aliases/clones, 60 Images and 4,860 complete pixels. Native, Code, same/fresh
+  saved SB3, executed MakeCode export and reimport pass. Standard radius edits
+  survive Code/project/export. Visible browser authoring is pending.
+- [Named Array helpers](ARCADE-NAMED-ARRAY-ITEMS.md): scalar and aggregate
+  semantics, nested aliases and both real exported originals pass. A uniquely
+  bound target-owned zero-argument procedure now supplies scalar values using
+  complete current return-graph proof; native/export/original/reimport controls
+  pass. Unknown/reference/recursive/parameter-dependent results remain refused.
+- Circuit Playground uses the existing asynchronous builtin loader. Seven
+  controls include real VM deduplication, runtime ownership and registration
+  readiness. The startup marker gate rejects eager CPX payload. Fresh hosted
+  bundle measurement remains required; the byte budget is unchanged.
+- The latest [unit follow-up](ARCADE-UNIT-FAILURE-FOLLOWUP.md) retains the
+  completed 4,610-control shard's 46 failures, cancelled shard without a census,
+  real light-browser replacement-stage failure, build catalogue failure and
+  startup-budget failure. Corrections require current hosted qualification.
+  Tracked VM/compiler mirrors now match their owned overlay sources at HEAD.
+
+The fresh immutable 184-input audit at
+`6a25694dc397ab1578c8b56490a24e0960ba6249` remains **147 translated / 36 partial /
+1 parse failure**. All 184 committed input blobs and the unchanged content
+multiset were verified. This is pure translation, not runtime/whole-game
+qualification. The separately frozen authentic 41-context denominator remains
+29 original-valid, 19 strict, 10 blocked and 12 invalid. The below-20 milestone
+has not been reached.
+
+Next ordered work:
+
+1. Complete [stored class callbacks](ARCADE-STORED-CALLABLE-NEXT-SLICE.md) through
+   edited current-body export, reimport and actual selected originals. The
+   private real-VM prototype passes Number/String invocation, captured receiver
+   ownership, pause and Stop; it is not admitted into this consumer.
+2. Land [default numeric callable admission](https://github.com/CrispStrobe/brickwright-lite/blob/d435dc53b4f05a02261c7dd96c544d2548f66550/docs/compatibility/arcade-numeric-callable-default-admission.md)
+   claim [PR931](https://github.com/CrispStrobe/brickwright-lite/pull/931) after all
+   exact-head checks before product wiring. Default source admission stays closed.
+3. Implement [live Font values](compatibility/arcade-live-font-values.md) from
+   measured selected-original records and glyph data. Fonts are mutable; an
+   immutable descriptor does not make the value immutable. A native prototype
+   and one original matrix exist privately; source-specific Font12 resource
+   behavior and mutation admission still need qualification.
+4. Exercise actual Blocks/Code/graphics-editor authoring and keep every pending
+   route in the [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md). Native
+   metadata and source conversion are not a completed browser journey.
+
+Use `scripts/compat-audit.mjs` with the exact frozen corpus for classification;
+`--compile` and execution are separate gates. Original SDK guests require shared
+reservation, immutable actual compilation inputs/executables/observations and
+all nine SDK/bridge hashes before/after. Reuse a retained original only when its
+actual input bytes match; preserve failed invocations. Private checkouts, command
+lines and receipts belong in the gitignored local companion or private repo.
+
 ## Latest source qualification — 2026-10-14
 
 The next shared lane is [typed stored callbacks](ARCADE-STORED-CALLABLE-NEXT-SLICE.md).

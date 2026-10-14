@@ -168,6 +168,22 @@ export function lowerNamedArrayItemHelpers(program) {
         if(node?.type==='Binary')return primitive(node.left,seen)&&primitive(node.right,seen);
         if(node?.type==='Conditional')return primitive(node.test,seen)&&primitive(node.consequent,seen)&&primitive(node.alternate,seen);
         if(node?.type==='Call' && calls.some(call=>call.node===node))return true;
+        if(node?.type==='Call' && node.callee?.type==='Identifier' &&
+            !scopes.get(node)?.has(node.callee.name) && symbolCounts.get(node.callee.name)===1){
+            const fn=functions.find(fn=>fn.name===node.callee.name);
+            if(!fn || seen.has(fn) || fn.params.length)return false;
+            const returns=[];
+            const collect=value=>{
+                if(!value || typeof value!=='object')return;
+                if(Array.isArray(value)){value.forEach(collect);return;}
+                if(['FunctionDeclaration','FunctionExpression','Class'].includes(value.type))return;
+                if(value.type==='Return')returns.push(value.value || {type:'Undefined'});
+                for(const child of Object.values(value))if(child && typeof child==='object')collect(child);
+            };
+            collect(fn.body);
+            const nested=new Set([...seen,fn]);
+            return returns.length>0 && returns.every(value=>primitive(value,nested));
+        }
         if(node?.type!=='Identifier' || scopes.get(node)?.has(node.name) || !globals.has(node.name) || seen.has(node.name))return false;
         seen=new Set([...seen,node.name]);
         return [globals.get(node.name).init,...(writes.get(node.name)||[]).map(write=>write.right)].every(value=>primitive(value,seen));

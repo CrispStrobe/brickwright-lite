@@ -25,6 +25,34 @@ export function namedArrayItemExportAuthority(project,name,isBoolean,sourceRefer
         const list=writers.get(binding.key) || [];list.push(input(target,block,'VALUE'));writers.set(binding.key,list);
     }
     const scalar=value=>value===null || value===undefined || ['number','boolean','string'].includes(typeof value);
+    // A named call belongs to this target's actual procedure binding. Inspect
+    // every connected return; a label or declared result type is not evidence.
+    const procedureReturns=(target,node)=>{
+        const called=literal(target,node,'NAME');if(!called.known)return null;
+        const definitions=Object.values(target.blocks || {}).filter(block=>{
+            if(block.opcode!=='procedures_definition')return false;
+            return child(target,block,'custom_block')?.mutation?.proccode===String(called.value);
+        });
+        if(definitions.length!==1)return null;
+        const definition=definitions[0],returns=[],visited=new Set(),active=new Set();let invalid=false;
+        const visit=id=>{
+            if(id===undefined || id===null)return;
+            if(typeof id!=='string')return;
+            if(active.has(id)){invalid=true;return;}
+            if(visited.has(id))return;
+            const block=target.blocks?.[id];if(!block){invalid=true;return;}
+            visited.add(id);active.add(id);
+            if(block.opcode==='procedures_definition' || block.topLevel){invalid=true;return;}
+            if(block.opcode==='arcade_returnValue')returns.push(input(target,block,'VALUE'));
+            for(const slot of Object.values(block.inputs || {}))visit(slot?.[1]);
+            visit(block.next);
+            active.delete(id);
+        };
+        visit(definition.next);
+        // No return graph cannot certify a result. Fallthrough in a graph with
+        // scalar returns produces undefined, which the item codec preserves.
+        return invalid || !returns.length?null:{definition,returns};
+    };
     const primitive=(entry,seen=new Set())=>{
         if(Object.hasOwn(entry,'value'))return scalar(entry.value);
         const {target,node}=entry;if(!node)return false;
@@ -37,6 +65,12 @@ export function namedArrayItemExportAuthority(project,name,isBoolean,sourceRefer
             if(!binding || sourceReferences.has(node.fields?.VARIABLE?.[1]) || !scalar(binding.value))return false;
             if(seen.has(binding.key))return true;seen.add(binding.key);
             return (writers.get(binding.key)||[]).every(writer=>primitive(writer,seen));
+        }
+        if(node.opcode==='arcade_callFunction'){
+            const procedure=procedureReturns(target,node);
+            if(!procedure || seen.has(procedure.definition))return false;
+            const nested=new Set([...seen,procedure.definition]);
+            return procedure.returns.every(value=>primitive(value,nested));
         }
         if(node.opcode==='arrays_valueUnary')return primitive(input(target,node,'VALUE'),seen);
         if(node.opcode==='arrays_valueBinary')return primitive(input(target,node,'LEFT'),seen)&&primitive(input(target,node,'RIGHT'),seen);
@@ -71,6 +105,12 @@ export function namedArrayItemExportAuthority(project,name,isBoolean,sourceRefer
         if(Object.hasOwn(entry,'value'))return typeof entry.value==='string';
         const {target,node}=entry;if(!node)return true;
         if(['text','bw_stringLiteral','operator_join','arrays_stringConcat'].includes(node.opcode))return true;
+        if(node.opcode==='arcade_callFunction'){
+            const procedure=procedureReturns(target,node);
+            if(!procedure || seen.has(procedure.definition))return true;
+            const nested=new Set([...seen,procedure.definition]);
+            return procedure.returns.some(value=>mayText(value,nested));
+        }
         if(node.opcode==='data_variable'){
             const binding=variable(target,node.fields?.VARIABLE?.[1]);if(!binding)return true;
             if(seen.has(binding.key))return false;seen=new Set([...seen,binding.key]);
@@ -84,6 +124,12 @@ export function namedArrayItemExportAuthority(project,name,isBoolean,sourceRefer
         if(Object.hasOwn(entry,'value'))return legacyLiteral(entry.value);
         const {target,node}=entry;if(!node)return false;
         if(node.opcode==='text' || node.opcode==='bw_stringLiteral')return legacyLiteral(Object.values(node.fields || {})[0]?.[0]);
+        if(node.opcode==='arcade_callFunction'){
+            const procedure=procedureReturns(target,node);
+            if(!procedure || seen.has(procedure.definition))return false;
+            const nested=new Set([...seen,procedure.definition]);
+            return procedure.returns.every(value=>legacyInput(value,nested));
+        }
         if(node.opcode==='data_variable'){
             const binding=variable(target,node.fields?.VARIABLE?.[1]);if(!binding || sourceReferences.has(node.fields?.VARIABLE?.[1]) || !legacyLiteral(binding.value))return false;
             if(seen.has(binding.key))return true;seen=new Set([...seen,binding.key]);
