@@ -13,10 +13,10 @@ test('default numeric callable admission preserves aliases and current export th
     const run=await runProgram(imported.code,{frames:40});
     try {
         assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
-        const check=vm=>{
+        const check=(vm,expected=[5,7,5])=>{
             const variables=vm.runtime.targets.flatMap(target=>Object.values(target.variables));
             const read=name=>variables.find(value=>value.name===name).value;
-            assert.deepEqual(['outputAlpha','outputBeta','outputGamma'].map(name=>BW.decode(read(name))),[5,7,5]);
+            assert.deepEqual(['outputAlpha','outputBeta','outputGamma'].map(name=>BW.decode(read(name))),expected);
             assert.equal(read('first'),read('alias'));assert.notEqual(read('first'),read('second'));
         };
         check(run.vm);
@@ -25,6 +25,14 @@ test('default numeric callable admission preserves aliases and current export th
         const project=JSON.parse(run.vm.toJSON());
         const replay=await runProgram(run.creator.decompile(project),{frames:40});
         try{assert.deepEqual(replay.errors,[]);check(replay.vm);}finally{replay.vm.quit();clearStrayTimers();}
+        const target=project.targets.find(row=>Object.values(row.blocks).some(block=>block.opcode==='arcade_setCaptured'));
+        const setter=Object.values(target.blocks).find(block=>block.opcode==='arcade_setCaptured');
+        const literals=[];
+        const scan=id=>{const block=target.blocks[id];for(const input of Object.values(block.inputs || {}))for(const value of input.slice(1)){if(typeof value==='string')scan(value);else if(Array.isArray(value)&&value[0]===4&&Number(value[1])===2)literals.push(value);}};
+        scan(setter.inputs.VALUE[1]);assert.equal(literals.length,1);
+        literals[0][1]='5';
+        const editedReplay=await runProgram(run.creator.decompile(project),{frames:40});
+        try{assert.deepEqual(editedReplay.errors,[]);check(editedReplay.vm,[8,13,8]);}finally{editedReplay.vm.quit();clearStrayTimers();}
         const exported=projectToArcade(project);
         assert.deepEqual(exported.unsupported,[]);
         assert.match(exported.ts,/function advance\(/);
@@ -32,7 +40,7 @@ test('default numeric callable admission preserves aliases and current export th
         const reimport=arcadeToPseudocode(exported.files);
         assert.deepEqual(reimport.unsupported,[]);
         const fresh=await runProgram(reimport.code,{frames:40});
-        try{assert.deepEqual(fresh.errors,[]);check(fresh.vm);}finally{fresh.vm.quit();clearStrayTimers();}
+        try{assert.deepEqual(fresh.errors,[]);check(fresh.vm,[8,13,8]);}finally{fresh.vm.quit();clearStrayTimers();}
         const malformed=structuredClone(project);
         const declaration=malformed.targets.flatMap(target=>Object.values(target.blocks)).find(block=>block.opcode==='arcade_declareCallable');
         assert.ok(declaration);
