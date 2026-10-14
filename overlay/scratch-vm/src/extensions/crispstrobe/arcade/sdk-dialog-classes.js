@@ -1,5 +1,6 @@
 // Owned declaration mirror of sdk-dialog-class-descriptors.js. A contract
 // check compares these public signatures; runtime uses unchanged MIT SDK code.
+const runDialogMethodSequence = require('./dialog-method-dispatch');
 let nextHost = 0;
 const specifications = [
   {
@@ -159,6 +160,27 @@ const specifications = [
         ],
         "returnType": "void",
         "visibility": "public"
+      },
+      {
+        "name": "drawTextCore",
+        "procedure": "__bwClass___bwSDK_BaseDialog_drawTextCore %s",
+        "parameters": [],
+        "returnType": "void",
+        "visibility": "public"
+      },
+      {
+        "name": "drawCursorRow",
+        "procedure": "__bwClass___bwSDK_BaseDialog_drawCursorRow %s",
+        "parameters": [],
+        "returnType": "void",
+        "visibility": "public"
+      },
+      {
+        "name": "clearInterior",
+        "procedure": "__bwClass___bwSDK_BaseDialog_clearInterior %s",
+        "parameters": [],
+        "returnType": "void",
+        "visibility": "protected"
       }
     ]
   },
@@ -314,7 +336,16 @@ function create(ext, values) {
         const dialog = body(args[0]);
         if (op === 'resize') dialog.resize(values.decode(args[1]), values.decode(args[2]), image(args[3]), font(args[4]), image(args[5]));
         else if (op === 'setText' || op === 'setSubtext') dialog[op](values.decode(args[1]));
-        else if (op === 'update') dialog.update();
+        else if (op === 'update') {
+            const epoch = generation;
+            const active = () => !closed && !suspended && generation === epoch &&
+                (!util?.thread || !util.thread.isKilled && runtime.threads.includes(util.thread));
+            return runDialogMethodSequence(['clearInterior', 'drawTextCore', 'drawCursorRow'].map(methodName => () => {
+                const method = ext._objectHeap.method(args[0], methodName);
+                return ext._objectProcedure(method.procedure, [args[0]], util, token);
+            }), active, () => refresh(dialog));
+        }
+        else if (['clearInterior', 'drawTextCore', 'drawCursorRow'].includes(op)) dialog[op]();
         else throw new Error('SDK Dialog operation is not qualified: ' + op);
         refresh(dialog);
     };
@@ -323,21 +354,30 @@ function create(ext, values) {
             definition: name => definitions.get(name),
             reserve(def) {
                 if (closed || suspended) throw new Error('Native Dialog registry is disposed');
-                if (!definitions.has(def.name)) throw new Error('User Dialog subclasses require separate native dispatch qualification');
+                if (!definitions.has(def.name) && def.intrinsic !== 'BaseDialog') throw new Error('User Dialog subclasses require separate native dispatch qualification');
+                if (!definitions.has(def.name) && ext._objectHeap.definition(def.name).intrinsic !== 'BaseDialog') throw new Error('Unregistered native Dialog subclass definition');
+                const layout = new Set(['resize', 'drawBorder', 'clearInterior', 'drawPartial', 'fastFill', 'drawCursorRow', 'setText', 'setFont', 'cursorRowHeight', 'rowHeight', 'textAreaWidth', 'textAreaHeight']);
+                for (const method of def.methods.values()) if (!definitions.has(def.name)) {
+                    const inherited = definitions.get('__bwSDK_BaseDialog').methods.get(method.name);
+                    if (layout.has(method.name) && (!inherited || method.procedure !== inherited.procedure))
+                        throw new Error('Native Dialog subclass override is not qualified: ' + method.name);
+                    if (['update', 'drawTextCore'].includes(method.name) && method.parameters.length)
+                        throw new Error('Native Dialog drawing override requires zero parameters: ' + method.name);
+                }
                 const ref = values.reference(runtime, 'object', `dialog:${host}:${generation}:${++nextInstance}`);
-                instances.set(key(ref), {className: def.name, generation, body: null}); return ref;
+                instances.set(key(ref), {className: def.name, intrinsicClass: def.intrinsic === 'BaseDialog' ? '__bwSDK_BaseDialog' : def.name, generation, body: null}); return ref;
             },
             external: ref => !closed && !suspended && instances.has(key(ref)),
             externalClass: ref => instance(ref).className,
             get(ref, field) {
                 const state = instance(ref);
-                if (!fields(state.className).has(field)) throw new Error('Unknown or unqualified native Dialog field ' + field);
+                if (!fields(state.intrinsicClass).has(field)) throw new Error('Unknown or unqualified native Dialog field ' + field);
                 const value = body(ref)[field];
                 return imageFields.has(field) && value ? ext._imageHandle(value.raw) : values.encode(value);
             },
             set(ref, field, value) {
                 const state = instance(ref);
-                if (!fields(state.className).has(field)) throw new Error('Unknown or unqualified native Dialog field ' + field);
+                if (!fields(state.intrinsicClass).has(field)) throw new Error('Unknown or unqualified native Dialog field ' + field);
                 const dialog = body(ref); dialog[field] = imageFields.has(field) ? image(value) : values.decode(value); refresh(dialog);
             }
         },

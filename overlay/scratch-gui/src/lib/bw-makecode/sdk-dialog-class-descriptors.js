@@ -1,6 +1,6 @@
 // Bounded intrinsic descriptors for selected MIT Arcade4.2.1/PXT13.2.1
-// game/textDialogs.ts. Runtime calls the unchanged SDK classes. Font objects,
-// protected implementation helpers and user Dialog subclasses stay diagnosed.
+// game/textDialogs.ts. Runtime calls the unchanged SDK classes. Font objects and constructor-reachable user overrides remain diagnosed.
+// BaseDialog update/drawTextCore subclasses use managed virtual method slots.
 const field = (name, typeName) => ({name, typeName, modifiers: []});
 const method = (name, params, paramTypes, optionalParams = []) =>
     ({name, params, paramTypes, optionalParams, returnType: 'void', kind: 'method', body: [], modifiers: []});
@@ -12,7 +12,8 @@ export const SDK_DIALOG_CLASS_NODES = [
         fields: ['image', 'frame', 'cursor'].map(name => field(name, 'Image')).concat(
             ['columns', 'rows', 'unit', 'innerLeft', 'innerTop', 'cursorCount', 'textColor'].map(name => field(name, 'number'))),
         ctor: {params: resizeParams, paramTypes: resizeTypes, optionalParams: ['frame', 'font', 'cursor'], body: [], originalBody: []},
-        methods: [method('resize', resizeParams, resizeTypes, ['frame', 'font', 'cursor']), method('update', [], {}), method('setText', ['rawString'], {rawString: 'string'})]},
+        methods: [method('resize', resizeParams, resizeTypes, ['frame', 'font', 'cursor']), method('update', [], {}), method('setText', ['rawString'], {rawString: 'string'}),
+            method('drawTextCore', [], {}), method('drawCursorRow', [], {}), {...method('clearInterior', [], {}), modifiers: ['protected']}]},
     {type: 'Class', name: splash, sdkIntrinsic: 'SplashDialog', base, unsupported: [],
         fields: ['text', 'subtext'].map(name => field(name, 'string')).concat(
             ['timer', 'offset', 'maxOffset', 'maxSubOffset'].map(name => field(name, 'number'))),
@@ -31,5 +32,5 @@ export const sdkDialogExportClasses = () => SDK_DIALOG_CLASS_NODES.map(node => (
     initializer: `__bwClass_${node.name}_fields %s`,
     constructor: `__bwClass_${node.name}_constructor ${['self', ...node.ctor.params].map(() => '%s').join(' ')}`,
     methods: node.methods.map(value => ({name: value.name, procedure: `__bwClass_${node.name}_${value.name} ${['self', ...value.params].map(() => '%s').join(' ')}`,
-        parameters: value.params.map(name => ({name, type: value.paramTypes[name], optional: value.optionalParams.includes(name)})), returnType: value.returnType, visibility: 'public'}))
+        parameters: value.params.map(name => ({name, type: value.paramTypes[name], optional: value.optionalParams.includes(name)})), returnType: value.returnType, visibility: value.modifiers.includes('protected') ? 'protected' : 'public'}))
 }));

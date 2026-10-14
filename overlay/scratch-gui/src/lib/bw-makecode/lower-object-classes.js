@@ -53,8 +53,11 @@ export function lowerObjectClasses(program) {
         if(cls.base && [...classes.keys()].indexOf(cls.base)>=[...classes.keys()].indexOf(name))fail(`Selected Arcade SDK requires parent declaration order before ${name}`);
         if(!chain){fail(`Class ${name} requires unsupported or cyclic parent ${cls.base}`);continue;}
         if(cls.sdkIntrinsic)continue;
-        if(chain.some(base=>['BaseDialog','SplashDialog'].includes(admitted.get(base)?.sdkIntrinsic)))fail('User SDK Dialog subclasses require separate native dispatch qualification');
-        if(chain.some(base=>admitted.get(base)?.sdkIntrinsic) && cls.methods.some(method=>['update','draw','drawSprite','__draw','__drawCore','__update','setHitbox','resetHitbox','recalcSize','setDimensions','__visible','__serialize'].includes(method.name)))fail('SDK Sprite draw/update/hitbox overrides require separate qualification');
+        if(chain.some(base=>admitted.get(base)?.sdkIntrinsic==='SplashDialog'))fail('User SplashDialog subclasses require separate native dispatch qualification');
+        if(chain.some(base=>admitted.get(base)?.sdkIntrinsic==='BaseDialog') && cls.methods.some(method=>
+            ['resize','drawBorder','clearInterior','drawPartial','fastFill','drawCursorRow','setText','setFont','cursorRowHeight','rowHeight','textAreaWidth','textAreaHeight'].includes(method.name)))
+            fail('SDK BaseDialog constructor or layout override requires separate native dispatch qualification');
+        if(chain.some(base=>['BaseSprite','Sprite','ExtendableSprite'].includes(admitted.get(base)?.sdkIntrinsic)) && cls.methods.some(method=>['update','draw','drawSprite','__draw','__drawCore','__update','setHitbox','resetHitbox','recalcSize','setDimensions','__visible','__serialize'].includes(method.name)))fail('SDK Sprite draw/update/hitbox overrides require separate qualification');
         if(cls.base && cls.ctor){
             const body=cls.ctor.originalBody || cls.ctor.body,superCall=node=>node?.type==='ExpressionStatement' && node.expr?.type==='Call' && node.expr.callee?.name==='super';
             if(body.filter(superCall).length!==1)fail('Derived class '+name+' constructor requires one direct super call');
@@ -270,6 +273,9 @@ export function lowerObjectClasses(program) {
         program.body.forEach(node=>reach(node));
         for(const fn of reachedFunctions)reach(fn.node.body);
         for(const method of reachedMethods)reach(method.body);
+        for(const method of [...reachedMethods]) if(method.name==='update' && admitted.get(methodClasses.get(method))?.sdkIntrinsic==='BaseDialog') {
+            for(const slot of ['clearInterior','drawTextCore','drawCursorRow'])markMethod(findMethod(methodClasses.get(method),slot));
+        }
         for(const name of usedClassTables){
             const cls=admitted.get(name);
             for(const method of cls.methods){
