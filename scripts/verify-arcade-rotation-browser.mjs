@@ -223,9 +223,10 @@ try {
     assert.match(decompiled, /4096/);
     const actions = page.getByTestId('bw-code-actions');
     if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
-    const downloaded = page.waitForEvent('download', {timeout: 30000});
-    await page.getByTestId('bw-makecode-arcade-export').click();
-    const download = await downloaded;
+    const [download] = await Promise.all([
+        page.waitForEvent('download', {timeout: 30000}),
+        page.getByTestId('bw-makecode-arcade-export').click()
+    ]);
     assert.match(download.suggestedFilename(), /\.mkcd$/);
     const downloadedPath = path.join(path.dirname(out), 'arcade-rotation-export.mkcd');
     await download.saveAs(downloadedPath);
@@ -364,9 +365,10 @@ let discardedReady=true`;
     // the current rendered Sprite image.
     await stop.click();
     await page.getByText('File', {exact: true}).click();
-    const assignedSaved = page.waitForEvent('download');
-    await page.getByText('Save to your computer', {exact: true}).click();
-    const assignedDownload = await assignedSaved;
+    const [assignedDownload] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByText('Save to your computer', {exact: true}).click()
+    ]);
     const assignedPath = path.join(path.dirname(out), 'arcade-assigned-image-edit.sb3');
     await assignedDownload.saveAs(assignedPath);
     const assignedBytes = await fs.readFile(assignedPath);
@@ -394,9 +396,13 @@ let discardedReady=true`;
     await waitAssignedPixels();
     await stop.click();
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
-    const assignedExportPending = page.waitForEvent('download');
-    await page.getByTestId('bw-makecode-arcade-export').click();
-    const assignedExport = await assignedExportPending;
+    // Loading an SB3 rebuilds the Code tab; open its real actions menu again.
+    if (!(await actions.getAttribute('open'))) await actions.locator('summary').click();
+    // Handle both promises immediately so a timeout reaches the failure report.
+    const [assignedExport] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByTestId('bw-makecode-arcade-export').click()
+    ]);
     const assignedExportPath = path.join(path.dirname(out), 'arcade-assigned-image-edit.mkcd');
     await assignedExport.saveAs(assignedExportPath);
     const assignedExportBytes = await fs.readFile(assignedExportPath);

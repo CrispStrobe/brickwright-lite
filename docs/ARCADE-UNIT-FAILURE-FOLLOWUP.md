@@ -27,6 +27,29 @@ The complete scene-import file passes 16 controls. Original first failures
 are retained. These corrections preserve runtime assertions and do not close
 the yielding-wall scheduling entry or establish a new full-shard result.
 
+## Latest completed integration run
+
+At `6992416ec1224e567abc6b964753c28784d8323a`, the
+[completed second unit shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38600508784/job/115994916126)
+reports 3,570 tests: 3,526 pass, 37 fail, five skip and two TODO.
+The first shard was cancelled and has no complete census. These counts are
+separate from the immutable corpus's 36 partial inputs.
+
+The same source passed the official numeric browser gate and the heavy browser
+shard. The light shard failed at the assigned-image export download after an
+SB3 reload. The uploaded artifact retains the saved project but contains no
+failure report: an unhandled pending download rejection ended the process.
+The harness now reopens the real Code actions menu after reload and handles
+both the click and download promises immediately. All asset, pixel, export and
+reload assertions remain. A new hosted result is required to close this failure.
+
+The next combined source includes qualified supplier pins, physical Sprite
+updates, independent Array references, the closed callable prototype and the
+bounded named array helper core. It passes 24 focused transport, admission and
+named-helper controls using an immutable native source projection. Broader
+nested named-array export still has an actual original-simulator receiver-type
+failure; class callbacks and default callable admission remain separate work.
+
 ## Later completed shard and pending qualification
 
 The [later completed unit shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38595437543/job/115960919223)
