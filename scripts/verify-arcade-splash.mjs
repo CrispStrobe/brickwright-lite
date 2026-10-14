@@ -73,6 +73,12 @@ WHEN flag clicked:
         .flatMap(target => Object.values(target.variables || {}))
         .find(variable => variable.name === 'splashResult')?.value);
     assert.equal(Number(await value()), 1, 'script advanced before the splash was dismissed');
+    const waitForReleasedDialogInput = () => page.waitForFunction(() => {
+        const rt=window.__brickwrightStore.getState().scratchGui.vm.runtime;
+        return rt._arcadeFramePhase?.ext._nativeTextDialogs.some(dialog =>
+            !dialog.closed && dialog.body && dialog.id && dialog.pressed === false);
+    });
+    await waitForReleasedDialogInput();
     // Native dialogs poll the actual A input. Their keyboard mapping uses Space,
     // and the visible control's own pulse lasts 100 ms.
     await dialog.getByRole('button', {name: 'Continue'}).press('Space', {delay: 100});
@@ -84,6 +90,7 @@ WHEN flag clicked:
     await longText.waitFor({state: 'visible', timeout: 10000});
     await longText.getByText('Long message').waitFor();
     assert.equal(Number(await value()), 2, 'script advanced before long text dismissal');
+    await waitForReleasedDialogInput();
     await longText.getByRole('button', {name: 'Continue'}).press('Space', {delay: 100});
     await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
         .flatMap(target => Object.values(target.variables || {}))
