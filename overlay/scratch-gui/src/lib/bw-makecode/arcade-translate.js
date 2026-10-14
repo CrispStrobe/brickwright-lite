@@ -4186,8 +4186,12 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
             return;
         }
         const image = t.imageOf(node);
+        // Runtime setImage owns a newly evaluated Image, including a creation
+        // callback whose kind can be computed. Static costume-slot matching
+        // cannot bind that image to every possible future sprite template.
         const directArt = parent?.type === 'Call' && parent.args?.[0] === node &&
-            (creationApis.has(nameOf(parent)) || parent.callee?.name === 'setImage' && directImageOwners.has(parent.callee.object?.name) || nameOf(parent) === 'scene.setBackgroundImage');
+            (creationApis.has(nameOf(parent)) || parent.callee?.name === 'setImage' &&
+                !requiresSpriteRuntime && directImageOwners.has(parent.callee.object?.name) || nameOf(parent) === 'scene.setBackgroundImage');
         if (image && (!directArt || node.type === 'Member')) {
             const builtin = node.type === 'Member' ? t.path(node) : node.type === 'Template' && node.tag === 'assets.tile' && image.tileId ? image.tileId : null;
             let resource = builtin && builtinImageResources.get(builtin);
