@@ -4,6 +4,7 @@ import {createRequire} from 'node:module';
 import {EventEmitter} from 'node:events';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
+import {qualifiedCallableCodecSource} from './helpers/callable-codec-source.mjs';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 import {lowerCallableValues} from '../overlay/scratch-gui/src/lib/bw-makecode/lower-callable-values.js';
 import {callableDeclarationEnvelope} from '../overlay/scratch-gui/src/lib/bw-makecode/callable-export-graph.js';
@@ -20,7 +21,7 @@ const fixture=()=>{
     return {runtime,target,service,setDefinition:value=>{definition=value;},setNames:value=>{names=value;}};
 };
 test('actual host and canonical supplier factories have identical callable data transport rules',()=>{
-    const source=readFileSync(process.env.BW_CALLABLE_ARRAYS_SOURCE || (()=>{throw new Error('This unadmitted codec prerequisite requires an explicitly bound canonical Arrays source');})(),'utf8');
+    const source=qualifiedCallableCodecSource();
     const start=source.indexOf('  const makeValues = () => {'),end=source.indexOf('\n  };\n',start);
     const supplier=runInNewContext(source.slice(start,end+5)+'\nmakeValues();');
     const host=readFileSync(new URL('../overlay/scratch-vm/src/util/bw-values.js',import.meta.url),'utf8');
