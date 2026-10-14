@@ -13,6 +13,21 @@ peer-owned Arrays scalar-return, controller-repeat, callable or font hunks.
 
 # Who is doing what — merge the claim before implementation
 
+## CI fast and thorough tiers — 2026-10-14
+
+PROPOSED — VPS Claude (opus), `lane/ci-tiers-20261014`. Owner decision
+2026-10-14: PR pushes run a fast tier; the thorough tier runs on main, dispatch
+and PRs labelled `ci:full`; documentation-only PRs skip both code tiers.
+Envelope: `.github/workflows/build.yml` (triggers, `concurrency:`, job-level
+`if:`/`needs:`, unit shard count 2 -> 4, new `change scope` and
+`full CI requested` jobs); new `scripts/ci-docs-only.mjs` and
+`test/ci-docs-only.test.mjs`; check-name lists in
+`scripts/verify-vercel-main-checks.mjs` and `scripts/gen-ci-skips.mjs`;
+`test/unit-shards.test.mjs` and `test/vercel-main-checks.test.mjs` (assert the
+four shard names); the repository label `ci:full`. No step, version, threshold,
+budget, receipt or pinned action changes. Docs-only is exactly the build push
+`paths:` filter applied to the PR's files. Merge this claim before the
+implementation is pushed.
 ## Arcade source typeof values — 2026-10-14
 
 PROPOSED — Codex Arcade value integration, `lane/arcade-source-typeof-20261014`.
@@ -1698,7 +1713,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 | Arcade export: `letter of` (task E17 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; `overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js` only if no open Arcade PR covers it; this row and the task file. | **CLAIMED 2026-10-14.** |
 
-| Seated MCUs with no terminals in the gallery (task B17 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; measurement first; fix in designer seating (bw-circuit-ui) or gallery data (sb3-creator/Lite) upstream-first; census test; this row and the task file. | **CLAIMED 2026-10-14.** |
+| DONE — Seated MCUs with no terminals in the gallery (task B17 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; measurement first; fix in designer seating (bw-circuit-ui) or gallery data (sb3-creator/Lite) upstream-first; census test; this row and the task file. | **DONE 2026-10-14 — Lite PR #915 (`lane/b17-seated-terminals`).** Found by B16 (#885). Upstream merged first: bw-circuit-ui #83 `9a1f06e5` (PR CI 38535170657: test, interaction-gate, kicad-oracle, spice-oracle green; master CI 38541394186 on `9a1f06e5` green). Lite pins bw-circuit-ui `9a1f06e5` (vendor-pins, root + packages/scratch-gui package.json/locks, package notices, eight package-adoption tests, i80386 workflow; old sha gone outside history). **Measured first** through the designer's load path (Node: `fromJSON` + nets/`_syncNetlist` with the app's engine injection; Chromium: the dev designer's circuitData effect): the 16 A2 benches (79-82 x default/stc89c52rc/stc12c5a60s2/stc15f2k60s2) store `"terminals": []`, and 0 of their 160 wired GPIO legs moved when driven (82-a2-led-row showed portByte 0, all LEDs lit; 79's display blank). Every other seated MCU (863 after load: STC, AVR, Pico, STM32, machine chips) already answered; the 608 declared-subset ones had undeclared but unwired legs. **Root cause**: bw-board drives only declared terminals; `Circuit.fromJSON` kept a seated part's stored list verbatim. **Fix**: `withSeatLegs`, so every seated leg is a terminal. After: 160/160 legs answer; LED row portByte 165 `01011010`; display `"       0"` (all three chips, Node + Chromium). Whole-gallery blast radius: no load-error or power-on voltage change except the stc15 A2 split pin nets merging; two schematic baselines redrawn (supply-pin order, looked at). **Gates**: cui `test/seated-legs-are-terminals.test.js` (7 families; mutation 7/7 red); Lite `test/b17-seated-mcu-legs-drive.test.mjs` (census; red at `5f336b24`: 624 MCUs / 160 legs); B16 test relies on the load path. |
 
 | Compiled-C keypad key 6 on stc12/stc15; 16-bit `show number` overflow (task B18 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; upstream stc-compiler and sb3-creator C target; Lite pin surfaces + tests; this row and the task file. | **CLAIMED 2026-10-14.** |
 
