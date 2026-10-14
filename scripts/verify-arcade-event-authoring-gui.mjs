@@ -14,6 +14,7 @@ import {inspectGuiArtifactResponse} from './lib/gui-artifact-response.mjs';
 import {makeCodeProjectFile, readMakeCodeProjectText} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 import {runPxtArcade} from '../test/helpers/pxt-arcade-runtime.mjs';
 import {eventAuthoringFiles, eventSample} from '../test/fixtures/arcade-event-authoring-game.mjs';
+import {editEventMessageCode} from './lib/arcade-event-gui-edits.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -208,8 +209,10 @@ try {
     const edited={value:2,player:3};await cycle('visible-block-edits',edited,eventAuthoringFiles(edited));
     await codeTab();await page.getByRole('button',{name:/From blocks/}).first().click();
     await page.waitForFunction(()=>document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString().includes('arcade wait for control event'));
-    const code=await readCode();assert.match(code,/arcade register control event/);assert.match(code,/arcade multiplayer connection handler/);assert.match(code,/arcade set controller player 3 connected/);assert.ok(code.includes('"H"'));
-    await editor().click();await page.keyboard.press('Control+a');await page.keyboard.insertText(code.replace('"H"','"PLAY"'));await apply();
+    const code=await readCode();report.codeFromBlocks=code;assert.match(code,/arcade register control event/);assert.match(code,/arcade multiplayer connection handler/);assert.match(code,/arcade set controller player 3 connected/);assert.ok(code.includes('"H"'));
+    const editedCode=editEventMessageCode(code);report.editedCode=editedCode;
+    await editor().click();await page.keyboard.press('Control+a');await page.keyboard.insertText(editedCode);
+    assert.equal(await readCode(),editedCode,'The visible Code editor contains the authored event program before compilation');await apply();
     const finalOptions={...edited,message:'PLAY'},finalFiles=eventAuthoringFiles(finalOptions);
     await cycle('edited-Code-to-Blocks',finalOptions,finalFiles);
     await page.getByText('File', {exact: true}).first().click();
