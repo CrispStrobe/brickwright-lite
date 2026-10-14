@@ -127,18 +127,18 @@ peer-owned Arrays scalar-return, controller-repeat, callable or font hunks.
 
 # Who is doing what — merge the claim before implementation
 
-## Arcade live Font values — proposal
+## Arcade live Font values — first read slice
 
-PROPOSED — Codex Arcade value integration, `docs/arcade-live-font-value-contract-20261014`.
+QUALIFIED READ SLICE — Codex Arcade value integration.
 Contract: [live Font values](docs/compatibility/arcade-live-font-values.md).
-Audit and qualify actual SDK Font constants, selection, scaling, mutable fields
-and shared glyph Buffers. Plan an owner-bound resource/identity bridge, distinct
-source-reference authority and genuine typed printing/export/Code/SB3 transport.
-The first read slice must explicitly refuse unqualified writes; a full mutable
-slice follows actual original mutation controls. Immutable manifests do not make
-the source Font objects immutable. Preserve glyph notices, current fixed metric
-words, class/callback ownership and source frame contracts. No product admission,
-supplier vocabulary, runtime index or global scheduler edits in this proposal.
+The five canonical value/printing words preserve actual SDK Font identity,
+selection, scaling and shared glyph Buffer reads. Source, native, Code, saved
+projects, actual edited original export and reimport have bounded qualification.
+Public field and glyph mutations retain explicit refusals; the underlying SDK
+records remain mutable. General Font-valued class fields/callbacks, full mutation,
+hardware glyph subsets and complete library/GUI closure remain follow-up work.
+Preserve glyph notices, fixed metric words, class/callback ownership and Source
+frame contracts. No global scheduler ownership is claimed.
 
 ## CI fast and thorough tiers — 2026-10-14
 
