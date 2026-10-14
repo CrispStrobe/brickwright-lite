@@ -2,9 +2,11 @@
 
 Status: ownership claim merged in Lite #911. Initial supplier
 [sb3-creator #138](https://github.com/CrispStrobe/sb3-creator/pull/138) is merged.
-The reserved typed grammar follow-up is
-[PR140](https://github.com/CrispStrobe/sb3-creator/pull/140), pending supplier
-qualification. Consumer evidence below is local and does not establish a main
+The reserved typed grammar follow-up
+[PR140](https://github.com/CrispStrobe/sb3-creator/pull/140) is normally merged at
+`3a2e423954ef9d6c6066c487e051c1e22496648d`, after all four enabled checks passed
+and the reviewed and landed trees matched. Lite integration adopts that exact
+supplier. Consumer evidence below remains bounded and does not establish a Lite main
 or GUI landing.
 
 ## Defect and authoring contract
