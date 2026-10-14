@@ -233,6 +233,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.aliases = new Map();        // handler parameter → sprite name
         this.pendingClone = null;        // a sprite spawned in this block
         this.handleTemplates = null;     // enabled for creation-event projects
+        this.referenceArrayProgram = false; // value ownership does not require sprite artwork
         this.projectileTemplates = new Map(); // projectile calls inside functions
         this.handleAliases = new Map();  // callback parameter -> event handle
         this.handleVars = new Set();      // MakeCode variables holding handles
@@ -266,6 +267,8 @@ class ArcadeTranslator extends BaseTranslator {
         }
         this.pendingClone = outer;
     }
+
+    get nativeValues () {return !!this.handleTemplates || this.referenceArrayProgram;}
 
     sprite (name) {
         return this.sprites.find(s => s.name === name) || null;
@@ -305,6 +308,8 @@ class ArcadeTranslator extends BaseTranslator {
         this.objectReferences = references.objects;
         this.bufferReferences = references.buffers;this.imageReferences = references.images;this.spriteReferences = references.sprites;this.dataReferences = references.data;
         this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
+        this.referenceArrayProgram=containsAst(node,value=>value.type==='Array' || references.arrays.has(value));
+        this.provenArrayReferences=references.provenArrays;
         this.inferredSpriteParameters = references.parameters;
         this.primitiveReferences=references.primitives;
         this.sourceTypeOfOperands=references.sourceTypeOfOperands;
@@ -449,15 +454,12 @@ class ArcadeTranslator extends BaseTranslator {
         return parseImageLiteral(node.value);
     }
 
-    /**
-     * An array REFERENCE (a value a variable holds), as the value-type graph
-     * says, unless the name was declared as a named Scratch list on the
-     * fixed-sprite path (\`new array "frameList"\`): then the list's own
-     * blocks read it, and a reference read would find an unset variable.
-     */
+    /** Array values retain their ownership independently of sprite artwork. */
     isArrayReference (node) {
         if (!this.arrayReferences?.has(node)) return false;
-        return !(node?.type === 'Identifier' && this.arrays?.has(node.name) && !this.handleTemplates);
+        // The artwork fallback must not acquire a reference from an opaque
+        // alternative merely because another branch produces an Array.
+        return !!this.handleTemplates || !!this.provenArrayReferences?.has(node);
     }
 
     isBooleanValue (value) {
@@ -534,10 +536,10 @@ class ArcadeTranslator extends BaseTranslator {
             const owner=this.physicsEngineReferences?.has(target.object)?'PhysicsEngine':'Scene';
             out.push(`${pad}${this.note(`Arcade ${owner}.${target.name} assignment ${n.op} is not supported`)}`);return;
         }
-        if(this.handleTemplates && st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.temporary) {
+        if(this.nativeValues && st.type==='ExpressionStatement' && st.expr?.type==='Assignment' && st.expr.left?.temporary) {
             out.push(`${'  '.repeat(indent)}arcade set local ${st.expr.left.name} to (${this.arrayElementValue(st.expr.right)})`);return;
         }
-        if (st.type==='Declaration' && this.handleTemplates) {
+        if (st.type==='Declaration' && this.nativeValues) {
             const pad='  '.repeat(indent);
             for(const d of st.decls){
                 const gaps=this.unsupported.length;
@@ -597,7 +599,7 @@ class ArcadeTranslator extends BaseTranslator {
         }
         // A counter the body reads must start as a number value: the shared
         // loop writes \`set i to 0\`, a text "0" that \`x + i\` would join.
-        if (this.handleTemplates && st.type === 'For' && st.init?.type === 'Declaration' && st.init.decls.length === 1 &&
+        if (this.nativeValues && st.type === 'For' && st.init?.type === 'Declaration' && st.init.decls.length === 1 &&
             JSON.stringify(st.body).includes(`"name":${JSON.stringify(st.init.decls[0].name)}`)) {
             this.declared?.add(st.init.decls[0].name);
             this.statement(st.init,indent,out);
@@ -608,7 +610,7 @@ class ArcadeTranslator extends BaseTranslator {
     }
 
     varName(name) {
-        if(this.handleTemplates && String(name).toLowerCase()==='score') {
+        if(this.nativeValues && String(name).toLowerCase()==='score') {
             if(!this.renamed)this.renamed=new Map();
             if(!this.renamed.has(String(name))){let mapped='score_';while(this.taken?.has(mapped))mapped+='_';this.renamed.set(String(name),mapped);}
             return this.renamed.get(String(name));
@@ -631,18 +633,18 @@ class ArcadeTranslator extends BaseTranslator {
         // value slots (assignments, arguments), where the dialect has no value
         // form for a comparison (it warns and keeps the text), so a word that
         // reports a real boolean carries it (E0).
-        if(this.handleTemplates && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
+        if(this.nativeValues && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
         // \`!x\` AS A CONDITION is the dialect's \`not\`; E9's \`x === false\` value form is
         // for value slots only. Written through it, Lite's own export (\`while (!(!c))\`)
         // came back as nested value comparisons and lost every operator_not.
-        if(this.handleTemplates && node?.type==='Unary' && node.op==='!') {
+        if(this.nativeValues && node?.type==='Unary' && node.op==='!') {
             const inner=node.argument;
             if(inner?.type==='Unary' && inner.op==='!')return this.condition(inner.argument);
             return `not (${this.condition(inner)})`;
         }
         if(node?.type==='Index' && this.isArrayReference(node.object))
             return `truthiness of item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
-        if(this.handleTemplates && node && node.type!=='Boolean' &&
+        if(this.nativeValues && node && node.type!=='Boolean' &&
             !(node.type==='Binary' && ['==','!=','===','!==','<','>','<=','>=','&&','||'].includes(node.op)) &&
             !(node.type==='Unary' && node.op==='!')) {
             const value=this.expr(node);
@@ -657,7 +659,7 @@ class ArcadeTranslator extends BaseTranslator {
         // compares as text) and "0" = 0 is true, so both came out inverted.
         // The length is the text's own truthiness. (A number stays `not (v = 0)`:
         // its Scratch value may be the literal text "0".)
-        if(!this.handleTemplates && node && (this.isText(node) || this.stringReferences?.has(node)))
+        if(!this.nativeValues && node && (this.isText(node) || this.stringReferences?.has(node)))
             return `not ((length of ${this.operand(node)}) = 0)`;
         return super.condition(node);
     }
@@ -1033,7 +1035,7 @@ class ArcadeTranslator extends BaseTranslator {
         if(!node || node===this.conditionNode)return value;
         // On the fixed-sprite path a truth node's value text IS its condition
         // (the base writes `!`, comparisons, && and || in that grammar).
-        if(!isConditionCall(node,value) && !(isTruthNode(node) && !this.handleTemplates))return value;
+        if(!isConditionCall(node,value) && !(isTruthNode(node) && !this.nativeValues))return value;
         const repeated=this.inLoopCondition || this.inRepeatedCondition;
         if(this.pre && !repeated)return this.truthAsValue(value);
         this.unsupported.push(`${value} as a value ${repeated ? 'in a condition tested on every pass' : 'outside a statement'} (it cannot be chosen into a variable first)`);
@@ -1047,7 +1049,7 @@ class ArcadeTranslator extends BaseTranslator {
     truthAsValue (condition) {
         const name=`_mc${++this.temps}`;
         this.declared.add(name);
-        const [yes,no]=this.handleTemplates?[ARCADE_TRUE,ARCADE_FALSE]:['1','0'];
+        const [yes,no]=this.nativeValues?[ARCADE_TRUE,ARCADE_FALSE]:['1','0'];
         this.pre.push(`IF ${condition} THEN:`,`  set ${name} to ${yes}`,'ELSE:',`  set ${name} to ${no}`);
         return name;
     }
@@ -1160,7 +1162,7 @@ class ArcadeTranslator extends BaseTranslator {
             if(Object.prototype.hasOwnProperty.call(COLLISION_DIRECTIONS,node.name))return String(COLLISION_DIRECTIONS[node.name]);
             this.unsupported.push(`${this.path(node)} is not a declared Arcade CollisionDirection member`);return '0';
         }
-        if (this.handleTemplates && node?.type === 'Unary' && node.op === 'typeof') {
+        if (this.nativeValues && node?.type === 'Unary' && node.op === 'typeof') {
             const value = node.argument;
             if (!this.sourceTypeOfOperands?.has(value)) {
                 this.unsupported.push('Source typeof requires a proven primitive or owned Array, class, Image or Buffer; Sprite, callable and opaque ownership is not qualified');
@@ -1168,7 +1170,7 @@ class ArcadeTranslator extends BaseTranslator {
             }
             return `arcade source type of (${this.arrayElementValue(value)})`;
         }
-        if(this.handleTemplates && ['Unary','Binary'].includes(node?.type)) {
+        if(this.nativeValues && ['Unary','Binary'].includes(node?.type)) {
             const folded=foldPxtNumeric(node,name=>['NaN','Infinity'].includes(name) && !this.bindsName(name) ? {value:name==='NaN'?NaN:Infinity} : null);
             if(folded){this.usesArrays=true;return pxtFoldedNumberCode(folded.value);}
         }
@@ -1180,8 +1182,8 @@ class ArcadeTranslator extends BaseTranslator {
         const importedBuffer=this.bufferExpression(node);
         if(importedBuffer!==null)return importedBuffer;
         if(node?.type==='LegacyJsonValue'){this.usesArrays=true;return `JSON text of value (${this.arrayElementValue(node.value)})`;}
-        if(this.handleTemplates && node?.type==='Identifier' && node.temporary)return `arcade local ${node.name}`;
-        if(this.handleTemplates && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
+        if(this.nativeValues && node?.type==='Identifier' && node.temporary)return `arcade local ${node.name}`;
+        if(this.nativeValues && node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
         if(this.handleTemplates && node?.type==='Member' && ['SpriteFlag','sprites.Flag'].includes(this.path(node.object))) {
             const prefix=this.path(node.object),root=prefix.split('.')[0],values=prefix==='SpriteFlag'?SPRITE_FLAG_VALUES:PRIVATE_SPRITE_FLAG_VALUES;
             if(this.bindsName(root)){this.unsupported.push(prefix+' refers to a shadowed flag binding');return 'undefined value';}
@@ -1195,23 +1197,23 @@ class ArcadeTranslator extends BaseTranslator {
             this.unsupported.push(`TileScale.${node.name} is not a declared tile scale`);return '4';
         }
         if(this.handleTemplates && node?.type==='Member' && this.path(node.object)==='SpriteKind' && !this.bindsName('SpriteKind'))return `arcade sprite kind value ${JSON.stringify(node.name)}`;
-        if(this.handleTemplates && node?.type==='String')return arcadeTextLiteral(tsText(node.value));
-        if(this.handleTemplates && ['Update','Assignment'].includes(node?.type)){this.unsupported.push(`${node.type.toLowerCase()} expression used as a value`);return '0';}
-        if (this.handleTemplates && ['Null','Undefined'].includes(node?.type)) {
+        if(this.nativeValues && node?.type==='String')return arcadeTextLiteral(tsText(node.value));
+        if(this.nativeValues && ['Update','Assignment'].includes(node?.type)){this.unsupported.push(`${node.type.toLowerCase()} expression used as a value`);return '0';}
+        if (this.nativeValues && ['Null','Undefined'].includes(node?.type)) {
             this.usesArrays=true;return `${node.type.toLowerCase()} value`;
         }
-        if(this.handleTemplates && node?.type==='Binary' && ['==','!=','===','!==','<','>','<=','>='].includes(node.op)) {
+        if(this.nativeValues && node?.type==='Binary' && ['==','!=','===','!==','<','>','<=','>='].includes(node.op)) {
             this.usesArrays=true;
             return `compare value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`;
         }
-        if(this.handleTemplates && (node?.type==='Binary' && ['&','|','^','<<','>>','>>>'].includes(node.op) || node?.type==='Unary' && node.op==='~')) {
+        if(this.nativeValues && (node?.type==='Binary' && ['&','|','^','<<','>>','>>>'].includes(node.op) || node?.type==='Unary' && node.op==='~')) {
             const operands=node.type==='Binary'?[node.left,node.right]:[node.argument];
             if(operands.some(value=>!this.primitiveReferences?.has(value))){this.unsupported.push('Bitwise operation requires proven primitive operands; opaque reference, object or unknown conversion is not implemented');return 'undefined value';}
             this.usesArrays=true;
             return node.type==='Binary'?`calculate value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`:
                 `convert value (${this.arrayElementValue(node.argument)}) op "~"`;
         }
-        if(this.handleTemplates && node?.type==='Binary' && ['+','-','*','/','%','**'].includes(node.op)) {
+        if(this.nativeValues && node?.type==='Binary' && ['+','-','*','/','%','**'].includes(node.op)) {
             if([node.left,node.right].some(value=>this.spriteReferences?.has(value)))this.unsupported.push('sprite arithmetic conversion requires ToPrimitive support');
             if([node.left,node.right].some(value=>this.playerReferences?.has(value)))this.unsupported.push('player arithmetic conversion requires ToPrimitive support');
             this.usesArrays=true;return `calculate value (${this.arrayElementValue(node.left)}) op "${node.op}" with (${this.arrayElementValue(node.right)})`;
@@ -1219,11 +1221,11 @@ class ArcadeTranslator extends BaseTranslator {
         // `!x` as a value. The value words have no unary `!` (BWValues.unary
         // is + and -), and `not (…)` in a value slot is kept as text, so it is
         // JavaScript's own definition: truthiness of x === false.
-        if(this.handleTemplates && node?.type==='Unary' && node.op==='!') {
+        if(this.nativeValues && node?.type==='Unary' && node.op==='!') {
             this.usesArrays=true;
             return `compare value (${this.truthValue(node.argument)}) op "===" with (${ARCADE_FALSE})`;
         }
-        if(this.handleTemplates && node?.type==='Unary' && ['+','-'].includes(node.op)) {
+        if(this.nativeValues && node?.type==='Unary' && ['+','-'].includes(node.op)) {
             this.usesArrays=true;
             // PXT's nonfolded prefix emitter subtracts for unary signs. If the
             // operand itself emits a numeric literal, both branches negate it.
@@ -1233,9 +1235,9 @@ class ArcadeTranslator extends BaseTranslator {
             return node.op==='-' ? `calculate value ((0 + (0))) op "-" with (${this.arrayElementValue(node.argument)})` :
                 `convert value (${this.arrayElementValue(node.argument)}) op "+"`;
         }
-        if(this.handleTemplates && node?.type==='Binary' && ['&&','||'].includes(node.op))
+        if(this.nativeValues && node?.type==='Binary' && ['&&','||'].includes(node.op))
             this.unsupported.push(`logical ${node.op} as a value needs operand-preserving lazy evaluation`);
-        if (node?.type==='Array' && this.handleTemplates) {
+        if (node?.type==='Array' && this.nativeValues) {
             let values='"[]"';for(let i=node.items.length-1;i>=0;i--)values=`array value (${this.arrayElementValue(node.items[i])}) rest (${values})`;
             return `new array reference from (${values})`;
         }
@@ -2602,7 +2604,7 @@ class ArcadeTranslator extends BaseTranslator {
             push(this.note(`Sprite.data.${dataTarget.name} assignment requires arbitrary object member support`));return;
         }
 
-        if(this.handleTemplates && (expr.type==='Assignment' && expr.left?.type==='Identifier' || expr.type==='Update' && expr.argument?.type==='Identifier')) {
+        if(this.nativeValues && (expr.type==='Assignment' && expr.left?.type==='Identifier' || expr.type==='Update' && expr.argument?.type==='Identifier')) {
             const target=expr.type==='Update'?expr.argument:expr.left;
             const op=expr.type==='Update'?(expr.op==='++'?'+':'-'):expr.op.slice(0,-1);
             let value;
@@ -3533,11 +3535,12 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         const unknownMember=node.type==='Member' && !typeOf(node,owner).size;
         if(!primitiveAssertion && (unknownCall || unknownMember) || ['Identifier','Call','Member','Index','Object'].includes(node.type) && !graph.node(cell(node,owner)).types.size)graph.add(cell(node,owner),'unknown');
     }
-    const primitives=new WeakSet(),strictStrings=new WeakSet(),sourceTypeOfOperands=new WeakSet();
+    const primitives=new WeakSet(),strictStrings=new WeakSet(),sourceTypeOfOperands=new WeakSet(),provenArrays=new WeakSet();
     const sourceTypeOfOpaque=new Set(entries.filter(({node})=>node.bwSourceTypeOfOpaque).map(({node,owner})=>graph.node(cell(node,owner))));
     const sourceTypeOfKinds=new Set(['number','boolean','string','null','undefined','array','Image','Buffer','object']);
     for(const {node,owner} of entries){
         const types=graph.node(cell(node,owner)).types;
+        if(types.has('array') && [...types].every(type=>['array','null','undefined'].includes(type)))provenArrays.add(node);
         if(types.size && [...types].every(type=>primitiveTypes.has(type)))primitives.add(node);
         if(types.has('string') && [...types].every(type=>primitiveTypes.has(type)))strictStrings.add(node);
         if(!sourceTypeOfOpaque.has(graph.node(cell(node,owner))) && types.size && [...types].every(type=>sourceTypeOfKinds.has(type)) &&
@@ -3569,7 +3572,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {objects,primitives,strictStrings,sourceTypeOfOperands,textSprites, buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {objects,primitives,strictStrings,sourceTypeOfOperands,provenArrays,textSprites, buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };
@@ -5453,6 +5456,11 @@ export function arcadeToPseudocode (files, opts = {}) {
     // ── assemble
     const out = [];
     out.push('DEVICE ARCADE', '');
+    if(t.referenceArrayProgram){
+        const globals=ast.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls)
+            .filter(decl=>!decl.temporary && !t.sprite(decl.name) && !(decl.init?.type==='Call' && t.path(decl.init.callee)==='sprites.create'));
+        out.push(...globals.map(decl=>`GLOBAL ${t.varName(decl.name)}`),'');
+    }
     if (opts.name) out.push(`# Imported from MakeCode Arcade: ${opts.name}`);
     out.push('# Arcade is 160x120 with y downwards; the stage is 480x360 centred,',
         `# so positions are scaled x${SCALE} and y is mirrored.`, '');
