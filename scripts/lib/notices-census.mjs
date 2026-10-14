@@ -42,7 +42,8 @@ const LIB = 'overlay/scratch-gui/src/lib';
 const ROMS = 'overlay/scratch-gui/static/roms';
 // Scoped artifact pins name shipped bundles rather than whole vendored trees.
 const SCOPED_BUNDLES = {
-    'arrays-values': 'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js'
+    'arrays-values': 'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js',
+    circuitplayground: 'overlay/scratch-vm/src/extensions/crispstrobe/circuitplayground/index.js'
 };
 
 /** Licence id from a LICENSE text or package.json `license` string. */

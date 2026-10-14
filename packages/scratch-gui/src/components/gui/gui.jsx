@@ -24,6 +24,9 @@ const MicrobitSimPane = React.lazy(() =>
 const ArcadeDevicePane = React.lazy(() =>
     import(/* webpackChunkName: "bw-arcade-device" */ '../tw-pseudocode/arcade-device-pane.jsx')
 );
+const CpxDevicePane = React.lazy(() =>
+    import(/* webpackChunkName: "bw-cpx-device" */ '../tw-pseudocode/cpx-device-pane.jsx')
+);
 const GameTouchControls = React.lazy(() =>
     import(/* webpackChunkName: "bw-game-touch-controls" */ '../tw-pseudocode/game-touch-controls.jsx')
 );
@@ -298,9 +301,11 @@ const GUIComponent = props => {
             // The MakeCode simulator holds no program of its own across a
             // reload: restoring its dock would show an empty pane.
             if (dock === 'makecode' && !window.__bwMakeCodePending) return 'top';
-            if (!['top', 'right', 'controller', 'microbit', 'arcade', 'arduboy', 'makecode', 'spikearena'].includes(dock)) return 'top';
+            if (!['top', 'right', 'controller', 'microbit', 'arcade', 'cpx', 'arduboy', 'makecode', 'spikearena'].includes(dock)) return 'top';
             // The arena restores only for a SPIKE project.
             if (dock === 'spikearena' && props.vm?.runtime?.stc?.device !== 'spike') return 'top';
+            // The Circuit Playground board restores only for a DEVICE CPX program.
+            if (dock === 'cpx' && (props.vm?.runtime?.bwDeviceId || props.vm?.runtime?.stc?.device) !== 'cpx') return 'top';
             if (dock === 'arcade' && !['arcade', 'pybadge', 'pybadge-lc', 'samd51']
                 .includes(props.vm?.runtime?.bwDeviceId || props.vm?.runtime?.stc?.device)) return 'top';
             return dock;
@@ -793,7 +798,7 @@ const GUIComponent = props => {
         // controller/micro:bit (which paint their own 100vw overlay), hide the
         // editor and let the right pane fill the window.
         const stageFullScreen = isFullScreen && dockMode !== 'controller' && dockMode !== 'microbit' &&
-            dockMode !== 'arcade' && dockMode !== 'arduboy' && dockMode !== 'makecode';
+            dockMode !== 'arcade' && dockMode !== 'cpx' && dockMode !== 'arduboy' && dockMode !== 'makecode';
 
         return isPlayerOnly ? (
             <StageWrapper
@@ -1145,7 +1150,7 @@ const GUIComponent = props => {
                                 toggle buttons) stays reachable in every mode.
                                 In controller mode the stage canvas is hidden
                                 so the panel owns the full column. */}
-                            <div style={dockMode === 'controller' || dockMode === 'arcade' || dockMode === 'arduboy' || dockMode === 'makecode' || dockMode === 'spikearena' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '3px solid #475569', background: '#cbd5e1', boxShadow: '0 3px 6px rgba(0,0,0,0.22)', position: 'relative', zIndex: 5, boxSizing: 'border-box'} : undefined}>
+                            <div style={dockMode === 'controller' || dockMode === 'arcade' || dockMode === 'cpx' || dockMode === 'arduboy' || dockMode === 'makecode' || dockMode === 'spikearena' ? {maxHeight: 44, overflow: 'hidden', flexShrink: 0, borderBottom: '3px solid #475569', background: '#cbd5e1', boxShadow: '0 3px 6px rgba(0,0,0,0.22)', position: 'relative', zIndex: 5, boxSizing: 'border-box'} : undefined}>
                                 <StageWrapper
                                     isFullScreen={isFullScreen}
                                     isRendererSupported={isRendererSupported}
@@ -1184,6 +1189,12 @@ const GUIComponent = props => {
                                 <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>Loading Arduboy…</div>}>
                                     <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
                                         <ArduboyPane vm={vm} />
+                                    </div>
+                                </React.Suspense>
+                            ) : dockMode === 'cpx' ? (
+                                <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>Loading Circuit Playground…</div>}>
+                                    <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
+                                        <CpxDevicePane vm={vm} />
                                     </div>
                                 </React.Suspense>
                             ) : dockMode === 'arcade' ? (
