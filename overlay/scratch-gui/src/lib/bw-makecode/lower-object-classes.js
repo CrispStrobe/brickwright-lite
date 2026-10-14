@@ -295,7 +295,8 @@ export function lowerObjectClasses(program) {
         if(!cls.ctor && cls.fields.some(field=>field.init))fail(`Class ${name} initialized fields require an explicit constructor in selected Arcade SDK`);
     }
     const id = name => ({type:'Identifier', name}), str = value => ({type:'String', value});
-    const call = (name, args, types = []) => ({type:'Call', callee:{type:'Member', object:id('__bwObjects'), name}, args, bwObjectTypes:types});
+    const call = (name, args, types = []) => ({type:'Call', callee:{type:'Member', object:id('__bwObjects'), name}, args, bwObjectTypes:types,
+        ...(['get','call','procedure'].includes(name)?{bwSourceTypeOfOpaque:true}:{})});
     const statement = expr => ({type:'ExpressionStatement', expr});
     const signature = (name, params) => [name, ...params.map(() => '%s')].join(' ');
     const types = node => [...graph.node(cell(node)).types].map(type => type.startsWith('class:') ? 'object' : type === 'Image' ? 'image' : type === 'Sprite' ? 'sprite' : type === 'Buffer' ? 'buffer' : type);
@@ -337,6 +338,10 @@ export function lowerObjectClasses(program) {
         if (!node || typeof node !== 'object') return node;
         if (Array.isArray(node)) return node.map(child => rewrite(child, context));
         if (node.type === 'Class') return node;
+        if(node.type==='Unary' && node.op==='typeof' && [...graph.node(cell(node.argument)).types].some(type=>
+            type==='Sprite' || type.startsWith('class:') && lineage(type.slice(6))?.some(base=>
+                ['BaseSprite','Sprite','ExtendableSprite'].includes(admitted.get(base)?.sdkIntrinsic))))
+            fail('Source typeof requires unambiguous owned values; Sprite-backed class carriers are not qualified');
         if(node.type==='Binary' && node.op==='instanceof' && admitted.has(node.right?.name))fail('Ordinary class instanceof is not yet supported');
         if(node.type==='Call' && node.callee?.type==='Identifier' && node.callee.name==='super' && context){
             const base=admitted.get(context.name).base,ctor=effectiveCtor(base).ctor,params=[selfName,...(ctor?.params||[])];

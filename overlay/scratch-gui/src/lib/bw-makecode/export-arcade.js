@@ -772,6 +772,7 @@ class ArcadeEmitter {
             const reporter=typeof slot==='string' && this.block(slot);
             if(reporter?.opcode==='data_variable')id=reporter.fields?.VARIABLE?.[1];
             if(id)return this.mixedValueVariableIds.has(id);
+            if(reporter?.opcode==='arcade_getLocal')return this.mixedValueArrayLocalBlocks.has(reporter);
             // A cast receiver is any[]. Its indexed/pop/random element is any,
             // so an outer array operation needs its own explicit array access.
             // Typed array receivers retain their element types (Sprite/Image/
@@ -1290,6 +1291,9 @@ class ArcadeEmitter {
         case 'arcade_spriteDataReadBoolean': this.requiresSpriteDataPackage=true;return `sprites.readDataBoolean(${v('ID')}, ${v('KEY')})`;
         case 'arcade_imageEquals': return `${v('IMAGE')}.equals(${v('OTHER')})`;
         case 'arcade_screenImage': return 'screen';
+        case 'arcade_sourceTypeOf':
+            if(!this.sourceTypeOfExportOperands?.has(b))this.note('Arcade source typeof export requires a proven primitive or owned Array, class, Image or Buffer; Sprite, callable and opaque ownership is not qualified');
+            return `(typeof (${this.arrayValue(b,'VALUE')}))`;
         case 'arcade_fontMetric': {
             const font=this.field(b,'FONT'),property=this.field(b,'PROPERTY');
             if (!['font5','font8','font12'].includes(font) || !['charWidth','charHeight'].includes(property) ||
@@ -2792,6 +2796,7 @@ class ArcadeEmitter {
         const graphTextSpriteValues=new Set(),graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
         const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],arrayCopies=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
+        const sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
         const inputBlock = (blocks, b, name) => {
             const input=b.inputs?.[name]?.[1];
             if(Array.isArray(input) && input[0]===12) return {opcode:'data_variable',fields:{VARIABLE:[input[1],input[2]]}};
@@ -2848,7 +2853,8 @@ class ArcadeEmitter {
             const ref = value => {
                 if (!value) return null;
                 if(value.opcode==='arrays_namedReference'){const id='named-array:'+literal(blocks,value,'NAME');arrays.add(id);return id;}
-                if(['arrays_parseLegacyValue','arrays_jsonValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
+                if(value.opcode==='arrays_jsonValue'){const id=Symbol('JSON aggregate text');strings.add(id);return id;}
+                if(['arrays_parseLegacyValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
                 if(value.opcode==='arcade_settingsExists'){const id=Symbol('setting exists');booleans.add(id);return id;}
                 if(value.opcode==='arcade_settingsRead'){
                     const type=settingType(value, blocks),id=Symbol('setting value');
@@ -2887,8 +2893,12 @@ class ArcadeEmitter {
                 }
                 if (/^argument_reporter_/.test(value.opcode)) return `${key}:param:${value.fields.VALUE[0]}`;
                 if (value.opcode === 'arcade_getCaptured')return `${key}:capture:${literal(blocks,value,'NAME')}`;
-                if (value.opcode === 'arcade_getLocal') return localKey(literal(blocks,value,'NAME'));
-                if (value.opcode === 'arcade_callFunction') return `${target.isStage ? '' : target.name}:${literal(blocks,value,'NAME')}:result`;
+                if (value.opcode === 'arcade_getLocal') {const cell=localKey(literal(blocks,value,'NAME'));arrayLocalReaders.set(value,cell);return cell;}
+                if (value.opcode === 'arcade_callFunction') {
+                    const code=`${target.isStage ? '' : target.name}:${literal(blocks,value,'NAME')}`,id=`${code}:result`;
+                    if(this.objectClassExport.procedures.has(code))opaqueCells.add(id);
+                    return id;
+                }
                 if (value.opcode === 'data_variable') return `variable:${value.fields.VARIABLE[1] || value.fields.VARIABLE[0]}`;
                 if(value.opcode==='arcade_eventLocation'){const id=Symbol('event tile location');tiles.add(id);return id;}
                 if(value.opcode==='arcade_legacyTileLocation'){const id=Symbol('legacy tile');legacyTiles.add(id);return id;}
@@ -2910,6 +2920,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_playerProperty'){const id=Symbol('player property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_currentScene'){const id=Symbol('scene value');graphSceneValues.add(id);return id;}
                 if(['arcade_scenePhysicsEngine','arcade_createPhysicsEngine'].includes(value.opcode)){const id=Symbol('physics engine value');graphPhysicsEngineValues.add(id);return id;}
+                if(value.opcode==='arcade_sourceTypeOf'){const id=Symbol('source typeof String result');strings.add(id);return id;}
                 if(['arcade_physicsEngineProperty','arcade_sceneFlags','arcade_fontMetric'].includes(value.opcode)){const id=Symbol('physics engine numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_createAnimation'){const id=Symbol('animation value');graphAnimationValues.add(id);return id;}
                 if(value.opcode==='arcade_sevensegDigit'){const id=Symbol('seven segment digit');graphSevensegDigitValues.add(id);return id;}
@@ -2939,13 +2950,23 @@ class ArcadeEmitter {
                     const id = `${key}:image:${Object.keys(blocks).find(id => blocks[id] === value)}`;
                     images.add(id);return id;
                 }
+                const ownedTypes=this.objectClassExport.valueTypes(target,value);
+                if(ownedTypes.size){
+                    const id=Symbol('declared class value');
+                    if(['arcade_objectField','arcade_callObjectMethod'].includes(value.opcode))opaqueCells.add(id);
+                    sourceTypeOfClasses.set(id,ownedTypes);return id;
+                }
                 return null;
             };
-            const connect = (a,c) => { if (a && c) edges.push([a,c]); };
+            const connect = (a,c) => { if (a && c) edges.push([a,c]);else if(a)opaqueCells.add(a); };
             const seen = new Set();
             const visit = id => {
                 if (typeof id !== 'string' || seen.has(id) || !blocks[id]) return;
                 seen.add(id);const block = blocks[id];
+                if(block.opcode==='arcade_sourceTypeOf'){
+                    const operand=inputBlock(blocks,block,'VALUE');
+                    sourceTypeOfInputs.set(block,operand?ref(operand):null);
+                }
                 for (const input of ['arcade_blitImage','arcade_imagesOverlap','arcade_copyImageFrom'].includes(block.opcode) ? ['IMAGE', 'SOURCE'] : ['IMAGE']) {
                     const image = ref(inputBlock(blocks,block,input));if(image)images.add(image);
                 }
@@ -3039,6 +3060,12 @@ class ArcadeEmitter {
         edges.push(...captureLinks);
         const graph=new ValueTypeGraph();
         for(const [values,type] of [[graphTextSpriteValues,'TextSprite'],[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
+        for(const [value,types] of sourceTypeOfClasses)for(const type of types)graph.add(value,this.objectClassExport.classes.has(type)?`class:${type}`:type);
+        for(const cell of this.sourceScalarCells.values())graph.add(`variable:${cell.id}`,cell.type.toLowerCase());
+        for(const cell of this.sourceReferenceCells.values()){
+            const type=cell.type;
+            graph.add(`variable:${cell.id}`,type.endsWith('[]')?'array':this.objectClassExport.classes.has(type)?`class:${type}`:type);
+        }
         for(const [a,b] of edges)graph.merge(a,b);
         for(const [receiver,value] of dataProperties)if(receiver)graph.merge(graph.property(receiver,'data'),value);
         for(const [,value] of dataProperties)if(!graph.node(value).types.size)graph.add(value,'any');
@@ -3061,6 +3088,25 @@ class ArcadeEmitter {
             } while(revision!==graph.revision);
         };
         inferValueOperations();
+        const opaqueNodes=new Set([...opaqueCells].map(value=>graph.node(value)));
+        const objectClassOwned=name=>{
+            const seen=new Set();let cls=this.objectClassExport.classes.get(name);
+            if(!cls)return false;
+            while(cls){
+                if(seen.has(cls.name))return false;seen.add(cls.name);
+                if(cls.intrinsic && ['__bwSDK_BaseSprite','Sprite','__bwSDK_ExtendableSprite'].includes(cls.name))return false;
+                if(!cls.parent)return true;
+                cls=this.objectClassExport.classes.get(cls.parent);if(!cls)return false;
+            }
+            return false;
+        };
+        const admittedType=type=>['number','boolean','string','null','undefined','array','Image','Buffer'].includes(type) || type.startsWith('class:') && objectClassOwned(type.slice(6));
+        this.sourceTypeOfExportOperands=new Set();
+        for(const [block,value] of sourceTypeOfInputs){
+            if(!value){if(!block.inputs?.VALUE?.[1])this.sourceTypeOfExportOperands.add(block);continue;}
+            const node=graph.node(value);
+            if(!opaqueNodes.has(node) && node.types.size && [...node.types].every(admittedType))this.sourceTypeOfExportOperands.add(block);
+        }
         // Unknown operations remain dynamic. Propagate that fact through the
         // same result/alias graph rather than prematurely widening known sums.
         for(const [result] of valueOperations)if(!graph.node(result).types.size)graph.add(result,'any');
@@ -3076,6 +3122,7 @@ class ArcadeEmitter {
         this.imageReturnFunctions = new Set([...parameters.keys()].filter(key=>graph.arrayType(`${key}:result`)==='Image'));
         this.imageVariableIds = new Set([...images].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='Image').map(key=>key.slice(9)));
         const arrayType=value=>graph.arrayType(value);
+        this.mixedValueArrayLocalBlocks=new Set([...arrayLocalReaders].filter(([,cell])=>graph.has(cell,'array') && graph.arrayType(cell)==='any').map(([block])=>block));
         this.mixedValueVariableIds=new Set([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && (graph.node(key).types.size>1 || graph.has(key,'any')) && graph.arrayType(key)==='any').map(key=>key.slice(9)));
         this.booleanVariableIds=new Set([...booleans].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='boolean').map(key=>key.slice(9)));
         this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['Buffer','mp.Player','string','tiles.Location','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','TextSprite','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));

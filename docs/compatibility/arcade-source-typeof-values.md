@@ -93,3 +93,38 @@ The operation must use the existing source frame and managed procedure
 boundaries. This scope adds no scheduler, physical frame phase, class designer
 or independent board service. Feature controls do not promote retained packages
 or claim complete game execution.
+
+## Current implementation candidate
+
+The canonical reporter is `arcade source type of {VALUE}`. Its String result
+is independent of its operand's type in the declaration and export graphs.
+The native service admits primitives and actual current Array, Image, Buffer
+and managed class bodies. It refuses callable and other reference owners.
+Sprite operands remain refused in source conversion and export; a literal
+String equal to a live Sprite handle remains a String.
+
+String operands require source provenance because native Sprite handles share
+their carrier. The service binds the actual reporter from Scratch's current
+cached operation using the identical argument object. It checks the active
+runtime thread and its actual block container before trusting that operation.
+Retained arguments from a killed thread, foreign containers and copied argument
+objects cannot acquire authority. Global array writers and relevant aliases
+are checked across original project targets; unresolved foreign mutations
+produce a named refusal.
+
+The entire original project input graph is captured at source startup,
+including target/container identity, parent and top-level ownership metadata.
+Editing that graph requires a new project start before reporter provenance
+can be reused. This conservative restart boundary is
+an editor limitation, not a claim of live source graph migration. Unknown
+procedure, capture or member provenance remains refused.
+
+Direct owned allocations, aliases and ordinary function results with proven
+producers remain eligible. A field or method annotation alone cannot qualify
+a managed member result: an `as any` write or return may carry another owner.
+Unresolved member-result flow remains refused through variables and returns;
+it does not widen the scalar or reference declaration domains.
+
+The candidate has focused owner, lowering, export and mutation controls.
+Complete source/original export, Code, edited Blocks, saved-project and E15
+reimport qualification is still required before consumer adoption.

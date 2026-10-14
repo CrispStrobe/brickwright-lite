@@ -307,6 +307,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.inferredSpriteParameters = references.parameters;
         this.primitiveReferences=references.primitives;
+        this.sourceTypeOfOperands=references.sourceTypeOfOperands;
         this.strictStringReferences=references.strictStrings;
         this.spriteResultFunctions = references.spriteFunctions;
         this.spriteResultBindings = new Set();
@@ -1158,6 +1159,14 @@ class ArcadeTranslator extends BaseTranslator {
             !this.boundSourceGlobals?.has('CollisionDirection') && !this.localVars?.has('CollisionDirection') && !this.currentParameters?.has('CollisionDirection') && !this.capturedBindings.has('CollisionDirection')) {
             if(Object.prototype.hasOwnProperty.call(COLLISION_DIRECTIONS,node.name))return String(COLLISION_DIRECTIONS[node.name]);
             this.unsupported.push(`${this.path(node)} is not a declared Arcade CollisionDirection member`);return '0';
+        }
+        if (this.handleTemplates && node?.type === 'Unary' && node.op === 'typeof') {
+            const value = node.argument;
+            if (!this.sourceTypeOfOperands?.has(value)) {
+                this.unsupported.push('Source typeof requires a proven primitive or owned Array, class, Image or Buffer; Sprite, callable and opaque ownership is not qualified');
+                return 'undefined value';
+            }
+            return `arcade source type of (${this.arrayElementValue(value)})`;
         }
         if(this.handleTemplates && ['Unary','Binary'].includes(node?.type)) {
             const folded=foldPxtNumeric(node,name=>['NaN','Infinity'].includes(name) && !this.bindsName(name) ? {value:name==='NaN'?NaN:Infinity} : null);
@@ -3346,6 +3355,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(!mathDeclared && /^Math\.(?:abs|min|max|pow|round|floor|ceil|trunc|sign|sqrt|sin|cos|tan|asin|acos|atan|atan2|log|exp|random|randomRange|clamp|imul|idiv)$/.test(api || ''))return new Set(['number']);
             if(['mp.playerSelector','mp.getPlayerByNumber','mp.getPlayerByIndex','mp.getPlayerBySprite'].includes(api))return new Set(['player']);
             if(api==='bwStringArraySettings.read')return new Set(['array','string-array']);
+            if(['control.createBuffer','control.createBufferFromUTF8','Buffer.fromHex','Buffer.fromUTF8'].includes(api) && !binding(owner,api.split('.')[0]).size)return new Set(['buffer']);
             const settingRead=/^(?:settings|blockSettings)\.(read(Number|String|NumberArray|StringArray|Buffer)|exists|list)$/.exec(api||'');
             if(settingRead){
                 if(settingRead[1]==='list')return new Set(['array','string-array']);
@@ -3523,11 +3533,15 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         const unknownMember=node.type==='Member' && !typeOf(node,owner).size;
         if(!primitiveAssertion && (unknownCall || unknownMember) || ['Identifier','Call','Member','Index','Object'].includes(node.type) && !graph.node(cell(node,owner)).types.size)graph.add(cell(node,owner),'unknown');
     }
-    const primitives=new WeakSet(),strictStrings=new WeakSet();
+    const primitives=new WeakSet(),strictStrings=new WeakSet(),sourceTypeOfOperands=new WeakSet();
+    const sourceTypeOfOpaque=new Set(entries.filter(({node})=>node.bwSourceTypeOfOpaque).map(({node,owner})=>graph.node(cell(node,owner))));
+    const sourceTypeOfKinds=new Set(['number','boolean','string','null','undefined','array','Image','Buffer','object']);
     for(const {node,owner} of entries){
         const types=graph.node(cell(node,owner)).types;
         if(types.size && [...types].every(type=>primitiveTypes.has(type)))primitives.add(node);
         if(types.has('string') && [...types].every(type=>primitiveTypes.has(type)))strictStrings.add(node);
+        if(!sourceTypeOfOpaque.has(graph.node(cell(node,owner))) && types.size && [...types].every(type=>sourceTypeOfKinds.has(type)) &&
+            (!types.has('object') || node.bwObjectTypes?.includes('object')))sourceTypeOfOperands.add(node);
     }
     const data = new WeakSet();
     for (const {node, owner} of entries) {
@@ -3555,7 +3569,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(types.has('physics-engine') || graph.has(value,'PhysicsEngine') && !['number','string','boolean','Image','Sprite','Scene'].some(type=>graph.has(value,type)))physicsEngines.add(node);
         if(types.has('null') && [...types].every(type=>type==='null'||type==='sprite'))nulls.add(node);
     }
-    return {objects,primitives,strictStrings,textSprites, buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
+    return {objects,primitives,strictStrings,sourceTypeOfOperands,textSprites, buffers, players, images: references, tiles, legacyTiles, sprites, animations, sevensegDigits, sevensegCounters, darts, corgis, scenes, physicsEngines, nulls, arrays, numbers, strings, booleans, data,
         spriteFunctions:new Set([...functions].filter(([,fn])=>graph.has(fn.resultCell,'Sprite')).map(([name])=>name)),
         parameters:new Map([...functions].map(([name,fn])=>[name,new Set(fn.node.params.filter(param=>graph.has(binding(fn.owner,param),'Sprite')))]))};
 };

@@ -97,6 +97,24 @@ module.exports = function createSourceScalarCells(runtime, values, referenceType
         }
         return undefined;
     };
+    // Read the registered source reference binding, never the displayed value.
+    const referenceTypeOf = (target, id) => {
+        if (!active || !runtime.targets.includes(target)) return undefined;
+        const variable = target.lookupVariableById(id);
+        for (const binding of bindings.values()) {
+            if (binding.variable !== variable || !binding.reference) continue;
+            if (binding.generation !== generation || !runtime.targets.includes(binding.owner) || !runtime.targets.includes(binding.target) ||
+                binding.target.blocks.getBlock(binding.block.id) !== binding.block) return undefined;
+            const current = resolve(binding.target, binding.block);
+            if (current.variable !== binding.variable || current.owner !== binding.owner ||
+                current.id !== binding.id || current.type !== binding.type || !current.reference ||
+                !referenceTypes.same(current.typeInfo, binding.typeInfo)) {
+                throw new Error('Source reference binding changed after prelude');
+            }
+            return binding.type;
+        }
+        return undefined;
+    };
     const declare = (args,util) => {
         const block=util?.target?.blocks.getBlock(util.thread.peekStack());
         if(block?.opcode!==OPCODE)throw Error('Source scalar declaration needs its current command');
@@ -107,5 +125,5 @@ module.exports = function createSourceScalarCells(runtime, values, referenceType
         if(block?.opcode!==REFERENCE)throw Error('Source reference declaration needs its current command');
         return validateDeclaration(args,util);
     };
-    return {initialize, invalidate, declare, declareReference, typeOf, dispose: invalidate};
+    return {initialize, invalidate, declare, declareReference, typeOf, referenceTypeOf, dispose: invalidate};
 };

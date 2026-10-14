@@ -32,7 +32,7 @@ export function prepareObjectClassExport(emitter) {
     }
     const builtinNames=new Set(sdkExportClasses().map(cls=>cls.name));
     const builtinObject=emitter.project.targets.some(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_createObject' && builtinNames.has(literal(target,block,'CLASS'))));
-    if(!classes.size && !builtinObject)return {classes,procedures,variableTypes:new Map(),localType:()=> 'any',render:()=>[],receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
+    if(!classes.size && !builtinObject)return {classes,procedures,variableTypes:new Map(),valueTypes:()=>new Set(),localType:()=> 'any',render:()=>[],receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
     for(const cls of sdkExportClasses())if(!classes.has(cls.name))classes.set(cls.name,cls);
     const ancestors=name=>{const result=[],seen=new Set();while(name){if(seen.has(name)||!classes.has(name)){emitter.note('Class inheritance export requires declared acyclic parents');return [];}seen.add(name);result.push(classes.get(name));name=classes.get(name).parent;}return result;};
     const resolveMember=(cls,name,method=false)=>ancestors(cls.name).flatMap(base=>method?base.methods:base.fields).find(value=>value.name===name);
@@ -126,6 +126,7 @@ export function prepareObjectClassExport(emitter) {
         revision=graph.revision;
         for(const target of emitter.project.targets)for(const block of Object.values(target.blocks||{})) {
             const value=cell(target,block),owner=owners.get(block),op=block.opcode;
+            if(op==='arcade_sourceTypeOf')graph.add(value,'string');
             if(op==='arcade_createObject'){const name=literal(target,block,'CLASS');if(classes.has(name)){addType(value,name);bind(target,classes.get(name).constructor,args(target,block),1);}}
             if(op==='arcade_callFunction'){const code=literal(target,block,'NAME');graph.merge(value,`${key(target,code)}:result`);bind(target,code,args(target,block));}
             if(op==='arcade_returnValue')graph.merge(`${owner}:result`,input(target,block,'VALUE'));
@@ -227,5 +228,6 @@ export function prepareObjectClassExport(emitter) {
         }
         Object.assign(emitter,saved);return out;
     }
-    return {classes,procedures,variableTypes,localType,render,receiver,superCall,parameterPropertyBlocks,publicName:sdkClassPublicName,hasType:type=>classes.has(sdkClassName(type.replace(/(?:\[\])+$/,'')))};
+    const valueTypes=(target,block)=>new Set(graph.node(cell(target,block)).types);
+    return {classes,procedures,variableTypes,valueTypes,localType,render,receiver,superCall,parameterPropertyBlocks,publicName:sdkClassPublicName,hasType:type=>classes.has(sdkClassName(type.replace(/(?:\[\])+$/,'')))};
 }
