@@ -159,9 +159,16 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
         }
         if (['Identifier', 'Member'].includes(node?.type)) {
             const symbol = access(node, scope);
-            if (!symbol && node.type==='Member' && node.object?.type==='Identifier' && !lookup(scope,node.object.name)) {
-                const path=node.object.name+'.'+node.name;
-                if(Object.prototype.hasOwnProperty.call(ARCADE_SCENE_CONSTANTS,path))return ARCADE_SCENE_CONSTANTS[path];
+            if (!symbol && node.type === 'Member') {
+                const names = [];let rootNode = node;
+                while (rootNode?.type === 'Member') {names.unshift(rootNode.name);rootNode = rootNode.object;}
+                // Only an unbound SDK root may use the immutable known table.
+                // A source binding (including a later declaration or private
+                // namespace name) must never turn into an SDK constant.
+                if (rootNode?.type === 'Identifier' && !lookup(scope,rootNode.name)) {
+                    const path = [rootNode.name,...names].join('.');
+                    if (Object.prototype.hasOwnProperty.call(ARCADE_SCENE_CONSTANTS,path)) return ARCADE_SCENE_CONSTANTS[path];
+                }
             }
             if (symbol?.kind === 'enumMember') return symbol.value;
             if (symbol?.constant !== undefined) return symbol.constant;
