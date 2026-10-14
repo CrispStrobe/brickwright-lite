@@ -119,8 +119,10 @@ export class RenodeArenaSession {
                             closed: () => this.closed,
                             onFrame: frame => {
                                 this.acceptFrame(frame);
+                                if (this.closed) return;
                                 this.latestFrame = frame;
                                 this.observeOutput(frame);
+                                if (this.closed) return;
                                 this.onFrame(this.adapter.bridge.snapshot());
                             }});
                     }
@@ -347,6 +349,7 @@ export class RenodeArenaSession {
             if (this.closed) throw new Error('NuttX session is closed');
             await this.verifyDualFrame();
             const reply = await this.programClient[operation]();
+            if (this.closed) throw new Error('NuttX session is closed');
             if (operation === 'load') { this.loaded = true; this.retainedProgram = true; }
             this.observeProgram(reply);
             return reply;
