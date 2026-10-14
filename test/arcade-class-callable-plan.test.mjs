@@ -4,6 +4,12 @@ import {validateClassCallablePlan,createClassCallablePlan} from '../overlay/scra
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 import {analyseCallableFlow} from '../overlay/scratch-gui/src/lib/bw-makecode/callable-flow.js';
 import nativeSchema from '../overlay/scratch-vm/src/extensions/crispstrobe/arcade/class-callable-plan.generated.js';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+
+test('the shipped native class plan validator is generated from the current frontend source',()=>{
+    execFileSync(process.execPath,[fileURLToPath(new URL('../scripts/gen-class-callable-plan-validator.mjs',import.meta.url)),'--check'],{stdio:'pipe'});
+});
 const named=name=>({kind:'named',name});
 const signature=(parameters,result)=>({kind:'callable',parameters,result});
 const plan=()=>({schema:'bw-class-callable-lexical',version:2,module:'module',classes:[{name:'Holder',parent:null}],owners:[
