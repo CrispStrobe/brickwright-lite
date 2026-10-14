@@ -10,6 +10,23 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ## Latest source qualification — 2026-10-14
 
+The [bounded BaseDialog subclass contract](ARCADE-BASE-DIALOG-SUBCLASSES.md)
+now covers authored `drawTextCore()` and `update()` overrides, explicit
+`super.update()`, ordered pause completion, Stop cancellation, and real old/new
+image aliases after resize. Source and newly exported original executions agree
+on seven observations and all 843 image pixels; Code, same/fresh saved projects,
+and export/reimport preserve them. Seven affected native/descriptor controls
+also pass on the composed integration source. Existing native dialog instances
+retain their actual SDK update method. Constructor virtual dispatch, layout
+overrides, Sprite physical subclassing and a class authoring GUI remain separate
+gaps. This does not qualify a complete Carnival game.
+
+The unchanged 184-input audit remains 147 translated, 36 partial and one parse
+failure after this integration, with every input checked against its original
+Git blob. The separate authentic-context audit remains 29 original-valid
+projects (19 structurally strict, ten blocked) and 12 original-invalid projects.
+Neither structural audit establishes runtime or GUI compatibility.
+
 ### Integration refresh
 
 Integration source `33a469196cc648120d26c760796442bcfae036e3` adopts normally

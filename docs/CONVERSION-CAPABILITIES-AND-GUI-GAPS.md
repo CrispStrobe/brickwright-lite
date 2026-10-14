@@ -1,5 +1,24 @@
 # Conversion capabilities and GUI closure ledger
 
+## BaseDialog subclass authoring checkpoint — 2026-10-14
+
+The [bounded subclass contract](ARCADE-BASE-DIALOG-SUBCLASSES.md) adds real
+`drawTextCore()`/`update()` overrides and `super.update()` with ordered managed
+continuations, image/frame alias identity, resize, and cancellation. Native,
+Code, saved-project and selected-original export controls pass. Existing native
+dialogs retain direct SDK dispatch. Complete games and visible editor journeys
+are still unqualified for this slice.
+
+| Surface | Available | Remaining acceptance |
+| --- | --- | --- |
+| Code | Editable managed class declarations and real override bodies | Discover inherited methods, types and visibility; diagnose refused constructor/layout overrides at source locations |
+| Blocks | Existing class/method, field and image operations | Class and override creation UI, discoverable `super` calls, readable object sockets; visible edit/save/reopen/replay controls |
+| Graphics | Drawing uses the real current image; old image references survive resize | Inspect the subclass image and frame; edit artwork and replay a genuine subclass game through save/export/reimport |
+| Debugger | Paused overrides finish before cursor work; Stop cancels pending work | Display current object ownership, fields and continuation state without evaluating methods |
+
+No raw corpus project is promoted by this checkpoint: the immutable census
+remains 147 translated, 36 partial and one parse failure out of 184 inputs.
+
 Baseline reviewed 2026-10-07 against Lite main
 [`168457065`](https://github.com/CrispStrobe/brickwright-lite/commit/16845706545b115b76dd04f391cdebb1c3204e4c).
 The Arcade integration claim in [LANES.md](../LANES.md) owns this handoff.
