@@ -94,9 +94,12 @@ const openFile = async file => {
 };
 const fieldInfo = spec => page.evaluate(({opcode, input, value}) => {
     const workspace = window.Blockly.getMainWorkspace();
-    const block = workspace.getAllBlocks(false).find(block => block.type === opcode && (value === undefined || block.getInputTargetBlock(input)?.getDescendants(false).some(node => node.inputList.flatMap(i => i.fieldRow).some(f => String(f.getValue()) === value))));
+    const block = workspace.getAllBlocks(false).find(block => block.type === opcode && (value === undefined || String(block.getFieldValue(input)) === value || block.getInputTargetBlock(input)?.getDescendants(false).some(node => node.inputList.flatMap(i => i.fieldRow).some(f => String(f.getValue()) === value))));
     const child = block?.getInputTargetBlock(input);
-    const candidates = [];
+    // Fixed native menus live on the command/reporter itself; accepting menus
+    // live on its connected shadow. Edit the real field in either case.
+    const direct = block?.getField(input);
+    const candidates = direct ? [{node: block, field: direct}] : [];
     const walk = node => { if (!node) return; for (const input of node.inputList) for (const field of input.fieldRow) if (field.name) candidates.push({node, field}); for (const next of node.getChildren(false)) walk(next); };
     walk(child);
     const selected = candidates.find(({field}) => value === undefined || String(field.getValue()) === value);
@@ -207,7 +210,10 @@ try {
     await editMenu({opcode: 'arcade_settingsRead', input: 'TYPE', value: 'String'}, 'StringArray', ['StringArray', 'String']);
     const edited = {maximum: 12, operation: 'max'}; await cycle('visible-block-edits', edited, numericAuthoringFiles(edited));
     await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click();
-    await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString().includes('arcade clamp minimum'));
+    await page.waitForFunction(() => {
+        const code = document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString();
+        return Boolean(code && /arcade clamp minimum[^\n]*maximum .*12/.test(code));
+    });
     const code = await readCode(); assert.match(code, /arcade repeat while/); assert.match(code, /StringArray/); assert.match(code, /maximum .*12/); assert.ok(code.includes('猫'));
     await editor().click(); await page.keyboard.press('Control+a'); await page.keyboard.insertText(code.replace('猫', 'PLAY')); await apply();
     const finalOptions = {...edited, message: 'PLAY'}, finalFiles = numericAuthoringFiles(finalOptions);
@@ -220,7 +226,12 @@ try {
     const chooser = page.waitForEvent('filechooser'); await page.getByText('Load from your computer', {exact: true}).click(); await (await chooser).setFiles(archive);
     await page.waitForFunction(() => typeof window.__brickwrightStore.getState().scratchGui.vm.runtime._primitives.arcade_clampNumber === 'function');
     await cycle('fresh-SB3-reopen', finalOptions, finalFiles);
-    await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click(); await openCodeActions(page);
+    await codeTab(); await page.getByRole('button', {name: /From blocks/}).first().click();
+    await page.waitForFunction(() => {
+        const code = document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString();
+        return Boolean(code && /arcade clamp minimum[^\n]*maximum .*12/.test(code) && code.includes('PLAY'));
+    });
+    await openCodeActions(page);
     const [exported] = await Promise.all([page.waitForEvent('download'), page.getByTestId('bw-makecode-arcade-export').click()]);
     const exportedPath = path.join(out, 'numeric-authoring-export.mkcd'); await exported.saveAs(exportedPath);
     const exportedBytes = await readFile(exportedPath), embedded = await readMakeCodeProjectText(exportedBytes.toString('utf8'), 'mkcd');

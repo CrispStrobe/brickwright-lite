@@ -1,6 +1,6 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
-Updated 2026-10-13. The current-state refresh below supersedes the older
+Updated 2026-10-14. The current-state refresh below supersedes the older
 2026-10-10 checkpoints retained later in this guide. This is the public
 entry point for continuing MakeCode compatibility work without chat history.
 Read the optional, gitignored `docs/ARCADE-AGENT-HANDOFF.local.md` for the
@@ -9,6 +9,32 @@ Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
 
 ## Latest source qualification — 2026-10-13
+
+### Settings and array authoring — 2026-10-14
+
+The latest official GUI build passed artifact admission, then exposed a real
+Settings serialization defect: compiler menu inputs did not match native fixed
+dropdown fields, so the editor replaced StringArray with Number. The paired
+supplier correction is [producer PR129](https://github.com/CrispStrobe/sb3-creator/pull/129).
+It preserves all supported type fields and genuine old literal menu shadows;
+computed or malformed legacy types are diagnosed before replacing the open
+project. The supplier passes 606 expanded compiler/dialect/SPIKE controls;
+12 consumer controls include the actual native menu metadata and project-load
+boundary. Fresh production GUI qualification remains required.
+
+[Producer PR127](https://github.com/CrispStrobe/sb3-creator/pull/127) and
+[extension PR43](https://github.com/CrispStrobe/extensions/pull/43) merged with
+successful enabled checks and matching reviewed/landed trees. Their three
+array/string reporters preserve shallow copy identity, nested aliases and
+selected PXT UTF16 indexing semantics. Integration now vendors those canonical
+bytes through the standard scoped bundle generator and adds the isolated
+array-copy/import/export slice. The vocabulary now contains 366 canonical
+forms. Reporter availability is not whole-game qualification.
+
+The official integration unit failure audit is ongoing. Distinct failing test
+blocks must be counted from actual failure records, excluding repeated log
+output and quoted examples. These counts never substitute for the unchanged
+41 partial corpus projects.
 
 ### Latest integration work
 
