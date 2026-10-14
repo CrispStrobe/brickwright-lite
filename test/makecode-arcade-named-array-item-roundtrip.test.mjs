@@ -8,6 +8,7 @@ import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {importGuiDependency} from './helpers/bw-integrated.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const save=(name,value)=>{if(process.env.NAMED_ITEM_EVIDENCE){fs.mkdirSync(process.env.NAMED_ITEM_EVIDENCE,{recursive:true});fs.writeFileSync(path.join(process.env.NAMED_ITEM_EVIDENCE,name),JSON.stringify(value,(_key,v)=>v===undefined?{evidenceUndefined:true}:v,2));}};
+const saveBinary=(name,bytes)=>{if(process.env.NAMED_ITEM_EVIDENCE){fs.mkdirSync(process.env.NAMED_ITEM_EVIDENCE,{recursive:true});fs.writeFileSync(path.join(process.env.NAMED_ITEM_EVIDENCE,name),bytes);}};
 const BW=(await importGuiDependency('scratch-vm/src/util/bw-values.js')).default;
 const code=`DEVICE ARCADE
 SPRITE Game:
@@ -35,12 +36,12 @@ const check=run=>{assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.w
 test('named Array getters preserve typed scalar text and aggregate JSON across native Code SB3 and export reimport',async()=>{
     const runs=[];const execute=async(code,options={})=>{const run=await runProgram(code,{frames:40,storage:true,...options});runs.push(run);check(run);return run;};
     try{
-        const first=await execute(code);await execute(first.creator.decompile());
-        const saved=Buffer.from(await(await first.vm.saveProjectSb3()).arrayBuffer());first.vm.stopAll();await first.vm.loadProject(saved);first.vm.greenFlag();await stepFrames(first.vm,40);check(first);
+        save("source-code.json",code);const first=await execute(code);const replay=first.creator.decompile();save("replay-code.json",replay);await execute(replay);
+        const saved=Buffer.from(await(await first.vm.saveProjectSb3()).arrayBuffer());saveBinary("project.sb3",saved);first.vm.stopAll();await first.vm.loadProject(saved);first.vm.greenFlag();await stepFrames(first.vm,40);check(first);
         const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(saved);fresh.vm.greenFlag();await stepFrames(fresh.vm,40);check(fresh);
         const exported=projectToArcade(first.creator.project);assert.deepEqual(exported.unsupported,[]);save('export-files.json',exported.files);
         if(!process.env.NAMED_ITEM_NATIVE_ONLY){const original=await runPxtArcade(exported.files,{fakeClock:true,waitForGlobals:{complete:1},onCompilation:packet=>save('export-compilation.json',packet)});save('export-observations.json',original);for(const [name,value] of Object.entries(expected)){const found=Object.entries(original).filter(([key])=>key===name || key===`Game_${name}`);assert.equal(found.length,1,name);assert.equal(found[0][1],value,name);}}
-        const imported=arcadeToPseudocode(exported.files);assert.deepEqual(imported.unsupported,[]);await execute(imported.code);
+        const imported=arcadeToPseudocode(exported.files);assert.deepEqual(imported.unsupported,[]);save("reimport-code.json",imported.code);await execute(imported.code);
     }finally{for(const run of runs){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
 });
 
