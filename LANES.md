@@ -1,5 +1,20 @@
 # Who is doing what — merge the claim before implementation
 
+## Arcade source scalar cells — 2026-10-14
+
+PROPOSED — Codex Arcade scalar integration, `lane/arcade-source-scalars-20261014`.
+Contract: [source scalar cells](docs/ARCADE-SOURCE-SCALARS.md).
+Envelope: new source scalar declaration/initialization and directed export flow
+helpers; their narrow Arcade source importer, export, native extension and source
+prelude hooks; one explicit producer command and enum field with reviewed pin
+adoption; Code/Blocks/rename/SB3/original execution controls and this contract.
+Bind actual stock variable IDs, preserve typed undefined before source
+initialization and ordinary Scratch saved defaults. Do not use name-only cell
+binding, unknown mutation attributes or a project-wide typing switch. Preserve
+independent source phase, class/accessor, Scene/controller and supplier lanes.
+No product command or source prelude changes until this claim lands. Private
+prototypes and original controls are preparation only; no whole-game promotion.
+
 ## Arcade classes and mutable object semantics — proposed
 
 Claim proposed for the Arcade compatibility lane. Contract:
@@ -3437,6 +3452,21 @@ arrays and serialized reference observations with bounded incomplete results.
 No automatic sweep, complete-root claim, new opcode or producer pin change.
 Explicit hidden-owner leases and preallocation reservations remain required.
 Scope and followup method are in the Buffer contract;142/41/1 unchanged.
+
+## Arcade editor startup dependency boundary — 2026-10-13
+
+PROPOSED CLAIM — Codex Arcade integration. Merge this claim before product edits.
+Envelope: a pure tilemap-block presence helper in `lib/bw-makecode/`, the presence
+read in `containers/costume-tab.jsx` and its tracked mirror, focused equivalence
+controls, this ledger and the linked contract. Existing painter decoding, legacy
+layout resolution, validation, saves, sprite placement and ownership remain intact.
+The startup byte gate has a concrete failure; preserve its exact budget and
+original result. Replace the eager full-editor import with the same presence
+semantics for original targets, modern/legacy blocks and malformed/computed data.
+Qualify emitted initial bytes through the unchanged hosted P17 gate, and retain
+actual painter and editor journeys. No local full GUI build, threshold change or
+claim that a structural source scan proves emitted bundle size. Contract:
+[editor load boundary](docs/ARCADE-EDITOR-LOAD-BOUNDARY.md).
 
 ## Arcade SB3 device and pane restoration — 2026-10-13
 
