@@ -38,6 +38,8 @@ shard has no completed census. The artwork reload journey fails because its
 unhandled replacement confirmation is dismissed by the browser test; the new
 test accepts that specific confirmation and retains stage, asset and pixel checks.
 Its new browser qualification is pending. Earlier failures remain preserved.
+The [unit follow-up list](ARCADE-UNIT-FAILURE-FOLLOWUP.md) names all forty
+recorded failures and the route-by-route method for closing them.
 
 The official [numeric authoring job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38581351652/job/115917111987)
 passes on reviewed head `c1128242b39ace14e6b911a784ce9ee3118540f7`, with qualified
