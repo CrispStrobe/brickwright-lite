@@ -45,3 +45,8 @@ test('an actual typed source reference binding never gains scalar authority from
 test('prototype-sensitive native registry names stay refused rather than changing missing or deleted reads',()=>{
     for(const name of ['__proto__','constructor','toString'])assert.equal(namedArrayItemExportAuthority({targets:[stage({})]},name,()=>false).ok,false);
 });
+
+test('String addition cannot launder a reference envelope through legacy JSON input',()=>{
+    const target=stage({left:{opcode:'text',fields:{TEXT:['{"bwReference":','']}},right:{opcode:'text',fields:{TEXT:['{"kind":"array"}}','']}},joined:{opcode:'arrays_valueBinary',inputs:{LEFT:ref('left'),RIGHT:ref('right'),OP:text('+')}},push:push('items',ref('joined'))});
+    assert.equal(check([target]).ok,false);
+});

@@ -66,6 +66,19 @@ export function namedArrayItemExportAuthority(project,name,isBoolean,sourceRefer
             return !(parsed && typeof parsed==='object' && Object.hasOwn(parsed,'bwReference'));
         }catch(_){return true;}
     };
+    const mayText=(entry,seen=new Set())=>{
+        if(Object.hasOwn(entry,'value'))return typeof entry.value==='string';
+        const {target,node}=entry;if(!node)return true;
+        if(['text','bw_stringLiteral','operator_join','arrays_stringConcat'].includes(node.opcode))return true;
+        if(node.opcode==='data_variable'){
+            const binding=variable(target,node.fields?.VARIABLE?.[1]);if(!binding)return true;
+            if(seen.has(binding.key))return false;seen=new Set([...seen,binding.key]);
+            return [{value:binding.value},...(writers.get(binding.key)||[])].some(value=>mayText(value,seen));
+        }
+        if(node.opcode==='arrays_valueBinary' && String(literal(target,node,'OP').value)==='+')
+            return mayText(input(target,node,'LEFT'),seen)||mayText(input(target,node,'RIGHT'),seen);
+        return !primitive(entry);
+    };
     const legacyInput=(entry,seen=new Set())=>{
         if(Object.hasOwn(entry,'value'))return legacyLiteral(entry.value);
         const {target,node}=entry;if(!node)return false;
@@ -77,6 +90,7 @@ export function namedArrayItemExportAuthority(project,name,isBoolean,sourceRefer
         }
         // Unresolved text generation could reconstruct a reference carrier.
         if(['operator_join','arrays_stringConcat'].includes(node.opcode))return false;
+        if(node.opcode==='arrays_valueBinary' && String(literal(target,node,'OP').value)==='+' && mayText(entry))return false;
         return primitive(entry);
     };
     for(const target of targets)for(const block of Object.values(target.blocks || {})){
