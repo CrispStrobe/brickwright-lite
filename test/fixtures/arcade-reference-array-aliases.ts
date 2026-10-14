@@ -27,7 +27,7 @@ function forwardText(items: string[]): string[] {
 }
 let labelAlias = forwardText(labels)
 let sameLabels = labels === labelAlias
-let empty = []
+let empty: number[] = []
 let nested = [empty]
 let nestedAlias = nested
 nestedAlias[0].push(9)
