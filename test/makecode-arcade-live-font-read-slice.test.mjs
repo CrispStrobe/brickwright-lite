@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync,writeFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {VM_SRC,loadExtensionClass,bundledExtensionIds} from './helpers/bw-extensions.mjs';
 const require=createRequire(import.meta.url),dispatch=require(VM_SRC+'/dispatch/central-dispatch.js');
@@ -77,6 +77,16 @@ test('candidate Font source fields and printing preserve original pixels through
         const edited=observe(run);assert.equal(edited.variables.get('normalHeight'),5);assert.equal(edited.variables.get('doubleWidth'),18);assert.equal(edited.variables.get('multiplier'),3);assert.equal(edited.variables.get('dataLength'),904);
         assert.notDeepEqual(edited.pictures.fontPicture,expected.fontPicture,'real character/font/size edits change the image');
         const changedExport=projectToArcade(JSON.parse(run.vm.toJSON()));assert.deepEqual(changedExport.unsupported,[]);
+        if(process.env.BW_FONT_READ_SLICE_PACKET)writeFileSync(process.env.BW_FONT_READ_SLICE_PACKET,JSON.stringify({source,importedCode:imported.code,editedProject:JSON.parse(run.vm.toJSON()),exportedFiles:changedExport.files,pictures:edited.pictures,observations:Object.fromEntries(['smallWidth','normalHeight','doubleWidth','multiplier','dataLength','sameFont','sharedData'].map(name=>[name,edited.variables.get(name)]))},null,2)+'\n');
+        if(process.env.BW_FONT_EDITED_ORIGINAL==='1'){
+            const {runPxtArcade}=await import('./helpers/pxt-arcade-runtime.mjs');
+            const original=await runPxtArcade(changedExport.files,{inspectImageGlobals:['fontPicture','fontMissingPicture'],onCompilation:packet=>{
+                if(process.env.BW_FONT_COMPILATION_PACKET)writeFileSync(process.env.BW_FONT_COMPILATION_PACKET,JSON.stringify(packet,null,2)+'\n');
+            }});
+            if(process.env.BW_FONT_ORIGINAL_OBSERVATIONS)writeFileSync(process.env.BW_FONT_ORIGINAL_OBSERVATIONS,JSON.stringify(original,null,2)+'\n');
+            assert.deepEqual(original.$images,edited.pictures,'selected original uses every edited bitmap pixel');
+            for(const name of ['smallWidth','normalHeight','doubleWidth','multiplier','dataLength','sameFont','sharedData'])assert.equal(original[name],edited.variables.get(name),name+' selected original');
+        }
         assert.match(changedExport.files['main.ts'],/normal = image.font5/);assert.match(changedExport.files['main.ts'],/scaledFont\(normal, 3\)/);assert.match(changedExport.files['main.ts'],/\.print\("B"/);
         const changedImport=arcadeToPseudocode(changedExport.files['main.ts']);assert.deepEqual(changedImport.unsupported,[]);
         const changedRun=await runArcadeSourceCode(changedImport.code,{frames:1});
