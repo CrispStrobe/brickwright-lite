@@ -44,3 +44,22 @@ test('actual generated particle BaseSprite z setter dirties only the current Sce
  child.flags=0;source.z=NaN;assert.equal(child.flags,1,'NaN is not equal to its preceding value');
  runtime.emit('PROJECT_START');
 });
+
+test('Scene flag palette defaults use numeric shadows while connected primitive values retain identity', async () => {
+    const {loadExtensionClass} = await import('./helpers/bw-extensions.mjs');
+    const {createArcadeRuntimeMock} = await import('./helpers/arcade-runtime-mock.mjs');
+    const BW = (await import('../overlay/scratch-vm/src/util/bw-values.js')).default;
+    const arcade = new (loadExtensionClass('arcade'))(createArcadeRuntimeMock());
+    const value = arcade.getInfo().blocks.find(block => block.opcode === 'setSceneFlags').arguments.VALUE;
+    assert.equal(value.type, 'number');
+    assert.equal(value.defaultValue, 0);
+    const scene = arcade.currentScene();
+    const blocks = {command: {inputs: {VALUE: {block: 'shadow', shadow: 'shadow'}}}, shadow: {opcode: 'math_number'}};
+    const util = {thread: {peekStack: () => 'command'}, target: {blocks: {getBlock: id => blocks[id]}}};
+    arcade.setSceneFlags({SCENE: scene, VALUE: String(value.defaultValue)}, util);
+    assert.equal(BW.decode(arcade.sceneFlags({SCENE: scene})), 0);
+    blocks.command.inputs.VALUE.block = 'connected';
+    blocks.connected = {opcode: 'data_variable'};
+    arcade.setSceneFlags({SCENE: scene, VALUE: '2.5'}, util);
+    assert.equal(BW.decode(arcade.sceneFlags({SCENE: scene})), '2.5', 'connected values are not numeric editor shadows');
+});

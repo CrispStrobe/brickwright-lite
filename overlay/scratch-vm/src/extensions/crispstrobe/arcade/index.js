@@ -719,7 +719,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'setPhysicsEngineProperty',blockType:Scratch.BlockType.COMMAND,text:'set Arcade physics engine [ENGINE] property [PROPERTY] to [VALUE]',arguments:{...str('ENGINE',''),PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'physicsEngineProperties',defaultValue:'maxSpeed'},...n('VALUE',500)}},
           {opcode:'setScenePhysicsEngine',blockType:Scratch.BlockType.COMMAND,text:'set Arcade physics engine of scene [SCENE] to [ENGINE]',arguments:{...str('SCENE',''),...str('ENGINE','')}},
           {opcode:'sceneFlags',blockType:Scratch.BlockType.REPORTER,text:'Arcade flags of scene [SCENE]',arguments:str('SCENE','')},
-          {opcode:'setSceneFlags',blockType:Scratch.BlockType.COMMAND,text:'Arcade scene [SCENE] set flags to [VALUE]',arguments:{...str('SCENE',''),...str('VALUE','0')}},
+          {opcode:'setSceneFlags',blockType:Scratch.BlockType.COMMAND,text:'Arcade scene [SCENE] set flags to [VALUE]',arguments:{...str('SCENE',''),...n('VALUE',0)}},
           {opcode:'setUserEventsEnabled',blockType:Scratch.BlockType.COMMAND,text:'Arcade set user controller events enabled [ENABLED]',arguments:{ENABLED:{type:Scratch.ArgumentType.BOOLEAN}}},
           { opcode: 'spriteProperty', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade sprite [ID] [PROPERTY]',
