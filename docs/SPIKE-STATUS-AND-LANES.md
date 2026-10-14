@@ -1,6 +1,6 @@
 # SPIKE execution: current state and next lanes
 
-Recorded 2026-10-05; candidate adoption checkpoint 2026-10-07. Refresh the public default branches and `LANES.md` before
+Recorded 2026-10-05; adoption checkpoint 2026-10-07; lifecycle follow-up 2026-10-14. Refresh the public default branches and `LANES.md` before
 claiming a task. This is a bounded handover, not full firmware compatibility or
 physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
@@ -8,7 +8,7 @@ not public documentation inputs.
 
 ## Qualified G02 lifecycle boundaries — 2026-10-14
 
-Four focused changes have landed, each with a separately frozen installed
+Six focused changes have landed, each with a separately frozen installed
 consumer. These observations qualify the named source and owned guest scenarios;
 they do not qualify every later package assembled from main.
 
@@ -43,6 +43,26 @@ they do not qualify every later package assembled from main.
   configuration, external backend, clock and pane session references, then
   completes a distinct fresh guest and stops it normally.
 
+
+- [PR928](https://github.com/CrispStrobe/brickwright-lite/pull/928), tested
+  consumer `aaa60836f1375a44cb69224e95dc511dd56e8d1c`, merged as
+  `fff84dc6ead5c1da7a89fee52a256497d6cc32f2`: deferred-storage closure checks
+  suppress later frame/program-state publication after observer Stop. Both
+  installed own-NuttX cases first complete ordinary durable SAVE and LOAD to
+  READY without START, then cancel a newly correlated operation and complete
+  a distinct fresh guest. The terminal LOAD/frame Stop succeeds. Pending
+  SAVE/hub Stop retains the native checkpoint-refusal response while local
+  cleanup and recovery pass; this does not fix that refusal or promise rollback.
+- [PR930](https://github.com/CrispStrobe/brickwright-lite/pull/930), tested
+  consumer `59c78f3bee80b496dcd2b76180397bbae563a634`, merged as
+  `9a6706dc430472345031a82a2f83e04d4ec79035`: Stop from configuration
+  notification prevents native startup, and Stop from first-frame publication
+  prevents subsequent input/program requests. Both installed cases release
+  ownership, produce no monitored frame/output/program-state notification
+  beginning after closure, complete a distinct fresh guest and release it on
+  final Stop. Configuration cancellation admits zero arena-session native calls; first-frame
+  cancellation permits only native start/read/close.
+
 PR912 also passes eight installed GUI regressions on that same consumer:
 native Start, backend change, Reset and closure; real Code Stop during pending
 native startup followed by a completed fresh guest; and real native chooser
@@ -52,7 +72,7 @@ actual dialog without selecting an image; they do not qualify selected-image
 admission or every chooser/error race. Startup cancellation admits no program
 packet before Stop, exits the owned emulator and restores defaults and ownership.
 
-All 41 affected session controls pass; six new controls fail on the baseline,
+PR912’s 41 affected session controls pass; six new controls fail on the baseline,
 and removing each new closure guard is detected. All nine enabled exact-head
 hosted checks passed, with only the declared deployment/verification jobs skipped.
 Independent readers bind all ten installed cases to the source, application and
@@ -74,9 +94,36 @@ root ownership, and bound native/frontend inputs to the reviewed consumer.
 Retained firmware, Runtime and support payloads did not change. Original build,
 fixture and startup failures remain preserved in private evidence.
 
-G02 remains open for deferred-storage observer reentry, selected-image and chooser
-error races, and its complete installed startup/final-sampling, UART-generation
-and late-poll matrix across supported backends. The older opaque
+
+PR928’s 49 session controls and PR930’s 52 controls pass; their new guards are
+individually detected by removal controls. Standalone readers bind the fresh
+packages and installed cases to the reviewed source, application/configuration
+hashes and 191 captured control files per case. Each PR928 case retains 28 raw
+startup records. PR930 configuration cancellation retains 14 records from its
+fresh recovery guest, and first-frame cancellation plus recovery retain 28.
+Both landed changes have only the declared session, test and ledger paths;
+qualified implementation/test blobs match their landed versions. The PR928
+merge tree matches its prior prediction. The PR930 tree matches independent
+recomputation from its actual parents; the intervening main change was ledger
+only. These observations do not qualify all later main packages.
+
+All current required hosted contexts pass. PR928’s final
+[Build run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38607200124)
+and vendor check have 11 enabled successes. PR930’s
+[FAST run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38610739555),
+[THOROUGH run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38610753537)
+and vendor check have 13 successful required executions representing 11 current
+named contexts. Its initial code-event full-CI gate failed before the label was
+present in that event snapshot; the newer label-event gate passes under the
+inherited split-tier contract. That original failure, the earlier PR928 browser
+failure and failed baseline/fixture attempts remain preserved. The later PR928 browser pass came from its already-triggered ready-for-review
+run. Qualification kept the existing product deadlines, acceptance thresholds
+and dependency pins.
+
+G02 remains open for its full deferred-storage matrix, selected-image and chooser
+error races, and complete installed startup/final-sampling, UART-generation and
+late-poll matrix across supported backends, including poll errors delivered after
+Stop. The older opaque
 cold-start failures remain unexplained; successful new startups do not diagnose
 them. No timeout increase, dependency adoption, physical/reference compatibility,
 release or G05 licence/source-to-binary clearance follows from these receipts.

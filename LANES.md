@@ -15,6 +15,34 @@ Preserve unrelated diagnostics and ordinary source conversion. No callable
 `typeof`, whole-game, hosted GUI or general higher-order callback claim follows.
 See [the bounded admission contract](docs/compatibility/arcade-numeric-callable-default-admission.md).
 
+## ESP8266 device (sb3-creator + bw-board pin adoption) — 2026-10-14
+
+CLAIM — Claude, branch feat/esp8266-device-20261014, [local path omitted]
+isolated blobless clone. Make ESP8266 a selectable device: DEVICE ESP8266
+pseudocode/blocks emit C through the vendored sb3-creator back end, compile
+on the stc-compiler `esp8266` target (base64 main.bin), and run in the
+simulator through bw-board's `esp8266` debug-target kind.
+Adopt sb3-creator 8472098b99e129e4fbfec89b95d08b6b49d77931 (merge of its
+PR #144, tree caa77416) and bw-board 3b03d226cb1e7ecfcbbd28bc42fe492f8d2b6cf1
+(merge of its PR #580, tree 80ed7252). Both are fast-forwards of the current
+pins and carry intermediate upstream commits unchanged; the bw-board pin
+supersedes the precision-meter claim's 370be699 (an ancestor), so whichever
+lands second re-resolves the pin rows only.
+
+Envelope: this ledger; vendor-pins.json; root and packages/scratch-gui package
+specifications/locks; sync-script outputs of `sync:sb3creator` and
+`sync:gallery-pins`; pin-package/notices mirrors those scripts write;
+regenerated docs/generated surfaces (`gen:*`) and census snapshot mirrors;
+exact-pin assertions in existing tests that the bump moves; the device
+registration points (device picker, DEVICE→compile-target map, DEVICE→
+simulator-kind map, capability/matrix rows) in overlay and their tracked
+packages/scratch-gui twins; new focused tests. Every other device's behaviour
+and output stays unchanged. Production compile service does not yet expose
+`esp8266`, so tests use bw-board's checked-in fixture image or a mocked
+compile response, never the live service. No gallery retarget-pool change,
+no hardware flashing, no upstream contact. Merge this claim before
+implementation; implementation lands only after full CI and owner review.
+
 ## Precision meter supplier package adoption — 2026-10-14
 
 CLAIM — Codex bwcx, branch lane/precision-meter-package-adoption-20261014,
@@ -3685,3 +3713,43 @@ Arcade fresh-session SB3 reopening. Diagnose the actual metadata/load path;
 coordinate board selection with the active multi-board owner. Product edits
 follow merged claim and exact-head checks. See
 [the acceptance contract](docs/ARCADE-SB3-DEVICE-PANE.md).
+
+## SPIKE deferred-storage observer cancellation — 2026-10-14
+
+ADOPTED — [PR928](https://github.com/CrispStrobe/brickwright-lite/pull/928), tested
+source `aaa60836f1375a44cb69224e95dc511dd56e8d1c`, merged
+`fff84dc6ead5c1da7a89fee52a256497d6cc32f2`. This continuation stays
+within the merged G02 session/test envelope. Deferred storage frames can invoke
+hub, output or frame observers that synchronously Stop the session. Check closure
+after frame admission and output notification, and after the awaited storage
+client reply, before later notifications or retained LOAD state are published.
+A storage write may already have committed; this does not promise rollback.
+
+Eight new actual-session/codec controls use authored pending/terminal storage
+replies: five fail on the baseline, two live controls and an already-safe pending
+frame cancellation pass. All 49 session controls pass with the candidate; removing
+each of the three new guards is detected. Preserve storage correlation, uncertain
+outcomes, durability checkpoints, native budgets and original failures. Fresh
+source-bound installed own-NuttX SAVE/hub and LOAD/frame cancellation/recovery
+cases passed standalone audits; all current enabled exact-head checks pass.
+The pending-SAVE native checkpoint refusal remains reported, with cleanup and
+recovery verified; no rollback or native-refusal fix is claimed. Firmware, Runtime, model,
+native/Rust, dependency pins and workflows are unchanged; full G02 remains open.
+
+
+## SPIKE startup observer cancellation — 2026-10-14
+
+ADOPTED — [PR930](https://github.com/CrispStrobe/brickwright-lite/pull/930), tested
+source `59c78f3bee80b496dcd2b76180397bbae563a634`, merged
+`9a6706dc430472345031a82a2f83e04d4ec79035`, in the merged G02 session/test
+envelope following the separately qualified deferred-storage consumer. A synchronous Stop from the configuration
+notification must prevent native startup; Stop from first-frame publication must
+prevent input writes and external-backend admission. Add closure checks at both
+boundaries, preserving ordinary startup and native close ownership. Authored
+controls reproduce both missing guards: the live control passes and both Stop
+controls fail on the prior consumer. All 52 session controls pass with the two
+checks; removing either check is detected by its Stop control. Both actual installed
+configuration/first-frame cancellation and fresh guest recovery cases passed
+standalone audits; all current required exact-head contexts pass. No dependency pin,
+native code, firmware, Runtime, model, budget or workflow changes. Full G02 and
+distribution qualification remain open.
