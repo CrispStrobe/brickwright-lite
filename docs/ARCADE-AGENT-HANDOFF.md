@@ -10,6 +10,31 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ## Latest source qualification — 2026-10-14
 
+### Current immutable corpus audit
+
+The fresh raw audit at clean `22ccdcd60d5daa6207ddda6e4f4782667ed0d769`
+reports **184 inputs: 140 translated, 43 partial, one parse failure**.
+Corpus commit is `c67f4854610ccc823682280b4d1fbdf737f4a585`; input content
+multiset SHA-256 is
+`a3dc8c21a33a9fb5e1808d2b2b2d2dbc2f7ce1ab33655b7b4cb14a16894b9f03`.
+An independent read-only comparison confirms all 184 files match that commit's
+blobs. The audit receipt itself retains its original `commitVerified: false`;
+the separate comparison supplies verification without rewriting evidence.
+This audit requested no original compilation, execution or behavioral comparison.
+**No whole corpus game is GUI-qualified.** Older 142/41/1 and recovered-project
+counts below are historical profiles, not this current raw tally. Compare
+identical input/profile receipts before attributing count changes to a feature.
+
+Inline image-array artwork now groups ordered costumes while retaining ordinary
+array evaluation and identity. The selected callback tests use actual handler
+registration and timer authority: eight native controls pass without weakening
+numeric, cancellation or ownership assertions. Original/native collision timing
+has a separately preserved feature receipt; these results do not promote games.
+Fresh [Build run 38514362889](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38514362889)
+checks reviewed `0f2834b043bb7d59a6f94e6602cae96831c98021`; its official event,
+numeric and browser verdicts are pending at this checkpoint. Later local grouping
+and callback-test commits are not part of that run.
+
 ### Current integration and official GUI acceptance
 
 The latest completed [Build run 38511065833](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38511065833) built reviewed `920e089927abd906d0608c2c8bad7462ec83ddf3` at actual checkout `adb3dc8689d37e7df9070c107a6b931a8cb9e4e6`. Its [combined authoring proof](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38511065833/artifacts/11870740594) passes all five numeric journeys and twelve original comparisons. Event import and visible block edits also pass, including controller input, waiter delivery, player selection and matching complete original frames. Event Code replay fails because its first text replacement edits the stopped game's saved trace rather than the handler message. The original proof ZIP SHA256 is `c5ab96b7858955a85fd4c75ecba47ae2e44ebacc40f29da16858ab19b19646d5`. Both unit shards and light/heavy browser jobs failed; deployment skipped. This is a preserved partial GUI result.
@@ -22,7 +47,7 @@ Current supplier is `aa7ea1697a08eb393e6a002a2216f26b741f4fbf` (379 canonical fo
 
 The integrated event/scalar/staging/accessor/field/SDK-flag suite passes 32 tests through native Code, same/fresh SB3, selected original export and reimport; 15 further queue/scalar/SPIKE controls pass. The unchanged 433-input parser corpus passes all five controls, including zero unread lines, zero value/condition warnings, decompile fixed points and a failing mutation witness. Source lowering now produces 418 distinct outputs; the historical 417 count remains an older translator observation.
 
-The [event authoring journey](compatibility/arcade-event-authoring.md) is wired after numeric authoring against the same sole admitted production archive and SDK. It prepares visible palette, value/player edits, controller input, Code, fresh SB3 and actual MakeCode export/reimport checks. Preparation and local fixture checks are complete; a fresh hosted event result is required before claiming GUI qualification. Both unit shards and light/heavy browser checks failed on the previous `4c2f901` build; corrections below and mock-lifecycle qualification must finish before merge. Raw corpus counts remain 142 translated, 41 partial and one parse failure, with no whole corpus game promoted from these feature checks.
+The [event authoring journey](compatibility/arcade-event-authoring.md) is wired after numeric authoring against the same sole admitted production archive and SDK. It prepares visible palette, value/player edits, controller input, Code, fresh SB3 and actual MakeCode export/reimport checks. Preparation and local fixture checks are complete; a fresh hosted event result is required before claiming GUI qualification. Both unit shards and light/heavy browser checks failed on the previous `4c2f901` build; corrections below and mock-lifecycle qualification must finish before merge. The earlier raw profile reported 142 translated, 41 partial and one parse failure; the current immutable audit above supersedes that count. No whole corpus game is promoted by these feature checks.
 
 The subsequent [Build run 38508258984](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38508258984) built reviewed `4c2f901c73c3e98f2b57ef0472473e4c83bbf20a` at actual merge checkout `9b00057c993d6476136be348652ca8801efad921`, with compiler `8796b76eeb6d89a40d8f73bdffd8e78984796770` and Arrays `35719b72bb9280cc1e869616dd5019678f59b2f9`. Its [numeric authoring proof](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38508258984/artifacts/11868444530) passes all five authoring journeys and twelve selected-original comparisons with empty page errors. The original proof ZIP SHA256 is `ed4ab5eca8a69bdcb0ccb2005ad01de0a3f351b9517a496ed15b0dc610109d4c`. Light and heavy browser checks failed; unit checks were still running when this checkpoint was recorded. Keep these failures separate from the successful numeric journey.
 
@@ -45,7 +70,7 @@ WHEN arcade source starts:
   set count to 0
 ```
 
-The declaration is a source prelude, not an ordinary flag-time reset. Blocks use a connected stock variable reporter and a fixed type field. Graphics/class design, completion/signature help and debugger inspection remain tracked in [the GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md). Typed reference preinitialization, captured callables/dynamic callees, event-bus/multiplayer authoring and full subclass drawing services remain separate ongoing lanes. Keep their unqualified domains explicit. Raw corpus totals remain 184 / 142 translated / 41 partial / 1 parse failure; no whole corpus game has been promoted from these focused controls.
+The declaration is a source prelude, not an ordinary flag-time reset. Blocks use a connected stock variable reporter and a fixed type field. Graphics/class design, completion/signature help and debugger inspection remain tracked in [the GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md). Typed reference preinitialization, captured callables/dynamic callees, event-bus/multiplayer authoring and full subclass drawing services remain separate ongoing lanes. Keep their unqualified domains explicit. That historical raw profile was 184 / 142 translated / 41 partial / 1 parse failure. Use the current immutable audit above; no whole corpus game has been promoted from these focused controls.
 
 ### Integrated accessor and Scene slices — 2026-10-14
 
