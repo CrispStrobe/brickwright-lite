@@ -56,6 +56,14 @@ focused native and selected-original evidence, recorded in the
 qualification is pending. These changes do not revise the immutable corpus's
 36 partial inputs or turn focused controls into a full-shard result.
 
+Three named-handle controls additionally pass after checking the qualified
+kind reporters, actual numeric kind values, and the real game-over operation.
+At countdown expiration the original terminal service reports `over`, owns a
+new scene, and retains its parent with countdown zero and inactive. The test
+observes that service from its own real VM; it no longer reads the unrelated
+legacy instant-stop `gameOver` flag. This corrects the observer and does not
+patch terminal execution or claim a new full-shard result.
+
 ## Selected PXT expression-order controls
 
 Three historical lazy-value failures now have direct selected-original source
