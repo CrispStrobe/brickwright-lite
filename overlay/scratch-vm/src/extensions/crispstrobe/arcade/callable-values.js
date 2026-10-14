@@ -13,6 +13,14 @@ class ArcadeCallableValues {
         this.resetListeners = new Set();
         this.generation = 0;
         this.disposed = false;
+        // Metadata-only extension construction has no runtime or resources.
+        // Never turn it into a resource host by attaching a target afterward.
+        const boundRuntime = Boolean(runtime && typeof runtime.on === 'function' &&
+            typeof runtime.off === 'function');
+        this.assertRuntime = () => {
+            if (!boundRuntime || this.runtime !== runtime || !Array.isArray(runtime.targets))
+                throw new Error('Callable resources require their bound runtime');
+        };
         this.reset = () => {
             this.generation++;
             this.definitions = new WeakMap();
@@ -24,7 +32,8 @@ class ArcadeCallableValues {
         this.suspend = () => { this.reset(); this.disposed = true; };
         this.events = new Map([['PROJECT_START',this.reset], ['PROJECT_STOP_ALL',this.reset],
             ['PROJECT_LOADED',this.loaded], ['RUNTIME_DISPOSED',this.suspend]]);
-        for (const [event, handler] of this.events) runtime.on(event, handler);
+        if (boundRuntime) for (const [event, handler] of this.events) runtime.on(event, handler);
+        this.removeEvents = () => {if (boundRuntime) for (const [event, handler] of this.events) runtime.off(event, handler);};
     }
 
     onReset(listener) {
@@ -34,6 +43,7 @@ class ArcadeCallableValues {
     }
 
     declare(target, descriptor, declarationOwner = null) {
+        this.assertRuntime();
         let sourceOwner;
         if(descriptor?.schema==='bw-callable-declaration') {
             if(Object.keys(descriptor).some(key=>!['schema','version','site','plan','procedure'].includes(key)) || descriptor.version!==1)
@@ -86,6 +96,7 @@ class ArcadeCallableValues {
     }
 
     create(target, procedure, {locals, inheritedCaptures = new Map(), ownerProcedure, sourceModule=false} = {}) {
+        this.assertRuntime();
         const definition = this.definitions.get(target)?.get(procedure);
         if (!definition) throw new Error('Unknown callable definition');
         this.declarationCurrent(target,definition);
@@ -136,6 +147,7 @@ class ArcadeCallableValues {
     }
 
     resource(reference) {
+        this.assertRuntime();
         const id = this.values.referenceId(this.runtime, reference, 'callable');
         const resource = id && this.resources.get(id);
         if (this.disposed || !resource || resource.generation !== this.generation || !this.runtime.targets.includes(resource.target))
@@ -169,7 +181,7 @@ class ArcadeCallableValues {
     }
 
     dispose() {
-        for (const [event, handler] of this.events) this.runtime.off(event, handler);
+        this.removeEvents();
         this.suspend();
     }
 }
