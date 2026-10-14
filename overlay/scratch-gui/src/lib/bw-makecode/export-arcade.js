@@ -1191,12 +1191,15 @@ class ArcadeEmitter {
 
         case 'arrays_referenceTruthy':return `!!${this.referenceArrayValue(b)}[${v('INDEX')}]`;
         case 'arrays_referenceItem':return `${this.referenceArrayValue(b)}[${v('INDEX')}]`;
-        case 'arrays_referenceRemove':return `${this.referenceArrayValue(b)}.removeElement(${this.arrayValue(b,'VALUE')})`;
+        // A BW query can search for a value outside the array's element type.
+        // Erase only the needle's static view; keep the array, its aliases and
+        // the SDK's strict lookup/removal semantics unchanged.
+        case 'arrays_referenceRemove':return `${this.referenceArrayValue(b)}.removeElement(<any>(${this.arrayValue(b,'VALUE')}))`;
         case 'arrays_referenceRandom':return `Math.pickRandom(${this.referenceArrayValue(b)})`;
         case 'arrays_referenceLength':return `${this.referenceArrayValue(b)}.length`;
         case 'arrays_referenceSlice':return `${this.referenceArrayValue(b)}.slice(<any>${this.arrayValue(b,'START')}, <any>${this.arrayValue(b,'END')})`;
         case 'arrays_referenceConcat':return `${this.referenceArrayValue(b)}.concat(${this.referenceArrayValue(b,'OTHER')})`;
-        case 'arrays_referenceIndexOf':return `${this.referenceArrayValue(b)}.indexOf(${this.arrayValue(b,'VALUE')}, ${v('INDEX')})`;
+        case 'arrays_referenceIndexOf':return `${this.referenceArrayValue(b)}.indexOf(<any>(${this.arrayValue(b,'VALUE')}), ${v('INDEX')})`;
         case 'arrays_referenceTake': {
             const op=this.literalInput(b,'OP');
             if(op==='pop'||op==='shift')return `${this.referenceArrayValue(b)}.${op}()`;
@@ -2122,7 +2125,8 @@ class ArcadeEmitter {
             const op=this.literalInput(b,'OP'),array=this.referenceArrayValue(b);
             if(op==='set')push(`${array}[${v('INDEX')}] = ${this.arrayValue(b,'VALUE')}`);
             else if(op==='length')push(`${array}.length = ${this.arrayValue(b,'VALUE')}`);
-            else if(['push','unshift','removeElement'].includes(op))push(`${array}.${op}(${this.arrayValue(b,'VALUE')})`);
+            else if(op==='removeElement')push(`${array}.removeElement(<any>(${this.arrayValue(b,'VALUE')}))`);
+            else if(['push','unshift'].includes(op))push(`${array}.${op}(${this.arrayValue(b,'VALUE')})`);
             else if(op==='insertAt')push(`${array}.insertAt(${v('INDEX')}, ${this.arrayValue(b,'VALUE')})`);
             else if(op==='removeAt')push(`${array}.removeAt(${v('INDEX')})`);
             else if(['pop','shift','reverse'].includes(op))push(`${array}.${op}()`);
@@ -2760,7 +2764,7 @@ class ArcadeEmitter {
      * resource aliases. Constraint edges carry types through forwarded calls. */
     imageProcedureParameters () {
         const graphTextSpriteValues=new Set(),graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
-        const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],lookupTypes=[],arrayCopies=[];
+        const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],arrayCopies=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
         const inputBlock = (blocks, b, name) => {
             const input=b.inputs?.[name]?.[1];
@@ -2964,8 +2968,7 @@ class ArcadeEmitter {
                     const index=ref(inputBlock(blocks,block,'INDEX'));if(index)numbers.add(index);
                     if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(block.opcode))elements.push([array,ref(block)]);
                     if(block.opcode==='arrays_referenceRemove')elements.push([array,ref(inputBlock(blocks,block,'VALUE'))]);
-                    if(block.opcode==='arrays_referenceIndexOf')lookupTypes.push([array,ref(inputBlock(blocks,block,'VALUE'))]);
-                    if(block.opcode==='arrays_mutateReference' && ['push','unshift','insertAt','set','removeElement'].includes(literal(blocks,block,'OP')))elements.push([array,ref(inputBlock(blocks,block,'VALUE'))]);
+                    if(block.opcode==='arrays_mutateReference' && ['push','unshift','insertAt','set'].includes(literal(blocks,block,'OP')))elements.push([array,ref(inputBlock(blocks,block,'VALUE'))]);
                 }
                 if(REGISTERED_COMMANDS.has(block.opcode)){
                     const scope=callbackScopes.get(literal(blocks,block,'TOKEN'));
@@ -3037,15 +3040,8 @@ class ArcadeEmitter {
         // same result/alias graph rather than prematurely widening known sums.
         for(const [result] of valueOperations)if(!graph.node(result).types.size)graph.add(result,'any');
         inferValueOperations();
-        // Searching for a value outside a collection's inferred element type
-        // is valid in Blocks and still returns -1 using strict equality. Widen
-        // the exported collection type without aliasing the search argument
-        // to its elements (which would incorrectly change the argument type).
-        for(const [array,value] of lookupTypes)if(array && value){
-            const element=graph.element(array),types=graph.node(element).types;
-            const searched=[...graph.node(value).types].filter(type=>['Buffer','Image','Sprite','TileLocation','LegacyTile','Animation','SevenSegDigit','DigitCounter','Dart','Corgio','TextSprite','Scene','PhysicsEngine','Player','array','number','string','boolean'].includes(type));
-            if(types.size && searched.some(type=>!types.has(type)))graph.add(element,'any');
-        }
+        // Queries do not insert their needles into a collection. Its element
+        // type is determined by declarations, writes, copies and aliases.
         // Element and alias joins can make a nested array visible to reads or
         // procedure results that had no annotation of their own.
         const inferred=new Map([[graphTextSpriteValues,'TextSprite'],[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
