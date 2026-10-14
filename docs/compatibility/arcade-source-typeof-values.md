@@ -38,6 +38,14 @@ actual value or registered source allocation metadata. Native Sprite, Image,
 managed class and other reference services require a qualified ownership
 adapter and the actual SDK contract.
 
+The first slice targets primitives and unambiguous owned Array, managed class,
+Image and Buffer carriers. Native Sprite handles currently share a primitive
+string representation. A string equal to a live handle must remain a string;
+registry matching alone cannot distinguish it from the original Sprite object.
+Sprite object typing, equality and coercion require a separately qualified
+carrier migration that preserves canonical identity and existing aliases.
+Ambiguous Sprite cases keep explicit refusals in this slice.
+
 A reference kind label or token spelling cannot supply a source type. The
 service must use current registered metadata or an owned underlying value.
 Qualification must cover aliases, destroyed objects, scene changes, Stop,
