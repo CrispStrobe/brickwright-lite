@@ -56,3 +56,20 @@ test('duplicate or replaced actual helper bindings cannot gain registry authorit
         assert.ok(!nodes(result.program).some(node=>node.bwNativeNamedArray));
     }
 });
+
+test('nested If and loop locals never bind to a same-named global registry',()=>{
+    const prefix='let actual:any[]=[1];let out=0;';
+    for(const body of [
+        'if(true){let actual:any[]=[2];out=__bwNamedArrayGet(actual,0)}',
+        'if(true){var actual:any[]=[2]}out=__bwNamedArrayGet(actual,0)',
+        'for(let actual=0;actual<1;actual++){out=__bwNamedArrayGet(actual,0)}',
+        'for(let actual of [[2]]){out=__bwNamedArrayGet(actual,0)}',
+        'while(true){let actual:any[]=[2];out=__bwNamedArrayGet(actual,0);break}'
+    ]){
+        const result=lower(prefix+'function run(){'+body+'}run()');
+        assert.ok(result.unsupported.length,body);
+        assert.ok(!nodes(result.program).some(node=>node.bwNativeNamedArray));
+    }
+    const root=lower('var actual:any[]=[1];if(true){var actual:any[]=[2]}let out=__bwNamedArrayGet(actual,0)');
+    assert.ok(root.unsupported.some(message=>/nested root declaration/.test(message)));
+});

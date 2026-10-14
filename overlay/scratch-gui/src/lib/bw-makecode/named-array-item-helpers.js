@@ -48,6 +48,24 @@ const normalize = (node, names) => Array.isArray(node) ? node.map(value=>normali
 const exact = (actual, expected, names) => JSON.stringify(normalize(actual,names))===JSON.stringify(expected);
 const bindings = body => new Set(body.flatMap(node=>node.type==='Declaration' ? node.decls.map(decl=>decl.name) :
     ['FunctionDeclaration','Class'].includes(node.type) ? [node.name] : []));
+// Conservatively refuse a receiver matching any local declaration in its
+// function, including declarations carried in If/loop statement arrays. This
+// also handles function-scoped var without mistaking it for a root binding.
+const functionBindings=body=>{
+    const names=new Set();
+    const collect=node=>{
+        if(!node || typeof node!=='object')return;
+        if(Array.isArray(node)){node.forEach(collect);return;}
+        if(node.type==='Declaration')node.decls.forEach(decl=>names.add(decl.name));
+        if(node.type==='ForOf')names.add(node.name);
+        if(['FunctionDeclaration','Class'].includes(node.type)){names.add(node.name);return;}
+        if(Array.isArray(node.params))return;
+        for(const value of Object.values(node))collect(value);
+    };
+    collect(body);return names;
+};
+const loopBindings=node=>['For','ForOf','ForIn'].includes(node.type)?
+    new Set([...bindings(node.init?[node.init]:[]),...(node.variable?[typeof node.variable==='string'?node.variable:node.variable.name]:[]),...(node.type==='ForOf'?[node.name]:[])].filter(Boolean)):new Set();
 const literal = node => {
     if (['String','Number','Boolean'].includes(node?.type)) return {ok:true,value:node.type==='Number'?Number(node.value):node.type==='String'?tsText(node.value):node.value};
     if (node?.type==='Null') return {ok:true,value:null};
@@ -83,14 +101,21 @@ export function lowerNamedArrayItemHelpers(program) {
     for(const fn of functions)for(const parse of parseHelpers)for(const template of passiveTemplates)
         if(exact(fn,template,new Map([[fn.name,template.name],[parse.name,parseTemplate.name]])))passive.add(fn.name);
     const globals=new Map(program.body.filter(node=>node.type==='Declaration').flatMap(node=>node.decls.map(decl=>[decl.name,decl])));
-    const calls=[],writes=new Map(),unsupported=[],possibleMutators=[],members=[],foreignCalls=[],indexWrites=[];
-    const visit=(node,shadow=new Set(),parent=null,key=null)=>{
+    const calls=[],writes=new Map(),unsupported=[],possibleMutators=[],members=[],foreignCalls=[],indexWrites=[],nestedRootDeclarations=[];
+    const visit=(node,shadow=new Set(),parent=null,key=null,depth=0)=>{
         if (!node || typeof node!=='object') return;
-        if (Array.isArray(node)) {node.forEach(child=>visit(child,shadow,parent,key));return;}
+        if (Array.isArray(node)) {
+            if(parent?.type!=='Program' && ['body','consequent','alternate'].includes(key))shadow=new Set([...shadow,...bindings(node)]);
+            node.forEach(child=>visit(child,shadow,parent,key,depth));return;
+        }
         if (node.type==='FunctionDeclaration' && getters.has(node.name)) return;
+        if(node.type==='Declaration' && depth===0 && parent?.type!=='Program')nestedRootDeclarations.push(node);
+        if(node.type==='ForOf' && depth===0)nestedRootDeclarations.push({decls:[{name:node.name}]});
         if (node.type==='Block') shadow=new Set([...shadow,...bindings(node.body || [])]);
+        shadow=new Set([...shadow,...loopBindings(node)]);
         if (Array.isArray(node.params)) {
-            shadow=new Set([...shadow,...node.params,...bindings(node.body || [])]);
+            depth++;
+            shadow=new Set([...shadow,...node.params,...functionBindings(node.body || [])]);
         }
         if (node.type==='Identifier' && getters.has(node.name) && !shadow.has(node.name) &&
             !(parent?.type==='Call' && key==='callee')) unsupported.push('Named Array getter helper escapes its validated direct call');
@@ -111,10 +136,11 @@ export function lowerNamedArrayItemHelpers(program) {
         if (node.type==='Update' && node.argument?.type==='Identifier' && globals.has(node.argument.name) && !shadow.has(node.argument.name)) {
             const list=writes.get(node.argument.name) || [];list.push(node);writes.set(node.argument.name,list);
         }
-        for (const [childKey,value] of Object.entries(node)) if (value && typeof value==='object') visit(value,shadow,node,childKey);
+        for (const [childKey,value] of Object.entries(node)) if (value && typeof value==='object') visit(value,shadow,node,childKey,depth);
     };
     visit(program);
     const registries=new Set(calls.map(call=>call.name));
+    if(nestedRootDeclarations.some(node=>node.decls.some(decl=>registries.has(decl.name))))unsupported.push('Named Array getter has an unqualified nested root declaration of its registry binding');
     const origins=(node,seen=new Set())=>{
         if(node?.type==='Null' || literal(node).ok)return {names:new Set(),unknown:false};
         if(node?.type!=='Identifier' || !globals.has(node.name))return {names:new Set(),unknown:true};
@@ -187,8 +213,10 @@ export function lowerNamedArrayItemHelpers(program) {
         if (recognizedCalls.has(node)) return {...node,bwNativeNamedArray:{kind:'get',registry:recognizedCalls.get(node)},args:node.args.map(arg=>rewrite(arg,shadow))};
         if(recognizedMutators.has(node))return {...node,bwNativeNamedArray:recognizedMutators.get(node),args:node.args.map(arg=>rewrite(arg,shadow))};
         if (node.type==='Block') shadow=new Set([...shadow,...bindings(node.body || [])]);
-        if (Array.isArray(node.params)) shadow=new Set([...shadow,...node.params,...bindings(node.body || [])]);
-        const copy=Object.fromEntries(Object.entries(node).map(([key,child])=>[key,rewrite(child,shadow)]));
+        shadow=new Set([...shadow,...loopBindings(node)]);
+        if (Array.isArray(node.params)) shadow=new Set([...shadow,...node.params,...functionBindings(node.body || [])]);
+        const copy=Object.fromEntries(Object.entries(node).map(([key,child])=>[key,rewrite(child,
+            Array.isArray(child) && node.type!=='Program' && ['body','consequent','alternate'].includes(key)?new Set([...shadow,...bindings(child)]):shadow)]));
         if (node.type==='Declaration') copy.decls=copy.decls.map(decl=>registries.has(decl.name) && !shadow.has(decl.name)?{...decl,init:value(decl.init,decl.name)}:decl);
         if (node.type==='Assignment' && node.left?.type==='Identifier' && registries.has(node.left.name) && !shadow.has(node.left.name)) copy.right=value(node.right,node.left.name);
         return copy;
