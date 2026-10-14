@@ -374,10 +374,20 @@ let discardedReady=true`;
     await page.getByText('File', {exact: true}).click();
     const assignedChooser = page.waitForEvent('filechooser');
     await page.getByText('Load from your computer', {exact: true}).click();
+    // The real uploader asks before replacing edited work. Playwright dismisses
+    // an unhandled confirm, leaving the old project in place.
+    const confirmAssignedReload = async dialog => {
+        report.assignedReloadDialog = {type: dialog.type(), message: dialog.message()};
+        if (dialog.type() === 'confirm') await dialog.accept();
+        else await dialog.dismiss();
+    };
+    page.once('dialog', confirmAssignedReload);
     await (await assignedChooser).setFiles(assignedPath);
     await page.waitForFunction(({name, asset, stage}) => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== stage &&
         window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.some(target => target.isOriginal && target.getName() === name && target.sprite.costumes[0]?.asset.assetId === asset),
     {name: assignedBinding[2], asset: editedAssignedAsset, stage: beforeAssignedReloadStage});
+    page.off('dialog', confirmAssignedReload);
+    if (report.assignedReloadDialog) assert.equal(report.assignedReloadDialog.type, 'confirm');
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     await flag.click();
     await waitAssignedPixels();
