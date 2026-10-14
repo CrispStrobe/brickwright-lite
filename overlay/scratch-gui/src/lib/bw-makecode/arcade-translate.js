@@ -1431,7 +1431,7 @@ class ArcadeTranslator extends BaseTranslator {
                 const value=this.arrayElementValue(arg);
                 return /^[-\w.]+$/.test(value) || /^"(?:[^"\\]|\\.)*"$/.test(value) ? value : `(${value})`;
             });
-            push([name,...values].join(' '));return;
+            push(['CALL',name,...values].join(' '));return;
         }
 
         if(['pauseUntil','control.waitUntil'].includes(name)) {
@@ -5476,7 +5476,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     // or the reporter `arcade call function "name …"`.
     const calledIn = lines => t.functions.filter(fn => {
         const name = escaped(fn.name);
-        const command = new RegExp(`^\\s*${name}(?:\\s|$)`), reporter = new RegExp(`arcade call function "${name}(?:\\s|")`);
+        const command = new RegExp(`^\\s*(?:CALL\\s+)?${name}(?:\\s|$)`), reporter = new RegExp(`arcade call function "${name}(?:\\s|")`);
         return lines.some(line => command.test(line) || reporter.test(line));
     });
     const definesFor = new Map(t.sprites.map(s => [s.name, []]));
