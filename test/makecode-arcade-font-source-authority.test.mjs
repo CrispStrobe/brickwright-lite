@@ -189,3 +189,26 @@ test('ordinary class print methods without Font or Image producers retain their 
     assert.ok(lower('class Reader{constructor(){}}let receiver:any=new Reader();receiver=image.create(8,8);receiver.print("A",0,0,3,image.font8)').unsupported.some(message=>/Image producer/.test(message)));
     for(const collision of ['function Reader(){return image.create(8,8)}','let Reader:any=image.create(8,8)'])assert.ok(lower('class Reader{constructor(){}}'+collision+'let receiver=new Reader();receiver.print("A",0,0,3,image.font8)').unsupported.some(message=>/Image producer/.test(message)));
 });
+
+
+test('SDK screen and Image dimensions plus primitive concatenation provide actual Font print inputs',()=>{
+    for(const source of [
+        'let charge=3;let maximum=5;let energy="energy: "+charge+"/"+maximum;let y=screen.height-image.font5.charHeight-1;screen.print(energy,0,y,3,image.font5)',
+        'let charge=3;function recharge(){charge++}game.onPaint(function(){let energy="energy: "+charge;let y=screen.height-image.font5.charHeight-1;screen.print(energy,screen.width-40,y,3,image.font5)})',
+        'let pic=image.create(8,8);pic.print("width: "+pic.width,0,pic.height-1,3,image.font5)'
+    ])assert.deepEqual(lower(source).unsupported,[],source);
+});
+test('shadowed screen and opaque dimensions or concatenation never gain Font print authority',()=>{
+    for(const source of [
+        'screen=unknown();screen.print("A",0,0,3,image.font5)',
+        'screen=image.create(8,8);screen.print("A",0,0,3,image.font5)',
+        'let screen:any;screen.print("A",0,0,3,image.font5)',
+        'function draw(screen:any){screen.print("A",0,0,3,image.font5)}',
+        'function draw(){screen.print("A",0,0,3,image.font5);let screen:any}',
+        'if(true){let screen:any;screen.print("A",0,0,3,image.font5)}',
+        'let pic=image.create(8,8);pic=unknown();pic.print("A",0,pic.height,3,image.font5)',
+        'screen.print("energy: "+unknown(),0,0,3,image.font5)',
+        'screen.print("font: "+image.font5,0,0,3,image.font5)',
+        'screen.print("A",0,unknown().height,3,image.font5)'
+    ])assert.ok(lower(source).unsupported.length,source);
+});
