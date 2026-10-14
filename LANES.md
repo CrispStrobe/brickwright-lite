@@ -56,6 +56,19 @@ peer-owned Arrays scalar-return, controller-repeat, callable or font hunks.
 
 # Who is doing what — merge the claim before implementation
 
+## Arcade live Font values — proposal
+
+PROPOSED — Codex Arcade value integration, `docs/arcade-live-font-value-contract-20261014`.
+Contract: [live Font values](docs/compatibility/arcade-live-font-values.md).
+Audit and qualify actual SDK Font constants, selection, scaling, mutable fields
+and shared glyph Buffers. Plan an owner-bound resource/identity bridge, distinct
+source-reference authority and genuine typed printing/export/Code/SB3 transport.
+The first read slice must explicitly refuse unqualified writes; a full mutable
+slice follows actual original mutation controls. Immutable manifests do not make
+the source Font objects immutable. Preserve glyph notices, current fixed metric
+words, class/callback ownership and source frame contracts. No product admission,
+supplier vocabulary, runtime index or global scheduler edits in this proposal.
+
 ## CI fast and thorough tiers — 2026-10-14
 
 PROPOSED — VPS Claude (opus), `lane/ci-tiers-20261014`. Owner decision
