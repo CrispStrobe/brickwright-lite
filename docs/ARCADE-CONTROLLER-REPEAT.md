@@ -97,3 +97,24 @@ These are bounded headless source and native checks. Actual palette authoring,
 controller-pane holding, edited Blocks and installed saved/reopened project
 journeys still require the matching official production GUI artifact. This
 candidate does not establish whole-game or hardware compatibility.
+
+## Hosted authoring acceptance
+
+The prepared [production GUI journey](../scripts/verify-arcade-controller-repeat-authoring-gui.mjs)
+uses an independently owned [fixture](../test/fixtures/arcade-controller-repeat-authoring-game.mjs).
+The existing admitted-build CI consumer supplies the exact official artifact,
+source checkout, supplier pin, SDK and served-byte receipt. It creates a real
+palette command, opens the PLAYER/BUTTON/PROPERTY menus, edits Number fields,
+changes visible Code, saves SB3, reopens in a fresh browser context, exports
+MakeCode from the UI and imports that export again. Player 1 A and player 2 B
+are held until actual callback observations, released and held again through
+the controller pane. The authored fixture limits each first hold to two
+callbacks and each second hold to four; it does not alter clocks or seed RNG.
+Stable full Stage pixels and values are compared with the admitted SDK.
+
+Script syntax and native fixture preflight do not qualify the full editor.
+Matching hosted execution remains pending. The player-2 fixture uses the
+qualified multiplayer button event API; direct `controller.player2.B.onEvent`
+conversion remains a named gap. Arbitrary Button aliases, menu/start/select,
+Font editing, mobile installed-app gestures and complete games remain outside
+this bounded journey. Failures retain the current report and screenshot.
