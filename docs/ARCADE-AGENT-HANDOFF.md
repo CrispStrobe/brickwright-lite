@@ -10,6 +10,35 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ## Latest source qualification — 2026-10-14
 
+Source `typeof` now preserves the actual operator through native execution,
+edited numeric Blocks inputs, Code, same/fresh saved projects, selected-original
+export execution and reimport. The bounded E15 named-item control preserves
+thirteen authored strings, primitive/null/undefined values, JSON aggregate text
+and Array alias identity. The first exported Array receiver crash is retained;
+the exporter now uses its actual scope/type graph for mixed local Array receivers.
+It does not infer an Array from JSON-looking text. See the
+[source-type contract](compatibility/arcade-source-typeof-values.md).
+Composed-source review additionally passes 34 ownership/lowering/export/native
+controls and both native portable routes. This is not yet a merged Lite consumer
+or a visible editor qualification for this reporter. Sprite-backed and unowned
+callable representations remain explicit boundaries.
+
+The current compiler pin is qualified main
+`2cc15b9951109f3eaf1d207ade4e6a93b13cf5e5`: the source-type supplier was tested
+at `a1206d7508cf69c8f3cac0e0073827e8fb6a7698`, and the intervening
+[B18 merge](https://github.com/CrispStrobe/sb3-creator/pull/142) changes the C
+seven-segment generator, with unchanged Arcade vocabulary. Standard synchronization
+preserves every other component pin. Inventory is 385 canonical forms / 390
+including aliases; the composed canonical SPIKE artifact check also passes.
+
+The [current official build](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38586245394)
+passes numeric authoring and the heavy browser lane. Its second unit shard
+finishes with 3,550 tests: 3,503 pass, 40 fail, five skip and two TODO. The first
+shard has no completed census. The artwork reload journey fails because its
+unhandled replacement confirmation is dismissed by the browser test; the new
+test accepts that specific confirmation and retains stage, asset and pixel checks.
+Its new browser qualification is pending. Earlier failures remain preserved.
+
 The official [numeric authoring job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38581351652/job/115917111987)
 passes on reviewed head `c1128242b39ace14e6b911a784ce9ee3118540f7`, with qualified
 compiler `3a2e423954ef9d6c6066c487e051c1e22496648d` and Arrays
