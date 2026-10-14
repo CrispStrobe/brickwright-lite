@@ -29,8 +29,13 @@ function create(runtime, values, bufferOwner) {
         records = new Map(); ids = new WeakMap(); glyphViews = new WeakMap(); glyphStorage = new Map();
         text = initializeText({control: {createBuffer: size => new buffers.PxtBuffer(size)},
             NumberFormat: buffers.NumberFormat,
-            hex: strings => buffers.fromHex(String(strings.raw ? strings.raw[0] : strings[0]).replace(/\s/g, '')),
-            base64: buffers.fromBase64});
+            hex: strings => buffers.literal(String(strings.raw ? strings.raw[0] : strings[0]).replace(/\s/g, '')),
+            base64: data => {
+                // The simulator's compiled JRES hex literal reports static,
+                // but its setNumber operation still writes the backing bytes.
+                const body=buffers.fromBase64(data);
+                Object.defineProperty(body,'isStatic',{value:true});return body;
+            }});
     };
     const suspend = () => {suspended = true; records?.clear(); glyphStorage?.clear();};
     const reference = record => {
@@ -54,6 +59,7 @@ function create(runtime, values, bufferOwner) {
         if (!view) {
             // A view preserves the actual glyph storage; it is not a copied asset.
             view = new buffers.PxtBuffer(data.buffer, data.byteOffset, data.byteLength);
+            Object.defineProperty(view,'isStatic',{value:data.isStatic===true});
             glyphViews.set(data, view);
         }
         const ref = bufferReference(view);
@@ -97,6 +103,7 @@ function create(runtime, values, bufferOwner) {
         owns(ref) {return !closed && !suspended && records.has(key(ref));},
         // Internal adapter entry: printing must consume this exact live record.
         resolve,
+        textModule() {live();return text;},
         print(image, value, x, y, color, ref) {
             live(); text.helpers.imagePrint(image, value, x, y, color, resolve(ref));
         },

@@ -25,6 +25,7 @@ test('actual SDK Font constants and UTF16 selection preserve record identity and
             assert.equal(f.fonts.read(ref,'charWidth'),width);assert.equal(f.fonts.read(ref,'charHeight'),height);
             assert.equal(values.decode(f.fonts.read(ref,'multiplier')),undefined);
             assert.equal(f.buffer(f.fonts.read(ref,'data')).length,length);
+            assert.equal(f.buffer(f.fonts.read(ref,'data')).isReadOnly(),true,'reported static flag preserves selected simulator metadata');
         }
         assert.ok(Object.isFrozen(RESOURCE_MANIFEST));
         assert.equal(Object.isFrozen(f.fonts.resolve(normal)),false,'the SDK record itself is mutable');
@@ -42,6 +43,13 @@ test('scaling preserves original identity below two and shares exact glyph stora
         const body=f.fonts.resolve(base).data,view=f.buffer(data);
         assert.equal(view.buffer,body.buffer);assert.equal(view.byteOffset,body.byteOffset);
         assert.equal(view.getNumber(buffers.NumberFormat.UInt16LE,0),32);
+        // Internal service proof only: a static flag does not implement the
+        // separate, required public read-slice mutation admission fence.
+        const offset=(65-32)*8+2,original=view.getByte(offset);
+        view.setNumber(buffers.NumberFormat.UInt8LE,offset,original^255);
+        assert.equal(body[offset],original^255);
+        assert.throws(()=>view.setByte(offset,original),/Writing to read only buffer/);
+        view.setNumber(buffers.NumberFormat.UInt8LE,offset,original);
     }finally{f.fonts.dispose();}
 });
 test('read slice rejects field and shared glyph writes while keeping unrelated Buffer operations available',()=>{
