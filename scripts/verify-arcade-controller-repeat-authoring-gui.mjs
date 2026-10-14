@@ -226,7 +226,7 @@ try {
     // Retargeting loads a new project asynchronously. Wait for its visible
     // completion before opening a file owned by that new stage.
     await page.getByText('Blocks loaded.', {exact: true}).waitFor({timeout: 60000});
-    await page.waitForFunction(() => window.__brickwrightStore?.getState()?.scratchGui?.vm?.runtime?.bwDeviceId === 'arcade');
+    await page.waitForFunction(() => window.__brickwrightStore?.getState()?.scratchGui?.vm?.runtime?.bwDeviceId === 'arcade' && document.querySelector('[data-testid="bw-open-file"] input[type=file]')?.disabled === false);
     await openFile(fixture); await apply();
     const types=await page.evaluate(()=>window.Blockly.getMainWorkspace().getAllBlocks(false).map(b=>b.type));
     for(const opcode of ['arcade_buttonRepeatProperty','arcade_setButtonRepeatProperty','arcade_setButtonRepeatDefaults'])assert.ok(types.includes(opcode),`${opcode} is a real imported block`);
