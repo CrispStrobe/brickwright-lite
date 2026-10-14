@@ -35,7 +35,7 @@
  *                        becomes `not (v = 0)` (MakeCode's truthiness of a
  *                        number)
  *
- * `kind` is command | reporter | boolean | hat. A hat is spelled with a
+ * `kind` is command | reporter | boolean | hat | loop. A hat is spelled with a
  * leading `when` and written back as `WHEN …:`. `alias: true` marks a
  * shorter spelling the parser also reads (an optional trailing argument
  * left out); `defaults` fills what it leaves out, and the decompiler always
@@ -52,9 +52,10 @@
 // rotationDegrees before rotation: the alternation takes the first that matches.
 // rotation is PXT's Sprite.rotation (radians), rotationDegrees its degrees form,
 // data the sprite's \`data\` value (any value, not only a number).
-const PROPERTIES = 'x|y|left|right|top|bottom|vx|vy|ax|ay|fx|fy|sx|sy|scale|width|height|z|lifespan|rotationDegrees|rotation|data';
+const PROPERTIES = 'x|y|left|right|top|bottom|vx|vy|ax|ay|fx|fy|sx|sy|scale|width|height|z|lifespan|rotationDegrees|rotation|data|flags';
+const READABLE_PROPERTIES = `${PROPERTIES}|kind`;
 const FLAGS = 'AutoDestroy|StayInScreen|BounceOnWall|Invisible|Ghost|GhostThroughSprites|GhostThroughWalls|'
-    + 'GhostThroughTiles|DestroyOnWall|RelativeToCamera';
+    + 'GhostThroughTiles|DestroyOnWall|RelativeToCamera|ShowPhysics';
 const LAYOUTS = '"Left"|"Right"|"Top"|"Bottom"|"Center"|"Full"';
 const SCREEN_EFFECTS = 'confetti|hearts|smiles|blizzard|bubbles|starField|clouds|none';
 const EFFECTS = `spray|trail|fountain|rings|fire|warmRadial|coolRadial|halo|ashes|disintegrate|${SCREEN_EFFECTS}`;
@@ -79,6 +80,11 @@ const SEGMENT_CHARACTERS = 'ZERO|ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|A|
 const w = (op, kind, words, extra = {}) => Object.freeze({ op, kind, words, ...extra });
 
 export const ARCADE_WORDS = Object.freeze([
+    {op: 'arcade_whenSourceStarts', kind: 'hat', words: 'when arcade source starts'},
+    w('arcade_declareSourceReference', 'command', 'declare arcade source reference {VARIABLE} as {TYPE:reference-type}', {variableInputs: ['VARIABLE']}),
+    w('arcade_declareSourceScalar', 'command', 'declare arcade source scalar {VARIABLE} as {TYPE:Number|Boolean|String|Any}', {variableInputs: ['VARIABLE']}),
+    // An explicit source loop; ordinary Scratch loops retain their own scheduling.
+    {op: 'arcade_sourceWhile', kind: 'loop', words: 'arcade repeat while {CONDITION:bool}'},
     // ---- mutable byte buffers ------------------------------------------------
     w('arcade_createBuffer', 'reporter', 'arcade create byte buffer size {SIZE}'),
     w('arcade_bufferFromHex', 'reporter', 'arcade byte buffer from hex text {HEX}'),
@@ -147,7 +153,17 @@ export const ARCADE_WORDS = Object.freeze([
     w('arcade_allPlayers', 'reporter', 'arcade all players'),
     w('arcade_playerSprite', 'reporter', 'arcade sprite of player {PLAYER}'),
     w('arcade_registerMultiplayerButtonHandler', 'command', 'arcade register multiplayer button {BUTTON} event {EVENT} as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_allocateControlEventSource', 'reporter', 'arcade allocate control event source'),
+    w('arcade_controllerEventSource', 'reporter', 'arcade controller event source player {PLAYER:1|2|3|4}'),
+    w('arcade_setControllerConnected', 'command', 'arcade set controller player {PLAYER:1|2|3|4} connected {CONNECTED:cond}'),
+    w('arcade_registerControlEvent', 'command', 'arcade register control event source {SOURCE} value {VALUE} flags {FLAGS} as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_whenRegisteredControlEvent', 'hat', 'when arcade control event handler {TOKEN} runs'),
+    w('arcade_raiseControlEvent', 'command', 'arcade raise control event source {SOURCE} value {VALUE}'),
+    w('arcade_waitControlEvent', 'command', 'arcade wait for control event source {SOURCE} value {VALUE}'),
+    w('arcade_registerMultiplayerConnection', 'command', 'arcade register multiplayer connection event {EVENT} as {TOKEN} capturing {CAPTURES}'),
+    w('arcade_whenRegisteredMultiplayerConnection', 'hat', 'when arcade multiplayer connection handler {TOKEN} runs'),
     w('arcade_eventPlayer', 'reporter', 'arcade event player'),
+    w('arcade_playerConnected', 'boolean', 'arcade player {PLAYER} connected'),
     w('arcade_playerButtonPressed', 'boolean', 'arcade player {PLAYER} button {BUTTON} pressed'),
     w('arcade_createPlayerState', 'reporter', 'arcade create player state key'),
     w('arcade_getPlayerState', 'reporter', 'arcade state {KEY} of player {PLAYER}'),
@@ -174,6 +190,7 @@ export const ARCADE_WORDS = Object.freeze([
     w('arcade_setBackgroundColor', 'command', 'arcade set background color to {COLOR}'),
     w('arcade_setBackgroundImage', 'command', 'arcade set background image {IMAGE}'),
     w('arcade_startCountdown', 'command', 'arcade start countdown {N}'),
+    w('arcade_setHudVisibility','command','arcade set hud {ELEMENT:score|life|countdown} visible {VISIBLE:bool}'),
     w('arcade_stopCountdown', 'command', 'arcade stop countdown'),
     w('arcade_splash', 'command', 'arcade splash {TITLE} subtitle {SUBTITLE}'),
     w('arcade_showLongText', 'command', `arcade long text {TEXT} layout {LAYOUT:${LAYOUTS}}`),
@@ -333,6 +350,8 @@ export const ARCADE_WORDS = Object.freeze([
 
     // ---- commands: physics engines, animations, tiles -----------------------------
     w('arcade_setScenePhysicsEngine', 'command', 'arcade set physics engine of scene {SCENE} to {ENGINE}'),
+    w('arcade_setSceneFlags', 'command', 'arcade scene {SCENE} set flags to {VALUE}'),
+    w('arcade_setUserEventsEnabled', 'command', 'arcade set user controller events enabled {ENABLED:bool}'),
     w('arcade_setPhysicsEngineProperty', 'command',
         'arcade set physics engine property {PROPERTY:maxSpeed|minStep|maxStep} of {ENGINE} to {VALUE}'),
     w('arcade_addAnimationFrame', 'command', 'arcade add animation frame {ANIMATION} image {IMAGE}'),
@@ -356,6 +375,12 @@ export const ARCADE_WORDS = Object.freeze([
     w('arrays_mutateReference', 'command', 'mutate array reference {ARRAY} op {OP} index {INDEX} value {VALUE}'),
 
     // ---- reporters read before operator splitting (signed or spaced slots) ---------
+    w('arcade_declareSubclass', 'command', 'arcade declare subclass {NAME} of {BASE} fields {FIELDS} initializer {INITIALIZER} constructor {CONSTRUCTOR} parameters {PARAMETERS} methods {METHODS}'),
+    w('arcade_declareClass', 'command', 'arcade declare class {NAME} fields {FIELDS} initializer {INITIALIZER} constructor {CONSTRUCTOR} parameters {PARAMETERS} methods {METHODS}'),
+    w('arcade_createObject', 'reporter', 'arcade new object class {CLASS} arguments {ARGS}', {early: true}),
+    w('arcade_objectField', 'reporter', 'arcade object {OBJECT} field {FIELD}', {early: true}),
+    w('arcade_setObjectField', 'command', 'arcade set object {OBJECT} field {FIELD} to {VALUE}'),
+    w('arcade_callObjectMethod', 'reporter', 'arcade object {OBJECT} call method {METHOD} arguments {ARGS}', {early: true}),
     w('arcade_functionArgument', 'reporter', 'arcade function argument {VALUE} rest {REST}', { early: true }),
     w('arcade_callFunction', 'reporter', 'arcade call function {NAME} arguments {ARGS}', { early: true }),
     w('arcade_spawnSprite', 'reporter',
@@ -383,7 +408,7 @@ export const ARCADE_WORDS = Object.freeze([
     w('arcade_spriteToString', 'reporter', 'arcade text of sprite {ID}'),
     w('arcade_spritePixel', 'reporter', 'arcade pixel of {ID} x {X} y {Y}'),
     w('arcade_spriteImage', 'reporter', 'arcade image of {ID}'),
-    w('arcade_spriteProperty', 'reporter', `arcade property {PROPERTY:${PROPERTIES}} of {ID}`),
+    w('arcade_spriteProperty', 'reporter', `arcade property {PROPERTY:${READABLE_PROPERTIES}} of {ID}`),
     w('arcade_spritesOfKind', 'reporter', 'arcade sprite array kind {KIND}'),
     w('arcade_spriteCount', 'reporter', 'arcade count kind {KIND}'),
     w('arcade_controllerStep', 'reporter', 'arcade controller {AXIS:menu:axes:x|y} step {STEP}'),
@@ -402,10 +427,16 @@ export const ARCADE_WORDS = Object.freeze([
     w('arcade_backgroundColor', 'reporter', 'arcade background color'),
     w('arcade_truncateNumber', 'reporter', 'arcade truncate {NUM}', {early: true}),
     w('arcade_signNumber', 'reporter', 'arcade sign of {NUM}', {early: true}),
+    w('arcade_randomNumber', 'reporter', 'arcade random fraction'),
+    w('arcade_mathBinary', 'reporter', 'arcade math {OP:min|max|randomRange} first {A} second {B}', {early:true}),
+    w('arcade_percentChance', 'boolean', 'arcade percent chance {PERCENTAGE}'),
+    w('arcade_clampNumber','reporter','arcade clamp minimum {MIN} maximum {MAX} value {VALUE}',{early:true}),
     w('arcade_cameraProperty', 'reporter', 'arcade camera property {PROPERTY}'),
+    w('arcade_cameraDrawOffset','reporter','arcade camera draw offset {AXIS:x|y}'),
 
     // ---- reporters: scenes, physics engines, animations ------------------------------------
     w('arcade_currentScene', 'reporter', 'arcade current scene'),
+    w('arcade_sceneFlags', 'reporter', 'arcade flags of scene {SCENE}'),
     w('arcade_scenePhysicsEngine', 'reporter', 'arcade physics engine of scene {SCENE}'),
     w('arcade_createPhysicsEngine', 'reporter',
         'arcade create physics engine max speed {MAX_SPEED} min step {MIN_STEP} max step {MAX_STEP}'),
@@ -423,6 +454,35 @@ export const ARCADE_WORDS = Object.freeze([
     w('arcade_tilesOfType', 'reporter', 'arcade tile array image {IMAGE}'),
     w('arcade_tileLocationProperty', 'reporter',
         'arcade tile {PROPERTY:column|row|x|y|left|right|top|bottom|tileSet} of {LOCATION}'),
+    w('arcade_sceneMillis','reporter','arcade scene runtime milliseconds'),
+    w('arcade_programMillis','reporter','arcade program runtime milliseconds'),
+    w('arcade_setBackgroundScrollVersion','command','arcade use background scroll version {VERSION:"v0.1.2"|"43651f88b917a98ad886fdd4c1c2ad8001ce9b9c"}'),
+    w('arcade_setCharacterAnimationVersion','command','arcade use character animation version {VERSION:"v0.1.0"|"a8df7de6f7073b553976b9e47fbfadebcdc4f0ec"}'),
+    w('arcade_createSpriteKind','reporter','arcade create sprite kind'),
+    w('arcade_spriteKindValue','reporter','arcade sprite kind value {NAME}', {early: true}),
+    w('arcade_bindSpriteKind','command','arcade bind sprite kind name {NAME} to {KIND}'),
+    w('arcade_initializeSpriteKindLibrary','command','arcade initialize sprite kind library {LIBRARY} version {VERSION}'),
+    w('arcade_characterRuleToString','reporter','arcade character rule string {RULE}', {early: true}),
+    w('arcade_textSpriteCreate','reporter','arcade create text sprite text {TEXT} background {BACKGROUND} foreground {FOREGROUND}'),
+    w('arcade_textSpriteSetText','command','arcade text sprite {ID} set text {TEXT}'),
+    w('arcade_textSpriteSetMaxFontHeight','command','arcade text sprite {ID} set max font height {HEIGHT}'),
+    w('arcade_textSpriteSetIcon','command','arcade text sprite {ID} set icon {IMAGE}'),
+    w('arcade_textSpriteSetBorder','command','arcade text sprite {ID} set border width {WIDTH} color {COLOR} padding {PADDING}'),
+    w('arcade_textSpriteSetOutline','command','arcade text sprite {ID} set outline width {WIDTH} color {COLOR}'),
+    w('arcade_textSpriteUpdate','command','arcade text sprite {ID} update'),
+    w('arcade_textSpriteProperty','reporter','arcade text sprite {ID} property {PROPERTY:text|bg|fg|maxFontHeight|borderWidth|borderColor|padding|outlineWidth|outlineColor|icon}'),
+    w('arcade_textSpriteSetProperty','command','arcade set text sprite {ID} property {PROPERTY:text|bg|fg|maxFontHeight|borderWidth|borderColor|padding|outlineWidth|outlineColor|icon} to {VALUE}'),
+    w('arcade_settingsWrite','command','arcade write setting {KEY} type {TYPE:Number|String|NumberArray|StringArray|Buffer} value {VALUE}'),
+    w('arcade_settingsRead','reporter','arcade read setting {KEY} type {TYPE:Number|String|NumberArray|StringArray|Buffer|List}'),
+    w('arcade_settingsExists','boolean','arcade setting {KEY} exists'),
+    w('arcade_settingsRemove','command','arcade remove setting {KEY}'),
+    w('arcade_settingsClear','command','arcade clear user settings'),
+    w('arcade_spriteDataSet', 'command', 'arcade set sprite {ID} data {KEY} type {TYPE:Number|String|Boolean|Sprite} to {VALUE}'),
+    w('arcade_spriteDataRead', 'reporter', 'arcade sprite {ID} data {KEY} type {TYPE:Number|String|Sprite}'),
+    w('arcade_spriteDataReadBoolean', 'boolean', 'arcade sprite {ID} boolean data {KEY}'),
+    w('arcade_spriteDataChange', 'command', 'arcade change sprite {ID} number data {KEY} by {VALUE}'),
+    w('arcade_spriteTileKindAt', 'boolean', 'arcade sprite {ID} tile kind at {DIRECTION} equals image {IMAGE}'),
+    w('arcade_waitAnyButton', 'command', 'arcade wait until any button pressed'),
     w('arcade_tileIs', 'boolean', 'arcade tile {LOCATION} equals image {IMAGE}'),
     w('arcade_tileIsWall', 'boolean', 'arcade tile {LOCATION} is wall'),
     w('arcade_isHittingTile', 'boolean', 'arcade sprite {ID} hitting wall {DIRECTION}'),
@@ -471,6 +531,7 @@ export const ARCADE_WORDS = Object.freeze([
     // ---- reporters and booleans: images -------------------------------------------------------
     w('arcade_createImage', 'reporter', 'arcade new image width {WIDTH} height {HEIGHT}'),
     w('arcade_cloneImage', 'reporter', 'arcade copy image {IMAGE}'),
+    w('arcade_imageEquals', 'boolean', 'arcade image {IMAGE} equals image {OTHER}'),
     w('arcade_imageProperty', 'reporter', 'arcade image {PROPERTY:width|height} of {IMAGE}'),
     w('arcade_imagePixel', 'reporter', 'arcade image pixel {IMAGE} x {X} y {Y}'),
     w('arcade_imagesOverlap', 'boolean', 'arcade images overlap {IMAGE} source {SOURCE} x {X} y {Y}'),
@@ -490,8 +551,11 @@ export const ARCADE_WORDS = Object.freeze([
     w('arrays_parseLegacyValue', 'reporter', 'parse array input {VALUE}'),
     w('arrays_jsonValue', 'reporter', 'JSON text of value {VALUE}'),
     w('arrays_specialValue', 'reporter', '{KIND:undefined|null} value'),
-    w('arrays_valueBinary', 'reporter', 'calculate value {LEFT} op {OP:"+"|"-"|"*"|"/"|"%"} with {RIGHT}'),
-    w('arrays_valueUnary', 'reporter', 'convert value {VALUE} op {OP:"+"|"-"}'),
+    w('arrays_stringFromCharCode', 'reporter', 'text from char code {CODE}', {early: true}),
+    w('arrays_stringConcat', 'reporter', 'concatenate text {TEXT} with {OTHER}', {early: true}),
+    w('arrays_stringCharCodeAt', 'reporter', 'char code of text {TEXT} at {INDEX}', {early: true}),
+    w('arrays_valueBinary', 'reporter', 'calculate value {LEFT} op {OP:"+"|"-"|"*"|"/"|"%"|"**"|"&"|"|"|"^"|"<<"|">>"|">>>"} with {RIGHT}'),
+    w('arrays_valueUnary', 'reporter', 'convert value {VALUE} op {OP:"+"|"-"|"~"}'),
     w('arrays_valueTruthy', 'boolean', 'truthiness of value {VALUE}'),
     w('arrays_valueCompare', 'boolean', 'compare value {LEFT} op {OP:"=="|"!="|"==="|"!=="|"<"|">"|"<="|">="} with {RIGHT}'),
     w('arrays_referenceValues', 'reporter', 'array value {VALUE} rest {REST}'),
@@ -499,6 +563,8 @@ export const ARCADE_WORDS = Object.freeze([
     w('arrays_referenceTruthy', 'boolean', 'truthiness of item {INDEX} of array reference {ARRAY}'),
     w('arrays_referenceItem', 'reporter', 'item {INDEX} of array reference {ARRAY}'),
     w('arrays_referenceLength', 'reporter', 'length of array reference {ARRAY}'),
+    w('arrays_referenceSlice', 'reporter', 'slice array reference {ARRAY} from {START} to {END}', {early: true}),
+    w('arrays_referenceConcat', 'reporter', 'concatenate array reference {ARRAY} with {OTHER}', {early: true}),
     w('arrays_referenceRandom', 'reporter', 'random item of array reference {ARRAY}'),
     w('arrays_referenceRemove', 'boolean', 'remove value {VALUE} from array reference {ARRAY}'),
     w('arrays_referenceTake', 'reporter', '{OP:text:pop|shift|removeAt} from array reference {ARRAY} index {INDEX}'),
@@ -527,13 +593,15 @@ export function compileArcadeWord(entry) {
         const [, slot, spec] = m;
         if (!spec) return { slot, value: true };
         if (spec === 'name') return { slot, name: true };
+        if (spec === 'reference-type') return {slot, field: true, quoted: true, referenceType: true, choices: ['Sprite']};
         if (spec === 'cond' || spec === 'bool') return { slot, value: true, [spec]: true };
         if (spec.startsWith('menu:')) {
             const [, menu, choices] = spec.split(':');
             return {slot, menu, choices: choices.split('|')};
         }
         if (spec.startsWith('text:')) return { slot, text: true, choices: spec.slice(5).split('|') };
-        const choices = spec.split('|');
+        // Quoted field choices may themselves contain the choice delimiter.
+        const choices = spec.match(/"(?:[^"\\]|\\.)*"|[^|]+/g) || [];
         if (choices.every((c) => /^".*"$/.test(c))) return { slot, field: true, quoted: true, choices: choices.map((c) => c.slice(1, -1)) };
         return { slot, field: true, choices };
     });
@@ -541,6 +609,7 @@ export function compileArcadeWord(entry) {
     const source = parts.map((p, i) => {
         if (p.literal !== undefined) return escapeRe(p.literal);
         if (p.name) return '([A-Za-z_]\\w*)';
+        if (p.referenceType) return '("(?:[^"\\\\]|\\\\.)*")';
         if (p.quoted) return '("[^"]*")';
         if (p.choices && !p.menu) return `(${p.choices.map(escapeRe).join('|')})`;
         return i === last ? '(.+)' : '(.+?)';
@@ -579,7 +648,7 @@ export function spellArcadeWord(entry, read) {
         if (p.literal !== undefined) return p.literal;
         if (p.field) {
             const stored = read.field(p.slot);
-            return p.quoted ? `"${stored}"` : stored;
+            return p.referenceType ? JSON.stringify(stored) : p.quoted ? `"${stored}"` : stored;
         }
         if (p.menu) {
             const value = read.menu(p.slot, p.menu);
@@ -592,17 +661,43 @@ export function spellArcadeWord(entry, read) {
     return entry.kind === 'hat' ? `WHEN ${words.replace(/^when\s+/i, '')}:` : words;
 }
 
+// Settings use direct native dropdown fields. Only an unconnected, known
+// legacy menu shadow is a literal; a reporter with a fallback shadow is not.
+export const ARCADE_DIRECT_MENUS = Object.freeze({
+    arcade_settingsWrite: {TYPE: 'settingWriteTypes'}, arcade_settingsRead: {TYPE: 'settingReadTypes'},
+    arcade_mathBinary: {OP: 'mathOperations'},
+    arcade_setBackgroundScrollVersion: {VERSION: 'backgroundScrollVersions'}, arcade_setCharacterAnimationVersion: {VERSION: 'characterAnimationVersions'},
+    arcade_textSpriteProperty: {PROPERTY: 'textSpriteProperties'}, arcade_textSpriteSetProperty: {PROPERTY: 'textSpriteProperties'},
+    arcade_spriteDataSet: {TYPE: 'spriteDataTypes'}, arcade_spriteDataRead: {TYPE: 'spriteDataReadTypes'}
+});
+export function legacyDirectMenuValue(block, slot, blocks = {}) {
+    const menuName = ARCADE_DIRECT_MENUS[block?.opcode]?.[slot];
+    if (!menuName) return undefined;
+    const input = block.inputs?.[slot];
+    if (!Array.isArray(input) || input.length !== 2 || input[0] !== 1) return undefined;
+    const part = compileArcadeWord(arcadeWordFor(block.opcode)).parts.find(p => p.slot === slot);
+    if (Array.isArray(input[1]) && input[1][0] === 10 && part.choices.includes(input[1][1])) return input[1][1];
+    const child = typeof input[1] === 'string' ? blocks[input[1]] : undefined;
+    const value = child?.fields?.[menuName]?.[0];
+    if (child?.shadow === true && child.opcode === `arcade_menu_${menuName}` &&
+        child.next == null && Object.keys(child.inputs || {}).length === 0 && part.choices.includes(value)) return value;
+    return undefined;
+}
+
+export const legacySettingType = (block, blocks = {}) => legacyDirectMenuValue(block, 'TYPE', blocks);
+
 /**
- * Migrate the five historical Arcade/Arrays slot-shape mismatches before a
+ * Migrate historical Arcade/Arrays slot-shape mismatches before a
  * project enters native Blocks. Mutates only recognized, valid menu literals;
  * returns whether it changed the block. Native fields/inputs win. Reporter
  * expressions in old direct-menu slots cannot be represented by a dropdown
  * and are deliberately left untouched for diagnostics, rather than guessed.
  */
-export function normalizeArcadeBlockSchema(block) {
+export function normalizeArcadeBlockSchema(block, context = {}) {
     const entry = arcadeWordFor(block?.opcode);
     if (!entry) return false;
-    const direct = /^arrays_(specialValue|valueBinary|valueUnary|valueCompare)$/.test(entry.op);
+    const settings = Boolean(ARCADE_DIRECT_MENUS[entry.op]);
+    const direct = settings || /^arrays_(specialValue|valueBinary|valueUnary|valueCompare)$/.test(entry.op);
     if (!direct && entry.op !== 'arcade_controllerStep') return false;
     let changed = false;
     for (const part of compileArcadeWord(entry).parts) {
@@ -612,15 +707,22 @@ export function normalizeArcadeBlockSchema(block) {
         const input = block.inputs?.[name];
         if (direct && part.field && input) {
             const literal = input[1];
-            const legacy = Array.isArray(literal) && literal[0] === 10 && part.choices.includes(literal[1]);
+            const settingsLiteral = settings ? legacyDirectMenuValue(block, name, context.blocks) : undefined;
+            const legacy = settings ? settingsLiteral !== undefined : Array.isArray(literal) && literal[0] === 10 && part.choices.includes(literal[1]);
             if (field && part.choices.includes(field[0])) {
                 delete block.inputs[name];
                 changed = true;
             } else if (!field && legacy) {
                 block.fields ||= {};
-                block.fields[name] = [literal[1], null];
+                block.fields[name] = [settings ? settingsLiteral : literal[1], null];
                 delete block.inputs[name];
                 changed = true;
+            }
+            if (settings && legacy && !block.inputs[name] && typeof literal === 'string' && context.blocks) {
+                const child = context.blocks[literal];
+                const referenced = Object.values(context.blocks).some(other =>
+                    Object.values(other.inputs || {}).some(parts => parts?.[1] === literal || parts?.[2] === literal) || other.next === literal);
+                if (!referenced && child?.shadow === true && child.parent === context.id && child.topLevel !== true) delete context.blocks[literal];
             }
         } else if (entry.op === 'arcade_controllerStep' && name === 'AXIS' && field && part.choices.includes(field[0])) {
             block.inputs ||= {};
