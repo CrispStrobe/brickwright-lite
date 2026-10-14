@@ -29,6 +29,15 @@ the yielding-wall scheduling entry or establish a new full-shard result.
 
 ## Current exact-source qualification failures
 
+Three further focused controls now pass after correcting stale expectations.
+The optional-argument control checks the explicit `CALL:` syntax and still
+executes the procedure with an omitted argument, producing exactly three
+`Hello` lines. Multiplayer negative controls now reject an unknown controller
+event rather than the implemented `Connected` event; malformed movement arity
+and unsupported player members remain refused. Existing connection controls
+exercise the supported event's transport, replacement and scene behavior.
+These expectation corrections do not establish a new complete-shard result.
+
 At `12d8bc43327309003a9de9c69c06a7c60cac2cea`, the
 [completed first unit shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38618756907/job/116045316170)
 reports 4,610 tests: 4,548 pass, 46 fail, 14 skip and two TODO. The
