@@ -3969,6 +3969,7 @@ module.exports = makeExt(`// Name: Arcade
       try {
         const {layers,missingSpriteImages}=this._sceneLayers(),frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
         const particles=this._drawParticleSources();layers.push(...particles);
+        if(state.flags & dependencies.sceneFlags.NeedsSorting)this._particleOrderDirty=true;
         const order=this._sceneFlags.order(state,this._sceneSpriteObjects(state)),rank=item=>order.indexOf(item.bwSceneSprite || item.source);
         layers.sort((a,b)=>rank(a)-rank(b));
         imageEngine.composeFrame(frame,state.backgroundColor,state.backgroundImage,[]);
@@ -5013,6 +5014,7 @@ module.exports = makeExt(`// Name: Arcade
           output.layers.push({image:{width:160,height:120,pixels:screen.pixels.slice()},writes:new Uint8Array(160*120).fill(1),x:0,y:0,z:source.z,id:source.id,source});
           output.missingSpriteImages.push(...parentOutput.missingSpriteImages);
         } else imageEngine.composeFrame(screen,owner.backgroundColor,owner.backgroundImage,[]);
+        if(owner===active && (owner.flags & dependencies.sceneFlags.NeedsSorting))this._particleOrderDirty=true;
         const objects=this._sceneFlags.order(owner,this._sceneSpriteObjects(owner));
         for(const object of objects){
           let layers=[];

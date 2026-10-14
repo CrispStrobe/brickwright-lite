@@ -38,6 +38,15 @@ and unsupported player members remain refused. Existing connection controls
 exercise the supported event's transport, replacement and scene behavior.
 These expectation corrections do not establish a new complete-shard result.
 
+Template clone layering exposed a genuine renderer synchronization defect:
+creation after a completed frame dirtied the scene's sort, but did not refresh
+Scratch drawable ordering when that sort ran. Both ordinary and renderable scene
+composition now refresh drawable order when consuming `NeedsSorting`. The
+regression and existing scene-order controls pass nine tests, including creation
+after a frame. Existing clone controls now observe the actual render boundary;
+z writes do not prematurely sort the scene's update list. The original failure
+is preserved. Visible browser layering remains pending.
+
 At `12d8bc43327309003a9de9c69c06a7c60cac2cea`, the
 [completed first unit shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38618756907/job/116045316170)
 reports 4,610 tests: 4,548 pass, 46 fail, 14 skip and two TODO. The
