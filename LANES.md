@@ -13,6 +13,23 @@ peer-owned Arrays scalar-return, controller-repeat, callable or font hunks.
 
 # Who is doing what — merge the claim before implementation
 
+## Arcade source typeof values — 2026-10-14
+
+PROPOSED — Codex Arcade value integration, `lane/arcade-source-typeof-20261014`.
+Contract: [source typeof values](docs/compatibility/arcade-source-typeof-values.md).
+Own a narrow source type service and reporter, canonical producer vocabulary
+and tests based on the qualified producer foundation, and the corresponding
+Arcade expression/export hooks and focused qualification. This is an E15
+scalar-item export/reimport prerequisite. Preserve aggregate JSON transport,
+legacy input parsing, native reference identity and atomic source declarations.
+Coordinate native index and converter hunks with their current owners.
+Qualify selected original primitive, array, object and owned native-reference
+results; function labels and captured actions require their actual qualified
+metadata. Other callable or reference representations keep explicit diagnostics.
+Merge this claim before product edits. Keep callable source admission,
+class GUI authoring, scheduling and independent board ownership in their
+existing lanes. Producer adoption requires exact-head qualification and review.
+
 ## Arcade live font metrics — 2026-10-14
 
 PROPOSED — `docs/arcade-live-font-metrics-20261014`.
@@ -3502,6 +3519,18 @@ candidate, whose hosted merge gates are still pending. No startup failure
 attribution, deadline fix or full G02 completion is claimed.
 
 ## SPIKE remaining lifecycle boundaries — 2026-10-13
+
+Continuation candidate `lane/spike-g02-output-stop-20261014` stays in this
+merged session/test envelope. Six actual-method controls fail on the baseline:
+poll and packet hub/output callbacks, packet program-state callback, and a late
+packet input-write reply after Stop. Closure fences prevent subsequent input
+requests and observer publication while preserving correlated packet replies
+for serialized cancellation. All 41 affected controls pass, including the live
+packet publication control; removing each of the six new fences is detected.
+These use authored native boundaries. Fresh installed own-guest observer Stop,
+late-reply cleanup/recovery and all enabled exact-head checks remain required.
+No firmware, Runtime, model, native/Rust, deadline or workflow change; no full
+G02, physical or release claim.
 
 Continuation candidate `lane/spike-g02-terminal-fences-20261014` addresses
 synchronous Stop from final frame/program-state callbacks within this same

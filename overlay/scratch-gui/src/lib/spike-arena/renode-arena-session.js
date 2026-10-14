@@ -125,15 +125,21 @@ export class RenodeArenaSession {
                             }});
                     }
                     const frame = JSON.parse(await this.call('program.packet', {bytes: Array.from(bytes)}));
+                    const reply = new Uint8Array(frame.lifecycle?.nuttxProgramReply || []);
                     if (!this.closed) {
                         const inputs = this.acceptFrame(frame);
+                        // Every observer can synchronously Stop the owned session.
+                        if (this.closed) return reply;
                         this.observeProgram(frame.lifecycle?.nuttxProgram);
+                        if (this.closed) return reply;
                         this.observeOutput(frame);
+                        if (this.closed) return reply;
                         this.latestFrame = frame;
                         await this.call('arena.inputs.write', inputs);
+                        if (this.closed) return reply;
                         this.onFrame(this.adapter.bridge.snapshot());
                     }
-                    return new Uint8Array(frame.lifecycle?.nuttxProgramReply || []);
+                    return reply;
                 }, 1, {topology: this.topology});
                 this.uploading = true;
                 try {
@@ -286,7 +292,9 @@ export class RenodeArenaSession {
         const frame = JSON.parse(await this.call('state.read'));
         if (this.closed) return;
         const inputs = this.acceptFrame(frame);
+        if (this.closed) return;
         this.observeOutput(frame);
+        if (this.closed) return;
         this.latestFrame = frame;
         await this.call('arena.inputs.write', inputs);
         if (this.closed) return;
