@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import BW from '../overlay/scratch-vm/src/util/bw-values.js';
+import {loadExtensionClass,stubRuntime} from './helpers/bw-extensions.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames,clearStrayTimers,projectOpcodes} from './helpers/bw-vm.mjs';
@@ -17,7 +18,9 @@ test('shared and standalone Arrays numeric exponentiation preserve NaN, infiniti
         assert.ok(Object.is(BW.binary(left,'**',right),expected),`${String(a)} ** ${String(b)} shared`);
         assert.ok(Object.is(fallback.binary(left,'**',right),expected),`${String(a)} ** ${String(b)} fallback`);
     }
-    assert.match(bundled,/items: \["\+", "-", "\*", "\/", "%", "\*\*"\]/);
+    const menu=new(loadExtensionClass('arrays'))(stubRuntime()).getInfo().menus.valueOperations;
+    assert.equal(menu.acceptReporters,false);
+    for(const op of ['+','-','*','/','%','**'])assert.ok(menu.items.includes(op),op);
 });
 
 const source=`let trace=0
