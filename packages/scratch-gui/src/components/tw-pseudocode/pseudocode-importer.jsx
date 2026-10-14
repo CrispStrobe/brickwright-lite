@@ -1593,7 +1593,7 @@ class PseudocodeImporter extends React.Component {
     openCodeFile (e) {
         const file = (e.target.files || [])[0];
         e.target.value = '';           // so re-opening the same file fires again
-        if (!file) return;
+        if (!file || this.state.busy) return;
         this.publishGameControls(null);
         this._makeCodeProject = null;
         this._makeCodeImportedCode = null;
@@ -5405,10 +5405,10 @@ class PseudocodeImporter extends React.Component {
                     width: 220, padding: 6, background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
                     boxShadow: '0 8px 24px rgba(15,23,42,.2)', display: 'flex', flexDirection: 'column', gap: 2}}>
                     <label style={item} title={this.L.openFileTitle(`${CODE_ACCEPT},${IMPORT_ACCEPT}`)}
-                        data-testid="bw-open-file">
+                        data-testid="bw-open-file" aria-disabled={this.state.busy}>
                         {this.L.openFile}
                         <input type="file" accept={`${CODE_ACCEPT},${IMPORT_ACCEPT}`} style={{display: 'none'}}
-                            onChange={this.openCodeFile} />
+                            disabled={this.state.busy} onChange={this.openCodeFile} />
                     </label>
                     <button type="button" onClick={this.saveCodeFile} style={item}
                         title={this.L.saveFileTitle(this.saveFileName())} data-testid="bw-save-file">
