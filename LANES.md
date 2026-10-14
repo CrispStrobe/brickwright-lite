@@ -36,6 +36,17 @@ Landing requires the new exact-head full-CI qualification, including installed
 package identity, actual CLI readings/receipts and the existing circuit browser
 journey. Supplier results above do not substitute for that consumer result.
 
+Red1 provenance-only envelope extension: the hosted exact651b3c0929 unit shard
+reports4074 pass/4 fail/14 skip; all four failures identify old Board-pin records.
+Refresh overlay static/dos/msdos200-base.provenance.json, static/roms/{cpm-roms,
+free-386-bios,i8086-bios,i8086-demos}.provenance.json and scratch-vm's
+extension-support/bundled-upstream-pins.json, plus the existing tracked DOS/CPM
+package twins. Prove the supplier asset/assembler/controller source ranges and
+all retained binary/source/hash identities unchanged before updating provenance;
+use canonical record/vendor writers where available. No binary, firmware,
+media, runtime source, profile or workflow behavior change. Preserve the original
+red and all latest-main CPX/producer pins; qualify the combined forward head.
+
 ## Explicit procedure calls in Code — 2026-10-14
 
 PROPOSED — Codex Arcade integration. Product edits begin after this claim lands.
