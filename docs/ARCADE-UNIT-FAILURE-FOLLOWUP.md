@@ -27,6 +27,40 @@ The complete scene-import file passes 16 controls. Original first failures
 are retained. These corrections preserve runtime assertions and do not close
 the yielding-wall scheduling entry or establish a new full-shard result.
 
+## Current exact-source qualification failures
+
+At `12d8bc43327309003a9de9c69c06a7c60cac2cea`, the
+[completed first unit shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38618756907/job/116045316170)
+reports 4,610 tests: 4,548 pass, 46 fail, 14 skip and two TODO. The
+[second shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38618756907/job/116045316011)
+was cancelled, with 29 visible top-level failures and no completed fast-shard
+census. Its earlier 13-control preflight summary is not the shard result.
+These counts remain separate from the corpus's 36 partial inputs.
+
+The [light browser check](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38618756907/job/116050270743)
+now saves the edited assigned-image project and downloads its MakeCode export.
+Its retained failure report shows the next project replacement temporarily has
+no targets. The harness dereferenced the absent stage in that interval. Its wait
+now requires a present replacement stage with a different ID; the conversion,
+pixel, save and reimport assertions remain intact. Hosted qualification is pending.
+
+The [heavy browser check](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38618756907/job/116050270760)
+failed its unchanged startup budget: 4,484,181 initial JavaScript bytes against
+4,467,136. The official chunk graph shows Circuit Playground's synchronous
+builtin manager entry contributes its 44,933 raw source bytes to the startup
+chunk. This does not establish an exact minified attribution. Circuit Playground
+now uses the existing asynchronous builtin loader; its pane already awaits
+registration. The boot-payload gate requires its actual extension marker in a
+lazy chunk and rejects that marker in startup scripts. Fresh hosted byte
+measurement and actual loader readiness controls remain required.
+
+The [build job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38618756907/job/116045316099)
+failed the source-manifest gate because the generated stage-header message
+catalogue lacked the Circuit Playground entry. Standard Babel extraction now
+regenerates that entry. The manifest gate and bundle budget are unchanged.
+The official numeric browser job skipped after this build failure; it provides
+no qualification for this source.
+
 ## Latest completed integration run
 
 At `6992416ec1224e567abc6b964753c28784d8323a`, the
