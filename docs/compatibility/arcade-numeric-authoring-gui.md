@@ -20,8 +20,14 @@ handler subsequently fails because Blockly comment content introduces a second
 HTML `body`, making the body locator ambiguous. The diagnostic correction reads
 the document body directly and captures the Code status, current text and stage
 identity. It retains the original import error and all acceptance assertions.
-This correction does not qualify the failed import; its cause and a fresh hosted
-journey remain pending. Earlier successful numeric journeys remain evidence for
+An exact-source delayed-device control subsequently reproduced a reachable
+race: device selection replaces the stage asynchronously, and importing before
+completion can discard the file result. The repair disables file intake while
+compiling, preserves prior authoring state on a busy handler call, and makes all
+four authoring journeys wait for visible completion, applied Arcade state and an
+enabled file input. Fourteen deferred-device controls and independent source
+review pass. The hosted report lacks a stage timeline, so this reproduced race
+is a supported cause candidate; a fresh hosted journey remains required. Earlier successful numeric journeys remain evidence for
 their own exact builds.
 
 ## Required identity

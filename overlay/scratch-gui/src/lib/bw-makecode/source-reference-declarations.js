@@ -4,7 +4,7 @@ export function sourceReferenceDeclarations(program) {
     const sdk=staticSdkNamespaceReceivers(program);
     const path=node=>node?.type==='Identifier'?node.name:node?.type==='Member'?path(node.object)+'.'+node.name:null;
     const classes=new Set((program.body||[]).filter(node=>node.type==='Class').map(node=>node.name));
-    const supported=type=>type==='Sprite'||type==='Image'||classes.has(type)||
+    const supported=type=>type==='Sprite'||type==='Image'||type==='image.Font'||classes.has(type)||
         typeof type==='string'&&type.endsWith('[]')&&(['number','boolean','string','Sprite','Image'].includes(type.slice(0,-2))||classes.has(type.slice(0,-2)));
     const globals=new Map(),functions=new Map(),types=new Map(),edges=[],nodes=new WeakMap(),sealed=new Set(),arrayCells=new Set(),elementCells=new Map(),arrayReads=[],arrayCalls=[],arrayItems=[];let sequence=0;
     const add=(cell,type)=>{if(!supported(type)&&!['Scalar','Opaque','number','boolean','string','Undefined','Null','Array'].includes(type))return false;let set=types.get(cell);if(!set)types.set(cell,set=new Set());const before=set.size;set.add(type);return before!==set.size;};
@@ -39,6 +39,7 @@ export function sourceReferenceDeclarations(program) {
                 visit(fn.body,inner);
             }
         }
+        else if(node.type==='Call' && node.bwFontType==='image.Font' && ['constant','getFontForText','scaledFont'].includes(node.bwFontIntrinsic)){add(cell,'image.Font');for(const arg of node.args||[])visit(arg,scope);}
         else if(node.type==='Call'){
             const args=(node.args||[]).map(arg=>visit(arg,scope));
             const name=node.callee?.type==='Identifier'?node.callee.name:null;

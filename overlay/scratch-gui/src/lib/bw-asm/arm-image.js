@@ -13,6 +13,7 @@
 
 export const ARM_ASM_RUN = Object.freeze({
     stm32f030: {kind: 'stm32f0', origin: 0x08000000},
+    stm32g030: {kind: 'stm32g0', origin: 0x08000000},
     rp2040: {kind: 'rp2040js', origin: 0x20000000}
 });
 

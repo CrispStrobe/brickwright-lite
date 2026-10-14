@@ -500,6 +500,7 @@ export function selectDebugTargetKind(device, requested = 'emulator') {
     if (normalized === 'attiny85') return 'attiny85';
     if (normalized === 'pico') return 'rp2040js';
     if (normalized === 'stm32f030') return 'stm32f0';
+    if (normalized === 'stm32g030' || normalized === 'stm32g0') return 'stm32g0';
     if (['eater6502', '6502', 'w65c02'].includes(normalized)) return 'eater6502';
     if (['z80', 'zx48', 'zx128'].includes(normalized)) return 'z80';
     if (['i8086', '8086', 'i8088', '8088'].includes(normalized)) return 'i8086';
@@ -1484,7 +1485,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         }
         if (!out.success) throw new Error(out.error || 'the compiler refused this program');
         const isPico = String(stc.device || '').toLowerCase() === 'pico';
-        const isStm32 = deviceLower === 'stm32f030';
+        const isStm32 = deviceLower === 'stm32f030' || deviceLower === 'stm32g030' || deviceLower === 'stm32f103';
         if (!out.symbols && !isPico && !isStm32) {
             throw new Error(
                 `the image built but carries no symbol table, so the debugger cannot ` +
@@ -1581,7 +1582,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return attachI80386();
         }
 
-        if (selectedTargetKind === 'stm32f0') {
+        if (selectedTargetKind === 'stm32f0' || selectedTargetKind === 'stm32g0') {
             return attachStm32F0Target(built);
         }
 
@@ -2406,7 +2407,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         // declares no pins; inferNetlist and the pin table read stc.pins.
         const declared = projectStc(null);
         const stc = {...(declared || {}), pins: (declared && declared.pins) || []};
-        const clockHz = built.f_cpu || built.clockHz || 48_000_000;
+        const targetKind = (built && built.kind) || selectedTargetKind || 'stm32f0';
+        const defaultClock = targetKind === 'stm32g0' ? 64_000_000 : 48_000_000;
+        const clockHz = built.f_cpu || built.clockHz || defaultClock;
 
         const netlist = await resolveNetlist(vm, stc, inferNetlist);
         board = new BoardImpl(3.3);
@@ -2418,9 +2421,9 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('bw-board-ready'));
 
         const program = built.image instanceof Uint8Array ? built.image : null;
-        if (!program) throw new Error('the STM32F030 build produced no flash image');
+        if (!program) throw new Error(`the ${targetKind} build produced no flash image`);
 
-        const { target: f0Target, adapter: f0Adapter } = await createDebugTarget('stm32f0', {
+        const { target: f0Target, adapter: f0Adapter } = await createDebugTarget(targetKind, {
             board, program, symbols: built.symbols, clockHz,
         });
 
@@ -3654,7 +3657,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             return { hex: text, image: null, symbols: fw.symbols || null, c: null,
                 bytes: text.length, f_cpu: fw.fCpu || null, format: 'ihx' };
         }
-        if (kind === 'rp2040js' || kind === 'stm32f0') {
+        if (kind === 'rp2040js' || kind === 'stm32f0' || kind === 'stm32g0') {
             const bytes = fw.bytes || new TextEncoder().encode(fw.text || '');
             if (!bytes.length) throw new Error(`${fw.name}: empty firmware file`);
             if (kind === 'rp2040js') {

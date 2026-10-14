@@ -99,10 +99,17 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the qualified Arcade word table (391 opcodes)', () => {
-    assert.equal(ARCADE_DIALECT_OPS.length, 391);
+test('the pinned parser has the qualified Arcade word table (398 opcodes)', () => {
+    assert.equal(ARCADE_DIALECT_OPS.length, 398);
     const qualifiedWords = [
         {op: 'arcade_sourceTypeOf', kind: 'reporter', words: 'arcade source type of {VALUE}'},
+        {op: 'arcade_fontValue', kind: 'reporter', words: 'arcade font value {FONT:font5|font8|font12}'},
+        {op: 'arcade_fontForText', kind: 'reporter', words: 'arcade font for text {TEXT}'},
+        {op: 'arcade_scaleFont', kind: 'reporter', words: 'arcade scaled font {FONT} by {SIZE}'},
+        {op: 'arcade_printImageFont', kind: 'command', words: 'arcade print {TEXT} on image {IMAGE} x {X} y {Y} color {COLOR} using font {FONT}'},
+        {op: 'arcade_printImageFontCenter', kind: 'command', words: 'arcade print centered {TEXT} on image {IMAGE} y {Y} color {COLOR} using font {FONT}'},
+        {op: 'arcade_drawImageCircle', kind: 'command', words: 'arcade draw image circle {OP:drawCircle|fillCircle} {IMAGE} x {X} y {Y} radius {RADIUS} color {COLOR}'},
+        {op: 'arcade_drawSpriteCircle', kind: 'command', words: 'arcade draw circle {OP:drawCircle|fillCircle} of {ID} x {X} y {Y} radius {RADIUS} color {COLOR}'},
         {op: 'arcade_buttonRepeatProperty', kind: 'reporter', words: 'arcade player {PLAYER:1|2|3|4} button {BUTTON:A|B|up|down|left|right} repeat property {PROPERTY:repeatDelay|repeatInterval}'},
         {op: 'arcade_setButtonRepeatProperty', kind: 'command', words: 'arcade set player {PLAYER:1|2|3|4} button {BUTTON:A|B|up|down|left|right} repeat property {PROPERTY:repeatDelay|repeatInterval} to {VALUE}'},
         {op: 'arcade_setButtonRepeatDefaults', kind: 'command', words: 'arcade set button repeat defaults delay {DELAY} interval {INTERVAL}'}

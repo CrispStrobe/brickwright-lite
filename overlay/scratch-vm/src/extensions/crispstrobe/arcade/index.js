@@ -32,6 +32,10 @@ module.exports = makeExt(`// Name: Arcade
       this._sourceScalarCells = dependencies.createSourceScalarCells(runtime, Scratch.BWValues, dependencies.sourceReferenceTypes, dependencies.sourceCallableCells);
       this._resetProgramClock();
       this._bufferSuspended = false;
+      this._sdkFontValues=runtime && typeof runtime.on==='function' ? dependencies.sdkFontValues.create(runtime,Scratch.BWValues,
+        {reference:body=>this._bufferReference(body),resolve:ref=>this._buffer(ref)}) : null;
+      runtime?.on?.('PROJECT_LOADED',()=>{if(this._sdkFontValues?.isDisposed())this._sdkFontValues=dependencies.sdkFontValues.create(runtime,Scratch.BWValues,
+        {reference:body=>this._bufferReference(body),resolve:ref=>this._buffer(ref)});});
       this._speechEngine = dependencies.createSpeechEngine(dependencies.initializeSpeech, dependencies.fonts,
         dependencies.initializeNativeLegacy);
       this._fallbackState = null;
@@ -268,6 +272,13 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'whenRegisteredShade',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade shade handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'screenImage',blockType:Scratch.BlockType.REPORTER,text:'Arcade screen image'},
           {opcode:'sourceTypeOf',blockType:Scratch.BlockType.REPORTER,text:'Arcade source type of [VALUE]',arguments:{VALUE:{type:Scratch.ArgumentType.STRING}}},
+          {opcode:'fontValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade font [FONT]',arguments:{FONT:{type:Scratch.ArgumentType.STRING,menu:'fontValueNames',defaultValue:'font8'}}},
+          {opcode:'fontForText',blockType:Scratch.BlockType.REPORTER,text:'Arcade font for text [TEXT]',arguments:{TEXT:{type:Scratch.ArgumentType.STRING,defaultValue:''}}},
+          {opcode:'scaleFont',blockType:Scratch.BlockType.REPORTER,text:'Arcade scale font [FONT] by [SIZE]',arguments:{FONT:{type:Scratch.ArgumentType.STRING,defaultValue:''},SIZE:{type:Scratch.ArgumentType.NUMBER,defaultValue:2}}},
+          {opcode:'printImageFont',blockType:Scratch.BlockType.COMMAND,text:'Arcade print [TEXT] on image [IMAGE] x [X] y [Y] color [COLOR] using font [FONT]',
+            arguments:{IMAGE:{type:Scratch.ArgumentType.STRING,defaultValue:''},TEXT:{type:Scratch.ArgumentType.STRING,defaultValue:'Hello'},X:{type:Scratch.ArgumentType.NUMBER,defaultValue:0},Y:{type:Scratch.ArgumentType.NUMBER,defaultValue:0},COLOR:{type:Scratch.ArgumentType.NUMBER,defaultValue:1},FONT:{type:Scratch.ArgumentType.STRING,defaultValue:''}}},
+          {opcode:'printImageFontCenter',blockType:Scratch.BlockType.COMMAND,text:'Arcade print centered [TEXT] on image [IMAGE] y [Y] color [COLOR] using font [FONT]',
+            arguments:{IMAGE:{type:Scratch.ArgumentType.STRING,defaultValue:''},TEXT:{type:Scratch.ArgumentType.STRING,defaultValue:'Hello'},Y:{type:Scratch.ArgumentType.NUMBER,defaultValue:0},COLOR:{type:Scratch.ArgumentType.NUMBER,defaultValue:1},FONT:{type:Scratch.ArgumentType.STRING,defaultValue:''}}},
           {opcode:'fontMetric',blockType:Scratch.BlockType.REPORTER,text:'Arcade font [FONT] metric [PROPERTY]',arguments:{FONT:{type:Scratch.ArgumentType.STRING,menu:'fontMetricFonts',defaultValue:'font5'},PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'fontMetricProperties',defaultValue:'charHeight'}}},
           {opcode:'printImageText',blockType:Scratch.BlockType.COMMAND,text:'Arcade print [TEXT] on image [IMAGE] x [X] y [Y] color [COLOR] font [FONT]',
             arguments:{...str('TEXT','Hello'),...str('IMAGE',''),...n('X',0),...n('Y',0),...n('COLOR',1),FONT:{type:Scratch.ArgumentType.STRING,menu:'imageFonts',defaultValue:'auto'}}},
@@ -886,6 +897,7 @@ module.exports = makeExt(`// Name: Arcade
             text: 'stop Arcade countdown' }
         ],
         menus: {
+          fontValueNames:{acceptReporters:false,items:['font5','font8','font12']},
           fontMetricFonts:{acceptReporters:false,items:['font5','font8','font12']},
           fontMetricProperties:{acceptReporters:false,items:['charWidth','charHeight']},
           sourceReferenceTypes:{acceptReporters:false,items:'_sourceReferenceChoices'},
@@ -4182,6 +4194,10 @@ module.exports = makeExt(`// Name: Arcade
           renderer.updateDrawableScale(entry.drawableId,[300,300]);
           this._particleOverlays.set(layer.source,entry);created=true;
         }else if(entry.svg!==svg){renderer.updateSVGSkin(entry.skinId,svg,[80,60]);entry.svg=svg;}
+        // Debug rasters have a synthetic cache key but share their sprite's
+        // place in the scene, just as the CPU composition layers do.
+        const owner=layer.bwSceneSprite || layer.source;
+        if(entry.owner!==owner){entry.owner=owner;this._particleOrderDirty=true;}
       }
       if(created || this._particleOrderDirty){this._particleOrderDirty=false;this._orderSpriteDrawables();}
     }
@@ -4890,7 +4906,7 @@ module.exports = makeExt(`// Name: Arcade
     bufferHash(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).hash(Number(args.BITS)));}
     bufferIndexOf(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).indexOf(this._buffer(args.OTHER)));}
     bufferGetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getByte(Scratch.Cast.toNumber(args.OFFSET)));}
-    bufferSetByte(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).setByte(Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE)));}
+    bufferSetByte(args) {return this._bufferGuard(()=>{this._sdkFontValues?.guardBufferMutation(args.BUFFER);return this._buffer(args.BUFFER).setByte(Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE))});}
     _bufferArray(value) {
       const array=Scratch.BWValues.arrayValue(this._runtime,value);
       if(!array)throw new Error('Arcade buffer input array is not available in this project run');
@@ -4904,18 +4920,18 @@ module.exports = makeExt(`// Name: Arcade
     bufferPackedSize(args) {return this._bufferGuard(()=>dependencies.buffers.packedSize(Scratch.BWValues.decode(args.FORMAT)));}
     bufferPack(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.pack(Scratch.BWValues.decode(args.FORMAT),this._bufferArray(args.ARRAY).map(value=>Scratch.BWValues.decode(value)))));}
     bufferUnpack(args) {return this._bufferGuard(()=>Scratch.BWValues.arrayReference(this._runtime,this._buffer(args.BUFFER).unpack(Scratch.BWValues.decode(args.FORMAT),Scratch.Cast.toNumber(args.OFFSET))));}
-    bufferPackAt(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).packAt(Scratch.Cast.toNumber(args.OFFSET),Scratch.BWValues.decode(args.FORMAT),this._bufferArray(args.ARRAY).map(value=>Scratch.BWValues.decode(value))));}
+    bufferPackAt(args) {return this._bufferGuard(()=>{this._sdkFontValues?.guardBufferMutation(args.BUFFER);return this._buffer(args.BUFFER).packAt(Scratch.Cast.toNumber(args.OFFSET),Scratch.BWValues.decode(args.FORMAT),this._bufferArray(args.ARRAY).map(value=>Scratch.BWValues.decode(value)))});}
     bufferFromArray(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.fromArray(this._bufferArray(args.ARRAY).map(value=>Scratch.BWValues.decode(value)))));}
     bufferToArray(args) {return this._bufferGuard(()=>Scratch.BWValues.arrayReference(this._runtime,this._buffer(args.BUFFER).toArray(args.FORMAT)));}
     bufferConcatArray(args) {return this._bufferGuard(()=>this._bufferReference(dependencies.buffers.concatArrays(this._bufferArray(args.ARRAY).map(value=>this._buffer(value)))));}
     bufferFormatSize(args) {return this._bufferGuard(()=>dependencies.buffers.sizeOfNumberFormat(args.FORMAT));}
     bufferGetNumber(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).getNumber(args.FORMAT,Scratch.Cast.toNumber(args.OFFSET)));}
-    bufferSetNumber(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).setNumber(args.FORMAT,Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE)));}
+    bufferSetNumber(args) {return this._bufferGuard(()=>{this._sdkFontValues?.guardBufferMutation(args.BUFFER);return this._buffer(args.BUFFER).setNumber(args.FORMAT,Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.VALUE))});}
     bufferSlice(args) {return this._bufferGuard(()=>this._bufferReference(this._buffer(args.BUFFER).slice(Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH))));}
-    bufferWrite(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).write(Scratch.Cast.toNumber(args.OFFSET),this._buffer(args.SOURCE)));}
-    bufferFill(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).fill(Scratch.Cast.toNumber(args.VALUE),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH)));}
-    bufferShift(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).shift(Scratch.Cast.toNumber(args.AMOUNT),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH)));}
-    bufferRotate(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).rotate(Scratch.Cast.toNumber(args.AMOUNT),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH)));}
+    bufferWrite(args) {return this._bufferGuard(()=>{this._sdkFontValues?.guardBufferMutation(args.BUFFER);return this._buffer(args.BUFFER).write(Scratch.Cast.toNumber(args.OFFSET),this._buffer(args.SOURCE))});}
+    bufferFill(args) {return this._bufferGuard(()=>{this._sdkFontValues?.guardBufferMutation(args.BUFFER);return this._buffer(args.BUFFER).fill(Scratch.Cast.toNumber(args.VALUE),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH))});}
+    bufferShift(args) {return this._bufferGuard(()=>{this._sdkFontValues?.guardBufferMutation(args.BUFFER);return this._buffer(args.BUFFER).shift(Scratch.Cast.toNumber(args.AMOUNT),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH))});}
+    bufferRotate(args) {return this._bufferGuard(()=>{this._sdkFontValues?.guardBufferMutation(args.BUFFER);return this._buffer(args.BUFFER).rotate(Scratch.Cast.toNumber(args.AMOUNT),Scratch.Cast.toNumber(args.OFFSET),Scratch.Cast.toNumber(args.LENGTH))});}
     bufferToBase64(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).toBase64());}
     bufferToHex(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).toHex());}
     bufferToText(args) {return this._bufferGuard(()=>this._buffer(args.BUFFER).toString());}
@@ -4954,6 +4970,7 @@ module.exports = makeExt(`// Name: Arcade
     musicVolume() {return this._music().pxt.music.volume();}
     musicTempo() {return this._music().pxt.music.tempo();}
     _pxtText() {
+      if(this._sdkFontValues)return this._sdkFontValues.textModule();
       if(this._textModule)return this._textModule;
       class PxtBuffer extends Uint8Array {
         getNumber(format,offset){return format==='UInt16LE'?(this[offset] | this[offset+1]<<8):this[offset];}
@@ -4973,6 +4990,35 @@ module.exports = makeExt(`// Name: Arcade
     sourceTypeOf(args,util) {
       try {this._sourceTypeOf.assertOwner();const literalType=this._sourceTypeOf.validateInput(this._sourceScalarCells,util,args.VALUE,args);return literalType || this._sourceTypeOf(args.VALUE);}catch(error){return this._objectError(error);}
     }
+    _fontGuard(action) {
+      try{if(!this._sdkFontValues)throw new Error('SDK Font needs its actual runtime owner');return action();}catch(error){return this._objectError(error);}
+    }
+    fontValue(args,util) {return this._fontGuard(()=>{
+      const block=util?.target?.blocks?.getBlock?.(util?.thread?.peekStack?.());
+      if(block?.inputs?.FONT)throw new Error('SDK Font value selector must be a fixed field, not a connected reporter');
+      if(!['font5','font8','font12'].includes(args.FONT))throw new Error('SDK Font value requires a fixed builtin FONT');
+      return this._sdkFontValues.constant(args.FONT);
+    });}
+    fontForText(args) {return this._fontGuard(()=>this._sdkFontValues.forText(Scratch.BWValues.decode(args.TEXT)));}
+    scaleFont(args) {return this._fontGuard(()=>this._sdkFontValues.scale(args.FONT,Scratch.Cast.toNumber(args.SIZE)));}
+    _fontImageAdapter(image) {
+      const module=this._pxtText(),target={_width:image.width,_height:image.height,data:image.pixels,makeWritable(){},color:c=>Number(c)&255};
+      return {width:image.width,height:image.height,
+        drawIcon:(icon,x,y,color)=>module.drawIcon(target,{data:icon},x,y,color),
+        fillRect:(x,y,w,h,color)=>imageEngine.draw(image,'fillRect',x,y,w,h,color)};
+    }
+    printImageFont(args) {return this._fontGuard(()=>{
+      this._sdkFontValues.resolve(args.FONT);
+      const image=this._image(args.IMAGE);if(!image)throw new Error('SDK Font printing needs an actual current Image');
+      this._sdkFontValues.print(this._fontImageAdapter(image),String(Scratch.BWValues.decode(args.TEXT) ?? ''),Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y),Scratch.Cast.toNumber(args.COLOR),args.FONT);
+      this._refreshImage(image);
+    });}
+    printImageFontCenter(args) {return this._fontGuard(()=>{
+      this._sdkFontValues.resolve(args.FONT);
+      const image=this._image(args.IMAGE);if(!image)throw new Error('SDK Font printing needs an actual current Image');
+      this._sdkFontValues.printCenter(this._fontImageAdapter(image),String(Scratch.BWValues.decode(args.TEXT) ?? ''),Scratch.Cast.toNumber(args.Y),Scratch.Cast.toNumber(args.COLOR),args.FONT);
+      this._refreshImage(image);
+    });}
     fontMetric(args,util) {
       const block=util?.target?.blocks?.getBlock?.(util?.thread?.peekStack?.());
       if(block?.inputs?.FONT || block?.inputs?.PROPERTY)
@@ -5154,7 +5200,7 @@ module.exports = makeExt(`// Name: Arcade
       const drawableOf=sprite=>this._imageSkins.get(sprite.id)?.drawableId ?? state.spriteTargets[sprite.id]?.drawableID;
       // Particle sources share the sprites' z then id order.
       const entries=[...Object.values(state.sprites).map(sprite=>({owner:sprite,z:sprite.z,id:sprite.pxtId,drawable:drawableOf(sprite)})),
-        ...[...this._particleOverlays].map(([source,entry])=>({owner:source,z:source.z,id:source.id,drawable:entry.drawableId}))];
+        ...[...this._particleOverlays].map(([source,entry])=>({owner:entry.owner || source,z:source.z,id:source.id,drawable:entry.drawableId}))];
       if(!entries.some(entry=>entry.drawable!=null))return;
       const order=this._sceneFlags.currentOrder(state);
       for(const entry of entries.sort((a,b)=>order.indexOf(a.owner)-order.indexOf(b.owner)))
@@ -5786,6 +5832,7 @@ module.exports = makeExt(`// Name: Arcade
   Scratch.extensions.register(new Arcade(Scratch.vm && Scratch.vm.runtime));
 })(Scratch);
 `, {
+  sdkFontValues: require('./sdk-font-values'),
   sdkSpriteClasses: require('./sdk-sprite-classes'),
   sdkObjectClasses: require('./sdk-object-classes'),
   sceneFlags: require('./scene-flags'),

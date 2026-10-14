@@ -1,3 +1,4 @@
+import {hasSdkFontValues,seedSdkFontValueType,sdkFontGraphType} from './sdk-font-export-types.js';
 import {sdkExportClasses,sdkClassPublicName,sdkClassName} from './sdk-class-descriptors.js';
 import {ValueTypeGraph} from './value-type-graph.js';
 import {classCallableExportTypes} from './class-callable-export-types.js';
@@ -34,7 +35,7 @@ export function prepareObjectClassExport(emitter) {
     }
     const builtinNames=new Set(sdkExportClasses().map(cls=>cls.name));
     const builtinObject=emitter.project.targets.some(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_createObject' && builtinNames.has(literal(target,block,'CLASS'))));
-    if(!classes.size && !builtinObject)return {classes,procedures,variableTypes:new Map(),valueTypes:()=>new Set(),localType:()=> 'any',render:()=>[],receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
+    if(!classes.size && !builtinObject && !hasSdkFontValues(emitter.project))return {classes,procedures,variableTypes:new Map(),valueTypes:()=>new Set(),inputTypes:()=>new Set(),fontGlyphInput:()=>false,localType:()=> 'any',render:()=>[],receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
     for(const cls of sdkExportClasses())if(!classes.has(cls.name))classes.set(cls.name,cls);
     const callableTypes=classCallableExportTypes(classes,builtinNames);
     for(const cls of classes.values())try {
@@ -59,7 +60,7 @@ export function prepareObjectClassExport(emitter) {
     const localName=(target,block)=>block?.opcode==='arcade_getLocal'?literal(target,block,'NAME'):/^argument_reporter_/.test(block?.opcode||'')?block.fields.VALUE?.[0]:null;
 
     const callParameters=(target,value)=>{const names=[];let tail=value.inputs?.ARGS,current=child(target,value,'ARGS');const seen=new Set();while(current?.opcode==='arcade_functionArgument'){if(seen.has(current))return null;seen.add(current);const name=localName(target,child(target,current,'VALUE'));if(!name)return null;names.push(name);tail=current.inputs?.REST;current=child(target,current,'REST');}const slot=tail?.[1];return (Array.isArray(slot)?String(slot[1])==='[]':current?.shadow&&current.fields?.TEXT?.[0]==='[]')?names:null;};
-    const addType=(cell,type)=>{if(type.endsWith('[]')){graph.add(cell,'array');addType(graph.element(cell),type.slice(0,-2));}else graph.add(cell,type);};
+    const addType=(cell,type)=>{type=sdkFontGraphType(type);if(type.endsWith('[]')){graph.add(cell,'array');addType(graph.element(cell),type.slice(0,-2));}else graph.add(cell,type);};
     for(const cell of emitter.sourceReferenceCells?.values() || [])addType('var:'+cell.id,cell.type);
     for(const cls of classes.values()) {
         if(cls.intrinsic)continue;
@@ -138,6 +139,7 @@ export function prepareObjectClassExport(emitter) {
         for(const target of emitter.project.targets)for(const block of Object.values(target.blocks||{})) {
             const value=cell(target,block),owner=owners.get(block),op=block.opcode;
             if(op==='arcade_sourceTypeOf')graph.add(value,'string');
+            seedSdkFontValueType(block,value,addType);
             if(op==='arcade_createObject'){const name=literal(target,block,'CLASS');if(classes.has(name)){addType(value,name);bind(target,classes.get(name).constructor,args(target,block),1);}}
             if(op==='arcade_callFunction'){const code=literal(target,block,'NAME');graph.merge(value,`${key(target,code)}:result`);bind(target,code,args(target,block));}
             if(op==='arcade_returnValue')graph.merge(`${owner}:result`,input(target,block,'VALUE'));
@@ -248,6 +250,6 @@ export function prepareObjectClassExport(emitter) {
         if(!classCallableProviders.has(target))classCallableProviders.set(target,createClassCallableExportProvider({target,project:emitter.project,classes,definitions,valueTypes,literal,key,builtinNames}));
         return classCallableProviders.get(target);
     };
-    return {classes,procedures,variableTypes,valueTypes,localType,render,receiver,superCall,parameterPropertyBlocks,
+    return {classes,procedures,variableTypes,valueTypes,inputTypes:(target,block,name)=>new Set(graph.node(input(target,block,name)).types),fontGlyphInput:(target,block,name)=>graph.node(input(target,block,name))===graph.node('field:__bwSDK_Font:data'),localType,render,receiver,superCall,parameterPropertyBlocks,
         classCallableProvider,publicName:sdkClassPublicName,hasType:type=>classes.has(sdkClassName(type.replace(/(?:\[\])+$/,'')))};
 }

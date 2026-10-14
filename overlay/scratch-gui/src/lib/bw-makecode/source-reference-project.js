@@ -11,7 +11,7 @@ export function sourceReferenceProject(project) {
         if(typeof name!=='string'||!/^[A-Za-z_]\w*$/.test(name)||classes.has(name))throw Error('Source reference export requires unique fixed class declarations');
         classes.add(name);
     }
-    const supported=type=>['Sprite','Image'].includes(type)||classes.has(type)||typeof type==='string'&&type.endsWith('[]')&&(['number','boolean','string','Sprite','Image'].includes(type.slice(0,-2))||classes.has(type.slice(0,-2)));
+    const supported=type=>['Sprite','Image','image.Font'].includes(type)||classes.has(type)||typeof type==='string'&&type.endsWith('[]')&&(['number','boolean','string','Sprite','Image'].includes(type.slice(0,-2))||classes.has(type.slice(0,-2)));
     for(const target of targets)for(const hat of Object.values(target.blocks||{})){
         if(!hat.topLevel||hat.opcode!=='arcade_whenSourceStarts')continue;
         let block=target.blocks[hat.next];const seen=new Set();

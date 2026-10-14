@@ -66,3 +66,20 @@ test('supported ShowPhysics source survives native Code, fresh SB3, original exp
   const again=arcadeToPseudocode(exported.files);assert.deepEqual(again.unsupported,[]);const reimport=await runProgram(again.code,{frames:50,storage:true,uploads:again.costumes});runs.push(reimport);check(reimport);
  }finally{for(const run of runs)run.vm.quit();clearStrayTimers();}
 });
+
+
+test('physics overlays share their sprite order only at the real render boundary',()=>{
+ const runtime=new EventEmitter(),drawables=[],calls={next:0,skin:0};
+ runtime.renderer={createSVGSkin(){return ++calls.skin;},createDrawable(){const id=++calls.next;drawables.push(id);return id;},updateDrawableSkinId(){},updateDrawablePosition(){},updateDrawableScale(){},updateDrawableProperties(){},updateDrawableVisible(){},updateSVGSkin(){},setDrawableOrder(id){const at=drawables.indexOf(id);if(at>=0)drawables.splice(at,1);drawables.push(id);},destroySkin(){},destroyDrawable(id){const at=drawables.indexOf(id);if(at>=0)drawables.splice(at,1);}};
+ const a=new Arcade(runtime),image=a.createImage({WIDTH:4,HEIGHT:4});a.mutateImage({IMAGE:image,OP:'fill',COLOR:2});
+ const actor=a.createImageSprite({IMAGE:image,KIND:'Player'});a.setSpriteProperty({ID:actor,PROPERTY:'z',VALUE:9});a.setSpriteFlag({ID:actor,FLAG:'ShowPhysics',ON:true});
+ a._composeSceneFrame();const actorDrawable=a._inst._imageSkins.get(actor).drawableId,debug=[...a._inst._particleOverlays.values()][0];
+ assert.deepEqual(drawables,[actorDrawable,debug.drawableId]);
+ const cover=a.createImageSprite({IMAGE:image,KIND:'Player'}),coverDrawable=a._inst._imageSkins.get(cover).drawableId;
+ a.setSpriteProperty({ID:cover,PROPERTY:'z',VALUE:8});a._composeSceneFrame();assert.deepEqual(drawables,[coverDrawable,actorDrawable,debug.drawableId]);
+ const prior=drawables.slice();a.setSpriteProperty({ID:cover,PROPERTY:'z',VALUE:10});assert.deepEqual(drawables,prior,'Changing z waits for the next render');
+ a._composeSceneFrame();assert.deepEqual(drawables,[actorDrawable,debug.drawableId,coverDrawable]);assert.equal([...a._inst._particleOverlays.values()][0],debug,'Sorting retains the drawable and skin');
+ a.setSpriteProperty({ID:actor,PROPERTY:'flags',VALUE:64|128});assert.ok(drawables.includes(debug.drawableId));a._composeSceneFrame();assert.ok(!drawables.includes(debug.drawableId));
+ a.setSpriteProperty({ID:actor,PROPERTY:'flags',VALUE:64});a._composeSceneFrame();const restored=[...a._inst._particleOverlays.values()][0];assert.deepEqual(drawables,[actorDrawable,restored.drawableId,coverDrawable]);
+ a.destroySprite({ID:actor});a._composeSceneFrame();assert.deepEqual(drawables,[coverDrawable]);assert.equal(a._inst._particleOverlays.size,0);
+});

@@ -1,7 +1,8 @@
 # Live Arcade Font values
 
-PROPOSED. This source audit defines a future qualification slice. It does not
-admit Font values, change fixed metric selectors, or qualify complete libraries.
+The first Font read slice is qualified for the selected simulator. It preserves
+actual mutable records and shared glyph storage, while explicitly refusing
+public field and glyph mutations. It does not qualify complete libraries.
 
 ## Source authority
 
@@ -139,4 +140,64 @@ nor screen-frame ownership gaps in those consumers.
 
 Freeze source, full expected pixels, actual compiler input/binary and owner
 snapshots before qualification. Capture the actual native instance per VM.
-No guest or product implementation has been run for this proposal.
+The qualification below covers the implemented read slice; the broader fixture
+plan includes follow-up work.
+
+## Selected simulator resource and Buffer behavior
+
+The PXT 13.2.1 compiler retains the complete Font resource for simulator output.
+Its Font JRES branch filters glyph records by used characters only when
+`target.isNative` is true. Hardware resource subsets are therefore a separate
+boundary. This rule is explicit in the pinned
+[compiler emitter](https://github.com/microsoft/pxt/blob/c40f412dc5bebb915a5891cd62fe956e198fb194/pxtcompiler/emitter/emitter.ts#L2744).
+The Font12 Buffer still belongs to the current resource and run; a matching
+length alone does not grant resource ownership.
+
+Compiled hex Buffers carry a static flag. `isReadOnly()` reports that flag,
+while the simulator's `setNumber` writes bytes without checking it. `setByte`
+and several other mutation operations check the flag. Preserve those individual
+operations; the flag is not a universal mutation policy. See the pinned
+[Buffer implementation](https://github.com/microsoft/pxt/blob/c40f412dc5bebb915a5891cd62fe956e198fb194/pxtsim/libgeneric.ts#L544).
+A read slice must supply its own explicit refusal at every public write entry,
+including writes through another handle sharing the glyph storage.
+
+## Qualified first read slice
+
+The five canonical words select a fixed Font, select by text, scale an actual
+Font, print on an actual Image, and center text on an actual Image. Fixed
+selectors cannot accept connected reporters. String, Number, Image and Font
+operands require actual producers in the current source or block graph. An
+annotation, saved variable value, type assertion, resource-looking String or
+same-shaped object does not supply that authority.
+
+Source and block proofs preserve lexical bindings, complete ordinary procedure
+returns and every writer. A read cannot borrow a later or branch-only
+initialization. Missing arguments, fallthrough, recursive producers, computed
+local names, unowned writers and unproved capture lineage retain named refusals.
+Procedure bodies do not infer global initialization from a guessed caller order.
+The optional multiplier can be read, but does not prove a Number-consuming
+operand without a stronger producer proof. Class-field and callback Font flow
+remain follow-up work.
+
+The native service starts without allocating glyph resources. Actual operations
+materialize the pinned text implementation, and every Font access validates its
+runtime owner and generation. Stop, restart, disposal and reload revoke old
+records. A legitimate project load creates a new owner without reviving the
+closed service. Ordinary Buffer writes retain their existing lifecycle behavior;
+the seven public Buffer mutation entries explicitly refuse glyph storage and
+views sharing that storage, including aliases created before the data getter.
+
+Qualification preserves all 2,304 original oracle pixels at the native boundary.
+The source, Code, same and fresh saved-project routes, original export and
+reimport compare all 1,536 pixels in the read-slice pictures. Actual block-field
+edits change Font8 to Font5, scaling size to 3 and the printed character to B.
+Their unchanged exported TypeScript compiles and executes in the selected
+simulator with identical complete pixels, metrics and Font/Buffer alias checks.
+The compiler input, output and owner guards are retained separately. Class
+callback and default numeric callable controls remain passing in the composed
+engine; this does not admit Font into their intrinsic-excluded signature domain.
+
+Full mutation support, hardware resource subsets, general Font-valued class
+fields/callbacks and full library or GUI closure remain unqualified. The SDK's
+mutable record and operation-specific Buffer static flag are preserved; the
+read-slice refusal is an admission boundary.

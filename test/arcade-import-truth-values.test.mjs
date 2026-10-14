@@ -79,6 +79,18 @@ test('every truth-value form in every value slot imports as a value across all c
     assert.equal(paths.handle, 1080, JSON.stringify(paths));
 });
 
+// Inspect the actual value graph, independent of generated temporary names.
+const descendants = (blocks, id, followNext = false, result = new Set()) => {
+    if (!id || result.has(id) || !blocks[id]) return result;
+    result.add(id);
+    for (const input of Object.values(blocks[id].inputs || {})) if (typeof input[1] === 'string') descendants(blocks, input[1], true, result);
+    if (followNext) descendants(blocks, blocks[id].next, true, result);
+    return result;
+};
+const pressedSites = creator => creator.project.targets.flatMap(target => Object.entries(target.blocks || {})
+    .filter(([, block]) => block.opcode === 'arcade_playerButtonPressed')
+    .map(([id, block]) => ({target, id, block})));
+
 // Logs truth values passed through a function's argument (a value slot).
 const LOGGED = `let flag = false
 let n = 0
@@ -125,7 +137,14 @@ async function importAndRun (source) {
 test('handle path: the import logs what MakeCode logs, and so does its export', {skip: SIM, timeout: 300000}, async () => {
     const {imported, creator, lite} = await importAndRun(HANDLE);
     assert.match(imported.code, /arcade create template/, 'the handle path');
-    assert.match(imported.code, /IF key left arrow pressed\? THEN:\n\s+set _mc\d+ to \(compare value \(0\) op "<" with \(1\)\)/);
+    const buttons = pressedSites(creator);
+    assert.equal(buttons.length, 2, 'positive and negated controller values');
+    for (const {target, id, block} of buttons) {
+        assert.equal(block.inputs.BUTTON[1][1], '5', 'actual Left button value');
+        const argument = Object.entries(target.blocks).find(([, value]) => value.opcode === 'arcade_functionArgument' &&
+            descendants(target.blocks, value.inputs.VALUE?.[1]).has(id));
+        assert.ok(argument, 'typed controller Boolean remains in the function argument value graph');
+    }
     assert.match(imported.code, /arcade player \(2\) has life/);
     const original = await pxtLog(HANDLE);
     assert.equal(original, 'truetruetruefalsefalsefalsetruetruefalsetrue');
@@ -149,32 +168,46 @@ test('sprite-free path: typed Boolean arguments retain original values through a
     await assertNativeRoutes(imported, creator, original);
 });
 
-test('predicate choices stay at each source-loop test and unrepresentable repeated values are named', () => {
-    // A lazy for-condition on the handle path is tested before the loop AND at
-    // the end of its body: each test chooses its own value, in place.
-    const {code} = arcadeToPseudocode('let mySprite = sprites.create(img`1`, SpriteKind.Player)\nlet n = 0\n' +
+test('controller values are reevaluated at lazy loop tests and unsupported lexical receivers are named', () => {
+    const imported = arcadeToPseudocode('let mySprite = sprites.create(img`1`, SpriteKind.Player)\nlet n = 0\n' +
         'for (let i = 0; i < 3 && !controller.left.isPressed(); i++) { n += 1 }\n');
-    const lines = code.split('\n');
-    const loop = lines.findIndex(l => /^\s*arcade repeat while /.test(l));
-    const depth = l => l.match(/^ */)[0].length;
-    const chosen = lines.map((l, i) => [l, i]).filter(([l]) => /^\s*IF key left arrow pressed\? THEN:/.test(l));
-    assert.equal(chosen.length, 2);
-    assert.ok(chosen[0][1] < loop, 'the first test, before the loop');
-    assert.ok(chosen[1][1] > loop && depth(chosen[1][0]) > depth(lines[loop]), 'the next ones, inside its body');
-    assert.deepEqual(parse(code).c.warnings, []);
-
-    // pauseUntil's condition, and the condition of a for loop over a local
-    // (written by the Arcade translator itself, not the base), are tested on
-    // every pass: nothing is chosen first, and the import says so.
-    const refusedIn = source => {
-        const r = arcadeToPseudocode(source);
-        assert.ok(r.unsupported.some(u => /pressed\? as a value in a condition tested on every pass/.test(u)), JSON.stringify(r.unsupported));
-        assert.doesNotMatch(r.code, /set _mc\d+ to/);
-    };
-    refusedIn('let n = 0\npauseUntil(() => controller.A.isPressed() == (n > 1))\n');
-    refusedIn('let mySprite = sprites.create(img`1`, SpriteKind.Player)\nlet n = 0\nfunction id(v: any) { return v }\n' +
-        'function f() {\n  for (let k = 0; k < id(controller.left.isPressed()); k++) { n += 1 }\n}\nf()\n');
+    assert.deepEqual(imported.unsupported, []);
+    const {c, unread} = parse(imported.code);
+    assert.deepEqual(unread, []); assert.deepEqual(c.warnings, []);
+    const sites = pressedSites(c); assert.equal(sites.length, 2);
+    const target = sites[0].target, blocks = target.blocks;
+    assert.ok(sites.every(site => site.target === target));
+    const [loopId, loop] = Object.entries(blocks).find(([, block]) => block.opcode === 'arcade_sourceWhile');
+    const body = descendants(blocks, loop.inputs.SUBSTACK[1], true);
+    const tail = sites.filter(site => body.has(site.id));
+    assert.equal(tail.length, 1, 'one controller read is reevaluated inside the body tail');
+    const header = sites.find(site => !body.has(site.id));
+    assert.ok(header, 'another read occurs before entering the loop');
+    for (const site of [header, tail[0]]) {
+        const write = Object.entries(blocks).find(([, block]) => block.opcode === 'arcade_setLocal' &&
+            descendants(blocks, block.inputs.VALUE?.[1]).has(site.id));
+        assert.ok(write, 'actual controller value feeds the current lazy condition');
+        const branch = blocks[write[1].parent];
+        assert.equal(branch.opcode, 'control_if', 'the RHS read stays behind the current LHS guard');
+        if (site === header) assert.equal(branch.next, loopId, 'header choice precedes this loop');
+    }
+    // These repeated values have native Boolean reporters now; none is
+    // hoisted once into an old Scratch keyboard choice.
+    for (const source of ['let n=0;pauseUntil(()=>controller.A.isPressed()==(n>1))',
+        'let n=0;function id(v:any){return v}function f(){for(let k=0;k<id(controller.left.isPressed());k++){n+=1}}f()']) {
+        const result = arcadeToPseudocode(source); assert.deepEqual(result.unsupported, []);
+        const parsed = parse(result.code); assert.deepEqual(parsed.unread, []); assert.deepEqual(parsed.c.warnings, []);
+        assert.ok(pressedSites(parsed.c).length);
+    }
+    // Unsupported source receiver identity remains a named refusal at the
+    // repeated test site. No SDK-looking name bypasses its lexical binding.
+    for (const source of ['let controller:any;let n=0;pauseUntil(()=>controller.A.isPressed()==(n>1))',
+        'function f(controller:any){pauseUntil(()=>controller.left.isPressed())}f(0)']) {
+        const result = arcadeToPseudocode(source);
+        assert.ok(result.unsupported.some(message => /shadowed controller binding/.test(message)), JSON.stringify(result.unsupported));
+    }
 });
+
 
 async function assertNativeRoutes(imported, creator, expected) {
     const runs = [];
@@ -236,4 +269,41 @@ test('loop condition choices observe actual held input through original, Code, S
             } finally { run.vm.quit(); clearStrayTimers(); }
         }
     }
+});
+
+
+test('controller lexical shadowing cannot grant keyboard or native button state on either source path',()=>{
+    const shadows=[
+        'function f(controller:any){pauseUntil(()=>controller.left.isPressed())}f(0)',
+        'let controller=0;pauseUntil(()=>controller.left.isPressed())',
+        'function f(){let controller=0;pauseUntil(()=>controller.left.isPressed())}f()',
+    ];
+    for(const prefix of ['', 'let hero=sprites.create(img`1`,SpriteKind.Player);']){
+        for(const source of shadows){
+            const imported=arcadeToPseudocode(prefix+source);
+            assert.ok(imported.unsupported.some(message=>/shadowed controller binding/.test(message)),prefix+source);
+            assert.doesNotMatch(imported.code,/key left arrow pressed\?|arcade player .*button .* pressed/);
+        }
+        const supported=arcadeToPseudocode(prefix+'pauseUntil(()=>controller.left.isPressed())');
+        assert.deepEqual(supported.unsupported,[]);
+        assert.deepEqual(parse(supported.code).c.warnings,[]);
+    }
+});
+
+
+test('native pauseUntil consumes actual held controller input after readiness', {timeout:15000}, async () => {
+    const imported = arcadeToPseudocode('let n=2;let ready=1;let done=0;pauseUntil(()=>controller.A.isPressed()==(n>1));done=1;');
+    assert.deepEqual(imported.unsupported, []);
+    const run = await runProgram(imported.code, {frames: 0});
+    const values = () => Object.fromEntries(run.vm.runtime.targets.flatMap(target => Object.values(target.variables))
+        .map(variable => [variable.name.replace(/^(?:Game_)+/, ''), variable.value]));
+    try {
+        const pending = stepFrames(run.vm, 1);
+        for (let count=0; count<30 && values().ready!==1; count++) await new Promise(resolve => setImmediate(resolve));
+        assert.equal(values().ready, 1, 'actual authored initialization completed');
+        assert.equal(values().done, 0, 'the false held predicate remains pending');
+        run.vm.postIOData('keyboard', {key: ' ', isDown: true});
+        await pending;
+        assert.equal(values().done, 1); assert.deepEqual(run.errors, []);
+    } finally {run.vm.quit(); clearStrayTimers();}
 });

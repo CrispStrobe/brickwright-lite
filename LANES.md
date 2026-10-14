@@ -10,6 +10,17 @@ controls. Existing numeric gate, canonical pins and live Font hunks remain with
 their owners; intrinsic classes are excluded. Prototype source/export receipts
 are prerequisites; default and hosted GUI qualification remain pending.
 
+## STM32G030 and STM32F103 assembly route and simulation support — 2026-10-14
+
+CLAIM — VPS Claude, branch lane/arm-stm32-g030-f103, exact base 3958a28fefc39345fb42a878727f528f76dfd53a, isolated worktree wt-lite-stm32-20261014.
+Upstreams merged: stc-compiler PR #19 (c3a069b), sb3-creator PR #145 (9e5b18f), bw-board PR #584 (58ee2828).
+Scope:
+- overlay/scratch-gui/src/lib/bw-asm/assemble-route.js: map stm32g030 and stm32f103 devices to compiler targets.
+- overlay/scratch-gui/src/lib/bw-asm/arm-image.js: add stm32g030 (origin 0x08000000, kind 'stm32g0') to ARM_ASM_RUN.
+- overlay/scratch-gui/src/lib/bw-debug/debug-runner.js: support stm32g0 target kind and default 64 MHz clock.
+- test/arm-asm-run.test.mjs: verify stm32g030 and stm32f103 routing, simulation engines, and download-only status.
+- LANES.md claim.
+
 ## Bounded numeric callable default admission — 2026-10-14
 
 PROPOSED — Codex Arcade integration. Merge this claim before default admission
@@ -139,18 +150,18 @@ peer-owned Arrays scalar-return, controller-repeat, callable or font hunks.
 
 # Who is doing what — merge the claim before implementation
 
-## Arcade live Font values — proposal
+## Arcade live Font values — first read slice
 
-PROPOSED — Codex Arcade value integration, `docs/arcade-live-font-value-contract-20261014`.
+QUALIFIED READ SLICE — Codex Arcade value integration.
 Contract: [live Font values](docs/compatibility/arcade-live-font-values.md).
-Audit and qualify actual SDK Font constants, selection, scaling, mutable fields
-and shared glyph Buffers. Plan an owner-bound resource/identity bridge, distinct
-source-reference authority and genuine typed printing/export/Code/SB3 transport.
-The first read slice must explicitly refuse unqualified writes; a full mutable
-slice follows actual original mutation controls. Immutable manifests do not make
-the source Font objects immutable. Preserve glyph notices, current fixed metric
-words, class/callback ownership and source frame contracts. No product admission,
-supplier vocabulary, runtime index or global scheduler edits in this proposal.
+The five canonical value/printing words preserve actual SDK Font identity,
+selection, scaling and shared glyph Buffer reads. Source, native, Code, saved
+projects, actual edited original export and reimport have bounded qualification.
+Public field and glyph mutations retain explicit refusals; the underlying SDK
+records remain mutable. General Font-valued class fields/callbacks, full mutation,
+hardware glyph subsets and complete library/GUI closure remain follow-up work.
+Preserve glyph notices, fixed metric words, class/callback ownership and Source
+frame contracts. No global scheduler ownership is claimed.
 
 ## CI fast and thorough tiers — 2026-10-14
 
