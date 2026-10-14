@@ -46,3 +46,20 @@ pixel source must pass its source-integrity check. Installed browser authoring
 and visible canvas pixels remain a separate required qualification. Whole
 StatusBar, Sprite Utils and game promotion still need their full dependencies,
 callback behavior and presentation qualified.
+
+
+## Reached pixel checkpoint
+
+The selected original simulator passes 57 cases plus three alias/clone images:
+4,860 complete measured pixel values. These include clipped and fractional
+centers, outline integer-radius coercion, fill fractional-radius behavior,
+zero/negative radii, bounded primitive coercions and colors outside the usual
+palette. Rectangle/line comparison cases confirm the same eight-bit pixel
+color conversion. The generated native pixel operations match this matrix;
+source integrity and the existing clipped drawing control also pass.
+
+Two explicit canonical commands are proposed in
+[sb3-creator PR146](https://github.com/CrispStrobe/sb3-creator/pull/146).
+491 affected producer controls pass locally. Supplier checks, normal adoption,
+full native/editor/project/export routes and visible browser authoring remain
+pending. The pixel checkpoint does not admit a whole extension or game.
