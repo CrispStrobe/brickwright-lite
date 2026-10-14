@@ -164,8 +164,11 @@ test('unknown flags remain explicit gaps in import and authored Code', () => {
     const result = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nhero.setFlag(SpriteFlag.ShowPhysics, true)');
     assert.ok(result.unsupported.some(gap => gap.includes('setFlag')));
     // E0: the dialect refuses an unknown flag by name rather than warning.
-    assert.throws(() => new SB3Creator().parse('DEVICE ARCADE\nSPRITE Game:\nWHEN flag clicked:\n  arcade set flag ShowPhysics of 1 to 1'),
-        error => error.code === 'DIALECT_UNPARSED_LINES' && error.lines[0].text === 'arcade set flag ShowPhysics of 1 to 1');
+    // HitboxOverlaps is a real SpriteFlag the dialect does not write; since
+    // sb3-creator fc38f422 the dialect writes ShowPhysics (the exporter below
+    // still refuses it by name).
+    assert.throws(() => new SB3Creator().parse('DEVICE ARCADE\nSPRITE Game:\nWHEN flag clicked:\n  arcade set flag HitboxOverlaps of 1 to 1'),
+        error => error.code === 'DIALECT_UNPARSED_LINES' && error.lines[0].text === 'arcade set flag HitboxOverlaps of 1 to 1');
     // A flag block the dialect cannot write (a project edited elsewhere) is
     // still refused by name on the way out, never exported as a guess.
     const creator = new SB3Creator(); creator.parse('DEVICE ARCADE\nSPRITE Game:\nWHEN flag clicked:\n  arcade set flag Ghost of 1 to 1');

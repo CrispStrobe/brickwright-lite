@@ -95,7 +95,7 @@ test('an emitted long token is still a leak: a mutant typing i8086 numbers `long
                 .replace(anchor, "return 'long';");
             assert.equal(source.split(anchor).length, 2, 'mutation anchor moved');
             for (const dependency of ['sb3-creator-runtime.js', 'sb3-creator-scratchruntime.js',
-                'sb3-creator-chostruntime.js', 'cubeDirections.js', 'ev3Dialect.js', 'arcadeDialect.js', 'pinRoleParts.js']) {
+                'sb3-creator-chostruntime.js', 'cubeDirections.js', 'ev3Dialect.js', 'arcadeDialect.js', 'cpxDialect.js', 'pinRoleParts.js']) {
                 await symlink(join(libDir, dependency), join(temp, basename(dependency)));
             }
             const mutantFile = join(temp, 'sb3-creator.mjs');

@@ -209,6 +209,7 @@ test('commented-zero mutation cannot put either timer program back into honest r
                 'cubeDirections.js',
                 'ev3Dialect.js',
                 'arcadeDialect.js',
+                'cpxDialect.js',
                 'pinRoleParts.js'
             ]) await symlink(join(sourceDir, dependency), join(temp, basename(dependency)));
             await writeFile(mutantFile, mutant);

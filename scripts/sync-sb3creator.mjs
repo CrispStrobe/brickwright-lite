@@ -94,6 +94,7 @@ const FILES = [
     ['src/utils/ev3Dialect.js', path.join(lib, 'ev3Dialect.js')],
     // The MakeCode Arcade / array-reference word table (task E0), the same design.
     ['src/utils/arcadeDialect.js', path.join(lib, 'arcadeDialect.js')],
+    ['src/utils/cpxDialect.js', path.join(lib, 'cpxDialect.js')],
     // The pin-role PART table (HCSR04 / DS18B20 / DS3231 / AT24C02 / I2C), read by
     // sb3Creator.js and the C reader (sb3-creator #52).
     ['src/utils/pinRoleParts.js', path.join(lib, 'pinRoleParts.js')]
