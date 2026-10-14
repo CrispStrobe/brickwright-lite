@@ -50,6 +50,28 @@ only through the actual qualified callable representation metadata. Callable
 source admission and additional callable lifecycle behavior remain in their
 existing lane. Missing metadata produces a named refusal.
 
+## Startup and authoring API
+
+Construct the source type service inside the existing Arcade extension startup.
+It receives the current value codec and explicit ownership adapters for admitted
+underlying values and registered representations. The reporter evaluates its
+connected value input once and returns a String. It allocates no handles and
+adds no source declaration or scheduler lifecycle of its own. Adapters must
+validate their actual owner and generation before supplying representation
+metadata; missing, changed or stale ownership produces a named diagnostic.
+
+String return authority must remain visible in the source declaration inventory
+and the actual reporter's export graph. A variable initialized with `typeof`
+must keep its String declaration in native Code and the existing source startup
+header through editing, saving, export and reimport. Preserve atomic scalar and
+reference declaration prefixes and their original initialization order.
+
+The standalone producer word starts from the qualified 380-word foundation.
+Its source/runtime contract must qualify independently. The five unpublished
+callable words can compose with it later as a six-word candidate after their
+own strict metadata and source/export qualification; the type operation cannot
+implicitly admit their callable source forms.
+
 ## Qualification and limits
 
 Retain the first omission and reimport failures. Record exact selected original
