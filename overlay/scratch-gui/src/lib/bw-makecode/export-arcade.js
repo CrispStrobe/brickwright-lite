@@ -1280,6 +1280,15 @@ class ArcadeEmitter {
         case 'arcade_spriteDataReadBoolean': this.requiresSpriteDataPackage=true;return `sprites.readDataBoolean(${v('ID')}, ${v('KEY')})`;
         case 'arcade_imageEquals': return `${v('IMAGE')}.equals(${v('OTHER')})`;
         case 'arcade_screenImage': return 'screen';
+        case 'arcade_fontMetric': {
+            const font=this.field(b,'FONT'),property=this.field(b,'PROPERTY');
+            if (!['font5','font8','font12'].includes(font) || !['charWidth','charHeight'].includes(property) ||
+                b.inputs?.FONT || b.inputs?.PROPERTY) {
+                this.note('Arcade font metric requires fixed builtin FONT and PROPERTY fields');
+                return 'undefined';
+            }
+            return `image.${font}.${property}`;
+        }
         case 'arcade_melodyPlayable': return `music.melodyPlayable(${v('MELODY')})`;
         case 'arcade_stringPlayable': return `music.stringPlayable(${v('MELODY')}, ${v('TEMPO')})`;
         case 'arcade_tonePlayable': return `music.tonePlayable(${v('FREQUENCY')}, ${v('DURATION')})`;
@@ -2859,7 +2868,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_playerProperty'){const id=Symbol('player property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_currentScene'){const id=Symbol('scene value');graphSceneValues.add(id);return id;}
                 if(['arcade_scenePhysicsEngine','arcade_createPhysicsEngine'].includes(value.opcode)){const id=Symbol('physics engine value');graphPhysicsEngineValues.add(id);return id;}
-                if(['arcade_physicsEngineProperty','arcade_sceneFlags'].includes(value.opcode)){const id=Symbol('physics engine numeric property');numbers.add(id);return id;}
+                if(['arcade_physicsEngineProperty','arcade_sceneFlags','arcade_fontMetric'].includes(value.opcode)){const id=Symbol('physics engine numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_createAnimation'){const id=Symbol('animation value');graphAnimationValues.add(id);return id;}
                 if(value.opcode==='arcade_sevensegDigit'){const id=Symbol('seven segment digit');graphSevensegDigitValues.add(id);return id;}
                 if(value.opcode==='arcade_sevensegCounter'){const id=Symbol('seven segment counter');graphSevensegCounterValues.add(id);return id;}

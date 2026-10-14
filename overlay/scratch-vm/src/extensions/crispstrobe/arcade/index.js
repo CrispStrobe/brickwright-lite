@@ -142,7 +142,7 @@ module.exports = makeExt(`// Name: Arcade
           this._bufferHeap = null;
           this._sevensegIds=new Map();this._sevensegValues=new Map();
           this._scrollerVersion='v0.1.2';this._characterAnimationVersion='v0.1.0';
-          this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._scrollerModule=null;this._characterAnimationModule=null;this._textSpriteModule=null;
+          this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._scrollerModule=null;this._characterAnimationModule=null;this._textSpriteModule=null;this._textModule=null;
           this._carnivalHost?.cancel();this._carnivalHost=null;this._gameOver=null;this._buttonPressWaiters=[];
           this._clearBackground();
           for (const id of this._imageSkins.keys()) this._clearImage(id);
@@ -242,6 +242,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'registerShadeHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register shade as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredShade',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade shade handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'screenImage',blockType:Scratch.BlockType.REPORTER,text:'Arcade screen image'},
+          {opcode:'fontMetric',blockType:Scratch.BlockType.REPORTER,text:'Arcade font [FONT] metric [PROPERTY]',arguments:{FONT:{type:Scratch.ArgumentType.STRING,menu:'fontMetricFonts',defaultValue:'font5'},PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'fontMetricProperties',defaultValue:'charHeight'}}},
           {opcode:'printImageText',blockType:Scratch.BlockType.COMMAND,text:'Arcade print [TEXT] on image [IMAGE] x [X] y [Y] color [COLOR] font [FONT]',
             arguments:{...str('TEXT','Hello'),...str('IMAGE',''),...n('X',0),...n('Y',0),...n('COLOR',1),FONT:{type:Scratch.ArgumentType.STRING,menu:'imageFonts',defaultValue:'auto'}}},
           {opcode:'legacyGameOver',blockType:Scratch.BlockType.COMMAND,text:'Arcade legacy game over win [WIN] effect [EFFECT]',arguments:{WIN:{type:Scratch.ArgumentType.BOOLEAN},EFFECT:{type:Scratch.ArgumentType.STRING,menu:'legacyGameOverEffects',defaultValue:'unset'}}},
@@ -839,6 +840,8 @@ module.exports = makeExt(`// Name: Arcade
             text: 'stop Arcade countdown' }
         ],
         menus: {
+          fontMetricFonts:{acceptReporters:false,items:['font5','font8','font12']},
+          fontMetricProperties:{acceptReporters:false,items:['charWidth','charHeight']},
           sourceReferenceTypes:{acceptReporters:false,items:'_sourceReferenceChoices'},
           sourceScalarTypes:{acceptReporters:false,items:['Number','Boolean','String','Any']},
           mathOperations:{acceptReporters:false,items:['min','max','randomRange']},
@@ -4834,6 +4837,15 @@ module.exports = makeExt(`// Name: Arcade
         base64:data=>fromBytes(Uint8Array.from(atob(data),c=>c.charCodeAt(0)))
       });
       return this._textModule;
+    }
+    fontMetric(args,util) {
+      const block=util?.target?.blocks?.getBlock?.(util?.thread?.peekStack?.());
+      if(block?.inputs?.FONT || block?.inputs?.PROPERTY)
+        throw new Error('Arcade font metric selectors must be fixed fields, not connected reporters.');
+      const font=String(args.FONT),property=String(args.PROPERTY);
+      if(!['font5','font8','font12'].includes(font) || !['charWidth','charHeight'].includes(property))
+        throw new Error('Arcade font metric requires a builtin FONT and numeric PROPERTY.');
+      return this._pxtText().image[font][property];
     }
     printImageText(args) {
       const image=this._image(args.IMAGE);

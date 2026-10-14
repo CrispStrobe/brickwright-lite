@@ -1,3 +1,4 @@
+import {lowerLiveFontMetrics} from './live-font-metrics.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {sourceReferenceDeclarations} from './source-reference-declarations.js';
 import {sourceScalarDeclarations} from './source-scalar-declarations.js';
@@ -1021,6 +1022,7 @@ class ArcadeTranslator extends BaseTranslator {
      * The condition() a node is being written for is not a value slot.
      */
     expr (node) {
+        if(node?.type==='FontMetric')return `arcade font ${JSON.stringify(node.font)} metric ${JSON.stringify(node.property)}`;
         if(node?.type === 'Template' && this.assetKindLookup &&
             lookupAssetTemplate(this.assetKindLookup,node.tag,node.value) === null) {
             this.usesArrays=true;return 'null value';
@@ -3261,6 +3263,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if(node?.bwObjectTypes?.length)return new Set(node.bwObjectTypes);
         if (imageOf(node) || isScreen(node) || isScopedAssetFactory(node)) return new Set(['image']);
         if(node?.type==='Number')return new Set(['number']);
+        if(node?.type==='FontMetric')return new Set(['number']);
         if(node?.type==='Member' && (Object.prototype.hasOwnProperty.call(ARCADE_SCENE_CONSTANTS,pathOf(node)) || node.object?.type==='Identifier' && node.object.name==='SpriteKind'))return new Set(['number']);
         if(node?.type==='Null')return new Set(['null']);
         if(node?.type==='Undefined')return new Set(['undefined']);
@@ -4837,7 +4840,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && assetKindLookup && ['assets.image','assets.tile'].includes(node.tag) ? lookupAssetTemplate(assetKindLookup,node.tag,node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ?
         assets[tileImagePath(node)] || assets[node.name] || (BUILTIN_IMAGES[tileImagePath(node)] ? decodeMkcdImage(BUILTIN_IMAGES[tileImagePath(node)]) : null) :
         node?.type==='Identifier' ? assets[node.name] : null;
-    const stagedSource = lowerPxtStagedValues(namespaceBindings.program || parsed, {
+    const stagedSource = lowerPxtStagedValues(lowerLiveFontMetrics(namespaceBindings.program || parsed), {
         isStaticResource: node => !!decodeTilemap(node,tileImageOf,tileImagePath)
     });
     stagedSource.sourceReferenceDeclarations = sourceReferenceDeclarations(stagedSource);
