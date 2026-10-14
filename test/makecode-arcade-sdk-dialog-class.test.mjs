@@ -79,3 +79,21 @@ test('Dialog source ownership and unqualified Font/subclass operations keep name
     for (const source of ['let dialog=new game.BaseDialog(160,35,undefined,image.font5)', 'let dialog=new game.BaseDialog(160,35);dialog.resize(160,35,undefined,image.font5)'])
         assert.match(arcadeToPseudocode(source).unsupported.join('\n'), /Font/);
 });
+
+test('zero and negative default-frame dimensions survive Code, original export and same/fresh SB3', async () => {
+    const cases = [[0,0],[0,3],[3,0],[-1,2],[2,-1]];
+    const source = cases.map(([w,h],i) => `let d${i}=new game.BaseDialog(${w},${h});let missing${i}=d${i}.image==undefined;let width${i}=missing${i}?-1:d${i}.image.width;let height${i}=missing${i}?-1:d${i}.image.height;`).join('\n');
+    const reference = await runPxtArcade(source), runs = [];
+    const compare = (actual,label) => {for(let i=0;i<cases.length;i++)for(const prefix of ['missing','width','height']){
+        const key=prefix+i;assert.equal(BW.decode(actual[key] ?? actual[key+'_']), reference[key], label+' '+key);
+    }};
+    try {
+        const imported=arcadeToPseudocode(source), run=await execute(imported,runs);compare(globals(run),'native');
+        compare(globals(await execute({...imported,code:run.creator.decompile()},runs)),'Code');
+        const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});assert.deepEqual(exported.unsupported,[]);
+        compare(await runPxtArcade(exported.files),'original export');compare(globals(await execute(arcadeToPseudocode(exported.files),runs)),'reimport');
+        const bytes=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());
+        await run.vm.loadProject(bytes);run.vm.greenFlag();await stepFrames(run.vm,150,0);assert.deepEqual(run.errors,[]);compare(globals(run),'same SB3');
+        const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(bytes);fresh.vm.greenFlag();await stepFrames(fresh.vm,150,0);assert.deepEqual(fresh.errors,[]);compare(globals(fresh),'fresh SB3');
+    } finally {for(const run of runs)run.vm.quit();clearStrayTimers();}
+});

@@ -23,6 +23,6 @@ Nonnull `image.Font` arguments, custom subclasses of these SDK dialog classes, p
 
 ## Verification
 
-`test/makecode-arcade-sdk-dialog-class.test.mjs` checks actual original and native SplashDialog fields, image identity, resize, and every pixel in the original and resized images through Code decompilation, MakeCode export execution/reimport, and same/fresh VM SB3 reload. Separate checks cover the observed default-frame zero/negative dimension cases and source ownership/unsupported operations. Reference-only checks are in `test/arcade-sdk-dialog-original.test.mjs`.
+`test/makecode-arcade-sdk-dialog-class.test.mjs` checks actual original and native SplashDialog fields, image identity, resize, and every pixel in the original and resized images through Code decompilation, MakeCode export execution/reimport, and same/fresh VM SB3 reload. Separate checks carry the observed default-frame zero/negative dimension cases through those same authoring routes and retain source ownership/unsupported-operation diagnostics. Reference-only checks are in `test/arcade-sdk-dialog-original.test.mjs`.
 
 These are bounded runtime and conversion controls. Full custom multiplayer splash behavior, controller input, scene timing, original font alternatives, and actual production GUI journeys require their own acceptance records.
