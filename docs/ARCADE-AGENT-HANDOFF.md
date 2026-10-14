@@ -12,8 +12,8 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ### Current immutable corpus audit
 
-The fresh raw audit at clean `aa65b75733eb8abd3f14a6601c4f1608f0c10c5c`
-reports **184 inputs: 143 translated, 40 partial, one parse failure**.
+The fresh raw audit at clean `5470796506f6d7bd5d44433b65e17bcd4282cd6a`
+reports **184 inputs: 147 translated, 36 partial, one parse failure**.
 Corpus commit is `c67f4854610ccc823682280b4d1fbdf737f4a585`; input content
 multiset SHA-256 is
 `a3dc8c21a33a9fb5e1808d2b2b2d2dbc2f7ce1ab33655b7b4cb14a16894b9f03`.
@@ -21,8 +21,28 @@ An independent read-only comparison confirms all 184 files match that commit's
 blobs. The audit receipt itself retains its original `commitVerified: false`;
 the separate comparison supplies verification without rewriting evidence.
 This audit requested no original compilation, execution or behavioral comparison.
-The current change from clean `3867e7d84` is only Snake `28379fc078a029bc`: the
-lexically qualified `randint` Number result now retains primitive and scalar
+The preceding clean `aa65b75733eb8abd3f14a6601c4f1608f0c10c5c` audit was
+143/40/1. Exactly four rows now move from partial to translated, removing five
+repeat-property diagnostics: `controller.A.repeatInterval` in all four and
+`controller.A.repeatDelay` in one. No other row changes or regressions occur.
+
+| Raw project identifier | Previous blocks | Current blocks | Removed diagnostic |
+| --- | ---: | ---: | --- |
+| `25b537cb2e5c14a1` | 405 | 406 | repeat interval |
+| `268aab83dc4ee9a5` | 5 | 7 | repeat delay and interval |
+| `30c9e6286a9cbe22` | 533 | 534 | repeat interval |
+| `d9e8eb7569f760a9` | 533 | 534 | repeat interval |
+
+The remaining 36 partial rows contain 120 diagnostic occurrences across
+92 distinct diagnostic families. Missing asset references, unresolved authored
+or dependency helper calls, and sprite/scene/tile stage-route diagnostics can
+overlap within a project. They are raw-input diagnostics, not proof that all
+underlying native APIs are absent. Array identity, song-expression format and
+an empty emitted Code body also remain named diagnostics. The same parse
+failure remains in `12904c83e83fe45a`.
+
+The earlier change from clean `3867e7d84` to `aa65b75733` was Snake
+`28379fc078a029bc`: the lexically qualified `randint` Number result now retains primitive and scalar
 authority. Four strict provenance controls and three original/native/Code/SB3/
 export authoring cases pass. The unchanged Snake source has separately observed
 finite controller/state behavior. Explicit `CALL` now retains its rendering
@@ -49,15 +69,23 @@ Both unit shards fail; deployment and verification skip. The [combined proof](ht
 ZIP SHA-256 is `3e6edaa2c91ec035fe9ee4c080064096a908f2a82ae2b80c5c0d5ae7633e4595`.
 Later local source and supplier changes are not qualified by that build.
 
-Current canonical supplier is `bac884ccaaceae9d9dfd832d08089f05c4719237`
-(**380 forms**), from [compiler PR135](https://github.com/CrispStrobe/sb3-creator/pull/135).
+Current canonical supplier is `08612be429512583e9c23564a589b9872ba28073`: **384
+distinct operations, 389 spellings including five aliases**, from normally merged
+[compiler PR137](https://github.com/CrispStrobe/sb3-creator/pull/137).
 All four enabled checks passed, with the declared Pages skip and matching
 reviewed/predicted/landed trees. Source reference and nullable array flows
 have bounded original/native/Code/SB3/export controls; their fresh production
 editor qualification remains open. Literal runtime `Sprite.setImage` creates
 a fresh image per evaluation, preserving dynamic kinds and instance identity;
-seven affected original/native/artwork controls pass. The raw count above
-measures translation only.
+seven affected original/native/artwork controls pass.
+
+Three repeat words preserve initially undefined button properties, raw primitive
+writes, defaults, compound assignment order and scene lifetime. All 24 advertised
+player/button pairs have original-backed controls. Eight composed-root controls
+pass native source, Code, same and fresh saved SB3, exact retained original export
+inputs and reimport without replaying the SDK. Their real palette/controller-pane
+journey is prepared and wired, but needs a matching official production artifact.
+The raw count above measures translation only.
 
 ### Authentic project context is a separate profile
 
@@ -78,8 +106,9 @@ whole-game or GUI qualification follows from these structural counts.
 Supplier [font PR139](https://github.com/CrispStrobe/sb3-creator/pull/139) and
 [procedure PR138](https://github.com/CrispStrobe/sb3-creator/pull/138) are normally
 merged. Each passed all four enabled checks; only Pages publication skipped.
-Predicted and landed merge trees matched. Qualified canonical source is
+Predicted and landed merge trees matched. The qualified predecessor canonical source was
 `3ee41478409b958e218735ce67fab5f866d80231`: 381 distinct Arcade operations.
+The current repeat-composed supplier above retains both changes.
 
 Six direct `image.font5/font8/font12.charWidth/charHeight` reads use the live
 renderer objects with Number provenance. Scene lifetime, restart, field edits,
@@ -95,8 +124,9 @@ call effects and all 19,200 background pixels match for the rendering fixture.
 The unchanged Snake witness now draws, while its cadence and random-position
 comparison remain open. No whole-game or current-head GUI promotion follows.
 
-The raw 184-input count is still 143/40/1: two projects lost their font diagnostic
-but still require repeat properties. Retained authentic project contexts and
+The predecessor raw 184-input count was 143/40/1: two projects lost their font
+diagnostic but still required repeat properties. The current repeat-composed
+audit clears four partial rows to reach 147/36/1 as detailed above. Retained authentic project contexts and
 static snippets keep separate denominators. The palette export test now waits
 for the original simulator's genuine first screen update before comparing all
 16 colors; [PR916](https://github.com/CrispStrobe/brickwright-lite/pull/916) is
