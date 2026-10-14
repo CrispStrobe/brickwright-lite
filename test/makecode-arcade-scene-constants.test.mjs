@@ -17,7 +17,9 @@ test('generated constants bind every public numeric Scene constant to exact orig
  const target=JSON.parse(readFileSync(new URL('../packages/scratch-gui/static/makecode/arcade/target.json',import.meta.url)));
  const original=target.bundledpkgs.game['scene.ts'];assert.equal(createHash('sha256').update(original).digest('hex'),ARCADE_SCENE_SOURCE_SHA256);
  const declarations=Object.fromEntries([...original.matchAll(/export const ([A-Z][A-Z0-9_]*)\s*=\s*(-?\d+(?:\.\d+)?)\s*;/g)].map(m=>['scene.'+m[1],Number(m[2])]));
- assert.deepEqual(ARCADE_SCENE_CONSTANTS,declarations);assert.equal(entries.length,20);
+ const flagBody=original.match(/export enum Flag\s*\{([^}]*)\}/)[1];
+ for(const match of flagBody.matchAll(/(\w+)\s*=\s*(\d+)\s*<<\s*(\d+)/g))declarations['scene.Flag.'+match[1]]=Number(match[2])<<Number(match[3]);
+ assert.deepEqual(ARCADE_SCENE_CONSTANTS,declarations);assert.equal(entries.length,23);
 });
 
 test('direct and numeric enum Scene constants survive original, native, Code, original export and reimport',async()=>{
