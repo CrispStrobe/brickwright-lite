@@ -217,7 +217,18 @@ export const run = async (loadJobs, {jobName, attempt, shard = null, workflowTex
         // audit's OWN in_progress step as unreported, exhaust the loop, and turn
         // every run into an absence — permanently, sixty seconds a leg (lego-be).
         const me = steps.findIndex(s => s.name === AUDIT_STEP);
-        return (me >= 0 ? steps.slice(0, me) : steps).filter(s => s.status !== 'completed').map(s => s.name);
+        const pending = (me >= 0 ? steps.slice(0, me) : steps)
+            .filter(s => s.status !== 'completed' || !s.conclusion).map(s => s.name);
+        // Missing records are incomplete evidence too. The API can return an
+        // empty or truncated array even after browser gates have run. Require
+        // every assigned gate, including the other shard's skipped records.
+        const required = expected ? [...expected.mine, ...expected.others] : [];
+        for (const name of required) {
+            const matches = steps.filter(s => s.name === name);
+            if (matches.length !== 1) pending.push(`${name} (${matches.length} records)`);
+        }
+        if (me < 0) pending.push(`${AUDIT_STEP} (missing record)`);
+        return pending;
     };
     for (let i = 0; i < 6 && unreported(mine[0]).length; i++) {
         log(`${unreported(mine[0]).length} step(s) not yet reported complete by the API; re-reading in 10 s`);
