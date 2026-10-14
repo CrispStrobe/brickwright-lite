@@ -81,7 +81,11 @@ for (const [target, translate] of Object.entries(TARGETS)) {
         test(`${target}: ${what} is its dialect word`, () => {
             const {code, unsupported} = translate(src);
             assert.deepEqual(unsupported, [], code);
-            assert.match(code, new RegExp(`^\\s*\\(?${line(ref(target, 's'), ref(target, 'i'))}\\)?$`, 'm'), code);
+            const arcadeConcat = `concatenate text ${ref(target, 's')} with \\("x"\\)`;
+            const expected = target === 'Arcade' && what.startsWith('s.concat') ?
+                (what.endsWith('.length') ? `set r to length of \\(${arcadeConcat}\\)` : `set r to ${arcadeConcat}`) :
+                line(ref(target, 's'), ref(target, 'i'));
+            assert.match(code, new RegExp(`^\\s*\\(?${expected}\\)?$`, 'm'), code);
         });
     }
 }
@@ -105,7 +109,7 @@ test('Math\'s constants are their numbers, not variables named E, SQRT2, …', (
         const {code, unsupported} = translate(names.map((n, i) => `let c${i} = Math.${n}`).join('\n'));
         assert.deepEqual(unsupported, [], target);
         names.forEach((n, i) => {
-            const value = n === 'PI' ? '3.14159' : String(Math[n]);
+            const value = n === 'PI' && target !== 'Arcade' ? '3.14159' : String(Math[n]);
             assert.match(code, new RegExp(`set c${i} to \\(?${value.replace('.', '\\.')}\\)?$`, 'm'), `${target} Math.${n}\n${code}`);
         });
     }
@@ -143,6 +147,11 @@ for (const [src, why, member] of REFUSED) {
         for (const [target, translate] of Object.entries(TARGETS)) {
             if (target === 'Arcade' && /serial\.|class /.test(src)) continue;
             const {code, unsupported} = translate(src);
+            if (target === 'Arcade' && ['s.charCodeAt()', 'String.fromCharCode()'].includes(why)) {
+                assert.deepEqual(unsupported, [], code);
+                assert.match(code, why === 's.charCodeAt()' ? /char code of text \(arcade local s\) at/ : /text from char code/);
+                continue;
+            }
             assert.ok(unsupported.some(u => u.includes(why)), `${target}: ${JSON.stringify(unsupported)}\n${code}`);
             const lines = code.split('\n').filter(l => !/^\s*#/.test(l)).join('\n');
             assert.doesNotMatch(lines, new RegExp(`(^|[\\s(])${member}($|[\\s)])`, 'm'), `${target}: ${member} as a name\n${code}`);
