@@ -54,21 +54,33 @@ original declarations without executing unused initializers.
 
 ## Newly exposed source value and invocation gaps — 2026-10-14
 
-- **Procedure commands:** explicit `CALL` fixes the `show` collision while
+- **Procedure commands:** reserved `CALL: (invocation)` fixes the `show` collision while
   retaining actual Scratch labels, argument types and procedure ownership.
   [The supplier implementation](https://github.com/CrispStrobe/sb3-creator/pull/138)
-  is merged; original/native/Code/same and fresh SB3/export/reimport effects and
+  is merged. [The reserved grammar correction](https://github.com/CrispStrobe/sb3-creator/pull/140)
+  is normally merged and preserves legacy labels beginning with `call`; 38 owned
+  gallery programs retain all 167 calls through Code reparse. Earlier bounded
+  original/native/Code/same and fresh SB3/export/reimport effects and
   all background pixels pass. Current-head hosted editing remains unqualified.
 - **Font metrics:** six fixed font/property combinations read live renderer
   objects as Numbers, with field edits and all authoring routes qualified.
   Opaque selectors reject without coercion. A hosted dropdown/Code/save/export
   journey is wired but awaits official-artifact execution. Dynamic font-object
   authoring, font writes and custom font graphics remain open.
-- **Arrays text items:** the supplier candidate returns text scalars without
-  JSON quotation marks; native/Code/saved controls and original export pass.
+- **Arrays text items:** [the independent supplier correction](https://github.com/CrispStrobe/extensions/pull/46)
+  is normally merged; text results keep their actual scalar value instead of
+  JSON quotation marks. Seven current native controls exercise the shared Lite
+  codec, aggregate transport, adversarial text and reference ownership.
   Reimport remains blocked because source `typeof` currently loses its operator.
   Aggregate JSON APIs keep their separate contracts. [The source-type contract](https://github.com/CrispStrobe/brickwright-lite/pull/913)
-  requires real value/ownership authority and editable source/export proof.
+  is merged and requires real value/ownership authority and editable source/export proof.
+- **Array queries:** typed search/removal export erases only the needle’s static
+  view. Array declarations, aliases and image identity remain intact; search
+  needles no longer widen collection element types. Proven source array queries
+  stage receiver, needle and start index once in selected-PXT order, including
+  receiver reassignment and eager conditional prefixes. Source/export originals
+  and portable authoring routes pass; fresh GUI qualification remains open.
+  [Implementation contract](ARCADE-ARRAY-SEARCH-EXPORT.md).
 - **Sprite value representation:** legacy native Sprite handles are plain
   strings. A literal equal to a live handle cannot be identified as an object
   from its spelling or registry membership. Track a proper source value/carrier

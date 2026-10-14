@@ -10,6 +10,42 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ## Latest source qualification — 2026-10-14
 
+### Integration refresh
+
+Integration source `33a469196cc648120d26c760796442bcfae036e3` adopts normally
+qualified supplier merges: compiler
+`3a2e423954ef9d6c6066c487e051c1e22496648d` and Arrays
+`40184f1917d164cf45fc543117d5c1f9254f9cb6`. Compiler inventory remains 384
+distinct operations / 389 forms including aliases; reserved `CALL:` is grammar,
+not an additional native operation. All supplier enabled checks passed and
+reviewed/predicted/landed trees matched. Lite integration checks remain pending;
+this is not a Lite main or all-games GUI claim.
+
+The fresh immutable audit at clean
+`1813c7721d` repeats **147 translated / 36 partial / one parse failure** with
+all 184 Git blobs independently matched and unchanged input multiset. Its
+query/export fixes do not change the raw snippet diagnostics. Complete-project
+context remains a separate denominator: 29 retained selected-original-valid
+inputs, 19 structurally strict and 10 blocked; 12 selected-invalid inputs are
+kept and must not be promoted by a permissive parser.
+
+Typed array lookup preserves receiver type and identity, with an argument-only
+search view and proper receiver/argument sequencing. See
+[the query contract](ARCADE-ARRAY-SEARCH-EXPORT.md). Arrays named-item correction
+is qualified independently of the held callable prototype. Source `typeof`
+implementation and Sprite provenance remain open despite merged ownership
+[claim 913](https://github.com/CrispStrobe/brickwright-lite/pull/913).
+
+Two genuine controller-repeat original controls now observe each press/release
+callback before sending the next input edge. The failed timed input schedule
+is retained; counts and all 19,200 image pixels were not relaxed. Assigned image
+editing retains its actual source carrier through native/Code/SB3/export paths;
+its new visible Pixel/save/reload journey still requires hosted execution.
+Browser callback motion during pause remains a failed gate: a real autonomous
+native timer control passes, but its browser cause is not established. Preserve
+the failure and collect actual clock/worker diagnostics instead of weakening
+motion assertions.
+
 ### Current immutable corpus audit
 
 The fresh raw audit at clean `5470796506f6d7bd5d44433b65e17bcd4282cd6a`
