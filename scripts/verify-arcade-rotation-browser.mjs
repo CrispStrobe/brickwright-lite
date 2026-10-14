@@ -307,7 +307,11 @@ let discardedReady=true`;
     const destructionSource = DESTROY_KIND_CONTROLLER_SOURCE + '\nplayer.setImage(img`7 7 7\n7 7 7`)';
     const destruction = arcadeToPseudocode(destructionSource);
     assert.deepEqual(destruction.unsupported, []);
-    assert.ok(destruction.costumes.some(costume => costume.mode === 'add'), 'fixture includes implicit appended artwork');
+    const assignedBinding = /arcade set image of player to arcade copy image \(arcade frame image array "([^"]+)" index \(0\) template "([^"]+)" start 0 count 1\)/.exec(destruction.code);
+    assert.ok(assignedBinding, 'assigned literal has a source frame binding and fresh Image evaluation');
+    const assignedCarrier = destruction.costumes.find(costume => costume.sprite === assignedBinding[2]);
+    assert.ok(assignedCarrier, 'assigned source frame has editable artwork');
+    assert.equal(assignedCarrier.mode, 'replace');
     const destructionProject = makeCodeProjectFile({'main.ts': destructionSource,
         'pxt.json': JSON.stringify({name: 'Destroy kind', dependencies: {device: '*'}, files: ['main.ts']})},
     {target: 'arcade', name: 'Destroy kind'});
@@ -321,7 +325,80 @@ let discardedReady=true`;
         beforeDestructionStage);
     await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible'});
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    // Select and edit the actual literal carrier through the visible sprite and
+    // Pixel controls. VM access below only observes the selected target/assets.
+    await page.getByText(assignedBinding[2], {exact: true}).click();
+    await page.waitForFunction(name => window.__brickwrightStore.getState().scratchGui.vm.editingTarget.getName() === name,
+        assignedBinding[2]);
+    await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
+    if (!(await page.getByTestId('bw-pixel-canvas').isVisible())) await page.getByTestId('bw-pixel-toggle').click();
+    const assignedCanvas = page.getByTestId('bw-pixel-canvas');
+    await assignedCanvas.waitFor({state: 'visible'});
+    await page.getByTestId('bw-pixel-colour-9').click();
+    await page.getByTestId('bw-pixel-tool-pencil').click();
+    const beforePaint = await assignedCanvas.evaluate(canvas => canvas.toDataURL());
+    const assignedBox = await assignedCanvas.boundingBox();
+    assert.ok(assignedBox);
+    await page.mouse.click(assignedBox.x + assignedBox.width / 6, assignedBox.y + assignedBox.height / 4);
+    assert.notEqual(await assignedCanvas.evaluate(canvas => canvas.toDataURL()), beforePaint, 'visible Pixel edit changes the assigned literal');
+    const beforeAssignedAsset = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.editingTarget.sprite.costumes[0].asset.assetId);
+    await page.getByTestId('bw-pixel-save').click();
+    await page.waitForFunction(asset => window.__brickwrightStore.getState().scratchGui.vm.editingTarget.sprite.costumes[0].asset.assetId !== asset,
+        beforeAssignedAsset);
+    const editedAssignedAsset = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.editingTarget.sprite.costumes[0].asset.assetId);
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    const waitAssignedPixels = () => page.waitForFunction(() => Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)
+        .some(sprite => sprite.id && sprite.image?.width === 3 && sprite.image?.height === 2 &&
+            Array.from(sprite.image.pixels).join(',') === '9,7,7,7,7,7'));
     await flag.click();
+    await waitAssignedPixels();
+    await stop.click();
+    await flag.click();
+    await waitAssignedPixels();
+    // A saved project must retain the edited source carrier, rather than only
+    // the current rendered Sprite image.
+    await stop.click();
+    await page.getByText('File', {exact: true}).click();
+    const assignedSaved = page.waitForEvent('download');
+    await page.getByText('Save to your computer', {exact: true}).click();
+    const assignedDownload = await assignedSaved;
+    const assignedPath = path.join(path.dirname(out), 'arcade-assigned-image-edit.sb3');
+    await assignedDownload.saveAs(assignedPath);
+    const assignedBytes = await fs.readFile(assignedPath);
+    const beforeAssignedReloadStage = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name: 'arcade-assigned-image-edit.sb3', mimeType: 'application/octet-stream', buffer: assignedBytes});
+    await page.waitForFunction(({name, asset, stage}) => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== stage &&
+        window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.some(target => target.isOriginal && target.getName() === name && target.sprite.costumes[0]?.asset.assetId === asset),
+    {name: assignedBinding[2], asset: editedAssignedAsset, stage: beforeAssignedReloadStage});
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await flag.click();
+    await waitAssignedPixels();
+    await stop.click();
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const assignedExportPending = page.waitForEvent('download');
+    await page.getByTestId('bw-makecode-arcade-export').click();
+    const assignedExport = await assignedExportPending;
+    const assignedExportPath = path.join(path.dirname(out), 'arcade-assigned-image-edit.mkcd');
+    await assignedExport.saveAs(assignedExportPath);
+    const assignedExportBytes = await fs.readFile(assignedExportPath);
+    const beforeAssignedImportStage = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
+    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
+        name: 'arcade-assigned-image-edit.mkcd', mimeType: 'application/octet-stream', buffer: assignedExportBytes});
+    await page.getByText(/Imported the Arcade game.*arcade-assigned-image-edit/).first().waitFor({state: 'visible'});
+    const assignedReimportCode = await editor.evaluate(element => element.cmTile.root.view.state.doc.toString());
+    assert.doesNotMatch(assignedReimportCode, /# unsupported/i);
+    const assignedReimportBinding = /arcade copy image \(arcade frame image array "([^"]+)" index \(0\) template "([^"]+)" start 0 count 1\)/.exec(assignedReimportCode);
+    assert.ok(assignedReimportBinding, 'edited export retains fresh Image source binding');
+    await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
+    await page.waitForFunction(id => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== id,
+        beforeAssignedImportStage);
+    await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible'});
+    await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await flag.click();
+    await waitAssignedPixels();
+    report.assignedImageArtwork = {carrier: assignedBinding[2], visiblePixelEdit: true, editedPixels: [9, 7, 7, 7, 7, 7],
+        freshEvaluationOnRestart: true, savedProjectReload: true, exportedFileReimport: true, savedBytes: assignedBytes.length, exportedBytes: assignedExportBytes.length};
     const destructionState = async (live, destroyed) => {
         await page.waitForFunction(({live, destroyed}) => {
             const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
@@ -343,7 +420,8 @@ let discardedReady=true`;
         .filter(t => t.isOriginal).map(t => ({name: t.getName(), costumes: t.sprite.costumes.map(c =>
             ({assetId: c.asset.assetId, bytes: Array.from(c.asset.data)}))})));
     const beforeRepeat = await snapshotArt();
-    assert.ok(beforeRepeat.some(target => target.costumes.length > 1), 'native import installed the appended costume');
+    assert.equal(beforeRepeat.find(target => target.name === assignedReimportBinding[2])?.costumes.length, 1,
+        'reimported literal retains its actual editable source carrier');
     const applyArtworkCode = async () => {
         const priorStage = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
         await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
@@ -361,7 +439,7 @@ let discardedReady=true`;
     await flag.click();
     await page.waitForFunction(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.targets
         .flatMap(t => Object.values(t.variables)).some(v => v.name === 'freshValue' && Number(v.value) === 37));
-    report.codeArtworkOwnership = {implicitAppendedCostume: true, repeatExactCostumeBytes: true, freshPastedProgramLoadsWithoutStaleUploadWarnings: true};
+    report.codeArtworkOwnership = {editedAssignedLiteralCarrier: true, repeatExactCostumeBytes: true, freshPastedProgramLoadsWithoutStaleUploadWarnings: true};
     await stop.click();
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     const multifileProject = makeCodeProjectFile(MULTIFILE_ARCADE_FILES, {target: 'arcade', name: 'Multi file'});
