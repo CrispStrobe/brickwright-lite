@@ -184,6 +184,16 @@ const specs = [
         "visibility": "public"
       },
       {
+        "name": "setFlag",
+        "procedure": "__bwClass_Sprite_setFlag %s %s %s",
+        "parameters": [
+          {"name": "flag", "type": "number", "optional": false},
+          {"name": "on", "type": "boolean", "optional": false}
+        ],
+        "returnType": "void",
+        "visibility": "public"
+      },
+      {
         "name": "setKind",
         "procedure": "__bwClass_Sprite_setKind %s %s",
         "parameters": [
@@ -304,6 +314,12 @@ function create(ext,values){
    return chain(callVirtual(ref,'setImage',[args[1]],util,token),()=>{active();return chain(callVirtual(ref,'setKind',[-1],util,token),()=>{active();s.layer=1;s.lifespan=undefined;});});
   }
   if(op==='setImage')return ext.setSpriteImage({ID:ref,IMAGE:args[1]});
+  if(op==='setFlag'){
+   const flags=values.truth(args[2])?values.binary(s.flags,'|',args[1]):values.binary(s.flags,'&',values.unary('~',args[1]));
+   // SDK setFlag mutates bits only. The menu primitive's immediate StayInScreen
+   // clamp would move the Sprite before the next actual physics phase.
+   return ext.setSpriteProperty({ID:ref,PROPERTY:'flags',VALUE:flags},util);
+  }
   if(op==='setKind')return ext.setSpriteKind({ID:ref,KIND:args[1]});
   if(op==='kind')return s.kind;
   if(op==='setPosition')return ext.setSpritePosition({ID:ref,X:args[1],Y:args[2]},util);

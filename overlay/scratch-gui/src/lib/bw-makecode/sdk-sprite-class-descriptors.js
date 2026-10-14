@@ -135,6 +135,12 @@ export const SDK_SPRITE_CLASS_NODES = [
         "returnType": "void"
       },
       {
+        "name": "setFlag",
+        "params": ["flag", "on"],
+        "paramTypes": {"flag": "number", "on": "boolean"},
+        "returnType": "void"
+      },
+      {
         "name": "setKind",
         "params": [
           "value"
