@@ -1,9 +1,10 @@
 # Bounded ExtendableSprite constructor and update bridge
 
-Status: bounded candidate. Six selected-original constructor/lifecycle controls
-are qualified; new export execution, mixed plain-removal authority and hosted
-GUI qualification remain pending. Native Code and same/fresh saved-project
-controls are qualified for the three constructor/lifespan controls.
+Status: bounded candidate. Seven selected-original constructor/lifecycle controls
+and three independently compiled new exports are qualified. Native Code and
+same/fresh saved-project controls preserve the three constructor/lifespan
+observations. Hosted GUI, full-game graphics, audio and cadence qualification
+remain pending; these finite controls do not qualify Carnival applications.
 
 ## Selected authority
 
@@ -84,3 +85,21 @@ then an Extendable entry invokes its selected method. BaseSprite and non-Sprite
 renderables retain their no-op distinction. Ordinary Scratch setup retains its
 normal kernel turns and defaults; only the registered callback receives the
 frame activation.
+
+## Observed source controls
+
+A paused derived constructor and paused virtual setImage each permit two updates
+that observe the derived Number field as undefined. The authored snapshot sees
+four updates with deltas 0,20,20,20 ms. Lifespan-zero destruction retains one
+subsequent public update and the same Sprite alias/kind. An update paused for
+40 ms yields subsequent deltas 41 and 20 ms. A pushed child scene receives two
+updates while its parent method waits; the parent resumes and pops normally.
+A destruction handler can push a scene before the same entry invokes its public
+update, which reads that new context's initial delta 0. Removing an earlier plain
+Sprite shifts the live array and skips the following custom actor in that pass.
+
+Stop prevents the pending method's later write, and restart/project replacement
+create new activations. The driver rejects forged entries, foreign targets,
+duplicate spawns, stale generations and same-scene iterator reentry. Independent
+scene workers retain separate entry ownership. All work keeps the existing
+shared quantum, host turns and real program clock.
