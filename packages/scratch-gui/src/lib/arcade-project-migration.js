@@ -5,7 +5,9 @@ const INSTALLED = Symbol.for('brickwright.arcadeSchemaMigrationInstalled');
 const slots = {
     arrays_valueBinary: 'OP', arrays_valueUnary: 'OP',
     arrays_valueCompare: 'OP', arrays_specialValue: 'KIND',
-    arcade_controllerStep: 'AXIS', arcade_settingsRead: 'TYPE', arcade_settingsWrite: 'TYPE'
+    arcade_controllerStep: 'AXIS', arcade_mathBinary: 'OP',
+    arcade_textSpriteProperty: 'PROPERTY', arcade_textSpriteSetProperty: 'PROPERTY',
+    arcade_spriteDataSet: 'TYPE', arcade_spriteDataRead: 'TYPE', arcade_settingsRead: 'TYPE', arcade_settingsWrite: 'TYPE'
 };
 
 const installArcadeProjectMigration = vm => {

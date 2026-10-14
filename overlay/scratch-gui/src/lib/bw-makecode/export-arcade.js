@@ -51,11 +51,12 @@ import {TileAssetExporter} from './tile-assets.js';
 import {SONG_MIME} from './song-jres.js';
 import {tilemapSource} from './tilemap-values.js';
 import {ValueTypeGraph} from './value-type-graph.js';
-import {legacySettingType} from '../arcadeDialect.js';
+import {legacyDirectMenuValue} from '../arcadeDialect.js';
 
 // Fixed native fields take precedence; only genuine old literal menu shadows
 // can supply a missing type. Never evaluate a type reporter.
-const settingType = (block, blocks) => block.fields?.TYPE?.[0] ?? legacySettingType(block, blocks);
+const directMenuValue = (block, slot, blocks) => block.fields?.[slot]?.[0] ?? legacyDirectMenuValue(block, slot, blocks);
+const settingType = (block, blocks) => directMenuValue(block, 'TYPE', blocks);
 import {svgToPixels, quantizeRgba, toImgLiteral, remapPalette, nearestIndex} from './pixel-image.js';
 // arcade-character-animations Predicate members.
 const CHARACTER_PREDICATE_NAMES = ['NotMoving', 'Moving', 'FacingUp', 'FacingRight', 'FacingDown', 'FacingLeft', 'MovingUp', 'MovingRight',
@@ -1036,7 +1037,7 @@ class ArcadeEmitter {
         case 'operator_round': return `Math.round(${v('NUM')})`;
         case 'operator_random': return `randint(${v('FROM')}, ${v('TO')})`;
         case 'arcade_randomNumber': return 'Math.random()';
-        case 'arcade_mathBinary': {const operation=String(this.literalInput(b,'OP') ?? this.menuField(b,'OP','mathOperations'));if(!['min','max','randomRange'].includes(operation)){this.note('Arcade math requires a fixed supported operation');return 'undefined';}return `Math.${operation}(<any>${this.mathValue(b,'A')}, <any>${this.mathValue(b,'B')})`;}
+        case 'arcade_mathBinary': {const operation=String(directMenuValue(b,'OP',this.blocks));if(!['min','max','randomRange'].includes(operation)){this.note('Arcade math requires a fixed supported operation');return 'undefined';}return `Math.${operation}(<any>${this.mathValue(b,'A')}, <any>${this.mathValue(b,'B')})`;}
         case 'arcade_percentChance': return `Math.percentChance(<any>${this.mathValue(b,'PERCENTAGE')})`;
         case 'arcade_clampNumber': return `Math.clamp(<any>${this.mathValue(b,'MIN')}, <any>${this.mathValue(b,'MAX')}, <any>${this.mathValue(b,'VALUE')})`;
         // Planète Maths: the importer's spelling of Math.min/max/pow (they
@@ -1267,7 +1268,7 @@ class ArcadeEmitter {
         case 'arcade_settingsExists': return `settings.exists(${v('KEY')})`;
         case 'arcade_spriteDataRead': {
             this.requiresSpriteDataPackage=true;
-            const type=this.menuField(b,'TYPE','spriteDataReadTypes') || this.literalInput(b,'TYPE');
+            const type=directMenuValue(b,'TYPE',this.blocks);
             if(!['Number','String','Sprite'].includes(type)){this.note('Sprite Data requires a fixed supported read type');return 'undefined';}
             return `sprites.readData${type}(${v('ID')}, ${v('KEY')})`;
         }
@@ -1354,7 +1355,7 @@ class ArcadeEmitter {
             return `textsprite.create(${v('TEXT')}, ${v('BACKGROUND')}, ${v('FOREGROUND')})`;
         case 'arcade_textSpriteProperty': {
             this.requiresTextSpritePackage=true;
-            const property=this.menuField(b,'PROPERTY','textSpriteProperties') || this.field(b,'PROPERTY');
+            const property=directMenuValue(b,'PROPERTY',this.blocks);
             if(!['text','bg','fg','maxFontHeight','borderWidth','borderColor','padding','outlineWidth','outlineColor','icon'].includes(property)){this.note(`Unsupported TextSprite property ${property}`);return this.na();}
             return `${v('ID')}.${property}`;
         }
@@ -2004,7 +2005,7 @@ class ArcadeEmitter {
         }
         case 'arcade_textSpriteSetProperty': {
             this.requiresTextSpritePackage=true;
-            const property=this.menuField(b,'PROPERTY','textSpriteProperties') || this.field(b,'PROPERTY');
+            const property=directMenuValue(b,'PROPERTY',this.blocks);
             if(!['text','bg','fg','maxFontHeight','borderWidth','borderColor','padding','outlineWidth','outlineColor','icon'].includes(property)){push(`// ${this.note(`Unsupported TextSprite property ${property}`)}`);return;}
             push(`${v('ID')}.${property} = ${v('VALUE')}`);return;
         }
@@ -2394,7 +2395,7 @@ class ArcadeEmitter {
         case 'arcade_settingsClear': push('settings.clear()');return;
         case 'arcade_spriteDataSet': {
             this.requiresSpriteDataPackage=true;
-            const type=this.menuField(b,'TYPE','spriteDataTypes') || this.literalInput(b,'TYPE');
+            const type=directMenuValue(b,'TYPE',this.blocks);
             if(!['Number','String','Boolean','Sprite'].includes(type)){push(this.note('Sprite Data requires a fixed supported set type'));return;}
             push(`sprites.setData${type}(${v('ID')}, ${v('KEY')}, ${type==='Boolean'?this.arrayValue(b,'VALUE'):v('VALUE')})`);return;
         }
@@ -2789,7 +2790,7 @@ class ArcadeEmitter {
                     else anys.add(id);return id;
                 }
                 if(value.opcode==='arcade_spriteDataRead') {
-                    const menu=inputBlock(blocks,value,'TYPE'),type=menu?.fields?.spriteDataReadTypes?.[0] || literal(blocks,value,'TYPE');
+                    const type=directMenuValue(value,'TYPE',blocks);
                     const id=Symbol('sprite data value');
                     if(type==='Number')numbers.add(id);else if(type==='String')strings.add(id);else if(type==='Sprite')sprites.add(id);else anys.add(id);
                     return id;
@@ -2848,7 +2849,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_sevensegCounter'){const id=Symbol('seven segment counter');graphSevensegCounterValues.add(id);return id;}
                 if(value.opcode==='arcade_sevensegProperty'){const id=Symbol('seven segment property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_textSpriteCreate'){const id=Symbol('text sprite');graphTextSpriteValues.add(id);sprites.add(id);return id;}
-                if(value.opcode==='arcade_textSpriteProperty'){const id=Symbol('text sprite property');const property=inputBlock(blocks,value,'PROPERTY')?.fields?.textSpriteProperties?.[0] || literal(blocks,value,'PROPERTY');(property==='text'?strings:property==='icon'?images:numbers).add(id);return id;}
+                if(value.opcode==='arcade_textSpriteProperty'){const id=Symbol('text sprite property');const property=directMenuValue(value,'PROPERTY',blocks);(property==='text'?strings:property==='icon'?images:numbers).add(id);return id;}
                 if(value.opcode==='arcade_createDart'){const id=Symbol('dart');graphDartValues.add(id);sprites.add(id);return id;}
                 if(value.opcode==='arcade_createCorgi'){const id=Symbol('corgi');graphCorgiValues.add(id);sprites.add(id);return id;}
                 if(['arcade_dartProperty','arcade_corgiProperty','arcade_backgroundScrollOffset','arcade_characterRule'].includes(value.opcode)){const id=Symbol('extension property');numbers.add(id);return id;}
@@ -2892,7 +2893,7 @@ class ArcadeEmitter {
                 if(/^arcade_textSprite/.test(block.opcode)){
                     const id=ref(inputBlock(blocks,block,'ID'));if(id){graphTextSpriteValues.add(id);sprites.add(id);}
                     if(block.opcode==='arcade_textSpriteSetIcon'){const image=ref(inputBlock(blocks,block,'IMAGE'));if(image)images.add(image);}
-                    if(block.opcode==='arcade_textSpriteSetProperty'){const property=inputBlock(blocks,block,'PROPERTY')?.fields?.textSpriteProperties?.[0] || literal(blocks,block,'PROPERTY'),value=ref(inputBlock(blocks,block,'VALUE'));if(value)(property==='text'?strings:property==='icon'?images:numbers).add(value);}
+                    if(block.opcode==='arcade_textSpriteSetProperty'){const property=directMenuValue(block,'PROPERTY',blocks),value=ref(inputBlock(blocks,block,'VALUE'));if(value)(property==='text'?strings:property==='icon'?images:numbers).add(value);}
                 }
                 if(block.opcode==='arcade_eventPlayer'){const player=ref(block);if(player)graphPlayerValues.add(player);}
                 if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons','arcade_playerConnected','arcade_playerButtonPressed','arcade_getPlayerState','arcade_setPlayerState','arcade_changePlayerState'].includes(block.opcode)){
