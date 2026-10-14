@@ -3699,7 +3699,9 @@ follow merged claim and exact-head checks. See
 
 ## SPIKE deferred-storage observer cancellation — 2026-10-14
 
-Continuation candidate `lane/spike-g02-deferred-storage-stop-20261014` stays
+ADOPTED — [PR928](https://github.com/CrispStrobe/brickwright-lite/pull/928), tested
+source `aaa60836f1375a44cb69224e95dc511dd56e8d1c`, merged
+`fff84dc6ead5c1da7a89fee52a256497d6cc32f2`. This continuation stays
 within the merged G02 session/test envelope. Deferred storage frames can invoke
 hub, output or frame observers that synchronously Stop the session. Check closure
 after frame admission and output notification, and after the awaited storage
@@ -3711,21 +3713,26 @@ replies: five fail on the baseline, two live controls and an already-safe pendin
 frame cancellation pass. All 49 session controls pass with the candidate; removing
 each of the three new guards is detected. Preserve storage correlation, uncertain
 outcomes, durability checkpoints, native budgets and original failures. Fresh
-source-bound installed own-NuttX storage cancellation/recovery and every enabled
-exact-head check remain required before adoption. Firmware, Runtime, model,
+source-bound installed own-NuttX SAVE/hub and LOAD/frame cancellation/recovery
+cases passed standalone audits; all current enabled exact-head checks pass.
+The pending-SAVE native checkpoint refusal remains reported, with cleanup and
+recovery verified; no rollback or native-refusal fix is claimed. Firmware, Runtime, model,
 native/Rust, dependency pins and workflows are unchanged; full G02 remains open.
 
 
 ## SPIKE startup observer cancellation — 2026-10-14
 
-Continuation in the merged G02 session/test envelope, following the separately
-qualified deferred-storage consumer. A synchronous Stop from the configuration
+ADOPTED — [PR930](https://github.com/CrispStrobe/brickwright-lite/pull/930), tested
+source `59c78f3bee80b496dcd2b76180397bbae563a634`, merged
+`9a6706dc430472345031a82a2f83e04d4ec79035`, in the merged G02 session/test
+envelope following the separately qualified deferred-storage consumer. A synchronous Stop from the configuration
 notification must prevent native startup; Stop from first-frame publication must
 prevent input writes and external-backend admission. Add closure checks at both
 boundaries, preserving ordinary startup and native close ownership. Authored
 controls reproduce both missing guards: the live control passes and both Stop
 controls fail on the prior consumer. All 52 session controls pass with the two
-checks; removing either check is detected by its Stop control. Actual installed
-qualification and every enabled exact-head check remain required before adoption. No dependency pin,
+checks; removing either check is detected by its Stop control. Both actual installed
+configuration/first-frame cancellation and fresh guest recovery cases passed
+standalone audits; all current required exact-head contexts pass. No dependency pin,
 native code, firmware, Runtime, model, budget or workflow changes. Full G02 and
 distribution qualification remain open.
