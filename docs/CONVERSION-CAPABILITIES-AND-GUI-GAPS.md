@@ -9,10 +9,13 @@ not a second active owner. SPIKE G01, CPU and hardware ownership remain separate
 ## Current authoring and qualification boundary — 2026-10-14
 
 Start with [the current source/methodology handoff](ARCADE-AGENT-HANDOFF.md).
-The fresh immutable raw audit is **142 translated / 41 partial / one parse
-failure out of 184** at clean `3867e7d84`; no whole corpus game is GUI-qualified. Historical counts
+The fresh immutable raw audit is **143 translated / 40 partial / one parse
+failure out of 184** at clean `971f041222`; no whole corpus game is GUI-qualified. Historical counts
 in dated sections below describe older profiles. Preserve separate original
-compilation, native execution, export and GUI verdicts.
+compilation, native execution, export and GUI verdicts. Snake still has a known
+procedure-call rendering failure despite its cleared static numeric diagnostic.
+The separate canonical full-context profile is 29 original-valid, 19 strict
+structural candidates and 10 valid contexts blocked; none are GUI-promoted.
 
 Current canonical supplier has **380 authoring forms** at
 `bac884ccaaceae9d9dfd832d08089f05c4719237`. Newly qualified source capabilities

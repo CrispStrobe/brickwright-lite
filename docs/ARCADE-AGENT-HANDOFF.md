@@ -12,8 +12,8 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ### Current immutable corpus audit
 
-The fresh raw audit at clean `3867e7d8493d7e7932552b70c11a399002496735`
-reports **184 inputs: 142 translated, 41 partial, one parse failure**.
+The fresh raw audit at clean `971f041222d51211f701e9b6922a73b79733a9b7`
+reports **184 inputs: 143 translated, 40 partial, one parse failure**.
 Corpus commit is `c67f4854610ccc823682280b4d1fbdf737f4a585`; input content
 multiset SHA-256 is
 `a3dc8c21a33a9fb5e1808d2b2b2d2dbc2f7ce1ab33655b7b4cb14a16894b9f03`.
@@ -21,7 +21,14 @@ An independent read-only comparison confirms all 184 files match that commit's
 blobs. The audit receipt itself retains its original `commitVerified: false`;
 the separate comparison supplies verification without rewriting evidence.
 This audit requested no original compilation, execution or behavioral comparison.
-**No whole corpus game is GUI-qualified.** The preceding clean `22ccdcd6`
+The current change from clean `3867e7d84` is only Snake `28379fc078a029bc`: the
+lexically qualified `randint` Number result now retains primitive and scalar
+authority. Four strict provenance controls and three original/native/Code/SB3/
+export authoring cases pass. The unchanged Snake source has separately observed
+finite controller/state behavior, but its `show` procedure calls collide with
+a built-in Code command and its frame delta differs. Its rendering/game verdict
+remains partial despite the static diagnostic disappearing.
+**No whole corpus game is GUI-qualified.** Clean `3867e7d84` was 142/41/1. The earlier clean `22ccdcd6`
 audit was 140/43/1 with identical inputs. Only two creation-handler projects
 changed from partial to translated: `a5ad2a27e66886ae` and `d5bdcef480c08ffb`.
 Other recovered-project counts below describe historical profiles. Compare
@@ -50,6 +57,20 @@ editor qualification remains open. Literal runtime `Sprite.setImage` creates
 a fresh image per evaluation, preserving dynamic kinds and instance identity;
 seven affected original/native/artwork controls pass. The raw count above
 measures translation only.
+
+### Authentic project context is a separate profile
+
+A fresh cached-source audit at clean `f679f214a2dd790d2a0a18e6cb57f2dcf957092f`
+and compiler 380 recompiles all 41 authentic contexts using the current CLI
+compiler bridge. Exact project inputs, resolved packages, source order and
+generated source match the prior canonical context profile. There are **29
+compiler-valid contexts, 12 compiler-invalid contexts, 19 strict structural
+candidates and 10 valid contexts still structurally blocked**. The comparable
+prior profile had 16 strict candidates; three improve and none regress.
+These counts differ from the repaired 37-context profile and the bare 184-input
+audit; do not mix their denominators. An incomplete interactive fragment still
+lacks its actor initialization, even though it structurally translates. No
+whole-game or GUI qualification follows from these structural counts.
 
 ### Initializer and virtual-slot qualification
 
