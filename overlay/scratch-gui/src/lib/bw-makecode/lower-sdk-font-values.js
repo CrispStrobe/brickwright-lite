@@ -4,7 +4,7 @@ import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
 // Directed actual-producer authority. An annotation, assertion or SDK-looking
 // name does not allocate a Font, and no class/member result is guessed.
 export function lowerSdkFontValues(program) {
-    const sdk=staticSdkNamespaceReceivers(program),fields=new Map(SDK_FONT_FIELDS.map(field=>[field.name,field.type]));
+    const sdk=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['screen']}),fields=new Map(SDK_FONT_FIELDS.map(field=>[field.name,field.type]));
     const writing=new WeakSet(),owners=new WeakMap(),cells=new WeakMap(),types=new Map(),edges=[],scales=[],texts=[],derived=[],prints=[],classes=new Map(),classCalls=[],classWrites=new Set(),declarations=new Map(),functions=new Map(),calls=[],unsupported=[];
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const intrinsic=(name,args,type)=>({type:'Call',callee:{type:'Identifier',name:'__bwSdkFont_'+name},args,bwFontIntrinsic:name,...(type?{bwFontType:type}:{} )});
@@ -25,7 +25,7 @@ export function lowerSdkFontValues(program) {
         if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(value=>visit(value,owner));return;}
         owners.set(node,owner);if(['FunctionDeclaration','Class'].includes(node.type) && (node.name?.startsWith('__bwSdkFont_') || node.name==='__bwSDK_Font'))fail('Internal Font descriptor and intrinsic names are not source bindings');
         if(node.type==='Declaration' && node.decls.some(decl=>decl.name.startsWith('__bwSdkFont_') || decl.name==='__bwSDK_Font'))fail('Internal Font descriptor and intrinsic names are not source bindings');
-        if(node.type==='Identifier'){if(node.name.startsWith('__bwSdkFont_'))fail('Internal Font intrinsic names are not source bindings');if(!writing.has(node)){cells.set(node,key());edge(binding(owner,node.name),cell(node));}return;}
+        if(node.type==='Identifier'){if(node.name.startsWith('__bwSdkFont_'))fail('Internal Font intrinsic names are not source bindings');if(!writing.has(node)){cells.set(node,key());if(node.name==='screen'&&sdk.has(node))add(cell(node),'Image');else edge(binding(owner,node.name),cell(node));}return;}
         cells.set(node,key());const current=cell(node);
         if(node.type==='Program'){predeclare(node.body,owner);vars(node.body,owner);node.body.forEach(value=>visit(value,owner));return;}
         if(node.type==='Block'){body(node.body,owner);return;}
@@ -60,9 +60,10 @@ export function lowerSdkFontValues(program) {
         else if(node.type==='Template'&&node.tag==='img')add(current,'Image');
         else if(node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&node.callee.name==='clone')derived.push({result:current,type:'Image',operands:[cell(node.callee.object)],signature:node.args.length===0,domain:'Image'});
         else if(node.type==='Unary'&&['+','-','~'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.argument)],signature:true,domain:'Number'});
-        else if(node.type==='Binary'&&['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:'Number'});
+        else if(node.type==='Binary'&&['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:'Number',stringConcat:node.op==='+'});
         else if(node.type==='Call'&&!node.isNew&&node.callee?.type==='Identifier')calls.push({node,callee:binding(owner,node.callee.name),result:current});
         else if(['Conditional','Logical'].includes(node.type)){edge(cell(node.consequent||node.left),current);edge(cell(node.alternate||node.right),current);}
+        else if(node.type==='Member'&&['width','height'].includes(node.name))edges.push([cell(node.object),current,'imageDimension',node.name]);
         else if(node.type==='Member'&&fields.has(node.name))edges.push([cell(node.object),current,'field',node.name]);
         else if(['Undefined','Null','String','Number','Boolean'].includes(node.type))add(current,node.type);
         else if(node.type==='Call'&&sdk.has(node.callee)&&path(node.callee)==='game.askForString')add(current,'String');
@@ -74,7 +75,7 @@ export function lowerSdkFontValues(program) {
         if(!node||typeof node!=='object')return known;
         if(Array.isArray(node)){for(const value of node)known=entry(value,known);return known;}
         const owner=owners.get(node)||global;
-        if(node.type==='Identifier'){if(!writing.has(node)&&!known.has(binding(owner,node.name)))add(cell(node),'Undefined');return known;}
+        if(node.type==='Identifier'){if(!writing.has(node)&&!(node.name==='screen'&&sdk.has(node))&&!known.has(binding(owner,node.name)))add(cell(node),'Undefined');return known;}
         if(node.type==='FunctionDeclaration'||node.type==='FunctionExpression'){const entryOwner=node.type==='FunctionDeclaration'?functions.get(binding(owner,node.name))?.owner:null;const first=node.body?.[0],methodOwner=entryOwner||owners.get(first);entry(node.body,new Set((node.params||[]).map(name=>binding(methodOwner||owner,name))));return known;}
         if(node.type==='Class'){for(const field of node.fields||[])entry(field.init,new Set());for(const method of [node.ctor,...(node.methods||[])].filter(Boolean)){const methodOwner=owners.get(method.body?.[0])||owner;entry(method.body,new Set((method.params||[]).map(name=>binding(methodOwner,name))));}return known;}
         if(node.type==='Declaration'){for(const decl of node.decls){known=entry(decl.init,known);if(decl.init)known=new Set([...known,binding(owner,decl.name)]);}return known;}
@@ -94,13 +95,18 @@ export function lowerSdkFontValues(program) {
         fn.node.params.forEach((name,index)=>{const arg=call.node.args[index],param=fn.owner.bindings.get(name);if(arg)edge(cell(arg),param);else add(param,'Undefined');});edge(fn.result,call.result);
     }
     const isFont=current=>{const set=types.get(current);return !!set?.has('Font')&&set.size===1;};
+    const exactType=(value,type)=>types.get(value)?.size===1&&types.get(value).has(type);
+    const primitiveTypes=new Set(['String','Number','Boolean','Null','Undefined']);
+    const stringConcat=item=>item.stringConcat&&item.operands.some(value=>exactType(value,'String'))&&item.operands.every(value=>types.get(value)?.size&&[...types.get(value)].every(type=>primitiveTypes.has(type)));
+    const numericOperand=value=>types.get(value)?.size&&[...types.get(value)].every(type=>type==='Number'||type==='Undefined');
+    const derivedValid=item=>item.signature&&(stringConcat(item)||item.operands.every(operand=>item.domain==='Number'&&item.type==='Number'?numericOperand(operand):exactType(operand,item.domain)));
     const propagate=()=>{let changed;do{changed=false;
-        for(const[from,to,mode,name]of edges){if(mode==='field'){if(isFont(from)){changed=add(to,name==='data'?'GlyphBuffer':'Number')||changed;if(name==='multiplier')changed=add(to,'Undefined')||changed;}else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else for(const type of types.get(from)||[])changed=add(to,type)||changed;}
-        for(const item of derived)if(item.signature&&item.operands.every(operand=>types.get(operand)?.size===1&&types.get(operand).has(item.domain)))changed=add(item.result,item.type)||changed;
+        for(const[from,to,mode,name]of edges){if(mode==='imageDimension'){if(exactType(from,'Image'))changed=add(to,'Number')||changed;else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else if(mode==='field'){if(isFont(from)){changed=add(to,name==='data'?'GlyphBuffer':'Number')||changed;if(name==='multiplier')changed=add(to,'Undefined')||changed;}else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else for(const type of types.get(from)||[])changed=add(to,type)||changed;}
+        for(const item of derived)if(derivedValid(item))changed=add(item.result,stringConcat(item)?'String':item.type)||changed;
         for(const item of scales)if(isFont(item.receiver))changed=add(item.result,'Font')||changed;
         for(const item of texts)if(types.get(item.argument)?.size===1 && types.get(item.argument).has('String'))changed=add(item.result,'Font')||changed;
     }while(changed);};propagate();
-    let invalidated;do{invalidated=false;for(const item of derived)if(!item.signature||!item.operands.every(operand=>types.get(operand)?.size===1&&types.get(operand).has(item.domain)))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
+    let invalidated;do{invalidated=false;for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
     for(const item of scales){if(!isFont(item.receiver))fail('SDK scaledFont requires a proven current Font producer');const size=types.get(cell(item.node.args[1]));if(size?.size!==1 || !size.has('Number'))fail('SDK scaledFont size requires a proven Number producer');}
     for(const item of texts)if(types.get(item.argument)?.size!==1 || !types.get(item.argument).has('String'))fail('SDK Font selection requires a proven actual String producer');
     for(const {node,center,fontIndex}of prints){if(types.get(cell(node.callee.object))?.size===1&&types.get(cell(node.callee.object)).has('ClassInstance'))continue;if(!types.get(cell(node.callee.object))?.has('Image')&&!types.get(cell(node.args[fontIndex]))?.has('Font'))continue;const exact=(value,type)=>types.get(cell(value))?.size===1&&types.get(cell(value)).has(type);if(node.isNew||node.args.length!==fontIndex+1)fail('SDK Font print requires its exact selected signature');if(!exact(node.callee.object,'Image'))fail('SDK Font print IMAGE requires a proven actual Image producer');if(!exact(node.args[0],'String'))fail('SDK Font print TEXT requires a proven actual String producer');if(!exact(node.args[fontIndex],'Font'))fail('SDK Font print FONT requires a proven actual Font producer');for(const [index,name]of center?[[1,'Y'],[2,'COLOR']]:[[1,'X'],[2,'Y'],[3,'COLOR']])if(!exact(node.args[index],'Number'))fail('SDK Font print '+name+' requires a proven actual Number producer');}
