@@ -415,8 +415,10 @@ let discardedReady=true`;
     const assignedReimportBinding = /arcade copy image \(arcade frame image array "([^"]+)" index \(0\) template "([^"]+)" start 0 count 1\)/.exec(assignedReimportCode);
     assert.ok(assignedReimportBinding, 'edited export retains fresh Image source binding');
     await page.getByRole('button', {name: '⇦ To blocks', exact: true}).click();
-    await page.waitForFunction(id => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== id,
-        beforeAssignedImportStage);
+    await page.waitForFunction(id => {
+        const stage = window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage();
+        return Boolean(stage && stage.id !== id);
+    }, beforeAssignedImportStage);
     await page.getByText('Blocks loaded.', {exact: true}).waitFor({state: 'visible'});
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     await flag.click();
