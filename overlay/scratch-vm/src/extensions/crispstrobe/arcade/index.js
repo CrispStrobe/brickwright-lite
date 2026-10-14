@@ -27,6 +27,7 @@ module.exports = makeExt(`// Name: Arcade
   class Arcade {
     constructor(runtime) {
       this._runtime = runtime;
+      this._sourceScalarCells = dependencies.createSourceScalarCells(runtime, Scratch.BWValues);
       this._resetProgramClock();
       this._bufferSuspended = false;
       this._speechEngine = dependencies.createSpeechEngine(dependencies.initializeSpeech, dependencies.fonts,
@@ -102,6 +103,8 @@ module.exports = makeExt(`// Name: Arcade
           this._terrainWaits.clear();
           if(this._foreverTimer!==undefined)clearTimeout(this._foreverTimer);this._foreverTimer=undefined;
         };
+        runtime.on('PROJECT_STOP_ALL', () => this._sourceScalarCells.invalidate());
+        runtime.on('RUNTIME_DISPOSED', () => this._sourceScalarCells.dispose());
         runtime.on('PROJECT_STOP_ALL', () => this._stopProgramClock());
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
         runtime.on('PROJECT_STOP_ALL', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._musicHost?.stopAll();});
@@ -167,13 +170,14 @@ module.exports = makeExt(`// Name: Arcade
           this._changed();
         };
         runtime.on('PROJECT_LOADED', () => {
+          this._sourceScalarCells.invalidate();
           // Registry publications belong to the loaded project. GUI artwork
           // restoration repopulates them after successful deserialization.
           runtime.bwArcadeAnimationResources = new Map();
           reset();
           this._bufferSuspended = false;
         });
-        runtime.on('PROJECT_START',()=>{reset();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
+        runtime.on('PROJECT_START',()=>{reset();this._sourceScalarCells.initialize();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
         runtime.on('targetWasRemoved', target => {
           for (const [id, entry] of this._imageSkins) if (entry.target === target) this._clearImage(id);
           for (const [id, entry] of this._speech) if (entry.target === target) this._clearSpeech(id);
@@ -193,6 +197,7 @@ module.exports = makeExt(`// Name: Arcade
         color3: '#C42870',
         blocks: [
           {opcode:'whenSourceStarts',blockType:Scratch.BlockType.HAT,text:'when Arcade source starts',isEdgeActivated:false},
+          {opcode:'declareSourceScalar',blockType:Scratch.BlockType.COMMAND,text:'declare Arcade source scalar [VARIABLE] as [TYPE]',arguments:{VARIABLE:{type:Scratch.ArgumentType.STRING},TYPE:{type:Scratch.ArgumentType.STRING,menu:'sourceScalarTypes',defaultValue:'Any'}}},
           {opcode:'sourceWhile',blockType:Scratch.BlockType.LOOP,text:'Arcade repeat while [CONDITION]',arguments:{CONDITION:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'sceneMillis',blockType:Scratch.BlockType.REPORTER,text:'Arcade scene runtime milliseconds'},
           {opcode:'programMillis',blockType:Scratch.BlockType.REPORTER,text:'Arcade program runtime milliseconds'},
@@ -822,6 +827,7 @@ module.exports = makeExt(`// Name: Arcade
             text: 'stop Arcade countdown' }
         ],
         menus: {
+          sourceScalarTypes:{acceptReporters:false,items:['Number','Boolean','String','Any']},
           mathOperations:{acceptReporters:false,items:['min','max','randomRange']},
           hudElements:{acceptReporters:false,items:['score','life','countdown']},
           buttons: {acceptReporters: true, items: [
@@ -1005,6 +1011,8 @@ module.exports = makeExt(`// Name: Arcade
     settingsExists(args){return this._settingsGuard(()=>this._settingsStore().call('exists',Scratch.BWValues.decode(args.KEY)),true);}
     settingsRemove(args){return this._settingsGuard(()=>this._settingsStore().call('remove',Scratch.BWValues.decode(args.KEY)));}
     settingsClear(){return this._settingsGuard(()=>this._settingsStore().call('clear'));}
+
+    declareSourceScalar(args, util) {return this._sourceScalarCells.declare(args, util);}
 
     _initializeImplicitTextKinds() {
       const blocks=(this._runtime?.targets || []).flatMap(target=>Object.values(target.blocks?._blocks || {}));
@@ -5519,6 +5527,7 @@ module.exports = makeExt(`// Name: Arcade
   sdkObjectClasses: require('./sdk-object-classes'),
   sceneFlags: require('./scene-flags'),
   createObjectHeap: require('./object-heap'),
+  createSourceScalarCells: require('./source-scalar-cells'),
   createSceneFrameContexts: require('./scene-frame-contexts'),
   createPollEvents: require('./poll-events'),
   createKindRegistry: require('./kind-registry'),

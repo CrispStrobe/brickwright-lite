@@ -42,8 +42,8 @@ Bind actual stock variable IDs, preserve typed undefined before source
 initialization and ordinary Scratch saved defaults. Do not use name-only cell
 binding, unknown mutation attributes or a project-wide typing switch. Preserve
 independent source phase, class/accessor, Scene/controller and supplier lanes.
-The claim landed before product command or source prelude implementation. Private
-prototypes and original controls are preparation only; no whole-game promotion.
+The documentation claim is merged. Implementation and focused qualification are
+active; no whole-game promotion.
 
 ## Native Arcade splash and long text — 2026-10-13
 

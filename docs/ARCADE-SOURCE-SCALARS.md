@@ -1,7 +1,7 @@
 # Arcade source scalar cells
 
-Status: proposed contract. Product implementation and whole project qualification
-are pending. This extends the [source phase contract](ARCADE-FRAME-SCHEDULER.md)
+Status: merged contract; implementation and focused qualification are active.
+Whole project qualification is pending. This extends the [source phase contract](ARCADE-FRAME-SCHEDULER.md)
 and the [class contract](ARCADE-CLASS-AND-OBJECT-SEMANTICS.md).
 
 ## Selected source behavior
@@ -23,7 +23,7 @@ selected profile; the source link does not qualify other compiler versions.
 
 ## Portable declaration and binding
 
-The proposed command is `arcade_declareSourceScalar`, with canonical Code form:
+The command is `arcade_declareSourceScalar`, with canonical Code form:
 
 ```text
 declare arcade source scalar {VARIABLE} as {TYPE}
