@@ -97,6 +97,8 @@ export function lowerNamedArrayItemHelpers(program) {
     const mutators=new Map();
     for(const fn of functions)for(const parse of parseHelpers)for(const [kind,template]of mutatorTemplates)
         if(exact(fn,template,new Map([[fn.name,template.name],[parse.name,parseTemplate.name]])))mutators.set(fn.name,{fn,kind});
+    if([...mutators.keys()].some(name=>symbolCounts.get(name)!==1))
+        return {program,unsupported:['Named Array mutator requires an unambiguous actual lexical binding']};
     const passive=new Set(jsonHelpers.map(fn=>fn.name));
     const arrayAccessTemplate=parsed(ARRAY_ACCESS_SOURCE);
     for(const fn of functions)if(symbolCounts.get(fn.name)===1 &&

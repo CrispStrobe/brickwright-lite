@@ -98,6 +98,11 @@ test('validated mutator procedures disappear only when all actual calls use reco
         assert.ok(retained.program.body.some(node=>node.type==='FunctionDeclaration' && node.name==='ownedPush'),extra);
     }
     assert.ok(lower(helper+';ownedPush=external;'+body).unsupported.length);
+    for(const duplicate of ['function ownedPush(array:any[],value:any):void{array.push(9)}','let ownedPush=null']){
+        const ambiguous=lower(helper+';'+duplicate+';'+body);
+        assert.ok(ambiguous.unsupported.some(message=>message.includes('mutator requires an unambiguous actual lexical binding')));
+        assert.ok(!nodes(ambiguous.program).some(node=>node.bwNativeNamedArray));
+    }
     assert.ok(lower(helper+';let actual:any[]=[1];let value=0;function run(){let value=external();ownedPush(actual,value)}run();let out=__bwNamedArrayGet(actual,0)').unsupported.length,'local opaque values cannot borrow a same-named global primitive');
 });
 
