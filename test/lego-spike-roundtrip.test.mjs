@@ -292,8 +292,9 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 846dcf05 (2026-10-13): clamp, typed bitwise and raw flags field choices; board main is retained; rerun SPIKE artifact assertions.
     // -> 288731b8 (2026-10-13): qualified native class descriptors; rerun every SPIKE artifact assertion.
     // -> a1fa275d (2026-10-14): canonical array-copy words and Settings native dropdown fields; rerun every SPIKE artifact assertion.
+    // -> 7c84f8b0 (2026-10-14): merged Settings/Scene supplier; rerun every SPIKE artifact assertion.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'a1fa275ddca31cfda8be3e3fd810018d73bbc13c');
+        '7c84f8b06f6c58551e07aa8e6ce13aad6f60b087');
 
 
     const creator = new SB3Creator();
