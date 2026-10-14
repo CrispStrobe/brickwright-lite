@@ -12,8 +12,8 @@ import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 // Explicit receiver/needle/from temporaries bound this test to query export;
 // unstaged nested reporter execution order is a separate importer limitation.
 const source = `let actor=sprites.create(img\`2\`,SpriteKind.Player)
-let texts:string[]=["1","2"]
-let numbers:number[]=[1,2]
+let texts=["1","2"]
+let numbers=[1,2]
 let alias=texts
 let wrongText=texts.indexOf(1+0)
 let wrongNumber=numbers.indexOf("1")
@@ -24,7 +24,7 @@ let remainingCount=alias.length
 let sameArray=texts===alias
 let picture=img\`2\`
 let clone=picture.clone()
-let pictures:Image[]=[picture,picture]
+let pictures=[picture,picture]
 let pictureAlias=pictures
 let samePicture=pictures.indexOf(picture)
 let clonedPicture=pictures.indexOf(clone)

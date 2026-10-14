@@ -2967,7 +2967,6 @@ class ArcadeEmitter {
                     const array=ref(inputBlock(blocks,block,'ARRAY'));if(array)arrays.add(array);
                     const index=ref(inputBlock(blocks,block,'INDEX'));if(index)numbers.add(index);
                     if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(block.opcode))elements.push([array,ref(block)]);
-                    if(block.opcode==='arrays_referenceRemove')elements.push([array,ref(inputBlock(blocks,block,'VALUE'))]);
                     if(block.opcode==='arrays_mutateReference' && ['push','unshift','insertAt','set'].includes(literal(blocks,block,'OP')))elements.push([array,ref(inputBlock(blocks,block,'VALUE'))]);
                 }
                 if(REGISTERED_COMMANDS.has(block.opcode)){
