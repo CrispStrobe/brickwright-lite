@@ -13,8 +13,8 @@ import {explicitCallSource} from './fixtures/arcade-explicit-call-game.mjs';
 test('ordinary source calls retain the real labels and definitions on their caller', () => {
     const imported = arcadeToPseudocode(explicitCallSource);
     assert.deepEqual(imported.unsupported, []);
-    assert.equal(imported.code.match(/^\s*CALL show$/gm).length, 2);
-    assert.match(imported.code, /^\s*CALL draw /m);
+    assert.equal(imported.code.match(/^\s*CALL: \(show\)$/gm).length, 2);
+    assert.match(imported.code, /^\s*CALL: \(draw /m);
     const creator = new Creator(); creator.parse(imported.code);
     assert.deepEqual(creator.warnings, []);
     const target = creator.project.targets.find(t => t.name === 'Game');
