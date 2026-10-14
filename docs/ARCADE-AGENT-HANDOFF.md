@@ -10,6 +10,25 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ## Latest source qualification — 2026-10-14
 
+Physical [ExtendableSprite updates](ARCADE-EXTENDABLE-SPRITE-UPDATE.md) now retain
+constructor/image pauses, undefined fields, base destruction followed by the
+same public update, independent scene workers, scene-change delta lookup and
+live Sprite iteration order. Seven actual source controls and three newly
+exported original programs pass with unchanged SDK/bridge byte guards.
+The composed native check passes 17 update/activation controls together with
+34 source-type controls. Plain Sprite lifecycle and speech share the actual
+live update pass; an unset lifespan remains the original `undefined` value.
+GUI, cadence, audio and whole-game qualification remain separate.
+
+Array reference identity is now independent of sprite artwork routing. Actual
+module/local/procedure ownership, startup defaults, mutation and aliases survive
+Code, same/fresh saved projects, original source/export execution and reimport.
+Opaque alternatives remain refused. Five composed native/portable controls
+pass; missing artwork remains an explicit gap. The fresh unchanged 184-input
+audit after both changes is still 147 translated, 36 partial and one parse
+failure. Removing an Array alias diagnostic does not promote a project that
+still lacks its genuine assets or helpers.
+
 Source `typeof` now preserves the actual operator through native execution,
 edited numeric Blocks inputs, Code, same/fresh saved projects, selected-original
 export execution and reimport. The bounded E15 named-item control preserves

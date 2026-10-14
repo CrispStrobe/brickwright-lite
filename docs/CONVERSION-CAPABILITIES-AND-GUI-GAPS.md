@@ -1,5 +1,20 @@
 # Conversion capabilities and GUI closure ledger
 
+## Physical class updates and standalone Array values — 2026-10-14
+
+The [Sprite update contract](ARCADE-EXTENDABLE-SPRITE-UPDATE.md) qualifies the
+bounded public Number/void `update` override through source, native, Code,
+saved projects and newly exported original programs. Array identity no longer
+depends on available sprite artwork; missing artwork and opaque alternatives
+remain diagnosed. These runtime results do not qualify editor discoverability.
+
+| Surface | Available | Remaining acceptance |
+| --- | --- | --- |
+| Code | Real class overrides, field defaults, `super.update`, Array declarations, local aliases and procedure forwarding | Completion for inherited methods; useful signature and refusal messages; debug constructor/update pauses and scene ownership |
+| Blocks | Existing class/method/field and reference Array operations | Create and edit an override without hand-writing metadata; discover typed parameters and return sockets; edit alias/mutation programs through actual controls |
+| Graphics | Subclass actors use actual owned images and physical Sprite lifecycle | Edit an actor image and level, steer the game, save/reopen/export/reimport; qualify custom drawing separately |
+| Inspector | Undefined defaults, retained destroyed aliases and independently owned scenes | Explain actor, Array and closure identity without presenting internal carriers as source objects; inspect paused updates without running them |
+
 ## Source type and named array item authoring — 2026-10-14
 
 The [source type contract](compatibility/arcade-source-typeof-values.md) now has
