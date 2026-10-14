@@ -111,6 +111,7 @@ export function lowerObjectClasses(program) {
                 graph.add(binding(scope, 'this', true), `class:${node.name}`);
                 if(node.base)graph.add(binding(scope,'super',true),`class:${node.base}`);
                 memberOwners.set(field, scope); visit(field.init, scope);
+                visit(field.pxtStagingPrefix, scope); visit(field.pxtStagedInit, scope);
             }
             for (const method of [...node.methods, ...(node.ctor ? [node.ctor] : [])]) {
                 const scope = {parent, bindings: new Map(), className: node.name, result: Symbol('method result')};
@@ -324,7 +325,7 @@ export function lowerObjectClasses(program) {
         if(node.base)initBody.push(statement(procedure(signature(`__bwClass_${node.base}_fields`,[selfName]),[{...id(selfName),bwObjectTypes:['object']}] )));
         for(const field of node.fields.filter(field=>field.init)){
             const fn=`__bwClass_${name}_field_${field.name}`;ownInitializers.set(field.name,fn);
-            body.push({type:'FunctionDeclaration',name:fn,params:[],body:[{type:'Return',value:rewrite(field.init,{name,constructor:true})}]});
+            body.push({type:'FunctionDeclaration',name:fn,params:[],body:[...rewrite(field.pxtStagingPrefix || [],{name,constructor:true}),{type:'Return',value:rewrite(field.pxtStagedInit || field.init,{name,constructor:true})}]});
             initBody.push(statement(call('set',[{...id(selfName),bwObjectTypes:['object']},str(field.name),procedure(fn,[],types(field.init))])));
         }
         body.push({type:'FunctionDeclaration',name:initName,params:[selfName],body:initBody});
