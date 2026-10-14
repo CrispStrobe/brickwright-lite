@@ -1,5 +1,6 @@
 import {ARCADE_NAMESPACE_MEMBERS} from './arcade-namespace-members.js';
 import {ARCADE_SCENE_CONSTANTS} from './arcade-scene-constants.js';
+import {parseCallableType, mapCallableType, renderCallableType} from './callable-type-syntax.js';
 
 /** Lower TypeScript namespace bindings without merging their lexical scopes.
  * Namespace objects are not general JavaScript objects: only statically named
@@ -262,6 +263,12 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
         if(spriteKinds && node.type==='ExpressionStatement' && node.expr?.type==='Call' && node.expr.callee?.type==='Member' && node.expr.callee.object?.name==='SpriteKind' && node.expr.callee.name==='create')return {type:'Declaration',kind:'let',decls:[{name:fresh(['SpriteKind','discard']),typeName:'number',init:rewrite(node.expr,scope,shadows)}]};
         const classType=(type,generics=new Set())=>{
                 const text=typeof type==='string'?type:type?.text;if(!text)return type;
+                if(text.includes('=>')) {
+                    const signature=parseCallableType(text);
+                    if(!signature)return type;
+                    const rewritten=renderCallableType(mapCallableType(signature,name=>classType(name,generics)));
+                    return typeof type==='string'?rewritten:{...type,text:rewritten};
+                }
                 const suffix=/((?:\[\])*)$/.exec(text)[1],name=text.slice(0,text.length-suffix.length);
                 if(!/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$/.test(name))return type;
                 if(generics.has(name))return type;
@@ -271,7 +278,14 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
             };
         if(node.type==='Class'){
             const symbol=scope.symbols.get(node.name);
-            const member=fn=>fn?{...fn,paramTypes:Object.fromEntries(Object.entries(fn.paramTypes || {}).map(([name,type])=>[name,classType(type)])),returnType:classType(fn.returnType),body:rewriteBody(fn.body,scope,childShadows(shadows,[...(fn.params || []),...functionVars(fn.body)]))}:fn;
+            const member=fn=>{
+                if(!fn)return fn;
+                const generics=new Set((fn.typeParameters || []).map(parameter=>parameter.name));
+                const local=childShadows(shadows,[...(fn.params || []),...functionVars(fn.body),...generics]);
+                return {...fn,paramTypes:Object.fromEntries(Object.entries(fn.paramTypes || {}).map(([name,type])=>[name,classType(type,generics)])),
+                    returnType:classType(fn.returnType,generics),body:rewriteBody(fn.body,scope,local),
+                    ...(fn.originalBody?{originalBody:rewriteBody(fn.originalBody,scope,local)}:{})};
+            };
             return {...node,...(node.base?{base:classType(node.base)}:{}),name:namespaceBody?symbol?.name || node.name:node.name,fields:node.fields.map(field=>({...field,typeName:classType(field.typeName),init:rewrite(field.init,scope,shadows)})),ctor:member(node.ctor),methods:node.methods.map(member)};
         }
         if (node.type === 'FunctionDeclaration' || node.type === 'FunctionExpression') {

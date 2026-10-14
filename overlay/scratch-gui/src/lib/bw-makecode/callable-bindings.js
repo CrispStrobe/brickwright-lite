@@ -46,7 +46,10 @@ export function analyseCallableBindings(program) {
         scopes.set(node,child);predeclare(body,child);
         for(const statement of body || [])visit(statement,child);
     };
-    const functionBody = (node,parent,{className=parent.className,method=false,constructor=false}={}) => {
+    const functionBody = (node,parent,options={}) => {
+        const className=Object.hasOwn(options,'className')?options.className:parent.className;
+        const method=Object.hasOwn(options,'method')&&options.method===true;
+        const constructor=Object.hasOwn(options,'constructor')&&options.constructor===true;
         const child=scope(parent,method?'method':'function',node,className);
         child.functionOwner=child;child.constructor=constructor;
         scopes.set(node,child);functions.push(child);

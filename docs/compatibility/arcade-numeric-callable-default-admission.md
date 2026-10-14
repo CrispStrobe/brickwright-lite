@@ -48,3 +48,22 @@ This lane does not admit callable source typeof, stored class callbacks,
 generic higher-order APIs or host registration. Those interfaces require their
 own owner and qualification. Hosted GUI authoring and whole-game execution
 remain separate acceptance surfaces.
+
+## Reached implementation checkpoint
+
+The documentation claim merged through
+[PR931](https://github.com/CrispStrobe/brickwright-lite/pull/931) at
+`e8b876bdb0e6aad68eee058ed5ad9e6b785e0ed5` after all 11 enabled checks passed;
+reviewed and landed trees match. Local implementation retains the ordinary parse
+for ordinary programs and enables the lexical pipeline only after an independent
+semantic gate proves the bounded numeric factory. Default export checks the
+entire reconstructed current program, including adjacent functions.
+
+Seventeen composed source/native/Code/saved-project/current-body/refusal controls
+pass. The edited export is byte-identical to the retained actually compiled and
+executed program, preserving its `9/16/9` observations. The retained source has
+`3/4/3`; both executables, input hashes and all nine consumed SDK/bridge guards
+remain verified. No new original SDK execution was needed. Wider v2/class,
+generic, FunctionExpression, defaulted and typeof surfaces are not admitted by
+this gate. Combined exact-source hosted checks and visible authoring remain
+pending.

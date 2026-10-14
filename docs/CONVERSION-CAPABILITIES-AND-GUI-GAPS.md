@@ -108,7 +108,7 @@ or reference type from these words.
 | Surface | Observed feature support | Remaining GUI work |
 | --- | --- | --- |
 | Blocks | Fixed dropdown fields retain edited math, Text Sprite and Sprite Data choices. Scalar declarations bind connected stock variables. Event fields carry player/value edits. | Reference and callable authoring need their separate source and supplier gates; validate declaration placement and rename behavior in editor actions. |
-| Code | Numeric and event authoring each pass all five official GUI journeys, including Code and fresh SB3. | The current 393-operation vocabulary includes source/reference, font, repeat and six callable ABI words; these changes need fresh editor qualification. Default source callable admission remains closed. Add signature/completion help for current words and typed reference/callable flows only after admission. |
+| Code | Numeric and event authoring each pass all five official GUI journeys, including Code and fresh SB3. | The current 393-operation vocabulary includes source/reference, font, repeat and six callable ABI words; these changes need fresh editor qualification. Bounded numeric factory source admission is implemented; wider callable shapes remain gated. Add signature/completion help for current words and typed reference/callable flows only after admission. |
 | Graphics | Imported sprite/background art and animation costumes remain editable; native factory duplication is corrected and inline literal-array grouping retains ordered costumes. | Fresh hosted edited-animation pixels, saved/reopened levels, tile asset identities, legacy maps and sprite placement remain independent gates. No class-specific graphics designer is qualified. |
 | Controller and stage | Numeric original comparisons include complete rendered frames; event input/waiter/player edits pass bounded official comparisons. | Repeat delay/interval, defaults and all 24 advertised player/button pairs have bounded original/native/Code/SB3/export controls. Their prepared real palette/controller-pane journey still needs matching hosted proof. Full source cadence and complete corpus games remain unqualified. |
 | Debugger and lifecycle | Focused tests retain Stop, restart, stale ownership, scalar/reference and callback cancellation assertions. | Add visible typed-cell/object/callable inspection without converting unknown values or editing retained execution state. |
@@ -4377,3 +4377,45 @@ completion, exercise radius edits through actual Scratch Blocks, test connected
 Image/Sprite references and handler parameters, and preserve authored costume
 pixels separately from live circle mutations in the graphics editor. Browser
 authoring remains pending; native schema presence is not its completion.
+
+## Bounded default numeric callbacks — 2026-10-14
+
+The merged admission claim precedes local implementation. Default source import
+and current-body export admit only the existing proven numeric factory surface.
+Seventeen composed native/portable/gate controls pass, and the current edited
+export is byte-identical to retained actually executed source/export programs;
+no SDK replay was needed. Class/generic/FunctionExpression/defaulted/adjacent
+unknown callback shapes remain separately refused.
+
+GUI work remains: show the supported factory/captured-cell signature clearly,
+let users create and edit its actual body and rename bindings safely in Code
+and Blocks, and test fresh saved-project, edited signature and original export
+journeys through the production editor. Native default admission is not that
+visible authoring qualification. Keep wider callbacks and Font interface values
+in their own contracts and ownership lanes.
+
+## Class callback and Font editor work still required
+
+Class callback conversion is a separately qualified prototype. An editor must
+let users create typed callable fields, choose parameter/result types, capture
+the actual receiver, and edit the current body. Code and Blocks must rebuild
+their binding plan from the actual declarations and procedure graph when a
+binding is renamed or a signature changes. Serialized plan metadata alone is
+not a usable authoring interface or proof that the body still matches it.
+Generated temporaries must remain distinct from every authored parameter and
+local; include adversarial names in the browser authoring journey.
+
+Live Font interface values are a separate supplier/consumer lane. Required
+Blocks inputs include a fixed font selector and connected Font values for
+text selection, scaling, printing and centered printing. Code completion must
+show `image.Font` as a record with fields, rather than inventing a constructor
+or inheritance. Expose unsupported mutations as named diagnostics while the
+read slice is qualified; the underlying MakeCode fields and glyph storage are
+mutable, and later support must preserve shared backing storage.
+
+The graphics editor needs text previews using the selected live Font, readable
+metrics, and a distinction between authored pixels and runtime image changes.
+Acceptance includes visible connected-input edits, aliases, Code reconstruction,
+same/fresh saved projects, executed export and reimport. Headless native pixels,
+palette descriptors and a prepared browser script do not establish these
+visible editor journeys.

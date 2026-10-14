@@ -85,3 +85,18 @@ they do not establish a drawing implementation fault or authorize SDK changes.
 
 Visible browser authoring and graphics-editor journeys remain pending. These
 focused controls do not admit a whole extension or game.
+
+## Sprite image routing
+
+A typed Sprite image now uses the native Sprite circle commands. Image references
+continue to use the Image commands; the source translator distinguishes the two
+receivers before choosing an operation.
+
+The focused Sprite control mutates one canvas shared by two sprites and compares
+all three complete images: 243 pixels and their shared Image identity. Native
+execution, Code reconstruction, executed MakeCode export and reimport pass. The
+exported source equals the actual compiler input, and all nine SDK/bridge byte
+guards remain unchanged. The initial control caught incorrect Image-command
+routing; that implementation failure is retained with the corrected result.
+This Sprite control does not yet qualify a separate saved-project or visible
+browser journey.

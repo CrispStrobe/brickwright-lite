@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {runTimedArcadeProgram, restartTimedArcadeRun} from './helpers/arcade-timed-native.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
@@ -67,11 +68,18 @@ alias.setPixel(0,0,2)`;
 });
 
 test('yielding functions resume with their own parameters and stop cancels pending results',async()=>{
-    const run=await execute(`function delayed(value:number){pause(200);return value+1}
-let result=delayed(6)`,30);assert.equal(vars(run).result,7);
-    run.vm.greenFlag();await stepFrames(run.vm,2);run.vm.stopAll();await stepFrames(run.vm,40);
-    assert.equal(run.vm.runtime.threads.length,0);
-    run.vm.greenFlag();await stepFrames(run.vm,30);assert.equal(vars(run).result,7);
+    const imported=arcadeToPseudocode(`function delayed(value:number){pause(200);return value+1}
+let result=delayed(6)`);assert.deepEqual(imported.unsupported,[]);
+    const run=await runTimedArcadeProgram(imported.code,{milliseconds:199,uploads:imported.costumes});
+    assert.deepEqual(run.errors,[]);assert.equal(BWValues.decode(vars(run).result),undefined);
+    await run.clock.advanceTo(200);assert.equal(vars(run).result,7);
+    const cancelled=await restartTimedArcadeRun(run,100);
+    run.vm.stopAll();await cancelled.advanceTo(400);
+    assert.equal(run.vm.runtime.threads.length,0);assert.equal(BWValues.decode(vars(run).result),undefined);
+    const restarted=await restartTimedArcadeRun(run,199);
+    assert.equal(BWValues.decode(vars(run).result),undefined);
+    await restarted.advanceTo(200);assert.equal(vars(run).result,7);
+    assert.deepEqual(run.errors,[]);run.vm.stopAll();run.vm.quit();
 });
 
 test('a returned function invocation keeps captured cells for later creation handlers',async()=>{

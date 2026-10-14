@@ -29,6 +29,48 @@ the yielding-wall scheduling entry or establish a new full-shard result.
 
 ## Current exact-source qualification failures
 
+Later integration `249dc22ddee151159b72b36d183b5f2545db0949` passes all
+496 [hosted focused controls](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38645260700/job/116132025480),
+with zero failures, skips or TODOs. Its
+[gallery browser check](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38645261066/job/116130412892)
+also succeeds. These results close the earlier focused mirror failure; full
+unit shards, production build and Arcade browser journeys remain separately
+pending. Retain the historical failures below.
+
+Three further focused controls now pass after correcting stale expectations.
+The optional-argument control checks the explicit `CALL:` syntax and still
+executes the procedure with an omitted argument, producing exactly three
+`Hello` lines. Multiplayer negative controls now reject an unknown controller
+event rather than the implemented `Connected` event; malformed movement arity
+and unsupported player members remain refused. Existing connection controls
+exercise the supported event's transport, replacement and scene behavior.
+These expectation corrections do not establish a new complete-shard result.
+
+Template clone layering exposed a genuine renderer synchronization defect:
+creation after a completed frame dirtied the scene's sort, but did not refresh
+Scratch drawable ordering when that sort ran. Both ordinary and renderable scene
+composition now refresh drawable order when consuming `NeedsSorting`. The
+regression and existing scene-order controls pass nine tests, including creation
+after a frame. Existing clone controls now observe the actual render boundary;
+z writes do not prematurely sort the scene's update list. The original failure
+is preserved. Visible browser layering remains pending.
+
+The yielding-function control now uses the existing independent timer platform:
+the result is undefined at 199 ms and equals seven at 200 ms. Stop at 100 ms
+cancels the pending result, and restart repeats the same deadline observations.
+This focused control passes. Its earlier manual physics frames did not advance
+the real pause clock, so their count was insufficient evidence of elapsed time.
+No runtime pause implementation or original comparison was changed.
+
+The background procedure/controller journey now awaits the normal Promise
+continuation queue between its five physical frames. Startup color two,
+controller color three, actual exported MakeCode compilation and reimported
+color two pass. Compiler inputs and output are retained, with all nine
+SDK/bridge guards unchanged. Its previous synchronous `_step` loop observed the
+handler before continuation; the background and controller implementations are
+unchanged. This is compile and native round-trip evidence, not an executed
+original-simulator comparison or a visible browser result.
+
 At `12d8bc43327309003a9de9c69c06a7c60cac2cea`, the
 [completed first unit shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38618756907/job/116045316170)
 reports 4,610 tests: 4,548 pass, 46 fail, 14 skip and two TODO. The

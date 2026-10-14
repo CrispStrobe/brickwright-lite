@@ -26,3 +26,11 @@ The first owned control should use an ordinary managed State object and a Holder
 - The current numeric factory gate remains unchanged. Ordinary Scratch variables and unrelated source profiles retain their existing behavior.
 
 The full StatusBar target additionally requires its retained status class, Sprite image/flag services and update/render order. Sprite Utils additionally requires Sprite parameters, scene-owned frame registration and interval catch-up semantics. Those projects remain unqualified until the complete affected source and authoring routes pass; supporting one callback field is not whole-library admission.
+
+## Isolated runtime prerequisite
+
+The optional class provider uses the separate `bw-class-callable-lexical` version 2 plan. It normalizes a declaration only after its ordinary class catalogue and supplied canonical graph guard agree with the actual project. Receiver captures come from the private managed-frame issuer; a same-named local cannot replace the actual receiver. The existing version 1 numeric profile does not use this provider.
+
+An explicit managed field descriptor uses `valueKind: "callable"`, `type: "callable"` and an ordered `callableSignature`. The domain marker distinguishes function resources from an ordinary user class named `callable`. Registration of that explicit domain without the owned signature service refuses. Writes validate the actual current callable resource and preserve its reference identity; a rejected write leaves the previous field unchanged. Initial fields retain undefined, and undefined has no callable invocation authority. The signature service does not admit Array, native Sprite, unknown or Any domains.
+
+Each invocation carries its own checked signature and completion record. Generic action results derive from the supplied owned callback signature, leaving the shared method template unchanged. This prerequisite has unit controls using the actual heap and callable resource services. Its dispatcher and graph guard are still modeled in those controls: installed managed dispatch, source admission, editable authoring, paused continuation and selected-original execution remain required before the State/Holder slice is qualified. Self-referential callback field registration, nested receiver creation and generic callback parameter variance remain outside this prerequisite.

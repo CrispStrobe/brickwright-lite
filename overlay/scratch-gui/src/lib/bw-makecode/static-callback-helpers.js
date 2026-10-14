@@ -6,7 +6,7 @@ export function lowerStaticCallbackHelpers(program, {registrationSpec = () => nu
     const unsupported = [];
     const fail = message => { if (!unsupported.includes(message)) unsupported.push(message); };
     const functions = new Map(program.body.filter(node => node.type === 'FunctionDeclaration').map(node => [node.name, node]));
-    const templates = new Map([...functions].filter(([,fn]) => fn.params.some(name => /=>/.test(fn.paramTypes?.[name]?.text || ''))));
+    const templates = new Map([...functions].filter(([,fn]) => !fn.bwClassCallableMethod && fn.params.some(name => /=>/.test(fn.paramTypes?.[name]?.text || ''))));
     const taken = new Set();
     const scan = node => {
         if (!node || typeof node !== 'object') return;

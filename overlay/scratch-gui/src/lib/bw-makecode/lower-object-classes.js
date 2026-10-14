@@ -1,10 +1,19 @@
 import {SDK_CLASS_NODES,SDK_SPRITE_CLASS_NODES,SDK_DIALOG_CLASS_NODES,sdkClassName} from './sdk-class-descriptors.js';
 import {SDK_DIALOG_OPAQUE_PARAMETERS} from './sdk-dialog-class-descriptors.js';
 import {ValueTypeGraph} from './value-type-graph.js';
+import {createClassCallableDescriptors} from './callable-class-descriptors.js';
 
 // Class structure is declarative authoring data. Instances are explicit heap
 // references; no field state, per-class numeric handles or closure snapshots.
-export function lowerObjectClasses(program) {
+export function lowerObjectClasses(program,{classCallablePrototype=false}={}) {
+    if(classCallablePrototype!==true&&classCallablePrototype!==false)return {program,unsupported:['Class callable class lowering requires its explicit Boolean option']};
+    const callableModel=classCallablePrototype?createClassCallableDescriptors(program):null;
+    if(callableModel?.unsupported.length)return {program,unsupported:callableModel.unsupported};
+    if(classCallablePrototype && JSON.stringify(program.bwClassCallableDescriptors)!==JSON.stringify({schema:callableModel.schema,version:callableModel.version,classes:callableModel.classes}))
+        return {program,unsupported:['Class callable descriptors differ from actual source declarations']};
+    const callableClass=name=>callableModel?.classes.find(row=>row.name===name);
+    const callableField=(name,field)=>callableClass(name)?.fields.find(row=>row.name===field);
+    const callableMethod=(name,method)=>callableClass(name)?.methods.find(row=>row.name===method);
     const reserved = new Set(SDK_CLASS_NODES.map(node=>node.name).filter(name=>name.startsWith('__bwSDK_')));
     const usesReserved = node => node && typeof node==='object' &&
         (reserved.has(node.type==='Identifier'||node.type==='Class'?node.name:null) || reserved.has(node.type==='Class'?node.base:null) ||
@@ -30,8 +39,8 @@ export function lowerObjectClasses(program) {
     const unsupported = [], admitted = new Map();
     const fail = message => { if (!unsupported.includes(message)) unsupported.push(message); };
     for (const [name, cls] of [...sdkClasses.filter(node=>classes.get(node.name)===node).map(node=>[node.name,node]),...sourceClasses.map(node=>[node.name,node])]) {
-        const problems = [...(cls.unsupported || [])];
-        if(cls.fields.some(field=>field.typeName && !/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\[\])*$/.test(field.typeName)))problems.push('union, callable or opaque field type metadata');
+        const problems = [...(cls.unsupported || [])].filter(problem=>!(classCallablePrototype && problem==='generic class methods' && cls.methods.filter(method=>method.typeParameters?.length).every(method=>callableMethod(name,method.name))));
+        if(cls.fields.some(field=>field.typeName && !callableField(name,field.name) && !/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\[\])*$/.test(field.typeName)))problems.push('union, callable or opaque field type metadata');
         if(cls.fields.some(field=>contains(field.init,node=>node.type==='Identifier' && node.name==='this')))problems.push('selected Arcade SDK instance-field this initializers');
         const originalDefault=value=>['Number','Boolean','Null'].includes(value?.type) || value?.type==='Unary' && ['+','-'].includes(value.op) && value.argument?.type==='Number';
         if([cls.ctor,...cls.methods].filter(Boolean).some(member=>member.parameterDefaults?.some(param=>!originalDefault(param.value))))problems.push('selected Arcade SDK nonliteral default arguments');
@@ -42,8 +51,8 @@ export function lowerObjectClasses(program) {
         if(cls.methods.some(method=>method.kind==='method' && cls.fields.some(field=>field.name===method.name)))problems.push('field or accessor conflicts with a method');
         for(const field of cls.fields.filter(field=>field.accessor?.get&&field.accessor?.set)){const get=field.accessor.get,set=field.accessor.set,param=set.paramTypes?.[set.params[0]],type=typeof param==='string'?param:param?.text;const mode=member=>member.modifiers?.find(value=>['private','protected'].includes(value))||'public';if(field.typeName!=='any'&&type&&type!=='any'&&field.typeName!==type)problems.push('getter and setter type mismatch');if(mode(get)!==mode(set))problems.push('getter and setter visibility mismatch');}
         for(const method of cls.methods.filter(method=>['get','set'].includes(method.kind))){if(method.params.length!==(method.kind==='get'?0:1))problems.push('accessor parameter count');if(method.optionalParams?.length || method.parameterDefaults?.length)problems.push('selected Arcade SDK optional or default accessor parameters');if(method.kind==='get'&&!contains(method.body,node=>node.type==='Return'&&node.value))problems.push('selected Arcade SDK getter must return a value');if(method.kind==='set'&&contains(method.body,node=>node.type==='Return'&&node.value))problems.push('selected Arcade SDK setter cannot return a value');}
-        if (contains(cls, node => node.type === 'FunctionExpression')) problems.push('function-valued fields or captured callbacks');
-        if (cls.fields.some(field => /=>|\bFunction\b/.test(field.typeName || ''))) problems.push('function field types');
+        if (contains(classCallablePrototype?{fields:cls.fields,methods:cls.methods.map(method=>({...method,originalBody:undefined})),ctor:cls.ctor?{...cls.ctor,originalBody:undefined}:null}:cls, node => node.type === 'FunctionExpression')) problems.push('function-valued fields or captured callbacks');
+        if (cls.fields.some(field => !callableField(name,field.name) && /=>|\bFunction\b/.test(field.typeName || ''))) problems.push('function field types');
         if (problems.length) { fail(`Class ${name} requires unsupported ${problems.join(', ')}`); continue; }
         admitted.set(name, cls);
     }
@@ -163,6 +172,7 @@ export function lowerObjectClasses(program) {
         const declared=declaredTypes.get(cell(node));if(declared)return declared;
         if(node.type==='Index'){const array=staticType(node.object);return array?.endsWith('[]')?array.slice(0,-2):null;}
         if(node.type==='Member'){const names=classNames(node.object),fields=names.map(name=>findField(name,node.name));return fields.length&&fields.every(field=>field && field.typeName===fields[0].typeName)?fields[0].typeName:null;}
+        if(node.type==='Call' && node.bwClassCallableInvocation?.result?.kind==='named')return node.bwClassCallableInvocation.result.name;
         if(node.type==='Call' && node.callee?.type==='Member'){const names=classNames(node.callee.object),methods=names.map(name=>findMethod(name,node.callee.name));return methods.length&&methods.every(method=>method && typeText(method.returnType)===typeText(methods[0].returnType))?typeText(methods[0].returnType):null;}
         if(node.type==='Call' && node.callee?.type==='Identifier')return node.isNew?node.callee.name:typeText(functions.get(node.callee.name)?.node.returnType);
         return null;
@@ -198,7 +208,9 @@ export function lowerObjectClasses(program) {
             if (node.type === 'Call' && !node.isNew) {
                 const targets = node.callee?.type === 'Identifier' && functions.has(node.callee.name) ? [functions.get(node.callee.name)] :
                     node.callee?.type === 'Member' ? classNames(node.callee.object).flatMap(name => [findMethod(name,node.callee.name)].filter(Boolean).map(method => ({node: method, owner: memberOwners.get(method)}))) : [];
+                if(classCallablePrototype && node.bwClassCallableInvocation?.result?.kind==='named')addType(value,node.bwClassCallableInvocation.result.name);
                 for (const target of targets) {
+                    if(classCallablePrototype && callableMethod(target.owner.className,target.node.name))continue;
                     graph.merge(value, target.owner.result);
                     node.args.forEach((arg, index) => { if (index < target.node.params.length) graph.merge(cell(arg), binding(target.owner, target.node.params[index])); });
                 }
@@ -374,7 +386,9 @@ export function lowerObjectClasses(program) {
             if (names.every(name => findMethod(name,node.callee.name))) {
                 for(const name of names)for(const index of opaqueParameters(name,node.callee.name))if(node.args[index] && !['Null','Undefined'].includes(node.args[index].type))fail('SDK Dialog Font arguments require separate native Font qualification');
                 access(node.callee.object,node.callee.name,names.map(name=>findMethod(name,node.callee.name)),context);
-                return call('call', [rewrite(node.callee.object, context), str(node.callee.name), {type:'Array', items:node.args.map(arg => rewrite(arg, context))}], types(node));
+                const result=call('call', [rewrite(node.callee.object, context), str(node.callee.name), {type:'Array', items:node.args.map(arg => rewrite(arg, context))}], types(node));
+                if(classCallablePrototype && node.bwClassCallableInvocation?.result?.kind==='named')result.bwClassCallableResultType=node.bwClassCallableInvocation.result.name;
+                return result;
             }
             fail(`Class receiver method ${node.callee.name} is not declared for every possible receiver`);
         }
@@ -415,7 +429,7 @@ export function lowerObjectClasses(program) {
     let selfName='__bwSelf';while(takenNames.has(selfName))selfName+='_';takenNames.add(selfName);
     for(const [name,cls]of admitted){for(const method of cls.methods.filter(method=>method.kind==='method'))takenNames.add('__bwClass_'+name+'_'+method.name);}
     for(const [name,cls]of admitted)for(const method of cls.methods.filter(method=>['get','set'].includes(method.kind))){let fn='__bwAccessor_'+name+'_'+method.kind+'_'+method.name;while(takenNames.has(fn))fn+='_';takenNames.add(fn);accessorNames.set(method,fn);}
-    const body = [];
+    const body = [],classCallableProcedures=[];
     for (let node of program.body) {
         if(node.bwPxtWhenUsedGroup && !usedGroups.has(node.bwPxtWhenUsedGroup))continue;
         if(node.type==='Declaration'){const decls=node.decls.filter(decl=>!decl.whenUsed || used.has(decl.name));if(decls.length)body.push(rewrite({...node,decls}));continue;}
@@ -432,6 +446,8 @@ export function lowerObjectClasses(program) {
         body.push({type:'FunctionDeclaration',name:initName,params:[selfName],body:initBody});
         if(node.ctor)body.push({type:'FunctionDeclaration',name:ctorName,params:ctorParams,paramTypes:node.ctor.paramTypes,body:rewrite(classBody(node.ctor),{name,constructor:true})});
         else if(!node.base)body.push({type:'FunctionDeclaration',name:ctorName,params:ctorParams,body:[]});
+        if(Number.isInteger(node.ctor?.bwClassCallableScopeId))classCallableProcedures.push({scopeId:node.ctor.bwClassCallableScopeId,
+            className:name,methodName:null,procedure:signature(ctorName,ctorParams),receiverParameter:selfName});
         const superParams=ctorParams;
         body.push({type:'FunctionDeclaration',name:`__bwClass_${name}_superConstructor`,params:superParams,body:[
             statement(procedure(signature(initName,[selfName]),[{...id(selfName),bwObjectTypes:['object']}])),
@@ -440,12 +456,14 @@ export function lowerObjectClasses(program) {
         for (const method of node.methods) {
             const fn = accessorNames.get(method) || `__bwClass_${name}_${method.name}`, params = [selfName, ...method.params];
             body.push({type:'FunctionDeclaration', name:fn, params, paramTypes:method.paramTypes,
-                body:rewrite(classBody(method), {name, constructor:false})});
-            if(method.kind==='method')methods.push({name:method.name, procedure:signature(fn, params), parameters:method.params.map(param => ({name:param,type:typeText(method.paramTypes?.[param]),optional:!!method.optionalParams?.includes(param),...(method.parameterDefaults?.some(value=>value.name===param)?{default:defaultValue(method.parameterDefaults.find(value=>value.name===param).value)}:{})})), returnType:typeText(method.returnType),visibility:visibility(method)});
+                body:rewrite(classBody(method), {name, constructor:false}),...(callableMethod(name,method.name)?{bwClassCallableMethod:true}:{})});
+            if(Number.isInteger(method.bwClassCallableScopeId))classCallableProcedures.push({scopeId:method.bwClassCallableScopeId,
+                className:name,methodName:method.name,procedure:signature(fn,params),receiverParameter:selfName});
+            if(method.kind==='method')methods.push({name:method.name, procedure:signature(fn, params), parameters:method.params.map((param,index) => ({name:param,...(callableMethod(name,method.name)?.signature.parameters[index].type.kind==='callable'?{type:'callable',callableSignature:callableMethod(name,method.name).signature.parameters[index].type}:{type:typeText(method.paramTypes?.[param])}),optional:!!method.optionalParams?.includes(param),...(method.parameterDefaults?.some(value=>value.name===param)?{default:defaultValue(method.parameterDefaults.find(value=>value.name===param).value)}:{})})), returnType:callableMethod(name,method.name)?.signature.result.kind==='callable'?'callable':typeText(method.returnType),visibility:visibility(method),...(callableMethod(name,method.name)?{typeParameters:callableMethod(name,method.name).typeParameters,callableSignature:callableMethod(name,method.name).signature}:{})});
         }
-        body.push(statement(call(node.base?'declareSubclass':'declare', [str(name),...(node.base?[str(node.base)]:[]), str(JSON.stringify(node.fields.map(field => ({name:field.name,type:field.typeName || 'any',readonly:!!field.modifiers?.includes('readonly'),visibility:visibility(field),...(field.accessor?.get?{getter:signature(accessorNames.get(field.accessor.get),[selfName])}:{}),...(field.accessor?.set?{setter:{procedure:signature(accessorNames.get(field.accessor.set),[selfName,...field.accessor.set.params]),parameters:field.accessor.set.params.map(param=>({name:param,type:typeText(field.accessor.set.paramTypes?.[param]),optional:false}))}}:{}),...(field.parameterProperty?{parameterProperty:true}:{}),...(ownInitializers.has(field.name)?{initializer:ownInitializers.get(field.name)}:{})})))),
+        body.push(statement(call(node.base?'declareSubclass':'declare', [str(name),...(node.base?[str(node.base)]:[]), str(JSON.stringify(node.fields.map(field => ({name:field.name,type:callableField(name,field.name)?'callable':field.typeName || 'any',...(callableField(name,field.name)?{valueKind:'callable',callableSignature:callableField(name,field.name).type}:{}),readonly:!!field.modifiers?.includes('readonly'),visibility:visibility(field),...(field.accessor?.get?{getter:signature(accessorNames.get(field.accessor.get),[selfName])}:{}),...(field.accessor?.set?{setter:{procedure:signature(accessorNames.get(field.accessor.set),[selfName,...field.accessor.set.params]),parameters:field.accessor.set.params.map(param=>({name:param,type:typeText(field.accessor.set.paramTypes?.[param]),optional:false}))}}:{}),...(field.parameterProperty?{parameterProperty:true}:{}),...(ownInitializers.has(field.name)?{initializer:ownInitializers.get(field.name)}:{})})))),
             str(signature(initName, [selfName])), str(signature(`__bwClass_${actualCtor.name}_constructor`,ctorParams)),
             str(JSON.stringify((actualCtor.ctor?.params || []).map(param => ({name:param,type:typeText(actualCtor.ctor?.paramTypes?.[param]),optional:!!actualCtor.ctor?.optionalParams?.includes(param),...(actualCtor.ctor?.parameterDefaults?.some(value=>value.name===param)?{default:defaultValue(actualCtor.ctor.parameterDefaults.find(value=>value.name===param).value)}:{})})))), str(JSON.stringify(methods))])));
     }
-    return {program:{...program,body,bwObjectClasses:true}, unsupported};
+    return {program:{...program,body,bwObjectClasses:true,...(classCallableProcedures.length?{bwClassCallableProcedures:classCallableProcedures}:{})}, unsupported};
 }

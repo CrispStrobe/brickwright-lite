@@ -14,6 +14,7 @@ module.exports = makeExt(`// Name: Arcade
 
   const dependencies = Scratch.BWExtensionDependencies;
   const spriteUpdateHosts = new WeakMap();
+  const classCallableHosts = new WeakMap();
   const speechPalette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609',
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
@@ -45,11 +46,16 @@ module.exports = makeExt(`// Name: Arcade
       this._sceneFlags=dependencies.sceneFlags.create();
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
       this._sdkObjectClasses=dependencies.sdkObjectClasses.create(this,Scratch.BWValues);
-      this._objectHeap=dependencies.createObjectHeap(runtime,Scratch.BWValues,this._sdkObjectClasses.heapHooks);
+      let classCallableOwner;
+      const classCallables=dependencies.createClassCallableHost(runtime,Scratch.BWValues,dependencies.createObjectHeap,
+        this._sdkObjectClasses.heapHooks,()=>classCallableOwner);
+      if(classCallables)classCallableHosts.set(this,classCallables);
+      this._objectHeap=classCallables?.heap || dependencies.createObjectHeap(runtime,Scratch.BWValues,this._sdkObjectClasses.heapHooks);
       const spriteUpdates=dependencies.spriteUpdateActivation.create(this);
       spriteUpdateHosts.set(this,spriteUpdates);
       this._sdkSpriteUpdates=Object.freeze({claim:spriteUpdates.claim,hasSceneUpdates:spriteUpdates.hasSceneUpdates});
-      this._callableValues=new dependencies.CallableValues(runtime,Scratch.BWValues);
+      this._callableValues=new dependencies.CallableValues(runtime,Scratch.BWValues,classCallables?.provider,classCallables?.subscribeLifecycle);
+      classCallableOwner=this._callableValues;
       this._callableDispatch=new dependencies.CallableDispatch(runtime,this._callableValues,
         (invocation,util)=>this._callableProcedure(invocation,util));
       this._renderables=new WeakMap();this._screen=null;this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._extensionCreationWaits=[];
@@ -117,7 +123,7 @@ module.exports = makeExt(`// Name: Arcade
           this._creationWaits.clear();
           for(const dialog of this._dialogs || [])dialog.resolve(dialog.type==='ask' ? false : undefined);
           this._dialogs=[];this._cancelNativeTextDialogs();this._showNextDialog();
-          for (const call of this._functionCalls) {runtime.sequencer?.retireThread(call.thread);call.resolve(0);}
+          for (const call of this._functionCalls) {runtime.sequencer?.retireThread(call.thread);if(call.cancel)call.cancel();else call.resolve(0);}
           this._functionCalls.clear();
           this._controlEvents?.cancel();this._controllerEventIds = null;this._controlEventContexts = new WeakMap();
           this._terrainEpoch++;this._terrainFrame = null;this._terrainStopped = true;
@@ -2007,7 +2013,7 @@ module.exports = makeExt(`// Name: Arcade
     _pumpFunctionCalls() {
       for (const call of this._functionCalls) {
         if (call.caller && (call.caller.status === call.caller.constructor.STATUS_DONE || call.caller.isKilled || !this._runtime.threads.includes(call.caller))) {
-          this._functionCalls.delete(call);this._runtime.sequencer.retireThread(call.thread);call.resolve(0);continue;
+          this._functionCalls.delete(call);this._runtime.sequencer.retireThread(call.thread);if(call.cancel)call.cancel();else call.resolve(0);continue;
         }
         if (call.thread.stack.length === 1 || call.thread.status === call.thread.constructor.STATUS_DONE || call.thread.isKilled ||
             !this._runtime.threads.includes(call.thread)) {
@@ -2036,6 +2042,11 @@ module.exports = makeExt(`// Name: Arcade
       thread.stackFrames[0].params = Object.fromEntries(names.map((n,i)=>[n,i < values.length ? values[i] : defaults[i]]));
       thread.pushStack(definition);
       thread.bwObjectConstruction = args.bwObjectConstruction || util.thread?.bwObjectConstruction;
+      let classSignature=null;
+      try {classSignature=classCallableHosts.get(this)?.bind(thread,target,name,thread.stackFrames[0].params,thread.bwObjectConstruction,values);}
+      catch(error){runtime.sequencer.retireThread(thread);return this._objectError(error);}
+      const managedCaller=util.thread;
+      const complete=value=>{if(classSignature && (managedCaller.isKilled || !runtime.threads.includes(managedCaller)))return Scratch.BWValues.UNDEFINED;try{return classCallableHosts.get(this)?.result(classSignature,value) ?? value;}catch(error){return this._objectError(error);}};
       thread.bwArcadeEvent = util.thread?.bwArcadeEvent;
       thread.bwArcadeCaptures = args.bwCallableCaptures || util.thread?.bwArcadeCaptures;
       thread.bwFunctionNames = new Set(util.thread?.bwFunctionNames || []);
@@ -2058,8 +2069,8 @@ module.exports = makeExt(`// Name: Arcade
         finally {util.thread = caller;util.sequencer = sequencer;sequencer.activeThread = active;}
         if (!runtime.threads.includes(caller)) {sequencer.retireThread(caller);sequencer.retireThread(thread);return 0;}
       }
-      if (thread.stack.length === 1 || thread.status === thread.constructor.STATUS_DONE || thread.isKilled || !runtime.threads.includes(thread)) {runtime.sequencer.retireThread(thread);return Scratch.BWValues.encode(thread.bwReturnValue);}
-      return new Promise(resolve=>this._functionCalls.add({thread,resolve,caller:util.thread}));
+      if (thread.stack.length === 1 || thread.status === thread.constructor.STATUS_DONE || thread.isKilled || !runtime.threads.includes(thread)) {runtime.sequencer.retireThread(thread);return complete(Scratch.BWValues.encode(thread.bwReturnValue));}
+      return new Promise(resolve=>this._functionCalls.add({thread,resolve:value=>resolve(complete(value)),...(classSignature?{cancel:()=>resolve(Scratch.BWValues.UNDEFINED)}:{}),caller:util.thread}));
     }
     returnValue(args, util) {
       const thread = util?.thread;if (!thread) return;
@@ -2087,12 +2098,15 @@ module.exports = makeExt(`// Name: Arcade
       try {return this._callableValues.create(util?.target || util?.thread?.target,String(args.NAME),
         {locals:this._localParams(util),inheritedCaptures:util?.thread?.bwArcadeCaptures,
           ownerProcedure:util?.thread?.stackFrames.find(frame=>frame.waitingReporter&&frame.params)?.waitingReporter,
-          sourceModule:util?.target?.blocks.getBlock(util?.thread?.topBlock)?.opcode==='arcade_whenSourceStarts'});}
+          sourceModule:util?.target?.blocks.getBlock(util?.thread?.topBlock)?.opcode==='arcade_whenSourceStarts',util,operationArgs:args});}
       catch(error){return this._objectError(error);}
     }
     _callableProcedure(invocation,util) {
-      return this.callFunction({NAME:invocation.definition.procedure,
+      const caller=util?.thread;
+      const result=this.callFunction({NAME:invocation.definition.procedure,
         ARGS:JSON.stringify(invocation.args,Scratch.BWValues.jsonReplacer),bwCallableCaptures:invocation.captures},util);
+      const complete=value=>{try{if(!this._callableValues.hasTypedInvocation(invocation))return value;if(caller && (caller.isKilled || !this._runtime.threads.includes(caller)))return Scratch.BWValues.UNDEFINED;return this._callableValues.complete(invocation,value);}catch(error){return this._objectError(error);}};
+      return result && typeof result.then==='function'?result.then(complete):complete(result);
     }
     callCallable(args,util) {
       try {const values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
@@ -3981,6 +3995,7 @@ module.exports = makeExt(`// Name: Arcade
       try {
         const {layers,missingSpriteImages}=this._sceneLayers(),frame=state.sceneFrame || (state.sceneFrame={width:160,height:120,pixels:new Uint8Array(160*120)});
         const particles=this._drawParticleSources();layers.push(...particles);
+        if(state.flags & dependencies.sceneFlags.NeedsSorting)this._particleOrderDirty=true;
         const order=this._sceneFlags.order(state,this._sceneSpriteObjects(state)),rank=item=>order.indexOf(item.bwSceneSprite || item.source);
         layers.sort((a,b)=>rank(a)-rank(b));
         imageEngine.composeFrame(frame,state.backgroundColor,state.backgroundImage,[]);
@@ -5055,6 +5070,7 @@ module.exports = makeExt(`// Name: Arcade
           output.layers.push({image:{width:160,height:120,pixels:screen.pixels.slice()},writes:new Uint8Array(160*120).fill(1),x:0,y:0,z:source.z,id:source.id,source});
           output.missingSpriteImages.push(...parentOutput.missingSpriteImages);
         } else imageEngine.composeFrame(screen,owner.backgroundColor,owner.backgroundImage,[]);
+        if(owner===active && (owner.flags & dependencies.sceneFlags.NeedsSorting))this._particleOrderDirty=true;
         const objects=this._sceneFlags.order(owner,this._sceneSpriteObjects(owner));
         for(const object of objects){
           let layers=[];
@@ -5820,6 +5836,7 @@ module.exports = makeExt(`// Name: Arcade
   createObjectHeap: require('./object-heap'),
   sourceCallableCells: require('./source-callable-cells'),
   CallableValues: require('./callable-values'),
+  createClassCallableHost: require('./class-callable-host'),
   CallableDispatch: require('./callable-dispatch'),
   sourceReferenceTypes: require('./source-reference-types'),
   createSourceScalarCells: require('./source-scalar-cells'),

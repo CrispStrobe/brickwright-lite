@@ -1,6 +1,7 @@
 import {lowerSdkFontValues} from './lower-sdk-font-values.js';
 import {callableSourceGate} from './callable-source-gate.js';
 import {lowerCallableValues} from './lower-callable-values.js';
+import {validateClassCallablePlan} from './class-callable-plan.js';
 import {sourceCallableDeclarations} from './source-callable-declarations.js';
 import {callableDeclarationEnvelope,callableVariableEnvelope} from './callable-export-graph.js';
 import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
@@ -306,6 +307,18 @@ class ArcadeTranslator extends BaseTranslator {
     claimNames(node, seen = new Set()) {
         super.claimNames(node, seen);
         if (node?.type !== 'Program') return;
+        // Parameters are strings rather than Identifier nodes, so the base name
+        // walk cannot reserve them. Generated local cells share their native map.
+        const parameterNodes=new WeakSet();
+        const reserveNativeParameters=value=>{
+            if(!value||typeof value!=='object'||parameterNodes.has(value))return;
+            parameterNodes.add(value);
+            if(Array.isArray(value)){value.forEach(reserveNativeParameters);return;}
+            for(const name of value.params || [])if(typeof name==='string'){this.taken.add(name);this.taken.add(this.varName(name));}
+            for(const binding of value.bwCallableLexicalPlan?.bindings || []){this.taken.add(binding.nativeName);this.taken.add(binding.sourceName);}
+            Object.values(value).forEach(reserveNativeParameters);
+        };
+        reserveNativeParameters(node);
         this.boundSourceGlobals=new Set(node.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls.map(decl=>decl.name)));
         this.sourceScalarTypes=new Map(sourceScalarDeclarations(node).map(({name,type})=>[name,type]));
         this.sourceReferenceTypes=new Map((node.sourceReferenceDeclarations || sourceReferenceDeclarations(node)).map(({name,type})=>[name,type]));
@@ -351,6 +364,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.terrainRegistrations=new Map([...registrations].filter(([,record])=>['wall','tile','legacyWall'].includes(record.kind)));
         this.sceneRegistrations=new Map([...registrations].filter(([,record])=>!['creation','wall','tile','legacyWall'].includes(record.kind)));
         this.returnFunctions = new Map();
+        this.classCallableFactoryFunctions=new Set(node.bwCallableLexicalPlan?.version===2?node.bwCallableLexicalPlan.owners.filter(owner=>owner.kind==='declaration').map(owner=>owner.sourceName):[]);
         const hasReturn = value => value && typeof value === 'object' &&
             (value.type === 'Return' || (!['FunctionDeclaration', 'FunctionExpression'].includes(value.type) &&
                 Object.values(value).some(child=>Array.isArray(child)?child.some(hasReturn):hasReturn(child))));
@@ -1474,6 +1488,13 @@ class ArcadeTranslator extends BaseTranslator {
                 if(fn.params.slice(a.length).some(param=>!fn.optionalParams?.includes(param)))this.unsupported.push(`${name}() argument count differs from its declaration`);
                 while(actual.length<fn.params.length)actual.push({type:'Undefined'});
             }
+            if(this.classCallableFactoryFunctions.has(name)){
+                if(!fn||actual.length!==fn.params.length){push(this.note('Class callable factory argument mapping differs'));return;}
+                let args='"[]"';for(let index=actual.length-1;index>=0;index--)args=`arcade function argument (${this.arrayElementValue(actual[index])}) rest (${args})`;
+                const code=[fn.name,...fn.params.map(()=>'%s')].join(' ');
+                const discarded=this.freshName('__bwDiscardCallableFactoryResult');
+                push(`arcade set local ${discarded} to (arcade call function ${JSON.stringify(code)} arguments (${args}))`);return;
+            }
             const values=actual.map(arg=>`(${this.arrayElementValue(arg)})`);
             push(`CALL: (${[name,...values].join(' ')})`);return;
         }
@@ -2113,13 +2134,13 @@ class ArcadeTranslator extends BaseTranslator {
             if(node.bwFontIntrinsic==='scaledFont' && a.length===2)return `arcade scaled font (${this.expr(a[0])}) by (${this.expr(a[1])})`;
             if(node.bwFontIntrinsic==='field' && a.length===2)return `arcade object (${this.expr(a[0])}) field (${this.expr(a[1])})`;
         }
-        if(node.bwCallableIntrinsic==='invoke' && name==='__bwCallables.invoke'){push(`arcade set local __bwDiscardCallableResult to (${this.objectExpression(node)})`);return true;}
+        if(node.bwCallableIntrinsic==='invoke' && name==='__bwCallables.invoke'){push(`arcade set local ${this.freshName('__bwDiscardCallableResult')} to (${this.objectExpression(node)})`);return true;}
         if(name==='__bwObjects.declareSubclass' && a.length===7){push(`arcade declare subclass (${this.expr(a[0])}) of (${this.expr(a[1])}) fields (${this.expr(a[2])}) initializer (${this.expr(a[3])}) constructor (${this.expr(a[4])}) parameters (${this.expr(a[5])}) methods (${this.expr(a[6])})`);return true;}
-        if(name==='__bwObjects.procedure'){push(`arcade set local __bwDiscardObjectResult to (${this.objectExpression(node)})`);return true;}
+        if(name==='__bwObjects.procedure'){push(`arcade set local ${this.freshName('__bwDiscardObjectResult')} to (${this.objectExpression(node)})`);return true;}
         if(name==='__bwObjects.declare' && a.length===6){push(`arcade declare class (${this.expr(a[0])}) fields (${this.expr(a[1])}) initializer (${this.expr(a[2])}) constructor (${this.expr(a[3])}) parameters (${this.expr(a[4])}) methods (${this.expr(a[5])})`);return true;}
         if(name==='__bwObjects.set' && a.length===3){push(`arcade set object (${this.expr(a[0])}) field (${this.expr(a[1])}) to (${this.arrayElementValue(a[2])})`);return true;}
-        if(name==='__bwObjects.assign'){push(`arcade set local __bwDiscardObjectResult to (${this.objectExpression(node)})`);return true;}
-        if(name==='__bwObjects.call'){push(`arcade set local __bwDiscardObjectResult to (${this.objectExpression(node)})`);return true;}
+        if(name==='__bwObjects.assign'){push(`arcade set local ${this.freshName('__bwDiscardObjectResult')} to (${this.objectExpression(node)})`);return true;}
+        if(name==='__bwObjects.call'){push(`arcade set local ${this.freshName('__bwDiscardObjectResult')} to (${this.objectExpression(node)})`);return true;}
         return false;
     }
     settingsExpression(node) {
@@ -4550,8 +4571,8 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     appendHandleProcedures(t, t.functions, parameterHandles, out, localHandles);
     const callablePlan=ast.bwCallableLexicalPlan && structuredClone(ast.bwCallableLexicalPlan);
     if(callablePlan)for(const binding of callablePlan.bindings)if(['global','parameter'].includes(binding.kind))binding.nativeName=t.varName(binding.nativeName);
-    const sourceCallables=(ast.bwCallables || []).map(definition=>({procedure:t.callableProcedures.get(definition.name),
-        metadata:callableDeclarationEnvelope(callablePlan,definition.site)}));
+    const sourceCallables=(callablePlan?ast.bwCallables || []:[]).map(definition=>({procedure:t.callableProcedures.get(definition.name),
+        metadata:callablePlan?.version===2 ? {schema:'bw-callable-declaration',version:2,site:definition.site,plan:validateClassCallablePlan(callablePlan)} : callableDeclarationEnvelope(callablePlan,definition.site)}));
     for(const definition of sourceCallables)out.push(`WHEN arcade callable ${JSON.stringify(definition.procedure)} dispatched:`, '  arcade run dispatched callable','');
     const sourceCallableGlobals=(callablePlan?ast.sourceCallableDeclarations || []:[]).map(({name})=>{const binding=callablePlan.bindings.find(row=>row.owner===callablePlan.module&&row.kind==='global'&&row.sourceName===name);return {name:t.varName(name),signature:callableVariableEnvelope(callablePlan,binding.id)};});
 
@@ -4895,9 +4916,15 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (Array.isArray(node)) return node.map(lowerAnimationAssets);
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
-    const callableSourceParsed=parseMakeCodeTs(source, {parameterDefaults: true, retainParentheses: true, retainWhenUsed:true, retainClassHeritage:true, retainCallableMetadata:opts.callableLexicalPrototype===true});
-    const callableEligibility=opts.callableLexicalPrototype===true?callableSourceGate(callableSourceParsed,{normalize:true}):null;
-    const callableSourceInput=callableEligibility?.program || callableSourceParsed;
+    const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true};
+    const ordinarySource=parseMakeCodeTs(source,callableParseOptions);
+    const callableSourceParsed=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true});
+    const callableEligibility=callableSourceGate(callableSourceParsed,{normalize:true});
+    const callableEnabled=opts.callableLexicalPrototype===true || callableEligibility.eligible;
+    // Ordinary programs retain their ordinary parse. Only the proved numeric
+    // surface uses lexical metadata and the existing callable lowering path.
+    const callableSourceInput=opts.classCallablePrototype===true ? callableSourceParsed : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
+    if(!opts.callableLexicalPrototype&&!opts.classCallablePrototype)projectInputDiagnostics.push(...callableEligibility.unsupported);
     const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput,true));
     const parsed = lowerSourceLoopControl(inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
         lowerAnimationAssets(namedArrayInputs.program))), source), source), source), source))));
@@ -4953,7 +4980,16 @@ export function arcadeToPseudocode (files, opts = {}) {
         }
 
         const callableDeclarations=(result.sourceCallables || []).map(({procedure,metadata})=>`  arcade declare callable ${JSON.stringify(procedure)} metadata ${JSON.stringify(JSON.stringify(metadata))}`);
-        if(callableDeclarations.length)code=code.replace(/^WHEN arcade source starts:((?:\n  declare arcade source (?:scalar|reference|callable) .+)*)/m,prefix=>prefix+'\n'+callableDeclarations.join('\n'));
+        if(callableDeclarations.length) {
+            if(result.sourceCallables.some(row=>row.metadata.version===2)) {
+                const rows=code.split('\n'),source=rows.findIndex(row=>row==='WHEN arcade source starts:');
+                let last=-1;
+                for(let index=source+1;index<rows.length&&rows[index].startsWith('  ');index++)
+                    if(/^  arcade declare (?:class|subclass) /.test(rows[index]))last=index;
+                if(source<0||last<0)result.unsupported.push('Class callable declarations require their actual source class registration prefix');
+                else {rows.splice(last+1,0,...callableDeclarations);code=rows.join('\n');}
+            }else code=code.replace(/^WHEN arcade source starts:((?:\n  declare arcade source (?:scalar|reference|callable) .+)*)/m,prefix=>prefix+'\n'+callableDeclarations.join('\n'));
+        }
         return {...result,code,costumes,animationResources,warnings:[...recovered.warnings,...sourceWarnings],
             unsupported:[...new Set([...namedArrayInputs.unsupported,...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...result.unsupported])]};
     };
@@ -4987,10 +5023,14 @@ export function arcadeToPseudocode (files, opts = {}) {
             ['indexOf','removeElement'].includes(node.callee.name) && queryReferences.arrays.has(node.callee.object)
     });
     stagedSource.sourceReferenceDeclarations = sourceReferenceDeclarations(stagedSource);
-    stagedSource.sourceCallableDeclarations=opts.callableLexicalPrototype===true?sourceCallableDeclarations(stagedSource).declarations:[];
-    const callables=opts.callableLexicalPrototype===true?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
+    stagedSource.sourceCallableDeclarations=callableEnabled?sourceCallableDeclarations(stagedSource).declarations:[];
+    const callables=opts.classCallablePrototype===true?lowerCallableValues(stagedSource,{classPrototype:true}):callableEnabled?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
     projectInputDiagnostics.push(...callables.unsupported);
-    const objectClasses = lowerObjectClasses(callables.program);
+    const objectClasses = lowerObjectClasses(callables.program,{classCallablePrototype:opts.classCallablePrototype===true});
+    if(opts.classCallablePrototype===true && !callables.unsupported.length && !objectClasses.unsupported.length) {
+        try {objectClasses.program.bwCallableLexicalPlan=callables.finishClassPlan(objectClasses.program.bwClassCallableProcedures || []);}
+        catch(error){objectClasses.unsupported.push(String(error.message));}
+    }
     projectInputDiagnostics.push(...objectClasses.unsupported);
     const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:sceneRegistrationSpec});
     projectInputDiagnostics.push(...callbacks.unsupported);

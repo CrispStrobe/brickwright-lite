@@ -2,17 +2,22 @@ import {analyseCallableFlow} from './callable-flow.js';
 import {callableDefaultBody} from './callable-defaults.js';
 import {renderCallableType} from './callable-type-syntax.js';
 import {createCallableLexicalPlan} from './callable-lexical-plan.js';
+import {createClassCallableDescriptors} from './callable-class-descriptors.js';
+import {createClassCallablePlan} from './class-callable-plan.js';
 
 // An unadmitted source lowering prototype. The caller must qualify the complete
 // descriptor, declaration-prefix and authoring bridge before connecting it.
-export function lowerCallableValues(program,{legacyCallbacks=new WeakSet()}={}) {
+export function lowerCallableValues(program,{legacyCallbacks=new WeakSet(),classPrototype=false}={}) {
     const flow=analyseCallableFlow(program),unsupported=[...flow.unsupported],definitions=[];
     const sites=new WeakMap(),siteInfos=[],taken=new Set(flow.lexical.bindings.map(binding=>binding.name));
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
+    if(classPrototype!==true&&classPrototype!==false)fail('Class callable prototype requires its explicit Boolean option');
     if(flow.lexical.bindings.some(binding=>binding.name==='__bwCallables'))fail('Authored __bwCallables binding conflicts with the unadmitted callable intrinsic namespace');
+    const classModel=classPrototype?createClassCallableDescriptors(program):null;
+    if(classModel)unsupported.push(...classModel.unsupported);
     for(const cls of program.body.filter(node=>node.type==='Class'))
         if(cls.methods.some(method=>method.typeParameters?.length) || cls.fields.some(field=>/=>/.test(field.typeName || '')))
-            fail('Class callable signatures require the qualified class descriptor bridge');
+            if(!classPrototype)fail('Class callable signatures require the qualified class descriptor bridge');
     const inspectHostArguments=node=>{
         if(!node || typeof node!=='object')return;
         if(Array.isArray(node)){node.forEach(inspectHostArguments);return;}
@@ -37,7 +42,7 @@ export function lowerCallableValues(program,{legacyCallbacks=new WeakSet()}={}) 
                 sourceName:capture.sourceName,mode:capture.mode,
                 ...(capture.binding.kind==='receiver'?{receiverClass:capture.binding.scope.className}:{})})),
             defaults:callableDefaultBody(scope.node).defaults};
-        if(info.captures.some(capture=>capture.receiverClass))
+        if(!classPrototype&&info.captures.some(capture=>capture.receiverClass))
             fail('Captured class receivers require the qualified class descriptor bridge');
         sites.set(scope.node,info);siteInfos.push(info);return info;
     };
@@ -54,9 +59,9 @@ export function lowerCallableValues(program,{legacyCallbacks=new WeakSet()}={}) 
         if(node.paramTypes)out.paramTypes={...node.paramTypes};
         return out;
     };
-    const rewrite=(node,{callee=false}={})=>{
+    const rewrite=(node,{callee=false,ownerScope=null}={})=>{
         if(!node || typeof node!=='object')return node;
-        if(Array.isArray(node))return node.map(value=>rewrite(value));
+        if(Array.isArray(node))return node.map(value=>rewrite(value,{ownerScope}));
         if(node.type==='FunctionExpression' && !legacyCallbacks.has(node)) {
             const info=sites.get(node);if(!info)return node;
             const targets=flow.expressionTargets.get(node) || new Set([node]);
@@ -65,6 +70,8 @@ export function lowerCallableValues(program,{legacyCallbacks=new WeakSet()}={}) 
         }
         if(node.type==='Identifier') {
             const binding=flow.lexical.references.get(node);
+            if(classPrototype&&binding?.kind==='receiver'&&ownerScope&&ownerScope!==binding.functionOwner)
+                return {...node,name:cellName(binding),assertedType:binding.scope.className};
             if(binding?.kind==='function' && !callee && flow.expressionTypes.get(node)?.kind==='callable') {
                 fail('Named function values require their qualified source declaration bridge');return node;
             }
@@ -81,7 +88,7 @@ export function lowerCallableValues(program,{legacyCallbacks=new WeakSet()}={}) 
             return {...node,decls:node.decls.map(declaration=>{
                 const binding=scope?.names.get(declaration.name),type=flow.bindingTypes.get(binding);
                 return {...declaration,name:binding && binding.functionOwner!==flow.lexical.global?cellName(binding):declaration.name,
-                    init:rewrite(declaration.init),...(type?.kind==='callable'?{bwCallableSignature:type}:{})};
+                    init:rewrite(declaration.init,{ownerScope}),...(type?.kind==='callable'?{bwCallableSignature:type}:{})};
             })};
         }
         if(node.type==='Call' && !node.isNew) {
@@ -94,15 +101,22 @@ export function lowerCallableValues(program,{legacyCallbacks=new WeakSet()}={}) 
                 const invocation=flow.invocations.get(node);
                 if(!invocation?.signature)fail('Source callable invocation requires a qualified concrete signature');
                 const targets=flow.expressionTargets.get(node.callee) || new Set();
-                return {...call('invoke',[rewrite(node.callee),{type:'Array',items:node.args.map(argument=>rewrite(argument))}]),
+                return {...call('invoke',[rewrite(node.callee,{ownerScope}),{type:'Array',items:node.args.map(argument=>rewrite(argument,{ownerScope}))}]),
                     ...(invocation?.signature?{bwCallableResultType:renderCallableType(invocation.signature.result)}:{}),
                     bwCallableTargets:[...targets].map(target=>sites.get(target)?.name).filter(Boolean)};
             }
         }
         const out=cloneMetadata(node);
+        const actualScope=flow.lexical.scopes.get(node);
+        if(classPrototype&&actualScope?.kind==='method')out.bwClassCallableScopeId=actualScope.id;
+        const childScope=actualScope&&['method','function'].includes(actualScope.kind)?actualScope:ownerScope;
         for(const [key,value]of Object.entries(node)) {
             if(['params','paramTypes','originalBody','parameterDefaults','typeParameters'].includes(key))continue;
-            if(value && typeof value==='object')out[key]=rewrite(value,{callee:key==='callee'});
+            if(value && typeof value==='object')out[key]=rewrite(value,{callee:key==='callee',ownerScope:childScope});
+        }
+        if(classPrototype&&node.type==='Call') {
+            const invocation=flow.invocations.get(node);
+            if(invocation?.signature)out.bwClassCallableInvocation=structuredClone(invocation.signature);
         }
         return out;
     };
@@ -112,13 +126,18 @@ export function lowerCallableValues(program,{legacyCallbacks=new WeakSet()}={}) 
         unsupported.push(...defaults.unsupported);
         definitions.push({type:'FunctionDeclaration',name:info.name,params:info.parameters,
             paramTypes:Object.fromEntries(info.signature.parameters.map(parameter=>[parameter.name,{text:renderCallableType(parameter.type)}])),
-            returnType:renderCallableType(info.signature.result),body:rewrite(defaults.body),
+            returnType:renderCallableType(info.signature.result),body:rewrite(defaults.body,{ownerScope:scope}),
             bwCallableDefinition:{site:info.site,signature:info.signature,
                 captures:info.captures,defaults:info.defaults,
                 functionKind:scope.node.functionKind}});
     }
     const body=rewrite(program.body);
     if(unsupported.length)return {program,unsupported:[...new Set(unsupported)],flow};
+    if(classPrototype)return {program:{...program,body:[...body,...definitions],
+        bwClassCallableDescriptors:{schema:classModel.schema,version:classModel.version,classes:structuredClone(classModel.classes)},
+        bwCallables:definitions.map(definition=>({name:definition.name,...definition.bwCallableDefinition}))},
+        unsupported:[],flow,
+        finishClassPlan:procedures=>createClassCallablePlan(flow,siteInfos,procedures)};
     let lexicalPlan;
     try { lexicalPlan=createCallableLexicalPlan(flow,siteInfos); }
     catch(error) { return {program,unsupported:[String(error.message)],flow}; }
