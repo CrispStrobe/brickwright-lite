@@ -6,8 +6,8 @@ import {importGuiDependency} from './helpers/bw-integrated.mjs';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 const BW=(await importGuiDependency('scratch-vm/src/util/bw-values.js')).default;
 export const counterSource='function makeCounter(start:number):()=>number {let n=start;return()=>{n+=1;return n}} let first=makeCounter(2); let alias=first; let second=makeCounter(2); let result1=first(); let result2=alias(); let result3=second(); info.setScore(result1+result2+result3);';
-test('opt-in source counter uses current native captures and actual typed source variable declarations',async()=>{
-    const imported=arcadeToPseudocode({'main.ts':counterSource},{callableLexicalPrototype:true});
+test('default source counter uses current native captures and actual typed source variable declarations',async()=>{
+    const imported=arcadeToPseudocode({'main.ts':counterSource});
     assert.deepEqual(imported.unsupported,[]);
     assert.match(imported.code,/arcade set captured __bwCallableCell_/);
     assert.doesNotMatch(imported.code,/^  set __bwCallableCell_/m);
