@@ -24,7 +24,9 @@ test('palette authoring prepends real startup blocks and survives SB3 save/load 
   assert.deepEqual(again.errors,[]);assert.deepEqual(again.vm.runtime.bwArcadeDeviceState.palette,colors);
   const exported=projectToArcade(authored,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});
   assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/image\.setPalette\(Buffer\.fromHex\(/);
-  const original=await runPxtArcade(exported.files,{inspectDisplay:true});
+  // Main completion can precede the first palette-bearing display update.
+  // Observe the real screen-update boundary before comparing all 16 colors.
+  const original=await runPxtArcade(exported.files,{inspectDisplay:true,waitForDisplay:true});
   const unpack=value=>'#'+[value&255,(value>>>8)&255,(value>>>16)&255].map(byte=>byte.toString(16).padStart(2,'0')).join('');
   assert.deepEqual(original.$display.palette.map(unpack),colors);
   const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
