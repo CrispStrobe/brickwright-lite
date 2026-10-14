@@ -39,6 +39,7 @@ test('prelude refuses late, computed, list, duplicate, foreign and conflicting d
         f => {f.blocks.declare.next = 'duplicate'; f.blocks.duplicate = {...f.blocks.declare, id: 'duplicate', next: 'init'};},
         f => {f.target.variables = {};},
         f => {f.blocks.declare.fields.TYPE.value = 'Sprite';},
+        f => {f.blocks.declare.inputs.TYPE = {block: 'reporter'};},
         f => {f.blocks.hat.opcode = 'event_whenflagclicked';}
     ];
     for (const change of changes) {

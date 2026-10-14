@@ -1,3 +1,4 @@
+import {sourceScalarProject} from './source-scalar-project.js';
 import {prepareObjectClassExport} from './object-class-export.js';
 import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
 import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
@@ -1713,6 +1714,7 @@ class ArcadeEmitter {
         case 'arcade_setscore':push(`info.setScore(${v('N')})`);return;
         case 'arcade_changescore':push(`info.changeScoreBy(${v('N')})`);return;
         case 'arcade_declareClass':case 'arcade_declareSubclass':return;
+        case 'arcade_declareSourceScalar':return;
         case 'arcade_setObjectField':if(this.currentClassConstructor&&this.objectClassExport?.parameterPropertyBlocks.has(b))return;push(`;${this.objectClassExport.receiver(b,true)}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`);return;
         case 'data_setvariableto': {
             const scratchName = this.field(b, 'VARIABLE');
@@ -3237,8 +3239,17 @@ class ArcadeEmitter {
                 }
             }
         }
+        this.sourceScalarCells=new Map();
+        try {this.sourceScalarCells=sourceScalarProject(this.project);} catch(error) {this.note(error.message);}
         this.objectClassExport=prepareObjectClassExport(this);
         const imageParameterTypes = this.imageProcedureParameters();
+        for (const cell of this.sourceScalarCells.values()) {
+            const {id,type}=cell;cell.ts=this.varName(cell.target,cell.name);
+            this.mixedValueVariableIds.delete(id);
+            if (type === 'Boolean') this.booleanVariableIds.add(id); else this.booleanVariableIds.delete(id);
+            this.primitiveVariableTypes.set(id,type.toLowerCase());
+        }
+
         // Instance destruction callbacks are registered by a command in the
         // startup script. Compile their bodies first, then insert each body at
         // its registration site so PXT captures the handle at that moment.
@@ -3430,6 +3441,8 @@ class ArcadeEmitter {
         }
         out.push(...objectClasses);
         for (const n of decls) {
+            const sourceCell=[...this.sourceScalarCells.values()].find(cell=>cell.ts===n);
+            if (sourceCell) {out.push(`let ${n}: ${sourceCell.type.toLowerCase()}`);continue;}
             const objectType=this.objectClassExport?.variableTypes.get(n);
             if(objectType && this.objectClassExport.hasType?.(objectType)){out.push(`let ${n}: ${objectType} = null`);continue;}
             if(['number','boolean','string'].includes(objectType)){out.push(`let ${n}: ${objectType} = ${objectType==='string'?'\"\"':objectType==='boolean'?'false':'0'}`);continue;}

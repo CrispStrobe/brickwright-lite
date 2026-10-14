@@ -15,13 +15,14 @@ module.exports = function createSourceScalarCells(runtime, values) {
         }
         const id = reporter.fields?.VARIABLE?.id;
         const type = block.fields?.TYPE?.value;
+        if (block.inputs?.TYPE) throw new Error('Source scalar type must be a direct field');
         if (typeof id !== 'string' || !TYPES.has(type)) {
             throw new Error('Source scalar requires a variable ID and fixed supported type');
         }
         const variable = target.lookupVariableById(id);
         const owner = originals().find(candidate =>
             Object.hasOwn(candidate.variables || {}, id) && candidate.variables[id] === variable);
-        if (!owner || !variable || variable.type !== '') {
+        if (!owner || !variable || variable.type !== '' || (owner !== target && !owner.isStage)) {
             throw new Error('Source scalar variable is missing, foreign, or not a scalar');
         }
         return {target, block, id, type, variable, owner};

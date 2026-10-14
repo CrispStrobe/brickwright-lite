@@ -1,3 +1,4 @@
+import {sourceScalarDeclarations} from './source-scalar-declarations.js';
 import {lowerObjectClasses} from './lower-object-classes.js';
 import {foldPxtNumeric,pxtFoldedNumberCode} from './pxt-numeric-fold.js';
 import {TEXT_SPRITE_INITIALIZER} from './text-source-admission.generated.js';
@@ -293,6 +294,7 @@ class ArcadeTranslator extends BaseTranslator {
         super.claimNames(node, seen);
         if (node?.type !== 'Program') return;
         this.boundSourceGlobals=new Set(node.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls.map(decl=>decl.name)));
+        this.sourceScalarTypes=new Map(sourceScalarDeclarations(node).map(({name,type})=>[name,type]));
         this.sourceFunctions=new Map(node.body.filter(fn=>fn.type==='FunctionDeclaration').map(fn=>[fn.name,fn]));
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value), value => !!this.assetKindLookup && value?.type === 'Template' && ['assets.image', 'assets.tile'].includes(value.tag));
         this.objectReferences = references.objects;
@@ -494,6 +496,13 @@ class ArcadeTranslator extends BaseTranslator {
         if(kindBinding)out.push(`${'  '.repeat(indent)}arcade bind sprite kind name ${JSON.stringify(kindBinding)} to (${this.expr({type:'Identifier',name:st.expr.spriteKindBinding})})`);
     }
     arcadeStatement(st, indent, out) {
+        if (st.type === 'Declaration') {
+            const declarations = st.decls.filter(declaration => declaration.init || !this.sourceScalarTypes?.has(declaration.name) ||
+                this.localVars?.has(declaration.name) || this.currentParameters?.has(declaration.name));
+            if (!declarations.length) return;
+            if (declarations.length !== st.decls.length) st = {...st, decls: declarations};
+        }
+
         if(st.type==='SpriteKindReset'){out.push(`${'  '.repeat(indent)}set ${this.varName(st.name)} to (undefined value)`);return;}
         if(st?.type==='ExpressionStatement' && this.bufferStatement(st.expr,indent,out))return;
         if(st?.type==='ExpressionStatement' && st.expr?.type==='Call' && this.path(st.expr.callee)==='controller._setUserEventsEnabled' && !this.bindsName('controller')){
@@ -3765,7 +3774,7 @@ const translateCreationEvents = (ast, assets, assetKindLookup = null, scrollerVe
         names.push(template.name);
         out.push(`SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide', '');
     }
-    return {code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
+    return {sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
         unsupported: [...new Set(t.unsupported)], costumes, sprites: names};
 };
 
@@ -4317,7 +4326,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         out.push(`SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide', '');
     }
     for (const name of imageTemplates) {spriteNames.push(name);out.push(`SPRITE ${name}:`, 'WHEN flag clicked:', '  hide', '');}
-    return {code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
+    return {sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
         unsupported: [...new Set(t.unsupported)], costumes, sprites: spriteNames};
 };
 
@@ -4388,7 +4397,7 @@ const translateSideProjectiles = (ast, assets, assetKindLookup = null, scrollerV
     for (const template of templates.values()) {
         out.push('', `SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide');
     }
-    return {code: `${out.join('\n').trimEnd()}\n`, unsupported: [...new Set(t.unsupported)],
+    return {sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').trimEnd()}\n`, unsupported: [...new Set(t.unsupported)],
         costumes, sprites: ['Game', ...[...templates.values()].map(template => template.name)]};
 };
 
@@ -4422,7 +4431,7 @@ const translateOverlapOnly = (ast, assets, assetKindLookup = null, scrollerVersi
         t.block(handler.body, 1, out);
         out.push('');
     }
-    return {code: `${out.join('\n').trimEnd()}\n`, unsupported: [...new Set(t.unsupported)],
+    return {sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').trimEnd()}\n`, unsupported: [...new Set(t.unsupported)],
         costumes: [], sprites: ['Game']};
 };
 
@@ -4692,6 +4701,14 @@ export function arcadeToPseudocode (files, opts = {}) {
             paletteDiagnostics.push('Project palette index zero on a fixed Scratch background requires native Arcade background rendering');
         }
         code = code.replace(/^WHEN flag clicked:$/gm, 'WHEN arcade source starts:');
+        const globalNames = new Set([...code.matchAll(/^GLOBAL (.+)$/gm)].map(match=>match[1]));
+        const sourceDeclarations = (result.sourceScalars || []).filter(({name})=>globalNames.has(name))
+            .map(({name,type})=>`  declare arcade source scalar ${name} as ${type}`);
+        if (sourceDeclarations.length) {
+            if (!/^WHEN arcade source starts:$/m.test(code)) code += '\nSPRITE Game:\nWHEN arcade source starts:\n';
+            code = code.replace(/^WHEN arcade source starts:$/m, header=>header+'\n'+sourceDeclarations.join('\n'));
+        }
+
         return {...result,code,costumes,animationResources,warnings:[...recovered.warnings,...sourceWarnings],
             unsupported:[...new Set([...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...result.unsupported])]};
     };
@@ -4721,7 +4738,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         assets[tileImagePath(node)] || assets[node.name] || (BUILTIN_IMAGES[tileImagePath(node)] ? decodeMkcdImage(BUILTIN_IMAGES[tileImagePath(node)]) : null) :
         node?.type==='Identifier' ? assets[node.name] : null;
     const nativeTilemaps = createNativeTilemapRegistry(map,tileImageOf,assetFileOrder?{fileOrder:assetFileOrder}:{});
-    const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested, assetKindLookup, scrollerVersion, characterVersion);
+    const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested || sourceScalarDeclarations(flattened).length > 0, assetKindLookup, scrollerVersion, characterVersion);
     if (namedEvents) return withAnimationDiagnostics(namedEvents);
     const creationEvents = flattened && translateCreationEvents(flattened, assets, assetKindLookup, scrollerVersion, characterVersion);
     if (creationEvents) return withAnimationDiagnostics(creationEvents);
@@ -5397,6 +5414,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     }
 
     return withAnimationDiagnostics({
+        sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),
         code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
         unsupported: [...new Set(t.unsupported)],
         costumes,
