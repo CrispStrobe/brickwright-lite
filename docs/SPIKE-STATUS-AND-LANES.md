@@ -8,7 +8,7 @@ not public documentation inputs.
 
 ## Qualified G02 lifecycle boundaries — 2026-10-14
 
-Three focused changes have landed, each with a separately frozen installed
+Four focused changes have landed, each with a separately frozen installed
 consumer. These observations qualify the named source and owned guest scenarios;
 they do not qualify every later package assembled from main.
 
@@ -33,6 +33,37 @@ they do not qualify every later package assembled from main.
   The baseline frame case had reproduced Stop requested → completion → stopped;
   both candidate cases produce only Stop requested → stopped. This concerns late
   notification after Stop, not a claim of continued guest execution after Stop.
+- [PR912](https://github.com/CrispStrobe/brickwright-lite/pull/912), tested
+  consumer `2d5e560b0357c924b434916e590a24070397fa22`, merged as
+  `c5e31b8324fea454afe08ad682f8b98f2ab43596`: closure checks between observers
+  and after an awaited packet input-write reply suppress later native input
+  requests or frame callbacks after Stop. Both installed own-NuttX race cases
+  pass: Stop from real Python output, and Stop while a real correlated STOP
+  packet's following input-write return is held. Each releases all owned
+  configuration, external backend, clock and pane session references, then
+  completes a distinct fresh guest and stops it normally.
+
+PR912 also passes eight installed GUI regressions on that same consumer:
+native Start, backend change, Reset and closure; real Code Stop during pending
+native startup followed by a completed fresh guest; and real native chooser
+cancellation with normal return, Reset and closure. The seven native/chooser
+cases do not execute an additional firmware guest. The chooser cases cancel the
+actual dialog without selecting an image; they do not qualify selected-image
+admission or every chooser/error race. Startup cancellation admits no program
+packet before Stop, exits the owned emulator and restores defaults and ownership.
+
+All 41 affected session controls pass; six new controls fail on the baseline,
+and removing each new closure guard is detected. All nine enabled exact-head
+hosted checks passed, with only the declared deployment/verification jobs skipped.
+Independent readers bind all ten installed cases to the source, application and
+configuration hashes and captured controls. Both new race cases retain two
+complete 14-record native startup transactions. The predicted and landed merge
+trees match, and the landed implementation/test blobs match the qualified source.
+The first recovery fixture failed when marker-only Python could not convert into
+an empty Pseudo buffer; its corrected successor clears the real editor, selects
+Pseudo and waits for the accepted selection before the unchanged recovery program.
+That failure and resource-wait expirations remain preserved. No product assertion,
+deadline, resource threshold or dependency pin changed to obtain these passes.
 
 PR905's 34 affected session controls pass; three new controls fail on the
 baseline, and removing either closure fence is detected. Its nine enabled
@@ -43,8 +74,9 @@ root ownership, and bound native/frontend inputs to the reviewed consumer.
 Retained firmware, Runtime and support payloads did not change. Original build,
 fixture and startup failures remain preserved in private evidence.
 
-G02 remains open for its complete installed chooser/startup/final-sampling,
-UART-generation and late-poll matrix across supported backends. The older opaque
+G02 remains open for deferred-storage observer reentry, selected-image and chooser
+error races, and its complete installed startup/final-sampling, UART-generation
+and late-poll matrix across supported backends. The older opaque
 cold-start failures remain unexplained; successful new startups do not diagnose
 them. No timeout increase, dependency adoption, physical/reference compatibility,
 release or G05 licence/source-to-binary clearance follows from these receipts.
@@ -423,8 +455,10 @@ The candidate also invalidates pending image choices on Stop, backend changes
 and newer chooser requests. Stale selections and errors return cancellation;
 current selection, cancellation and errors retain their existing behavior.
 Focused actual-method controls include backend round trips and disposal.
-Exact-head CI and a fresh installed candidate package remain required. Broader
-G02 teardown, installed chooser, final-sampling and generation closure remains open.
+At candidate publication, exact-head CI and a fresh installed candidate package
+remained required. The qualified follow-up above records the frozen consumers
+and finite cases now completed. Selected-image/error, deferred-storage,
+final-sampling, generation and late-poll closure across backends remains open.
 
 ### G03 — Qualify usable sandbox and responsive editor controls
 

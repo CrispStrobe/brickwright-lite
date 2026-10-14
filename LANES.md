@@ -28,6 +28,22 @@ four shard names); the repository label `ci:full`. No step, version, threshold,
 budget, receipt or pinned action changes. Docs-only is exactly the build push
 `paths:` filter applied to the PR's files. Merge this claim before the
 implementation is pushed.
+## Arcade source typeof values — 2026-10-14
+
+PROPOSED — Codex Arcade value integration, `lane/arcade-source-typeof-20261014`.
+Contract: [source typeof values](docs/compatibility/arcade-source-typeof-values.md).
+Own a narrow source type service and reporter, canonical producer vocabulary
+and tests based on the qualified producer foundation, and the corresponding
+Arcade expression/export hooks and focused qualification. This is an E15
+scalar-item export/reimport prerequisite. Preserve aggregate JSON transport,
+legacy input parsing, native reference identity and atomic source declarations.
+Coordinate native index and converter hunks with their current owners.
+Qualify selected original primitive, array, object and owned native-reference
+results; function labels and captured actions require their actual qualified
+metadata. Other callable or reference representations keep explicit diagnostics.
+Merge this claim before product edits. Keep callable source admission,
+class GUI authoring, scheduling and independent board ownership in their
+existing lanes. Producer adoption requires exact-head qualification and review.
 
 ## Arcade live font metrics — 2026-10-14
 
@@ -1667,7 +1683,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 | Arcade export: `letter of` (task E17 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; `overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js` only if no open Arcade PR covers it; this row and the task file. | **CLAIMED 2026-10-14.** |
 
-| Seated MCUs with no terminals in the gallery (task B17 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; measurement first; fix in designer seating (bw-circuit-ui) or gallery data (sb3-creator/Lite) upstream-first; census test; this row and the task file. | **CLAIMED 2026-10-14.** |
+| DONE — Seated MCUs with no terminals in the gallery (task B17 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; measurement first; fix in designer seating (bw-circuit-ui) or gallery data (sb3-creator/Lite) upstream-first; census test; this row and the task file. | **DONE 2026-10-14 — Lite PR #915 (`lane/b17-seated-terminals`).** Found by B16 (#885). Upstream merged first: bw-circuit-ui #83 `9a1f06e5` (PR CI 38535170657: test, interaction-gate, kicad-oracle, spice-oracle green; master CI 38541394186 on `9a1f06e5` green). Lite pins bw-circuit-ui `9a1f06e5` (vendor-pins, root + packages/scratch-gui package.json/locks, package notices, eight package-adoption tests, i80386 workflow; old sha gone outside history). **Measured first** through the designer's load path (Node: `fromJSON` + nets/`_syncNetlist` with the app's engine injection; Chromium: the dev designer's circuitData effect): the 16 A2 benches (79-82 x default/stc89c52rc/stc12c5a60s2/stc15f2k60s2) store `"terminals": []`, and 0 of their 160 wired GPIO legs moved when driven (82-a2-led-row showed portByte 0, all LEDs lit; 79's display blank). Every other seated MCU (863 after load: STC, AVR, Pico, STM32, machine chips) already answered; the 608 declared-subset ones had undeclared but unwired legs. **Root cause**: bw-board drives only declared terminals; `Circuit.fromJSON` kept a seated part's stored list verbatim. **Fix**: `withSeatLegs`, so every seated leg is a terminal. After: 160/160 legs answer; LED row portByte 165 `01011010`; display `"       0"` (all three chips, Node + Chromium). Whole-gallery blast radius: no load-error or power-on voltage change except the stc15 A2 split pin nets merging; two schematic baselines redrawn (supply-pin order, looked at). **Gates**: cui `test/seated-legs-are-terminals.test.js` (7 families; mutation 7/7 red); Lite `test/b17-seated-mcu-legs-drive.test.mjs` (census; red at `5f336b24`: 624 MCUs / 160 legs); B16 test relies on the load path. |
 
 | Compiled-C keypad key 6 on stc12/stc15; 16-bit `show number` overflow (task B18 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; upstream stc-compiler and sb3-creator C target; Lite pin surfaces + tests; this row and the task file. | **CLAIMED 2026-10-14.** |
 
@@ -3488,6 +3504,18 @@ candidate, whose hosted merge gates are still pending. No startup failure
 attribution, deadline fix or full G02 completion is claimed.
 
 ## SPIKE remaining lifecycle boundaries — 2026-10-13
+
+Continuation candidate `lane/spike-g02-output-stop-20261014` stays in this
+merged session/test envelope. Six actual-method controls fail on the baseline:
+poll and packet hub/output callbacks, packet program-state callback, and a late
+packet input-write reply after Stop. Closure fences prevent subsequent input
+requests and observer publication while preserving correlated packet replies
+for serialized cancellation. All 41 affected controls pass, including the live
+packet publication control; removing each of the six new fences is detected.
+These use authored native boundaries. Fresh installed own-guest observer Stop,
+late-reply cleanup/recovery and all enabled exact-head checks remain required.
+No firmware, Runtime, model, native/Rust, deadline or workflow change; no full
+G02, physical or release claim.
 
 Continuation candidate `lane/spike-g02-terminal-fences-20261014` addresses
 synchronous Stop from final frame/program-state callbacks within this same

@@ -38,17 +38,19 @@ const CHIPS = [['STC89C52RC', 'stc89c52rc'], ['STC12C5A60S2', 'stc12c5a60s2'], [
 const MS = 1_000_000;
 
 /**
- * The example's bench for `chip`, powered. Its MCU is SEATED on the
- * breadboard and declares no terminals (`"terminals": []`, as 33 seated MCUs
- * in the gallery do), and bw-board drives only an MCU's declared terminals --
- * so the seat's legs are declared here, the pins the breadboard already wires.
+ * The example's bench for `chip`, powered, loaded as the designer loads it.
+ * Its MCU is SEATED on the breadboard and stores `"terminals": []`; bw-board
+ * drives only declared terminals, and until B17 this test had to declare the
+ * seat's legs itself. Circuit.fromJSON now makes every seated leg a terminal
+ * (test/b17-seated-mcu-legs-drive.test.mjs holds that for the whole gallery).
  */
 function bench (chip) {
     const c = Circuit.fromJSON(JSON.parse(fs.readFileSync(path.join(EX, `circuit.${chip}.json`), 'utf8')));
     const mcu = c.parts.find(p => p.id === 'MCU');
     assert.ok(mcu && mcu.seat, `${chip}: the bench seats its MCU`);
-    mcu.terminals = Object.keys(mcu.seat.leadMap);
-    c._syncNetlist();
+    const declared = new Set(mcu.terminals.map(t => t.toLowerCase()));
+    assert.deepEqual(Object.keys(mcu.seat.leadMap).filter(l => !declared.has(l.toLowerCase())), [],
+        `${chip}: the loaded MCU declares every seated leg`);
     assert.ok(c.board && !c.netlistError, `${chip}: the bench loads (${c.netlistError || ''})`);
     c.board.setPower(true);
     return c.board;
