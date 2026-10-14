@@ -106,6 +106,15 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false} =
             const result=sequence([node.left,node.right]);return {prefix:result.prefix,value:{...node,left:result.values[0],right:result.values[1]}};
         }
         if(node.type==='Array'){
+            if(typeof node.bwAnimationResourceId==='string' && node.bwAnimationResourceId) {
+                // Native animation import replaces this whole literal with an
+                // authored resource factory. Its payload remains in the asset
+                // companion; staging must evaluate that complete factory once,
+                // rather than append the original literal frames to its result.
+                changed=true;
+                const prefix=[];
+                return {prefix,value:save({...node},prefix)};
+            }
             const items=node.items.map(expression);
             changed=true;
             const prefix=[],array=save({...node,items:[]},prefix);
