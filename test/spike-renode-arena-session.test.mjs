@@ -729,3 +729,21 @@ for(const phase of ['pending','terminal'])for(const boundary of ['output','hub',
   }
  }finally{armed=false;unsubscribe();clearTimeout(session.timer);await session.stop();}
 });
+
+// Actual session with authored first-frame and configuration observer cancellation.
+for (const boundary of ['live','first-frame','configuration']) test(`startup observer ${boundary} preserves request boundary`,async()=>{
+ const cancel=boundary!=='live';
+ const b=new ArenaHubBridge({hubState:new Hub(),world:sandboxWorld()});const calls=[];let s,stopping;
+ const frame={schemaVersion:1,type:'snapshot',seq:1,clockNs:0,
+ target:{board:'spike-prime',firmware:'brickwright-arena-demo',transport:'none',imageSha256:'a'.repeat(64),capabilities:['arena-inputs/v1','arena-clock/v1','guest-motor-output/v1','state-sample/v1']},
+ lifecycle:{connectionGeneration:1},ports:[{id:'C',attached:true,kind:'color'},{id:'D',attached:true,kind:'distance'},{id:'E',attached:true,kind:'force'}],
+ motors:['A','B'].map(port=>({port,position:0,speedDps:0,demandDirection:0,stalled:false}))};
+ const capabilities=Object.fromEntries(['session.start','session.close','state.read','run','arena.inputs.write'].map(op=>[`renode.spike.${op}`,async()=>{calls.push({op,closed:s.closed});if(op==='session.start')await new Promise(resolve=>setTimeout(resolve,0));return op==='state.read'?JSON.stringify(frame):'ready';}]));
+ s=new RenodeArenaSession({bridge:b,capabilities});
+ const unsubscribe=b.hubState.subscribe(()=>{if(cancel && !s.closed && (boundary==='configuration'?b.hubState.configurationOwner===s:b.hubState.clockOwner==='renode')) stopping=s.stop();});
+ try {
+  await s.start();clearTimeout(s.timer);if(stopping)await stopping;
+  if(cancel){assert.ok(s.closed);assert.equal(b.hubState.configurationOwner,null);assert.equal(b.hubState.clockOwner,null);assert.notEqual(b.hubState.externalBackend,s);assert.deepEqual(calls.filter(c=>c.closed&&['session.start','arena.inputs.write','run','program.packet'].includes(c.op)),[],'No new native startup/input/run/program request after startup observer Stops');}
+  else {assert.ok(!s.closed);assert.deepEqual(calls.map(c=>c.op),['session.start','state.read','arena.inputs.write','run']);assert.equal(b.hubState.externalBackend,s);}
+ }finally{unsubscribe();await s.stop();}
+});

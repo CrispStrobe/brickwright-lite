@@ -3714,3 +3714,18 @@ outcomes, durability checkpoints, native budgets and original failures. Fresh
 source-bound installed own-NuttX storage cancellation/recovery and every enabled
 exact-head check remain required before adoption. Firmware, Runtime, model,
 native/Rust, dependency pins and workflows are unchanged; full G02 remains open.
+
+
+## SPIKE startup observer cancellation — 2026-10-14
+
+Continuation in the merged G02 session/test envelope, following the separately
+qualified deferred-storage consumer. A synchronous Stop from the configuration
+notification must prevent native startup; Stop from first-frame publication must
+prevent input writes and external-backend admission. Add closure checks at both
+boundaries, preserving ordinary startup and native close ownership. Authored
+controls reproduce both missing guards: the live control passes and both Stop
+controls fail on the prior consumer. All 52 session controls pass with the two
+checks; removing either check is detected by its Stop control. Actual installed
+qualification and every enabled exact-head check remain required before adoption. No dependency pin,
+native code, firmware, Runtime, model, budget or workflow changes. Full G02 and
+distribution qualification remain open.
