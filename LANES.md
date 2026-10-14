@@ -1,5 +1,20 @@
 # Who is doing what — merge the claim before implementation
 
+## Arcade controller repeat properties — 2026-10-14
+
+PROPOSED — Codex Arcade controller integration, `lane/arcade-controller-repeat-20261014`.
+Contract: [controller repeat properties](docs/ARCADE-CONTROLLER-REPEAT.md).
+Own fixed-button repeat-delay/interval source read/write lowering and export,
+explicit native reporters/setters and canonical producer words with reviewed
+pin adoption; narrowly replace the existing controller repeat calculation.
+Preserve physical input edges, event contexts, scene ownership, dialogs,
+source reference/callable typing and frame authority. Coordinate shared
+translator, native index, inventory and supplier hunks with their owners.
+Merge this documentation claim before product edits. Qualify actual original
+traces, Code/Blocks edits, saved fresh SB3, export/reimport and installed GUI;
+no corpus promotion from successful parsing or isolated feature tests.
+
+
 ## Arcade source reference initialization — 2026-10-14
 
 PROPOSED — `lane/arcade-source-reference-preinit-20261014`.
@@ -272,6 +287,23 @@ documentation exclusions. Unknown API responses run the full tail. Focused
 controls preserve every required publication job and catch executable mutants
 that skip excluded docs, misclassify source changes or accept truncated evidence.
 Hosted exact-head qualification and guarded landing remain pending.
+
+## Public path projection follow-up — 2026-10-13
+
+CLAIMED — Codex SPIKE review, isolated branch
+`docs/spike-path-cleanup-claim-20261013`; implementation follows only after this
+claim merges. Envelope: this ledger, `docs/OPEN-TASKS-2026-09-29.md`,
+`scripts/gen-bw-board-census.mjs`, `test/bw-board-census.test.mjs`, and
+`docs/generated/bw-board-census.json`. Generalize remaining machine-specific
+operational prose and cover absolute paths immediately following an environment
+assignment delimiter in census public presentation. Preserve raw evidence in
+private records, all source identities, observation/stable fields, dependency
+pins and generated GUI join fields. Include a regression for the assignment
+case and prove projection idempotence and original-input preservation.
+No guest, simulator, native broker, executable asset or workflow changes.
+This claim does not clear historical commits, binary artifacts, all public
+content, or whole-package licensing. G02 qualification continues independently
+on its reviewed source and sole official frontend artifact.
 
 ## Public operational-path cleanup — 2026-10-12
 
@@ -3426,6 +3458,14 @@ closure, fresh recovery and guest qualification plus enabled exact-head gates.
 No new firmware/model/runtime pins, restricted image acquisition/inspection, physical
 mapping, reference boot, release/licence, instantaneous abort or whole-G02 claim.
 
+Native observation continuation: isolated branch
+`lane/spike-g02-native-observation-20261013` prepares closed, bounded native
+phase/result/elapsed records in `renode_debugger.rs`. Three extracted std-only
+controls and three mutation adversaries pass; full native and fresh installed
+qualification remain pending. Builds on the separately qualified PR895 source
+candidate, whose hosted merge gates are still pending. No startup failure
+attribution, deadline fix or full G02 completion is claimed.
+
 ## SPIKE remaining lifecycle boundaries — 2026-10-13
 
 CLAIMED — Codex SPIKE integration, `lane/spike-g02-lifecycle-20261013`.
@@ -3450,16 +3490,21 @@ fetch restricted images, fabricate reference storage/mapping or infer physical
 safety, full G02 coverage or distribution closure from bounded simulations.
 
 
-Implementation in progress: the candidate fences native Start across
-teardown and connection waits using Stop revision, bridge/backend identity and
-pane disposal. It also invalidates old image choices on Stop, backend changes
-and newer requests, suppressing stale selections and errors while preserving
-current chooser results. Dedicated actual-method controls live in
-`test/spike-arena-pane-lifecycle.test.mjs`; baseline installed connection-return
-races and normal Start/Reset recovery are preserved separately. This candidate
-has not been qualified in a fresh installed package and does not close G02.
-Native cold-start failures before a separate teardown diagnostic reached its
-race remain unresolved; no startup timeout or native feature was changed.
+PR879 merged the finite native Start and chooser intent fences. Installed
+consumer `f1772cf0fe96988f7a4a3c665a478ef8fac4b065` qualified seven UI cases
+and own-NuttX startup Code Stop separately from the whole evolving main package.
+
+Continuation: `lane/spike-g02-stale-cleanup-20261013`, same owner and envelope.
+A subsequent installed own-NuttX run reached the teardown boundary: after the
+disposed pane's real firmware session closed, delaying only that completed Stop
+return let a replacement pane start the shared VM. Releasing the old return
+then called `stopAll` on that replacement. The candidate checks pane disposal,
+Stop revision and bridge identity before resumed shared cleanup, and suppresses
+stale teardown errors while preserving current errors. All 14 actual-method
+controls pass; five guard/error mutations fail. Fresh candidate installed
+qualification and enabled exact-head checks remain required; this does not
+close G02. Earlier cold-start failures remain unresolved despite successful
+startup in the new diagnostic. No timeout, native feature or pin changed.
 
 ## Arcade Buffer hash and live-memory continuation — 2026-10-12
 

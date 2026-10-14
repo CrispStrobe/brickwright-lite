@@ -5,7 +5,7 @@ import path from 'node:path';
 import {loadCircuitModel} from '../scripts/lib/polarity-oracle.mjs';
 
 const root = path.resolve(import.meta.dirname, '..');
-const boardPin = '0c5b0284b9c10b2b8a3fa61b9edb094b3b324f32';
+const boardPin = 'c5078499ebcde97ce615689667244b37c76eb22f';
 const cuiPin = '5f336b24447351ce80742c0e71078cdd23e7912b';
 async function bench(sine = false) {
     const {Circuit} = await loadCircuitModel(root);

@@ -630,10 +630,21 @@ class SpikeArenaPane extends React.Component {
     async stopProgram ({restart = false} = {}) {
         // Invalidate a pending native Start even when Reset retains its bridge
         // and execution backend, or a backend selection returns to native.
-        this.programIntent = {};
+        const intent = this.programIntent = {};
+        const bridge = this.bridge;
+        const current = () => !this.disposed && this.programIntent === intent && this.bridge === bridge;
         const firmware = this.firmwareSession;
         this.firmwareSession = null;
-        if (firmware) await firmware.stop();
+        if (firmware) {
+            try { await firmware.stop(); }
+            catch (error) {
+                if (current()) throw error;
+                return;
+            }
+            // Teardown belongs to the detached session. Shared VM, backend and
+            // port cleanup must still belong to this pane when it resumes.
+            if (!current()) return;
+        }
         if (this.bridge && this.world && ['six-motors', 'dual-ultrasonic'].includes(this.arenaFirmwareTopology)) {
             this.hubState.setPort('F', 'none');
             this.bridge = new ArenaHubBridge({hubState: this.hubState, world: this.world});

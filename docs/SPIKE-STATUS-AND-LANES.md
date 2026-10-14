@@ -6,6 +6,26 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Native startup observation candidate — 2026-10-13
+
+The merged [PR891](https://github.com/CrispStrobe/brickwright-lite/pull/891)
+claim covers a native-only startup trace candidate. Closed phase/result names
+and monotonic elapsed milliseconds distinguish session lock, launch, RSP
+connection, interrupt handle, state connection/readiness, applicable identity
+checks and attachment. Errors and early returns close the active phase as failed.
+The trace emits at most 24 records per call and accepts no paths, arguments,
+leases, image identities or backend error text. Public error responses and
+startup/session deadlines are unchanged; logging I/O errors are ignored.
+
+Three extracted standard-library controls pass, and three deliberate mutations
+are detected: mislabelling failure as completion, adding failure after success,
+and removing the log ceiling. These controls do not compile or qualify the full
+native app. Affected native compilation, exact-head hosted gates and fresh
+installed cold-start, Stop/reset/close/recovery and owned-guest observations
+remain required. Earlier generic cold-start failures are preserved and their
+cause remains unknown. No timeout increase or firmware/Runtime/model adoption
+is proposed by this observation work.
+
 ## Code Stop startup feedback candidate — 2026-10-13
 
 The source candidate adds a cold-start notification through the existing arena
@@ -51,6 +71,29 @@ provenance, exact size/hash and emitted inventory; assertions and time limits
 were retained. Raw results stay private. The normal source merge tree matched
 the reviewed tree and preserved independently merged vendor changes. G02's
 chooser/final-sampling/generation/late-poll cases and G05 closure remain open.
+
+## Stale firmware cleanup follow-up — 2026-10-13
+
+[PR879](https://github.com/CrispStrobe/brickwright-lite/pull/879) merged finite
+native Start and chooser intent guards. Its separately reviewed installed
+consumer [`f1772cf0`](https://github.com/CrispStrobe/brickwright-lite/commit/f1772cf0fe96988f7a4a3c665a478ef8fac4b065)
+qualified seven UI cases and own-NuttX Code Stop during startup. These observations
+do not qualify every later main package or close G02.
+
+A later actual installed run on that consumer completed an owned NuttX program
+and reproduced another lifecycle gap. After the old pane's firmware session
+closed, delaying only the real Stop return allowed a new pane to start the
+shared VM. The disposed pane's resumed cleanup then called `stopAll` on that VM.
+Original VM calls were observed and invoked; no guest implementation was substituted.
+
+The source candidate fences shared cleanup after firmware teardown using pane
+disposal, Stop revision and bridge identity. Stale teardown errors are suppressed;
+current Stop and current errors retain their behavior. All 14 actual-method
+controls pass, and five deliberate guard/error mutations fail. Hosted checks
+and fresh candidate installed teardown/replacement and positive Stop qualification
+remain pending. Earlier cold-start failures are preserved and unexplained;
+startup succeeding on the new diagnostic does not resolve their cause.
+Firmware, Runtime, model pins and startup deadlines remain unchanged.
 
 ## Installed dual-ultrasonic checkpoint — 2026-10-12
 

@@ -7,7 +7,7 @@ use crate::renode_brick_state::BrickStateFeed;
 use crate::renode_rsp::{Arm32Architecture, RenodeRsp, RenodeRspInterrupt};
 use crate::renode_supervisor::{RenodeSupervisor, SpikeTopology, TeardownReason};
 use serde_json::{json, Value};
-use std::io::Read;
+use std::io::{Read, Write};
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -25,6 +25,119 @@ const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
 // its 120-second wall limit for the complete owned session.
 const SPIKE_STARTUP_TIMEOUT: Duration = Duration::from_secs(60);
 const EV3_UART_EVIDENCE: &[u8] = b"EV3 ARM9 IRQ\n";
+
+// Native-only observations accept closed identifiers and elapsed time, never
+// arguments, paths, leases, image identities or backend error text. A failed
+// return leaves its last phase visible without changing the public error.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum StartupPhase {
+    SessionLock,
+    Launch,
+    RspConnect,
+    InterruptHandle,
+    StateConnect,
+    StateReady,
+    IdentityCheck,
+    Attached,
+}
+
+impl StartupPhase {
+    fn name(self) -> &'static str {
+        match self {
+            Self::SessionLock => "session-lock",
+            Self::Launch => "launch",
+            Self::RspConnect => "rsp-connect",
+            Self::InterruptHandle => "interrupt-handle",
+            Self::StateConnect => "state-connect",
+            Self::StateReady => "state-ready",
+            Self::IdentityCheck => "identity-check",
+            Self::Attached => "attached",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum StartupResult {
+    Begin,
+    Complete,
+    Failed,
+}
+
+impl StartupResult {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Begin => "begin",
+            Self::Complete => "complete",
+            Self::Failed => "failed",
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct StartupObservation {
+    phase: StartupPhase,
+    result: StartupResult,
+    elapsed_ms: u128,
+}
+
+impl std::fmt::Display for StartupObservation {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(formatter, "renode-startup phase={} result={} elapsed_ms={}",
+            self.phase.name(), self.result.name(), self.elapsed_ms)
+    }
+}
+
+fn write_startup_observation(observation: StartupObservation) {
+    // Logging failure must not turn a successful attachment into an error.
+    let _ = writeln!(std::io::stderr().lock(), "{observation}");
+}
+
+struct StartupTrace<F: FnMut(StartupObservation)> {
+    began: Instant,
+    phase: StartupPhase,
+    finished: bool,
+    records: u8,
+    observe: F,
+}
+
+impl<F: FnMut(StartupObservation)> StartupTrace<F> {
+    fn new(observe: F) -> Self {
+        let mut trace = Self { began: Instant::now(), phase: StartupPhase::SessionLock,
+            finished: false, records: 0, observe };
+        trace.emit(StartupResult::Begin);
+        trace
+    }
+
+    fn emit(&mut self, result: StartupResult) {
+        // Eight phases currently produce at most sixteen records. Retain an
+        // independent ceiling if a future caller accidentally traces retries.
+        if self.records < 24 {
+            self.records += 1;
+            (self.observe)(StartupObservation {
+                phase: self.phase, result, elapsed_ms: self.began.elapsed().as_millis(),
+            });
+        }
+    }
+
+    fn phase(&mut self, phase: StartupPhase) {
+        self.emit(StartupResult::Complete);
+        self.phase = phase;
+        self.emit(StartupResult::Begin);
+    }
+
+    fn finish(&mut self) {
+        self.emit(StartupResult::Complete);
+        self.finished = true;
+    }
+}
+
+impl<F: FnMut(StartupObservation)> Drop for StartupTrace<F> {
+    fn drop(&mut self) {
+        if !self.finished {
+            self.emit(StartupResult::Failed);
+        }
+    }
+}
 
 struct Session {
     rsp: Arc<Mutex<RenodeRsp>>,
@@ -173,6 +286,7 @@ impl RenodeDebugger {
         micropython: Option<(crate::spike_micropython_launch::MicroPythonRecipe,(String,u64))>,
         launch: impl FnOnce() -> Result<crate::renode_supervisor::RenodeEndpoint,String>,
     ) -> Result<&'static str,String> {
+        let mut trace = StartupTrace::new(write_startup_observation);
         let mut session = self
             .session
             .lock()
@@ -180,6 +294,7 @@ impl RenodeDebugger {
         if session.is_some() {
             return Err("Renode debugger already started".into());
         }
+        trace.phase(StartupPhase::Launch);
         let endpoint = launch()?;
         let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), endpoint.gdb_port);
         let startup_timeout = match target {
@@ -187,6 +302,7 @@ impl RenodeDebugger {
             RenodeTarget::Ev3 => STARTUP_TIMEOUT,
         };
         let deadline = Instant::now() + startup_timeout;
+        trace.phase(StartupPhase::RspConnect);
         let rsp = loop {
             match RenodeRsp::connect_for_architecture(address, target.architecture()) {
                 Ok(rsp) => break rsp,
@@ -197,6 +313,7 @@ impl RenodeDebugger {
                 }
             }
         };
+        trace.phase(StartupPhase::InterruptHandle);
         let interrupt = match rsp.interrupt_handle() {
             Ok(interrupt) => interrupt,
             Err(error) => {
@@ -204,6 +321,7 @@ impl RenodeDebugger {
                 return Err(error);
             }
         };
+        trace.phase(StartupPhase::StateConnect);
         let state = match target {
             RenodeTarget::SpikePrime => {
                 let state_address =
@@ -211,13 +329,16 @@ impl RenodeDebugger {
                 let state_deadline = Instant::now() + SPIKE_STARTUP_TIMEOUT;
                 let feed = loop {
                     match BrickStateFeed::connect(state_address) {
-                        Ok(state) => match state.wait_ready(Duration::from_secs(2)) {
-                            Ok(()) => break state,
-                            Err(error) => {
-                                supervisor.teardown(TeardownReason::Reset);
-                                return Err(error);
+                        Ok(state) => {
+                            trace.phase(StartupPhase::StateReady);
+                            match state.wait_ready(Duration::from_secs(2)) {
+                                Ok(()) => break state,
+                                Err(error) => {
+                                    supervisor.teardown(TeardownReason::Reset);
+                                    return Err(error);
+                                }
                             }
-                        },
+                        }
                         Err(_) if Instant::now() < state_deadline => {
                             thread::sleep(Duration::from_millis(25))
                         }
@@ -228,6 +349,7 @@ impl RenodeDebugger {
                     }
                 };
                 if let Some((_,(hash,generation)))=&micropython {
+                    trace.phase(StartupPhase::IdentityCheck);
                     let snapshot = match feed.latest() {
                         Ok(snapshot) => snapshot,
                         Err(error) => {
@@ -251,10 +373,12 @@ impl RenodeDebugger {
                 let feed = loop {
                     match BrickStateFeed::connect(state_address) {
                         Ok(feed) => {
+                            trace.phase(StartupPhase::StateReady);
                             if let Err(error) = feed.wait_ready(Duration::from_secs(2)) {
                                 supervisor.teardown(TeardownReason::Reset);
                                 return Err(error);
                             }
+                            trace.phase(StartupPhase::IdentityCheck);
                             if feed.latest()?.target.board != "ev3" {
                                 supervisor.teardown(TeardownReason::Reset);
                                 return Err("EV3 state target mismatch".into());
@@ -279,6 +403,7 @@ impl RenodeDebugger {
                 }
             }
         };
+        trace.phase(StartupPhase::Attached);
         *session = Some(Session {
             rsp: Arc::new(Mutex::new(rsp)),
             interrupt,
@@ -289,6 +414,7 @@ impl RenodeDebugger {
             state,
             micropython: micropython.map(|(recipe,_)| recipe),
         });
+        trace.finish();
         Ok("ready")
     }
 
@@ -612,6 +738,71 @@ impl RenodeDebugger {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn startup_trace_preserves_error_and_closes_failed_phase_without_error_text() {
+        let mut observations = Vec::new();
+        let private_error = "fixture-private-path/guest-image lease=fixture-secret";
+        let result = (|| -> Result<(), String> {
+            let mut trace = super::StartupTrace::new(|event| observations.push(event));
+            trace.phase(super::StartupPhase::Launch);
+            Err(private_error.to_owned())?;
+            trace.finish();
+            Ok(())
+        })();
+        assert_eq!(result.unwrap_err(), private_error);
+        let records: Vec<String> = observations.iter().map(ToString::to_string).collect();
+        assert_eq!(records.len(), 4);
+        assert!(records[0].starts_with("renode-startup phase=session-lock result=begin "));
+        assert!(records[1].starts_with("renode-startup phase=session-lock result=complete "));
+        assert!(records[2].starts_with("renode-startup phase=launch result=begin "));
+        assert!(records[3].starts_with("renode-startup phase=launch result=failed "));
+        assert!(!records.join("\n").contains(private_error));
+        assert!(!records.join("\n").contains("fixture-secret"));
+    }
+
+    #[test]
+    fn startup_trace_success_has_one_terminal_completion_and_monotonic_closed_records() {
+        let mut observations = Vec::new();
+        {
+            let mut trace = super::StartupTrace::new(|event| observations.push(event));
+            for phase in [super::StartupPhase::Launch, super::StartupPhase::RspConnect,
+                super::StartupPhase::InterruptHandle, super::StartupPhase::StateConnect,
+                super::StartupPhase::StateReady, super::StartupPhase::IdentityCheck,
+                super::StartupPhase::Attached] {
+                trace.phase(phase);
+            }
+            trace.finish();
+        }
+        assert_eq!(observations.len(), 16);
+        assert!(observations.windows(2).all(|pair| pair[0].elapsed_ms <= pair[1].elapsed_ms));
+        assert!(!observations.iter().any(|event| event.result == super::StartupResult::Failed));
+        let last = observations.last().unwrap();
+        assert_eq!(last.phase, super::StartupPhase::Attached);
+        assert_eq!(last.result, super::StartupResult::Complete);
+        for event in observations {
+            let line = event.to_string();
+            let fields: Vec<&str> = line.split_whitespace().collect();
+            assert_eq!(fields.len(), 4);
+            assert_eq!(fields[0], "renode-startup");
+            assert!(fields[1].strip_prefix("phase=").unwrap().bytes()
+                .all(|byte| byte.is_ascii_lowercase() || byte == b'-'));
+            assert!(fields[2].strip_prefix("result=").unwrap().bytes().all(|byte| byte.is_ascii_lowercase()));
+            assert!(fields[3].strip_prefix("elapsed_ms=").unwrap().parse::<u128>().is_ok());
+        }
+    }
+
+    #[test]
+    fn startup_trace_cannot_flood_native_logs_when_a_caller_repeats_phases() {
+        let mut observations = Vec::new();
+        {
+            let mut trace = super::StartupTrace::new(|event| observations.push(event));
+            for _ in 0..100 {
+                trace.phase(super::StartupPhase::StateConnect);
+            }
+        }
+        assert_eq!(observations.len(), 24);
+    }
+
     #[test]
     fn local_selection_cancel_failure_and_contention_never_start_a_session() {
         let debugger = super::RenodeDebugger::new();
