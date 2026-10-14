@@ -38,7 +38,19 @@ try{
   if(completed===2)await page.getByTestId('bw-arcade-a').click();
   await page.waitForFunction(n=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).some(v=>v.name.replace(/^Game_/,'')==='completed' && v.value===n),completed,{timeout:30000});
   const values=await page.evaluate(()=>Object.fromEntries(window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value])));
-  report.samples.push({completed,before:values.before,after:values.after,inB:values.inB,inC:values.inC,finalX:values.finalX});
+  const timing = await page.evaluate(() => {
+    const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
+    const phase = runtime._arcadeFramePhase, ext = phase?.ext;
+    return {wall: runtime.currentMSecs, elapsed: runtime.bwArcadeDeviceState?.elapsedMs,
+      sourceTimers: ext?._sourceSceneTimers(), frameWorkerActive: ext?._sceneFrameHost?.active,
+      phaseActive: phase?.active, pendingPhase: phase?.pending?.phase,
+      workNotes: phase?.notes?.slice(-12),
+      threads: runtime.threads.map(thread => ({status: thread.status,
+        opcode: thread.target.blocks.getBlock(thread.peekStack())?.opcode})),
+      sprites: Object.values(runtime.bwArcadeDeviceState?.sprites || {}).map(sprite =>
+        ({x: sprite.x, vx: sprite.vx, kind: sprite.kind}))};
+  });
+  report.samples.push({completed,before:values.before,after:values.after,inB:values.inB,inC:values.inC,finalX:values.finalX,timing});
   assert.ok(values.after<values.before,'motion continues during pause');for(const key of ['inB','inC','finalX'])assert.equal(values[key],values.after,key);
  }
  await page.locator('[class*="stop-all_stop-all"]').first().click();await page.getByRole('tab',{name:'Code',exact:true}).click();
