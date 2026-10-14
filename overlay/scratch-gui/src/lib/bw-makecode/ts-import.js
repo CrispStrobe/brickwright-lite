@@ -518,7 +518,7 @@ class Parser {
             for (;;) {
                 const t = this.peek();
                 const nextIsName = this.peek(1).type === 'ident' || MODIFIERS.has(this.peek(1).value) ||
-                    ['get', 'set', 'constructor'].includes(this.peek(1).value);
+                    ['get', 'set', 'constructor', 'static'].includes(this.peek(1).value);
                 if ((t.type === 'public' || t.type === 'private' || t.type === 'static' ||
                     (t.type === 'ident' && MODIFIERS.has(t.value))) && nextIsName) {
                     if (t.type === 'static') isStatic = true;
@@ -542,6 +542,9 @@ class Parser {
                 node.methods.push({name: prop, kind: member, params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, returnType, body, isStatic, modifiers});
                 continue;
             }
+            const typeParameters = this.at('punct', '<') ? this.parseTypeParameters() : [];
+            if (typeParameters.length && !this.at('punct', '('))
+                throw new Error('MakeCode TS: class method type parameters require a parameter list');
             if (this.at('punct', '(')) {
                 const params = this.parseParams();
                 const paramTypes = this.lastParamTypes;
@@ -549,6 +552,7 @@ class Parser {
                 const returnType = this.lastType;
                 const body = this.parseBlock();
                 if (member === 'constructor') {
+                    if (typeParameters.length) node.unsupported.push('generic class constructors');
                     // Parameter properties initialize instance fields before the constructor body.
                     // Retain their modifiers/types for later lowering and explicit diagnostics.
                     const properties = params.parameterProperties;
@@ -560,7 +564,10 @@ class Parser {
                     node.ctor = {...(this.retainClassHeritage?{originalBody:body}:{}),params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, parameterProperties: properties,
                         body: [...this.defaultStatements(params), ...assignments, ...body]};
                 }
-                else node.methods.push({name: member, kind: 'method', params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, returnType, body:[...this.defaultStatements(params),...body], isStatic, modifiers});
+                else {
+                    if (typeParameters.length) node.unsupported.push('generic class methods');
+                    node.methods.push({name: member, kind: 'method', typeParameters, params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, returnType, body:[...this.defaultStatements(params),...body], isStatic, modifiers});
+                }
                 continue;
             }
             this.eat('punct', '?');
@@ -680,9 +687,10 @@ class Parser {
             while (!this.at('eof')) {
                 let token = this.peek();
                 // Inside type syntax these are consecutive closing angle brackets,
-                // not expression shifts. Preserve each delimiter for its own level.
-                if (token.type === 'punct' && ['>>','>>>'].includes(token.value)) {
-                    this.toks.splice(this.pos, 1, ...Array.from(token.value, () => ({...token, value: '>'})));
+                // not expression shifts. An adjacent '=' begins a type default.
+                // Preserve each delimiter for its own level.
+                if (token.type === 'punct' && /^(?:>{2,3}|>{1,3}=)$/.test(token.value)) {
+                    this.toks.splice(this.pos, 1, ...Array.from(token.value, value => ({...token, value})));
                     token = this.peek();
                 }
                 if (depth === 0 && token.type === 'punct' && [',','>', ...(stopAtDefault ? ['='] : [])].includes(token.value)) break;
