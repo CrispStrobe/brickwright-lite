@@ -36,13 +36,19 @@ identity, vocabulary and tracked mirrors.
   current-project implementation is in progress; explicit prototype evidence
   does not grant default or whole-library admission.
 
-The fresh immutable 184-input audit at this integration reports **145 translated /
-38 partial / one parse failure**, with all original Git blobs independently
-verified. Exactly two formerly translated rows now expose missing Font operand
-proofs: `30c9e6286a9cbe22` and `d9e8eb7569f760a9`. Their screen-image, dimension and
-text expressions require proper producer support. Keep these regressions visible
-until that implementation passes; do not restore the count by relaxing the gate
-or changing the inputs. This is a static audit, not whole-game qualification.
+The reviewed screen operand follow-up `3d42e8855badbddf972b900b343671edbc299c49`
+is normally integrated at `990e0c961bdcb05e3c3b17fe5ba1213c8f3bb463`.
+It proves the unshadowed built-in screen Image, Image dimensions, primitive text
+concatenation and numeric derived expressions. Screen assignments invalidate
+that authority. It does not widen Image factory operands or admit opaque values.
+Independent review and root integration each pass **19 focused controls**.
+The edited Font export remains byte-identical to its executed original.
+
+The fresh immutable 184-input audit now reports **147 translated / 36 partial /
+one parse failure**. Exactly the two newly regressed rows, `30c9e6286a9cbe22`
+and `d9e8eb7569f760a9`, recover through that implementation. The earlier
+**145/38/1** result and original inputs remain preserved. This is a static audit,
+not whole-game qualification; the below-20 milestone has not been reached.
 
 ## Current continuation checkpoint — 2026-10-14
 
