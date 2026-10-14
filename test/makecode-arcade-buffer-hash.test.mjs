@@ -1,9 +1,9 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
-import {EventEmitter} from 'node:events';
 import {loadExtensionClass,VM_SRC} from './helpers/bw-extensions.mjs';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
@@ -25,7 +25,7 @@ const {fromHex,literal}=require('../overlay/scratch-vm/src/extensions/crispstrob
 });
 
  test('native hash reads shared mutation and explicitly refuses stale or foreign references',()=>{
-    const make=()=>{const runtime=new EventEmitter(),errors=[];runtime.startHats=()=>[];runtime.on('BLOCKS_ERROR',e=>errors.push(e));return {runtime,errors,native:new(loadExtensionClass('arcade'))(runtime)};};
+    const make=()=>{const runtime=createArcadeRuntimeMock(),errors=[];runtime.on('BLOCKS_ERROR',e=>errors.push(e));return {runtime,errors,native:new(loadExtensionClass('arcade'))(runtime)};};
     const a=make(),b=make(),bytes=a.native.bufferFromHex({HEX:'01020304'});
     const original=fromHex('01020304');assert.equal(a.native.bufferHash({BUFFER:bytes,BITS:32}),original.hash(32));
     a.native.bufferSetByte({BUFFER:bytes,OFFSET:0,VALUE:99});original.setByte(0,99);

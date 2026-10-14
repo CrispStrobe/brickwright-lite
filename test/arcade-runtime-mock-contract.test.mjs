@@ -21,3 +21,15 @@ test('actual startup observation keeps earlier hat calls and verifies each new r
     startArcadeProject(runtime);startArcadeProject(runtime);
     assert.equal(restarted,2);assert.equal(runtime.hatRequests.length,3);
 });
+
+import {loadExtensionClass} from './helpers/bw-extensions.mjs';
+test('native-only mock explicitly owns an empty compiled-target collection and records real startup dispatch',()=>{
+ const runtime=createArcadeRuntimeMock();assert.deepEqual(runtime.targets,[]);new(loadExtensionClass('arcade'))(runtime);
+ startArcadeProject(runtime);assert.deepEqual(runtime.hatRequests,[['arcade_whenSourceStarts']]);
+});
+test('adding empty-target mock contract does not bypass validation of a malformed nonempty source prelude',()=>{
+ const runtime=createArcadeRuntimeMock();new(loadExtensionClass('arcade'))(runtime);
+ runtime.targets.push({id:'malformed',isOriginal:true,blocks:{_blocks:{late:{id:'late',opcode:'arcade_declareSourceScalar'}}}});
+ assert.throws(()=>runtime.emit('PROJECT_START'),/declarations must precede source initializers/);
+ assert.deepEqual(runtime.hatRequests,[],'no startup dispatch follows a refused declaration');
+});

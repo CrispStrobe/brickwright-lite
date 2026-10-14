@@ -1,7 +1,7 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 // Ported unchanged from the parked Codex WIP (task F3 of docs/OPEN-TASKS-2026-09-29.md).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
 import {loadExtensionClass, probeExtension} from './helpers/bw-extensions.mjs';
 import {VM, SB3Creator} from './helpers/bw-vm.mjs';
 import {pixelsToSvg} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
@@ -10,7 +10,7 @@ import {parseImageLiteral} from '../overlay/scratch-gui/src/lib/bw-makecode/arca
 
 const Arcade = loadExtensionClass('arcade');
 const runtime = () => {
-    const out = new EventEmitter();
+    const out = createArcadeRuntimeMock();
     out.startHats = () => [];
     out.requestRedraw = () => {};
     out.getSpriteTargetByName = () => null;

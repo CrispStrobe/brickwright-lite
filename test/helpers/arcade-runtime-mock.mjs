@@ -5,6 +5,10 @@ import {EventEmitter} from 'node:events';
 // still implement Scratch Runtime.startHats and record actual dispatch requests.
 export function createArcadeRuntimeMock() {
     const runtime = new EventEmitter();
+    // Actual Scratch Runtime always owns a targets array. Native-only tests
+    // deliberately contain no compiled targets; empty is explicit, not a
+    // production fallback for malformed targets or invalid source preludes.
+    runtime.targets = [];
     runtime.hatRequests = [];
     runtime.startHats = (...args) => {
         assert.equal(typeof args[0], 'string');

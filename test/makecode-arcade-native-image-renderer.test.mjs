@@ -1,13 +1,13 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
 import {createRequire} from 'node:module';
 import {loadExtensionClass, VM_SRC} from './helpers/bw-extensions.mjs';
 const BWValues = createRequire(import.meta.url)(VM_SRC + '/util/bw-values');
 const Arcade = loadExtensionClass('arcade');
 function fixture() {
-    const runtime = new EventEmitter(), drawables = new Map(), skins = new Map(), destroyed = [];
-    runtime.startHats = () => []; // This renderer fixture has no project scripts.
+    const runtime = createArcadeRuntimeMock(), drawables = new Map(), skins = new Map(), destroyed = [];
+     // This renderer fixture has no project scripts.
     let nextDrawable = 0, nextSkin = 0, nextOrder = 0;
     runtime.renderer = {
         createDrawable(group) { const id = ++nextDrawable; drawables.set(id, {group}); return id; },
@@ -63,8 +63,14 @@ test('native renderer follows camera, scaling, rotation, visibility and Arcade z
     g.arcade.setSpriteFlag({ID: a, FLAG: 'Invisible', ON: false});
     assert.equal(g.drawables.get(first.drawableId).visible, true);
     g.arcade.setSpriteProperty({ID: a, PROPERTY: 'z', VALUE: 10});
+    assert.equal(g.arcade._state().flags & 1, 1, 'SDK z setter dirties NeedsSorting until render');
+    g.arcade._advance(0);
+    assert.equal(g.arcade._state().flags & 1, 0, 'actual render sorts and clears the flag');
     assert.ok(g.drawables.get(first.drawableId).order > g.drawables.get(second.drawableId).order);
     g.arcade.setSpriteProperty({ID: a, PROPERTY: 'z', VALUE: 0});
+    assert.equal(g.arcade._state().flags & 1, 1);
+    g.arcade._advance(0);
+    assert.equal(g.arcade._state().flags & 1, 0);
     assert.ok(g.drawables.get(first.drawableId).order < g.drawables.get(second.drawableId).order);
 });
 test('scenes hide native drawables and reset disposes active and inactive scene resources', () => {

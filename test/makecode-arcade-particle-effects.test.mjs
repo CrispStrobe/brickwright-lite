@@ -1,6 +1,6 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
 import {execFileSync} from 'node:child_process';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -11,9 +11,9 @@ const Arcade = loadExtensionClass('arcade');
 
 // A renderer recording drawables, their order and skin contents.
 function fixture() {
-    const runtime = new EventEmitter(), drawables = new Map(), skins = new Map(), errors = [];
+    const runtime = createArcadeRuntimeMock(), drawables = new Map(), skins = new Map(), errors = [];
     let nextDrawable = 0, nextSkin = 0, nextOrder = 0;
-    runtime.startHats = () => [];
+
     runtime.requestRedraw = () => {};
     runtime.on('BLOCKS_ERROR', message => errors.push(message));
     runtime.renderer = {

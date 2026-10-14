@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const Arcade=loadExtensionClass('arcade');
-function game(){const runtime=new EventEmitter();return {runtime,a:new Arcade(runtime)};}
+function game(){const runtime=createArcadeRuntimeMock();return {runtime,a:new Arcade(runtime)};}
 function actor(a){const image=a.createImage({WIDTH:1,HEIGHT:1});a.drawImage({IMAGE:image,OP:'fillRect',X:0,Y:0,W:1,H:1,COLOR:2});return a.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:'Player'});}
 const prop=(a,id,name)=>a.spriteProperty({ID:id,PROPERTY:name});
 test('scene worlds, info, cameras and popped object references match original PXT',async()=>{
@@ -55,7 +55,7 @@ let oldReference=outer.x`);
 });
 test('scene-local registries/timers restore and resource heaps survive while reset disposes stacks',()=>{
  const {runtime,a}=game();const outer=actor(a),image=a.spriteImage({ID:outer});a.registerUpdateHandler({TOKEN:'outer',CAPTURES:''});a.registerIntervalHandler({INTERVAL:100,TOKEN:'tick',CAPTURES:''});a.registerButtonHandler({BUTTON:'a',EVENT:2049,TOKEN:'first',CAPTURES:''});a.registerButtonHandler({BUTTON:'a',EVENT:2049,TOKEN:'second',CAPTURES:''});a._advance(.033);const elapsed=a._state().elapsedMs;
- const animation=a.createAnimation({ACTION:1,INTERVAL:100});a.addAnimationFrame({ANIMATION:animation,IMAGE:image});a.pushScene();assert.equal(a._state().elapsedMs,undefined);a._advance(.1);a.setLife({PLAYER:2,VALUE:0});a.registerLifeZeroHandler({PLAYER:2,TOKEN:'life',CAPTURES:''});a._advance(.01);assert.equal(a.getLife({PLAYER:2}),0);assert.equal(a._state().players[1].life,null);
+ const animation=a.createAnimation({ACTION:1,INTERVAL:100});a.addAnimationFrame({ANIMATION:animation,IMAGE:image});a.pushScene();assert.equal(a._state().elapsedMs,0,'selected Scene EventContext starts at elapsed zero');a._advance(.1);a.setLife({PLAYER:2,VALUE:0});a.registerLifeZeroHandler({PLAYER:2,TOKEN:'life',CAPTURES:''});a._advance(.01);assert.equal(a.getLife({PLAYER:2}),0);assert.equal(a._state().players[1].life,null);
  a.popScene();assert.equal(a._state().elapsedMs,elapsed);assert.equal(a.getLife({PLAYER:2}),3);assert.equal(a.animationProperty({ANIMATION:animation,PROPERTY:'action'}),1);assert.equal(a.imageProperty({IMAGE:image,PROPERTY:'width'}),1);a._advance(.033);assert.equal(a._state().elapsedMs,elapsed+33);
  a.pushScene();runtime.emit('PROJECT_START');a.popScene();assert.equal(a.spriteCount({KIND:'Player'}),0);assert.equal(a.getscore(),0);
 });

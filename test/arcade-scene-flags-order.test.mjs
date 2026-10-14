@@ -1,3 +1,4 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
@@ -31,7 +32,7 @@ test('selected PXT pairwise selection sort may reverse equal z across a lower th
 test('actual generated particle BaseSprite z setter dirties only the current Scene and preserves equal writes',async()=>{
  const {EventEmitter}=await import('node:events');
  const {loadExtensionClass}=await import('./helpers/bw-extensions.mjs');
- const runtime=new EventEmitter();runtime.startHats=()=>[];runtime.requestRedraw=()=>{};
+ const runtime=createArcadeRuntimeMock();runtime.requestRedraw=()=>{};
  const arcade=new (loadExtensionClass('arcade'))(runtime),ext=arcade._inst;
  const image=arcade.createImage({WIDTH:2,HEIGHT:2});arcade.mutateImage({IMAGE:image,OP:'fill',COLOR:2});
  const id=arcade.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:'Player'});

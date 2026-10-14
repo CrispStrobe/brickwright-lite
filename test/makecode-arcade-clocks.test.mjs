@@ -1,6 +1,6 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
@@ -44,7 +44,7 @@ test('program clock remains independent of Scratch timer resets and latches at s
 });
 
 test('production clock advances without scene frames and malformed or reentrant injected clocks report errors',async()=>{
-    const runtime=new EventEmitter(),errors=[];runtime.startHats=()=>[];runtime.on('BLOCKS_ERROR',message=>errors.push(String(message)));const native=new(loadExtensionClass('arcade'))(runtime);
+    const runtime=createArcadeRuntimeMock(),errors=[];runtime.on('BLOCKS_ERROR',message=>errors.push(String(message)));const native=new(loadExtensionClass('arcade'))(runtime);
     const first=native.programMillis();await new Promise(resolve=>setTimeout(resolve,25));assert.ok(native.programMillis()>=first+15);assert.equal(native.sceneMillis(),0);
     let now=1000;runtime.bwArcadeProgramClock={now:()=>now};runtime.emit('PROJECT_START');now=1040;assert.equal(native.programMillis(),40);now=1030;assert.equal(native.programMillis().bwUndefined,true);assert.match(errors.at(-1),/moved backwards/);
     now=1100;let restart=false;runtime.bwArcadeProgramClock={now:()=>{if(restart){restart=false;runtime.emit('PROJECT_START');}return now;}};runtime.emit('PROJECT_START');restart=true;now=1140;assert.equal(native.programMillis().bwUndefined,true);assert.match(errors.at(-1),/run changed/);assert.equal(native.programMillis(),0);

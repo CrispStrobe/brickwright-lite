@@ -1,6 +1,6 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import {createRequire} from 'node:module';
@@ -76,7 +76,7 @@ let width=shot.width`,12);
 });
 
 test('stopping and restarting cancels pending creation callbacks without starting later handlers',async()=>{
-    const Arcade=loadExtensionClass('arcade');const rt=new EventEmitter();rt.threads=[];rt.startHats=()=>[];
+    const Arcade=loadExtensionClass('arcade');const rt=createArcadeRuntimeMock();rt.threads=[];rt.startHats=()=>[];
     const target={blocks:{getBlock:id=>id==='hat'?{inputs:{KIND:{block:'kind'}}}:{opcode:'text',fields:{TEXT:{value:'Player'}}}}};
     rt.allScriptsByOpcodeDo=(opcode,visit)=>{visit({blockId:'hat'},target);visit({blockId:'hat'},target);};
     rt._pushThread=()=>{const thread={status:0};rt.threads.push(thread);return thread;};
