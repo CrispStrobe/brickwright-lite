@@ -99,6 +99,20 @@ Required refusals include:
 - A v1 numeric program adjacent to unproved class/callback code. The numeric gate
   must not become a fallback that silently authorizes the neighboring program.
 
+### Concrete proposed mutations
+
+Apply each mutation independently to the owned State/Holder control; retain the
+unmodified control as the positive. The refusal must identify the actual gap.
+
+| Source or current Blocks mutation | Required authority check |
+| --- | --- |
+| Change `holder.apply((s: State) => s.value)` to `holder.apply()` | Actual invocation arity is missing the callback, even though the method annotation still describes it. |
+| Change an action to `(s: State): number => { s.value += 2; }` | The actual body falls through Undefined; do not use its declared Number result. |
+| Add `function unrelated(value: any) { return value.missing(); }` beside the valid classes | Inspect the complete adjacent function rather than only the callback plan owners. |
+| Change `apply`'s current first statement to `arcade_setLocal` targeting its actual `action` formal with a connected String VALUE | Refuse the incompatible writer; a later callable invocation cannot rely on the old formal annotation. |
+| Replace the current State allocation input with a Sprite-producing reporter while retaining the original field/class metadata | Actual allocation and writer flow outrank the unchanged class annotation. |
+| Add a method formal named `__bwDiscardObjectResult1`, mutate a field, then return that formal | Preserve its original value using a fresh discard cell; this source is valid and must not be refused for its spelling. |
+
 Before implementation, merge this documentation claim with all enabled checks
 and exact reviewed/landed tree verification. Product acceptance requires affected
 pure/native controls and actual changed-source or changed-export originals only
