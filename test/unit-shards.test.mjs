@@ -11,12 +11,15 @@ const pkg=JSON.parse(readFileSync(path.join(root,'package.json'),'utf8'));
 const jobs=new Map([...workflow.matchAll(/^  ([a-z][\w-]*):\n([\s\S]*?)(?=^  [a-z][\w-]*:\n|(?![\s\S]))/gm)].map(m=>[m[1],m[2]]));
 
 test('required shards partition the complete fast set once, keeping corpus and local full suites intact',()=>{
-    const full=listTests('fast'),first=listTests('fast','1/2'),second=listTests('fast','2/2');
-    assert.ok(first.length>0&&second.length>0);
-    assert.equal(new Set([...first,...second]).size,first.length+second.length);
-    assert.deepEqual([...first,...second].sort(),full);
+    // 2026-10-14: four required shards (was two) so each unit job stays near
+    // 8 minutes; the partition property is unchanged, asserted over all four.
+    const full=listTests('fast'),shards=[1,2,3,4].map(i=>listTests('fast',i+'/4'));
+    const [first]=shards,all=shards.flat();
+    assert.ok(shards.every(s=>s.length>0));
+    assert.equal(new Set(all).size,all.length);
+    assert.deepEqual([...all].sort(),full);
     assert.deepEqual([...full,...listTests('corpus')].sort(),listTests('all'));
-    const cli=spawnSync(process.execPath,['scripts/list-tests.mjs','fast','--shard','1/2'],{cwd:root,encoding:'utf8'});
+    const cli=spawnSync(process.execPath,['scripts/list-tests.mjs','fast','--shard','1/4'],{cwd:root,encoding:'utf8'});
     assert.equal(cli.status,0,cli.stderr);assert.deepEqual(cli.stdout.trim().split('\n'),first);
     assert.match(pkg.scripts['test:fast'],/\$\(node scripts\/list-tests.mjs fast\)/);
     const runner=pkg.scripts['test:fast:shard'];
@@ -34,12 +37,12 @@ test('invalid or unsupported shard requests refuse instead of falling back to an
 test('unit shards retain exact integrated build prerequisites and hard deployment/census gates',()=>{
     for(const key of ['build','unit','deploy'])assert.ok(jobs.has(key),key);
     const unit=jobs.get('unit'),build=jobs.get('build'),deploy=jobs.get('deploy');
-    assert.match(unit,/fail-fast: false/);assert.match(unit,/shard: \[1, 2\]/);
+    assert.match(unit,/fail-fast: false/);assert.match(unit,/shard: \[1, 2, 3, 4\]/);
     const unitPrep=unit.slice(unit.indexOf('    runs-on:'),unit.indexOf('      - name: Run unit tests\n')).trimEnd();
     const buildPrep=build.slice(build.indexOf('    runs-on:'),build.indexOf('      # A green suite says')).trimEnd();
     assert.equal(unitPrep,buildPrep,'unit preparation must not omit or drift from the integrated build prerequisites');
     assert.ok(unitPrep.includes('steps.stc_flasher_pin.outputs.sha'));
-    assert.match(unit,/BW_TEST_SHARD: \$\{\{ matrix.shard \}\}\/2/);
+    assert.match(unit,/BW_TEST_SHARD: \$\{\{ matrix.shard \}\}\/4/);
     assert.match(unit,/npm run test:fast:shard 2>&1 \| tee \/tmp\/unit.tap/);
     assert.match(unit,/check-test-run.mjs --set fast --shard "\$BW_TEST_SHARD" --tap/);
     assert.match(unit,/check-gui-scope.mjs --log test-results\/fast.gui-scope.tsv/);
@@ -47,7 +50,7 @@ test('unit shards retain exact integrated build prerequisites and hard deploymen
     assert.doesNotMatch(unit,/^    continue-on-error:|upload-pages-artifact/m);
     assert.doesNotMatch(unit.slice(unit.indexOf('      - name: Run unit tests\n')),/continue-on-error:/);
     const collector=readFileSync(path.join(root,'scripts/gen-ci-skips.mjs'),'utf8');
-    for(const name of ['unit (1/2)','unit (2/2)'])assert.ok(collector.includes(name),name);
+    for(const name of ['unit (1/4)','unit (2/4)','unit (3/4)','unit (4/4)'])assert.ok(collector.includes(name),name);
     assert.doesNotMatch(build,/- name: Run unit tests\n/);
     assert.match(deploy,/needs: \[build, unit, corpus, browser, fpga-surface, guard\]/);
     assert.doesNotMatch(deploy,/always\(\)/);
