@@ -3080,6 +3080,13 @@ jobs:
           BW_GUI_BUILD_ARCHIVE: ${{ steps.admitted_gui.outputs.archivePath }}
           BW_EVENT_GUI_REPORT_DIR: test-results/arcade-event-authoring-gui
         run: node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-event-authoring-gui.mjs
+      - name: Actual production IDE live font metric authoring
+        env:
+          PROOF_URL: http://localhost:8617/
+          BW_GUI_BUILD_RECEIPT: ${{ steps.admitted_gui.outputs.receiptPath }}
+          BW_GUI_BUILD_ARCHIVE: ${{ steps.admitted_gui.outputs.archivePath }}
+          BW_FONT_GUI_REPORT_DIR: test-results/arcade-live-font-authoring-gui
+        run: node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-live-font-authoring-gui.mjs
       - name: Retain admission and journey failures
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -3093,6 +3100,7 @@ jobs:
             test-results/numeric-gui-admission/*.acquisition.json
             test-results/arcade-numeric-authoring-gui
             test-results/arcade-event-authoring-gui
+            test-results/arcade-live-font-authoring-gui
           if-no-files-found: error
 
   deploy:

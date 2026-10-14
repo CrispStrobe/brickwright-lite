@@ -39,3 +39,9 @@ The implementation reads the original text module's live font objects. Its six b
 Focused controls compare all 19,200 image pixels after metric-based placement of Latin and supported Unicode text. They preserve actual costume uploads through Code, saved and fresh SB3, original export and reimport. Editing both direct fields changes the expected metric and image without offsets. Actual VM controls preserve the same font object across scene push/pop and recreate it on restart and same-VM project reload. Malformed fields and connected selectors retain diagnostics.
 
 These controls cover the metric reporter and its rendering use. Font object aliases, custom fonts, dynamic selection, mutation from imported source, unrelated font APIs, complete applications, installed editor dropdown journeys and cadence remain outside this qualification.
+
+## Hosted editor journey preparation
+
+`verify-arcade-live-font-authoring-gui.mjs` uses the shared sole official artifact admission, exact source/pin/SDK guards and served bundle byte checks. Its owned fixture displays the metric-derived surface as the actual background. The journey opens that project in the production editor, edits both direct dropdowns using visible menu actions, edits the metric in Code, saves and loads into a fresh browser context, exports through the real action and reimports that downloaded file. Every route requires all 19,200 displayed pixels to match its selected original execution; it retains actual compiler inputs, outputs and observations.
+
+The workflow step reuses the admitted build and SDK. It neither builds locally nor acquires a second archive. Fixture/schema/source checks and native surface preflight are preparation. The new background-display source variants require their own original executions during the admitted hosted journey; earlier image observations do not qualify those programs or installed widgets. Hosted acceptance remains pending.
