@@ -6,12 +6,13 @@ import {sourceScalarDeclarations} from '../overlay/scratch-gui/src/lib/bw-makeco
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 test('six direct live metrics have Number provenance without literal replacement',()=>{
  for(const font of ['font5','font8','font12'])for(const property of ['charWidth','charHeight']){
-  const source=`let result=image.${font}.${property};let masked=result|0`,r=arcadeToPseudocode(source);assert.deepEqual(r.unsupported,[]);assert.ok(r.code.includes(`arcade font "${font}" metric "${property}"`));
+  const source=`let result=image.${font}.${property};let masked=result|0`,r=arcadeToPseudocode(source);assert.deepEqual(r.unsupported,[]);assert.ok(r.code.includes(`arcade font value ${font}`));assert.ok(r.code.includes(`field ("${property}")`));
   assert.deepEqual(sourceScalarDeclarations(lowerLiveFontMetrics(parseMakeCodeTs(`let result=image.${font}.${property}`))),[{name:'result',type:'Number'}]);
  }
 });
-test('font aliases, writes, unknown selections and lexical shadows remain diagnosed',()=>{
- for(const source of ['let font=image.font5;let result=font.charHeight','image.font5.charHeight=9','image.font5.charHeight++','let result=image.font5.data','let result=image.font99.charHeight','function f(image:any){return image.font5.charHeight|0}','function f(){let n=image.font5.charHeight;let image:any;return n|0}','let image:any;let result=image.font5.charHeight|0'])assert.ok(arcadeToPseudocode(source).unsupported.length,source);
+test('writes, unknown selections and lexical shadows remain diagnosed while owned aliases and data reads are supported',()=>{
+ for(const source of ['let font=image.font5;let result=font.charHeight','let result=image.font5.data'])assert.deepEqual(arcadeToPseudocode(source).unsupported,[]);
+ for(const source of ['image.font5.charHeight=9','image.font5.charHeight++','let result=image.font99.charHeight','function f(image:any){return image.font5.charHeight|0}','function f(){let n=image.font5.charHeight;let image:any;return n|0}','let image:any;let result=image.font5.charHeight|0'])assert.ok(arcadeToPseudocode(source).unsupported.length,source);
 });
 test('native metric fields share the live original renderer objects across scenes and reset on restart',()=>{
  const runtime=new EventEmitter();runtime.targets=[];runtime.startHats=()=>[];const wrapper=new(loadExtensionClass('arcade'))(runtime),native=wrapper._inst,info=wrapper.getInfo();

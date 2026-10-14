@@ -5,6 +5,7 @@ const dialog=require('./sdk-dialog-classes');
 function create(ext,values){
     const providers=[{kinds:new Set(['BaseSprite','Sprite','ExtendableSprite']),api:sprite.create(ext,values)},
         {kinds:new Set(['BaseDialog','SplashDialog']),api:dialog.create(ext,values)}];
+    if(ext._sdkFontValues)providers.push({kinds:new Set(['Font']),get api(){return ext._sdkFontValues;}});
     const external=ref=>providers.find(p=>p.api.heapHooks.external(ref));
     const owner=ref=>{const found=external(ref);if(!found)throw new Error('Unknown or stale native class reference');return found.api.heapHooks;};
     return {matches:name=>providers.some(p=>p.api.matches(name)),
