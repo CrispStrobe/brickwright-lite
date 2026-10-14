@@ -3473,6 +3473,18 @@ attribution, deadline fix or full G02 completion is claimed.
 
 ## SPIKE remaining lifecycle boundaries — 2026-10-13
 
+Continuation candidate `lane/spike-g02-output-stop-20261014` stays in this
+merged session/test envelope. Six actual-method controls fail on the baseline:
+poll and packet hub/output callbacks, packet program-state callback, and a late
+packet input-write reply after Stop. Closure fences prevent subsequent input
+requests and observer publication while preserving correlated packet replies
+for serialized cancellation. All 41 affected controls pass, including the live
+packet publication control; removing each of the six new fences is detected.
+These use authored native boundaries. Fresh installed own-guest observer Stop,
+late-reply cleanup/recovery and all enabled exact-head checks remain required.
+No firmware, Runtime, model, native/Rust, deadline or workflow change; no full
+G02, physical or release claim.
+
 Continuation candidate `lane/spike-g02-terminal-fences-20261014` addresses
 synchronous Stop from final frame/program-state callbacks within this same
 session/test envelope. Three baseline failures, 34 passing affected host
