@@ -46,3 +46,7 @@ test('callable, unresolved and nested array elements cannot masquerade as Image 
 test('local callee shadows cannot acquire global array factory or class authority',()=>{
  assert.deepEqual(inventory('function make(values:Image[]){return values};function fake(make:any){return make()};let result=fake(null);class Box{constructor(){}}function construct(Box:any){return new Box()};let instance=construct(null);'),[]);
 });
+
+test('null and undefined preserve an independently proven reference type without supplying one',()=>{
+ assert.deepEqual(inventory('let pictures=[img`3`];let maybe=true?pictures:null;let selected=true?maybe[0]:undefined;let unknown=null;let absent=undefined;let mixed=true?selected:1;'),[{name:'pictures',type:'Image[]'},{name:'maybe',type:'Image[]'},{name:'selected',type:'Image'}]);
+});

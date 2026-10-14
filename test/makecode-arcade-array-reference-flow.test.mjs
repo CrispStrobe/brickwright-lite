@@ -12,7 +12,7 @@ import {createArcadeDiscreteTimers} from './helpers/arcade-discrete-timers.mjs';
 const require = createRequire(import.meta.url);
 const Creator = process.env.SB3_CREATOR_DIR ? (await import(pathToFileURL(path.join(process.env.SB3_CREATOR_DIR, 'src/utils/sb3Creator.js')).href)).default : BundledCreator;
 const values = require(path.join(INTEGRATED, 'node_modules/scratch-vm/src/util/bw-values.js'));
-import {arrayReferenceCases} from './fixtures/arcade-array-reference-cases.mjs';
+import {arrayReferenceCases,nullableArrayReferenceCase} from './fixtures/arcade-array-reference-cases.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
@@ -51,7 +51,7 @@ async function check(buffer,expected) {
  try {assert.deepEqual(result.errors,[]);for(const[name,value]of Object.entries(expected))assert.equal(Object.hasOwn(result.observed,name)?result.observed[name]:result.observed['Game_'+name],value,name);return Buffer.from(await(await result.vm.saveProjectSb3()).arrayBuffer());}
  finally{result.vm.stopAll();result.vm.quit();clearStrayTimers();}
 }
-for(const[name,fixture]of Object.entries(arrayReferenceCases))test('typed array reference authoring and original export: '+name,async()=>{
+for(const[name,fixture]of Object.entries({...arrayReferenceCases,nullable:nullableArrayReferenceCase}))test('typed array reference authoring and original export: '+name,async()=>{
  const imported=arcadeToPseudocode(fixture.source);assert.deepEqual(imported.unsupported,[]);
  const creator=new Creator();creator.parse(imported.code);assert.deepEqual(creator.warnings,[]);upload(creator,imported);
  const saved=await check(Buffer.from(await(await creator.generateSB3()).arrayBuffer()),fixture.expected);
@@ -69,5 +69,6 @@ for(const[name,fixture]of Object.entries(arrayReferenceCases))test('typed array 
  const arrayName=fixture.source.includes('let pictures')?'pictures':fixture.source.includes('let actors')?'actors':fixture.source.includes('let boxes')?'boxes':'numbers';
  const expectedType=arrayName==='pictures'?'Image[]':arrayName==='actors'?'Sprite[]':arrayName==='boxes'?'Box[]':'number[]';
  assert.ok(exported.ts.includes(`let ${arrayName}: ${expectedType}`),'exact owned array type survives export');
+ if(name==='nullable')assert.ok(exported.ts.includes('let selected: Image[]'),'nullable array remains an owned array declaration');
  const rejected=await compile('arcade',{...exported.files,'main.ts':exported.ts+'\nfunction __bwArrayRequiresNumber(value:number){}\n__bwArrayRequiresNumber('+arrayName+')\n'});assert.equal(rejected.success,false,'array references retain original numeric typing rejection');
 });

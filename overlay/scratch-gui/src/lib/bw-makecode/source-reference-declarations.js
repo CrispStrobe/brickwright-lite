@@ -57,7 +57,7 @@ export function sourceReferenceDeclarations(program) {
         return cell;
     };
     visit(program.body,{key:'main',locals:new Set()});let changed;
-    const arrayType=cell=>{const all=types.get(cell)||new Set(),values=[...all].filter(type=>type!=='Array');return values.length===1&&supported(values[0])&&values[0].endsWith('[]')?values[0]:!values.length&&all.has('Array')?'Array':null;};
+    const arrayType=cell=>{const all=types.get(cell)||new Set(),values=[...all].filter(type=>!['Array','Undefined','Null'].includes(type));return values.length===1&&supported(values[0])&&values[0].endsWith('[]')?values[0]:!values.length&&all.has('Array')?'Array':null;};
     const copy=(from,to)=>{let changed=false;for(const type of types.get(from)||[])if(!sealed.has(to))changed=add(to,type)||changed;return changed;};
     const propagate=()=>{
         let changed;
@@ -91,6 +91,6 @@ export function sourceReferenceDeclarations(program) {
     for(const cell of arrayCells)if(![...(types.get(cell)||[])].some(type=>type!=='Array'))add(cell,'Opaque');
     propagate();
     const result=[];
-    for(const[name,decl]of globals){if(decl.temporary)continue;const declared=supported(decl.typeName)?decl.typeName:null;if(decl.typeName&&!declared)continue;const inferred=[...(types.get(global(name))||[])].filter(type=>type!=='Array');if(declared||inferred.length===1&&supported(inferred[0]))result.push({name,type:declared||inferred[0]});}
+    for(const[name,decl]of globals){if(decl.temporary)continue;const declared=supported(decl.typeName)?decl.typeName:null;if(decl.typeName&&!declared)continue;const inferred=[...(types.get(global(name))||[])].filter(type=>!['Array','Undefined','Null'].includes(type));if(declared||inferred.length===1&&supported(inferred[0]))result.push({name,type:declared||inferred[0]});}
     return result;
 }

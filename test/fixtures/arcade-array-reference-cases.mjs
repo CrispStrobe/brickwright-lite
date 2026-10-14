@@ -66,3 +66,8 @@ export const arrayReferenceCases = {
     }
   }
 };
+
+export const nullableArrayReferenceCase = {
+  source: 'class Trigger{constructor(){constructorBefore=read()===undefined}}function read(){return selected}let before=read()===undefined;let constructorBefore=false;let trigger=new Trigger();let pictures=[img`3`];let selected=true?pictures:null;let picture=true?selected[0]:undefined;picture.fill(6);let same=selected===pictures;let value=pictures[0].getPixel(0,0);before=!!before;constructorBefore=!!constructorBefore;same=!!same;value+=0;',
+  expected: {before:true,constructorBefore:true,same:true,value:6}
+};
