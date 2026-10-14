@@ -187,4 +187,5 @@ test('ordinary class print methods without Font or Image producers retain their 
     assert.deepEqual(lower('class Reader{constructor(){}print(a:number,b:number,c:number,d:number,font:image.Font){return a}}let reader=new Reader();let alias=reader;let font=image.font8;let value=alias.print(1,2,3,4,font)').unsupported,[]);
     assert.deepEqual(lower('class Reader{constructor(){}print(font:image.Font){return font.charWidth}}let reader=new Reader();let value=reader.print(image.font8)').unsupported,[]);
     assert.ok(lower('class Reader{constructor(){}}let receiver:any=new Reader();receiver=image.create(8,8);receiver.print("A",0,0,3,image.font8)').unsupported.some(message=>/Image producer/.test(message)));
+    for(const collision of ['function Reader(){return image.create(8,8)}','let Reader:any=image.create(8,8)'])assert.ok(lower('class Reader{constructor(){}}'+collision+'let receiver=new Reader();receiver.print("A",0,0,3,image.font8)').unsupported.some(message=>/Image producer/.test(message)));
 });
