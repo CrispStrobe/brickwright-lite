@@ -92,6 +92,8 @@ const FILES = [
     ['src/utils/cubeDirections.js', path.join(lib, 'cubeDirections.js')],
     // The DEVICE EV3 word table, read by sb3Creator.js in both directions.
     ['src/utils/ev3Dialect.js', path.join(lib, 'ev3Dialect.js')],
+    // Canonical Circuit Playground Express words are part of the shared compiler.
+    ['src/utils/cpxDialect.js', path.join(lib, 'cpxDialect.js')],
     // The MakeCode Arcade / array-reference word table (task E0), the same design.
     ['src/utils/arcadeDialect.js', path.join(lib, 'arcadeDialect.js')],
     // The pin-role PART table (HCSR04 / DS18B20 / DS3231 / AT24C02 / I2C), read by

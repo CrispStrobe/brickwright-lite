@@ -1,6 +1,6 @@
 # Arcade live font metrics
 
-Status: proposed claim. Product implementation starts after this claim is merged.
+Status: claim merged; implementation candidate with focused source and authoring qualification. Supplier publication and installed GUI qualification remain pending.
 
 ## Selected source and boundary
 
@@ -31,3 +31,11 @@ Use actual original/native image rendering with metric-derived text placement an
 ## Ownership
 
 Own new font metric classification/helper/tests and narrow Arcade expression, scalar/primitive provenance, native reporter/getInfo/menu, export/type, canonical vocabulary/field and reviewed pin hunks. Coordinate source-reference/callable owners, the controller-repeat property lane and active converter/runtime owners. Do not edit their class, callback, scheduler, controller or reference lifecycle hunks. No product edits before the claim lands.
+
+## Focused implementation controls
+
+The implementation reads the original text module's live font objects. Its six builtin values are `font5` 6×5, `font8` 6×8 and `font12` 12×12. A source callback reading a metric-derived Number binding before assignment observes typed undefined. Independent selected-SDK source and exported executions match the native result.
+
+Focused controls compare all 19,200 image pixels after metric-based placement of Latin and supported Unicode text. They preserve actual costume uploads through Code, saved and fresh SB3, original export and reimport. Editing both direct fields changes the expected metric and image without offsets. Actual VM controls preserve the same font object across scene push/pop and recreate it on restart and same-VM project reload. Malformed fields and connected selectors retain diagnostics.
+
+These controls cover the metric reporter and its rendering use. Font object aliases, custom fonts, dynamic selection, mutation from imported source, unrelated font APIs, complete applications, installed editor dropdown journeys and cadence remain outside this qualification.

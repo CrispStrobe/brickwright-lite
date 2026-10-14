@@ -99,8 +99,8 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the Arcade word table (380 opcodes)', () => {
-    assert.equal(ARCADE_DIALECT_OPS.length, 380);
+test('the pinned parser has the Arcade word table (381 opcodes)', () => {
+    assert.equal(ARCADE_DIALECT_OPS.length, 381);
     for (const opcode of ['arcade_declareClass', 'arcade_declareSubclass', 'arcade_createObject',
         'arcade_objectField', 'arcade_setObjectField', 'arcade_callObjectMethod', 'arcade_whenSourceStarts', 'arcade_sourceWhile', 'arcade_setHudVisibility', 'arcade_cameraDrawOffset', 'arcade_setPalette', 'arcade_registerInstanceDestroyedHandler',
         'arcade_whenRegisteredInstanceDestroyed', 'arcade_startParallelHandler',
