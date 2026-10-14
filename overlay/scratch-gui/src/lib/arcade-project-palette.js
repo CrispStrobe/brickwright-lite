@@ -11,6 +11,27 @@ export const paletteHex = colors => {
     return colors.map(color => color.slice(1).toLowerCase()).join('');
 };
 const startupHat = block => ['arcade_whenSourceStarts','event_whenflagclicked'].includes(block?.opcode);
+const sourceDeclarations = new Set(['arcade_declareSourceScalar','arcade_declareSourceReference']);
+// Source declarations are an atomic prelude. Palette authoring may insert only
+// after that entire prefix; ordinary Scratch startup retains its saved defaults.
+const startupPosition = (blocks, hat) => {
+    let parent = hat, next = hat.next;
+    const declarations = [], seen = new Set();
+    if (hat.opcode === 'arcade_whenSourceStarts') {
+        while (next) {
+            const block = blocks.getBlock(next);
+            if (!block) throw new Error('Startup stack has a missing block');
+            if (!sourceDeclarations.has(block.opcode)) break;
+            if (seen.has(next)) throw new Error('Cyclic source declaration prefix');
+            seen.add(next);
+            declarations.push({id:block.id,opcode:block.opcode,next:block.next,fields:block.fields,inputs:block.inputs,
+                reporters:Object.values(block.inputs || {}).map(input=>blocks.getBlock(input.block))});
+            parent = block;
+            next = block.next;
+        }
+    }
+    return {parent,next,declarations};
+};
 const literalPalette = (blocks, block) => {
     const input = block.inputs?.DATA;
     const text = input && blocks.getBlock(input.block);
@@ -20,13 +41,16 @@ const literalPalette = (blocks, block) => {
 };
 export function inspectProjectPalette (vm) {
     const targets = (vm?.runtime?.targets || []).filter(target => target.isOriginal !== false);
-    const starts = [], commands = [];
+    const starts = [], commands = [], prefixes = [];
     for (const target of targets) {
         const blocks = target.blocks;
         if (!blocks?.getScripts || !blocks.getBlock) continue;
         for (const id of blocks.getScripts()) {
-            const hat = blocks.getBlock(id), first = hat?.next && blocks.getBlock(hat.next);
-            if (startupHat(hat) && first?.opcode === 'arcade_setPalette') {
+            const hat = blocks.getBlock(id);
+            if (!startupHat(hat)) continue;
+            const position = startupPosition(blocks,hat), first = position.next && blocks.getBlock(position.next);
+            prefixes.push([target.id,hat.id,hat.next,position.declarations]);
+            if (first?.opcode === 'arcade_setPalette') {
                 starts.push({target,hat,command:first,literal:literalPalette(blocks,first)});
             }
         }
@@ -39,7 +63,7 @@ export function inspectProjectPalette (vm) {
     // A dialog opened on one project cannot overwrite a later project/Blocks edit.
     const signature = JSON.stringify({targets:targets.map(target=>target.id),
         starts:starts.map(start=>[start.target.id,start.hat.id,start.command.id,start.command.inputs,
-            start.literal?.text.fields]),commands});
+            start.literal?.text.fields]),commands,prefixes});
     return {kind,signature,colors:starts.length===1 && starts[0].literal ?
         [...starts[0].literal.colors] : [...DEFAULT_PROJECT_PALETTE],
     laterChanges:commands.length>starts.length,start:starts.length===1?starts[0]:null};
@@ -90,7 +114,8 @@ export async function applyProjectPalette (vm, colors, expectedSignature) {
         if (!blocks?.createBlock || !blocks.moveBlock) throw new Error('Project Stage is unavailable');
         const hat=selected?.hat || blocks.getScripts().map(id=>blocks.getBlock(id)).find(startupHat);
         const hatId=hat?.id || newId(blocks), commandId=newId(blocks), textId=newId(blocks);
-        const first=hat?.next;
+        const position=hat ? startupPosition(blocks,hat) : null;
+        const first=position?.next, parentId=position?.parent.id || hatId;
         if(first && !blocks.getBlock(first)) throw new Error('Startup stack has a missing block');
         if(!hat)blocks.createBlock({id:hatId,opcode:'event_whenflagclicked',inputs:{},fields:{},next:null,parent:null,
             shadow:false,topLevel:true,x:32,y:32});
@@ -98,8 +123,8 @@ export async function applyProjectPalette (vm, colors, expectedSignature) {
             parent:commandId,shadow:true,topLevel:false});
         blocks.createBlock({id:commandId,opcode:'arcade_setPalette',inputs:{DATA:{name:'DATA',block:textId,shadow:textId}},
             fields:{},next:null,parent:null,shadow:false,topLevel:false});
-        if(first)blocks.moveBlock({id:first,oldParent:hatId,newParent:commandId});
-        blocks.moveBlock({id:commandId,newParent:hatId});
+        if(first)blocks.moveBlock({id:first,oldParent:parentId,newParent:commandId});
+        blocks.moveBlock({id:commandId,newParent:parentId});
     }
     vm.runtime.emitProjectChanged?.();
     vm.emitWorkspaceUpdate?.();

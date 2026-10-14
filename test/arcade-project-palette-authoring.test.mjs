@@ -14,24 +14,29 @@ async function fixture(palette){
 }
 const snapshot=vm=>JSON.stringify(vm.runtime.targets.map(t=>t.blocks._blocks));
 test('palette authoring prepends real startup blocks and survives SB3 save/load and restart',async()=>{
- const run=await fixture();try{
+ const run=await fixture(),runs=[run];try{
   const before=inspectProjectPalette(run.vm);assert.equal(before.kind,'default');
   const after=await applyProjectPalette(run.vm,colors,before.signature);assert.equal(after.kind,'constant');
   assert.deepEqual(after.colors,colors);assert.deepEqual(run.vm.runtime.bwArcadeDeviceState.palette,colors);
   const authored=JSON.parse(run.vm.toJSON());
   const code=run.creator.decompile(authored);assert.match(code,/arcade set palette hex/);
-  const again=await runProgram(code,{frames:12,storage:true,uploads:run.uploads});
+  const again=await runProgram(code,{frames:12,storage:true,uploads:run.uploads});runs.push(again);
   assert.deepEqual(again.errors,[]);assert.deepEqual(again.vm.runtime.bwArcadeDeviceState.palette,colors);
   const exported=projectToArcade(authored,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});
   assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/image\.setPalette\(Buffer\.fromHex\(/);
   const original=await runPxtArcade(exported.files,{inspectDisplay:true});
   const unpack=value=>'#'+[value&255,(value>>>8)&255,(value>>>16)&255].map(byte=>byte.toString(16).padStart(2,'0')).join('');
   assert.deepEqual(original.$display.palette.map(unpack),colors);
-  const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
+  const saved=await run.vm.saveProjectSb3(),bytes=Buffer.from(await saved.arrayBuffer());await run.vm.loadProject(bytes);
   assert.deepEqual(inspectProjectPalette(run.vm).colors,colors);
   run.vm.greenFlag();await stepFrames(run.vm,12);assert.deepEqual(run.vm.runtime.bwArcadeDeviceState.palette,colors);
   assert.match(run.vm.toJSON(),/arcade_setPalette/);
- }finally{clearStrayTimers();}
+  const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(bytes);fresh.vm.greenFlag();await stepFrames(fresh.vm,12);
+  assert.deepEqual(fresh.errors,[]);assert.deepEqual(fresh.vm.runtime.bwArcadeDeviceState.palette,colors);
+  assert.deepEqual([...Object.values(fresh.vm.runtime.bwArcadeDeviceState.sprites)[0].image.pixels],[1,2],'fresh saved project retains the original indexed artwork');
+  const observed=Object.fromEntries(fresh.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
+  assert.equal(observed.first,1,'fresh source initialization still reads its original image');assert.equal(observed.ready,true);
+ }finally{for(const current of runs)current.vm.quit();clearStrayTimers();}
 });
 test('updating a literal startup preserves authored later palette changes and other blocks',async()=>{
  const run=await fixture(colors);try{
@@ -97,15 +102,54 @@ test('palette authoring reuses the source entry on its actual target before ordi
  const run=await fixture();try{
   const sourceTarget=run.vm.runtime.targets.find(target=>!target.isStage&&target.isOriginal!==false&&target.blocks.getScripts().some(id=>target.blocks.getBlock(id)?.opcode==='arcade_whenSourceStarts'));
   assert.ok(sourceTarget);const hat=sourceTarget.blocks.getScripts().map(id=>sourceTarget.blocks.getBlock(id)).find(block=>block.opcode==='arcade_whenSourceStarts'),first=hat.next;
+  const declarations=[];let body=sourceTarget.blocks.getBlock(first);
+  while(['arcade_declareSourceScalar','arcade_declareSourceReference'].includes(body?.opcode)){declarations.push(body);body=sourceTarget.blocks.getBlock(body.next);}
+  assert.ok(declarations.length,'fixture includes an actual source prelude');
+  const declarationFields=declarations.map(block=>structuredClone({id:block.id,inputs:block.inputs,fields:block.fields}));
   const stage=run.vm.runtime.getTargetForStage(),oldStage=JSON.stringify(stage.blocks._blocks);
   const authored=await applyProjectPalette(run.vm,colors,inspectProjectPalette(run.vm).signature);
-  assert.equal(authored.start.target,sourceTarget);assert.equal(authored.start.hat,hat);assert.equal(authored.start.command.next,first);assert.equal(JSON.stringify(stage.blocks._blocks),oldStage);
+  assert.equal(authored.start.target,sourceTarget);assert.equal(authored.start.hat,hat);assert.equal(hat.next,first,'source declaration prefix remains first');assert.equal(authored.start.command.next,body.id);
+  assert.equal(declarations.at(-1).next,authored.start.command.id);
+  assert.deepEqual(declarations.map(block=>({id:block.id,inputs:block.inputs,fields:block.fields})),declarationFields);
+  assert.equal(JSON.stringify(stage.blocks._blocks),oldStage);
   run.vm.greenFlag();await stepFrames(run.vm,12);assert.deepEqual(run.vm.runtime.bwArcadeDeviceState.palette,colors);assert.deepEqual(run.errors,[]);
   sourceTarget.blocks.createBlock({id:'otherSourceEntry',opcode:'arcade_whenSourceStarts',inputs:{},fields:{},next:'otherSourceBody',parent:null,shadow:false,topLevel:true,x:0,y:0});
   sourceTarget.blocks.createBlock({id:'otherSourceBody',opcode:'looks_show',inputs:{},fields:{},next:null,parent:'otherSourceEntry',shadow:false,topLevel:false});
   // Existing literal startup edits remain local and unambiguous. A new startup
   // insertion into multiple source entries must refuse without any mutation.
-  const command=authored.start.command;sourceTarget.blocks.deleteBlock(command.id);const frozen=snapshot(run.vm);
+  const command=authored.start.command;sourceTarget.blocks.getBlock(command.parent).next=null;command.parent=null;sourceTarget.blocks.deleteBlock(command.id);const frozen=snapshot(run.vm);
   await assert.rejects(applyProjectPalette(run.vm,colors,inspectProjectPalette(run.vm).signature),/multiple source entry/);assert.equal(snapshot(run.vm),frozen);
+ }finally{run.vm.quit();clearStrayTimers();}
+});
+
+
+test('palette insertion preserves interleaved source declaration graph and rejects an edited prefix',async()=>{
+ const run=await fixture();try{
+  const target=run.vm.runtime.targets.find(t=>t.isOriginal&&!t.isStage&&t.blocks.getScripts().some(id=>t.blocks.getBlock(id)?.opcode==='arcade_whenSourceStarts'));
+  const blocks=target.blocks,hat=blocks.getScripts().map(id=>blocks.getBlock(id)).find(b=>b.opcode==='arcade_whenSourceStarts'),scalar=blocks.getBlock(hat.next);
+  // This graph control covers the editor's Reference ABI without executing a
+  // reference declaration in a provider that only has SourceScalar installed.
+  const reference={id:'referencePrelude',opcode:'arcade_declareSourceReference',inputs:{VARIABLE:{name:'VARIABLE',block:'referenceVariable',shadow:null}},fields:{TYPE:{name:'TYPE',value:'Image'}},next:null,parent:null,shadow:false,topLevel:false};
+  blocks.createBlock({id:'referenceVariable',opcode:'data_variable',inputs:{},fields:{VARIABLE:{name:'VARIABLE',value:'picture',id:'picture'}},next:null,parent:reference.id,shadow:false,topLevel:false});
+  blocks.createBlock(reference);blocks.moveBlock({id:reference.id,newParent:hat.id});blocks.moveBlock({id:scalar.id,oldParent:hat.id,newParent:reference.id});
+  const prefix=[hat.next,reference.next],fields=JSON.stringify(reference.fields),reporter=JSON.stringify(blocks.getBlock('referenceVariable'));let last=scalar;while(['arcade_declareSourceScalar','arcade_declareSourceReference'].includes(blocks.getBlock(last.next)?.opcode))last=blocks.getBlock(last.next);const body=last.next;
+  const before=inspectProjectPalette(run.vm);const authored=await applyProjectPalette(run.vm,colors,before.signature);
+  assert.equal(hat.next,prefix[0]);assert.equal(reference.next,prefix[1]);assert.equal(last.next,authored.start.command.id);assert.equal(authored.start.command.next,body);
+  assert.equal(JSON.stringify(reference.fields),fields);assert.equal(JSON.stringify(blocks.getBlock('referenceVariable')),reporter);
+  assert.equal(authored.start.command.parent,last.id,'entire interleaved declaration prefix precedes the palette');
+  const stale=inspectProjectPalette(run.vm);reference.fields.TYPE.value='Sprite';const frozen=snapshot(run.vm);
+  await assert.rejects(applyProjectPalette(run.vm,colors,stale.signature),/changed/);assert.equal(snapshot(run.vm),frozen);
+ }finally{run.vm.quit();clearStrayTimers();}
+});
+
+test('palette authoring keeps ordinary Scratch saved defaults and flag body',async()=>{
+ const run=await runProgram('GLOBAL counter\nSPRITE Actor:\nWHEN flag clicked:\n  set counter to (counter + 1)',{frames:3,storage:true});
+ try{
+  const variable=run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name==='counter');assert.ok(variable);variable.value=7;
+  const sourceDeclarations=()=>run.vm.runtime.targets.flatMap(t=>Object.values(t.blocks._blocks)).filter(b=>b.opcode==='arcade_declareSourceScalar'||b.opcode==='arcade_declareSourceReference');
+  assert.equal(sourceDeclarations().length,0);await applyProjectPalette(run.vm,colors);
+  assert.equal(variable.value,7,'live palette edit leaves ordinary saved value intact');
+  run.vm.greenFlag();await stepFrames(run.vm,3);assert.equal(variable.value,8,'ordinary flag body uses its saved default');
+  assert.equal(sourceDeclarations().length,0);assert.deepEqual(run.errors,[]);
  }finally{run.vm.quit();clearStrayTimers();}
 });
