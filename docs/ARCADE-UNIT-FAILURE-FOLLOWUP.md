@@ -18,6 +18,15 @@ and checks decoded dimensions and the resulting score change. These are test
 expectation corrections, with no runtime patch, complete-game promotion or
 new full-shard result. The historical forty-entry list below remains intact.
 
+Four further historical controls pass in focused checks: destroyed/overlap
+imports use the qualified kind reporters; named scene procedures and primitive
+numeric kind registrations are valid and execute in the real native VM; the
+pinned side projectile receives the original numeric default kind; and timed
+speech expires after awaited VM frames while its caller has already continued.
+The complete scene-import file passes 16 controls. Original first failures
+are retained. These corrections preserve runtime assertions and do not close
+the yielding-wall scheduling entry or establish a new full-shard result.
+
 ## Later completed shard and pending qualification
 
 The [later completed unit shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38595437543/job/115960919223)
