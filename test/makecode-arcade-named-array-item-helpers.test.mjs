@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 import {NAMED_ARRAY_GET_SOURCE,lowerNamedArrayItemHelpers} from '../overlay/scratch-gui/src/lib/bw-makecode/named-array-item-helpers.js';
 import {LEGACY_JSON_SOURCE,LEGACY_PARSE_SOURCE,ARRAY_ACCESS_SOURCE} from '../overlay/scratch-gui/src/lib/bw-makecode/legacy-array-values.js';
+import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 const parse=source=>parseMakeCodeTs(source,{parameterDefaults:true,retainParentheses:true});
 const lower=body=>lowerNamedArrayItemHelpers(parse(LEGACY_JSON_SOURCE+'\n'+NAMED_ARRAY_GET_SOURCE+'\n'+body));
 const nodes=node=>!node || typeof node!=='object'?[]:[node,...Object.values(node).flatMap(value=>Array.isArray(value)?value.flatMap(nodes):nodes(value))];
@@ -97,4 +98,12 @@ test('validated mutator procedures disappear only when all actual calls use reco
         assert.ok(retained.program.body.some(node=>node.type==='FunctionDeclaration' && node.name==='ownedPush'),extra);
     }
     assert.ok(lower(helper+';ownedPush=external;'+body).unsupported.length);
+    assert.ok(lower(helper+';let actual:any[]=[1];let value=0;function run(){let value=external();ownedPush(actual,value)}run();let out=__bwNamedArrayGet(actual,0)').unsupported.length,'local opaque values cannot borrow a same-named global primitive');
+});
+
+test('early operator helper normalization requires the actual unshadowed helper binding',()=>{
+    const prefix=LEGACY_JSON_SOURCE+';'+NAMED_ARRAY_GET_SOURCE+';'+ARRAY_ACCESS_SOURCE+';function __bwUnaryAdd(value:any):number{return +value};let actual:any[]=[[1]];let row=actual[0];';
+    assert.deepEqual(arcadeToPseudocode(prefix+'__bwArrayAccess(row).push(__bwUnaryAdd(4));let out=__bwNamedArrayGet(actual,0)').unsupported,[]);
+    const shadow=arcadeToPseudocode(prefix+'function run(){function __bwUnaryAdd(value:any):any{return image.create(1,1)}__bwArrayAccess(row).push(__bwUnaryAdd(4))}run();let out=__bwNamedArrayGet(actual,0)');
+    assert.ok(shadow.unsupported.some(message=>message.includes('Named Array getter has an opaque or reference-valued array mutation')));
 });

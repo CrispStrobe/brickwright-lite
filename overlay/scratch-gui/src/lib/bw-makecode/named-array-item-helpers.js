@@ -104,7 +104,7 @@ export function lowerNamedArrayItemHelpers(program) {
     for(const fn of functions)for(const parse of parseHelpers)for(const template of passiveTemplates)
         if(symbolCounts.get(fn.name)===1 && exact(fn,template,new Map([[fn.name,template.name],[parse.name,parseTemplate.name]])))passive.add(fn.name);
     const globals=new Map(program.body.filter(node=>node.type==='Declaration').flatMap(node=>node.decls.map(decl=>[decl.name,decl])));
-    const calls=[],writes=new Map(),unsupported=[],possibleMutators=[],members=[],foreignCalls=[],indexWrites=[],nestedRootDeclarations=[],escapedMutators=new Set();
+    const calls=[],writes=new Map(),unsupported=[],possibleMutators=[],members=[],foreignCalls=[],indexWrites=[],nestedRootDeclarations=[],escapedMutators=new Set(),scopes=new WeakMap();
     const visit=(node,shadow=new Set(),parent=null,key=null,depth=0)=>{
         if (!node || typeof node!=='object') return;
         if (Array.isArray(node)) {
@@ -120,6 +120,7 @@ export function lowerNamedArrayItemHelpers(program) {
             depth++;
             shadow=new Set([...shadow,...node.params,...functionBindings(node.body || [])]);
         }
+        scopes.set(node,shadow);
         if (node.type==='Identifier' && getters.has(node.name) && !shadow.has(node.name) &&
             !(parent?.type==='Call' && key==='callee')) unsupported.push('Named Array getter helper escapes its validated direct call');
         if(node.type==='Identifier' && mutators.has(node.name) && !shadow.has(node.name) &&
@@ -149,7 +150,7 @@ export function lowerNamedArrayItemHelpers(program) {
     if(nestedRootDeclarations.some(node=>node.decls.some(decl=>registries.has(decl.name))))unsupported.push('Named Array getter has an unqualified nested root declaration of its registry binding');
     const origins=(node,seen=new Set())=>{
         if(node?.type==='Null' || literal(node).ok)return {names:new Set(),unknown:false};
-        if(node?.type!=='Identifier' || !globals.has(node.name))return {names:new Set(),unknown:true};
+        if(node?.type!=='Identifier' || scopes.get(node)?.has(node.name) || !globals.has(node.name))return {names:new Set(),unknown:true};
         if(registries.has(node.name))return {names:new Set([node.name]),unknown:false};
         if(seen.has(node.name))return {names:new Set(),unknown:true};
         seen=new Set([...seen,node.name]);
@@ -165,7 +166,7 @@ export function lowerNamedArrayItemHelpers(program) {
         if(node?.type==='Binary')return primitive(node.left,seen)&&primitive(node.right,seen);
         if(node?.type==='Conditional')return primitive(node.test,seen)&&primitive(node.consequent,seen)&&primitive(node.alternate,seen);
         if(node?.type==='Call' && calls.some(call=>call.node===node))return true;
-        if(node?.type!=='Identifier' || !globals.has(node.name) || seen.has(node.name))return false;
+        if(node?.type!=='Identifier' || scopes.get(node)?.has(node.name) || !globals.has(node.name) || seen.has(node.name))return false;
         seen=new Set([...seen,node.name]);
         return [globals.get(node.name).init,...(writes.get(node.name)||[]).map(write=>write.right)].every(value=>primitive(value,seen));
     };

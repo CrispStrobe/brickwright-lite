@@ -3130,7 +3130,7 @@ const inlineLegacyArrayHelpers = program => {
     return rewrite({...program,body:program.body.filter(fn=>!(fn.type==='FunctionDeclaration' && helpers.has(fn.name)))});
 };
 
-const inlineValueHelpers = program => {
+const inlineValueHelpers = (program, requireUnshadowedBindings = false) => {
     const helpers=new Map();
     for(const fn of program.body) {
         if(fn.type!=='FunctionDeclaration' || !/^__bw(?:Binary|Unary|Compare)/.test(fn.name) || fn.body.length!==1 || fn.body[0].type!=='Return')continue;
@@ -3145,6 +3145,19 @@ const inlineValueHelpers = program => {
         for(const [key,value] of Object.entries(node))if(Array.isArray(value))value.forEach(child=>inspect(child,node,key));else inspect(value,node,key);
     };
     inspect(program);for(const name of unsafe)helpers.delete(name);
+    if(requireUnshadowedBindings){
+        const counts=new Map();
+        const add=name=>{if(helpers.has(name))counts.set(name,(counts.get(name)||0)+1);};
+        const bindings=node=>{
+            if(!node || typeof node!=='object')return;
+            if(Array.isArray(node)){node.forEach(bindings);return;}
+            if(node.type==='Declaration')node.decls.forEach(decl=>add(decl.name));
+            if(['FunctionDeclaration','Class','ForOf'].includes(node.type))add(node.name);
+            if(Array.isArray(node.params))node.params.forEach(add);
+            Object.values(node).forEach(bindings);
+        };
+        bindings(program);for(const name of helpers.keys())if(counts.get(name)!==1)helpers.delete(name);
+    }
     if(!helpers.size)return program;
     const rewrite=node=>{
         if(!node || typeof node!=='object')return node;
@@ -4848,7 +4861,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const callableSourceParsed=parseMakeCodeTs(source, {parameterDefaults: true, retainParentheses: true, retainWhenUsed:true, retainClassHeritage:true, retainCallableMetadata:opts.callableLexicalPrototype===true});
     const callableEligibility=opts.callableLexicalPrototype===true?callableSourceGate(callableSourceParsed,{normalize:true}):null;
     const callableSourceInput=callableEligibility?.program || callableSourceParsed;
-    const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput));
+    const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput,true));
     const parsed = lowerSourceLoopControl(inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
         lowerAnimationAssets(namedArrayInputs.program))), source), source), source), source))));
     const containsPaletteCall = node => {
