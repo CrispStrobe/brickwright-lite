@@ -239,7 +239,7 @@ try {
     await page.screenshot({path: path.join(out, 'event-authoring.png')}); report.status = 'passed';
 } catch (error) {
     report.status = 'failed'; report.failure = String(error.stack || error);
-    if (page) { report.failureSample = await observe().catch(e => ({error: String(e)})); report.body = (await page.locator('body').innerText()).slice(-14000); await page.screenshot({path: path.join(out, 'failure.png')}).catch(() => {}); }
+    if (page) { report.failureSample = await observe().catch(e => ({error: String(e)})); report.body = (await page.evaluate(() => document.body?.innerText || '').catch(e => `Body observation failed: ${String(e)}`)).slice(-14000); await page.screenshot({path: path.join(out, 'failure.png')}).catch(() => {}); }
     throw error;
 } finally {
     await Promise.allSettled(bodyChecks); await writeFile(path.join(out, 'current.json'), JSON.stringify(report, null, 2) + '\n'); await browser.close();
