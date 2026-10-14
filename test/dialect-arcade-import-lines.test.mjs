@@ -35,7 +35,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
-import {ARCADE_DIALECT_OPS} from '../overlay/scratch-gui/src/lib/arcadeDialect.js';
+import {ARCADE_DIALECT_OPS, ARCADE_WORDS} from '../overlay/scratch-gui/src/lib/arcadeDialect.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 
 const corpus = JSON.parse(readFileSync(new URL('./fixtures/makecode/arcade-import-inputs.json', import.meta.url), 'utf8'));
@@ -99,8 +99,22 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the Arcade word table (381 opcodes)', () => {
-    assert.equal(ARCADE_DIALECT_OPS.length, 381);
+test('the pinned parser has the qualified Arcade word table (384 opcodes)', () => {
+    assert.equal(ARCADE_DIALECT_OPS.length, 384);
+    const repeats = [
+        {op: 'arcade_buttonRepeatProperty', kind: 'reporter', words: 'arcade player {PLAYER:1|2|3|4} button {BUTTON:A|B|up|down|left|right} repeat property {PROPERTY:repeatDelay|repeatInterval}'},
+        {op: 'arcade_setButtonRepeatProperty', kind: 'command', words: 'arcade set player {PLAYER:1|2|3|4} button {BUTTON:A|B|up|down|left|right} repeat property {PROPERTY:repeatDelay|repeatInterval} to {VALUE}'},
+        {op: 'arcade_setButtonRepeatDefaults', kind: 'command', words: 'arcade set button repeat defaults delay {DELAY} interval {INTERVAL}'}
+    ];
+    for (const expected of repeats) {
+        const rows = ARCADE_WORDS.filter(row => row.op === expected.op && !row.alias);
+        assert.equal(rows.length, 1, expected.op);
+        assert.deepEqual(rows.map(({op, kind, words}) => ({op, kind, words})), [expected]);
+    }
+    for (const opcode of ['arcade_declareCallable', 'arcade_runCallableDispatch',
+        'arcade_whenCallableDispatched', 'arcade_createCallable', 'arcade_callCallable']) {
+        assert.equal(ARCADE_DIALECT_OPS.includes(opcode), false, 'unqualified callable word: ' + opcode);
+    }
     for (const opcode of ['arcade_declareClass', 'arcade_declareSubclass', 'arcade_createObject',
         'arcade_objectField', 'arcade_setObjectField', 'arcade_callObjectMethod', 'arcade_whenSourceStarts', 'arcade_sourceWhile', 'arcade_setHudVisibility', 'arcade_cameraDrawOffset', 'arcade_setPalette', 'arcade_registerInstanceDestroyedHandler',
         'arcade_whenRegisteredInstanceDestroyed', 'arcade_startParallelHandler',
