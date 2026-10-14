@@ -95,6 +95,7 @@ function create(runtime, values, bufferOwner) {
     runtime.on('PROJECT_STOP_ALL', suspend); runtime.on('RUNTIME_DISPOSED', dispose);
     const service={
         matches:()=>false,
+        isDisposed:()=>closed,
         resourceManifest: RESOURCE_MANIFEST,
         constant(name) {
             live(); if (!['font5', 'font8', 'font12'].includes(name)) throw new Error('Unknown SDK Font constant');

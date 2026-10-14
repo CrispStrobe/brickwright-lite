@@ -199,3 +199,28 @@ test('native glyph backing aliases are fenced before data getter and across Stop
         assert.equal(errors.length,count+1);assert.match(errors.at(-1),/glyph Buffer mutation is not qualified/);assert.equal(body[2],before);
     }finally{runtime.emit('RUNTIME_DISPOSED');}
 });
+
+test('native fixed Font selection rejects connected and computed selectors before allocation',()=>{
+    const runtime=createArcadeRuntimeMock(),native=new(loadExtensionClass('arcade'))(runtime)._inst,errors=[];
+    runtime.on('BLOCKS_ERROR',error=>errors.push(String(error?.message || error)));
+    try{
+        const util={thread:{peekStack:()=> 'selector'},target:{blocks:{getBlock:()=>({opcode:'arcade_fontValue',inputs:{FONT:{block:'computed'}},fields:{FONT:{value:'font8'}}})}}};
+        assert.equal(values.decode(native.fontValue({FONT:'font8'},util)),undefined);assert.match(errors.at(-1),/fixed field/);
+        for(const FONT of ['font13',undefined,null,{},['font8']])assert.equal(values.decode(native.fontValue({FONT})),undefined);
+        const ref=native.fontValue({FONT:'font8'});assert.equal(native.objectField({OBJECT:ref,FIELD:'charWidth'}),6);
+    }finally{runtime.emit('RUNTIME_DISPOSED');}
+});
+test('legitimate project load creates a new Font owner without reviving the disposed service',()=>{
+    const runtime=createArcadeRuntimeMock(),native=new(loadExtensionClass('arcade'))(runtime)._inst,errors=[];
+    runtime.on('BLOCKS_ERROR',error=>errors.push(String(error?.message || error)));
+    try{
+        const old=native._sdkFontValues,ref=native.fontValue({FONT:'font8'});
+        runtime.emit('RUNTIME_DISPOSED');runtime.emit('PROJECT_START');assert.equal(native._sdkFontValues,old);
+        assert.equal(values.decode(native.fontValue({FONT:'font8'})),undefined);
+        runtime.emit('PROJECT_LOADED');assert.notEqual(native._sdkFontValues,old);
+        assert.throws(()=>old.constant('font8'),/disposed or stopped/);
+        assert.equal(values.decode(native.objectField({OBJECT:ref,FIELD:'charWidth'})),undefined);
+        const current=native.fontValue({FONT:'font8'});assert.equal(native.objectField({OBJECT:current,FIELD:'charWidth'}),6);
+        assert.notEqual(current.bwReference.id,ref.bwReference.id,'new owner identity differs from closed old owner');
+    }finally{runtime.emit('RUNTIME_DISPOSED');}
+});

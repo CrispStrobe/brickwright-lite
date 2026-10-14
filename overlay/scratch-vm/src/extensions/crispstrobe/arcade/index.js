@@ -33,6 +33,8 @@ module.exports = makeExt(`// Name: Arcade
       this._bufferSuspended = false;
       this._sdkFontValues=runtime && typeof runtime.on==='function' ? dependencies.sdkFontValues.create(runtime,Scratch.BWValues,
         {reference:body=>this._bufferReference(body),resolve:ref=>this._buffer(ref)}) : null;
+      runtime?.on?.('PROJECT_LOADED',()=>{if(this._sdkFontValues?.isDisposed())this._sdkFontValues=dependencies.sdkFontValues.create(runtime,Scratch.BWValues,
+        {reference:body=>this._bufferReference(body),resolve:ref=>this._buffer(ref)});});
       this._speechEngine = dependencies.createSpeechEngine(dependencies.initializeSpeech, dependencies.fonts,
         dependencies.initializeNativeLegacy);
       this._fallbackState = null;
@@ -4972,7 +4974,12 @@ module.exports = makeExt(`// Name: Arcade
     _fontGuard(action) {
       try{if(!this._sdkFontValues)throw new Error('SDK Font needs its actual runtime owner');return action();}catch(error){return this._objectError(error);}
     }
-    fontValue(args) {return this._fontGuard(()=>this._sdkFontValues.constant(String(args.FONT)));}
+    fontValue(args,util) {return this._fontGuard(()=>{
+      const block=util?.target?.blocks?.getBlock?.(util?.thread?.peekStack?.());
+      if(block?.inputs?.FONT)throw new Error('SDK Font value selector must be a fixed field, not a connected reporter');
+      if(!['font5','font8','font12'].includes(args.FONT))throw new Error('SDK Font value requires a fixed builtin FONT');
+      return this._sdkFontValues.constant(args.FONT);
+    });}
     fontForText(args) {return this._fontGuard(()=>this._sdkFontValues.forText(Scratch.BWValues.decode(args.TEXT)));}
     scaleFont(args) {return this._fontGuard(()=>this._sdkFontValues.scale(args.FONT,Scratch.Cast.toNumber(args.SIZE)));}
     _fontImageAdapter(image) {
