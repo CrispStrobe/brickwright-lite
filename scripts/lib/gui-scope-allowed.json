@@ -36,6 +36,7 @@
   "typescript": {
     "tests": [
       "test/makecode-arcade-controller-bindings.test.mjs",
+      "test/makecode-arcade-creation-events.test.mjs",
       "test/makecode-arcade-discarded-projectiles.test.mjs",
       "test/makecode-arcade-generated-images.test.mjs",
       "test/makecode-arcade-named-handles.test.mjs",
