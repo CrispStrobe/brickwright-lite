@@ -18,7 +18,7 @@ test('bounded Dialog declarations and optional arguments are actual selected MIT
     assert.equal(createHash('sha256').update(source).digest('hex'), generated.match(/textDialogs\.ts: ([a-f0-9]{64})/)[1], 'Actual compiled dialog body remains the selected unchanged SDK source');
     const original = parseMakeCodeTs(source,{retainClassHeritage:true}).body.find(node => node.type === 'Namespace' && node.name === 'game').body;
     for (const descriptor of SDK_DIALOG_CLASS_NODES) {
-        const name = sdkDialogPublicBase(descriptor.name).split('.').at(-1), cls = original.find(node => node.type === 'Class' && node.name === name);
+        const name = sdkDialogPublicBase(descriptor.name), cls = original.find(node => node.type === 'Class' && `game.${node.name}` === name);
         assert.ok(cls, name);
         assert.deepEqual(descriptor.ctor.params, cls.ctor.params);
         for(const name of cls.ctor.params){assert.equal(descriptor.ctor.paramTypes[name],cls.ctor.paramTypes[name].text);assert.equal(cls.ctor.paramTypes[name].isArray,false);}

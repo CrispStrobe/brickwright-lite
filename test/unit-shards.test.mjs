@@ -49,7 +49,7 @@ test('unit shards retain exact integrated build prerequisites and hard deploymen
     const collector=readFileSync(path.join(root,'scripts/gen-ci-skips.mjs'),'utf8');
     for(const name of ['unit (1/2)','unit (2/2)'])assert.ok(collector.includes(name),name);
     assert.doesNotMatch(build,/- name: Run unit tests\n/);
-    assert.match(deploy,/needs: \[build, unit, corpus, browser, fpga-surface, guard\]/);
+    assert.match(deploy,/needs: \[build, unit, corpus, browser, fpga-surface, arcade-numeric-authoring, guard\]/);
     assert.doesNotMatch(deploy,/always\(\)/);
 });
 
