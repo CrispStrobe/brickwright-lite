@@ -327,7 +327,11 @@ let discardedReady=true`;
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
     // Select and edit the actual literal carrier through the visible sprite and
     // Pixel controls. VM access below only observes the selected target/assets.
-    await page.getByText(assignedBinding[2], {exact: true}).click();
+    await page.getByTitle('Scratch Stage', {exact: true}).click();
+    const assignedSelector = page.locator('[class*="sprite-selector-item_sprite-selector-item"]')
+        .filter({has: page.getByText(assignedBinding[2], {exact: true})});
+    await assignedSelector.waitFor({state: 'visible'});
+    await assignedSelector.click();
     await page.waitForFunction(name => window.__brickwrightStore.getState().scratchGui.vm.editingTarget.getName() === name,
         assignedBinding[2]);
     await page.locator('[role="tab"]', {hasText: /Costume|Kost/}).first().click();
@@ -347,6 +351,7 @@ let discardedReady=true`;
         beforeAssignedAsset);
     const editedAssignedAsset = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.editingTarget.sprite.costumes[0].asset.assetId);
     await page.getByRole('tab', {name: 'Blocks', exact: true}).click();
+    await page.getByTitle('Game Console', {exact: true}).click();
     const waitAssignedPixels = () => page.waitForFunction(() => Object.values(window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState.sprites)
         .some(sprite => sprite.id && sprite.image?.width === 3 && sprite.image?.height === 2 &&
             Array.from(sprite.image.pixels).join(',') === '9,7,7,7,7,7'));
