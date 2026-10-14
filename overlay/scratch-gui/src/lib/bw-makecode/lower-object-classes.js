@@ -51,7 +51,6 @@ export function lowerObjectClasses(program) {
         const chain=lineage(name);
         if(cls.base && [...classes.keys()].indexOf(cls.base)>=[...classes.keys()].indexOf(name))fail(`Selected Arcade SDK requires parent declaration order before ${name}`);
         if(!chain){fail(`Class ${name} requires unsupported or cyclic parent ${cls.base}`);continue;}
-        if(!cls.ctor && cls.fields.some(field=>field.init))fail(`Class ${name} initialized fields require an explicit constructor in selected Arcade SDK`);
         if(cls.sdkIntrinsic)continue;
         if(chain.some(base=>['BaseDialog','SplashDialog'].includes(admitted.get(base)?.sdkIntrinsic)))fail('User SDK Dialog subclasses require separate native dispatch qualification');
         if(chain.some(base=>admitted.get(base)?.sdkIntrinsic) && cls.methods.some(method=>['update','draw','drawSprite','__draw','__drawCore','__update','setHitbox','resetHitbox','recalcSize','setDimensions','__visible','__serialize'].includes(method.name)))fail('SDK Sprite draw/update/hitbox overrides require separate qualification');
@@ -221,6 +220,14 @@ export function lowerObjectClasses(program) {
         for(const value of Object.values(node))if(value && typeof value==='object')reach(value);
     }
     program.body.forEach(reach);
+    // Selected PXT emits this constructor restriction only when construction
+    // is reachable. Unused classes and uncalled functions retain their type
+    // and field metadata without executing or validating an unused factory.
+    const constructedClasses=new Set([...reachedClasses].flatMap(name=>lineage(name)||[]));
+    for(const name of constructedClasses){
+        const cls=admitted.get(name);
+        if(!cls.ctor && cls.fields.some(field=>field.init))fail(`Class ${name} initialized fields require an explicit constructor in selected Arcade SDK`);
+    }
     const id = name => ({type:'Identifier', name}), str = value => ({type:'String', value});
     const call = (name, args, types = []) => ({type:'Call', callee:{type:'Member', object:id('__bwObjects'), name}, args, bwObjectTypes:types});
     const statement = expr => ({type:'ExpressionStatement', expr});
