@@ -15,6 +15,10 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false} =
         if(node.params)for(const name of node.params)names.add(name);
         for(const value of Object.values(node))if(Array.isArray(value))value.forEach(scan);else scan(value);
     };
+    // Only source-global whenUsed declarations participate in the selected
+    // compiler's reachability. Keep their emitted effects in the same group.
+    const globalWhenUsed=new Set(program.body.filter(node=>node.type==='Declaration')
+        .flatMap(node=>node.decls.filter(decl=>decl.whenUsed)));
     scan(program);let counter=0,changed=false;
     const fresh=()=>{let name;do{name=`__bwPxtValue${++counter}`;}while(names.has(name));names.add(name);return name;};
     const id=name=>({type:'Identifier',name,temporary:true});
@@ -154,7 +158,13 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false} =
         if(st.type==='FunctionDeclaration')return [{...st,body:body(st.body),...(st.originalBody?{originalBody:body(st.originalBody)}:{})}];
         if(st.type==='Block' || st.type==='Namespace')return [{...st,body:body(st.body),...(st.originalBody?{originalBody:body(st.originalBody)}:{})}];
         if(st.type==='Declaration')return st.decls.flatMap(decl=>{
-            const result=expression(decl.init);return [...result.prefix,{...st,decls:[{...decl,init:result.value}]}];
+            const result=expression(decl.init);
+            if(globalWhenUsed.has(decl) && result.prefix.length){
+                const group=fresh();
+                return [...result.prefix.map(node=>({...node,bwPxtWhenUsedGroup:group})),
+                    {...st,decls:[{...decl,init:result.value,bwPxtWhenUsedGroup:group}]}];
+            }
+            return [...result.prefix,{...st,decls:[{...decl,init:result.value}]}];
         });
         if(st.type==='Return'){
             const result=expression(st.value);return [...result.prefix,{...st,value:result.value}];

@@ -23,7 +23,8 @@ export function lowerObjectClasses(program) {
         return {...node,fields:[...node.fields,...properties.values()],...(node.base?{base:sdkClassName(node.base)}:{})};
     });
     const classes = new Map(sourceClasses.map(node => [node.name, node]));
-    if (!classes.size && !dialogRequested) return {program, unsupported: []};
+    const hasWhenUsed=program.body.some(node=>node.type==='Declaration' && node.decls.some(decl=>decl.whenUsed));
+    if (!classes.size && !dialogRequested && !hasWhenUsed) return {program, unsupported: []};
     const sdkClasses=[...(sourceClasses.some(node=>['Sprite','__bwSDK_ExtendableSprite'].includes(node.base))?SDK_SPRITE_CLASS_NODES:[]),...(dialogRequested||sourceClasses.some(node=>SDK_DIALOG_CLASS_NODES.some(base=>base.name===node.base))?SDK_DIALOG_CLASS_NODES:[])];
     const originalClasses=new Map(classes);classes.clear();for(const node of sdkClasses)classes.set(node.name,node);for(const [name,node]of originalClasses)classes.set(name,node);
     const unsupported = [], admitted = new Map();
@@ -71,7 +72,11 @@ export function lowerObjectClasses(program) {
     const findField=(name,field)=>lineage(name).flatMap(base=>admitted.get(base).fields).find(value=>value.name===field);
     const findMethod=(name,method)=>lineage(name).flatMap(base=>admitted.get(base).methods).find(value=>value.name===method && value.kind==='method');
     const findAccessor=(name,field,kind)=>lineage(name).map(base=>admitted.get(base).fields.find(value=>value.name===field)?.accessor?.[kind]).find(Boolean);
-    const effectiveCtor=name=>lineage(name).map(base=>({name:base,ctor:admitted.get(base).ctor})).find(value=>value.ctor) || {name,ctor:null};
+    const effectiveCtor=name=>{
+        const chain=lineage(name);
+        return chain.map(base=>({name:base,ctor:admitted.get(base).ctor})).find(value=>value.ctor) ||
+            {name:chain.at(-1),ctor:null};
+    };
     const graph = new ValueTypeGraph(), owners = new WeakMap(), cells = new WeakMap(), entries = [];
     const global = {parent: null, bindings: new Map(), className: null, result: Symbol('global result')};
     const functions = new Map(), memberOwners = new WeakMap(), anyBindings = new Set(), declaredClasses = new Map(), declaredTypes = new Map();
@@ -197,29 +202,84 @@ export function lowerObjectClasses(program) {
     // Match the original compiler's whenUsed initializer reachability. Merely
     // declaring an unused method/function must not initialize its constants.
     const candidates=new Map(program.body.filter(node=>node.type==='Declaration').flatMap(node=>node.decls.filter(decl=>decl.whenUsed).map(decl=>[decl.name,decl])));
-    const used=new Set(),reachedFunctions=new Set(),reachedClasses=new Set(),reachedMethods=new Set();
-    function reach(node) {
+    const groupedPrefixes=new Map();
+    for(const node of program.body)if(typeof node.bwPxtWhenUsedGroup==='string'){
+        const entries=groupedPrefixes.get(node.bwPxtWhenUsedGroup)||[];entries.push(node);groupedPrefixes.set(node.bwPxtWhenUsedGroup,entries);
+    }
+    const used=new Set(),usedGroups=new Set(),reachedFunctions=new Set(),reachedClasses=new Set(),reachedMethods=new Set();
+    const usedClassTables=new Set(),usedInterfaceMembers=new Set();
+    const markClassTable=name=>{for(const base of lineage(name)||[])usedClassTables.add(base);};
+    const findSlot=(name,key,kind)=>lineage(name).flatMap(base=>admitted.get(base).methods).find(member=>member.name===key && member.kind===kind);
+    const virtualRoot=method=>{
+        const owner=methodClasses.get(method);let root=method;
+        for(const base of (lineage(owner)||[]).slice(1)){
+            const inherited=admitted.get(base).methods.find(member=>member.name===method.name && member.kind===method.kind);
+            if(inherited)root=inherited;
+        }
+        return root;
+    };
+    const markMethod=method=>{
+        if(!method)return;
+        markClassTable(methodClasses.get(method));
+        if(!reachedMethods.has(method)){reachedMethods.add(method);reach(method.body);}
+    };
+    function reach(node,activeGroup=null,accessMode='read') {
         if(!node || typeof node!=='object')return;
-        if(Array.isArray(node)){node.forEach(reach);return;}
+        if(Array.isArray(node)){node.forEach(child=>reach(child,activeGroup));return;}
+        if(node.bwPxtWhenUsedGroup && node.bwPxtWhenUsedGroup!==activeGroup)return;
         if(node.type==='FunctionDeclaration' || node.type==='Class')return;
-        if(node.type==='Declaration'){for(const decl of node.decls)if(!decl.whenUsed)reach(decl.init);return;}
+        if(node.type==='Declaration'){for(const decl of node.decls)if(!decl.whenUsed)reach(decl.init,activeGroup);return;}
         if(node.type==='Identifier' && candidates.has(node.name) && binding(owners.get(node)||global,node.name)===binding(global,node.name) && !used.has(node.name)){
-            used.add(node.name);reach(candidates.get(node.name).init);
+            used.add(node.name);
+            const declaration=candidates.get(node.name),group=declaration.bwPxtWhenUsedGroup;
+            if(group){usedGroups.add(group);for(const prefix of groupedPrefixes.get(group)||[])reach(prefix,group);}
+            reach(declaration.init,group||activeGroup);
+        }
+        if(node.type==='Assignment' && node.left?.type==='Member'){
+            reach(node.left,activeGroup,node.op==='='?'write':'readwrite');reach(node.right,activeGroup);return;
+        }
+        if(node.type==='Update' && node.argument?.type==='Member'){
+            reach(node.argument,activeGroup,'readwrite');return;
+        }
+        if(node.type==='Member' && (node.object.assertedType==='any' || anyBindings.has(cell(node.object))))usedInterfaceMembers.add(node.name);
+        if(node.type==='Member')for(const name of classNames(node.object)){
+            if(accessMode!=='write')markMethod(findSlot(name,node.name,'get'));
+            if(accessMode!=='read')markMethod(findSlot(name,node.name,'set'));
         }
         if(node.type==='Call') {
-            const fn=node.callee?.type==='Identifier' && functions.get(node.callee.name);
+            const globallyBound=node.callee?.type==='Identifier' && binding(owners.get(node.callee)||owners.get(node)||global,node.callee.name)===binding(global,node.callee.name);
+            const fn=globallyBound && functions.get(node.callee.name);
             if(fn && !reachedFunctions.has(fn)){reachedFunctions.add(fn);reach(fn.node.body);}
-            if(node.isNew && node.callee?.type==='Identifier' && admitted.has(node.callee.name) && !reachedClasses.has(node.callee.name)) {
-                reachedClasses.add(node.callee.name);for(const name of lineage(node.callee.name)){const cls=admitted.get(name);cls.fields.forEach(field=>reach(field.init));reach(cls.ctor?.body);}
+            if(node.isNew && globallyBound && admitted.has(node.callee.name) && !reachedClasses.has(node.callee.name)) {
+                reachedClasses.add(node.callee.name);markClassTable(node.callee.name);for(const name of lineage(node.callee.name)){const cls=admitted.get(name);cls.fields.forEach(field=>reach(field.init));reach(cls.ctor?.body);}
             }
-            if(node.callee?.type==='Member')for(const name of classNames(node.callee.object)) {
-                const method=findMethod(name,node.callee.name);
-                if(method && !reachedMethods.has(method)){reachedMethods.add(method);reach(method.body);}
+            if(node.callee?.type==='Member'){
+                if(node.callee.object.assertedType==='any' || anyBindings.has(cell(node.callee.object)))usedInterfaceMembers.add(node.callee.name);
+                for(const name of classNames(node.callee.object))markMethod(findMethod(name,node.callee.name));
             }
         }
-        for(const value of Object.values(node))if(value && typeof value==='object')reach(value);
+        for(const value of Object.values(node))if(value && typeof value==='object')reach(value,activeGroup);
     }
-    program.body.forEach(reach);
+    // Selected PXT fixpointVTables/markVTableUsed (v13.2.1, MIT): a used
+    // override marks its virtual root, and a used root marks matching slots
+    // in used class tables. Getter/setter slots stay distinct. Class-table
+    // reachability is separate from actually reachable construction below.
+    let previousReachSize;
+    do{
+        previousReachSize=used.size+reachedFunctions.size+reachedClasses.size+reachedMethods.size+usedClassTables.size+usedInterfaceMembers.size;
+        program.body.forEach(node=>reach(node));
+        for(const fn of reachedFunctions)reach(fn.node.body);
+        for(const method of reachedMethods)reach(method.body);
+        for(const name of usedClassTables){
+            const cls=admitted.get(name);
+            for(const method of cls.methods){
+                const root=virtualRoot(method);
+                if(reachedMethods.has(method))markMethod(root);
+                if(reachedMethods.has(root) || method.kind==='method' && method.name==='toString' && method.params.length===0 || usedInterfaceMembers.has(method.name))markMethod(method);
+            }
+            reach(cls.ctor?.body);
+        }
+    }while(previousReachSize!==used.size+reachedFunctions.size+reachedClasses.size+reachedMethods.size+usedClassTables.size+usedInterfaceMembers.size);
     // Selected PXT emits this constructor restriction only when construction
     // is reachable. Unused classes and uncalled functions retain their type
     // and field metadata without executing or validating an unused factory.
@@ -324,6 +384,7 @@ export function lowerObjectClasses(program) {
     for(const [name,cls]of admitted)for(const method of cls.methods.filter(method=>['get','set'].includes(method.kind))){let fn='__bwAccessor_'+name+'_'+method.kind+'_'+method.name;while(takenNames.has(fn))fn+='_';takenNames.add(fn);accessorNames.set(method,fn);}
     const body = [];
     for (let node of program.body) {
+        if(node.bwPxtWhenUsedGroup && !usedGroups.has(node.bwPxtWhenUsedGroup))continue;
         if(node.type==='Declaration'){const decls=node.decls.filter(decl=>!decl.whenUsed || used.has(decl.name));if(decls.length)body.push(rewrite({...node,decls}));continue;}
         if (node.type !== 'Class' || !admitted.has(node.name)) { body.push(rewrite(node)); continue; }
         const name = node.name;node=classes.get(name);const initName = `__bwClass_${name}_fields`, ctorName = `__bwClass_${name}_constructor`;
