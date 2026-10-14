@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {readFileSync, mkdirSync, writeFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-import {SB3Creator, projectOpcodes, runProgram} from './helpers/bw-vm.mjs';
+import {SB3Creator, projectOpcodes, runProgram, stepFrames} from './helpers/bw-vm.mjs';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {compile} from '../scripts/lib/pxt-node.mjs';
 
@@ -36,7 +36,7 @@ controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
     assert.deepEqual(run.errors, []);
     assert.equal(run.vm.runtime.bwArcadeDeviceState.backgroundColor, 2);
     run.vm.postIOData('keyboard', {key: ' ', isDown: true});
-    for (let i = 0; i < 5; i++) run.vm.runtime._step(1000 / 30);
+    await stepFrames(run.vm, 5);
     assert.equal(run.vm.runtime.bwArcadeDeviceState.backgroundColor, 3);
     const recreated = new SB3Creator(); recreated.parse(run.creator.decompile());
     assert.deepEqual(recreated.warnings, []);
@@ -46,11 +46,23 @@ controller.A.onEvent(ControllerButtonEvent.Pressed, function () {
     assert.match(exported.ts, /scene\.backgroundColor\(\)/);
     assert.match(exported.ts, /scene\.setBackgroundColor\(value\)/);
     const compiled = await compile('arcade', exported.files);
+    if(process.env.ARCADE_BACKGROUND_ROUNDTRIP_EVIDENCE){
+        const directory=process.env.ARCADE_BACKGROUND_ROUNDTRIP_EVIDENCE;
+        mkdirSync(directory,{recursive:true});
+        writeFileSync(join(directory,'compilation.json'),JSON.stringify({files:exported.files,result:compiled},null,2));
+    }
     assert.equal(compiled.success, true, JSON.stringify(compiled.diagnostics));
     const again = arcadeToPseudocode(exported.ts);
     assert.deepEqual(again.unsupported, []);
     const roundtrip = await runProgram(again.code, {frames: 5, uploads: again.costumes, storage: true});
     assert.equal(roundtrip.vm.runtime.bwArcadeDeviceState.backgroundColor, 2);
+    if(process.env.ARCADE_BACKGROUND_ROUNDTRIP_EVIDENCE)
+        writeFileSync(join(process.env.ARCADE_BACKGROUND_ROUNDTRIP_EVIDENCE,'observations.json'),JSON.stringify({
+            importedErrors:run.errors,importedWarnings:run.creator.warnings,
+            afterController:run.vm.runtime.bwArcadeDeviceState.backgroundColor,
+            reimportedBackground:roundtrip.vm.runtime.bwArcadeDeviceState.backgroundColor,
+            exportedDiagnostics:exported.unsupported,reimportedDiagnostics:again.unsupported
+        },null,2));
 });
 
 test('multiple sequential background changes preserve their order and reset on restart', async () => {

@@ -54,6 +54,15 @@ This focused control passes. Its earlier manual physics frames did not advance
 the real pause clock, so their count was insufficient evidence of elapsed time.
 No runtime pause implementation or original comparison was changed.
 
+The background procedure/controller journey now awaits the normal Promise
+continuation queue between its five physical frames. Startup color two,
+controller color three, actual exported MakeCode compilation and reimported
+color two pass. Compiler inputs and output are retained, with all nine
+SDK/bridge guards unchanged. Its previous synchronous `_step` loop observed the
+handler before continuation; the background and controller implementations are
+unchanged. This is compile and native round-trip evidence, not an executed
+original-simulator comparison or a visible browser result.
+
 At `12d8bc43327309003a9de9c69c06a7c60cac2cea`, the
 [completed first unit shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38618756907/job/116045316170)
 reports 4,610 tests: 4,548 pass, 46 fail, 14 skip and two TODO. The
