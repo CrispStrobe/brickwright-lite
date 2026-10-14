@@ -214,8 +214,12 @@ try {
         const code = document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.cmTile.root.view.state.doc.toString();
         return Boolean(code && /arcade clamp minimum[^\n]*maximum .*12/.test(code));
     });
-    const code = await readCode(); assert.match(code, /arcade repeat while/); assert.match(code, /StringArray/); assert.match(code, /maximum .*12/); assert.ok(code.includes('猫'));
-    await editor().click(); await page.keyboard.press('Control+a'); await page.keyboard.insertText(code.replace('猫', 'PLAY')); await apply();
+    const code = await readCode(); report.codeFromBlocks = code; assert.match(code, /arcade math max first/); assert.match(code, /arcade repeat while/); assert.match(code, /StringArray/); assert.match(code, /maximum .*12/); assert.ok(code.includes('猫'));
+    const editedCode = code.replaceAll('猫', 'PLAY');
+    report.editedCode = editedCode;
+    await editor().click(); await page.keyboard.press('Control+a'); await page.keyboard.insertText(editedCode);
+    assert.equal(await readCode(), editedCode, 'The visible Code editor contains the authored program before compilation');
+    await apply();
     const finalOptions = {...edited, message: 'PLAY'}, finalFiles = numericAuthoringFiles(finalOptions);
     await cycle('edited-Code-to-Blocks', finalOptions, finalFiles);
     await page.getByText('File', {exact: true}).first().click();

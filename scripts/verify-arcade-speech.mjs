@@ -358,9 +358,14 @@ controller.B.onEvent(ControllerButtonEvent.Pressed,function(){
         });
         const palette = vm.runtime.getBlocksXML().some(category => category.xml?.includes('arcade_spriteSay'));
         vm.runtime._primitives.arcade_setSpriteProperty({ID: hat.id, PROPERTY: 'x', VALUE: 140}, {});
-        // Advance 600ms after separating the sprites. Immediate calls with no
-        // delta measure wall time and cannot establish a 500ms expiry.
-        for (let i = 0; i < 18; i++) { vm.runtime._step(1000 / 30); await Promise.resolve(); }
+        // Source timers use the platform clock. Observe actual elapsed time
+        // and render opportunities after separating the sprites; passing a
+        // synthetic delta to _step cannot establish the 500ms expiry.
+        const expiryStarted = performance.now();
+        while (Object.keys(vm.runtime.bwArcadeDeviceState.speech).length && performance.now() - expiryStarted < 3000) {
+            await new Promise(done => requestAnimationFrame(done));
+            vm.runtime._step();
+        }
         const corner = Array.from(data.slice(4 * (5 * capture.width + 5), 4 * (5 * capture.width + 5) + 3));
         return {speech, bubblePixels, corner, palette, renderState, afterExpiry: Object.keys(vm.runtime.bwArcadeDeviceState.speech).length};
     });
