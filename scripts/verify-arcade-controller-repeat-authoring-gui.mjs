@@ -222,7 +222,12 @@ const paletteCreate = async () => {
 try {
     const files=repeatAuthoringFiles(),fixture=path.join(out,'repeat-authoring.mkcd');
     await writeFile(fixture,makeCodeProjectFile(files,{target:'arcade'}));report.fixtureSha256=digest(await readFile(fixture));
-    page=await fresh();await codeTab();await page.getByTestId('bw-device-select').selectOption('arcade');await openFile(fixture);await apply();
+    page=await fresh();await codeTab();await page.getByTestId('bw-device-select').selectOption('arcade');
+    // Retargeting loads a new project asynchronously. Wait for its visible
+    // completion before opening a file owned by that new stage.
+    await page.getByText('Blocks loaded.', {exact: true}).waitFor({timeout: 60000});
+    await page.waitForFunction(() => window.__brickwrightStore?.getState()?.scratchGui?.vm?.runtime?.bwDeviceId === 'arcade');
+    await openFile(fixture); await apply();
     const types=await page.evaluate(()=>window.Blockly.getMainWorkspace().getAllBlocks(false).map(b=>b.type));
     for(const opcode of ['arcade_buttonRepeatProperty','arcade_setButtonRepeatProperty','arcade_setButtonRepeatDefaults'])assert.ok(types.includes(opcode),`${opcode} is a real imported block`);
     await cycle('unchanged-import',{},files);await paletteCreate();
