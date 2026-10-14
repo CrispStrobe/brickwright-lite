@@ -1,5 +1,50 @@
 # Who is doing what — merge the claim before implementation
 
+## Arcade source reference initialization — 2026-10-14
+
+PROPOSED — `lane/arcade-source-reference-preinit-20261014`.
+Contract: [source reference initialization](docs/ARCADE-SOURCE-REFERENCES.md).
+Own new reference type/inventory/prelude helpers and focused tests; narrow source
+declaration, converter/export, startup and field/menu hunks; canonical producer
+quoted type-field grammar/word/tests and reviewed pin adoption. Preserve exact
+class and array typing, separate scalar/reference flow, atomic declaration
+validation and ordinary Scratch defaults. Coordinate class/callable/accessor and
+event owners. No product edits before this claim is merged; no heap/scheduler
+substitution, unknown-to-Any fallback or whole-project promotion.
+
+
+## Arcade control event bus and multiplayer connections — 2026-10-14
+
+CLAIMED — merged contract PR901; Codex Arcade event integration, `lane/arcade-control-events-20261014`.
+Contract: [control events and multiplayer connections](docs/ARCADE-CONTROL-EVENT-BUS.md).
+The documentation claim is merged. Envelope: new Arcade
+control-events helper; narrow native index event/context/controller lifecycle
+and metadata hunks; Arcade-only source/export cases; separately qualified own
+supplier authoring words and pin adoption; original/native/Code/Blocks/export/
+SB3 and official-build GUI controls. Preserve independent class/accessor,
+source-scalar, Scene flags/rendering, arrays, dialog and device lanes. Coordinate
+shared index/translator/export/phase hunks before implementation; no global
+scheduler or physical-input substitution. Initial profile is the selected
+Arcade public raiseEvent/onEvent/waitForEvent and mp.onControllerEvent APIs;
+missing public mode/value/time APIs retain diagnostics. Target-specific ignored
+flags/modes and internal timestamps need explicit original receipts, not invented
+hardware semantics. No whole-game or corpus promotion from registration/parsing.
+
+## Arcade source scalar cells — 2026-10-14
+
+PROPOSED — Codex Arcade scalar integration, `lane/arcade-source-scalars-20261014`.
+Contract: [source scalar cells](docs/ARCADE-SOURCE-SCALARS.md).
+Envelope: new source scalar declaration/initialization and directed export flow
+helpers; their narrow Arcade source importer, export, native extension and source
+prelude hooks; one explicit producer command and enum field with reviewed pin
+adoption; Code/Blocks/rename/SB3/original execution controls and this contract.
+Bind actual stock variable IDs, preserve typed undefined before source
+initialization and ordinary Scratch saved defaults. Do not use name-only cell
+binding, unknown mutation attributes or a project-wide typing switch. Preserve
+independent source phase, class/accessor, Scene/controller and supplier lanes.
+No product command or source prelude changes until this claim lands. Private
+prototypes and original controls are preparation only; no whole-game promotion.
+
 ## Arcade classes and mutable object semantics — proposed
 
 Claim proposed for the Arcade compatibility lane. Contract:
@@ -1543,9 +1588,11 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 
 ## CLAIMS — work in progress
 
-| MakeCode re-export: infer procedure parameter types instead of always `number` (task E13 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `d65b0864b`; paths `overlay/scratch-gui/src/lib/bw-makecode/export.js` (+ export-arcade.js only if it shares the declaration), focused tests, MakeCode census if counts move; this row and the task file. | **CLAIMED 2026-10-13.** Found by E12 (#882). |
+| DONE — Importer: member access on string/array parameters resolved by name (`s.length` → variable `length`) (task E14 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktree `wt/e14-member-access` | base `6e204eec5` (impl `6275c33b2`, merged with main); paths `overlay/scratch-gui/src/lib/bw-makecode/translate-base.js`, new `test/makecode-member-access.test.mjs`; this row and the task file. No per-target translator changed; export-arcade.js not touched (open Arcade PRs). MakeCode census not regenerated: its counts did not move. | **DONE 2026-10-14 — Lite PR #902.** Found by E13 (#896). A member no rule knew was returned as its bare name (a variable holding 0); now translated (`.length`/`[i]`/`charAt`/`concat` of declared text and `: string` record fields, Math's constants, arrays `_pickRandom`/`unshift`) or refused by name, read (`unknownMember`) or written (`memberTarget`, naming the calls). Three-way: micro:bit/EV3 13 readings, Lite VM `0 0 2 2 2 1 2 2 0 0 12 0 0` → `5 0 1 1 1 5 1 1 2718 1414 73 5 1` = pxt-microbit sim = re-export in the sim (refused by pxt before; EV3 re-export compiled by pxt-ev3); Arcade 9 readings = pxt-arcade 4.2.1 sim (was 9 of 9 wrong). Silent fallbacks (property as a variable): micro:bit docs 7 → 0, EV3 0 → 0, Arcade corpus 1 → 0. Census (default and --snippets, full runs before and after): every stage count identical, 0 rows change stage. Tests `test/makecode-member-access.test.mjs` (54), 13 mutations red; MakeCode/Arcade suites 1589 tests 0 fail (5 LabWired skips); gates no-nul, fetch-pinning, ci-skip-census, browser-gate-*, build-trigger-paths, gate-shapes, overlay-packages-pairs, declared-pins-wired, check-mirrors, gate-coverage, no-dead-overlay-modules, notices-coverage, skips-are-counted, wait-census, workflow-trigger-coverage green. Found, not fixed: Lite's arrays extension returns text items JSON-quoted (length of `"abc"` is 5); export-arcade.js lacks `letter of`; export.js types hoisted text copies as number. |
 
-| Compiled 7-segment programs blank in the circuit view: persistence-based 7-segment model (task B16 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `60b1a18b6`; upstream bw-board 7-segment / multiplexed display model + tests; Lite bw-board pin-bump surfaces + a compiled-C display test; this row and the task file. | **CLAIMED 2026-10-13.** Found by B14 (#867). |
+| DONE — MakeCode re-export: infer procedure parameter types instead of always `number` (task E13 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktree `wt/e13-param-types` | base `c474198da` (impl `c9afa0221`, merged with main); paths `overlay/scratch-gui/src/lib/bw-makecode/export.js`, new `test/makecode-parameter-types.test.mjs`, `test/makecode-text-truthiness.test.mjs` (E12's r8/r9 now compared after re-export); this row and the task file. export-arcade.js not touched: it declares its own parameters. MakeCode census not regenerated: its counts did not move. | **DONE 2026-10-13 — Lite PR #896.** Found by E12 (#882). **Checked first:** no LANES row or open PR claimed export.js's procedure emission. #884 touched export.js only for a motor case; it landed meanwhile and was merged in. **Measured** with an instrumented copy of `scripts/makecode-census.mjs --snippets` (pxt-microbit 9.1.1, pxt-ev3 1.4.41; all pxt diagnostics, not the first only). micro:bit docs, 1113 programs: 17 originals declare functions (27 functions; parameters 12 `number`, 3 `string`, 2 `boolean`, 2 arrays). The 3 programs with `string` parameters (`courses/blocks-to-javascript/writing-functions#5/#6/#7`) were the only ones pxt refused on re-export for a procedure parameter. `boolean` parameters import as 1/0 (the dialect has no booleans) and recompile as `number`. Array parameters are specialised away by the importer, so no array parameter reaches the dialect. EV3, 258 programs: 5 declare functions (28), none with parameters. Lite corpus, 353 retargeted: 4 programs have parameterised DEFINEs, none passes text, and 0 of its 30 recompile failures are procedure parameters (the `text "!"`/`text "A"` diagnostics are a display-text block). Arcade: export-arcade.js declares its own (`any`/Image) parameters, and its import closure (14 modules) never reaches export.js, so E2's 242/244 cannot move. **Rules** (`export.js`): `procedureParameterTypes()` :968. `<p>` → boolean :1079, and `argument_reporter_boolean` is a boolean reporter :57. A call passing text (non-numeric literal, `""`, text variable/reporter/array item) → string. A number or arithmetic (NUMBER_SLOTS) → number. Shown or sent as text (TEXT_SLOTS) needs text. `length of`/`letter of` (TEXT_HINT_SLOTS :933) or a numeric text literal (NUMERIC_TEXT :913) are hints. Text and number → `any` (pxt-microbit and pxt-ev3 accept it). Parameter-to-parameter flows spread their kinds monotonically to a fixed point :1065. A variable set from a string parameter is text :905, iterated with textVariables :1243. A numeric text literal passes as a number in a number parameter (`argument()` :296). Declaration :1288. **Round trip:** E12's 10 readings, re-export now `function f(p: string)`: micro:bit sim `2 1 1 2 1 1 2 2 1 1` = MakeCode's, all 10 including r8/r9 (before: r8/r9 left out, refused). EV3: pxt-ev3 compiles the re-export, which reads the same in the micro:bit sim. Imported typed programs reach a fixed point (second trip byte-equal) and compile. **Census before → after:** default census (the generated doc's corpus) identical in every row: micro:bit apps 204 full / 8 partial / 2 not-a-program / 1 needs-extension; Lite 150 full / 143 partial / 30 retarget / 30 recompile; EV3 100 full / 157 partial / 1 not-a-program. `--snippets` 1113: recompile 9 → 6 and full 888 → 891 (writing-functions #5/#6/#7), 0 rows worse, no other field changed; Lite and EV3 unchanged. Re-export text is byte-identical for 1661 of 1664 exported programs; only those 3 change. **Tests:** `test/makecode-parameter-types.test.mjs` (15: one per rule, each export compiled by pxt; the pre-E13 receipt; an imported fixed point; EV3) + E12's 6. 251/251 across 17 MakeCode test files. 13 mutations, each red: always `number`; mixed → string; `<p>` → number; no flows; no back hint; needs-text ignored; length hint ignored; numeric text not converted; variable-from-parameter link cut; boolean reporter removed; slot found via `parent`; call text not evidence; arithmetic not evidence (the last one was green at first, so a case was added). **Left:** (1) importer gap found here: translate-base.js reads `s.length` on a `string` PARAMETER as a variable named `length` (`isText` checks textVars, not E12's `stringTypedReferences`), so `function d(s: string) { r = s.length }` imports as `set r to length`, a silent wrong value. The export therefore keeps a string parameter's length as `("" + p).length`, which round-trips at a fixed point. (2) A parameter given non-numeric text AND used in arithmetic is `any`. It compiles, but TypeScript concatenates where Scratch adds. (3) The 6 remaining snippet recompile failures are API typing (`showString(number)`) and `0 == 1`, not parameters. |
+
+| DONE — Compiled 7-segment programs blank in the circuit view: persistence-based 7-segment model (task B16 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `60b1a18b6`; upstream bw-board 7-segment / multiplexed display model + tests; Lite bw-board pin-bump surfaces + a compiled-C display test; this row and the task file. | **DONE 2026-10-13 — Lite PR #885 (`lane/b16-sevenseg-persistence`).** Found by B14 (#867). Upstream merged first: bw-board #548 `0c5b0284` (PR-head CI 38405129067 green; master CI 38415904970 on `0c5b0284` green); Lite pins bw-board `0c5b0284` with every ripple surface regenerated (check twins green, old sha gone). **Measured first** (Prechin A2 wiring, emu8051, sb3-creator C and stc-compiler `stc_pseudocode.py` C): the ISR blanks P0, sets the 74HC138 address, writes the digit; `sevenseg8` latched at the address change, so every compiled program showed `"        "` on stc89c52rc, stc12c5a60s2 and stc15f2k60s2, while the stc12 block path (`_segpush`, zero-time Gray-code push) showed the digits. **Model** (`src/devices/a2-displays.js` `integrateSevenseg8`): per digit, each segment's on-time while that digit is selected over a 20 ms window (`PERSISTENCE_WINDOW_NS`, the LED brightness window), lit at >= 1/32 (`DUTY_THRESHOLD`, a quarter of one digit's 1/8 share; a 1 ms/digit scan gives 10-15 %, scan transients < 0.1 %); a digit the window never selected keeps the latched frame (the blocks' zero-time push). Running sums in integer ns, exact vs a direct integration of a 3000-write trace. New state `segDuty`/`selDuty`; the canvas keeps reading `digits` (not `segBrightness`, which it would draw raw). **After:** compiled C `"       0"` then `"       6"` (key 6) on all three chips on the 79-a2-sampler benches, `"     -42"` for `show number -42`; block path unchanged; a truly blank display stays blank; no transient ghost. **Mutations** (bw-board tests), each red: instant latch restored (8), threshold 0 (11), threshold 0 with strict > (2, incl. the ghost test), no latch fallback (4), 2 ms window (8); Lite test red at `7254f240` (compiled half), green at `0c5b0284`. **Consumers:** bw-circuit-ui canvas (path B, `digits`) improved knowingly; Lite B7/B14 block tests unchanged and green; B14's compiled test now also reads `sevenseg8`; no other board or bench in bw-board has a multiplexed `sevenseg8` (other displays are driver-chip registers or synthetic-LED composites already on `ledBrightness`). **Named, not fixed:** a digit held blank before a zero-time push lights 625 us after it (eye-true); with a LEDBANK8 on P2 the compiled C overwrites the select every tick and shows every digit's segments on digit 7 (as on silicon; the importer warns); 33 seated gallery MCUs declare `"terminals": []` and bw-board drives only declared terminals (the test declares the seat legs; whether the designer fills them is unverified here); stc-compiler's C on stc12/stc15 does not register key 6 on the sampler bench (sb3-creator's C does); `show number 12345678` in C is 16-bit `int` (shows 24910). |
 
 | DONE — Text truthiness in the shared MakeCode importer base: micro:bit and EV3 (task E12 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `e9c3373b4`; paths `overlay/scratch-gui/src/lib/bw-makecode/translate-base.js` (+ micro:bit/EV3 translate if needed), focused tests, regenerated MakeCode census if counts move; this row and the task file. | **DONE 2026-10-13 — Lite PR #882.** A text in a condition (isText, or a reference declared `: string`, by scope: new `stringTypedReferences()`) is `not ((length of s) = 0)` in translate-base.js `condition()`; numbers unchanged. Readings (sim / Lite before → after): `2 1 1 2 1 1 2 2 1 1` / `1 2 2 1 0 2 1 1 2 1` → `2 1 1 2 1 1 2 2 1 1`, micro:bit and EV3; re-export refused by pxt before → equals the sim after (parameter calls excluded: export.js types parameters `: number`). Census unchanged (204/8/2/1, 150/143/30/30, 100/157/1; 0 rows differ); importer output byte-identical over 1113 micro:bit, 258 EV3, 2097 Arcade inputs. Tests `test/makecode-text-truthiness.test.mjs` (6), 7 mutations red; MakeCode+sb3 suites 1404 (3 Arcade timing flakes at load 17, green alone); pre-push gates 94 green. Fix commit `c9c95f01c`. |
 
@@ -3435,3 +3482,27 @@ arrays and serialized reference observations with bounded incomplete results.
 No automatic sweep, complete-root claim, new opcode or producer pin change.
 Explicit hidden-owner leases and preallocation reservations remain required.
 Scope and followup method are in the Buffer contract;142/41/1 unchanged.
+
+## Arcade editor startup dependency boundary — 2026-10-13
+
+PROPOSED CLAIM — Codex Arcade integration. Merge this claim before product edits.
+Envelope: a pure tilemap-block presence helper in `lib/bw-makecode/`, the presence
+read in `containers/costume-tab.jsx` and its tracked mirror, focused equivalence
+controls, this ledger and the linked contract. Existing painter decoding, legacy
+layout resolution, validation, saves, sprite placement and ownership remain intact.
+The startup byte gate has a concrete failure; preserve its exact budget and
+original result. Replace the eager full-editor import with the same presence
+semantics for original targets, modern/legacy blocks and malformed/computed data.
+Qualify emitted initial bytes through the unchanged hosted P17 gate, and retain
+actual painter and editor journeys. No local full GUI build, threshold change or
+claim that a structural source scan proves emitted bundle size. Contract:
+[editor load boundary](docs/ARCADE-EDITOR-LOAD-BOUNDARY.md).
+
+## Arcade SB3 device and pane restoration — 2026-10-13
+
+CLAIMED — Codex, `docs/arcade-sb3-device-pane-20261013`.
+Own saved-project device publication and Stage header observation for genuine
+Arcade fresh-session SB3 reopening. Diagnose the actual metadata/load path;
+coordinate board selection with the active multi-board owner. Product edits
+follow merged claim and exact-head checks. See
+[the acceptance contract](docs/ARCADE-SB3-DEVICE-PANE.md).
