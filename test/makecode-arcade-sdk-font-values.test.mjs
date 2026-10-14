@@ -78,3 +78,23 @@ test('actual owner rejects foreign, stopped, restarted, loaded and disposed refe
         f.runtime.emit('RUNTIME_DISPOSED');assert.throws(()=>f.fonts.constant('font8'),/disposed or stopped/);
     }finally{f.fonts.dispose();g.fonts.dispose();}
 });
+
+import {SDK_FONT_RECORD,SDK_FONT_FIELDS,sdkFontRecordType,sdkFontPublicType} from '../overlay/scratch-gui/src/lib/bw-makecode/sdk-font-value-descriptors.js';
+test('Font interface descriptor matches native fields without inventing a constructor or inheritance',()=>{
+    const {FIELD_SPECIFICATIONS,FONT_RECORD_NAME}=require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/sdk-font-values.js');
+    assert.deepEqual(FIELD_SPECIFICATIONS,SDK_FONT_FIELDS);assert.equal(FONT_RECORD_NAME,SDK_FONT_RECORD.name);
+    assert.equal(SDK_FONT_RECORD.constructible,false);assert.equal(SDK_FONT_RECORD.inheritable,false);
+    assert.equal(sdkFontRecordType('image.Font'),FONT_RECORD_NAME);assert.equal(sdkFontPublicType(FONT_RECORD_NAME),'image.Font');
+    assert.equal(sdkFontRecordType('own.Font'),'own.Font');assert.equal(sdkFontRecordType('Font'),'Font');
+});
+test('actual managed heap field reads route to the current Font owner and refuse construction and mutation',()=>{
+    const makeHeap=require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/object-heap.js');
+    const f=fixture(),heap=makeHeap(f.runtime,values,f.fonts.heapHooks);
+    try{
+        const font=f.fonts.constant('font8');
+        assert.equal(heap.get(font,'charWidth'),6);
+        assert.equal(values.compare(heap.get(font,'data'),'===',f.fonts.read(font,'data')),true);
+        assert.throws(()=>heap.set(font,'charWidth',9),/mutation is not qualified/);
+        assert.throws(()=>heap.allocate('__bwSDK_Font'),/cannot be constructed or inherited/);
+    }finally{f.fonts.dispose();heap.dispose();}
+});

@@ -4,6 +4,17 @@ const initializeText = require('./text-pxt');
 const buffers = require('./buffer');
 let nextOwner = 0;
 const FIELDS = new Set(['charWidth', 'charHeight', 'data', 'multiplier']);
+// Mirrors sdk-font-value-descriptors.js. This is a record role, not an SDK class.
+const FONT_RECORD_NAME='__bwSDK_Font';
+const FIELD_SPECIFICATIONS=Object.freeze([
+    Object.freeze({name:'charWidth',type:'number',readonly:false,visibility:'public'}),
+    Object.freeze({name:'charHeight',type:'number',readonly:false,visibility:'public'}),
+    Object.freeze({name:'data',type:'Buffer',readonly:false,visibility:'public'}),
+    Object.freeze({name:'multiplier',type:'number',readonly:false,visibility:'public',optional:true})
+]);
+const DEFINITION=Object.freeze({name:FONT_RECORD_NAME,intrinsic:'Font',record:true,
+    constructible:false,inheritable:false,initializer:'',constructor:'',parameters:Object.freeze([]),
+    fields:new Map(FIELD_SPECIFICATIONS.map(field=>[field.name,Object.freeze({...field,native:true})])),methods:new Map()});
 const RESOURCE_MANIFEST = Object.freeze({
     target: 'pxt-common-packages/v14.1.4',
     textSHA256: '2ff6f11be61e3953a316ab3655c405861aaac3d76043ed88da02b535fa159a33',
@@ -74,7 +85,7 @@ function create(runtime, values, bufferOwner) {
     reset();
     runtime.on('PROJECT_START', reset); runtime.on('PROJECT_LOADED', reset);
     runtime.on('PROJECT_STOP_ALL', suspend); runtime.on('RUNTIME_DISPOSED', suspend);
-    return {
+    const service={
         resourceManifest: RESOURCE_MANIFEST,
         constant(name) {
             live(); if (!['font5', 'font8', 'font12'].includes(name)) throw new Error('Unknown SDK Font constant');
@@ -116,5 +127,14 @@ function create(runtime, values, bufferOwner) {
             runtime.off('PROJECT_STOP_ALL', suspend); runtime.off('RUNTIME_DISPOSED', suspend);
         }
     };
+    service.heapHooks={
+        definition:name=>name===FONT_RECORD_NAME?DEFINITION:null,
+        external:ref=>service.owns(ref),
+        externalClass(ref){resolve(ref);return FONT_RECORD_NAME;},
+        get:(ref,field)=>service.read(ref,field),
+        set:()=>service.write(),
+        reserve(){throw new Error('SDK Font is an interface record and cannot be constructed or inherited');}
+    };
+    return service;
 }
-module.exports = {create, RESOURCE_MANIFEST};
+module.exports = {create, RESOURCE_MANIFEST, FIELD_SPECIFICATIONS, FONT_RECORD_NAME};
