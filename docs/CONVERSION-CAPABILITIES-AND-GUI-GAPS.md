@@ -1,5 +1,20 @@
 # Conversion capabilities and GUI closure ledger
 
+## Source type and named array item authoring — 2026-10-14
+
+The [source type contract](compatibility/arcade-source-typeof-values.md) now has
+bounded native, edited-input, Code, saved-project, original export and reimport
+qualification. Named array reads preserve authored strings without surrounding
+JSON quotes; JSON aggregate serialization and actual Array aliases remain separate.
+No whole-game or raw-corpus promotion follows from these focused results.
+
+| Surface | Available | Remaining acceptance |
+| --- | --- | --- |
+| Blocks | Connected String reporter and actual editable value input | Visible palette discovery, primitive and owned-reference edits, refusal text at the affected block, save/reopen/export through real controls |
+| Code | `arcade source type of` and actual MakeCode `typeof` lowering/export | Completion and help explaining admitted owners; unsupported Sprite/callable diagnostics must remain explicit |
+| Inspector | Proven String/Number/Boolean/null/undefined and Array distinctions | Readable aggregate text and Array identity without interpreting JSON-looking strings or displaying internal carriers as source objects |
+| Graphics | Owned Image type query retains reference identity | Query an edited image through the visible graphics-to-Blocks/Code handoff and replay it after save/export/reimport |
+
 ## BaseDialog subclass authoring checkpoint — 2026-10-14
 
 The [bounded subclass contract](ARCADE-BASE-DIALOG-SUBCLASSES.md) adds real

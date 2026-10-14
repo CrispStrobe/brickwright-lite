@@ -102,9 +102,10 @@ kept and must not be promoted by a permissive parser.
 Typed array lookup preserves receiver type and identity, with an argument-only
 search view and proper receiver/argument sequencing. See
 [the query contract](ARCADE-ARRAY-SEARCH-EXPORT.md). Arrays named-item correction
-is qualified independently of the held callable prototype. Source `typeof`
-implementation and Sprite provenance remain open despite merged ownership
-[claim 913](https://github.com/CrispStrobe/brickwright-lite/pull/913).
+is qualified independently of the held callable prototype. The bounded source
+`typeof` routes are qualified above under merged ownership
+[claim 913](https://github.com/CrispStrobe/brickwright-lite/pull/913); Sprite
+provenance and the reporter's visible editor journey remain open.
 
 Two genuine controller-repeat original controls now observe each press/release
 callback before sending the next input edge. The failed timed input schedule
