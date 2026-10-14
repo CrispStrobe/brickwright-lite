@@ -66,7 +66,7 @@ export function lowerPxtStagedValues(program) {
     };
     function expression(node) {
         if(!node)return {prefix:[],value:node};
-        if(node.type==='FunctionExpression')return {prefix:[],value:{...node,body:body(node.body)}};
+        if(node.type==='FunctionExpression')return {prefix:[],value:{...node,body:body(node.body),...(node.originalBody?{originalBody:body(node.originalBody)}:{})}};
         if(node.type==='Update' && ['Identifier','Member','Index'].includes(node.argument?.type)) {
             changed=true;
             const target=lvalue(node.argument,true),prefix=[...target.prefix];
@@ -128,9 +128,9 @@ export function lowerPxtStagedValues(program) {
         return {prefix:[],value:node};
     }
     function statement(st) {
-        if(st.type==='Class')return [{...st,fields:st.fields.map(field=>{if(!field.init)return field;const result=expression(field.init);return {...field,pxtStagingPrefix:result.prefix,pxtStagedInit:result.value};}),ctor:st.ctor?{...st.ctor,body:body(st.ctor.body),...(st.ctor.originalBody?{originalBody:body(st.ctor.originalBody)}:{})}:null,methods:st.methods.map(method=>({...method,body:body(method.body)}))}];
-        if(st.type==='FunctionDeclaration')return [{...st,body:body(st.body)}];
-        if(st.type==='Block' || st.type==='Namespace')return [{...st,body:body(st.body)}];
+        if(st.type==='Class')return [{...st,fields:st.fields.map(field=>{if(!field.init)return field;const result=expression(field.init);return {...field,pxtStagingPrefix:result.prefix,pxtStagedInit:result.value};}),ctor:st.ctor?{...st.ctor,body:body(st.ctor.body),...(st.ctor.originalBody?{originalBody:body(st.ctor.originalBody)}:{})}:null,methods:st.methods.map(method=>({...method,body:body(method.body),...(method.originalBody?{originalBody:body(method.originalBody)}:{})}))}];
+        if(st.type==='FunctionDeclaration')return [{...st,body:body(st.body),...(st.originalBody?{originalBody:body(st.originalBody)}:{})}];
+        if(st.type==='Block' || st.type==='Namespace')return [{...st,body:body(st.body),...(st.originalBody?{originalBody:body(st.originalBody)}:{})}];
         if(st.type==='Declaration')return st.decls.flatMap(decl=>{
             const result=expression(decl.init);return [...result.prefix,{...st,decls:[{...decl,init:result.value}]}];
         });

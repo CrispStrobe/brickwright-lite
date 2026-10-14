@@ -1,3 +1,4 @@
+import {scalarExportFlow} from './scalar-export-flow.js';
 import {sourceScalarProject} from './source-scalar-project.js';
 import {prepareObjectClassExport} from './object-class-export.js';
 import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
@@ -3243,6 +3244,19 @@ class ArcadeEmitter {
         try {this.sourceScalarCells=sourceScalarProject(this.project);} catch(error) {this.note(error.message);}
         this.objectClassExport=prepareObjectClassExport(this);
         const imageParameterTypes = this.imageProcedureParameters();
+        const scalarFlow=scalarExportFlow(this.project,block=>this.isBoolean(block),this.sourceScalarCells);
+        for(const [key,parameters] of scalarFlow.definitions) {
+            const old=imageParameterTypes.get(key)||[];
+            imageParameterTypes.set(key,parameters.map((name,index)=>scalarFlow.primitive(`${key}:local:${name}`)?scalarFlow.type(`${key}:local:${name}`):old[index]||'any'));
+            if(scalarFlow.primitive(`${key}:result`))this.valueReturnTypes.set(key,scalarFlow.type(`${key}:result`));
+        }
+        for(const key of scalarFlow.types.keys()) {
+            if(typeof key!=='string' || !key.includes(':local:') || !scalarFlow.primitive(key))continue;
+            const at=key.lastIndexOf(':local:'),owner=key.slice(0,at),name=ident(key.slice(at+7));
+            if(!this.localValueTypes.has(owner))this.localValueTypes.set(owner,new Map());
+            this.localValueTypes.get(owner).set(name,scalarFlow.type(key));
+        }
+
         for (const cell of this.sourceScalarCells.values()) {
             const {id,type}=cell;cell.ts=this.varName(cell.target,cell.name);
             this.mixedValueVariableIds.delete(id);

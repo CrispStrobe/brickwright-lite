@@ -5,7 +5,8 @@ import {lowerLazyValues} from '../overlay/scratch-gui/src/lib/bw-makecode/lower-
 import {lowerPxtStagedValues} from '../overlay/scratch-gui/src/lib/bw-makecode/lower-pxt-staged-values.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
-import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
+import {stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
+import {runArcadeSourceCode as runProgram} from './helpers/arcade-source-program.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 
 const ast = source => parseMakeCodeTs(source,{parameterDefaults:true,retainParentheses:true,retainClassHeritage:true});
@@ -77,4 +78,19 @@ test('selected PXT staging survives actual native, Code, fresh SB3, export and r
         const back=arcadeToPseudocode(exported.files);assert.deepEqual(back.unsupported,[]);
         const reimport=await runProgram(back.code,{frames:12,storage:true});runs.push(reimport);check(reimport);
     }finally{for(const run of runs)run.vm.quit();clearStrayTimers();}
+});
+
+test('selected staging preserves callable and generic metadata with independently retained original bodies',()=>{
+    const input=ast('let callback=function(value:number){return pair(first(),flag?second():third())}');
+    const fn=input.body[0].decls[0].init;
+    fn.functionKind='ordinary';fn.typeParameters=['T'];fn.parameterDefaults={value:{type:'Number',value:'3'}};
+    fn.originalBody=structuredClone(fn.body);
+    const transformed=lowerPxtStagedValues(input).body[0].decls[0].init;
+    assert.equal(transformed.functionKind,'ordinary');
+    assert.deepEqual(transformed.typeParameters,['T']);
+    assert.deepEqual(transformed.parameterDefaults,fn.parameterDefaults);
+    assert.notEqual(transformed.originalBody,transformed.body);
+    assert.ok(transformed.originalBody.some(node=>node.type==='If'));
+    assert.ok(transformed.body.some(node=>node.type==='If'));
+    assert.equal(fn.body.length,1,'the original input tree remains untouched');
 });
