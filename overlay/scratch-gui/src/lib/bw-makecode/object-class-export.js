@@ -49,6 +49,7 @@ export function prepareObjectClassExport(emitter) {
 
     const callParameters=(target,value)=>{const names=[];let tail=value.inputs?.ARGS,current=child(target,value,'ARGS');const seen=new Set();while(current?.opcode==='arcade_functionArgument'){if(seen.has(current))return null;seen.add(current);const name=localName(target,child(target,current,'VALUE'));if(!name)return null;names.push(name);tail=current.inputs?.REST;current=child(target,current,'REST');}const slot=tail?.[1];return (Array.isArray(slot)?String(slot[1])==='[]':current?.shadow&&current.fields?.TEXT?.[0]==='[]')?names:null;};
     const addType=(cell,type)=>{if(type.endsWith('[]')){graph.add(cell,'array');addType(graph.element(cell),type.slice(0,-2));}else graph.add(cell,type);};
+    for(const cell of emitter.sourceReferenceCells?.values() || [])addType('var:'+cell.id,cell.type);
     for(const cls of classes.values()) {
         if(cls.intrinsic)continue;
         for(const base of ancestors(cls.name))for(const field of base.fields){addType(`field:${base.name}:${field.name}`,field.type);graph.merge(`field:${cls.name}:${field.name}`,`field:${base.name}:${field.name}`);}

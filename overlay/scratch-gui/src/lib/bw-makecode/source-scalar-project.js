@@ -20,9 +20,9 @@ export function sourceScalarProject(project) {
     for (const target of targets) for (const hat of Object.values(target.blocks || {})) {
         if (!hat.topLevel || hat.opcode !== 'arcade_whenSourceStarts') continue;
         let block = target.blocks[hat.next]; const visited = new Set();
-        while (block?.opcode === 'arcade_declareSourceScalar') {
+        while (['arcade_declareSourceScalar','arcade_declareSourceReference'].includes(block?.opcode)) {
             if (visited.has(block)) throw Error('Cyclic source scalar declaration sequence');
-            visited.add(block); resolve(target, block); block = target.blocks[block.next];
+            visited.add(block); if(block.opcode==='arcade_declareSourceScalar')resolve(target, block); block = target.blocks[block.next];
         }
     }
     for (const target of targets) for (const block of Object.values(target.blocks || {})) {

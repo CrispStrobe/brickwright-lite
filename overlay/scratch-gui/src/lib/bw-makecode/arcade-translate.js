@@ -1,3 +1,4 @@
+import {sourceReferenceDeclarations} from './source-reference-declarations.js';
 import {sourceScalarDeclarations} from './source-scalar-declarations.js';
 import {lowerObjectClasses} from './lower-object-classes.js';
 import {foldPxtNumeric,pxtFoldedNumberCode} from './pxt-numeric-fold.js';
@@ -296,6 +297,7 @@ class ArcadeTranslator extends BaseTranslator {
         if (node?.type !== 'Program') return;
         this.boundSourceGlobals=new Set(node.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls.map(decl=>decl.name)));
         this.sourceScalarTypes=new Map(sourceScalarDeclarations(node).map(({name,type})=>[name,type]));
+        this.sourceReferenceTypes=new Map((node.sourceReferenceDeclarations || sourceReferenceDeclarations(node)).map(({name,type})=>[name,type]));
         this.sourceFunctions=new Map(node.body.filter(fn=>fn.type==='FunctionDeclaration').map(fn=>[fn.name,fn]));
         const references = inferImageReferences(node, value => this.path(value), value => this.imageOf(value), value => !!this.assetKindLookup && value?.type === 'Template' && ['assets.image', 'assets.tile'].includes(value.tag));
         this.objectReferences = references.objects;
@@ -498,7 +500,7 @@ class ArcadeTranslator extends BaseTranslator {
     }
     arcadeStatement(st, indent, out) {
         if (st.type === 'Declaration') {
-            const declarations = st.decls.filter(declaration => declaration.init || !this.sourceScalarTypes?.has(declaration.name) ||
+            const declarations = st.decls.filter(declaration => declaration.init || (!this.sourceScalarTypes?.has(declaration.name) && !this.sourceReferenceTypes?.has(declaration.name)) ||
                 this.localVars?.has(declaration.name) || this.currentParameters?.has(declaration.name));
             if (!declarations.length) return;
             if (declarations.length !== st.decls.length) st = {...st, decls: declarations};
@@ -3811,7 +3813,7 @@ const translateCreationEvents = (ast, assets, assetKindLookup = null, scrollerVe
         names.push(template.name);
         out.push(`SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide', '');
     }
-    return {sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
+    return {sourceReferences:(ast.sourceReferenceDeclarations || sourceReferenceDeclarations(ast)).map(({name,type})=>({name:t.varName(name),type})),sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
         unsupported: [...new Set(t.unsupported)], costumes, sprites: names};
 };
 
@@ -4424,7 +4426,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         out.push(`SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide', '');
     }
     for (const name of imageTemplates) {spriteNames.push(name);out.push(`SPRITE ${name}:`, 'WHEN flag clicked:', '  hide', '');}
-    return {sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
+    return {sourceReferences:(ast.sourceReferenceDeclarations || sourceReferenceDeclarations(ast)).map(({name,type})=>({name:t.varName(name),type})),sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
         unsupported: [...new Set(t.unsupported)], costumes, sprites: spriteNames, artworkNames};
 };
 
@@ -4495,7 +4497,7 @@ const translateSideProjectiles = (ast, assets, assetKindLookup = null, scrollerV
     for (const template of templates.values()) {
         out.push('', `SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide');
     }
-    return {sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').trimEnd()}\n`, unsupported: [...new Set(t.unsupported)],
+    return {sourceReferences:(ast.sourceReferenceDeclarations || sourceReferenceDeclarations(ast)).map(({name,type})=>({name:t.varName(name),type})),sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').trimEnd()}\n`, unsupported: [...new Set(t.unsupported)],
         costumes, sprites: ['Game', ...[...templates.values()].map(template => template.name)]};
 };
 
@@ -4529,7 +4531,7 @@ const translateOverlapOnly = (ast, assets, assetKindLookup = null, scrollerVersi
         t.block(handler.body, 1, out);
         out.push('');
     }
-    return {sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').trimEnd()}\n`, unsupported: [...new Set(t.unsupported)],
+    return {sourceReferences:(ast.sourceReferenceDeclarations || sourceReferenceDeclarations(ast)).map(({name,type})=>({name:t.varName(name),type})),sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').trimEnd()}\n`, unsupported: [...new Set(t.unsupported)],
         costumes: [], sprites: ['Game']};
 };
 
@@ -4803,6 +4805,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         const globalNames = new Set([...code.matchAll(/^GLOBAL (.+)$/gm)].map(match=>match[1]));
         const sourceDeclarations = (result.sourceScalars || []).filter(({name})=>globalNames.has(name))
             .map(({name,type})=>`  declare arcade source scalar ${name} as ${type}`);
+        sourceDeclarations.push(...(result.sourceReferences || []).filter(({name})=>globalNames.has(name)).map(({name,type})=>`  declare arcade source reference ${name} as ${JSON.stringify(type)}`));
         if (sourceDeclarations.length) {
             if (!/^WHEN arcade source starts:$/m.test(code)) code += '\nSPRITE Game:\nWHEN arcade source starts:\n';
             code = code.replace(/^WHEN arcade source starts:$/m, header=>header+'\n'+sourceDeclarations.join('\n'));
@@ -4833,6 +4836,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const stagedSource = lowerPxtStagedValues(namespaceBindings.program || parsed, {
         isStaticResource: node => !!decodeTilemap(node,tileImageOf,tileImagePath)
     });
+    stagedSource.sourceReferenceDeclarations = sourceReferenceDeclarations(stagedSource);
     const objectClasses = lowerObjectClasses(stagedSource);
     projectInputDiagnostics.push(...objectClasses.unsupported);
     const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:sceneRegistrationSpec});
@@ -5516,7 +5520,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     }
 
     return withAnimationDiagnostics({
-        sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),
+        sourceReferences:(ast.sourceReferenceDeclarations || sourceReferenceDeclarations(ast)).map(({name,type})=>({name:t.varName(name),type})),sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),
         code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
         unsupported: [...new Set(t.unsupported)],
         costumes,

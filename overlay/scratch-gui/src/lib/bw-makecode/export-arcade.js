@@ -1,3 +1,4 @@
+import {sourceReferenceProject} from './source-reference-project.js';
 import {scalarExportFlow} from './scalar-export-flow.js';
 import {sourceScalarProject} from './source-scalar-project.js';
 import {prepareObjectClassExport} from './object-class-export.js';
@@ -122,8 +123,8 @@ class ArcadeEmitter {
         this.project = project;
         this.opts = opts;
         this.unsupported = [];
-        this.sourceScalarCells=new Map();this.validScalarPrelude=true;
-        try {this.sourceScalarCells=sourceScalarProject(this.project);} catch(error) {this.validScalarPrelude=false;this.note(error.message);}
+        this.sourceScalarCells=new Map();this.sourceReferenceCells=new Map();this.validScalarPrelude=true;
+        try {this.sourceScalarCells=sourceScalarProject(this.project);this.sourceReferenceCells=sourceReferenceProject(this.project);for(const id of this.sourceReferenceCells.keys())if(this.sourceScalarCells.has(id))throw Error('Duplicate source scalar/reference declaration');} catch(error) {this.validScalarPrelude=false;this.note(error.message);}
         this.requiresAnimationPackage = false;
         this.requiresSevensegPackage = false;
         this.requiresTextSpritePackage = false;
@@ -136,7 +137,7 @@ class ArcadeEmitter {
         for(const {target,block} of selectors) {
             const version=directMenuValue(block,'VERSION',target.blocks);
             let parent=target.blocks[block.parent];
-            while(parent && (['looks_hide','arcade_setPalette','arcade_setCharacterAnimationVersion'].includes(parent.opcode) || this.validScalarPrelude && parent.opcode==='arcade_declareSourceScalar'))parent=target.blocks[parent.parent];
+            while(parent && (['looks_hide','arcade_setPalette','arcade_setCharacterAnimationVersion'].includes(parent.opcode) || this.validScalarPrelude && ['arcade_declareSourceScalar','arcade_declareSourceReference'].includes(parent.opcode)))parent=target.blocks[parent.parent];
             if(!['v0.1.2',LEGACY_SCROLLER_REVISION].includes(version) || !['event_whenflagclicked', 'arcade_whenSourceStarts'].includes(parent?.opcode))this.note('Arcade background scroll version must be a fixed selection at the start of a green-flag script');
             else this.scrollerVersion=version;
         }
@@ -146,7 +147,7 @@ class ArcadeEmitter {
         for(const {target,block} of characterSelectors) {
             const version=directMenuValue(block,'VERSION',target.blocks);
             let parent=target.blocks[block.parent];
-            while(parent && (['looks_hide','arcade_setPalette','arcade_setBackgroundScrollVersion'].includes(parent.opcode) || this.validScalarPrelude && parent.opcode==='arcade_declareSourceScalar'))parent=target.blocks[parent.parent];
+            while(parent && (['looks_hide','arcade_setPalette','arcade_setBackgroundScrollVersion'].includes(parent.opcode) || this.validScalarPrelude && ['arcade_declareSourceScalar','arcade_declareSourceReference'].includes(parent.opcode)))parent=target.blocks[parent.parent];
             if(!['v0.1.0',LEGACY_CHARACTER_REVISION].includes(version) || !['event_whenflagclicked', 'arcade_whenSourceStarts'].includes(parent?.opcode))this.note('Arcade character animation version must be a fixed selection at the start of a green-flag script');
             else this.characterVersion=version;
         }
@@ -1719,7 +1720,7 @@ class ArcadeEmitter {
         case 'arcade_setscore':push(`info.setScore(${v('N')})`);return;
         case 'arcade_changescore':push(`info.changeScoreBy(${v('N')})`);return;
         case 'arcade_declareClass':case 'arcade_declareSubclass':return;
-        case 'arcade_declareSourceScalar':return;
+        case 'arcade_declareSourceScalar':case 'arcade_declareSourceReference':return;
         case 'arcade_setObjectField':if(this.currentClassConstructor&&this.objectClassExport?.parameterPropertyBlocks.has(b))return;push(`;${this.objectClassExport.receiver(b,true)}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`);return;
         case 'data_setvariableto': {
             const scratchName = this.field(b, 'VARIABLE');
@@ -3253,6 +3254,7 @@ class ArcadeEmitter {
             }
         }
 
+        for(const cell of this.sourceReferenceCells.values())cell.ts=this.varName(cell.target,cell.name);
         this.objectClassExport=prepareObjectClassExport(this);
         const imageParameterTypes = this.imageProcedureParameters();
         const scalarFlow=scalarExportFlow(this.project,block=>this.isBoolean(block),this.sourceScalarCells);
@@ -3466,6 +3468,8 @@ class ArcadeEmitter {
         }
         out.push(...objectClasses);
         for (const n of decls) {
+            const referenceCell=[...this.sourceReferenceCells.values()].find(cell=>cell.ts===n);
+            if(referenceCell){out.push(`let ${n}: ${referenceCell.type}`);continue;}
             const sourceCell=[...this.sourceScalarCells.values()].find(cell=>cell.ts===n);
             if (sourceCell) {out.push(`let ${n}: ${sourceCell.type.toLowerCase()}`);continue;}
             const objectType=this.objectClassExport?.variableTypes.get(n);

@@ -29,7 +29,10 @@ export function sourceScalarDeclarations(program) {
     const functionScopes = new Map([...functions].map(([name, fn]) => [name, {key: `function:${name}`, locals: localNames(fn.body,new Set(fn.params || []))}]));
     for (const [name, fn] of functions) {
         const scope = functionScopes.get(name);
-        for (const parameter of fn.params || []) add(`${scope.key}:${parameter}`, {number:'Number',boolean:'Boolean',string:'String',any:'Unknown'}[fn.paramTypes?.[parameter]?.text]);
+        for (const parameter of fn.params || []) {
+            const annotation=fn.paramTypes?.[parameter]?.text;
+            if(annotation)add(`${scope.key}:${parameter}`, {number:'Number',boolean:'Boolean',string:'String'}[annotation] || 'Unknown');
+        }
     }
 
     const visit = (node, scope) => {
@@ -43,6 +46,7 @@ export function sourceScalarDeclarations(program) {
         if (node.type === 'Declaration') {
             for (const declaration of node.decls) {
                 if (scope.key !== 'main') scope.locals.add(declaration.name);
+                if(declaration.typeName && !['number','boolean','string'].includes(declaration.typeName))add(bind(scope,declaration.name),'Unknown');
                 edge(visit(declaration.init, scope), bind(scope, declaration.name));
             }
         } else if (node.type === 'Assignment' && node.left?.type === 'Identifier') {
@@ -79,7 +83,7 @@ export function sourceScalarDeclarations(program) {
             visit(node.test, scope); edge(visit(node.consequent, scope), cell); edge(visit(node.alternate, scope), cell);
         } else if (node.type === 'Unary') {
             visit(node.argument, scope); add(cell, node.op === '!' ? 'Boolean' : node.op === 'typeof' ? 'String' : 'Number');
-        } else if (node.type === 'Array' || node.type === 'Member' || node.type === 'Index') {
+        } else if (node.type === 'Array' || node.type === 'Member' || node.type === 'Index' || node.type === 'Template') {
             add(cell, 'Unknown');
         } else {
             for (const value of Object.values(node)) if (value && typeof value === 'object') visit(value, scope);

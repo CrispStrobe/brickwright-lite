@@ -253,22 +253,24 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
             if (symbol && ['namespace', 'enum'].includes(symbol.kind)) fail(`${symbol.kind} ${symbol.scope.path.join('.')} used as a runtime object`);
         }
         if(spriteKinds && node.type==='ExpressionStatement' && node.expr?.type==='Call' && node.expr.callee?.type==='Member' && node.expr.callee.object?.name==='SpriteKind' && node.expr.callee.name==='create')return {type:'Declaration',kind:'let',decls:[{name:fresh(['SpriteKind','discard']),typeName:'number',init:rewrite(node.expr,scope,shadows)}]};
-        if(node.type==='Class'){
-            const symbol=scope.symbols.get(node.name);
-            const classType=type=>{
+        const classType=(type,generics=new Set())=>{
                 const text=typeof type==='string'?type:type?.text;if(!text)return type;
                 const suffix=/((?:\[\])*)$/.exec(text)[1],name=text.slice(0,text.length-suffix.length);
                 if(!/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$/.test(name))return type;
+                if(generics.has(name))return type;
                 const ref=name.split('.').reduce((object,name)=>object?{type:'Member',object,name}:{type:'Identifier',name},null);
                 const target=access(ref,scope,shadows),resolved=target?.classNode?target.name+suffix:text;
                 return typeof type==='string'?resolved:{...type,text:resolved};
             };
+        if(node.type==='Class'){
+            const symbol=scope.symbols.get(node.name);
             const member=fn=>fn?{...fn,paramTypes:Object.fromEntries(Object.entries(fn.paramTypes || {}).map(([name,type])=>[name,classType(type)])),returnType:classType(fn.returnType),body:rewriteBody(fn.body,scope,childShadows(shadows,[...(fn.params || []),...functionVars(fn.body)]))}:fn;
             return {...node,...(node.base?{base:classType(node.base)}:{}),name:namespaceBody?symbol?.name || node.name:node.name,fields:node.fields.map(field=>({...field,typeName:classType(field.typeName),init:rewrite(field.init,scope,shadows)})),ctor:member(node.ctor),methods:node.methods.map(member)};
         }
         if (node.type === 'FunctionDeclaration' || node.type === 'FunctionExpression') {
-            const local = childShadows(shadows, [...(node.params || []), ...functionVars(node.body)]);
-            return {...node, ...(node.type === 'FunctionDeclaration' && namespaceBody ? {name:scope.symbols.get(node.name)?.name || node.name} : {}), body: rewriteBody(node.body, scope, local)};
+            const generics = new Set((node.typeParameters || []).map(parameter=>parameter.name));
+            const local = childShadows(shadows, [...(node.params || []), ...functionVars(node.body), ...generics]);
+            return {...node, paramTypes:Object.fromEntries(Object.entries(node.paramTypes || {}).map(([name,type])=>[name,classType(type,generics)])), returnType:classType(node.returnType,generics), ...(node.type === 'FunctionDeclaration' && namespaceBody ? {name:scope.symbols.get(node.name)?.name || node.name} : {}), body: rewriteBody(node.body, scope, local)};
         }
         if (node.type === 'Block') return {...node, body: rewriteBody(node.body, scope, shadows)};
         if (node.type === 'If') return {...node, test: rewrite(node.test, scope, shadows), consequent:rewriteBody(node.consequent, scope, shadows), alternate:rewriteBody(node.alternate || [], scope, shadows)};
@@ -277,7 +279,7 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
             return {...node, init: rewrite(node.init, scope, loop), test:rewrite(node.test, scope, loop), update:rewrite(node.update, scope, loop), body:rewriteBody(node.body, scope, loop)};
         }
         if (node.type === 'While') return {...node, test:rewrite(node.test, scope, shadows), body:rewriteBody(node.body, scope, shadows)};
-        if (node.type === 'Declaration') return {...node, decls:node.decls.map(decl => {const symbol=namespaceBody && scope.symbols.get(decl.name);return {...decl, ...(symbol ? {assetPath:symbol.sourcePath} : {}), ...(symbol?.spriteKind ? {typeName:'number',spriteKindName:decl.name,...(textSpriteInitializer && symbol.sourcePath==='SpriteKind.Text' ? {spriteKindLibrary:{library:'textsprite',version:'v1.3.0'}} : {})} : {}), name:symbol?.name || decl.name, init:rewrite(decl.init, scope, shadows)};})};
+        if (node.type === 'Declaration') return {...node, decls:node.decls.map(decl => {const symbol=namespaceBody && scope.symbols.get(decl.name);return {...decl, typeName:classType(decl.typeName), ...(symbol ? {assetPath:symbol.sourcePath} : {}), ...(symbol?.spriteKind ? {typeName:'number',spriteKindName:decl.name,...(textSpriteInitializer && symbol.sourcePath==='SpriteKind.Text' ? {spriteKindLibrary:{library:'textsprite',version:'v1.3.0'}} : {})} : {}), name:symbol?.name || decl.name, init:rewrite(decl.init, scope, shadows)};})};
         if (node.type === 'Assignment' || node.type === 'Update') {
             const target = node.type === 'Assignment' ? node.left : node.argument;
             const symbol=access(target,scope,shadows);

@@ -99,15 +99,15 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the Arcade word table (379 opcodes)', () => {
-    assert.equal(ARCADE_DIALECT_OPS.length, 379);
+test('the pinned parser has the Arcade word table (380 opcodes)', () => {
+    assert.equal(ARCADE_DIALECT_OPS.length, 380);
     for (const opcode of ['arcade_declareClass', 'arcade_declareSubclass', 'arcade_createObject',
         'arcade_objectField', 'arcade_setObjectField', 'arcade_callObjectMethod', 'arcade_whenSourceStarts', 'arcade_sourceWhile', 'arcade_setHudVisibility', 'arcade_cameraDrawOffset', 'arcade_setPalette', 'arcade_registerInstanceDestroyedHandler',
         'arcade_whenRegisteredInstanceDestroyed', 'arcade_startParallelHandler',
         'arcade_whenParallelHandler', 'arcade_carnivalCountdown',
         'arcade_carnivalGameOver', 'arcade_carnivalCustomGameOver', 'arcade_songPlayable', 'arcade_spriteDataSet',
         'arcade_spriteDataRead', 'arcade_spriteDataReadBoolean', 'arcade_spriteDataChange', 'arcade_playerConnected',
-        'arcade_clampNumber','arcade_randomNumber','arcade_mathBinary','arcade_percentChance','arcade_sceneMillis','arcade_programMillis','arcade_setBackgroundScrollVersion','arcade_settingsWrite','arcade_settingsRead','arcade_settingsExists','arcade_settingsRemove','arcade_settingsClear']) assert.ok(ARCADE_DIALECT_OPS.includes(opcode), opcode);
+        'arcade_declareSourceReference','arcade_clampNumber','arcade_randomNumber','arcade_mathBinary','arcade_percentChance','arcade_sceneMillis','arcade_programMillis','arcade_setBackgroundScrollVersion','arcade_settingsWrite','arcade_settingsRead','arcade_settingsExists','arcade_settingsRemove','arcade_settingsClear']) assert.ok(ARCADE_DIALECT_OPS.includes(opcode), opcode);
 });
 
 test('every program the Arcade importer writes parses, with no unread line and no warning', () => {

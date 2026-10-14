@@ -43,3 +43,9 @@ Required controls include function-mediated forward reads, typed declarations wi
 Qualify through actual selected original execution and actual installed native VM, followed by Code, Blocks representation, fresh SB3, original export execution and reimport. Keep failures and unsupported domains. Dynamic callee staging remains the separate captured-callable lane; this claim does not admit it. No corpus promotion follows from these focused controls.
 
 The lane owns new source-reference type/inventory/prelude helpers and focused tests; narrow source initialization, declaration, converter/export and declaration field/menu hunks; the paired canonical producer grammar/word/tests and reviewed pin adoption; this contract and the lane ledger. Coordinate class graph/accessor/callable owners and the event-bus startup owner. Do not change their heap, callback, scheduler or allocation semantics.
+
+## Focused implementation boundary
+
+The declaration service validates interleaved scalar/reference prefixes before writing typed undefined to actual variable IDs. The importer keeps reference provenance separate from scalar inference, including literal images, explicit reference annotations and lexical class names. Mixed Boolean/reference values and unresolved or callable domains do not acquire scalar or reference declaration authority.
+
+The executable fixtures in `test/makecode-arcade-source-reference-roundtrip.test.mjs` cover ten bounded Sprite, Image, typed array and managed class programs, including early aliases, function returns, constructor/creation callbacks and never instantiated classes. They exercise native execution, editable Code, saved and fresh SB3, selected original export execution and reimport. Separate tests cover atomic refusal, rename and restart/project replacement. These controls do not qualify arbitrary inferred array argument/element flows, captured callables, dynamic callee staging, complete corpus games or installed GUI journeys.

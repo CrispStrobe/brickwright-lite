@@ -27,7 +27,7 @@ module.exports = makeExt(`// Name: Arcade
   class Arcade {
     constructor(runtime) {
       this._runtime = runtime;
-      this._sourceScalarCells = dependencies.createSourceScalarCells(runtime, Scratch.BWValues);
+      this._sourceScalarCells = dependencies.createSourceScalarCells(runtime, Scratch.BWValues, dependencies.sourceReferenceTypes);
       this._resetProgramClock();
       this._bufferSuspended = false;
       this._speechEngine = dependencies.createSpeechEngine(dependencies.initializeSpeech, dependencies.fonts,
@@ -199,6 +199,7 @@ module.exports = makeExt(`// Name: Arcade
         color3: '#C42870',
         blocks: [
           {opcode:'whenSourceStarts',blockType:Scratch.BlockType.HAT,text:'when Arcade source starts',isEdgeActivated:false},
+          {opcode:'declareSourceReference',blockType:Scratch.BlockType.COMMAND,text:'declare Arcade source reference [VARIABLE] as [TYPE]',arguments:{VARIABLE:{type:Scratch.ArgumentType.STRING},TYPE:{type:Scratch.ArgumentType.STRING,menu:'sourceReferenceTypes',defaultValue:'Sprite'}}},
           {opcode:'declareSourceScalar',blockType:Scratch.BlockType.COMMAND,text:'declare Arcade source scalar [VARIABLE] as [TYPE]',arguments:{VARIABLE:{type:Scratch.ArgumentType.STRING},TYPE:{type:Scratch.ArgumentType.STRING,menu:'sourceScalarTypes',defaultValue:'Any'}}},
           {opcode:'sourceWhile',blockType:Scratch.BlockType.LOOP,text:'Arcade repeat while [CONDITION]',arguments:{CONDITION:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'sceneMillis',blockType:Scratch.BlockType.REPORTER,text:'Arcade scene runtime milliseconds'},
@@ -838,6 +839,7 @@ module.exports = makeExt(`// Name: Arcade
             text: 'stop Arcade countdown' }
         ],
         menus: {
+          sourceReferenceTypes:{acceptReporters:false,items:'_sourceReferenceChoices'},
           sourceScalarTypes:{acceptReporters:false,items:['Number','Boolean','String','Any']},
           mathOperations:{acceptReporters:false,items:['min','max','randomRange']},
           hudElements:{acceptReporters:false,items:['score','life','countdown']},
@@ -1024,6 +1026,13 @@ module.exports = makeExt(`// Name: Arcade
     settingsRemove(args){return this._settingsGuard(()=>this._settingsStore().call('remove',Scratch.BWValues.decode(args.KEY)));}
     settingsClear(){return this._settingsGuard(()=>this._settingsStore().call('clear'));}
 
+    _sourceReferenceChoices() {
+      const names = ['Sprite','Image','number[]','boolean[]','string[]','Sprite[]','Image[]'];
+      const targets = this._runtime.targets.filter(target => target.isOriginal !== false);
+      for (const name of dependencies.sourceReferenceTypes.catalogue(targets).keys()) names.push(name, name + '[]');
+      return names;
+    }
+    declareSourceReference(args, util) {return this._sourceScalarCells.declareReference(args, util);}
     declareSourceScalar(args, util) {return this._sourceScalarCells.declare(args, util);}
 
     _initializeImplicitTextKinds() {
@@ -5628,6 +5637,7 @@ module.exports = makeExt(`// Name: Arcade
   sdkObjectClasses: require('./sdk-object-classes'),
   sceneFlags: require('./scene-flags'),
   createObjectHeap: require('./object-heap'),
+  sourceReferenceTypes: require('./source-reference-types'),
   createSourceScalarCells: require('./source-scalar-cells'),
   createSceneFrameContexts: require('./scene-frame-contexts'),
   createControlEvents: require('./control-events'),

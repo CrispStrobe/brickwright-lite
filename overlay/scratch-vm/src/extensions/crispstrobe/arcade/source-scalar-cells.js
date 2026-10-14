@@ -1,8 +1,10 @@
 // Source declarations bind stock variable objects, never their displayed values.
 const TYPES = new Set(['Number', 'Boolean', 'String', 'Any']);
 const OPCODE = 'arcade_declareSourceScalar';
+const REFERENCE = 'arcade_declareSourceReference';
 
-module.exports = function createSourceScalarCells(runtime, values) {
+module.exports = function createSourceScalarCells(runtime, values, referenceTypes = null) {
+    const declaration = block => block?.opcode===OPCODE || referenceTypes && block?.opcode===REFERENCE;
     let generation = 0;
     let active = false;
     const bindings = new Map();
@@ -16,7 +18,10 @@ module.exports = function createSourceScalarCells(runtime, values) {
         const id = reporter.fields?.VARIABLE?.id;
         const type = block.fields?.TYPE?.value;
         if (block.inputs?.TYPE) throw new Error('Source scalar type must be a direct field');
-        if (typeof id !== 'string' || !TYPES.has(type)) {
+        const reference = block.opcode===REFERENCE;
+        const typeInfo = reference ? referenceTypes.resolve(type,
+            ['Sprite','Image','number[]','boolean[]','string[]','Sprite[]','Image[]'].includes(type) ? new Map() : referenceTypes.catalogue(originals())) : null;
+        if (typeof id !== 'string' || !reference && !TYPES.has(type)) {
             throw new Error('Source scalar requires a variable ID and fixed supported type');
         }
         const variable = target.lookupVariableById(id);
@@ -25,7 +30,7 @@ module.exports = function createSourceScalarCells(runtime, values) {
         if (!owner || !variable || variable.type !== '' || (owner !== target && !owner.isStage)) {
             throw new Error('Source scalar variable is missing, foreign, or not a scalar');
         }
-        return {target, block, id, type, variable, owner};
+        return {target, block, id, type, typeInfo, reference, variable, owner};
     };
     const invalidate = () => {
         generation++;
@@ -40,7 +45,7 @@ module.exports = function createSourceScalarCells(runtime, values) {
                 if (hat.opcode !== 'arcade_whenSourceStarts' || !hat.topLevel) continue;
                 let block = target.blocks.getBlock(hat.next);
                 const visited = new Set();
-                while (block?.opcode === OPCODE) {
+                while (declaration(block)) {
                     if (visited.has(block)) throw new Error('Cyclic source scalar declaration sequence');
                     visited.add(block);
                     declarations.push(resolve(target, block));
@@ -52,7 +57,7 @@ module.exports = function createSourceScalarCells(runtime, values) {
         const variables = new Set();
         for (const target of originals()) {
             for (const block of Object.values(target.blocks._blocks)) {
-                if (block.opcode === OPCODE && !registered.has(block)) {
+                if (declaration(block) && !registered.has(block)) {
                     throw new Error('Source scalar declarations must precede source initializers');
                 }
             }
@@ -68,7 +73,7 @@ module.exports = function createSourceScalarCells(runtime, values) {
         }
         active = true;
     };
-    const declare = (_args, util) => {
+    const validateDeclaration = (_args, util) => {
         const target = util?.target;
         const block = target?.blocks.getBlock(util.thread.peekStack());
         const binding = block && bindings.get(key(target, block));
@@ -78,7 +83,8 @@ module.exports = function createSourceScalarCells(runtime, values) {
         }
         const current = resolve(target, block);
         if (current.variable !== binding.variable || current.owner !== binding.owner ||
-            current.id !== binding.id || current.type !== binding.type) {
+            current.id !== binding.id || current.type !== binding.type || current.reference!==binding.reference ||
+            binding.reference && !referenceTypes.same(current.typeInfo,binding.typeInfo)) {
             throw new Error('Source scalar declaration changed after prelude');
         }
         // Executing the portable command never resets an authored assignment.
@@ -87,9 +93,19 @@ module.exports = function createSourceScalarCells(runtime, values) {
         if (!active || !runtime.targets.includes(target)) return undefined;
         const variable = target.lookupVariableById(id);
         for (const binding of bindings.values()) {
-            if (binding.variable === variable) return binding.type;
+            if (binding.variable === variable && !binding.reference) return binding.type;
         }
         return undefined;
     };
-    return {initialize, invalidate, declare, typeOf, dispose: invalidate};
+    const declare = (args,util) => {
+        const block=util?.target?.blocks.getBlock(util.thread.peekStack());
+        if(block?.opcode!==OPCODE)throw Error('Source scalar declaration needs its current command');
+        return validateDeclaration(args,util);
+    };
+    const declareReference = (args,util) => {
+        const block=util?.target?.blocks.getBlock(util.thread.peekStack());
+        if(block?.opcode!==REFERENCE)throw Error('Source reference declaration needs its current command');
+        return validateDeclaration(args,util);
+    };
+    return {initialize, invalidate, declare, declareReference, typeOf, dispose: invalidate};
 };
