@@ -89,7 +89,7 @@ function census () {
 
 const {rows: ROWS, staleSeats: STALE_SEATS} = census();
 
-test('the census finds the gallery\'s seated MCUs, the A2 benches among them', () => {
+test('the census finds the gallery\'s seated MCUs, the A2 benches among them', t => {
     // 863 at sb3-creator c47b9680 (B17's measurement; 1036 files store a
     // seat, 173 of them on no board). A floor, so the gallery may grow but
     // the walk cannot silently find nothing.
@@ -97,7 +97,7 @@ test('the census finds the gallery\'s seated MCUs, the A2 benches among them', (
     // The skipped set, reported: MCUs whose stored seat names a board the file
     // does not carry (173 at B17). They are the flat twins, which carry no
     // breadboard; an authored bench losing its seat at load is a finding.
-    console.log(`seated MCU-surface parts after load: ${ROWS.length}; stored seats dropped at load: ${STALE_SEATS.length}`);
+    t.diagnostic(`seated MCU-surface parts after load: ${ROWS.length}; stored seats dropped at load: ${STALE_SEATS.length}`);
     assert.deepEqual(STALE_SEATS.filter(f => !/\/circuit-flat[.\w-]*\.json$/.test(f)), [],
         'only circuit-flat twins may store a seat that does not survive load');
     const a2 = ROWS.filter(r => /^(79|80|81|82)-/.test(r.file));
