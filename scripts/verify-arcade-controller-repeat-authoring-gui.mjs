@@ -151,7 +151,15 @@ const original = async (files, options, held) => {
     const source = files['main.ts'];
     const actualName = key => new RegExp(`\\b(?:let|var|const)\\s+((?:Game_)*${key})\\b`).exec(source)?.[1] || key;
     const actualSample = Object.fromEntries(Object.entries(sample).map(([key, value]) => [actualName(key), value]));
-    const result = await runPxtArcade(files, {buttonActions: {afterGlobals: {[actualName('ready')]: 1}, steps: held ? [{button:5,held:true,delay:400},{button:5,held:false,delay:80},{button:5,held:true,delay:120},{button:5,held:false,delay:80},{button:13,held:true,delay:400},{button:13,held:false,delay:80},{button:13,held:true,delay:120},{button:13,held:false,delay:80}] : []}, waitForGlobals: actualSample, inspectDisplay: true, waitForDisplay: true});
+    const sequence = (button, count, released) => [
+        {button, held: true, waitForGlobals: {[actualName(count)]: 2}},
+        {button, held: false, waitForGlobals: {[actualName(released)]: 1}},
+        {button, held: true, waitForGlobals: {[actualName(count)]: 4}},
+        {button, held: false, waitForGlobals: {[actualName(released)]: 2}}
+    ];
+    const result = await runPxtArcade(files, {buttonActions: {afterGlobals: {[actualName('ready')]: 1},
+        steps: held ? [...sequence(5, 'first', 'firstReleased'), ...sequence(13, 'second', 'secondReleased')] : []},
+        waitForGlobals: actualSample, inspectDisplay: true, waitForDisplay: true});
     const globals = Object.fromEntries(Object.entries(result).map(([key, value]) => [key.replace(/^(?:Game_)+/, ''), value]));
     for (const [key, value] of Object.entries(sample)) assert.equal(globals[key], value, `original ${key}`);
     report.original.push({sample, screenSha256: digest(Buffer.from(Uint32Array.from(result.$display.screen).buffer))}); return result.$display.screen;

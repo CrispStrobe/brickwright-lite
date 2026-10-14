@@ -29,9 +29,30 @@ export function observePxtDisplay(sim = globalThis.pxsim) {
     return observer;
 }
 
+// Serialized into the original simulator page; only read actual named globals.
+// An absent or ambiguous binding must not satisfy an undefined expectation.
+export function pxtActionGlobalsReady(expected, globals = globalThis.__bwPxtRuntime?.globals || {}) {
+    return Object.entries(expected).every(([name, value]) => {
+        const matches = Object.entries(globals).filter(([key]) => key.replace(/___\d+$/, '') === name);
+        return matches.length === 1 && matches[0][1] === value;
+    });
+}
+
+export function validatePxtActionGlobals(expected) {
+    if (!expected || typeof expected !== 'object' || Array.isArray(expected) || !Object.keys(expected).length ||
+        Object.entries(expected).some(([name, value]) => !name ||
+            !(value === null || ['number', 'string', 'boolean', 'undefined'].includes(typeof value)) ||
+            typeof value === 'number' && Number.isNaN(value))) {
+        throw new Error('Original PXT action wait requires nonempty named primitive globals');
+    }
+}
+
 export async function runPxtArcade(source, {waitForGlobals = null, dependencies = {device: '*'}, inspectDisplay = false, waitForDisplay = false, buttonActions = null, recordSound = false, recordSongSound = false, waitForMain = true, fakeClock = false, inspectImageGlobals = [], observeEntropy = false, onCompilation = null} = {}) {
     if (waitForDisplay && !inspectDisplay) throw new Error('Display readiness requires display inspection');
     if(onCompilation!==null && typeof onCompilation!=='function')throw new Error('Compilation observer must be a function');
+    for (const action of buttonActions?.steps || []) {
+        if (action.waitForGlobals !== undefined) validatePxtActionGlobals(action.waitForGlobals);
+    }
     const files=typeof source === 'string' ? {'main.ts':source,'pxt.json':JSON.stringify({name:'bw-arcade-oracle',dependencies,files:['main.ts']})} : {...source};
     const built=await compile('arcade',files);
     // Retain authority from the exact compilation used by this guest, including
@@ -118,7 +139,7 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
                     }
                 } else await page.waitForFunction(inputReady,buttonActions.afterGlobals,{timeout:20000});
             }
-            for(const action of buttonActions.steps){
+            for(const [index, action] of buttonActions.steps.entries()){
                 if(action.delay){if(fakeClock)await page.clock.runFor(action.delay);else await page.waitForTimeout(action.delay);}
                 // Genuine simulator system-keyboard DOM, not a replaced answer API.
                 if (action.text !== undefined) {
@@ -132,6 +153,31 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
                     if(typeof board.setButton!=='function')throw new Error('Original PXT board button input unavailable');
                     board.setButton(button,held);
                 },action);
+                // Observe after the genuine input edge. Existing delays remain
+                // before each action, and actions without this option are unchanged.
+                if (action.waitForGlobals !== undefined) {
+                    try {
+                        if (fakeClock) {
+                            let elapsed = 0;
+                            while (!await page.evaluate(pxtActionGlobalsReady, action.waitForGlobals)) {
+                                if (elapsed >= 20000 || errors.length) throw new Error('Original PXT action readiness unavailable');
+                                await page.clock.runFor(20); elapsed += 20;
+                            }
+                        } else await page.waitForFunction(pxtActionGlobalsReady, action.waitForGlobals, {timeout: 20000});
+                    } catch (error) {
+                        const state = await page.evaluate(expected => {
+                            const runtime = window.__bwPxtRuntime;
+                            return {dead: runtime?.dead, running: runtime?.running,
+                                globals: Object.fromEntries(Object.entries(runtime?.globals || {})
+                                    .filter(([key]) => Object.prototype.hasOwnProperty.call(expected, key.replace(/___\d+$/, '')))
+                                    .map(([key, value]) => [key, value === null ||
+                                        ['number', 'string', 'boolean', 'undefined'].includes(typeof value) ? value : {type: typeof value}]))};
+                        }, action.waitForGlobals);
+                        throw new Error('Original PXT input action did not reach observed globals: ' +
+                            JSON.stringify({index, button: action.button, held: action.held, key: action.key,
+                                expected: action.waitForGlobals, errors, messages, state}), {cause: error});
+                    }
+                }
             }
         }
         if(fakeClock){
