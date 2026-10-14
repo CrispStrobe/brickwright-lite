@@ -15,9 +15,9 @@ substitution, unknown-to-Any fallback or whole-project promotion.
 
 ## Arcade control event bus and multiplayer connections — 2026-10-14
 
-PROPOSED — Codex Arcade event integration, `lane/arcade-control-events-20261014`.
+CLAIMED — merged contract PR901; Codex Arcade event integration, `lane/arcade-control-events-20261014`.
 Contract: [control events and multiplayer connections](docs/ARCADE-CONTROL-EVENT-BUS.md).
-Documentation-only claim; merge before product edits. Envelope: new Arcade
+The documentation claim is merged. Envelope: new Arcade
 control-events helper; narrow native index event/context/controller lifecycle
 and metadata hunks; Arcade-only source/export cases; separately qualified own
 supplier authoring words and pin adoption; original/native/Code/Blocks/export/
