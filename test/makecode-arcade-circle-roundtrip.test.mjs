@@ -79,3 +79,44 @@ test('complete circle pixels and Image aliases survive Code, saved projects and 
         for (const run of runs) run.vm.quit();
     }
 });
+
+test('an edited standard radius input is what Code, saved projects and MakeCode export draw', async () => {
+    const imported = arcadeToPseudocode('let canvas=image.create(9,9);canvas.fill(3);canvas.drawCircle(4,4,2,7)');
+    assert.deepEqual(imported.unsupported, []);
+    const run = await runProgram(imported.code, {frames: 12, storage: true});
+    const extension = dispatch.services[run.vm.extensionManager._loadedExtensions.get('arcade')]?._inst;
+    assert.ok(extension && extension._runtime === run.vm.runtime);
+    const actual = () => {
+        const variable = run.vm.runtime.targets.flatMap(target => Object.values(target.variables))
+            .find(value => value.name === 'canvas');
+        const image = extension._image(variable.value);
+        return {width: image.width, height: image.height, pixels: [...image.pixels]};
+    };
+    try {
+        assert.deepEqual(actual(), expected.circle6, 'initial radius two');
+        const commands = run.creator.project.targets.flatMap(target => Object.values(target.blocks))
+            .filter(block => block.opcode === 'arcade_drawImageCircle');
+        assert.equal(commands.length, 1);
+        assert.equal(commands[0].fields.OP[0], 'drawCircle');
+        assert.ok(commands[0].inputs.RADIUS);
+        commands[0].inputs.RADIUS = [1, [4, '3']];
+        assert.match(run.creator.decompile(), /radius 3 color 7/);
+        const output = exportRun(run);
+        assert.deepEqual(output.unsupported, []);
+        assert.match(output.ts, /\.drawCircle\(4, 4, 3, 7\)/);
+        const saved = Buffer.from(await (await run.creator.generateSB3()).arrayBuffer());
+        await run.vm.loadProject(saved);run.vm.greenFlag();await stepFrames(run.vm, 12);
+        assert.deepEqual(actual(), expected.circle8, 'saved radius three matches the selected complete original pixels');
+        const returned = arcadeToPseudocode(output.ts);
+        assert.deepEqual(returned.unsupported, []);
+        const rerun = await runProgram(returned.code, {frames: 12, uploads: returned.costumes, storage: true});
+        try {
+            const native = dispatch.services[rerun.vm.extensionManager._loadedExtensions.get('arcade')]?._inst;
+            assert.ok(native && native._runtime === rerun.vm.runtime);
+            const variable = rerun.vm.runtime.targets.flatMap(target => Object.values(target.variables))
+                .find(value => value.name === 'canvas');
+            const image = native._image(variable.value);
+            assert.deepEqual({width: image.width, height: image.height, pixels: [...image.pixels]}, expected.circle8);
+        } finally { rerun.vm.quit(); }
+    } finally { run.vm.quit(); }
+});
