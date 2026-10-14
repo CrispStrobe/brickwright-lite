@@ -27,6 +27,16 @@ Git blob. The separate authentic-context audit remains 29 original-valid
 projects (19 structurally strict, ten blocked) and 12 original-invalid projects.
 Neither structural audit establishes runtime or GUI compatibility.
 
+Browser callback completion uses a separately authored, frame-observed profile:
+the yielding collision handler waits until its actor actually moves, then its
+inline successors must read that same position. It retains a bounded browser
+timeout and genuine controller input. The original fixed 70 ms source and its
+timed regression remain unchanged. A loaded browser need not service a positive
+scene frame during that wallclock interval; earlier cold-start failures remain
+recorded, and this browser-profile change is not a scheduler repair. The new
+profile has a native timed preflight; selected-original execution is a separate
+pending check.
+
 ### Integration refresh
 
 Integration source `33a469196cc648120d26c760796442bcfae036e3` adopts normally

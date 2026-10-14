@@ -5,11 +5,11 @@ import path from 'node:path';
 import {chromium} from 'playwright';
 import {makeCodeProjectFile} from '../overlay/scratch-gui/src/lib/bw-makecode/project-file.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-import {CALLBACK_COMPLETION_SOURCE} from '../test/fixtures/arcade-callback-completion.mjs';
+import {CALLBACK_COMPLETION_FRAME_SOURCE as CALLBACK_COMPLETION_SOURCE} from '../test/fixtures/arcade-callback-completion.mjs';
 const imported=arcadeToPseudocode(CALLBACK_COMPLETION_SOURCE);assert.deepEqual(imported.unsupported,[]);
 const out=process.env.BW_CALLBACK_REPORT || 'test-results/arcade-callback-completion-browser.json';
 await fs.mkdir(path.dirname(out),{recursive:true});
-const browser=await chromium.launch();const report={errors:[],samples:[]};let page;
+const browser=await chromium.launch();const report={profile:'authored-frame-observed-callback',source:CALLBACK_COMPLETION_SOURCE,errors:[],samples:[]};let page;
 try{
  page=await browser.newPage({viewport:{width:1600,height:1000}});
  page.on('pageerror',e=>report.errors.push(e.message));
