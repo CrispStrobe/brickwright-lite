@@ -56,6 +56,27 @@ focused native and selected-original evidence, recorded in the
 qualification is pending. These changes do not revise the immutable corpus's
 36 partial inputs or turn focused controls into a full-shard result.
 
+## Selected PXT expression-order controls
+
+Three historical lazy-value failures now have direct selected-original source
+comparisons. Each original keeps the exact test fixture prefix and appends only
+a final read of `rows[0][0]` into a scalar observation; actual compilation inputs
+and executables are retained privately. All nine SDK/bridge hashes are unchanged.
+
+| Source case | Measured original and native behavior |
+| --- | --- |
+| Nested lazy operands | Trace `214356978`, sum `3`, pair `7`, receiver/index calls `1/1`, final row `9` |
+| Lazy compound Array assignment | Receiver/index calls `1/2`, final row `107` |
+| Ordinary compound Array assignment | Receiver/index calls `1/2`, trace `1223`, result/other rows `12/30` |
+
+The earlier tests expected ordinary JavaScript sequencing, including one index
+read. The corrected expectations retain the measured PXT behavior. Three focused
+controls also pass native execution, Code reconstruction, saved-project reload,
+export construction and reimport. That check does not invoke the original
+compiler or execute newly exported originals; their hosted gate remains required.
+No staging/runtime implementation is patched from the old JavaScript expectations.
+The unchanged historical failure titles below preserve the original record.
+
 ## Method for closing each entry
 
 1. Read the named test and identify which route first fails: original source,
