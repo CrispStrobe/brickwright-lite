@@ -8,9 +8,11 @@
  *     several boards (exit 2, in words, before anything is compiled);
  *   - a missing engine is exit 3, by name, as for one board.
  *
- * The run itself (two machines, one air, the car's motor line following the
- * remote's button) needs a bw-board with the Calliope mini board and the
- * shared air; it is tested where that bw-board is pinned.
+ * And the run itself, end to end: two machines on one air, the car's motor
+ * line following the remote's button. It needs the LabWired engine (npm run
+ * sync:labwiredwasm) and MakeCode's compiler for both targets (npm run
+ * sync:makecode); CI's build job syncs both before its unit step. Without them
+ * it skips by name (an early return would pass).
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,6 +29,7 @@ const PAIR = path.join(ROOT, 'test/fixtures/multi-board/radio-pair.bw');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'bw-makecode-run-boards-'));
 const run = (args, env = {}) => spawnSync(process.execPath, ['--disable-warning=MODULE_TYPELESS_PACKAGE_JSON', CLI, ...args],
     {cwd: ROOT, encoding: 'utf8', timeout: 900000, env: {...process.env, ...env}});
+const engine = fs.existsSync(path.join(ROOT, 'packages/scratch-gui/static/labwired/labwired_wasm_bg.wasm'));
 const runtime = target => fs.existsSync(path.join(ROOT, 'packages/scratch-gui/static/makecode', target, 'pxtworker.js'));
 
 test.after(() => fs.rmSync(tmp, {recursive: true, force: true}));
@@ -70,6 +73,9 @@ test('the CLI refuses a press given to a one-board program, and outside run', ()
     const r = run(['run', one, '--press', 'Remote:A@1-2']);
     assert.equal(r.status, 2, r.stderr);
     assert.match(r.stderr, /--press is for a program with several boards/);
+    const v2 = run(['run', PAIR, '--board', 'v2']);
+    assert.equal(v2.status, 2, v2.stderr);
+    assert.match(v2.stderr, /--board is for a program with one board/);
     const e = run(['to-ts', PAIR, '--press', 'Remote:A@1-2']);
     assert.equal(e.status, 2, e.stderr);
     assert.match(e.stderr, /--press is for run/);
@@ -82,4 +88,28 @@ test('several boards without the engine is exit 3, by name',
         assert.equal(r.status, 3, r.stderr);
         assert.match(r.stderr, /Remote \(.*\) and Car \(Calliope mini\) on one simulated radio air/);
         assert.match(r.stderr, /LabWired engine is not synced/);
+    });
+
+test('the remote\'s button A drives the car\'s motor A line over the shared air, and only while it is held',
+    {skip: engine && runtime('microbit') && runtime('calliopemini') ? false :
+        'LabWired engine or MakeCode runtime not synced (npm run sync:labwiredwasm, npm run sync:makecode)', timeout: 900000}, () => {
+        const r = run(['run', PAIR, '--press', 'Remote:A@3-3.6', '--seconds', '4.5', '--json']);
+        assert.equal(r.status, 0, r.stderr);
+        // With --json the result is the last line the command prints.
+        const printed = r.stdout.trim().split('\n');
+        const out = JSON.parse(printed[printed.length - 1]);
+        // Everything but serial and the matrix frames, for a failure that can be read.
+        const seen = JSON.stringify({...out, boards: out.boards.map(({serial, frames, ...b}) => b)});
+        assert.equal(out.sharedAir, true, seen);
+        assert.deepEqual(out.boards.map(b => [b.name, b.model]), [['Remote', 'microbit-v1'], ['Car', 'calliope-mini-v1']], seen);
+        for (const b of out.boards) assert.equal(b.fault, null, seen);
+        const car = out.boards[1];
+        const motorA = car.lines.find(l => l.name === 'motor A (IN1)');
+        const motorB = car.lines.find(l => l.name === 'motor B (IN2)');
+        assert.ok(motorA && motorB, seen);
+        assert.ok(motorA.edges > 0, `the firmware switched IN1: ${seen}`);
+        assert.equal(motorA.active.length, 1, `one press, one interval of driving: ${seen}`);
+        assert.ok(motorA.active[0].from >= 3.0, `not before the press at 3.0 s: ${seen}`);
+        assert.ok(motorA.active[0].to <= 3.8, `still again soon after the release at 3.6 s: ${seen}`);
+        assert.equal(motorB.edges, 0, `button B was never pressed: ${seen}`);
     });

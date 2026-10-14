@@ -410,6 +410,8 @@ async function programFiles (a) {
  * machines whose radios share one simulated air (lib/makecode-run-boards.mjs).
  */
 async function runBoardsCommand (a, project) {
+    // --board picks the model for a one-board run; here every board has its own.
+    if (a.board) throw Object.assign(new Error('--board is for a program with one board; each board of this program runs on its own model'), {usage: true});
     const many = await import('./lib/makecode-run-boards.mjs');
     const {boardMakeCodeProjects} = await lib('bw-boards/makecode-boards.js');
     const {exportToMakeCode} = await lib('bw-makecode/index.js');
