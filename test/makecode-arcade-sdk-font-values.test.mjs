@@ -224,3 +224,14 @@ test('legitimate project load creates a new Font owner without reviving the disp
         assert.notEqual(current.bwReference.id,ref.bwReference.id,'new owner identity differs from closed old owner');
     }finally{runtime.emit('RUNTIME_DISPOSED');}
 });
+
+test('actual native setLocal changes the procedure formal Font value in stackFrame params',()=>{
+    const runtime=createArcadeRuntimeMock(),native=new(loadExtensionClass('arcade'))(runtime)._inst;
+    try{
+        const font=native.fontValue({FONT:'font8'}),params={f:font},util={thread:{stackFrames:[{params},{}]}};
+        assert.equal(native.getLocal({NAME:'f'},util),font);
+        native.setLocal({NAME:'f',VALUE:9},util);
+        assert.equal(params.f,9);assert.equal(native.getLocal({NAME:'f'},util),9);
+        native.setLocal({NAME:'f',VALUE:font},util);assert.equal(params.f,font);
+    }finally{runtime.emit('RUNTIME_DISPOSED');}
+});

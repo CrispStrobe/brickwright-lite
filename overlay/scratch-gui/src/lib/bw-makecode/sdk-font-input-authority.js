@@ -1,6 +1,7 @@
 // Current connected inputs and complete directed writers provide authority.
 // Saved values, type annotations and procedure/variable name spellings do not.
 export function sdkFontInputAuthority(project) {
+    const initialized=new WeakMap(),uninitialized=new WeakMap(),unknownLocalWriters=new Set();
     const types=new Map(),owners=new WeakMap(),definitions=new Map(),edges=[],rules=[],calls=[];
     const blocksOf=target=>target.blocks||{};
     const child=(target,block,name)=>typeof block.inputs?.[name]?.[1]==='string'?blocksOf(target)[block.inputs[name][1]]:null;
@@ -14,12 +15,14 @@ export function sdkFontInputAuthority(project) {
         if(!owner){const value=Symbol('unowned variable');add(value,'Opaque');return value;}
         const name=key(owner,'var:'+id);variables.set(name,owner);return name;
     };
-    const cell=(target,block)=>!block?'missing':block.opcode==='data_variable'?variable(target,block.fields.VARIABLE?.[1]):block.opcode==='arcade_getLocal'?`${owners.get(block)}:local:${literal(target,block,'NAME')}`:/^argument_reporter_/.test(block.opcode)?`${owners.get(block)}:param:${block.fields.VALUE?.[0]}`:block;
+    const cell=(target,block)=>!block?'missing':block.opcode==='data_variable'?variableRead(target,block,block.fields.VARIABLE?.[1]):block.opcode==='arcade_getLocal'?localCell(target,block):/^argument_reporter_/.test(block.opcode)?`${owners.get(block)}:param:${block.fields.VALUE?.[0]}`:block;
+    function variableRead(target,block,id){const result=variable(target,id);if(!owners.get(block)||!initialized.get(block)?.has('variable:'+String(result))){if(!uninitialized.has(block))uninitialized.set(block,new Map());const cache=uninitialized.get(block);if(!cache.has(id)){const opaque=Symbol('uninitialized variable read');cache.set(id,opaque);add(opaque,'Opaque');}return cache.get(id);}return result;}
+    function localCell(target,block){const owner=owners.get(block),name=literal(target,block,'NAME');if(!owner||typeof name!=='string'||!name||!initialized.get(block)?.has(name)){add(block,'Opaque');return block;}return `${owner}:local:${name}`;}
     const inputCells=new WeakMap();
     const input=(target,block,name)=>{
         const node=child(target,block,name);if(node)return cell(target,node);
         const slot=block.inputs?.[name]?.[1];
-        if(Array.isArray(slot)&&slot[0]===12)return variable(target,slot[2]);
+        if(Array.isArray(slot)&&slot[0]===12)return variableRead(target,block,slot[2]);
         if(!inputCells.has(block))inputCells.set(block,new Map());const cache=inputCells.get(block);if(cache.has(name))return cache.get(name);
         const value=Symbol(name);cache.set(name,value);add(value,Array.isArray(slot)?slot[0]===10?'String':[4,5,6,7,8].includes(slot[0])?'Number':'Opaque':'Opaque');return value;
     };
@@ -39,9 +42,24 @@ export function sdkFontInputAuthority(project) {
         const prototype=block.opcode==='procedures_definition'?child(target,block,'custom_block'):null;
         const owner=prototype?key(target,prototype.mutation?.proccode):key(target,'script:'+id);
         if(prototype){let names;try{names=JSON.parse(prototype.mutation.argumentnames||'[]');}catch{names=null;}
-            if(!Array.isArray(names)||new Set(names).size!==names.length||definitions.has(owner))definitions.set(owner,null);else definitions.set(owner,{target,block,names});}
+            if(!Array.isArray(names)||names.some(name=>typeof name!=='string'||!name)||new Set(names).size!==names.length||definitions.has(owner))definitions.set(owner,null);else definitions.set(owner,{target,block,names});}
         if(!walk(target,id,owner)&&prototype)add(`${owner}:result`,'Undefined');
     }
+    // A local read must have a real initial formal or a dominating command
+    // write. Branch-only and loop-only writes cannot initialize later reads.
+    function initialization(target,id,known,path=new Set()){
+        const block=blocksOf(target)[id];if(!block||path.has(id))return known;
+        path=new Set(path);path.add(id);initialized.set(block,new Set(known));
+        for(const [name,slot]of Object.entries(block.inputs||{}))if(!name.startsWith('SUBSTACK')&&typeof slot?.[1]==='string')initialization(target,slot[1],known,path);
+        if(block.opcode==='control_if_else'){
+            const left=initialization(target,block.inputs.SUBSTACK?.[1],new Set(known),path),right=initialization(target,block.inputs.SUBSTACK2?.[1],new Set(known),path);
+            known=new Set([...left].filter(name=>right.has(name)));
+        }else for(const [name,slot]of Object.entries(block.inputs||{}))if(name.startsWith('SUBSTACK')&&typeof slot?.[1]==='string')initialization(target,slot[1],new Set(known),path);
+        if(block.opcode==='data_setvariableto')known=new Set([...known,'variable:'+String(variable(target,block.fields.VARIABLE?.[1]))]);
+        if(block.opcode==='arcade_setLocal'){const name=literal(target,block,'NAME');if(name!==null)known=new Set([...known,name]);}
+        return block.next?initialization(target,block.next,known,path):known;
+    }
+    for(const target of project.targets)for(const[id,block]of Object.entries(blocksOf(target)))if(block.topLevel){const def=definitions.get(owners.get(block));initialization(target,id,new Set(def?.names||[]));}
     for(const target of project.targets)for(const block of Object.values(blocksOf(target))){
         const value=cell(target,block),owner=owners.get(block),op=block.opcode;
         if(op==='text'||op==='bw_stringLiteral')add(value,'String');
@@ -57,9 +75,9 @@ export function sdkFontInputAuthority(project) {
         else if(op==='arcade_objectField'){
             const name=literal(target,block,'FIELD');rules.push({value,inputs:[input(target,block,'OBJECT')],needs:['Font'],type:['charWidth','charHeight'].includes(name)?'Number':name==='data'?'GlyphBuffer':'Opaque'});
         }else if(op==='arcade_cloneImage')rules.push({value,inputs:[input(target,block,'IMAGE')],needs:['Image'],type:'Image'});
-        else if(op==='data_setvariableto')edge(input(target,block,'VALUE'),variable(target,block.fields.VARIABLE?.[1]));
+        else if(op==='data_setvariableto'){const destination=variable(target,block.fields.VARIABLE?.[1]);if(owner)edge(input(target,block,'VALUE'),destination);else add(destination,'Opaque');}
         else if(op==='data_changevariableby')add(variable(target,block.fields.VARIABLE?.[1]),'Opaque');
-        else if(op==='arcade_setLocal')edge(input(target,block,'VALUE'),`${owner}:local:${literal(target,block,'NAME')}`);
+        else if(op==='arcade_setLocal'){if(!owner){add(value,'Opaque');continue;}const name=literal(target,block,'NAME');if(typeof name!=='string'||!name){unknownLocalWriters.add(owner);add(value,'Opaque');continue;}edge(input(target,block,'VALUE'),`${owner}:local:${name}`);if(definitions.get(owner)?.names.includes(name))edge(input(target,block,'VALUE'),`${owner}:param:${name}`);}
         else if(op==='arcade_callFunction'){
             const code=literal(target,block,'NAME');let current=child(target,block,'ARGS'),args=[],seen=new Set(),valid=typeof code==='string',ended=false;
             while(current?.opcode==='arcade_functionArgument'){if(seen.has(current)){valid=false;break;}seen.add(current);args.push(input(target,current,'VALUE'));const rest=literal(target,current,'REST');if(rest==='[]'){current=null;ended=true;break;}current=child(target,current,'REST');}
@@ -67,6 +85,10 @@ export function sdkFontInputAuthority(project) {
             calls.push({value,owner,destination:code===null?null:key(target,code),args,valid});
         }else if(!['data_variable','arcade_getLocal','argument_reporter_string_number','arcade_returnValue'].includes(op))add(value,'Opaque');
     }
+    // Captured writes can escape their defining invocation. Until capture
+    // lineage is qualified for Font, they cannot supply a closed local proof.
+    const captureWrites=[];for(const target of project.targets)for(const block of Object.values(blocksOf(target)))if(block.opcode==='arcade_setCaptured')captureWrites.push(literal(target,block,'NAME'));
+    if(captureWrites.length||unknownLocalWriters.size)for(const target of project.targets)for(const block of Object.values(blocksOf(target))){const owner=owners.get(block);if(!owner)continue;const names=new Set(definitions.get(owner)?.names||[]);if(['arcade_getLocal','arcade_setLocal'].includes(block.opcode))names.add(literal(target,block,'NAME'));for(const name of names)if(unknownLocalWriters.has(owner)||captureWrites.some(write=>write===null||write===name)){add(`${owner}:local:${name}`,'Opaque');add(`${owner}:param:${name}`,'Opaque');}}
     const callEdges=new Map();for(const call of calls){if(!callEdges.has(call.owner))callEdges.set(call.owner,new Set());callEdges.get(call.owner).add(call.destination);}
     const cyclic=(owner,current=owner,seen=new Set())=>{if(seen.has(current))return false;seen.add(current);for(const next of callEdges.get(current)||[])if(next===owner||cyclic(owner,next,seen))return true;return false;};
     for(const call of calls){const def=definitions.get(call.destination);if(!call.valid||!def||cyclic(call.destination)){add(call.value,'Opaque');continue;}

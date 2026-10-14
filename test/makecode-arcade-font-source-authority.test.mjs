@@ -94,3 +94,80 @@ test('directed Font input proof follows actual writers and unique procedure retu
     target.blocks.return.inputs.VALUE=[1,'recursive'];target.blocks.recursive={opcode:'arcade_callFunction',parent:'return',inputs:{ARGS:[1,[10,'[]']]},fields:{NAME:['actualFont']}};
     assert.equal(sdkFontInputAuthority(project).accepts(target,target.blocks.print,'FONT','Font'),false,'recursive return authority is not guessed');
 });
+
+
+test('source Font print validates all actual Image and primitive producers',()=>{
+    for(const center of [false,true]){
+        const args=center?['"A"','0','3','f']:['"A"','0','0','3','f'];
+        const source=(values,receiver='pic')=>'let f=image.font8;let pic=image.create(8,8);'+receiver+'.'+(center?'printCenter':'print')+'('+values.join(',')+')';
+        assert.deepEqual(lower(source(args)).unsupported,[]);
+        for(let i=0;i<args.length;i++){const bad=[...args];bad[i]=i===0?'3':i===args.length-1?'"font8"':'"bad"';assert.ok(lower(source(bad)).unsupported.length,source(bad));}
+        assert.ok(lower(source(args,'f')).unsupported.some(message=>/Image producer/.test(message)));
+        const opaque=source(args)+';pic=unknown()';assert.ok(lower(opaque).unsupported.some(message=>/Image producer/.test(message)));
+    }
+    const valid=lower('function picture(){return image.create(8,8)}function text(){return "A"}let f=image.font8;let pic=picture();pic.print(text(),-1,2+3,17,f)');assert.deepEqual(valid.unsupported,[]);
+    const laundered=lower('let f=image.font8;let pic=image.create(8,8);pic=image.create("bad",8);pic.print("A",0,0,3,f)');assert.ok(laundered.unsupported.some(message=>/Image producer/.test(message)));
+});
+
+test('formal argument reporters share all actual setLocal writers with their procedure binding',()=>{
+    const target={isStage:true,variables:{},blocks:{
+        def:{opcode:'procedures_definition',topLevel:true,next:'write',inputs:{custom_block:[1,'proto']},fields:{}},
+        proto:{opcode:'procedures_prototype',parent:'def',inputs:{},fields:{},mutation:{proccode:'identity %s',argumentnames:'["f"]'}},
+        write:{opcode:'arcade_setLocal',parent:'def',next:'ret',inputs:{VALUE:[1,'number']},fields:{NAME:['f']}},
+        number:{opcode:'math_number',parent:'write',inputs:{},fields:{NUM:['9']}},
+        ret:{opcode:'arcade_returnValue',parent:'write',inputs:{VALUE:[1,'param']},fields:{}},
+        param:{opcode:'argument_reporter_string_number',parent:'ret',inputs:{},fields:{VALUE:['f']}},
+        hat:{opcode:'arcade_whenSourceStarts',topLevel:true,next:'print',inputs:{},fields:{}},
+        print:{opcode:'arcade_printImageFont',parent:'hat',inputs:{FONT:[1,'call']},fields:{}},
+        call:{opcode:'arcade_callFunction',parent:'print',inputs:{ARGS:[1,'args']},fields:{NAME:['identity %s']}},
+        args:{opcode:'arcade_functionArgument',parent:'call',inputs:{VALUE:[1,'font'],REST:[1,[10,'[]']]},fields:{}},
+        font:{opcode:'arcade_fontValue',parent:'args',inputs:{},fields:{FONT:['font8']}}
+    }},project={targets:[target]};
+    assert.equal(sdkFontInputAuthority(project).accepts(target,target.blocks.print,'FONT','Font'),false);
+    target.blocks.write.inputs.VALUE=[1,'replacement'];target.blocks.replacement={opcode:'arcade_fontValue',parent:'write',inputs:{},fields:{FONT:['font5']}};
+    assert.equal(sdkFontInputAuthority(project).accepts(target,target.blocks.print,'FONT','Font'),true);
+});
+
+test('Font local proof requires connected owners literal bindings and dominating first writes',()=>{
+    const build=()=>({isStage:true,variables:{f:['f',0]},blocks:{
+        hat:{opcode:'arcade_whenSourceStarts',topLevel:true,next:'write',inputs:{},fields:{}},
+        write:{opcode:'arcade_setLocal',parent:'hat',next:'use',inputs:{VALUE:[1,'font']},fields:{NAME:['f']}},
+        font:{opcode:'arcade_fontValue',parent:'write',inputs:{},fields:{FONT:['font8']}},
+        use:{opcode:'arcade_printImageFont',parent:'write',inputs:{FONT:[1,'read']},fields:{}},
+        read:{opcode:'arcade_getLocal',parent:'use',inputs:{},fields:{NAME:['f']}}
+    }});
+    const accepts=target=>sdkFontInputAuthority({targets:[target]}).accepts(target,target.blocks.use,'FONT','Font');
+    assert.equal(accepts(build()),true);
+    const early=build();early.blocks.hat.next='use';early.blocks.use.next='write';delete early.blocks.write.next;assert.equal(accepts(early),false);
+    const disconnected=build();delete disconnected.blocks.hat;assert.equal(accepts(disconnected),false);
+    const global=build();global.blocks.hat.next='use';global.blocks.write.opcode='data_setvariableto';global.blocks.write.fields={VARIABLE:['f','f']};delete global.blocks.write.next;global.blocks.read.opcode='data_variable';global.blocks.read.fields={VARIABLE:['f','f']};assert.equal(accepts(global),false);
+    const names=build();names.blocks.write.inputs.NAME=[1,'unknown'];names.blocks.read.inputs.NAME=[1,'other'];names.blocks.unknown={opcode:'sensing_username',inputs:{},fields:{}};names.blocks.other={opcode:'sensing_answer',inputs:{},fields:{}};assert.equal(accepts(names),false);
+    const capture=build();capture.blocks.use.next='capture';capture.blocks.capture={opcode:'arcade_setCaptured',parent:'use',inputs:{VALUE:[1,'number']},fields:{NAME:['f']}};capture.blocks.number={opcode:'math_number',parent:'capture',inputs:{},fields:{NUM:['9']}};assert.equal(accepts(capture),false);
+    const unknown=build();unknown.blocks.write.next='dynamic';unknown.blocks.dynamic={opcode:'arcade_setLocal',parent:'write',next:'use',inputs:{NAME:[1,'computed'],VALUE:[1,'number']},fields:{}};unknown.blocks.computed={opcode:'sensing_answer',parent:'dynamic',inputs:{},fields:{}};unknown.blocks.number={opcode:'math_number',parent:'dynamic',inputs:{},fields:{NUM:['9']}};assert.equal(accepts(unknown),false);
+});
+
+test('source Font reads cannot borrow later or branch-only initialization',()=>{
+    for(const source of [
+        'let font:image.Font;let width=font.charWidth;font=image.font8',
+        'function read(){let font:image.Font;let width=font.charWidth;font=image.font8;return width}let result=read()',
+        'let font:image.Font;let alias=font;font=image.font8;let width=alias.charWidth',
+        'let font:image.Font;if(true)font=image.font8;let width=font.charWidth',
+        'let font:image.Font;while(false){font=image.font8}let width=font.charWidth'
+    ])assert.ok(lower(source).unsupported.some(message=>/producer authority/.test(message)),source);
+    for(const source of [
+        'let font:image.Font;font=image.font8;let width=font.charWidth',
+        'function read(){let font:image.Font;font=image.font8;return font.charWidth}let result=read()',
+        'let font:image.Font;if(true)font=image.font5;else font=image.font8;let width=font.charWidth'
+    ])assert.deepEqual(lower(source).unsupported,[],source);
+});
+
+test('recursive source Font producers retain an explicit unproved-result boundary',()=>{
+    const result=lower('function font(flag:boolean):image.Font{if(flag)return image.font8;else return font(true)}let result=font(false);let width=result.charWidth');
+    assert.ok(result.unsupported.some(message=>/producer authority/.test(message)));assert.equal(fonts(result.program,'field').length,0);
+});
+
+test('compound and update writes retain actual binding authority after per-read initialization',()=>{
+    for(const operation of ['f+=1','f++','--f'])assert.ok(lower('let f=image.font8;'+operation+';let width=f.charWidth').unsupported.length,operation);
+    assert.deepEqual(lower('let f=image.font8;let pic=image.create(8,8);let x=0;x+=1;x++;pic.print("A",x,0,3,f)').unsupported,[]);
+    assert.ok(lower('let f=image.font8;let pic=image.create(8,8);let x=0;x+="bad";pic.print("A",x,0,3,f)').unsupported.some(message=>/Number producer/.test(message)));
+});
