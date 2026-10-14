@@ -81,8 +81,10 @@ Next ordered work:
    and one original matrix exist privately. Source audit proves the selected
    simulator uses the full Font12 resource; hardware subsets remain separate.
    [Supplier PR147](https://github.com/CrispStrobe/sb3-creator/pull/147) prepares
-   five ordinary connected Font words, with 448 affected controls passing;
-   exact-head browser qualification and normal consumer adoption remain pending.
+   five ordinary connected Font words, with 448 affected controls passing.
+   It is normally merged at `432f611897a16adc59568a0d949f2dbc9455b6db`:
+   all four enabled checks passed, the declared Pages job skipped, and reviewed,
+   predicted and landed trees match. Consumer adoption remains pending.
    Native preparation preserves lazy initialization, owner identity, aliased
    glyph storage and explicit mutation refusals. Complete source, Code, saved
    project and edited-export routes before widening the read slice.
