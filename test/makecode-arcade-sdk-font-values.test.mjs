@@ -98,3 +98,46 @@ test('actual managed heap field reads route to the current Font owner and refuse
         assert.throws(()=>heap.allocate('__bwSDK_Font'),/cannot be constructed or inherited/);
     }finally{f.fonts.dispose();heap.dispose();}
 });
+
+import {loadExtensionClass,VM_SRC} from './helpers/bw-extensions.mjs';
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
+test('native Font attachment routes fields and fences every public glyph Buffer writer',()=>{
+    const runtime=createArcadeRuntimeMock(),native=new(loadExtensionClass('arcade'))(runtime)._inst,errors=[];
+    runtime.on('BLOCKS_ERROR',error=>errors.push(String(error?.message || error)));
+    try{
+        const font=native.fontValue({FONT:'font8'}),data=native.objectField({OBJECT:font,FIELD:'data'});
+        assert.equal(native.objectField({OBJECT:font,FIELD:'charWidth'}),6);
+        assert.equal(native.bufferLength({BUFFER:data}),5272);
+        assert.equal(native.bufferIsReadOnly({BUFFER:data}),true);
+        const body=native._buffer(data),before=body.toHex(),source=native.createBuffer({SIZE:2});
+        const alias=native._bufferReference(new buffers.PxtBuffer(body.buffer,body.byteOffset+1,2));
+        const array=require(VM_SRC+'/util/bw-values.js').arrayReference(runtime,[1,2]);
+        const operations=[
+            ['bufferSetByte',{OFFSET:0,VALUE:99}],['bufferSetNumber',{FORMAT:'UInt8LE',OFFSET:0,VALUE:99}],
+            ['bufferWrite',{OFFSET:0,SOURCE:source}],['bufferFill',{VALUE:99,OFFSET:0,LENGTH:2}],
+            ['bufferShift',{AMOUNT:1,OFFSET:0,LENGTH:2}],['bufferRotate',{AMOUNT:1,OFFSET:0,LENGTH:2}],
+            ['bufferPackAt',{OFFSET:0,FORMAT:'BB',ARRAY:array}]
+        ];
+        for(const ref of [data,alias])for(const [method,args]of operations){
+            const count=errors.length;native[method]({...args,BUFFER:ref});
+            assert.equal(errors.length,count+1,method);assert.match(errors.at(-1),/glyph Buffer mutation is not qualified/);
+            assert.equal(body.toHex(),before,method);
+        }
+        const ordinary=native.createBuffer({SIZE:8}),count=errors.length;
+        for(const [method,args]of operations)native[method]({...args,BUFFER:ordinary});
+        assert.deepEqual(errors.slice(count),[],'ordinary allocated Buffer writers remain available');
+        native.setObjectField({OBJECT:font,FIELD:'charWidth',VALUE:9});
+        assert.match(errors.at(-1),/field mutation is not qualified/);
+        assert.equal(native.objectField({OBJECT:font,FIELD:'charWidth'}),6);
+        const otherRuntime=createArcadeRuntimeMock(),other=new(loadExtensionClass('arcade'))(otherRuntime)._inst;
+        try{assert.equal(values.decode(other.objectField({OBJECT:font,FIELD:'charWidth'})),undefined);}finally{otherRuntime.emit('RUNTIME_DISPOSED');}
+        runtime.emit('PROJECT_STOP_ALL');
+        assert.equal(values.decode(native.objectField({OBJECT:font,FIELD:'charWidth'})),undefined);
+        runtime.emit('PROJECT_START');
+        assert.equal(values.decode(native.objectField({OBJECT:font,FIELD:'charWidth'})),undefined);
+        const current=native.fontValue({FONT:'font8'});
+        assert.equal(native.objectField({OBJECT:current,FIELD:'charWidth'}),6);
+        runtime.emit('PROJECT_LOADED');
+        assert.equal(values.decode(native.objectField({OBJECT:current,FIELD:'charWidth'})),undefined);
+    }finally{runtime.emit('RUNTIME_DISPOSED');}
+});
