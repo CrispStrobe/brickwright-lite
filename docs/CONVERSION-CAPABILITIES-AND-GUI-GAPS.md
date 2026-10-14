@@ -46,11 +46,16 @@ original declarations without executing unused initializers.
 
 ## Newly exposed source value and invocation gaps — 2026-10-14
 
-- **Procedure commands:** a source function named `show` loses its invocations
-  to the built-in visibility command. [The explicit-call contract](https://github.com/CrispStrobe/brickwright-lite/pull/911)
-  retains actual Scratch procedure labels and argument types, adds unambiguous
-  Code spelling and requires native/Code/SB3/export/pixel checks. No implementation
-  or closure is claimed before the ownership claim and source qualification.
+- **Procedure commands:** explicit `CALL` fixes the `show` collision while
+  retaining actual Scratch labels, argument types and procedure ownership.
+  [The supplier implementation](https://github.com/CrispStrobe/sb3-creator/pull/138)
+  is merged; original/native/Code/same and fresh SB3/export/reimport effects and
+  all background pixels pass. Current-head hosted editing remains unqualified.
+- **Font metrics:** six fixed font/property combinations read live renderer
+  objects as Numbers, with field edits and all authoring routes qualified.
+  Opaque selectors reject without coercion. A hosted dropdown/Code/save/export
+  journey is wired but awaits official-artifact execution. Dynamic font-object
+  authoring, font writes and custom font graphics remain open.
 - **Arrays text items:** the supplier candidate returns text scalars without
   JSON quotation marks; native/Code/saved controls and original export pass.
   Reimport remains blocked because source `typeof` currently loses its operator.

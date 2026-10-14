@@ -12,7 +12,7 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ### Current immutable corpus audit
 
-The fresh raw audit at clean `971f041222d51211f701e9b6922a73b79733a9b7`
+The fresh raw audit at clean `aa65b75733eb8abd3f14a6601c4f1608f0c10c5c`
 reports **184 inputs: 143 translated, 40 partial, one parse failure**.
 Corpus commit is `c67f4854610ccc823682280b4d1fbdf737f4a585`; input content
 multiset SHA-256 is
@@ -25,9 +25,10 @@ The current change from clean `3867e7d84` is only Snake `28379fc078a029bc`: the
 lexically qualified `randint` Number result now retains primitive and scalar
 authority. Four strict provenance controls and three original/native/Code/SB3/
 export authoring cases pass. The unchanged Snake source has separately observed
-finite controller/state behavior, but its `show` procedure calls collide with
-a built-in Code command and its frame delta differs. Its rendering/game verdict
-remains partial despite the static diagnostic disappearing.
+finite controller/state behavior. Explicit `CALL` now retains its rendering
+procedure invocations and its screen contains drawn pixels. Its frame delta
+still differs (`0.06` native versus `0.04` original at the retained observation),
+and random food positions differ. Its whole-game verdict remains partial.
 **No whole corpus game is GUI-qualified.** Clean `3867e7d84` was 142/41/1. The earlier clean `22ccdcd6`
 audit was 140/43/1 with identical inputs. Only two creation-handler projects
 changed from partial to translated: `a5ad2a27e66886ae` and `d5bdcef480c08ffb`.
@@ -71,6 +72,35 @@ These counts differ from the repaired 37-context profile and the bare 184-input
 audit; do not mix their denominators. An incomplete interactive fragment still
 lacks its actor initialization, even though it structurally translates. No
 whole-game or GUI qualification follows from these structural counts.
+
+### Live font metrics and explicit procedure calls
+
+Supplier [font PR139](https://github.com/CrispStrobe/sb3-creator/pull/139) and
+[procedure PR138](https://github.com/CrispStrobe/sb3-creator/pull/138) are normally
+merged. Each passed all four enabled checks; only Pages publication skipped.
+Predicted and landed merge trees matched. Qualified canonical source is
+`3ee41478409b958e218735ce67fab5f866d80231`: 381 distinct Arcade operations.
+
+Six direct `image.font5/font8/font12.charWidth/charHeight` reads use the live
+renderer objects with Number provenance. Scene lifetime, restart, field edits,
+Code, saved projects, original export and reimport are covered. Raw selectors
+reject objects without invoking `toString`. Font writes, dynamic selectors and
+broader font-object authoring remain diagnosed. The hosted font journey is
+prepared and wired; its new visible scene requires fresh official-artifact proof.
+
+Generic `CALL show` and `CALL draw (x) (y)` preserve actual custom procedure
+labels, argument shapes and ownership. Five producer controls and 110 combined
+regression tests pass. Original/native/Code/same and fresh SB3/export/reimport
+call effects and all 19,200 background pixels match for the rendering fixture.
+The unchanged Snake witness now draws, while its cadence and random-position
+comparison remain open. No whole-game or current-head GUI promotion follows.
+
+The raw 184-input count is still 143/40/1: two projects lost their font diagnostic
+but still require repeat properties. Retained authentic project contexts and
+static snippets keep separate denominators. The palette export test now waits
+for the original simulator's genuine first screen update before comparing all
+16 colors; [PR916](https://github.com/CrispStrobe/brickwright-lite/pull/916) is
+pending final checks. No expected-color polling or guessed delay is used.
 
 ### Prompt String provenance
 
