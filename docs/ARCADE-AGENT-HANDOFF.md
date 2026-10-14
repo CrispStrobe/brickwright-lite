@@ -12,8 +12,8 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ### Current immutable corpus audit
 
-The fresh raw audit at clean `22ccdcd60d5daa6207ddda6e4f4782667ed0d769`
-reports **184 inputs: 140 translated, 43 partial, one parse failure**.
+The fresh raw audit at clean `59169130c8e38f4700fc9e63a286299f90860e55`
+reports **184 inputs: 142 translated, 41 partial, one parse failure**.
 Corpus commit is `c67f4854610ccc823682280b4d1fbdf737f4a585`; input content
 multiset SHA-256 is
 `a3dc8c21a33a9fb5e1808d2b2b2d2dbc2f7ce1ab33655b7b4cb14a16894b9f03`.
@@ -21,8 +21,10 @@ An independent read-only comparison confirms all 184 files match that commit's
 blobs. The audit receipt itself retains its original `commitVerified: false`;
 the separate comparison supplies verification without rewriting evidence.
 This audit requested no original compilation, execution or behavioral comparison.
-**No whole corpus game is GUI-qualified.** Older 142/41/1 and recovered-project
-counts below are historical profiles, not this current raw tally. Compare
+**No whole corpus game is GUI-qualified.** The preceding clean `22ccdcd6`
+audit was 140/43/1 with identical inputs. Only two creation-handler projects
+changed from partial to translated: `a5ad2a27e66886ae` and `d5bdcef480c08ffb`.
+Other recovered-project counts below describe historical profiles. Compare
 identical input/profile receipts before attributing count changes to a feature.
 
 Inline image-array artwork now groups ordered costumes while retaining ordinary
@@ -31,13 +33,50 @@ registration and timer authority: eight native controls pass without weakening
 numeric, cancellation or ownership assertions. Original/native collision timing
 has a separately preserved feature receipt; these results do not promote games.
 Fresh [Build run 38514362889](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38514362889)
-checks reviewed `0f2834b043bb7d59a6f94e6602cae96831c98021`; its official event,
-numeric and browser verdicts are pending at this checkpoint. Later local grouping
-and callback-test commits are not part of that run.
+checks reviewed `0f2834b043bb7d59a6f94e6602cae96831c98021` at actual checkout
+`88e1857e060b850c6c48980e0fa78e00c7430ddc`. Numeric and event authoring
+each pass all five journeys and twelve original comparisons, with complete
+frames and empty page errors. Light, heavy and FPGA browser checks pass.
+Both unit shards fail; deployment and verification skip. The [combined proof](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38514362889/artifacts/11872663564)
+ZIP SHA-256 is `3e6edaa2c91ec035fe9ee4c080064096a908f2a82ae2b80c5c0d5ae7633e4595`.
+Later local source and supplier changes are not qualified by that build.
+
+Current canonical supplier is `bac884ccaaceae9d9dfd832d08089f05c4719237`
+(**380 forms**), from [compiler PR135](https://github.com/CrispStrobe/sb3-creator/pull/135).
+All four enabled checks passed, with the declared Pages skip and matching
+reviewed/predicted/landed trees. Source reference and nullable array flows
+have bounded original/native/Code/SB3/export controls; their fresh production
+editor qualification remains open. Literal runtime `Sprite.setImage` creates
+a fresh image per evaluation, preserving dynamic kinds and instance identity;
+seven affected original/native/artwork controls pass. The raw count above
+measures translation only.
+
+### Initializer and virtual-slot qualification
+
+`whenUsed` declarations now retain their emitted initializer effects as one
+private staging group. Reachability follows actual lexical bindings; unused
+functions and shadowed call names do not initialize global constants. Getter
+and setter access remain separate. Class-table reachability follows the selected
+MIT [PXT emitter](https://github.com/microsoft/pxt/blob/v13.2.1/pxtcompiler/emitter/emitter.ts)
+`fixpointVTables`/`markVTableUsed` rules: used virtual roots reach overrides in
+used tables, without making every declared class or method executable.
+Implicit inherited constructors use the actual ancestor constructor procedure.
+
+The unchanged TeamData and initializer-order regressions pass, including two
+allocations rather than all fixed instances. Four new scalar/accessor/virtual
+cases pass native, Code, same and fresh SB3, exported original execution and
+reimport; the two new initial sources were also executed in the original SDK,
+and the two virtual initial sources have separately retained original receipts.
+Six compilation observations retain actual inputs and binaries. Three new
+native/pure controls and six independent lexical/virtual retention probes pass.
+These bounded results do not qualify arbitrary callable/interface dispatch or
+an editor catalogue for unused fixed instances. Retain the declarations for
+future editable selection without executing their unused initializer effects;
+that user-facing authoring contract is still open.
 
 ### Current integration and official GUI acceptance
 
-The latest completed [Build run 38511065833](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38511065833) built reviewed `920e089927abd906d0608c2c8bad7462ec83ddf3` at actual checkout `adb3dc8689d37e7df9070c107a6b931a8cb9e4e6`. Its [combined authoring proof](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38511065833/artifacts/11870740594) passes all five numeric journeys and twelve original comparisons. Event import and visible block edits also pass, including controller input, waiter delivery, player selection and matching complete original frames. Event Code replay fails because its first text replacement edits the stopped game's saved trace rather than the handler message. The original proof ZIP SHA256 is `c5ab96b7858955a85fd4c75ecba47ae2e44ebacc40f29da16858ab19b19646d5`. Both unit shards and light/heavy browser jobs failed; deployment skipped. This is a preserved partial GUI result.
+The preceding completed [Build run 38511065833](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38511065833) built reviewed `920e089927abd906d0608c2c8bad7462ec83ddf3` at actual checkout `adb3dc8689d37e7df9070c107a6b931a8cb9e4e6`. Its [combined authoring proof](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38511065833/artifacts/11870740594) passes all five numeric journeys and twelve original comparisons. Event import and visible block edits also pass, including controller input, waiter delivery, player selection and matching complete original frames. Event Code replay fails because its first text replacement edits the stopped game's saved trace rather than the handler message. The original proof ZIP SHA256 is `c5ab96b7858955a85fd4c75ecba47ae2e44ebacc40f29da16858ab19b19646d5`. Both unit shards and light/heavy browser jobs failed; deployment skipped. This is a preserved partial GUI result.
 
 Follow-up corrections retain both message occurrences and verify the actual visible editor text. A real VM snapshot/controller regression passes. Native animation resource factories now evaluate once: ordinary staging had appended old frames to the complete factory result, doubling frame counts and undoing visible pixel edits later in playback. The corrected factory retains its type/artwork provenance and omits duplicate pushes; ordinary arrays keep their evaluation order. Unused classes retain field/type metadata without executing initializers, and the selected SDK's missing-constructor restriction applies only to reachable construction, including ancestors and registered callbacks. Seven combined original/native/Code/SB3/export/reimport tests pass for animation pixels and unused-class semantics. Edited construction from synthesized class Code is a separate authoring contract, not proof of the original source's constructor refusal.
 
