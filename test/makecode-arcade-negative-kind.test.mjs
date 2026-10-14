@@ -2,13 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
-import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
+import {runTimedArcadeProgram,restartTimedArcadeRun} from './helpers/arcade-timed-native.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {loadExtensionClass,stubRuntime} from './helpers/bw-extensions.mjs';
 const value=(run,name)=>run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name===name)?.value;
 async function execute(source){
  const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[],JSON.stringify(imported.unsupported));
- const run=await runProgram(imported.code,{frames:40,uploads:imported.costumes,storage:true});
+ const run=await runTimedArcadeProgram(imported.code,{milliseconds:500,uploads:imported.costumes,storage:true});
  assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);return {...run,imported};
 }
 const capture=`
@@ -71,9 +71,9 @@ test('negative lifecycle preserves yielding callbacks and setKind membership thr
  const out=exported(run);const originalExport=await runPxtArcade(out.files);
  for(const [name,n] of Object.entries(lifecycleValues))assert.equal(originalExport[name],n,'export '+name);
  check(await execute(out.files),lifecycleValues);
- const code=await runProgram(run.creator.decompile(),{frames:40,uploads:run.imported.costumes,storage:true});assert.deepEqual(code.errors,[]);check(code,lifecycleValues);
+ const code=await runTimedArcadeProgram(run.creator.decompile(),{milliseconds:500,uploads:run.imported.costumes,storage:true});assert.deepEqual(code.errors,[]);check(code,lifecycleValues);
  const saved=await run.vm.saveProjectSb3();await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
- run.vm.greenFlag();await stepFrames(run.vm,40);assert.deepEqual(run.errors,[]);check(run,lifecycleValues);
+ await restartTimedArcadeRun(run,500);assert.deepEqual(run.errors,[]);check(run,lifecycleValues);
 });
 test('negative creation registrations preserve independent captured closures',async()=>{
  const source=`function install(start:number){
