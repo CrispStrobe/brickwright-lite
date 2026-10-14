@@ -156,3 +156,42 @@ test('Font export interface activity comes only from actual Font factory reporte
     const calls=[];seedSdkFontValueType({opcode:'data_variable'},'font5',(cell,type)=>calls.push([cell,type]));
     assert.deepEqual(calls,[]);assert.equal(hasSdkFontValues({targets:[{blocks:{font5:{opcode:'text',fields:{TEXT:['font8']}}}}]}),false);
 });
+
+import vm from 'node:vm';
+import {readFileSync} from 'node:fs';
+test('Font creation and lifecycle revocation do not initialize glyph resources',()=>{
+    const file=new URL('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/sdk-font-values.js',import.meta.url);
+    const actualText=require('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/text-pxt.js');
+    let initialized=0;const module={exports:{}};
+    // Observe the original initializer boundary without replacing its result.
+    vm.runInNewContext(readFileSync(file,'utf8'),{module,exports:module.exports,require:name=>name==='./text-pxt'?(...args)=>{initialized++;return actualText(...args);}:name==='./buffer'?buffers:require(name)});
+    const f=fixture();let ordinary=f.bufferReference(new buffers.PxtBuffer(2));
+    const fonts=module.exports.create(f.runtime,values,f.bufferOwner);
+    try{
+        assert.equal(initialized,0);
+        fonts.guardBufferMutation(ordinary);assert.equal(initialized,0);
+        f.runtime.emit('PROJECT_START');f.runtime.emit('PROJECT_LOADED');assert.equal(initialized,0);
+        ordinary=f.bufferReference(new buffers.PxtBuffer(2));
+        fonts.constant('font8');assert.equal(initialized,1);
+        fonts.constant('font5');assert.equal(initialized,1);
+        f.runtime.emit('PROJECT_STOP_ALL');fonts.guardBufferMutation(ordinary);assert.equal(initialized,1);
+        f.runtime.emit('PROJECT_START');assert.equal(initialized,1);
+        fonts.constant('font8');assert.equal(initialized,2);
+    }finally{fonts.dispose();f.fonts.dispose();}
+});
+test('native glyph backing aliases are fenced before data getter and across Stop',()=>{
+    const runtime=createArcadeRuntimeMock(),native=new(loadExtensionClass('arcade'))(runtime)._inst,errors=[];
+    runtime.on('BLOCKS_ERROR',error=>errors.push(String(error?.message || error)));
+    try{
+        const font=native.fontValue({FONT:'font8'}),body=native._sdkFontValues.resolve(font).data;
+        const alias=native._bufferReference(new buffers.PxtBuffer(body.buffer,body.byteOffset+2,1));
+        const before=body[2],ordinary=native.createBuffer({SIZE:1});
+        native.bufferSetNumber({BUFFER:alias,FORMAT:'UInt8LE',OFFSET:0,VALUE:99});
+        assert.match(errors.at(-1),/glyph Buffer mutation is not qualified/);assert.equal(body[2],before);
+        runtime.emit('PROJECT_STOP_ALL');const count=errors.length;
+        native.bufferSetNumber({BUFFER:ordinary,FORMAT:'UInt8LE',OFFSET:0,VALUE:77});
+        assert.equal(errors.length,count);assert.equal(native.bufferGetByte({BUFFER:ordinary,OFFSET:0}),77);
+        native.bufferSetNumber({BUFFER:alias,FORMAT:'UInt8LE',OFFSET:0,VALUE:99});
+        assert.equal(errors.length,count+1);assert.match(errors.at(-1),/glyph Buffer mutation is not qualified/);assert.equal(body[2],before);
+    }finally{runtime.emit('RUNTIME_DISPOSED');}
+});

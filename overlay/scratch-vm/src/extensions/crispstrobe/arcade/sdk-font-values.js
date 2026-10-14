@@ -1,5 +1,5 @@
 // Live Font records use the unchanged licensed PXT text implementation.
-// This unattached first slice permits reads; public mutation needs its own gate.
+// This owned first slice permits reads; public mutation needs its own gate.
 const initializeText = require('./text-pxt');
 const buffers = require('./buffer');
 let nextOwner = 0;
@@ -27,7 +27,8 @@ function create(runtime, values, bufferOwner) {
     if (nextOwner >= Number.MAX_SAFE_INTEGER) throw new RangeError('SDK Font owner limit reached');
     const owner = ++nextOwner;
     let epoch = 0, next = 0, suspended = false, closed = false, text;
-    let records, ids, glyphViews, glyphStorage;
+    let records, ids, glyphViews;
+    const glyphStorage=new WeakMap();
     const live = () => {
         if (closed || suspended) throw new Error('SDK Font owner is disposed or stopped');
         if(bufferOwner.reference!==bufferReference || bufferOwner.resolve!==resolveBuffer)
@@ -37,7 +38,10 @@ function create(runtime, values, bufferOwner) {
     const reset = () => {
         if (closed) return;
         epoch++; next = 0; suspended = false;
-        records = new Map(); ids = new WeakMap(); glyphViews = new WeakMap(); glyphStorage = new Map();
+        records = new Map(); ids = new WeakMap(); glyphViews = new WeakMap(); text=null;
+    };
+    const initialize=()=>{
+        live();if(text)return text;
         text = initializeText({control: {createBuffer: size => new buffers.PxtBuffer(size)},
             NumberFormat: buffers.NumberFormat,
             hex: strings => buffers.literal(String(strings.raw ? strings.raw[0] : strings[0]).replace(/\s/g, '')),
@@ -47,8 +51,11 @@ function create(runtime, values, bufferOwner) {
                 const body=buffers.fromBase64(data);
                 Object.defineProperty(body,'isStatic',{value:true});return body;
             }});
+        for(const name of ['font5','font8','font12']){const data=text.image[name].data;
+            const spans=glyphStorage.get(data.buffer)||[];spans.push([data.byteOffset,data.byteOffset+data.byteLength]);glyphStorage.set(data.buffer,spans);}
+        return text;
     };
-    const suspend = () => {suspended = true; records?.clear(); glyphStorage?.clear();};
+    const suspend = () => {suspended = true; records?.clear();};
     const reference = record => {
         live();
         let ref = ids.get(record);
@@ -91,15 +98,15 @@ function create(runtime, values, bufferOwner) {
         resourceManifest: RESOURCE_MANIFEST,
         constant(name) {
             live(); if (!['font5', 'font8', 'font12'].includes(name)) throw new Error('Unknown SDK Font constant');
-            return reference(text.image[name]);
+            return reference(initialize().image[name]);
         },
         forText(value) {
             live(); if (typeof value !== 'string') throw new Error('SDK Font selection needs actual String text');
-            return reference(text.image.getFontForText(value));
+            return reference(initialize().image.getFontForText(value));
         },
         scale(ref, size) {
             live(); if (typeof size !== 'number') throw new Error('SDK Font scaling needs actual Number size');
-            return reference(text.image.scaledFont(resolve(ref), size));
+            return reference(initialize().image.scaledFont(resolve(ref), size));
         },
         read(ref, field) {
             if (!FIELDS.has(field)) throw new Error('Unknown SDK Font field');
@@ -108,7 +115,8 @@ function create(runtime, values, bufferOwner) {
         },
         write() {throw new Error('SDK Font field mutation is not qualified in the read slice');},
         guardBufferMutation(ref) {
-            live();const body=resolveBuffer(ref);
+            if(bufferOwner.reference!==bufferReference || bufferOwner.resolve!==resolveBuffer)throw new Error('SDK Font Buffer owner changed');
+            const body=resolveBuffer(ref);
             const spans=glyphStorage.get(body.buffer)||[];
             if (spans.some(([start,end])=>body.byteOffset<end && body.byteOffset+body.byteLength>start))
                 throw new Error('SDK Font glyph Buffer mutation is not qualified in the read slice');
@@ -116,7 +124,7 @@ function create(runtime, values, bufferOwner) {
         owns(ref) {return !closed && !suspended && records.has(key(ref));},
         // Internal adapter entry: printing must consume this exact live record.
         resolve,
-        textModule() {live();return text;},
+        textModule() {return initialize();},
         print(image, value, x, y, color, ref) {
             live(); text.helpers.imagePrint(image, value, x, y, color, resolve(ref));
         },
