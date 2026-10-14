@@ -102,5 +102,8 @@ Canonical handles do not repeat across Stop, restart or new extension instances
 within the same loaded JavaScript realm. Public Sprite ids remain scene-local.
 This does not establish uniqueness across fresh realms or restoration of live
 Sprite values from saved strings. Draw, update and hitbox overrides, direct
-BaseSprite construction, accessors and complete statusbar packages remain
-diagnosed pending their own original/native and graphics qualification.
+BaseSprite construction and complete statusbar packages remain diagnosed pending
+their own original/native and graphics qualification. Qualified ordinary
+instance getters/setters use managed class procedures; see
+[the accessor scope](arcade-class-accessor-scope.md) for tested behavior and
+remaining boundaries.

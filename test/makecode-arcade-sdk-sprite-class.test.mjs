@@ -87,9 +87,9 @@ for(const [name,source]of Object.entries(cases))test('real SDK Sprite '+name+' r
   const reopened=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(reopened);reopened.vm.stopAll();await reopened.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));let now=0;reopened.vm.runtime.bwArcadeProgramClock={now:()=>now};reopened.vm.runtime.updateCurrentMSecs=()=>{reopened.vm.runtime.currentMSecs=now;};reopened.vm.greenFlag();await stepFrames(reopened.vm,150,0);for(let i=0;i<8;i++){now+=20;await stepFrames(reopened.vm,4,20);}assert.deepEqual(reopened.errors,[]);checked(values(reopened),expected[name],'fresh SB3');
  }finally{runs.forEach(run=>run.vm.quit());clearStrayTimers();}
 });
-test('SDK drawing/update/hitbox and statusbar accessors retain named admission boundaries',()=>{
+test('SDK drawing/update/hitbox and captured callbacks retain named admission boundaries',()=>{
  for(const source of ['class D extends sprites.ExtendableSprite {constructor(img:Image){super(img)}update(dt:number){}}','class D extends Sprite {constructor(img:Image){super(img)}drawSprite(x:number,y:number){}}','class D extends sprites.ExtendableSprite {constructor(img:Image){super(img)}setDimensions(w:number,h:number){}}'])assert.match(arcadeToPseudocode(source).unsupported.join('\n'),/separate qualification/);
- assert.match(arcadeToPseudocode('class D extends Sprite {constructor(img:Image){super(img)}get value(){return 2}}').unsupported.join('\n'),/accessors/);
+ assert.match(arcadeToPseudocode('class D extends Sprite {callback=()=>1;constructor(img:Image){super(img)}}').unsupported.join('\n'),/captured callbacks/);
 });
 test('internal SDK descriptor constructors stay inaccessible to selected original source',async()=>{
  for(const source of ['class Real extends Sprite {} let fake=new __bwSDK_BaseSprite(1);','class Real extends Sprite {} let fake=new __bwSDK_ExtendableSprite(img`1`);','class Fake extends __bwSDK_BaseSprite {}']){

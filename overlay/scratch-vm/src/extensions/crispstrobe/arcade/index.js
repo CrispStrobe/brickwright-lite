@@ -1777,11 +1777,15 @@ module.exports = makeExt(`// Name: Arcade
         return finish();
       }catch(error){if(allocation)this._objectHeap.abort(allocation.ref,allocation.token);return this._objectError(error);}
     }
-    objectField(args) {
-      try{return this._objectHeap.get(args.OBJECT,String(args.FIELD));}catch(error){return this._objectError(error);}
+    objectField(args,util) {
+      try{const field=this._objectHeap.property(args.OBJECT,String(args.FIELD));
+        if(field.getter || field.setter){if(!field.getter)throw new Error('Class accessor has no getter');return this._objectProcedure(field.getter,[args.OBJECT],util,util?.thread?.bwObjectConstruction);}
+        return this._objectHeap.get(args.OBJECT,String(args.FIELD));}catch(error){return this._objectError(error);}
     }
     setObjectField(args,util) {
-      try{return this._objectHeap.set(args.OBJECT,String(args.FIELD),args.VALUE,util?.thread?.bwObjectConstruction,util);}catch(error){return this._objectError(error);}
+      try{const field=this._objectHeap.property(args.OBJECT,String(args.FIELD));
+        if(field.getter || field.setter){if(!field.setter)throw new Error('Class accessor has no setter');return this._objectProcedure(field.setter.procedure,[args.OBJECT,this._objectHeap.hold(args.VALUE)],util,util?.thread?.bwObjectConstruction);}
+        return this._objectHeap.set(args.OBJECT,String(args.FIELD),args.VALUE,util?.thread?.bwObjectConstruction,util);}catch(error){return this._objectError(error);}
     }
     callObjectMethod(args,util) {
       try {

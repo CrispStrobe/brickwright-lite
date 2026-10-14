@@ -21,14 +21,20 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
         if (!def.parent) return def;
         if (seen.has(name)) throw new Error('Cyclic class inheritance');
         seen.add(name);const base=definition(def.parent,seen);
-        for(const field of def.fields.keys())if(base.fields.has(field))throw new Error('Redefinition of inherited class field '+field);
-        return Object.freeze({...def,intrinsic:def.intrinsic || base.intrinsic,fields:new Map([...base.fields,...def.fields]),methods:new Map([...base.methods,...def.methods])});
+        const fields=new Map(base.fields);
+        for(const [name,field]of def.fields){const inherited=fields.get(name);if(inherited){
+            if(!(field.getter||field.setter) || !(inherited.getter||inherited.setter))throw new Error('Redefinition of inherited class field '+name);
+            fields.set(name,Object.freeze({...field,getter:field.getter||inherited.getter,setter:field.setter||inherited.setter}));
+        }else fields.set(name,field);}
+        const methods=new Map([...base.methods,...def.methods]);
+        if([...fields.keys()].some(name=>methods.has(name)))throw new Error('Inherited class field/accessor conflicts with a method');
+        return Object.freeze({...def,intrinsic:def.intrinsic || base.intrinsic,fields,methods});
     }
     const referenceKey = ref => values.isReference(ref) ? values.referenceId(runtime,ref,'object') : native.external?.(ref) ? ref : null;
     function object(ref) {
         live(); const external = native.external?.(ref), id = referenceKey(ref);
         let state = id !== null && objects.get(id);
-        if (!state && external) {const def=definition(native.externalClass(ref));state={ref,def,generation,construction:null,fields:new Map([...def.fields.keys()].map(key=>[key,values.UNDEFINED]))};objects.set(id,state);}
+        if (!state && external) {const def=definition(native.externalClass(ref));state={ref,def,generation,construction:null,fields:new Map([...def.fields].filter(([,field])=>!field.getter&&!field.setter).map(([key])=>[key,values.UNDEFINED]))};objects.set(id,state);}
         if (!state || state.generation !== generation) throw new Error('Unknown or stale class object reference');
         return state;
     }
@@ -60,9 +66,11 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
         const fields = new Map(), methods = new Map();
         for (const field of spec.fields) {
             if (!field || typeof field.name !== 'string' || !/^[A-Za-z_]\w*$/.test(field.name) || fields.has(field.name) ||
-                Object.keys(field).some(key => !['name', 'type', 'readonly', 'visibility', 'initializer', 'parameterProperty'].includes(key)) ||
+                Object.keys(field).some(key => !['name', 'type', 'readonly', 'visibility', 'initializer', 'parameterProperty', 'getter', 'setter'].includes(key)) ||
                 field.parameterProperty!==undefined && typeof field.parameterProperty!=='boolean' || field.initializer!==undefined && typeof field.initializer!=='string' || !validType(field.type) || typeof field.readonly !== 'boolean' || field.visibility !== undefined && !['public','private','protected'].includes(field.visibility)) throw new Error('Invalid declared class field');
-            fields.set(field.name, Object.freeze({...field}));
+            if(field.getter!==undefined && (typeof field.getter!=='string'||!field.getter) || field.setter!==undefined && (!field.setter || typeof field.setter.procedure!=='string' || !field.setter.procedure || !validParameters(field.setter.parameters) || field.setter.parameters.length!==1 || field.setter.parameters[0].optional || Object.hasOwn(field.setter.parameters[0],'default') || Object.keys(field.setter).some(key=>!['procedure','parameters'].includes(key))))throw new Error('Invalid class accessor descriptor');
+            if((field.getter||field.setter) && (field.initializer!==undefined || field.parameterProperty || field.readonly!==!!(field.getter&&!field.setter)))throw new Error('Class accessor must retain its declared halves without a backing initializer');
+            fields.set(field.name, Object.freeze({...field,...(field.setter?{setter:Object.freeze({...field.setter,parameters:Object.freeze(field.setter.parameters.map(param=>Object.freeze({...param})))})}:{})}));
         }
         for (const method of spec.methods) {
             if (!method || typeof method.name !== 'string' || !/^[A-Za-z_]\w*$/.test(method.name) ||
@@ -74,13 +82,17 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
         }
         for (const name of ['initializer', 'constructor']) if (!own(spec, name) || typeof spec[name] !== 'string')
             throw new Error('Class initializer and constructor procedure names must be explicit');
+        const accessorCodes=[...fields.values()].flatMap(field=>[field.getter,field.setter?.procedure].filter(Boolean));
+        const ordinaryCodes=[spec.initializer,spec.constructor,...[...methods.values()].map(method=>method.procedure)];
+        const priorCodes=[...classes.values()].flatMap(cls=>[cls.initializer,cls.constructor,...[...cls.methods.values()].map(method=>method.procedure),...[...cls.fields.values()].flatMap(field=>[field.getter,field.setter?.procedure].filter(Boolean))]);
+        if([...classes.values()].some(cls=>[...cls.fields.values()].some(field=>[field.getter,field.setter?.procedure].filter(Boolean).some(code=>ordinaryCodes.includes(code)))) || new Set(accessorCodes).size!==accessorCodes.length || accessorCodes.some(code=>ordinaryCodes.includes(code)||priorCodes.includes(code)))throw new Error('Class accessor procedure must belong to exactly one declared half');
         const def = Object.freeze({...spec, fields, methods, parameters: Object.freeze([...spec.parameters])});
         classes.set(spec.name, def); return def;
     }
     function allocate(name) {
         const def = definition(name), ref = def.intrinsic ? native.reserve(def) : values.reference(runtime,'object',`object:${heapId}:${generation}:${++nextObject}`);
         const id=referenceKey(ref);if(id===null)throw new Error('Native class allocation requires a current canonical reference');
-        const state = {ref, def, generation, fields: new Map([...def.fields.keys()].map(key => [key, values.UNDEFINED]))};
+        const state = {ref, def, generation, fields: new Map([...def.fields].filter(([,field])=>!field.getter&&!field.setter).map(([key])=>[key,values.UNDEFINED]))};
         const token = Object.freeze({state, generation});
         state.construction = token; objects.set(id, state); return {ref, def, token};
     }
@@ -95,12 +107,14 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
     }
     function get(ref, key) {
         const state = object(ref);
-        if (!state.fields.has(key)) throw new Error(`Unknown class field ${key}`);
+        if (!state.def.fields.has(key)) throw new Error(`Unknown class field ${key}`);
+        if(state.def.fields.get(key).getter || state.def.fields.get(key).setter)throw new Error('Class accessor read requires its managed getter');
         return state.def.fields.get(key)?.native ? native.get(ref,key) : state.fields.get(key);
     }
     function set(ref, key, value, _token, util) {
         const state = object(ref), field = state.def.fields.get(key);
         if (!field) throw new Error(`Unknown class field ${key}`);
+        if(field.getter || field.setter)throw new Error('Class accessor write requires its managed setter');
         // readonly/visibility are TypeScript declaration checks, not runtime
         // immutability. Construction tokens still own allocation completion.
         if(field.native)return native.set(ref,key,hold(value),util);
@@ -112,6 +126,7 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
         return found;
     }
     return {register, definition, allocate, finish, abort, get, set, method, hold, reset, dispose,
+        property(ref,name) {const field=object(ref).def.fields.get(name);if(!field)throw new Error('Unknown class field '+name);return field;},
         constructionActive(ref,token) {try{return object(ref).construction===token && token.generation===generation;}catch{return false;}},
         inspect(ref) { const state = object(ref); return {className: state.def.name, constructing: !!state.construction}; }};
 };

@@ -24,7 +24,7 @@ export function prepareObjectClassExport(emitter) {
             if(!/^[A-Za-z_]\w*$/.test(name||'') || classes.has(name) || !Array.isArray(fields) || !Array.isArray(parameters) || !Array.isArray(methods))throw Error('invalid declaration');
             const validType=type=>typeof type==='string' && /^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\[\])*$/.test(type);
             const names=new Set();
-            for(const field of fields){if(!/^[A-Za-z_]\w*$/.test(field?.name||'') || names.has(field.name) || !validType(field.type) || typeof field.readonly!=='boolean' || field.visibility!==undefined&&!['public','private','protected'].includes(field.visibility))throw Error('invalid field');names.add(field.name);}
+            for(const field of fields){if(!/^[A-Za-z_]\w*$/.test(field?.name||'') || names.has(field.name) || !validType(field.type) || Object.keys(field).some(key=>!['name','type','readonly','visibility','initializer','parameterProperty','getter','setter'].includes(key)) || typeof field.readonly!=='boolean' || field.visibility!==undefined&&!['public','private','protected'].includes(field.visibility))throw Error('invalid field');if(field.getter!==undefined && (typeof field.getter!=='string'||!field.getter) || field.setter!==undefined && (!field.setter || typeof field.setter.procedure!=='string'||!field.setter.procedure||Object.keys(field.setter).some(key=>!['procedure','parameters'].includes(key))||!Array.isArray(field.setter.parameters)||field.setter.parameters.length!==1||field.setter.parameters.some(param=>!validType(param.type)||!/^[A-Za-z_]\w*$/.test(param.name)||param.optional!==false||Object.hasOwn(param,'default')||Object.keys(param).some(key=>!['name','type','optional'].includes(key)))))throw Error('invalid accessor');if((field.getter||field.setter)&&(field.initializer!==undefined||field.parameterProperty||field.readonly!==!!(field.getter&&!field.setter)))throw Error('invalid accessor storage metadata');names.add(field.name);}
             for(const param of parameters)if(!/^[A-Za-z_]\w*$/.test(param?.name||'') || !validType(param.type))throw Error('invalid constructor parameter');
             for(const method of methods)if(!/^[A-Za-z_]\w*$/.test(method?.name||'') || names.has(method.name) || !validType(method.returnType) || method.visibility!==undefined&&!['public','private','protected'].includes(method.visibility) || !Array.isArray(method.parameters) || method.parameters.some(param=>!validType(param.type)||!/^[A-Za-z_]\w*$/.test(param.name)))throw Error('invalid method');
             classes.set(name,{name,parent:block.opcode==='arcade_declareSubclass'?literal(target,block,'BASE'):null,target,fields,parameters,methods,initializer:literal(target,block,'INITIALIZER'),constructor:literal(target,block,'CONSTRUCTOR')});
@@ -36,6 +36,14 @@ export function prepareObjectClassExport(emitter) {
     for(const cls of sdkExportClasses())if(!classes.has(cls.name))classes.set(cls.name,cls);
     const ancestors=name=>{const result=[],seen=new Set();while(name){if(seen.has(name)||!classes.has(name)){emitter.note('Class inheritance export requires declared acyclic parents');return [];}seen.add(name);result.push(classes.get(name));name=classes.get(name).parent;}return result;};
     const resolveMember=(cls,name,method=false)=>ancestors(cls.name).flatMap(base=>method?base.methods:base.fields).find(value=>value.name===name);
+    const accessorOwners=new Map();
+    for(const cls of classes.values())for(const field of cls.fields)for(const code of [field.getter,field.setter?.procedure].filter(Boolean)){
+        const k=key(cls.target,code);
+        if(accessorOwners.has(k) || [...classes.values()].some(other=>other.target===cls.target && [other.initializer,other.constructor,...other.methods.map(method=>method.procedure)].includes(code)))emitter.note('Arcade accessor procedure must belong to exactly one declared accessor half');
+        accessorOwners.set(k,{cls,field});
+    }
+    for(const cls of classes.values()){const chain=ancestors(cls.name),fields=new Set(chain.flatMap(base=>base.fields.map(field=>field.name)));if(chain.some(base=>base.methods.some(method=>fields.has(method.name))))emitter.note('Inherited class field/accessor conflicts with a method');}
+    const accessorHalf=(cls,name,kind)=>ancestors(cls.name).map(base=>base.fields.find(field=>field.name===name)?.[kind]).find(Boolean);
     const superHelpers=new Map(),parameterPropertyBlocks=new Set();
     const localName=(target,block)=>block?.opcode==='arcade_getLocal'?literal(target,block,'NAME'):/^argument_reporter_/.test(block?.opcode||'')?block.fields.VALUE?.[0]:null;
 
@@ -67,10 +75,11 @@ export function prepareObjectClassExport(emitter) {
             for(const field of cls.fields.filter(field=>field.initializer)){const value=current&&child(cls.target,current,'VALUE');valid=valid && current?.opcode==='arcade_setObjectField' && literal(cls.target,current,'FIELD')===field.name && localName(cls.target,child(cls.target,current,'OBJECT'))===self && value?.opcode==='arcade_callFunction' && literal(cls.target,value,'NAME')===field.initializer && JSON.stringify(callParameters(cls.target,value))==='[]';current=current&&cls.target.blocks[current.next];}
             if(!valid || current)emitter.note('Class field initializer export requires exactly its declared parent and field calls');
         }
-        for(const [code,params,result]of [[cls.initializer,[],'void'],[cls.constructor,cls.parameters,'void'],...cls.methods.map(method=>[method.procedure,method.parameters,method.returnType])]) {
+        for(const [code,params,result]of [[cls.initializer,[],'void'],[cls.constructor,cls.parameters,'void'],...cls.methods.map(method=>[method.procedure,method.parameters,method.returnType]),...cls.fields.flatMap(field=>[...(field.getter?[[field.getter,[],field.type]]:[]),...(field.setter?[[field.setter.procedure,field.setter.parameters,'void']]:[])])]) {
             const k=key(cls.target,code),definition=definitions.get(k);
             if(code===cls.constructor && ancestors(cls.name).some(base=>base.intrinsic && base.constructor===code))continue;
-            if(!definition || definition.parameters.length!==params.length+1){emitter.note(`Arcade class ${cls.name} procedure does not match its declaration`);continue;}
+            if(!definition || !Array.isArray(definition.parameters) || definition.parameters.length!==params.length+1 || definition.parameters.some(name=>typeof name!=='string'||!/^[A-Za-z_]\w*$/.test(name)) || new Set(definition.parameters).size!==definition.parameters.length){emitter.note(`Arcade class ${cls.name} procedure does not match its declaration`);continue;}
+            if(emitter.project.targets.some(target=>Object.values(target.variables||{}).some(value=>emitter.varName(target,value[0])===definition.parameters[0])))emitter.note('Class receiver parameter must retain distinct ownership from exported global bindings');
             if(!procedures.has(k))procedures.set(k,{cls,definition,params,result});emitter.managedValueProcedures.add(k);
             addType(`${k}:local:${definition.parameters[0]}`,cls.name);
             params.forEach((param,index)=>addType(`${k}:local:${definition.parameters[index+1]}`,param.type));
@@ -124,8 +133,8 @@ export function prepareObjectClassExport(emitter) {
             if(['arcade_objectField','arcade_setObjectField','arcade_callObjectMethod'].includes(op))for(const name of graph.node(input(target,block,'OBJECT')).types) {
                 const cls=classes.get(name);if(!cls)continue;
                 const field=literal(target,block,'FIELD');
-                if(op==='arcade_objectField')graph.merge(value,`field:${name}:${field}`);
-                if(op==='arcade_setObjectField')graph.merge(`field:${name}:${field}`,input(target,block,'VALUE'));
+                if(op==='arcade_objectField'){const getter=accessorHalf(cls,field,'getter');if(getter){graph.merge(value,`${key(target,getter)}:result`);}else graph.merge(value,`field:${name}:${field}`);}
+                if(op==='arcade_setObjectField'){const setter=accessorHalf(cls,field,'setter');if(setter)bind(target,setter.procedure,[input(target,block,'VALUE')],1);else graph.merge(`field:${name}:${field}`,input(target,block,'VALUE'));}
                 if(op==='arcade_callObjectMethod'){const method=resolveMember(cls,literal(target,block,'METHOD'),true);if(method){graph.merge(value,`${key(target,method.procedure)}:result`);bind(target,method.procedure,args(target,block),1);}}
             }
             if(op==='arrays_createReference'){graph.add(value,'array');let item=child(target,block,'VALUES');while(item?.opcode==='arrays_referenceValues'){graph.merge(graph.element(value),input(target,item,'VALUE'));item=child(target,item,'REST');}}
@@ -144,6 +153,8 @@ export function prepareObjectClassExport(emitter) {
         const target=emitter.target,text=emitter.arrayValue(block,'OBJECT'),name=literal(target,block,method?'METHOD':'FIELD');
         const restricted=[...graph.node(input(target,block,'OBJECT')).types].some(type=>{const cls=classes.get(type),member=cls&&resolveMember(cls,name,method);return member && ((member.visibility && member.visibility!=='public' && emitter.currentClassName!==type) || write&&member.readonly);});
         if(restricted)return `(${text} as any)`;
+        if(write && [...graph.node(input(target,block,'OBJECT')).types].some(type=>{const cls=classes.get(type),field=cls&&resolveMember(cls,name);return field&&(field.getter||field.setter)&&['number','boolean','string'].includes(field.type)&&(field.type!=='boolean' && emitter.isBoolean(child(target,block,'VALUE')) || [...graph.node(input(target,block,'VALUE')).types].some(value=>['number','boolean','string'].includes(value)&&value!==field.type));}))return `(${text} as any)`;
+        for(const type of graph.node(input(target,block,'OBJECT')).types){const cls=classes.get(type),field=cls&&resolveMember(cls,name);if(field && (field.getter||field.setter) && (!field.getter || write&&!field.setter)){const base=ancestors(cls.parent).find(base=>{const property=base.fields.find(field=>field.name===name);return property?.getter && (!write||property.setter);});if(base)return `(${text} as ${sdkClassPublicName(base.name)})`;}}
         const known=[...graph.node(input(target,block,'OBJECT')).types].map(type=>classes.get(type)).filter(Boolean);
         if(!known.length || known.some(cls=>!resolveMember(cls,name,method))){
             const candidates=[...classes.values()].filter(cls=>!cls.intrinsic && resolveMember(cls,name,method));
@@ -173,7 +184,8 @@ export function prepareObjectClassExport(emitter) {
             const locals=[...emitter.currentLocalNames].filter(name=>!def.parameters.includes(name));
             lines=[...locals.map(name=>`    let ${name}: ${localType(k,name)} = undefined`),...lines];
             const receiver=def.parameters[0].replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-            lines=lines.map(line=>line.replace(new RegExp(`\\b${receiver}\\b`,'g'),'this'));
+            const receiverToken=new RegExp(`"(?:\\\\.|[^"\\\\])*"|'(?:\\\\.|[^'\\\\])*'|(?<![\\w$.])\\b${receiver}\\b`,'g');
+            lines=lines.map(line=>line.replace(receiverToken,token=>token[0]==='"'||token[0]==="'"?token:'this'));
             // Field initialization/constructors cannot return a new instance.
             if(constructor && lines.some(line=>/^\s*return\s+\S/.test(line)))emitter.note('Class constructor procedure cannot return a value');
             return lines;
@@ -185,6 +197,12 @@ export function prepareObjectClassExport(emitter) {
             const lines=[`class ${cls.name}${cls.parent?' extends '+sdkClassPublicName(cls.parent):''} {`];
             for(const field of cls.fields){
                 if(field.parameterProperty)continue;
+                if(field.getter||field.setter){
+                    const prefix=field.visibility && field.visibility!=='public'?field.visibility+' ':'';
+                    if(field.getter){const script=body(field.getter,cls,[]);if(!script.some(line=>/^\s*return\s+\S/.test(line)))emitter.note('Class getter must return a value');lines.push(`    ${prefix}get ${field.name}(): ${field.type} {`,...script,'    }');}
+                    if(field.setter){const def=definitions.get(key(cls.target,field.setter.procedure)),param=field.setter.parameters[0];const script=body(field.setter.procedure,cls,field.setter.parameters);if(script.some(line=>/^\s*return\s+\S/.test(line)))emitter.note('Class setter cannot return a value');lines.push(`    ${prefix}set ${field.name}(${def?.parameters[1]||param.name}: ${param.type}) {`,...script,'    }');}
+                    continue;
+                }
                 let initializer='';
                 if(field.initializer){const code=field.initializer,k=key(cls.target,code),def=definitions.get(k),fn=emitter.fnNames.get(k);
                     if(!def||def.parameters.length||!fn)emitter.note('Class field initializer export requires its fixed zero-argument procedure');

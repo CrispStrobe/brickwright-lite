@@ -14,7 +14,14 @@ export function lowerObjectClasses(program) {
         Object.values(node).some(value => Array.isArray(value) ? value.some(child => contains(child, predicate)) : contains(value, predicate)));
     const dialogName=node=>node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='game' && ['BaseDialog','SplashDialog'].includes(node.name) ? sdkClassName('game.'+node.name):null;
     const dialogRequested=contains(program,node=>node.type==='Call' && node.isNew && dialogName(node.callee));
-    const sourceClasses = program.body.filter(node => node.type === 'Class').map(node=>({...node,...(node.base?{base:sdkClassName(node.base)}:{})}));
+    const sourceClasses = program.body.filter(node => node.type === 'Class').map(node=>{
+        const properties=new Map();for(const member of node.methods.filter(method=>['get','set'].includes(method.kind))){
+            if(!properties.has(member.name))properties.set(member.name,{name:member.name,accessor:{},modifiers:member.modifiers||[],isStatic:member.isStatic});
+            const field=properties.get(member.name);if(field.accessor[member.kind])field.duplicateAccessor=true;field.accessor[member.kind]=member;
+        }
+        for(const field of properties.values()){const get=field.accessor.get,set=field.accessor.set;field.typeName=(typeof get?.returnType==='string'?get.returnType:get?.returnType?.text)||(typeof set?.paramTypes?.[set.params[0]]==='string'?set.paramTypes[set.params[0]]:set?.paramTypes?.[set.params[0]]?.text)||'any';field.modifiers=[...(get?.modifiers||set?.modifiers||[]),...(get&&!set?['readonly']:[])];}
+        return {...node,fields:[...node.fields,...properties.values()],...(node.base?{base:sdkClassName(node.base)}:{})};
+    });
     const classes = new Map(sourceClasses.map(node => [node.name, node]));
     if (!classes.size && !dialogRequested) return {program, unsupported: []};
     const sdkClasses=[...(sourceClasses.some(node=>['Sprite','__bwSDK_ExtendableSprite'].includes(node.base))?SDK_SPRITE_CLASS_NODES:[]),...(dialogRequested||sourceClasses.some(node=>SDK_DIALOG_CLASS_NODES.some(base=>base.name===node.base))?SDK_DIALOG_CLASS_NODES:[])];
@@ -29,7 +36,11 @@ export function lowerObjectClasses(program) {
         if([cls.ctor,...cls.methods].filter(Boolean).some(member=>member.parameterDefaults?.some(param=>!originalDefault(param.value))))problems.push('selected Arcade SDK nonliteral default arguments');
         if(contains(cls,node=>node.type==='FunctionDeclaration'))problems.push('nested function declarations');
         if (cls.fields.some(field => field.isStatic)) problems.push('static fields');
-        if (cls.methods.some(method => method.isStatic || method.kind !== 'method')) problems.push('static methods or accessors');
+        if (cls.methods.some(method => method.isStatic)) problems.push('static methods or accessors');
+        if(new Set(cls.fields.map(field=>field.name)).size!==cls.fields.length || cls.fields.some(field=>field.duplicateAccessor))problems.push('duplicate field or accessor declarations');
+        if(cls.methods.some(method=>method.kind==='method' && cls.fields.some(field=>field.name===method.name)))problems.push('field or accessor conflicts with a method');
+        for(const field of cls.fields.filter(field=>field.accessor?.get&&field.accessor?.set)){const get=field.accessor.get,set=field.accessor.set,param=set.paramTypes?.[set.params[0]],type=typeof param==='string'?param:param?.text;const mode=member=>member.modifiers?.find(value=>['private','protected'].includes(value))||'public';if(field.typeName!=='any'&&type&&type!=='any'&&field.typeName!==type)problems.push('getter and setter type mismatch');if(mode(get)!==mode(set))problems.push('getter and setter visibility mismatch');}
+        for(const method of cls.methods.filter(method=>['get','set'].includes(method.kind))){if(method.params.length!==(method.kind==='get'?0:1))problems.push('accessor parameter count');if(method.optionalParams?.length || method.parameterDefaults?.length)problems.push('selected Arcade SDK optional or default accessor parameters');if(method.kind==='get'&&!contains(method.body,node=>node.type==='Return'&&node.value))problems.push('selected Arcade SDK getter must return a value');if(method.kind==='set'&&contains(method.body,node=>node.type==='Return'&&node.value))problems.push('selected Arcade SDK setter cannot return a value');}
         if (contains(cls, node => node.type === 'FunctionExpression')) problems.push('function-valued fields or captured callbacks');
         if (cls.fields.some(field => /=>|\bFunction\b/.test(field.typeName || ''))) problems.push('function field types');
         if (problems.length) { fail(`Class ${name} requires unsupported ${problems.join(', ')}`); continue; }
@@ -50,14 +61,17 @@ export function lowerObjectClasses(program) {
             if((cls.fields.some(field=>field.init)||cls.ctor.parameterProperties?.length) && !superCall(body[0]))fail('Selected Arcade SDK requires super first before initialized fields or parameter properties in '+name);
             const first=body.findIndex(superCall);if(first>0 && body.slice(0,first).some(node=>contains(node,value=>value.type==='Identifier'&&value.name==='this')))fail('Derived class '+name+' uses this before super');
         }
-        for(const field of cls.fields)if(chain.slice(1).some(base=>admitted.get(base).fields.some(other=>other.name===field.name)))fail('Redefinition of inherited class field '+field.name);
-        for(const method of cls.methods){const parent=chain.slice(1).flatMap(base=>admitted.get(base).methods).find(other=>other.name===method.name);if(parent){const visibility=value=>value.modifiers?.find(mode=>['private','protected'].includes(mode)) || 'public',baseMode=visibility(parent),mode=visibility(method);if(baseMode==='private' || baseMode==='public'&&mode!=='public' || baseMode==='protected'&&mode==='private')fail('Class override visibility differs from its accessible base method '+method.name);if(method.params.length!==parent.params.length || method.params.some((param,index)=>JSON.stringify(typeof method.paramTypes?.[param]==='string'?method.paramTypes[param]:method.paramTypes?.[param]?.text)!==JSON.stringify(typeof parent.paramTypes?.[parent.params[index]]==='string'?parent.paramTypes[parent.params[index]]:parent.paramTypes?.[parent.params[index]]?.text)))fail('Class override parameter signature differs from its base method '+method.name);}}
+        for(const field of cls.fields)for(const base of chain.slice(1)){const other=admitted.get(base).fields.find(other=>other.name===field.name);if(other){if(!field.accessor||!other.accessor)fail('Redefinition of inherited class field '+field.name);else if(field.typeName!=='any'&&other.typeName!=='any'&&field.typeName!==other.typeName)fail('Class accessor override type differs from its base property '+field.name);}}
+        for(const method of cls.methods.filter(method=>method.kind==='method'))if(chain.slice(1).some(base=>admitted.get(base).fields.some(field=>field.name===method.name)))fail('Inherited field or accessor conflicts with class method '+method.name);
+        for(const field of cls.fields)if(chain.slice(1).some(base=>admitted.get(base).methods.some(method=>method.kind==='method'&&method.name===field.name)))fail('Class field or accessor conflicts with inherited method '+field.name);
+        for(const method of cls.methods){const parent=chain.slice(1).flatMap(base=>admitted.get(base).methods).find(other=>other.name===method.name && other.kind===method.kind);if(parent){const visibility=value=>value.modifiers?.find(mode=>['private','protected'].includes(mode)) || 'public',baseMode=visibility(parent),mode=visibility(method);if(baseMode==='private' || baseMode==='public'&&mode!=='public' || baseMode==='protected'&&mode==='private')fail('Class override visibility differs from its accessible base method '+method.name);if(method.params.length!==parent.params.length || method.params.some((param,index)=>JSON.stringify(typeof method.paramTypes?.[param]==='string'?method.paramTypes[param]:method.paramTypes?.[param]?.text)!==JSON.stringify(typeof parent.paramTypes?.[parent.params[index]]==='string'?parent.paramTypes[parent.params[index]]:parent.paramTypes?.[parent.params[index]]?.text)))fail('Class override parameter signature differs from its base method '+method.name);}}
     }
     if(unsupported.length)return {program,unsupported};
     const fieldOwners=new WeakMap(),methodClasses=new WeakMap();
     for(const [name,cls]of admitted){cls.fields.forEach(field=>fieldOwners.set(field,name));cls.methods.forEach(method=>methodClasses.set(method,name));}
     const findField=(name,field)=>lineage(name).flatMap(base=>admitted.get(base).fields).find(value=>value.name===field);
-    const findMethod=(name,method)=>lineage(name).flatMap(base=>admitted.get(base).methods).find(value=>value.name===method);
+    const findMethod=(name,method)=>lineage(name).flatMap(base=>admitted.get(base).methods).find(value=>value.name===method && value.kind==='method');
+    const findAccessor=(name,field,kind)=>lineage(name).map(base=>admitted.get(base).fields.find(value=>value.name===field)?.accessor?.[kind]).find(Boolean);
     const effectiveCtor=name=>lineage(name).map(base=>({name:base,ctor:admitted.get(base).ctor})).find(value=>value.ctor) || {name,ctor:null};
     const graph = new ValueTypeGraph(), owners = new WeakMap(), cells = new WeakMap(), entries = [];
     const global = {parent: null, bindings: new Map(), className: null, result: Symbol('global result')};
@@ -103,7 +117,8 @@ export function lowerObjectClasses(program) {
                 graph.add(binding(scope, 'this', true), `class:${node.name}`);
                 if(node.base)graph.add(binding(scope,'super',true),`class:${node.base}`);
                 for (const param of method.params) { binding(scope, param, true); addType(binding(scope, param), method.paramTypes?.[param]); }
-                if(node.sdkIntrinsic)addType(scope.result,method.returnType);
+                if(node.sdkIntrinsic || method.kind==='get')addType(scope.result,method.returnType);
+                if(method.kind==='get')graph.merge(fieldCell(node.name,method.name),scope.result);
                 memberOwners.set(method, scope); visit(method.body, scope);
             }
             return;
@@ -219,6 +234,15 @@ export function lowerObjectClasses(program) {
             if(mode==='private' && context?.name!==owner || mode==='protected' && (!context || !lineage(context.name).includes(owner)))fail(`Class ${mode} member ${name} cannot be accessed outside its declaring class`);
         }
     };
+    const propertyAccess=(receiver,name,names,context,write=false)=>{
+        const fields=names.map(cls=>findField(cls,name));
+        access(receiver,name,fields,context);
+        for(let i=0;i<fields.length;i++){const field=fields[i];if(!field?.accessor)continue;
+            if(receiver.type==='Identifier' && receiver.name==='super')fail('Selected Arcade SDK does not support super accessor reads or writes');
+            if(!anyReceiver(receiver) && !field.accessor.get)fail('Selected Arcade SDK setter currently requires a corresponding getter in the declared receiver');
+            if(write && (!findAccessor(names[i],name,'set') || !anyReceiver(receiver)&&!field.accessor.set))fail('Readonly class accessor '+name+' has no writable setter in the declared receiver');
+        }
+    };
     const omittedArgument=(member,index)=>member?.parameterDefaults?.find(value=>value.name===member.params[index])?.value || {type:'Undefined'};
     const opaqueParameters=(name,member)=>{const slots=SDK_DIALOG_OPAQUE_PARAMETERS[name]?.[member];return Array.isArray(slots)?slots:[];};
     const classBody=member=>member.body.slice(member.parameterDefaults?.length || 0);
@@ -229,19 +253,19 @@ export function lowerObjectClasses(program) {
         if (node.type === 'Class') return node;
         if(node.type==='Binary' && node.op==='instanceof' && admitted.has(node.right?.name))fail('Ordinary class instanceof is not yet supported');
         if(node.type==='Call' && node.callee?.type==='Identifier' && node.callee.name==='super' && context){
-            const base=admitted.get(context.name).base,ctor=effectiveCtor(base).ctor,params=['__bwSelf',...(ctor?.params||[])];
+            const base=admitted.get(context.name).base,ctor=effectiveCtor(base).ctor,params=[selfName,...(ctor?.params||[])];
             if(node.args.length>(ctor?.params.length||0)||(ctor?.params||[]).slice(node.args.length).some(name=>!ctor.optionalParams?.includes(name)))fail('Base constructor argument count differs from its declaration');
-            return procedure(signature(`__bwClass_${base}_superConstructor`,params),[{...id('__bwSelf'),bwObjectTypes:['object']},...(ctor?.params||[]).map((_,index)=>node.args[index]?rewrite(node.args[index],context):omittedArgument(ctor,index))]);
+            return procedure(signature(`__bwClass_${base}_superConstructor`,params),[{...id(selfName),bwObjectTypes:['object']},...(ctor?.params||[]).map((_,index)=>node.args[index]?rewrite(node.args[index],context):omittedArgument(ctor,index))]);
         }
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.object.name==='super' && context){
             const base=admitted.get(context.name).base,method=findMethod(base,node.callee.name);
             if(!method){fail('Unknown base class method '+node.callee.name);return node;}
             access(node.callee.object,node.callee.name,[method],context);
             if(node.args.length>method.params.length||method.params.slice(node.args.length).some(name=>!method.optionalParams?.includes(name)))fail('Base method argument count differs from its declaration');
-            return procedure(signature(`__bwClass_${methodClasses.get(method)}_${method.name}`,['__bwSelf',...method.params]),[{...id('__bwSelf'),bwObjectTypes:['object']},...method.params.map((_,index)=>node.args[index]?rewrite(node.args[index],context):omittedArgument(method,index))],types(node));
+            return procedure(signature(`__bwClass_${methodClasses.get(method)}_${method.name}`,[selfName,...method.params]),[{...id(selfName),bwObjectTypes:['object']},...method.params.map((_,index)=>node.args[index]?rewrite(node.args[index],context):omittedArgument(method,index))],types(node));
         }
         if(node.type==='Identifier' && admitted.has(node.name))fail(`Class constructor ${node.name} used as a runtime value requires function references`);
-        if (node.type === 'Identifier' && node.name === 'this' && context) return {...id('__bwSelf'), bwObjectTypes:['object']};
+        if (node.type === 'Identifier' && node.name === 'this' && context) return {...id(selfName), bwObjectTypes:['object']};
         if (node.type === 'Call' && node.isNew && node.callee?.type === 'Identifier' && admitted.has(node.callee.name)) {
             for(const index of opaqueParameters(node.callee.name,'constructor'))if(node.args[index] && !['Null','Undefined'].includes(node.args[index].type))fail('SDK Dialog Font arguments require separate native Font qualification');
             return call('create', [str(node.callee.name), {type:'Array', items:node.args.map(arg => rewrite(arg, context))}], ['object']);
@@ -259,7 +283,8 @@ export function lowerObjectClasses(program) {
             const names = classNames(node.left.object);
             const fields = names.map(name => findField(name,node.left.name));
             if (fields.some(field => !field)) { fail(`Unknown declared class field ${node.left.name}`); return node; }
-            access(node.left.object,node.left.name,fields,context);
+            propertyAccess(node.left.object,node.left.name,names,context,true);
+            if(node.op==='=' && !anyReceiver(node.left.object) && node.right.assertedType!=='any'){const valueType=({Number:'number',Boolean:'boolean',String:'string'})[node.right.type] || staticType(node.right);if(['number','boolean','string'].includes(valueType) && fields.some(field=>field.accessor&&['number','boolean','string'].includes(field.typeName)&&field.typeName!==valueType))fail('Class accessor assignment type differs from its declared setter '+node.left.name);}
             if (!anyReceiver(node.left.object) && fields.some(field => field.modifiers?.includes('readonly')) && !(context?.constructor && fields.every(field=>fieldOwners.get(field)===context.name) && node.left.object.type === 'Identifier' && node.left.object.name === 'this'))
                 fail(`Readonly class field ${node.left.name} cannot be assigned outside its constructor`);
             if(node.op==='=')return call('set', [rewrite(node.left.object, context), str(node.left.name), rewrite(node.right, context)]);
@@ -271,12 +296,12 @@ export function lowerObjectClasses(program) {
             if (anyReceiver(member.object)) fail('Selected Arcade SDK does not support unary update on any class properties');
             const fields=classNames(member.object).map(name=>findField(name,member.name));
             if(fields.some(field=>!field)){fail('Unknown class field '+member.name);return node;}
-            access(member.object,member.name,fields,context);
+            propertyAccess(member.object,member.name,classNames(member.object),context,true);
             if(!anyReceiver(member.object) && fields.some(field=>field.modifiers?.includes('readonly')) && !(context?.constructor && fields.every(field=>fieldOwners.get(field)===context.name) && member.object.type==='Identifier' && member.object.name==='this'))fail(`Readonly class field ${member.name} cannot be assigned outside its constructor`);
             return call('assign',[rewrite(member.object,context),str(member.name),str(node.op),{type:'Number',value:1},str(node.prefix?'new':'old')],['number']);
         }
         if (node.type === 'Member' && classNames(node.object).length && classNames(node.object).every(name => findField(name,node.name))) {
-            access(node.object,node.name,classNames(node.object).map(name=>findField(name,node.name)),context);
+            propertyAccess(node.object,node.name,classNames(node.object),context);
             return call('get', [rewrite(node.object, context), str(node.name)], types(node));
         }
         const out = Object.fromEntries(Object.entries(node).map(([key, value]) => [key, rewrite(value, context)]));
@@ -284,35 +309,40 @@ export function lowerObjectClasses(program) {
         return out;
     }
     const defaultValue=node=>node?.type==='Number'?Number(node.value):node?.type==='Null'?null:node?.type==='Boolean'?node.value:node?.type==='Unary'?(node.op==='-'?-1:1)*Number(node.argument.value):undefined;
+    const accessorNames=new WeakMap(),takenNames=new Set();
+    const collectName=node=>{if(!node || typeof node!=='object')return;if(node.name)takenNames.add(node.name);for(const param of node.params||[])takenNames.add(param);Object.values(node).forEach(value=>Array.isArray(value)?value.forEach(collectName):collectName(value));};collectName(program);
+    let selfName='__bwSelf';while(takenNames.has(selfName))selfName+='_';takenNames.add(selfName);
+    for(const [name,cls]of admitted){for(const method of cls.methods.filter(method=>method.kind==='method'))takenNames.add('__bwClass_'+name+'_'+method.name);}
+    for(const [name,cls]of admitted)for(const method of cls.methods.filter(method=>['get','set'].includes(method.kind))){let fn='__bwAccessor_'+name+'_'+method.kind+'_'+method.name;while(takenNames.has(fn))fn+='_';takenNames.add(fn);accessorNames.set(method,fn);}
     const body = [];
     for (let node of program.body) {
         if(node.type==='Declaration'){const decls=node.decls.filter(decl=>!decl.whenUsed || used.has(decl.name));if(decls.length)body.push(rewrite({...node,decls}));continue;}
         if (node.type !== 'Class' || !admitted.has(node.name)) { body.push(rewrite(node)); continue; }
         const name = node.name;node=classes.get(name);const initName = `__bwClass_${name}_fields`, ctorName = `__bwClass_${name}_constructor`;
-        const actualCtor=effectiveCtor(name),ctorParams=['__bwSelf',...(actualCtor.ctor?.params||[])],methods=[];
+        const actualCtor=effectiveCtor(name),ctorParams=[selfName,...(actualCtor.ctor?.params||[])],methods=[];
         const ownInitializers=new Map(),initBody=[];
-        if(node.base)initBody.push(statement(procedure(signature(`__bwClass_${node.base}_fields`,['__bwSelf']),[{...id('__bwSelf'),bwObjectTypes:['object']}] )));
+        if(node.base)initBody.push(statement(procedure(signature(`__bwClass_${node.base}_fields`,[selfName]),[{...id(selfName),bwObjectTypes:['object']}] )));
         for(const field of node.fields.filter(field=>field.init)){
             const fn=`__bwClass_${name}_field_${field.name}`;ownInitializers.set(field.name,fn);
             body.push({type:'FunctionDeclaration',name:fn,params:[],body:[{type:'Return',value:rewrite(field.init,{name,constructor:true})}]});
-            initBody.push(statement(call('set',[{...id('__bwSelf'),bwObjectTypes:['object']},str(field.name),procedure(fn,[],types(field.init))])));
+            initBody.push(statement(call('set',[{...id(selfName),bwObjectTypes:['object']},str(field.name),procedure(fn,[],types(field.init))])));
         }
-        body.push({type:'FunctionDeclaration',name:initName,params:['__bwSelf'],body:initBody});
+        body.push({type:'FunctionDeclaration',name:initName,params:[selfName],body:initBody});
         if(node.ctor)body.push({type:'FunctionDeclaration',name:ctorName,params:ctorParams,paramTypes:node.ctor.paramTypes,body:rewrite(classBody(node.ctor),{name,constructor:true})});
         else if(!node.base)body.push({type:'FunctionDeclaration',name:ctorName,params:ctorParams,body:[]});
         const superParams=ctorParams;
         body.push({type:'FunctionDeclaration',name:`__bwClass_${name}_superConstructor`,params:superParams,body:[
-            statement(procedure(signature(initName,['__bwSelf']),[{...id('__bwSelf'),bwObjectTypes:['object']}])),
-            statement(procedure(signature(`__bwClass_${actualCtor.name}_constructor`,superParams),superParams.map(param=>({...id(param),bwObjectTypes:param==='__bwSelf'?['object']:undefined}))))
+            statement(procedure(signature(initName,[selfName]),[{...id(selfName),bwObjectTypes:['object']}])),
+            statement(procedure(signature(`__bwClass_${actualCtor.name}_constructor`,superParams),superParams.map(param=>({...id(param),bwObjectTypes:param===selfName?['object']:undefined}))))
         ]});
         for (const method of node.methods) {
-            const fn = `__bwClass_${name}_${method.name}`, params = ['__bwSelf', ...method.params];
+            const fn = accessorNames.get(method) || `__bwClass_${name}_${method.name}`, params = [selfName, ...method.params];
             body.push({type:'FunctionDeclaration', name:fn, params, paramTypes:method.paramTypes,
                 body:rewrite(classBody(method), {name, constructor:false})});
-            methods.push({name:method.name, procedure:signature(fn, params), parameters:method.params.map(param => ({name:param,type:typeText(method.paramTypes?.[param]),optional:!!method.optionalParams?.includes(param),...(method.parameterDefaults?.some(value=>value.name===param)?{default:defaultValue(method.parameterDefaults.find(value=>value.name===param).value)}:{})})), returnType:typeText(method.returnType),visibility:visibility(method)});
+            if(method.kind==='method')methods.push({name:method.name, procedure:signature(fn, params), parameters:method.params.map(param => ({name:param,type:typeText(method.paramTypes?.[param]),optional:!!method.optionalParams?.includes(param),...(method.parameterDefaults?.some(value=>value.name===param)?{default:defaultValue(method.parameterDefaults.find(value=>value.name===param).value)}:{})})), returnType:typeText(method.returnType),visibility:visibility(method)});
         }
-        body.push(statement(call(node.base?'declareSubclass':'declare', [str(name),...(node.base?[str(node.base)]:[]), str(JSON.stringify(node.fields.map(field => ({name:field.name,type:field.typeName || 'any',readonly:!!field.modifiers?.includes('readonly'),visibility:visibility(field),...(field.parameterProperty?{parameterProperty:true}:{}),...(ownInitializers.has(field.name)?{initializer:ownInitializers.get(field.name)}:{})})))),
-            str(signature(initName, ['__bwSelf'])), str(signature(`__bwClass_${actualCtor.name}_constructor`,ctorParams)),
+        body.push(statement(call(node.base?'declareSubclass':'declare', [str(name),...(node.base?[str(node.base)]:[]), str(JSON.stringify(node.fields.map(field => ({name:field.name,type:field.typeName || 'any',readonly:!!field.modifiers?.includes('readonly'),visibility:visibility(field),...(field.accessor?.get?{getter:signature(accessorNames.get(field.accessor.get),[selfName])}:{}),...(field.accessor?.set?{setter:{procedure:signature(accessorNames.get(field.accessor.set),[selfName,...field.accessor.set.params]),parameters:field.accessor.set.params.map(param=>({name:param,type:typeText(field.accessor.set.paramTypes?.[param]),optional:false}))}}:{}),...(field.parameterProperty?{parameterProperty:true}:{}),...(ownInitializers.has(field.name)?{initializer:ownInitializers.get(field.name)}:{})})))),
+            str(signature(initName, [selfName])), str(signature(`__bwClass_${actualCtor.name}_constructor`,ctorParams)),
             str(JSON.stringify((actualCtor.ctor?.params || []).map(param => ({name:param,type:typeText(actualCtor.ctor?.paramTypes?.[param]),optional:!!actualCtor.ctor?.optionalParams?.includes(param),...(actualCtor.ctor?.parameterDefaults?.some(value=>value.name===param)?{default:defaultValue(actualCtor.ctor.parameterDefaults.find(value=>value.name===param).value)}:{})})))), str(JSON.stringify(methods))])));
     }
     return {program:{...program,body,bwObjectClasses:true}, unsupported};

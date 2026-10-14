@@ -539,7 +539,7 @@ class Parser {
                 this.skipTypeAnnotation();
                 const returnType = this.lastType;
                 const body = this.parseBlock();
-                node.methods.push({name: prop, kind: member, params, paramTypes, returnType, body, isStatic});
+                node.methods.push({name: prop, kind: member, params, paramTypes, optionalParams:params.optionalParams, parameterDefaults:params.parameterDefaults, returnType, body, isStatic, modifiers});
                 continue;
             }
             if (this.at('punct', '(')) {
