@@ -120,6 +120,13 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
             }
             for(const action of buttonActions.steps){
                 if(action.delay){if(fakeClock)await page.clock.runFor(action.delay);else await page.waitForTimeout(action.delay);}
+                // Genuine simulator system-keyboard DOM, not a replaced answer API.
+                if (action.text !== undefined) {
+                    const input = page.locator('input');
+                    if (await input.count() !== 1) throw new Error('Original simulator text prompt is missing or ambiguous');
+                    await input.fill(String(action.text));
+                }
+                if (action.key !== undefined) await page.keyboard.press(action.key);
                 if(action.button!==undefined)await page.evaluate(({button,held})=>{
                     const board=window.__bwPxtRuntime.board;
                     if(typeof board.setButton!=='function')throw new Error('Original PXT board button input unavailable');

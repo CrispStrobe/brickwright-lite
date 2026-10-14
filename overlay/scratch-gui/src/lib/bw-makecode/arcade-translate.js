@@ -3313,6 +3313,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if (node?.type === 'Call') {
             const api = pathOf(node.callee);
             if(api==='randint' && node.callee?.type==='Identifier' && node.args.length===2 && !node.isNew && sdkNumericCalls.has(node.callee))return new Set(['number']);
+            if(api==='game.askForString' && node.callee?.type==='Member' && node.args.length>=1 && node.args.length<=3 && !node.isNew && sdkNumericCalls.has(node.callee.object))return new Set(['string']);
             if(api==='SpriteKind.create' || node.callee?.type==='Member' && node.callee.name==='kind' && typeOf(node.callee.object,owner).has('sprite'))return new Set(['number']);
             if(api==='characterAnimations.ruleToString' && node.args.length===1)return new Set(['string']);
             if(['characterAnimations.rule','characterAnimations._predicate','characterAnimations._direction'].includes(api))return new Set(['number']);

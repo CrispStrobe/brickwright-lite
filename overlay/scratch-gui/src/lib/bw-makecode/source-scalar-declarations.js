@@ -75,6 +75,7 @@ export function sourceScalarDeclarations(program) {
                 arguments_.forEach((argument, index) => edge(argument, `${inner.key}:${fn.params[index]}`));
                 edge(`${inner.key}:result`, cell);
             } else if(node.callee?.type==='Identifier' && node.callee.name==='randint' && node.args?.length===2 && !node.isNew && sdkNumericCalls.has(node.callee))add(cell,'Number');
+            else if(node.callee?.type==='Member' && node.callee.object?.type==='Identifier' && node.callee.object.name==='game' && node.callee.name==='askForString' && node.args?.length>=1 && node.args.length<=3 && !node.isNew && sdkNumericCalls.has(node.callee.object))add(cell,'String');
             else add(cell, 'Unknown');
         } else if (node.type === 'Binary' || node.type === 'Logical') {
             const left = visit(node.left, scope), right = visit(node.right, scope);
