@@ -37,8 +37,10 @@ remain diagnosed. These runtime results do not qualify editor discoverability.
 
 The [source type contract](compatibility/arcade-source-typeof-values.md) now has
 bounded native, edited-input, Code, saved-project, original export and reimport
-qualification. Named array reads preserve authored strings without surrounding
-JSON quotes; JSON aggregate serialization and actual Array aliases remain separate.
+qualification. The bounded E15 source-helper fixture preserves authored strings
+without surrounding JSON quotes; JSON aggregate serialization and actual Array
+aliases remain separate. General named-array getter export still needs its
+scalar/aggregate helper and registry-ownership round-trip qualification.
 No whole-game or raw-corpus promotion follows from these focused results.
 
 | Surface | Available | Remaining acceptance |
