@@ -186,13 +186,19 @@ export const isScoped = (argv = process.argv) => argv.includes('--only');
 export class PinMoveRefused extends Error {}
 
 // An unreadable or conflicted file is never an empty pin registry. Only a
-// file that does not exist can start one; otherwise preserve it for repair.
+// explicitly selected custom registry may start one; the workspace manifest
+// must already exist, including in a sparse checkout.
 async function readPins (pinsFile, name) {
     let text;
     try {
         text = await readFile(pinsFile, 'utf8');
     } catch (error) {
-        if (error.code === 'ENOENT') return {};
+        if (error.code === 'ENOENT') {
+            if (path.resolve(pinsFile) === path.resolve(PINS_FILE)) {
+                throw new Error('workspace vendor-pins.json is missing; materialize the existing manifest before syncing', {cause: error});
+            }
+            return {};
+        }
         throw error;
     }
     let pins;
