@@ -203,6 +203,7 @@ export const DEVICE_GROUP_CORE = Object.freeze({
     'Arduino (AVR)': 'arduino',
     'Raspberry Pi': 'rp2040',
     'STM32 (ARM)': 'arm',
+    'ESP8266': 'esp8266',
     '6502': 'w65c02',
     'Z80': 'z80',
     'RISC-V': 'riscv32',
@@ -295,6 +296,20 @@ export const DEVICES = Object.freeze([
             tx('stm32-uart-bootloader-webserial', ['bin', 'hex'], 'stm32'),
             tx('cmsis-dap-swd-webusb', ['bin'], 'stm32')
         ]
+    }),
+    // The ESP8266 (Tensilica LX106): C from sb3-creator's DEVICE ESP8266 back
+    // end against the blob-free esp8266js runtime API, run in bw-board's
+    // `esp8266` debug kind. `pickerCompile` stays false while the hosted
+    // service's esp8266 target is not in the pinned stc-compiler snapshot
+    // (docs/generated/hosted-targets.json): the conformance gate ties the two.
+    dev('esp8266', 'ESP8266', 'ESP8266', 'esp8266', {
+        pickerCompile: false,
+        pickerEmulator: 'esp8266',
+        sim: [eng('esp8266', ['bin'], {
+            tier: '2a',
+            note: 'bw-board esp8266 kind over the esp8266js fork; SDK-free firmware only, GPIO and serial'
+        })],
+        silicon: []
     }),
     dev('eater6502', 'Eater 6502', '6502', 'w65c02', {
         pickerCompile: true,
@@ -562,6 +577,7 @@ const JS_MIN = 'Kaluma and Espruino need a Cortex-M with 64 KB RAM or more';
 const STC_RAM = `STC12C5A60S2: 1,280 B RAM; ${MPY_MIN}`;
 const AVR_RAM = `ATmega328P: 2 KB RAM; ${MPY_MIN}`;
 const F030 = 'STM32F030: 16–32 KB flash, 4 KB RAM';
+const ESP_SDK = 'the MicroPython and NodeMCU ESP8266 ports link Espressif\'s closed SDK, which this simulator does not run';
 const MPY = shipped('py', 'MicroPython', 'none', {
     tier: '2a',
     note: 'the real interpreter; what is asserted is only the deploy protocol'
@@ -640,6 +656,21 @@ export const CELLS = Object.freeze({
         basic: {native: no('flash', `${F030}; no BASIC fits beside a program`), lowered: [via('c')]},
         asm: {native: shipped('hex', 'arm-none-eabi-as', 'hosted', {note: 'runs on the STM32F030 light tier (N4)'}), lowered: [LISTING]},
         micropython: {native: no('flash', `${F030}; ${MPY_MIN}`), lowered: [via('c')]}
+    },
+    esp8266: {
+        pseudocode: {native: AST, lowered: [via('c')]},
+        python: {native: no('licence', ESP_SDK), lowered: [via('c')]},
+        javascript: {native: no('licence', `${ESP_SDK} (Espruino's ESP8266 port links it too)`), lowered: [via('c')]},
+        c: {
+            native: open('bin', 'xtensa-lx106-elf-gcc + bw8266 runtime', 'hosted', null, {
+                note: 'the stc-compiler esp8266 target exists on its main branch but is not in the pinned '
+                    + 'hosted snapshot (not deployed); the image runs in bw-board\'s esp8266 kind'
+            }),
+            lowered: [via('c')]
+        },
+        basic: {native: no('no-port', 'no permissively licensed BASIC for the ESP8266 without the SDK found'), lowered: [via('c')]},
+        asm: {native: no('no-port', 'no LX106 assembler route in the ASM tab'), lowered: []},
+        micropython: {native: no('licence', ESP_SDK), lowered: [via('c')]}
     },
     microbit: {
         pseudocode: {native: AST, lowered: [via('micropython')]},
