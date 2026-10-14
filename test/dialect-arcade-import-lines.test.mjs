@@ -87,7 +87,9 @@ test('the corpus is what the importer was given by its tests', () => {
     assert.equal(corpus.testFiles.length, 82);
     assert.equal(new Set(corpus.inputs.map(i => i.test)).size, corpus.testFilesTranslating);
     assert.equal(corpus.testFilesTranslating, 68);
-    assert.equal(programs.length, 417);
+    // The input corpus is unchanged; later source lowering distinguishes one
+    // pair of programs whose older translations had identical text.
+    assert.equal(programs.length, 418);
     const lines = new Set(programs.flatMap(p => p.code.split('\n').map(l => l.trim()).filter(Boolean)));
     assert.ok(lines.size > 3500, `${lines.size} distinct lines`);
     // Every word family the importer uses is in it (not a corpus of plain Scratch).
@@ -97,8 +99,8 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the Arcade word table (363 opcodes)', () => {
-    assert.equal(ARCADE_DIALECT_OPS.length, 363);
+test('the pinned parser has the Arcade word table (379 opcodes)', () => {
+    assert.equal(ARCADE_DIALECT_OPS.length, 379);
     for (const opcode of ['arcade_declareClass', 'arcade_declareSubclass', 'arcade_createObject',
         'arcade_objectField', 'arcade_setObjectField', 'arcade_callObjectMethod', 'arcade_whenSourceStarts', 'arcade_sourceWhile', 'arcade_setHudVisibility', 'arcade_cameraDrawOffset', 'arcade_setPalette', 'arcade_registerInstanceDestroyedHandler',
         'arcade_whenRegisteredInstanceDestroyed', 'arcade_startParallelHandler',
