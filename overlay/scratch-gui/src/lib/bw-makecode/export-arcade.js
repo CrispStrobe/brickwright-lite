@@ -1,4 +1,6 @@
 import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes} from './callable-export-graph.js';
+import {namedArrayItemExportAuthority} from './named-array-item-export-authority.js';
+import {NAMED_ARRAY_GET_SOURCE} from './named-array-item-helpers.js';
 import {sourceReferenceProject} from './source-reference-project.js';
 import {scalarExportFlow} from './scalar-export-flow.js';
 import {sourceScalarProject} from './source-scalar-project.js';
@@ -714,7 +716,11 @@ class ArcadeEmitter {
             while(occupied.has(name))name+='_';
             const parse=()=>this.legacyValueHelper('parse'),json=()=>this.legacyValueHelper('json');
             let params='array: any[]',body='';
-            if(op==='get'){params+=', index: any';body=`return array ? ${json()}(array[+index]) : ""`;}
+            if(op==='get') {
+                const source=NAMED_ARRAY_GET_SOURCE.replaceAll('__bwNamedArrayGet',name).replaceAll('__bwNamedJsonValue',json());
+                this.legacyValueHelpers.set(key,{name,source});
+                return name;
+            }
             if(op==='pop')body='if (array) {\n        if (array.length) return array.pop()\n    }\n    return ""';
             if(op==='indexOf'){params+=', value: any';body=`return array ? array.indexOf(${parse()}(value)) : -1`;}
             if(op==='contains') {
@@ -1163,7 +1169,14 @@ class ArcadeEmitter {
         case 'arrays_parseLegacyValue': return this.legacyArrayInput(b);
         case 'arrays_jsonValue': return `${this.legacyValueHelper('json')}(${this.arrayValue(b,'VALUE')})`;
         case 'arrays_length': {const array=this.namedArray(b);return `(${array} ? ${array}.length : 0)`;}
-        case 'arrays_get': return `${this.namedOperationHelper('get')}(${this.namedArray(b)}, ${this.arrayValue(b,'INDEX')})`;
+        case 'arrays_get': {
+            const name=this.literalInput(b,'NAME');
+            if(name!==null){
+                const authority=namedArrayItemExportAuthority(this.project,name,block=>this.isBoolean(block),this.sourceReferenceCells);
+                if(!authority.ok){this.note(authority.reason);return this.na();}
+            }
+            return `${this.namedOperationHelper('get')}(${this.namedArray(b)}, ${this.arrayValue(b,'INDEX')})`;
+        }
         case 'arrays_pop': return `${this.namedOperationHelper('pop')}(${this.namedArray(b)})`;
         case 'arrays_indexOf': return `${this.namedOperationHelper('indexOf')}(${this.namedArray(b)}, ${this.arrayValue(b,'VALUE')})`;
         case 'arrays_contains': return `${this.namedOperationHelper('contains')}(${this.namedArray(b)}, ${this.arrayValue(b,'VALUE')})`;

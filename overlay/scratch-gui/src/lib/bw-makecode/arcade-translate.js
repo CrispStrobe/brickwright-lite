@@ -2,6 +2,7 @@ import {callableSourceGate} from './callable-source-gate.js';
 import {lowerCallableValues} from './lower-callable-values.js';
 import {sourceCallableDeclarations} from './source-callable-declarations.js';
 import {callableDeclarationEnvelope,callableVariableEnvelope} from './callable-export-graph.js';
+import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
 import {lowerLiveFontMetrics} from './live-font-metrics.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {sourceReferenceDeclarations} from './source-reference-declarations.js';
@@ -508,6 +509,12 @@ class ArcadeTranslator extends BaseTranslator {
         if(kindBinding)out.push(`${'  '.repeat(indent)}arcade bind sprite kind name ${JSON.stringify(kindBinding)} to (${this.expr({type:'Identifier',name:st.expr.spriteKindBinding})})`);
     }
     arcadeStatement(st, indent, out) {
+        if(st.type==='ExpressionStatement' && st.expr?.bwNativeNamedArray && st.expr.bwNativeNamedArray.kind!=='get') {
+            this.usesArrays=true;
+            const node=st.expr,{kind,registry}=node.bwNativeNamedArray,name=JSON.stringify(registry),args=node.args.slice(1).map(arg=>this.expr(arg));
+            const line=kind==='push'?`push (${args[0]}) to array ${name}`:kind==='set'?`set item (${args[0]}) of array ${name} to (${args[1]})`:`insert (${args[1]}) at (${args[0]}) of array ${name}`;
+            out.push(`${'  '.repeat(indent)}${line}`);return;
+        }
         if (st.type === 'Declaration') {
             const declarations = st.decls.filter(declaration => declaration.init || (!this.sourceScalarTypes?.has(declaration.name) && !this.sourceReferenceTypes?.has(declaration.name)) ||
                 this.localVars?.has(declaration.name) || this.currentParameters?.has(declaration.name));
@@ -1181,6 +1188,13 @@ class ArcadeTranslator extends BaseTranslator {
         if(node?.type==='Identifier' && ['NaN','Infinity'].includes(node.name) && !this.boundSourceGlobals?.has(node.name) && !this.localVars?.has(node.name) && !this.currentParameters?.has(node.name) && !this.capturedBindings.has(node.name)) {
             return this.expr({type:'Binary',op:'/',left:{type:'Number',value:node.name==='NaN'?'0':'1'},right:{type:'Number',value:'0'}});
         }
+        if(['NativeNamedArrayCreate','NativeNamedArrayDelete'].includes(node?.type)) {
+            this.usesArrays=true;
+            if(!this.pre){this.unsupported.push('Named Array construction requires its validated statement owner');return 'undefined value';}
+            this.pre.push(node.type==='NativeNamedArrayCreate'?`new array ${JSON.stringify(node.registry)} = ${node.json}`:`delete array ${JSON.stringify(node.registry)}`);
+            return node.type==='NativeNamedArrayCreate'?`reference to named array (${JSON.stringify(node.registry)})`:'null value';
+        }
+        if(node?.type==='Call' && node.bwNativeNamedArray?.kind==='get') {this.usesArrays=true;return `item (${this.expr(node.args[1])}) of array ${JSON.stringify(node.bwNativeNamedArray.registry)}`;}
         if(node?.type==='LegacyParsedValue'){this.usesArrays=true;return `parse array input (${this.arrayElementValue(node.value)})`;}
         if(node?.type==='NativeArrayAccess')return this.expr(node.value);
         const importedBuffer=this.bufferExpression(node);
@@ -3328,7 +3342,8 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(left.has('string')||right.has('string'))return new Set(['string']);
             if(left.has('number')&&right.has('number'))return new Set(['number']);
         }
-        if(node?.type==='NativeArrayAccess')return new Set(['array']);
+        if(node?.type==='NativeArrayAccess' || node?.type==='NativeNamedArrayCreate')return new Set(['array']);
+        if(node?.type==='NativeNamedArrayDelete')return new Set(['null']);
         if(node?.type==='LegacyJsonValue')return new Set(['string']);
         if(node?.type==='LegacyParsedValue')return new Set(['any']);
         if (node?.type === 'Array') return new Set(['array',...node.items.flatMap(item=>[...typeOf(item,owner)].filter(t=>['image','sprite','tile','number','string','scene','physics-engine'].includes(t)).map(t=>`${t}-array`))]);
@@ -4833,8 +4848,9 @@ export function arcadeToPseudocode (files, opts = {}) {
     const callableSourceParsed=parseMakeCodeTs(source, {parameterDefaults: true, retainParentheses: true, retainWhenUsed:true, retainClassHeritage:true, retainCallableMetadata:opts.callableLexicalPrototype===true});
     const callableEligibility=opts.callableLexicalPrototype===true?callableSourceGate(callableSourceParsed,{normalize:true}):null;
     const callableSourceInput=callableEligibility?.program || callableSourceParsed;
+    const namedArrayInputs=lowerNamedArrayItemHelpers(callableSourceInput);
     const parsed = lowerSourceLoopControl(inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
-        lowerAnimationAssets(callableSourceInput))), source), source), source), source))));
+        lowerAnimationAssets(namedArrayInputs.program))), source), source), source), source))));
     const containsPaletteCall = node => {
         if(!node || typeof node!=='object')return false;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='setPalette' &&
@@ -4889,7 +4905,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         const callableDeclarations=(result.sourceCallables || []).map(({procedure,metadata})=>`  arcade declare callable ${JSON.stringify(procedure)} metadata ${JSON.stringify(JSON.stringify(metadata))}`);
         if(callableDeclarations.length)code=code.replace(/^WHEN arcade source starts:((?:\n  declare arcade source (?:scalar|reference|callable) .+)*)/m,prefix=>prefix+'\n'+callableDeclarations.join('\n'));
         return {...result,code,costumes,animationResources,warnings:[...recovered.warnings,...sourceWarnings],
-            unsupported:[...new Set([...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...result.unsupported])]};
+            unsupported:[...new Set([...namedArrayInputs.unsupported,...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...result.unsupported])]};
     };
     let textSpriteInitializer=false;
     try {const cfg=JSON.parse(map['pxt.json'] || '{}');textSpriteInitializer=cfg.bwArcadeNativeLibraries?.textsprite==='v1.3.0' && selectedSource.entries.some(entry=>entry.name.startsWith('__bwDependencyInputs/arcade-text/') && entry.source===TEXT_SPRITE_INITIALIZER);}catch{}
