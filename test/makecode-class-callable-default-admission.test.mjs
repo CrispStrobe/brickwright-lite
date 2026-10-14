@@ -1,25 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {mkdirSync,writeFileSync} from 'node:fs';
+import path from 'node:path';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,clearStrayTimers,stepFrames} from './helpers/bw-vm.mjs';
 import {importGuiDependency} from './helpers/bw-integrated.mjs';
 import {source} from './fixtures/arcade-class-callable-source.mjs';
 const BW=(await importGuiDependency('scratch-vm/src/util/bw-values.js')).default;
+const retain=(name,files)=>{const dir=process.env.CLASS_DEFAULT_RECEIPT_DIR;if(!dir)return;
+    const destination=path.join(dir,name);mkdirSync(destination,{recursive:true});
+    for(const [file,value] of Object.entries(files))writeFileSync(path.join(destination,path.basename(file)),value);
+};
 const check=(run,n)=>{assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
     const vars=run.vm.runtime.targets.flatMap(t=>Object.values(t.variables));
     assert.deepEqual(['n','text','seen'].map(name=>BW.decode(vars.find(v=>v.name===name).value)),[n,'ok',n]);};
 test('default class admission proves current bodies through Code, same/fresh SB3 and edited export/reimport',async()=>{
     const imported=arcadeToPseudocode({'main.ts':source});assert.deepEqual(imported.unsupported,[]);
+    retain('source',{'main.ts':source,'import.code':imported.code});
     const run=await runProgram(imported.code,{frames:40});
     const runs=[run];
     try{
         check(run,3);const project=JSON.parse(run.vm.toJSON());
         const exported=projectToArcade(project);assert.deepEqual(exported.unsupported,[]);assert.deepEqual(exported.warnings,[]);
+        retain('initial-export',exported.files);
         const again=arcadeToPseudocode(exported.files);assert.deepEqual(again.unsupported,[]);
         const native=await runProgram(again.code,{frames:60});runs.push(native);check(native,3);
         const code=run.creator.decompile(project),reparsed=await runProgram(code,{frames:50});runs.push(reparsed);check(reparsed,3);
         const saved=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());
+        retain('portable',{'project.sb3':saved,'project.json':JSON.stringify(project),'project.code':code});
         await run.vm.loadProject(saved);run.vm.greenFlag();await stepFrames(run.vm,50);check(run,3);
         const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0});runs.push(fresh);
         await fresh.vm.loadProject(saved);fresh.vm.greenFlag();await stepFrames(fresh.vm,50);
@@ -31,6 +40,7 @@ test('default class admission proves current bodies through Code, same/fresh SB3
         }assert.equal(edits,1);
         const edited=await runProgram(run.creator.decompile(project),{frames:60});runs.push(edited);check(edited,8);
         const current=projectToArcade(JSON.parse(edited.vm.toJSON()));assert.deepEqual(current.unsupported,[]);
+        retain('edited-export',current.files);
         const reimport=arcadeToPseudocode(current.files);assert.deepEqual(reimport.unsupported,[]);
         const result=await runProgram(reimport.code,{frames:60});runs.push(result);check(result,8);
     }finally{runs.forEach(run=>run.vm.quit());clearStrayTimers();}
@@ -55,11 +65,13 @@ test('renamed classes and a yielding callback retain actual receiver identity an
         .replace('new Holder(state)','new Container(state)')
         .replace('s.value+=2;return s.value','s.value+=2;pause(1);return s.value');
     const imported=arcadeToPseudocode({'main.ts':renamed});assert.deepEqual(imported.unsupported,[]);
+    retain('renamed-source',{'main.ts':renamed,'import.code':imported.code});
     const run=await runProgram(imported.code,{frames:80});
     try{
         check(run,3);
         const project=JSON.parse(run.vm.toJSON()),exported=projectToArcade(project);
         assert.deepEqual(exported.unsupported,[]);
+        retain('renamed-export',exported.files);
         assert.match(exported.ts,/pause\(/);
         const importedAgain=arcadeToPseudocode(exported.files);assert.deepEqual(importedAgain.unsupported,[]);
         const again=await runProgram(importedAgain.code,{frames:80});
