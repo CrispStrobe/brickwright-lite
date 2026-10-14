@@ -4866,9 +4866,15 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (Array.isArray(node)) return node.map(lowerAnimationAssets);
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
-    const callableSourceParsed=parseMakeCodeTs(source, {parameterDefaults: true, retainParentheses: true, retainWhenUsed:true, retainClassHeritage:true, retainCallableMetadata:opts.callableLexicalPrototype===true});
-    const callableEligibility=opts.callableLexicalPrototype===true?callableSourceGate(callableSourceParsed,{normalize:true}):null;
-    const callableSourceInput=callableEligibility?.program || callableSourceParsed;
+    const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true};
+    const ordinarySource=parseMakeCodeTs(source,callableParseOptions);
+    const callableSourceParsed=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true});
+    const callableEligibility=callableSourceGate(callableSourceParsed,{normalize:true});
+    const callableEnabled=opts.callableLexicalPrototype===true || callableEligibility.eligible;
+    // Ordinary programs retain their ordinary parse. Only the proved numeric
+    // surface uses lexical metadata and the existing callable lowering path.
+    const callableSourceInput=callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
+    if(!opts.callableLexicalPrototype)projectInputDiagnostics.push(...callableEligibility.unsupported);
     const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput,true));
     const parsed = lowerSourceLoopControl(inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
         lowerAnimationAssets(namedArrayInputs.program))), source), source), source), source))));
@@ -4956,8 +4962,8 @@ export function arcadeToPseudocode (files, opts = {}) {
             ['indexOf','removeElement'].includes(node.callee.name) && queryReferences.arrays.has(node.callee.object)
     });
     stagedSource.sourceReferenceDeclarations = sourceReferenceDeclarations(stagedSource);
-    stagedSource.sourceCallableDeclarations=opts.callableLexicalPrototype===true?sourceCallableDeclarations(stagedSource).declarations:[];
-    const callables=opts.callableLexicalPrototype===true?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
+    stagedSource.sourceCallableDeclarations=callableEnabled?sourceCallableDeclarations(stagedSource).declarations:[];
+    const callables=callableEnabled?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
     projectInputDiagnostics.push(...callables.unsupported);
     const objectClasses = lowerObjectClasses(callables.program);
     projectInputDiagnostics.push(...objectClasses.unsupported);

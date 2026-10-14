@@ -22,8 +22,8 @@ test('opt-in source counter uses current native captures and actual typed source
         assert.equal(run.vm.runtime._arcadeFramePhase.ext._state().score,10);
     }finally{run.vm.quit();clearStrayTimers();}
 });
-test('default source admission and authored intrinsic namespace remain explicit boundaries',()=>{
-    assert.ok(arcadeToPseudocode({'main.ts':counterSource}).unsupported.length>0);
+test('bounded default source admission preserves the authored intrinsic namespace refusal',()=>{
+    assert.deepEqual(arcadeToPseudocode({'main.ts':counterSource}).unsupported,[]);
     const result=arcadeToPseudocode({'main.ts':'let __bwCallables=2; '+counterSource},{callableLexicalPrototype:true});
     assert.match(result.unsupported.join(';'),/Authored __bwCallables binding conflicts/);
 });

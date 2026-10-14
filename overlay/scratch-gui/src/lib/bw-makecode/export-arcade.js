@@ -1,3 +1,5 @@
+import {parseMakeCodeTs} from './ts-import.js';
+import {callableSourceGate} from './callable-source-gate.js';
 import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes} from './callable-export-graph.js';
 import {namedArrayItemExportAuthority} from './named-array-item-export-authority.js';
 import {NAMED_ARRAY_GET_SOURCE} from './named-array-item-helpers.js';
@@ -3294,7 +3296,6 @@ class ArcadeEmitter {
 
     prepareCallableExport() {
         this.callableExports=new Map();this.callableGlobals=new Map();
-        if(!this.opts.callableLexicalPrototype)return;
         for(const target of this.project.targets) {
             const blocks=target.blocks || {},literal=(block,name)=>{
                 const slot=block.inputs?.[name]?.[1];
@@ -3902,6 +3903,14 @@ export function projectToArcade (project, opts = {}) {
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`
     };
+    if(e.callableExports.size && !opts.callableLexicalPrototype) {
+        // Approval covers the complete reconstructed current program, including
+        // adjacent functions; lexical metadata cannot grant a broader surface.
+        const gate=callableSourceGate(parseMakeCodeTs(projectTs,{parameterDefaults:true,
+            retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainCallableMetadata:true}));
+        if(!gate.eligible)e.note('Callable default export requires the bounded numeric factory surface');
+        for(const diagnostic of gate.unsupported)e.note(diagnostic);
+    }
     return {ts, files, unsupported: e.unsupported, warnings: e.warnings};
 }
 
