@@ -535,3 +535,66 @@ test('persistent storage requires both NuttX storage and checkpoint capabilities
         assert.equal(session.storagePersistent, expected, `${firmware}/${storage}/${checkpoint}`);
     }
 });
+
+
+test('Stop from a firmware completion frame suppresses the later completion callback', async () => {
+    let sequence = 0; let completed = 0; let closed = 0; let stopping;
+    const capabilities = Object.fromEntries(['session.start', 'session.close', 'run', 'state.read',
+        'arena.inputs.write', 'arena.program.load'].map(operation => [
+        `renode.spike.${operation}`, async () => {
+            if (operation === 'session.close') closed++;
+            if (operation !== 'state.read') return 'ready';
+            const frame = programFrame(sequence ? 2 : 0);
+            frame.seq = ++sequence; frame.clockNs = (sequence - 1) * 1000000;
+            return JSON.stringify(frame);
+        }
+    ]));
+    const session = new RenodeArenaSession({bridge: bridge(), capabilities,
+        program: {version: 1, instructions: [[0, 0, 0, 0]]},
+        onFrame: () => {
+            if (session.latestFrame?.lifecycle.arenaProgram.status === 2) stopping = session.stop();
+        }, onCompleted: () => { completed++; }});
+    await session.start(); await session.poll(); await stopping; await session.completion;
+    assert.equal(closed, 1);
+    assert.equal(session.closed, true);
+    assert.equal(completed, 0, 'Stop in the observed final frame must win over completion');
+});
+
+
+for (const boundary of ['frame', 'program-state']) {
+    test(`NuttX Stop from the ${boundary} callback suppresses completion`, async () => {
+        let sequence = 0; let state = 0; let completed = 0; let closed = 0; let stopping;
+        const makeFrame = () => {
+            const frame = programFrame(); frame.seq = ++sequence; frame.clockNs = sequence * 1000000;
+            frame.target.firmware = 'brickwright-nuttx';
+            frame.target.capabilities.push('nuttx-program/v1', 'nuttx-program-storage/v1');
+            frame.lifecycle.nuttxProgram = {state, error: 0}; return frame;
+        };
+        const capabilities = Object.fromEntries(['session.start', 'session.close', 'state.read', 'run',
+            'arena.inputs.write', 'program.packet'].map(operation => [`renode.spike.${operation}`, async args => {
+            if (operation === 'session.close') closed++;
+            if (operation === 'state.read') return JSON.stringify(makeFrame());
+            if (operation !== 'program.packet') return 'ready';
+            const packet = args.bytes;
+            if (packet[2] === 2 || packet[2] === 9) state = 1;
+            if (packet[2] === 3) state = 2;
+            if (packet[2] === 4) state = 4;
+            const frame = makeFrame(); const reply = new Uint8Array(20); const view = new DataView(reply.buffer);
+            reply.set([0x71, 1, packet[2], state]); view.setUint32(4, 1, true); view.setUint16(14, 1, true);
+            frame.lifecycle.nuttxProgramReply = [...reply]; return JSON.stringify(frame);
+        }]));
+        const session = new RenodeArenaSession({bridge: bridge(), capabilities, backend: 'nuttx',
+            program: {version: 1, instructions: [[0, 0, 0, 0]]},
+            onFrame: () => {
+                if (boundary === 'frame' && session.latestFrame?.lifecycle.nuttxProgram.state === 3) stopping = session.stop();
+            }, onProgramState: value => {
+                if (boundary === 'program-state' && value === 3) stopping = session.stop();
+            }, onCompleted: () => { completed++; }});
+        try {
+            await session.start(); clearTimeout(session.timer);
+            state = 3; await session.poll(); await stopping; await session.completion;
+            assert.equal(session.closed, true); assert.equal(closed, 1);
+            assert.equal(completed, 0, 'Callback Stop must invalidate the pending NuttX completion');
+        } finally { await session.stop(); }
+    });
+}
