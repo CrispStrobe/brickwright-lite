@@ -371,8 +371,10 @@ let discardedReady=true`;
     await assignedDownload.saveAs(assignedPath);
     const assignedBytes = await fs.readFile(assignedPath);
     const beforeAssignedReloadStage = await page.evaluate(() => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id);
-    await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
-        name: 'arcade-assigned-image-edit.sb3', mimeType: 'application/octet-stream', buffer: assignedBytes});
+    await page.getByText('File', {exact: true}).click();
+    const assignedChooser = page.waitForEvent('filechooser');
+    await page.getByText('Load from your computer', {exact: true}).click();
+    await (await assignedChooser).setFiles(assignedPath);
     await page.waitForFunction(({name, asset, stage}) => window.__brickwrightStore.getState().scratchGui.vm.runtime.getTargetForStage().id !== stage &&
         window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.some(target => target.isOriginal && target.getName() === name && target.sprite.costumes[0]?.asset.assetId === asset),
     {name: assignedBinding[2], asset: editedAssignedAsset, stage: beforeAssignedReloadStage});
