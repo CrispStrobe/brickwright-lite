@@ -9,6 +9,15 @@ Later source-type and exported Array receiver fixes require new exact-source
 qualification; this historical list does not claim every case still fails.
 The other shard has no completed census.
 
+Five controls from `makecode-arcade.test.mjs` now pass in focused checks after
+correcting expectations for the qualified source-kind reporter, numeric kinds
+read from the hash-bound original SDK initializer, the actual source startup
+HAT, and the current random/temporary vocabulary. The timed-spawn frame count
+is unchanged. The geometry control also executes its exact original fixture
+and checks decoded dimensions and the resulting score change. These are test
+expectation corrections, with no runtime patch, complete-game promotion or
+new full-shard result. The historical forty-entry list below remains intact.
+
 ## Method for closing each entry
 
 1. Read the named test and identify which route first fails: original source,
