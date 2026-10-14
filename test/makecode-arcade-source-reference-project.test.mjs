@@ -25,3 +25,32 @@ test('late, computed, unowned and duplicate reference metadata receive explicit 
  const c=build(),t=c.project.targets.find(t=>t.name==='Game'),b=Object.values(t.blocks).find(b=>b.opcode==='arcade_declareSourceReference');
  t.blocks.duplicate={...b,next:b.next,parent:b.id};b.next='duplicate';assert.throws(()=>sourceReferenceProject(c.project),/duplicated/);
 });
+
+
+test('a changed standard variable field cannot regain source reference authority from a stale saved tag',()=>{
+ const c=build(),stage=c.project.targets.find(t=>t.isStage);
+ const [id,value]=Object.entries(stage.variables).find(([,v])=>v[0]==='ref');
+ stage.bwValues={version:1,variables:{[id]:{bwReference:{kind:'image',id:'image:1:1'}}}};
+ value[1]='[image reference image:1:1]';
+ const valid=projectToArcade(c.project);assert.deepEqual(valid.unsupported,[]);assert.match(valid.ts,/let ref: Image\n/);
+ value[1]='[image reference externally edited]';
+ const changed=projectToArcade(c.project);
+ assert.ok(changed.unsupported.some(reason=>reason.includes('saved resource tag differs')));
+ assert.match(changed.ts,/let ref: any = "\[image reference externally edited\]"/);
+ assert.doesNotMatch(changed.ts,/let ref: Image\n/);
+});
+
+
+test('stale reference tags preserve edited zero, null and Boolean fields despite typed reference writers',()=>{
+ for(const edited of [0,null,false,17,'word']) {
+  const c=new Creator();c.parse(source+'\n  set ref to (arcade new image width 1 height 1)');
+  const stage=c.project.targets.find(t=>t.isStage);
+  const [id,value]=Object.entries(stage.variables).find(([,v])=>v[0]==='ref');
+  stage.bwValues={version:1,variables:{[id]:{bwReference:{kind:'image',id:'image:1:1'}}}};
+  value[1]=edited;
+  const changed=projectToArcade(c.project);
+  assert.ok(changed.unsupported.some(reason=>reason.includes('saved resource tag differs')));
+  assert.ok(changed.ts.includes('let ref: any = '+JSON.stringify(edited)),String(edited));
+  assert.doesNotMatch(changed.ts,/let ref: Image/);
+ }
+});

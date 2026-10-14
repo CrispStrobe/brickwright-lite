@@ -177,3 +177,25 @@ Next shared mechanisms are callable capture/dispatch and actual-body export,
 physical Sprite subclass update/lifecycle ownership, and general Arcade Array
 reference identity independent of artwork routing. The GUI acceptance list
 remains in [the capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md).
+
+
+## Further focused terrain and artwork qualification
+
+Terrain import controls now use the qualified SpriteKind reporter while retaining
+exact handler tokens, source parameter shadowing and captured local bindings.
+The staged Array construction has distinct captured temporaries in each source
+procedure; the tests retain those distinct bindings. All nine controls pass,
+including a primitive numeric kind whose actual native handler registration
+survives Code and export/reimport. Named callbacks and malformed callback
+signatures remain explicit gaps.
+
+The artwork alias case now checks source-preserving uninitialized `Image`
+declarations. Its one actual exported MakeCode execution observes tile values
+4 and 2 and edited tile-art pixel 3. That run also exposed a genuine final
+negative-case failure: a stale saved resource tag overrode an externally edited
+standard SB3 variable. Export now preserves that edited value and names the
+resource-tag mismatch. Four authority controls pass, including edited zero, null and Boolean values
+with typed Image writers; the complete native
+artwork/editor/save test passes against byte-identical retained original input
+and observations, without another original execution. These are focused results,
+not a new full-shard count or a corpus promotion.

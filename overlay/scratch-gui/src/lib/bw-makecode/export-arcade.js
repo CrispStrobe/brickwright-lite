@@ -188,6 +188,7 @@ class ArcadeEmitter {
         this.arcadeValues = project.targets.some(t => Object.values(t.blocks || {})
             .some(b => b && /^(arcade|arrays)_/.test(b.opcode || '')));
         this.initialGlobals = new Map();
+        this.editedSavedReferenceIds = new Map();
         this.globals = new Map();       // Scratch variable id|name -> TS name
         this.fnNames = new Map();       // `${target}:${proccode}` -> TS name
         this.target = null;
@@ -611,6 +612,14 @@ class ArcadeEmitter {
             initial === `[${reference.kind} reference ${reference.id}]`) {
             this.initialGlobals.set(ts, null);
             return ts;
+        }
+        if (['image','buffer'].includes(reference?.kind) && typeof reference.id === 'string' &&
+            initial !== `[${reference.kind} reference ${reference.id}]` && this.sourceReferenceCells.has(entry[0])) {
+            // An explicit edit to the standard SB3 field invalidates its saved
+            // resource tag. Keep the edited value; the source declaration must
+            // not silently restore authority from that stale tag.
+            this.editedSavedReferenceIds.set(entry[0], initial);
+            this.note(`Source reference ${name}: saved resource tag differs from its standard variable value`);
         }
         if (['string', 'number', 'boolean'].includes(typeof initial) &&
             (typeof initial !== 'number' || Number.isFinite(initial))) {
@@ -3647,6 +3656,11 @@ class ArcadeEmitter {
         for (const n of decls) {
             if(this.callableGlobals?.has(n)){out.push(`let ${n}: ${renderCallableSignature(this.callableGlobals.get(n))}`);continue;}
             const referenceCell=[...this.sourceReferenceCells.values()].find(cell=>cell.ts===n);
+            if(referenceCell && this.editedSavedReferenceIds.has(referenceCell.id)) {
+                const edited=this.editedSavedReferenceIds.get(referenceCell.id);
+                out.push(`let ${n}: any = ${edited === undefined ? 'undefined' : JSON.stringify(edited)}`);
+                continue;
+            }
             if(referenceCell){out.push(`let ${n}: ${referenceCell.type}`);continue;}
             const sourceCell=[...this.sourceScalarCells.values()].find(cell=>cell.ts===n);
             if (sourceCell) {out.push(`let ${n}: ${sourceCell.type.toLowerCase()}`);continue;}
