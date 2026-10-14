@@ -3420,16 +3420,21 @@ fetch restricted images, fabricate reference storage/mapping or infer physical
 safety, full G02 coverage or distribution closure from bounded simulations.
 
 
-Implementation in progress: the candidate fences native Start across
-teardown and connection waits using Stop revision, bridge/backend identity and
-pane disposal. It also invalidates old image choices on Stop, backend changes
-and newer requests, suppressing stale selections and errors while preserving
-current chooser results. Dedicated actual-method controls live in
-`test/spike-arena-pane-lifecycle.test.mjs`; baseline installed connection-return
-races and normal Start/Reset recovery are preserved separately. This candidate
-has not been qualified in a fresh installed package and does not close G02.
-Native cold-start failures before a separate teardown diagnostic reached its
-race remain unresolved; no startup timeout or native feature was changed.
+PR879 merged the finite native Start and chooser intent fences. Installed
+consumer `f1772cf0fe96988f7a4a3c665a478ef8fac4b065` qualified seven UI cases
+and own-NuttX startup Code Stop separately from the whole evolving main package.
+
+Continuation: `lane/spike-g02-stale-cleanup-20261013`, same owner and envelope.
+A subsequent installed own-NuttX run reached the teardown boundary: after the
+disposed pane's real firmware session closed, delaying only that completed Stop
+return let a replacement pane start the shared VM. Releasing the old return
+then called `stopAll` on that replacement. The candidate checks pane disposal,
+Stop revision and bridge identity before resumed shared cleanup, and suppresses
+stale teardown errors while preserving current errors. All 14 actual-method
+controls pass; five guard/error mutations fail. Fresh candidate installed
+qualification and enabled exact-head checks remain required; this does not
+close G02. Earlier cold-start failures remain unresolved despite successful
+startup in the new diagnostic. No timeout, native feature or pin changed.
 
 ## Arcade Buffer hash and live-memory continuation — 2026-10-12
 
