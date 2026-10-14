@@ -4973,7 +4973,7 @@ module.exports = makeExt(`// Name: Arcade
       const text=this._pxtText(),name=String(args.FONT),font={small:text.image.font5,normal:text.image.font8,large:text.image.font12,auto:undefined}[name];
       if(font===undefined && name!=='auto'){this._runtime?.emit?.('BLOCKS_ERROR',\`Arcade has no font named "\${String(args.FONT)}".\`);return;}
       // The simulator image helpers address a buffer through this shape.
-      const target={_width:image.width,_height:image.height,data:image.pixels,makeWritable(){},color:c=>Number(c)&15};
+      const target={_width:image.width,_height:image.height,data:image.pixels,makeWritable(){},color:c=>Number(c)&255};
       const wrapper={width:image.width,height:image.height,
         drawIcon:(icon,x,y,color)=>text.drawIcon(target,{data:icon},x,y,color),
         fillRect:(x,y,w,h,color)=>imageEngine.draw(image,'fillRect',x,y,w,h,color)};
