@@ -28,7 +28,7 @@ module.exports = makeExt(`// Name: Arcade
   class Arcade {
     constructor(runtime) {
       this._runtime = runtime;
-      this._sourceScalarCells = dependencies.createSourceScalarCells(runtime, Scratch.BWValues, dependencies.sourceReferenceTypes);
+      this._sourceScalarCells = dependencies.createSourceScalarCells(runtime, Scratch.BWValues, dependencies.sourceReferenceTypes, dependencies.sourceCallableCells);
       this._resetProgramClock();
       this._bufferSuspended = false;
       this._speechEngine = dependencies.createSpeechEngine(dependencies.initializeSpeech, dependencies.fonts,
@@ -45,6 +45,9 @@ module.exports = makeExt(`// Name: Arcade
       const spriteUpdates=dependencies.spriteUpdateActivation.create(this);
       spriteUpdateHosts.set(this,spriteUpdates);
       this._sdkSpriteUpdates=Object.freeze({claim:spriteUpdates.claim,hasSceneUpdates:spriteUpdates.hasSceneUpdates});
+      this._callableValues=new dependencies.CallableValues(runtime,Scratch.BWValues);
+      this._callableDispatch=new dependencies.CallableDispatch(runtime,this._callableValues,
+        (invocation,util)=>this._callableProcedure(invocation,util));
       this._renderables=new WeakMap();this._screen=null;this._extensionSprites=new Map();this._frameHandlers=new WeakMap();this._extensionCreationWaits=[];
       this._scenePushHandlers = [];this._scenePopHandlers = [];
       this._scrollerVersion = 'v0.1.2';
@@ -450,6 +453,18 @@ module.exports = makeExt(`// Name: Arcade
             text: 'Arcade function argument [VALUE] followed by [REST]', arguments: {...str('VALUE', '0'), ...str('REST', '[]')} },
           { opcode: 'callFunction', blockType: Scratch.BlockType.REPORTER,
             text: 'Arcade call function [NAME] arguments [ARGS]', arguments: {...str('NAME', 'calculate %s'), ...str('ARGS', '[]')} },
+          {opcode:'declareSourceCallable',blockType:Scratch.BlockType.COMMAND,
+            text:'declare Arcade source callable [VARIABLE] signature [SIGNATURE]',arguments:{...str('VARIABLE',''),...str('SIGNATURE','{\"kind\":\"callable\",\"parameters\":[],\"result\":{\"kind\":\"named\",\"name\":\"number\"}}')}},
+          { opcode:'declareCallable',blockType:Scratch.BlockType.COMMAND,
+            text:'declare Arcade callable [NAME] metadata [METADATA]',arguments:{...str('NAME','callback'),...str('METADATA','{}')} },
+          { opcode:'createCallable',blockType:Scratch.BlockType.REPORTER,
+            text:'Arcade callable [NAME]',arguments:str('NAME','callback') },
+          { opcode:'callCallable',blockType:Scratch.BlockType.REPORTER,
+            text:'Arcade invoke callable [CALLABLE] arguments [ARGS]',arguments:{...str('CALLABLE',''),...str('ARGS','[]')} },
+          { opcode:'whenCallableDispatched',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,
+            text:'when Arcade callable [NAME] dispatched',arguments:str('NAME','callback') },
+          { opcode:'runCallableDispatch',blockType:Scratch.BlockType.COMMAND,
+            text:'run Arcade dispatched callable' },
           { opcode: 'returnValue', blockType: Scratch.BlockType.COMMAND,
             text: 'return Arcade value [VALUE]', arguments: str('VALUE', '0') },
           { opcode: 'setLocal', blockType: Scratch.BlockType.COMMAND,
@@ -2001,7 +2016,7 @@ module.exports = makeExt(`// Name: Arcade
       thread.pushStack(definition);
       thread.bwObjectConstruction = args.bwObjectConstruction || util.thread?.bwObjectConstruction;
       thread.bwArcadeEvent = util.thread?.bwArcadeEvent;
-      thread.bwArcadeCaptures = util.thread?.bwArcadeCaptures;
+      thread.bwArcadeCaptures = args.bwCallableCaptures || util.thread?.bwArcadeCaptures;
       thread.bwFunctionNames = new Set(util.thread?.bwFunctionNames || []);
       const recursive = thread.bwFunctionNames.has(name) || util.thread?.stack.some(id=>target.blocks.getBlock(id)?.mutation?.proccode===name);
       thread.bwFunctionNames.add(name);
@@ -2035,6 +2050,38 @@ module.exports = makeExt(`// Name: Arcade
       while (thread.stack.length > frame + 1) thread.popStack();
       thread.goToNextBlock();
     }
+    declareSourceCallable(args,util) {
+      try {return this._sourceScalarCells.declareAdditional(args,util);} catch(error){return this._objectError(error);}
+    }
+    declareCallable(args,util) {
+      try {
+        const target=util?.target || util?.thread?.target,block=target?.blocks.getBlock(util?.thread?.peekStack());
+        if(!block||block.opcode!=='arcade_declareCallable')throw Error('Callable declaration requires its current native command');
+        this._callableValues.declare(target,{...JSON.parse(String(args.METADATA)),procedure:String(args.NAME)},
+          {block,name:String(args.NAME),metadata:String(args.METADATA)});
+      }
+      catch(error){return this._objectError(error);}
+    }
+    createCallable(args,util) {
+      try {return this._callableValues.create(util?.target || util?.thread?.target,String(args.NAME),
+        {locals:this._localParams(util),inheritedCaptures:util?.thread?.bwArcadeCaptures,
+          ownerProcedure:util?.thread?.stackFrames.find(frame=>frame.waitingReporter&&frame.params)?.waitingReporter,
+          sourceModule:util?.target?.blocks.getBlock(util?.thread?.topBlock)?.opcode==='arcade_whenSourceStarts'});}
+      catch(error){return this._objectError(error);}
+    }
+    _callableProcedure(invocation,util) {
+      return this.callFunction({NAME:invocation.definition.procedure,
+        ARGS:JSON.stringify(invocation.args,Scratch.BWValues.jsonReplacer),bwCallableCaptures:invocation.captures},util);
+    }
+    callCallable(args,util) {
+      try {const values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
+        return this._callableProcedure(this._callableValues.invocation(args.CALLABLE,values),util);}
+      catch(error){return this._objectError(error);}
+    }
+    holdCallable(reference) {return this._callableValues.hold(reference);}
+    invokeHeldCallable(reference,args,event) {return this._callableDispatch.dispatch(reference,args,event);}
+    whenCallableDispatched(args,util) {return this._callableDispatch.matches(args.NAME,util);}
+    runCallableDispatch(_args,util) {return this._callableDispatch.run(util);}
     _localParams(util) {
       const frames = util?.thread?.stackFrames || [];
       for (let i = frames.length - 1; i >= 0; i--) {
@@ -5705,6 +5752,9 @@ module.exports = makeExt(`// Name: Arcade
   sceneFlags: require('./scene-flags'),
   spriteUpdateActivation: require('./sprite-update-activation'),
   createObjectHeap: require('./object-heap'),
+  sourceCallableCells: require('./source-callable-cells'),
+  CallableValues: require('./callable-values'),
+  CallableDispatch: require('./callable-dispatch'),
   sourceReferenceTypes: require('./source-reference-types'),
   createSourceScalarCells: require('./source-scalar-cells'),
   createSourceTypeOfValues: require('./source-typeof-values'),

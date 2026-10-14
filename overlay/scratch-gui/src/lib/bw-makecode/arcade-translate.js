@@ -1,3 +1,7 @@
+import {callableSourceGate} from './callable-source-gate.js';
+import {lowerCallableValues} from './lower-callable-values.js';
+import {sourceCallableDeclarations} from './source-callable-declarations.js';
+import {callableDeclarationEnvelope,callableVariableEnvelope} from './callable-export-graph.js';
 import {lowerLiveFontMetrics} from './live-font-metrics.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {sourceReferenceDeclarations} from './source-reference-declarations.js';
@@ -2038,6 +2042,13 @@ class ArcadeTranslator extends BaseTranslator {
     }
     objectExpression(node) {
         const name=this.path(node?.callee),a=node?.args || [];
+        if(node.bwCallableIntrinsic==='create' && name==='__bwCallables.create' && a.length===1) {
+            const procedure=this.callableProcedures?.get(a[0]?.value);
+            if(!procedure){this.unsupported.push('Callable creation requires its exact emitted source procedure');return 'undefined value';}
+            return `arcade callable ${JSON.stringify(procedure)}`;
+        }
+        if(node.bwCallableIntrinsic==='invoke' && name==='__bwCallables.invoke' && a.length===2)
+            return `arcade invoke callable (${this.expr(a[0])}) arguments (${this.objectArguments(a[1])})`;
         if(name==='__bwObjects.assign' && a.length===5) {
             const fresh=base=>{let name;do{name='__bwObject'+base+'_'+(this.objectTemporaryCounter=(this.objectTemporaryCounter||0)+1);}while(this.taken?.has(name));this.taken?.add(name);return name;};
             const receiver=fresh('Receiver'),old=fresh('Old'),next=fresh('Next');
@@ -2058,6 +2069,7 @@ class ArcadeTranslator extends BaseTranslator {
     }
     objectStatement(node,push) {
         const name=this.path(node?.callee),a=node?.args || [];
+        if(node.bwCallableIntrinsic==='invoke' && name==='__bwCallables.invoke'){push(`arcade set local __bwDiscardCallableResult to (${this.objectExpression(node)})`);return true;}
         if(name==='__bwObjects.declareSubclass' && a.length===7){push(`arcade declare subclass (${this.expr(a[0])}) of (${this.expr(a[1])}) fields (${this.expr(a[2])}) initializer (${this.expr(a[3])}) constructor (${this.expr(a[4])}) parameters (${this.expr(a[5])}) methods (${this.expr(a[6])})`);return true;}
         if(name==='__bwObjects.procedure'){push(`arcade set local __bwDiscardObjectResult to (${this.objectExpression(node)})`);return true;}
         if(name==='__bwObjects.declare' && a.length===6){push(`arcade declare class (${this.expr(a[0])}) fields (${this.expr(a[1])}) initializer (${this.expr(a[2])}) constructor (${this.expr(a[3])}) parameters (${this.expr(a[4])}) methods (${this.expr(a[5])})`);return true;}
@@ -3730,6 +3742,8 @@ const appendHandleProcedures = (translator, functions, parameterHandles, out, lo
         };
         translator.localVars = new Set();
         translator.currentParameters = new Set(fn.params || []);
+        const previousCaptures=translator.capturedBindings;
+        translator.capturedBindings=new Map((fn.bwCallableDefinition?.captures || []).map(capture=>[capture.name,translator.varName(capture.name)]));
         collectLocals(fn.body);
         translator.parameterHandleVars = new Set([...(parameterHandles.get(fn.name) || []), ...(translator.inferredSpriteParameters?.get(fn.name) || [])]);
         translator.localHandleVars = localHandles.get(fn.name) || new Set();
@@ -3738,6 +3752,7 @@ const appendHandleProcedures = (translator, functions, parameterHandles, out, lo
         translator.localHandleVars = new Set();
         translator.currentParameters = null;
         translator.localVars = null;
+        translator.capturedBindings=previousCaptures;
         out.push(...lines, '');
     }
 };
@@ -3867,6 +3882,7 @@ const translateCreationEvents = (ast, assets, assetKindLookup = null, scrollerVe
  * from the fixed-target path until its other sprite APIs can use handles. */
 const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRuntime = false, assetKindLookup = null, scrollerVersion = 'v0.1.2', characterVersion = 'v0.1.0') => {
     const t = new ArcadeTranslator(assets, tilemaps, assetKindLookup, scrollerVersion, characterVersion);
+    t.callableProcedures=new Map(ast.body.filter(fn=>fn.bwCallableDefinition).map(fn=>[fn.name,fn.name+fn.params.map(()=> ' %s').join('')]));
     const needsProjectileHandles = node => {
         if (!node || typeof node !== 'object') return false;
         if (node.type === 'Call' && ['sprites.onCreated', 'image.create'].includes(t.path(node.callee))) return true;
@@ -3976,7 +3992,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     if(['scene.setTileMap','scene.setTile','scene.getTile','scene.getTilesByType','scene.setTileAt','scene.place','scene.placeOnRandomTile'].some(name=>mapCalls.has(name)) &&
         ['tiles.setTilemap','tiles.setCurrentTilemap','scene.setTileMapLevel','tiles.getTilesByType','tiles.tileAtLocationEquals','tiles.setTileAt','tiles.setWallAt','tiles.placeOnRandomTile'].some(name=>mapCalls.has(name)))
         t.unsupported.push('Mixing legacy color-coded maps with modern map replacement, image lookup or per-location mutation is not yet supported');
-    const requiresSpriteRuntime = !!ast.bwObjectClasses || forceSpriteRuntime || !!ast.loweredSourceLoopControl || usesRuntimeSpriteMethods(ast);
+    const requiresSpriteRuntime = !!ast.bwCallables?.length || !!ast.bwObjectClasses || forceSpriteRuntime || !!ast.loweredSourceLoopControl || usesRuntimeSpriteMethods(ast);
     const callbackLocals = new Map();
     const createAssignments = [];
     const localCreateAssignments = [];
@@ -4142,7 +4158,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
             }
         }
     } while (aliasesChanged);
-    t.functions.push(...functions.map(fn => ({name: fn.name, params: fn.params, body: fn.body})));
+    t.functions.push(...functions.map(fn => ({name: fn.name, params: fn.params, body: fn.body,...(fn.bwCallableDefinition?{bwCallableDefinition:fn.bwCallableDefinition}:{})})));
     const parameterHandles = inferProcedureHandleParameters(ast, functions, t.handleVars, node => t.path(node));
     t.handleTemplates = new Map();
     t.handleImageArrays = new Map();
@@ -4467,13 +4483,20 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     emitTerrainRegistrations(t,out,localHandles,callbackLocals);
     emitSceneRegistrations(t,out,localHandles,callbackLocals);
     appendHandleProcedures(t, t.functions, parameterHandles, out, localHandles);
+    const callablePlan=ast.bwCallableLexicalPlan && structuredClone(ast.bwCallableLexicalPlan);
+    if(callablePlan)for(const binding of callablePlan.bindings)if(['global','parameter'].includes(binding.kind))binding.nativeName=t.varName(binding.nativeName);
+    const sourceCallables=(ast.bwCallables || []).map(definition=>({procedure:t.callableProcedures.get(definition.name),
+        metadata:callableDeclarationEnvelope(callablePlan,definition.site)}));
+    for(const definition of sourceCallables)out.push(`WHEN arcade callable ${JSON.stringify(definition.procedure)} dispatched:`, '  arcade run dispatched callable','');
+    const sourceCallableGlobals=(callablePlan?ast.sourceCallableDeclarations || []:[]).map(({name})=>{const binding=callablePlan.bindings.find(row=>row.owner===callablePlan.module&&row.kind==='global'&&row.sourceName===name);return {name:t.varName(name),signature:callableVariableEnvelope(callablePlan,binding.id)};});
+
     const spriteNames = ['Game'];
     for (const template of t.handleTemplates.values()) {
         spriteNames.push(template.name);
         out.push(`SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide', '');
     }
     for (const name of imageTemplates) {spriteNames.push(name);out.push(`SPRITE ${name}:`, 'WHEN flag clicked:', '  hide', '');}
-    return {sourceReferences:(ast.sourceReferenceDeclarations || sourceReferenceDeclarations(ast)).map(({name,type})=>({name:t.varName(name),type})),sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
+    return {sourceCallables,sourceCallableGlobals,sourceReferences:(ast.sourceReferenceDeclarations || sourceReferenceDeclarations(ast)).map(({name,type})=>({name:t.varName(name),type})),sourceScalars:sourceScalarDeclarations(ast).map(({name,type})=>({name:t.varName(name),type})),code: `${out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd()}\n`,
         unsupported: [...new Set(t.unsupported)], costumes, sprites: spriteNames, artworkNames};
 };
 
@@ -4807,8 +4830,11 @@ export function arcadeToPseudocode (files, opts = {}) {
         if (Array.isArray(node)) return node.map(lowerAnimationAssets);
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
+    const callableSourceParsed=parseMakeCodeTs(source, {parameterDefaults: true, retainParentheses: true, retainWhenUsed:true, retainClassHeritage:true, retainCallableMetadata:opts.callableLexicalPrototype===true});
+    const callableEligibility=opts.callableLexicalPrototype===true?callableSourceGate(callableSourceParsed,{normalize:true}):null;
+    const callableSourceInput=callableEligibility?.program || callableSourceParsed;
     const parsed = lowerSourceLoopControl(inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
-        lowerAnimationAssets(parseMakeCodeTs(source, {parameterDefaults: true, retainParentheses: true, retainWhenUsed:true, retainClassHeritage:true})))), source), source), source), source))));
+        lowerAnimationAssets(callableSourceInput))), source), source), source), source))));
     const containsPaletteCall = node => {
         if(!node || typeof node!=='object')return false;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='setPalette' &&
@@ -4850,14 +4876,18 @@ export function arcadeToPseudocode (files, opts = {}) {
         }
         code = code.replace(/^WHEN flag clicked:$/gm, 'WHEN arcade source starts:');
         const globalNames = new Set([...code.matchAll(/^GLOBAL (.+)$/gm)].map(match=>match[1]));
-        const sourceDeclarations = (result.sourceScalars || []).filter(({name})=>globalNames.has(name))
+        const callableGlobals=new Map((result.sourceCallableGlobals || []).map(row=>[row.name,row.signature]));
+        const sourceDeclarations = (result.sourceScalars || []).filter(({name})=>globalNames.has(name)&&!callableGlobals.has(name))
             .map(({name,type})=>`  declare arcade source scalar ${name} as ${type}`);
-        sourceDeclarations.push(...(result.sourceReferences || []).filter(({name})=>globalNames.has(name)).map(({name,type})=>`  declare arcade source reference ${name} as ${JSON.stringify(type)}`));
+        sourceDeclarations.push(...(result.sourceReferences || []).filter(({name})=>globalNames.has(name)&&!callableGlobals.has(name)).map(({name,type})=>`  declare arcade source reference ${name} as ${JSON.stringify(type)}`));
+        sourceDeclarations.push(...[...callableGlobals].filter(([name])=>globalNames.has(name)).map(([name,signature])=>`  declare arcade source callable ${name} signature ${JSON.stringify(JSON.stringify(signature))}`));
         if (sourceDeclarations.length) {
             if (!/^WHEN arcade source starts:$/m.test(code)) code += '\nSPRITE Game:\nWHEN arcade source starts:\n';
             code = code.replace(/^WHEN arcade source starts:$/m, header=>header+'\n'+sourceDeclarations.join('\n'));
         }
 
+        const callableDeclarations=(result.sourceCallables || []).map(({procedure,metadata})=>`  arcade declare callable ${JSON.stringify(procedure)} metadata ${JSON.stringify(JSON.stringify(metadata))}`);
+        if(callableDeclarations.length)code=code.replace(/^WHEN arcade source starts:((?:\n  declare arcade source (?:scalar|reference|callable) .+)*)/m,prefix=>prefix+'\n'+callableDeclarations.join('\n'));
         return {...result,code,costumes,animationResources,warnings:[...recovered.warnings,...sourceWarnings],
             unsupported:[...new Set([...animationDiagnostics,...projectInputDiagnostics,...paletteDiagnostics,...result.unsupported])]};
     };
@@ -4889,7 +4919,10 @@ export function arcadeToPseudocode (files, opts = {}) {
             ['indexOf','removeElement'].includes(node.callee.name) && queryReferences.arrays.has(node.callee.object)
     });
     stagedSource.sourceReferenceDeclarations = sourceReferenceDeclarations(stagedSource);
-    const objectClasses = lowerObjectClasses(stagedSource);
+    stagedSource.sourceCallableDeclarations=opts.callableLexicalPrototype===true?sourceCallableDeclarations(stagedSource).declarations:[];
+    const callables=opts.callableLexicalPrototype===true?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
+    projectInputDiagnostics.push(...callables.unsupported);
+    const objectClasses = lowerObjectClasses(callables.program);
     projectInputDiagnostics.push(...objectClasses.unsupported);
     const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:sceneRegistrationSpec});
     projectInputDiagnostics.push(...callbacks.unsupported);

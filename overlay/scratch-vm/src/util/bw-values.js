@@ -84,6 +84,7 @@ const makeValues = () => {
     "sevenseg",
     "buffer",
     "object",
+    "callable",
   ];
   const scopes = new WeakMap();
   const session =
@@ -214,9 +215,17 @@ const makeValues = () => {
   const binary = (left, op, right) => {
     const a = decode(left);
     const b = decode(right);
-    if (["&", "|", "^", "<<", ">>", ">>>"].includes(op) &&
-        [a, b].some(value => value !== null && !["number", "string", "boolean", "undefined"].includes(typeof value))) {
-      throw new Error("Bitwise conversion requires primitive values, not opaque references or objects");
+    if (
+      ["&", "|", "^", "<<", ">>", ">>>"].includes(op) &&
+      [a, b].some(
+        (value) =>
+          value !== null &&
+          !["number", "string", "boolean", "undefined"].includes(typeof value)
+      )
+    ) {
+      throw new Error(
+        "Bitwise conversion requires primitive values, not opaque references or objects"
+      );
     }
     switch (op) {
       case "+":
@@ -252,8 +261,13 @@ const makeValues = () => {
     if (op === "+") return +a;
     if (op === "-") return -a;
     if (op === "~") {
-      if (a !== null && !["number", "string", "boolean", "undefined"].includes(typeof a)) {
-        throw new Error("Bitwise conversion requires primitive values, not opaque references or objects");
+      if (
+        a !== null &&
+        !["number", "string", "boolean", "undefined"].includes(typeof a)
+      ) {
+        throw new Error(
+          "Bitwise conversion requires primitive values, not opaque references or objects"
+        );
       }
       return ~a;
     }

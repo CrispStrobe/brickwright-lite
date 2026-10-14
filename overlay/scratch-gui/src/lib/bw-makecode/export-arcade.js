@@ -1,3 +1,4 @@
+import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes} from './callable-export-graph.js';
 import {sourceReferenceProject} from './source-reference-project.js';
 import {scalarExportFlow} from './scalar-export-flow.js';
 import {sourceScalarProject} from './source-scalar-project.js';
@@ -1041,7 +1042,9 @@ class ArcadeEmitter {
                 this.lookupVar(name);
         }
         case 'argument_reporter_string_number':
-        case 'argument_reporter_boolean': return ident(this.field(b, 'VALUE'));
+        case 'argument_reporter_boolean':
+            if(this.currentCallableContext){try{return this.currentCallableContext.local(this.field(b,'VALUE'));}catch(error){this.note(error.message);return this.na();}}
+            return ident(this.field(b, 'VALUE'));
         case 'operator_add': return `(${v('NUM1')} + ${v('NUM2')})`;
         case 'operator_subtract': return `(${v('NUM1')} - ${v('NUM2')})`;
         case 'operator_multiply': return `(${v('NUM1')} * ${v('NUM2')})`;
@@ -1116,6 +1119,16 @@ class ArcadeEmitter {
         }
         case 'arcade_objectField':return `${this.objectClassExport.receiver(b)}.${this.objectFieldName(b)}`;
         case 'arcade_callObjectMethod':return `${this.objectClassExport.receiver(b,false,true)}.${this.objectFieldName(b,'METHOD')}(${this.objectArgumentValues(b).join(', ')})`;
+        case 'arcade_createCallable': {
+            const entry=this.callableExports?.get(this.target);
+            if(!entry){this.note('Callable creation needs qualified lexical declaration/current body export');return this.na();}
+            const id=Object.entries(this.blocks).find(([,block])=>block===b)?.[0];
+            try{return this.currentCallableContext?this.currentCallableContext.create(id):entry.emitter.moduleCreate(id);}catch(error){this.note(error.message);return this.na();}
+        }
+        case 'arcade_callCallable': {
+            if(!this.callableExports?.has(this.target)){this.note('Callable invocation needs qualified lexical current-body export');return this.na();}
+            try{return `(${this.arrayValue(b,'CALLABLE')})(${this.callableArgumentValues(b).join(', ')})`;}catch(error){this.note(error.message);return this.na();}
+        }
         case 'arcade_callFunction': {
             const code = this.literalInput(b, 'NAME');
             const fn = code && (this.fnNames.get(`${this.target.isStage ? '' : this.target.name}:${code}`) || this.fnNames.get(`:${code}`));
@@ -1539,11 +1552,13 @@ class ArcadeEmitter {
         }
         case 'arcade_getCaptured': {
             const name = this.literalInput(b,'NAME');
+            if(this.currentCallableContext){try{return this.currentCallableContext.capture(name);}catch(error){this.note(error.message);return this.na();}}
             if (!name || !this.compilingRegisteredCallbacks.size) { this.note('Arcade captured value needs a registered callback and fixed name');return this.na(); }
             return ident(name);
         }
         case 'arcade_getLocal': {
             const name = this.literalInput(b, 'NAME');
+            if(this.currentCallableContext){try{return this.currentCallableContext.local(name);}catch(error){this.note(error.message);return this.na();}}
             if (!name || !/^[A-Za-z_]\w*$/.test(name) || !this.currentLocalNames) {
                 this.note('Arcade local reporter needs a fixed name inside a procedure');
                 return this.na();
@@ -1771,6 +1786,10 @@ class ArcadeEmitter {
         case 'arcade_placeOnRandomTile': push(`tiles.placeOnRandomTile(${v('ID')}, ${v('IMAGE')})`);return;
         case 'arcade_setscore':push(`info.setScore(${v('N')})`);return;
         case 'arcade_changescore':push(`info.changeScoreBy(${v('N')})`);return;
+        case 'arcade_declareCallable':
+        case 'arcade_declareSourceCallable':
+            if(!this.callableExports?.has(this.target))this.note('Callable declaration requires qualified current lexical graph export');
+            return;
         case 'arcade_declareClass':case 'arcade_declareSubclass':return;
         case 'arcade_declareSourceScalar':case 'arcade_declareSourceReference':return;
         case 'arcade_setObjectField':if(this.currentClassConstructor&&this.objectClassExport?.parameterPropertyBlocks.has(b))return;push(`;${this.objectClassExport.receiver(b,true)}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`);return;
@@ -2164,6 +2183,7 @@ class ArcadeEmitter {
             return;
         }
         case 'arcade_setLocal': {
+            if(this.currentCallableContext){try{push(`${this.currentCallableContext.local(this.literalInput(b,'NAME'))} = ${this.arrayValue(b,'VALUE')}`);}catch(error){this.note(error.message);}return;}
             if(this.currentClassConstructor){const computed=this.arrayValue(b,'VALUE');if(/^super\(/.test(computed)){push(computed);return;}}
             const name = this.literalInput(b, 'NAME');
             if (!name || !/^[A-Za-z_]\w*$/.test(name) || !this.currentLocalNames) {
@@ -2270,6 +2290,7 @@ class ArcadeEmitter {
         }
         case 'arcade_setCaptured': {
             const name = this.literalInput(b,'NAME');
+            if(this.currentCallableContext){try{push(`${this.currentCallableContext.capture(name,true)} = ${this.arrayValue(b,'VALUE')}`);}catch(error){this.note(error.message);}return;}
             if (!name || !this.compilingRegisteredCallbacks.size) push(`// ${this.note('Arcade captured assignment needs a registered callback and fixed name')}`);
             // Captured cells retain their Arcade value type, including boolean.
             else push(`${ident(name)} = ${this.arrayValue(b,'VALUE')}`);
@@ -3242,6 +3263,52 @@ class ArcadeEmitter {
         return lines.join('\n');
     }
 
+    prepareCallableExport() {
+        this.callableExports=new Map();this.callableGlobals=new Map();
+        if(!this.opts.callableLexicalPrototype)return;
+        for(const target of this.project.targets) {
+            const blocks=target.blocks || {},literal=(block,name)=>{
+                const slot=block.inputs?.[name]?.[1];
+                if(Array.isArray(slot)&&slot[0]===10)return String(slot[1]);
+                const child=typeof slot==='string'&&blocks[slot];
+                return child?.opcode==='text'&&child.shadow?String(child.fields.TEXT?.[0]):null;
+            };
+            const declarations=Object.values(blocks).filter(block=>block.opcode==='arcade_declareCallable');
+            if(!declarations.length)continue;
+            let envelope;try {envelope=JSON.parse(literal(declarations[0],'METADATA'));} catch(_){this.note('Callable export requires fixed lexical declaration metadata');continue;}
+            try {
+                const graph=inspectCallableExportGraph(target,envelope.plan,literal);
+                validateCallableCurrentBodyTypes(graph,literal);
+                if(this.clonable.has(target.name))throw Error('Callable lexical export on clone targets is not qualified');
+                for(const [bindingId,row] of graph.globalBindings) {
+                    const owner=this.project.targets.find(candidate=>Object.hasOwn(candidate.variables || {},row.variableId));
+                    if(!owner || owner!==target&&!owner.isStage || (owner.variables[row.variableId]?.[2] || ''))throw Error('Callable global has a foreign or nonscalar variable ID');
+                    const name=this.varName(owner,owner.variables[row.variableId][0]);
+                    const binding=graph.plan.bindings.find(binding=>binding.id===bindingId);
+                    this.callableGlobals.set(name,binding.type);
+                }
+                const emitter=createCallableLexicalEmitter(graph,(first,context)=>{
+                    const previous={target:this.target,blocks:this.blocks,locals:this.currentLocalNames,context:this.currentCallableContext};
+                    this.target=target;this.blocks=blocks;this.currentLocalNames=new Set();this.currentCallableContext=context;
+                    try{return this.body(first,[],[],false);}finally {this.target=previous.target;this.blocks=previous.blocks;this.currentLocalNames=previous.locals;this.currentCallableContext=previous.context;}
+                });
+                this.callableExports.set(target,{graph,emitter});
+                for(const owner of graph.plan.owners)if(owner.kind==='declaration')this.fnNames.set(`${target.isStage?'':target.name}:${owner.procedure}`,owner.sourceName);
+            } catch(error) {this.note(error.message);}
+        }
+    }
+    callableArgumentValues(block) {
+        const args=[];let input=block.inputs?.ARGS,child=this.block(input?.[1]),seen=new Set();
+        while(child?.opcode==='arcade_functionArgument') {
+            if(seen.has(child))throw Error('Callable argument chain is cyclic');seen.add(child);
+            args.push(this.arrayValue(child,'VALUE'));input=child.inputs?.REST;child=this.block(input?.[1]);
+        }
+        const slot=input?.[1];
+        if(!(Array.isArray(slot)&&slot[0]===10&&slot[1]==='[]') && !(child?.opcode==='text'&&child.shadow&&child.fields?.TEXT?.[0]==='[]'))
+            throw Error('Callable invocation requires its explicit current argument chain');
+        return args;
+    }
+
     // ── the program ──────────────────────────────────────────────────────
     emit () {
         const out = [];
@@ -3344,6 +3411,7 @@ class ArcadeEmitter {
         }
 
         for(const cell of this.sourceReferenceCells.values())cell.ts=this.varName(cell.target,cell.name);
+        this.prepareCallableExport();
         this.objectClassExport=prepareObjectClassExport(this);
         const imageParameterTypes = this.imageProcedureParameters();
         const scalarFlow=scalarExportFlow(this.project,block=>this.isBoolean(block),this.sourceScalarCells);
@@ -3495,11 +3563,18 @@ class ArcadeEmitter {
                     handlers.push(`sprites.onOverlap(${first}, ${second}, function (sprite: Sprite, otherSprite: Sprite) {\n${script.join('\n')}\n})`);
                 } else if (b.opcode === 'arcade_whenCountdownEnds') {
                     handlers.push(`info.onCountdownEnd(function () {\n${plainBody().join('\n')}\n})`);
+                } else if(b.opcode==='arcade_whenCallableDispatched' && this.callableExports?.has(t)) {
+                    continue;
                 } else if (b.opcode === 'procedures_definition') {
                     const proto = this.block(b.inputs && b.inputs.custom_block && b.inputs.custom_block[1]);
                     if (!proto || !proto.mutation) continue;
                     const names = JSON.parse(proto.mutation.argumentnames || '[]').map(ident);
                     const key = `${t.isStage ? '' : t.name}:${proto.mutation.proccode}`;
+                    const callableEntry=this.callableExports?.get(t);
+                    if(callableEntry && [...callableEntry.graph.plan.owners].some(owner=>owner.procedure===proto.mutation.proccode)) {
+                        if(!callableEntry.emitted){try{functions.push(...callableEntry.emitter.declarations());}catch(error){this.note(error.message);}callableEntry.emitted=true;}
+                        continue;
+                    }
                     if(this.objectClassExport.procedures.has(key))continue;
                     const types = imageParameterTypes.get(key) || [];
                     const params = names.map((n, i) => `${n}: ${types[i] || 'any'}`);
@@ -3557,6 +3632,7 @@ class ArcadeEmitter {
         }
         out.push(...objectClasses);
         for (const n of decls) {
+            if(this.callableGlobals?.has(n)){out.push(`let ${n}: ${renderCallableSignature(this.callableGlobals.get(n))}`);continue;}
             const referenceCell=[...this.sourceReferenceCells.values()].find(cell=>cell.ts===n);
             if(referenceCell){out.push(`let ${n}: ${referenceCell.type}`);continue;}
             const sourceCell=[...this.sourceScalarCells.values()].find(cell=>cell.ts===n);

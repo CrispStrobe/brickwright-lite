@@ -67,6 +67,12 @@ export function sourceScalarDeclarations(program) {
             // Separate class/reference and callback scope ownership stays intact.
             // Callback writes to globals are analyzed without aliasing parameters.
             if (node.type === 'FunctionExpression') visit(node.body, {key: `callback:${cell}`, locals: localNames(node.body,new Set(node.params || []))});
+        } else if (node.type === 'Call' && node.bwCallableIntrinsic==='invoke' &&
+            ['number','boolean','string'].includes(node.bwCallableResultType)) {
+            // The opt-in callable lowering supplies this concrete result from
+            // actual lexical signatures; authored namespace names cannot seed it.
+            (node.args || []).forEach(argument=>visit(argument,scope));
+            add(cell,{number:'Number',boolean:'Boolean',string:'String'}[node.bwCallableResultType]);
         } else if (node.type === 'Call') {
             const arguments_ = (node.args || []).map(argument => visit(argument, scope));
             const fn = node.callee?.type === 'Identifier' && functions.get(node.callee.name);

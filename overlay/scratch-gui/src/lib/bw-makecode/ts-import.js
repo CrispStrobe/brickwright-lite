@@ -779,6 +779,8 @@ class Parser {
         const returnType = this.lastType;
         const body = this.parseBlock();
         return {type: 'FunctionDeclaration', name, params, paramTypes, returnType, typeParameters,
+            ...(this.retainCallableMetadata ? {functionKind: 'declaration', parameterDefaults: params.parameterDefaults,
+                parameterDefaultPrologue: this.parameterDefaults} : {}),
             optionalParams: params.optionalParams, body: [...this.defaultStatements(params), ...body]};
     }
 
@@ -1128,7 +1130,10 @@ class Parser {
             this.skipTypeAnnotation();
             const returnType = this.lastType;
             const body = this.parseBlock();
-            return {type: 'FunctionExpression', params, paramTypes, returnType, optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
+            return {type: 'FunctionExpression', params, paramTypes, returnType,
+                ...(this.retainCallableMetadata ? {functionKind: 'function', parameterDefaults: params.parameterDefaults,
+                    parameterDefaultPrologue: this.parameterDefaults} : {}),
+                optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
         }
         if (t.type === 'new') {
             // `new Player()`: a call, marked, so the translator knows it
@@ -1151,7 +1156,8 @@ class Parser {
                 this.next();
                 const body = this.at('punct', '{') ? this.parseBlock() :
                     [{type: 'Return', value: this.parseExpression()}];
-                return {type: 'FunctionExpression', params: [t.value], body};
+                return {type: 'FunctionExpression', params: [t.value],
+                    ...(this.retainCallableMetadata ? {functionKind: 'arrow', parameterDefaults: [], parameterDefaultPrologue: this.parameterDefaults} : {}), body};
             }
             return {type: 'Identifier', name: t.value};
         }
@@ -1165,7 +1171,10 @@ class Parser {
                     this.next();
                     const body = this.at('punct', '{') ? this.parseBlock() :
                         [{type: 'Return', value: this.parseExpression()}];
-                    return {type: 'FunctionExpression', params, paramTypes, optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
+                    return {type: 'FunctionExpression', params, paramTypes,
+                        ...(this.retainCallableMetadata ? {functionKind: 'arrow', parameterDefaults: params.parameterDefaults,
+                            parameterDefaultPrologue: this.parameterDefaults} : {}),
+                        optionalParams:params.optionalParams || [], body: [...this.defaultStatements(params), ...body]};
                 }
             } catch (e) { /* not a parameter list after all */ }
             this.pos = save;
@@ -1264,5 +1273,6 @@ export function parseMakeCodeTs (source, opts = {}) {
     parser.retainParentheses = Boolean(opts.retainParentheses);
     parser.retainWhenUsed = Boolean(opts.retainWhenUsed);
     parser.retainClassHeritage = Boolean(opts.retainClassHeritage);
+    parser.retainCallableMetadata = Boolean(opts.retainCallableMetadata);
     return parser.parseProgram();
 }

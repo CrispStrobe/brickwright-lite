@@ -3,14 +3,15 @@ const TYPES = new Set(['Number', 'Boolean', 'String', 'Any']);
 const OPCODE = 'arcade_declareSourceScalar';
 const REFERENCE = 'arcade_declareSourceReference';
 
-module.exports = function createSourceScalarCells(runtime, values, referenceTypes = null) {
-    const declaration = block => block?.opcode===OPCODE || referenceTypes && block?.opcode===REFERENCE;
+module.exports = function createSourceScalarCells(runtime, values, referenceTypes = null, additionalDeclarations = null) {
+    const declaration = block => block?.opcode===OPCODE || referenceTypes && block?.opcode===REFERENCE || additionalDeclarations?.matches(block);
     let generation = 0;
     let active = false;
     const bindings = new Map();
     const originals = () => runtime.targets.filter(target => target.isOriginal !== false);
     const key = (target, block) => `${target.id}:${block.id}`;
     const resolve = (target, block) => {
+        if(additionalDeclarations?.matches(block))return additionalDeclarations.resolve(target,block,originals());
         const reporter = target.blocks.getBlock(block.inputs?.VARIABLE?.block);
         if (reporter?.opcode !== 'data_variable') {
             throw new Error('Source scalar requires a connected stock variable reporter');
@@ -83,7 +84,8 @@ module.exports = function createSourceScalarCells(runtime, values, referenceType
         }
         const current = resolve(target, block);
         if (current.variable !== binding.variable || current.owner !== binding.owner ||
-            current.id !== binding.id || current.type !== binding.type || current.reference!==binding.reference ||
+            current.id !== binding.id || current.type !== binding.type || current.reference!==binding.reference || current.additional!==binding.additional ||
+            binding.additional && !additionalDeclarations.same(current.typeInfo,binding.typeInfo) ||
             binding.reference && !referenceTypes.same(current.typeInfo,binding.typeInfo)) {
             throw new Error('Source scalar declaration changed after prelude');
         }
@@ -93,7 +95,7 @@ module.exports = function createSourceScalarCells(runtime, values, referenceType
         if (!active || !runtime.targets.includes(target)) return undefined;
         const variable = target.lookupVariableById(id);
         for (const binding of bindings.values()) {
-            if (binding.variable === variable && !binding.reference) return binding.type;
+            if (binding.variable === variable && !binding.reference && !binding.additional) return binding.type;
         }
         return undefined;
     };
@@ -125,5 +127,10 @@ module.exports = function createSourceScalarCells(runtime, values, referenceType
         if(block?.opcode!==REFERENCE)throw Error('Source reference declaration needs its current command');
         return validateDeclaration(args,util);
     };
-    return {initialize, invalidate, declare, declareReference, typeOf, referenceTypeOf, dispose: invalidate};
+    const declareAdditional = (args,util) => {
+        const block=util?.target?.blocks.getBlock(util.thread.peekStack());
+        if(!additionalDeclarations?.matches(block))throw Error('Additional source declaration needs its current command');
+        return validateDeclaration(args,util);
+    };
+    return {initialize, invalidate, declare, declareReference, declareAdditional, typeOf, referenceTypeOf, dispose: invalidate};
 };
