@@ -8,6 +8,42 @@ operator's actual checkouts, tools, private corpus and original receipts.
 Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
 
+## Latest integrated follow-up — 2026-10-14
+
+Integration `7878106481d56bf1d9722f75a9362aad44c169a7` normally composes
+main `1007a7979613668cd0ce20ea6e0ab6ee2b5c9569` and qualified live Font
+source `47147509a7f2b7d3ccf946c4ee8ba6ab50081ed5`. The compiler supplier is
+`432f611897a16adc59568a0d949f2dbc9455b6db`, with **398 commands / 403 spellings**;
+standard synchronization preserves the five unrelated supplier pins, gallery
+identity, vocabulary and tracked mirrors.
+
+- [Live Font values](compatibility/arcade-live-font-values.md) support actual
+  Font constants, text selection, scaling, field reads and printing through
+  editable Code, same/fresh SB3 and changed export/reimport. One changed exported
+  original matched all **1,536 pixels and seven values/aliases**. The current
+  export is byte-identical to that executed input; no replay was needed. Font
+  field and shared glyph writes remain explicit first-slice refusals.
+- The combined current runtime passes **75 native/frontend controls plus five
+  controller/renderer controls**, without SDK execution in that verification.
+  The owned VM projection applies the current source through the standard
+  overlay tool; all 155 overlay files match and three engine hooks are retained.
+- [Import readiness](compatibility/arcade-numeric-authoring-gui.md) and
+  [debug drawable ownership](compatibility/arcade-show-physics.md) have bounded
+  fixes and independent controls. The real numeric GUI failure and cancelled
+  unit shards remain preserved; current hosted acceptance is still required.
+- Default class callback [ownership PR937](https://github.com/CrispStrobe/brickwright-lite/pull/937)
+  merged after all eleven enabled checks passed. Its complete-source and
+  current-project implementation is in progress; explicit prototype evidence
+  does not grant default or whole-library admission.
+
+The fresh immutable 184-input audit at this integration reports **145 translated /
+38 partial / one parse failure**, with all original Git blobs independently
+verified. Exactly two formerly translated rows now expose missing Font operand
+proofs: `30c9e6286a9cbe22` and `d9e8eb7569f760a9`. Their screen-image, dimension and
+text expressions require proper producer support. Keep these regressions visible
+until that implementation passes; do not restore the count by relaxing the gate
+or changing the inputs. This is a static audit, not whole-game qualification.
+
 ## Current continuation checkpoint — 2026-10-14
 
 Start with [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888),
