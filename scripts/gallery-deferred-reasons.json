@@ -102,5 +102,6 @@
   "SamuelLouf/Geolocation": "reads navigator.geolocation, navigator.permissions and navigator.userAgent, and wakes hats via Scratch.vm.runtime.startHats; the restricted worker exposes no navigator geolocation and no VM runtime",
   "SharkPool/Messages-Plus": "schedules and inspects threads directly on Scratch.vm.runtime -- _pushThread, _restartThread, isActiveThread, allScriptsByOpcodeDo and target lookups; the restricted worker exposes no VM runtime and therefore no thread table",
   "SharkPool/Tune-Shark-V3": "pushes threads with runtime._pushThread, scans scripts with runtime.allScriptsByOpcodeDo and sequences against runtime.audioEngine and runtime.currentStepTime; its Scratch.canFetch check is worker-safe but the runtime and audio-engine access is not",
-  "lab/video-sprites": "creates DOM elements with document.createElement and reaches the renderer through runtime.renderer, runtime.ioDevices and runtime.requestRedraw; the restricted worker exposes neither a document nor the renderer"
+  "lab/video-sprites": "creates DOM elements with document.createElement and reaches the renderer through runtime.renderer, runtime.ioDevices and runtime.requestRedraw; the restricted worker exposes neither a document nor the renderer",
+  "CrispStrobe/circuitplayground": "subscribes to PROJECT_START/PROJECT_STOP_ALL on Scratch.vm.runtime, walks runtime.targets, publishes its board state as runtime.bwCpx/bwCpxState with a CPX_STATE event, and fires its hats through runtime.startHats; the restricted worker exposes no VM runtime"
 }
