@@ -33,6 +33,10 @@ The existing typed query fix is a prerequisite for composed array expressions;
 it does not implement higher-order callbacks. Likewise the String `typeof`
 reporter lane does not admit callable ownership or arbitrary Sprite handles.
 
+[The detailed SDK drawable ABI design](ARCADE-SDK-DRAWABLE-ABI.md) records
+selected source identities, lifecycle edges and three proposed original controls.
+They are uncompiled and unexecuted until the lane qualifies them.
+
 ### First intrinsic controls
 
 Carnival's `GameOverDialog` requires `clearInterior`, `drawTextCore`,
