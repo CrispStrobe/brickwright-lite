@@ -458,8 +458,8 @@ export const ARCADE_WORDS = Object.freeze([
     w('arcade_textSpriteUpdate','command','arcade text sprite {ID} update'),
     w('arcade_textSpriteProperty','reporter','arcade text sprite {ID} property {PROPERTY:menu:textSpriteProperties:text|bg|fg|maxFontHeight|borderWidth|borderColor|padding|outlineWidth|outlineColor|icon}'),
     w('arcade_textSpriteSetProperty','command','arcade set text sprite {ID} property {PROPERTY:menu:textSpriteProperties:text|bg|fg|maxFontHeight|borderWidth|borderColor|padding|outlineWidth|outlineColor|icon} to {VALUE}'),
-    w('arcade_settingsWrite','command','arcade write setting {KEY} type {TYPE:menu:settingWriteTypes:Number|String|NumberArray|StringArray|Buffer} value {VALUE}'),
-    w('arcade_settingsRead','reporter','arcade read setting {KEY} type {TYPE:menu:settingReadTypes:Number|String|NumberArray|StringArray|Buffer|List}'),
+    w('arcade_settingsWrite','command','arcade write setting {KEY} type {TYPE:Number|String|NumberArray|StringArray|Buffer} value {VALUE}'),
+    w('arcade_settingsRead','reporter','arcade read setting {KEY} type {TYPE:Number|String|NumberArray|StringArray|Buffer|List}'),
     w('arcade_settingsExists','boolean','arcade setting {KEY} exists'),
     w('arcade_settingsRemove','command','arcade remove setting {KEY}'),
     w('arcade_settingsClear','command','arcade clear user settings'),
@@ -539,6 +539,7 @@ export const ARCADE_WORDS = Object.freeze([
     w('arrays_specialValue', 'reporter', '{KIND:undefined|null} value'),
     w('arrays_stringFromCharCode', 'reporter', 'text from char code {CODE}', {early: true}),
     w('arrays_stringConcat', 'reporter', 'concatenate text {TEXT} with {OTHER}', {early: true}),
+    w('arrays_stringCharCodeAt', 'reporter', 'char code of text {TEXT} at {INDEX}', {early: true}),
     w('arrays_valueBinary', 'reporter', 'calculate value {LEFT} op {OP:"+"|"-"|"*"|"/"|"%"|"**"|"&"|"|"|"^"|"<<"|">>"|">>>"} with {RIGHT}'),
     w('arrays_valueUnary', 'reporter', 'convert value {VALUE} op {OP:"+"|"-"|"~"}'),
     w('arrays_valueTruthy', 'boolean', 'truthiness of value {VALUE}'),
@@ -548,6 +549,8 @@ export const ARCADE_WORDS = Object.freeze([
     w('arrays_referenceTruthy', 'boolean', 'truthiness of item {INDEX} of array reference {ARRAY}'),
     w('arrays_referenceItem', 'reporter', 'item {INDEX} of array reference {ARRAY}'),
     w('arrays_referenceLength', 'reporter', 'length of array reference {ARRAY}'),
+    w('arrays_referenceSlice', 'reporter', 'slice array reference {ARRAY} from {START} to {END}', {early: true}),
+    w('arrays_referenceConcat', 'reporter', 'concatenate array reference {ARRAY} with {OTHER}', {early: true}),
     w('arrays_referenceRandom', 'reporter', 'random item of array reference {ARRAY}'),
     w('arrays_referenceRemove', 'boolean', 'remove value {VALUE} from array reference {ARRAY}'),
     w('arrays_referenceTake', 'reporter', '{OP:text:pop|shift|removeAt} from array reference {ARRAY} index {INDEX}'),
@@ -642,17 +645,34 @@ export function spellArcadeWord(entry, read) {
     return entry.kind === 'hat' ? `WHEN ${words.replace(/^when\s+/i, '')}:` : words;
 }
 
+// Settings use direct native dropdown fields. Only an unconnected, known
+// legacy menu shadow is a literal; a reporter with a fallback shadow is not.
+export function legacySettingType(block, blocks = {}) {
+    const menuName = {arcade_settingsWrite: 'settingWriteTypes', arcade_settingsRead: 'settingReadTypes'}[block?.opcode];
+    if (!menuName) return undefined;
+    const input = block.inputs?.TYPE;
+    if (!Array.isArray(input) || input.length !== 2 || input[0] !== 1) return undefined;
+    const part = compileArcadeWord(arcadeWordFor(block.opcode)).parts.find(p => p.slot === 'TYPE');
+    if (Array.isArray(input[1]) && input[1][0] === 10 && part.choices.includes(input[1][1])) return input[1][1];
+    const child = typeof input[1] === 'string' ? blocks[input[1]] : undefined;
+    const value = child?.fields?.[menuName]?.[0];
+    if (child?.shadow === true && child.opcode === `arcade_menu_${menuName}` &&
+        child.next == null && Object.keys(child.inputs || {}).length === 0 && part.choices.includes(value)) return value;
+    return undefined;
+}
+
 /**
- * Migrate the five historical Arcade/Arrays slot-shape mismatches before a
+ * Migrate historical Arcade/Arrays slot-shape mismatches before a
  * project enters native Blocks. Mutates only recognized, valid menu literals;
  * returns whether it changed the block. Native fields/inputs win. Reporter
  * expressions in old direct-menu slots cannot be represented by a dropdown
  * and are deliberately left untouched for diagnostics, rather than guessed.
  */
-export function normalizeArcadeBlockSchema(block) {
+export function normalizeArcadeBlockSchema(block, context = {}) {
     const entry = arcadeWordFor(block?.opcode);
     if (!entry) return false;
-    const direct = /^arrays_(specialValue|valueBinary|valueUnary|valueCompare)$/.test(entry.op);
+    const settings = /^arcade_settings(Read|Write)$/.test(entry.op);
+    const direct = settings || /^arrays_(specialValue|valueBinary|valueUnary|valueCompare)$/.test(entry.op);
     if (!direct && entry.op !== 'arcade_controllerStep') return false;
     let changed = false;
     for (const part of compileArcadeWord(entry).parts) {
@@ -662,15 +682,22 @@ export function normalizeArcadeBlockSchema(block) {
         const input = block.inputs?.[name];
         if (direct && part.field && input) {
             const literal = input[1];
-            const legacy = Array.isArray(literal) && literal[0] === 10 && part.choices.includes(literal[1]);
+            const settingsLiteral = settings ? legacySettingType(block, context.blocks) : undefined;
+            const legacy = settings ? settingsLiteral !== undefined : Array.isArray(literal) && literal[0] === 10 && part.choices.includes(literal[1]);
             if (field && part.choices.includes(field[0])) {
                 delete block.inputs[name];
                 changed = true;
             } else if (!field && legacy) {
                 block.fields ||= {};
-                block.fields[name] = [literal[1], null];
+                block.fields[name] = [settings ? settingsLiteral : literal[1], null];
                 delete block.inputs[name];
                 changed = true;
+            }
+            if (settings && legacy && !block.inputs[name] && typeof literal === 'string' && context.blocks) {
+                const child = context.blocks[literal];
+                const referenced = Object.values(context.blocks).some(other =>
+                    Object.values(other.inputs || {}).some(parts => parts?.[1] === literal || parts?.[2] === literal) || other.next === literal);
+                if (!referenced && child?.shadow === true && child.parent === context.id && child.topLevel !== true) delete context.blocks[literal];
             }
         } else if (entry.op === 'arcade_controllerStep' && name === 'AXIS' && field && part.choices.includes(field[0])) {
             block.inputs ||= {};
