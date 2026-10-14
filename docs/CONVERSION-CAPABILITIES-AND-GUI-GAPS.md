@@ -4176,3 +4176,18 @@ directed export typing are a separately claimed implementation, with no default
 adoption or whole-corpus qualification yet. Low-level event bus, multiplayer
 registration and captured callable fields remain explicit pending slices. The
 raw corpus still has 41 partial projects; these bounded checks do not change it.
+
+
+## Scalar, evaluation order and official numeric GUI acceptance — 2026-10-14
+
+This section supersedes the earlier pending scalar/default and numeric GUI entries. The official [8d7 authoring run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38504674776) passes all five owned-game GUI journeys: import, visible blocks, edited Code, fresh SB3 and actual MakeCode export/reimport. Variables and complete frames match twelve selected original comparisons. Light and heavy browser jobs pass. Unit failures and the 41 corpus partials remain explicit; the owned fixture does not qualify an unrelated real game.
+
+| Capability now implemented | Blocks and Code authoring | GUI work still required |
+| --- | --- | --- |
+| Typed scalar preinitialization | Source-start prefix declares actual variable IDs as Number, Boolean, String or Any; typed undefined precedes source initializers; ordinary Scratch defaults remain intact | Explain source initialization in the palette; variable connection affordance; before/after initialization watches; visible declaration/rename/save acceptance |
+| Selected PXT evaluation order | Staged calls, receiver/index evaluation, lazy conditionals and complete field initializer bodies survive editable Code and saved projects; generic JavaScript lowering remains separate | Source stepping/order visualization and readable generated helpers; avoid exposing implementation temporaries as learner variables |
+| Fixed dropdown representation | Math operation, Text Sprite property, Sprite Data type, Settings type and retained-library version fields preserve choices; computed legacy types remain refused | Visible edit/save/reopen journeys for Text Sprite, Sprite Data and version selection; current numeric/Settings dropdown journey passes |
+| SDK Sprite flag method | Virtual `setFlag`, exact bit operations, object/scene identity and deferred physics semantics survive native/Code/export/SB3 | Discoverable flag editor with named combinations and bitmask display; subclass method authoring; scene ownership inspection |
+| Directed scalar export flow | Assignment, argument and result constraints preserve original types without merging opaque references into scalar/index privileges | Show precise type diagnostics at edited blocks and Code locations; signature completion |
+
+The canonical inventory now has 370 forms at merged supplier `8796b76eeb6d89a40d8f73bdffd8e78984796770`. Combined scalar/staging/accessor/field/flag controls pass 11 tests; the new source requires fresh official GUI qualification. Typed Sprite/Image/array/class reference preinitialization is separately claimed and not yet admitted. Captured callable values, dynamic callee order, event bus, multiplayer registration and full custom rendering remain ongoing. A class/accessor designer and Pixel image/animation/tile-map workflows still need genuine game edit/replay evidence. Preserve the existing detailed surface/task records above.

@@ -8,7 +8,28 @@ operator's actual checkouts, tools, private corpus and original receipts.
 Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
 
-## Latest source qualification — 2026-10-13
+## Latest source qualification — 2026-10-14
+
+### Current integration and official GUI acceptance
+
+The official [Build run 38504674776](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38504674776) built reviewed source `8d7f9776ac9d812289c26f696749968d0d65dcfa` at actual merge checkout `c3366ca72639e902cd792557b401effa4a92626b`. Build, light browser, heavy browser and numeric authoring succeeded. Unit shard 2 has 51 distinct failure blocks; shard 1 was cancelled. This is not an all-checks-passing integration or a corpus promotion.
+
+The [numeric authoring proof](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38504674776/artifacts/11867327857) covers unchanged import, visible palette/dropdown/number edits, edited Code → Blocks, fresh-session SB3 reopen and actual MakeCode export/reimport. Twelve original execution comparisons preserve expected variables and complete rendered frames; browser errors are empty. The proof admits the actual production artifact, selected SDK and immutable supplier inputs. It qualifies the owned numeric/settings/source-loop game, not the 41 partial corpus projects.
+
+Fixed native dropdown fields now preserve edited math operations, Text Sprite properties and Sprite Data types through Code and export. Recognized old literals and owned menu shadows migrate; computed or malformed fixed selections remain diagnostics. Compiler [PR130](https://github.com/CrispStrobe/sb3-creator/pull/130), [PR131](https://github.com/CrispStrobe/sb3-creator/pull/131), [PR132](https://github.com/CrispStrobe/sb3-creator/pull/132) and [PR133](https://github.com/CrispStrobe/sb3-creator/pull/133) merged after all four enabled checks passed, with the declared Pages skip and matching reviewed/predicted/landed trees.
+
+The next integrated source adds typed scalar cells and selected PXT evaluation order, using canonical supplier `8796b76eeb6d89a40d8f73bdffd8e78984796770` and 370 forms. [Source scalar declarations](ARCADE-SOURCE-SCALARS.md) bind actual stock variable IDs, initialize typed undefined before source initializers and preserve ordinary Scratch saved defaults. Directed export flow preserves scalar types and the separate reference graph. Nineteen evaluation-order cases, staged field initializers, accessor side effects, source defaults/rename/reload/callbacks and bounded SDK `Sprite.setFlag` pass 11 combined tests through native authoring and selected original export. Twenty-eight scalar/dropdown/SPIKE controls, 22 version/prefix/type controls and the committed mirror gate pass. These additions need their own fresh official GUI qualification after this integration.
+
+```text
+DEVICE ARCADE
+GLOBAL count
+SPRITE Game:
+WHEN arcade source starts:
+  declare arcade source scalar count as Number
+  set count to 0
+```
+
+The declaration is a source prelude, not an ordinary flag-time reset. Blocks use a connected stock variable reporter and a fixed type field. Graphics/class design, completion/signature help and debugger inspection remain tracked in [the GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md). Typed reference preinitialization, captured callables/dynamic callees, event-bus/multiplayer authoring and full subclass drawing services remain separate ongoing lanes. Keep their unqualified domains explicit. Raw corpus totals remain 184 / 142 translated / 41 partial / 1 parse failure; no whole corpus game has been promoted from these focused controls.
 
 ### Integrated accessor and Scene slices — 2026-10-14
 
@@ -2533,7 +2554,7 @@ is unchanged. Complete-game execution and editor/save/export qualification remai
 required independently of structural admission.
 
 
-### Native text dialog and class follow-up
+### Historical native text dialog and class follow-up (superseded by current qualification)
 
 Native text dialogs now use retained rendering with live parent scenes and
 controller release guards. The integrated source-loop/dialog controls pass20
