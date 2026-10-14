@@ -52,3 +52,45 @@ test('serialized Font operands refuse mismatched primitive domains and dynamic f
     for(const [project,diagnostic]of cases)assert.ok(projectToArcade(project).unsupported.some(message=>diagnostic.test(message)));
     const valid=projectToArcade(projectWithFontReport('arcade_scaleFont',{FONT:[1,'builtin'],SIZE:[1,'number']}));assert.deepEqual(valid.unsupported,[]);
 });
+
+test('every Font print input uses actual Image and primitive domains',()=>{
+    const build=center=>{
+        const project=projectWithFontReport('arcade_fontValue',{}, {fields:{FONT:['font8']}}),target=project.targets[0],blocks=target.blocks;
+        blocks.font={opcode:center?'arcade_printImageFontCenter':'arcade_printImageFont',parent:'hat',inputs:{IMAGE:[1,'image'],TEXT:[1,'label'],X:[1,'number'],Y:[1,'number'],COLOR:[1,'number'],FONT:[1,'builtin']},fields:{}};blocks.hat.next='font';delete blocks.set;
+        blocks.label={opcode:'text',parent:'font',inputs:{},fields:{TEXT:['A']},shadow:true};
+        blocks.image={opcode:'arcade_createImage',parent:'font',inputs:{WIDTH:[1,'number'],HEIGHT:[1,'number']},fields:{},shadow:false};return project;
+    };
+    for(const center of [false,true]){
+        assert.deepEqual(projectToArcade(build(center)).unsupported,[]);
+        for(const name of center?['Y','COLOR']:['X','Y','COLOR']){const project=build(center);project.targets[0].blocks.font.inputs[name]=[1,'text'];assert.ok(projectToArcade(project).unsupported.some(message=>message.includes(name+' requires a proven number')));}
+        const wrongImage=build(center);wrongImage.targets[0].blocks.font.inputs.IMAGE=[1,'builtin'];assert.ok(projectToArcade(wrongImage).unsupported.some(message=>/proven Image/.test(message)));
+        const absentImage=build(center);delete absentImage.targets[0].blocks.font.inputs.IMAGE;assert.ok(projectToArcade(absentImage).unsupported.some(message=>/proven Image/.test(message)));
+        const missingFont=build(center);delete missingFont.targets[0].blocks.font.inputs.FONT;assert.ok(projectToArcade(missingFont).unsupported.some(message=>/actual typed Font/.test(message)));
+    }
+});
+
+import {sdkFontInputAuthority} from '../overlay/scratch-gui/src/lib/bw-makecode/sdk-font-input-authority.js';
+test('directed Font input proof follows actual writers and unique procedure returns',()=>{
+    const target={isStage:true,name:'Stage',variables:{font:['font',0]},blocks:{
+        hat:{opcode:'arcade_whenSourceStarts',topLevel:true,next:'set',inputs:{},fields:{}},
+        set:{opcode:'data_setvariableto',parent:'hat',next:'print',inputs:{VALUE:[1,'font']},fields:{VARIABLE:['font','font']}},
+        font:{opcode:'arcade_fontValue',parent:'set',inputs:{},fields:{FONT:['font8']}},
+        print:{opcode:'arcade_printImageFont',parent:'set',inputs:{FONT:[1,[12,'font','font']]},fields:{}}
+    }},project={targets:[target]};
+    assert.equal(sdkFontInputAuthority(project).accepts(target,target.blocks.print,'FONT','Font'),true);
+    target.blocks.bad={opcode:'data_setvariableto',parent:'print',inputs:{VALUE:[1,'opaque']},fields:{VARIABLE:['font','font']}};target.blocks.print.next='bad';
+    target.blocks.opaque={opcode:'unqualified_reporter',parent:'bad',inputs:{},fields:{}};
+    assert.equal(sdkFontInputAuthority(project).accepts(target,target.blocks.print,'FONT','Font'),false,'every actual writer is considered');
+    delete target.blocks.bad;delete target.blocks.opaque;delete target.blocks.print.next;
+    const foreign={isStage:false,name:'Other',variables:{},blocks:{reader:{opcode:'arcade_printImageFont',topLevel:true,inputs:{FONT:[1,[12,'font','missing-id']]},fields:{}}}};
+    project.targets.push(foreign);assert.equal(sdkFontInputAuthority(project).accepts(foreign,foreign.blocks.reader,'FONT','Font'),false);
+    target.blocks.definition={opcode:'procedures_definition',topLevel:true,next:'return',inputs:{custom_block:[1,'prototype']},fields:{}};
+    target.blocks.prototype={opcode:'procedures_prototype',parent:'definition',inputs:{},fields:{},mutation:{proccode:'actualFont',argumentnames:'[]'}};
+    target.blocks.return={opcode:'arcade_returnValue',parent:'definition',inputs:{VALUE:[1,'returned']},fields:{}};
+    target.blocks.returned={opcode:'arcade_fontValue',parent:'return',inputs:{},fields:{FONT:['font8']}};
+    target.blocks.call={opcode:'arcade_callFunction',parent:'print',inputs:{ARGS:[1,[10,'[]']]},fields:{NAME:['actualFont']}};
+    target.blocks.print.inputs.FONT=[1,'call'];
+    assert.equal(sdkFontInputAuthority(project).accepts(target,target.blocks.print,'FONT','Font'),true);
+    target.blocks.return.inputs.VALUE=[1,'recursive'];target.blocks.recursive={opcode:'arcade_callFunction',parent:'return',inputs:{ARGS:[1,[10,'[]']]},fields:{NAME:['actualFont']}};
+    assert.equal(sdkFontInputAuthority(project).accepts(target,target.blocks.print,'FONT','Font'),false,'recursive return authority is not guessed');
+});

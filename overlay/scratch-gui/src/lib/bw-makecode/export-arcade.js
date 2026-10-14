@@ -1,3 +1,4 @@
+import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
 import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes} from './callable-export-graph.js';
 import {namedArrayItemExportAuthority} from './named-array-item-export-authority.js';
 import {NAMED_ARRAY_GET_SOURCE} from './named-array-item-helpers.js';
@@ -123,13 +124,13 @@ const RESERVED = new Set(['score', 'life', 'info', 'game', 'scene', 'sprites', '
 
 class ArcadeEmitter {
     sdkFontOperand(block,input='FONT') {
-        const types=this.objectClassExport?.inputTypes(this.target,block,input);
-        if(!types || types.size!==1 || !types.has('__bwSDK_Font')){this.note('SDK Font operand requires an actual typed Font factory or binding: '+block.opcode+' '+[...(types||[])].join('|'));return false;}
+        const types=this.sdkFontInputs.inputTypes(this.target,block,input);
+        if(!this.sdkFontInputs.accepts(this.target,block,input,'Font')){this.note('SDK Font operand requires an actual typed Font factory or binding: '+block.opcode+' '+[...(types||[])].join('|'));return false;}
         return true;
     }
     sdkFontPrimitiveOperand(block,input,kind) {
-        const types=this.objectClassExport?.inputTypes(this.target,block,input);
-        if(!types || types.size!==1 || !types.has(kind)){this.note('SDK Font '+input+' requires a proven '+kind+' operand');return false;}return true;
+        const types=this.sdkFontInputs.inputTypes(this.target,block,input);
+        if(!this.sdkFontInputs.accepts(this.target,block,input,kind==='string'?'String':'Number')){this.note('SDK Font '+input+' requires a proven '+kind+' operand');return false;}return true;
     }
     controllerRepeatReceiver(b) {
         const player=String(b.fields.PLAYER?.[0]),button=b.fields.BUTTON?.[0],property=b.fields.PROPERTY?.[0];
@@ -139,7 +140,7 @@ class ArcadeEmitter {
         return `controller.player${player}.${button}`;
     }
     constructor (project, opts) {
-        this.project = project;
+        this.project = project;this.sdkFontInputs=sdkFontInputAuthority(project);
         this.opts = opts;
         this.unsupported = [];
         this.sourceScalarCells=new Map();this.sourceReferenceCells=new Map();this.validScalarPrelude=true;
@@ -1771,7 +1772,7 @@ class ArcadeEmitter {
     stmt (b, depth, out) {
         const pad = '    '.repeat(depth);
         const push = line => out.push(pad + line);
-        if(['arcade_bufferSetByte','arcade_bufferSetNumber','arcade_bufferWrite','arcade_bufferFill','arcade_bufferShift','arcade_bufferRotate','arcade_bufferPackAt'].includes(b.opcode) && this.objectClassExport.fontGlyphInput(this.target,b,'BUFFER'))
+        if(['arcade_bufferSetByte','arcade_bufferSetNumber','arcade_bufferWrite','arcade_bufferFill','arcade_bufferShift','arcade_bufferRotate','arcade_bufferPackAt'].includes(b.opcode) && this.sdkFontInputs.glyphInput(this.target,b,'BUFFER'))
             this.note('SDK Font glyph Buffer mutation is not qualified by the read slice');
         const v = n => this.value(b, n);
         const me = this.self();
@@ -2169,6 +2170,8 @@ class ArcadeEmitter {
         case 'arcade_printImageFont':
         case 'arcade_printImageFontCenter': {
             this.sdkFontOperand(b);this.sdkFontPrimitiveOperand(b,'TEXT','string');
+            if(!this.sdkFontInputs.accepts(this.target,b,'IMAGE','Image'))this.note('SDK Font printing requires a proven Image operand');
+            for(const input of b.opcode==='arcade_printImageFont'?['X','Y','COLOR']:['Y','COLOR'])this.sdkFontPrimitiveOperand(b,input,'number');
             const args=[this.arrayValue(b,'TEXT')];if(b.opcode==='arcade_printImageFont')args.push(this.arrayValue(b,'X'));
             args.push(this.arrayValue(b,'Y'),this.arrayValue(b,'COLOR'),this.arrayValue(b,'FONT'));
             push(`${this.arrayValue(b,'IMAGE')}.${b.opcode==='arcade_printImageFont'?'print':'printCenter'}(${args.join(', ')})`);return;
