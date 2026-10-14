@@ -10,6 +10,18 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ## Latest source qualification — 2026-10-14
 
+The official [numeric authoring job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38581351652/job/115917111987)
+passes on reviewed head `c1128242b39ace14e6b911a784ce9ee3118540f7`, with qualified
+compiler `3a2e423954ef9d6c6066c487e051c1e22496648d` and Arrays
+`40184f1917d164cf45fc543117d5c1f9254f9cb6`. Four owned fixtures each complete
+five journeys: import, visible block edits, Code edits, fresh saved-project
+reopening, and actual export/reimport. The font fixture records four original
+comparisons; the repeat fixture records twelve, including controller-pane
+hold/release/repress for both players. Both reports contain no page errors.
+These qualify the specific authoring controls, not the raw corpus or complete
+unrelated games. The same head's heavy browser job passes, while unit and
+artwork qualification remain separate; earlier failures are preserved.
+
 The [bounded BaseDialog subclass contract](ARCADE-BASE-DIALOG-SUBCLASSES.md)
 now covers authored `drawTextCore()` and `update()` overrides, explicit
 `super.update()`, ordered pause completion, Stop cancellation, and real old/new
