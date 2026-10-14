@@ -64,6 +64,7 @@ export class RenodeArenaSession {
             // Reserve only configuration controls while startup is pending;
             // native motors and clock ownership remain unchanged until a frame.
             hub.configurationOwner = this;hub.changed();
+            if (this.closed) return;
             await this.call('session.start', this.backend ? {backend: this.backend, ...(this.topology !== 'default' ? {topology: this.topology} : {})} : {});
             this.started = true;
             if (this.closed) return;
@@ -104,6 +105,7 @@ export class RenodeArenaSession {
                 if (this.closed) return;
             }
             const inputs = this.acceptFrame(first);
+            if (this.closed) return;
             this.adapter.bridge.hubState.externalBackend = this;
             await this.call('arena.inputs.write', inputs);
             if (this.closed) return;
