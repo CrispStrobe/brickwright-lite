@@ -140,3 +140,29 @@ nor screen-frame ownership gaps in those consumers.
 Freeze source, full expected pixels, actual compiler input/binary and owner
 snapshots before qualification. Capture the actual native instance per VM.
 No guest or product implementation has been run for this proposal.
+
+## Selected simulator resource and Buffer behavior
+
+The PXT 13.2.1 compiler retains the complete Font resource for simulator output.
+Its Font JRES branch filters glyph records by used characters only when
+`target.isNative` is true. Hardware resource subsets are therefore a separate
+boundary. This rule is explicit in the pinned
+[compiler emitter](https://github.com/microsoft/pxt/blob/c40f412dc5bebb915a5891cd62fe956e198fb194/pxtcompiler/emitter/emitter.ts#L2744).
+The Font12 Buffer still belongs to the current resource and run; a matching
+length alone does not grant resource ownership.
+
+Compiled hex Buffers carry a static flag. `isReadOnly()` reports that flag,
+while the simulator's `setNumber` writes bytes without checking it. `setByte`
+and several other mutation operations check the flag. Preserve those individual
+operations; the flag is not a universal mutation policy. See the pinned
+[Buffer implementation](https://github.com/microsoft/pxt/blob/c40f412dc5bebb915a5891cd62fe956e198fb194/pxtsim/libgeneric.ts#L544).
+A read slice must supply its own explicit refusal at every public write entry,
+including writes through another handle sharing the glyph storage.
+
+An unattached native preparation now preserves actual Font record identity,
+integer scaling, shared Buffer views and static metadata. Its complete image
+oracle covers ordinary, scaled, wide and missing glyph rendering, and mutation
+of shared glyph bytes. The text icon adapter preserves eight-bit image colors.
+These controls qualify the native boundary. Source declarations, connected Font
+words, editable Blocks, Code, saved projects and export/reimport remain pending;
+no complete live Font capability is admitted by this preparation.
