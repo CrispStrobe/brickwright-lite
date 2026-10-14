@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
-import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
+import {stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
+import {runArcadeSourceCode as runProgram} from './helpers/arcade-source-program.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 
 const source='let trace=0;let yes=true;function tap(n:number){trace=trace*10+n;return n}function pair(a:number,b:number){return a*10+b}class Field {value=pair(tap(1),yes?tap(2):tap(8));constructor(){tap(3)}}let field=new Field();let fieldTrace=trace;let fieldValue=field.value;fieldTrace+=0;fieldValue+=0;';
