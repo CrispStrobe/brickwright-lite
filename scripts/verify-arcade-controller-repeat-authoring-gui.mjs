@@ -231,14 +231,21 @@ try {
     await editMenu({opcode:'arcade_setButtonRepeatProperty',input:'PLAYER',value:'2',blockId:delayBlockId},'1',['1','2','3','4']);
     await editMenu({opcode:'arcade_setButtonRepeatProperty',input:'BUTTON',value:'A',blockId:delayBlockId},'B',['A','B','up','down','left','right']);
     await editMenu({opcode:'arcade_setButtonRepeatProperty',input:'BUTTON',value:'B',blockId:delayBlockId},'A',['A','B','up','down','left','right']);
-    // Menu labels differ from their canonical field values.
+    // Scratch Blocks factors the shared unit suffix out of static options.
+    // Verify both the visible unit and the actual canonical field choices.
     const prop=await reachField({opcode:'arcade_setButtonRepeatProperty',input:'PROPERTY',value:'repeatDelay',blockId:delayBlockId});
     await page.mouse.click(prop.x,prop.y);const choices=page.getByRole('menuitemcheckbox');await choices.first().waitFor({state:'visible'});
-    assert.deepEqual(await choices.allTextContents(),['delay (ms)','interval (ms)']);
-    await page.getByRole('menuitemcheckbox',{name:'interval (ms)',exact:true}).click();
+    assert.deepEqual(await choices.allTextContents(),['delay','interval']);
+    const propertyDisplay=await page.evaluate(id=>{
+        const block=window.Blockly.getMainWorkspace().getBlockById(id);
+        return {suffix:block.getField('PROPERTY').suffixField,text:block.getSvgRoot().textContent};
+    },delayBlockId);
+    assert.equal(propertyDisplay.suffix,'(ms)');
+    assert.match(propertyDisplay.text,/\(ms\)/,'property block keeps the visible millisecond unit');
+    await page.getByRole('menuitemcheckbox',{name:'interval',exact:true}).click();
     await page.waitForFunction(id=>window.Blockly.getMainWorkspace().getBlockById(id)?.getFieldValue('PROPERTY')==='repeatInterval',delayBlockId);
     const back=await reachField({opcode:'arcade_setButtonRepeatProperty',input:'PROPERTY',value:'repeatInterval',blockId:delayBlockId});
-    await page.mouse.click(back.x,back.y);await page.getByRole('menuitemcheckbox',{name:'delay (ms)',exact:true}).click();
+    await page.mouse.click(back.x,back.y);await page.getByRole('menuitemcheckbox',{name:'delay',exact:true}).click();
     await page.waitForFunction(id=>window.Blockly.getMainWorkspace().getBlockById(id)?.getFieldValue('PROPERTY')==='repeatDelay',delayBlockId);
     await editNumber({opcode:'arcade_setButtonRepeatProperty',input:'VALUE',value:'60',blockId:delayBlockId},40);
     await editNumber({opcode:'arcade_setButtonRepeatProperty',input:'VALUE',value:'20',player:'1',property:'repeatInterval'},30);
