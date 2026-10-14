@@ -18,6 +18,9 @@ test('Arcade metadata-only construction exposes its actual blocks without granti
     assert.throws(()=>extension.invokeHeldCallable('foreign',[]),/bound runtime/);
     assert.throws(()=>owner._callableValues.declare({},{}),/bound runtime/);
     assert.throws(()=>owner._callableValues.create({},'body'),/bound runtime/);
+    assert.equal(values.decode(extension.createCallable({NAME:'body'})),undefined);
+    assert.equal(values.decode(extension.callCallable({CALLABLE:values.UNDEFINED,ARGS:'[]'})),undefined);
+    assert.equal(owner._callableValues.resources.size,0);
     assert.doesNotThrow(()=>owner._callableDispatch.dispose());
     assert.doesNotThrow(()=>owner._callableValues.dispose());
 });
