@@ -1,4 +1,29 @@
+## Explicit procedure calls in Code — 2026-10-14
+
+PROPOSED — Codex Arcade integration. Product edits begin after this claim lands.
+The unchanged Snake source defines and calls `show`; the current Code parser
+silently interprets those calls as Scratch's visibility command, leaving the
+rendering procedure uncalled through save/export. Preserve both operations.
+Envelope: canonical producer generic statement parser and pseudocode decompiler,
+focused producer call controls, Arcade source function statement emission and
+procedure ownership scan, matching generated mirrors/pin and focused original/
+native/Code/SB3/export controls; this ledger and linked contract. Do not edit
+peer-owned Arrays scalar-return, controller-repeat, callable or font hunks.
+[Contract](docs/ARCADE-EXPLICIT-PROCEDURE-CALLS.md).
+
 # Who is doing what — merge the claim before implementation
+
+## Arcade live font metrics — 2026-10-14
+
+PROPOSED — `docs/arcade-live-font-metrics-20261014`.
+Contract: [live font metrics](docs/ARCADE-LIVE-FONT-METRICS.md).
+Own new metric helper/classification/tests and narrow Arcade source/scalar/type,
+native reporter/menu, export, canonical fixed-field vocabulary and pin hunks.
+Read actual selected font objects; preserve shadow/opaque guards, editable
+Code/Blocks/SB3 and original export rendering. Coordinate repeat, callable,
+reference and active converter/runtime owners. No product implementation before
+this claim is merged; no guessed constants, font-reference admission or whole-game
+promotion.
 
 ## Arcade controller repeat properties — 2026-10-14
 
@@ -3447,6 +3472,13 @@ candidate, whose hosted merge gates are still pending. No startup failure
 attribution, deadline fix or full G02 completion is claimed.
 
 ## SPIKE remaining lifecycle boundaries — 2026-10-13
+
+Continuation candidate `lane/spike-g02-terminal-fences-20261014` addresses
+synchronous Stop from final frame/program-state callbacks within this same
+session/test envelope. Three baseline failures, 34 passing affected host
+controls and two detected fence mutations are recorded. Fresh installed own
+NuttX cancellation/recovery and exact-head CI remain pending; no full G02 claim.
+
 
 CLAIMED — Codex SPIKE integration, `lane/spike-g02-lifecycle-20261013`.
 Envelope: `overlay/scratch-gui/src/lib/spike-arena/renode-arena-session.js`,
