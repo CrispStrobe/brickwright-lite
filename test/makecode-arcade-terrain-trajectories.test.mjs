@@ -22,14 +22,16 @@ for (const [name, source] of Object.entries(TRAJECTORIES)) {
         try {
             // A not-yet-initialized source frame is encoded undefined (Number -> NaN).
             // Wait for the actual first recording instead of treating NaN as ready.
+            const firstDelta=Number(expected[0][5])*1000;
             for (let guard = 0; !(Number(values(run).frame) >= 1); guard++) {
                 assert.ok(guard < 200, 'the native recording started');
-                await stepFrames(run.vm, 1, 20);
+                await stepFrames(run.vm, 1, firstDelta);
             }
             for (let i = 1; i < expected.length; i++) await stepFrames(run.vm, 1, Number(expected[i][5]) * 1000);
             const actual = entries(values(run).trace);
             assert.deepEqual(run.errors, []);
             assert.equal(actual.length, expected.length);
+            assert.equal(Number(actual[0][5]),Number(expected[0][5]),'first source delta follows the actual original recording');
             assert.deepEqual(actual.map(entry => entry.slice(0, 5)), expected.map(entry => entry.slice(0, 5)));
         } finally { clearStrayTimers(); }
     });
