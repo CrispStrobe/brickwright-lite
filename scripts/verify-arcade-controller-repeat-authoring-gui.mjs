@@ -236,10 +236,10 @@ try {
     const prop=await reachField({opcode:'arcade_setButtonRepeatProperty',input:'PROPERTY',value:'repeatDelay',blockId:delayBlockId});
     await page.mouse.click(prop.x,prop.y);const choices=page.getByRole('menuitemcheckbox');await choices.first().waitFor({state:'visible'});
     assert.deepEqual(await choices.allTextContents(),['delay','interval']);
-    const propertyDisplay=await page.evaluate(id=>{
+    const propertyDisplay=await page.evaluate(({id,name})=>{
         const block=window.Blockly.getMainWorkspace().getBlockById(id);
-        return {suffix:block.getField('PROPERTY').suffixField,text:block.getSvgRoot().textContent};
-    },delayBlockId);
+        return {suffix:block.getField(name).suffixField,text:block.getSvgRoot().textContent};
+    },prop);
     assert.equal(propertyDisplay.suffix,'(ms)');
     assert.match(propertyDisplay.text,/\(ms\)/,'property block keeps the visible millisecond unit');
     await page.getByRole('menuitemcheckbox',{name:'interval',exact:true}).click();
