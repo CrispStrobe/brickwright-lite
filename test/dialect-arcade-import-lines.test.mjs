@@ -99,14 +99,15 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the qualified Arcade word table (384 opcodes)', () => {
-    assert.equal(ARCADE_DIALECT_OPS.length, 384);
-    const repeats = [
+test('the pinned parser has the qualified Arcade word table (385 opcodes)', () => {
+    assert.equal(ARCADE_DIALECT_OPS.length, 385);
+    const qualifiedWords = [
+        {op: 'arcade_sourceTypeOf', kind: 'reporter', words: 'arcade source type of {VALUE}'},
         {op: 'arcade_buttonRepeatProperty', kind: 'reporter', words: 'arcade player {PLAYER:1|2|3|4} button {BUTTON:A|B|up|down|left|right} repeat property {PROPERTY:repeatDelay|repeatInterval}'},
         {op: 'arcade_setButtonRepeatProperty', kind: 'command', words: 'arcade set player {PLAYER:1|2|3|4} button {BUTTON:A|B|up|down|left|right} repeat property {PROPERTY:repeatDelay|repeatInterval} to {VALUE}'},
         {op: 'arcade_setButtonRepeatDefaults', kind: 'command', words: 'arcade set button repeat defaults delay {DELAY} interval {INTERVAL}'}
     ];
-    for (const expected of repeats) {
+    for (const expected of qualifiedWords) {
         const rows = ARCADE_WORDS.filter(row => row.op === expected.op && !row.alias);
         assert.equal(rows.length, 1, expected.op);
         assert.deepEqual(rows.map(({op, kind, words}) => ({op, kind, words})), [expected]);
