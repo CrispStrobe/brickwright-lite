@@ -27,6 +27,8 @@
  * names it for a bare main.ts and for the export commands.
  *
  *   node scripts/makecode.mjs run <in.hex|in.ts|in.sb3|in.bw> [--target microbit|calliopemini] [--board v1|v2] [--seconds N] [--json]
+ *   node scripts/makecode.mjs run <boards.bw|boards.sb3> [--press <Board>:<A|B>@<from>-<to>]... [--seconds N] [--json]
+ *       (a program with several boards: every board its own machine, their radios on one simulated air)
  *       Runs the program on LabWired's micro:bit V1 board (nRF51822, Nordic
  *       S110 SoftDevice EMULATED: only the application region of the .hex is
  *       loaded), headless, for N seconds of guest time (default 5): prints the
@@ -61,6 +63,7 @@ const USAGE = `usage:
   node scripts/makecode.mjs to-ts  <in.sb3|in.bw> [-o out.ts]  [--target TARGET]
   node scripts/makecode.mjs to-sb3 <in.ts|in.hex|in.uf2|in.png|in.mkcd|share-url> [-o out.sb3] [--bw out.bw] [--target TARGET] [--fetch-extensions]
   node scripts/makecode.mjs run <in.hex|in.ts|in.sb3|in.bw> [--target microbit|calliopemini] [--board v1|v2] [--seconds N] [--json]
+  node scripts/makecode.mjs run <boards.bw|boards.sb3> [--press <Board>:<A|B>@<from>-<to>]... [--seconds N] [--json]
 TARGET: microbit (default), arcade, calliopemini (or calliope), ev3`;
 
 /** The targets the CLI exports to and imports for: the Code tab's translators. */
@@ -75,7 +78,7 @@ const DEFAULT_DEPENDENCIES = {microbit: {core: '*', radio: '*', microphone: '*'}
 
 function args (argv) {
     const out = {cmd: argv[0], input: null, output: null, target: 'microbit', board: '', source: false, bw: null, mainSource: null,
-        seconds: 5, json: false};
+        seconds: 5, json: false, press: []};
     for (let i = 1; i < argv.length; i++) {
         const a = argv[i];
         if (a === '-o') out.output = argv[++i];
@@ -86,6 +89,7 @@ function args (argv) {
         else if (a === '--main') out.mainSource = argv[++i];
         else if (a === '--seconds') out.seconds = Number(argv[++i]);
         else if (a === '--json') out.json = true;
+        else if (a === '--press') out.press.push(argv[++i]);
         else if (a === '--fetch-extensions') out.fetchExtensions = true;
         else if (!out.input) out.input = a;
         else throw Object.assign(new Error(`unexpected argument ${a}`), {usage: true});
@@ -99,6 +103,7 @@ function args (argv) {
         }
     } else if (out.board && out.target !== 'arcade') throw Object.assign(new Error('--board is for Arcade only'), {usage: true});
     if (!(out.seconds > 0 && out.seconds <= 600)) throw Object.assign(new Error('--seconds must be between 0 and 600'), {usage: true});
+    if (out.press.length && out.cmd !== 'run') throw Object.assign(new Error('--press is for run'), {usage: true});
     if (out.fetchExtensions && out.cmd !== 'to-sb3') throw Object.assign(new Error('--fetch-extensions is for to-sb3'), {usage: true});
     return out;
 }
@@ -343,7 +348,16 @@ async function main () {
             `${(res.unsupported || []).length} not translated`);
         return 0;
     }
-    if (a.cmd === 'run') return runCommand(a);
+    if (a.cmd === 'run') {
+        try {
+            return await runCommand(a);
+        } catch (e) {
+            // A --press that names no board, or is given to a one-board program.
+            if (!e.usage) throw e;
+            console.error(e.message);
+            return 2;
+        }
+    }
     console.error(`unknown command ${a.cmd}\n${USAGE}`);
     return 2;
 }
@@ -390,8 +404,80 @@ async function programFiles (a) {
     return {target: res.project.target, files: res.files};
 }
 
+/**
+ * `run` for a program with several boards (a `DEVICE <id> AS <Name>:` section
+ * each): compile every board for its own target, then run them as separate
+ * machines whose radios share one simulated air (lib/makecode-run-boards.mjs).
+ */
+async function runBoardsCommand (a, project) {
+    const many = await import('./lib/makecode-run-boards.mjs');
+    const {boardMakeCodeProjects} = await lib('bw-boards/makecode-boards.js');
+    const {exportToMakeCode} = await lib('bw-makecode/index.js');
+    let subjects;
+    try {
+        subjects = boardMakeCodeProjects(project, {exportToMakeCode, name: base(a.input).slice(0, 40)});
+    } catch (e) {
+        if (e.code !== 'NOT_MAKECODE_BOARD') throw e;
+        console.error(`refused: ${e.message}`);
+        return 1;
+    }
+    const presses = many.resolvePresses(a.press.map(many.parsePress), subjects.map(s => s.name));
+    const {firmwareFile} = await lib('bw-makecode/pxt-runtime.js');
+    const boards = [];
+    for (const s of subjects) {
+        if (!many.BOARD_OF_TARGET[s.target]) {
+            console.error(`refused: board "${s.name}" is a ${s.target}; run has a board model for the micro:bit and the Calliope mini`);
+            return 1;
+        }
+        if (!hasRuntime(s.target)) { console.error('the MakeCode runtime is not synced — run `npm run sync:makecode`'); return 3; }
+        const r = await compile(s.target, s.files, {native: true});
+        if (!r.success) {
+            for (const d of r.diagnostics.slice(0, 10)) console.error(`  ${s.name}: ${d.file}:${d.line + 1}: ${d.message}`);
+            console.error(`MakeCode did not compile board "${s.name}" (${r.diagnostics.length} error(s))`);
+            return 1;
+        }
+        const firmware = firmwareFile(r.outfiles);
+        if (!firmware) { console.error(`MakeCode compiled no firmware file for board "${s.name}"`); return 1; }
+        boards.push({name: s.name, target: s.target, hex: new TextDecoder().decode(firmware.bytes)});
+    }
+    console.error(`  note: ${boards.map(b => `${b.name} (${TARGET_NAME[b.target] || b.target})`).join(' and ')} on one simulated radio air; ` +
+        'a Calliope motor is reported as its driver input line switching, not as a turning motor');
+    const live = !a.json;
+    const stamp = t => `[${t.toFixed(2)} s]`;
+    const onEvent = live ? e => {
+        if (e.type === 'serial') { if (e.text !== '\0') process.stdout.write(e.text); return; }
+        if (e.type === 'press') process.stdout.write(`\n${stamp(e.t)} ${e.board}: button ${e.button === 'button_a' ? 'A' : 'B'} ${e.down ? 'pressed' : 'released'}\n`);
+        else if (e.type === 'line') process.stdout.write(`\n${stamp(e.t)} ${e.board}: ${e.line} ${e.switching ? 'is being driven' : 'is still'}\n`);
+        else if (e.type === 'matrix') process.stdout.write(`\n${stamp(e.t)} ${e.board}: LED matrix\n${e.rows.map(r => `  ${r}`).join('\n')}\n`);
+    } : null;
+    let result;
+    try {
+        result = await many.runBoards({boards, seconds: a.seconds, presses, onEvent});
+    } catch (e) {
+        if (e.code === 'NO_ENGINE' || e.code === 'NO_BOARDS_MODEL') { console.error(e.message); return 3; }
+        throw e;
+    }
+    if (a.json) {
+        process.stdout.write(`${JSON.stringify({guestSeconds: result.guestSeconds, sharedAir: result.sharedAir, presses,
+            boards: result.boards.map(b => ({...b, serial: b.serial.replace(/\0/g, '')}))})}\n`);
+    } else {
+        process.stdout.write(`\n— ran ${result.guestSeconds.toFixed(2)} s of guest time on ${result.boards.length} boards\n`);
+    }
+    let code = 0;
+    for (const b of result.boards) {
+        if (b.fault) { console.error(`fault on ${b.name}: ${b.fault.cause}${b.fault.message ? ` — ${b.fault.message}` : ''}`); code = 1; }
+    }
+    return code;
+}
+
 async function runCommand (a) {
     const run = await import('./lib/makecode-run.mjs');
+    if (/\.(sb3|bw|txt)$/i.test(a.input)) {
+        const {readBoards} = await lib('bw-boards/model.js');
+        const {project} = await readProject(a.input);
+        if (readBoards(project)) return runBoardsCommand(a, project);
+    }
+    if (a.press.length) throw Object.assign(new Error('--press is for a program with several boards'), {usage: true});
     const rb = RUN_BOARDS[a.board || 'v1'];
     const v2 = rb.board === 'microbit-v2';
     let hex = /\.hex$/i.test(a.input) ? fs.readFileSync(a.input, 'utf8') : null;
