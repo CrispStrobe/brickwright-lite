@@ -28,3 +28,21 @@ test('explicit Any, generic shadows and constructor scalar writes cannot confer 
 test('literal image aliases and function results remain references, mixed logical domains stay excluded',()=>{
  assert.deepEqual(inventory('let a=img`3`;let b=img`5`;let alias=a;function choose(flag:boolean){return flag?a:b};let result=choose(false);let mixed=(false&&a)||b;let unknown=assets.image`missing`;'),[{name:'a',type:'Image'},{name:'b',type:'Image'},{name:'alias',type:'Image'},{name:'result',type:'Image'}]);
 });
+
+test('array arguments, results and elements retain supported domains without guessing empty or mixed arrays',()=>{
+ const found=new Map(inventory('class Box{constructor(){}}let images=[img`3`];let spritesList=[sprites.create(img`2`,SpriteKind.Player)];let boxes=[new Box()];function first(values:Image[]){return values[0]}function pass(values:Sprite[]){return values}let picked=first(images);let alias=pass(spritesList);let box=boxes[0];let nums=[1,2];let flags=[true,false];let texts=["a","b"];let empty=[];let mixed=[img`3`,1];').map(decl=>[decl.name,decl.type]));
+ assert.deepEqual([...found],[['images','Image[]'],['spritesList','Sprite[]'],['boxes','Box[]'],['picked','Image'],['alias','Sprite[]'],['box','Box'],['nums','number[]'],['flags','boolean[]'],['texts','string[]']]);
+});
+test('array writes and removals propagate element domains while Any and generic receivers remain opaque',()=>{
+ const found=inventory('let images=[];images.push(img`3`);let first=images[0];let last=images.pop();let alias=images;let copy=images.slice();let joined=copy.concat(images);let unowned:any=images;let unsafe=unowned[0];let unsafeResult=unowned.pop();function fake(receiver:any, values:Image[]){return receiver.concat(values)}let unknown=fake(null,images);class T{constructor(){}}function identity<T>(values:T[]){return values[0]}let generic=identity([1]);');
+ assert.deepEqual(found,[{name:'images',type:'Image[]'},{name:'first',type:'Image'},{name:'last',type:'Image'},{name:'alias',type:'Image[]'},{name:'copy',type:'Image[]'},{name:'joined',type:'Image[]'}]);
+});
+
+test('callable, unresolved and nested array elements cannot masquerade as Image arrays',()=>{
+ const found=inventory('let picture=img`3`;let callback=()=>picture;let bad=[picture,callback];function action(){return picture}let labels=[action,picture];let unknown;let unresolved=[picture,unknown];let nested=[[picture]];let pending:Image;let known=[pending,picture];');
+ assert.deepEqual(found,[{name:'picture',type:'Image'},{name:'pending',type:'Image'},{name:'known',type:'Image[]'}]);
+});
+
+test('local callee shadows cannot acquire global array factory or class authority',()=>{
+ assert.deepEqual(inventory('function make(values:Image[]){return values};function fake(make:any){return make()};let result=fake(null);class Box{constructor(){}}function construct(Box:any){return new Box()};let instance=construct(null);'),[]);
+});
