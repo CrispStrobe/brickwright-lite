@@ -145,7 +145,29 @@ function delay(n:number){pause(100);return n}
 function take(first:number,second:number){result=first*100+second}
 take(delay(3),delay(4))`;
     const imported=arcadeToPseudocode(source);assert.doesNotMatch(imported.code,/set _mc\d+ to/);
-    await roundtrip(source,run=>assert.equal(vars(run).result,304),60);
+    const runs=[];
+    const check=async run=>{
+        assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+        assert.equal(vars(run).result,0);
+        await run.clock.advanceTo(100);assert.equal(vars(run).result,0);
+        await run.clock.advanceTo(199);assert.equal(vars(run).result,0);
+        await run.clock.advanceTo(200);assert.equal(vars(run).result,304);
+        assert.deepEqual(run.errors,[]);
+    };
+    const timed=async code=>{
+        const run=await runTimedArcadeProgram(code,{milliseconds:99,uploads:imported.costumes,storage:true});
+        runs.push(run);await check(run);return run;
+    };
+    try{
+        const run=await timed(imported.code);
+        await timed(run.creator.decompile());
+        const exported=projectToArcade(run.creator.project,{costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
+        assert.deepEqual(exported.unsupported,[]);
+        const built=await compile('arcade',exported.files);assert.equal(built.success,true,JSON.stringify(built.diagnostics));
+        const again=arcadeToPseudocode(exported.files);assert.deepEqual(again.unsupported,[]);await timed(again.code);
+        const archive=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());await run.vm.loadProject(archive);
+        run.clock=await restartTimedArcadeRun(run,99);await check(run);
+    }finally{for(const run of runs){run.vm.stopAll();run.vm.quit();}}
 });
 
 test('Sprite results preserve identity through local aliases, parameters and forwarding',async()=>{
