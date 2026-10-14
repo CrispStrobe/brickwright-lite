@@ -173,3 +173,10 @@ test('compound and update writes retain actual binding authority after per-read 
     assert.deepEqual(lower('let f=image.font8;let pic=image.create(8,8);let x=0;x+=1;x++;pic.print("A",x,0,3,f)').unsupported,[]);
     assert.ok(lower('let f=image.font8;let pic=image.create(8,8);let x=0;x+="bad";pic.print("A",x,0,3,f)').unsupported.some(message=>/Number producer/.test(message)));
 });
+
+
+test('optional Font multiplier reads do not provide a guaranteed Number operand',()=>{
+    assert.deepEqual(lower('let f=image.font8;let multiplier=f.multiplier').unsupported,[]);
+    assert.ok(lower('let f=image.font8;let next=image.scaledFont(f,f.multiplier)').unsupported.some(message=>/Number producer/.test(message)));
+    assert.ok(lower('let f=image.font8;let pic=image.create(8,8);pic.print("A",f.multiplier,0,3,f)').unsupported.some(message=>/Number producer/.test(message)));
+});

@@ -92,7 +92,7 @@ export function lowerSdkFontValues(program) {
     }
     const isFont=current=>{const set=types.get(current);return !!set?.has('Font')&&set.size===1;};
     const propagate=()=>{let changed;do{changed=false;
-        for(const[from,to,mode,name]of edges){if(mode==='field'){if(isFont(from))changed=add(to,name==='data'?'GlyphBuffer':'Number')||changed;else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else for(const type of types.get(from)||[])changed=add(to,type)||changed;}
+        for(const[from,to,mode,name]of edges){if(mode==='field'){if(isFont(from)){changed=add(to,name==='data'?'GlyphBuffer':'Number')||changed;if(name==='multiplier')changed=add(to,'Undefined')||changed;}else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else for(const type of types.get(from)||[])changed=add(to,type)||changed;}
         for(const item of derived)if(item.signature&&item.operands.every(operand=>types.get(operand)?.size===1&&types.get(operand).has(item.domain)))changed=add(item.result,item.type)||changed;
         for(const item of scales)if(isFont(item.receiver))changed=add(item.result,'Font')||changed;
         for(const item of texts)if(types.get(item.argument)?.size===1 && types.get(item.argument).has('String'))changed=add(item.result,'Font')||changed;
