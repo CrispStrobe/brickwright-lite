@@ -119,7 +119,9 @@ try {
     await openCodeActions(page);
     await page.waitForSelector('[data-testid="bw-open-file"]', {timeout: 30000});
 
-    const input = page.locator('input[type="file"][accept*=".hex"]');
+    // The importer's own input (.mkcd is its alone): the Debug pane's Firmware…
+    // input also takes a .hex once a LabWired session is showing (section 1c).
+    const input = page.locator('input[type="file"][accept*=".hex"][accept*=".mkcd"]');
     const offersHex = await input.count() > 0;
     check('the Open button offers .hex', offersHex,
         offersHex ? '' : 'this build predates the MakeCode importer');
@@ -191,6 +193,50 @@ try {
         // pxt packs the project 16-byte aligned, so its magic sits in one record.
         check('with the project embedded, so MakeCode reopens it',
             /41140E2FB82FA2BB/i.test(hex), '');
+    }
+
+    // ── 1c. …and as REAL FIRMWARE on the emulated micro:bit V2 (task A8) ──
+    // MakeCode's compiler links the program onto a Bluetooth-free base
+    // (compileMakeCodeForEmulator), and the image runs on LabWired's micro:bit V2
+    // board in the Debug pane. Needs the emulator bases and the LabWired engine
+    // served (both synced in CI's build); absent, said by name.
+    const served = async rel => page.evaluate(async r => (await fetch(r, {method: 'HEAD'}).catch(() => null))?.ok === true, rel);
+    const emuServed = runtime && await served('static/makecode/microbit/hexcache-emu/354b97da4696027afdaa3977420ec181bfc88a2faa2d2c0174842767718551e7.hex') &&
+        await served('static/labwired/labwired_wasm_bg.wasm');
+    if (!emuServed) {
+        console.log('SKIP the emulated micro:bit V2 run: the emulator bases or the LabWired engine are not in this build ' +
+            '(npm run sync:makecode, npm run sync:labwiredwasm)');
+    } else {
+        // The Debug pane's own phase (data-debug-phase), not a status word found
+        // by its text: other panes show one too, and the word follows the locale.
+        const statusText = () => page.evaluate(() => {
+            const panel = [...document.querySelectorAll('[data-debug-panel]')].find(n => n.offsetParent !== null);
+            return panel ? panel.getAttribute('data-debug-phase') || '' : '';
+        });
+        await clickAction('bw-makecode-emulate');
+        // The status words are transient: sample them all, as verify-labwired-engine.mjs does.
+        const seen = [];
+        await waitFor(async () => {
+            const t = await statusText();
+            if (t && seen[seen.length - 1] !== t) seen.push(t);
+            return t;
+        }, t => /^(running|error)$/.test(t), 60000, 200);
+        // An error phase has a sentence beside it; a gate that fails without
+        // quoting it sends the reader to a browser to find out why.
+        const phaseLine = () => page.evaluate(() => {
+            const panel = [...document.querySelectorAll('[data-debug-panel]')].find(n => n.offsetParent !== null);
+            const word = panel && [...panel.querySelectorAll('strong')].find(n => n.parentElement.style.alignItems === 'baseline');
+            return word ? word.parentElement.innerText.replace(/\s+/g, ' ') : '';
+        });
+        const trail = `${seen.join('  ·  ')}${seen.includes('error') ? ` — ${await phaseLine()}` : ''}`.slice(0, 600);
+        check('▶ Run on the emulated micro:bit V2 reaches a running LabWired session', seen.includes('running'), trail);
+        check('and never the error phase', seen.length > 0 && !seen.includes('error'), trail);
+        const body = await page.evaluate(() => document.body.innerText);
+        check('on the micro:bit V2 board, from the emulator image (not the official base)',
+            /microbit-v2 board \(nrf52833/i.test(body) && /microbit-v2-emu\.elf/.test(body),
+            (body.match(/[^\n]*microbit-v2[^\n]*/i) || [''])[0].slice(0, 160));
+        check('the status names what the V2 model does not do faithfully yet (serial)',
+            /serial output is not faithful|serielle Ausgabe ist auf diesem Board-Modell noch nicht/.test(await paneText()), '');
     }
 
     // ── 2. an Arcade game brings its sprites ──────────────────────────
