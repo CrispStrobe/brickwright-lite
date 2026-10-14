@@ -84,7 +84,8 @@ function create(runtime, values, bufferOwner) {
     };
     reset();
     runtime.on('PROJECT_START', reset); runtime.on('PROJECT_LOADED', reset);
-    runtime.on('PROJECT_STOP_ALL', suspend); runtime.on('RUNTIME_DISPOSED', suspend);
+    const dispose=()=>service.dispose();
+    runtime.on('PROJECT_STOP_ALL', suspend); runtime.on('RUNTIME_DISPOSED', dispose);
     const service={
         matches:()=>false,
         resourceManifest: RESOURCE_MANIFEST,
@@ -125,7 +126,7 @@ function create(runtime, values, bufferOwner) {
         dispose() {
             if (closed) return; closed = true; suspend();
             runtime.off('PROJECT_START', reset); runtime.off('PROJECT_LOADED', reset);
-            runtime.off('PROJECT_STOP_ALL', suspend); runtime.off('RUNTIME_DISPOSED', suspend);
+            runtime.off('PROJECT_STOP_ALL', suspend); runtime.off('RUNTIME_DISPOSED', dispose);
         }
     };
     service.heapHooks={

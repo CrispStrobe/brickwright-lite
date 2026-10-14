@@ -76,6 +76,7 @@ test('actual owner rejects foreign, stopped, restarted, loaded and disposed refe
         const next=f.fonts.constant('font8');assert.equal(f.fonts.read(next,'charWidth'),6);
         f.runtime.emit('PROJECT_LOADED');assert.throws(()=>f.fonts.read(next,'charWidth'),/foreign, stale/);
         f.runtime.emit('RUNTIME_DISPOSED');assert.throws(()=>f.fonts.constant('font8'),/disposed or stopped/);
+        f.runtime.emit('PROJECT_START');f.runtime.emit('PROJECT_LOADED');assert.throws(()=>f.fonts.constant('font8'),/disposed or stopped/,'disposed owner never revives');
     }finally{f.fonts.dispose();g.fonts.dispose();}
 });
 
@@ -140,4 +141,18 @@ test('native Font attachment routes fields and fences every public glyph Buffer 
         runtime.emit('PROJECT_LOADED');
         assert.equal(values.decode(native.objectField({OBJECT:current,FIELD:'charWidth'})),undefined);
     }finally{runtime.emit('RUNTIME_DISPOSED');}
+});
+
+import {sdkFontExportRecords,SDK_FONT_VALUE_OPCODES,hasSdkFontValues,seedSdkFontValueType} from '../overlay/scratch-gui/src/lib/bw-makecode/sdk-font-export-types.js';
+test('Font export interface activity comes only from actual Font factory reporters',()=>{
+    const [record]=sdkFontExportRecords();
+    assert.equal(record.intrinsic,true);assert.equal(record.record,true);
+    assert.equal(record.constructor,'');assert.deepEqual(record.parameters,[]);assert.deepEqual(record.methods,[]);
+    for(const opcode of SDK_FONT_VALUE_OPCODES){
+        assert.equal(hasSdkFontValues({targets:[{blocks:{value:{opcode}}}]}),true);
+        const calls=[];seedSdkFontValueType({opcode},'actual-cell',(cell,type)=>calls.push([cell,type]));
+        assert.deepEqual(calls,[['actual-cell','__bwSDK_Font']]);
+    }
+    const calls=[];seedSdkFontValueType({opcode:'data_variable'},'font5',(cell,type)=>calls.push([cell,type]));
+    assert.deepEqual(calls,[]);assert.equal(hasSdkFontValues({targets:[{blocks:{font5:{opcode:'text',fields:{TEXT:['font8']}}}}]}),false);
 });
