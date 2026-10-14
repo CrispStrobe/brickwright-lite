@@ -1,5 +1,17 @@
 # Who is doing what — merge the claim before implementation
 
+## Arcade live font metrics — 2026-10-14
+
+PROPOSED — `docs/arcade-live-font-metrics-20261014`.
+Contract: [live font metrics](docs/ARCADE-LIVE-FONT-METRICS.md).
+Own new metric helper/classification/tests and narrow Arcade source/scalar/type,
+native reporter/menu, export, canonical fixed-field vocabulary and pin hunks.
+Read actual selected font objects; preserve shadow/opaque guards, editable
+Code/Blocks/SB3 and original export rendering. Coordinate repeat, callable,
+reference and active converter/runtime owners. No product implementation before
+this claim is merged; no guessed constants, font-reference admission or whole-game
+promotion.
+
 ## Arcade controller repeat properties — 2026-10-14
 
 PROPOSED — Codex Arcade controller integration, `lane/arcade-controller-repeat-20261014`.
@@ -1649,6 +1661,16 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
   unchanged.
 
 ## CLAIMS — work in progress
+
+| Arrays extension: text items without JSON quotes (task E15 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; upstream CrispStrobe/extensions arrays.js + tests; Lite extensions-bundle pin surfaces + BWValues parity tests; this row and the task file. | **CLAIMED 2026-10-14.** |
+
+| MakeCode export: type text results and string globals (task E16 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; `overlay/scratch-gui/src/lib/bw-makecode/export.js` + focused tests + census; this row and the task file. | **CLAIMED 2026-10-14.** |
+
+| Arcade export: `letter of` (task E17 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; `overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js` only if no open Arcade PR covers it; this row and the task file. | **CLAIMED 2026-10-14.** |
+
+| Seated MCUs with no terminals in the gallery (task B17 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; measurement first; fix in designer seating (bw-circuit-ui) or gallery data (sb3-creator/Lite) upstream-first; census test; this row and the task file. | **CLAIMED 2026-10-14.** |
+
+| Compiled-C keypad key 6 on stc12/stc15; 16-bit `show number` overflow (task B18 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `69b484691`; upstream stc-compiler and sb3-creator C target; Lite pin surfaces + tests; this row and the task file. | **CLAIMED 2026-10-14.** |
 
 | DONE — Importer: member access on string/array parameters resolved by name (`s.length` → variable `length`) (task E14 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktree `wt/e14-member-access` | base `6e204eec5` (impl `6275c33b2`, merged with main); paths `overlay/scratch-gui/src/lib/bw-makecode/translate-base.js`, new `test/makecode-member-access.test.mjs`; this row and the task file. No per-target translator changed; export-arcade.js not touched (open Arcade PRs). MakeCode census not regenerated: its counts did not move. | **DONE 2026-10-14 — Lite PR #902.** Found by E13 (#896). A member no rule knew was returned as its bare name (a variable holding 0); now translated (`.length`/`[i]`/`charAt`/`concat` of declared text and `: string` record fields, Math's constants, arrays `_pickRandom`/`unshift`) or refused by name, read (`unknownMember`) or written (`memberTarget`, naming the calls). Three-way: micro:bit/EV3 13 readings, Lite VM `0 0 2 2 2 1 2 2 0 0 12 0 0` → `5 0 1 1 1 5 1 1 2718 1414 73 5 1` = pxt-microbit sim = re-export in the sim (refused by pxt before; EV3 re-export compiled by pxt-ev3); Arcade 9 readings = pxt-arcade 4.2.1 sim (was 9 of 9 wrong). Silent fallbacks (property as a variable): micro:bit docs 7 → 0, EV3 0 → 0, Arcade corpus 1 → 0. Census (default and --snippets, full runs before and after): every stage count identical, 0 rows change stage. Tests `test/makecode-member-access.test.mjs` (54), 13 mutations red; MakeCode/Arcade suites 1589 tests 0 fail (5 LabWired skips); gates no-nul, fetch-pinning, ci-skip-census, browser-gate-*, build-trigger-paths, gate-shapes, overlay-packages-pairs, declared-pins-wired, check-mirrors, gate-coverage, no-dead-overlay-modules, notices-coverage, skips-are-counted, wait-census, workflow-trigger-coverage green. Found, not fixed: Lite's arrays extension returns text items JSON-quoted (length of `"abc"` is 5); export-arcade.js lacks `letter of`; export.js types hoisted text copies as number. |
 
@@ -3467,6 +3489,13 @@ candidate, whose hosted merge gates are still pending. No startup failure
 attribution, deadline fix or full G02 completion is claimed.
 
 ## SPIKE remaining lifecycle boundaries — 2026-10-13
+
+Continuation candidate `lane/spike-g02-terminal-fences-20261014` addresses
+synchronous Stop from final frame/program-state callbacks within this same
+session/test envelope. Three baseline failures, 34 passing affected host
+controls and two detected fence mutations are recorded. Fresh installed own
+NuttX cancellation/recovery and exact-head CI remain pending; no full G02 claim.
+
 
 CLAIMED — Codex SPIKE integration, `lane/spike-g02-lifecycle-20261013`.
 Envelope: `overlay/scratch-gui/src/lib/spike-arena/renode-arena-session.js`,

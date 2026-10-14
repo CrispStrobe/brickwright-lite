@@ -291,10 +291,14 @@ export class RenodeArenaSession {
         await this.call('arena.inputs.write', inputs);
         if (this.closed) return;
         this.onFrame(this.adapter.bridge.snapshot());
+        // Observers can Stop synchronously; their cancellation wins over the
+        // completion status from the frame that invoked them.
+        if (this.closed) return;
         if (this.nuttx && (this.program || this.source !== null)) {
             const status = frame.lifecycle?.nuttxProgram;
             if (!status || ![0, 1, 2, 3, 4, 5].includes(status.state)) throw new Error('Missing full firmware program status');
             this.observeProgram(status);
+            if (this.closed) return;
             if (status.state === 5 && this.storageSupported) { this.schedule(); return; }
             if (status.state === 5) throw new Error(`Firmware program failed (${status.error})`);
             if (status.state === 3 || status.state === 4) {
