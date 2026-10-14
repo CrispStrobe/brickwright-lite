@@ -675,3 +675,57 @@ test('observer lifecycle live packet still publishes state, output, input and fr
         assert.ok(events.every(event => event.closed === false));
     } finally { await session.stop(); }
 });
+
+// Authored native replies exercise the real deferred exchange and session callbacks.
+for(const phase of ['pending','terminal'])for(const boundary of ['output','hub','frame','live'])test(`deferred storage ${phase}/${boundary}: closure prevents later observers`,async()=>{
+ const bridge=new ArenaHubBridge({hubState:new Hub(),world:sandboxWorld()});
+ let sequence=0,state=0,metadata,lastReply,storageReads=0,armed=false,stopping;
+ const events=[];const calls=[];
+ const frame=()=>({schemaVersion:1,type:'snapshot',seq:++sequence,clockNs:sequence*1000000,
+  target:{board:'spike-prime',firmware:'brickwright-nuttx',transport:'none',imageSha256:'a'.repeat(64),
+   capabilities:['arena-inputs/v1','arena-clock/v1','guest-motor-output/v1','state-sample/v1','nuttx-program/v1','nuttx-program-storage/v1','nuttx-program-storage-deferred/v1']},
+  lifecycle:{connectionGeneration:1,generation:1,phase:'ready',nuttxProgram:{state,error:0},
+   nuttxProgramOutput:{sequence:armed?1:0,text:armed?'storage observation':'',truncated:false},
+   ...(metadata?{nuttxProgramStorage:{...metadata}}:{}),...(lastReply?{nuttxProgramReply:lastReply}:{})},
+  ports:[{id:'C',attached:true,kind:'color'},{id:'D',attached:true,kind:'distance'},{id:'E',attached:true,kind:'force'}],
+  motors:['A','B'].map(port=>({port,position:0,speedDps:0,demandDirection:0,stalled:false}))});
+ const reply=op=>{const bytes=new Uint8Array(20);const v=new DataView(bytes.buffer);bytes.set([0x71,1,op,state]);v.setUint32(4,1,true);v.setUint16(14,1,true);return [...bytes];};
+ const capabilities=Object.fromEntries(['session.start','session.close','state.read','run','arena.inputs.write','program.packet','program.storage.submit'].map(op=>[`renode.spike.${op}`,async args=>{
+  calls.push(op);
+  if(op==='program.packet'){
+   if(args.bytes[2]===2)state=1;if(args.bytes[2]===3)state=2;if(args.bytes[2]===4)state=4;
+   lastReply=reply(args.bytes[2]);return JSON.stringify(frame());
+  }
+  if(op==='program.storage.submit'){
+   assert.equal(args.bytes[2],8);metadata={requestSeq:12,replySeq:phase==='terminal'?12:10,operation:8,programId:1,pending:phase!=='terminal'};storageReads=0;if(phase==='terminal')lastReply=reply(8);
+   return JSON.stringify(frame());
+  }
+  if(op==='state.read'){
+   if(metadata && ++storageReads===2){metadata.pending=false;metadata.replySeq=12;lastReply=reply(8);}
+   return JSON.stringify(frame());
+  }
+  return 'ready';
+ }]));
+ let session;const stop=()=>{if(!stopping)stopping=session.stop();};
+ session=new RenodeArenaSession({bridge,capabilities,backend:'nuttx',source:'print(1)',
+  onOutput:()=>{if(armed){events.push({event:'output',closed:session.closed});if(boundary==='output')stop();}},
+  onFrame:()=>{if(armed){events.push({event:'frame',closed:session.closed});if(boundary==='frame')stop();}},
+  onProgramState:()=>{if(armed)events.push({event:'program-state',closed:session.closed});}});
+ const unsubscribe=bridge.hubState.subscribe(()=>{if(armed && boundary==='hub')stop();});
+ try{
+  await session.start();clearTimeout(session.timer);state=3;session.observeProgram({state});armed=true;
+  let storageError;
+  try{await session.storage('save');}catch(error){storageError=error;}
+  clearTimeout(session.timer);if(stopping)await stopping;
+  if(boundary==='live'){
+   assert.equal(storageError,undefined);assert.equal(session.closed,false);
+   assert.ok(events.some(e=>e.event==='output') && events.some(e=>e.event==='frame'));
+   assert.equal(session.latestFrame.lifecycle.nuttxProgramStorage.pending,false);
+  }else{
+   assert.ok(stopping,'actual observer must request Stop');assert.equal(session.closed,true);
+   assert.deepEqual(events.filter(e=>e.closed),[],'No later observer may run after synchronous Stop in deferred storage');
+   assert.equal(bridge.hubState.externalBackend,null);assert.equal(bridge.hubState.configurationOwner,null);
+   assert.match(String(storageError),/cancelled|closed/,'Stop invalidates the awaiting storage operation');
+  }
+ }finally{armed=false;unsubscribe();clearTimeout(session.timer);await session.stop();}
+});
