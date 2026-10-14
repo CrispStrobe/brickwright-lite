@@ -287,6 +287,7 @@ export class RenodeArenaSession {
         this.timer = setTimeout(() => {
             this.tail = this.poll();
             this.tail.catch(async error => {
+                if (this.closed) return;
                 this.onError(error); await this.stop();
             }).catch(() => {});
         }, 50);
