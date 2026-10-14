@@ -64,8 +64,10 @@ input/events remain unchanged.
 
 EventContext replaces the same source/value handler. Push unregisters the
 parent; pop unregisters the child and restores the parent. Outside-context
-registration follows the selected internal bus. Busy replacement uses deferred
-mutation, not immediate replacement of an in-flight callback.
+registration follows the selected internal bus. EventContext updates the handler
+in its stable wrapper; a running callback retains its invocation. Low-level bus
+handler replacement has a separate deferred busy-mutation log. Preserve both
+boundaries rather than treating them as one callback table.
 
 The selected bus orders wildcard/exact queues and background/foreground queues.
 Its finite pending bound, waiters, notify-one behavior, nested raises and busy
@@ -113,3 +115,21 @@ Use unchanged original fixtures with recorded external clock/controller stimuli.
 Local probes and prepared browser scripts are preparation, not GUI qualification.
 Retain first failures and source/pin/worker/asset receipts privately. Public docs
 use repository paths and official URLs, with no machine paths or private art.
+
+## Read-only original preparation
+
+Eleven authored probes on the selected original establish these bounded facts:
+
+- Raising returns before its callback: trace `ABH`.
+- Explicit user-button raise delivers once without pressing the button, including when physical user events are disabled.
+- Re-registering a source/value pair replaces the callback; wildcard order is global, value, source, exact (`ABCD`).
+- A waiting fiber resumes before that event's handler (`WH`).
+- Busy context replacement completes the old invocation before using the new handler (`OoN`).
+- A supplied listener flags expression evaluates once. Flags32 still produces two serialized deliveries (`SESE`) because this selected public simulator wrapper ignores flags.
+- Fractional source/value operands match fractional registrations in the selected simulator; do not truncate merely because a declaration uses int32.
+- Repeated equal connection state emits no second event. Multiplayer registration replacement gives the actual Player2 callback once; child Disconnected registration and restored parent Connected registration produce `C2D2C2`.
+
+These are unchanged authored-original observations and source inspection,
+without a native implementation, producer adoption or GUI execution claim.
+Queue saturation, notification allocation, all Players, debugger/cancellation,
+exact event timestamp authority and complete conversion routes remain gates.
