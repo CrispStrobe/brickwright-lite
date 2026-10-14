@@ -20,7 +20,13 @@ It preserves all supported type fields and genuine old literal menu shadows;
 computed or malformed legacy types are diagnosed before replacing the open
 project. The supplier passes 606 expanded compiler/dialect/SPIKE controls;
 12 consumer controls include the actual native menu metadata and project-load
-boundary. Fresh production GUI qualification remains required.
+boundary. Export and type inference now read the same native field or validated
+historical literal; 13 original/native/Code/saved-project/export/reimport
+Settings controls pass, plus four serialization-version and refusal controls.
+The default canonical array bundle passes its three full authoring controls.
+Producer PR129 merged after all four enabled checks passed, with the declared
+Pages skip and matching reviewed/landed tree. Fresh production GUI qualification
+remains required.
 
 [Producer PR127](https://github.com/CrispStrobe/sb3-creator/pull/127) and
 [extension PR43](https://github.com/CrispStrobe/extensions/pull/43) merged with

@@ -51,6 +51,11 @@ import {TileAssetExporter} from './tile-assets.js';
 import {SONG_MIME} from './song-jres.js';
 import {tilemapSource} from './tilemap-values.js';
 import {ValueTypeGraph} from './value-type-graph.js';
+import {legacySettingType} from '../arcadeDialect.js';
+
+// Fixed native fields take precedence; only genuine old literal menu shadows
+// can supply a missing type. Never evaluate a type reporter.
+const settingType = (block, blocks) => block.fields?.TYPE?.[0] ?? legacySettingType(block, blocks);
 import {svgToPixels, quantizeRgba, toImgLiteral, remapPalette, nearestIndex} from './pixel-image.js';
 // arcade-character-animations Predicate members.
 const CHARACTER_PREDICATE_NAMES = ['NotMoving', 'Moving', 'FacingUp', 'FacingRight', 'FacingDown', 'FacingLeft', 'MovingUp', 'MovingRight',
@@ -1253,7 +1258,7 @@ class ArcadeEmitter {
         case 'arcade_songFromBuffer': return `music.createSong(${v('BUFFER')})`;
         case 'arcade_cloneImage': return `${v('IMAGE')}.clone()`;
         case 'arcade_settingsRead': {
-            const type=this.menuField(b,'TYPE','settingReadTypes') || this.literalInput(b,'TYPE');
+            const type=settingType(b, this.blocks);
             if(type==='List')return `settings.list(${v('KEY')})`;
             if(!['Number','String','NumberArray','StringArray','Buffer'].includes(type)){this.note('Settings requires a fixed supported read type');return 'undefined';}
             if(type==='StringArray'){this.requiresStringArraySettings=true;return `bwStringArraySettings.read(${v('KEY')})`;}
@@ -2377,7 +2382,7 @@ class ArcadeEmitter {
         }
         case 'arcade_log': push(`console.log(${this.arrayValue(b, 'TEXT')})`); return;
         case 'arcade_settingsWrite': {
-            const type=this.menuField(b,'TYPE','settingWriteTypes') || this.literalInput(b,'TYPE');
+            const type=settingType(b, this.blocks);
             if(!['Number','String','NumberArray','StringArray','Buffer'].includes(type)){push(this.note('Settings requires a fixed supported write type'));return;}
             if(type==='StringArray'){this.requiresStringArraySettings=true;push(`bwStringArraySettings.write(${v('KEY')}, ${v('VALUE')})`);return;}
             push(`settings.write${type}(${v('KEY')}, ${v('VALUE')})`);return;
@@ -2775,7 +2780,7 @@ class ArcadeEmitter {
                 if(['arrays_parseLegacyValue','arrays_jsonValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
                 if(value.opcode==='arcade_settingsExists'){const id=Symbol('setting exists');booleans.add(id);return id;}
                 if(value.opcode==='arcade_settingsRead'){
-                    const menu=inputBlock(blocks,value,'TYPE'),type=menu?.fields?.settingReadTypes?.[0] || literal(blocks,value,'TYPE'),id=Symbol('setting value');
+                    const type=settingType(value, blocks),id=Symbol('setting value');
                     if(type==='Number')numbers.add(id);else if(type==='String')strings.add(id);else if(type==='Buffer')graphBufferValues.add(id);
                     else if(type==='NumberArray' || type==='StringArray' || type==='List'){arrays.add(id);const item=Symbol('setting array item');(type==='NumberArray'?numbers:strings).add(item);elements.push([id,item]);}
                     else anys.add(id);return id;
@@ -2933,7 +2938,7 @@ class ArcadeEmitter {
                     }
                 }
                 if(block.opcode==='arcade_settingsWrite'){
-                    const menu=inputBlock(blocks,block,'TYPE'),type=menu?.fields?.settingWriteTypes?.[0] || literal(blocks,block,'TYPE'),value=ref(inputBlock(blocks,block,'VALUE'));
+                    const type=settingType(block, blocks),value=ref(inputBlock(blocks,block,'VALUE'));
                     if((type==='NumberArray' || type==='StringArray') && value){arrays.add(value);const item=Symbol('setting write item');(type==='NumberArray'?numbers:strings).add(item);elements.push([value,item]);}
                     if(type==='Buffer' && value)graphBufferValues.add(value);
                 }
