@@ -120,6 +120,8 @@ class ArcadeEmitter {
         this.project = project;
         this.opts = opts;
         this.unsupported = [];
+        this.sourceScalarCells=new Map();this.validScalarPrelude=true;
+        try {this.sourceScalarCells=sourceScalarProject(this.project);} catch(error) {this.validScalarPrelude=false;this.note(error.message);}
         this.requiresAnimationPackage = false;
         this.requiresSevensegPackage = false;
         this.requiresTextSpritePackage = false;
@@ -130,10 +132,9 @@ class ArcadeEmitter {
         const selectors=project.targets.flatMap(target=>Object.values(target.blocks || {}).filter(block=>block.opcode==='arcade_setBackgroundScrollVersion').map(block=>({target,block})));
         if(selectors.length>1)this.note('Arcade export requires one background scroll version selection');
         for(const {target,block} of selectors) {
-            const slot=block.inputs?.VERSION?.[1],shadow=typeof slot==='string'?target.blocks[slot]:null;
-            const version=Array.isArray(slot) && slot[0]===10?String(slot[1]):shadow?.shadow?String(Object.values(shadow.fields || {})[0]?.[0]):this.field(block,'VERSION');
+            const version=directMenuValue(block,'VERSION',target.blocks);
             let parent=target.blocks[block.parent];
-            while(parent && ['looks_hide','arcade_setPalette','arcade_setCharacterAnimationVersion'].includes(parent.opcode))parent=target.blocks[parent.parent];
+            while(parent && (['looks_hide','arcade_setPalette','arcade_setCharacterAnimationVersion'].includes(parent.opcode) || this.validScalarPrelude && parent.opcode==='arcade_declareSourceScalar'))parent=target.blocks[parent.parent];
             if(!['v0.1.2',LEGACY_SCROLLER_REVISION].includes(version) || !['event_whenflagclicked', 'arcade_whenSourceStarts'].includes(parent?.opcode))this.note('Arcade background scroll version must be a fixed selection at the start of a green-flag script');
             else this.scrollerVersion=version;
         }
@@ -141,10 +142,9 @@ class ArcadeEmitter {
         const characterSelectors=project.targets.flatMap(target=>Object.values(target.blocks || {}).filter(block=>block.opcode==='arcade_setCharacterAnimationVersion').map(block=>({target,block})));
         if(characterSelectors.length>1)this.note('Arcade export requires one character animation version selection');
         for(const {target,block} of characterSelectors) {
-            const slot=block.inputs?.VERSION?.[1],shadow=typeof slot==='string'?target.blocks[slot]:null;
-            const version=Array.isArray(slot) && slot[0]===10?String(slot[1]):shadow?.shadow?String(Object.values(shadow.fields || {})[0]?.[0]):this.field(block,'VERSION');
+            const version=directMenuValue(block,'VERSION',target.blocks);
             let parent=target.blocks[block.parent];
-            while(parent && ['looks_hide','arcade_setPalette','arcade_setBackgroundScrollVersion'].includes(parent.opcode))parent=target.blocks[parent.parent];
+            while(parent && (['looks_hide','arcade_setPalette','arcade_setBackgroundScrollVersion'].includes(parent.opcode) || this.validScalarPrelude && parent.opcode==='arcade_declareSourceScalar'))parent=target.blocks[parent.parent];
             if(!['v0.1.0',LEGACY_CHARACTER_REVISION].includes(version) || !['event_whenflagclicked', 'arcade_whenSourceStarts'].includes(parent?.opcode))this.note('Arcade character animation version must be a fixed selection at the start of a green-flag script');
             else this.characterVersion=version;
         }
@@ -3240,8 +3240,7 @@ class ArcadeEmitter {
                 }
             }
         }
-        this.sourceScalarCells=new Map();
-        try {this.sourceScalarCells=sourceScalarProject(this.project);} catch(error) {this.note(error.message);}
+
         this.objectClassExport=prepareObjectClassExport(this);
         const imageParameterTypes = this.imageProcedureParameters();
         const scalarFlow=scalarExportFlow(this.project,block=>this.isBoolean(block),this.sourceScalarCells);
