@@ -4,23 +4,26 @@ import {readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {SB3Creator, runProgram} from './helpers/bw-vm.mjs';
+import {ORIGINAL_SPRITE_KINDS} from './helpers/arcade-original-kind-values.mjs';
 
 test('a pinned PXT side projectile retains image, incoming edge, velocity and handle', async () => {
     const source = readFileSync(join(import.meta.dirname, 'fixtures/makecode/arcade-side-projectile.ts'), 'utf8');
     const result = arcadeToPseudocode(source);
     assert.deepEqual(result.unsupported, []);
     assert.equal(result.costumes.length, 1);
-    assert.match(result.code, /arcade projectile template "projectile" kind "Projectile" vx 40 vy 0 width 16 height 16 mode side/);
+    assert.match(result.code, /arcade projectile template "projectile" kind \(undefined value\) vx 40 vy 0 width 16 height 16 mode side/);
+    // An omitted kind remains undefined in the source word; the runtime applies
+    // the actual original createProjectile default, not a copied display label.
     // The velocity is part of the creation word (vx 40 above).
     // createProjectileFromSide sets AutoDestroy itself (no separate word); the run checks it.
     const creator = new SB3Creator();
     creator.parse(result.code);
     assert.deepEqual(creator.warnings, []);
-    assert.match(creator.decompile(), /arcade projectile template "projectile" kind "Projectile" vx 40 vy 0 width 16 height 16 mode side/);
+    assert.match(creator.decompile(), /arcade projectile template "projectile" kind \(undefined value\) vx 40 vy 0 width 16 height 16 mode side/);
     const run = await runProgram(result.code, {frames: 8, uploads: result.costumes, storage: true});
     assert.deepEqual(run.errors, []);
     const sprite = Object.values(run.vm.runtime.bwArcadeDeviceState?.sprites || {})
-        .find(value => value.id && value.kind === 'Projectile');
+        .find(value => value.id && value.kind === ORIGINAL_SPRITE_KINDS.Projectile);
     assert.ok(sprite);
     assert.equal(sprite.y, 10);
     assert.equal(sprite.vx, 40);
