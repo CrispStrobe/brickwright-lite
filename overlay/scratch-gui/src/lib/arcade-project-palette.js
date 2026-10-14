@@ -11,7 +11,7 @@ export const paletteHex = colors => {
     return colors.map(color => color.slice(1).toLowerCase()).join('');
 };
 const startupHat = block => ['arcade_whenSourceStarts','event_whenflagclicked'].includes(block?.opcode);
-const sourceDeclarations = new Set(['arcade_declareSourceScalar','arcade_declareSourceReference']);
+const sourceDeclarations = new Set(['arcade_declareSourceScalar','arcade_declareSourceReference','arcade_declareSourceCallable']);
 // Source declarations are an atomic prelude. Palette authoring may insert only
 // after that entire prefix; ordinary Scratch startup retains its saved defaults.
 const startupPosition = (blocks, hat) => {
