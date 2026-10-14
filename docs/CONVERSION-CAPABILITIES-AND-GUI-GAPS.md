@@ -1,11 +1,20 @@
 # Conversion capabilities and GUI closure ledger
 
-## Generic class methods and stored callbacks — parser prerequisite
+## Generic class methods and stored callbacks
 
-Generic method names, ordered type parameters, constraints/defaults and method
-bodies are now retained by the TypeScript parser. Six independent parser checks
-pass; execution remains explicitly refused pending the
-[typed stored callback bridge](ARCADE-STORED-CALLABLE-NEXT-SLICE.md).
+The parser retains generic method names, ordered type parameters,
+constraints/defaults and method bodies. The separately opted-in
+[class stored callback prototype](compatibility/arcade-class-stored-callbacks.md)
+now qualifies the bounded State/Holder control through native execution, editable
+Code, same/fresh SB3, current-body export, selected-original execution and reimport.
+It preserves captured receiver identity and separate Number/String generic
+results. This is not default admission or complete library support.
+
+[The default admission contract](compatibility/arcade-ordinary-class-callable-default-admission.md)
+landed in [PR937](https://github.com/CrispStrobe/brickwright-lite/pull/937).
+Implementation still requires independent complete-source and current-project
+proof before choosing that profile; a prototype flag or annotation supplies no
+such proof. The editor work below remains open.
 
 | User surface | Required remaining work |
 | --- | --- |
@@ -15,8 +24,9 @@ pass; execution remains explicitly refused pending the
 | Graphics | StatusBar updates must retain the same Sprite/image and actual render order after callback completion |
 | Debugger | Show captured receivers, undefined fields and callback references without widening or granting invocation authority |
 
-This parser change grants no generic runtime or whole StatusBar/Sprite Utils
-compatibility. Existing bounded numeric callable qualification is separate.
+Constraints/defaults, arbitrary stored callbacks and complete StatusBar/Sprite
+Utils remain outside this bounded prototype. The default numeric callable
+profile retains its separate source and current-body authority.
 
 ## Physical class updates and standalone Array values — 2026-10-14
 

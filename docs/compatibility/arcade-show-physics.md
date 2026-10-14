@@ -13,3 +13,18 @@ The overlay follows sprite visibility, camera-relative drawing, logical screen c
 These are original/native raster and renderer API controls. They are not an executed hosted full-IDE authoring or physical display qualification. Matching producer and consumer fixed-menu vocabulary must be adopted before Code/Blocks/SB3 qualification; a menu label in runtime metadata alone is insufficient.
 
 `game.debug` hitbox rectangles and a complete debugger interface remain separate work. This flag does not claim those features or qualify every writable raw sprite flag, unknown bit or nonfinite mask. Direct writes to `.flags` and their source/export semantics are owned by the separate flags implementation.
+
+
+## Renderer owner correction
+
+Source `5cc3f939c` corrects a genuine drawable-order defect. Debug raster caches
+use synthetic source keys; GPU ordering now uses each layer's actual scene
+sprite owner, matching CPU composition. The cache key, raster, skin and drawable
+remain reusable. The overlay follows its owning sprite in the scene order.
+
+The original renderer regression and a new paired-sprite render-boundary control
+pass, along with nine clone and scene-order controls. Independent native
+controls additionally cover same-z pairs, repeated resource reuse, rendering
+reentry, selective visibility/destruction cleanup and real particle sources.
+The pre-fix failure is retained. These renderer API checks do not qualify
+installed GUI/GPU pixels; a matching hosted browser result remains required.
