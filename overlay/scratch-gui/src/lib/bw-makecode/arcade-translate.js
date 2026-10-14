@@ -1753,7 +1753,7 @@ class ArcadeTranslator extends BaseTranslator {
             if(a.length!==2){push(this.note(`${name}() requires two scrolling offsets`));return;}
             push(`arcade scroll image (${resource}) x (${this.expr(a[0])}) y (${this.expr(a[1])})`);return;
         }
-        if(resource && ['drawCircle','fillCircle'].includes(node.callee.name)) {
+        if(resource && !imageHandle && ['drawCircle','fillCircle'].includes(node.callee.name)) {
             if(a.length!==4){push(this.note(`${name}() requires center x/y, radius and color`));return;}
             push(`arcade draw image circle ${node.callee.name} (${resource}) x ${this.expr(a[0])} y ${this.expr(a[1])} radius ${this.expr(a[2])} color ${this.expr(a[3])}`);return;
         }

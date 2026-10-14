@@ -120,3 +120,60 @@ test('an edited standard radius input is what Code, saved projects and MakeCode 
         } finally { rerun.vm.quit(); }
     } finally { run.vm.quit(); }
 });
+
+test('typed Sprite circle commands mutate shared Image pixels and every live collision mask', async () => {
+    const source = `let canvas=image.create(9,9)
+canvas.fill(3)
+let hero=sprites.create(canvas,SpriteKind.Player)
+let other=sprites.create(canvas,SpriteKind.Enemy)
+function paint(actor:Sprite){actor.image.drawCircle(4,4,3,7);actor.image.fillCircle(4,4,1,0)}
+paint(hero)
+let actorImage=hero.image
+let otherImage=other.image
+let shared=canvas===actorImage && actorImage===otherImage`;
+    const imported = arcadeToPseudocode(source);
+    assert.deepEqual(imported.unsupported, []);
+    assert.match(imported.code, /arcade draw circle drawCircle of/);
+    assert.match(imported.code, /arcade draw circle fillCircle of/);
+    const pixels = [...expected.circle8.pixels];
+    const fill = oracle.cases.find(entry => entry.method === 'fillCircle' &&
+        JSON.stringify(entry.args) === JSON.stringify(['4', '4', '1', '7']));
+    assert.ok(fill, 'independent original radius-one fill footprint');
+    fill.pixels.forEach((value, index) => { if (value === 7) pixels[index] = 0; });
+    const runs = [];
+    try {
+        const run = await runProgram(imported.code, {frames: 20, uploads: imported.costumes, storage: true});
+        runs.push(run);
+        const check = current => {
+            assert.deepEqual(current.errors, []);assert.deepEqual(current.creator.warnings, []);
+            const variables = Object.fromEntries(current.vm.runtime.targets.flatMap(target => Object.values(target.variables))
+                .map(value => [value.name, value.value]));
+            assert.equal(variables.shared, true);
+            const sprites = Object.values(current.vm.runtime.bwArcadeDeviceState.sprites).filter(sprite => sprite.id);
+            assert.equal(sprites.length, 2);
+            assert.equal(sprites[0].image, sprites[1].image);
+            for (const sprite of sprites) {
+                assert.deepEqual([...sprite.image.pixels], pixels);
+                assert.deepEqual([...sprite.mask], pixels.map(color => color ? 1 : 0));
+            }
+        };
+        check(run);
+        const codeRun = await runProgram(run.creator.decompile(), {frames: 20, uploads: imported.costumes, storage: true});
+        runs.push(codeRun);check(codeRun);
+        const output = exportRun(run);assert.deepEqual(output.unsupported, []);
+        assert.match(output.ts, /\.image\.drawCircle\(/);assert.match(output.ts, /\.image\.fillCircle\(/);
+        evidence('sprite-export.json', output);
+        const original = await runPxtArcade(output.ts, {
+            fakeClock: true, waitForGlobals: {shared: true}, inspectImageGlobals: ['canvas', 'actorImage', 'otherImage'],
+            onCompilation: packet => evidence('sprite-compilation.json', packet)
+        });
+        evidence('sprite-observations.json', original);
+        assert.equal(original.shared, true);
+        for (const name of ['canvas', 'actorImage', 'otherImage']) {
+            assert.deepEqual(original.$images[name], {width: 9, height: 9, pixels}, name);
+        }
+        const returned = arcadeToPseudocode(output.ts);assert.deepEqual(returned.unsupported, []);
+        const again = await runProgram(returned.code, {frames: 20, uploads: returned.costumes, storage: true});
+        runs.push(again);check(again);
+    } finally { for (const run of runs) run.vm.quit(); }
+});
