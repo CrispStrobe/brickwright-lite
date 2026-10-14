@@ -155,7 +155,12 @@ const cycle=async(label,variant,files)=>{
 };
 try{
  const files=fontAuthoringFiles(),fixture=path.join(out,'font-authoring.mkcd');await writeFile(fixture,makeCodeProjectFile(files,{target:'arcade'}));report.fixtureSha256=digest(await readFile(fixture));
- page=await fresh();await codeTab();await page.getByTestId('bw-device-select').selectOption('arcade');await openFile(fixture);await apply();
+ page=await fresh();await codeTab();await page.getByTestId('bw-device-select').selectOption('arcade');
+    // Retargeting loads a new project asynchronously. Wait for its visible
+    // completion before opening a file owned by that new stage.
+    await page.getByText('Blocks loaded.', {exact: true}).waitFor({timeout: 60000});
+    await page.waitForFunction(() => window.__brickwrightStore?.getState()?.scratchGui?.vm?.runtime?.bwDeviceId === 'arcade' && document.querySelector('[data-testid="bw-open-file"] input[type=file]')?.disabled === false);
+    await openFile(fixture); await apply();
  const schema=await page.evaluate(()=>window.Blockly.getMainWorkspace().getAllBlocks(false).filter(b=>b.type==='arcade_fontMetric').map(b=>({id:b.id,FONT:b.getFieldValue('FONT'),PROPERTY:b.getFieldValue('PROPERTY'),fontInput:!!b.getInput('FONT')?.connection,propertyInput:!!b.getInput('PROPERTY')?.connection})));
  assert.equal(schema.length,6);for(const item of schema){assert.equal(item.fontInput,false);assert.equal(item.propertyInput,false);}report.fieldSchema=schema;
  await cycle('unchanged-import','baseline',files);

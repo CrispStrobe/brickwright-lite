@@ -6,6 +6,24 @@
 
 The fixture is owned code and four-pixel art in `test/fixtures/arcade-numeric-authoring-game.mjs`. Its portable StringArray settings helper retains MPL-2.0 attribution. It uses the pinned original Arcade 4.2.1 / PXT 13.2.1 SDK. It contains no private corpus application or unverified-license BetterSettings source.
 
+## Latest hosted result
+
+[Numeric authoring job 116143137971](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38645260680/job/116143137971)
+failed during the initial file import, before any completed authoring journey or
+original execution comparison. The reviewed PR head was
+`249dc22ddee151159b72b36d183b5f2545db0949`; the actual admitted build and
+harness checkout was merge reference
+`409aa0c376c523a45533b30ee37ed6ae3b4aad06`. Keep those source identities distinct.
+
+The retained report times out waiting for the imported-game status. Its error
+handler subsequently fails because Blockly comment content introduces a second
+HTML `body`, making the body locator ambiguous. The diagnostic correction reads
+the document body directly and captures the Code status, current text and stage
+identity. It retains the original import error and all acceptance assertions.
+This correction does not qualify the failed import; its cause and a fresh hosted
+journey remain pending. Earlier successful numeric journeys remain evidence for
+their own exact builds.
+
 ## Required identity
 
 Run from the exact admitted tested consumer checkout (including the tested merge commit for a pull request). Set `PROOF_URL` to a server serving the sole admitted official full-app artifact, `BW_GUI_BUILD_ARCHIVE` to that already acquired archive, and `BW_GUI_BUILD_RECEIPT` to its independently reviewed JSON receipt. Set `BW_GUI_GIT_EXECUTABLE` to the explicitly reviewed absolute source-inspection executable. Its resolved path, SHA256 and version are recorded in the report; PATH discovery is never used. Tracked edits to the harness checkout are refused. This source-inspection tool is separate from the app's runtime and compiler provenance. This script does not acquire artifacts, dispatch builds or assert that supplied metadata independently proves GitHub provenance. The operator must first admit the original run, successful build job, actual checkout, artifact ID and archive hash using official GitHub metadata.

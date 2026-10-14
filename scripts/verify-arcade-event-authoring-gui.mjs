@@ -199,7 +199,12 @@ const paletteCreate = async () => {
 try {
     const files = eventAuthoringFiles(), fixture = path.join(out, 'event-authoring.mkcd');
     await writeFile(fixture, makeCodeProjectFile(files, {target: 'arcade'})); report.fixtureSha256 = digest(await readFile(fixture));
-    page = await fresh(); await codeTab(); await page.getByTestId('bw-device-select').selectOption('arcade'); await openFile(fixture); await apply();
+    page = await fresh(); await codeTab(); await page.getByTestId('bw-device-select').selectOption('arcade');
+    // Retargeting loads a new project asynchronously. Wait for its visible
+    // completion before opening a file owned by that new stage.
+    await page.getByText('Blocks loaded.', {exact: true}).waitFor({timeout: 60000});
+    await page.waitForFunction(() => window.__brickwrightStore?.getState()?.scratchGui?.vm?.runtime?.bwDeviceId === 'arcade' && document.querySelector('[data-testid="bw-open-file"] input[type=file]')?.disabled === false);
+    await openFile(fixture); await apply();
     const blockTypes = await page.evaluate(() => window.Blockly.getMainWorkspace().getAllBlocks(false).map(b => b.type));
     for (const opcode of ['arcade_allocateControlEventSource','arcade_registerControlEvent','arcade_whenRegisteredControlEvent','arcade_raiseControlEvent','arcade_waitControlEvent','arcade_setControllerConnected','arcade_registerMultiplayerConnection','arcade_whenRegisteredMultiplayerConnection']) assert.ok(blockTypes.includes(opcode), `${opcode} is a real imported block`);
     await cycle('unchanged-import', {}, files);
