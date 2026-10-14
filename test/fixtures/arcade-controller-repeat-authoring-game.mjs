@@ -30,7 +30,7 @@ export const repeatSample=({delay=60,interval=20,held=false}={})=>({ready:1,firs
 
 export function editRepeatDelayCode(code) {
  let changes=0;
- const result=code.replace(/(arcade set player 1 button A repeat property repeatDelay to )\(40\)/g,(_,prefix)=>{changes++;return prefix+'(60)'});
+ const result=code.replace(/(arcade set player 1 button A repeat property repeatDelay to )(\(40\)|40)(?=\s*(?:\n|$))/g,(_,prefix,literal)=>{changes++;return prefix+(literal==='40'?'60':'(60)')});
  if(!changes)throw new Error('No authored player1 A delay40 literal to edit');
  return result;
 }

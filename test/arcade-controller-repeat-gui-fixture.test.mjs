@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {repeatAuthoringFiles,repeatSample,editRepeatDelayCode} from './fixtures/arcade-controller-repeat-authoring-game.mjs';
+import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {runProgram,stepFrames,quitStrandedVMs} from './helpers/bw-vm.mjs';
 import {createArcadeDiscreteTimers} from './helpers/arcade-discrete-timers.mjs';
@@ -12,6 +13,12 @@ test('repeat GUI Code edit updates every serialized command copy and preserves o
  assert.match(edited,/arcade set player 2 button B repeat property repeatDelay to \(80\)/);
  assert.match(edited,/arcade set player 1 button A repeat property repeatInterval to \(30\)/);
  assert.throws(()=>editRepeatDelayCode('no matching property'),/No authored/);
+ const creator=new SB3Creator();creator.parse(imported.code);assert.deepEqual(creator.warnings,[]);
+ const code=creator.decompile(),changed=editRepeatDelayCode(code+'\n'+code);
+ assert.equal(changed.split('arcade set player 1 button A repeat property repeatDelay to 60').length-1,2);
+ assert.doesNotMatch(changed,/repeatDelay to 40(?:\s|$)/);
+ assert.match(changed,/arcade set player 2 button B repeat property repeatDelay to 80/);
+ const restored=new SB3Creator();restored.parse(editRepeatDelayCode(code));assert.deepEqual(restored.warnings,[]);
 });
 for(const options of [{delay:60,interval:20},{delay:40,interval:30}])test(`repeat GUI owned fixture native preflight ${options.delay}/${options.interval}`,async()=>{
  const imported=arcadeToPseudocode(repeatAuthoringFiles(options));assert.deepEqual(imported.unsupported,[]);
