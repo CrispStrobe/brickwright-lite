@@ -20,7 +20,9 @@ Calling the base `update()` executes `clearInterior()`, the dynamically selected
 `drawTextCore()`, and `drawCursorRow()` in that order. An authored pause in the
 override completes before cursor drawing. Stop, project replacement, disposal,
 or a cancelled caller invalidates the pending continuation. BaseDialog does
-not acquire automatic scene membership.
+not acquire automatic scene membership. Existing native BaseDialog and
+SplashDialog instances continue to call their actual SDK `update()` method;
+the managed sequence applies only to admitted user BaseDialog subclasses.
 
 Source import and edited class metadata both refuse constructor or layout
 overrides that require further qualification, including `resize`, `drawBorder`,

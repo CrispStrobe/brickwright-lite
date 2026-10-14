@@ -336,6 +336,7 @@ function create(ext, values) {
         const dialog = body(args[0]);
         if (op === 'resize') dialog.resize(values.decode(args[1]), values.decode(args[2]), image(args[3]), font(args[4]), image(args[5]));
         else if (op === 'setText' || op === 'setSubtext') dialog[op](values.decode(args[1]));
+        else if (op === 'update' && definitions.has(state.className)) dialog.update();
         else if (op === 'update') {
             const epoch = generation;
             const active = () => !closed && !suspended && generation === epoch &&
