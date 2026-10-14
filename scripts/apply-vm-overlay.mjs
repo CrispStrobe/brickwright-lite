@@ -134,6 +134,17 @@ writeFileSync(keyboardPath, keyboardSource);
 // Track promise completion separately from its payload on the owning frame.
 const executePath = path.join(DEST, 'src', 'engine', 'execute.js');
 let executeSource = readFileSync(executePath, 'utf8');
+if (!executeSource.includes("const bwPrimitiveOwner = require('../util/bw-primitive-owner');")) {
+    const importAnchor="const BlockUtility = require('./block-utility');";
+    const callAnchor='        const primitiveReportedValue = blockFunction(argValues, blockUtility);';
+    if(!executeSource.includes(importAnchor)||!executeSource.includes(callAnchor))throw new Error('execute.js callable primitive ownership anchor missing');
+    executeSource=executeSource.replace(importAnchor,importAnchor+"\nconst bwPrimitiveOwner = require('../util/bw-primitive-owner');");
+    executeSource=executeSource.replace(callAnchor,`        const primitiveReportedValue = opCached.opcode === 'arcade_createCallable' ?
+            bwPrimitiveOwner.invoke(sequencer.runtime, thread, blockContainer, opCached, argValues, blockUtility,
+                () => blockFunction(argValues, blockUtility)) : blockFunction(argValues, blockUtility);`);
+    writeFileSync(executePath,executeSource);
+    console.log('  patched execute.js (synchronous callable primitive ownership)');
+}
 if (!executeSource.includes('bwPromiseReported')) {
     const patches = [
         ['    primitiveReportedValue.then(resolvedValue => {',

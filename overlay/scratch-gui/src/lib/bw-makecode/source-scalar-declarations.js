@@ -73,6 +73,10 @@ export function sourceScalarDeclarations(program) {
             // actual lexical signatures; authored namespace names cannot seed it.
             (node.args || []).forEach(argument=>visit(argument,scope));
             add(cell,{number:'Number',boolean:'Boolean',string:'String'}[node.bwCallableResultType]);
+        } else if (node.type==='Call' && node.callee?.object?.name==='__bwObjects' && node.callee.name==='call' &&
+            ['number','boolean','string'].includes(node.bwClassCallableResultType)) {
+            (node.args || []).forEach(argument=>visit(argument,scope));
+            add(cell,{number:'Number',boolean:'Boolean',string:'String'}[node.bwClassCallableResultType]);
         } else if (node.type === 'Call') {
             const arguments_ = (node.args || []).map(argument => visit(argument, scope));
             const fn = node.callee?.type === 'Identifier' && functions.get(node.callee.name);

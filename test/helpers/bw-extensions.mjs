@@ -42,10 +42,11 @@ const SUPPORT = {
     'target-type': 'extension-support/target-type',
     cast: 'util/cast',
     'bw-values': 'util/bw-values',
+    'bw-primitive-owner': 'util/bw-primitive-owner',
     'bw-animation-resource-menu': 'util/bw-animation-resource-menu'
 };
 // Overlay-owned support modules: same installed instance, but only when its bytes are the overlay's.
-const OVERLAY_SUPPORT = new Set(['bw-values', 'bw-animation-resource-menu']);
+const OVERLAY_SUPPORT = new Set(['bw-values', 'bw-animation-resource-menu', 'bw-primitive-owner']);
 function installedOverlaySupport (base) {
     const installed = path.join(VM_SRC, `${SUPPORT[base]}.js`);
     const overlay = path.join(REPO, 'overlay', 'scratch-vm', 'src', `${SUPPORT[base]}.js`);

@@ -1,24 +1,46 @@
 import {validateCallableLexicalPlan} from './callable-lexical-plan.js';
+import {validateClassCallablePlan} from './class-callable-plan.js';
 
 // Validation of current editable SB3 blocks, independent of retained source
 // bodies. This helper is not connected to the admitted exporter yet.
 const fail = message => { throw new Error('Callable export graph: ' + message); };
+const discardedMutationProofs=new WeakMap();
+const generatedLocalProofs=new WeakMap();
+const mutationSnapshot=(graph,id)=>{
+    const rows=[],seen=new Set();
+    const visit=(id,children=true)=>{
+        const block=graph.target.blocks[id];if(!block||seen.has(id))fail('invalid current mutation subtree');
+        seen.add(id);rows.push([id,block]);
+        if(children)for(const input of Object.values(block.inputs || {}))for(const child of input.slice(1))if(typeof child==='string')visit(child);
+    };
+    visit(id,false);const value=graph.target.blocks[id].inputs?.VALUE?.[1];if(typeof value==='string')visit(value);
+    return JSON.stringify(rows);
+};
 const array = (text, label) => {
     try { const value = JSON.parse(text); if (Array.isArray(value)) return value; } catch (_) { /* named refusal below */ }
     fail('malformed ' + label);
 };
-export function callableDeclarationEnvelope(plan, site) {
-    validateCallableLexicalPlan(plan);
+const validatePlan=(plan,classPrototype=false)=>{
+    if(classPrototype && plan?.version===2)return validateClassCallablePlan(plan);
+    return validateCallableLexicalPlan(plan);
+};
+export function callableDeclarationEnvelope(plan, site, {classPrototype=false}={}) {
+    validatePlan(plan,classPrototype);
     if (!plan.sites.some(row => row.id === site)) fail('unknown declaration site');
-    return {schema: 'bw-callable-declaration', version: 1, site, plan};
+    return {schema: 'bw-callable-declaration', version: plan.version, site, plan};
 }
-export function validateCallableDeclarationEnvelope(envelope) {
+export function validateCallableDeclarationEnvelope(envelope, {classPrototype=false}={}) {
     if (!envelope || Object.keys(envelope).some(key => !['schema','version','site','plan'].includes(key)) ||
-        envelope.schema !== 'bw-callable-declaration' || envelope.version !== 1) fail('unknown declaration envelope');
-    return callableDeclarationEnvelope(envelope.plan, envelope.site);
+        envelope.schema !== 'bw-callable-declaration' || (envelope.version !== 1 && !(classPrototype&&envelope.version===2)) ||
+        envelope.version!==envelope.plan?.version) fail('unknown declaration envelope');
+    return callableDeclarationEnvelope(envelope.plan, envelope.site,{classPrototype});
 }
-export function inspectCallableExportGraph(target, plan, literalInput) {
-    validateCallableLexicalPlan(plan);
+export function inspectCallableExportGraph(target, plan, literalInput, {classProvider=null}={}) {
+    const classPrototype=plan?.version===2;
+    if(classPrototype&&!classProvider)fail('class plan requires its actual current class provider');
+    validatePlan(plan,classPrototype&&!!classProvider);
+    if(classPrototype && (typeof classProvider?.validateCurrentPlan!=='function' ||
+        classProvider.validateCurrentPlan(plan,target,literalInput)!==true))fail('class plan requires its actual current class provider');
     if (!target || typeof target.blocks !== 'object' || !target.blocks || typeof literalInput !== 'function')
         fail('missing actual target block graph');
     const blocks = target.blocks, owners = new Map(plan.owners.map(owner => [owner.id, owner]));
@@ -34,7 +56,7 @@ export function inspectCallableExportGraph(target, plan, literalInput) {
         const owner = matching[0];
         if (procedures.has(owner.id)) fail('duplicate owned procedure');
         const names = array(proto.mutation.argumentnames, 'procedure parameters');
-        if (JSON.stringify(names) !== JSON.stringify(owner.parameters.map(id=>plan.bindings.find(binding=>binding.id===id).nativeName)))
+        if (JSON.stringify(names) !== JSON.stringify([...(owner.receiverParameter?[owner.receiverParameter]:[]),...owner.parameters.map(id=>plan.bindings.find(binding=>binding.id===id).nativeName)]))
             fail('edited procedure parameter ownership mismatch');
         const slots = proto.mutation.proccode.match(/%[sbn]/g) || [];
         if (slots.length !== names.length || slots.some(slot => slot !== '%s')) fail('edited procedure slots mismatch');
@@ -67,7 +89,7 @@ export function inspectCallableExportGraph(target, plan, literalInput) {
         if(block.next)visit(block.next,root,id,nextPath);
     };
     for(const [id,block] of Object.entries(blocks))if(!block.parent)visit(id,id);
-    const siteNames = new Map(plan.sites.map(site => [owners.get(site.owner).procedure.replace(/(?: %s)+$/, ''), site]));
+    const siteNames = new Map(plan.sites.map(site => [classPrototype?owners.get(site.owner).procedure:owners.get(site.owner).procedure.replace(/(?: %s)+$/, ''), site]));
     for (const [id, block] of Object.entries(blocks)) {
         if(block.opcode==='arcade_declareSourceCallable') {
             let envelope;try{envelope=JSON.parse(literalInput(block,'SIGNATURE'));}catch(_){fail('source callable variable requires fixed signature metadata');}
@@ -84,7 +106,7 @@ export function inspectCallableExportGraph(target, plan, literalInput) {
         } else if (block.opcode === 'arcade_declareCallable') {
             const name = literalInput(block, 'NAME'), text = literalInput(block, 'METADATA');
             let envelope; try { envelope = JSON.parse(text); } catch (_) { fail('declaration requires fixed metadata JSON'); }
-            validateCallableDeclarationEnvelope(envelope);
+            validateCallableDeclarationEnvelope(envelope,{classPrototype});
             if (JSON.stringify(envelope.plan) !== JSON.stringify(plan)) fail('inconsistent declaration plans');
             const site = siteNames.get(name);
             if (!site || site.id !== envelope.site || declarations.has(site.id)) fail('duplicate or foreign declaration');
@@ -148,7 +170,7 @@ export function inspectCallableExportGraph(target, plan, literalInput) {
         fail('incomplete current site/declaration/service graph');
     for(const binding of plan.bindings)if(binding.kind==='global' && binding.type.kind==='callable' && !globalBindings.has(binding.id))
         fail('missing actual connected source callable variable declaration');
-    return {plan, target, procedures, declarations, creates, services,globalBindings};
+    return {plan, target, procedures, declarations, creates, services,globalBindings,...(classPrototype?{classProvider}:{})};
 }
 export function renderCallableSignature(signature) {
     if (signature.kind === 'named') return signature.name;
@@ -170,24 +192,49 @@ export function createCallableLexicalEmitter(graph, compileCurrentBody) {
         if (!binding) fail('edited body refers to an unowned ' + (capture?'capture':'local'));
         return binding;
     };
+    const contextFor = owner => ({
+        owner,
+        local: (nativeName,write=false)=>{
+            if(owner.receiverParameter===nativeName) {
+                if(write)fail('edited body writes its class receiver');
+                return 'this';
+            }
+            const generated=[...(generatedLocalProofs.get(graph)?.values() || [])].find(row=>row.owner===owner.id&&row.name===nativeName);
+            if(generated)return generated.name;
+            const binding=lookup(owner,nativeName,false);
+            if(binding.kind==='receiver'&&write)fail('edited body writes its class receiver');
+            return binding.sourceName;
+        },
+        capture: (nativeName,write=false)=>{
+            const binding=lookup(owner,nativeName,true);
+            if(write && (!binding.written || binding.kind==='receiver'))fail('edited body writes a snapshot capture');
+            return binding.kind==='receiver'?'this':binding.sourceName;
+        },
+        generatedLocal: blockId=>{
+            const proof=generatedLocalProofs.get(graph)?.get(blockId);
+            if(!proof || proof.owner!==owner.id)return null;
+            if(graph.target.blocks[blockId]!==proof.block || mutationSnapshot(graph,blockId)!==proof.snapshot)
+                fail('current generated local assignment changed after type validation');
+            return {name:proof.name,type:proof.type,first:proof.first};
+        },
+        discardLocal: blockId=>{
+            const proof=discardedMutationProofs.get(graph)?.get(blockId),block=graph.target.blocks[blockId];
+            return !!proof && proof.owner===owner.id && block===proof.block &&
+                block.inputs?.VALUE?.[1]===proof.valueId && graph.target.blocks[proof.valueId]===proof.value &&
+                mutationSnapshot(graph,blockId)===proof.snapshot;
+        },
+        create: blockId=>{
+            const site=plan.sites.find(site=>graph.creates.get(site.id)===blockId);
+            if(!site || site.createdIn!==owner.id)fail('edited creation is not owned here');
+            return emit(owners.get(site.owner));
+        }
+    });
     const emit = owner => {
         if (!owner || owner.kind==='module' || active.has(owner.id)) fail('recursive lexical creation graph');
         active.add(owner.id);
         try {
-            const context = {
-                owner,
-                local: nativeName=>lookup(owner,nativeName,false).sourceName,
-                capture: (nativeName,write=false)=>{
-                    const binding=lookup(owner,nativeName,true);
-                    if(write && !binding.written) fail('edited body writes a snapshot capture');
-                    return binding.sourceName;
-                },
-                create: blockId=>{
-                    const site=plan.sites.find(site=>graph.creates.get(site.id)===blockId);
-                    if(!site || site.createdIn!==owner.id) fail('edited creation is not owned here');
-                    return emit(owners.get(site.owner));
-                }
-            };
+            if(['method','constructor'].includes(owner.kind))fail('class owner cannot emit as a standalone function');
+            const context=contextFor(owner);
             const body=compileCurrentBody(graph.procedures.get(owner.id).body,context);
             if(!Array.isArray(body) || body.some(line=>typeof line!=='string')) fail('current-body compiler returned malformed lines');
             const locals=plan.bindings.filter(binding=>binding.owner===owner.id && binding.kind==='local');
@@ -205,6 +252,12 @@ export function createCallableLexicalEmitter(graph, compileCurrentBody) {
         } finally { active.delete(owner.id); }
     };
     return {
+        contextForProcedure:procedure=>{
+            const owner=plan.owners.find(owner=>owner.procedure===procedure);
+            if(!owner || !['method','constructor'].includes(owner.kind) || !graph.classProvider || !graph.procedures.has(owner.id))
+                return null;
+            return contextFor(owner);
+        },
         declarations:()=>plan.owners.filter(owner=>owner.kind==='declaration' && owner.parent===plan.module).map(emit),
         moduleCreate:blockId=>{
             const site=plan.sites.find(site=>graph.creates.get(site.id)===blockId);
@@ -226,7 +279,20 @@ export function callableVariableEnvelope(plan, bindingId) {
 // replacement body or invent an opaque reporter's type.
 export function validateCallableCurrentBodyTypes(graph,literalInput) {
     const {plan,target,procedures}=graph,blocks=target.blocks;
+    discardedMutationProofs.delete(graph);generatedLocalProofs.delete(graph);const discarded=new Map(),generated=new Map(),generatedNames=new Map();
     const named=name=>({kind:'named',name}),same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+    const argsType=(block,owner,seen)=>{
+        const result=[];let slot=block.inputs?.ARGS?.[1];const visited=new Set();
+        while(typeof slot==='string' && blocks[slot]?.opcode==='arcade_functionArgument') {
+            if(visited.has(slot))fail('cyclic current class argument chain');visited.add(slot);
+            const argument=blocks[slot],type=typeOf(argument.inputs?.VALUE?.[1],owner,seen);
+            if(!type)fail('unproved current class argument type');result.push(type);slot=argument.inputs?.REST?.[1];
+        }
+        const last=typeof slot==='string'?blocks[slot]:null;
+        if(!(Array.isArray(slot)&&slot[0]===10&&slot[1]==='[]')&&
+            !(last?.opcode==='text'&&last.shadow&&last.fields?.TEXT?.[0]==='[]'))fail('class call requires its actual current ordered argument chain');
+        return result;
+    };
     const typeOf=(slot,owner,seen=new Set())=>{
         if(Array.isArray(slot)) {
             if([4,5,6,7,8].includes(slot[0]))return named('number');
@@ -245,8 +311,21 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
             const site=plan.sites.find(site=>graph.creates.get(site.id)===slot);
             return site&&plan.owners.find(owner=>owner.id===site.owner).signature;
         }
-        if(block.opcode==='arcade_getCaptured'||block.opcode==='arcade_getLocal')return binding(block.fields?.NAME?.[0] ?? literalInput(block,'NAME'))?.type;
-        if(block.opcode==='argument_reporter_string_number')return binding(block.fields?.VALUE?.[0])?.type;
+        if(block.opcode==='arcade_getCaptured'||block.opcode==='arcade_getLocal') {
+            const name=block.fields?.NAME?.[0] ?? literalInput(block,'NAME');
+            if(graph.classProvider&&block.opcode==='arcade_getLocal'&&name===owner.receiverParameter)return named(owner.className);
+            const type=binding(name)?.type;
+            if(type)return type;
+            if(graph.classProvider&&block.opcode==='arcade_getLocal') {
+                const previous=generatedNames.get(owner.id+':'+name);
+                if(!previous)return null;
+                const actual=graph.classProvider.valueType(block,owner,{
+                    inputType:input,argsType:()=>argsType(block,owner,seen),localType:name=>binding(name)?.type});
+                return actual&&same(actual,previous.type)?actual:null;
+            }
+            return null;
+        }
+        if(block.opcode==='argument_reporter_string_number')return owner.receiverParameter===block.fields?.VALUE?.[0]?named(owner.className):binding(block.fields?.VALUE?.[0])?.type;
         if(block.opcode==='math_number')return named('number');
         if(block.opcode==='text')return named('string');
         if(block.opcode==='arrays_valueUndefined')return named('undefined');
@@ -262,6 +341,9 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
             if(['-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(op)&&left?.name==='number'&&right?.name==='number')return named('number');
             if(['===','!==','<','>','<=','>='].includes(op)&&left&&right)return named('boolean');
         }
+        if(graph.classProvider?.valueType)return graph.classProvider.valueType(block,owner,{
+            inputType:input,localType:name=>owner.receiverParameter===name?named(owner.className):binding(name)?.type,
+            argsType:()=>argsType(block,owner,seen)});
         return null;
     };
     for(const owner of plan.owners.filter(owner=>owner.kind!=='module')) {
@@ -270,15 +352,47 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
         while(id) {
             const block=blocks[id];
             if(Object.keys(block.inputs || {}).some(name=>name.startsWith('SUBSTACK')))fail('edited control body types are not qualified');
+            if(graph.classProvider && ['arcade_setObjectField','arcade_assignObjectField'].includes(block.opcode)) {
+                if(typeof graph.classProvider.statementType!=='function'||graph.classProvider.statementType(block,owner,{
+                    inputType:name=>typeOf(block.inputs?.[name]?.[1],owner),
+                    argsType:()=>argsType(block,owner,new Set()),
+                    localType:name=>owner.receiverParameter===name?named(owner.className):plan.bindings.find(binding=>binding.owner===owner.id&&binding.nativeName===name)?.type
+                })!==true)fail('edited current class statement has no actual typed owner');
+            }
             if(['arcade_setCaptured','arcade_setLocal'].includes(block.opcode)) {
                 const name=block.fields?.NAME?.[0] ?? literalInput(block,'NAME'),site=plan.sites.find(site=>site.owner===owner.id);
                 const binding=plan.bindings.find(binding=>binding.nativeName===name&&
                     (binding.owner===owner.id||site?.captures.some(capture=>capture.binding===binding.id)));
+                if(graph.classProvider&&name===owner.receiverParameter)fail('edited body writes its class receiver');
                 const actual=typeOf(block.inputs?.VALUE?.[1],owner);
                 const initialUndefined=block.opcode==='arcade_setLocal'&&binding?.kind==='local'&&binding.owner===owner.id&&
                     binding.type.kind==='named'&&binding.type.name==='number'&&actual?.kind==='named'&&actual.name==='undefined'&&!assigned.has(binding.id);
-                if(!binding||!actual||(!same(binding.type,actual)&&!initialUndefined))fail('edited current assignment differs from its concrete lexical signature');
-                assigned.add(binding.id);
+                if(!binding && graph.classProvider && block.opcode==='arcade_setLocal') {
+                    const assignment=graph.classProvider.localAssignment?.(block,owner,{
+                        inputType:name=>typeOf(block.inputs?.[name]?.[1],owner),localType:name=>plan.bindings.find(row=>row.owner===owner.id&&row.nativeName===name)?.type
+                    });
+                    if(assignment) {
+                        if(assignment.name!==name||typeof assignment.first!=='boolean'||!/^[A-Za-z_]\w*$/.test(name))fail('invalid owned current local assignment proof');
+                        const identity=owner.id+':'+name,previous=generatedNames.get(identity);
+                        if(assignment.first!==!previous||previous&&JSON.stringify(previous.type)!==JSON.stringify(assignment.type))fail('current generated local assignment differs from its first writer');
+                        let generatedId='__currentGeneratedLocal';while(plan.bindings.some(row=>row.id===generatedId))generatedId+='_';
+                        validateClassCallablePlan({...plan,bindings:[...plan.bindings,{id:generatedId,owner:owner.id,sourceName:name,nativeName:name,kind:'local',declarationKind:'let',type:assignment.type,written:true}]});
+                        if(!actual||!same(actual,assignment.type))fail('current generated local RHS differs from its typed proof');
+                        const proof={owner:owner.id,block,name,type:structuredClone(assignment.type),first:assignment.first,snapshot:mutationSnapshot(graph,id)};
+                        generated.set(id,proof);generatedNames.set(identity,proof);
+                    } else {
+                    const valueId=block.inputs?.VALUE?.[1],value=blocks[valueId];
+                    if(value?.opcode!=='arcade_assignObjectField'||typeof graph.classProvider.statementType!=='function'||
+                        graph.classProvider.statementType(value,owner,{
+                            inputType:name=>typeOf(value.inputs?.[name]?.[1],owner),argsType:()=>argsType(value,owner,new Set()),
+                            localType:name=>owner.receiverParameter===name?named(owner.className):plan.bindings.find(row=>row.owner===owner.id&&row.nativeName===name)?.type
+                        })!==true)fail('unowned local assignment is not a validated current field mutation');
+                    discarded.set(id,{owner:owner.id,block,valueId,value,snapshot:mutationSnapshot(graph,id)});
+                    }
+                } else {
+                    if(!binding||!actual||(!same(binding.type,actual)&&!initialUndefined))fail('edited current assignment differs from its concrete lexical signature');
+                    assigned.add(binding.id);
+                }
             }
             if(block.opcode==='arcade_returnValue') {
                 const actual=typeOf(block.inputs?.VALUE?.[1],owner);
@@ -287,4 +401,5 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
             id=block.next;
         }
     }
+    discardedMutationProofs.set(graph,discarded);generatedLocalProofs.set(graph,generated);
 }

@@ -1,0 +1,307 @@
+import {validateClassCallablePlan} from './class-callable-plan.js';
+import {instantiateCallableSignature} from './callable-signatures.js';
+import {classCallableExportTypes} from './class-callable-export-types.js';
+
+// Current serialized blocks, actual class declarations and procedure owners.
+// No runtime values or retained source bodies supply export type authority.
+export function createClassCallableExportProvider({target,project,classes,definitions,valueTypes,literal,key,builtinNames}) {
+    const templates=classCallableExportTypes(classes,builtinNames),named=name=>({kind:'named',name});
+    const fail=message=>{throw new Error('Class callable export: '+message);};
+    let plan=null;
+    const checkingFields=new Map(),checkingLocals=new Set();
+    const member=(name,field,method=false)=>{
+        const seen=new Set();let cls=classes.get(name);
+        while(cls&&!seen.has(cls.name)){seen.add(cls.name);const found=(method?cls.methods:cls.fields).find(row=>row.name===field);if(found)return {cls,value:found};cls=classes.get(cls.parent);}
+        return null;
+    };
+    const same=(a,b)=>a?.kind===b?.kind&&(a.kind==='named'?a.name===b.name:a.parameters.length===b.parameters.length&&a.parameters.every((parameter,index)=>same(parameter.type,b.parameters[index].type))&&same(a.result,b.result));
+    const subtype=(actual,expected)=>{
+        if(same(actual,expected))return true;
+        if(actual?.kind!=='named'||expected?.kind!=='named')return false;
+        let cls=classes.get(actual.name);const seen=new Set();while(cls&&!seen.has(cls.name)){seen.add(cls.name);if(cls.name===expected.name)return true;cls=classes.get(cls.parent);}return false;
+    };
+    const fieldType=field=>field.valueKind==='callable'?field.callableSignature:named(field.type);
+    const checkingVariables=new Map();
+    const variableType=block=>{
+        const id=block.fields?.VARIABLE?.[1];if(!id)return null;
+        const owners=project.targets.filter(other=>Object.hasOwn(other.variables||{},id));
+        if(owners.length!==1||owners[0]!==target&&!owners[0].isStage)return null;
+        if(checkingVariables.has(id))return checkingVariables.get(id);
+        checkingVariables.set(id,null);
+        try {
+            const writers=[];
+            for(const other of project.targets)for(const writer of Object.values(other.blocks||{})){
+                if(writer.opcode!=='data_setvariableto'||writer.fields?.VARIABLE?.[1]!==id)continue;
+                if(other!==target)return null;writers.push(writer);
+            }
+            if(!writers.length)return null;
+            let anchor=null;
+            for(const writer of writers){
+                const type=slotType(writer.inputs.VALUE?.[1],scope(writer));
+                if(type?.kind==='named'&&classes.has(type.name)){anchor=type;checkingVariables.set(id,anchor);break;}
+            }
+            if(!anchor)return null;
+            for(const writer of writers){const type=slotType(writer.inputs.VALUE?.[1],scope(writer));if(!type||!subtype(type,anchor))return null;}
+            return anchor;
+        }finally{checkingVariables.delete(id);}
+    };
+    const scope=block=>{
+        const seen=new Set();let current=block;
+        while(current?.parent){if(seen.has(current)){fail('cyclic current body ownership');}seen.add(current);current=target.blocks[current.parent];}
+        if(current?.opcode==='procedures_definition'){
+            const definition=[...definitions.values()].find(row=>row.target===target&&row.block===current);
+            const owner=definition&&plan?.owners.find(row=>row.procedure===definition.code);
+            if(owner)return owner;
+            for(const cls of classes.values())if(cls.target===target){
+                const method=cls.methods.find(row=>row.procedure===definition?.code);
+                if(method)return {className:cls.name,receiverParameter:definition.parameters[0],signature:method.callableSignature,
+                    parameters:method.parameters,procedure:definition.code};
+                if(cls.constructor===definition?.code)return {kind:'constructor',className:cls.name,receiverParameter:definition.parameters[0],parameters:cls.parameters,procedure:definition.code};
+            }
+            return {kind:'module',procedure:definition?.code};
+        }
+        return {kind:'module',rootBlock:current};
+    };
+    const local=(owner,name,readBlock=null)=>{
+        if(owner.receiverParameter===name)return named(owner.className);
+        const binding=plan?.bindings.find(row=>row.owner===owner.id&&row.nativeName===name);
+        if(binding)return binding.type;
+        const parameter=owner.parameters?.find(row=>typeof row==='object'&&row.name===name);
+        if(parameter)return parameter.callableSignature || named(parameter.type);
+        if(!readBlock)return null;
+        const definition=owner.rootBlock&&Object.values(target.blocks).includes(owner.rootBlock)?{block:owner.rootBlock}:definitions.get(key(target,owner.procedure));if(!definition)return null;
+        const identity=(owner.procedure||owner.id)+':'+name+':'+Object.entries(target.blocks).find(([,value])=>value===readBlock)?.[0];
+        if(checkingLocals.has(identity))return null;
+        checkingLocals.add(identity);
+        try {
+            const contains=(block,wanted,seen=new Set())=>{
+                if(block===wanted)return true;if(!block||seen.has(block))return false;seen.add(block);
+                return Object.values(block.inputs||{}).some(input=>typeof input[1]==='string'&&contains(target.blocks[input[1]],wanted,seen));
+            };
+            const visited=new Set();let id=definition.block.next,proved=null;
+            while(id){
+                if(visited.has(id))return null;visited.add(id);const block=target.blocks[id];
+                if(!block||Object.keys(block.inputs||{}).some(key=>key.startsWith('SUBSTACK')))return null;
+                if(contains(block,readBlock))return proved;
+                if(block.opcode==='arcade_setLocal'&&literal(target,block,'NAME')===name){
+                    const value=slotType(block.inputs.VALUE?.[1],owner);
+                    if(!value||proved&&!same(proved,value))return null;proved=value;
+                }
+                id=block.next;
+            }
+            return null;
+        }finally{checkingLocals.delete(identity);}
+    };
+    const slotType=(slot,owner,seen=new Set())=>{
+        if(Array.isArray(slot)){
+            if([4,5,6,7,8].includes(slot[0]))return named('number');
+            if(slot[0]===10)return named('string');
+            if(slot[0]===12)return variableType({opcode:'data_variable',fields:{VARIABLE:[slot[1],slot[2]]}});
+            return null;
+        }
+        const block=target.blocks[slot];if(!block||seen.has(block))return null;seen=new Set([...seen,block]);
+        const inputType=name=>slotType(block.inputs?.[name]?.[1],owner,seen);
+        const argsType=()=>{
+            const args=[];let rest=block.inputs?.ARGS?.[1],visited=new Set();
+            while(typeof rest==='string'&&target.blocks[rest]?.opcode==='arcade_functionArgument'){
+                if(visited.has(rest))fail('cyclic current arguments');visited.add(rest);const arg=target.blocks[rest];args.push(slotType(arg.inputs.VALUE?.[1],owner,seen));rest=arg.inputs.REST?.[1];
+            }
+            const end=typeof rest==='string'&&target.blocks[rest];if(!(Array.isArray(rest)&&rest[0]===10&&rest[1]==='[]')&&!(end?.opcode==='text'&&end.shadow&&end.fields.TEXT?.[0]==='[]'))fail('unproved current ordered argument list');
+            return args;
+        };
+        if(['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod'].includes(block.opcode)) {
+            return inputType('NUM1')?.name==='number'&&inputType('NUM2')?.name==='number'?named('number'):null;
+        }
+        if(block.opcode==='math_number')return named('number');if(block.opcode==='text')return named('string');
+        if(block.opcode==='argument_reporter_string_number')return local(owner,block.fields.VALUE?.[0]);
+        if(block.opcode==='arcade_getLocal')return local(owner,literal(target,block,'NAME'),block);
+        if(block.opcode==='arcade_getCaptured'){
+            const site=plan?.sites.find(row=>row.owner===owner.id),name=literal(target,block,'NAME');
+            return plan?.bindings.find(row=>row.nativeName===name&&site?.captures.some(capture=>capture.binding===row.id))?.type;
+        }
+        if(block.opcode==='data_variable')return variableType(block);
+        if(block.opcode==='arcade_createCallable'){
+            const procedure=literal(target,block,'NAME');return plan?.owners.find(row=>row.procedure===procedure)?.signature;
+        }
+        if(['arrays_valueUndefined','arrays_valueNull'].includes(block.opcode))return named(block.opcode==='arrays_valueNull'?'null':'undefined');
+        if(block.opcode==='arrays_valueBinary'){
+            const left=inputType('LEFT'),right=inputType('RIGHT'),op=block.fields.OP?.[0];
+            if(left?.name==='number'&&right?.name==='number'&&['+','-','*','/','%'].includes(op))return named('number');
+            if(op==='+'&&left?.name==='string'&&right?.name==='string')return named('string');
+        }
+        if(block.opcode==='arcade_setObjectField')return null;
+        return operation(block,owner,{inputType,argsType,localType:name=>local(owner,name)});
+    };
+    const writerSafe=(className,fieldName,expected,seen=new Set())=>{
+        const identity=className+'.'+fieldName;if(checkingFields.has(identity))return checkingFields.get(identity);checkingFields.set(identity,false);
+        try {
+        // A declaration alone cannot authorize a recursive field-read cycle.
+        // Require an independently proved writer before using its field type.
+        for(const block of Object.values(target.blocks)){
+            if(block.opcode!=='arcade_setObjectField'||literal(target,block,'FIELD')!==fieldName)continue;
+            const owner=scope(block),receiver=slotType(block.inputs.OBJECT?.[1],owner);
+            const selected=receiver?.kind==='named'&&member(receiver.name,fieldName);
+            if(selected?.cls.name!==className)continue;
+            const actual=slotType(block.inputs.VALUE?.[1],owner);
+            if(actual&&subtype(actual,expected)){checkingFields.set(identity,true);break;}
+        }
+        if(!checkingFields.get(identity))return false;
+        return true;
+        }finally{checkingFields.delete(identity);}
+    };
+    const operation=(block,owner,environment)=>{
+        if(!Object.values(target.blocks).includes(block))return null;
+        const actualOwner=scope(block);
+        if(owner.id&&actualOwner.id!==owner.id||owner.procedure&&actualOwner.procedure!==owner.procedure||owner.rootBlock&&actualOwner.rootBlock!==owner.rootBlock)return null;
+        const {inputType,argsType,localType}=environment;
+        if(block.opcode==='arcade_getLocal')return localType(literal(target,block,'NAME')) || local(owner,literal(target,block,'NAME'),block);
+        if(block.opcode==='arcade_createObject'){
+            const name=literal(target,block,'CLASS'),cls=classes.get(name);if(!cls)return null;templates.ordinary(name);
+            const args=argsType();if(args.length!==cls.parameters.length||args.some((type,index)=>!type||!subtype(type,named(cls.parameters[index].type))))fail('current constructor arguments differ');return named(name);
+        }
+        if(['arcade_objectField','arcade_assignObjectField','arcade_setObjectField','arcade_callObjectMethod'].includes(block.opcode)){
+            const receiver=inputType('OBJECT');if(!receiver||receiver.kind!=='named'||!classes.has(receiver.name))return null;templates.ordinary(receiver.name);
+            const method=block.opcode==='arcade_callObjectMethod',name=literal(target,block,method?'METHOD':'FIELD'),selected=member(receiver.name,name,method);if(!selected)return null;
+            let lexicalOwner=owner;const seenOwners=new Set();
+            while(lexicalOwner&&!lexicalOwner.className&&!seenOwners.has(lexicalOwner.id)){
+                seenOwners.add(lexicalOwner.id);lexicalOwner=plan?.owners.find(row=>row.id===lexicalOwner.parent);
+            }
+            const visibility=selected.value.visibility;
+            if(visibility==='private'&&lexicalOwner?.className!==selected.cls.name)return null;
+            if(visibility==='protected'&&(!lexicalOwner?.className||!subtype(named(lexicalOwner.className),named(selected.cls.name))))return null;
+            if(!method&&selected.value.readonly&&block.opcode!=='arcade_objectField'){
+                const actualReceiver=target.blocks[block.inputs.OBJECT?.[1]];
+                const receiverName=actualReceiver?.opcode==='arcade_getLocal'?literal(target,actualReceiver,'NAME'):actualReceiver?.opcode==='argument_reporter_string_number'?actualReceiver.fields.VALUE?.[0]:null;
+                if(owner.kind!=='constructor'||owner.className!==selected.cls.name||receiverName!==owner.receiverParameter)return null;
+            }
+
+            if(method){const args=argsType(),row=selected.value;if(!row.callableSignature||args.some(type=>!type))return null;
+                const result=instantiateCallableSignature(row.callableSignature,row.typeParameters,args);if(result.unsupported.length)fail(result.unsupported.join('; '));return result.signature.result;}
+            const expected=fieldType(selected.value);
+            if(block.opcode!=='arcade_objectField'){
+                const actual=inputType('VALUE');if(!actual||!subtype(actual,expected))return null;
+                if(block.opcode==='arcade_assignObjectField'&&(expected.name!=='number'||!['+=','-=','*=','/=','%='].includes(literal(target,block,'OP'))))return null;
+            }
+            return writerSafe(selected.cls.name,name,expected)?expected:null;
+        }
+        if(block.opcode==='arcade_callCallable'){
+            const signature=inputType('CALLABLE');if(signature?.kind!=='callable')return null;const args=argsType();
+            if(args.length!==signature.parameters.length||args.some((type,index)=>!type||!subtype(type,signature.parameters[index].type)))fail('current callback arguments differ');return signature.result;
+        }
+        return null;
+    };
+    const verifyWriters=()=>{
+        for(const other of project.targets)for(const block of Object.values(other.blocks||{})){
+            if(!['arcade_setObjectField','arcade_assignObjectField'].includes(block.opcode))continue;
+            if(other!==target)fail('foreign class field writer has no owned lexical provenance');
+            const owner=scope(block),actual=operation(block,owner,{
+                inputType:name=>slotType(block.inputs?.[name]?.[1],owner),
+                argsType:()=>[],localType:name=>local(owner,name,block)
+            });
+            if(!actual)fail('current class field write differs from its concrete signature');
+        }
+    };
+    return Object.freeze({
+        validateCurrentPlan(candidate,actualTarget){
+            plan=null;let accepted=false;
+            try {
+            validateClassCallablePlan(candidate);if(actualTarget!==target)return false;
+            for(const row of candidate.classes){const cls=classes.get(row.name);if(!cls||cls.target!==target||(cls.parent||null)!==row.parent)return false;templates.ordinary(row.name);}
+            for(const owner of candidate.owners.filter(row=>['constructor','method'].includes(row.kind))){
+                const cls=classes.get(owner.className),selected=owner.kind==='constructor'?{procedure:cls.constructor,parameters:cls.parameters}:cls.methods.find(row=>row.name===owner.memberName);
+                const def=selected&&definitions.get(key(target,selected.procedure));if(!def||selected.procedure!==owner.procedure||def.parameters[0]!==owner.receiverParameter||def.parameters.length!==selected.parameters.length+1||selected.parameters.some((parameter,index)=>def.parameters[index+1]!==parameter.name)||selected.parameters.length!==owner.signature.parameters.length)return false;
+                if(selected.parameters.some((parameter,index)=>parameter.name!==owner.signature.parameters[index].name||parameter.type!==(owner.signature.parameters[index].type.kind==='named'?owner.signature.parameters[index].type.name:'callable')))return false;
+                if(owner.kind==='constructor'){
+                    if(owner.typeParameters.length||owner.signature.result.kind!=='named'||owner.signature.result.name!=='void')return false;
+                    if(selected.parameters.some((parameter,index)=>{
+                        const expected=owner.signature.parameters[index].type;
+                        return expected.kind==='callable'?JSON.stringify(parameter.callableSignature)!==JSON.stringify(expected):parameter.callableSignature!==undefined;
+                    }))return false;
+                }
+                if(owner.kind==='method' && (JSON.stringify(selected.callableSignature)!==JSON.stringify(owner.signature)||JSON.stringify(selected.typeParameters)!==JSON.stringify(owner.typeParameters)))return false;
+            }
+            plan=candidate;
+            verifyWriters();
+            for(const cls of classes.values())if(cls.target===target)for(const method of cls.methods)if(method.callableSignature){
+                const definition=definitions.get(key(target,method.procedure));if(!definition)return false;
+                const owner={className:cls.name,receiverParameter:definition.parameters[0],parameters:method.parameters,procedure:method.procedure};
+                const visited=new Set();let id=definition.block.next,returned=false;
+                while(id){
+                    if(visited.has(id))return false;visited.add(id);const block=target.blocks[id];if(!block||Object.keys(block.inputs||{}).some(name=>name.startsWith('SUBSTACK')))return false;
+                    if(block.opcode==='arcade_returnValue'){
+                        const actual=slotType(block.inputs.VALUE?.[1],owner);if(!actual||!same(actual,method.callableSignature.result))return false;returned=true;
+                    }else if(!['arcade_declareLocal','arcade_setLocal','arcade_setObjectField','arcade_assignObjectField'].includes(block.opcode))return false;
+                    else if(block.opcode==='arcade_setLocal'){
+                        const name=literal(target,block,'NAME');
+                        if(name===owner.receiverParameter||owner.parameters.some(parameter=>parameter.name===name)||!this.localAssignment(block,owner))return false;
+                    }else if(['arcade_setObjectField','arcade_assignObjectField'].includes(block.opcode)&&!operation(block,owner,{inputType:name=>slotType(block.inputs?.[name]?.[1],owner),argsType:()=>[],localType:name=>local(owner,name,block)}))return false;
+                    id=block.next;
+                }
+                if(method.callableSignature.result.name!=='void'&&!returned)return false;
+            }
+            accepted=true;return true;
+            }finally{if(!accepted)plan=null;}
+        },
+        valueType(block,owner,environment){verifyWriters();return block.opcode==='arcade_setObjectField'?null:operation(block,owner,environment);},
+        statementType(block,owner,environment){verifyWriters();return operation(block,owner,environment)!==null;},
+        expressionType(block){
+            if(!plan)return null;
+            const id=Object.entries(target.blocks).find(([,value])=>value===block)?.[0];
+            return id?slotType(id,scope(block)):null;
+        },
+        localType:local,
+        localAssignment(block,owner){
+            if(!plan||block?.opcode!=='arcade_setLocal'||!Object.values(target.blocks).includes(block))return null;
+            const name=literal(target,block,'NAME');if(!/^[A-Za-z_]\w*$/.test(name||'')||name===owner.receiverParameter)return null;
+            if(classes.has(name)||['this','super','class','function','return','let','const','var','new','if','else','for','while','switch','case','default','throw','try','catch','finally','break','continue','delete','typeof','void','in','instanceof','extends','implements','interface','enum','namespace','import','export','yield','await','null','true','false','undefined','NaN'].includes(name))return null;
+            if(project.targets.some(other=>Object.values(other.variables||{}).some(variable=>variable[0]===name)))return null;
+            if(plan.bindings.some(row=>row.nativeName===name||row.sourceName===name)||owner.parameters?.some(parameter=>typeof parameter==='object'&&(parameter.name===name||parameter.nativeName===name)))return null;
+            const site=plan.sites.find(row=>row.owner===owner.id);
+            if(plan.bindings.some(row=>row.nativeName===name&&(row.owner===owner.id||site?.captures.some(capture=>capture.binding===row.id))))return null;
+            const definition=owner.rootBlock&&Object.values(target.blocks).includes(owner.rootBlock)?{block:owner.rootBlock}:definitions.get(key(target,owner.procedure));if(!definition)return null;
+            let id=definition.block.next,earlier=false;const visited=new Set();
+            while(id){
+                if(visited.has(id))return null;visited.add(id);const current=target.blocks[id];
+                if(!current||Object.keys(current.inputs||{}).some(key=>key.startsWith('SUBSTACK')))return null;
+                if(current===block)break;
+                if(current.opcode==='arcade_setLocal'&&literal(target,current,'NAME')===name)earlier=true;
+                id=current.next;
+            }
+            if(!id)return null;
+            const type=slotType(block.inputs.VALUE?.[1],owner);if(!type||type.kind==='named'&&['null','undefined','void'].includes(type.name))return null;
+            const prior=earlier&&local(owner,name,block);if(earlier&&(!prior||!same(type,prior)))return null;
+            return Object.freeze({name,type:structuredClone(type),first:!earlier});
+        },
+        contextForModuleRoot(root,callableEmitter,moduleCreates){
+            if(!plan||!Object.values(target.blocks).includes(root)||!root.topLevel||!['arcade_whenSourceStarts','event_whenflagclicked','procedures_definition'].includes(root.opcode))return null;
+            const definition={block:root};
+            const owner={kind:'module',rootBlock:root},cells=new Map();
+            const contains=(block,id,seen=new Set())=>{
+                if(block===target.blocks[id])return true;if(!block||seen.has(block))return false;seen.add(block);
+                return Object.values(block.inputs||{}).some(input=>typeof input[1]==='string'&&contains(target.blocks[input[1]],id,seen))||contains(target.blocks[block.next],id,seen);
+            };
+            if(![...moduleCreates].some(id=>contains(definition.block,id)))return null;
+            const provider=this;
+            return {
+                generatedLocal(id){const block=target.blocks[id],proof=provider.localAssignment(block,owner);if(proof)cells.set(proof.name,proof.type);return proof;},
+                local(name){if(!cells.has(name))fail('module procedure reads a local before its proved assignment');return name;},
+                capture(){fail('module procedure has no lexical capture');},
+                create(id){if(!moduleCreates.has(id))fail('module procedure creation has a foreign owner');return callableEmitter.moduleCreate(id);}
+            };
+        },
+        contextForMethod(code){
+            const cls=[...classes.values()].find(row=>row.target===target&&row.methods.some(method=>method.procedure===code&&method.callableSignature));
+            const method=cls?.methods.find(row=>row.procedure===code),definition=definitions.get(key(target,code));if(!plan||!method||!definition)return null;
+            const owner={className:cls.name,receiverParameter:definition.parameters[0],parameters:method.parameters,procedure:code};
+            return {
+                local(name,write=false){
+                    if(name===owner.receiverParameter){if(write)fail('edited method writes its actual receiver');return 'this';}
+                    if(write&&owner.parameters.some(parameter=>parameter.name===name))fail('class callback method parameter writes are not qualified');
+                    if(!local(owner,name))fail('unproved current class method local');return name;
+                },
+                capture(){fail('nonlexical class method has no captured binding');},
+                create(){fail('class method creation lacks an actual lexical owner');}
+            };
+        }
+    });
+}

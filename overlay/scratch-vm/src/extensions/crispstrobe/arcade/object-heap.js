@@ -66,19 +66,28 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
         const fields = new Map(), methods = new Map();
         for (const field of spec.fields) {
             if (!field || typeof field.name !== 'string' || !/^[A-Za-z_]\w*$/.test(field.name) || fields.has(field.name) ||
-                Object.keys(field).some(key => !['name', 'type', 'readonly', 'visibility', 'initializer', 'parameterProperty', 'getter', 'setter'].includes(key)) ||
+                Object.keys(field).some(key => !['name', 'type', 'readonly', 'visibility', 'initializer', 'parameterProperty', 'getter', 'setter', 'valueKind', 'callableSignature'].includes(key)) ||
                 field.parameterProperty!==undefined && typeof field.parameterProperty!=='boolean' || field.initializer!==undefined && typeof field.initializer!=='string' || !validType(field.type) || typeof field.readonly !== 'boolean' || field.visibility !== undefined && !['public','private','protected'].includes(field.visibility)) throw new Error('Invalid declared class field');
             if(field.getter!==undefined && (typeof field.getter!=='string'||!field.getter) || field.setter!==undefined && (!field.setter || typeof field.setter.procedure!=='string' || !field.setter.procedure || !validParameters(field.setter.parameters) || field.setter.parameters.length!==1 || field.setter.parameters[0].optional || Object.hasOwn(field.setter.parameters[0],'default') || Object.keys(field.setter).some(key=>!['procedure','parameters'].includes(key))))throw new Error('Invalid class accessor descriptor');
             if((field.getter||field.setter) && (field.initializer!==undefined || field.parameterProperty || field.readonly!==!!(field.getter&&!field.setter)))throw new Error('Class accessor must retain its declared halves without a backing initializer');
-            fields.set(field.name, Object.freeze({...field,...(field.setter?{setter:Object.freeze({...field.setter,parameters:Object.freeze(field.setter.parameters.map(param=>Object.freeze({...param})))})}:{})}));
+            const callableField=field.valueKind==='callable';
+            if(field.valueKind!==undefined&&!callableField || callableField!==(field.callableSignature!==undefined) || callableField &&
+                (field.type!=='callable'||field.getter||field.setter||typeof native.callableSignature!=='function'||typeof native.callableField!=='function'))
+                throw new Error('Class callable field requires its explicit owned signature service');
+            fields.set(field.name, Object.freeze({...field,
+                ...(field.callableSignature!==undefined?{callableSignature:native.callableSignature(field.callableSignature)}:{}),
+                ...(field.setter?{setter:Object.freeze({...field.setter,parameters:Object.freeze(field.setter.parameters.map(param=>Object.freeze({...param})))})}:{})}));
         }
         for (const method of spec.methods) {
+            const callableMethod=method && (method.callableSignature!==undefined||method.typeParameters!==undefined||
+                method.parameters?.some?.(parameter=>parameter?.callableSignature!==undefined));
             if (!method || typeof method.name !== 'string' || !/^[A-Za-z_]\w*$/.test(method.name) ||
                 methods.has(method.name) || fields.has(method.name) || typeof method.procedure !== 'string' ||
-                !validParameters(method.parameters) || !validType(method.returnType) || method.visibility !== undefined && !['public','private','protected'].includes(method.visibility) ||
-                Object.keys(method).some(key => !['name', 'procedure', 'parameters', 'returnType', 'visibility'].includes(key)))
+                (callableMethod?typeof native.callableMethod!=='function':!validParameters(method.parameters)) || !validType(method.returnType) || method.visibility !== undefined && !['public','private','protected'].includes(method.visibility) ||
+                Object.keys(method).some(key => !['name', 'procedure', 'parameters', 'returnType', 'visibility', 'typeParameters', 'callableSignature'].includes(key)))
                 throw new Error('Invalid declared class method');
-            methods.set(method.name, Object.freeze({...method, parameters: Object.freeze([...method.parameters])}));
+            const normalised=callableMethod?native.callableMethod(method):method;
+            methods.set(method.name, Object.freeze({...normalised, parameters: Object.freeze([...normalised.parameters])}));
         }
         for (const name of ['initializer', 'constructor']) if (!own(spec, name) || typeof spec[name] !== 'string')
             throw new Error('Class initializer and constructor procedure names must be explicit');
@@ -118,7 +127,9 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
         // readonly/visibility are TypeScript declaration checks, not runtime
         // immutability. Construction tokens still own allocation completion.
         if(field.native)return native.set(ref,key,hold(value),util);
-        state.fields.set(key, hold(value));
+        const held=hold(value);
+        if(field.callableSignature!==undefined)native.callableField(field.callableSignature,held);
+        state.fields.set(key, held);
     }
     function method(ref, name) {
         const found = object(ref).def.methods.get(name);

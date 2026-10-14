@@ -2,9 +2,10 @@ const {validateCallableLexicalPlan} = require('./callable-lexical-plan.generated
 // Explicit PXT callable resources. Executable bodies remain real VM procedures.
 // This service retains captured cells; it never executes JavaScript functions.
 let nextCallableId = 0;
+const classState = new WeakMap();
 
 class ArcadeCallableValues {
-    constructor(runtime, values) {
+    constructor(runtime, values, classProvider = null, subscribeLifecycle = null) {
         this.runtime = runtime;
         this.values = values;
         this.definitions = new WeakMap();
@@ -13,6 +14,7 @@ class ArcadeCallableValues {
         this.resetListeners = new Set();
         this.generation = 0;
         this.disposed = false;
+        classState.set(this, {provider:classProvider, declarations:new WeakMap(), invocations:new WeakMap()});
         // Metadata-only extension construction has no runtime or resources.
         // Never turn it into a resource host by attaching a target afterward.
         const boundRuntime = Boolean(runtime && typeof runtime.on === 'function' &&
@@ -32,8 +34,9 @@ class ArcadeCallableValues {
         this.suspend = () => { this.reset(); this.disposed = true; };
         this.events = new Map([['PROJECT_START',this.reset], ['PROJECT_STOP_ALL',this.reset],
             ['PROJECT_LOADED',this.loaded], ['RUNTIME_DISPOSED',this.suspend]]);
-        if (boundRuntime) for (const [event, handler] of this.events) runtime.on(event, handler);
-        this.removeEvents = () => {if (boundRuntime) for (const [event, handler] of this.events) runtime.off(event, handler);};
+        const subscribe=subscribeLifecycle || ((event,handler)=>{runtime.on(event,handler);return ()=>runtime.off(event,handler);});
+        const unsubscribers=boundRuntime?[...this.events].map(([event,handler])=>subscribe(event,handler)):[];
+        this.removeEvents = () => {for(const unsubscribe of unsubscribers)unsubscribe();};
     }
 
     onReset(listener) {
@@ -44,8 +47,14 @@ class ArcadeCallableValues {
 
     declare(target, descriptor, declarationOwner = null) {
         this.assertRuntime();
-        let sourceOwner;
+        let sourceOwner, classDeclaration;
         if(descriptor?.schema==='bw-callable-declaration') {
+            if (descriptor.version === 2) {
+                if (!classState.get(this).provider) throw new Error('Class callable declarations require their owned provider');
+                classDeclaration = classState.get(this).provider.prepareDeclaration(target, descriptor);
+                sourceOwner = classDeclaration.sourceOwner;
+                descriptor = classDeclaration.descriptor;
+            } else {
             if(Object.keys(descriptor).some(key=>!['schema','version','site','plan','procedure'].includes(key)) || descriptor.version!==1)
                 throw new Error('Unknown callable source declaration envelope');
             const plan=validateCallableLexicalPlan(descriptor.plan);
@@ -55,6 +64,7 @@ class ArcadeCallableValues {
             const captures=site.captures.map(capture=>({name:plan.bindings.find(binding=>binding.id===capture.binding).nativeName,mode:capture.mode}));
             const nativeParameter=name=>plan.bindings.find(binding=>owner.parameters.includes(binding.id)&&binding.sourceName===name).nativeName;
             descriptor={procedure:owner.procedure,site:site.id,parameters:owner.signature.parameters.map(parameter=>nativeParameter(parameter.name)),captures,defaults:site.defaults.map(entry=>({...entry,name:nativeParameter(entry.name)}))};
+            }
         }
         if (!descriptor || typeof descriptor !== 'object' || Array.isArray(descriptor) ||
             Object.keys(descriptor).some(key => !['procedure','site','parameters','captures','defaults'].includes(key)))
@@ -86,20 +96,24 @@ class ArcadeCallableValues {
         if (!declarations) this.definitions.set(target, declarations = new Map());
         if (declarations.has(procedure) || [...declarations.values()].some(value => value.site === site))
             throw new Error('Duplicate callable procedure or source site');
-        declarations.set(procedure, Object.freeze({procedure, site,
+        const registered = Object.freeze({procedure, site,
             parameters:Object.freeze(parameters.slice()),
             ...(declarationOwner?{declarationOwner:Object.freeze(declarationOwner)}:{}),
             ...(sourceOwner?{sourceOwner:Object.freeze(sourceOwner)}:{}),
             captures:Object.freeze(captureSpecs.map(entry => Object.freeze({...entry}))),
             representation:captureSpecs.length ? 'action' : 'label',
-            defaults:Object.freeze(Object.fromEntries(defaults.map(entry => [parameters.indexOf(entry.name),entry.value])))}));
+            defaults:Object.freeze(Object.fromEntries(defaults.map(entry => [parameters.indexOf(entry.name),entry.value])))});
+        if (classDeclaration) classState.get(this).declarations.set(registered, classDeclaration);
+        declarations.set(procedure, registered);
     }
 
-    create(target, procedure, {locals, inheritedCaptures = new Map(), ownerProcedure, sourceModule=false} = {}) {
+    create(target, procedure, {locals, inheritedCaptures = new Map(), ownerProcedure, sourceModule=false, util, operationArgs} = {}) {
         this.assertRuntime();
         const definition = this.definitions.get(target)?.get(procedure);
         if (!definition) throw new Error('Unknown callable definition');
         this.declarationCurrent(target,definition);
+        const classDeclaration=classState.get(this).declarations.get(definition);
+        if(classDeclaration)classState.get(this).provider.assertCreate(classDeclaration,target,util,operationArgs);
         if(definition.sourceOwner && (definition.sourceOwner.module ? !sourceModule : ownerProcedure!==definition.sourceOwner.procedure))
             throw new Error('Callable creation requires its actual lexical frame owner');
         let labels = this.labels.get(target);
@@ -108,7 +122,9 @@ class ArcadeCallableValues {
         const captures = new Map();
         for (const {name,mode} of definition.captures) {
             let cell;
-            if (locals && Object.prototype.hasOwnProperty.call(locals, name)) cell = {values:locals, key:name};
+            if (classDeclaration && classState.get(this).provider.ownsReceiver(classDeclaration, name))
+                cell = classState.get(this).provider.receiverCell(classDeclaration, name, util);
+            else if (locals && Object.prototype.hasOwnProperty.call(locals, name)) cell = {values:locals, key:name};
             else cell = inheritedCaptures.get(name);
             if (!cell || !cell.values || typeof cell.values !== 'object' || Array.isArray(cell.values) ||
                 typeof cell.key !== 'string' || !Object.prototype.hasOwnProperty.call(cell.values, cell.key))
@@ -135,6 +151,8 @@ class ArcadeCallableValues {
     }
 
     declarationCurrent(target, definition) {
+        const classDeclaration = classState.get(this).declarations.get(definition);
+        if (classDeclaration) classState.get(this).provider.assertCurrent(classDeclaration, target);
         const owner=definition.declarationOwner;
         if(!owner)return;
         if(target.blocks.getBlock(owner.block.id)!==owner.block)
@@ -162,6 +180,12 @@ class ArcadeCallableValues {
 
     hold(reference) { return this.resource(reference).reference; }
 
+    signature(reference) {
+        const resource = this.resource(reference), declaration = classState.get(this).declarations.get(resource.definition);
+        if (!declaration) throw new Error('Callable resource has no qualified class signature');
+        return classState.get(this).provider.signature(declaration);
+    }
+
     typeOf(value) {
         const decoded = this.values.decode(value);
         if (this.values.isReference(decoded) && decoded.bwReference.kind === 'callable')
@@ -177,7 +201,21 @@ class ArcadeCallableValues {
             supplied.push(Object.prototype.hasOwnProperty.call(resource.definition.defaults,index) ?
                 this.values.encode(resource.definition.defaults[index]) : this.values.UNDEFINED);
         // Each invocation gets its own map, while captured variable cells stay live.
-        return {...resource, args:supplied, captures:new Map(resource.captures)};
+        const invocation = {...resource, args:supplied, captures:new Map(resource.captures)};
+        const declaration = classState.get(this).declarations.get(resource.definition);
+        if (declaration) classState.get(this).invocations.set(invocation, {signature:classState.get(this).provider.invocation(declaration, supplied),resource});
+        return invocation;
+    }
+
+    hasTypedInvocation(invocation) {return classState.get(this).invocations.has(invocation);}
+
+    complete(invocation, value) {
+        const record = classState.get(this).invocations.get(invocation);
+        if (!record) throw new Error('Class callable completion requires its actual owned invocation');
+        const current = this.resource(invocation.reference);
+        if (current !== record.resource)
+            throw new Error('Class callable completion outlived its resource');
+        return classState.get(this).provider.result(record.signature, value);
     }
 
     dispose() {

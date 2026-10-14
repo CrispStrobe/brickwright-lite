@@ -1135,7 +1135,13 @@ class ArcadeEmitter {
             return `new ${this.objectClassExport.publicName(name)}(${this.objectArgumentValues(b).join(', ')})`;
         }
         case 'arcade_objectField':return `${this.objectClassExport.receiver(b)}.${this.objectFieldName(b)}`;
-        case 'arcade_callObjectMethod':return `${this.objectClassExport.receiver(b,false,true)}.${this.objectFieldName(b,'METHOD')}(${this.objectArgumentValues(b).join(', ')})`;
+        case 'arcade_callObjectMethod': {
+            const entry=this.callableExports?.get(this.target);
+            if(entry?.graph.plan.version===2)try {
+                if(!this.objectClassExport.classCallableProvider(this.target).expressionType(b))throw Error('Class callback method call lacks actual current typed arguments');
+            }catch(error){this.note(error.message);return this.na();}
+            return `${this.objectClassExport.receiver(b,false,true)}.${this.objectFieldName(b,'METHOD')}(${this.objectArgumentValues(b).join(', ')})`;
+        }
         case 'arcade_createCallable': {
             const entry=this.callableExports?.get(this.target);
             if(!entry){this.note('Callable creation needs qualified lexical declaration/current body export');return this.na();}
@@ -1144,7 +1150,10 @@ class ArcadeEmitter {
         }
         case 'arcade_callCallable': {
             if(!this.callableExports?.has(this.target)){this.note('Callable invocation needs qualified lexical current-body export');return this.na();}
-            try{return `(${this.arrayValue(b,'CALLABLE')})(${this.callableArgumentValues(b).join(', ')})`;}catch(error){this.note(error.message);return this.na();}
+            try{
+                if(this.callableExports.get(this.target).graph.plan.version===2&&!this.objectClassExport.classCallableProvider(this.target).expressionType(b))throw Error('Class callback invocation lacks actual current typed receiver and arguments');
+                return `(${this.arrayValue(b,'CALLABLE')})(${this.callableArgumentValues(b).join(', ')})`;
+            }catch(error){this.note(error.message);return this.na();}
         }
         case 'arcade_callFunction': {
             const code = this.literalInput(b, 'NAME');
@@ -2207,7 +2216,15 @@ class ArcadeEmitter {
             return;
         }
         case 'arcade_setLocal': {
-            if(this.currentCallableContext){try{push(`${this.currentCallableContext.local(this.literalInput(b,'NAME'))} = ${this.arrayValue(b,'VALUE')}`);}catch(error){this.note(error.message);}return;}
+            if(this.currentCallableContext){
+                try {
+                    const id=Object.entries(this.blocks).find(([,block])=>block===b)?.[0];
+                    const generated=this.currentCallableContext.generatedLocal?.(id);
+                    if(generated)push(`${generated.first?'let ':''}${generated.name}${generated.first?': '+renderCallableSignature(generated.type):''} = ${this.arrayValue(b,'VALUE')}`);
+                    else if(this.currentCallableContext.discardLocal?.(id))push(this.arrayValue(b,'VALUE'));
+                    else push(`${this.currentCallableContext.local(this.literalInput(b,'NAME'),true)} = ${this.arrayValue(b,'VALUE')}`);
+                }catch(error){this.note(error.message);}return;
+            }
             if(this.currentClassConstructor){const computed=this.arrayValue(b,'VALUE');if(/^super\(/.test(computed)){push(computed);return;}}
             const name = this.literalInput(b, 'NAME');
             if (!name || !/^[A-Za-z_]\w*$/.test(name) || !this.currentLocalNames) {
@@ -3307,7 +3324,7 @@ class ArcadeEmitter {
             if(!declarations.length)continue;
             let envelope;try {envelope=JSON.parse(literal(declarations[0],'METADATA'));} catch(_){this.note('Callable export requires fixed lexical declaration metadata');continue;}
             try {
-                const graph=inspectCallableExportGraph(target,envelope.plan,literal);
+                const graph=inspectCallableExportGraph(target,envelope.plan,literal,envelope.version===2&&this.opts.classCallablePrototype?{classProvider:this.objectClassExport.classCallableProvider(target)}:{});
                 validateCallableCurrentBodyTypes(graph,literal);
                 if(this.clonable.has(target.name))throw Error('Callable lexical export on clone targets is not qualified');
                 for(const [bindingId,row] of graph.globalBindings) {
@@ -3441,8 +3458,8 @@ class ArcadeEmitter {
         }
 
         for(const cell of this.sourceReferenceCells.values())cell.ts=this.varName(cell.target,cell.name);
-        this.prepareCallableExport();
         this.objectClassExport=prepareObjectClassExport(this);
+        this.prepareCallableExport();
         const imageParameterTypes = this.imageProcedureParameters();
         const scalarFlow=scalarExportFlow(this.project,block=>this.isBoolean(block),this.sourceScalarCells);
         for(const [key,parameters] of scalarFlow.definitions) {
@@ -3508,11 +3525,16 @@ class ArcadeEmitter {
                 let script = [];
                 // An Arcade hat's locals (arcade_setLocal) are declared in that run, not as file globals.
                 const scoped = (emitBody, parameters = []) => {
-                    const saved = this.currentLocalNames;
+                    const saved = this.currentLocalNames,savedContext=this.currentCallableContext;
                     this.currentLocalNames = new Set();
+                    const entry=this.callableExports?.get(t);
+                    if(entry?.graph.plan.version===2){
+                        const creates=new Set(entry.graph.plan.sites.filter(site=>site.createdIn===entry.graph.plan.module).map(site=>entry.graph.creates.get(site.id)));
+                        this.currentCallableContext=this.objectClassExport.classCallableProvider(t).contextForModuleRoot(b,entry.emitter,creates);
+                    }
                     const lines = emitBody();
                     const locals = [...this.currentLocalNames].filter(name => !parameters.includes(name));
-                    this.currentLocalNames = saved;
+                    this.currentLocalNames = saved;this.currentCallableContext=savedContext;
                     const scope = `${t.name}:script:${Object.keys(this.blocks).find(id => this.blocks[id] === b)}`;
                     return [...locals.map(name => this.localDeclaration(name, scope)), ...lines];
                 };
@@ -3614,11 +3636,15 @@ class ArcadeEmitter {
                         this.use('gone');
                         params.unshift('self: Sprite');
                     }
-                    const saved = this.currentLocalNames;
+                    const saved = this.currentLocalNames,savedContext=this.currentCallableContext;
                     this.currentLocalNames = new Set();
+                    if(callableEntry?.graph.plan.version===2){
+                        const creates=new Set(callableEntry.graph.plan.sites.filter(site=>site.createdIn===callableEntry.graph.plan.module).map(site=>callableEntry.graph.creates.get(site.id)));
+                        this.currentCallableContext=this.objectClassExport.classCallableProvider(this.target).contextForModuleRoot(b,callableEntry.emitter,creates);
+                    }
                     script = this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])], [], !this.managedValueProcedures.has(key));
                     const locals = [...this.currentLocalNames].filter(name => !names.includes(name));
-                    this.currentLocalNames = saved;
+                    this.currentLocalNames = saved;this.currentCallableContext=savedContext;
                     const fn = this.fnNames.get(key);
                     // A procedure that returns a value (arcade_returnValue) is typed by
                     // what flows out of it; one that falls off its end returns undefined, as in PXT.
@@ -3903,7 +3929,7 @@ export function projectToArcade (project, opts = {}) {
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`
     };
-    if(e.callableExports.size && !opts.callableLexicalPrototype) {
+    if(e.callableExports.size && !opts.callableLexicalPrototype && !opts.classCallablePrototype) {
         // Approval covers the complete reconstructed current program, including
         // adjacent functions; lexical metadata cannot grant a broader surface.
         const gate=callableSourceGate(parseMakeCodeTs(projectTs,{parameterDefaults:true,
