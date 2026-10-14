@@ -64,6 +64,7 @@ export class RenodeArenaSession {
             // Reserve only configuration controls while startup is pending;
             // native motors and clock ownership remain unchanged until a frame.
             hub.configurationOwner = this;hub.changed();
+            if (this.closed) return;
             await this.call('session.start', this.backend ? {backend: this.backend, ...(this.topology !== 'default' ? {topology: this.topology} : {})} : {});
             this.started = true;
             if (this.closed) return;
@@ -104,6 +105,7 @@ export class RenodeArenaSession {
                 if (this.closed) return;
             }
             const inputs = this.acceptFrame(first);
+            if (this.closed) return;
             this.adapter.bridge.hubState.externalBackend = this;
             await this.call('arena.inputs.write', inputs);
             if (this.closed) return;
@@ -119,8 +121,10 @@ export class RenodeArenaSession {
                             closed: () => this.closed,
                             onFrame: frame => {
                                 this.acceptFrame(frame);
+                                if (this.closed) return;
                                 this.latestFrame = frame;
                                 this.observeOutput(frame);
+                                if (this.closed) return;
                                 this.onFrame(this.adapter.bridge.snapshot());
                             }});
                     }
@@ -347,6 +351,7 @@ export class RenodeArenaSession {
             if (this.closed) throw new Error('NuttX session is closed');
             await this.verifyDualFrame();
             const reply = await this.programClient[operation]();
+            if (this.closed) throw new Error('NuttX session is closed');
             if (operation === 'load') { this.loaded = true; this.retainedProgram = true; }
             this.observeProgram(reply);
             return reply;
