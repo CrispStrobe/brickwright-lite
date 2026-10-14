@@ -3448,6 +3448,13 @@ attribution, deadline fix or full G02 completion is claimed.
 
 ## SPIKE remaining lifecycle boundaries — 2026-10-13
 
+Continuation candidate `lane/spike-g02-terminal-fences-20261014` addresses
+synchronous Stop from final frame/program-state callbacks within this same
+session/test envelope. Three baseline failures, 34 passing affected host
+controls and two detected fence mutations are recorded. Fresh installed own
+NuttX cancellation/recovery and exact-head CI remain pending; no full G02 claim.
+
+
 CLAIMED — Codex SPIKE integration, `lane/spike-g02-lifecycle-20261013`.
 Envelope: `overlay/scratch-gui/src/lib/spike-arena/renode-arena-session.js`,
 `code-run-feedback.js` in that directory,

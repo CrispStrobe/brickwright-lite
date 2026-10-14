@@ -6,6 +6,22 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Stop from a terminal frame callback candidate — 2026-10-14
+
+A focused host control found that firmware polling could notify completion after
+its frame observer had synchronously stopped the session. The NuttX program-state
+observer could invalidate the session at the same boundary. The candidate checks
+closure after each observer so Stop wins before any subsequent completion callback.
+
+Three new authored-boundary controls fail on the baseline: the legacy program
+frame, the NuttX frame, and the NuttX program-state callback. All 34 affected
+session controls pass with the candidate, including existing MicroPython final
+sampling and generation cases. Removing either fence is detected. These are
+actual-method host controls, not guest or hardware evidence. Fresh source-bound
+installed own-guest cancellation/recovery and enabled exact-head CI remain
+required before adoption. No native/Rust, firmware, Runtime, model pin, request
+deadline or physical-accuracy change is proposed.
+
 ## Native startup observation candidate — 2026-10-13
 
 The merged [PR891](https://github.com/CrispStrobe/brickwright-lite/pull/891)
