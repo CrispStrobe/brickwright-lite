@@ -40,6 +40,7 @@ export function namedArrayItemExportAuthority(project,name,isBoolean,sourceRefer
         }
         if(node.opcode==='arrays_valueUnary')return primitive(input(target,node,'VALUE'),seen);
         if(node.opcode==='arrays_valueBinary')return primitive(input(target,node,'LEFT'),seen)&&primitive(input(target,node,'RIGHT'),seen);
+        if(node.opcode==='operator_add')return primitive(input(target,node,'NUM1'),seen)&&primitive(input(target,node,'NUM2'),seen);
         return false;
     };
     const origins=(entry,seen=new Set())=>{

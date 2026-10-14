@@ -1,6 +1,6 @@
 import {tsText} from './translate-base.js';
 import {parseMakeCodeTs} from './ts-import.js';
-import {LEGACY_JSON_SOURCE,LEGACY_PARSE_SOURCE} from './legacy-array-values.js';
+import {LEGACY_JSON_SOURCE,LEGACY_PARSE_SOURCE,ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
 
 // The aggregate branch is intentionally distinct from scalar results. Native
 // references need separate graph authority; typeof alone cannot identify them.
@@ -98,10 +98,13 @@ export function lowerNamedArrayItemHelpers(program) {
     for(const fn of functions)for(const parse of parseHelpers)for(const [kind,template]of mutatorTemplates)
         if(exact(fn,template,new Map([[fn.name,template.name],[parse.name,parseTemplate.name]])))mutators.set(fn.name,{fn,kind});
     const passive=new Set(jsonHelpers.map(fn=>fn.name));
+    const arrayAccessTemplate=parsed(ARRAY_ACCESS_SOURCE);
+    for(const fn of functions)if(symbolCounts.get(fn.name)===1 &&
+        exact(fn,arrayAccessTemplate,new Map([[fn.name,arrayAccessTemplate.name]])))passive.add(fn.name);
     for(const fn of functions)for(const parse of parseHelpers)for(const template of passiveTemplates)
-        if(exact(fn,template,new Map([[fn.name,template.name],[parse.name,parseTemplate.name]])))passive.add(fn.name);
+        if(symbolCounts.get(fn.name)===1 && exact(fn,template,new Map([[fn.name,template.name],[parse.name,parseTemplate.name]])))passive.add(fn.name);
     const globals=new Map(program.body.filter(node=>node.type==='Declaration').flatMap(node=>node.decls.map(decl=>[decl.name,decl])));
-    const calls=[],writes=new Map(),unsupported=[],possibleMutators=[],members=[],foreignCalls=[],indexWrites=[],nestedRootDeclarations=[];
+    const calls=[],writes=new Map(),unsupported=[],possibleMutators=[],members=[],foreignCalls=[],indexWrites=[],nestedRootDeclarations=[],escapedMutators=new Set();
     const visit=(node,shadow=new Set(),parent=null,key=null,depth=0)=>{
         if (!node || typeof node!=='object') return;
         if (Array.isArray(node)) {
@@ -119,6 +122,8 @@ export function lowerNamedArrayItemHelpers(program) {
         }
         if (node.type==='Identifier' && getters.has(node.name) && !shadow.has(node.name) &&
             !(parent?.type==='Call' && key==='callee')) unsupported.push('Named Array getter helper escapes its validated direct call');
+        if(node.type==='Identifier' && mutators.has(node.name) && !shadow.has(node.name) &&
+            !(parent?.type==='Call' && key==='callee'))escapedMutators.add(node.name);
         if (node.type==='Call' && node.callee?.type==='Identifier' && getters.has(node.callee.name) && !shadow.has(node.callee.name)) {
             const receiver=node.args[0];
             if (node.args.length!==2 || receiver?.type!=='Identifier' || shadow.has(receiver.name) || !globals.has(receiver.name))
@@ -128,7 +133,8 @@ export function lowerNamedArrayItemHelpers(program) {
         if(node.type==='Call' && node.callee?.type==='Identifier' && mutators.has(node.callee.name) && !shadow.has(node.callee.name))
             possibleMutators.push({node,shadow,spec:mutators.get(node.callee.name)});
         if(node.type==='Call' && node.callee?.type==='Member' && ['push','unshift','insertAt','set'].includes(node.callee.name))members.push({node,shadow});
-        if(node.type==='Call' && node.callee?.type==='Identifier' && !getters.has(node.callee.name) && !mutators.has(node.callee.name) && !passive.has(node.callee.name))foreignCalls.push({node,shadow});
+        if(node.type==='Call' && node.callee?.type==='Identifier' && !getters.has(node.callee.name) && !mutators.has(node.callee.name) && (!passive.has(node.callee.name) || shadow.has(node.callee.name)))foreignCalls.push({node,shadow});
+        if(node.type==='Assignment' && node.left?.type==='Identifier' && (passive.has(node.left.name) || mutators.has(node.left.name)) && !shadow.has(node.left.name))unsupported.push('Named Array passive or mutator helper requires its unchanged actual lexical binding');
         if(node.type==='Assignment' && node.left?.type==='Index')indexWrites.push({node,shadow});
         if (node.type==='Assignment' && node.left?.type==='Identifier' && globals.has(node.left.name) && !shadow.has(node.left.name)) {
             const list=writes.get(node.left.name) || [];list.push(node);writes.set(node.left.name,list);
@@ -221,5 +227,9 @@ export function lowerNamedArrayItemHelpers(program) {
         if (node.type==='Assignment' && node.left?.type==='Identifier' && registries.has(node.left.name) && !shadow.has(node.left.name)) copy.right=value(node.right,node.left.name);
         return copy;
     };
-    return {program:rewrite({...program,body:program.body.filter(node=>!(node.type==='FunctionDeclaration' && getters.has(node.name)))}),unsupported:[]};
+    // Replaced direct calls already use native words. Keep a validated helper
+    // body only when a remaining actual use still needs its procedure semantics.
+    const removedMutators=new Set([...mutators.keys()].filter(name=>!escapedMutators.has(name) &&
+        possibleMutators.filter(use=>use.node.callee.name===name).every(use=>recognizedMutators.has(use.node))));
+    return {program:rewrite({...program,body:program.body.filter(node=>!(node.type==='FunctionDeclaration' && (getters.has(node.name) || removedMutators.has(node.name))))}),unsupported:[]};
 }

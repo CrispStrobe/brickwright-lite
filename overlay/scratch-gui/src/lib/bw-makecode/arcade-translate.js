@@ -4848,7 +4848,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const callableSourceParsed=parseMakeCodeTs(source, {parameterDefaults: true, retainParentheses: true, retainWhenUsed:true, retainClassHeritage:true, retainCallableMetadata:opts.callableLexicalPrototype===true});
     const callableEligibility=opts.callableLexicalPrototype===true?callableSourceGate(callableSourceParsed,{normalize:true}):null;
     const callableSourceInput=callableEligibility?.program || callableSourceParsed;
-    const namedArrayInputs=lowerNamedArrayItemHelpers(callableSourceInput);
+    const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput));
     const parsed = lowerSourceLoopControl(inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
         lowerAnimationAssets(namedArrayInputs.program))), source), source), source), source))));
     const containsPaletteCall = node => {

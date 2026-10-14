@@ -50,3 +50,11 @@ test('String addition cannot launder a reference envelope through legacy JSON in
     const target=stage({left:{opcode:'text',fields:{TEXT:['{"bwReference":','']}},right:{opcode:'text',fields:{TEXT:['{"kind":"array"}}','']}},joined:{opcode:'arrays_valueBinary',inputs:{LEFT:ref('left'),RIGHT:ref('right'),OP:text('+')}},push:push('items',ref('joined'))});
     assert.equal(check([target]).ok,false);
 });
+
+test('numeric addition of proved primitive inputs preserves a nested alias writer without admitting opaque operands',()=>{
+    const target=stage({alias:variable('alias'),sum:{opcode:'operator_add',inputs:{NUM1:[1,[4,'0']],NUM2:[1,[4,'4']]}},write:mutate('alias',ref('sum'))});
+    assert.equal(check([target]).ok,true);
+    target.blocks.opaque={opcode:'arcade_createImage'};
+    target.blocks.sum.inputs.NUM2=ref('opaque');
+    assert.equal(check([target]).ok,false);
+});

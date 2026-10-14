@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 import {NAMED_ARRAY_GET_SOURCE,lowerNamedArrayItemHelpers} from '../overlay/scratch-gui/src/lib/bw-makecode/named-array-item-helpers.js';
-import {LEGACY_JSON_SOURCE} from '../overlay/scratch-gui/src/lib/bw-makecode/legacy-array-values.js';
+import {LEGACY_JSON_SOURCE,LEGACY_PARSE_SOURCE,ARRAY_ACCESS_SOURCE} from '../overlay/scratch-gui/src/lib/bw-makecode/legacy-array-values.js';
 const parse=source=>parseMakeCodeTs(source,{parameterDefaults:true,retainParentheses:true});
 const lower=body=>lowerNamedArrayItemHelpers(parse(LEGACY_JSON_SOURCE+'\n'+NAMED_ARRAY_GET_SOURCE+'\n'+body));
 const nodes=node=>!node || typeof node!=='object'?[]:[node,...Object.values(node).flatMap(value=>Array.isArray(value)?value.flatMap(nodes):nodes(value))];
@@ -72,4 +72,29 @@ test('nested If and loop locals never bind to a same-named global registry',()=>
     }
     const root=lower('var actual:any[]=[1];if(true){var actual:any[]=[2]}let out=__bwNamedArrayGet(actual,0)');
     assert.ok(root.unsupported.some(message=>/nested root declaration/.test(message)));
+});
+
+test('whole readonly Array receiver helper preserves nested aliases but refuses changed or shadowed writers',()=>{
+    const source=ARRAY_ACCESS_SOURCE+';let actual:any[]=[[1]];let alias=actual;let row=alias[0];__bwArrayAccess(row).push(4);let value=__bwNamedArrayGet(actual,0)';
+    assert.deepEqual(lower(source).unsupported,[]);
+    for(const body of [
+        ARRAY_ACCESS_SOURCE.replace('return array','array.push(external());return array')+';let actual:any[]=[[1]];__bwArrayAccess(actual);let value=__bwNamedArrayGet(actual,0)',
+        ARRAY_ACCESS_SOURCE+';let actual:any[]=[[1]];__bwArrayAccess=external;__bwArrayAccess(actual);let value=__bwNamedArrayGet(actual,0)',
+        ARRAY_ACCESS_SOURCE+';let actual:any[]=[[1]];function f(){function __bwArrayAccess(array:any[]){array.push(external())}__bwArrayAccess(actual)}f();let value=__bwNamedArrayGet(actual,0)',
+        ARRAY_ACCESS_SOURCE+';let actual:any[]=[[1]];let row=actual[0];__bwArrayAccess(row).push(external());let value=__bwNamedArrayGet(actual,0)'
+    ])assert.ok(lower(body).unsupported.length,body);
+});
+
+test('validated mutator procedures disappear only when all actual calls use reconstructed native words',()=>{
+    const helper=LEGACY_PARSE_SOURCE+';function ownedPush(array:any[],value:any):void {if(array)array.push(__bwNamedParseValue(value))}';
+    const body='let actual:any[]=[1];ownedPush(actual,"2");let value=__bwNamedArrayGet(actual,0)';
+    const lowered=lower(helper+';'+body);
+    assert.deepEqual(lowered.unsupported,[]);
+    assert.ok(!lowered.program.body.some(node=>node.type==='FunctionDeclaration' && node.name==='ownedPush'));
+    for(const extra of ['ownedPush([3],"4")','let held=ownedPush']){
+        const retained=lower(helper+';'+body+';'+extra);
+        assert.deepEqual(retained.unsupported,[]);
+        assert.ok(retained.program.body.some(node=>node.type==='FunctionDeclaration' && node.name==='ownedPush'),extra);
+    }
+    assert.ok(lower(helper+';ownedPush=external;'+body).unsupported.length);
 });
