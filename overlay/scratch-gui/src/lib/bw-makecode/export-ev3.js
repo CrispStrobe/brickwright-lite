@@ -391,7 +391,9 @@ class Ev3Emitter extends Emitter {
         const input = b.inputs && b.inputs.TEXT;
         const slot = input && input[1];
         const isText = (Array.isArray(slot) && slot[0] === 10) || (join && ['operator_join', 'operator_letter_of'].includes(join.opcode)) ||
-            (Array.isArray(slot) && slot[0] === 12 && this.textVars && this.textVars.has(this.variableName(slot[1])));
+            (Array.isArray(slot) && slot[0] === 12 && this.textVars && this.textVars.has(this.variableName(slot[1]))) ||
+            // A text-and-number variable (`any`, E16) is shown as text: as a number its text would not show.
+            (Array.isArray(slot) && slot[0] === 12 && this.mixedVars && this.mixedVars.has(this.variableName(slot[1])));
         if (!isText) return column === 1 ? `brick.showNumber(${this.value(b, 'TEXT')}, ${line})` : `brick.printNumber(${this.value(b, 'TEXT')}, ${at})`;
         return column === 1 ? `brick.showString(${this.textOperand(b, 'TEXT')}, ${line})` : `brick.printString(${this.textOperand(b, 'TEXT')}, ${at})`;
     }

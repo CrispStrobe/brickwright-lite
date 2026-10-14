@@ -878,35 +878,95 @@ export class Emitter {
 const TEXT_REPORTERS = new Set(['operator_join', 'operator_letter_of', 'microbitplus_radiolaststr']);
 
 /**
- * The variables this target only ever sets to TEXT (a quoted literal or a
- * text reporter), and never changes by a number. Anything mixed stays a
- * number, as before.
+ * What each variable of this target holds, for its `let` (tasks E13, E16):
+ * only ever TEXT (a quoted literal, a text reporter, a text array's item, a
+ * `string` parameter) → `text`; text AND numbers → `mixed`, declared `any`
+ * (a Scratch variable has no type; pxt-microbit and pxt-ev3 accept `any`);
+ * anything else stays a number, as before.
+ *
+ * A variable set from another variable holds what that one holds (E16): the
+ * importer copies a procedure's text result through `_mcN = f_result`, and a
+ * `let g: string` with no value imports as `set g to 0` before its text, so
+ * a copy was a number and the re-export did not compile. Copies are spread
+ * to a fixed point (kinds are only ever added, so it ends); a variable
+ * nothing sets is its declared 0, a number where it is copied.
+ *
+ * A text-and-number variable that is also COMPUTED WITH — an operand of
+ * arithmetic, changed by, or compared with a number — is not `any`:
+ * TypeScript concatenates `any + 1` where Scratch adds, a silent wrong
+ * value. It stays a number, as before, so pxt refuses it by name.
+ *
+ * @returns {{text: Set<string>, mixed: Set<string>}}
  */
-function textVariables (blocks, emitter, textArrays = new Set(), parameterType = () => null) {
+function variableTypes (blocks, emitter, textArrays = new Set(), parameterType = () => null) {
     const kinds = new Map();
-    const mark = (name, kind) => {
-        const k = kinds.get(name) || new Set();
-        k.add(kind);
-        kinds.set(name, k);
+    const kindsOf = name => {
+        if (!kinds.has(name)) kinds.set(name, new Set());
+        return kinds.get(name);
     };
+    const copies = [];                           // [from variable, to variable]
+    const computed = new Set();                  // read as a number
+    const variableIn = slot => {
+        if (Array.isArray(slot)) return slot[0] === 12 ? emitter.variableName(slot[1]) : null;
+        const r = typeof slot === 'string' ? blocks[slot] : null;
+        return r && r.opcode === 'data_variable' ? emitter.variableName(r.fields.VARIABLE[0]) : null;
+    };
+    const slotOf = (b, input) => b.inputs && b.inputs[input] && b.inputs[input][1];
+    // A number, or a text that reads as one: what a comparison then does numerically.
+    const isNumberLiteral = slot => Array.isArray(slot) && ((slot[0] >= 4 && slot[0] <= 8) ||
+        ((slot[0] === 10 || slot[0] === 11) && NUMERIC_TEXT.test(String(slot[1]).trim())));
     for (const b of Object.values(blocks)) {
+        for (const input of NUMBER_SLOTS[b && b.opcode] || []) {
+            const name = variableIn(slotOf(b, input));
+            if (name) computed.add(name);
+        }
+        const [one, two] = COMPARED_SLOTS[b && b.opcode] || [];
+        if (one) {
+            if (isNumberLiteral(slotOf(b, two)) && variableIn(slotOf(b, one))) computed.add(variableIn(slotOf(b, one)));
+            if (isNumberLiteral(slotOf(b, one)) && variableIn(slotOf(b, two))) computed.add(variableIn(slotOf(b, two)));
+        }
         if (!b || !b.fields || !b.fields.VARIABLE) continue;
         const name = emitter.variableName(b.fields.VARIABLE[0]);
-        if (b.opcode === 'data_changevariableby') mark(name, 'number');
+        if (b.opcode === 'data_changevariableby') {
+            kindsOf(name).add('number');
+            computed.add(name);
+        }
         if (b.opcode !== 'data_setvariableto') continue;
         const slot = b.inputs && b.inputs.VALUE && b.inputs.VALUE[1];
-        if (Array.isArray(slot)) {
+        const r = typeof slot === 'string' ? blocks[slot] : null;
+        if (Array.isArray(slot) && slot[0] === 12) {
+            copies.push([emitter.variableName(slot[1]), name]);
+        } else if (Array.isArray(slot)) {
             const isText = (slot[0] === 10 || slot[0] === 11) && !/^(true|false)$/.test(String(slot[1]));
-            mark(name, isText ? 'text' : 'number');
+            kindsOf(name).add(isText ? 'text' : 'number');
+        } else if (r && r.opcode === 'data_variable') {
+            copies.push([emitter.variableName(r.fields.VARIABLE[0]), name]);
+        } else if (r && r.opcode === 'argument_reporter_string_number') {
+            // A procedure parameter: as procedureParameterTypes typed it.
+            const type = parameterType(slot);
+            if (type === 'string' || type === 'any') kindsOf(name).add('text');
+            if (type !== 'string') kindsOf(name).add('number');
         } else {
-            const r = typeof slot === 'string' ? blocks[slot] : null;
             const fromTextArray = r && r.opcode === 'arrays_get' && textArrays.has(arrayNameOf(r, blocks, emitter));
-            // A procedure parameter typed `string` (procedureParameterTypes) is text too.
-            const fromTextParameter = r && r.opcode === 'argument_reporter_string_number' && parameterType(slot) === 'string';
-            mark(name, r && (TEXT_REPORTERS.has(r.opcode) || fromTextArray || fromTextParameter) ? 'text' : 'number');
+            kindsOf(name).add(r && (TEXT_REPORTERS.has(r.opcode) || fromTextArray) ? 'text' : 'number');
         }
     }
-    return new Set([...kinds].filter(([, k]) => k.size === 1 && k.has('text')).map(([name]) => name));
+    for (let changed = true; changed;) {
+        changed = false;
+        for (const [from, to] of copies) {
+            const source = kindsOf(from);
+            const target = kindsOf(to);
+            for (const k of source) if (!target.has(k)) changed = !!target.add(k);
+        }
+        if (changed) continue;
+        // Only once the copies are settled: a variable still holding nothing is 0.
+        for (const [from] of copies) if (!kindsOf(from).size) changed = !!kindsOf(from).add('number');
+    }
+    const named = test => new Set([...kinds].filter(([, k]) => test(k)).map(([name]) => name));
+    return {
+        text: named(k => k.size === 1 && k.has('text')),
+        mixed: new Set([...named(k => k.has('text') && k.has('number'))].filter(name => !computed.has(name)))
+    };
 }
 
 /** A literal that reads as a number: `"5"` in a call's text slot is Scratch's 5. */
@@ -921,6 +981,8 @@ const NUMBER_SLOTS = {
     operator_divide: ['NUM1', 'NUM2'], operator_mod: ['NUM1', 'NUM2'], operator_mathop: ['NUM'],
     operator_round: ['NUM'], operator_random: ['FROM', 'TO'], data_changevariableby: ['VALUE']
 };
+/** A comparison's operands: `any` against a number compares as JavaScript does, not as Scratch (E16). */
+const COMPARED_SLOTS = {operator_lt: ['OPERAND1', 'OPERAND2'], operator_gt: ['OPERAND1', 'OPERAND2'], operator_equals: ['OPERAND1', 'OPERAND2']};
 /** Inputs emitted as they are into a MakeCode `string` parameter: a number there does not compile. */
 const TEXT_SLOTS = {
     microbitplus_showtext: ['TEXT'], microbitplus_scrolltext: ['TEXT'], microbitplus_radiosendstr: ['TEXT']
@@ -959,13 +1021,13 @@ const TEXT_HINT_SLOTS = {operator_length: ['STRING'], operator_letter_of: ['STRI
  * calling `show(q)`, show also given "hi": q is text too) — spread to a
  * fixed point, which only ever adds kinds, so it ends. A variable set from a
  * parameter, and a parameter given a variable, are settled by the caller,
- * which iterates this with textVariables until neither changes.
+ * which iterates this with variableTypes until neither changes.
  *
  * @returns {{types: Map<string, Array<string>>, parameterType: function(string): ?string}}
  *   types by proccode, in argument order; parameterType(reporterId) for an
  *   `argument_reporter_string_number` block
  */
-export function procedureParameterTypes (blocks, emitter, textVars = new Set(), textArrays = new Set()) {
+export function procedureParameterTypes (blocks, emitter, textVars = new Set(), textArrays = new Set(), mixedVars = new Set()) {
     const defs = new Map();                      // proccode -> {names, tokens}
     const definitionOf = new Map();              // definition block id -> proccode
     for (const [id, b] of Object.entries(blocks)) {
@@ -1007,6 +1069,8 @@ export function procedureParameterTypes (blocks, emitter, textVars = new Set(), 
         const i = scope === null ? -1 : indexIn(scope, emitter.field(r, 'VALUE'));
         return i < 0 ? null : `${scope}\0${i}`;
     };
+    // What a variable passed in a call holds: text, `any` (both), or a number.
+    const variableKind = name => (textVars.has(name) ? 'text' : mixedVars.has(name) ? 'any' : 'number');
     // What a value passed in a call is.
     const kindOf = slot => {
         if (Array.isArray(slot)) {
@@ -1015,13 +1079,13 @@ export function procedureParameterTypes (blocks, emitter, textVars = new Set(), 
                 if (/^(true|false)$/.test(String(text))) return 'number';     // value() writes 1 / 0
                 return NUMERIC_TEXT.test(String(text).trim()) ? 'numeric-text' : 'text';
             }
-            if (type === 12) return textVars.has(emitter.variableName(text)) ? 'text' : 'number';
+            if (type === 12) return variableKind(emitter.variableName(text));
             return type >= 4 && type <= 8 ? 'number' : null;
         }
         const r = typeof slot === 'string' ? blocks[slot] : null;
         if (!r) return null;
         if (TEXT_REPORTERS.has(r.opcode)) return 'text';
-        if (r.opcode === 'data_variable') return textVars.has(emitter.variableName(r.fields.VARIABLE[0])) ? 'text' : 'number';
+        if (r.opcode === 'data_variable') return variableKind(emitter.variableName(r.fields.VARIABLE[0]));
         if (r.opcode === 'arrays_get') return textArrays.has(arrayNameOf(r, blocks, emitter)) ? 'text' : 'number';
         if (r.opcode === 'argument_reporter_string_number') return null;    // a flow, below
         return 'number';
@@ -1032,7 +1096,8 @@ export function procedureParameterTypes (blocks, emitter, textVars = new Set(), 
         return evidence.get(key);
     };
     const note = (proccode, i, kind) => {
-        if (i >= 0 && kind) kinds(`${proccode}\0${i}`).add(kind);
+        if (i < 0 || !kind) return;
+        for (const k of kind === 'any' ? ['text', 'number'] : [kind]) kinds(`${proccode}\0${i}`).add(k);
     };
     const flows = [];                            // [from parameter, to parameter]
     for (const [id, b] of Object.entries(blocks)) {
@@ -1238,18 +1303,20 @@ export function projectToMakeCodeTs (project, opts = {}) {
         // then `t = "COLD"` is a program MakeCode refuses (census 2026-09-27).
         const textArrays = textArrayNames(blocks, emitter);
         // A variable set from a text parameter is text, and a parameter given a
-        // text variable is text: the two are settled together (E13).
-        let text = textVariables(blocks, emitter, textArrays);
-        let parameters = procedureParameterTypes(blocks, emitter, text, textArrays);
+        // text variable is text: the two are settled together (E13, E16).
+        let variables = variableTypes(blocks, emitter, textArrays);
+        let parameters = procedureParameterTypes(blocks, emitter, variables.text, textArrays, variables.mixed);
+        const sameSet = (a, b) => a.size === b.size && [...a].every(n => b.has(n));
         for (let round = 0; round < 16; round++) {
-            const nextText = textVariables(blocks, emitter, textArrays, parameters.parameterType);
-            const next = procedureParameterTypes(blocks, emitter, nextText, textArrays);
-            const same = nextText.size === text.size && [...nextText].every(n => text.has(n)) &&
+            const nextVariables = variableTypes(blocks, emitter, textArrays, parameters.parameterType);
+            const next = procedureParameterTypes(blocks, emitter, nextVariables.text, textArrays, nextVariables.mixed);
+            const same = sameSet(nextVariables.text, variables.text) && sameSet(nextVariables.mixed, variables.mixed) &&
                 JSON.stringify([...next.types]) === JSON.stringify([...parameters.types]);
-            text = nextText;
+            variables = nextVariables;
             parameters = next;
             if (same) break;
         }
+        const text = variables.text;
         emitter.parameterTypes = parameters.types;
         const sprites = spriteNames(blocks, emitter);
         const images = imageNames(blocks, emitter);
@@ -1257,13 +1324,15 @@ export function projectToMakeCodeTs (project, opts = {}) {
         emitter.spriteArrays = new Set([...sprites.arrays, ...images.arrays]);
         emitter.imageVars = images.vars;
         emitter.textVars = text;
+        emitter.mixedVars = variables.mixed;
         for (const entry of Object.values(target.variables || {})) {
             const name = emitter.variableName(Array.isArray(entry) ? entry[0] : entry);
             if (declared.has(name)) continue;
             declared.add(name);
             lines.push(sprites.vars.has(name) ? `let ${name}: game.LedSprite = null` :
                 images.vars.has(name) ? `let ${name}: Image = null` :
-                    `let ${name} = ${text.has(name) ? '""' : '0'}`);
+                    variables.mixed.has(name) ? `let ${name}: any = 0` :
+                        `let ${name} = ${text.has(name) ? '""' : '0'}`);
         }
 
         // The body is emitted first because an array's name is only met
@@ -1331,9 +1400,10 @@ export function projectToMakeCodeTs (project, opts = {}) {
                 body.shift();
                 continue;
             }
-            const decl = m && lines.findIndex(l => l === `let ${m[1]} = 0` || l === `let ${m[1]} = ""`);
+            const decl = m && lines.findIndex(l => l === `let ${m[1]} = 0` || l === `let ${m[1]} = ""` || l === `let ${m[1]}: any = 0`);
             if (!m || decl < 0) break;
-            lines[decl] = `let ${m[1]} = ${m[2]}`;
+            // A text-and-number variable keeps its `any` (E16), else `let g = "a"` makes it a string.
+            lines[decl] = `let ${m[1]}${variables.mixed.has(m[1]) ? ': any' : ''} = ${m[2]}`;
             body.shift();
         }
         lines.push(...definitions);
