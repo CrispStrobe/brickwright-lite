@@ -4982,11 +4982,13 @@ module.exports = makeExt(`// Name: Arcade
         fillRect:(x,y,w,h,color)=>imageEngine.draw(image,'fillRect',x,y,w,h,color)};
     }
     printImageFont(args) {return this._fontGuard(()=>{
+      this._sdkFontValues.resolve(args.FONT);
       const image=this._image(args.IMAGE);if(!image)throw new Error('SDK Font printing needs an actual current Image');
       this._sdkFontValues.print(this._fontImageAdapter(image),String(Scratch.BWValues.decode(args.TEXT) ?? ''),Scratch.Cast.toNumber(args.X),Scratch.Cast.toNumber(args.Y),Scratch.Cast.toNumber(args.COLOR),args.FONT);
       this._refreshImage(image);
     });}
     printImageFontCenter(args) {return this._fontGuard(()=>{
+      this._sdkFontValues.resolve(args.FONT);
       const image=this._image(args.IMAGE);if(!image)throw new Error('SDK Font printing needs an actual current Image');
       this._sdkFontValues.printCenter(this._fontImageAdapter(image),String(Scratch.BWValues.decode(args.TEXT) ?? ''),Scratch.Cast.toNumber(args.Y),Scratch.Cast.toNumber(args.COLOR),args.FONT);
       this._refreshImage(image);

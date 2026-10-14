@@ -106,7 +106,7 @@ function create(runtime, values, bufferOwner) {
         },
         scale(ref, size) {
             live(); if (typeof size !== 'number') throw new Error('SDK Font scaling needs actual Number size');
-            return reference(initialize().image.scaledFont(resolve(ref), size));
+            const record=resolve(ref);return reference(initialize().image.scaledFont(record, size));
         },
         read(ref, field) {
             if (!FIELDS.has(field)) throw new Error('Unknown SDK Font field');
@@ -126,10 +126,10 @@ function create(runtime, values, bufferOwner) {
         resolve,
         textModule() {return initialize();},
         print(image, value, x, y, color, ref) {
-            live(); text.helpers.imagePrint(image, value, x, y, color, resolve(ref));
+            const record=resolve(ref);initialize().helpers.imagePrint(image, value, x, y, color, record);
         },
         printCenter(image, value, y, color, ref) {
-            live(); text.helpers.imagePrintCenter(image, value, y, color, resolve(ref));
+            const record=resolve(ref);initialize().helpers.imagePrintCenter(image, value, y, color, record);
         },
         dispose() {
             if (closed) return; closed = true; suspend();

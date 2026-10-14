@@ -169,6 +169,10 @@ test('Font creation and lifecycle revocation do not initialize glyph resources',
     const fonts=module.exports.create(f.runtime,values,f.bufferOwner);
     try{
         assert.equal(initialized,0);
+        const foreign=f.fonts.constant('font8');
+        for(const action of [()=>fonts.scale(foreign,2),()=>fonts.print(null,'A',0,0,1,foreign),()=>fonts.printCenter(null,'A',0,1,foreign)]){
+            assert.throws(action,/foreign, stale/);assert.equal(initialized,0,'invalid first Font must not materialize resources');
+        }
         fonts.guardBufferMutation(ordinary);assert.equal(initialized,0);
         f.runtime.emit('PROJECT_START');f.runtime.emit('PROJECT_LOADED');assert.equal(initialized,0);
         ordinary=f.bufferReference(new buffers.PxtBuffer(2));
