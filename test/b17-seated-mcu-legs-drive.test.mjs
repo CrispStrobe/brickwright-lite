@@ -8,11 +8,12 @@
  * CircuitDesigner.handleLoad loads it (Circuit.fromJSON, then the file's nets
  * or _syncNetlist), through bw-circuit-ui and bw-board as the app injects them.
  *
- * Up to bw-circuit-ui 0122af83 the 16 A2 benches (79-82, one file per chip)
- * stored the seated 8051 as `"terminals": []`; bw-board drives only declared
- * terminals, so all 160 wired port legs on them stood in their strips with
- * nothing able to drive them (driven high or low, each net read 0 V). Since
- * B17 fromJSON makes every seated leg a terminal.
+ * The 16 A2 benches (79-82, one file per chip) store the seated 8051 as
+ * `"terminals": []`, and bw-board drives only declared terminals. Up to
+ * bw-circuit-ui 5f336b24 fromJSON kept that list, so all 160 wired port legs
+ * on them stood in their strips with nothing able to drive them (driven high
+ * or low, each net read 0 V), and 624 seated MCUs had undeclared legs. Since
+ * bw-circuit-ui #83 (9a1f06e5) fromJSON makes every seated leg a terminal.
  *
  * Two checks per seated MCU, each failing with file, part, kind and legs:
  *   1. every seated leg is a terminal of the engine's part;
@@ -53,41 +54,52 @@ function load (data) {
     }
 }
 
-function census () {
-    const rows = [];
-    for (const dir of fs.readdirSync(EXAMPLES).sort()) {
-        const d = path.join(EXAMPLES, dir);
-        if (!fs.statSync(d).isDirectory()) continue;
-        for (const f of fs.readdirSync(d).sort()) {
-            if (!/^circuit.*\.json$/.test(f)) continue;
-            const data = JSON.parse(fs.readFileSync(path.join(d, f), 'utf8'));
-            const seated = (data.parts || []).filter(p => p && p.seat);
-            if (!seated.length) continue;
-            const c = load(data);
-            const b = c.board;
-            for (const raw of seated) {
-                // The seat as LOADED: a seat on a board the file does not
-                // carry is stale data that fromJSON drops (the circuit-flat
-                // twins), and those legs stand in no hole.
-                const part = c.parts.find(p => p.id === raw.id);
-                const ep = b.partMap && b.partMap.get(raw.id);
-                if (!ep || !part || !part.seat) continue;
-                const model = getDevice(ep.kind);
-                if (ep.kind !== 'mcu' && !(model && model.gpioFollowsPinStates)) continue;
-                rows.push({file: `${dir}/${f}`, raw, seat: part.seat, c});
-            }
-        }
-    }
-    return rows;
+/** Every gallery circuit file, as `<example>/<file>` paths. */
+function circuitFiles () {
+    return fs.readdirSync(EXAMPLES).sort()
+        .filter(dir => fs.statSync(path.join(EXAMPLES, dir)).isDirectory())
+        .flatMap(dir => fs.readdirSync(path.join(EXAMPLES, dir)).sort()
+            .filter(f => /^circuit.*\.json$/.test(f))
+            .map(f => `${dir}/${f}`));
 }
 
-const ROWS = census();
+/**
+ * Every MCU-surface part that is seated AFTER load. A stored seat on a board
+ * the file does not carry is stale data that fromJSON drops (the circuit-flat
+ * twins): those legs stand in no hole, so they are counted, not checked.
+ */
+function census () {
+    const rows = [];
+    const staleSeats = [];
+    for (const file of circuitFiles()) {
+        const data = JSON.parse(fs.readFileSync(path.join(EXAMPLES, file), 'utf8'));
+        const stored = (data.parts || []).filter(p => p && p.seat);
+        const c = stored.length ? load(data) : null;
+        for (const raw of stored) {
+            const part = c.parts.find(p => p.id === raw.id);
+            const ep = c.board.partMap && c.board.partMap.get(raw.id);
+            const model = ep ? getDevice(ep.kind) : null;
+            const mcu = ep && (ep.kind === 'mcu' || Boolean(model && model.gpioFollowsPinStates));
+            if (mcu && part && part.seat) rows.push({file, raw, seat: part.seat, c});
+            else if (mcu) staleSeats.push(file);
+        }
+    }
+    return {rows, staleSeats};
+}
+
+const {rows: ROWS, staleSeats: STALE_SEATS} = census();
 
 test('the census finds the gallery\'s seated MCUs, the A2 benches among them', () => {
     // 863 at sb3-creator c47b9680 (B17's measurement; 1036 files store a
     // seat, 173 of them on no board). A floor, so the gallery may grow but
     // the walk cannot silently find nothing.
     assert.ok(ROWS.length >= 850, `seated MCUs found: ${ROWS.length}`);
+    // The skipped set, reported: MCUs whose stored seat names a board the file
+    // does not carry (173 at B17). They are the flat twins, which carry no
+    // breadboard; an authored bench losing its seat at load is a finding.
+    console.log(`seated MCU-surface parts after load: ${ROWS.length}; stored seats dropped at load: ${STALE_SEATS.length}`);
+    assert.deepEqual(STALE_SEATS.filter(f => !/\/circuit-flat[.\w-]*\.json$/.test(f)), [],
+        'only circuit-flat twins may store a seat that does not survive load');
     const a2 = ROWS.filter(r => /^(79|80|81|82)-/.test(r.file));
     assert.equal(a2.length, 16, 'the 16 A2 benches (4 programs x 4 chip files)');
     assert.ok(a2.every(r => Array.isArray(r.raw.terminals) && r.raw.terminals.length === 0),
