@@ -928,6 +928,7 @@ const DEVICE_HELP = {
     eater6502: 'Builds for the breadboard 6502 workstation: W65C22 VIA, ACIA serial, keyboard, OLED or VGA circuits and debugger.',
     z80: 'Builds for the Z80 bench with OUT0–OUT7 and IN0–IN7 latch/buffer pins and its machine debugger.',
     stm32f030: 'Compiles and emulates the light-tier STM32F030 target. Serial bootloader and SWD flashing actions appear for pseudocode.',
+    esp8266: 'Writes C for the ESP8266 (GP0–GP5, GP12–GP15) against the blob-free esp8266js runtime and runs its flash image in the ESP8266 emulator: pins, waits, print, PWM and tone; no analog input.',
     default: 'Choose examples written for this exact board, edit code, convert supported constructs to Blocks, then run, emulate or flash using the actions shown for the target.'
 };
 
