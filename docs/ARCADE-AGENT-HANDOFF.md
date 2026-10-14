@@ -28,7 +28,9 @@ Reached, with original failures retained:
 - [Circle drawing](ARCADE-CIRCLE-DRAWING.md): 57 selected original cases plus
   aliases/clones, 60 Images and 4,860 complete pixels. Native, Code, same/fresh
   saved SB3, executed MakeCode export and reimport pass. Standard radius edits
-  survive Code/project/export. Visible browser authoring is pending.
+  survive Code/project/export. Typed Sprite-image routing additionally passes
+  Code, executed export and reimport with three shared Images and 243 pixels.
+  Visible browser authoring is pending.
 - [Named Array helpers](ARCADE-NAMED-ARRAY-ITEMS.md): scalar and aggregate
   semantics, nested aliases and both real exported originals pass. A uniquely
   bound target-owned zero-argument procedure now supplies scalar values using
@@ -43,9 +45,13 @@ Reached, with original failures retained:
   real light-browser replacement-stage failure, build catalogue failure and
   startup-budget failure. Corrections require current hosted qualification.
   Tracked VM/compiler mirrors now match their owned overlay sources at HEAD.
+  A genuine clone creation-after-render ordering defect is fixed in both scene
+  composition routes; nine focused clone/scene controls pass. Optional-call and
+  multiplayer negative expectations now match admitted behavior. The yielding
+  function control observes actual 199/200 ms deadlines and Stop/restart.
 
 The fresh immutable 184-input audit at
-`6a25694dc397ab1578c8b56490a24e0960ba6249` remains **147 translated / 36 partial /
+`3f714c5d642b951dcf2740eeac9032b2e7b43832` remains **147 translated / 36 partial /
 1 parse failure**. All 184 committed input blobs and the unchanged content
 multiset were verified. This is pure translation, not runtime/whole-game
 qualification. The separately frozen authentic 41-context denominator remains
@@ -58,6 +64,9 @@ Next ordered work:
    edited current-body export, reimport and actual selected originals. The
    private real-VM prototype passes Number/String invocation, captured receiver
    ownership, pause and Stop; it is not admitted into this consumer.
+   Independent review found generated discard temporaries could overwrite
+   authored parameters. Close all three affected families with fresh allocation,
+   current-body export and actual native regression controls before originals.
 2. [Default numeric callable admission](compatibility/arcade-numeric-callable-default-admission.md)
    claim [PR931](https://github.com/CrispStrobe/brickwright-lite/pull/931) merged
    with all 11 enabled checks successful and reviewed/landed tree equality.
@@ -69,8 +78,14 @@ Next ordered work:
 3. Implement [live Font values](compatibility/arcade-live-font-values.md) from
    measured selected-original records and glyph data. Fonts are mutable; an
    immutable descriptor does not make the value immutable. A native prototype
-   and one original matrix exist privately; source-specific Font12 resource
-   behavior and mutation admission still need qualification.
+   and one original matrix exist privately. Source audit proves the selected
+   simulator uses the full Font12 resource; hardware subsets remain separate.
+   [Supplier PR147](https://github.com/CrispStrobe/sb3-creator/pull/147) prepares
+   five ordinary connected Font words, with 448 affected controls passing;
+   exact-head browser qualification and normal consumer adoption remain pending.
+   Native preparation preserves lazy initialization, owner identity, aliased
+   glyph storage and explicit mutation refusals. Complete source, Code, saved
+   project and edited-export routes before widening the read slice.
 4. Exercise actual Blocks/Code/graphics-editor authoring and keep every pending
    route in the [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md). Native
    metadata and source conversion are not a completed browser journey.
