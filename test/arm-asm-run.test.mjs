@@ -21,14 +21,20 @@ const fx = JSON.parse(readFileSync(path.join(REPO, 'test/fixtures/matrix-n1-n4-i
 const arm = await import(pathToFileURL(path.join(SRC, 'lib/bw-asm/arm-image.js')).href);
 const route = await import(pathToFileURL(path.join(SRC, 'lib/bw-asm/assemble-route.js')).href);
 
-test('the three ARM devices reach their chips; only two have an engine', () => {
+test('the ARM devices reach their chips; the simulated ones have an engine', () => {
     assert.equal(route.asmTargetForDevice('pico'), 'rp2040');
     assert.equal(route.asmTargetForDevice('stm32f030'), 'stm32f030');
+    assert.equal(route.asmTargetForDevice('stm32g030'), 'stm32g030');
+    assert.equal(route.asmTargetForDevice('stm32f103'), 'stm32f103');
     assert.equal(route.asmTargetForDevice('microbit'), 'nrf52833');
     assert.equal(route.asmTargetForDevice('calliopemini'), 'nrf52833');
     assert.equal(route.asmRouteFor('pico'), 'hosted');
+    assert.equal(route.asmRouteFor('stm32g030'), 'hosted');
+    assert.equal(route.asmRouteFor('stm32f103'), 'hosted');
     assert.deepEqual(arm.armRunFor('stm32f030'), {kind: 'stm32f0', origin: 0x08000000});
+    assert.deepEqual(arm.armRunFor('stm32g030'), {kind: 'stm32g0', origin: 0x08000000});
     assert.deepEqual(arm.armRunFor('rp2040'), {kind: 'rp2040js', origin: 0x20000000});
+    assert.equal(arm.armRunFor('stm32f103'), null, 'stm32f103 has no local simulation engine');
     assert.equal(arm.armRunFor('nrf52833'), null, 'nothing here runs nRF52 machine code');
 });
 
