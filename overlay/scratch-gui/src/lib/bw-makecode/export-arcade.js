@@ -119,6 +119,13 @@ const RESERVED = new Set(['score', 'life', 'info', 'game', 'scene', 'sprites', '
     '__bwSdkCharCode','__bwSdkConcat','__bwScratchTimerStart','__bwScratchTimer','__bwResetScratchTimer', 'SpriteKind', 'SpriteFlag', 'ControllerButtonEvent', 'DialogLayout', 'Image', 'Buffer', 'NumberFormat', 'console', 'control', 'assets', 'images', 'image', 'hex', 'img', 'undefined', 'bwStringArraySettings']);
 
 class ArcadeEmitter {
+    controllerRepeatReceiver(b) {
+        const player=String(b.fields.PLAYER?.[0]),button=b.fields.BUTTON?.[0],property=b.fields.PROPERTY?.[0];
+        if(!['1','2','3','4'].includes(player)||!['A','B','up','down','left','right'].includes(button)||!['repeatDelay','repeatInterval'].includes(property)){
+            this.note('Controller repeat requires fixed player/button/property fields');return null;
+        }
+        return `controller.player${player}.${button}`;
+    }
     constructor (project, opts) {
         this.project = project;
         this.opts = opts;
@@ -1539,6 +1546,9 @@ class ArcadeEmitter {
         }
         case 'arcade_askForString': return `game.askForString(${v('QUESTION')})`;
         case 'arcade_allocateControlEventSource': return 'control.allocateNotifyEvent()';
+        case 'arcade_buttonRepeatProperty': {
+            const receiver=this.controllerRepeatReceiver(b);return receiver?receiver+'.'+b.fields.PROPERTY[0]:'undefined';
+        }
         case 'arcade_controllerEventSource': {const player=b.fields.PLAYER?.[0];if(!['1','2','3','4'].includes(String(player))){this.note('Controller event source requires a fixed player 1 through 4');return 'undefined';}return `controller.player${player}.id`;}
         case 'arcade_eventPlayer':
             if(this.eventPlayerName)return this.eventPlayerName;
@@ -2143,6 +2153,8 @@ class ArcadeEmitter {
         case 'arcade_changeLife': {const api=this.infoPlayerApi(b);if(api)push(`${api}.${b.opcode==='arcade_setLife'?'setLife':'changeLifeBy'}(${this.arrayValue(b,'VALUE')})`);return;}
         case 'arcade_pushScene': push('game.pushScene()');return;
         case 'arcade_popScene': push('game.popScene()');return;
+        case 'arcade_setButtonRepeatProperty': {const receiver=this.controllerRepeatReceiver(b);if(receiver)push(`${receiver}.${b.fields.PROPERTY[0]} = (${this.arrayValue(b,'VALUE')} as any)`);return;}
+        case 'arcade_setButtonRepeatDefaults':push(`controller.setRepeatDefault((${this.arrayValue(b,'DELAY')} as any), (${this.arrayValue(b,'INTERVAL')} as any))`);return;
         case 'arcade_setControllerConnected': {const player=b.fields.PLAYER?.[0];if(!['1','2','3','4'].includes(String(player))){push(`// ${this.note('Controller connection requires a fixed player 1 through 4')}`);return;}push(`controller.player${player}.connected = (${this.arrayValue(b,'CONNECTED')} as any)`);return;}
         case 'arcade_raiseControlEvent':push(`control.raiseEvent(${this.arrayValue(b,'SOURCE')}, ${this.arrayValue(b,'VALUE')})`);return;
         case 'arcade_waitControlEvent':push(`control.waitForEvent(${this.arrayValue(b,'SOURCE')}, ${this.arrayValue(b,'VALUE')})`);return;

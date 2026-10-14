@@ -1,3 +1,4 @@
+import {fixedControllerRepeatReceiver} from './controller-repeat-source.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 
 /** Lower lazy value expressions to editable statements before type inference.
@@ -52,6 +53,7 @@ export function lowerLazyValues(program) {
     const lvalue=node=>{
         if(node?.type==='Identifier')return {prefix:[],value:node};
         if(node?.type==='Member'){
+            if(namespace(node.object) && fixedControllerRepeatReceiver(node))return {prefix:[],value:node};
             const result=expression(node.object),prefix=[...result.prefix];
             return {prefix,value:{...node,object:save(result.value,prefix)}};
         }
@@ -63,6 +65,7 @@ export function lowerLazyValues(program) {
     };
     function expression(node) {
         if(!node)return {prefix:[],value:node};
+        if(fixedControllerRepeatReceiver(node) && namespace(node.object))return {prefix:[],value:node};
         if(node.type==='FunctionExpression')return {prefix:[],value:{...node,body:body(node.body)}};
         if(node.type==='Update' && ['Identifier','Member','Index'].includes(node.argument?.type)) {
             changed=true;

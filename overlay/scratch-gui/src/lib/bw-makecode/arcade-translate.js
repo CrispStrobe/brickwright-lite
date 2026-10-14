@@ -1060,7 +1060,17 @@ class ArcadeTranslator extends BaseTranslator {
      * Another sprite's position is readable (`x position of ball`) even
      * though writing it is not.
      */
+    controllerRepeatSlot(node) {
+        if(node?.type!=='Member' || !['repeatDelay','repeatInterval'].includes(node.name))return null;
+        const receiver=this.path(node.object)||'';
+        if(!receiver.startsWith('controller.'))return null;
+        if(this.bindsName('controller'))return {error:'Controller repeat property refers to a shadowed controller binding'};
+        const match=/^controller(?:\.player([1-4]))?\.(A|B|up|down|left|right)$/.exec(receiver);
+        return match?{player:match[1]||'1',button:match[2],property:node.name}:{error:'Controller repeat property requires a fixed supported player and button'};
+    }
     valueExpr (node) {
+        const repeat=this.controllerRepeatSlot(node);
+        if(repeat){if(repeat.error){this.unsupported.push(repeat.error);return 'undefined value';}return `arcade player ${repeat.player} button ${repeat.button} repeat property ${repeat.property}`;}
         const indexedString=indexedStringValue(this,node);
         if(indexedString!==null)return indexedString;
         const music=this.musicValue(node);
@@ -1402,6 +1412,12 @@ class ArcadeTranslator extends BaseTranslator {
         if(['mp.setPlayerState','mp.changePlayerStateBy'].includes(name) && a.length===3){push(name==='mp.setPlayerState'?`arcade set state (${this.expr(a[1])}) of player (${this.expr(a[0])}) to (${this.expr(a[2])})`:`arcade change state (${this.expr(a[1])}) of player (${this.expr(a[0])}) by (${this.expr(a[2])})`);return;}
         if(name==='mp.moveWithButtons' && a.length>=1 && a.length<=3){push(`arcade move player (${this.expr(a[0])}) with buttons vx (${a[1]?this.expr(a[1]):100}) vy (${a[2]?this.expr(a[2]):100})`);return;}
         if(name==='mp.setPlayerSprite' && a.length===2){push(`arcade set sprite of player (${this.expr(a[0])}) to (${this.expr(a[1])})`);return;}
+        if(name==='controller.setRepeatDefault' && this.handleTemplates) {
+            if(this.bindsName('controller'))push(this.note('controller.setRepeatDefault refers to a shadowed controller binding'));
+            else if(a.length!==2)push(this.note('controller.setRepeatDefault requires delay and interval'));
+            else push(`arcade set button repeat defaults delay (${this.expr(a[0])}) interval (${this.expr(a[1])})`);
+            return;
+        }
         if(name==='controller.pauseUntilAnyButtonIsPressed' && this.handleTemplates && !this.bindsName('controller')) {
             if(!a.length)push('arcade wait until any button pressed');
             else push(this.note('controller.pauseUntilAnyButtonIsPressed requires no arguments'));
@@ -2665,6 +2681,15 @@ class ArcadeTranslator extends BaseTranslator {
             }
         }
 
+        if(expr.type==='Assignment') {
+            const repeat=this.controllerRepeatSlot(expr.left);
+            if(repeat){
+                if(repeat.error)push(this.note(repeat.error));
+                else if(expr.op!=='=')push(this.note('Controller repeat compound assignment requires qualified selected-SDK staging'));
+                else push(`arcade set player ${repeat.player} button ${repeat.button} repeat property ${repeat.property} to (${this.expr(expr.right)})`);
+                return;
+            }
+        }
         if(expr.type==='Assignment' && expr.left?.type==='Member' && expr.left.name==='connected' && /^controller\.player[1-4]$/.test(this.path(expr.left.object)||'')) {
             if(this.boundSourceGlobals?.has('controller') || this.sourceFunctions?.has('controller') || this.localVars?.has('controller') || this.currentParameters?.has('controller') || this.capturedBindings.has('controller')){push(this.note(`${this.path(expr.left)} refers to a shadowed controller binding`));return;}
             if(expr.op!=='='){push(this.note('Controller connected compound assignment requires a qualified controller value receiver'));return;}
@@ -3895,8 +3920,9 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Call' && /^carnival\.(?:startCountdownGame|onGameOverExpanded|customGameOverExpanded)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^game\.(?:gameOver|over|setGameOver\w+)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && (node.callee.name==='startEffect' || node.callee.name==='destroy' && node.args?.length))return true;
-        if(node.type==='Call' && (['controller._setUserEventsEnabled','game.splash','game.showLongText','game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','scene.cameraLeft','scene.cameraTop','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
+        if(node.type==='Call' && (['controller.setRepeatDefault','controller._setUserEventsEnabled','game.splash','game.showLongText','game.currentScene','ArcadePhysicsEngine','sprites.allOfKind','scene.onHitTile','scene.tileHitFrom','scene.onHitWall','scene.onOverlapTile','scene.centerCameraAt','scene.cameraShake','scene.cameraFollowSprite','scene.cameraProperty','scene.cameraLeft','scene.cameraTop','game.pushScene','game.popScene','game.addScenePushHandler','game.addScenePopHandler','game.removeScenePushHandler','game.removeScenePopHandler'].includes(t.path(node.callee)) || /^tiles\./.test(t.path(node.callee)||'')))return true;
         if(node.type==='Call' && /^info(?:\.player[1-4])?\.(?:life|hasLife|setLife|changeLifeBy|onLifeZero)$/.test(t.path(node.callee)||''))return true;
+        if(node.type==='Member' && ['repeatDelay','repeatInterval'].includes(node.name) && (t.path(node.object)||'').startsWith('controller.'))return true;
         if(node.type==='Member' && ['fx','fy','sx','sy','scale','flags'].includes(node.name))return true;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='toString' && t.spriteReferences.has(node.callee.object))return true;
         const mixedValue=value=>['String','Boolean','Null','Undefined','Array'].includes(value?.type) || t.stringReferences.has(value) || t.booleanReferences.has(value) || t.arrayReferences.has(value) || t.imageReferences.has(value);

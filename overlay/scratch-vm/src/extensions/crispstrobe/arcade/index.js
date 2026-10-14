@@ -46,7 +46,7 @@ module.exports = makeExt(`// Name: Arcade
       this._scrollerVersion = 'v0.1.2';
       this._characterAnimationVersion = 'v0.1.0';
       this._globalElapsedMs = 0;this._nextMultiplayerState=2;
-      this._buttonStates = {};this._controllerConnections={};this._controllerInputs={};this._userControllerEvents=true;this._nativeTextDialogs=[];
+      this._buttonStates = {};this._repeatDefaults={delay:500,interval:30};this._controllerConnections={};this._controllerInputs={};this._userControllerEvents=true;this._nativeTextDialogs=[];
       this._activeLegacyAnimations = new Set();
       this._updateHandlers = [];this._intervalHandlers = [];this._buttonHandlers = [];
       this._destroyedHandlers = [];this._overlapHandlers = [];this._foreverHandlers=[];this._countdownHandlers=[];
@@ -130,7 +130,7 @@ module.exports = makeExt(`// Name: Arcade
             }
           }
           this._sceneBundles.clear();this._sceneStack=[];this._sceneParents=new WeakMap();this._seeThroughSources=new WeakMap();this._renderingScenes=new WeakSet();this._sceneFrames=new WeakMap();this._pendingSceneSeconds=new WeakMap();
-          this._scenePushHandlers=[];this._scenePopHandlers=[];this._globalElapsedMs=0;this._nextMultiplayerState=2;this._buttonStates={};this._controllerConnections={};this._controllerInputs={};this._userControllerEvents=true;this._cancelNativeTextDialogs();
+          this._scenePushHandlers=[];this._scenePopHandlers=[];this._globalElapsedMs=0;this._nextMultiplayerState=2;this._buttonStates={};this._repeatDefaults={delay:500,interval:30};this._controllerConnections={};this._controllerInputs={};this._userControllerEvents=true;this._cancelNativeTextDialogs();
           this._activeLegacyAnimations=new Set();this._updateHandlers=[];this._intervalHandlers=[];this._buttonHandlers=[];
           this._destroyedHandlers=[];this._overlapHandlers=[];this._foreverHandlers=[];this._countdownHandlers=[];
           this._createdHandlers = [];
@@ -235,6 +235,9 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'pushScene',blockType:Scratch.BlockType.COMMAND,text:'Arcade push scene'},
           {opcode:'setPalette',blockType:Scratch.BlockType.COMMAND,text:'Arcade set palette hex [DATA]',arguments:str('DATA','000000ffffffff2121ff93c4ff8135fff609249ca378dc52003fad87f2ff8e2ec4a4839f5c406ce5cdc491463d000000')},
           {opcode:'popScene',blockType:Scratch.BlockType.COMMAND,text:'Arcade pop scene'},
+          {opcode:'buttonRepeatProperty',blockType:Scratch.BlockType.REPORTER,text:'Arcade player [PLAYER] button [BUTTON] repeat property [PROPERTY]',arguments:{PLAYER:{type:Scratch.ArgumentType.STRING,menu:'controlPlayers',defaultValue:'1'},BUTTON:{type:Scratch.ArgumentType.STRING,menu:'repeatButtons',defaultValue:'A'},PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'repeatProperties',defaultValue:'repeatDelay'}}},
+          {opcode:'setButtonRepeatProperty',blockType:Scratch.BlockType.COMMAND,text:'set Arcade player [PLAYER] button [BUTTON] repeat property [PROPERTY] to [VALUE]',arguments:{PLAYER:{type:Scratch.ArgumentType.STRING,menu:'controlPlayers',defaultValue:'1'},BUTTON:{type:Scratch.ArgumentType.STRING,menu:'repeatButtons',defaultValue:'A'},PROPERTY:{type:Scratch.ArgumentType.STRING,menu:'repeatProperties',defaultValue:'repeatDelay'},...n('VALUE',0)}},
+          {opcode:'setButtonRepeatDefaults',blockType:Scratch.BlockType.COMMAND,text:'set Arcade button repeat defaults delay [DELAY] interval [INTERVAL]',arguments:{...n('DELAY',500),...n('INTERVAL',30)}},
           {opcode:'registerUpdateHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register update as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredUpdate',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade update handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'registerPaintHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register paint as [TOKEN] capturing [CAPTURES]',arguments:{...str('TOKEN','handler'),...str('CAPTURES','')}},
@@ -852,6 +855,8 @@ module.exports = makeExt(`// Name: Arcade
             {text: 'left', value: 'left'}, {text: 'right', value: 'right'},
             {text: 'Start', value: 'start'}, {text: 'Select / menu', value: 'select'}
           ]},
+          repeatButtons:{acceptReporters:false,items:['A','B','up','down','left','right']},
+          repeatProperties:{acceptReporters:false,items:[{text:'delay (ms)',value:'repeatDelay'},{text:'interval (ms)',value:'repeatInterval'}]},
           controlPlayers:{acceptReporters:false,items:['1','2','3','4']},
           buttonEvents:{acceptReporters:true,items:[{text:'pressed',value:'2049'},{text:'released',value:'2048'},{text:'repeated',value:'2054'}]},
           axes: {acceptReporters: true, items: ['x', 'y']}
@@ -1618,6 +1623,25 @@ module.exports = makeExt(`// Name: Arcade
       if(!button)return;
       this._controllerButtonEdge(1,button,isDown);
     }
+    _repeatButton(args) {
+      const player=Number(args.PLAYER),button=String(args.BUTTON);
+      if(!Number.isInteger(player)||player<1||player>4||!['A','B','up','down','left','right'].includes(button))throw new TypeError('Controller repeat requires a fixed player and button');
+      const key=player+':'+button.toLowerCase();
+      return this._buttonStates[key] || (this._buttonStates[key]={held:false,elapsed:0,count:0});
+    }
+    buttonRepeatProperty(args) {
+      if(!['repeatDelay','repeatInterval'].includes(args.PROPERTY))throw new TypeError('Unknown controller repeat property');
+      return Scratch.BWValues.encode(this._repeatButton(args)[args.PROPERTY]);
+    }
+    setButtonRepeatProperty(args,util) {
+      if(!['repeatDelay','repeatInterval'].includes(args.PROPERTY))throw new TypeError('Unknown controller repeat property');
+      this._repeatButton(args)[args.PROPERTY]=this._mathArgument(args,'VALUE',util,'Controller repeat property requires a primitive value');
+    }
+    setButtonRepeatDefaults(args,util) {
+      const delay=this._mathArgument(args,'DELAY',util,'Controller repeat default requires a primitive value');
+      const interval=this._mathArgument(args,'INTERVAL',util,'Controller repeat default requires a primitive value');
+      this._repeatDefaults={delay,interval};
+    }
     _controllerButtonEdge(number,button,isDown) {
       if(!Number.isInteger(number) || number<1 || number>4)return;
       const state=this._state(),buttons=number===1?state.buttons:state.controllerButtons[number] || (state.controllerButtons[number]={});buttons[button]=!!isDown;
@@ -1644,7 +1668,14 @@ module.exports = makeExt(`// Name: Arcade
         const current=this._buttonStates[key] || (this._buttonStates[key]={held:false,elapsed:0,count:0});
         let event;
         if(held!==current.held){current.held=held;current.elapsed=0;current.count=0;event=held?2049:2048;if(held)this._buttonPressed();}
-        else if(held){current.elapsed+=(dt*1000)|0;if(current.elapsed>=500){const count=Math.floor((current.elapsed-530)/30);if(count!==current.count){current.count=count;event=2054;}}}
+        else if(held){
+          // Selected MIT game/controllerbutton.ts __update: undefined alone
+          // selects defaults; zero, NaN and other primitive operands stay raw.
+          current.elapsed+=(dt*1000)|0;
+          const delay=current.repeatDelay===undefined?this._repeatDefaults.delay:current.repeatDelay;
+          const interval=current.repeatInterval===undefined?this._repeatDefaults.interval:current.repeatInterval;
+          if(!(current.elapsed<delay)){const count=Math.floor((current.elapsed-delay-interval)/interval);if(count!==current.count){current.count=count;event=2054;}}
+        }
         if(event!==undefined){const pending=this._announceControlButton(number,button,event);if(pending?.then)yield pending;}
         if(this._state()!==state)return;
       }

@@ -1,3 +1,4 @@
+import {fixedControllerRepeatReceiver} from './controller-repeat-source.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 
 /** Preserve selected PXT 13.2.1 expression staging for imported Arcade source.
@@ -59,6 +60,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false} =
     const lvalue=(node, repeatIndex=false)=>{
         if(node?.type==='Identifier')return {prefix:[],value:node};
         if(node?.type==='Member'){
+            if(namespace(node.object) && fixedControllerRepeatReceiver(node))return {prefix:[],value:node};
             const result=expression(node.object),prefix=[...result.prefix];
             return {prefix,value:{...node,object:save(result.value,prefix)}};
         }
@@ -70,6 +72,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false} =
     };
     function expression(node) {
         if(!node)return {prefix:[],value:node};
+        if(fixedControllerRepeatReceiver(node) && namespace(node.object))return {prefix:[],value:node};
         // Fully decoded SDK resource factories are compile-time values. Keep
         // their literal aggregate representation for resource lowering instead
         // of turning its private tile list into an unrelated runtime array.
