@@ -105,8 +105,10 @@ original declarations without executing unused initializers.
   is normally merged; text results keep their actual scalar value instead of
   JSON quotation marks. Seven current native controls exercise the shared Lite
   codec, aggregate transport, adversarial text and reference ownership.
-  Reimport remains blocked pending full qualification of the source `typeof`
-  reporter and its String export pipeline. The candidate snapshots input graph
+  The unchanged E15 helper now passes native, Code, same/fresh SB3, actual
+  selected-original export and reimport through the bounded source `typeof`
+  reporter and String pipeline. Numeric reporter-input block edits are covered
+  headlessly; the hosted visible reporter-edit journey remains open. The service snapshots input graph
   ownership for the original project at source startup; editing that graph
   requires a new start before reporter provenance is reused. Live graph
   migration remains an editor gap.
