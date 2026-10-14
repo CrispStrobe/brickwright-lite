@@ -14,20 +14,22 @@ const fixture=JSON.parse(readFileSync(path.join(root,'test/fixtures/adp7118-fixe
 const terminals=['vout_1','vout_2','sense_adj','gnd','en','ss','vin_7','vin_8'];
 const near=(a,b,tolerance,label)=>assert.ok(Math.abs(a-b)<=tolerance,`${label}: ${a} versus ${b}`);
 
-function limiterFixture(R=500,C=22e-6){
+function limiterFixture(R=500,C=22e-6,inputR=4){
     const data=structuredClone(fixture);
     Object.assign(data.parts.find(p=>p.id==='u1').params,
         {startupModel:'current-limited-envelope',rOut:.05,currentLimit:.36});
     data.parts.find(p=>p.id==='load').params.ohms=R;
-    data.parts.push({id:'cout',kind:'capacitor',params:{farads:C},x:800,y:430},
-        {id:'rin',kind:'resistor',params:{ohms:4},x:330,y:180});
-    for(const wire of data.wires){
-        if(wire.from==='vin'&&wire.fromTerminal==='pos'&&wire.to==='u1'){
-            wire.from='rin';wire.fromTerminal='b';
+    data.parts.push({id:'cout',kind:'capacitor',params:{farads:C},x:800,y:430});
+    if(inputR>0){
+        data.parts.push({id:'rin',kind:'resistor',params:{ohms:inputR},x:330,y:180});
+        for(const wire of data.wires){
+            if(wire.from==='vin'&&wire.fromTerminal==='pos'&&wire.to==='u1'){
+                wire.from='rin';wire.fromTerminal='b';
+            }
         }
+        data.wires.push({from:'vin',fromTerminal:'pos',to:'rin',toTerminal:'a'});
     }
-    data.wires.push({from:'vin',fromTerminal:'pos',to:'rin',toTerminal:'a'},
-        {from:'cout',fromTerminal:'a',to:'u1',toTerminal:'vout_1'},
+    data.wires.push({from:'cout',fromTerminal:'a',to:'u1',toTerminal:'vout_1'},
         {from:'cout',fromTerminal:'b',to:'gnd',toTerminal:'gnd'});
     return data;
 }
@@ -97,23 +99,25 @@ async function installedCircuit(R,C){
 test('limiter adoption selects the exact pinned installed package rather than a board override',()=>{
     const pins=JSON.parse(readFileSync(path.join(root,'vendor-pins.json'),'utf8'));
     assert.equal(pins['bw-board'],boardPin);
-    assert.equal(pins['bw-circuit-ui'],'9a1f06e5eda6fbbfe99ee5c4ad6f37d5f19bcdb1');
+    assert.equal(pins['bw-circuit-ui'],'9593a12056e72c10686232bb448f97471f98feec');
     const pkg=JSON.parse(readFileSync(path.join(root,'package.json'),'utf8'));
     assert.equal(pkg.devDependencies['bw-board'],packageSpec);
     const lock=JSON.parse(readFileSync(path.join(root,'package-lock.json'),'utf8'));
     assert.ok(lock.packages['node_modules/bw-board'].resolved.endsWith(`#${boardPin}`));
 });
 
-for(const [R,C,sampleTolerance,meanTolerance,precision] of [
+for(const [R,C,sampleTolerance,meanTolerance,precision,inputR=4] of [
     [10,2.2e-6,1e-4,3e-5,false],[500,22e-6,5e-6,1e-5,false],
     [10,2.2e-6,5e-7,1e-6,true],[500,22e-6,5e-7,1e-6,true],
+    // Ideal-supply linear startup exposed the old endpoint-only meter mean.
+    [500,2.2e-6,5e-7,1e-6,true,0],
 ]){
-    test(`installed CLI publishes qualified ${precision?'precision':'interactive'} ${R} ohm / ${C} F limiter scope, meter, CSV and receipt`,async t=>{
+    test(`installed CLI publishes qualified ${precision?'precision':'interactive'} ${R} ohm / ${C} F${inputR===0?' / ideal supply':''} limiter scope, meter, CSV and receipt`,async t=>{
         const dir=mkdtempSync(path.join(tmpdir(),'lite-limiter-cli-'));
         const env={...process.env};delete env.BW_BOARD;
         try{
             const input=path.join(dir,'input.json'),csv=path.join(dir,'scope.csv'),receiptPath=path.join(dir,'receipt.json');
-            writeFileSync(input,JSON.stringify(limiterFixture(R,C)));
+            writeFileSync(input,JSON.stringify(limiterFixture(R,C,inputR)));
             const result=spawnSync(process.execPath,[path.join(root,'node_modules/bw-circuit-ui/bin/bwc.mjs'),
                 'measure',input,'--scope','u1.vout_1,gnd.gnd','--meter','voltage:u1.vout_1,gnd.gnd',
                 '--duration','1200us','--rate','100kHz','--csv',csv,'--receipt',receiptPath,'--json',
@@ -150,6 +154,7 @@ for(const [R,C,sampleTolerance,meanTolerance,precision] of [
             near(report.meters[0].reading.siValue,expected.mean,meanTolerance,'installed capture-window mean');
             assert.ok(Math.abs(report.meters[0].reading.siValue-report.scope[0].summary.lastVolts)>.3);
             if(R===10){near(expected.entry,217.30757602325912e-6,1e-12,'independent overload entry');assert.equal(expected.release,null);}
+            else if(C===2.2e-6){assert.equal(expected.entry,null);assert.equal(expected.release,null);}
             else{near(expected.entry,66.26866414968961e-6,1e-12,'independent inrush entry');
                 near(expected.release,329.1432340371157e-6,1e-12,'independent release');}
             const receipt=JSON.parse(readFileSync(receiptPath,'utf8'));
@@ -169,7 +174,7 @@ for(const [R,C,sampleTolerance,meanTolerance,precision] of [
             const identity=JSON.parse(verified.stdout);
             assert.equal(identity.status,'match');assert.ok(identity.checks.every(check=>check.match));
             assert.equal(identity.limits.identityOnly,true);assert.equal(identity.limits.numericalAgreement,false);
-            t.diagnostic(JSON.stringify({R,C,samples:120,maxError,meanError:report.meters[0].reading.siValue-expected.mean}));
+            t.diagnostic(JSON.stringify({R,C,inputR,samples:120,maxError,meanError:report.meters[0].reading.siValue-expected.mean}));
         }finally{rmSync(dir,{recursive:true,force:true});}
     });
 }
