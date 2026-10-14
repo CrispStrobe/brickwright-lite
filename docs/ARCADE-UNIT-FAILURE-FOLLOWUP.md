@@ -51,8 +51,9 @@ builtin manager entry contributes its 44,933 raw source bytes to the startup
 chunk. This does not establish an exact minified attribution. Circuit Playground
 now uses the existing asynchronous builtin loader; its pane already awaits
 registration. The boot-payload gate requires its actual extension marker in a
-lazy chunk and rejects that marker in startup scripts. Fresh hosted byte
-measurement and actual loader readiness controls remain required.
+lazy chunk and rejects that marker in startup scripts. Seven focused controls pass, including actual VM concurrent-load deduplication,
+registration readiness, primitive execution and project builtin precedence.
+Fresh hosted byte measurement remains required.
 
 The [build job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38618756907/job/116045316099)
 failed the source-manifest gate because the generated stage-header message
@@ -80,9 +81,11 @@ reload assertions remain. A new hosted result is required to close this failure.
 The next combined source includes qualified supplier pins, physical Sprite
 updates, independent Array references, the closed callable prototype and the
 bounded named array helper core. It passes 24 focused transport, admission and
-named-helper controls using an immutable native source projection. Broader
-nested named-array export still has an actual original-simulator receiver-type
-failure; class callbacks and default callable admission remain separate work.
+named-helper controls using an immutable native source projection. The later nested named-array follow-up corrects the original second-export
+receiver failure using a graph-bound Array receiver view. Both byte-identical
+original exports and native portable routes pass focused checks; their original
+failures remain retained. Class callbacks and default callable admission remain
+separate work.
 
 ## Later completed shard and pending qualification
 
