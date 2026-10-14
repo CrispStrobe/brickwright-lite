@@ -61,3 +61,7 @@ test('debugger-paused raise is discarded, two buses do not share handlers or gen
  const a=harness(),b=harness();let hits=0;a.bus.register(1,2,()=>hits++);a.pause(true);a.bus.raise(1,2);await a.flush();assert.equal(hits,0);
  b.bus.raise(1,2);await b.flush();assert.equal(hits,0);a.pause(false);a.bus.raise(1,2);await a.flush();assert.equal(hits,1);
 });
+test('raising snapshots existing queues without creating an event for a listener registered later',async()=>{
+ const h=harness(),trace=[];h.bus.raise(790,1);h.bus.register(790,1,()=>trace.push('L'));await h.flush();assert.equal(trace.join(''),'');
+ h.bus.register(0,0,()=>trace.push('G'));h.bus.raise(791,1);h.bus.register(791,1,()=>trace.push('E'));await h.flush();assert.equal(trace.join(''),'G');
+});

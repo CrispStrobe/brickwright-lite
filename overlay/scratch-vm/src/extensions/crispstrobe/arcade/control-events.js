@@ -4,7 +4,7 @@
 // thread, synthesizes input, advances time, or runs a Scratch sequencer itself.
 module.exports = function createControlEvents({dispatch, enqueue, paused = () => false, onError = error => {throw error;}}) {
     if (typeof dispatch !== 'function' || typeof enqueue !== 'function')throw new TypeError('Events require dispatch and continuation scheduling');
-    let generation = 0;
+    let generation = 0, nextNotifyEvent = 1024;
     const queues = new Map();
     const contexts = new Set();
     let activeContext;
@@ -43,10 +43,10 @@ module.exports = function createControlEvents({dispatch, enqueue, paused = () =>
             }
         }
     };
-    const push = async (q, payload, epoch) => {
+    const push = async (q, payload, epoch, notifyOne = false) => {
         if (epoch !== generation)return;
-        const waiters = q.waiters;
-        q.waiters = [];
+        const waiters = notifyOne ? q.waiters.splice(0, 1) : q.waiters;
+        if (!notifyOne)q.waiters = [];
         // Waiters are notified before testing whether this queue has handlers.
         for (const waiter of waiters)waiter.resolve(payload);
         if (waiters.length)await Promise.resolve();
@@ -57,10 +57,10 @@ module.exports = function createControlEvents({dispatch, enqueue, paused = () =>
         if (!q.busy)await drain(q, epoch);
     };
     const matching = (source, value) => {
-        const result = [queue(0, 0)];
-        if (value)result.push(queue(0, value));
-        if (source)result.push(queue(source, 0));
-        if (source && value)result.push(queue(source, value));
+        const result = [queues.get(key(0, 0))];
+        if (value)result.push(queues.get(key(0, value)));
+        if (source)result.push(queues.get(key(source, 0)));
+        if (source && value)result.push(queues.get(key(source, value)));
         return result;
     };
     const listen = (source, value, wrapper) => change(queue(source, value), [wrapper]);
@@ -78,12 +78,25 @@ module.exports = function createControlEvents({dispatch, enqueue, paused = () =>
     };
     return {
         register,
+        allocate() {return nextNotifyEvent++;},
+        registerInternal(source, value, handler) {listen(source, value, {handler});},
+        registerContext(context, source, value, handler, flags = 16) {
+            if (!contexts.has(context))throw new TypeError('Foreign event context');
+            const id = key(source, value), old = context.handlers.get(id);
+            if (old) {old.handler = handler;old.flags = flags;}
+            else {
+                const wrapper = {source, value, handler, flags};context.handlers.set(id, wrapper);
+                if (context === activeContext)listen(source, value, wrapper);
+            }
+        },
         // Enqueue rather than await: a source raise returns before its callback.
         raise(source, value, payload = null) {
             if (paused())return;
+            const notifyOne = source === 1022;
+            if (notifyOne)source = 1023;
             const epoch = generation, targets = matching(source, value);
             enqueue(async () => {
-                try {for (const target of targets) {if (epoch !== generation)return;await push(target, payload, epoch);}}
+                try {for (const target of targets) {if (epoch !== generation)return;if (target)await push(target, payload, epoch, notifyOne);else await Promise.resolve();}}
                 catch (error) {if (epoch === generation)onError(error);}
             });
         },
@@ -100,7 +113,7 @@ module.exports = function createControlEvents({dispatch, enqueue, paused = () =>
             if (context)for (const handler of context.handlers.values())listen(handler.source, handler.value, handler);
         },
         cancel() {
-            generation++;
+            generation++;nextNotifyEvent = 1024;
             // Wait promises must settle on Stop/load so they do not retain old
             // fibers. Their generation guard keeps authored continuation inert.
             for (const q of queues.values())for (const waiter of q.waiters)waiter.cancel();

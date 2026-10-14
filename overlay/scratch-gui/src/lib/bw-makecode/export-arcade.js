@@ -83,6 +83,8 @@ const samePalette = (left, right) => left.every((colour, index) =>
     String(colour).toLowerCase() === String(right[index]).toLowerCase());
 
 const REGISTERED_HAT_KINDS = {
+    arcade_whenRegisteredMultiplayerConnection:'multiplayerConnection',
+    arcade_whenRegisteredControlEvent:'controlEvent',
     arcade_whenParallelHandler:'parallel',
     arcade_whenRegisteredInstanceDestroyed:'instanceDestroyed',
     arcade_whenRegisteredLegacyWall:'legacyWall',
@@ -94,7 +96,7 @@ const REGISTERED_HAT_KINDS = {
     arcade_whenRegisteredScenePush:'scenePush', arcade_whenRegisteredScenePop:'scenePop',
     arcade_whenRegisteredForever:'forever', arcade_whenRegisteredLifeZero:'lifeZero', arcade_whenRegisteredCountdown:'countdown'
 };
-const REGISTERED_COMMANDS = new Set(['arcade_startParallelHandler','arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
+const REGISTERED_COMMANDS = new Set(['arcade_registerMultiplayerConnection','arcade_registerControlEvent','arcade_startParallelHandler','arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
     'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerButtonHandler','arcade_registerPaintHandler','arcade_registerShadeHandler',
     'arcade_registerInstanceDestroyedHandler','arcade_registerDestroyedHandler','arcade_registerOverlapHandler','arcade_registerScenePushHandler','arcade_registerScenePopHandler',
     'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerCountdownHandler']);
@@ -1526,6 +1528,8 @@ class ArcadeEmitter {
             return name;
         }
         case 'arcade_askForString': return `game.askForString(${v('QUESTION')})`;
+        case 'arcade_allocateControlEventSource': return 'control.allocateNotifyEvent()';
+        case 'arcade_controllerEventSource': {const player=b.fields.PLAYER?.[0];if(!['1','2','3','4'].includes(String(player))){this.note('Controller event source requires a fixed player 1 through 4');return 'undefined';}return `controller.player${player}.id`;}
         case 'arcade_eventPlayer':
             if(this.eventPlayerName)return this.eventPlayerName;
             this.note('Arcade event player outside a multiplayer callback');return this.na();
@@ -2129,6 +2133,11 @@ class ArcadeEmitter {
         case 'arcade_changeLife': {const api=this.infoPlayerApi(b);if(api)push(`${api}.${b.opcode==='arcade_setLife'?'setLife':'changeLifeBy'}(${this.arrayValue(b,'VALUE')})`);return;}
         case 'arcade_pushScene': push('game.pushScene()');return;
         case 'arcade_popScene': push('game.popScene()');return;
+        case 'arcade_setControllerConnected': {const player=b.fields.PLAYER?.[0];if(!['1','2','3','4'].includes(String(player))){push(`// ${this.note('Controller connection requires a fixed player 1 through 4')}`);return;}push(`controller.player${player}.connected = (${this.arrayValue(b,'CONNECTED')} as any)`);return;}
+        case 'arcade_raiseControlEvent':push(`control.raiseEvent(${this.arrayValue(b,'SOURCE')}, ${this.arrayValue(b,'VALUE')})`);return;
+        case 'arcade_waitControlEvent':push(`control.waitForEvent(${this.arrayValue(b,'SOURCE')}, ${this.arrayValue(b,'VALUE')})`);return;
+        case 'arcade_registerMultiplayerConnection':
+        case 'arcade_registerControlEvent':
         case 'arcade_registerMultiplayerButtonHandler':
         case 'arcade_registerUpdateHandler':
         case 'arcade_registerPaintHandler':
@@ -2144,13 +2153,13 @@ class ArcadeEmitter {
         case 'arcade_registerForeverHandler':
         case 'arcade_registerLifeZeroHandler':
         case 'arcade_registerCountdownHandler': {
-            const kinds={arcade_startParallelHandler:'parallel',arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerPaintHandler:'paint',arcade_registerShadeHandler:'shade',arcade_registerIntervalHandler:'interval',
+            const kinds={arcade_registerMultiplayerConnection:'multiplayerConnection',arcade_registerControlEvent:'controlEvent',arcade_startParallelHandler:'parallel',arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerPaintHandler:'paint',arcade_registerShadeHandler:'shade',arcade_registerIntervalHandler:'interval',
                 arcade_registerInstanceDestroyedHandler:'instanceDestroyed',arcade_registerButtonHandler:'button',arcade_registerDestroyedHandler:'destroyed',arcade_registerOverlapHandler:'overlap',
                 arcade_registerScenePushHandler:'scenePush',arcade_registerScenePopHandler:'scenePop',
                 arcade_registerForeverHandler:'forever',arcade_registerLifeZeroHandler:'lifeZero',arcade_registerCountdownHandler:'countdown'};
             const kind=kinds[b.opcode],token=this.literalInput(b,'TOKEN'),callback=token && this.registeredCallback(token);
             if(!callback || callback.kind!==kind){push(`// ${this.note('Arcade registration has no matching callback')}`);return;}
-            const signatures={multiplayerButton:`${callback.parameter}: mp.Player`,destroyed:`${callback.parameter}: Sprite`,overlap:`${callback.parameter}: Sprite, ${callback.second}: Sprite`};
+            const signatures={multiplayerConnection:`${callback.parameter}: mp.Player`,multiplayerButton:`${callback.parameter}: mp.Player`,destroyed:`${callback.parameter}: Sprite`,overlap:`${callback.parameter}: Sprite, ${callback.second}: Sprite`};
             const body=`function (${signatures[kind]||''}) {\n${callback.script.join('\n')}\n}`;
             const apis={parallel:'control.runInParallel',update:'game.onUpdate',paint:'game.onPaint',shade:'game.onShade',interval:'game.onUpdateInterval',destroyed:'sprites.onDestroyed',overlap:'sprites.onOverlap',
                 scenePush:'game.addScenePushHandler',scenePop:'game.addScenePopHandler',forever:'game.forever',
@@ -2161,13 +2170,16 @@ class ArcadeEmitter {
             if(kind==='interval')args.push(this.arrayValue(b,'INTERVAL'));
             if(kind==='destroyed' || kind==='overlap')args.push(this.kindExpr(b,'KIND'));
             if(kind==='overlap')args.push(this.kindExpr(b,'OTHER_KIND'));
+            if(kind==='multiplayerConnection'){this.requiresMultiplayerPackage=true;api='mp.onControllerEvent';args.push(this.arrayValue(b,'EVENT'));}
             if(kind==='multiplayerButton'){this.requiresMultiplayerPackage=true;api='mp.onButtonEvent';args.push(this.arrayValue(b,'BUTTON'),this.arrayValue(b,'EVENT'));}
             if(kind==='button'){
                 const button=this.literalInput(b,'BUTTON');
                 if(!['A','B','up','down','left','right'].includes(button)){push(`// ${this.note('Arcade button registration requires a fixed supported button')}`);return;}
                 api=`controller.${button}.onEvent`;args.push(this.arrayValue(b,'EVENT'));
             }
-            this.usedRegisteredCallbacks.add(token);push(`${api}(${[...args,body].join(', ')})`);return;
+            if(kind==='controlEvent'){api='control.onEvent';args.push(this.arrayValue(b,'SOURCE'),this.arrayValue(b,'VALUE'),body,this.arrayValue(b,'FLAGS'));}
+            else args.push(body);
+            this.usedRegisteredCallbacks.add(token);push(`${api}(${args.join(', ')})`);return;
         }
         case 'arcade_cameraShake': push(`scene.cameraShake(${this.arrayValue(b,'AMPLITUDE')}, ${this.arrayValue(b,'DURATION')})`);return;
         case 'arcade_centerCameraAt': push(`scene.centerCameraAt(${this.arrayValue(b,'X')}, ${this.arrayValue(b,'Y')})`);return;
@@ -2709,7 +2721,7 @@ class ArcadeEmitter {
         while (text.includes(parameter)) parameter += '_';
         let location=`__bwEventLocation_${ident(token)}`;while(text.includes(location))location+='_';
         let second=`__bwOtherSprite_${ident(token)}`;while(text.includes(second))second+='_';
-        this.eventPlayerName=entry.kind==='multiplayerButton'?parameter:null;
+        this.eventPlayerName=['multiplayerButton','multiplayerConnection'].includes(entry.kind)?parameter:null;
         this.eventLocationName=['wall','tile'].includes(entry.kind)?location:null;
         this.eventHandles = entry.kind==='overlap'?[parameter,second]:['created','wall','tile','legacyWall','destroyed'].includes(entry.kind)?[parameter]:[];this.eventKind = this.registeredCallbackKinds.get(token);
         this.currentLocalNames = new Set();

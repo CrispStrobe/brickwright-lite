@@ -77,6 +77,7 @@ module.exports = makeExt(`// Name: Arcade
       this._terrainWaits = new Set();
       this._nativeButtonWaiters = new Set();
       this._textPromptWaits = new Set();this._textPromptTail=Promise.resolve();
+      this._controllerEventIds = null;this._controlEvents = null;this._controlEventContexts = new WeakMap();
       this._terrainEpoch = 0;
       this._terrainFrame = null;
       this._terrainStopped = false;
@@ -98,6 +99,7 @@ module.exports = makeExt(`// Name: Arcade
           this._dialogs=[];this._cancelNativeTextDialogs();this._showNextDialog();
           for (const call of this._functionCalls) {runtime.sequencer?.retireThread(call.thread);call.resolve(0);}
           this._functionCalls.clear();
+          this._controlEvents?.cancel();this._controllerEventIds = null;this._controlEventContexts = new WeakMap();
           this._terrainEpoch++;this._terrainFrame = null;this._terrainStopped = true;
           for (const pending of this._terrainWaits) {runtime.sequencer?.retireThread(pending.thread);pending.resolve();}
           this._terrainWaits.clear();
@@ -362,6 +364,15 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'musicTempo',blockType:Scratch.BlockType.REPORTER,text:'Arcade music tempo'},
           {opcode:'registerIntervalHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register interval [INTERVAL] ms as [TOKEN] capturing [CAPTURES]',arguments:{...n('INTERVAL',1000),...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredInterval',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade interval handler [TOKEN] runs',arguments:str('TOKEN','handler')},
+          {opcode:'allocateControlEventSource',blockType:Scratch.BlockType.REPORTER,text:'Arcade allocate control event source'},
+          {opcode:'controllerEventSource',blockType:Scratch.BlockType.REPORTER,text:'Arcade controller event source player [PLAYER]',arguments:{PLAYER:{type:Scratch.ArgumentType.STRING,menu:'controlPlayers',defaultValue:'1'}}},
+          {opcode:'setControllerConnected',blockType:Scratch.BlockType.COMMAND,text:'Arcade set controller player [PLAYER] connected [CONNECTED]',arguments:{PLAYER:{type:Scratch.ArgumentType.STRING,menu:'controlPlayers',defaultValue:'1'},CONNECTED:{type:Scratch.ArgumentType.BOOLEAN,defaultValue:true}}},
+          {opcode:'registerMultiplayerConnection',blockType:Scratch.BlockType.COMMAND,text:'Arcade register multiplayer connection event [EVENT] as [TOKEN] capturing [CAPTURES]',arguments:{...n('EVENT',1),...str('TOKEN','handler'),...str('CAPTURES','')}},
+          {opcode:'whenRegisteredMultiplayerConnection',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade multiplayer connection handler [TOKEN] runs',arguments:str('TOKEN','handler')},
+          {opcode:'registerControlEvent',blockType:Scratch.BlockType.COMMAND,text:'Arcade register control event source [SOURCE] value [VALUE] flags [FLAGS] as [TOKEN] capturing [CAPTURES]',arguments:{...n('SOURCE',777),...n('VALUE',1),...n('FLAGS',16),...str('TOKEN','handler'),...str('CAPTURES','')}},
+          {opcode:'whenRegisteredControlEvent',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade control event handler [TOKEN] runs',arguments:str('TOKEN','handler')},
+          {opcode:'raiseControlEvent',blockType:Scratch.BlockType.COMMAND,text:'Arcade raise control event source [SOURCE] value [VALUE]',arguments:{...n('SOURCE',777),...n('VALUE',1)}},
+          {opcode:'waitControlEvent',blockType:Scratch.BlockType.COMMAND,text:'Arcade wait for control event source [SOURCE] value [VALUE]',arguments:{...n('SOURCE',777),...n('VALUE',1)}},
           {opcode:'registerMultiplayerButtonHandler',blockType:Scratch.BlockType.COMMAND,text:'Arcade register multiplayer button [BUTTON] event [EVENT] as [TOKEN] capturing [CAPTURES]',arguments:{...n('BUTTON',0),EVENT:{type:Scratch.ArgumentType.NUMBER,menu:'buttonEvents',defaultValue:2049},...str('TOKEN','handler'),...str('CAPTURES','')}},
           {opcode:'whenRegisteredMultiplayerButton',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade multiplayer button handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'eventPlayer',blockType:Scratch.BlockType.REPORTER,text:'Arcade event player'},
@@ -836,6 +847,7 @@ module.exports = makeExt(`// Name: Arcade
             {text: 'left', value: 'left'}, {text: 'right', value: 'right'},
             {text: 'Start', value: 'start'}, {text: 'Select / menu', value: 'select'}
           ]},
+          controlPlayers:{acceptReporters:false,items:['1','2','3','4']},
           buttonEvents:{acceptReporters:true,items:[{text:'pressed',value:'2049'},{text:'released',value:'2048'},{text:'repeated',value:'2054'}]},
           axes: {acceptReporters: true, items: ['x', 'y']}
           ,particleEffects: {acceptReporters: false, items: ['spray', 'trail', 'fountain', 'rings', 'fire', 'warmRadial', 'coolRadial', 'halo',
@@ -1237,6 +1249,7 @@ module.exports = makeExt(`// Name: Arcade
       if(this._runtime)this._runtime.bwArcadeDeviceState=bundle.state;else this._fallbackState=bundle.state;
       for(const key of Object.keys(bundle))if(key!=='state')this[key]=bundle[key];
       this._terrainFrame=this._sceneFrames.get(bundle.state) || null;
+      if(this._controlEvents)this._controlEvents.activate(this._controlEventContext(bundle.state));
       this._sceneVisible(bundle,true);
       for(const sprite of Object.values(bundle.state.sprites || {})){if(sprite.image)this._renderSpriteImage(sprite.id);this._positionSprite(sprite.id);}
       this._renderPalette();
@@ -1252,13 +1265,16 @@ module.exports = makeExt(`// Name: Arcade
     }
     pushScene(args,util) {
       if(this._particleModule){this._particleModule.particles.clearAll();this._particleModule.particles.disableAll();}
-      const old=this._sceneBundle();this._sceneFrameHost?.unregister(old.state);this._sceneBundles.add(old);this._sceneStack.push(old);this._sceneVisible(old,false);
+      const old=this._sceneBundle();old.state.controllerConnectionState={...this._controllerConnections};this._sceneFrameHost?.unregister(old.state);this._sceneBundles.add(old);this._sceneStack.push(old);this._sceneVisible(old,false);
       this._activateScene(this._freshScene(old.state));
       return this._runTerrainGenerator(this._sceneHandlerSteps(this._scenePushHandlers.slice(),'arcade_whenRegisteredScenePush',util));
     }
     popScene(args,util) {
       const old=this._sceneBundle();this._sceneFrameHost?.unregister(old.state);this._sceneBundles.add(old);this._sceneVisible(old,false);
       const restored=this._sceneStack.pop() || this._freshScene(old.state);this._sceneBundles.delete(restored);this._activateScene(restored);
+      if(restored.state.controllerConnectionState)for(let player=1;player<=4;player++)if(!!restored.state.controllerConnectionState[player]!==!!this._controllerConnections[player]) {
+        const bus=this._controlEventBus();bus.raise(this._controllerEventIds.get(player),this._controllerConnections[player]?1:2);
+      }
       if(this._particleModule)this._particleModule.particles.enableAll();
       return this._runTerrainGenerator(this._sceneHandlerSteps(this._scenePopHandlers.slice(),'arcade_whenRegisteredScenePop',util));
     }
@@ -1270,6 +1286,73 @@ module.exports = makeExt(`// Name: Arcade
       }
     }
     _handlerRegistration(args,util) {return this._terrainRegistration(args,util);}
+    _controlEventContext(state=this._state()) {
+      let context=this._controlEventContexts.get(state);
+      if(!context){
+        context=this._controlEvents.createContext();this._controlEventContexts.set(state,context);
+        // SDK Scene.init calls multiplayer.initPlayerConnectionListeners.
+        for(let player=1;player<=4;player++)for(const [source,connected]of [[3241,true],[3242,false]])
+          this._controlEvents.registerContext(context,source,player,()=>this._setControllerConnection(player,connected));
+      }
+      return context;
+    }
+    _controlEventBus() {
+      if(!this._controlEvents)this._controlEvents=dependencies.createControlEvents({
+        enqueue:work=>Promise.resolve().then(work),
+        dispatch:registration=>{
+          if(typeof registration==='function')return registration();
+          const pending=this._runTerrainGenerator(this._registeredCallbackSteps([registration],'arcade_whenRegisteredControlEvent',{},undefined,true));
+          if(pending?.then)this._runtime?._arcadeFramePhase?.requestContinuation().catch(error=>this._runtime.emit('BLOCKS_ERROR',error.message));
+          return pending;
+        },
+        onError:error=>this._runtime?.emit?.('BLOCKS_ERROR',error.message)
+      });
+      if(!this._controllerEventIds){
+        this._controllerEventIds=new Map();
+        // Exact selected controlleroverrides.ts whenUsed initialization order.
+        // Scene's transport listeners reference all four fixed instances.
+        for(const player of [2,3,4,1])this._controllerEventIds.set(player,this._controlEvents.allocate());
+        // Button constructors register these internal sources outside contexts.
+        // The actual SDK setPressed path changes button/controller state and
+        // announces the selected user/system event; it never posts keyboard IO.
+        for(let player=1;player<=4;player++)for(const button of ['left','up','right','down','a','b','start'])for(const [source,held]of [[2051,true],[2050,false]])
+          this._controlEvents.registerInternal(source,this._controlButtonId(player,button),()=>this._controllerButtonEdge(player,button,held));
+      }
+      this._controlEvents.activate(this._controlEventContext());return this._controlEvents;
+    }
+    allocateControlEventSource() {return this._controlEventBus().allocate();}
+    controllerEventSource(args) {
+      this._controlEventBus();const value=this._controllerEventIds.get(Number(args.PLAYER));
+      if(value===undefined)throw new TypeError('Controller event source requires a fixed player 1 through 4');return value;
+    }
+    setControllerConnected(args,util) {
+      const player=Number(args.PLAYER);if(!Number.isInteger(player)||player<1||player>4)throw new TypeError('Controller connection requires a fixed player 1 through 4');
+      this._setControllerConnection(player,this._mathArgument(args,'CONNECTED',util,'Controller connected requires a primitive value'));
+    }
+    _setControllerConnection(player,value) {
+      const previous=Object.prototype.hasOwnProperty.call(this._controllerConnections,player)?this._controllerConnections[player]:false;
+      if(value!=previous){this._controllerConnections[player]=value;const bus=this._controlEventBus();bus.raise(this._controllerEventIds.get(player),value?1:2);}
+    }
+    registerMultiplayerConnection(args,util) {
+      const bus=this._controlEventBus(),event=this._mathArgument(args,'EVENT',util,'Controller event requires a primitive value'),state=this._state(),entries=state.mpConnectionHandlers || (state.mpConnectionHandlers=[]);
+      let entry=entries.find(entry=>entry.event===event);const registration=this._handlerRegistration(args,util);
+      if(entry){entry.registration=registration;return;}
+      entry={event,registration};entries.push(entry);
+      for(const player of this._players()) {
+        const ref=this._playerRef(player);
+        bus.register(this._controllerEventIds.get(player.index+1),event,()=>{
+          const pending=this._runTerrainGenerator(this._registeredCallbackSteps([entry.registration],'arcade_whenRegisteredMultiplayerConnection',{player:ref},undefined,true));
+          if(pending?.then)this._runtime?._arcadeFramePhase?.requestContinuation().catch(error=>this._runtime.emit('BLOCKS_ERROR',error.message));return pending;
+        });
+      }
+    }
+    whenRegisteredMultiplayerConnection(args,util) {return this.whenRegisteredWall(args,util);}
+    registerControlEvent(args,util) {
+      this._controlEventBus().register(this._mathArgument(args,'SOURCE',util,'Event source requires a primitive value'),this._mathArgument(args,'VALUE',util,'Event value requires a primitive value'),this._handlerRegistration(args,util),Scratch.BWValues.decode(args.FLAGS));
+    }
+    raiseControlEvent(args,util) {this._controlEventBus().raise(this._mathArgument(args,'SOURCE',util,'Event source requires a primitive value'),this._mathArgument(args,'VALUE',util,'Event value requires a primitive value'));}
+    waitControlEvent(args,util) {return this._controlEventBus().wait(this._mathArgument(args,'SOURCE',util,'Event source requires a primitive value'),this._mathArgument(args,'VALUE',util,'Event value requires a primitive value'));}
+    whenRegisteredControlEvent(args,util) {return this.whenRegisteredWall(args,util);}
     registerUpdateHandler(args,util) {this._updateHandlers.push(this._handlerRegistration(args,util));}
     registerIntervalHandler(args,util) {
       const interval=Number(args.INTERVAL);if(interval<0)return;
@@ -1279,7 +1362,7 @@ module.exports = makeExt(`// Name: Arcade
       const button=String(args.BUTTON).toLowerCase(),event=Number(args.EVENT);
       const registration={...this._handlerRegistration(args,util),button,event,player:1};
       const index=this._buttonHandlers.findIndex(h=>h.player===1 && h.button===button && h.event===event);
-      if(index<0)this._buttonHandlers.push(registration);else this._buttonHandlers[index]=registration;
+      if(index<0){this._buttonHandlers.push(registration);this._registerControlButton(1,button,event);}else this._buttonHandlers[index]=registration;
     }
     _multiplayerButton(value) {const raw=Scratch.BWValues.decode(value);return raw===null || raw===undefined?undefined:['a','b','up','right','down','left'][Number(raw)];}
     registerMultiplayerButtonHandler(args,util) {
@@ -1292,22 +1375,22 @@ module.exports = makeExt(`// Name: Arcade
       for(const player of this._players()){
         const wrapper={button,event,player:player.index+1,mp:entry,playerValue:this._playerRef(player)};
         const index=this._buttonHandlers.findIndex(h=>h.player===wrapper.player && h.button===button && h.event===event);
-        if(index<0)this._buttonHandlers.push(wrapper);else this._buttonHandlers[index]=wrapper;
+        if(index<0){this._buttonHandlers.push(wrapper);this._registerControlButton(wrapper.player,button,event);}else this._buttonHandlers[index]=wrapper;
       }
     }
     eventPlayer(args,util) {return util?.thread?.bwArcadeEvent?.player || Scratch.BWValues.encode(undefined);}
     _heldButton(number,button) {
       const state=this._state(),buttons=number===1?state.buttons:state.controllerButtons[number] || {};
       const key={left:'left arrow',up:'up arrow',right:'right arrow',down:'down arrow',a:'space',b:'z',start:'enter',select:'m'}[button];
-      return Boolean(buttons[button] || (number===1 && this._runtime?.ioDevices?.keyboard?.getKeyIsDown?.(key)));
+      return Object.prototype.hasOwnProperty.call(buttons,button)?!!buttons[button]:Boolean(number===1 && this._runtime?.ioDevices?.keyboard?.getKeyIsDown?.(key));
     }
     playerConnected(args) {
       const player=this._player(args.PLAYER);
-      return !!player && !!this._controllerConnections[player.index+1];
+      return player?Scratch.BWValues.encode(Object.prototype.hasOwnProperty.call(this._controllerConnections,player.index+1)?this._controllerConnections[player.index+1]:false):false;
     }
     _controllerConnectionChanged(number,connected) {
       if(!Number.isInteger(number) || number<1 || number>4 || typeof connected!=='boolean')return;
-      this._controllerConnections[number]=connected;
+      this._setControllerConnection(number,connected);
     }
     _observeControllerInput(number,button,held) {
       if(!Number.isInteger(number) || number<1 || number>4 || !['left','up','right','down','a','b','start','select'].includes(button))return;
@@ -1323,8 +1406,25 @@ module.exports = makeExt(`// Name: Arcade
       const button=this._multiplayerButton(args.BUTTON);if(!button)throw new TypeError('Invalid multiplayer button');
       return this._heldButton(player.index+1,button);
     }
-    *_controllerButtonCallbacks(number,button,event,deferred=false) {
-      if(!this._userControllerEvents)return;
+    _controlButtonId(number,button) {
+      const id={left:1,up:2,right:3,down:4,a:5,b:6,start:7}[String(button).toLowerCase()];
+      return id===undefined?undefined:id+(number-1)*7;
+    }
+    _registerControlButton(number,button,event) {
+      const id=this._controlButtonId(number,button);if(id===undefined)return;
+      this._controlEventBus().register(event,id,()=>{
+        const pending=this._runTerrainGenerator(this._controllerButtonCallbacks(number,button,event,true,true));
+        if(pending?.then)this._runtime?._arcadeFramePhase?.requestContinuation().catch(error=>this._runtime.emit('BLOCKS_ERROR',error.message));return pending;
+      });
+    }
+    _announceControlButton(number,button,event) {
+      const id=this._controlButtonId(number,button);
+      if(id===undefined)return this._runTerrainGenerator(this._controllerButtonCallbacks(number,button,event,true));
+      const source=this._userControllerEvents?event:({2048:2052,2049:2053,2054:2055}[event]??event);
+      this._controlEventBus().raise(source,id);
+    }
+    *_controllerButtonCallbacks(number,button,event,deferred=false,explicitEvent=false) {
+      if(!explicitEvent && !this._userControllerEvents)return;
       const handlers=this._buttonHandlers.filter(h=>h.player===number && h.button===button && h.event===event);
       for(const handler of handlers){
         if(handler.host){handler.host();continue;}
@@ -1508,6 +1608,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     _controllerButtonEdge(number,button,isDown) {
       if(!Number.isInteger(number) || number<1 || number>4)return;
+      const state=this._state(),buttons=number===1?state.buttons:state.controllerButtons[number] || (state.controllerButtons[number]={});buttons[button]=!!isDown;
       this._observeControllerInput(number,button,isDown);
       const key=number+':'+button,current=this._buttonStates[key] || (this._buttonStates[key]={held:false,elapsed:0,count:0});
       const held=!!isDown;if(current.held===held)return;
@@ -1515,7 +1616,7 @@ module.exports = makeExt(`// Name: Arcade
       if(held)this._buttonPressed();
       if(this._dialogs?.[0]?.type==='ask'){if(number===1)this._questionButtonEdge(button,held);return;}
       if(this._terrainStopped)return;
-      const pending=this._runTerrainGenerator(this._controllerButtonCallbacks(number,button,held?2049:2048,true));
+      const pending=this._announceControlButton(number,button,held?2049:2048);
       pending?.catch?.(error=>this._runtime?.emit?.('BLOCKS_ERROR',error.message));
       // The real edge already registered a ready user callback. Dispatch it
       // as a source continuation at this program time, without a scene frame.
@@ -1532,7 +1633,7 @@ module.exports = makeExt(`// Name: Arcade
         let event;
         if(held!==current.held){current.held=held;current.elapsed=0;current.count=0;event=held?2049:2048;if(held)this._buttonPressed();}
         else if(held){current.elapsed+=(dt*1000)|0;if(current.elapsed>=500){const count=Math.floor((current.elapsed-530)/30);if(count!==current.count){current.count=count;event=2054;}}}
-        if(event!==undefined)yield* this._controllerButtonCallbacks(number,button,event);
+        if(event!==undefined){const pending=this._announceControlButton(number,button,event);if(pending?.then)yield pending;}
         if(this._state()!==state)return;
       }
     }
@@ -5529,6 +5630,7 @@ module.exports = makeExt(`// Name: Arcade
   createObjectHeap: require('./object-heap'),
   createSourceScalarCells: require('./source-scalar-cells'),
   createSceneFrameContexts: require('./scene-frame-contexts'),
+  createControlEvents: require('./control-events'),
   createPollEvents: require('./poll-events'),
   createKindRegistry: require('./kind-registry'),
   createTextSpriteHost: require('./text-sprite-host'),

@@ -327,7 +327,7 @@ class ArcadeTranslator extends BaseTranslator {
             }
         } while (added);
         this.kindRuntimeProgram=containsAst(node,value=>value.type==='SpriteKindReset' || value.type==='Member' && this.path(value.object)==='SpriteKind' || value.type==='Call' && (this.path(value.callee)==='SpriteKind.create' || value.callee?.type==='Member' && ['kind','setKind'].includes(value.callee.name)));
-        this.sceneStackProgram=this.kindRuntimeProgram || containsAst(node,value=>value.type==='Call' && /^(?:mp\.(?:onButtonEvent|getPlayerState|setPlayerState|changePlayerStateBy)|game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler))$/.test(this.path(value.callee)||''));
+        this.sceneStackProgram=this.kindRuntimeProgram || containsAst(node,value=>value.type==='Call' && /^(?:mp\.(?:onControllerEvent|onButtonEvent|getPlayerState|setPlayerState|changePlayerStateBy)|game\.(?:pushScene|popScene|addScenePushHandler|addScenePopHandler|removeScenePushHandler|removeScenePopHandler))$/.test(this.path(value.callee)||''));
         this.nativeInfoProgram=this.sceneStackProgram || containsAst(node,value=>value.type==='Call' && isInfoRegistration(this.path(value.callee)));
         const registrations=discoverRuntimeRegistrations(node,this);
         this.createdRegistrations=new Map([...registrations].filter(([,record])=>record.kind==='creation'));
@@ -975,11 +975,13 @@ class ArcadeTranslator extends BaseTranslator {
             }
             if (name === 'scene.backgroundColor' && a.length === 0) return 'arcade background color';
 
-            // `controller.left.isPressed()` is `key left arrow pressed?`,
-            // which is the second most common way an Arcade game reads
-            // input after controller.moveSprite.
+            // Native queries read the SDK button state, including internal event
+            // changes which intentionally do not mutate Scratch keyboard IO.
             const button = /^controller\.(\w+)\.isPressed$/.exec(name || '');
             if (button && CONTROLLER_KEYS[button[1]]) {
+                if(this.handleTemplates && (this.boundSourceGlobals?.has('controller') || this.sourceFunctions?.has('controller') || this.localVars?.has('controller') || this.currentParameters?.has('controller') || this.capturedBindings.has('controller'))){this.unsupported.push(`${name} refers to a shadowed controller binding`);return 'undefined value';}
+                if(this.handleTemplates && button[1]==='menu'){this.unsupported.push('controller.menu.isPressed requires a qualified SDK menu button state reporter');return 'undefined value';}
+                if(this.handleTemplates && Object.prototype.hasOwnProperty.call({A:0,B:1,up:2,right:3,down:4,left:5},button[1]))return `arcade player (arcade player by number 1) button (${{A:0,B:1,up:2,right:3,down:4,left:5}[button[1]]}) pressed`;
                 return `key ${CONTROLLER_KEYS[button[1]]} pressed?`;
             }
 
@@ -1096,6 +1098,20 @@ class ArcadeTranslator extends BaseTranslator {
         if(node?.type==='Member' && this.physicsEngineReferences?.has(node.object)) {
             if(['maxSpeed','minStep','maxStep'].includes(node.name))return `arcade physics engine property ${node.name} of (${this.expr(node.object)})`;
             this.unsupported.push(`Arcade PhysicsEngine.${node.name} requires native physics-engine member support`);return 'undefined value';
+        }
+        if(this.handleTemplates && node?.type==='Call' && this.path(node.callee)==='control.allocateNotifyEvent') {
+            if(this.boundSourceGlobals?.has('control') || this.sourceFunctions?.has('control') || this.localVars?.has('control') || this.currentParameters?.has('control') || this.capturedBindings.has('control')){this.unsupported.push('control.allocateNotifyEvent refers to a shadowed control binding');return 'undefined value';}
+            if(node.args.length){this.unsupported.push('control.allocateNotifyEvent requires no arguments');return 'undefined value';}return 'arcade allocate control event source';
+        }
+        if(this.handleTemplates && node?.type==='Member' && /^controller\.player[1-4]$/.test(this.path(node.object)||'') && ['id','connected'].includes(node.name)) {
+            if(this.boundSourceGlobals?.has('controller') || this.sourceFunctions?.has('controller') || this.localVars?.has('controller') || this.currentParameters?.has('controller') || this.capturedBindings.has('controller')){this.unsupported.push(`${this.path(node)} refers to a shadowed controller binding`);return 'undefined value';}
+            const player=this.path(node.object).slice(-1);
+            return node.name==='id'?`arcade controller event source player ${player}`:`arcade player (arcade player by number ${player}) connected`;
+        }
+        if(this.handleTemplates && node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='ControllerEvent') {
+            if(this.boundSourceGlobals?.has('ControllerEvent') || this.localVars?.has('ControllerEvent') || this.currentParameters?.has('ControllerEvent') || this.capturedBindings.has('ControllerEvent')){this.unsupported.push(`${this.path(node)} refers to a shadowed ControllerEvent binding`);return 'undefined value';}
+            const values={Connected:1,Disconnected:2};if(Object.prototype.hasOwnProperty.call(values,node.name))return String(values[node.name]);
+            this.unsupported.push(`${this.path(node)} is not a declared Arcade ControllerEvent member`);return 'undefined value';
         }
         if(this.handleTemplates && node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='ControllerButtonEvent') {
             if(this.boundSourceGlobals?.has('ControllerButtonEvent') || this.localVars?.has('ControllerButtonEvent') || this.currentParameters?.has('ControllerButtonEvent') || this.capturedBindings.has('ControllerButtonEvent')) {
@@ -1486,12 +1502,23 @@ class ArcadeTranslator extends BaseTranslator {
         if(isSpriteRegistration(name)){
             for(const binding of ['sprites','SpriteKind'])if(this.boundSourceGlobals?.has(binding) || this.sourceFunctions?.has(binding) || this.localVars?.has(binding) || this.currentParameters?.has(binding) || this.capturedBindings.has(binding)){push(this.note(`${name} refers to a shadowed ${binding} binding`));return;}
         }
+        if(name==='control.allocateNotifyEvent'){
+            if(a.length){push(this.note('control.allocateNotifyEvent requires no arguments'));return;}if(!this.discardedEventSourceName){let n=0,name;do{name=`__bwDiscardedEventSource${++n}`;}while(this.taken.has(name));this.taken.add(name);this.discardedEventSourceName=name;}push(`set ${this.discardedEventSourceName} to (${this.expr(node)})`);return;
+        }
+        if(/^control\.(?:onEvent|raiseEvent|waitForEvent)$/.test(name||'')) {
+            if(this.boundSourceGlobals?.has('control') || this.sourceFunctions?.has('control') || this.localVars?.has('control') || this.currentParameters?.has('control') || this.capturedBindings.has('control')){push(this.note(`${name} refers to a shadowed control binding`));return;}
+            if(name!=='control.onEvent'){
+                if(a.length!==2){push(this.note(`${name} requires exactly two event identity arguments`));return;}
+                push(`arcade ${name==='control.raiseEvent'?'raise control event':'wait for control event'} source (${this.expr(a[0])}) value (${this.expr(a[1])})`);return;
+            }
+        }
         const sceneSpec=(this.sceneStackProgram || isIndependentRegistration(name)) && sceneRegistrationSpec(name);
         if(this.handleTemplates && sceneSpec) {
             const registration=this.sceneRegistrations.get(node);
             if(!registration){push(this.note(isParallelLaunch(name)?'control.runInParallel requires one inline callback without parameters':`${name} requires exact arguments, fixed sprite kinds and a supported inline callback; lifecycle oldScene access is not yet supported`));return;}
             const suffix=`as "${registration.token}" capturing ${JSON.stringify([...registration.ownCaptures].join(' '))}`;
             switch(registration.kind) {
+            case 'controlEvent':push(`arcade register control event source (${this.expr(a[0])}) value (${this.expr(a[1])}) flags (${a[3]?this.expr(a[3]):'16'}) ${suffix}`);break;
             case 'update':push(`arcade register update ${suffix}`);break;
             case 'paint':push(`arcade register paint ${suffix}`);break;
             case 'shade':push(`arcade register shade ${suffix}`);break;
@@ -1500,6 +1527,7 @@ class ArcadeTranslator extends BaseTranslator {
             case 'lifeZero':push(`arcade register life zero player (${playerOf(name)}) ${suffix}`);break;
             case 'countdown':push(`arcade register countdown ${suffix}`);break;
             case 'interval':push(`arcade register interval (${this.expr(a[0])}) ${suffix}`);break;
+            case 'multiplayerConnection':push(`arcade register multiplayer connection event (${this.expr(a[0])}) ${suffix}`);break;
             case 'multiplayerButton':push(`arcade register multiplayer button (${this.expr(a[0])}) event (${this.expr(a[1])}) ${suffix}`);break;
             case 'button':push(`arcade register button "${/^controller\.(\w+)\./.exec(name)[1]}" event (${this.expr(a[0])}) ${suffix}`);break;
             case 'destroyed':push(`arcade register destroyed kind ${this.kindSlot(a[0])} ${suffix}`);break;
@@ -2632,6 +2660,11 @@ class ArcadeTranslator extends BaseTranslator {
             }
         }
 
+        if(expr.type==='Assignment' && expr.left?.type==='Member' && expr.left.name==='connected' && /^controller\.player[1-4]$/.test(this.path(expr.left.object)||'')) {
+            if(this.boundSourceGlobals?.has('controller') || this.sourceFunctions?.has('controller') || this.localVars?.has('controller') || this.currentParameters?.has('controller') || this.capturedBindings.has('controller')){push(this.note(`${this.path(expr.left)} refers to a shadowed controller binding`));return;}
+            if(expr.op!=='='){push(this.note('Controller connected compound assignment requires a qualified controller value receiver'));return;}
+            push(`arcade set controller player ${this.path(expr.left.object).slice(-1)} connected (${this.expr(expr.right)})`);return;
+        }
         if (expr.type === 'Assignment' && expr.left.type === 'Member') {
             const owner = this.resolveSprite(expr.left.object);
             // \`paddle.x = …\` where \`paddle\` is a loop variable or a parameter: no
@@ -3200,7 +3233,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
         if (node.type === 'Declaration') for (const decl of node.decls) {const value=binding(owner,decl.name,true);seedDeclared(value,decl.typeName);if(decl.isArray)value.add('array');}
         if (node.type === 'Call') {
             const api = pathOf(node.callee);
-            const types = api==='mp.onButtonEvent'?['player']:api==='sprites.onOverlap'?['sprite','sprite']:
+            const types = ['mp.onButtonEvent','mp.onControllerEvent'].includes(api)?['player']:api==='sprites.onOverlap'?['sprite','sprite']:
                 api==='scene.onHitTile'?['sprite']:['scene.onHitWall','scene.onOverlapTile'].includes(api)?['sprite','tile']:
                 ['sprites.onCreated','sprites.onDestroyed'].includes(api)?['sprite']:[];
             visit(node.callee, owner);
@@ -3504,9 +3537,12 @@ const isInfoRegistration = name => /^info(?:\.player[1-4])?\.onLifeZero$/.test(n
 const isForeverRegistration = name => ['forever','game.forever','basic.forever'].includes(name);
 const isSpriteRegistration = name => ['sprites.onDestroyed','sprites.onOverlap'].includes(name);
 const isParallelLaunch = name => name==='control.runInParallel';
-const isIndependentRegistration = name => isParallelLaunch(name) || isFrameRegistration(name) || isButtonRegistration(name) || isInfoRegistration(name) || isForeverRegistration(name) || isSpriteRegistration(name);
+const isControlRegistration = name => name==='control.onEvent';
+const isIndependentRegistration = name => isControlRegistration(name) || isParallelLaunch(name) || isFrameRegistration(name) || isButtonRegistration(name) || isInfoRegistration(name) || isForeverRegistration(name) || isSpriteRegistration(name);
 const sceneRegistrationSpec = name => {
     const specs={
+        'mp.onControllerEvent':{kind:'multiplayerConnection',handlerIndex:1,arity:2,prefix:'__bwMPConnection',maxParams:1},
+        'control.onEvent':{kind:'controlEvent',handlerIndex:2,arities:[3,4],prefix:'__bwControlEvent',maxParams:0},
         'game.addScenePushHandler':{kind:'scenePush',handlerIndex:0,arity:1,prefix:'__bwScenePush',maxParams:1},
         'game.addScenePopHandler':{kind:'scenePop',handlerIndex:0,arity:1,prefix:'__bwScenePop',maxParams:1},
         'forever':{kind:'forever',handlerIndex:0,arity:1,prefix:'__bwForever',maxParams:0},
@@ -3561,7 +3597,7 @@ const discoverRuntimeRegistrations = (ast, translator) => {
             const validScene=nativeScene && handler?.params?.length<=spec.maxParams &&
                 (spec.kinds||[]).every(index=>fixedKind(node.args[index])) &&
                 (!['scenePush','scenePop'].includes(spec.kind) || !handler.params.length || !containsAst(handler.body,value=>value.type==='Identifier' && value.name===handler.params[0]));
-            if (handler?.type==='FunctionExpression' && node.args.length===spec.arity &&
+            if (handler?.type==='FunctionExpression' && (spec.arities?spec.arities.includes(node.args.length):node.args.length===spec.arity) &&
                 (nativeScene?validScene:spec.kind==='creation' || handler.params.length<=2 && fixedKind(kind))) {
                 const captures = new Map(bindings);
                 for (const name of [...(handler.params || []), ...localNames(handler.body)]) captures.delete(name);
@@ -3622,9 +3658,9 @@ const emitSceneRegistrations = (translator,out,localHandles=new Map(),callbackLo
         const spriteParams=kind==='destroyed'?handler.params.slice(0,1):kind==='overlap'?handler.params.slice(0,2):[];
         translator.localHandleVars=new Set([...(localHandles.get(callbackLocals.get(handler)) || []),...spriteParams]);
         translator.handleAliases=new Map();
-        const label=kind==='multiplayerButton'?'multiplayer button':kind==='scenePush'?'scene push':kind==='scenePop'?'scene pop':kind==='instanceDestroyed'?'instance destruction':kind==='destroyed'?'destroyed kind':kind==='lifeZero'?'life zero':kind;
+        const label=kind==='controlEvent'?'control event':kind==='multiplayerConnection'?'multiplayer connection':kind==='multiplayerButton'?'multiplayer button':kind==='scenePush'?'scene push':kind==='scenePop'?'scene pop':kind==='instanceDestroyed'?'instance destruction':kind==='destroyed'?'destroyed kind':kind==='lifeZero'?'life zero':kind;
         out.push(`WHEN arcade ${label} handler "${token}" runs:`);
-        if(kind==='multiplayerButton' && handler.params[0])out.push(`  arcade set local ${translator.varName(handler.params[0])} to arcade event player`);
+        if(['multiplayerButton','multiplayerConnection'].includes(kind) && handler.params[0])out.push(`  arcade set local ${translator.varName(handler.params[0])} to arcade event player`);
         for(const [index,param] of spriteParams.entries())out.push(`  arcade set local ${translator.varName(param)} to arcade event ${index===0?'first':'second'}`);
         translator.block(handler.body,1,out);out.push('');
         translator.capturedBindings=previous.captures;translator.localVars=previous.locals;translator.currentParameters=previous.parameters;translator.localHandleVars=previous.handles;translator.handleAliases=previous.aliases;
@@ -3837,7 +3873,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         if(node.type==='Binary' && node.op==='/' && (!Number.isFinite(constantNumber(node.right)) || constantNumber(node.right)===0))return true;
         if(node.type==='Unary' && node.op==='-' && constantNumber(node.argument)===0)return true;
         if(node.type==='Unary' && ['+','-'].includes(node.op))return true;
-        if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || ['game.ask','game.askForString','game.askForNumber','controller.pauseUntilAnyButtonIsPressed'].includes(t.path(node.callee))))return true;
+        if(node.type==='Call' && (isIndependentRegistration(t.path(node.callee)) || ['control.allocateNotifyEvent','control.raiseEvent','control.waitForEvent','game.ask','game.askForString','game.askForNumber','controller.pauseUntilAnyButtonIsPressed'].includes(t.path(node.callee))))return true;
         if(node.type==='Call' && /^bwStringArraySettings\.(?:read|write)$/.test(t.path(node.callee)||''))return true;
         if(node.type==='Call' && /^(?:settings|blockSettings)\.(?:(?:write|read)(?:Number|String|NumberArray|StringArray|Buffer)|exists|list|remove|clear)$/.test(t.path(node.callee)||''))return true;
         if(t.textSpriteReferences?.has(node) || node.type==='Call' && t.path(node.callee)==='textsprite.create')return true;
