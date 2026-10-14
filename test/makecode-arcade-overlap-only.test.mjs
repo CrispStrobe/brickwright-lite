@@ -1,3 +1,4 @@
+import {ORIGINAL_SPRITE_KINDS as Kinds} from './helpers/arcade-original-kind-values.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -32,7 +33,7 @@ WHEN flag clicked:
     assert.deepEqual(run.errors, []);
     assert.ok((run.calls.get('arcade_whenRegisteredOverlap') || 0) > 0);
     const live = Object.values(run.vm.runtime.bwArcadeDeviceState?.sprites || {}).filter(sprite => sprite.id);
-    assert.deepEqual(live.map(sprite => sprite.kind), ['Player']);
+    assert.deepEqual(live.map(sprite => sprite.kind), [Kinds.Player]);
     const foodCount = run.vm.runtime.targets.flatMap(target => Object.values(target.variables || {}))
         .find(variable => variable.name === 'foodCount');
     assert.equal(foodCount?.value, -1);

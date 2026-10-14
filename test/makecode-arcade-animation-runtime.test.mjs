@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock, startArcadeProject} from './helpers/arcade-runtime-mock.mjs';
 import {createRequire} from 'node:module';
 import {loadExtensionClass,VM_SRC} from './helpers/bw-extensions.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const BWValues=createRequire(import.meta.url)(VM_SRC+'/util/bw-values');
 const Arcade=loadExtensionClass('arcade');
 function game(){
-    const runtime=new EventEmitter(),arcade=new Arcade(runtime);
+    const runtime=createArcadeRuntimeMock(),arcade=new Arcade(runtime);
     const image=color=>{const value=arcade.createImage({WIDTH:1,HEIGHT:1});arcade.drawImage({IMAGE:value,OP:'fillRect',X:0,Y:0,W:1,H:1,COLOR:color});return value;};
     const red=image(2),blue=image(3),green=image(7),actor=arcade.createImageSprite({IMAGE:green,TEMPLATE:'',KIND:'Player'});
     const pixel=()=>arcade.spritePixel({ID:actor,X:0,Y:0});
@@ -55,7 +55,7 @@ test('animation block menus expose all implemented controls and references rejec
     for(const opcode of ['createAnimation','addAnimationFrame','attachAnimation','setAnimationAction','animationProperty','setAnimationInterval','runImageAnimation','stopAnimation'])assert.ok(info.blocks.some(block=>block.opcode===opcode),opcode);
     assert.deepEqual(info.menus.animationProperties.items,['image','action','interval']);
     assert.deepEqual(info.menus.animationTypes.items.map(item=>item.value),['0','1','2']);
-    assert.equal(other.arcade._animation(animation),null);g.runtime.emit('PROJECT_START');assert.equal(g.arcade._animation(animation),null);
+    assert.equal(other.arcade._animation(animation),null);startArcadeProject(g.runtime);assert.equal(g.arcade._animation(animation),null);
 });
 test('original PXT confirms modern-first rendering and stop-action semantics',async()=>{
     const actual=await runPxtArcade(`let red=img\`2\`

@@ -1,3 +1,4 @@
+import {ORIGINAL_SPRITE_KINDS as Kinds} from './helpers/arcade-original-kind-values.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -93,7 +94,7 @@ game.onUpdate(function () { frames += 1; lifeNow = info.life(); if (frames >= 12
     assert.ok((run.calls.get('arcade_destroySprite') || 0) >= 1);
     const live = Object.values(run.vm.runtime.bwArcadeDeviceState?.sprites || {}).filter(s => s.id);
     assert.equal(live.length, 1);
-    assert.equal(live[0].kind, 'Player');
+    assert.equal(live[0].kind, Kinds.Player);
     assert.equal(run.vm.runtime.bwArcadeDeviceState.players[0].life, oracle.lifeNow);
     const exported = projectToArcade(run.creator.project, {costumeSvg:(t,c)=>run.creator.assets.get(c.assetId)?.data});
     assert.deepEqual(exported.unsupported, []);
