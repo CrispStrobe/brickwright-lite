@@ -2006,8 +2006,9 @@ module.exports = makeExt(`// Name: Arcade
     }
     setObjectField(args,util) {
       try{const field=this._objectHeap.property(args.OBJECT,String(args.FIELD));
-        if(field.getter || field.setter){if(!field.setter)throw new Error('Class accessor has no setter');return this._objectProcedure(field.setter.procedure,[args.OBJECT,this._objectHeap.hold(args.VALUE)],util,util?.thread?.bwObjectConstruction);}
-        return this._objectHeap.set(args.OBJECT,String(args.FIELD),args.VALUE,util?.thread?.bwObjectConstruction,util);}catch(error){return this._objectError(error);}
+        const value=dependencies.currentNumberInput(this._runtime,args,util,'arcade_setObjectField');
+        if(field.getter || field.setter){if(!field.setter)throw new Error('Class accessor has no setter');return this._objectProcedure(field.setter.procedure,[args.OBJECT,this._objectHeap.hold(value)],util,util?.thread?.bwObjectConstruction);}
+        return this._objectHeap.set(args.OBJECT,String(args.FIELD),value,util?.thread?.bwObjectConstruction,util);}catch(error){return this._objectError(error);}
     }
     callObjectMethod(args,util) {
       try {
@@ -2019,9 +2020,9 @@ module.exports = makeExt(`// Name: Arcade
         return this._objectProcedure(method.procedure,[args.OBJECT,...values.map(value=>this._objectHeap.hold(value))],util,util?.thread?.bwObjectConstruction);
       }catch(error){return this._objectError(error);}
     }
-    functionArgument(args) {
+    functionArgument(args,util) {
       let rest;try {rest = JSON.parse(String(args.REST));} catch {rest = [];}
-      return JSON.stringify([args.VALUE, ...(Array.isArray(rest) ? rest : [])], Scratch.BWValues.jsonReplacer);
+      return JSON.stringify([dependencies.currentNumberInput(this._runtime,args,util,'arcade_functionArgument'), ...(Array.isArray(rest) ? rest : [])], Scratch.BWValues.jsonReplacer);
     }
     _pumpFunctionCalls() {
       for (const call of this._functionCalls) {
@@ -2146,7 +2147,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     setLocal(args, util) {
       const params = this._localParams(util);
-      if (params) params[String(args.NAME)] = args.VALUE;
+      if (params) params[String(args.NAME)] = dependencies.currentNumberInput(this._runtime,args,util,'arcade_setLocal');
     }
     getLocal(args, util) {
       const params = this._localParams(util);
@@ -2255,7 +2256,7 @@ module.exports = makeExt(`// Name: Arcade
     }
     setCaptured(args, util) {
       const cell = util?.thread?.bwArcadeCaptures?.get(String(args.NAME));
-      if (cell) cell.values[cell.key] = args.VALUE;
+      if (cell) cell.values[cell.key] = dependencies.currentNumberInput(this._runtime,args,util,'arcade_setCaptured');
     }
     _askForString(args, util, answerLength=12, numbersOnly=false) {
       const ask = this._runtime && this._runtime.getOpcodeFunction &&
@@ -5860,6 +5861,7 @@ module.exports = makeExt(`// Name: Arcade
   createSourceTypeOfValues: require('./source-typeof-values'),
   createConsoleInspectValues: require('./console-inspect-values'),
   createManagedReturnValues: require('./managed-return-values'),
+  currentNumberInput: require('./current-number-input'),
   createSceneFrameContexts: require('./scene-frame-contexts'),
   createControlEvents: require('./control-events'),
   createPollEvents: require('./poll-events'),

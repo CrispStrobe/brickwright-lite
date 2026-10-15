@@ -16,6 +16,7 @@ function fixture(opcode='math_number',value='20'){
     const args={VALUE:value},util={runtime,thread,target},method=()=>service.value(args,util);
     const operation={id:'return',opcode:'arcade_returnValue',_argValues:args,_blockFunction:method,fields:blocks.return.fields,inputs:blocks.return.inputs};
     runtime.getOpcodeFunction=op=>op==='arcade_returnValue'?method:null;container._cache._executeCached.return={_ops:[operation]};
+    container._cache._executeCached.value={id:'value',opcode,fields:blocks.value.fields,inputs:blocks.value.inputs,_isShadowBlock:true,_shadowValue:value,_parentValues:args,_parentKey:'VALUE'};
     const invoke=(values=args)=>loan.invoke(runtime,thread,container,operation,args,util,()=>service.value(values,util));
     return {blocks,container,target,frame,caller,thread,runtime,service,args,util,operation,invoke};
 }
@@ -32,6 +33,8 @@ test('return ownership rejects copied args, changed body/signature/input and for
     const identity=fixture();identity.blocks.value={...identity.blocks.value};assert.equal(identity.invoke(),'20');
     const frame=fixture();frame.thread.stackFrames[0]={...frame.frame};assert.equal(frame.invoke(),'20');
     const foreign=fixture();foreign.runtime.targets=[];assert.equal(foreign.service.value(foreign.args,foreign.util),'20');assert.throws(()=>foreign.invoke(),/actual cached caller/);
+    for(const property of ['_parentValues','_parentKey','_shadowValue','_isShadowBlock','fields','inputs']){const stale=fixture();stale.container._cache._executeCached.value[property]=null;assert.equal(stale.invoke(),'20',property);}
+    const disconnected=fixture();disconnected.blocks.value.parent='other';assert.equal(disconnected.invoke(),'20');
     const stoppedCaller=fixture();stoppedCaller.caller.isKilled=true;assert.equal(stoppedCaller.invoke(),'20');
 });
 test('Stop and disposal invalidate the old invocation; a new binding after start works',()=>{

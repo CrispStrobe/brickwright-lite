@@ -1350,6 +1350,10 @@ class ArcadeEmitter {
         case 'arcade_spriteDataReadBoolean': this.requiresSpriteDataPackage=true;return `sprites.readDataBoolean(${v('ID')}, ${v('KEY')})`;
         case 'arcade_imageEquals': return `${v('IMAGE')}.equals(${v('OTHER')})`;
         case 'arcade_screenImage': return 'screen';
+        case 'arcade_inspectValue': {
+            if(!this.inspectionExportOperands?.has(b)){this.note('Arcade inspection export requires actual primitive VALUE and Number or Undefined LIMIT producers');return 'undefined';}
+            return `console.inspect(${this.arrayValue(b,'VALUE')}, ${this.arrayValue(b,'LIMIT')})`;
+        }
         case 'arcade_sourceTypeOf': {
             const graph=this.callableExports?.get(this.target)?.graph,callable=callableReflectionOperand(graph,b,this.project);
             if(callableReflectionVariable(graph,b)?!callable:!this.sourceTypeOfExportOperands?.has(b)&&!callable)this.note('Arcade source typeof export requires a proven primitive or current owned resource; Sprite and opaque ownership is not qualified');
@@ -2901,7 +2905,8 @@ class ArcadeEmitter {
         const graphTextSpriteValues=new Set(),graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
         const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],arrayCopies=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
-        const sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
+        const inspectionOperatorProofs=new Map(),inspectionLeaves=new Map(),inspectionProducers=new Map(),inspectionOpaqueCells=new Set(),inspectionOperators=[],inspectionGlobalReaders=new Map(),inspectionVisited=new Set();
+        const inspectionInputs=new Map(),sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
         const inputBlock = (blocks, b, name) => {
             const input=b.inputs?.[name]?.[1];
             if(Array.isArray(input) && input[0]===12) return {opcode:'data_variable',fields:{VARIABLE:[input[1],input[2]]}};
@@ -2955,6 +2960,8 @@ class ArcadeEmitter {
             };
             collectScope(b.next);
             const scopeValues = [...scopeBlocks].map(id => blocks[id]);
+            const fixedName=value=>{const input=value.inputs?.NAME?.[1];return value.fields?.NAME?.[0]??(Array.isArray(input)&&input[0]===10?String(input[1]):blocks[input]?.opcode==='text'?blocks[input].fields?.TEXT?.[0]:null);};
+            const unsafeInspectionLocals=scopeValues.some(value=>value.opcode==='arcade_setLocal'&&typeof fixedName(value)!=='string'||value.opcode==='arcade_createCallable'||value.opcode.startsWith('arcade_register')&&(value.inputs?.CAPTURES||value.fields?.CAPTURES));
             const ref = value => {
                 if (!value) return null;
                 if(value.opcode==='arrays_namedReference'){const id='named-array:'+literal(blocks,value,'NAME');arrays.add(id);return id;}
@@ -2983,28 +2990,28 @@ class ArcadeEmitter {
                 if(['arcade_bufferLength','arcade_bufferHash','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf','arcade_bufferFormatSize','arcade_bufferPackedSize'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
                 if(['arcade_bufferToHex','arcade_bufferToText','arcade_bufferToBase64'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
                 if(['arcade_bufferIsReadOnly','arcade_bufferEquals'].includes(value.opcode)){const id=Symbol('buffer readonly');booleans.add(id);return id;}
-                if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);return id;}
-                if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);return id;}
+                if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
+                if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);inspectionLeaves.set(id,'string');return id;}
                 if(['arrays_valueBinary','arrays_valueUnary'].includes(value.opcode)) {
                     const id=`${key}:value-operation:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
                     if(value.opcode==='arrays_valueBinary' && literal(blocks,value,'OP')==='+')valueOperations.push([id,ref(inputBlock(blocks,value,'LEFT')),ref(inputBlock(blocks,value,'RIGHT'))]);
                     else numbers.add(id);
                     return id;
                 }
-                if(value.opcode==='arrays_specialValue'){const id=Symbol('special value');specialTypes.push([id,literal(blocks,value,'KIND')]);return id;}
+                if(value.opcode==='arrays_specialValue'){const id=Symbol('special value');specialTypes.push([id,literal(blocks,value,'KIND')]);inspectionLeaves.set(id,literal(blocks,value,'KIND'));return id;}
                 if(this.isBoolean(value) || ['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','operator_random','operator_join','operator_letter_of','operator_length','planetemaths_min','planetemaths_max'].includes(value.opcode)) {
                     const id=`${key}:primitive:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
-                    (this.isBoolean(value)?booleans:['operator_join','operator_letter_of'].includes(value.opcode)?strings:numbers).add(id);return id;
+                    (this.isBoolean(value)?booleans:['operator_join','operator_letter_of'].includes(value.opcode)?strings:numbers).add(id);const operands=Object.keys(value.inputs||{}).map(name=>ref(inputBlock(blocks,value,name)));inspectionOperators.push([id,operands]);inspectionOperatorProofs.set(id,{type:this.isBoolean(value)?'boolean':['operator_join','operator_letter_of'].includes(value.opcode)?'string':'number',operands});return id;
                 }
-                if (/^argument_reporter_/.test(value.opcode)) return `${key}:param:${value.fields.VALUE[0]}`;
-                if (value.opcode === 'arcade_getCaptured')return `${key}:capture:${literal(blocks,value,'NAME')}`;
-                if (value.opcode === 'arcade_getLocal') {const cell=localKey(literal(blocks,value,'NAME'));arrayLocalReaders.set(value,cell);return cell;}
+                if (/^argument_reporter_/.test(value.opcode)){const id=`${key}:param:${value.fields.VALUE[0]}`;if(unsafeInspectionLocals)inspectionOpaqueCells.add(id);return id;}
+                if (value.opcode === 'arcade_getCaptured'){const id=`${key}:capture:${literal(blocks,value,'NAME')}`;inspectionOpaqueCells.add(id);return id;}
+                if (value.opcode === 'arcade_getLocal') {const cell=localKey(literal(blocks,value,'NAME'));if(unsafeInspectionLocals||typeof fixedName(value)!=='string')inspectionOpaqueCells.add(cell);arrayLocalReaders.set(value,cell);return cell;}
                 if (value.opcode === 'arcade_callFunction') {
                     const code=`${target.isStage ? '' : target.name}:${literal(blocks,value,'NAME')}`,id=`${code}:result`;
                     if(this.objectClassExport.procedures.has(code))opaqueCells.add(id);
                     return id;
                 }
-                if (value.opcode === 'data_variable') return `variable:${value.fields.VARIABLE[1] || value.fields.VARIABLE[0]}`;
+                if (value.opcode === 'data_variable'){const id=`variable:${value.fields.VARIABLE[1] || value.fields.VARIABLE[0]}`;if(!inspectionGlobalReaders.has(id))inspectionGlobalReaders.set(id,new Set());inspectionGlobalReaders.get(id).add(target);return id;}
                 if(value.opcode==='arcade_eventLocation'){const id=Symbol('event tile location');tiles.add(id);return id;}
                 if(value.opcode==='arcade_legacyTileLocation'){const id=Symbol('legacy tile');legacyTiles.add(id);return id;}
                 if(value.opcode==='arcade_legacyTilesOfType'){const id=Symbol('legacy tiles');arrays.add(id);return id;}
@@ -3025,7 +3032,7 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_playerProperty'){const id=Symbol('player property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_currentScene'){const id=Symbol('scene value');graphSceneValues.add(id);return id;}
                 if(['arcade_scenePhysicsEngine','arcade_createPhysicsEngine'].includes(value.opcode)){const id=Symbol('physics engine value');graphPhysicsEngineValues.add(id);return id;}
-                if(value.opcode==='arcade_sourceTypeOf'){const id=Symbol('source typeof String result');strings.add(id);return id;}
+                if(['arcade_sourceTypeOf','arcade_inspectValue'].includes(value.opcode)){const id=Symbol('owned String reporter result');strings.add(id);return id;}
                 if(['arcade_physicsEngineProperty','arcade_sceneFlags','arcade_fontMetric'].includes(value.opcode)){const id=Symbol('physics engine numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_createAnimation'){const id=Symbol('animation value');graphAnimationValues.add(id);return id;}
                 if(value.opcode==='arcade_sevensegDigit'){const id=Symbol('seven segment digit');graphSevensegDigitValues.add(id);return id;}
@@ -3063,11 +3070,12 @@ class ArcadeEmitter {
                 }
                 return null;
             };
-            const connect = (a,c) => { if (a && c) edges.push([a,c]);else if(a)opaqueCells.add(a); };
+            const connect = (a,c) => {if(a){if(!inspectionProducers.has(a))inspectionProducers.set(a,new Set());inspectionProducers.get(a).add(c);}if (a && c) edges.push([a,c]);else if(a)opaqueCells.add(a); };
             const seen = new Set();
             const visit = id => {
                 if (typeof id !== 'string' || seen.has(id) || !blocks[id]) return;
-                seen.add(id);const block = blocks[id];
+                seen.add(id);const block = blocks[id];inspectionVisited.add(block);
+                if(block.opcode==='arcade_inspectValue')inspectionInputs.set(block,{value:ref(inputBlock(blocks,block,'VALUE')),limit:ref(inputBlock(blocks,block,'LIMIT'))});
                 if(block.opcode==='arcade_sourceTypeOf'){
                     const operand=inputBlock(blocks,block,'VALUE');
                     sourceTypeOfInputs.set(block,operand?ref(operand):null);
@@ -3212,6 +3220,31 @@ class ArcadeEmitter {
             const node=graph.node(value);
             if(!opaqueNodes.has(node) && node.types.size && [...node.types].every(admittedType))this.sourceTypeOfExportOperands.add(block);
         }
+        for(const target of this.project.targets)for(const writer of Object.values(target.blocks||{}))if(['data_setvariableto','data_changevariableby'].includes(writer.opcode)){
+            const id=`variable:${writer.fields?.VARIABLE?.[1]||writer.fields?.VARIABLE?.[0]}`;
+            const readers=inspectionGlobalReaders.get(id);
+            if(readers&&(!inspectionVisited.has(writer)||[...readers].some(reader=>reader!==target)))inspectionOpaqueCells.add(id);
+        }
+        const inspectionOpaqueNodes=new Set([...inspectionOpaqueCells,...opaqueCells].map(value=>graph.node(value)));
+        let inspectionChanged;do{inspectionChanged=false;for(const [result,inputs]of inspectionOperators)if(inputs.some(value=>!value||inspectionOpaqueNodes.has(graph.node(value))||!graph.node(value).types.size||[...graph.node(value).types].some(type=>!['number','boolean','string','null','undefined'].includes(type)))){const node=graph.node(result);if(!inspectionOpaqueNodes.has(node)){inspectionOpaqueNodes.add(node);inspectionChanged=true;}}}while(inspectionChanged);
+        this.inspectionExportOperands=new Set();
+        const inspectionUndefinedCells=new Set([...this.sourceScalarCells.values()].filter(cell=>cell.type==='Any').map(cell=>`variable:${cell.id}`));
+        const inspectionTypes=(value,allowed,seen=new Set())=>{
+            if(!value)return false;if(inspectionLeaves.has(value))return allowed.includes(inspectionLeaves.get(value));
+            const operation=inspectionOperatorProofs.get(value);if(operation){if(!allowed.includes(operation.type))return false;if(seen.has(value))return true;const next=new Set([...seen,value]);return operation.operands.every(operand=>inspectionTypes(operand,['number','boolean','string','null','undefined'],next));}
+            const node=graph.node(value);
+            if(inspectionOpaqueNodes.has(node)||!node.types.size||[...node.types].some(type=>type!=='any'&&!allowed.includes(type)))return false;
+            if(!node.types.has('any'))return true;
+            // An Any declaration resets a real scalar cell to Undefined. It
+            // does not prove its later values. Follow every actual directed
+            // writer; a dynamic operation's Any producer remains opaque.
+            if(anys.has(value))return false;
+            const producers=inspectionProducers.get(value);
+            if(!producers?.size)return inspectionUndefinedCells.has(value)&&allowed.includes('undefined');
+            if(seen.has(value))return true;const next=new Set([...seen,value]);
+            return [...producers].every(producer=>inspectionTypes(producer,allowed,next));
+        };
+        for(const [block,input]of inspectionInputs)if(inspectionTypes(input.value,['number','boolean','string','null','undefined'])&&inspectionTypes(input.limit,['number','undefined']))this.inspectionExportOperands.add(block);
         // Unknown operations remain dynamic. Propagate that fact through the
         // same result/alias graph rather than prematurely widening known sums.
         for(const [result] of valueOperations)if(!graph.node(result).types.size)graph.add(result,'any');

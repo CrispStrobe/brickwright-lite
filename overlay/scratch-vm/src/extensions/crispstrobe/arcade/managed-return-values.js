@@ -1,5 +1,5 @@
 const primitiveOwner=require('../../../util/bw-primitive-owner');
-const reporterOwner=require('./font-selector-owner');
+const currentNumberInput=require('./current-number-input');
 const semantic=block=>JSON.stringify([block.opcode,block.fields,block.inputs,block.mutation,block.next,block.parent,block.topLevel,block.shadow]);
 
 // A physical numeric shadow has a String carrier in stock Scratch. Preserve
@@ -32,12 +32,9 @@ module.exports=function createManagedReturnValues(runtime) {
                 caller.isKilled||!runtime.threads.includes(caller)||container.getProcedureDefinition(name)!==definition)return original;
             const block=primitiveOwner.current(util,args);
             if(block?.opcode!=='arcade_returnValue'||nodes.get(block.id)?.block!==block)return original;
-            reporterOwner(runtime,util,args,'arcade_returnValue',[]);
             const current=body(target,definition);
             if(current.size!==nodes.size||[...nodes].some(([id,saved])=>current.get(id)?.block!==saved.block||current.get(id)?.semantic!==saved.semantic))return original;
-            const input=container.getBlock(block.inputs?.VALUE?.block),field=input?.fields?.NUM;
-            if(input?.opcode!=='math_number'||!field||String(field.value)!==original||!Number.isFinite(Number(field.value)))return original;
-            return Number(field.value);
+            return currentNumberInput(runtime,args,util,'arcade_returnValue');
         } catch (_) {return original;} // An unproved input keeps its original value and downstream refusal.
     };
     return Object.freeze({bind,value,start:()=>{records=new WeakMap();if(bound&&!disposed)active=true;},

@@ -93,6 +93,8 @@ function create(runtime, cells) {
                 if (op === 'arcade_getLocal' || /^argument_reporter_/.test(op)) {
                     const name=op==='arcade_getLocal'?literal(node,'NAME'):node.fields?.VALUE?.value, owner=owners.get(node);
                     if (!owner) return false;
+                    if(Object.values(all).some(writer=>owners.get(writer)===owner&&writer.opcode==='arcade_setLocal'&&typeof literal(writer,'NAME')!=='string'))return false;
+                    if(Object.values(all).some(candidate=>{if(owners.get(candidate)!==owner)return false;if(candidate.opcode==='arcade_createCallable')return true;if(!candidate.opcode.startsWith('arcade_register')||!candidate.inputs?.CAPTURES&&!candidate.fields?.CAPTURES)return false;const names=literal(candidate,'CAPTURES');return typeof names!=='string'||names.split(/\s+/).includes(name);}))return false;
                     const writes=Object.values(all).filter(b=>owners.get(b)===owner && b.opcode==='arcade_setLocal' && literal(b,'NAME')===name);
                     if (!writes.every(writer=>safe(input(writer,'VALUE')))) return false;
                     const params=typeof owner==='string' && target.blocks.getProcedureParamNamesIdsAndDefaults(owner);

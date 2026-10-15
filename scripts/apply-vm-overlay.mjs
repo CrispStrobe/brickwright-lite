@@ -139,7 +139,7 @@ if (!executeSource.includes("const bwPrimitiveOwner = require('../util/bw-primit
     const callAnchor='        const primitiveReportedValue = blockFunction(argValues, blockUtility);';
     if(!executeSource.includes(importAnchor)||!executeSource.includes(callAnchor))throw new Error('execute.js callable primitive ownership anchor missing');
     executeSource=executeSource.replace(importAnchor,importAnchor+"\nconst bwPrimitiveOwner = require('../util/bw-primitive-owner');");
-    executeSource=executeSource.replace(callAnchor,`        const primitiveReportedValue = ['arcade_createCallable','arcade_objectField','arcade_inspectValue','arcade_returnValue'].includes(opCached.opcode) ?
+    executeSource=executeSource.replace(callAnchor,`        const primitiveReportedValue = ['arcade_createCallable','arcade_objectField','arcade_returnValue','arcade_functionArgument','arcade_setLocal','arcade_setCaptured','arcade_setObjectField','arcade_inspectValue'].includes(opCached.opcode) ?
             bwPrimitiveOwner.invoke(sequencer.runtime, thread, blockContainer, opCached, argValues, blockUtility,
                 () => blockFunction(argValues, blockUtility)) : blockFunction(argValues, blockUtility);`);
     writeFileSync(executePath,executeSource);
@@ -149,22 +149,26 @@ if (!executeSource.includes("const bwPrimitiveOwner = require('../util/bw-primit
 // The synchronous loan remains tied to the exact cached operation and args.
 const callableOnlyMarker="const primitiveReportedValue = opCached.opcode === 'arcade_createCallable' ?";
 if(executeSource.includes(callableOnlyMarker)) {
-    executeSource=executeSource.replace(callableOnlyMarker,"const primitiveReportedValue = ['arcade_createCallable','arcade_objectField','arcade_inspectValue','arcade_returnValue'].includes(opCached.opcode) ?");
+    executeSource=executeSource.replace(callableOnlyMarker,"const primitiveReportedValue = ['arcade_createCallable','arcade_objectField','arcade_returnValue','arcade_functionArgument','arcade_setLocal','arcade_setCaptured','arcade_setObjectField','arcade_inspectValue'].includes(opCached.opcode) ?");
     writeFileSync(executePath,executeSource);
     console.log('  patched execute.js (owned object field read primitive marker)');
 }
 const priorInspectionMarker="['arcade_createCallable','arcade_objectField'].includes(opCached.opcode)";
 if(executeSource.includes(priorInspectionMarker)){
-    executeSource=executeSource.replace(priorInspectionMarker,"['arcade_createCallable','arcade_objectField','arcade_inspectValue','arcade_returnValue'].includes(opCached.opcode)");
+    executeSource=executeSource.replace(priorInspectionMarker,"['arcade_createCallable','arcade_objectField','arcade_returnValue','arcade_functionArgument','arcade_setLocal','arcade_setCaptured','arcade_setObjectField','arcade_inspectValue'].includes(opCached.opcode)");
     writeFileSync(executePath,executeSource);
     console.log('  patched execute.js (owned inspection primitive marker)');
 }
 const priorReturnMarker="['arcade_createCallable','arcade_objectField','arcade_inspectValue'].includes(opCached.opcode)";
 if(executeSource.includes(priorReturnMarker)){
-    executeSource=executeSource.replace(priorReturnMarker,"['arcade_createCallable','arcade_objectField','arcade_inspectValue','arcade_returnValue'].includes(opCached.opcode)");
+    executeSource=executeSource.replace(priorReturnMarker,"['arcade_createCallable','arcade_objectField','arcade_returnValue','arcade_functionArgument','arcade_setLocal','arcade_setCaptured','arcade_setObjectField','arcade_inspectValue'].includes(opCached.opcode)");
     writeFileSync(executePath,executeSource);
     console.log('  patched execute.js (owned managed return primitive marker)');
 }
+const priorManagedInputMarker="['arcade_createCallable','arcade_objectField','arcade_returnValue','arcade_functionArgument','arcade_setLocal','arcade_setCaptured','arcade_setObjectField'].includes(opCached.opcode)";
+if(executeSource.includes(priorManagedInputMarker)){executeSource=executeSource.replace(priorManagedInputMarker,"['arcade_createCallable','arcade_objectField','arcade_returnValue','arcade_functionArgument','arcade_setLocal','arcade_setCaptured','arcade_setObjectField','arcade_inspectValue'].includes(opCached.opcode)");writeFileSync(executePath,executeSource);}
+const priorConsoleReturnMarker="['arcade_createCallable','arcade_objectField','arcade_inspectValue','arcade_returnValue'].includes(opCached.opcode)";
+if(executeSource.includes(priorConsoleReturnMarker)){executeSource=executeSource.replace(priorConsoleReturnMarker,"['arcade_createCallable','arcade_objectField','arcade_returnValue','arcade_functionArgument','arcade_setLocal','arcade_setCaptured','arcade_setObjectField','arcade_inspectValue'].includes(opCached.opcode)");writeFileSync(executePath,executeSource);}
 if (!executeSource.includes('bwPromiseReported')) {
     const patches = [
         ['    primitiveReportedValue.then(resolvedValue => {',
