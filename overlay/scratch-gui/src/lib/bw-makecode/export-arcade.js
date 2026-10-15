@@ -2996,6 +2996,8 @@ class ArcadeEmitter {
                     const id=`${key}:value-operation:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
                     if(value.opcode==='arrays_valueBinary' && literal(blocks,value,'OP')==='+')valueOperations.push([id,ref(inputBlock(blocks,value,'LEFT')),ref(inputBlock(blocks,value,'RIGHT'))]);
                     else numbers.add(id);
+                    const operands=(value.opcode==='arrays_valueUnary'?['VALUE']:['LEFT','RIGHT']).map(name=>ref(inputBlock(blocks,value,name)));
+                    inspectionOperatorProofs.set(id,{type:literal(blocks,value,'OP')==='+'&&value.opcode==='arrays_valueBinary'?null:'number',operands,numeric:literal(blocks,value,'OP')!=='+'||value.opcode==='arrays_valueUnary'});
                     return id;
                 }
                 if(value.opcode==='arrays_specialValue'){const id=Symbol('special value');specialTypes.push([id,literal(blocks,value,'KIND')]);inspectionLeaves.set(id,literal(blocks,value,'KIND'));return id;}
@@ -3231,7 +3233,12 @@ class ArcadeEmitter {
         const inspectionUndefinedCells=new Set([...this.sourceScalarCells.values()].filter(cell=>cell.type==='Any').map(cell=>`variable:${cell.id}`));
         const inspectionTypes=(value,allowed,seen=new Set())=>{
             if(!value)return false;if(inspectionLeaves.has(value))return allowed.includes(inspectionLeaves.get(value));
-            const operation=inspectionOperatorProofs.get(value);if(operation){if(!allowed.includes(operation.type))return false;if(seen.has(value))return true;const next=new Set([...seen,value]);return operation.operands.every(operand=>inspectionTypes(operand,['number','boolean','string','null','undefined'],next));}
+            const operation=inspectionOperatorProofs.get(value);if(operation){
+                const output=operation.type?[operation.type]:[...graph.node(value).types];
+                if(!output.length||!output.every(type=>allowed.includes(type)))return false;
+                if(seen.has(value))return true;const next=new Set([...seen,value]);
+                return operation.operands.every(operand=>inspectionTypes(operand,operation.numeric?['number','undefined']:['number','boolean','string','null','undefined'],next));
+            }
             const node=graph.node(value);
             if(inspectionOpaqueNodes.has(node)||!node.types.size||[...node.types].some(type=>type!=='any'&&!allowed.includes(type)))return false;
             if(!node.types.has('any'))return true;

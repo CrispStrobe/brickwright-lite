@@ -48,3 +48,14 @@ test('computed local writer poisons its actual scope without poisoning a sibling
         assert.equal(exported.unsupported.some(reason=>reason.includes('inspection export')),ownerName==='read',ownerName);
     }
 });
+
+test('current inspection export proves every value binary and unary operand',()=>{
+    for(const [opcode,ops]of [['arrays_valueBinary',['+','-','*','/','%','**','&','|','^','<<','>>','>>>']],['arrays_valueUnary',['+','-','~']]])for(const op of ops)for(const opaque of opcode==='arrays_valueUnary'?[null,'VALUE']:[null,'LEFT','RIGHT']){
+        const creator=make(),target=creator.project.targets.find(t=>!t.isStage),inspect=Object.values(target.blocks).find(b=>b.opcode==='arcade_inspectValue');
+        const inputs=opcode==='arrays_valueUnary'?{VALUE:[1,[4,'3']]}:{LEFT:[1,[4,'3']],RIGHT:[1,[4,'1']]};
+        target.blocks.calculation={opcode,parent:null,inputs,fields:{OP:[op,null]}};inspect.inputs.VALUE=[2,'calculation'];
+        if(opaque){inputs[opaque]=[2,'art'];target.blocks.art={opcode:'arcade_createImage',parent:'calculation',inputs:{WIDTH:[1,[4,'1']],HEIGHT:[1,[4,'1']]},fields:{}};}
+        const exported=projectToArcade(creator.project);
+        assert.equal(exported.unsupported.some(reason=>reason.includes('inspection export')),opaque!==null,opcode+' '+op+' '+opaque);
+    }
+});

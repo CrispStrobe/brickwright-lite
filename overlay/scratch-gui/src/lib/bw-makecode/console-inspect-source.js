@@ -21,7 +21,7 @@ export function consoleInspectSourceCalls(program) {
         for(const value of Object.values(node))if(value&&typeof value==='object')visit(value,node);
     };
     visit(program);
-    if(!unsafe)for(const call of candidates)if(!call.isNew&&[1,2].includes(call.args?.length))qualified.add(call);
+    if(!unsafe)for(const call of candidates)if(!call.isNew&&!call.typeArguments?.length&&[1,2].includes(call.args?.length))qualified.add(call);
     return Object.freeze({isIntrinsicCall:node=>qualified.has(node),
         calls:Object.freeze([...candidates]),
         diagnostics:Object.freeze(candidates.length&&unsafe?['console.inspect requires its unchanged unaliased SDK binding']:[])});

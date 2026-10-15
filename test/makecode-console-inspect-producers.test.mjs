@@ -16,3 +16,11 @@ test('uninitialized lexical local reads retain a source refusal until their ABI 
   const converted=arcadeToPseudocode(source);assert.ok(converted.unsupported.some(message=>message.includes('actual primitive VALUE')),source);assert.doesNotMatch(converted.code,/arcade inspect value/);
  }
 });
+
+test('plain SDK inspection refuses authored generic call syntax',async()=>{
+ const {arcadeToPseudocode}=await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
+ for(const type of ['number','string','any']){
+  const converted=arcadeToPseudocode(`let out=console.inspect<${type}>(20)`);
+  assert.ok(converted.unsupported.length,type);assert.doesNotMatch(converted.code,/arcade inspect value/);
+ }
+});
