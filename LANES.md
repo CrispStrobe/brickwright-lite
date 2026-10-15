@@ -10,6 +10,21 @@ local/captured/global assignment paths. No opaque coercion, assignment-as-value,
 member/index widening, new vocabulary, dependency pin or frame-clock change.
 Coordinate the Arcade translator with callable, inspection and numeric owners.
 
+
+## Shared finite decimal source carriers — 2026-10-15
+
+PROPOSED — Codex source conversion, isolated shared numeric carrier lane.
+Merge this docs-only claim before product changes. Contract:
+[shared finite decimal source carriers](docs/compatibility/shared-finite-number-carriers.md).
+Own the finite decimal Number branch in `translate-base.js`, the existing
+`source-number-literal.js` helper and focused source/Code/Blocks/export tests.
+Coordinate shared translator ownership. Preserve micro:bit, Calliope and EV3
+numeric values through current Code parsing, including signed scientific
+notation and subnormals where the existing target runtime admits them.
+Keep hexadecimal/binary, unary/member boundaries, string literals and target
+numeric conversions intact. No new words, pins, Number method admission,
+non-finite literal support, CPX TypeScript route or hardware claim.
+
 ## Owned callable typeof — 2026-10-15
 
 PROPOSED — `extension_parser`, isolated owned callable reflection lane.
