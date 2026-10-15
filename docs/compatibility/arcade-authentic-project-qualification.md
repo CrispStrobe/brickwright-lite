@@ -10,7 +10,8 @@ and [GUI ledger](../CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) first.
 All sixteen contexts below have genuine retained resource bytes and a successful
 selected-original compilation. Their immutable raw snippets remain unchanged.
 The separate `31abb5767` snapshot has thirteen clean source/current-export routes
-and twelve complete pure routes. The table preserves that snapshot.
+and twelve complete pure routes. The table preserves that snapshot except for
+the explicitly dated later Lyla result below.
 
 A native pass here means five observed routes: source import, current Code,
 same-VM saved SB3, fresh-VM SB3 and current export/reimport. Actors, controls,
@@ -25,7 +26,7 @@ matched to the exact input and source before being credited here.
 | [Free throw](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/free-throw.md#13) (`2cdb086e`) | Pass | Pass | — | — | — |
 | [Arrow](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/arrow.md#20) (`5d0c02f5`) | Source blocked | — | — | — | — |
 | [New pizza party](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/new-pizza-party.md#23) (`67958b6a`) | Pass | Pass | — | — | — |
-| [Lyla Jr](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/lyla-jr.md#4) (`7b258f52`) | Later helper refusal | — | — | — | — |
+| [Lyla Jr](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/lyla-jr.md#4) (`7b258f52`) | Later pass (`de740879`) | Startup + input + restart | — | — | — |
 | [Horse](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/horse.md#6) (`90a0e61d`) | Source blocked | — | — | — | — |
 | [Icecube](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0201-part2.md#1) (`a03d93d1`) | Pass | Pass | — | — | — |
 | [Hundred](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/hundred.md#16) (`b1c05d93`) | Pass | Pass | — | — | — |
@@ -38,9 +39,34 @@ matched to the exact input and source before being credited here.
 | [Flame handler with null receiver](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0201-part1.md#4) (`f583b791`) | Pass | Hold: null read | — | — | — |
 | [Froggy](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/froggy.md#11) (`f65a6b2d`) | Pass | Pass | — | — | — |
 
-Eleven contexts now have these bounded native route controls; one additionally
+Twelve contexts now have these bounded native route controls; one additionally
 has its exact selected-original source/current-export startup and controller
 comparison. No complete-project or raw-census promotion follows.
+
+## Lyla condition-wait correction — 2026-10-15
+
+Development candidate `7d566097d`, canonical compiler `8b620dd` and the unchanged
+complete thirteen-file project pass all five bounded native routes. The source
+wait implementation is also privately composed at `bb483b29c`, with identical
+VM bytes. Its earlier first-source bootstrap timed out before any input or
+completed route; that failure remains evidence.
+
+The new observation completes in 20.604 seconds and retains 45 full active and
+saved-scene inventories. Real A input dismisses the authored dialog; Right moves
+the actual Player from x=40 to x=48 with vx=100, and release restores vx=0.
+Stop/greenFlag restores the dialog and player connection on each route. The
+resumed scene contains Text, Player and Projectile actors on every route,
+including current export/reimport; background and per-kind image hashes agree.
+Naturally random projectile trajectories are not equated.
+
+The unused `holdText(thisText: string)` body and parameter declaration remain
+present and unused. No caller or collision is invented. Actual runtime and
+helper error arrays and all provided import/Creator channels are empty; listener
+and headless-rendering warnings remain recorded. No pickup occurred in these
+windows, so the score getter path and a nonzero score reset remain unqualified.
+The observation did not read the music host's actual log or running state;
+song completion and audible playback are also unqualified. Original-runtime,
+visible-editor and full-game gates remain open.
 
 ## Observed failures which remain evidence
 
@@ -87,8 +113,9 @@ comparison. No complete-project or raw-census promotion follows.
 3. Compare additional exact current exports with retained originals. Bind actual
    emitted observation slots rather than matching variable names or reusing old
    numeric slots. Reuse successful original observations without replaying them.
-4. Close the three Carnival source blockers and Lyla helper constraints using
-   genuine producers, parameter contracts and all-writer proofs. No body pruning.
+4. Close the three Carnival source blockers using genuine producers, parameter
+   contracts and all-writer proofs. Lyla now has pure and bounded native passes;
+   qualify its actual pickup path and original/visible-authoring gates next.
 5. Qualify reachable Code/Blocks/graphics authoring and controller/widget input,
    save/reopen and exported gameplay. Respect current pin/writer ownership and
    finish already queued hosted checks before replacing their heads.

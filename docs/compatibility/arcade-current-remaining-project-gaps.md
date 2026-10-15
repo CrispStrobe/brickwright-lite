@@ -76,7 +76,7 @@ reaching fewer than twenty needs at least two further genuine case closures.
 ## Runtime and authoring remain separate
 
 The [authentic project ledger](arcade-authentic-project-qualification.md) records
-eleven projects with five bounded native routes each. It does not promote all
+twelve projects with five bounded native routes each. It does not promote all
 pure passes to working games. In particular, the null-receiver flame sample is
 pure-clean but its native handler silently continues after reading a null Sprite:
 it creates a projectile, applies velocity and AutoDestroy, and reports no error
@@ -84,12 +84,14 @@ on each of the five routes. This remains held. Its exact selected-original fault
 and termination behavior still need observation before choosing the correction.
 The initial observer's incorrect Pressed-event assertion is also preserved.
 
-Lyla's first native startup remains blocked. A bounded passive diagnostic
+Lyla's first native startup was blocked. A bounded passive diagnostic
 located repeated false `pauseUntil` evaluation inside the first source step:
 host timers still run, but frame updates cannot reach the callback that changes
-the condition. A cooperative polling implementation is under review. It must
-preserve optimistic evaluation, the shared polling interval, predicate effects,
-independent waiters and cancellation. Its unexecuted draft is not a fix claim.
+the condition. The corrected cooperative polling implementation now passes
+the affected minimal controls and five authentic Lyla startup/input/restart
+routes. See the [implementation contract](arcade-source-condition-polling.md)
+and [bounded project evidence](arcade-authentic-project-qualification.md#lyla-condition-wait-correction--2026-10-15).
+Actual pickup, original-runtime agreement and visible authoring remain open.
 The optional timeout argument also needs source, Blocks, Code and export
 representation; current import explicitly refuses it.
 

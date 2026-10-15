@@ -4977,3 +4977,16 @@ block or Code occurrence, with all invalid receivers individually visible.
 Raw nested JSON constructor tails, general repeated/recursive factory identity,
 ambiguous mutation bounds and unproved element presence remain separate gaps.
 Pure graph tests do not establish those browser interactions or native gameplay.
+
+### Condition waits and managed helper authoring — 2026-10-15
+
+The development runtime now schedules source condition waits cooperatively;
+ordinary Scratch waits retain their stock behavior. The predicate remains an
+editable connected block and current Code/export expression. See the
+[polling implementation and retained failures](compatibility/arcade-source-condition-polling.md).
+
+GUI work must exercise actual predicate and helper edits, live scene updates,
+Stop/restart, Code feedback, same/fresh saved projects and current export.
+The optional timeout is still explicitly unsupported and has no qualified
+Blocks/Code/persistence representation. No visible-authoring or whole-game
+claim follows from the minimal native controls.

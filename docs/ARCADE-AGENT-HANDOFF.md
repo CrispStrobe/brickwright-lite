@@ -43,9 +43,10 @@ Tile reservation fixes account for the two measured complete-route improvements.
 Freethrow's 26 root-only reimport refusals disappear with its actual declared
 `arcade-text` dependency context, but that focused check does not promote a whole
 profile. Lyla's current required primitive formal metadata survives the complete
-pure route, including its unused String helper. Its native startup still needs
-the source `pauseUntil` scheduling correction and qualification. Never prune its
-unused helper or restore original source.
+pure route, including its unused String helper. Its corrected source
+`pauseUntil` scheduling now passes five bounded native startup/input/restart
+routes; [pickup, original and visible-authoring gates remain open](compatibility/arcade-authentic-project-qualification.md#lyla-condition-wait-correction--2026-10-15).
+Never prune its unused helper or restore original source.
 
 The development composition `049bf6b5a` passes 155 affected controls against the
 complete corrected canonical compiler, with 785 unchanged file guards and 174
@@ -111,7 +112,7 @@ policy still require real producer, writer and lifetime proofs.
 
 The [authentic project ledger](compatibility/arcade-authentic-project-qualification.md)
 now separates the sixteen retained compile-valid asset contexts by pure, native,
-selected-original and visible-authoring gates. Eleven have bounded five-route
+selected-original and visible-authoring gates. Twelve have bounded five-route
 native controls. The difficulty sample uses the real prompt queue and one answer
 per route, then Right press/release. The flamethrower current export also matches
 all six retained selected-original observations, including measured clock/frame
