@@ -13,6 +13,9 @@ tracked generated twins; existing test/lm741-package-adoption.test.mjs for
 actual installed CLI precision receipt; README.md, PLAN.md and ROADMAP.md for
 current circuit campaign and removal of obsolete adoption priorities. Use the
 existing package writer, no source copies, vendor forks or engine behavior edits.
+Also update only the three CUI supplier-SHA bindings in the existing
+.github/workflows/i80386-freedos-circuits-direct-actual.yml; preserve its
+jobs, triggers, assertions and one-shot execution policy. No diagnostic dispatch.
 Require installed supplier identity, existing pin/integration/provenance gates,
 actual CLI numerical/receipt control and full built-GUI instrument checks.
 No STM32/Arcade/SPIKE/world implementation, new workflow, unrelated package,
