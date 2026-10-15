@@ -145,7 +145,10 @@ test('actual Array method and unproved computed updates poison Map authority, wh
  for(const source of [
   'let a:any=[1];a.map++;let b=a.map(()=>1);',
   'let a:any=[1];let key=unknown;a[key]++;let b=a.map(()=>1);',
-  'let a:any=[1];a["map"]++;let b=a.map(()=>1);'
+  'let a:any=[1];a["map"]++;let b=a.map(()=>1);',
+  'let a:any=["1"];a[0]++;let b=a.map((value:string)=>value);',
+  'let a:string[]=["1"];a[0]++;let b=a.map(value=>value);',
+  'let a:any=[image.create(1,1)];a[0]++;let b=a.map(()=>1);'
  ])assert.ok(arcadeToPseudocode(source).unsupported.some(text=>text.startsWith('Array.map:')),source);
  assert.deepEqual(arcadeToPseudocode('let a=[1];a[0]++;let b=a.map(value=>value);').unsupported,[]);
 });

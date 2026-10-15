@@ -161,6 +161,7 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
     const propagateArrays=()=>{let changed=false;
         for(const op of arrayOperations){const tokens=arrayTypes(op.receiver);if(!tokens)continue;
             if(['escape','methodWrite'].includes(op.kind)||['write','update'].includes(op.kind)&&types.get(op.index)?.size&&!exactType(op.index,'Number'))for(const token of tokens){if(!unsafeArrayMethods.has(token)){unsafeArrayMethods.add(token);changed=true;}if(op.kind==='escape')changed=add(token.element,'Opaque')||changed;}
+            if(op.kind==='update')for(const token of tokens){const prior=types.get(token.element);if(prior&&[...prior].some(type=>!primitiveTypes.has(type))){if(!unsafeArrayMethods.has(token)){unsafeArrayMethods.add(token);changed=true;}}else changed=add(token.element,'Number')||changed;}
             if(op.kind==='length'||['push','unshift'].includes(op.kind))changed=add(op.result,'Number')||changed;
             if(['read','pop','shift'].includes(op.kind)){changed=add(op.result,'Undefined')||changed;for(const token of tokens)for(const type of types.get(token.element)||[])changed=add(op.result,type)||changed;}
             if(op.kind==='write'||['push','unshift'].includes(op.kind))for(const token of tokens)for(const value of op.kind==='write'?[op.value]:op.node.args.map(cell))for(const type of types.get(value)||[])changed=add(token.element,type)||changed;
