@@ -5055,7 +5055,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const ordinaryProgram=namespaceBindings.program || parsed;
     const procedureConstraints=opts.procedureConstraintsPrototype===true?prepareProcedureConstraintSource(ordinaryProgram):null;
     if(procedureConstraints)projectInputDiagnostics.push(...procedureConstraints.diagnostics);
-    const protocolProgram=procedureConstraints?{...ordinaryProgram,bwProcedureConstraintSource:procedureConstraints}:ordinaryProgram;
+    const protocolProgram=procedureConstraints?{...procedureConstraints.program,bwProcedureConstraintSource:procedureConstraints}:ordinaryProgram;
     const throwSource=prepareThrowSource(protocolProgram);
     projectInputDiagnostics.push(...throwSource.unsupported);
     if(throwSource.present&&opts.throwPrototype!==true)projectInputDiagnostics.push('Throw source requires its qualified canonical protocol; prototype admission is not enabled');

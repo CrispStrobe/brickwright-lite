@@ -83,6 +83,45 @@ export function validateProcedureConstraintSource(program,{onlyFunctions=null}={
  return Object.freeze([...new Set(diagnostics)]);
 }
 
+// Defaults in the selected target are applied only to omitted arguments. Keep
+// one editable default body and carry omission through ordinary visible formals.
+// Number flags are explicit 1/0 operands, checked with strict equality to 1.
+// They remain visible in Code/Blocks/export; GUI authoring is not qualified here.
+// This is a source transformation, not a runtime value or annotation grant.
+function lowerOmittedDefaults(program,selected,graph) {
+ const occupied=new Set();
+ const scan=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scan);return;}if(typeof node.name==='string')occupied.add(node.name);for(const name of node.params||[])occupied.add(name);for(const child of Object.values(node))if(child&&typeof child==='object')scan(child);};scan(program);
+ let next=0;
+ const plans=new Map();
+ for(const entry of selected.values())if(entry.fn.parameterDefaults?.length){
+  const flags=entry.fn.parameterDefaults.map(row=>{let name;do{name='__bwOmittedDefault'+next++;}while(occupied.has(name));occupied.add(name);return {name,index:entry.fn.params.indexOf(row.name)};});
+  plans.set(entry.fn,flags);
+ }
+ if(!plans.size)return program;
+ const rewrite=node=>{
+  if(!node||typeof node!=='object')return node;
+  if(Array.isArray(node)){const values=node.map(rewrite);return values.every((value,index)=>value===node[index])?node:values;}
+  if(Object.getPrototypeOf(node)!==Object.prototype)return node;
+  const out=Object.fromEntries(Object.entries(node).map(([key,value])=>[key,rewrite(value)]));
+  let changed=Object.keys(out).some(key=>out[key]!==node[key]);
+  if(node.type==='Call'){
+   const fn=graph.immutableFunctionAt(node),flags=plans.get(fn);
+   if(flags){changed=true;const supplied=node.args.length;out.args=[...out.args,...fn.params.slice(supplied).map(()=>({type:'Undefined'})),...flags.map(flag=>({type:'Number',value:supplied<=flag.index?'1':'0'}))];}
+  }
+  const flags=plans.get(node);
+  if(flags){
+   changed=true;out.body=[...out.body];
+   out.params=[...node.params,...flags.map(flag=>flag.name)];
+   out.paramTypes={...out.paramTypes,...Object.fromEntries(flags.map(flag=>[flag.name,{text:'number'}]))};
+   out.optionalParams=[];out.parameterDefaults=[];out.parameterDefaultPrologue=false;
+   flags.forEach((flag,index)=>{out.body[index]={...out.body[index],test:{type:'Binary',op:'===',left:{type:'Identifier',name:flag.name},right:{type:'Number',value:'1'}}};});
+   const entry=selected.get(node.name);entry.params=[...out.params];entry.types=out.params.map(name=>out.paramTypes?.[name]?.text);
+  }
+  return changed?out:node;
+ };
+ return rewrite(program);
+}
+
 // Select only real module/flattened-namespace ordinary declarations BEFORE class
 // lowering creates additional functions. The catalogue retains constraints only.
 export function prepareProcedureConstraintSource(program) {
@@ -105,7 +144,9 @@ export function prepareProcedureConstraintSource(program) {
  for(const [name,entry]of selected)if(graph.immutableFunctionAt(entry.fn)!==entry.fn){selected.delete(name);excluded.push('Procedure parameter constraint: '+name+' requires a unique unchanged actual ordinary declaration');}
  const diagnostics=[...excluded,...validateProcedureConstraintSource(program,{onlyFunctions:new Set(selected.keys())})];
  for(const name of duplicates)diagnostics.push('Procedure parameter constraint: duplicate ordinary declaration '+name);
- return Object.freeze({independentRoutes:Object.freeze([...independent].map(fn=>Object.freeze({name:fn.name,protocol:'existing-numeric-callable'}))),diagnostics:Object.freeze([...diagnostics]),prefix(fn,procedure,parameterName=name=>name){
+ const lowered=diagnostics.length?program:lowerOmittedDefaults(program,selected,graph);
+ if(lowered!==program)diagnostics.push(...validateProcedureConstraintSource(lowered,{onlyFunctions:new Set(selected.keys())}));
+ return Object.freeze({program:lowered,independentRoutes:Object.freeze([...independent].map(fn=>Object.freeze({name:fn.name,protocol:'existing-numeric-callable'}))),diagnostics:Object.freeze([...diagnostics]),prefix(fn,procedure,parameterName=name=>name){
   const entry=selected.get(fn.source||fn.name);if(!entry||duplicates.has(fn.source||fn.name))return [];
   if(JSON.stringify(fn.params)!==JSON.stringify(entry.params)||JSON.stringify(fn.params.map(name=>fn.paramTypes?.[name]?.text))!==JSON.stringify(entry.types))fail('lowered ordinary formal metadata differs from its actual source declaration');
   return procedureConstraintPrefix(fn,procedure,parameterName);
