@@ -66,8 +66,10 @@ helper error arrays and all provided import/Creator channels are empty; listener
 and headless-rendering warnings remain recorded. No pickup occurred in these
 windows, so the score getter path and a nonzero score reset remain unqualified.
 The observation did not read the music host's actual log or running state;
-song completion and audible playback are also unqualified. Original-runtime,
-visible-editor and full-game gates remain open.
+song completion and audible playback are also unqualified. The selected-original
+startup, A and Right observation is recorded below. Current-export execution in
+the original runtime, score and restart behavior, visible-editor and full-game
+gates remain open.
 
 ## Observed failures which remain evidence
 
