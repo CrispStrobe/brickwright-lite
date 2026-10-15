@@ -5,6 +5,7 @@ import path from 'node:path';
 import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 import {compile,STATIC} from '../../scripts/lib/pxt-node.mjs';
+import {preparePxtInitialClock,assertPxtInitialClock} from './pxt-initial-clock.mjs';
 
 // Self-contained for browser serialization. Observe actual presentation, not
 // requested pixels or main/global completion, which can precede the first frame.
@@ -73,17 +74,16 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
     await new Promise(done=>server.listen(0,'127.0.0.1',done));
     let browser;
     try {
-        browser=await chromium.launch();const page=await browser.newPage();
+        browser=await chromium.launch();
+        const clockContext=fakeClock ? await browser.newContext() : null;
+        if(clockContext)await preparePxtInitialClock(clockContext);
+        const page=clockContext ? await clockContext.newPage() : await browser.newPage();
         const errors=[],messages=[];page.on('pageerror',error=>errors.push(error.message));
         page.on('console',message=>{if(['error','warning'].includes(message.type()))messages.push(message.text().slice(0,1000));});
-        // A fake clock makes the original's frame times deterministic: its
-        // frame loop pauses max(1, 20 - callback time) ms, so frames are 20 ms.
-        // Installed alone, Playwright's fake clock still flows with real time
-        // and runFor only adds to it, so a slow host stretched the frames (a
-        // fast mover reached the wall inside its first frame). Paused, time
-        // moves only by runFor.
-        if(fakeClock){await page.clock.install({time:0});await page.clock.pauseAt(0);}
+        // Configure the paused context before creating a page. Installing a
+        // flowing clock and later pausing at zero races elapsed host time.
         await page.goto(`http://127.0.0.1:${server.address().port}/simulator.html`);
+        if(fakeClock)await assertPxtInitialClock(page);
         if (waitForDisplay) await page.evaluate(observePxtDisplay);
         await page.evaluate(async ({code,recordSound,recordSongSound,initialButtons,observeEntropy})=>{
             const msg={type:'run',id:'bw-oracle',code,options:{},mute:true};
