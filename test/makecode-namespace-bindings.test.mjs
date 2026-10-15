@@ -56,7 +56,7 @@ test('unsafe namespace uses and nonconstant enums keep explicit diagnostics', ()
         ['function f(){return A.x} let x=f(); namespace A { export let x=1 }',/before initialization/],
         ['namespace A { export let value=1 } let x=A;',/runtime object/],
         ['namespace A { export let value=1 } let x=A["value"];',/runtime object/],
-        ['namespace A { export function f(){return 1} } let x=A.f;',/runtime function value/],
+        ['namespace A { export const value=1 } A.value=2;',/readonly namespace binding/],
         ['namespace A { export let x=1 } namespace A { export let x=2 }',/declared more than once/],
         ['namespace A { export namespace B {} namespace B {} }',/mixes exported and private/],
         ['enum E { Value=randint(1,3) } let x=E.Value;',/constant initializer/],
@@ -100,4 +100,34 @@ let x=A.B.second();`);
     const functions=result.program.body.filter(st=>st.type==='FunctionDeclaration');
     assert.notEqual(functions[0].body[0].value.name,functions[1].body[0].value.left.name);
     assert.equal(functions[1].body[0].value.right.callee.name,functions[0].name);
+});
+
+
+test('qualified namespace function values create stable aliases and invoke their actual declaration', async () => {
+    const source='namespace A {export function f(){return 1}}let first=A.f;let alias=A.f;let result=first();let aliasResult=alias();let same=first===alias;';
+    const imported=arcadeToPseudocode(source);
+    assert.deepEqual(imported.unsupported,[]);
+    assert.deepEqual(imported.warnings,[]);
+    const [{runProgram,clearStrayTimers},{importGuiDependency}]=await Promise.all([
+        import('./helpers/bw-vm.mjs'),import('./helpers/bw-integrated.mjs')
+    ]);
+    const BW=(await importGuiDependency('scratch-vm/src/util/bw-values.js')).default;
+    let run;
+    try {
+        run=await runProgram(imported.code,{frames:25});
+        assert.deepEqual(run.errors,[]);
+        assert.deepEqual(run.creator.warnings,[]);
+        const variables=run.vm.runtime.targets.flatMap(target=>Object.values(target.variables));
+        const value=name=>BW.decode(variables.find(variable=>variable.name===name)?.value);
+        assert.equal(value('result'),1);
+        assert.equal(value('aliasResult'),1);
+        assert.equal(value('same'),true);
+        const blocks=run.vm.runtime.targets.flatMap(target=>Object.values(target.blocks._blocks));
+        assert.equal(blocks.filter(block=>block.opcode==='arcade_createCallable').length,2);
+        assert.equal(blocks.filter(block=>block.opcode==='arcade_callCallable').length,2);
+        assert.equal(blocks.filter(block=>block.opcode==='procedures_prototype'&&block.mutation?.proccode==='__bwNamespace_A_f').length,1);
+    } finally {
+        if(run){run.vm.stopAll();run.vm.quit();}
+        clearStrayTimers();
+    }
 });
