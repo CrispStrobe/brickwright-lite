@@ -5,25 +5,28 @@ Updated 2026-10-15. Read the [handoff](../ARCADE-AGENT-HANDOFF.md),
 
 ## What was actually refreshed
 
-Development source `d14e9ccf` and the complete qualified canonical compiler
+Development source `de740879` and the complete canonical compiler
 `8b620dd` were used once on the same 29 retained original-compiler-valid
 projects. Twelve original compiler failures remain excluded by their historical
 results. Original files, genuine dependency context and raw snippets are unchanged.
 This is a separate complete-context conversion profile, not the raw census.
 
-| Gate | Earlier a32 profile | Current d14e profile |
-| --- | ---: | ---: |
-| Source and Creator clean | 20 | 20 |
-| Clean export after a clean source and Creator | 20 | 20 |
-| Clean export from a partial input graph | 2 | 2 |
-| All measured pure stages clean | 18 | 19 |
+| Gate | Earlier a32 profile | d14e profile | Current de740 profile |
+| --- | ---: | ---: | ---: |
+| Source and Creator clean | 20 | 20 | 20 |
+| Clean export after a clean source and Creator | 20 | 20 | 20 |
+| Clean export from a partial input graph | 2 | 2 | 0 |
+| All measured pure stages clean | 18 | 19 | 19 |
 
-The two additional export observations are from partial input graphs. They do
-not represent compatibility improvements. The previous eighteen complete project IDs remain clean, and Lyla is now the
-nineteenth. The run took 40.727 seconds; all 6,942 source/dependency guards stayed
+The two previously clean exports from partial graphs now receive honest Array
+diagnostics. All twenty clean-input exports and all nineteen complete identities
+remain clean; there is no new complete-case gain or loss. Lyla joined the earlier
+eighteen in the d14e profile. The new run took 51.314 seconds; all 6,945 source/dependency guards stayed
 unchanged, eleven diagnostic controls passed and no network attempt occurred.
 It ran no native game, SDK or browser. The retained stage comparison checks exact project identities; independent source
-review and the earlier a32 profile remain separate evidence.
+review and the earlier profiles remain separate evidence. See the
+[Array authority contract](arcade-array-current-export-authority.md) for its
+implemented and authoring boundaries.
 
 All available diagnostic channels are retained independently, including Creator
 warnings on a thrown parse. An explicitly returned undefined channel is unknown

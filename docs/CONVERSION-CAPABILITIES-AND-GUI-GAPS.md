@@ -4955,3 +4955,25 @@ Focused controls include `test/makecode-default-primitive-formals.test.mjs`,
 `test/arcade-default-primitive-formals-native.test.mjs`,
 `test/arcade-score-number-producer-native.test.mjs` and
 `test/arcade-procedure-constraints-native.test.mjs`.
+
+### Current Array receiver edits and diagnostic locations — 2026-10-15
+
+The development exporter now checks actual connected Array producers,
+initialization and all writers. It preserves proved aliases, captures and
+arguments/results; mutation-based nested element presence requires a definite
+body and an independent execution bound. Repeated fresh factory calls cannot
+borrow one allocation-site identity. Pending argument facts grant no type or
+presence fact. See the [implementation and evidence contract](compatibility/arcade-array-current-export-authority.md).
+
+The composed `de740879` pure profile preserves all twenty clean-input exports
+and the same nineteen complete routes. Two already partial graphs now receive
+Array diagnostics; no whole-project count improves. No new word, Array runtime
+representation, native typed-domain admission or supplier pin is introduced.
+
+The visible GUI must still qualify receiver and writer edits, alias and binding
+renames, same/fresh saved-project reopening and current export/reimport.
+Diagnostics identify an operation/input but need a reliable jump to its current
+block or Code occurrence, with all invalid receivers individually visible.
+Raw nested JSON constructor tails, general repeated/recursive factory identity,
+ambiguous mutation bounds and unproved element presence remain separate gaps.
+Pure graph tests do not establish those browser interactions or native gameplay.

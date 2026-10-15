@@ -16,22 +16,27 @@ one parse failure** with immutable inputs. A conservative 20-row floor contains
 external asset references absent from those raw files. Use authentic project
 context to investigate them; do not repair snippets or relabel the raw census.
 
-The latest separate 29-project profile at `a32d6ef0a`, using the complete
-qualified canonical compiler, selects the same retained original-compiler
-successes: **20 source/Creator clean, 20 current-export clean after clean input,
-18 complete pure routes clean**, unchanged from `31abb5767`. Two newly inspected
-partial input graphs also export without diagnostics; that is not an improvement
-in complete cases. See [all eleven remaining project routes](compatibility/arcade-current-remaining-project-gaps.md). It exercises import, Creator, Code feedback,
+The latest separate 29-project profile at development source `de740879`, using
+the complete canonical compiler `8b620dd`, selects the same retained
+original-compiler successes: **20 source/Creator clean, 20 current-export clean
+after clean input, 19 complete pure routes clean**. All twenty clean-input
+exports and nineteen complete identities from `d14e9ccf` remain clean. Two
+already partial graphs now receive explicit Array export diagnostics; neither
+was a complete case. See [the ten incomplete routes](compatibility/arcade-current-remaining-project-gaps.md)
+and [current Array export authority](compatibility/arcade-array-current-export-authority.md).
+It exercises import, Creator, Code feedback,
 saved Blocks/assets and current export/reimport, with all diagnostic channels
-retained. It runs no SDK, native game or GUI. Nine projects remain source-blocked;
-two retain later-stage barriers. The historical `b1ef5e4ea` profile measured
+retained. It runs no SDK, native game or GUI. The historical `a32d6ef0a` profile
+had eighteen complete routes; `b1ef5e4ea` measured
 20/18/16. Do not confuse structural source admission with complete roundtrips.
 
 Tile reservation fixes account for the two measured complete-route improvements.
 Freethrow's 26 root-only reimport refusals disappear with its actual declared
 `arcade-text` dependency context, but that focused check does not promote a whole
-profile. Development optional-Any support removes one of Lyla's six source
-refusals; five remain. Never prune its unused helper or restore original source.
+profile. Lyla's current required primitive formal metadata survives the complete
+pure route, including its unused String helper. Its native startup still needs
+the source `pauseUntil` scheduling correction and qualification. Never prune its
+unused helper or restore original source.
 
 The development composition `049bf6b5a` passes 155 affected controls against the
 complete corrected canonical compiler, with 785 unchanged file guards and 174
@@ -40,7 +45,8 @@ selected-runtime comparison exposed an omission-versus-explicit-Undefined defaul
 argument mismatch. The corrected omission flags now preserve that distinction;
 a genuinely new edited export matches all six selected-runtime observations.
 See [the actual mismatch](#actual-default-argument-mismatch-and-visible-display-boundary).
-No newer whole-profile measurement or whole-game promotion follows.
+That older control batch does not qualify native behavior for the latest pure
+profile, shipped consumer adoption or whole-game compatibility.
 
 Existing `.mkcd` import/CLI support already accepts complete project files.
 Offline preparation must bind actual dependencies to the current exported root,
