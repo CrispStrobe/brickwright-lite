@@ -1,3 +1,4 @@
+import {checkClassPrimitiveExport} from './class-primitive-export-proof.js';
 import {hasSdkFontValues,seedSdkFontValueType,sdkFontGraphType} from './sdk-font-export-types.js';
 import {sdkExportClasses,sdkClassPublicName,sdkClassName} from './sdk-class-descriptors.js';
 import {ValueTypeGraph} from './value-type-graph.js';
@@ -190,6 +191,22 @@ export function prepareObjectClassExport(emitter) {
         return null;
     }
     function render() {
+    // Preserve the existing current accessor mismatch escape; this predicate
+    // does not establish where an authored `as any` cast originated.
+    checkClassPrimitiveExport({project:emitter.project,classes,procedures,qualifiedInput:(target,block,name)=>{
+        if(emitter.callableExports?.get(target)?.graph.plan.version!==2)return null;
+        try{return classCallableProvider(target).currentInputType(block,name);}catch{return null;}
+    },note:message=>emitter.note(message),dynamicReceiver:(target,block,write,method,currentClassName)=>{
+        if(!['arcade_setObjectField','arcade_callObjectMethod'].includes(block.opcode))return false;
+        const name=literal(target,block,method?'METHOD':'FIELD');
+        return [...graph.node(input(target,block,'OBJECT')).types].some(type=>{
+            const cls=classes.get(type),member=cls&&resolveMember(cls,name,method);
+            if(member&&((member.visibility&&member.visibility!=='public'&&currentClassName!==type)||write&&member.readonly))return true;
+            return write&&member&&(member.getter||member.setter)&&['number','boolean','string'].includes(member.type)&&
+                (member.type!=='boolean'&&emitter.isBoolean(child(target,block,'VALUE'))||[...graph.node(input(target,block,'VALUE')).types].some(value=>['number','boolean','string'].includes(value)&&value!==member.type));
+        });
+    }});
+
         const saved={target:emitter.target,blocks:emitter.blocks,currentLocalNames:emitter.currentLocalNames,currentClassName:emitter.currentClassName,currentClassReceiver:emitter.currentClassReceiver,currentClassConstructor:emitter.currentClassConstructor,currentCallableContext:emitter.currentCallableContext};
         const out=[];
         function body(code,cls,parameters,constructor=false) {
