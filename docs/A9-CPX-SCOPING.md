@@ -166,6 +166,6 @@ setThreshold`; network: IR and cable send/receive; `keyboard`, `mouse`, `gamepad
 - **Process lesson:** a merge that changes the extensions gallery reddens Lite main's vendor-freshness gate until
   `sync-gallery-pins` is re-run after the Pages deploy. Re-pin in the same session.
 
-**Next:** OPEN-TASKS A11 (the translator: the plan's phase 2, with the refusal list above minus animations and
-built-in sounds, which are now words) and A12 (live state on the circuit face). The LabWired lane is B19–B22 (see
+**Next:** OPEN-TASKS A12 (the translator: the plan's phase 2, with the refusal list above minus animations and
+built-in sounds, which are now words) and A13 (live state on the circuit face). The LabWired lane is B19–B22 (see
 `A9-CPX-LABWIRED-SCOPING.md`).
