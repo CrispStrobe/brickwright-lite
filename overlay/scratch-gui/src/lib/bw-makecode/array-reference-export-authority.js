@@ -144,7 +144,7 @@ export function createArrayReferenceExportAuthority(project) {
         while(id&&!seen.has(id)){
             seen.add(id);const next=block(target,id);if(!next||invalid.has(next)||owners.get(next)!==scope)return false;
             if(next.opcode==='data_setvariableto'&&exactKeys(next,['VALUE'],['VARIABLE'])){
-                const name=next.fields?.VARIABLE,id= name?.[1],declaration=target.variables?.[id],c=globalCell(target,id),kind=scalar(input(next,'VALUE',target));
+                const name=next.fields?.VARIABLE,id=name?.[1],declaration=targets.find(owner=>Object.hasOwn(owner.variables||{},id))?.variables[id],c=globalCell(target,id),kind=scalar(input(next,'VALUE',target));
                 if(!c||declaration?.[0]!==name?.[0]||!kind)return false;
                 if(c===destination)return kind==='number';
                 if(kind==='number')knownNumbers.add(c);else knownNumbers.delete(c);
