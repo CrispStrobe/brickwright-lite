@@ -512,6 +512,7 @@ class ArcadeTranslator extends BaseTranslator {
      * statement's, not the enclosing one's.
      */
     statement(st, indent, out) {
+        const before=this.unsupported.length;
         const outerPre=this.pre,mark=out.length;
         this.pre=[];
         let delegated=false;
@@ -522,6 +523,9 @@ class ArcadeTranslator extends BaseTranslator {
             this.pre=outerPre;
         }
         if(delegated)super.statement(st,indent,out);
+        const added=this.unsupported.slice(before);
+        const missing=[...new Set(added)].filter(reason=>!out.slice(mark).some(line=>line.trim()===`# unsupported: ${reason}`));
+        if(missing.length)out.splice(mark,0,...missing.map(reason=>`${'  '.repeat(indent)}# unsupported: ${reason}`));
         const kindBinding=st.type==='ExpressionStatement' && st.expr?.spriteKindName;
         if(kindBinding)out.push(`${'  '.repeat(indent)}arcade bind sprite kind name ${JSON.stringify(kindBinding)} to (${this.expr({type:'Identifier',name:st.expr.spriteKindBinding})})`);
     }

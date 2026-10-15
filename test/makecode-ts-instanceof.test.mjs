@@ -16,3 +16,12 @@ test('instanceof preserves call operands and reports unimplemented class identit
  assert.ok(imported.unsupported.some(x=>x.includes('instanceof requires runtime class identity')));
  assert.match(imported.code,/# unsupported: instanceof requires runtime class identity/);
 });
+
+
+test('unsupported relational conditions retain their diagnostic alongside unsupported nested bodies',()=>{
+ for(const source of ['if(1 instanceof Missing){unknown()}','while(1 instanceof Missing){unknown()}']){
+  const imported=arcadeToPseudocode(source);
+  for(const reason of imported.unsupported)assert.ok(imported.code.split('\n').some(line=>line.trim()==='# unsupported: '+reason),reason);
+  assert.equal(imported.code.split('\n').filter(line=>line.trim()==='# unsupported: instanceof requires runtime class identity').length,1);
+ }
+});
