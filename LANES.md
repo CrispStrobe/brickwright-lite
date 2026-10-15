@@ -156,14 +156,6 @@ unchanged matrix/fault/guest-time bounds, and the fresh nRF52833 V2 emulator ELF
 Engine publication/original admission, all enabled final checks and actual
 released-engine CLI/browser qualification remain pending before integration.
 
-Consumer implementation is prepared locally: JSON and streamed CLI serial,
-complete ordered greeting/counter assertions, updated status text and an
-actual compiled greeting observed through the Debug console. Syntax, full
-JSX parsing and 12 existing UI-contract checks pass. These changes are held
-until the qualified engine/package pins can be applied; no new artifact or
-consumer guest result is claimed. Integrate the qualified A11 source before
-publishing this final adoption candidate and preserve both browser scenarios.
-
 ## A11: Code-tab MakeCode export uses the project target — 2026-10-15
 
 DONE — merged 2026-10-15 in [PR #971](https://github.com/CrispStrobe/brickwright-lite/pull/971)
