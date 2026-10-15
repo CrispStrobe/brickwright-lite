@@ -182,6 +182,14 @@ class ArcadeEmitter {
         this.requiresCharacterAnimationsPackage = false;
         this.warnings = [];
         this.tileAssets = new TileAssetExporter(this.warnings);
+        // Reserve actual named resources across all fixed maps before anonymous
+        // fallback IDs (or a conflicting edit's suffix) can take their names.
+        for (const target of project.targets) for (const block of Object.values(target.blocks || {})) {
+            if (block.opcode !== 'arcade_setTilemap') continue;
+            let data;
+            try { data = JSON.parse(this.literalInput(block, 'DATA')); } catch (_) { continue; }
+            if (tilemapSource(data)) this.tileAssets.reserve(data.images);
+        }
         this.sprites = project.targets.filter(t => !t.isStage);
         // Each sprite is a global `<name>Sprite`, kept clear of the program's variable names.
         this.spriteVar = new Map();

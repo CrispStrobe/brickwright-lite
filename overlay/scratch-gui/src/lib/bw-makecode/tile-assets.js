@@ -62,17 +62,23 @@ export function encodeTileImage (image) {
 
 /** Collect resources across all maps without conflating distinct names or edited pixels. */
 export class TileAssetExporter {
-    constructor (warnings = []) { this.entries = new Map(); this.warnings = warnings; }
+    constructor (warnings = []) { this.entries = new Map(); this.warnings = warnings; this.reservedIds = new Set(); }
+
+    reserve (images) {
+        for (const image of images) if (validTileId(image?.tileId)) this.reservedIds.add(image.tileId);
+    }
 
     register (image, index) {
         const data = encodeTileImage(image);
-        const originalId = validTileId(image.tileId) ? image.tileId : `myTiles.tile${index}`;
+        const named = validTileId(image.tileId);
+        const originalId = named ? image.tileId : `myTiles.tile${index}`;
         const displayName = typeof image.displayName === 'string' && image.displayName.trim() ? image.displayName.trim() : originalId.split('.').pop();
         let id = originalId;
         let suffix = 2;
-        while (this.entries.has(id)) {
+        const reserved = candidate => this.reservedIds.has(candidate) && (!named || candidate !== originalId);
+        while (this.entries.has(id) || reserved(id)) {
             const previous = this.entries.get(id);
-            if (previous.data === data && previous.displayName === displayName) return id;
+            if (!reserved(id) && previous?.data === data && previous.displayName === displayName) return id;
             id = `${originalId}_${suffix++}`;
         }
         if (id !== originalId && image.tileId) this.warnings.push(`Tile ${originalId} has conflicting edits or names; exported separately as ${id}`);
