@@ -773,3 +773,55 @@ for(const boundary of ['live-error','closed-result','closed-error'])test(`schedu
   assert.equal(b.hubState.clockOwner,null);assert.equal(b.hubState.configurationOwner,null);assert.equal(b.hubState.externalBackend,null);
  }finally{await s.stop();}
 });
+
+// Preserve the real session and serialized codec; delay only an authored STOP reply.
+for (const cancel of [false, true]) test(`replacement upload awaiting STOP: ${cancel ? 'close cancels upload' : 'live upload proceeds'}`, async () => {
+    const b = bridge(); let state = 0, sequence = 0, armed = false, blocked = false;
+    let entered, release;
+    const enteredStop = new Promise(resolve => {entered = resolve;});
+    const heldStop = new Promise(resolve => {release = resolve;});
+    const calls = [];
+    let session;
+    const frame = () => {
+        const value = programFrame(); value.seq = ++sequence; value.clockNs = sequence * 1000000;
+        value.target.firmware = 'brickwright-nuttx';
+        value.target.capabilities.push('nuttx-program/v1', 'nuttx-program-storage/v1');
+        value.lifecycle.nuttxProgram = {state, error: 0}; return value;
+    };
+    const capabilities = Object.fromEntries(['session.start', 'session.close', 'state.read', 'run',
+        'arena.inputs.write', 'program.packet'].map(op => [`renode.spike.${op}`, async args => {
+        if (op === 'state.read') return JSON.stringify(frame());
+        if (op !== 'program.packet') return 'ready';
+        const command = args.bytes[2];
+        if (armed) calls.push({command, closed: session.closed});
+        if (armed && command === 4 && !blocked) {blocked = true; entered(); await heldStop;}
+        if (command === 2) state = 1;
+        if (command === 3) state = 2;
+        if (command === 4) state = 4;
+        const value = frame(), reply = new Uint8Array(20), view = new DataView(reply.buffer);
+        reply.set([0x71, 1, command, state]); view.setUint32(4, 1, true); view.setUint16(14, 1, true);
+        value.lifecycle.nuttxProgramReply = [...reply]; return JSON.stringify(value);
+    }]));
+    session = new RenodeArenaSession({bridge: b, capabilities, backend: 'nuttx', source: 'print(1)'});
+    try {
+        await session.start(); clearTimeout(session.timer); state = 3; session.observeProgram({state}); armed = true;
+        const uploading = session.uploadProgram(null, 'print(2)');
+        // Attach rejection observation before releasing either native response.
+        const outcome = uploading.then(value => ({value}), error => ({error}));
+        await enteredStop;
+        const stopping = cancel ? session.stop() : null;
+        release(); const result = await outcome;
+        if (stopping) await stopping;
+        clearTimeout(session.timer);
+        if (cancel) {
+            assert.ok(result.error, 'A closed session must reject the replacement upload');
+            assert.match(String(result.error), /closed|cancelled/);
+            assert.deepEqual(calls.filter(call => call.command !== 4), [], 'No BEGIN/CHUNK/COMMIT/START after Stop');
+            assert.equal(session.source, 'print(1)', 'Cancelled replacement must not become current code');
+            assert.equal(b.hubState.configurationOwner, null); assert.equal(b.hubState.externalBackend, null);
+        } else {
+            assert.equal(result.error, undefined); assert.ok(calls.some(call => call.command === 3));
+            assert.equal(session.source, 'print(2)'); assert.equal(session.programState, 2);
+        }
+    } finally {release(); armed = false; clearTimeout(session.timer); await session.stop();}
+});

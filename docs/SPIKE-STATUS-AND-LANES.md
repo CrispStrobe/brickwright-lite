@@ -539,6 +539,17 @@ remained required. The qualified follow-up above records the frozen consumers
 and finite cases now completed. Selected-image/error, deferred-storage,
 final-sampling, generation and late-poll closure across backends remains open.
 
+A replacement-upload continuation on
+`lane/spike-g02-upload-cancellation-20261015` now checks closure after awaiting
+the previous program's STOP, before replacing current code or enqueueing BEGIN.
+A real-session/production-codec control with an authored delayed native response
+shows the baseline accepting a replacement after session Stop; the live control
+passes. All 57 session controls pass with the guard, and removing it recreates
+the exact failing source. Fresh installed own-NuttX cancellation/recovery and
+all enabled exact-head CI checks remain pending; this finite host result does
+not close G02 or qualify guest execution. Existing transport ordering and
+firmware/Runtime/model/native pins and deadlines remain unchanged.
+
 ### G03 — Qualify usable sandbox and responsive editor controls
 
 **Owner:** Lite. **Start:** `docs/SPIKE-ARENA.md`,

@@ -380,6 +380,7 @@ export class RenodeArenaSession {
             }
             await this.verifyDualFrame();
             await this.programClient.stop();
+            if (this.closed) throw new Error('NuttX session is closed');
             this.program = program; this.source = source; this.loaded = false; this.completed = false;
             this.retainedProgram = false;
             const reply = await this.programClient.upload(source === null ? program : source, {python: source !== null});

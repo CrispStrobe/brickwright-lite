@@ -4050,3 +4050,22 @@ callback/class widening or independent generated-bundle edits. Coordinate
 primitive owner/index hooks with Image and console owners; other owners keep
 class/callable producer and lexical source graph files. Product implementation
 follows this claim's normal qualified merge.
+
+
+## SPIKE replacement upload cancellation after STOP — 2026-10-15
+
+Continuation in the merged G02 session/test envelope, branch
+`lane/spike-g02-upload-cancellation-20261015`, same Codex owner.
+When a replacement upload awaits its initial STOP response, a concurrent session
+Stop used to let the resumed method replace the source and begin a new upload
+after closure. Check closure after that awaited response, before changing source
+or enqueueing BEGIN. Keep the serialized transport's existing STOP ordering.
+
+A real session and production codec with an authored delayed STOP response
+reproduce the gap: the normal control passes and cancellation fails on the
+baseline. All 57 session controls pass with the guard. Removing the guard yields
+the exact failed baseline source. This is host boundary evidence, not a guest
+result. Source-bound installed own-NuttX cancellation, fresh recovery and every
+enabled exact-head CI check remain mandatory before integration. Firmware,
+Runtime, models, native code, pins, workflows and budgets are unchanged; no
+whole-G02, rollback, physical, reference or release claim.
