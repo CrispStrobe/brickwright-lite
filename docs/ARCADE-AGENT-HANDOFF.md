@@ -8,6 +8,44 @@ operator's actual checkouts, tools, private corpus and original receipts.
 Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
 
+## Current composition and canonical creator adoption — 2026-10-15
+
+Implementation checkpoint `7bf88f925` includes current main, the qualified
+creator repairs and the opt-in owned Image class/callback bridge. The creator
+pin is `f2d4f879ba40dd9025070ed51af11ebe1ef14808`; standard sync checks all
+20 mapped files with zero downstream differences. Supplier
+[PR153](https://github.com/CrispStrobe/sb3-creator/pull/153) and
+[PR154](https://github.com/CrispStrobe/sb3-creator/pull/154) each passed all four
+enabled checks before normal merge, with reviewed and landed trees equal.
+The main branch's STM32/i8086 changes and board pin are retained.
+
+The Image/captured/named/Number composition passes 78 focused controls.
+After creator adoption, another 24 affected consumer controls and six vendor
+identity controls pass; these overlapping groups are not a full-suite census.
+Two exact Image source/edited-export SDK programs pass, as recorded in the
+[Image contract](compatibility/arcade-owned-image-class-callables.md).
+Default Image admission and hosted class authoring remain open.
+
+The [Arrays Number-input contract](compatibility/arcade-arrays-current-number-inputs.md)
+is merged. Shared current-input ownership and the candidate canonical source
+correct all nine authored-block controls, including four retained failures.
+The supplier's [PR48](https://github.com/CrispStrobe/extensions/pull/48) has two
+independent local reviews, but GitHub rejects its CI dispatch with “Actions has
+been disabled for this repository.” No supplier pin or bundle adoption follows
+from absent checks. Preserve that rejection while continuing independent work.
+
+The previous integration run passed both browser shards, FPGA and corpus;
+its build and unit prerequisites stopped on a stale expected compiler pin.
+The complete SPIKE artifact control now passes at the actual adopted revision.
+Fresh final-head hosted qualification is still required.
+
+The unchanged raw184 audit at `7bf88f925` remains **147 translated /36 partial
+/one parse failure**, with every original Git blob verified. Authentic contexts
+remain a separate **29 original-valid /20 strict /nine blocked** observation.
+Next: bounded default Image selection from completed actual proofs; the
+procedure parameter contract and value-map lanes; canonical Arrays CI and
+consumer/GUI qualification. The under-20-partials milestone is not reached.
+
 ## Captured cells and valid class exports integrated — 2026-10-15
 
 Local integration `ff720cda29320f352d24ad1b7cb18a5cdfafb089` adds reviewed

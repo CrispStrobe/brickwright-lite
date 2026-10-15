@@ -1,5 +1,27 @@
 # Conversion capabilities and GUI closure ledger
 
+## Owned Image callbacks and authored Array Number inputs — 2026-10-15
+
+Owned Image fields, constructor arguments, captured class parameters and
+callback inputs/results now pass the opt-in source, Code, same/fresh SB3 and
+current edited export/reimport controls. Two exact selected-original programs
+agree on dimensions, clone identity and callback effects. This does not yet
+make the default importer choose that bridge. Selection must use completed
+actual source/current-project proofs, including every writer and body.
+
+The GUI still needs reachable class/field/handler authoring controls, genuine
+Image parameters and results, an actual captured-parameter rename, graphics
+edits, save/reopen and visible incompatible-value refusals. Opaque metadata
+editing is not a substitute. Literal resources, dynamic dimensions, Sprite
+image views and physical Sprite signatures remain separate producer gaps.
+See the [qualified Image boundary](compatibility/arcade-owned-image-class-callables.md).
+
+The candidate Array Number bridge corrects nine real current-block cases while
+preserving text. Native evidence does not close operator-menu or save/export
+journeys. Canonical supplier CI is currently rejected as disabled; its pin and
+bundle remain unchanged. Qualify the actual shipped supplier before the hosted
+Number-versus-text authoring journey.
+
 ## Captured inspection and class constraint editing — 2026-10-15
 
 Current captured Number/String cells now have scoped registration, all-writer

@@ -634,3 +634,22 @@ and its complete executable artifact and round-trip assertions pass unchanged.
 The earlier failure remains preserved. The separate creator vendor-identity
 failure still requires qualified canonical adoption; this artifact control
 does not resolve it.
+
+
+### Completed prior integration and repaired creator identity
+
+Integration run38693237226 on `d88a8464c` passed both browser shards, FPGA and
+corpus. Build and both unit jobs each stopped at the fast 178-control prerequisite
+with 177 passes and the same stale SPIKE pin assertion. They did not produce
+completed Arcade unit censuses. The current complete artifact control passes
+at qualified creator `f2d4f879`; all 20 vendor identities now agree after normal
+canonical merges and standard sync. No vendor exemption was added.
+
+The reviewed shared Array input update also retains its early failures:
+a displaced CLI hashbang, then two migration counterexamples where comment
+text could impersonate an actual invocation or receive a header replacement.
+The final updater validates real unique declarations and the exact guarded
+invocation, and edits actual AST ranges. Six focused migration/CLI controls
+and both original counterexamples verify the correction; unchanged native
+ownership controls retain their earlier qualification. The full consumer
+composition remains subject to a new final-head hosted verdict.

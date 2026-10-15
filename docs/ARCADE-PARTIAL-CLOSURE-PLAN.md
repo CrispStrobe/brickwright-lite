@@ -25,20 +25,28 @@ its captured inspection and an unused helper's parameter contract still need
 complete export/reimport and runtime qualification. A compiler-invalid context
 that parses structurally remains excluded from the 20.
 
+The canonical class-topology and named-label repairs are now qualified and
+adopted at creator `f2d4f879`; all 20 vendor identities match. Captured primitive
+inspection and the opt-in Image source/current-export originals also pass.
+The latest integration checkpoint is `7bf88f925`; raw counts remain unchanged.
+Array Number interpretation has a reviewed candidate fix, while supplier CI is
+externally rejected as disabled and adoption remains pending.
+
 Continue these areas in order, using the owners in LANES.md:
 
 1. Repair valid class-export proof regressions and actual generated block
    topology. Preserve strict parent/receiver checks and incompatible Number/Text
    refusals. Qualify the producer correction in both its owned consumer overlay
    and canonical supplier; [supplier PR153](https://github.com/CrispStrobe/sb3-creator/pull/153)
-   is separate from a qualified consumer pin adoption.
+   is now followed by qualified consumer pin adoption; finish final hosted
+   integration without relaxing the parent or current-body checks.
 2. Complete captured primitive-cell proofs, directed parameter contracts and
    current export/reimport for Lyla. Link actual registrations and cells;
    metadata and annotations constrain values rather than create them.
 3. Finish actual owned Image values in ordinary class callbacks and fields.
-   The opt-in source/native checkpoint passes focused controls, but current
-   edited export, reimport, original comparison and default admission remain
-   open. Keep malformed/raw transport and before-body catalogue refusals.
+   The opt-in source/native/current-export and two selected-original programs
+   are qualified. Complete actual-proof default selection and hosted authoring;
+   keep malformed/raw transport and before-body catalogue refusals.
 4. Fix authored Number inputs in the Arrays value operations through the
    shared current-input boundary and separately qualified canonical supplier.
    Keep numeric text as text; source-created numeric wrappers are insufficient
