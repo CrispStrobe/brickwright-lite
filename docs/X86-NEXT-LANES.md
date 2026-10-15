@@ -148,15 +148,20 @@ physical 386 timing, whole-OS, broad DOSBox or release claim follows from this l
 Updated 2026-10-15. The board's master-copy API is merged in
 [PR623](https://github.com/CrispStrobe/bw-board/pull/623); explicit CLI raw output
 is merged in [PR618](https://github.com/CrispStrobe/bw-board/pull/618).
-The two-session FreeDOS persistence fixture is in
+The two-session FreeDOS persistence fixture is merged in
 [PR625](https://github.com/CrispStrobe/bw-board/pull/625). Its first actual run
 [38790214003](https://github.com/CrispStrobe/bw-board/actions/runs/38790214003)
 failed before command completion and left the disk unchanged. Accepted controller
 scan bytes did not prove that the guest consumed the complete command. The live
 console pacing correction is merged in
-[PR627](https://github.com/CrispStrobe/bw-board/pull/627); corrected-source checks
-and a separately admitted actual run remain necessary. Preserve the original
-failure rather than treating the pacing hypothesis as a proven BIOS cause.
+[PR627](https://github.com/CrispStrobe/bw-board/pull/627). The corrected
+[actual run 38806122785](https://github.com/CrispStrobe/bw-board/actions/runs/38806122785)
+passed at source `b8f95cfdb8ee654407b63e626e46eb8859ce7b41`. Root and independent
+original-artifact audits reproduce the 19-byte `BWKEEP.TXT`, 43 permitted changed
+bytes, and byte-identical first/fresh-readback exports. Both sessions boot the
+same floppy; this is master-data persistence, not HDD boot, GUI acceptance,
+crash durability or a full-OS result. Preserve the original failure; the passing
+finite run does not establish a general BIOS failure cause.
 
 GUI memory descriptor normalization and the memory drawer are merged in
 [PR970](https://github.com/CrispStrobe/brickwright-lite/pull/970) and
@@ -169,9 +174,11 @@ download helper and panel consumer are in
 the standalone helper PR984. Source checks, supplier adoption and installed
 browser acceptance remain distinct gates.
 
-Proceed through the existing bounded write/export/fresh-process reload fixture,
-then the mocked browser download helper, then the separately claimed runner
-bridge and panel action. The bridge calls only the current target's
+The bounded CLI write/export/fresh-process reload is now qualified at the source
+and run above. Continue with the pending runner bridge, complete helper/panel
+feature, supplier handoff and actual installed-browser download/reload; do not
+repeat the cleared CLI subset merely because main advances. The bridge calls
+only the current target's
 `snapshotAtaMaster()` and rejects stale session ownership after stop,
 replacement, or destroy. Do not expose the target object or infer support merely
 because a bridge method exists on every runner. Preserve the board's copy-time
