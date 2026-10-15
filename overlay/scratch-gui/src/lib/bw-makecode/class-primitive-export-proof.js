@@ -1,4 +1,5 @@
 import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
+import {sdkSpriteExportClasses} from './sdk-sprite-class-descriptors.js';
 
 // Validate current ordinary-class constraints. Declaration types constrain a
 // writer. Symbolic declaration constraints remain distinct from actual facts;
@@ -7,11 +8,22 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
     const primitive=sdkFontInputAuthority(project),ordinary=[...classes.values()].filter(cls=>!cls.intrinsic);
     const expected=new Map([['number','Number'],['string','String'],['boolean','Boolean']]);
     if(!ordinary.length)return;
+    const sdkSprite='SDK:Sprite',spriteClasses=new Map(sdkSpriteExportClasses().map(cls=>[cls.name,cls]));
+    const spriteField=name=>{for(let cls=spriteClasses.get('Sprite');cls;cls=spriteClasses.get(cls.parent)){const value=cls.fields.find(field=>field.name===name);if(value)return {cls,value};}return null;};
+    const fieldReceivers=types=>{
+        const concrete=[...types].filter(type=>!['Undefined','Null'].includes(type));
+        // The converter initializes physical Sprite bindings to null. Under
+        // the selected non-strict-null source constraints that transition does
+        // not change the SDK field type. This is neither a runtime owner
+        // certificate nor a proof that this particular read is nonnull.
+        return concrete.length&&concrete.every(type=>isSdkSprite(type))?new Set(concrete):types;
+    };
     const owned=new WeakMap(),locations=new WeakMap(),definitions=new Map(),rows=[],bad=new Set(),methodOwners=new Map(),roots=new Set();
     const blocks=target=>target.blocks||{},child=(target,block,name)=>typeof block.inputs?.[name]?.[1]==='string'?blocks(target)[block.inputs[name][1]]:null;
     const fixed=(target,block,name)=>{if(!block.inputs?.[name]&&typeof block.fields?.[name]?.[0]==='string')return block.fields[name][0];const input=block.inputs?.[name]?.[1],value=child(target,block,name);return Array.isArray(input)&&input[0]===10?String(input[1]):value?.shadow&&value.opcode==='text'?String(value.fields?.TEXT?.[0]):null;};
     const key=(target,name)=>`${project.targets.indexOf(target)}:${name}`;
     const opaque=()=>new Set(['Opaque']),union=sets=>new Set(sets.flatMap(set=>[...set]));
+    const reporter=(block,names)=>!block.shadow&&!block.topLevel&&!block.next&&!block.mutation&&!Object.keys(block.fields||{}).length&&Object.keys(block.inputs||{}).sort().join(',')===names.slice().sort().join(',');
     const diagnostics=new Set(),fail=message=>diagnostics.add('Class primitive export: '+message);
     for(const target of project.targets)for(const[id,block]of Object.entries(blocks(target)))locations.set(block,{target,id});
     for(const target of project.targets)for(const[id,block]of Object.entries(blocks(target)))if(block.topLevel){
@@ -52,6 +64,7 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
     }
     for(const row of procedures?.values()||[]){const def=row.definition&&definitions.get(key(row.definition.target,row.definition.code));if(def&&!row.native&&!methodOwners.has(def))methodOwners.set(def,{cls:row.cls,parameters:row.params,result:row.result});}
     const ancestry=name=>{const found=[],seen=new Set();while(classes.has(name)&&!seen.has(name)){seen.add(name);const cls=classes.get(name);found.push(cls);name=cls.parent;}return found;};
+    const isSdkSprite=receiver=>receiver===sdkSprite||receiver.startsWith('@')&&ancestry(receiver.slice(1)).some(cls=>cls.intrinsic&&cls.name==='Sprite');
     const member=(name,property,method=false)=>{for(const cls of ancestry(name)){const value=(method?cls.methods:cls.fields).find(row=>row.name===property);if(value)return {cls,value};}return null;};
     let cache=new WeakMap(),previous=new WeakMap();const checking=new Set();
     const args=(target,block)=>{const result=[],seen=new Set();let value=child(target,block,'ARGS');if(!value)return fixed(target,block,'ARGS')==='[]'?result:null;
@@ -65,11 +78,23 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
         if(actual.has('Opaque')){const certified=qualifiedInput(target,block,name);if(certified?.kind==='named'){
             if(expected.has(certified.name))return new Set(['Constraint:'+expected.get(certified.name)]);
             if(classes.has(certified.name))return new Set(['@'+certified.name]);
-        }}
+        }else if(certified?.kind==='sdk'&&certified.name==='Image')return new Set(['Image']);}
         return actual;
     };
     const variable=(target,id)=>{const actual=project.targets.filter(other=>Object.hasOwn(other.variables||{},id));if(actual.length!==1||actual[0]!==target&&!actual[0].isStage)return opaque();
         const writers=rows.filter(row=>row.block.fields?.VARIABLE?.[1]===id&&['data_setvariableto','data_changevariableby'].includes(row.block.opcode));return writers.length?union(writers.map(row=>row.block.opcode==='data_setvariableto'?input(row.target,row.block,'VALUE'):opaque())):opaque();};
+    // A retained declaration constrains an SDK binding but never supplies a
+    // producer fact. Follow actual variable IDs/alias writes only to prevent a
+    // missing or malformed allocation from falling through the historical
+    // ordinary-class dynamic-access escape.
+    const sdkBindingConstraint=(target,block,name,seen=new Set())=>{
+        const slot=block.inputs?.[name]?.[1],value=child(target,block,name);
+        if(value&&['arcade_createSprite','arcade_createImageSprite'].includes(value.opcode))return true;
+        const id=Array.isArray(slot)&&slot[0]===12?slot[2]:value?.opcode==='data_variable'?value.fields?.VARIABLE?.[1]:null;
+        if(!id||seen.has(id))return false;seen=new Set(seen);seen.add(id);
+        if(classes.get('Sprite')?.intrinsic&&rows.some(row=>row.block.opcode==='arcade_declareSourceReference'&&fixed(row.target,row.block,'TYPE')==='Sprite'&&row.block.inputs?.VARIABLE?.[1]?.[0]===12&&row.block.inputs.VARIABLE[1][2]===id))return true;
+        return rows.some(row=>row.block.opcode==='data_setvariableto'&&row.block.fields?.VARIABLE?.[1]===id&&sdkBindingConstraint(row.target,row.block,'VALUE',seen));
+    };
     function destinations(target,block){
         if(block.opcode==='arcade_callFunction'){const def=definitions.get(key(target,fixed(target,block,'NAME')));return def?[def]:[];}
         if(block.opcode==='arcade_createObject'){const cls=classes.get(fixed(target,block,'CLASS')),def=cls&&definitions.get(key(cls.target,cls.constructor));return def?[def]:[];}
@@ -169,7 +194,18 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
         case 'arcade_getLocal':types=local(target,block,fixed(target,block,'NAME'));break;
         case 'argument_reporter_string_number':case 'argument_reporter_boolean':types=local(target,block,block.fields.VALUE?.[0]);break;
         case 'arcade_createObject':{const cls=classes.get(fixed(target,block,'CLASS'));types=cls?new Set(['@'+cls.name]):opaque();break;}
-        case 'arcade_objectField':{const receivers=input(target,block,'OBJECT'),values=[];for(const name of receivers)values.push(name.startsWith('@')?fieldValues(name.slice(1),fixed(target,block,'FIELD')):opaque());types=values.length?union(values):opaque();break;}
+        case 'arcade_createSpriteKind':types=reporter(block,[])?new Set(['Number']):opaque();break;
+        case 'arcade_spriteKindValue':types=reporter(block,['NAME'])&&fixed(target,block,'NAME')?new Set(['Number']):opaque();break;
+        case 'arcade_createSprite':case 'arcade_createImageSprite':{
+            // A real SDK allocation has its own domain. An ordinary class
+            // named Sprite or an annotation cannot supply this fact.
+            const image=block.opcode==='arcade_createImageSprite',names=image?['IMAGE','TEMPLATE','KIND']:['TEMPLATE','KIND','WIDTH','HEIGHT'];
+            const numeric=names.filter(name=>['KIND','WIDTH','HEIGHT'].includes(name)).map(name=>input(target,block,name));
+            const imageTypes=image?input(target,block,'IMAGE'):null;
+            types=reporter(block,names)&&fixed(target,block,'TEMPLATE')&&numeric.every(set=>set.size&&[...set].every(type=>type==='Number'||type==='Constraint:Number'))&&
+                (!image||imageTypes.size===1&&imageTypes.has('Image'))?new Set([sdkSprite]):opaque();break;
+        }
+        case 'arcade_objectField':{const receivers=fieldReceivers(input(target,block,'OBJECT')),values=[];for(const name of receivers){const field=name===sdkSprite&&spriteField(fixed(target,block,'FIELD'));values.push(field&&expected.has(field.value.type)?new Set(['Constraint:'+expected.get(field.value.type)]):name.startsWith('@')?fieldValues(name.slice(1),fixed(target,block,'FIELD')):opaque());}types=values.length?union(values):opaque();break;}
         case 'arcade_callFunction':case 'arcade_callObjectMethod':{const defs=destinations(target,block);types=defs.length?union(defs.map(def=>{const declared=methodOwners.get(def)?.result;return expected.has(declared)?new Set(['Constraint:'+expected.get(declared)]):result(def);})):opaque();break;}
         default:{
             if(block.opcode==='arrays_valueBinary'){
@@ -209,10 +245,19 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
     const requireType=(actual,type,context)=>{if(expected.has(type)&&!compatible(actual,type))fail(context+' conflicts with declared '+type+' (actual '+[...actual].sort().join('|')+')');};
     for(const row of rows){const {target,block,owner}=row;if(bad.has(owner))continue;
         if(block.opcode==='arcade_setObjectField'){
-            if(dynamicReceiver(target,block,true,false,methodOwners.get(owner)?.cls.name))continue;
-            const name=fixed(target,block,'FIELD'),receivers=input(target,block,'OBJECT');
-            if(name===null||!receivers.size||[...receivers].some(receiver=>!receiver.startsWith('@')||!classes.has(receiver.slice(1)))){fail('field writer requires an actual declared receiver and fixed property');continue;}
-            for(const receiver of receivers){const found=receiver.startsWith('@')&&member(receiver.slice(1),name);if(!found||found.cls.intrinsic||found.value.valueKind==='callable')continue;
+            const name=fixed(target,block,'FIELD'),receivers=fieldReceivers(input(target,block,'OBJECT'));
+            const sdkConstraint=sdkBindingConstraint(target,block,'OBJECT')||receivers.has(sdkSprite);
+            const sdkMembers=[...receivers].map(receiver=>receiver.startsWith('@')&&member(receiver.slice(1),name)).filter(found=>found&&found.cls.intrinsic&&spriteClasses.has(found.cls.name));
+            if(sdkConstraint||sdkMembers.length){
+                if(sdkConstraint&&(!receivers.size||![...receivers].every(isSdkSprite))){fail('field writer requires an actual declared receiver and fixed property');continue;}
+                const fields=sdkConstraint?[spriteField(name)]:sdkMembers;
+                if(fields.some(found=>!found||found.value.readonly)){fail('SDK Sprite field writer requires an actual writable declared property');continue;}
+                for(const found of fields)requireType(input(target,block,'VALUE'),found.value.type,'field '+found.cls.name+'.'+name+' writer');
+            }else if(dynamicReceiver(target,block,true,false,methodOwners.get(owner)?.cls.name))continue;
+            if(name===null||!receivers.size||receivers.has(sdkSprite)&&![...receivers].every(isSdkSprite)||[...receivers].some(receiver=>receiver!==sdkSprite&&(!receiver.startsWith('@')||!classes.has(receiver.slice(1))))){fail('field writer requires an actual declared receiver and fixed property');continue;}
+            for(const receiver of receivers){const found=receiver===sdkSprite?spriteField(name):receiver.startsWith('@')&&member(receiver.slice(1),name);
+                if(receiver===sdkSprite&&(!found||found.value.readonly)){fail('SDK Sprite field writer requires an actual writable declared property');continue;}
+                if(!found||found.cls.intrinsic&&!spriteClasses.has(found.cls.name)||found.value.valueKind==='callable')continue;
                 requireType(input(target,block,'VALUE'),found.value.type,'field '+found.cls.name+'.'+name+' writer');}
         }
         if(['arcade_callFunction','arcade_createObject','arcade_callObjectMethod'].includes(block.opcode)&&!dynamicReceiver(target,block,false,block.opcode==='arcade_callObjectMethod',methodOwners.get(owner)?.cls.name))for(const def of destinations(target,block)){const meta=methodOwners.get(def),supplied=args(target,block);if(!meta||!supplied)continue;
