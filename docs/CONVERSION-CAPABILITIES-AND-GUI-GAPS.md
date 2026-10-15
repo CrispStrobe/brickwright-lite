@@ -69,14 +69,15 @@ and keeping the distinction through Code, same/fresh SB3 and current export.
 Test replaced or disconnected inputs, foreign targets, Stop/restart and project
 reload. The integrated correction now passes 50 affected controls, including
 six formerly failing Number boundaries. Each Number/text fixture checks native,
-Code, same/fresh SB3 and current export/reimport, with existing incompatible
-callback export refusals retained. Visible editor qualification remains open.
+Code, same/fresh SB3 and current export/reimport, with incompatible
+callback and class declaration export refusals retained. Visible editor qualification remains open.
 A pure reimport is not a MakeCode compiler check; the class constraint gap below
 also applies to these routes.
 
 ## Current class constraints on export — 2026-10-15
 
-**Confirmed export validation gap.** Changing a Number-declared class field to
+**Locally corrected export validation; visible diagnostics remain open.**
+Changing a Number-declared class field to
 text preserves the actual text in native execution. Current export nevertheless
 emits `value: number` together with `this.value = "20"` and reports no
 unsupported elements. Source reimport alone accepts it. Two newly compiled
@@ -85,7 +86,24 @@ compiler: the Number `20` variant succeeds without diagnostics; the text
 variant fails with `Type '"20"' is not assignable to type 'number'.` These are
 compiler controls, without original guest execution.
 
-Additional current-project probes expose analogous unchecked String/Number and
+Reviewed source `524051430f2c58ebfe96351919005f71973321ee` now validates
+actual current direct field writers, method returns, arguments, formal writes
+and defaults against their declared primitive constraints. Symbolic constraints
+remain separate from observed producer facts. Native text remains text; an
+incompatible Number-declared current edit receives a precise export diagnostic.
+Existing dynamic accessor behavior remains unchanged, without claiming that its
+generated casts preserve authored-cast provenance. Sixteen independent focused
+checks pass; 36 composed class, managed-boundary and bitwise checks pass.
+The first composed run's three failures were stale expectations that these
+invalid class exports report no diagnostics; their native value assertions
+remain intact and export now requires the exact corresponding constraint error.
+
+GUI closure still requires a visible list locating each incompatible current
+writer/result, navigation to its block or declaration, and an authoring path to
+correct the value or declared type. Diagnostic coverage does not establish that
+browser journey or a successful MakeCode compiler run for every valid class.
+
+Additional earlier current-project probes exposed analogous unchecked String/Number and
 Boolean/text field writes and incompatible method returns. They remain static
 observations until independently compiled. The repair must separate declared
 constraints from directed actual producer facts, validate every current writer

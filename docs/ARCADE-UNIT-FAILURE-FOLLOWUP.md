@@ -1,5 +1,33 @@
 # Arcade unit failures: exact-source follow-up
 
+## Replacement full run at 60de95e9 — 2026-10-15
+
+[Run 38676138489](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38676138489)
+completed with failure. [Shard one](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38676138489/job/116237956433)
+reports **4,705 tests: 4,686 passed, three failed, 14 skipped, two TODO**.
+[Shard two](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38676138489/job/116237956509)
+was cancelled without a completed census. Preserve both original logs; do not
+count examples printed by the TAP validation script as additional failures.
+
+The three actual failures are legacy scene completion, yielding speech creation
+and terrain contact order (`AABB` versus `AB` on the Code route). Their local
+corrections use the existing shared timer and physics clock rather than a fast
+manual frame count. Source programs and original expectations remain unchanged:
+
+- Scene selection occurs after actual green-flag reset, before its first frame;
+  controls observe the two authored 40 ms deadlines at 39/40/79/80 ms.
+- Speech observation includes the authored 30 ms creation yield before its
+  existing 60 ms capture delay. Original geometry and all 19,200 pixel
+  comparisons remain required; new controls distinguish 29 and 30 ms.
+- Terrain control observes the actual pending pause at 19 ms and its completion
+  at 20 ms, preserving `AB`, count 12 and all contact/location/velocity assertions.
+  Code, export/reimport and same/fresh SB3 use the same clock.
+
+These are test observation corrections. Native controls and independent review
+support them; the full hosted rerun, including original executions and pixels,
+is still required before merge. No runtime workaround or relaxed expected
+value closes these failures.
+
 ## Integration review at e422d3145 — 2026-10-15
 
 [Run 38672271891](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38672271891)

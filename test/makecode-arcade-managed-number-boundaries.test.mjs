@@ -58,6 +58,18 @@ for(const fixture of managedNumberBoundaries)for(const opcode of ['math_number',
                     assert.ok(exported.unsupported.includes(refusal),JSON.stringify(exported.unsupported));
                     observations.push({route:'export-reimport-refusal',unsupported:exported.unsupported});return;
                 }
+                if(opcode==='text'&&fixture.name.startsWith('class-')){
+                    // Native Text remains Text in all four editable routes.
+                    // An unchanged Number declaration cannot export this edit
+                    // as compiler-valid source; preserve its precise refusal.
+                    const conflicts={
+                        'class-return':'result Reader.__bwClass_Reader_read %s',
+                        'class-argument':'argument Reader.__bwClass_Reader_read %s %s.value',
+                        'class-field':'field Reader.value writer'
+                    };
+                    assert.deepEqual(exported.unsupported,[`Class primitive export: ${conflicts[fixture.name]} conflicts with declared number (actual String)`]);
+                    observations.push({route:'export-reimport-refusal',unsupported:exported.unsupported});return;
+                }
                 assert.deepEqual(exported.unsupported,[],'current edited graph export diagnostics');
                 const reimported=arcadeToPseudocode(exported.ts);assert.deepEqual(reimported.unsupported,[],'current export reimport diagnostics');
                 const replay=await runProgram(reimported.code,{frames:40,storage:true});runs.push(replay);record('export-reimport',replay);

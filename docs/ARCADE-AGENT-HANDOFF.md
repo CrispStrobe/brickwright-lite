@@ -26,8 +26,9 @@ terrain contact timing. Local test corrections preserve original source and
 assertions; their complete hosted rerun is still required. Keep the original
 failure record and distinguish these fixes from runtime feature changes.
 
-Class primitive export constraints and console inspection remain under review;
-neither is adopted on this integration. Console supplier PR150 is merged, but
+Class primitive export constraints are adopted locally after independent review;
+36 composed controls pass, preserving native text while refusing incompatible
+class source exports. Console inspection remains under review and is not adopted. Console supplier PR150 is merged, but
 the consumer compiler pin remains unchanged. Named function values have an
 approved separate declaration model under implementation. None of these
 checkpoints establishes full game or GUI compatibility.
