@@ -11,6 +11,50 @@ Suggested prompt: “Continue the Arcade partial closure plan. Refresh the remot
 baseline and LANES.md, take the first unowned unresolved batch, and qualify
 conversion, runtime, authoring and roundtrips without suppressing diagnostics.”
 
+## Current execution frontier — 2026-10-15
+
+The original 184 inputs now report **147 translated / 36 partial / one parse
+failure**, with unchanged bytes and corpus identity below. The original
+142/41/1 checkpoint remains historical evidence. Do not subtract successes in
+context-enriched inputs from the original partial count.
+
+For the 41 authentic prepared contexts, 29 have retained successful original
+compiler evidence. The latest offline current-structure audit passes 20 of
+those 29 and leaves nine blocked. Lyla is the latest structural improvement;
+its captured inspection and an unused helper's parameter contract still need
+complete export/reimport and runtime qualification. A compiler-invalid context
+that parses structurally remains excluded from the 20.
+
+Continue these areas in order, using the owners in LANES.md:
+
+1. Repair valid class-export proof regressions and actual generated block
+   topology. Preserve strict parent/receiver checks and incompatible Number/Text
+   refusals. Qualify the producer correction in both its owned consumer overlay
+   and canonical supplier; [supplier PR153](https://github.com/CrispStrobe/sb3-creator/pull/153)
+   is separate from a qualified consumer pin adoption.
+2. Complete captured primitive-cell proofs, directed parameter contracts and
+   current export/reimport for Lyla. Link actual registrations and cells;
+   metadata and annotations constrain values rather than create them.
+3. Finish actual owned Image values in ordinary class callbacks and fields.
+   The opt-in source/native checkpoint passes focused controls, but current
+   edited export, reimport, original comparison and default admission remain
+   open. Keep malformed/raw transport and before-body catalogue refusals.
+4. Fix authored Number inputs in the Arrays value operations through the
+   shared current-input boundary and separately qualified canonical supplier.
+   Keep numeric text as text; source-created numeric wrappers are insufficient
+   Blocks authoring proof.
+5. Re-audit the unchanged raw inputs and authentic contexts, then take the
+   next unresolved dependency family. Remaining contexts include sports,
+   sprite utility callbacks, story/menu classes, array mapping and scene/state
+   wrappers. Preserve every residual diagnostic and actual dependency version.
+
+The full hosted integration remains open: two native runtime repairs address
+extension refresh and nested callback caller context, while the retained unit
+logs have eleven observed failed controls and no completed censuses. Finish
+those repairs before the next full merge gate. Every new capability also needs
+the relevant author/edit/run/save/reopen/export journey from the GUI ledger.
+No reliable completion date follows from these counts or overlapping tests.
+
 ## Locked baseline and meaning of zero
 
 The original corpus has **184 inputs: 142 translated, 41 partial, one parse
