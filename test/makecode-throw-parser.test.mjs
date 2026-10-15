@@ -25,6 +25,7 @@ test('missing malformed and partially consumed operands never produce a successf
  for(const source of ['throw','throw;','function f(){throw}','throw 1 + ;','throw @1;','throw 1 @;','throw "unterminated','throw "raw\nline"','throw `unterminated','throw 1 2;','throw 1, 2;','throw ()','throw `bad=${@1}`','throw `bad=${1 2}`'])assert.throws(()=>parse(source),/throw requires|complete expression|unsupported trailing|expected/);
 });
 test('try catch finally receive precise refusals while legal property names remain expressions',()=>{
+ assert.throws(()=>parse('export throw 1;'),/throw statement cannot be exported/);
  for(const keyword of ['try','catch','finally'])assert.throws(()=>parse(keyword+' {}'),new RegExp(keyword+' statement requires unsupported structured exception handling'));
  assert.throws(()=>parse('function fail(){try {throw 1} catch(e) {return 2} finally {done()}}'),/try statement requires unsupported/);
  assert.equal(parse('throw object.catch(1);').body[0].argument.callee.name,'catch');assert.equal(parse('throw {try:1,catch:2,finally:3};').body[0].argument.type,'Object');
