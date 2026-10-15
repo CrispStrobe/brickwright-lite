@@ -1,3 +1,18 @@
+## iOS redundant static archive packaging — 2026-10-15
+
+CLAIMED — Codex, isolated `fix/ios-static-archive-resources-20261015` in
+`/tmp/brickwright-ios-size-fix`, base `86daec14c`. User requested shrinking the
+current iPad app. Measured signed bundle: 371.43 MiB, including 151.98 MiB
+`libapp.a` copied as a resource despite already being linked into the executable.
+
+Envelope: this ledger, `apps/tauri/scripts/prepare-ios-device-build.mjs`, and
+`test/ios-device-build-command.test.mjs`. Remove only `libapp.a in Resources`
+build-file and resource-phase references from the generated project; preserve
+its Frameworks/linking entry. Exercise actual preparation on an Xcode fixture,
+including an already-anchored project. Verify the smaller signed app and iPad
+installation/launch. No feature, frontend asset or native code is removed.
+Claim lands before implementation.
+
 ## iOS shared validator compilation blocker — 2026-10-15
 
 CLAIMED — Codex, isolated `fix/ios-shared-validators-20261015` in
@@ -111,7 +126,7 @@ remain required before product integration.
 
 ## A11: Code-tab MakeCode export uses the project target — 2026-10-15
 
-CLAIMED — Codex, isolated branch `lane/a11-project-target-export-20261015`,
+DONE candidate — Codex, isolated branch `lane/a11-project-target-export-20261015`,
 base `c6f1ff5c3`. Single-board Code-tab MakeCode export selects the existing
 micro:bit, Calliope or EV3 emitter from the parsed project device and writes
 matching project metadata and editor guidance. Preserve unchanged imported
@@ -122,9 +137,21 @@ and its tracked `packages/` twin; a focused export-routing helper under
 `scripts/verify-makecode.mjs`; existing browser CI wiring only if needed;
 this ledger and `docs/OPEN-TASKS-2026-09-29.md`. Do not change exporters,
 applied-device routing, board model, dependency pins or another lane's behavior.
-Acceptance: micro:bit/Calliope/EV3 routing and metadata controls, meaningful
-wrong-target negative, actual built-browser Calliope download compiled by its
-own PXT target, all enabled exact-head checks. Merge claim before product edits.
+Claim landed at `015e1bdc7`. The actual handler now selects each target's
+existing emitter and file metadata, retains matching unchanged originals,
+reports the correct editor in both locales and offers EV3 export. The target
+is captured with the source before lazy compiler loading; generated micro:bit
+filename conventions and the multi-board early return are preserved.
+Validation: 39 focused export/UI/document-policy checks pass without skips;
+the old source and five wrong-routing/metadata/editor/original/visibility
+mutations fail. The existing browser gate now downloads the Calliope fixture's
+export, checks its polling loop and packages, reopens those exact bytes and
+runs its own PXT simulator. Hosted browser job `116412929942` passed the
+actual download/reopen/compile/Running checks in the real Calliope simulator;
+its tested merge `b8ca6b7d` has the same product bytes as this candidate.
+The original harness regex-policy failure is repaired with one exact checked
+lazy-import substitution; all 39 focused checks and six negative variants pass.
+All enabled final-head CI remains required before merge.
 
 ## Shared simulated world, step 1 — project world in Lite — 2026-10-15
 
