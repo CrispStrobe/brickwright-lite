@@ -46,11 +46,21 @@ let retainedVx=hero.vx`;
     await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));run.vm.greenFlag();await stepFrames(run.vm,80);check(run);
 });
 
-test('sprite text requires an actual sprite receiver and zero arguments',()=>{
+test('sprite text and primitive Number text retain their distinct receiver and argument contracts',async()=>{
     const invalid=arcadeToPseudocode('let hero=sprites.create(img`1`,SpriteKind.Player)\nlet bad=hero.toString(1)');
     assert.ok(invalid.unsupported.includes('Sprite.toString() requires zero arguments'));
-    const number=arcadeToPseudocode('let hero=2\nlet bad=hero.toString()');
-    assert.ok(number.unsupported.length>0);
+    const number=arcadeToPseudocode('let value=2\nlet text=value.toString()');
+    assert.deepEqual(number.unsupported,[]);
+    const run=await runProgram(number.code,{frames:5});
+    try {
+        assert.deepEqual(run.errors,[]);
+        assert.equal(vars(run).value,2);
+        assert.equal(vars(run).text,'2');
+    } finally {run.vm.quit();}
+    for(const source of ['let value=2;let text=value.toString(16)',
+        'let value=image.create(1,1);let text=value.toString()']) {
+        assert.ok(arcadeToPseudocode(source).unsupported.length>0,source);
+    }
 });
 
 

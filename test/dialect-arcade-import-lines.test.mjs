@@ -87,9 +87,28 @@ test('the corpus is what the importer was given by its tests', () => {
     assert.equal(corpus.testFiles.length, 82);
     assert.equal(new Set(corpus.inputs.map(i => i.test)).size, corpus.testFilesTranslating);
     assert.equal(corpus.testFilesTranslating, 68);
-    // The input corpus is unchanged; later source lowering distinguishes one
-    // pair of programs whose older translations had identical text.
-    assert.equal(programs.length, 418);
+    // The 433 inputs are unchanged. Current argument diagnostics distinguish
+    // three formerly identical invalid-call groups (camera, scene counters,
+    // and terrain direction), one additional program per group.
+    assert.equal(programs.length, 421);
+    const splitGroups=[
+        ['let edge=scene.cameraProperty()', 'let edge=scene.cameraProperty(0,1)',
+            'let edge=scene.cameraProperty(CameraProperty.Center)'],
+        ['game.pushScene();let exists=info.hasLife(2)', 'game.pushScene();let exists=info.player3.hasScore(2)'],
+        ['let actor=sprites.create(img`1`,SpriteKind.Player);let x=actor.isHittingTile()',
+            'let actor=sprites.create(img`1`,SpriteKind.Player);let x=actor.isHittingTile(0,1)',
+            'let actor=sprites.create(img`1`,SpriteKind.Player);let x=actor.isHittingTile(CollisionDirection.Center)']
+    ];
+    for(const sources of splitGroups) {
+        const codes=sources.map(source=>{
+            const input=corpus.inputs.find(input=>corpus.sources[input.files]===source);
+            assert.ok(input,'the exact diagnostic fixture remains in the captured corpus');
+            const converted=arcadeToPseudocode(source,input.opts);
+            assert.ok(converted.unsupported.length,'invalid call remains a named refusal');
+            return converted.code;
+        });
+        assert.equal(new Set(codes).size,2,'current diagnostics preserve distinct invalid argument forms');
+    }
     const lines = new Set(programs.flatMap(p => p.code.split('\n').map(l => l.trim()).filter(Boolean)));
     assert.ok(lines.size > 3500, `${lines.size} distinct lines`);
     // Every word family the importer uses is in it (not a corpus of plain Scratch).
