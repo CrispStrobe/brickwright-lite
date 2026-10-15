@@ -1630,19 +1630,20 @@ jobs:
         # Installation is bounded and retried below, but failure remains a real
         # deployment failure: silently skipping every browser gate would turn
         # required acceptance evidence into a soft gate.
-        # The verify scripts import the playwright package from the repo
-        # root; install it ephemerally (--no-save) plus its chromium.
+        # npm ci already installed the root's locked Playwright dependency.
+        # Use that CLI directly; resolving it again adds an unnecessary registry
+        # request and can fail before any browser acceptance runs.
         run: |
           # Playwright's chromium download can hang on a flaky mirror; with no
           # timeout a stalled download froze the whole deploy for ~90 min. Bound
           # each attempt and retry so it fails fast and recovers.
-          npm install --no-save playwright
+          test -x ./node_modules/.bin/playwright
           # Install apt dependencies once under a root-owned timeout group. A
           # timed-out sudo child otherwise retains the dpkg lock across retries.
-          sudo env "PATH=$PATH" timeout --kill-after=15s 300 npx playwright install-deps chromium
+          sudo env "PATH=$PATH" timeout --kill-after=15s 300 ./node_modules/.bin/playwright install-deps chromium
           ok=0
           for i in 1 2 3; do
-            if timeout --kill-after=15s 300 npx playwright install chromium; then ok=1; break; fi
+            if timeout --kill-after=15s 300 ./node_modules/.bin/playwright install chromium; then ok=1; break; fi
             echo "playwright chromium install attempt $i failed/timed out; retrying"
             sleep 5
           done
