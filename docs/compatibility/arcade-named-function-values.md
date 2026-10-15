@@ -100,10 +100,27 @@ holder forwarding and unproved adjacent operations retain explicit refusals.
 Namespace source symbols supply provenance before flattening; the initial export
 may retain flattened real declarations. This does not reconstruct namespace
 objects or admit arbitrary property references. These are bounded implementation
-controls, not complete-game, hosted-editor or original-compiler qualification.
+controls; complete-game and hosted-editor qualification remain separate.
 
 A strict equality helper needs a unique unchanged declaration, distinct actual
 formal bindings, compatible unrestricted parameter constraints and the exact
 ordered comparison body. Its arguments still need actual producer proof. Only
 those proved calls lower to the existing comparison operation; a helper name or
 an `any` annotation cannot manufacture a declaration label.
+
+## Bounded qualification reached
+
+The affected native and source gate passes 68 controls, including existing Arrow,
+class, conditional-result and Font behavior. Declaration source, visible Code,
+same and fresh saved projects, current-body edits and export/reimport are covered.
+Actual labels refuse class-signature access, stale runs, changed graphs and
+unowned callers; holder forwarding remains outside this profile.
+
+Two newly compiled selected-SDK programs qualify the declaration fixture and its
+actual edited export. Number results change from 7 to 11; both retain the String
+result, Void side effect, subsequent module continuation, repeated-label equality
+and distinct-declaration inequality. Complete actual compiler inputs and outputs
+were captured, and the SDK and bridge byte guards remained unchanged. The initial
+fixture's namespace collision was retained as a compiler refusal before guest
+execution; the separately named observation fixture supplies the successful
+qualification. No hosted GUI journey or complete-game closure is claimed.
