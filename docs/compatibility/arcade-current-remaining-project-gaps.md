@@ -65,6 +65,11 @@ libraries also remain open. No prior complete route was lost, and no partial
 body, failed stage or diagnostic was removed to obtain the nineteenth route.
 Production compiler consumer adoption remains a separate gate.
 
+Of the nineteen pure-complete identities, fifteen belong to the immutable
+36-project partial backlog. The other four were already translated. Even full
+behavior and authoring qualification of those fifteen would leave 21 partials;
+reaching fewer than twenty needs at least two further genuine case closures.
+
 ## Runtime and authoring remain separate
 
 The [authentic project ledger](arcade-authentic-project-qualification.md) records
@@ -75,6 +80,26 @@ it creates a projectile, applies velocity and AutoDestroy, and reports no error
 on each of the five routes. This remains held. Its exact selected-original fault
 and termination behavior still need observation before choosing the correction.
 The initial observer's incorrect Pressed-event assertion is also preserved.
+
+Lyla's first native startup remains blocked. A bounded passive diagnostic
+located repeated false `pauseUntil` evaluation inside the first source step:
+host timers still run, but frame updates cannot reach the callback that changes
+the condition. A cooperative polling implementation is under review. It must
+preserve optimistic evaluation, the shared polling interval, predicate effects,
+independent waiters and cancellation. Its unexecuted draft is not a fix claim.
+The optional timeout argument also needs source, Blocks, Code and export
+representation; current import explicitly refuses it.
+
+## Separate shared export correction
+
+The shared exporter used to rename `(a / b) | 0` to `Math.idiv(a, b)`.
+That changes fractional and out-of-range operands because `Math.idiv` converts
+both operands before division. The development correction exports the current
+connected expression, including any explicit operand conversions. A regression
+first reproduced result zero instead of two for `(1 / 0.5) | 0`; nine focused
+pure emitter tests then passed, including operand order and a changed input.
+This is not Arcade `Math.idiv` import, original-runtime agreement, a native game,
+GUI qualification or a corpus promotion. Full API lowering remains open.
 
 Next, qualify consumer adoption and authoring of the primitive formal protocol
 and implement exact division producers,
