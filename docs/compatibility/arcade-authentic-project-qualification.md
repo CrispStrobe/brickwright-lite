@@ -36,7 +36,7 @@ matched to the exact input and source before being credited here.
 | [Pizza party](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/pizza-party.md#26) (`e4b668bd`) | Pass | Pass | — | — | — |
 | [Crystal ball](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0205-part3.md#1) (`e7ab5324`) | Pass | Pass | — | — | — |
 | [Flamethrower controller](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0201-part3.md#2) (`f1f82cba`) | Pass | Pass | Startup + Right | Startup + Right | — |
-| [Flame handler with null receiver](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0201-part1.md#4) (`f583b791`) | Pass | Hold: null read | — | — | — |
+| [Flame handler with null receiver](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0201-part1.md#4) (`f583b791`) | Pass | Hold: null read | Null-getter fault observed | — | — |
 | [Froggy](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/froggy.md#11) (`f65a6b2d`) | Pass | Pass | — | — | — |
 
 Twelve contexts now have these bounded native route controls; one additionally
@@ -99,8 +99,8 @@ visible-editor and full-game gates remain open.
   continue: two property reads, projectile creation, velocity writes and
   AutoDestroy occur without an error. This is held, not a native pass. The first
   observer incorrectly expected event 1; actual Pressed is 2049. That failure
-  happened before input and remains preserved. Observe the exact original fault
-  and termination boundary before correcting compatibility; never repair the input.
+  happened before input and remains preserved. The selected-original boundary
+  below is now observed; the native correction remains open. Never repair the input.
 
 ## Next dependency order
 
@@ -123,3 +123,34 @@ visible-editor and full-game gates remain open.
 Raw 184 remains **147 translated / 36 partial / one parse failure**. Fewer than
 twenty partial cases requires at least seventeen genuine case closures from
 that backlog; component controls and successful compilation are not closures.
+
+## Null Sprite getter: observed original boundary — 2026-10-15
+
+The unchanged flame sample's retained original binary was started once with its
+actual Arcade Board and keyboard implementation. A real Space press delivered
+A's Pressed event. The debugger reported a TypeError from the Sprite x getter,
+with its actual receiver null and the source callback in the stack. The original
+had already created one kind-1, 8-by-8 Sprite. It remained at x=80, y=60, with
+zero velocity and zero flags through the final sample. The later position,
+velocity and AutoDestroy effects did not occur.
+
+All six samples retain the complete current and saved-scene actor inventories,
+source callback identity, raw debugger payload and input events. The runtime
+remained running, not dead or paused; stopping the entire runtime would not
+match this observed boundary. Cleanup stopped it afterward and is recorded
+separately. A native correction must fail the actual getter and its managed
+callback continuation while retaining completed creation and unrelated work.
+
+The capture completed in 17.131 seconds with all 394 file guards unchanged,
+one explicit runtime start, no compile and no external request. The real key
+hold measured 1,290.5 milliseconds: collecting the passive held-state snapshot
+added overhead to the nominal 50-millisecond sleep. Do not describe it as an
+exact 50-millisecond input. One console error and one debugger exception payload
+are expected observations here; window, page and observer error arrays are empty.
+
+The first observer attempt used an incorrect CoreBoard subscriber assumption
+and stopped before the guest main or input ran. Its setup failure and cleanup
+errors remain retained. The corrected observer reads actual Board/ScreenState
+data and leaves the production presentation callback untouched. Visible
+presentation, audio, native agreement, editable authoring and full-game behavior
+are not qualified by this original capture.

@@ -97,9 +97,12 @@ twelve projects with five bounded native routes each. It does not promote all
 pure passes to working games. In particular, the null-receiver flame sample is
 pure-clean but its native handler silently continues after reading a null Sprite:
 it creates a projectile, applies velocity and AutoDestroy, and reports no error
-on each of the five routes. This remains held. Its exact selected-original fault
-and termination behavior still need observation before choosing the correction.
-The initial observer's incorrect Pressed-event assertion is also preserved.
+on each of the five routes. This remains held. Its selected-original fault and continuation boundary have now been observed.
+The selected original now raises a TypeError at the null Sprite x getter,
+preserving its already created actor and keeping the runtime running. See the
+[observed boundary](arcade-authentic-project-qualification.md#null-sprite-getter-observed-original-boundary--2026-10-15).
+The native correction is still open. The initial observer's incorrect
+Pressed-event assertion is also preserved.
 
 Lyla's first native startup was blocked. A bounded passive diagnostic
 located repeated false `pauseUntil` evaluation inside the first source step:
