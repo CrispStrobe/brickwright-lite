@@ -6,7 +6,7 @@ function owned(record) {
     return runtime.sequencer.activeThread===thread && runtime.isActiveThread(thread) && !thread.isKilled &&
         runtime.targets.includes(thread.target) && thread.blockContainer===container && thread.target.blocks===container &&
         util.thread===thread && util.runtime===runtime && thread.peekStack()===root &&
-        container.getBlock(operation.id)===block && block.opcode==='arcade_createCallable' &&
+        container.getBlock(operation.id)===block && ['arcade_createCallable','arcade_objectField'].includes(block.opcode) &&
         operation.opcode===block.opcode && operation._argValues===args &&
         operation._blockFunction===blockFunction && runtime.getOpcodeFunction(operation.opcode)===blockFunction &&
         container._cache?._executeCached?.[root]?._ops.includes(operation);

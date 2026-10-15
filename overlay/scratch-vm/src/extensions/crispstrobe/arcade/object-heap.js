@@ -79,12 +79,12 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
                 ...(field.setter?{setter:Object.freeze({...field.setter,parameters:Object.freeze(field.setter.parameters.map(param=>Object.freeze({...param})))})}:{})}));
         }
         for (const method of spec.methods) {
-            const callableMethod=method && (method.callableSignature!==undefined||method.typeParameters!==undefined||
+            const callableMethod=method && (method.callableSignature!==undefined||method.typeParameters!==undefined||method.resultFlow!==undefined||
                 method.parameters?.some?.(parameter=>parameter?.callableSignature!==undefined));
             if (!method || typeof method.name !== 'string' || !/^[A-Za-z_]\w*$/.test(method.name) ||
                 methods.has(method.name) || fields.has(method.name) || typeof method.procedure !== 'string' ||
                 (callableMethod?typeof native.callableMethod!=='function':!validParameters(method.parameters)) || !validType(method.returnType) || method.visibility !== undefined && !['public','private','protected'].includes(method.visibility) ||
-                Object.keys(method).some(key => !['name', 'procedure', 'parameters', 'returnType', 'visibility', 'typeParameters', 'callableSignature'].includes(key)))
+                Object.keys(method).some(key => !['name', 'procedure', 'parameters', 'returnType', 'visibility', 'typeParameters', 'callableSignature', 'resultFlow'].includes(key)))
                 throw new Error('Invalid declared class method');
             const normalised=callableMethod?native.callableMethod(method):method;
             methods.set(method.name, Object.freeze({...normalised, parameters: Object.freeze([...normalised.parameters])}));

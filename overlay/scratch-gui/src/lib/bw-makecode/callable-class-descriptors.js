@@ -39,7 +39,7 @@ export function createClassCallableDescriptors(program) {
             else fields.push({name:field.name,type:structuredClone(type)});
         }
         for(const method of cls.methods || []) {
-            if(!method.typeParameters?.length&&!/=>/.test(method.returnType || '')&&
+            if(!method.bwClassCallableSignature&&!method.typeParameters?.length&&!/=>/.test(method.returnType || '')&&
                 !Object.values(method.paramTypes || {}).some(value=>/=>/.test(typeof value==='string'?value:value?.text || '')))continue;
             const generics=new Set(),typeParameters=[];
             for(const parameter of method.typeParameters || []) {
@@ -47,11 +47,11 @@ export function createClassCallableDescriptors(program) {
                     fail('Class callable method requires unconstrained distinct type parameters: '+cls.name+'.'+method.name);
                 else {generics.add(parameter.name);typeParameters.push({...parameter});}
             }
-            const signature={kind:'callable',parameters:(method.params || []).map(name=>({name,
+            const signature=method.bwClassCallableSignature||{kind:'callable',parameters:(method.params || []).map(name=>({name,
                 optional:!!method.optionalParams?.includes(name),type:annotation(method.paramTypes?.[name])})),result:annotation(method.returnType)};
             if(!ordinary(cls.name)||method.isStatic||method.kind!=='method'||method.parameterDefaults?.length||!valid(signature,generics))
                 fail('Class callable method requires a concrete instance signature: '+cls.name+'.'+method.name);
-            else methods.push({name:method.name,typeParameters,signature});
+            else methods.push({name:method.name,typeParameters,signature,...(method.bwClassResultFlow?{resultFlow:structuredClone(method.bwClassResultFlow)}:{})});
         }
         rows.push({name:cls.name,parent:cls.base || null,fields,methods});
     }

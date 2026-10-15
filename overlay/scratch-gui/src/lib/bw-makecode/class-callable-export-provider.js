@@ -1,3 +1,4 @@
+import {inspectClassConditionalBody} from './class-callable-conditional-body.js';
 import {validateClassCallablePlan} from './class-callable-plan.js';
 import {instantiateCallableSignature} from './callable-signatures.js';
 import {classCallableExportTypes} from './class-callable-export-types.js';
@@ -62,6 +63,27 @@ export function createClassCallableExportProvider({target,project,classes,defini
         }
         return {kind:'module',rootBlock:current};
     };
+    const conditional=(owner)=>{
+        const cls=classes.get(owner.className),method=cls?.methods.find(row=>row.procedure===owner.procedure);
+        if(!method?.resultFlow)return null;
+        const def=definitions.get(key(target,owner.procedure));if(!def)return null;
+        const ids=new WeakMap(Object.entries(target.blocks).map(([id,row])=>[row,id]));
+        const adapted=new Map();
+        const row=id=>{const raw=target.blocks[id];if(!raw)return null;if(!adapted.has(id))adapted.set(id,{...raw,id});return adapted.get(id);};
+        const field=member(cls.name,method.resultFlow.presenceField);
+        if(!field||field.value.valueKind==='callable'||!classes.has(field.value.type))fail('conditional saved field lacks an ordinary class producer');
+        templates.ordinary(field.value.type);
+        const proof=inspectClassConditionalBody({block:row,definition:ids.get(def.block),input:(b,name)=>b.inputs?.[name]?.[1],
+            literal:(b,name)=>literal(target,target.blocks[b.id],name),field:(b,name)=>b.fields?.[name]?.[0]},method,{
+            className:cls.name,receiverParameter:def.parameters[0],validateFollowup:name=>{
+                const follow=member(field.value.type,name,true)?.value;
+                return !!follow&&follow.parameters.length===0&&follow.typeParameters?.length===0&&follow.callableSignature?.result?.name==='void';
+            }});
+        const raw=b=>target.blocks[b.id];
+        return {...proof,fieldType:named(field.value.type),resultType:method.callableSignature.result,
+            fieldReadBlock:raw(proof.fieldReadBlock),condition:raw(proof.condition),call:raw(proof.call),
+            followups:proof.followups.map(raw),presentReturn:raw(proof.presentReturn),absentReturn:raw(proof.absentReturn)};
+    };
     const local=(owner,name,readBlock=null)=>{
         if(owner.receiverParameter===name)return named(owner.className);
         const binding=plan?.bindings.find(row=>row.owner===owner.id&&row.nativeName===name);
@@ -69,6 +91,14 @@ export function createClassCallableExportProvider({target,project,classes,defini
         const parameter=owner.parameters?.find(row=>typeof row==='object'&&row.name===name);
         if(parameter)return parameter.callableSignature || named(parameter.type);
         if(!readBlock)return null;
+        const branch=conditional(owner);
+        if(branch){
+            // Every read is bound by the connected shape proof. The result cell
+            // exists only in the present arm, and has no forward/absent use.
+            if(name===branch.savedName)return branch.fieldType;
+            if(name===branch.resultName)return branch.resultType;
+            return null;
+        }
         const definition=owner.rootBlock&&Object.values(target.blocks).includes(owner.rootBlock)?{block:owner.rootBlock}:definitions.get(key(target,owner.procedure));if(!definition)return null;
         const identity=(owner.procedure||owner.id)+':'+name+':'+Object.entries(target.blocks).find(([,value])=>value===readBlock)?.[0];
         if(checkingLocals.has(identity))return null;
@@ -113,6 +143,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
             return inputType('NUM1')?.name==='number'&&inputType('NUM2')?.name==='number'?named('number'):null;
         }
         if(block.opcode==='math_number')return named('number');if(block.opcode==='text')return named('string');
+        if(block.opcode==='arrays_valueCompare'&&['===','!==','<','>','<=','>='].includes(block.fields?.OP?.[0])){const left=inputType('LEFT'),right=inputType('RIGHT');return left&&right&&same(left,right)&&['number','string','boolean'].includes(left.name)?named('boolean'):null;}
         if(block.opcode==='argument_reporter_string_number')return local(owner,block.fields.VALUE?.[0]);
         if(block.opcode==='arcade_getLocal')return local(owner,literal(target,block,'NAME'),block);
         if(block.opcode==='arcade_getCaptured'){
@@ -123,6 +154,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
         if(block.opcode==='arcade_createCallable'){
             const procedure=literal(target,block,'NAME');return plan?.owners.find(row=>row.procedure===procedure)?.signature;
         }
+        if(block.opcode==='arrays_specialValue'&&['undefined','null'].includes(block.fields?.KIND?.[0]))return named(block.fields.KIND[0]);
         if(['arrays_valueUndefined','arrays_valueNull'].includes(block.opcode))return named(block.opcode==='arrays_valueNull'?'null':'undefined');
         if(block.opcode==='arrays_valueBinary'){
             const left=inputType('LEFT'),right=inputType('RIGHT'),op=block.fields.OP?.[0];
@@ -225,6 +257,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
             for(const cls of classes.values())if(cls.target===target)for(const method of cls.methods)if(method.callableSignature){
                 const definition=definitions.get(key(target,method.procedure));if(!definition)return false;
                 const owner={className:cls.name,receiverParameter:definition.parameters[0],parameters:method.parameters,procedure:method.procedure};
+                if(method.resultFlow){conditional(owner);continue;}
                 const visited=new Set();let id=definition.block.next,returned=false;
                 while(id){
                     if(visited.has(id))return false;visited.add(id);const block=target.blocks[id];if(!block||Object.keys(block.inputs||{}).some(name=>name.startsWith('SUBSTACK')))return false;
@@ -233,7 +266,11 @@ export function createClassCallableExportProvider({target,project,classes,defini
                     }else if(!['arcade_declareLocal','arcade_setLocal','arcade_setObjectField','arcade_assignObjectField'].includes(block.opcode))return false;
                     else if(block.opcode==='arcade_setLocal'){
                         const name=literal(target,block,'NAME');
-                        if(name===owner.receiverParameter||owner.parameters.some(parameter=>parameter.name===name)||!this.localAssignment(block,owner))return false;
+                        if(name===owner.receiverParameter||owner.parameters.some(parameter=>parameter.name===name))return false;
+                        const value=slotType(block.inputs.VALUE?.[1],owner);
+                        if(value?.name==='void'){
+                            if(Object.values(target.blocks).some(read=>scope(read).procedure===owner.procedure&&read.opcode==='arcade_getLocal'&&literal(target,read,'NAME')===name))return false;
+                        }else if(!this.localAssignment(block,owner))return false;
                     }else if(['arcade_setObjectField','arcade_assignObjectField'].includes(block.opcode)&&!operation(block,owner,{inputType:name=>slotType(block.inputs?.[name]?.[1],owner),argsType:()=>[],localType:name=>local(owner,name,block)}))return false;
                     id=block.next;
                 }
@@ -284,6 +321,12 @@ export function createClassCallableExportProvider({target,project,classes,defini
             const provider=this;
             return {
                 generatedLocal(id){const block=target.blocks[id],proof=provider.localAssignment(block,owner);if(proof)cells.set(proof.name,proof.type);return proof;},
+                discardLocal(id){
+                    const block=target.blocks[id];if(block?.opcode!=='arcade_setLocal'||!contains(root,id))return false;
+                    const name=literal(target,block,'NAME');
+                    if(Object.values(target.blocks).some(read=>read.opcode==='arcade_getLocal'&&literal(target,read,'NAME')===name&&contains(root,Object.entries(target.blocks).find(([,row])=>row===read)?.[0])))return false;
+                    return slotType(block.inputs.VALUE?.[1],owner)?.name==='void';
+                },
                 local(name){if(!cells.has(name))fail('module procedure reads a local before its proved assignment');return name;},
                 capture(){fail('module procedure has no lexical capture');},
                 create(id){if(!moduleCreates.has(id))fail('module procedure creation has a foreign owner');return callableEmitter.moduleCreate(id);}
@@ -293,11 +336,30 @@ export function createClassCallableExportProvider({target,project,classes,defini
             const cls=[...classes.values()].find(row=>row.target===target&&row.methods.some(method=>method.procedure===code&&method.callableSignature));
             const method=cls?.methods.find(row=>row.procedure===code),definition=definitions.get(key(target,code));if(!plan||!method||!definition)return null;
             const owner={className:cls.name,receiverParameter:definition.parameters[0],parameters:method.parameters,procedure:code};
+            const provider=this,cells=new Map();
             return {
+                generatedLocal(id){
+                    const block=target.blocks[id],branch=conditional(owner);if(!branch){const proof=provider.localAssignment(block,owner);if(proof)cells.set(proof.name,proof.type);return proof;}
+                    if(block?.opcode!=='arcade_setLocal')return null;
+                    const name=literal(target,block,'NAME');
+                    if(name===branch.savedName&&target.blocks[block.inputs.VALUE?.[1]]===branch.fieldReadBlock)return {name,type:branch.fieldType,first:true};
+                    if(name===branch.resultName&&target.blocks[block.inputs.VALUE?.[1]]===branch.call)return {name,type:branch.resultType,first:true};
+                    return null;
+                },
+                discardLocal(id){
+                    const block=target.blocks[id];if(block?.opcode!=='arcade_setLocal')return false;
+                    const name=literal(target,block,'NAME');if(name===owner.receiverParameter||owner.parameters.some(row=>row.name===name))return false;
+                    const branch=conditional(owner);
+                    if(branch)return branch.followups.includes(target.blocks[block.inputs.VALUE?.[1]]);
+                    if(Object.values(target.blocks).some(read=>scope(read).procedure===owner.procedure&&read.opcode==='arcade_getLocal'&&literal(target,read,'NAME')===name))return false;
+                    return slotType(block.inputs.VALUE?.[1],owner)?.name==='void';
+                },
                 local(name,write=false){
+                    const branch=conditional(owner);
+                    if(branch&&[branch.savedName,branch.resultName].includes(name)){if(write)fail('conditional locals must use their actual defining assignments');return name;}
                     if(name===owner.receiverParameter){if(write)fail('edited method writes its actual receiver');return 'this';}
                     if(write&&owner.parameters.some(parameter=>parameter.name===name))fail('class callback method parameter writes are not qualified');
-                    if(!local(owner,name))fail('unproved current class method local');return name;
+                    if(!cells.has(name)&&!local(owner,name))fail('unproved current class method local');return name;
                 },
                 capture(){fail('nonlexical class method has no captured binding');},
                 create(){fail('class method creation lacks an actual lexical owner');}
