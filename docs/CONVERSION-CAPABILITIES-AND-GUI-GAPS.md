@@ -2,8 +2,9 @@
 
 ## Managed return values authored in blocks — 2026-10-15
 
-**Open implementation gap.** A Number literal returned by the existing Arcade
-managed function protocol can arrive as String text. An inspection LIMIT of 20
+**Bounded local correction; editor qualification open.** A Number literal
+returned by the existing Arcade managed function protocol previously arrived
+as String text. An inspection LIMIT of 20
 returned from a function exposes this difference; replacing the return with
 `0 + 20` would hide the gap. The in-progress inspection reporter remains a
 candidate, without consumer pin or complete source admission.
@@ -13,6 +14,15 @@ connected Number input before return provenance is lost. A text input `"20"`,
 an unknown producer, an opaque reference or a foreign/disconnected block cannot
 be converted merely because it looks numeric. This is a shared return boundary,
 not an inspection-specific numeric text conversion.
+
+The local correction uses one current Number-input helper and a private issued
+managed-return frame. It validates the actual cached Number leaf, parent input,
+argument object, operation and unchanged procedure body. Twenty-eight affected
+runtime/ownership controls pass. Five focused return controls additionally
+preserve Number `20` versus text `"20"`, once-only effects, Code, same/fresh SB3
+and current export/reimport for ordinary and class returns. These overlapping
+selections are separate results. This does not yet qualify the hosted editor,
+all managed input boundaries or a newly executed original export.
 
 | Surface | Required acceptance |
 | --- | --- |

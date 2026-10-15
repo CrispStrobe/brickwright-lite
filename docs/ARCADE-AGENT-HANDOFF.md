@@ -39,10 +39,14 @@ Relevant implementation entry points:
 - `test/helpers/arcade-timed-native.mjs`: actual shared timer observation for
   source pauses; physical frame counts do not imply elapsed program deadlines.
 
-The proposed inspection word is isolated in
-[supplier PR148](https://github.com/CrispStrobe/sb3-creator/pull/148). Its exact
-parent is the current compiler pin; its one-word candidate has 399 operations
-and 404 spellings. Do not move the consumer pin before supplier qualification.
+[Supplier PR148](https://github.com/CrispStrobe/sb3-creator/pull/148) normally
+merged the inspection word at `4cff9b6bda7129958590718152abc0a6b6b1181d`.
+Its reviewed head had the current compiler pin as parent, but supplier main
+advanced with an independent STM32 test during the merge. The reviewed actual
+combined-base tree matches the landed tree; it is not equal to the earlier
+reviewed head tree. Its canonical/runtime sources and notices are unchanged by
+that incoming test, with 399 operations and 404 spellings. Exact merged-main
+qualification is still pending; the consumer compiler pin remains unchanged.
 Inspection's source/native/current-project proofs and the
 [managed return Number gap](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md)
 remain required. A Number return must not be repaired with an inspector-specific

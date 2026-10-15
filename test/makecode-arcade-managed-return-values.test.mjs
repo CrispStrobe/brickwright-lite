@@ -44,7 +44,7 @@ test('Stop and disposal invalidate the old invocation; a new binding after start
     const inert=create();inert.start();assert.equal(inert.value({VALUE:'20'},{}),'20');inert.dispose();
 });
 
-test('edited class managed return preserves physical Number through Code and same/fresh SB3',async()=>{
+test('edited class managed return preserves Number through Code, saved projects and current export',async()=>{
     const {arcadeToPseudocode}=await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
     const {runProgram,stepFrames,clearStrayTimers}=await import('./helpers/bw-vm.mjs');
     const imported=arcadeToPseudocode('class Box {read():number{return 20}}let box=new Box();let result=box.read();result+=0;');
@@ -66,5 +66,37 @@ test('edited class managed return preserves physical Number through Code and sam
         run.vm.stopAll();await run.vm.loadProject(saved);run.vm.greenFlag();await stepFrames(run.vm,4);check(run);
         const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);
         fresh.vm.stopAll();await fresh.vm.loadProject(saved);fresh.vm.greenFlag();await stepFrames(fresh.vm,4);check(fresh);
+        const {projectToArcade}=await import('../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js');
+        const exported=projectToArcade(JSON.parse(run.vm.toJSON()));assert.deepEqual(exported.unsupported,[]);
+        const restored=arcadeToPseudocode(exported.files);assert.deepEqual(restored.unsupported,[]);
+        const reimport=await runProgram(restored.code,{frames:4,storage:true,uploads:restored.costumes});runs.push(reimport);check(reimport);
+    } finally {for(const run of runs){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+});
+
+
+test('ordinary managed Number and text returns retain distinct types and once-only effects',async()=>{
+    const {arcadeToPseudocode}=await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
+    const {projectToArcade}=await import('../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js');
+    const {runProgram,stepFrames,clearStrayTimers}=await import('./helpers/bw-vm.mjs');
+    const source='let calls=0;function numberValue():number{calls+=1;return 20}function textValue():string{calls+=1;return "20"}let numeric=numberValue();let text=textValue();';
+    const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
+    assert.ok(imported.code.includes('arcade return value ((0 + (20)))'));
+    const code=imported.code.replace('arcade return value ((0 + (20)))','arcade return value (20)');
+    const runs=[],check=run=>{
+        assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+        const values=Object.fromEntries(run.vm.runtime.targets.flatMap(target=>Object.values(target.variables)).map(variable=>[variable.name,variable.value]));
+        assert.equal(values.numeric,20);assert.equal(typeof values.numeric,'number');
+        assert.equal(values.text,'20');assert.equal(typeof values.text,'string');assert.equal(values.calls,2);
+    };
+    try {
+        const run=await runProgram(code,{frames:6,storage:true});runs.push(run);check(run);
+        const replay=await runProgram(run.creator.decompile(),{frames:6,storage:true});runs.push(replay);check(replay);
+        const saved=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());
+        run.vm.stopAll();await run.vm.loadProject(saved);run.vm.greenFlag();await stepFrames(run.vm,6);check(run);
+        const fresh=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(fresh);
+        fresh.vm.stopAll();await fresh.vm.loadProject(saved);fresh.vm.greenFlag();await stepFrames(fresh.vm,6);check(fresh);
+        const exported=projectToArcade(JSON.parse(run.vm.toJSON()));assert.deepEqual(exported.unsupported,[]);
+        const restored=arcadeToPseudocode(exported.files);assert.deepEqual(restored.unsupported,[]);
+        const reimport=await runProgram(restored.code,{frames:6,storage:true,uploads:restored.costumes});runs.push(reimport);check(reimport);
     } finally {for(const run of runs){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
 });
