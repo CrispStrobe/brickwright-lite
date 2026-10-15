@@ -250,6 +250,7 @@ test('current Array variable authority preserves a genuine declaration and every
 });
 
 function aliasMutationCode({first='[]',second='[]',assignSecond=true,operation='push'}={}){
+    const initial=value=>value==='[[]]'?'(new array reference from (array value (new array reference from ("[]")) rest ("[]")))':`(new array reference from (${JSON.stringify(value)}))`;
     const creator=new Creator();creator.parse(`DEVICE ARCADE
 GLOBAL first
 GLOBAL second
@@ -259,8 +260,8 @@ GLOBAL count
 SPRITE Game:
 WHEN arcade source starts:
   hide
-  set first to (new array reference from (${JSON.stringify(first)}))
-  set second to (new array reference from (${JSON.stringify(second)}))
+  set first to ${initial(first)}
+  set second to ${initial(second)}
   set alias to first
   ${assignSecond?'set alias to second':'set alias to first'}
   mutate array reference (alias) op ${JSON.stringify(operation)} index (0) value (new array reference from ("[1]"))
