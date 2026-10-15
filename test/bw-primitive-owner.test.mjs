@@ -39,3 +39,37 @@ test('object field read loan requires its exact actual operation and clears imme
     const unrelated=fixture();unrelated.blocks.a.opcode=unrelated.operation.opcode='arcade_fontValue';
     assert.throws(()=>unrelated.invoke(()=>0),/actual cached caller/);
 });
+const nestedFixture=()=>{
+    const f=fixture(),childArgs={VALUE:3},childBlock={id:'child',opcode:'arcade_setLocal'},fn=()=>0;
+    const operation={id:'child',opcode:childBlock.opcode,_argValues:childArgs,_blockFunction:fn};
+    const container={getBlock:id=>id==='child'?childBlock:null,_cache:{_executeCached:{child:{_ops:[operation]}}}};
+    const target={blocks:container},child={target,blockContainer:container,peekStack:()=> 'child',status:0};
+    f.runtime.targets.push(target);f.runtime.threads.push(child);f.util.sequencer=f.runtime.sequencer;
+    const originalOpcode=f.runtime.getOpcodeFunction;f.runtime.getOpcodeFunction=opcode=>opcode===childBlock.opcode?fn:originalOpcode();
+    return {...f,child,childArgs,childBlock,childOperation:operation,childContainer:container};
+};
+test('nested VM step owns only the actual child primitive and restores the outer caller',()=>{
+    const f=nestedFixture();let steps=0;
+    f.runtime.sequencer.stepThread=child=>{
+        steps++;assert.equal(child,f.child);assert.equal(f.runtime.sequencer.activeThread,child);
+        f.util.thread=child;
+        assert.equal(owner.current(f.util,f.args),null);
+        owner.invoke(f.runtime,child,f.childContainer,f.childOperation,f.childArgs,f.util,()=>assert.equal(owner.current(f.util,f.childArgs),f.childBlock));
+    };
+    f.invoke(()=>{owner.stepNested(f.util,f.args,f.child);assert.equal(owner.current(f.util,f.args),f.blocks.a);assert.equal(f.util.thread,f.thread);assert.equal(f.runtime.sequencer.activeThread,f.thread);});
+    assert.equal(steps,1);assert.equal(owner.current(f.util,f.args),null);
+});
+test('nested VM step rejects copied authority, same thread and dead or foreign children before stepping',()=>{
+    for(const change of [f=>[f.util,{...f.args},f.child],f=>[{...f.util},f.args,f.child],f=>[f.util,f.args,f.thread],f=>{f.child.isKilled=true;return[f.util,f.args,f.child];},f=>{f.runtime.threads.pop();return[f.util,f.args,f.child];},f=>{f.child.blockContainer={};return[f.util,f.args,f.child];},f=>{f.runtime.sequencer.activeThread=null;return[f.util,f.args,f.child];}]){
+        const f=nestedFixture();let steps=0;f.runtime.sequencer.stepThread=()=>steps++;
+        f.invoke(()=>{assert.throws(()=>owner.stepNested(...change(f)),/actual current caller|distinct live VM child/);});assert.equal(steps,0);
+    }
+});
+test('nested VM exception and Stop restore shared context without reviving the outer authority',()=>{
+    for(const stopped of [false,true]){
+        const f=nestedFixture(),failure=new Error('child failed');
+        f.runtime.sequencer.stepThread=child=>{f.util.thread=child;f.util.sequencer=null;if(stopped){f.thread.isKilled=true;f.runtime.threads=[];}throw failure;};
+        f.invoke(()=>{assert.throws(()=>owner.stepNested(f.util,f.args,f.child),error=>error===failure);assert.equal(f.util.thread,f.thread);assert.equal(f.util.sequencer,f.runtime.sequencer);assert.equal(f.runtime.sequencer.activeThread,f.thread);assert.equal(owner.current(f.util,f.args),stopped?null:f.blocks.a);});
+        assert.equal(owner.current(f.util,f.args),null);
+    }
+});
