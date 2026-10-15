@@ -6,13 +6,21 @@ import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export
 import {ARCADE_PALETTE} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 import {blankLayer,composeLayers,layersDocument,layersToSvg} from '../overlay/scratch-gui/src/lib/bw-pixel-layers.js';
 import {setCostumeDocument,syncAnimationResources} from '../overlay/scratch-gui/src/lib/bw-artwork-bundle.js';
+import {importGuiDependency} from './helpers/bw-integrated.mjs';
 import {scopeAfter} from './helpers/js-scope.mjs';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {source} from './fixtures/arcade/sdk-image-literal-callables.mjs';
 const wanted={imageLiteralCalls:3,imageLiteralChanged:7,imageLiteralOriginal:1,imageLiteralLater:1,imageLiteralOutside:0,imageLiteralAliasSame:true,imageLiteralFresh:true,imageLiteralLaterFresh:true,imageLiteralScore:19};
-const observe=run=>{
+const dispatch=(await importGuiDependency('scratch-vm/src/dispatch/central-dispatch.js')).default;
+const instances=new WeakMap();
+const captureOwner=run=>{const service=run.vm.extensionManager._loadedExtensions.get('arcade'),arcade=dispatch.services[service]?._inst;assert.ok(arcade);assert.ok(arcade._runtime===run.vm.runtime,'actual per-VM Arcade instance');instances.set(run.vm,arcade);};
+const observe=(run,corner=2)=>{
  assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
  const vars=run.vm.runtime.targets.flatMap(t=>Object.values(t.variables));
+ const arcade=instances.get(run.vm);assert.ok(arcade);assert.ok(arcade._runtime===run.vm.runtime,'actual per-VM Arcade instance');
+ for(const [name,pixels]of [['imageLiteralFirst',[7,0,0,corner]],['imageLiteralAlias',[7,0,0,corner]],['imageLiteralSecond',[corner===2?1:3,0,0,corner]],['imageLiteralThird',[corner===2?1:3,0,0,corner]]]){
+  const image=arcade._image(vars.find(v=>v.name===name)?.value);assert.ok(image,name);assert.equal(image.width,2);assert.equal(image.height,2);assert.deepEqual(Array.from(image.pixels),pixels,name);
+ }
  return Object.fromEntries(Object.keys(wanted).map(name=>[name,vars.find(v=>v.name===name)?.value]));
 };
 const reader=run=>(target,costume)=>{
@@ -22,18 +30,18 @@ const reader=run=>(target,costume)=>{
 };
 const execute=async(input,runs)=>{
  const imported=arcadeToPseudocode(input);assert.deepEqual(imported.unsupported,[]);
- const run=await runProgram(imported.code,{frames:80,storage:true,uploads:imported.costumes});runs.push(run);return run;
+ const run=await runProgram(imported.code,{frames:80,storage:true,uploads:imported.costumes});captureOwner(run);runs.push(run);return run;
 };
 const reopen=async(saved,runs)=>{
  const run=await runProgram('SPRITE Placeholder:\nWHEN flag clicked:\n  hide',{frames:0,storage:true});runs.push(run);
- run.vm.stopAll();await run.vm.loadProject(saved);run.vm.runtime.bwArcadeFrameAuthority='manual';run.vm.greenFlag();await stepFrames(run.vm,80,20);return run;
+ run.vm.stopAll();await run.vm.loadProject(saved);captureOwner(run);run.vm.runtime.bwArcadeFrameAuthority='manual';run.vm.greenFlag();await stepFrames(run.vm,80,20);return run;
 };
 const editorSource=readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/pixel-art-editor.jsx',import.meta.url),'utf8');
 const save=new Function('layersDocument','layersToSvg','setCostumeDocument','syncAnimationResources',`return function(resourceOverride) ${scopeAfter(editorSource,'save (resourceOverride) {')}`)(layersDocument,layersToSvg,setCostumeDocument,syncAnimationResources);
 test('literal Image repeated factory calls preserve fresh allocation, alias mutation and current export through portable routes',async()=>{
  const runs=[];try{
   const first=await execute(source,runs);assert.deepEqual(observe(first),wanted);
-  const project=JSON.parse(first.vm.toJSON());const code=await runProgram(first.creator.decompile(project),{frames:80,storage:true,uploads:arcadeToPseudocode(source).costumes});runs.push(code);assert.deepEqual(observe(code),wanted);
+  const project=JSON.parse(first.vm.toJSON());const code=await runProgram(first.creator.decompile(project),{frames:80,storage:true,uploads:arcadeToPseudocode(source).costumes});captureOwner(code);runs.push(code);assert.deepEqual(observe(code),wanted);
   const exported=projectToArcade(project,{costumeSvg:reader(first)});assert.deepEqual(exported.unsupported,[]);assert.deepEqual(exported.warnings,[]);assert.doesNotMatch(exported.ts,/__bwFrames_/);assert.match(exported.ts,/return img`/);
   const again=await execute(exported.files,runs);assert.deepEqual(observe(again),wanted);
   const saved=Buffer.from(await(await first.vm.saveProjectSb3()).arrayBuffer());first.vm.stopAll();await first.vm.loadProject(saved);first.vm.runtime.bwArcadeFrameAuthority='manual';first.vm.greenFlag();await stepFrames(first.vm,80,20);assert.deepEqual(observe(first),wanted);
@@ -53,8 +61,8 @@ test('actual pixel editor save and costume rename preserve current SVG pixels af
   }assert.ok(references,'actual connected resource references follow the target rename');
   const current=JSON.parse(run.vm.toJSON()),exported=projectToArcade(current,{costumeSvg:reader(run)});assert.deepEqual(exported.unsupported,[]);assert.deepEqual(exported.warnings,[]);assert.match(exported.ts,/img`\s*3 \.\s*\. 4\s*`/);
   const expected={...wanted,imageLiteralOriginal:3,imageLiteralLater:3,imageLiteralScore:23};
-  const again=await execute(exported.files,runs);assert.deepEqual(observe(again),expected);
-  const saved=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()),fresh=await reopen(saved,runs);assert.deepEqual(observe(fresh),expected);
+  const again=await execute(exported.files,runs);assert.deepEqual(observe(again,4),expected);
+  const saved=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()),fresh=await reopen(saved,runs);assert.deepEqual(observe(fresh,4),expected);
   assert.ok(fresh.vm.runtime.targets.some(t=>t.getCostumes().some(c=>c.name==='Edited literal resource')));
   const final=projectToArcade(JSON.parse(fresh.vm.toJSON()),{costumeSvg:reader(fresh)});assert.deepEqual(final.unsupported,[]);assert.match(final.ts,/img`\s*3 \.\s*\. 4\s*`/);
  }finally{for(const run of runs){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
