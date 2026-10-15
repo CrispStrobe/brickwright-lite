@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MPL-2.0
+import {numberLiteralCode} from './source-number-literal.js';
 // Numeric formulas adapted from MIT PXT; Copyright (c) Microsoft Corporation.
 // Retained notice: scratch-gui/static/licenses/pxt-core.MIT.txt.
 // Source profile: https://github.com/microsoft/pxt/blob/v13.2.1/pxtcompiler/emitter/emitter.ts
@@ -19,5 +20,5 @@ export function foldPxtNumeric(node,constant,root=true){
 export function pxtFoldedNumberCode(value){
  if(Number.isNaN(value))return 'calculate value ((0 + (0))) op "/" with ((0 + (0)))';
  if(!Number.isFinite(value))return `calculate value ((0 + (${value<0?-1:1}))) op "/" with ((0 + (0)))`;
- return `(0 + (${String(value)}))`;
+ return `(0 + (${numberLiteralCode(value)}))`;
 }

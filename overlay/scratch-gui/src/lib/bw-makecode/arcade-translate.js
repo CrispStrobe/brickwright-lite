@@ -1,3 +1,4 @@
+import {numberLiteralCode} from './source-number-literal.js';
 import {classCallableSourceGate} from './class-callable-source-gate.js';
 import {lowerSdkFontValues} from './lower-sdk-font-values.js';
 import {callableSourceGate} from './callable-source-gate.js';
@@ -1053,6 +1054,7 @@ class ArcadeTranslator extends BaseTranslator {
      * The condition() a node is being written for is not a value slot.
      */
     expr (node) {
+        if(node?.type==='Number')return numberLiteralCode(node.value);
         if(node?.type==='FontMetric')return `arcade font ${JSON.stringify(node.font)} metric ${JSON.stringify(node.property)}`;
         if(node?.type === 'Template' && this.assetKindLookup &&
             lookupAssetTemplate(this.assetKindLookup,node.tag,node.value) === null) {
