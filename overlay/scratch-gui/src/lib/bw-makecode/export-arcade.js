@@ -3443,11 +3443,11 @@ class ArcadeEmitter {
             if(!declarations.length)continue;
             let envelope;try {envelope=JSON.parse(literal(declarations[0],'METADATA'));} catch(_){this.note('Callable export requires fixed lexical declaration metadata');continue;}
             try {
-                let graph;
+                let graph,sdkImageEnabled=false;
                 if(envelope.version===2&&!this.opts.classCallablePrototype){
                     const proof=classCallableDefaultProjectGate(target,this.project,this.objectClassExport,literal);
                     if(!proof.eligible)throw Error(proof.unsupported.join('; ')||'Class callable default project is unproved');
-                    graph=proof.graph;this.classCallableDefaultTargets.add(target);
+                    graph=proof.graph;sdkImageEnabled=proof.sdkImageEnabled;this.classCallableDefaultTargets.add(target);
                 }else graph=inspectCallableExportGraph(target,envelope.plan,literal,envelope.version===2&&this.opts.classCallablePrototype?{classProvider:this.objectClassExport.classCallableProvider(target),project:this.project}:{project:this.project});
                 validateCallableCurrentBodyTypes(graph,literal);
                 if(this.clonable.has(target.name))throw Error('Callable lexical export on clone targets is not qualified');
@@ -3463,7 +3463,7 @@ class ArcadeEmitter {
                     this.target=target;this.blocks=blocks;this.currentLocalNames=new Set();this.currentCallableContext=context;
                     try{return this.body(first,[],[],false);}finally {this.target=previous.target;this.blocks=previous.blocks;this.currentLocalNames=previous.locals;this.currentCallableContext=previous.context;}
                 });
-                this.callableExports.set(target,{graph,emitter});
+                this.callableExports.set(target,{graph,emitter,sdkImageEnabled:sdkImageEnabled||envelope.version===2&&this.opts.sdkImagePrototype===true});
                 for(const owner of graph.plan.owners)if(owner.kind==='declaration')this.fnNames.set(`${target.isStage?'':target.name}:${owner.procedure}`,owner.sourceName);
             } catch(error) {this.note(error.message);}
         }
@@ -3823,7 +3823,7 @@ class ArcadeEmitter {
             if(referenceCell){out.push(`let ${n}: ${referenceCell.type}`);continue;}
             const sourceCell=[...this.sourceScalarCells.values()].find(cell=>cell.ts===n);
             if (sourceCell) {out.push(`let ${n}: ${sourceCell.type.toLowerCase()}`);continue;}
-            if(this.opts.sdkImagePrototype&&this.objectClassExport?.sdkVariable?.(n)){out.push(`let ${n}: Image`);continue;}
+            if(this.objectClassExport?.sdkVariable?.(n)){out.push(`let ${n}: Image`);continue;}
             const objectType=this.objectClassExport?.variableTypes.get(n);
             if(objectType && this.objectClassExport.hasType?.(objectType)){out.push(`let ${n}: ${objectType} = null`);continue;}
             if(['number','boolean','string'].includes(objectType)){out.push(`let ${n}: ${objectType} = ${objectType==='string'?'\"\"':objectType==='boolean'?'false':'0'}`);continue;}
@@ -4055,7 +4055,7 @@ export function projectToArcade (project, opts = {}) {
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`
     };
-    if(opts.sdkImagePrototype&&e.callableExports.size){
+    if((opts.sdkImagePrototype||[...e.callableExports.values()].some(entry=>entry.sdkImageEnabled))&&e.callableExports.size){
         const reconstructed=parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true,
             retainWhenUsed:true,retainClassHeritage:true,retainCallableMetadata:true});
         const proof=proveClassCallableSource(reconstructed,{sdkImagePrototype:true});

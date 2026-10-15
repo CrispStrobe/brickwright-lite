@@ -10,7 +10,7 @@ const check=run=>{
  assert.deepEqual(['width','height','same','different'].map(name=>vars.find(variable=>variable.name===name).value),[2,2,true,true]);
 };
 test('opt-in SDK Image class callbacks preserve actual values through Code and same/fresh saved projects',async()=>{
- const ordinary=arcadeToPseudocode(source);assert.ok(ordinary.unsupported.length);
+ const ordinary=arcadeToPseudocode(source);assert.deepEqual(ordinary.unsupported,[]);
  const imported=arcadeToPseudocode(source,{sdkImagePrototype:true});assert.deepEqual(imported.unsupported,[]);assert.deepEqual(imported.warnings,[]);
  const runs=[];
  try{

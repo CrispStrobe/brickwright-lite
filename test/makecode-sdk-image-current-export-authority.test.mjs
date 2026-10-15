@@ -15,7 +15,7 @@ const refusal=project=>{const out=projectToArcade(project,options);assert.ok(out
 test('current export Image domains come from safe connected numeric factories and clones',()=>{
  const baseline=fixture();assert.deepEqual(projectToArcade(baseline,options).unsupported,[]);
  assert.ok(projectToArcade(baseline,{classCallablePrototype:true}).unsupported.length,'the older class prototype alone grants no SDK domain');
- assert.ok(projectToArcade(baseline).unsupported.length,'default SDK admission remains closed');
+ assert.deepEqual(projectToArcade(baseline).unsupported,[],'default admission requires the completed current SDK graph');
  for(const value of ['-1','2001','NaN','Infinity']){const project=fixture(),factory=rows(project).find(row=>row.block.opcode==='arcade_createImage');factory.block.inputs.WIDTH=[1,[4,value]];refusal(project);}
  for(const mutation of ['text','foreignParent','missing','computed']){
   const project=fixture(),factory=rows(project).find(row=>row.block.opcode==='arcade_createImage');
