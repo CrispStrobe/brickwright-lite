@@ -622,3 +622,15 @@ controls on the follow-up source, including held/released reload input and both
 physics cadence profiles. The earlier fifteen-failure result remains retained.
 These focused passes are preparation for a new complete hosted result; they do
 not turn either failed shard into a passing gate.
+
+### Current compiler pin artifact control
+
+The `d88a8464c` unit shard stopped in its fast prerequisite checks: the SPIKE
+round-trip control still required the previous `432f6118` compiler pin while
+`vendor-pins.json` selected `4e8a2872`. This is not a completed Arcade unit census.
+The producer diff adds the connected inspection reporter and STM32 tests; it
+changes no SPIKE emitter. The control now names the actual adopted revision,
+and its complete executable artifact and round-trip assertions pass unchanged.
+The earlier failure remains preserved. The separate creator vendor-identity
+failure still requires qualified canonical adoption; this artifact control
+does not resolve it.

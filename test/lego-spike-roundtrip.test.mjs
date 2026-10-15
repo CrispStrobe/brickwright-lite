@@ -295,8 +295,11 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 7c84f8b0 (2026-10-14): merged Settings/Scene supplier; rerun every SPIKE artifact assertion.
     // -> 0e486e0f (2026-10-14): qualified CPX supplier support is retained in the later d4324e20 source; rerun every SPIKE artifact assertion.
     // -> 432f6118 (2026-10-14): five qualified Font value/printing words; SPIKE artifact assertions remain unchanged.
+    // -> 4e8a2872 (2026-10-15): connected Arcade inspection reporter and STM32
+    // test-only changes; producer diff leaves SPIKE emitters unchanged. Re-run
+    // the complete executable artifact and round-trip assertions below.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '432f611897a16adc59568a0d949f2dbc9455b6db');
+        '4e8a287244d31d82ac84dbef609f48f2c10efab2');
 
 
     const creator = new SB3Creator();
