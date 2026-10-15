@@ -3377,3 +3377,43 @@ failures in existing shared record lowering. Preserve its working same-class
 aliases while designing explicit object references; Arcade class admission is
 still unsupported. Source parser `instanceof` is supported syntactically and
 reports missing runtime identity.
+
+## Development continuation: typed procedures and exceptional completion
+
+The next canonical protocols have native prototypes and a separate supplier
+[candidate](https://github.com/CrispStrobe/sb3-creator/pull/157). Do not infer
+consumer adoption from the presence of source modules or native tests. Preserve
+the existing compiler and hardware pins until exact supplier qualification and
+the coordinated consumer review are complete.
+
+Actual ordinary parameter entry belongs before body effects for both stock
+`procedures_call` and managed `arcade_callFunction`. Scratch's `util.stackFrame`
+is execution context; the actual installed parameter map is
+`util.thread.peekStackFrame().params`. Validation must bind that real map.
+Constrained managed calls must reject malformed or non-array argument transport
+and inconsistent resolved definition/formal mappings before creating a callee.
+Keep unconstrained legacy behavior separate. Never turn a rejected constraint
+into successful Undefined or a normal zero result.
+
+The native exceptional coordinator distinguishes a primitive thrown value from
+a parameter diagnostic. Both retire the actual failing invocation lineage and
+prevent stale asynchronous completion; neither grants project metadata the
+ability to issue an exceptional completion. Keep other scripts running and
+retain scoped cleanup for actual managed frames and return values.
+
+Source normal-completion analysis does not produce a value type. A throwing
+branch is not an implicit Undefined return; unreachable returns must not supply
+normal result facts. Full-source constraint facts remain separate so that a
+dead incompatible return or formal assignment still reports its source error.
+Preserve ordinary no-Throw analysis, hoisted declarations and unknown/recursive
+call conservatism. Source Throw remains an explicit prototype until canonical
+adoption; ordinary annotations need their own prefix-preservation integration.
+
+Run the focused native procedure, constraint rejection, Throw, Sprite, source
+completion and Map controls together against byte-matched installed overlays.
+Record the entire candidate compiler actually consumed, not merely an injected
+dialect table. The helper `runArcadeSourceCode` supports an explicit compiler
+directory; `runProgram` does not honor that setting. Do not mistake a narrow
+table projection for qualification of parsing, decompilation or saved projects.
+GUI acceptance remains separately tracked in the
+[capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#next-canonical-protocols-native-prototypes-and-gui-work--2026-10-15).

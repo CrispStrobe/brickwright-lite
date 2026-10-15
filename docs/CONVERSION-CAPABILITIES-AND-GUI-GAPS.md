@@ -4744,3 +4744,49 @@ constructor-service export failure, not a new native Sprite capability bridge.
 The existing property blocks remain editable; this selection does not qualify
 a visible property-palette journey or class/callback authoring GUI. Track those
 separately from the passing portable and current-graph controls.
+
+## Next canonical protocols: native prototypes and GUI work — 2026-10-15
+
+The following work is a development prototype. Supplier PR
+[sb3-creator#157](https://github.com/CrispStrobe/sb3-creator/pull/157) adds the
+canonical spellings; its qualification and consumer adoption are separate gates.
+The current production compiler pin does not expose these new words. Native
+tests using real registered blocks, or a private complete candidate compiler,
+do not establish that the shipped editors can create them.
+
+| Capability | Implemented development boundary | Authoring work still required |
+| --- | --- | --- |
+| Ordinary parameter constraints | Fixed procedure/formal/type fields; actual stock and managed entry checks; local/captured writes; lifecycle and precise rejection | Qualify canonical Code reconstruction and source annotation preservation, then a browser journey creating and editing the visible fields |
+| Primitive Throw | Actual failed invocation and caller termination, independent scripts continue; explicit source prototype; current edited export/reimport | Adopt canonical spelling, add discoverable block/Code help and a visible error location/value journey |
+| Owned image Sprite creation | Actual Image input, literal template and Number kind; issued Sprite identity, alias/property access and lifecycle validation | Qualify source factory admission, complete image/costume picker workflow and visible creation/property/save/reopen journey |
+| Primitive Array.map | Actual receiver evaluated once, ordered callback values, fresh result identity, current edited export | Add discoverable collection/callback authoring; verify its real generated loop and Array blocks remain editable in the browser |
+
+For parameter constraints, the procedure selector must identify the actual
+definition and the formal selector must present its real parameters. The
+current prototype's parameter menu lists the target's formal names; filtering
+it to the selected procedure remains GUI work. Incompatible selections must
+produce a readable diagnostic, not silently bind another parameter. Renames,
+reordering, duplication and editing a body during a suspended call need visible
+controls. An unused String helper must survive Code and saved projects without
+an invented call or lost annotation. The browser journey must distinguish a
+physical Number `20` from Text `20`, show one diagnostic on a rejected call, and
+show that an independent script still runs.
+
+For Throw, display the actual selected primitive value and current block or
+Code location. Do not display a thrown value as a normal return result. Include
+a throwing ordinary function and a keyboard handler, plus Stop/restart and
+save/reopen. Structured exception handling and unsupported callback contexts
+remain explicitly outside the initial slice.
+
+For owned Sprites, connect a real Image value and select a readable literal
+artwork template. Show which costume supplies authored pixels and which image
+is being changed at runtime. Cover aliases and property edits, destruction,
+scene changes, Stop/restart and reload. A raw sprite-name string must not be
+presented as an interchangeable owned Sprite value. The current native
+prototype does not establish general Sprite inheritance or all SDK methods.
+
+Discarded expressions are an additional open source/editor lane; see
+[the contract](compatibility/arcade-discarded-value-statements.md). A generated
+hidden global or an unsupported word is not an authoring solution. Qualify an
+existing activation-local sink or a proper editable evaluate/discard command
+through the canonical compiler before admitting that source syntax.
