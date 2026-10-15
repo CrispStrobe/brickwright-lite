@@ -10,19 +10,22 @@ not public documentation inputs.
 
 On `lane/spike-g02-code-feedback-20261015`, Code receives a starting notification
 before replacement waits for the previous poll and STOP. The session retains
-internal firmware observations while withholding old/preparatory program
-feedback from the replacement's callbacks. A successful upload publishes the
-replacement status; subsequent completion remains observable, including after
-a delayed START reply. Explicit Stop and upload rejection remain distinct.
+internal observations while withholding old/preparatory program feedback until
+upload/START succeeds; subsequent completion stays observable. A current upload
+rejection reports its error and clears Code's running state. The live native pane
+continues observing firmware, while that failed Code consumer keeps its error.
+Retried uploads and fresh cold runs invalidate previous upload listeners.
+An already closed session's cancellation keeps Stop feedback.
 
-Eight authored protocol controls reproduce six failures in the prior source;
-all eight and 95 affected host controls pass with the fix. Five broken guards
-are detected. These checks use the real session/client/feedback and shipped
-pane methods with authored native replies. Exact-head CI and a fresh installed
-own-NuttX Code re-upload/Stop/completion/error/recovery matrix remain pending.
-Later polls after failed upload need separate acceptance coverage. This is
-stacked on the pending-upload Arena Stop fix, not qualification of every evolving
-package or closure of G02, G03, physical safety, distribution or licensing.
+Twelve authored controls use the real session/client/feedback, the original Code
+dispatcher and shipped pane methods with authored native replies. All twelve and
+99 affected host controls pass; eleven broken guards are detected. The initial
+explicit-cancellation regression remains preserved. Exact-head CI and fresh
+installed own-NuttX Code re-upload/visible Stop/completion/live-error/retry/cold
+recovery remain pending. This is stacked on the pending-upload Arena Stop fix.
+Concurrent caller completion and broader output attribution remain separate
+boundaries. These controls do not qualify every evolving package or close G02,
+G03, physical safety, rollback, distribution or licensing.
 
 ## Qualified G02 lifecycle boundaries — 2026-10-15
 

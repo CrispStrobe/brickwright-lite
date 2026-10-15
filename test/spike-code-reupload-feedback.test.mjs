@@ -14,7 +14,7 @@ import {encodePython, encodeInstructions} from '../overlay/scratch-gui/src/lib/s
 // These are protocol controls, not installed-app or actual guest evidence.
 const source = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/spike-arena-pane.jsx', import.meta.url), 'utf8');
 const methods = source.slice(source.indexOf('    firmwareProgramObserver ('), source.indexOf('    async programStorage ('));
-const Pane = new Function('encodePython', 'encodeInstructions', `return class {${methods}};`)(encodePython, encodeInstructions);
+const Pane = new Function('encodePython', 'encodeInstructions', 'RenodeArenaSession', `return class {${methods}};`)(encodePython, encodeInstructions, RenodeArenaSession);
 const deferred = () => {
     let resolve;
     const promise = new Promise(done => {resolve = done;});
@@ -52,9 +52,11 @@ async function fixture () {
     await session.start(); clearTimeout(session.timer);
     const updates = [], feedback = createCodeRunFeedback(update => updates.push(update), {running: 'running', completed: 'completed'});
     const pane = new Pane();
-    Object.assign(pane, {bridge, firmwareSession: session, state: {execution: 'nuttx', topology: 'default'},
-        setState(update) {Object.assign(this.state, update);}});
-    return {session, feedback, updates, packets,
+    Object.assign(pane, {bridge, hubState: bridge.hubState, nativeCapabilities: () => capabilities, draw() {},
+        async stopProgram() {const old = this.firmwareSession; this.firmwareSession = null; if (old) await old.stop();},
+        firmwareSession: session, state: {execution: 'nuttx', topology: 'default'},
+        setState(update, done) {Object.assign(this.state, update); done?.();}});
+    return {session, pane, feedback, updates, packets,
         run: () => {
             const pending = pane.startFirmware(null, {source: 'print(2)', ...feedback.callbacks});
             pending.catch(() => {});
@@ -101,7 +103,8 @@ test('replacement upload refusal still rejects rather than reporting old STOP/co
     try {
         f.fail(2);
         await assert.rejects(f.run(), /request failed/);
-        assert.ok(f.updates.every(update => update.spike3Running), 'Only the caller error path should finish this run');
+        assert.equal(f.updates.at(-1).spike3Running, false);
+        assert.match(f.updates.at(-1).status, /request failed/);
     } finally {await f.close();}
 });
 
@@ -125,4 +128,75 @@ test('Code Stop remains available while replacement waits for the previous poll'
         f.holdPoll(); f.run();
         assert.equal(f.updates.at(-1)?.spike3Running, true);
     } finally {await f.close();}
+});
+
+// Execute the original Code dispatcher, including its catch/finally path.
+const importer = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx', import.meta.url), 'utf8');
+const codeMethod = pane => {
+    const body = importer.slice(importer.indexOf('    async runOnNuttxPython () {'), importer.indexOf('    // New MicroPython execution glue:'));
+    return new Function('window', 'createCodeRunFeedback', `return ({${body}}).runOnNuttxPython;`)(
+        {__bwSpikeArena: {_pane: pane, bridge: pane.bridge}}, createCodeRunFeedback);
+};
+const editorFixture = () => ({state: {}, L: {spike3Stopped: 'Stopped.'}, openSpikeArena() {}, activeCode: () => 'print(2)',
+    setState(update) {Object.assign(this.state, update);}});
+
+test('actual Code error clears Stop and survives later live-session telemetry and close', async () => {
+    const f = await fixture(), editor = editorFixture();
+    try {
+        f.fail(2); await codeMethod(f.pane).call(editor); clearTimeout(f.session.timer);
+        assert.equal(editor.state.spike3Running, false, 'Upload rejection must finish Code feedback');
+        assert.match(editor.state.status, /request failed/);
+        const failed = editor.state.status;
+        for (const state of [0, 1, 2, 3, 4, 5]) {
+            f.state(state); await f.session.poll(); clearTimeout(f.session.timer);
+            assert.equal(f.session.programState, state, 'Native session observations remain live');
+            assert.equal(editor.state.status, failed, 'Old program telemetry cannot replace the upload error');
+            assert.equal(editor.state.spike3Running, false);
+        }
+        await f.session.stop();
+        assert.equal(editor.state.status, failed);
+    } finally {await f.close();}
+});
+
+test('failed replacement listeners cannot publish over a later successful Code retry', async () => {
+    const f = await fixture(), editor = editorFixture();
+    try {
+        f.fail(2); await codeMethod(f.pane).call(editor); clearTimeout(f.session.timer);
+        const old = Object.fromEntries(['onOutput', 'onProgramState', 'onCompleted', 'onStopped', 'onError'].map(name => [name, f.session[name]]));
+        f.fail(null); await codeMethod(f.pane).call(editor); clearTimeout(f.session.timer);
+        assert.equal(editor.state.spike3Running, true);
+        const expected = structuredClone(editor.state), expectedPane = structuredClone(f.pane.state);
+        old.onOutput({sequence: 99, text: 'obsolete', truncated: false});
+        old.onProgramState(4, true, 0); old.onCompleted(); old.onStopped(); old.onError(new Error('obsolete failure'));
+        assert.deepEqual(editor.state, expected);
+        assert.deepEqual(f.pane.state, expectedPane);
+        assert.equal(f.pane.firmwareSession, f.session);
+    } finally {await f.close();}
+});
+
+test('current replacement rejection notifies its error consumer once and retains the native session', async () => {
+    const f = await fixture(), errors = [];
+    try {
+        f.fail(2);
+        await assert.rejects(f.pane.startFirmware(null, {source: 'print(2)', onError: error => errors.push(error.message)}), /request failed/);
+        clearTimeout(f.session.timer);
+        assert.equal(errors.length, 1);
+        assert.equal(f.pane.firmwareSession, f.session);
+        assert.equal(f.session.closed, false);
+    } finally {await f.close();}
+});
+
+test('a fresh cold Code run invalidates retained-upload listeners from the previous session', async () => {
+    const f = await fixture(), editor = editorFixture(); let cold;
+    try {
+        await codeMethod(f.pane).call(editor); clearTimeout(f.session.timer);
+        const old = {onOutput: f.session.onOutput, onCompleted: f.session.onCompleted};
+        await f.pane.stopProgram();
+        await codeMethod(f.pane).call(editor); cold = f.pane.firmwareSession;
+        assert.notEqual(cold, f.session); clearTimeout(cold.timer);
+        assert.equal(editor.state.spike3Running, true);
+        const expected = structuredClone(editor.state);
+        old.onOutput({sequence: 99, text: 'obsolete', truncated: false}); old.onCompleted();
+        assert.deepEqual(editor.state, expected);
+    } finally {if (cold) {clearTimeout(cold.timer); await cold.stop();} await f.close();}
 });
