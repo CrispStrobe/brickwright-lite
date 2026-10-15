@@ -382,3 +382,24 @@ independent native controls pass with the original collision and identity
 assertions retained. Circle import and TextSprite admission checks now describe
 the implemented capabilities while retaining malformed-call and bounded
 qualification checks. None of these test corrections promotes corpus rows.
+
+## Official authoring browser qualification — 2026-10-15
+
+The [official-build authoring job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38664222463/job/116195750851)
+passed for reviewed PR source `1d0b4edb046c139925ecd94687b4a9eca3541b4d`.
+Its actual merge-ref checkout was `f3bde53e4d2fddfd794b708c1755588ecec3dcc0`.
+Numeric, event and controller-repeat authoring each passed five editor cycles
+and twelve original observations. Font authoring passed five cycles and four
+original executions, including visible dropdown edits to the six metric
+reporters. Every reporter retained fixed FIELD selectors with no connected
+selector inputs. All four reports have empty page-error lists. The Font
+compilation inputs and outputs are retained in the
+[official proof artifact](https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11940922121/zip).
+
+The [owned-game artifact](https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11940857092/zip)
+passed eight journeys: visible A/B control, Code and Blocks edits, Stage access,
+Costumes pixel painting, fresh saved-project reopening, executed MakeCode
+export and reimport. Both page-error and block-error lists are empty. This
+closes the observed Font restart failure for that browser scenario. The full
+integration still requires every other enabled check; corpus partial counts
+are not reduced by these browser results.
