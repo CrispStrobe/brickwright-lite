@@ -1,3 +1,5 @@
+import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
+import {proveArrayMapValues} from '../overlay/scratch-gui/src/lib/bw-makecode/lower-array-map-values.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -120,4 +122,21 @@ test('primitive null, Undefined, text and declared local defaults remain real va
  assert.deepEqual(imported.unsupported,[]);let run;
  try{run=await runProgram(imported.code,{frames:40});assert.deepEqual(run.errors,[]);const vars=run.vm.runtime.targets.flatMap(t=>Object.values(t.variables));const get=name=>BW.decode(vars.find(v=>v.name===name)?.value);assert.equal(get('text'),'value:1');for(const name of ['nil','missing','localMissing','notText'])assert.equal(get(name),true,name);}
  finally{if(run){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+});
+
+test('Map callback control proof refuses actual structured controls and future exceptional AST spellings',()=>{
+ for(const source of [
+  'let input=[1];let output=input.map(value=>{switch(value){case 1:value=2;break;default:value=3;}return value});',
+  'let input=[1];let output=input.map(value=>{do{value+=1}while(value<2);return value});'
+ ])assert.ok(arcadeToPseudocode(source).unsupported.some(text=>text.startsWith('Array.map:')),source);
+ const kinds=['ThrowStatement','Throw','ForIn','DoWhile','Switch','Break','Continue','Try','TryStatement'];
+ assert.equal(kinds.length,9);
+ for(const type of kinds){
+  const program=parseMakeCodeTs('let input=[1];let output=input.map(value=>value+1);');
+  const callback=program.body[1].decls[0].init.args[0];
+  callback.body.unshift({type,argument:{type:'String',value:'actual exceptional operand'},body:[]});
+  const before=JSON.stringify(program),proof=proveArrayMapValues(program);
+  assert.ok(proof.unsupported.some(text=>/complete body/.test(text)),type);
+  assert.equal(JSON.stringify(program),before,'analysis must not rewrite '+type);
+ }
 });
