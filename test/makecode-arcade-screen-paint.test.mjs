@@ -7,6 +7,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram, stepFrames, clearStrayTimers} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {runTimedArcadeProgram} from './helpers/arcade-timed-native.mjs';
 const Arcade = loadExtensionClass('arcade');
 
 // The original display holds RGBA words; native frames hold palette indices.
@@ -78,8 +79,7 @@ pause(100)`;
     assert.equal(drawables.length, 0, 'no overlay presents the raw screen');
 });
 
-test('screen reads return the last composed frame, as in the original', async () => {
-    const source = `let done = false
+const SCREEN_READ_SOURCE = `let done = false
 let early = 0
 let late = 0
 let copied = 0
@@ -97,11 +97,40 @@ let snap = screen.clone()
 copied = snap.getPixel(40, 30) * 100 + snap.getPixel(0, 0)
 done = true
 done = true`;
+
+async function observeScreenReads(imported) {
+    const run = await runTimedArcadeProgram(imported.code, {milliseconds: 199, storage: true, uploads: imported.costumes});
+    try {
+        const value = name => run.vm.runtime.targets.flatMap(target => Object.values(target.variables)).find(variable => variable.name === name)?.value;
+        assert.equal(value('early'), 4);
+        assert.equal(value('done'), false, 'the actual pause deadline has not elapsed');
+        await run.clock.advanceTo(200);
+        assert.equal(value('done'), true, 'read the frame only after the actual continuation finishes');
+    } catch (error) {
+        run.vm.stopAll(); run.vm.quit(); clearStrayTimers();
+        throw error;
+    }
+    return run;
+}
+
+test('native screen reads wait for the actual pause continuation and observe composed pixels', async () => {
+    const imported = arcadeToPseudocode(SCREEN_READ_SOURCE);
+    assert.deepEqual(imported.unsupported, []);
+    const run = await observeScreenReads(imported);
+    try {
+        const values = run.vm.runtime.targets.flatMap(target => Object.values(target.variables));
+        assert.deepEqual(['early', 'late', 'copied'].map(name => values.find(value => value.name === name)?.value), [4, 9, 209]);
+        assert.deepEqual(run.errors, []);
+    } finally { run.vm.stopAll(); run.vm.quit(); clearStrayTimers(); }
+});
+
+test('screen reads return the last composed frame, as in the original', async () => {
+    const source = SCREEN_READ_SOURCE;
     const original = await runPxtArcade(source, {waitForGlobals: {done: true}});
     assert.deepEqual([original.early, original.late, original.copied], [4, 9, 209]);
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, []);
-    const run = await runProgram(imported.code, {frames: 20, storage: true, uploads: imported.costumes});
+    const run = await observeScreenReads(imported);
     try {
         assert.deepEqual(run.errors, []);
         const variables = run.vm.runtime.targets.flatMap(target => Object.values(target.variables));

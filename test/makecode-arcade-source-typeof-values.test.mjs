@@ -8,7 +8,7 @@ const spec={name:'Box',fields:[],initializer:'',constructor:'',parameters:[],met
 const fixture=()=>{const runtime=createArcadeRuntimeMock(),native=new Arcade(runtime)._inst;return {runtime,native,type:native._sourceTypeOf};};
 const objects=f=>{const array=BW.arrayReference(f.runtime,[1,2]),image=f.native.createImage({WIDTH:2,HEIGHT:1}),buffer=f.native.bufferFromHex({HEX:'0102'});f.native._objectHeap.register(spec);const allocation=f.native._objectHeap.allocate('Box');return {array,image,buffer,object:allocation.ref,allocation};};
 test('source typeof canonical codec primitives and real literal liveSpritehandle stay primitive',()=>{
- const f=fixture();assert.equal(f.native._callableValues,undefined);
+ const f=fixture();assert.equal(f.native._callableValues.runtime,f.runtime);assert.equal(f.native._callableValues.values,BW);assert.equal(f.native._callableValues.resources.size,0);
  for(const x of [0,-0,NaN,Infinity,-Infinity,true,false,'','[1,2]','null','undefined','{"bwReference":{"kind":"callable"}}','雪🙂'])assert.equal(f.type(BW.encode(x)),typeof x);
  assert.equal(f.type(null),'object');assert.equal(f.type(BW.UNDEFINED),'undefined');
  const image=f.native.createImage({WIDTH:1,HEIGHT:1}),handle=f.native.createImageSprite({IMAGE:image,KIND:1000});
@@ -19,9 +19,9 @@ test('source typeof actual Array Image Buffer class construction identity qualif
  const f=fixture(),r=objects(f);for(const ref of [r.array,r.image,r.buffer,r.object]) {const alias=BW.decode(JSON.parse(JSON.stringify(ref)));assert.equal(f.type(alias),'object');assert.equal(BW.compare(alias,'===',ref),true);}
  assert.equal(f.native._objectHeap.inspect(r.object).constructing,true);f.native._objectHeap.finish(r.object,r.allocation.token);assert.equal(f.type(r.object),'object');
 });
-test('source typeof canonical unsupported callable carriers and forged missing owner refs refuse',()=>{
- const f=fixture();assert.throws(()=>f.type(BW.reference(f.runtime,'callable','fake')),/unregistered/);
- assert.throws(()=>f.type({bwReference:{kind:'callable',id:'fake',scope:'fake'}}),/unregistered/);
+test('source typeof refuses callable transport despite its actual service owner and rejects forged refs',()=>{
+ const f=fixture(),carrier=BW.reference(f.runtime,'callable','fake');assert.throws(()=>f.native._callableValues.resource(carrier),/Stale or foreign callable reference/);assert.throws(()=>f.type(carrier),/unsupported reference owner callable/);
+ assert.throws(()=>f.type({bwReference:{kind:'callable',id:'fake',scope:'fake'}}),/foreign or stale callable reference/);
  for(const kind of ['array','image','buffer','object'])assert.throws(()=>f.type(BW.reference(f.runtime,kind,'missing')),/typeof:/);
  assert.equal(f.native._bufferHeap,undefined);for(const x of [{},[],()=>1])assert.throws(()=>f.type(x),/unregistered/);
 });
