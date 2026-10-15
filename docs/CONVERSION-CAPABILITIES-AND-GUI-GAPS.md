@@ -85,6 +85,15 @@ incompatible write or return. Code, graphics-linked class values, saved projects
 and current MakeCode export must preserve that contract. The runtime Number-input
 correction above does not qualify these class export constraints.
 
+Current GUI entry point: `components/tw-pseudocode/pseudocode-importer.jsx`.
+`runAsArcade()` compiles the current generated files and displays its first
+compiler diagnostic. `exportArcade()` currently packages the files without that
+preflight and reports only unsupported/warning counts. Track a complete,
+readable diagnostic list with field/return locations and a current-file compiler
+check for the converted-game export. Keep exact original-source recovery clearly
+identified; an original recovery download is a different user action from a
+claim that the edited game compiles.
+
 ## Actual numeric callback producers — 2026-10-15
 
 The [bounded callback contract](compatibility/arcade-numeric-callable-default-admission.md)
