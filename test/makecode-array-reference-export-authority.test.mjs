@@ -280,3 +280,14 @@ test('definite same-body aliases retain mutation presence and existing populated
         assert.deepEqual(projectToArcade(aliasMutationCode({first:'[[]]',second:'[[]]',operation}).project).unsupported,[]);
     }
 });
+
+test('mutation before receiver allocation cannot lend later element-presence proof',()=>{
+    const creator=aliasMutationCode({assignSecond:false}),{target,block}=lengthBlock(creator),blocks=target.blocks;
+    const [mutationId,mutation]=Object.entries(blocks).find(([,b])=>b.opcode==='arrays_mutateReference');
+    const [firstId,first]=Object.entries(blocks).find(([,b])=>b.opcode==='data_setvariableto'&&b.fields.VARIABLE[0]==='first');
+    const previous=blocks[mutation.parent],next=blocks[mutation.next],prefixId=first.parent;
+    previous.next=mutation.next;if(next)next.parent=mutation.parent;
+    blocks[prefixId].next=mutationId;mutation.parent=prefixId;mutation.next=firstId;first.parent=mutationId;
+    mutation.inputs.ARRAY=[3,[12,'first',first.fields.VARIABLE[1]],[10,'']];
+    assert.equal(createArrayReferenceExportAuthority(creator.project).validateInput(target,block).ok,false);
+});

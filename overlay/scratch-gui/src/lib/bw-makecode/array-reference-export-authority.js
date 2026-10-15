@@ -256,7 +256,7 @@ export function createArrayReferenceExportAuthority(project) {
         }
         if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(node.opcode)||node.opcode==='arrays_mutateReference'&&['pop','shift','removeAt'].includes(literal(node,'OP',target))){
             const receiver=readInput(input(node,'ARRAY',target));if(!operationShape(node))return new Set([bad]);if(!receiver.size)return new Set();if(!singleArray(receiver))return new Set([bad]);const result=new Set();
-            const index=literalNumber(target,node,'INDEX');for(const a of receiver){const present=node.opcode==='arrays_referenceRandom'||node.opcode==='arrays_referenceTake'&&['pop','shift'].includes(literal(node,'OP',target))?minimumAt(a,node)>0:index!==null&&Number.isInteger(index)&&index>=0&&index<minimumAt(a,node);if(!present)result.add(bad);for(const item of a.elements)result.add(item);}return result;
+            for(const a of receiver){if(!presentAt(a,target,node))result.add(bad);for(const item of a.elements)result.add(item);}return result;
         }
         if(node.opcode==='arcade_callFunction'){
             const call=calls.find(call=>call.node===node);if(!call?.fn||call.fn.invalid||!call.args||!returnsAlways(target,call.fn.root.next))return new Set([bad]);
@@ -276,13 +276,17 @@ export function createArrayReferenceExportAuthority(project) {
             executed.add(node);return walk(node.next,known,next,executed);
         };walk(scope.root.next,new Set((scope.params||[]).map(name=>localCell(scope,name)).filter(Boolean)));
     }
-    const minimumAt=(allocation,at)=>{
+    const minimumAt=(allocation,at,qualifies=()=>true)=>{
         if([...allocation.shrinks||[]].some(node=>node!==at))return 0;
         const scope=owners.get(at),before=scope?.executedBefore.get(at)||new Set();let length=allocation.minLength;
         // A possible target receives element-type obligations below, but only
         // a unique actual target receives guaranteed-presence credit.
-        for(const {target,node}of mutations){const receiver=readInput(input(node,'ARRAY',target));if(before.has(node)&&['push','unshift'].includes(literal(node,'OP',target))&&receiver.size===1&&receiver.has(allocation))length++;}
+        for(const {target,node}of mutations){const receiver=readInput(input(node,'ARRAY',target));if(before.has(node)&&['push','unshift'].includes(literal(node,'OP',target))&&receiver.size===1&&receiver.has(allocation)&&qualifies(target,node))length++;}
         return length;
+    };
+    const presentAt=(allocation,target,node,qualifies)=>{
+        const length=minimumAt(allocation,node,qualifies),index=literalNumber(target,node,'INDEX');
+        return node.opcode==='arrays_referenceRandom'||node.opcode==='arrays_referenceTake'&&['pop','shift'].includes(literal(node,'OP',target))?length>0:index!==null&&Number.isInteger(index)&&index>=0&&index<length;
     };
     // Monotone producer flow handles genuine alias SCCs with an allocation;
     // cycles in the physical block graph were independently refused above.
@@ -338,7 +342,13 @@ export function createArrayReferenceExportAuthority(project) {
         }
         if(['arrays_referenceSlice','arrays_referenceConcat','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom','arrays_mutateReference'].includes(node.opcode)){
             if(!initialized(input(node,'ARRAY',target),next)||node.opcode==='arrays_referenceConcat'&&!initialized(input(node,'OTHER',target),next))return false;
-            if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom','arrays_mutateReference'].includes(node.opcode))for(const allocation of readInput(input(node,'ARRAY',target)))for(const source of allocation.sources||[])if(!initialized(source,next))return false;
+            if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom','arrays_mutateReference'].includes(node.opcode)){
+                const receiver=readInput(input(node,'ARRAY',target));if(!singleArray(receiver))return false;
+                for(const allocation of receiver){
+                    if(!presentAt(allocation,target,node,(t,mutation)=>initialized(input(mutation,'ARRAY',t),next)))return false;
+                    for(const source of allocation.sources||[])if(!initialized(source,next))return false;
+                }
+            }
             return true;
         }
         if(node.opcode==='arcade_spritesOfKind'&&exactKeys(node,['KIND']))return numericKindInitialized(input(node,'KIND',target));
