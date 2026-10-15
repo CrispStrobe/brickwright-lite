@@ -45,8 +45,10 @@ implementation lands only after full CI and owner review.
 
 ## Arcade owned named function values — 2026-10-15
 
-PROPOSED — Codex named function declaration value lane.
-Merge this docs-only claim before product changes. Contract:
+IMPLEMENTED LOCALLY — Codex named function declaration value lane.
+The claim is merged; source/current native and two selected-original programs
+are qualified in the integration branch. Canonical creator PR154 is adopted;
+hosted final integration and visible authoring remain open. Contract:
 [owned named function values](docs/compatibility/arcade-named-function-values.md).
 Own the module/namespace declaration-site and current-body bridge, directed
 zero-argument Number/String/Void signature proof, native stable-label binding
@@ -59,8 +61,12 @@ class factories, scene/score API completion or whole-context promotion.
 
 ## Owned Images in ordinary class callbacks — 2026-10-15
 
-CLAIMED / PROPOSED — Codex Image domain in the existing ordinary class/callable bridge.
-Contract: [owned Image class callbacks](docs/compatibility/arcade-owned-image-class-callables.md).
+IMPLEMENTED LOCALLY / CONTINUING — Codex Image domain in the existing
+ordinary class/callable bridge. The claim is merged. Bounded default admission
+is integrated at `2211aeb61`: 119 affected and seven independent controls pass,
+and two byte-identical selected originals retain their compiler evidence.
+Literal-resource producer proof is the active continuation; hosted authoring
+and broader SDK domains remain open. Contract: [owned Image class callbacks](docs/compatibility/arcade-owned-image-class-callables.md).
 Own new actual Image producer/owner proof helpers and coordinated narrow source,
 v2 signature/plan, native field/invocation/result, current Blocks and export hooks.
 Preserve primitive/class/callable identity, all-writer and initialization proof,
