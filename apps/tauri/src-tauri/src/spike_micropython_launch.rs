@@ -7,6 +7,82 @@ use crate::spike_staged_image::StagedImage;
 use serde_json::json;
 use std::path::{Path, PathBuf};
 
+/// Selected by native build pins, never by an editor or image DTO. The digest
+/// binds the compiled-model platform/model contract as well as its runtime.
+#[derive(Clone, Default)]
+pub(crate) enum MicroPythonModels {
+    #[default]
+    SourceOverlay,
+    Compiled { profile_sha256: String, runtime_sha256: String },
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct CompiledProfile {
+    schema_version: u32,
+    kind: String,
+    runtime_sha256: String,
+    platform_source_commit: String,
+    model_contract_commit: String,
+}
+
+fn lowercase_digest(value: &str, length: usize) -> bool {
+    value.len() == length && value.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+}
+
+impl MicroPythonModels {
+    pub(crate) fn from_package_pins() -> Result<Self, String> {
+        match option_env!("BW_RENODE_MICROPYTHON_PROFILE_SHA256") {
+            None => Ok(Self::SourceOverlay),
+            Some(profile) => {
+                let runtime = option_env!("BW_RENODE_SHA256").ok_or("compiled model runtime pin unavailable")?;
+                if !lowercase_digest(profile, 64) || !lowercase_digest(runtime, 64) {
+                    return Err("compiled model pins invalid".into());
+                }
+                Ok(Self::Compiled { profile_sha256: profile.into(), runtime_sha256: runtime.into() })
+            }
+        }
+    }
+
+    fn verify(&self, root: &Path) -> Result<(), String> {
+        let path = root.join("profile.json");
+        match self {
+            Self::SourceOverlay => {
+                // A compiled package must never fall back to the overlay path
+                // when its native profile pin was omitted from the build.
+                if path.try_exists().map_err(|_| "model profile unavailable")? {
+                    return Err("compiled model profile requires a native package pin".into());
+                }
+            }
+            Self::Compiled { profile_sha256, runtime_sha256 } => {
+                let manifest: serde_json::Value = serde_json::from_slice(
+                    &std::fs::read(root.join("manifest.json")).map_err(|_| "model manifest unavailable")?
+                ).map_err(|_| "model manifest invalid")?;
+                if manifest.get("profile.json").and_then(|v| v.as_str()) != Some(profile_sha256.as_str()) {
+                    return Err("compiled model descriptor missing from support closure".into());
+                }
+                if !lowercase_digest(profile_sha256, 64) || !lowercase_digest(runtime_sha256, 64)
+                    || sha256(&path).map_err(|_| "compiled model profile unavailable")? != *profile_sha256
+                    || std::fs::metadata(&path).map_err(|_| "compiled model profile unavailable")?.len() > 4096
+                {
+                    return Err("compiled model profile pin mismatch".into());
+                }
+                let profile: CompiledProfile = serde_json::from_slice(
+                    &std::fs::read(path).map_err(|_| "compiled model profile unavailable")?
+                ).map_err(|_| "compiled model profile invalid")?;
+                if profile.schema_version != 1 || profile.kind != "compiled-prime-models/v1"
+                    || profile.runtime_sha256 != *runtime_sha256
+                    || !lowercase_digest(&profile.platform_source_commit, 40)
+                    || !lowercase_digest(&profile.model_contract_commit, 40)
+                {
+                    return Err("compiled model runtime/contract mismatch".into());
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone)]
 pub(crate) struct MicroPythonRecipe {
     root: PathBuf,
@@ -14,6 +90,7 @@ pub(crate) struct MicroPythonRecipe {
     staging_root: PathBuf,
     admitted: AdmittedImage,
     topology: SpikeTopology,
+    models: MicroPythonModels,
 }
 static UART_GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 impl MicroPythonRecipe {
@@ -23,7 +100,13 @@ impl MicroPythonRecipe {
         staging_root: PathBuf,
         admitted: AdmittedImage,
     ) -> Self {
-        Self { root, manifest_hash, staging_root, admitted, topology: SpikeTopology::Default }
+        Self { root, manifest_hash, staging_root, admitted, topology: SpikeTopology::Default,
+            models: MicroPythonModels::SourceOverlay }
+    }
+
+    pub(crate) fn with_models(mut self, models: MicroPythonModels) -> Self {
+        self.models = models;
+        self
     }
 
     pub(crate) fn with_topology(mut self, topology: SpikeTopology) -> Self {
@@ -46,8 +129,9 @@ impl MicroPythonRecipe {
                 Err(current) => generation = current,
             }
         }
-        MicroPythonLaunch::create_with_topology(
+        MicroPythonLaunch::create_with_models(
             &self.root, &self.manifest_hash, &self.staging_root, &self.admitted, generation, self.topology,
+            self.models.clone(),
         )
     }
 }
@@ -59,6 +143,7 @@ pub(crate) struct MicroPythonLaunch {
     arguments: Vec<String>,
     image: StagedImage,
     config: StagedImage,
+    models: MicroPythonModels,
 }
 fn monitor_path(path: &Path) -> Result<String, String> {
     let path = path.to_str().ok_or("launch path is not UTF-8")?;
@@ -105,6 +190,14 @@ impl MicroPythonLaunch {
         root: &Path, manifest_hash: &str, staging_root: &Path,
         admitted: &AdmittedImage, generation: u64, topology: SpikeTopology,
     ) -> Result<Self, String> {
+        Self::create_with_models(root, manifest_hash, staging_root, admitted, generation,
+            topology, MicroPythonModels::SourceOverlay)
+    }
+
+    fn create_with_models(
+        root: &Path, manifest_hash: &str, staging_root: &Path,
+        admitted: &AdmittedImage, generation: u64, topology: SpikeTopology, models: MicroPythonModels,
+    ) -> Result<Self, String> {
         if !(1..=9_007_199_254_740_991).contains(&generation) {
             return Err("invalid native UART generation".into());
         }
@@ -118,7 +211,7 @@ impl MicroPythonLaunch {
         let root = root
             .canonicalize()
             .map_err(|_| "MicroPython package unavailable")?;
-        check_assets(&root, manifest_hash)?;
+        check_assets(&root, manifest_hash, &models)?;
         let image = StagedImage::create(staging_root, &admitted.bytes)
             .map_err(|_| "image staging failed")?;
         let mut state_config = json!({
@@ -130,8 +223,11 @@ impl MicroPythonLaunch {
         let config_bytes = serde_json::to_vec(&state_config).map_err(|_| "state configuration unavailable")?;
         let config = StagedImage::create(staging_root, &config_bytes)
             .map_err(|_| "configuration staging failed")?;
-        let mut commands = vec![
-            format!("include {}",monitor_path(&root.join("models.cs"))?),
+        let mut commands = Vec::new();
+        if matches!(models, MicroPythonModels::SourceOverlay) {
+            commands.push(format!("include {}", monitor_path(&root.join("models.cs"))?));
+        }
+        commands.extend(vec![
             format!("include {}",monitor_path(&root.join("program-uart.cs"))?),
             "mach create".into(),
             format!("machine LoadPlatformDescription {}",monitor_path(&root.join("platforms/boards/spike-prime.repl"))?),
@@ -147,9 +243,11 @@ impl MicroPythonLaunch {
             format!("include {}",monitor_path(&root.join("scripts/spike-state-server.py"))?),
             format!("spike_state_start \"127.0.0.1\" {{BW_STATE_PORT}} {}",monitor_path(config.path())?),
             "start".into(),
-        ];
+        ]);
         if topology == SpikeTopology::SixMotors {
-            commands.splice(5..5, ['C','D','E','F'].into_iter()
+            let load = commands.iter().position(|c| c.starts_with("sysbus LoadBinary "))
+                .ok_or("application load command unavailable")?;
+            commands.splice(load..load, ['C','D','E','F'].into_iter()
                 .map(|port| format!("port{port} Attach \"motor\"")));
         }
         let mut arguments = vec![
@@ -168,13 +266,14 @@ impl MicroPythonLaunch {
             arguments,
             image,
             config,
+            models,
         })
     }
     pub(crate) fn identity(&self) -> (String,u64) {
         (self.image.image_sha256().into(),self.generation)
     }
     pub(crate) fn into_parts(self) -> Result<(PathBuf, Vec<String>, Vec<StagedImage>), String> {
-        check_assets(&self.root, &self.manifest_hash)?;
+        check_assets(&self.root, &self.manifest_hash, &self.models)?;
         self.image.verify().map_err(|_| "staged image changed")?;
         self.config
             .verify()
@@ -182,7 +281,7 @@ impl MicroPythonLaunch {
         Ok((self.root, self.arguments, vec![self.image, self.config]))
     }
 }
-fn check_assets(root: &Path, expected: &str) -> Result<(), String> {
+fn check_assets(root: &Path, expected: &str, models: &MicroPythonModels) -> Result<(), String> {
     if expected.len() != 64
         || !expected.bytes().all(|b| b.is_ascii_hexdigit())
         || sha256(&root.join("manifest.json")).map_err(|_| "package manifest unavailable")?
@@ -190,7 +289,8 @@ fn check_assets(root: &Path, expected: &str) -> Result<(), String> {
     {
         return Err("MicroPython package pin mismatch".into());
     }
-    verify_micropython_manifest(root, &root.join("manifest.json"))
+    verify_micropython_manifest(root, &root.join("manifest.json"))?;
+    models.verify(root)
 }
 
 #[cfg(test)]
@@ -320,6 +420,77 @@ mod tests {
         assert!(image_path.exists() && config_path.exists());
         drop(files);
         assert!(!image_path.exists() && !config_path.exists());
+
+        // Authored support/runtime contracts exercise the actual planner. They
+        // do not stand in for an installed runtime or application execution.
+        let profile = json!({
+            "schemaVersion": 1, "kind": "compiled-prime-models/v1",
+            "runtimeSha256": "a".repeat(64), "platformSourceCommit": "b".repeat(40),
+            "modelContractCommit": "c".repeat(40)
+        });
+        let profile_path = assets.join("profile.json");
+        std::fs::write(&profile_path, serde_json::to_vec(&profile).unwrap()).unwrap();
+        let profile_pin = sha256(&profile_path).unwrap();
+        let models = MicroPythonModels::Compiled {
+            profile_sha256: profile_pin.clone(), runtime_sha256: "a".repeat(64),
+        };
+        // Descriptor presence alone cannot enable the compiled route; it must
+        // be in the sealed manifest and selected by native package pins.
+        assert!(recipe.clone().with_models(models.clone()).plan().is_err());
+        assert!(recipe.plan().is_err());
+        manifest.insert("profile.json".into(), profile_pin.clone().into());
+        std::fs::write(assets.join("manifest.json"), serde_json::to_vec(&manifest).unwrap()).unwrap();
+        let compiled_pin = sha256(&assets.join("manifest.json")).unwrap();
+        let compiled_recipe = MicroPythonRecipe::new(assets.clone(), compiled_pin.clone(), staging.clone(), admitted.clone())
+            .with_models(models.clone()).with_topology(SpikeTopology::SixMotors);
+        let compiled = compiled_recipe.plan().unwrap();
+        assert!(!compiled.arguments.iter().any(|c| c.starts_with("include ") && c.ends_with("/models.cs")));
+        assert!(compiled.arguments.iter().any(|c| c.starts_with("include ") && c.ends_with("/program-uart.cs")));
+        let create = compiled.arguments.iter().position(|c| c.contains("CreatePrimeElectricalPorts")).unwrap();
+        let load = compiled.arguments.iter().position(|c| c.starts_with("sysbus LoadBinary ")).unwrap();
+        for port in ['C', 'D', 'E', 'F'] {
+            let attach = compiled.arguments.iter().position(|c| c == &format!("port{port} Attach \"motor\"")).unwrap();
+            assert!(create < attach && attach < load);
+        }
+        let compiled_identity = compiled.identity();
+        let fresh = compiled_recipe.plan().unwrap();
+        assert_eq!(compiled_identity.0, fresh.identity().0);
+        assert_ne!(compiled_identity.1, fresh.identity().1);
+        drop(fresh);
+        let wrong_runtime = MicroPythonModels::Compiled { profile_sha256: profile_pin, runtime_sha256: "d".repeat(64) };
+        assert!(compiled_recipe.clone().with_models(wrong_runtime).plan().is_err());
+        assert!(MicroPythonLaunch::create(&assets, &compiled_pin, &staging, &admitted, 7).is_err());
+        for defect in ["unknown field", "wrong kind", "wrong version", "invalid source commit"] {
+            let mut invalid = profile.clone();
+            match defect {
+                "unknown field" => invalid["includeModels"] = json!(true),
+                "wrong kind" => invalid["kind"] = json!("source-overlay"),
+                "wrong version" => invalid["schemaVersion"] = json!(2),
+                _ => invalid["platformSourceCommit"] = json!("not-a-commit"),
+            }
+            std::fs::write(&profile_path, serde_json::to_vec(&invalid).unwrap()).unwrap();
+            let bad_profile_pin = sha256(&profile_path).unwrap();
+            manifest.insert("profile.json".into(), bad_profile_pin.clone().into());
+            std::fs::write(assets.join("manifest.json"), serde_json::to_vec(&manifest).unwrap()).unwrap();
+            let bad_pin = sha256(&assets.join("manifest.json")).unwrap();
+            let bad_recipe = MicroPythonRecipe::new(assets.clone(), bad_pin, staging.clone(), admitted.clone())
+                .with_models(MicroPythonModels::Compiled {
+                    profile_sha256: bad_profile_pin, runtime_sha256: "a".repeat(64),
+                });
+            assert!(bad_recipe.plan().is_err(), "{defect} admitted");
+        }
+        std::fs::write(&profile_path, serde_json::to_vec(&profile).unwrap()).unwrap();
+        manifest.insert("profile.json".into(), sha256(&profile_path).unwrap().into());
+        std::fs::write(assets.join("manifest.json"), serde_json::to_vec(&manifest).unwrap()).unwrap();
+        std::fs::write(&profile_path, b"changed profile").unwrap();
+        assert!(compiled.into_parts().is_err());
+        assert!(compiled_recipe.plan().is_err());
+        assert_eq!(std::fs::read_dir(&staging).unwrap().count(), 0);
+        std::fs::remove_file(profile_path).unwrap();
+        manifest.remove("profile.json");
+        std::fs::write(assets.join("manifest.json"), serde_json::to_vec(&manifest).unwrap()).unwrap();
+        assert_eq!(sha256(&assets.join("manifest.json")).unwrap(), pin);
+
         let plan = MicroPythonLaunch::create(&assets, &pin, &staging, &admitted, 7).unwrap();
         std::fs::write(plan.config.path(), b"changed configuration").unwrap();
         assert!(plan.into_parts().is_err());
