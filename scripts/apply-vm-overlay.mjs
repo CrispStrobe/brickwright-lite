@@ -13,6 +13,7 @@ import path from 'node:path';
 import {patchArcadeSettingsSB3} from './lib/arcade-settings-sb3-hooks.mjs';
 import {patchArcadeManagedThread} from './lib/arcade-managed-thread-hooks.mjs';
 import {patchSavedProjectDeviceReset} from './lib/saved-project-device-vm-hooks.mjs';
+import {patchExtensionPrimitiveCaches} from './lib/extension-primitive-cache-hooks.mjs';
 
 const ROOT = process.cwd();
 const SRC = path.join(ROOT, 'overlay', 'scratch-vm');
@@ -33,6 +34,8 @@ console.log('  applied scratch-vm overlay onto node_modules/scratch-vm (built-in
 // extension's blocks never appear. `xmlEscape` is already imported in runtime.js — wrap the name.
 const runtimePath = path.join(DEST, 'src', 'engine', 'runtime.js');
 let rt = readFileSync(runtimePath, 'utf8');
+rt = patchExtensionPrimitiveCaches(rt);
+writeFileSync(runtimePath, rt);
 // Arcade sprites need one deterministic physics tick per Scratch VM frame.
 // Extensions subscribe to this event; the project stores ordinary extension
 // blocks in .sb3 and the event only supplies their runtime clock.

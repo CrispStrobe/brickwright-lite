@@ -1,5 +1,37 @@
 # Arcade unit failures: exact-source follow-up
 
+## Extension refresh failure at 6350fba49 — 2026-10-15
+
+[Run 38684882095](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38684882095)
+completed with a failing light browser job; both unit shards were cancelled
+without completed censuses. Build, corpus, heavy browser and the official
+Arcade numeric authoring job passed. The light job failed in the animation
+resource journey after an imported-library pixel edit. Its
+[original artifact](https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11950903078/zip)
+retains the failure screenshot, report and projects. Nine preceding journeys
+passed; the final one emitted `Primitive execution requires the actual cached
+caller` and never produced the expected sprite.
+
+A native reproduction isolates the runtime cause: `refreshBlocks()` registers
+new primitive wrapper functions, while executable block caches retain the old
+functions. The strict current-caller ownership check correctly refuses those
+stale operations. The correction invalidates all target, flyout and monitor
+block caches when extension primitives are registered or refreshed, before
+metadata notifications. It preserves the existing ownership checks and pixel
+expectations. Native controls cover stopped-project restart and repeated
+refresh during an active Arcade update; twelve affected controls pass.
+Hosted browser requalification remains required before claiming this journey
+fixed in the GUI.
+
+The cancelled unit logs still contain eleven genuine failed controls: five
+SDK Sprite callback/constructor ownership failures and six class-export proof
+failures across accessors, omitted/default arguments, Sprite image aliases,
+array-held class receivers and staged field values. They are retained failures,
+even though neither shard supplied a complete census. The Sprite ownership
+failures reproduce independently of extension refresh and need a separate
+runtime correction. The export lane must extend actual current-graph proofs
+for these valid programs while preserving incompatible Number/Text refusals.
+
 ## Replacement full run at 60de95e9 — 2026-10-15
 
 [Run 38676138489](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38676138489)
