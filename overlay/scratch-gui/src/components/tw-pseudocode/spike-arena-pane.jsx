@@ -509,21 +509,34 @@ class SpikeArenaPane extends React.Component {
         if (program) encodeInstructions(program, {topology});
         if (this.firmwareSession?.storageSupported && (source !== null || this.state.execution === 'nuttx')) {
             const session = this.firmwareSession;
-            session.onOutput = onOutput;
-            session.onProgramState = this.firmwareProgramObserver(session, onProgramState);
-            session.onStopped = this.firmwareStoppedObserver(session, 'nuttx', program, onStopped);
-            session.onError = this.firmwareErrorObserver(session, onError);
-            session.onCompleted = () => { onCompleted(); if (!this.disposed && this.firmwareSession === session) this.setState({message: this.locale === 'de' ? 'Firmware-Programm abgeschlossen.' : 'Firmware program completed.'}); };
+            const feedback = this.firmwareUploadFeedback = {active: true};
+            const owned = () => !this.disposed && this.firmwareUploadFeedback === feedback;
+            const consume = callback => (...args) => { if (owned() && feedback.active) return callback(...args); };
+            const observe = callback => (...args) => { if (owned()) return callback(...args); };
+            const reportError = consume(onError);
+            session.onOutput = consume(onOutput);
+            // The live native pane still observes firmware after an upload fails;
+            // the failed Code run must keep its error until a new run replaces it.
+            session.onProgramState = observe(this.firmwareProgramObserver(session, consume(onProgramState)));
+            session.onStopped = observe(this.firmwareStoppedObserver(session, 'nuttx', program, consume(onStopped)));
+            session.onError = observe(this.firmwareErrorObserver(session, reportError));
+            session.onCompleted = observe(() => { consume(onCompleted)(); if (this.firmwareSession === session) this.setState({message: this.locale === 'de' ? 'Firmware-Programm abgeschlossen.' : 'Firmware program completed.'}); });
             this.setState({status: 'starting', message: this.locale === 'de' ? 'Aktueller Code wird in die laufende Firmware geladen…' : 'Uploading current code to the live firmware…'});
             try {
+                consume(onStarting)(this.locale === 'de' ? 'Aktueller Code wird in die laufende Firmware geladen…' : 'Uploading current code to the live firmware…');
                 await session.uploadProgram(program, source);
                 this.firmwareStartedState(session, this.locale === 'de' ? 'Aktueller Code geladen; läuft in der ARM-Firmware.' : 'Current code uploaded and running in ARM firmware.');
             } catch (error) {
-                if (!this.disposed && this.firmwareSession === session) this.setState({status: session.programState === 2 ? 'running' : 'paused', message: error.message});
+                if (owned() && this.firmwareSession === session && !session.closed) {
+                    this.setState({status: session.programState === 2 ? 'running' : 'paused', message: error.message});
+                    try { reportError(error); }
+                    finally { feedback.active = false; }
+                }
                 throw error;
             }
             return;
         }
+        this.firmwareUploadFeedback = null;
         await this.stopProgram();
         if (this.disposed) throw new Error('The arena pane is closed');
         this.hubState.setSimulationEnabled(true);

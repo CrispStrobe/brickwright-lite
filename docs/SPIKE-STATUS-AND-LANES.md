@@ -22,6 +22,27 @@ final exact-head CI; the earlier result does not qualify every evolving package.
 Firmware, Runtime/model and dependency pins are unchanged by this lane. Full G02,
 physical safety, reference boot, release and licensing remain outside this result.
 
+## Pending replacement Code feedback fix — 2026-10-15
+
+On `lane/spike-g02-code-feedback-20261015`, Code receives a starting notification
+before replacement waits for the previous poll and STOP. The session retains
+internal observations while withholding old/preparatory program feedback until
+upload/START succeeds; subsequent completion stays observable. A current upload
+rejection reports its error and clears Code's running state. The live native pane
+continues observing firmware, while that failed Code consumer keeps its error.
+Retried uploads and fresh cold runs invalidate previous upload listeners.
+An already closed session's cancellation keeps Stop feedback.
+
+Twelve authored controls use the real session/client/feedback, the original Code
+dispatcher and shipped pane methods with authored native replies. All twelve and
+99 affected host controls pass; eleven broken guards are detected. The initial
+explicit-cancellation regression remains preserved. Exact-head CI and fresh
+installed own-NuttX Code re-upload/visible Stop/completion/live-error/retry/cold
+recovery remain pending. This is stacked on the pending-upload Arena Stop fix.
+Concurrent caller completion and broader output attribution remain separate
+boundaries. These controls do not qualify every evolving package or close G02,
+G03, physical safety, rollback, distribution or licensing.
+
 ## Qualified G02 lifecycle boundaries — 2026-10-15
 
 Seven focused changes have landed, each with a separately frozen installed
