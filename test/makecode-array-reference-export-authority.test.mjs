@@ -248,3 +248,35 @@ test('current Array variable authority preserves a genuine declaration and every
     }
     assert.deepEqual(projectToArcade(creator.project).unsupported,[]);
 });
+
+function aliasMutationCode({first='[]',second='[]',assignSecond=true,operation='push'}={}){
+    const creator=new Creator();creator.parse(`DEVICE ARCADE
+GLOBAL first
+GLOBAL second
+GLOBAL alias
+GLOBAL row
+GLOBAL count
+SPRITE Game:
+WHEN arcade source starts:
+  hide
+  set first to (new array reference from (${JSON.stringify(first)}))
+  set second to (new array reference from (${JSON.stringify(second)}))
+  set alias to first
+  ${assignSecond?'set alias to second':'set alias to first'}
+  mutate array reference (alias) op ${JSON.stringify(operation)} index (0) value (new array reference from ("[1]"))
+  set row to (item (0) of array reference (first))
+  set count to (length of array reference (row))
+`);assert.deepEqual(creator.warnings,[]);return creator;
+}
+test('possible Array aliases cannot lend a push or unshift to every candidate body presence',()=>{
+    for(const operation of ['push','unshift']){
+        const creator=aliasMutationCode({operation});
+        assert.ok(projectToArcade(creator.project).unsupported.some(s=>s.startsWith('Array reference ')),operation);
+    }
+});
+test('definite same-body aliases retain mutation presence and existing populated unions retain Array facts',()=>{
+    for(const operation of ['push','unshift']){
+        assert.deepEqual(projectToArcade(aliasMutationCode({assignSecond:false,operation}).project).unsupported,[]);
+        assert.deepEqual(projectToArcade(aliasMutationCode({first:'[[]]',second:'[[]]',operation}).project).unsupported,[]);
+    }
+});

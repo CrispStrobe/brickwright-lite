@@ -279,7 +279,9 @@ export function createArrayReferenceExportAuthority(project) {
     const minimumAt=(allocation,at)=>{
         if([...allocation.shrinks||[]].some(node=>node!==at))return 0;
         const scope=owners.get(at),before=scope?.executedBefore.get(at)||new Set();let length=allocation.minLength;
-        for(const {target,node}of mutations)if(before.has(node)&&['push','unshift'].includes(literal(node,'OP',target))&&readInput(input(node,'ARRAY',target)).has(allocation))length++;
+        // A possible target receives element-type obligations below, but only
+        // a unique actual target receives guaranteed-presence credit.
+        for(const {target,node}of mutations){const receiver=readInput(input(node,'ARRAY',target));if(before.has(node)&&['push','unshift'].includes(literal(node,'OP',target))&&receiver.size===1&&receiver.has(allocation))length++;}
         return length;
     };
     // Monotone producer flow handles genuine alias SCCs with an allocation;
