@@ -188,6 +188,9 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
             }
             return [...result.prefix,{...st,decls:[{...decl,init:result.value}]}];
         });
+        if(st.type==='ThrowStatement'){
+            const result=expression(st.argument);return [...result.prefix,{...st,argument:result.value}];
+        }
         if(st.type==='Return'){
             const result=expression(st.value);return [...result.prefix,{...st,value:result.value}];
         }
