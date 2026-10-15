@@ -4,7 +4,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {importGuiDependency} from './helpers/bw-integrated.mjs';
-import {effectSource} from './fixtures/arcade-class-callable-conditional-source.mjs';
+import {orderedEffectSource as effectSource} from './fixtures/arcade-class-callable-conditional-source.mjs';
 const BW=(await importGuiDependency('scratch-vm/src/util/bw-values.js')).default;
 const check=run=>{
  assert.deepEqual(run.creator.warnings,[]);assert.deepEqual(run.errors,[]);
@@ -13,6 +13,7 @@ const check=run=>{
  assert.deepEqual(['numberResult','textResult','absentResult'].map(read),[3,'ok',undefined]);
  const heap=run.vm.runtime._arcadeFramePhase.ext._objectHeap;
  assert.deepEqual(['value','display','image'].map(name=>BW.decode(heap.get(read('state'),name))),[4,3,3]);
+ assert.equal(BW.decode(heap.get(read('state'),'trace')),'ADISDIVDI');
  assert.equal(heap.get(read('present'),'state'),read('state'));
  assert.equal(BW.decode(heap.get(read('absent'),'state')),undefined);
 };
@@ -57,18 +58,26 @@ test('conditional class results preserve serial Void effects and actual absent U
 
 test('Void action pause precedes followups and Stop retires its actual read ticket',async()=>{
  const {runTimedArcadeProgram}=await import('./helpers/arcade-timed-native.mjs');
- const paused=effectSource.replace('state.value+=1;','pause(40);state.value+=1;');
+ const paused=effectSource.replace('state.trace+="V";','pause(40);state.trace+="V";');
  const translated=arcadeToPseudocode({'main.ts':paused});assert.deepEqual(translated.unsupported,[]);
- for(const stop of [false,true]){
+ for(const mode of ['complete','stop','edit']){
   const run=await runTimedArcadeProgram(translated.code,{milliseconds:0,retainExtensionTimers:true});
   try{
    const cells=run.vm.runtime.targets.flatMap(target=>Object.values(target.variables)),ref=cells.find(cell=>cell.name==='state').value;
    const heap=run.vm.runtime._arcadeFramePhase.ext._objectHeap;
    const state=()=>['value','display','image'].map(name=>BW.decode(heap.get(ref,name)));
    assert.deepEqual(state(),[3,2,2]);await run.clock.advanceTo(39);assert.deepEqual(state(),[3,2,2]);
-   if(stop){run.vm.stopAll();await run.clock.advanceTo(80);assert.deepEqual(state(),[3,2,2]);}
-   else{await run.clock.advanceTo(40);check(run);}
-   assert.deepEqual(run.errors,[]);
+   if(mode==='stop'){run.vm.stopAll();await run.clock.advanceTo(80);assert.deepEqual(state(),[3,2,2]);}
+   else if(mode==='edit'){
+    const blocks=run.vm.runtime.targets.find(target=>Object.values(target.blocks._blocks).some(block=>block.opcode==='procedures_prototype'&&block.mutation.proccode.includes('Holder_apply'))).blocks;
+    const calls=Object.values(blocks._blocks).filter(block=>block.opcode==='arcade_callObjectMethod'&&block.inputs.METHOD?.shadow);
+    const followups=calls.map(block=>blocks.getBlock(block.inputs.METHOD.shadow)).filter(block=>['updateDisplay','updateImage'].includes(block.fields.TEXT?.value));
+    assert.equal(followups.length,2);[followups[0].fields.TEXT.value,followups[1].fields.TEXT.value]=[followups[1].fields.TEXT.value,followups[0].fields.TEXT.value];
+    await run.clock.advanceTo(80);assert.deepEqual(state(),[4,2,2]);
+    assert.equal(BW.decode(heap.get(ref,'trace')),'ADISDIV','the previously admitted action finishes without either new followup');
+    assert.ok(run.errors.some(error=>/current|graph|outlived/i.test(String(error))),'the actual Start snapshot fences even a structurally valid ordered-method edit');
+   }else{await run.clock.advanceTo(40);check(run);}
+   if(mode!=='edit')assert.deepEqual(run.errors,[]);
   }finally{run.vm.quit();clearStrayTimers();}
  }
 });

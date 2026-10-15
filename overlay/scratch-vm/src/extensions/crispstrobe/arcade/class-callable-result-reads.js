@@ -7,6 +7,18 @@ module.exports = function createResultReads(runtime, values, heap, frames,
     let tickets=new WeakMap(),threads=new WeakMap(),disposed=false;
     const fail=message=>{throw new Error('Class conditional result: '+message);};
     const reset=()=>{tickets=new WeakMap();threads=new WeakMap();};
+    const bodySnapshot=proof=>({
+        names:JSON.stringify([proof.procedure,proof.className,proof.memberName,proof.receiverParameter,proof.savedName,proof.resultName,proof.actionName,proof.followupNames]),
+        blocks:[proof.fieldReadBlock,proof.saveAssignment,proof.resultAssignment,proof.condition,proof.call,
+            ...proof.followups||[],proof.presentReturn,proof.absentReturn,...proof.connectedBlocks||[]].map(block=>({block,
+            semantic:block&&JSON.stringify(Object.fromEntries(Object.entries(block).filter(([key])=>key!=='x'&&key!=='y')))}))
+    });
+    const sameBody=(snapshot,proof)=>{
+        const current=bodySnapshot(proof);
+        return current.names===snapshot.names&&current.blocks.length===snapshot.blocks.length&&
+            current.blocks.every((row,index)=>row.block===snapshot.blocks[index].block&&row.semantic===snapshot.blocks[index].semantic);
+    };
+
     const events=['PROJECT_START','PROJECT_STOP_ALL','PROJECT_LOADED','RUNTIME_DISPOSED'];
     const subscriptions=events.map(event=>{
         const handler=()=>{if(event==='RUNTIME_DISPOSED')disposed=true;if(event==='PROJECT_LOADED')disposed=false;reset();};
@@ -23,7 +35,7 @@ module.exports = function createResultReads(runtime, values, heap, frames,
         const proof=validateBody?.(record.target,record.method,record.receiver);
         if(!proof||proof.fieldReadBlock!==record.proof.fieldReadBlock||proof.procedure!==record.proof.procedure||
             proof.receiverParameter!==record.proof.receiverParameter||proof.className!==record.proof.className||
-            proof.memberName!==record.proof.memberName)fail('current method body differs from its result certificate');
+            proof.memberName!==record.proof.memberName||!sameBody(record.body,proof))fail('current method body differs from its result certificate');
         return proof;
     };
     return Object.freeze({
@@ -43,7 +55,7 @@ module.exports = function createResultReads(runtime, values, heap, frames,
             const parameterNames=target.blocks.getProcedureParamNamesIdsAndDefaults(method.procedure)?.[0],params=thread.stackFrames[0]?.params;
             if(!params||JSON.stringify(parameterNames)!==JSON.stringify([proof.receiverParameter,...method.parameters.map(row=>row.name)]))fail('invocation parameter mapping differs');
             const ticket=Object.freeze({}),record={thread,target,container:target.blocks,method,metadata:JSON.stringify(method),
-                receiver,proof:Object.freeze({...proof}),params,parameterNames:Object.freeze(parameterNames.slice()),parameterValues:Object.freeze(parameterNames.map(name=>params[name])),ticket,read:false,absent:false};
+                receiver,proof:Object.freeze({...proof}),body:bodySnapshot(proof),params,parameterNames:Object.freeze(parameterNames.slice()),parameterValues:Object.freeze(parameterNames.map(name=>params[name])),ticket,read:false,absent:false};
             current(record);tickets.set(ticket,record);threads.set(thread,record);return ticket;
         },
         observe(util,args,value) {

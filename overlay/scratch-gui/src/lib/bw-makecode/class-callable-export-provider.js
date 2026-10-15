@@ -82,7 +82,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
         const raw=b=>target.blocks[b.id];
         return {...proof,fieldType:named(field.value.type),resultType:method.callableSignature.result,
             fieldReadBlock:raw(proof.fieldReadBlock),condition:raw(proof.condition),call:raw(proof.call),
-            followups:proof.followups.map(raw),presentReturn:raw(proof.presentReturn),absentReturn:raw(proof.absentReturn)};
+            followups:proof.followups.map(raw),connectedBlocks:proof.connectedBlocks.map(raw),saveAssignment:raw(proof.saveAssignment),resultAssignment:raw(proof.resultAssignment),presentReturn:raw(proof.presentReturn),absentReturn:raw(proof.absentReturn)};
     };
     const local=(owner,name,readBlock=null)=>{
         if(owner.receiverParameter===name)return named(owner.className);

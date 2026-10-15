@@ -70,3 +70,29 @@ test('foreign runtime cannot use the current cached read loan',()=>{
  const util={...f.util,runtime:foreign};
  assert.throws(()=>primitive.invoke(f.runtime,f.thread,f.util.target.blocks,f.operation,f.args,util,()=>f.reads.observe(util,f.args,BW.UNDEFINED)),/actual cached caller/);
 });
+
+test('a ticket retains complete body names, order, identities and immutable semantics',()=>{
+ for(const change of [
+  proof=>{proof.savedName='otherSaved';proof.resultName='otherResult';},
+  proof=>{proof.followups.reverse();},
+  proof=>{proof.condition={...proof.condition};},
+  proof=>{proof.call.inputs.ARGS.block='changed';},
+  proof=>{proof.condition.parent='other';},
+  proof=>{proof.condition.next='other';},
+  proof=>{proof.condition.inputs={SUBSTACK:{block:'other'}};},
+  proof=>{proof.followups[0].fields={METHOD:{value:'different'}};},
+  proof=>{proof.presentReturn.inputs.VALUE.block='different';},
+ ]){
+  const f=fixture();
+  // The body validator is deliberately modeled as still accepting the edited
+  // shape: the private ticket must additionally retain its original body.
+  f.proof.savedName='saved';f.proof.resultName='result';f.proof.condition={id:'condition',opcode:'control_if'};
+  f.proof.call={id:'call',opcode:'arcade_callCallable',inputs:{ARGS:{block:'args'}}};
+  f.proof.followups=[{id:'display',opcode:'arcade_callObjectMethod'},{id:'image',opcode:'arcade_callObjectMethod'}];
+  f.proof.presentReturn={id:'return',opcode:'arcade_returnValue',inputs:{VALUE:{block:'result'}}};
+  f.runtime.emit('PROJECT_STOP_ALL');f.frames.bind(f.thread,f.util.target,'Holder_apply %s %s',f.params);
+  const ticket=f.reads.prepare(f.thread,f.util.target,f.heap.definition('Holder').methods.get('apply'),f.ref);
+  f.observe();change(f.proof);f.finish();
+  assert.throws(()=>f.reads.complete(ticket,BW.UNDEFINED),/body differs/);
+ }
+});

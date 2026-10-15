@@ -41,7 +41,8 @@ function inspectClassConditionalBody(adapter,method,{className,receiverParameter
     const undefinedValue=get(input(absent,'VALUE'),absent.id);
     if(undefinedValue.opcode!=='arrays_valueUndefined'&&!(undefinedValue.opcode==='arrays_specialValue'&&undefinedValue.fields?.KIND&&adapter.field(undefinedValue,'KIND')==='undefined'))fail('absent result is not an actual Undefined producer');
     return Object.freeze({fieldReadBlock:field,procedure:method.procedure,className,memberName:method.name,receiverParameter,
-        savedName:saved,resultName:output,condition,call,followups:Object.freeze(followups),presentReturn:block(id),absentReturn:absent});
+        savedName:saved,resultName:output,actionName:action,saveAssignment:save,resultAssignment:result,
+        connectedBlocks:Object.freeze([...seen].map(block)),condition,call,followupNames:Object.freeze(followups.map(row=>literal(row,'METHOD'))),followups:Object.freeze(followups),presentReturn:block(id),absentReturn:absent});
 }
 
 module.exports = {inspectClassConditionalBody};
