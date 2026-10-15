@@ -142,7 +142,7 @@ test('--seconds is bounded', () => {
     assert.match(r.stderr, /--seconds must be between 0 and 600/);
 });
 
-test('--board v2: the emulator image runs on the micro:bit V2 board model and draws its picture',
+test('--board v2: the emulator image draws its picture and reports exact ordered serial',
     {skip: engine && runtime('microbit') && emuBases ? false : SKIP_V2, timeout: 900000}, () => {
         const r = run(['run', programFile, '--board', 'v2', '--seconds', '1', '--json']);
         assert.equal(r.status, 0, r.stderr);
