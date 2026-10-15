@@ -31,13 +31,19 @@ Report a new implementation census separately with its actual source identity;
 never relabel the baseline, invent assets or substitute enriched inputs. The
 original 142/41/1 checkpoint below remains historical evidence.
 
-The latest separate offline whole-project profile at `31abb5767` selected the
-29 authentic contexts with retained successful original compilation. It measured
+The latest separate offline whole-project profile at `a32d6ef0a` refreshed the
+same 29 authentic contexts with retained successful original compilation. It
+preserves the earlier `31abb5767` results and all diagnostics. It measured
 **20 clean source/Creator imports, 20 clean current exports and 18 clean complete
 pure routes**. The historical `b1ef5e4ea` profile measured 20/18/16. The complete
 route includes Code feedback, saved current Blocks and assets, current export,
 and reimport/Creator. These are pure stage counts, not game, native execution or
 GUI results.
+Two newly inspected partial-input graphs also produced clean exports; they
+remain partial and are not counted above. The [current eleven-project gap list](compatibility/arcade-current-remaining-project-gaps.md)
+records exact public sources and next capability groups. The same eighteen pure
+passes do not imply native success: the null Sprite sample now has a retained
+five-route native HOLD for silent continuation.
 
 A read-only input audit now verifies that all 20 asset-floor cases have genuine
 nonempty bytes for their referenced resources in retained compiler-resolved

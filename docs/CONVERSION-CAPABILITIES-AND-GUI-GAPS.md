@@ -1,5 +1,10 @@
 # Conversion capabilities and GUI closure ledger
 
+The [current project gap list](compatibility/arcade-current-remaining-project-gaps.md)
+separates the eleven remaining conversion routes from native and authoring gates.
+The fresh 29-project profile keeps the same eighteen complete pure passes; a
+pure pass does not establish runtime or visible editor compatibility.
+
 ## Animation resource actor boundary — 2026-10-15
 
 An internally issued animation resource factory now stays one resource during

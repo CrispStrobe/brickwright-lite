@@ -35,7 +35,7 @@ matched to the exact input and source before being credited here.
 | [Pizza party](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/pizza-party.md#26) (`e4b668bd`) | Pass | Pass | — | — | — |
 | [Crystal ball](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0205-part3.md#1) (`e7ab5324`) | Pass | Pass | — | — | — |
 | [Flamethrower controller](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0201-part3.md#2) (`f1f82cba`) | Pass | Pass | Startup + Right | Startup + Right | — |
-| [Flame handler with null receiver](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0201-part1.md#4) (`f583b791`) | Pass | — | — | — | — |
+| [Flame handler with null receiver](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0201-part1.md#4) (`f583b791`) | Pass | Hold: null read | — | — | — |
 | [Froggy](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/froggy.md#11) (`f65a6b2d`) | Pass | Pass | — | — | — |
 
 Eleven contexts now have these bounded native route controls; one additionally
@@ -69,8 +69,12 @@ comparison. No complete-project or raw-census promotion follows.
   preserved. Sequential VM ownership keeps the original ownership assertions
   and all actors, inputs and music checks, without rebinding the dispatcher.
 - The null-receiver flame handler compiles, but its A callback reads a Sprite
-  variable which the original source leaves null. Observe the original failure
-  boundary before changing compatibility behavior; never repair that input.
+  variable which the original source leaves null. All five native routes silently
+  continue: two property reads, projectile creation, velocity writes and
+  AutoDestroy occur without an error. This is held, not a native pass. The first
+  observer incorrectly expected event 1; actual Pressed is 2049. That failure
+  happened before input and remains preserved. Observe the exact original fault
+  and termination boundary before correcting compatibility; never repair the input.
 
 ## Next dependency order
 

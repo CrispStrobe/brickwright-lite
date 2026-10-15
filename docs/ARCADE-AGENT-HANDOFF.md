@@ -16,9 +16,12 @@ one parse failure** with immutable inputs. A conservative 20-row floor contains
 external asset references absent from those raw files. Use authentic project
 context to investigate them; do not repair snippets or relabel the raw census.
 
-The latest separate 29-project profile at `31abb5767` selects only retained
-original-compiler successes: **20 source/Creator clean, 20 current-export clean,
-18 complete pure routes clean**. It exercises import, Creator, Code feedback,
+The latest separate 29-project profile at `a32d6ef0a`, using the complete
+qualified canonical compiler, selects the same retained original-compiler
+successes: **20 source/Creator clean, 20 current-export clean after clean input,
+18 complete pure routes clean**, unchanged from `31abb5767`. Two newly inspected
+partial input graphs also export without diagnostics; that is not an improvement
+in complete cases. See [all eleven remaining project routes](compatibility/arcade-current-remaining-project-gaps.md). It exercises import, Creator, Code feedback,
 saved Blocks/assets and current export/reimport, with all diagnostic channels
 retained. It runs no SDK, native game or GUI. Nine projects remain source-blocked;
 two retain later-stage barriers. The historical `b1ef5e4ea` profile measured
