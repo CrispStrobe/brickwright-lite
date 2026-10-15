@@ -9,6 +9,8 @@ const roles=Object.freeze(Object.fromEntries(Object.entries({
     arcade_returnValue:['VALUE'],arcade_functionArgument:['VALUE'],
     arcade_setLocal:['VALUE'],arcade_setCaptured:['VALUE'],
     arcade_setObjectField:['VALUE'],arcade_inspectValue:['VALUE','LIMIT'],
+    arrays_referenceValues:['VALUE'],arrays_mutateReference:['VALUE'],
+    arrays_referenceRemove:['VALUE'],arrays_referenceIndexOf:['VALUE'],
     arrays_valueBinary:['LEFT','RIGHT'],arrays_valueUnary:['VALUE'],
     arrays_valueCompare:['LEFT','RIGHT'],arrays_valueTruthy:['VALUE']
 }).map(([opcode,inputs])=>[opcode,Object.freeze(inputs)])));
