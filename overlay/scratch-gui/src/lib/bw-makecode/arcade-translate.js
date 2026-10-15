@@ -4949,7 +4949,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
     const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true};
-    const ordinarySource=parseMakeCodeTs(source,callableParseOptions);
+    const ordinarySource=parseMakeCodeTs(source,{...callableParseOptions,...(opts.procedureConstraintsPrototype===true?{retainCallableMetadata:true}:{})});
     const callableSourceParsed=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true});
     const namedEligibility=selectNamedFunctionSourceProof(callableSourceParsed,{ordinaryProgram:ordinarySource,registrationSpec:sceneRegistrationSpec});
     const namedEnabled=namedEligibility.eligible;
