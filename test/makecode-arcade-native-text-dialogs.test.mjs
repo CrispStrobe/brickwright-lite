@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import BWValues from '../overlay/scratch-vm/src/util/bw-values.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
@@ -21,7 +22,7 @@ for(const [name,call]of [['splash','game.splash("HELLO","WORLD")'],...['Bottom',
  const source=marked('info.setScore(7);scene.setBackgroundColor(9);'+call);
  const original=await runPxtArcade(source,{waitForGlobals:{shown:true},waitForMain:false,inspectImageGlobals:['captured'],fakeClock:true});let run;
  try{
-  run=await replay(source);for(let i=0;i<10;i++)await run.tick();assert.equal(values(run).shown,true);assert.equal(values(run).done,0);
+  run=await replay(source);for(let i=0;i<10;i++)await run.tick();assert.equal(values(run).shown,true);assert.equal(BWValues.decode(values(run).done),undefined);
   const image=run.native._image(values(run).captured);assert.ok(image);
   const expected=original.$images.captured;const different=Array.from(image.pixels,(value,i)=>value!==expected.pixels[i]?i:-1).filter(i=>i>=0);
   assert.equal(image.width,expected.width);assert.equal(image.height,expected.height);assert.deepEqual(different.slice(0,12),[],different.length+' dialog pixel differences');assert.deepEqual(run.errors,[]);

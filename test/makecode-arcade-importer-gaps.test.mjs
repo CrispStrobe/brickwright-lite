@@ -9,7 +9,7 @@
  *     value as `not (s = 0)`, which is Scratch's comparison: "" = 0 is false
  *     (a blank side compares as text) and "0" = 0 true, so both came out
  *     inverted, in conditions and (through E9's branch form) in values.
- *     Now the length is tested: `not ((length of s) = 0)`.
+ *     Canonical value truthiness now preserves both String and Boolean values.
  * (2) FUNCTIONS ON THE FIXED-SPRITE PATH were defined after the last sprite,
  *     i.e. on it, whatever called them: a call from the sprite running the
  *     program found no such block, and a reporter gave 0 (the export refused
@@ -68,18 +68,18 @@ function f(p: string) { if (p) { console.log("p-true") } else { console.log("p-f
 f("")
 f("0")
 `;
-// What pxt-arcade 4.2.1 logs (measured); the fixed path's truth values are 1/0.
+// What pxt-arcade 4.2.1 logs (measured); native values preserve Boolean identity.
 const TEXT_LOG = 's-falsenots-truet-truenott-falsea-truefalsefalsep-falsep-true';
 
 test('text truthiness on the fixed-sprite path is MakeCode\'s: "" false, "0" true', async () => {
     const {imported, creator, lite} = await importAndRun(TEXT);
     assert.equal(handlePath(imported.code), false, 'the fixed-sprite path');
     assert.deepEqual(imported.unsupported, []);
-    assert.match(imported.code, /IF not \(\(length of s\) = 0\) THEN:/);
-    assert.match(imported.code, /IF not \(\(length of \(arcade local p\)\) = 0\) THEN:/, 'a string parameter');
+    assert.match(imported.code, /IF truthiness of value \(s\) THEN:/);
+    assert.match(imported.code, /IF truthiness of value \(arcade local p\) THEN:/, 'a string parameter');
     assert.doesNotMatch(imported.code, /not \((s|t|arcade local p) = 0\)/);
-    // The two logged truth values are 1/0 on this path.
-    assert.equal(lite, TEXT_LOG.replace('a-truefalsefalse', 'a-true00'));
+    // Canonical value reporters retain Boolean identity when passed to a function.
+    assert.equal(lite, TEXT_LOG);
     assert.deepEqual(exportCreator(creator).unsupported, []);
 });
 

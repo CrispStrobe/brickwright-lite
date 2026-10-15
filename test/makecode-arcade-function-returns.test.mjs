@@ -191,7 +191,7 @@ identity(friend).y=75`;
         assert.equal(s[0].x,35);assert.equal(s[0].y,40);assert.equal(s[1].x,30);assert.equal(s[1].y,75);
         assert.deepEqual([...s[0].image.pixels],Array(12).fill(7));assert.deepEqual([...s[1].image.pixels],Array(12).fill(2));
     });
-    assert.match(exported.ts,/\): Sprite/);assert.match(exported.ts,/sprite: Sprite/);assert.match(exported.ts,/let hero: Sprite = null/);
+    assert.match(exported.ts,/\): Sprite/);assert.match(exported.ts,/sprite: Sprite/);assert.match(exported.ts,/^let hero: Sprite$/m);assert.doesNotMatch(exported.ts,/^let hero: Sprite = null$/m);
 });
 
 test('direct sprite and projectile returns remain native expressions through MakeCode',async()=>{
