@@ -1,5 +1,37 @@
 # Arcade unit failures: exact-source follow-up
 
+## Latest completed hosted result — 2026-10-15
+
+[Run 38657701085](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38657701085)
+reviewed PR head `ec3f294706e101647ca0c356387773b971410c6b` and actually built
+merge-ref checkout `f664ffaee02a495e900055922ca51d6e7d32c30d`. Keep those identities
+separate. Build, heavy browser, gallery, corpus, focused, supplier and FPGA
+checks passed; the overall run failed.
+
+- Unit shard two completed **3,775 tests: 3,746 passed, 22 failed, five skipped,
+  two TODO**. Its 42 failure log lines include repeated cases, not 42 distinct
+  failures. Shard one was cancelled and has no completed census.
+- The numeric and event authoring reports each passed five visible cycles,
+  including saved-project reopening and actual export/reimport, with twelve
+  original observations. The combined job failed later on Font authoring.
+- Font authoring could not find six metric dropdown blocks. The new live Font
+  lowerer had replaced direct constant metrics with object-field readers.
+  Local repair preserves the existing editable metric words and proves their
+  fixed menu inputs; aliases and scaled Font records retain live field readers.
+- The light browser suite's owned text game passed initial controls and original
+  pixel comparison, then failed after costume editing and restart with a stopped
+  Font-owner error. Actual native reload reproduces that ordering defect. Its
+  separate candidate resets the current Font epoch before implicit text setup;
+  permanently disposed owners remain closed. Independent review is pending.
+- A separate nested Font-selector defect inspected the enclosing command's
+  connected input instead of the actual cached reporter. The candidate validates
+  the reporter's argument identity, current operation and fixed fields.
+  Independent actual-program review is pending.
+
+Original reports, artifacts and logs are preserved privately. These observations
+supersede the pending conclusions in the earlier checkpoint below. Local repairs
+still require a new exact-source hosted run; the corpus remains **147/36/1**.
+
 ## Latest bounded controls — 2026-10-15
 
 The integrated class/default and Font branch
