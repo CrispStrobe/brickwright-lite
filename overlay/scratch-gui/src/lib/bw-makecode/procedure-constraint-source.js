@@ -50,7 +50,7 @@ export function validateProcedureConstraintSource(program,{onlyFunctions=null,or
  // The callable/named/registered-callback lanes retain escaped function values.
  // This ordinary declaration protocol only handles truly unescaped declarations.
  for(const {node,parent,key} of uses) {
-  const declaration=graph.immutableFunctionAt(node),entry=functions.get(declaration);
+  const declaration=graph.unchangedFunctionAt(node),entry=functions.get(declaration);
   if(entry&&!(parent?.type==='Call'&&key==='callee'))entry.escaped=true;
  }
  const diagnostics=[];
@@ -65,7 +65,7 @@ export function validateProcedureConstraintSource(program,{onlyFunctions=null,or
    const inspect=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(inspect);return;}if(node.type==='Identifier'&&formalBindings.has(graph.bindingOf(node))&&formalBindings.get(graph.bindingOf(node))>=parameterIndex)diagnostics.push(`Procedure parameter constraint: ${fn.name} default cannot reference its own or a later formal`);for(const child of Object.values(node))if(child&&typeof child==='object')inspect(child);};inspect(value);
    if(!types.size||[...types].some(type=>!['Number','String','Boolean','Null','Undefined'].includes(type)))diagnostics.push(`Procedure parameter constraint: ${fn.name} default requires actual primitive producers`);
   }
-  const incoming=calls.filter(call=>graph.immutableFunctionAt(call)===fn);
+  const incoming=calls.filter(call=>graph.unchangedFunctionAt(call)===fn);
   for(const call of incoming) {
    if(call.isNew||call.typeArguments?.length||call.args.length>fn.params.length||fn.params.slice(call.args.length).some(name=>!fn.optionalParams?.includes(name)||fn.paramTypes?.[name]?.text!=='any')){diagnostics.push('Procedure parameter constraint: actual call argument count/shape differs');continue;}
    for(const constraint of entry.selected)requireTypes(constraintTypes(call.args[fn.params.indexOf(constraint.name)]),constraint.type,`${fn.name}.${constraint.name}`);
@@ -110,7 +110,7 @@ function lowerOmittedDefaults(program,selected,graph) {
   const out=Object.fromEntries(Object.entries(node).map(([key,value])=>[key,rewrite(value)]));
   let changed=Object.keys(out).some(key=>out[key]!==node[key]);
   if(node.type==='Call'){
-   const fn=graph.immutableFunctionAt(node),flags=plans.get(fn);
+   const fn=graph.unchangedFunctionAt(node),flags=plans.get(fn);
    if(flags){changed=true;const supplied=node.args.length;out.args=[...out.args,...fn.params.slice(supplied).map(()=>({type:'Undefined'})),...flags.map(flag=>({type:'Number',value:supplied<=flag.index?'1':'0'}))];}
   }
   const flags=plans.get(node);
@@ -147,8 +147,8 @@ export function prepareProcedureConstraintSource(program,{mode='prototype'}={}) 
   selected.set(fn.name,{fn,params:[...fn.params],types:fn.params.map(name=>fn.paramTypes?.[name]?.text)});
  }
  const uses=[];const visit=(node,parent=null,key=null)=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(child=>visit(child,parent,key));return;}if(node.type==='Identifier')uses.push({node,parent,key});for(const [name,value]of Object.entries(node))if(value&&typeof value==='object')visit(value,node,name);};visit(program);
- for(const {node,parent,key}of uses){const entry=selected.get(node.name);if(entry&&graph.immutableFunctionAt(node)===entry.fn&&!(parent?.type==='Call'&&key==='callee'&&!parent.isNew&&!parent.typeArguments?.length)){selected.delete(node.name);excluded.push('Procedure parameter constraint: '+node.name+' escaped or nonordinary call remains outside this protocol');}}
- for(const [name,entry]of selected)if(graph.immutableFunctionAt(entry.fn)!==entry.fn){selected.delete(name);excluded.push('Procedure parameter constraint: '+name+' requires a unique unchanged actual ordinary declaration');}
+ for(const {node,parent,key}of uses){const entry=selected.get(node.name);if(entry&&graph.unchangedFunctionAt(node)===entry.fn&&!(parent?.type==='Call'&&key==='callee'&&!parent.isNew&&!parent.typeArguments?.length)){selected.delete(node.name);excluded.push('Procedure parameter constraint: '+node.name+' escaped or nonordinary call remains outside this protocol');}}
+ for(const [name,entry]of selected)if(graph.unchangedFunctionAt(entry.fn)!==entry.fn){selected.delete(name);excluded.push('Procedure parameter constraint: '+name+' requires a unique unchanged actual ordinary declaration');}
  const validation={onlyFunctions:new Set(selected.keys()),ordinaryPrimitiveSdkNumbers:mode==='supported-default'};
  const diagnostics=[...excluded,...validateProcedureConstraintSource(program,validation)];
  for(const name of duplicates)diagnostics.push('Procedure parameter constraint: duplicate ordinary declaration '+name);

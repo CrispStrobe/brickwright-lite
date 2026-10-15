@@ -208,13 +208,16 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         for(let owner=owners.get(node);owner;owner=owner.parent)if(owner.bindings.has(name))return owner.bindings.get(name);
         return null;
     };
-    const immutableFunction=node=>{
+    // Declaration identity is separate from result production. Recursive calls
+    // may keep a unique unchanged declaration without acquiring a result fact.
+    const unchangedFunction=node=>{
         const identifier=node?.type==='Call'?node.callee:node;
         if(node?.type==='Call'&&node.isNew)return null;
         if(!['Identifier','FunctionDeclaration'].includes(identifier?.type))return null;
         const id=knownBinding(identifier),fn=functions.get(id);
-        return fn&&declarations.get(id)?.size===1&&!classWrites.has(id)&&!cyclic(id)?fn.node:null;
+        return fn&&declarations.get(id)?.size===1&&!classWrites.has(id)?fn.node:null;
     };
+    const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
     // Copies prevent a consumer from changing another consumer's proof facts.
     // Binding facts do not discharge initialization at an expression occurrence.
     return Object.freeze({
@@ -228,6 +231,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         localUndefinedDeclarations:Object.freeze([...localUndefinedDeclarations]),
         declarationCountAt:(node,name=node?.name)=>declarations.get(knownBinding(node,name))?.size||0,
         immutableFunctionAt:immutableFunction,
+        unchangedFunctionAt:unchangedFunction,
         isSdkNamespace:node=>sdk.has(node),
         fontAnnotatedAt:node=>fontAnnotations.has(cell(node)),
         fontScales:Object.freeze(scales.map(item=>item.node)),
