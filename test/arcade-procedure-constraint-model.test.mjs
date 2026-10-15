@@ -152,3 +152,9 @@ test('constrained managed call and argument chains reject unrepresented sockets'
   const f=fixture(),run=managed(f);f.blocks[selector].inputs.EXTRA={block:'leaf'};f.proof.snapshot();assert.throws(run,/requires exactly its actual input sockets/);
  }
 });
+
+test('constrained prototype schema refuses unrepresented definition and formal inputs',()=>{
+ for(const change of [f=>{f.blocks.def.inputs.EXTRA={block:'leaf'};},f=>{f.blocks.proto.inputs.arg=null;},f=>{f.blocks.formal.inputs.EXTRA={block:'leaf'};},f=>{f.blocks.formal.next='leaf';},f=>{f.blocks.proto.topLevel=true;},f=>{f.blocks.call.fields.EXTRA={value:'ignored'};}]){
+  const f=fixture();change(f);assert.throws(()=>model.prepare(f.target),/Procedure parameter constraint/);
+ }
+});

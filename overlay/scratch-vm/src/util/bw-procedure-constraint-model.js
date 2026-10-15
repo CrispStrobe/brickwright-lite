@@ -11,6 +11,7 @@ const exactInputs=(block,names,label)=>{
 };
 function stockCall(entry,call) {
  exactInputs(call,entry.ids,'stock call');
+ if(Object.keys(call.fields||{}).length)fail('stock call cannot carry unrepresented fields');
  if(JSON.stringify(list(call.mutation?.argumentids,'call formal IDs'))!==JSON.stringify(entry.ids))fail('call ordered formal IDs differ');
 }
 const field=(block,name)=>{if(block?.inputs?.[name])fail(name+' must be a fixed field');const value=block?.fields?.[name];return Array.isArray(value)?value[0]:value?.value;};
@@ -26,15 +27,17 @@ function prepare(target) {
   let first=blocks[definition.next];
   // Unrelated existing procedure protocols retain their existing validators.
   if(first?.opcode!==OPCODE)continue;
-  if(typeof code!=='string'||!code||definition.topLevel!==true||definition.parent!=null||prototype?.opcode!=='procedures_prototype'||prototype.parent!==definitionId||prototype.next!=null)fail('definition/prototype ownership differs');
+  if(typeof code!=='string'||!code||definition.topLevel!==true||definition.parent!=null||prototype?.opcode!=='procedures_prototype'||prototype.parent!==definitionId||prototype.next!=null||prototype.topLevel===true||Object.keys(definition.fields||{}).length||Object.keys(prototype.fields||{}).length)fail('definition/prototype ownership differs');
+  exactInputs(definition,['custom_block'],'definition');
   const matches=Object.values(blocks).filter(b=>b?.opcode==='procedures_prototype'&&b.mutation?.proccode===code);
   if(matches.length!==1||procedures.has(code))fail('procedure is not unique');
   const names=list(prototype.mutation.argumentnames,'formal names'),ids=list(prototype.mutation.argumentids,'formal IDs');
   let defaults;try{defaults=JSON.parse(prototype.mutation.argumentdefaults);}catch(_){fail('malformed defaults');}
-  if((code.match(/%[sbn]/g)||[]).length!==ids.length||names.length!==ids.length||!Array.isArray(defaults)||defaults.length!==ids.length||names.some(n=>!n)||Object.keys(prototype.inputs||{}).length!==ids.length)fail('ordered formal mapping differs');
+  if((code.match(/%[sbn]/g)||[]).length!==ids.length||names.length!==ids.length||!Array.isArray(defaults)||defaults.length!==ids.length||names.some(n=>!n)||ids.some(id=>!id)||Object.keys(prototype.inputs||{}).length!==ids.length)fail('ordered formal mapping differs');
+  exactInputs(prototype,ids,'prototype');
   for(let i=0;i<ids.length;i++) {
    const reporter=blocks[input(prototype,ids[i])];
-   if(!reporter||!['argument_reporter_string_number','argument_reporter_boolean'].includes(reporter.opcode)||reporter.parent!==prototypeId||field(reporter,'VALUE')!==names[i])fail('formal reporter binding differs');
+   if(!reporter||!['argument_reporter_string_number','argument_reporter_boolean'].includes(reporter.opcode)||reporter.parent!==prototypeId||reporter.topLevel===true||reporter.next!=null||Object.keys(reporter.inputs||{}).length||Object.keys(reporter.fields||{}).join(',')!=='VALUE'||field(reporter,'VALUE')!==names[i])fail('formal reporter binding differs');
   }
   const constraints=new Map(),seen=new Set();let previous=definitionId;
   while(first?.opcode===OPCODE) {
