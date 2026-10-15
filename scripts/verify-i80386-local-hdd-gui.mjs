@@ -135,6 +135,46 @@ function persistenceOutput (root, fs, path) {
         if (primary) throw primary;
     };
 }
+function persistenceProgress (before) {
+    const target = window.__benchTarget;
+    const timeNs = Number(target?.timeNs?.());
+    const state = target?.state?.();
+    const phase = document.querySelector('[data-debug-panel]')?.getAttribute('data-debug-phase');
+    return Number.isFinite(timeNs) && timeNs >= before.timeNs + 100000000 ||
+        state !== before.state || phase !== before.phase;
+}
+async function persistenceDownloads (page, action, bounded) {
+    const downloads = [], names = new Set();
+    let resolve, reject, primary;
+    const ready = new Promise((yes, no) => {resolve = yes; reject = no;});
+    // A click may fail before the event promise is awaited.
+    ready.catch(() => {});
+    const fail = error => {if (!primary) primary = error; reject(primary);};
+    const download = value => {
+        try {
+            const name = value.suggestedFilename();
+            assert.ok(['386-master-hdd.img', '386-master-hdd.json'].includes(name), 'unexpected download');
+            assert.ok(!names.has(name), 'duplicate download');
+            names.add(name); downloads.push(value);
+            if (downloads.length === 2) resolve();
+        } catch (error) {fail(error);}
+    };
+    const crash = () => fail(new Error('browser page crashed during download'));
+    const listeners = [['download', download], ['pageerror', fail], ['crash', crash]];
+    try {
+        for (const [name, listener] of listeners) page.on(name, listener);
+        await action();
+        await bounded(ready);
+        if (primary) throw primary;
+    } catch (error) {if (!primary) primary = error;}
+    finally {
+        for (const [name, listener] of listeners) {
+            try {page.off(name, listener);} catch (error) {if (!primary) primary = error;}
+        }
+    }
+    if (primary) throw primary;
+    return downloads;
+}
 async function persistencePreflight (manifestPath) {
     const fs = await import('node:fs');
     const path = await import('node:path');
@@ -275,7 +315,10 @@ async function runPersistenceGui () {
     };
     const until = async (page, predicate, timeout = 600000) => {
         const end = Math.min(deadline, Date.now() + timeout);
-        while (Date.now() < end) {const state = await observe(page); if (predicate(state)) return state; await page.waitForTimeout(250);}
+        while (Date.now() < end) {
+            const state = await observe(page); if (predicate(state)) return state;
+            await page.waitForFunction(persistenceProgress, state, {timeout:Math.max(1, end - Date.now())});
+        }
         throw new Error('bounded guest observation expired');
     };
     const response = (text, command, needMarker = false) => {
@@ -337,7 +380,7 @@ async function runPersistenceGui () {
             if (menu.declined && /installation of FreeDOS .* has been aborted/i.test(state.text) && prompt(state.text)) break;
             const command = persistenceBootAction(state.text,menu);
             if (command !== null) await send(page,command);
-            else await page.waitForTimeout(250);
+            else await page.waitForFunction(persistenceProgress, state, {timeout:Math.max(1, bootDeadline - Date.now())});
         }
         assert.ok(await page.locator('[data-debug-hdd-download]').count(), 'loaded runtime exposes both bridge and target snapshot support');
         return page;
@@ -354,12 +397,8 @@ async function runPersistenceGui () {
         const pausedBoundary = await observe(first);
         assert.ok(Number.isSafeInteger(pausedBoundary.machineCycles) && pausedBoundary.machineCycles >= 0);
         await first.evaluate(() => {window.__hddProofOriginalTarget = window.__benchTarget;});
-        const downloads = [];
-        first.on('download', download => downloads.push(download));
-        await first.locator('[data-debug-hdd-download]').click();
-        const downloadEnd = Date.now() + 30000;
-        while (downloads.length < 2 && Date.now() < downloadEnd) await first.waitForTimeout(100);
-        assert.equal(downloads.length, 2, 'both real browser downloads required');
+        const downloads = await persistenceDownloads(first,
+            () => first.locator('[data-debug-hdd-download]').click(), bounded);
         const bodies = {};
         for (const download of downloads) {
             assert.equal(await bounded(download.failure()), null);
