@@ -127,12 +127,22 @@ test('repeated inline lifecycle registrations preserve distinct captured closure
  const target={blocks:{getBlock:id=>id==='hat'?{inputs:{TOKEN:{block:'token'}}}:{fields:{TEXT:{value:'same-site'}}}}};runtime.allScriptsByOpcodeDo=(opcode,callback)=>{if(opcode==='arcade_whenRegisteredScenePush')callback({blockId:'hat'},target);};runtime._pushThread=()=>{const thread={status:0,constructor:{STATUS_DONE:4}};runtime.threads.push(thread);return thread;};runtime.sequencer={activeThread:null,stepThread(thread){seen.push(thread.bwArcadeCaptures.get('value').values.value);thread.status=4;runtime.threads=runtime.threads.filter(t=>t!==thread);}};
  for(const value of [1,2]){const util={thread:{}};a.setLocal({NAME:'value',VALUE:value},util);a.registerScenePushHandler({TOKEN:'same-site',CAPTURES:'value'},util);}a.pushScene();assert.deepEqual(seen,[1,2]);a.popScene();a.pushScene();assert.deepEqual(seen,[1,2,1,2]);
 });
-test('native button registrations use app keyboard bindings and pane signals do not cross-fire A/B',()=>{
- const {runtime,a}=game(),events=[];let keys=new Set();runtime.ioDevices={keyboard:{getKeyIsDown:key=>keys.has(key)}};runtime.threads=[];
- const target={blocks:{getBlock:id=>id.startsWith('hat-')?{inputs:{TOKEN:{block:'token-'+id.slice(4)}}}:{fields:{TEXT:{value:id.slice(6)}}}}};runtime.allScriptsByOpcodeDo=(opcode,callback)=>{if(opcode==='arcade_whenRegisteredButton')for(const token of ['a','b','start','select'])callback({blockId:'hat-'+token},target);};runtime._pushThread=()=>{const thread={status:0,constructor:{STATUS_DONE:4}};runtime.threads.push(thread);return thread;};runtime.sequencer={activeThread:null,stepThread(thread){events.push(thread.bwArcadeEvent.TOKEN);thread.status=4;runtime.threads=runtime.threads.filter(t=>t!==thread);}};
- for(const button of ['a','b','start','select'])a.registerButtonHandler({BUTTON:button,EVENT:2049,TOKEN:button,CAPTURES:''});
- for(const [button,key] of [['a','space'],['b','z'],['start','enter'],['select','m']]){
-  keys=new Set([key]);a._advance(.01);assert.deepEqual(events.splice(0),[button],key+' physical keyboard');keys=new Set();a._advance(.01);
-  a._state().buttons[button]=true;keys=new Set([key]);a._advance(.01);assert.deepEqual(events.splice(0),[button],button+' pane signal plus keyboard');a._state().buttons[button]=false;keys=new Set();a._advance(.01);
- }
+test('native button registrations use app keyboard bindings and pane signals do not cross-fire A/B',async()=>{
+ const {runTimedArcadeProgram}=await import('./helpers/arcade-timed-native.mjs');
+ const buttons=['a','b','start','select'];
+ const code='DEVICE ARCADE\n'+buttons.map(button=>'GLOBAL '+button).join('\n')+'\nSPRITE Game:\nWHEN arcade source starts:\n'+buttons.map(button=>'  set '+button+' to (0 + 0)\n  arcade register button '+JSON.stringify(button)+' event 2049 as "'+button+'" capturing ""').join('\n')+'\n'+buttons.map(button=>'WHEN arcade button handler "'+button+'" runs:\n  change '+button+' by 1').join('\n');
+ const run=await runTimedArcadeProgram(code,{milliseconds:0,storage:true});
+ try {
+  assert.deepEqual(run.creator.warnings,[]);const runtime=run.vm.runtime;
+  const counts=()=>Object.fromEntries(runtime.targets.flatMap(target=>Object.values(target.variables)).filter(value=>buttons.includes(value.name)).map(value=>[value.name,value.value]));
+  const expected=Object.fromEntries(buttons.map(button=>[button,0]));let now=0;
+  const advance=async()=>{await run.clock.advanceTo(now+=40);assert.deepEqual(run.errors,[]);};
+  assert.deepEqual(counts(),expected);
+  for(const [button,key] of [['a',' '],['b','z'],['start','Enter'],['select','m']]){
+   run.vm.postIOData('keyboard',{key,isDown:true});await advance();expected[button]++;assert.deepEqual(counts(),expected,key+' physical keyboard');
+   run.vm.postIOData('keyboard',{key,isDown:false});await advance();
+   runtime.emit('ARCADE_PLAYER_BUTTON_EDGE',1,button,true);run.vm.postIOData('keyboard',{key,isDown:true});await advance();expected[button]++;assert.deepEqual(counts(),expected,button+' pane plus keyboard dispatches once');
+   run.vm.postIOData('keyboard',{key,isDown:false});runtime.emit('ARCADE_PLAYER_BUTTON_EDGE',1,button,false);await advance();
+  }
+ } finally {run.vm.stopAll();run.vm.quit();}
 });
