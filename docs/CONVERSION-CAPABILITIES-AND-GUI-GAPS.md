@@ -4733,3 +4733,14 @@ edits through saved projects and target export/reimport. No new blocks are
 needed. Visible three-target editing of those fields, readable subnormal Code
 spelling, target hardware precision and full non-finite carriers remain open.
 See [shared finite carriers](compatibility/shared-finite-number-carriers.md).
+
+## Sprite factory field export follow-up — 2026-10-15
+
+Current project export accepts proved Sprite factory receivers and registered
+SDK subclass ancestry for writable Number fields. Ten independent controls
+cover source/Code, same/fresh SB3, actual Number input edits and export/reimport;
+Text edits and invalid SDK field writes refuse. This repairs the observed
+constructor-service export failure, not a new native Sprite capability bridge.
+The existing property blocks remain editable; this selection does not qualify
+a visible property-palette journey or class/callback authoring GUI. Track those
+separately from the passing portable and current-graph controls.

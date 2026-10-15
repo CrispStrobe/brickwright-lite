@@ -6,7 +6,8 @@ Published integration `a30cb432c` now reaches an actual unit census after the
 canonical creator adoption. [Unit shard 2](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38701251292/job/116324641586)
 reports **3,914 tests /3,902 passes /five failures /five skipped /two TODO**. This is one completed
 shard, not the entire suite. The official failure log is preserved privately.
-The build and corpus jobs pass; the remaining integration checks must finish.
+The build and corpus jobs pass; all campaigns on that published head are now
+closed. Both browser shards and the official numeric-authoring job passed.
 
 The five failures form two repair groups:
 
@@ -33,7 +34,13 @@ integration is still pending.
 [Unit shard one](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38701251292/job/116324641612)
 was cancelled at its existing 30-minute job bound, without a completed census.
 Its retained log contains a genuine Sprite constructor-service export refusal
-for an actual factory receiver; that is a separate open correction. The known
+for an actual factory receiver; its separate local correction now passes the
+retained constructor-service export and ten integrated controls. Actual
+canonical factory schemas and registered intrinsic ancestry retain Number
+field constraints without granting runtime Sprite ownership. Number/Text,
+readonly, malformed, nullish-only, mixed and local/returned aliases have
+explicit negative controls. The affected owner selection passes 36 tests.
+Hosted qualification of the composed correction remains pending. The known
 selected-SDK do-while TODO remains a TODO, not a new failed assertion count.
 The workload split now requires four complete shards, with every test selected
 exactly once, unchanged budgets and all four publication verdicts required.

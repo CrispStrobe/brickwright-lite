@@ -10,7 +10,7 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ## Current composition and canonical creator adoption — 2026-10-15
 
-Implementation checkpoint `8a11fd58d` includes main `06f647be5`, qualified
+Implementation checkpoint `8aa1dfef0` includes main `06f647be5`, qualified
 creator repairs and default admission for the bounded owned Image class/callback bridge. The creator
 pin is `f2d4f879ba40dd9025070ed51af11ebe1ef14808`; standard sync checks all
 20 mapped files with zero downstream differences. Supplier
@@ -78,12 +78,24 @@ At published `a30cb432c`, both browser shards, the official numeric authoring
 journey, build and corpus now pass. The animation Pixel/Code/Blocks/export
 journey genuinely ran and passed on that source. Unit shard two has five
 failures; shard one reached its unchanged 30-minute bound without a census and
-contains one additional Sprite constructor-service export failure. Their
+contains one additional Sprite constructor-service export failure, now locally
+corrected as described below. Their
 original results remain retained. The local workload correction requires four
 complete, independently audited unit shards with the same budgets and hard
 publication gates. Fresh final-head hosted qualification is still required.
 
-The unchanged raw184 audit at clean `d011d18fe` remains **147 translated /36 partial
+The actual Sprite factory field-export correction is integrated at
+`8aa1dfef0`. Canonical factory blocks and actual registered Sprite subclass
+ancestry supply separate export constraints; annotations and raw IDs do not
+supply runtime ownership. Actual Number writes survive Code, same/fresh SB3,
+current connected edits and export/reimport. Text writes to Number fields,
+readonly/unknown SDK writes, malformed factories and mixed opaque receivers
+refuse, including local and returned aliases. Thirty-six affected owner
+controls and ten independent integrated controls pass; these overlap and are
+not a suite census. The retained full constructor-service current export now
+passes. Fresh hosted qualification remains required.
+
+The fresh raw184 audit at clean `8aa1dfef0` remains **147 translated /36 partial
 /one parse failure**, with every original Git blob verified. Authentic contexts
 remain a separate **29 original-valid /20 strict /nine blocked** observation.
 Next: the procedure parameter contract and value-map lanes; proper discarded
