@@ -10,6 +10,7 @@ import {importGuiDependency} from './helpers/bw-integrated.mjs';
 import {scopeAfter} from './helpers/js-scope.mjs';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {source} from './fixtures/arcade/sdk-image-literal-callables.mjs';
+const qualifiedExport=JSON.parse(readFileSync(new URL('./fixtures/arcade/sdk-image-literal-current-export.json',import.meta.url),'utf8'));
 const wanted={imageLiteralCalls:3,imageLiteralChanged:7,imageLiteralOriginal:1,imageLiteralLater:1,imageLiteralOutside:0,imageLiteralAliasSame:true,imageLiteralFresh:true,imageLiteralLaterFresh:true,imageLiteralScore:19};
 const dispatch=(await importGuiDependency('scratch-vm/src/dispatch/central-dispatch.js')).default;
 const instances=new WeakMap();
@@ -59,7 +60,7 @@ test('actual pixel editor save and costume rename preserve current SVG pixels af
   let references=0;for(const owner of run.vm.runtime.targets)for(const frame of Object.values(owner.blocks._blocks))if(frame.opcode==='arcade_frameImage'){
    const input=owner.blocks.getBlock(frame.inputs.TEMPLATE.block);if(input?.fields.TEXT?.value===resourceName){owner.blocks.changeBlock({id:input.id,element:'field',name:'TEXT',value:renamed});references++;}
   }assert.ok(references,'actual connected resource references follow the target rename');
-  const current=JSON.parse(run.vm.toJSON()),exported=projectToArcade(current,{costumeSvg:reader(run)});assert.deepEqual(exported.unsupported,[]);assert.deepEqual(exported.warnings,[]);assert.match(exported.ts,/img`\s*3 \.\s*\. 4\s*`/);
+  const current=JSON.parse(run.vm.toJSON()),exported=projectToArcade(current,{costumeSvg:reader(run)});assert.deepEqual(exported.files,qualifiedExport,'current real editor export retains the exact selected original input');assert.deepEqual(exported.unsupported,[]);assert.deepEqual(exported.warnings,[]);assert.match(exported.ts,/img`\s*3 \.\s*\. 4\s*`/);
   const expected={...wanted,imageLiteralOriginal:3,imageLiteralLater:3,imageLiteralScore:23};
   const again=await execute(exported.files,runs);assert.deepEqual(observe(again,4),expected);
   const saved=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()),fresh=await reopen(saved,runs);assert.deepEqual(observe(fresh,4),expected);

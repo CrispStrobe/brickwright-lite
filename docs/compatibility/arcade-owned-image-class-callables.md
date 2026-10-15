@@ -181,7 +181,7 @@ complete library admission.
 
 ## Literal resource producer follow-up
 
-IMPLEMENTED, original qualification pending — the literal producer tranche extends
+QUALIFIED within the bounded source/current-project surface — this tranche extends
 the factory and clone checkpoint. The earlier source and current-export refusals
 are retained as the baseline. Native authoring controls cover repeated factory
 allocation, alias mutation, current SVG artwork and portable save/reopen routes.
@@ -226,3 +226,19 @@ The existing pixel operations determine bounds and mutation effects. Current
 serialized operands are checked before numeric socket rendering, so a text
 numeral cannot borrow Number authority from export formatting. No other Image
 member, dynamic dimension, Sprite or annotation producer is added.
+
+The new selected-SDK source and actual edited-art export both compiled and ran
+successfully with their exact prepared inputs. Repeated literal factory calls
+produce distinct Images; writes through an alias change only that allocation,
+and later factory calls retain the template pixels. The source and edited-art
+programs observed three calls and scores 19 and 23 respectively, with the same
+alias/distinct-identity and out-of-range pixel results as native execution.
+Every native portable route additionally checks all four pixels in each actual
+owned Image body. This is no broader editor, bitmap or full Image API claim.
+
+Export binds one immutable decoded snapshot to the actual costume and each
+native resource key. All frame uses must have exactly one actual incoming clone
+edge. Actual target/costume identities are checked before cache hits, and the
+current frame/input-edge graph is recomputed after reading the asset before a
+snapshot is published. Replacing an owner, changing metadata, adding an exposure
+or appending a frame during decoding cannot borrow a previous proof.
