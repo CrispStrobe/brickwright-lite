@@ -8,7 +8,7 @@ import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
  * Source: microsoft/pxt v13.2.1 pxtcompiler/emitter/emitter.ts (MIT).
  * The original selected worker execution remains the semantic authority.
  */
-export function lowerPxtStagedValues(program, {isStaticResource = () => false, isArrayQuery = () => false} = {}) {
+export function lowerPxtStagedValues(program, {isStaticResource = () => false, isArrayQuery = () => false, lowerArrayMap = () => null} = {}) {
     const names=new Set();
     const scan=node=>{
         if(!node || typeof node!=='object')return;
@@ -53,7 +53,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
         for(const node of nodes){
             const next=expression(node);
             if(next.prefix.length)for(let i=0;i<values.length;i++){
-                if(!values[i]?.temporary && ['Array','New','Object'].includes(values[i]?.type))values[i]=save(values[i],prefix);
+                if(!values[i]?.temporary && (next.prefix.some(statement=>statement.bwMapOrdered===true) || ['Array','New','Object'].includes(values[i]?.type)))values[i]=save(values[i],prefix);
             }
             prefix.push(...next.prefix);values.push(next.value);
         }
@@ -74,6 +74,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
     };
     function expression(node) {
         if(!node)return {prefix:[],value:node};
+        const mapped=lowerArrayMap(node,{expression,body});if(mapped){changed=true;return mapped;}
         if(fixedControllerRepeatReceiver(node) && namespace(node.object))return {prefix:[],value:node};
         // Fully decoded SDK resource factories are compile-time values. Keep
         // their literal aggregate representation for resource lowering instead
@@ -187,6 +188,9 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
             }
             return [...result.prefix,{...st,decls:[{...decl,init:result.value}]}];
         });
+        if(st.type==='ThrowStatement'){
+            const result=expression(st.argument);return [...result.prefix,{...st,argument:result.value}];
+        }
         if(st.type==='Return'){
             const result=expression(st.value);return [...result.prefix,{...st,value:result.value}];
         }
@@ -239,7 +243,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
             // Standalone identifier updates already have editable statement
             // blocks; only consumed update results need invocation cells.
             if(st.expr?.type==='Update')return [st];
-            const result=expression(st.expr);return [...result.prefix,{...st,expr:result.value}];
+            const result=expression(st.expr);return result.discardableMap?result.prefix:[...result.prefix,{...st,expr:result.value}];
         }
         return [st];
     }
