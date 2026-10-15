@@ -1,17 +1,3 @@
-## Arrays physical Number input boundary — 2026-10-15
-
-CLAIMED — Codex shared input protocol and coordinated canonical Arrays lane.
-Contract: [physical Number inputs](docs/compatibility/arcade-arrays-current-number-inputs.md).
-Own shared current Number-input utility extraction, explicit primitive execution
-loan/value-input roles, focused current Blocks/native/Code/SB3/export controls,
-and a separately qualified CrispStrobe/extensions Arrays supplier adoption.
-Preserve text, reference identity and existing managed Number guards. No global
-Scratch shadow conversion, numeric-text coercion, annotation grant, source
-callback/class widening or independent generated-bundle edits. Coordinate
-primitive owner/index hooks with Image and console owners; other owners keep
-class/callable producer and lexical source graph files. Product implementation
-follows this claim's normal qualified merge.
-
 ## STM32 G0/F1 fix pin adoption (sb3-creator + bw-board) — 2026-10-15
 
 CLAIM — Claude, branch chore/stm32-fix-pins-20261015, [local path omitted].
@@ -4026,3 +4012,17 @@ from actual native attachment transitions. All enabled exact-head CI and the
 affected installed checks must pass before matched-head integration. Preserve
 failed originals and existing budgets; no full SDK, reference, physical,
 distribution/licence, release or whole-G02 claim from a finite profile slice.
+
+## Arrays physical Number input boundary — 2026-10-15
+
+CLAIMED — Codex shared input protocol and coordinated canonical Arrays lane.
+Contract: [physical Number inputs](docs/compatibility/arcade-arrays-current-number-inputs.md).
+Own shared current Number-input utility extraction, explicit primitive execution
+loan/value-input roles, focused current Blocks/native/Code/SB3/export controls,
+and a separately qualified CrispStrobe/extensions Arrays supplier adoption.
+Preserve text, reference identity and existing managed Number guards. No global
+Scratch shadow conversion, numeric-text coercion, annotation grant, source
+callback/class widening or independent generated-bundle edits. Coordinate
+primitive owner/index hooks with Image and console owners; other owners keep
+class/callable producer and lexical source graph files. Product implementation
+follows this claim's normal qualified merge.
