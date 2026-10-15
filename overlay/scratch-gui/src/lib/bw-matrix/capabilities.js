@@ -298,12 +298,11 @@ export const DEVICES = Object.freeze([
         ]
     }),
     // The ESP8266 (Tensilica LX106): C from sb3-creator's DEVICE ESP8266 back
-    // end against the blob-free esp8266js runtime API, run in bw-board's
-    // `esp8266` debug kind. `pickerCompile` stays false while the hosted
-    // service's esp8266 target is not in the pinned stc-compiler snapshot
-    // (docs/generated/hosted-targets.json): the conformance gate ties the two.
+    // end against the blob-free esp8266js runtime API, compiled by the hosted
+    // service's esp8266 target (in the pinned snapshot since stc-compiler
+    // e21b64c, plan N13) and run in bw-board's `esp8266` debug kind.
     dev('esp8266', 'ESP8266', 'ESP8266', 'esp8266', {
-        pickerCompile: false,
+        pickerCompile: true,
         pickerEmulator: 'esp8266',
         sim: [eng('esp8266', ['bin'], {
             note: 'bw-board esp8266 kind over the esp8266js fork; SDK-free firmware only, GPIO and serial'
@@ -583,8 +582,8 @@ const MPY = shipped('py', 'MicroPython', 'none', {
 });
 const CPY = shipped('py', 'CircuitPython', 'none', {evidence: EVIDENCE.DECLARED, tier: '3'});
 const TS = via('ts', {evidence: EVIDENCE.DECLARED});
-/** ESP8266 lowering lands on its C cell, which is open until the hosted esp8266 target is in the snapshot. */
-const ESP_C = viaOpen('c', 'N13', {note: 'lands on the ESP8266 C cell, open until the hosted esp8266 target is deployed'});
+/** ESP8266 lowering lands on its C cell, hosted since stc-compiler e21b64c (plan N13). */
+const ESP_C = via('c');
 
 /**
  * cells[family][language] = { native, lowered[] }.
@@ -663,9 +662,8 @@ export const CELLS = Object.freeze({
         python: {native: no('licence', ESP_SDK), lowered: [ESP_C]},
         javascript: {native: no('licence', `${ESP_SDK} (Espruino's ESP8266 port links it too)`), lowered: [ESP_C]},
         c: {
-            native: open('bin', 'xtensa-lx106-elf-gcc + bw8266 runtime', 'hosted', 'N13', {
-                note: 'the stc-compiler esp8266 target exists on its main branch but is not in the pinned '
-                    + 'hosted snapshot (not deployed); the image runs in bw-board\'s esp8266 kind'
+            native: shipped('bin', 'xtensa-lx106-elf-gcc + bw8266 runtime', 'hosted', {
+                note: 'the image runs in bw-board\'s esp8266 kind (esp8266js fork, SDK-free firmware only)'
             }),
             lowered: [ESP_C]
         },

@@ -7364,6 +7364,12 @@
    "p95": null,
    "max": null,
    "readings": []
+  },
+  "Browser gate \u2014 ESP8266 image runs on the esp8266 debug kind with serial": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
   }
  }
 }

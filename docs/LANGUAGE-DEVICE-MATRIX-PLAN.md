@@ -847,14 +847,16 @@ DoD: a dialect program round-trips to C that shecc compiles and the SoC runs,
 printing the expected console output; the five cells flip `viaOpen('c','N12')`
 → `via('c')`.
 
-**N13. ESP8266 C on the hosted service. OPEN 2026-10-14.** The esp8266
+**N13. ESP8266 C on the hosted service. DONE 2026-10-15.** The esp8266
 column joined with sb3-creator's DEVICE ESP8266 back end and bw-board's
-`esp8266` debug kind; stc-compiler has the `esp8266` target on its main branch
-but production does not serve it yet, so the C cell is open, the picker says
-`compile: false`, and every lowered path rides N13. Done when the deployed
-service lists `esp8266`: extend `gen-hosted-targets.mjs` to read its
-`ESP8266_TARGETS`, refresh the snapshot, mark the C cell shipped and flip
-`pickerCompile` (the conformance gate fails until all three agree).
+`esp8266` debug kind (2026-10-14), with its C cell open until the service
+deployed the target. `gen-hosted-targets.mjs` now reads stc-compiler's
+optional `ESP8266_TARGETS` (test/hosted-targets-esp8266.test.mjs, on
+fixtures); the snapshot was refreshed against the deployed source e21b64c
+(which also brought the STM32G030/F103 compile and assemble targets, as the
+generator produced them); the ESP8266 C cell and its lowered paths are
+shipped and the picker compiles it. The ESP8266 ASM cell stays open: the
+ASM tab has no LX106 assembler route.
 
 **L1. ASM reader with named refusals.** Owner: lego-ac. **v1 LANDED 2026-09-05** (`ea305f40f`) (`lib/bw-asm/asm-8086-to-pseudocode.js`, `test/asm-8086-to-pseudocode.test.mjs`): the emitter's own shapes for the 8086 — the DX:AX stack-machine expression stream, the three comparison templates, and/or/not, set/change/say/print/wait/wait until/repeat/repeat until/if/if-else/forever/stop — read back and re-lower to byte-identical assembly over a five-program corpus; hand-written assembly (every fixture in `examples-i8086.js`) refused as foreign, the scheduler form refused with its script count, pins/ports/displays/tone/PWM/keypad/broadcast/say-for-secs refused by feature name; census (after the scheduler form and the pin family landed on the same branch) 29 lifted / 1 refused / 10 unprobed of 40 anchors, and the lifted set may only grow. Pins and ports read back with declarations synthesised from their use; ACTIVE LOW is not recoverable from the bytes and is warned about (the bytes are identical either way); an INPUT nothing reads is a named refusal because the 8255 control word could not be re-derived. The scheduler form reads back one WHEN per task. The ASM tab's To blocks is wired for the 8086 in source mode. Four mutations proven red. Not yet: keypad, displays, tone, PWM, broadcast, say-for-secs. **Re-scoped:** the 8051 half of L1 is not needed — the only 8051 assembly Brickwright produces is a compiler listing of C that the C tab already reads back; hand-written 8051 assembly is foreign by the same rule as hand-written 8086 assembly.
 Lifting, not decompilation: recognise (a) the shapes our own lowering emits
