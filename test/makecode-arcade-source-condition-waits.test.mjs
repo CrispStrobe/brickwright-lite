@@ -156,9 +156,19 @@ test('initial pre-input hook refuses preexisting cached argument corruption befo
  }finally{close(run);}
 });
 test('ordinary Scratch wait-until retains stock yielding beside a genuine source phase',{timeout:2500},async()=>{
- let run;try{const imported=arcadeToPseudocode('let after=0;pauseUntil(function(){return false});after+=1');assert.deepEqual(imported.unsupported,[]);
- const code=imported.code.replaceAll('WHEN arcade source starts:','WHEN flag clicked:')+'\nSPRITE SourceSeed:\nWHEN arcade source starts:\n  arcade set background color to 0\n';
- run=await start('let after=0;pauseUntil(function(){return false});after+=1',{code});await bootstrap(run);
+ let run;try{
+ // Author ordinary Scratch directly; typed source declarations keep their own source lifecycle.
+ const code=`SPRITE Plain:
+WHEN flag clicked:
+  set after to 0
+  wait until (1 = 0)
+  set after to 1
+SPRITE SourceSeed:
+WHEN arcade source starts:
+  arcade set background color to 0`;
+ run=await runProgram(code,{frames:0,frameAuthority:'timed',retainExtensionTimers:true});await bootstrap(run);
+ assert.ok(run.loadedOpcodes.has('event_whenflagclicked'));
+ assert.ok((run.calls.get('arcade_whenSourceStarts')||0)>0,'independent genuine source hat establishes the source phase');
  const rt=run.vm.runtime,thread=rt.threads.find(t=>t.peekStack()&&t.blockContainer.getBlock(t.peekStack())?.opcode==='control_wait_until');assert.ok(thread);
  assert.equal(thread.status,thread.constructor.STATUS_RUNNING);assert.equal(Number(values(run).after),0);assert.equal(rt._arcadeFramePhase.ext._pollEvents?.size||0,0);assert.deepEqual(run.errors,[]);
  }finally{close(run);}
