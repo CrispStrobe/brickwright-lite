@@ -51,6 +51,25 @@ Its first readiness observer failure and successful cached-binary recovery remai
 retained, with source unchanged. The native/source Map development prototype has focused conversion and lifetime
 controls; consumer adoption and visible authoring remain separate gates.
 
+### Animation resources and first authentic guest controls
+
+The development composition `0c135e407` includes the independently reviewed
+animation producer fix. Resource factories no longer allocate unused image
+costume targets that current export turned into an observable invisible Player.
+Actual frame resources remain editable and portable; genuine authored hidden
+actors remain actors. Fourteen affected native controls pass in the composition,
+with 764 unchanged guards and the same 174 VM overlays. Both affected authentic
+projects pass five native routes, including current export/reimport, with full
+actor inventories checked. Their earlier saved erroneous exports remain held;
+there is no heuristic repair of ambiguous user actors.
+
+One unchanged authentic project also passes its first cached-original startup
+and real DOM controller check: Right moves its sprite, release stops it, and
+life remains three. This reused its retained compiled binary without another
+compile. The genuinely new current export still needs its own original-runtime
+comparison. Neither result establishes complete gameplay or visible authoring,
+and neither changes the whole-project census.
+
 ### Current hosted checks and held candidates
 
 Canonical [PR157](https://github.com/CrispStrobe/sb3-creator/pull/157) is merged

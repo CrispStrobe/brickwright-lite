@@ -70,14 +70,21 @@ observations**. Preserve the first observer failure and successful cached-binary
 recovery; they did not change the source. No source/native Map implementation
 is qualified by that observation contract.
 
-[PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) currently has
-successful build, corpus, both browser shards and FPGA checks. Unit shards one
-and three completed with failures; reviewed local stale-test corrections remain
-corrections in this candidate. All six original parent campaigns and their 24 actual
-child jobs are closed. See the [handoff](ARCADE-AGENT-HANDOFF.md)
-for the exact censuses. The new `a11` GUI candidate has not run. Earlier
-11-failure/incomplete-census observations remain historical, not the current
-unit result. No complete hosted qualification follows yet.
+[PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) is now at
+CI-only `9133a871b`, awaiting its own checks. The preceding `b190d3e7d` campaign
+closed with successful build, corpus, both browser shards and FPGA, and three
+retained failures in TODO accounting, event observation and Image selection.
+The [handoff](ARCADE-AGENT-HANDOFF.md) identifies the current head and original
+results. A later visible Game Console journey is prepared separately and has
+not run. Do not attribute predecessor successes to the new head.
+
+The resource-factory producer fix now prevents a measured extra invisible
+Player on animation export/reimport. Both affected authentic inputs pass five
+native routes; current frames, pixels and names survive. The earlier erroneous
+saved exports remain held. One further authentic project has its first bounded
+cached-original startup/controller result; its new current export comparison
+is still pending. These controls do not reduce the immutable or whole-project
+counts, and do not close GUI or complete-game requirements.
 
 The six coordinated claims in
 [PR954](https://github.com/CrispStrobe/brickwright-lite/pull/954), head `e978`,

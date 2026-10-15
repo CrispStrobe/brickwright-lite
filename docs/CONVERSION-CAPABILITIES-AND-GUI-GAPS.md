@@ -1,5 +1,20 @@
 # Conversion capabilities and GUI closure ledger
 
+## Animation resource actor boundary — 2026-10-15
+
+An internally issued animation resource factory now stays one resource during
+image collection. Its frames no longer create an unused costume target that
+export would instantiate as an invisible Player. Fourteen native controls pass,
+including current resource name/pixel edits, same/fresh saved projects and
+current export/reimport. Genuine hidden actors and ordinary inline frame arrays
+remain supported. Two authentic projects also pass the five native routes with
+complete actor inventories; older ambiguous erroneous exports stay unchanged.
+
+Still required: visible creation/editing of those frames, saved project reopen,
+and the exported games' selected-original runtime comparison. Native event,
+overlap and all-of-kind controls do not establish browser authoring or complete
+game compatibility.
+
 ## Bounded Image drawing and hosted animation journey — 2026-10-15
 
 Actual owned Image callback receivers now support `fill` and `fillRect` through
