@@ -55,6 +55,7 @@ export function lowerNamedFunctionValues(input) {
             if(info&&binding.kind==='function'&&!callee)return {...intrinsic('create',[str(info.name)]),bwCallableSignature:info.signature,bwCallableTargets:[info.name]};
             return bindingRows.has(binding)&&binding.scope!==lexical.global?{...node,name:bindingRows.get(binding).nativeName}:node;
         }
+        if(node.type==='Call'&&proof.comparisons.has(node))return {type:'Binary',op:proof.comparisons.get(node).op,left:rewrite(node.args[0]),right:rewrite(node.args[1])};
         if(node.type==='Call') {
             const invocation=proof.calls.find(row=>row.node===node),info=invocation&&infos.get(invocation.target);
             if(info&&invocation.binding.kind!=='function')return {...intrinsic('invoke',[rewrite(node.callee),{type:'Array',items:[]}]),

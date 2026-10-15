@@ -60,3 +60,22 @@ test('ordinary calls and established Arrow-only input are left to their existing
         const proof=prove(source);assert.equal(proof.eligible,false);assert.deepEqual(proof.unsupported,[]);
     }
 });
+
+test('comparison helper has actual distinct unrestricted formal cells and real label arguments',async()=>{
+    const {arcadeToPseudocode}=await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
+    const declarations='function one():number{return 7}function two():number{return 8}let first=one;let second=two;';
+    for(const signature of ['left:any,left:any','left:number,right:number','left:string,right:string','left:unknown,right:unknown']) {
+        const body=signature==='left:any,left:any'?'left===left':'left===right';
+        const source=`function same(${signature}):boolean{return ${body}}${declarations}let result=same(first,second);`;
+        const proof=prove(source);assert.equal(proof.eligible,false,source);
+        assert.ok(arcadeToPseudocode({'main.ts':source}).unsupported.some(text=>/Named function values/.test(text)),source);
+    }
+    const valid=`function same(left:any,right:any):boolean{return left===right}${declarations}let result=same(first,second);`;
+    assert.equal(prove(valid).eligible,true);assert.deepEqual(arcadeToPseudocode({'main.ts':valid}).unsupported,[]);
+    const wrongResult=`function same(left:any,right:any):number{return left===right}${declarations}let result=same(first,second);`;
+    assert.equal(prove(wrongResult).eligible,false);
+    for(const extra of ['same=other;', '']) {
+        const opaque=`function same(left:any,right:any):boolean{return left===right}${declarations}${extra}let result=same(first,image.create(1,1));`;
+        assert.equal(prove(opaque).eligible,false,opaque);
+    }
+});

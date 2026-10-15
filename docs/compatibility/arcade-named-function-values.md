@@ -101,3 +101,9 @@ Namespace source symbols supply provenance before flattening; the initial export
 may retain flattened real declarations. This does not reconstruct namespace
 objects or admit arbitrary property references. These are bounded implementation
 controls, not complete-game, hosted-editor or original-compiler qualification.
+
+A strict equality helper needs a unique unchanged declaration, distinct actual
+formal bindings, compatible unrestricted parameter constraints and the exact
+ordered comparison body. Its arguments still need actual producer proof. Only
+those proved calls lower to the existing comparison operation; a helper name or
+an `any` annotation cannot manufacture a declaration label.

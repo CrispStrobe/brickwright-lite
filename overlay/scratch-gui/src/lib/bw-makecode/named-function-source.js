@@ -80,15 +80,26 @@ export function proveNamedFunctionSource(input) {
     const adjacent=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(adjacent);return;}
         if(['FunctionExpression','Class'].includes(node.type))fail('mixed Arrow/class plans require a separate qualified bridge');
         for(const [,value]of children(node))adjacent(value);};adjacent(program);
+    const comparisons=new Map();
     const comparisonCall=node=>{
         const binding=unparen(node.callee)?.type==='Identifier'&&lexical.references.get(unparen(node.callee)),fn=binding?.node;
-        const returned=fn?.body?.[0]?.value;
-        return binding?.kind==='function'&&!binding.written&&fn.params?.length===2&&fn.body.length===1&&
+        const returned=fn?.body?.[0]?.value,scope=fn&&lexical.scopes.get(fn);
+        // The exporter comparison helper accepts values without imposing a
+        // primitive parameter constraint. Distinct actual formal cells, not
+        // repeated identifier spellings, establish the ordered operand binding.
+        const parameter=index=>scope?.names.get(fn.params?.[index]);
+        const unrestricted=name=>{const type=fn.paramTypes?.[name],text=typeof type==='string'?type:type?.text;return !text||text==='any';};
+        const resultConstraint=typeof fn?.returnType==='string'?fn.returnType:fn?.returnType?.text;
+        const valid=binding?.kind==='function'&&!binding.written&&fn.params?.length===2&&new Set(fn.params).size===2&&fn.body.length===1&&
+            (!resultConstraint||['any','boolean'].includes(resultConstraint))&&
+            fn.params.every(unrestricted)&&parameter(0)?.kind==='parameter'&&parameter(1)?.kind==='parameter'&&parameter(0)!==parameter(1)&&
             !fn.typeParameters?.length&&!(fn.parameterDefaults?.length)&&node.args?.length===2&&!node.isNew&&
             !node.typeArguments?.length&&fn.body[0].type==='Return'&&returned?.type==='Binary'&&
-            ['===','!=='].includes(returned.op)&&returned.left?.type==='Identifier'&&returned.left.name===fn.params[0]&&
-            returned.right?.type==='Identifier'&&returned.right.name===fn.params[1]&&
+            ['===','!=='].includes(returned.op)&&returned.left?.type==='Identifier'&&lexical.references.get(returned.left)===parameter(0)&&
+            returned.right?.type==='Identifier'&&lexical.references.get(returned.right)===parameter(1)&&
             program.body.filter(row=>row.name===binding.name||row.decls?.some(decl=>decl.name===binding.name)).length===1;
+        if(valid)comparisons.set(node,{declaration:fn,op:returned.op});
+        return valid;
     };
     for(const row of reads) {
         const scope=lexical.scopes.get(row.node);
@@ -217,6 +228,6 @@ export function proveNamedFunctionSource(input) {
         }else if(statement.type==='ExpressionStatement'&&expr?.type==='Call')moduleValue(expr);
         else fail('module statement requires a separate complete control/producer proof');
     }
-    return {eligible:unsupported.length===0,unsupported,program,lexical,producers,targets,signatures,reads,calls,aliases,writes,declarationKinds,
+    return {eligible:unsupported.length===0,unsupported,program,lexical,producers,targets,signatures,reads,calls,aliases,writes,declarationKinds,comparisons,
         origins:flattened.namedFunctionOrigins||new WeakMap()};
 }

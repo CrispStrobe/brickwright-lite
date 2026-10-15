@@ -103,3 +103,13 @@ test('actual named resources refuse stopped, edited, foreign and fabricated call
         assert.throws(()=>ext._callableValues.hold(renewed),/stopped, foreign or edited/);
     }finally{run.vm.stopAll();run.vm.quit();clearStrayTimers();}
 });
+
+test('actual Any comparison helper preserves two real formal operands without a name-prefix grant',async()=>{
+    const input='function same(left:any,right:any):boolean{return left===right}function one():number{return 7}function two():number{return 7}let first=one;let alias=one;let second=two;let equal=same(first,alias);let distinct=same(first,second);';
+    const imported=arcadeToPseudocode({'main.ts':input});assert.deepEqual(imported.unsupported,[]);const runs=[];
+    try{const run=await runProgram(imported.code,{frames:25});runs.push(run);assert.deepEqual(run.errors,[]);
+        const values=run.vm.runtime.targets.flatMap(target=>Object.values(target.variables));assert.equal(BW.decode(values.find(v=>v.name==='equal').value),true);assert.equal(BW.decode(values.find(v=>v.name==='distinct').value),false);
+        const exported=projectToArcade(JSON.parse(run.vm.toJSON()));assert.deepEqual(exported.unsupported,[]);
+        const back=arcadeToPseudocode(exported.files);assert.deepEqual(back.unsupported,[]);const again=await runProgram(back.code,{frames:25});runs.push(again);assert.deepEqual(again.errors,[]);
+    }finally{for(const run of runs){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+});
