@@ -2123,29 +2123,38 @@ module.exports = makeExt(`// Name: Arcade
       const runtime = this._runtime, target = util?.target || util?.thread?.target;
       const name = String(args.NAME);
       if(this._sdkObjectClasses.matches(name)) {try {const values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));if(!Array.isArray(values))throw new Error('SDK Sprite call requires ordered arguments');return this._sdkObjectClasses.invoke(name,values,util,args.bwObjectConstruction || util?.thread?.bwObjectConstruction);}catch(error){return this._objectError(error);}}
-      let constrained;
-      try {constrained=procedureOwners.get(this).prepare(target).procedures.has(name);}
+      let constraintRecord;
+      try {constraintRecord=procedureOwners.get(this).prepare(target).procedures.get(name);}
       catch(error){return exceptionOwners.get(this).rejectConstraint(args,util,error);}
       const definition = target?.blocks?.getProcedureDefinition(name);
-      if (!definition || !runtime?._pushThread) return 0;
+      if (!definition || !runtime?._pushThread) {
+        if(constraintRecord)return exceptionOwners.get(this).rejectConstraint(args,util,new Error('Procedure parameter constraint: actual procedure execution entry is missing'));
+        return 0;
+      }
+      if(constraintRecord && definition!==constraintRecord.definitionId)
+        return exceptionOwners.get(this).rejectConstraint(args,util,new Error('Procedure parameter constraint: actual procedure definition differs'));
       let values,rawValues;try {const argsText=String(args.ARGS);rawValues=JSON.parse(argsText);values = JSON.parse(argsText, (_key,value)=>
         Scratch.BWValues.encode(Scratch.BWValues.decode(value)));} catch(error) {
-        if(constrained)return exceptionOwners.get(this).rejectConstraint(args,util,new Error('Procedure parameter constraint: malformed argument transport',{cause:error}));
+        if(constraintRecord)return exceptionOwners.get(this).rejectConstraint(args,util,new Error('Procedure parameter constraint: malformed argument transport',{cause:error}));
         return 0;
       }
       if (!Array.isArray(values)) {
-        if(constrained)return exceptionOwners.get(this).rejectConstraint(args,util,new Error('Procedure parameter constraint: ordered argument array required'));
+        if(constraintRecord)return exceptionOwners.get(this).rejectConstraint(args,util,new Error('Procedure parameter constraint: ordered argument array required'));
         return 0;
       }
       try {rawValues.forEach(value=>this._objectHeap.validateTransport(value));}catch(error){
-        if(constrained)return exceptionOwners.get(this).rejectConstraint(args,util,error);
+        if(constraintRecord)return exceptionOwners.get(this).rejectConstraint(args,util,error);
         return this._objectError(error);
       }
       let checkedEntry;
       try {checkedEntry=procedureOwners.get(this).managedEntry(target,name,values,rawValues,util,args);}
       catch(error){return exceptionOwners.get(this).rejectConstraint(args,util,error);}
       if(checkedEntry)values=checkedEntry;
-      const [names, , defaults] = target.blocks.getProcedureParamNamesIdsAndDefaults(name);
+      const signature=target.blocks.getProcedureParamNamesIdsAndDefaults(name);
+      if(constraintRecord && (!Array.isArray(signature) || signature.length!==3 ||
+        [constraintRecord.names,constraintRecord.ids,constraintRecord.defaults].some((expected,index)=>JSON.stringify(signature[index])!==JSON.stringify(expected))))
+        return exceptionOwners.get(this).rejectConstraint(args,util,new Error('Procedure parameter constraint: actual procedure parameter mapping differs'));
+      const [names, , defaults] = signature;
       const thread = runtime._pushThread(definition, target);
       const exceptions=exceptionOwners.get(this);
       let unlink;
