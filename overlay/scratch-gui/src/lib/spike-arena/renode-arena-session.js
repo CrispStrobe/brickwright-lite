@@ -384,6 +384,7 @@ export class RenodeArenaSession {
             this.program = program; this.source = source; this.loaded = false; this.completed = false;
             this.retainedProgram = false;
             const reply = await this.programClient.upload(source === null ? program : source, {python: source !== null});
+            if (this.closed) throw new Error('NuttX session is closed');
             this.retainedProgram = true;
             this.observeProgram(reply); return reply;
         } finally { this.uploading = false; this.schedule(); }

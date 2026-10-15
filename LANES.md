@@ -4059,12 +4059,17 @@ Continuation in the merged G02 session/test envelope, branch
 When a replacement upload awaits its initial STOP response, a concurrent session
 Stop used to let the resumed method replace the source and begin a new upload
 after closure. Check closure after that awaited response, before changing source
-or enqueueing BEGIN. Keep the serialized transport's existing STOP ordering.
+or enqueueing BEGIN. Also check closure after the upload reply returns, before
+retained-program state or observers are published. An already executed upload
+cannot be rolled back by cancelling delivery of its result. Keep the serialized
+transport's existing STOP ordering.
 
 A real session and production codec with an authored delayed STOP response
 reproduce the gap: the normal control passes and cancellation fails on the
-baseline. All 57 session controls pass with the guard. Removing the guard yields
-the exact failed baseline source. This is host boundary evidence, not a guest
+baseline. A second completed-upload return control also reproduces late
+publication after closure while retaining real codec execution. All 59 session
+controls pass with both guards; each guard removal must fail its corresponding
+cancellation control. This is host boundary evidence, not a guest
 result. Source-bound installed own-NuttX cancellation, fresh recovery and every
 enabled exact-head CI check remain mandatory before integration. Firmware,
 Runtime, models, native code, pins, workflows and budgets are unchanged; no

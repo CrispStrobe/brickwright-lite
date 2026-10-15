@@ -542,10 +542,14 @@ final-sampling, generation and late-poll closure across backends remains open.
 A replacement-upload continuation on
 `lane/spike-g02-upload-cancellation-20261015` now checks closure after awaiting
 the previous program's STOP, before replacing current code or enqueueing BEGIN.
+It also checks closure after the upload reply, before retained-program state
+and observers are published. The latter cancellation cannot roll back a program
+that has already executed.
 A real-session/production-codec control with an authored delayed native response
 shows the baseline accepting a replacement after session Stop; the live control
-passes. All 57 session controls pass with the guard, and removing it recreates
-the exact failing source. Fresh installed own-NuttX cancellation/recovery and
+passes. A completed-upload return control separately reproduces late publication
+after closure. All 59 session controls pass with both checks; each removal must
+fail its corresponding cancellation control. Fresh installed own-NuttX cancellation/recovery and
 all enabled exact-head CI checks remain pending; this finite host result does
 not close G02 or qualify guest execution. Existing transport ordering and
 firmware/Runtime/model/native pins and deadlines remain unchanged.
