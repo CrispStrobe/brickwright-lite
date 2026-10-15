@@ -1,3 +1,4 @@
+import {proveArrayMapValues} from './lower-array-map-values.js';
 import {selectNamedFunctionSourceProof} from './named-function-source-selection.js';
 import {lowerNamedFunctionValues} from './lower-named-function-values.js';
 import {selectClassCallableSourceProof} from './class-callable-source-gate.js';
@@ -3017,7 +3018,7 @@ const lowerArrayCallbacks = (program, source) => {
     const lowerStatement = statement => {
         const call = statement.type === 'ExpressionStatement' && statement.expr;
         // A statement-level map discards its result array, so it visits like forEach.
-        if (call?.type !== 'Call' || call.callee?.type !== 'Member' || !['forEach', 'map'].includes(call.callee.name) || call.args.length !== 1) return null;
+        if (call?.type !== 'Call' || call.callee?.type !== 'Member' || call.callee.name !== 'forEach' || call.args.length !== 1) return null;
         const fn = call.args[0];
         if (fn?.type !== 'FunctionExpression' || !fn.params.length || fn.params.length > 2) return null;
         const statements = callbackStatements(fn);
@@ -5049,7 +5050,10 @@ export function arcadeToPseudocode (files, opts = {}) {
     const fontSource = lowerLiveFontMetrics(fontValues.program);
     const queryReferences = inferImageReferences(fontSource,tileImagePath,tileImageOf,
         node => !!assetKindLookup && node?.type==='Template' && ['assets.image','assets.tile'].includes(node.tag));
+    const arrayMaps=proveArrayMapValues(fontSource,source);
+    projectInputDiagnostics.push(...arrayMaps.unsupported);
     const stagedSource = lowerPxtStagedValues(fontSource, {
+        lowerArrayMap:arrayMaps.lower,
         isStaticResource: node => !!decodeTilemap(node,tileImageOf,tileImagePath),
         isArrayQuery: node => node.callee?.type==='Member' &&
             ['indexOf','removeElement'].includes(node.callee.name) && queryReferences.arrays.has(node.callee.object)
