@@ -62,7 +62,7 @@ const codePaint=async(from,to)=>{
  const next=code.replace(pattern,`$1${to}$3`);await editor().click();await page.keyboard.press('Control+a');await page.keyboard.insertText(next);assert.equal(await readCode(),next);await apply();report.journeys.push(`visible Code Number edit ${from} to ${to}`);
 };
 const artwork=()=>page.evaluate(()=>{const vm=window.__brickwrightStore.getState().scratchGui.vm,targets=vm.runtime.targets.filter(t=>t.isOriginal);const owner=targets.find(t=>Object.values(t.blocks._blocks).some(b=>b.opcode==='arcade_frameImage')),frame=owner&&Object.values(owner.blocks._blocks).find(b=>b.opcode==='arcade_frameImage'),leaf=owner?.blocks.getBlock(frame?.inputs.TEMPLATE?.block),name=leaf?.fields.TEXT?.value,resource=targets.find(t=>t.getName()===name),costume=resource?.getCostumes()[resource.currentCostume];if(!resource||!costume)throw Error('No actual current literal resource');return {owner:owner.id,target:resource.id,name,assetId:costume.assetId,format:costume.dataFormat,svg:costume.asset?.decodeText()};});
-const chooseTarget=async id=>{const main=page.getByTestId('bw-image-target');if(await main.isVisible())await main.selectOption(id);else{const toggle=page.getByTestId('bw-pixel-more-toggle');if(await toggle.getAttribute('aria-expanded')!=='true')await toggle.click();await page.getByTestId('bw-image-target-pixel').selectOption(id);}};
+const chooseTarget=async id=>{await page.locator('[data-testid="bw-image-target"]:visible, [data-testid="bw-pixel-more-toggle"]:visible').first().waitFor({state:'visible'});const main=page.getByTestId('bw-image-target');if(await main.isVisible())await main.selectOption(id);else{const toggle=page.getByTestId('bw-pixel-more-toggle');if(await toggle.getAttribute('aria-expanded')!=='true')await toggle.click();await page.getByTestId('bw-image-target-pixel').selectOption(id);}};
 const paint=async()=>{
  const before=await artwork();await page.getByRole('tab',{name:/Costumes|Backdrops/,exact:true}).click();await chooseTarget(before.target);
  if(!(await page.getByTestId('bw-pixel-canvas').isVisible()))await page.getByTestId('bw-pixel-toggle').click();
@@ -97,7 +97,7 @@ const journey=async()=>{
 const boundedCleanup=async(operation,milliseconds)=>{let timer;try{return await Promise.race([operation,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Owned Image GUI cleanup deadline exceeded')),milliseconds);})]);}finally{clearTimeout(timer);}};
 try{
  await Promise.race([journey(),new Promise((_,reject)=>{deadlineTimer=setTimeout(()=>{deadlineExpired=true;reject(new Error('Owned Image GUI journey exceeded its 180-second deadline'));},180000);})]);
-}catch(error){report.status='failed';report.failure=String(error.stack||error);if(page){report.body=await page.locator('body').innerText({timeout:3000}).catch(e=>String(e));await page.screenshot({path:path.join(out,'failure.png'),timeout:5000}).catch(()=>{});}throw error;
+}catch(error){report.status='failed';report.failure=String(error.stack||error);if(page){report.body=await boundedCleanup(page.evaluate(()=>document.body.innerText),3000).catch(e=>String(e));await page.screenshot({path:path.join(out,'failure.png'),timeout:5000}).catch(()=>{});}throw error;
 }finally{
  clearTimeout(deadlineTimer);
  try{if(browser)await boundedCleanup(browser.close(),5000);}catch(error){report.cleanupFailure=String(error);report.status='failed';process.exitCode=1;}
