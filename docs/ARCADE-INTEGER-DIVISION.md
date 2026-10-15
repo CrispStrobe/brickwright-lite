@@ -11,7 +11,7 @@ Downstream Number formatting and Font obligations require actual producers;
 a desired return annotation cannot close them.
 
 Use the selected runtime acquired by
-[`scripts/sync-makecode-runtime.mjs`](../../scripts/sync-makecode-runtime.mjs),
+[`scripts/sync-makecode-runtime.mjs`](../scripts/sync-makecode-runtime.mjs),
 its actual `sim/pxtsim.js` integer-division function and exact input identity.
 For primitive Numbers the operation is `((a | 0) / (b | 0)) | 0`.
 The generated internal HUD helper omits operand conversion; it cannot establish
