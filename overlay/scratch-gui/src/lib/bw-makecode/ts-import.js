@@ -365,6 +365,7 @@ class Parser {
         if (this.at('export')) {
             this.next();
             const statement = this.parseStatement();
+            if(statement?.type==='ThrowStatement')throw new Error('MakeCode TS: throw statement cannot be exported');
             return statement ? {...statement, exported: true} : statement;
         }
         if (this.at('let') || this.at('const') || this.at('var')) return this.parseDeclaration();
@@ -422,8 +423,8 @@ class Parser {
     }
 
     parseThrow () {
-        const token=this.expect('throw'),start=this.pos;
-        if(this.peek().startLine!==token.line)
+        const token=this.expect('throw'),start=this.pos,lineOf=row=>row.startLine??row.line;
+        if(lineOf(this.peek())!==token.line)
             throw new Error(`MakeCode TS: line break is not allowed after throw on line ${token.line}`);
         if(this.at('eof') || this.at('punct',';') || this.at('punct','}'))
             throw new Error(`MakeCode TS: throw requires an expression on line ${token.line}`);
@@ -435,7 +436,7 @@ class Parser {
         if(unknown(argument) || this.toks.slice(start,this.pos).some(row=>row.unknownBefore||row.invalidLiteral) || this.peek().unknownBefore)
             throw new Error(`MakeCode TS: throw requires a complete expression on line ${token.line}`);
         if(!this.eat('punct',';') && !this.at('eof') && !this.at('punct','}') &&
-            this.peek().startLine<=this.toks[this.pos-1].line)
+            lineOf(this.peek())<=this.toks[this.pos-1].line)
             throw new Error(`MakeCode TS: unsupported trailing throw expression on line ${this.peek().line}`);
         return {type:'ThrowStatement',argument};
     }
