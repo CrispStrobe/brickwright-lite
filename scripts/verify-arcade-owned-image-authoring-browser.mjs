@@ -29,7 +29,7 @@ const qualifiedExport=JSON.parse(await fs.readFile(path.join(root,'test/fixtures
 const sourceFiles={'main.ts':literalSource,'pxt.json':JSON.stringify({name:'arcade-image-literal-proof',dependencies:{device:'*'},files:['main.ts']})};
 const out=path.resolve(process.env.BW_IMAGE_GUI_REPORT_DIR||'test-results/arcade-owned-image-authoring');await fs.mkdir(out,{recursive:true});
 const sourceFile=path.join(out,'owned-image-source.mkcd');await fs.writeFile(sourceFile,makeCodeProjectFile(sourceFiles,{target:'arcade',name:'owned-image-source'}));
-const report={status:'running',source:inspected.sourceSha,sourceTool:inspected.tool,receipt,journeys:[],samples:[],pageErrors:[],blockErrors:[],bundleObservations:[],boundary:'Visible existing literal-resource Pixel/Code/Blocks edits and portable current export. No new original execution, local build, runtime state mutation, class palette construction or arbitrary PNG qualification. Preparation alone is not GUI evidence.'};
+const report={status:'running',source:inspected.sourceSha,sourceTool:inspected.tool,receipt,journeys:[],samples:[],pageErrors:[],blockErrors:[],bundleObservations:[],boundary:'Visible literal-resource Pixel/Code/Blocks edits, native Game Console/HUD patch observations and portable current export. No exact HUD glyph oracle or offscreen literal-screen pixel claim. No new original execution, local build, runtime state mutation, class palette construction or arbitrary PNG qualification. Preparation alone is not GUI evidence.'};
 let browser,page;const responses=[];
 const editor=()=>page.getByTestId('bw-code-editor').locator('.cm-content');
 const readCode=()=>editor().evaluate(element=>element.cmTile.root.view.state.doc.toString());
@@ -49,11 +49,49 @@ const loaded=async()=>{await page.getByText('Blocks loaded.',{exact:true}).waitF
 const apply=async()=>{await page.getByRole('button',{name:/To blocks/}).first().click();await loaded();};
 const open=async file=>{await codeTab();await openCodeActions(page);await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles(file);await page.getByText(/Imported the Arcade game/).first().waitFor({timeout:60000});assert.doesNotMatch(await page.getByTestId('bw-code-status').innerText(),/unsupported|not translated|could not|partial/i);await apply();};
 const expected=(changed,original)=>({imageLiteralCalls:3,imageLiteralChanged:changed,imageLiteralOriginal:original,imageLiteralLater:original,imageLiteralOutside:0,imageLiteralAliasSame:true,imageLiteralFresh:true,imageLiteralLaterFresh:true,imageLiteralScore:changed+2*original+10});
+// These are visible native HUD observations, not an independent glyph oracle.
+// The literal Images are offscreen; only their resulting score is drawn here.
+const consolePatches=new Map();let previousConsole=null,consoleButtonsObserved=false;
+const showConsole=async()=>{
+ await page.getByTitle('Game Console',{exact:true}).click();await page.getByTestId('bw-arcade-device').waitFor({state:'visible'});
+ await page.getByTestId('bw-controller-canvas').waitFor({state:'hidden'});
+ const canvas=page.getByTestId('bw-arcade-device').locator('canvas');assert.equal(await canvas.count(),1);await canvas.scrollIntoViewIfNeeded();await canvas.waitFor({state:'visible'});
+ for(const button of ['up','down','left','right','a','b','start','select'])await page.getByTestId(`bw-arcade-${button}`).waitFor({state:'visible'});
+};
+const observeConsole=async(label,score)=>{
+ assert.ok(Number.isInteger(score)&&score>=10&&score<100,'This fixture has a two-digit, time-independent score HUD');
+ const known=consolePatches.get(score)||null,previous=previousConsole?.score!==score?previousConsole?.patch||null:null;
+ await page.waitForFunction(({palette,known,previous})=>{
+  const canvas=document.querySelector('[data-testid="bw-arcade-device"] canvas');if(!canvas||canvas.width!==160||canvas.height!==128)return false;
+  const ctx=canvas.getContext('2d'),rgb=index=>palette[index].slice(1).match(/../g).map(v=>parseInt(v,16)),same=(pixel,color)=>pixel[3]===255&&color.every((v,i)=>pixel[i]===v);
+  if(!same(ctx.getImageData(80,0,1,1).data,[2,6,23])||!same(ctx.getImageData(80,127,1,1).data,[2,6,23]))return false;
+  // Selected HUD drawScore: font8 two digits, white top row and pink border/ink.
+  const top=ctx.getImageData(147,4,13,1).data;for(let x=0;x<13;x++)if(!same(top.slice(x*4,x*4+4),rgb(1)))return false;
+  if(!same(ctx.getImageData(146,14,1,1).data,rgb(3)))return false;
+  const patch=Array.from(ctx.getImageData(148,5,12,8).data);let ink=0;for(let i=0;i<patch.length;i+=4){const pixel=patch.slice(i,i+4);if(same(pixel,rgb(3)))ink++;else if(!same(pixel,rgb(1)))return false;}if(!ink)return false;
+  const text=patch.join(',');return (!known||text===known)&&(!previous||text!==previous);
+ },{palette:ARCADE_PALETTE,known,previous},{timeout:15000});
+ const observed=await page.getByTestId('bw-arcade-device').locator('canvas').evaluate(canvas=>{const ctx=canvas.getContext('2d');return{width:canvas.width,height:canvas.height,patch:Array.from(ctx.getImageData(148,5,12,8).data),rgba:Array.from(ctx.getImageData(0,0,160,128).data)};});
+ const patch=observed.patch.join(',');if(known)assert.equal(patch,known,'Unchanged score HUD survives pane/load transitions');if(previous)assert.notEqual(patch,previous,'Changed score must repaint the actual visible HUD');
+ consolePatches.set(score,patch);previousConsole={score,patch};(report.consoleFrames||=[]).push({label,score,width:observed.width,height:observed.height,hudPatchSHA256:sha(Buffer.from(observed.patch)),displaySHA256:sha(Buffer.from(observed.rgba)),boundary:'Actual native HUD geometry, colors and stable/changed patch; no exact glyph or offscreen literal-pixel claim'});
+};
+const consoleRoundtrip=async score=>{
+ await page.getByTitle('Controller',{exact:true}).click();await page.getByTestId('bw-controller-canvas').waitFor({state:'visible'});await page.getByTestId('bw-arcade-device').waitFor({state:'hidden'});
+ await showConsole();await observeConsole('Controller switch away/back',score);report.journeys.push('visible Controller pane replaces console, Game Console restores unchanged HUD');
+};
 const play=async(label,wanted)=>{
+ await showConsole();
  await page.locator('[class*="green-flag_green-flag"]:visible').first().click();
  await page.waitForFunction(wanted=>{const values=Object.fromEntries(window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.filter(t=>t.isOriginal).flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^(?:Game_)+/,''),v.value]));return Object.entries(wanted).every(([k,v])=>values[k]===v);},wanted,{timeout:15000});
  const sample=await page.evaluate(()=>({variables:Object.fromEntries(window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.filter(t=>t.isOriginal).flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^(?:Game_)+/,''),v.value])),errors:window.__bwOwnedImageErrors}));
- assert.deepEqual(sample.errors,[]);report.samples.push({label,wanted,sample});await page.getByTitle('Stop',{exact:true}).first().click();
+ assert.deepEqual(sample.errors,[]);report.samples.push({label,wanted,sample});await observeConsole(label,wanted.imageLiteralScore);
+ if(!consoleButtonsObserved){
+  const button=page.getByTestId('bw-arcade-a');await button.scrollIntoViewIfNeeded();await button.hover();await page.mouse.down();
+  try{await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState?.buttons?.a===true,{},{timeout:15000});}finally{await page.mouse.up();}
+  await page.waitForFunction(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.bwArcadeDeviceState?.buttons?.a===false,{},{timeout:15000});
+  report.consoleInput={control:'actual A pointer down/up',pressed:true,released:true,boundary:'Production input state only; this fixture has no A game handler'};consoleButtonsObserved=true;
+ }
+ await page.getByTitle('Stop',{exact:true}).first().click();
 };
 const codePaint=async(from,to)=>{
  await codeTab();await page.getByRole('button',{name:/From blocks/}).first().click();await page.getByText('Read the current project into all languages.',{exact:false}).first().waitFor();
@@ -85,13 +123,13 @@ const blockPaint=async(from,to)=>{
 let deadlineTimer,deadlineExpired=false;
 const journey=async()=>{
  browser=await chromium.launch(process.env.BW_BROWSER?{executablePath:process.env.BW_BROWSER,timeout:15000}:{timeout:15000});
- page=await fresh();await codeTab();await page.getByTestId('bw-device-select').selectOption('arcade');await loaded();await open(sourceFile);await play('qualified-source',expected(7,1));
+ page=await fresh();await codeTab();await page.getByTestId('bw-device-select').selectOption('arcade');await loaded();await open(sourceFile);await play('qualified-source',expected(7,1));await consoleRoundtrip(19);
  await codePaint(7,6);await play('Code-edit',expected(6,1));await paint();await play('Pixel-edit',expected(6,3));
  await blockPaint(6,5);await play('Blocks-edit',expected(5,3));await blockPaint(5,7);await play('restored-qualified-current-state',expected(7,3));
  await codeTab();await page.getByRole('button',{name:/From blocks/}).first().click();await page.getByText('Read the current project into all languages.',{exact:false}).first().waitFor();await openCodeActions(page);
  const[download]=await Promise.all([page.waitForEvent('download'),page.getByTestId('bw-makecode-arcade-export').click()]);const exportedPath=path.join(out,'owned-image-current.mkcd');await download.saveAs(exportedPath);const exported=await fs.readFile(exportedPath),returned=await readMakeCodeProjectText(exported.toString('utf8'),'mkcd');assert.deepEqual(returned.files,qualifiedExport,'Actual visible authoring must reproduce the exact already qualified current export');report.export={bytes:exported.length,sha256:sha(exported),files:returned.files};
  await page.getByText('File',{exact:true}).first().click();const[saved]=await Promise.all([page.waitForEvent('download'),page.getByText('Save to your computer',{exact:true}).click()]);const sb3=path.join(out,'owned-image.sb3');await saved.saveAs(sb3);const zip=await JSZip.loadAsync(await fs.readFile(sb3));assert.ok(zip.file('project.json'));assert.ok(zip.file('brickwright/artwork/v1.json'));report.sb3={sha256:sha(await fs.readFile(sb3))};
- await page.context().close();page=await fresh();await page.getByText('File',{exact:true}).first().click();const chooser=page.waitForEvent('filechooser');await page.getByText('Load from your computer',{exact:true}).click();await(await chooser).setFiles(sb3);await page.waitForFunction(()=>{const vm=window.__brickwrightStore.getState().scratchGui.vm;return typeof vm.runtime._primitives.arcade_declareCallable==='function'&&vm.runtime.targets.some(t=>Object.values(t.blocks._blocks).some(b=>b.opcode==='arcade_frameImage'))&&vm.runtime.targets.some(t=>Object.values(t.variables).some(v=>v.name==='imageLiteralCalls'));});await play('fresh-SB3',expected(7,3));const reopened=await artwork();assert.deepEqual(Array.from(svgToPixels(reopened.svg).pixels),[3,0,0,4]);await open(exportedPath);await play('current-export-reimport',expected(7,3));
+ await page.context().close();page=await fresh();await page.getByText('File',{exact:true}).first().click();const chooser=page.waitForEvent('filechooser');await page.getByText('Load from your computer',{exact:true}).click();await(await chooser).setFiles(sb3);await page.waitForFunction(()=>{const vm=window.__brickwrightStore.getState().scratchGui.vm;return typeof vm.runtime._primitives.arcade_declareCallable==='function'&&vm.runtime.targets.some(t=>Object.values(t.blocks._blocks).some(b=>b.opcode==='arcade_frameImage'))&&vm.runtime.targets.some(t=>Object.values(t.variables).some(v=>v.name==='imageLiteralCalls'));});await play('fresh-SB3',expected(7,3));await consoleRoundtrip(23);const reopened=await artwork();assert.deepEqual(Array.from(svgToPixels(reopened.svg).pixels),[3,0,0,4]);await open(exportedPath);await play('current-export-reimport',expected(7,3));
  await Promise.all(responses);assert.deepEqual(report.bundleFailures||[],[]);assert.ok(report.bundleObservations.length);assert.deepEqual(report.pageErrors,[]);await page.screenshot({path:path.join(out,'owned-image-final.png')});report.status='passed';
 };
 const boundedCleanup=async(operation,milliseconds)=>{let timer;try{return await Promise.race([operation,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Owned Image GUI cleanup deadline exceeded')),milliseconds);})]);}finally{clearTimeout(timer);}};
