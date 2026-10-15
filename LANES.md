@@ -1,3 +1,27 @@
+## A10: micro:bit V2 serial consumer adoption — 2026-10-15
+
+CLAIMED — Codex, branch `lane/a10-v2-serial-consumer-20261015`, base `015e1bdc7`.
+After the owning LabWired UARTE source qualifies and lands, adopt its one-time
+qualified deterministic engine release and the resulting exact bw-board package.
+Remove the V2 serial withholding in `scripts/lib/makecode-run.mjs` and the
+Code-tab status text only with that artifact. Require exact greeting/counter
+serial from real compiled MakeCode firmware, preserving display, guest-time,
+fault, firmware identity and board-model assertions. Keep A11's export changes.
+
+Envelope: this ledger and `docs/OPEN-TASKS-2026-09-29.md`;
+`scripts/sync-labwired-wasm.mjs` PIN/TAG/EXPECT and
+`.github/workflows/target-performance.yml` matching engine identity;
+`vendor-pins.json`, package/lock specifications and existing generated
+provenance/census/matrix/report/adoption-test surfaces changed by canonical
+bw-board pin writers; `scripts/lib/makecode-run.mjs`,
+`test/makecode-cli-run.test.mjs`,
+`overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
+and its tracked twin; `scripts/verify-makecode.mjs` serial assertions only.
+No copied engine, invented source/hash, SDK rebuild, unrelated pin movement,
+physical-accuracy claim or optional motion run. Preserve all existing failures;
+all enabled final-head checks and actual released-engine/consumer guest results
+remain required before product integration.
+
 ## A11: Code-tab MakeCode export uses the project target — 2026-10-15
 
 CLAIMED — Codex, isolated branch `lane/a11-project-target-export-20261015`,
