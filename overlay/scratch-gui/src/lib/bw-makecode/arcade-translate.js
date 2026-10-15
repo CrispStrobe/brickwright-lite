@@ -1,3 +1,4 @@
+import {prepareProcedureConstraintSource} from './procedure-constraint-source.js';
 import {prepareThrowSource} from './throw-source-gate.js';
 import {proveArrayMapValues} from './lower-array-map-values.js';
 import {selectNamedFunctionSourceProof} from './named-function-source-selection.js';
@@ -338,6 +339,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.referenceArrayProgram=containsAst(node,value=>value.type==='Array' || references.arrays.has(value));
         this.fontValueProgram=containsAst(node,value=>!!value.bwFontIntrinsic);
         this.throwValueProgram=node.bwProvedThrowProgram===true;
+        this.procedureConstraintSource=node.bwProcedureConstraintSource || null;
         this.provenArrayReferences=references.provenArrays;
         this.inferredSpriteParameters = references.parameters;
         this.primitiveReferences=references.primitives;
@@ -3847,6 +3849,7 @@ const appendHandleProcedures = (translator, functions, parameterHandles, out, lo
         const signature = fn.params?.length ?
             `${fn.name} ${fn.params.map(param => `(${translator.varName(param)})`).join(' ')}` : fn.name;
         const lines = [`DEFINE ${signature}:`];
+        lines.push(...(translator.procedureConstraintSource?.prefix(fn,fn.name+(fn.params||[]).map(()=> ' %s').join(''),name=>translator.varName(name)) || []));
         const collectLocals = body => {
             for (const st of body || []) {
                 if (st.type === 'Declaration') for (const decl of st.decls) translator.localVars.add(decl.name);
@@ -3925,7 +3928,7 @@ const translateCreationEvents = (ast, assets, assetKindLookup = null, scrollerVe
             t.path(d.init.callee) === 'game.askForString') t.stringVars.add(d.name);
     }
     t.functions.push(...ast.body.filter(st => st.type === 'FunctionDeclaration')
-        .map(fn => ({name: fn.name, params: fn.params, body: fn.body})));
+        .map(fn => ({name: fn.name, params: fn.params, body: fn.body,...(t.procedureConstraintSource?{source:fn.source,paramTypes:fn.paramTypes}:{})})));
     const parameterHandles = inferProcedureHandleParameters(ast, t.functions, new Set(), node => t.path(node));
     const imageArrays = new Map();
     let nextCostume = 1;
@@ -4273,7 +4276,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
             }
         }
     } while (aliasesChanged);
-    t.functions.push(...functions.map(fn => ({name: fn.name, params: fn.params, body: fn.body,...(fn.bwCallableDefinition?{bwCallableDefinition:fn.bwCallableDefinition}:{})})));
+    t.functions.push(...functions.map(fn => ({name: fn.name, params: fn.params, body: fn.body,...(t.procedureConstraintSource?{source:fn.source,paramTypes:fn.paramTypes}:{}),...(fn.bwCallableDefinition?{bwCallableDefinition:fn.bwCallableDefinition}:{})})));
     const parameterHandles = inferProcedureHandleParameters(ast, functions, t.handleVars, node => t.path(node));
     t.handleTemplates = new Map();
     t.handleImageArrays = new Map();
@@ -5049,7 +5052,11 @@ export function arcadeToPseudocode (files, opts = {}) {
     const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && assetKindLookup && ['assets.image','assets.tile'].includes(node.tag) ? lookupAssetTemplate(assetKindLookup,node.tag,node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ?
         assets[tileImagePath(node)] || assets[node.name] || (BUILTIN_IMAGES[tileImagePath(node)] ? decodeMkcdImage(BUILTIN_IMAGES[tileImagePath(node)]) : null) :
         node?.type==='Identifier' ? assets[node.name] : null;
-    const throwSource=prepareThrowSource(namespaceBindings.program || parsed);
+    const ordinaryProgram=namespaceBindings.program || parsed;
+    const procedureConstraints=opts.procedureConstraintsPrototype===true?prepareProcedureConstraintSource(ordinaryProgram):null;
+    if(procedureConstraints)projectInputDiagnostics.push(...procedureConstraints.diagnostics);
+    const protocolProgram=procedureConstraints?{...ordinaryProgram,bwProcedureConstraintSource:procedureConstraints}:ordinaryProgram;
+    const throwSource=prepareThrowSource(protocolProgram);
     projectInputDiagnostics.push(...throwSource.unsupported);
     if(throwSource.present&&opts.throwPrototype!==true)projectInputDiagnostics.push('Throw source requires its qualified canonical protocol; prototype admission is not enabled');
     const throwProgram=throwSource.present&&!throwSource.unsupported.length&&opts.throwPrototype===true?{...throwSource.program,bwProvedThrowProgram:true}:throwSource.program;
@@ -5273,7 +5280,7 @@ export function arcadeToPseudocode (files, opts = {}) {
                 registerSprite(st.expr.left.name, st.expr.right);
             }
             if (st.type === 'Enum') t.statement(st, 0, []);
-            if (st.type === 'FunctionDeclaration') t.functions.push({name: st.name, params: st.params, body: st.body});
+            if (st.type === 'FunctionDeclaration') t.functions.push({name: st.name, params: st.params, body: st.body,...(t.procedureConstraintSource?{source:st.source,paramTypes:st.paramTypes}:{})});
         }
     };
     walkForSprites(ast.body);
@@ -5688,6 +5695,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         const signature = fn.params && fn.params.length ?
             `${fn.name} ${fn.params.map(p => `(${t.varName(p)})`).join(' ')}` : fn.name;
         const lines = [`DEFINE ${signature}:`];
+        lines.push(...(procedureConstraints?.prefix(fn,fn.name+(fn.params||[]).map(()=> ' %s').join(''),name=>t.varName(name)) || []));
         const collectLocals = body => {
             for (const st of body || []) {
                 if (st.type === 'Declaration') for (const decl of st.decls) t.localVars.add(decl.name);

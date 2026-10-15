@@ -1,4 +1,6 @@
 import {analyseSourceValueProducers} from './source-value-producers.js';
+import {callableSourceGate} from './callable-source-gate.js';
+import {analyseCallableFlow} from './callable-flow.js';
 const TYPES=Object.freeze({number:'Number',string:'String',boolean:'Boolean',any:'Any'});
 const fail=message=>{throw Error('Procedure parameter constraint: '+message);};
 function constraints(fn,explicit=false) {
@@ -52,8 +54,12 @@ export function validateProcedureConstraintSource(program,{onlyFunctions=null}={
   for(const writer of writes) {
    const lhs=writer.type==='Update'?writer.argument:writer.left;
    if(lhs?.type!=='Identifier')continue;const name=formalBindings.get(graph.bindingOf(lhs)),constraint=entry.selected.find(c=>c.name===name);if(!constraint)continue;
-   if(writer.type==='Update'||writer.op!=='='){if(constraint.type!=='Number'&&constraint.type!=='Any')diagnostics.push(`Procedure parameter constraint: ${fn.name}.${name} compound writer differs`);}
-   else requireTypes(constraintTypes(writer.right),constraint.type,`${fn.name}.${name} writer`);
+   if(writer.type==='Update'||writer.op!=='='){
+    if(constraint.type==='Any')continue;
+    const numeric=constraint.type==='Number'&&(writer.type==='Update'?['++','--'].includes(writer.op):['+=','-=','*=','/=','%=','|=','&=','^=','<<=','>>=','>>>='].includes(writer.op));
+    if(!numeric)diagnostics.push(`Procedure parameter constraint: ${fn.name}.${name} compound writer differs`);
+    else if(writer.type!=='Update')requireTypes(constraintTypes(writer.right),'Number',`${fn.name}.${name} compound writer`);
+   }else requireTypes(constraintTypes(writer.right),constraint.type,`${fn.name}.${name} writer`);
   }
  }
  return Object.freeze([...new Set(diagnostics)]);
@@ -63,16 +69,25 @@ export function validateProcedureConstraintSource(program,{onlyFunctions=null}={
 // lowering creates additional functions. The catalogue retains constraints only.
 export function prepareProcedureConstraintSource(program) {
  const graph=analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true});
- const selected=new Map(),duplicates=new Set();
- for(const fn of program.body||[])if(fn.type==='FunctionDeclaration'&&constraints(fn).length){
+ // A complete existing callable certificate owns its factory ABI. Primitive
+ // annotations on that factory do not opt it into this ordinary protocol.
+ const callable=callableSourceGate(program),independent=new Set();
+ if(callable.eligible){const flow=analyseCallableFlow(program);for(const scope of flow.lexical.functions)if(flow.profiles.get(scope.node)?.result?.kind==='callable')independent.add(scope.node);}
+ const selected=new Map(),duplicates=new Set(),excluded=[];
+ for(const fn of program.body||[])if(fn.type==='FunctionDeclaration'){
+  if(independent.has(fn))continue;
+  const primitive=(fn.params||[]).some(name=>TYPES[fn.paramTypes?.[name]?.text]);
+  if(!constraints(fn).length){if(primitive)excluded.push('Procedure parameter constraint: '+fn.name+' optional/default/rest/generic or mixed reference formals are outside the ordinary primitive protocol');continue;}
+  if(new Set(fn.params).size!==fn.params.length){excluded.push('Procedure parameter constraint: '+fn.name+' requires unique actual formal bindings');continue;}
   if(selected.has(fn.name))duplicates.add(fn.name);
   selected.set(fn.name,{fn,params:[...fn.params],types:fn.params.map(name=>fn.paramTypes?.[name]?.text)});
  }
  const uses=[];const visit=(node,parent=null,key=null)=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(child=>visit(child,parent,key));return;}if(node.type==='Identifier')uses.push({node,parent,key});for(const [name,value]of Object.entries(node))if(value&&typeof value==='object')visit(value,node,name);};visit(program);
- for(const {node,parent,key}of uses){const entry=selected.get(node.name);if(entry&&graph.immutableFunctionAt(node)===entry.fn&&!(parent?.type==='Call'&&key==='callee'))selected.delete(node.name);}
- const diagnostics=[...validateProcedureConstraintSource(program,{onlyFunctions:new Set(selected.keys())})];
+ for(const {node,parent,key}of uses){const entry=selected.get(node.name);if(entry&&graph.immutableFunctionAt(node)===entry.fn&&!(parent?.type==='Call'&&key==='callee'&&!parent.isNew&&!parent.typeArguments?.length)){selected.delete(node.name);excluded.push('Procedure parameter constraint: '+node.name+' escaped or nonordinary call remains outside this protocol');}}
+ for(const [name,entry]of selected)if(graph.immutableFunctionAt(entry.fn)!==entry.fn){selected.delete(name);excluded.push('Procedure parameter constraint: '+name+' requires a unique unchanged actual ordinary declaration');}
+ const diagnostics=[...excluded,...validateProcedureConstraintSource(program,{onlyFunctions:new Set(selected.keys())})];
  for(const name of duplicates)diagnostics.push('Procedure parameter constraint: duplicate ordinary declaration '+name);
- return Object.freeze({diagnostics:Object.freeze([...diagnostics]),prefix(fn,procedure,parameterName=name=>name){
+ return Object.freeze({independentRoutes:Object.freeze([...independent].map(fn=>Object.freeze({name:fn.name,protocol:'existing-numeric-callable'}))),diagnostics:Object.freeze([...diagnostics]),prefix(fn,procedure,parameterName=name=>name){
   const entry=selected.get(fn.source||fn.name);if(!entry||duplicates.has(fn.source||fn.name))return [];
   if(JSON.stringify(fn.params)!==JSON.stringify(entry.params)||JSON.stringify(fn.params.map(name=>fn.paramTypes?.[name]?.text))!==JSON.stringify(entry.types))fail('lowered ordinary formal metadata differs from its actual source declaration');
   return procedureConstraintPrefix(fn,procedure,parameterName);
