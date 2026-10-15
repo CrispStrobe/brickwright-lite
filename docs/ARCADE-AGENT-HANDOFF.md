@@ -30,11 +30,12 @@ Freethrow's 26 root-only reimport refusals disappear with its actual declared
 profile. Development optional-Any support removes one of Lyla's six source
 refusals; five remain. Never prune its unused helper or restore original source.
 
-The development composition `196e61cc7` passes 151 affected controls against the
-complete corrected canonical compiler, with 784 unchanged file guards and 174
+The development composition `049bf6b5a` passes 155 affected controls against the
+complete corrected canonical compiler, with 785 unchanged file guards and 174
 matching VM overlays. This qualifies those native/portable controls only. A real
 selected-runtime comparison exposed an omission-versus-explicit-Undefined default
-argument mismatch; the default source feature is held pending its proper fix.
+argument mismatch. The corrected omission flags now preserve that distinction;
+a genuinely new edited export matches all six selected-runtime observations.
 See [the actual mismatch](#actual-default-argument-mismatch-and-visible-display-boundary).
 No newer whole-profile measurement or whole-game promotion follows.
 
@@ -3549,3 +3550,23 @@ preserves product and dependency bytes while fixing TODO accounting and the Imag
 journey's editor/target-selector waits. Its new hosted results remain pending.
 The [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#visible-console-and-default-argument-acceptance-follow-up--2026-10-15)
 records the untested real Game Console display workflow and omission controls.
+
+
+### Omission-only defaults corrected after the actual failure
+
+Successor `967668298` retains one editable default per formal and carries actual
+omission through hygienic visible Number1/0 formals and exact call operands.
+Supplied Undefined remains supplied. Original argument effects are preserved;
+all generated Number obligations are checked from actual producers. The
+integrated `049bf6b5a` passes 155 controls with 785 unchanged file guards and
+174 matching installed VM overlays. Independent review adds 22 controls and
+11 binding/default/alias/hygiene probes; the default conversion differential
+retains 406 exact prior outputs.
+
+One genuinely new edited omission-flag export then compiles and runs once in the
+selected runtime: all six observations match 60/NumberNaN/15/CCC/3/1, with 783
+source/runtime guards unchanged. The unchanged original source is bound to its
+retained successful compilation and actual observations, without replay. Earlier
+compiler rejections and the real Undefined mismatch remain intact. This closes
+the bounded numeric-default mismatch, not typed defaults, complete corpus games,
+visible default-authoring controls or production dependency adoption.

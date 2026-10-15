@@ -4836,7 +4836,11 @@ does not prove a renderer failure. Pixel-editor pixels and game-screen pixels
 need separate observations; runtime flags and variable checks cannot replace them.
 
 Default-argument GUI work must expose omission separately from explicit Undefined.
-A real selected MakeCode run found different behavior for those two calls, while
-the current development conditional lowering collapses them. Keep that source
-compatibility gap open. Do not present a generated conditional body or its
-successful export as proof that the original default signature is equivalent.
+A real selected MakeCode run found different behavior for those two calls. The
+corrected development lowering now preserves omission using explicit visible
+Number flags and a single editable default body. Native portable routes and one
+new edited export agree with the retained original numeric-default behavior.
+Discoverable omission/default controls remain open: expose intentional omission
+separately from explicit Undefined, preserve that distinction during argument
+editing and save/reopen, and validate actual current callers. The generated
+formals alone do not qualify a usable optional-parameter editor.
