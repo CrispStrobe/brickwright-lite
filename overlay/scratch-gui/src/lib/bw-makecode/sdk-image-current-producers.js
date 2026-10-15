@@ -1,6 +1,6 @@
 // Facts from actual connected factory/clone blocks. Signature constraints are
 // checked separately against every ingress and reconstructed current body.
-export function currentSdkImageProducer(target,block,inputType) {
+export function currentSdkImageProducer(target,block,inputType,literalResource=null) {
     if(!block||!Object.values(target.blocks||{}).includes(block))return null;
     const id=Object.entries(target.blocks).find(([,row])=>row===block)?.[0],parent=target.blocks[block.parent];
     if(!parent||block.topLevel||block.shadow||block.next||!Object.values(parent.inputs||{}).some(input=>input[1]===id))return null;
@@ -19,6 +19,7 @@ export function currentSdkImageProducer(target,block,inputType) {
         if(!['number','string'].includes(typeof value))return null;
         const number=Number(value);return Number.isFinite(number)&& (number|0)>=0&&(number|0)<=2000?number:null;
     };
+    if(block.opcode==='arcade_frameImage')return literalResource?.(target,block)?sdk():null;
     if(block.opcode==='arcade_createImage'){
         if(Object.keys(block.inputs||{}).some(key=>!['WIDTH','HEIGHT'].includes(key))||Object.keys(block.fields||{}).length)return null;
         return constant('WIDTH')!==null&&constant('HEIGHT')!==null?sdk():null;

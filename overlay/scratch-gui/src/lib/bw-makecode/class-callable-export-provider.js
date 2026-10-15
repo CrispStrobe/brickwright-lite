@@ -6,7 +6,7 @@ import {classCallableExportTypes} from './class-callable-export-types.js';
 
 // Current serialized blocks, actual class declarations and procedure owners.
 // No runtime values or retained source bodies supply export type authority.
-export function createClassCallableExportProvider({target,project,classes,definitions,valueTypes,literal,key,builtinNames,sdkImagePrototype=false}) {
+export function createClassCallableExportProvider({target,project,classes,definitions,valueTypes,literal,key,builtinNames,sdkImagePrototype=false,literalResource=null}) {
     const templates=classCallableExportTypes(classes,builtinNames),named=name=>({kind:'named',name});
     const fail=message=>{throw new Error('Class callable export: '+message);};
     let plan=null;
@@ -179,7 +179,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
             if(left?.name==='number'&&right?.name==='number'&&['+','-','*','/','%'].includes(op))return named('number');
             if(op==='+'&&left?.name==='string'&&right?.name==='string')return named('string');
         }
-        if(sdkImagePrototype&&['arcade_createImage','arcade_cloneImage'].includes(block.opcode))return currentSdkImageProducer(target,block,inputType);
+        if(sdkImagePrototype&&['arcade_createImage','arcade_cloneImage','arcade_frameImage'].includes(block.opcode))return currentSdkImageProducer(target,block,inputType,literalResource);
         if(block.opcode==='arcade_setObjectField')return null;
         return operation(block,owner,{inputType,argsType,localType:name=>local(owner,name)});
     };
@@ -205,8 +205,15 @@ export function createClassCallableExportProvider({target,project,classes,defini
         const actualOwner=scope(block);
         if(owner.id&&actualOwner.id!==owner.id||owner.procedure&&actualOwner.procedure!==owner.procedure||owner.rootBlock&&actualOwner.rootBlock!==owner.rootBlock)return null;
         const {inputType,argsType,localType}=environment;
-        if(sdkImagePrototype&&['arcade_createImage','arcade_cloneImage'].includes(block.opcode))return currentSdkImageProducer(target,block,inputType);
+        if(sdkImagePrototype&&['arcade_createImage','arcade_cloneImage','arcade_frameImage'].includes(block.opcode))return currentSdkImageProducer(target,block,inputType,literalResource);
         if(sdkImagePrototype&&block.opcode==='arcade_imageProperty'&&['width','height'].includes(block.fields?.PROPERTY?.[0]||literal(target,block,'PROPERTY'))){const image=inputType('IMAGE');return image?.kind==='sdk'&&image.name==='Image'?named('number'):null;}
+        if(sdkImagePrototype&&['arcade_imagePixel','arcade_setImagePixel'].includes(block.opcode)){
+            const names=block.opcode==='arcade_imagePixel'?['X','Y']:['X','Y','COLOR'];
+            if(Object.keys(block.fields||{}).length||Object.keys(block.inputs||{}).sort().join(',')!==['IMAGE',...names].sort().join(','))return null;
+            const image=inputType('IMAGE');
+            if(image?.kind!=='sdk'||image.name!=='Image'||names.some(name=>{const value=inputType(name);return value?.kind!=='named'||value.name!=='number';}))return null;
+            return named(block.opcode==='arcade_imagePixel'?'number':'void');
+        }
         if(block.opcode==='arcade_getLocal')return localType(literal(target,block,'NAME')) || local(owner,literal(target,block,'NAME'),block);
         if(block.opcode==='arcade_createObject'){
             const name=literal(target,block,'CLASS'),cls=classes.get(name);if(!cls)return null;templates.ordinary(name);
@@ -293,7 +300,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
                     if(visited.has(id))return false;visited.add(id);const block=target.blocks[id];if(!block||Object.keys(block.inputs||{}).some(name=>name.startsWith('SUBSTACK')))return false;
                     if(block.opcode==='arcade_returnValue'){
                         const actual=slotType(block.inputs.VALUE?.[1],owner);if(!actual||!same(actual,method.callableSignature.result))return false;returned=true;
-                    }else if(!['arcade_declareLocal','arcade_setLocal','arcade_setObjectField','arcade_assignObjectField'].includes(block.opcode))return false;
+                    }else if(!['arcade_declareLocal','arcade_setLocal','arcade_setObjectField','arcade_assignObjectField','arcade_setImagePixel'].includes(block.opcode))return false;
                     else if(block.opcode==='arcade_setLocal'){
                         const name=literal(target,block,'NAME');
                         if(name===owner.receiverParameter||owner.parameters.some(parameter=>parameter.name===name))return false;
@@ -301,7 +308,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
                         if(value?.name==='void'){
                             if(Object.values(target.blocks).some(read=>scope(read).procedure===owner.procedure&&read.opcode==='arcade_getLocal'&&literal(target,read,'NAME')===name))return false;
                         }else if(!this.localAssignment(block,owner))return false;
-                    }else if(['arcade_setObjectField','arcade_assignObjectField'].includes(block.opcode)&&!operation(block,owner,{inputType:name=>slotType(block.inputs?.[name]?.[1],owner),argsType:()=>[],localType:name=>local(owner,name,block)}))return false;
+                    }else if(['arcade_setObjectField','arcade_assignObjectField','arcade_setImagePixel'].includes(block.opcode)&&!operation(block,owner,{inputType:name=>slotType(block.inputs?.[name]?.[1],owner),argsType:()=>[],localType:name=>local(owner,name,block)}))return false;
                     id=block.next;
                 }
                 if(method.callableSignature.result.name!=='void'&&!returned)return false;

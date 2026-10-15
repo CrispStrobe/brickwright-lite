@@ -46,6 +46,7 @@ export function analyseCallableFlow(program,{sdkImagePrototype=false}={}) {
         {kind:'callable',parameters:profile.parameters.map(parameter=>({...parameter})),result:profile.result}:null;
     const member=(type,name)=>{
         if(sdkImagePrototype&&type?.kind==='sdk'&&type.name==='Image'){
+            if(['getPixel','setPixel'].includes(name))return {type:{kind:'callable',parameters:(name==='getPixel'?['x','y']:['x','y','color']).map(name=>({name,optional:false,type:named('number')})),result:named(name==='getPixel'?'number':'void')}};
             if(name==='clone')return {type:{kind:'callable',parameters:[],result:{kind:'sdk',name:'Image'}}};
             if(['width','height'].includes(name))return {type:named('number')};
         }
@@ -126,6 +127,7 @@ export function analyseCallableFlow(program,{sdkImagePrototype=false}={}) {
             const left=infer(node.consequent),right=infer(node.alternate);if(equal(left,right))result=left;
             targets(expressionTargets,node,expressionTargets.get(node.consequent));targets(expressionTargets,node,expressionTargets.get(node.alternate));
         }
+        else if(sdkImagePrototype&&node.type==='Template'){try{result=sdkImageProducers.literal(node,lexical.scopes.get(node)).type;}catch{}}
         else if(node.type==='Call') {
             if(sdkImagePrototype&&node.callee?.type==='Member'&&node.callee.name==='create'&&node.callee.object?.type==='Identifier'&&node.callee.object.name==='image'&&!lexical.references.get(node.callee.object)){
                 try{result=sdkImageProducers.factory(node).type;}catch{}

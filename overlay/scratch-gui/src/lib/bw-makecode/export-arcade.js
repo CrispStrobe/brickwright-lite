@@ -1,3 +1,4 @@
+import {createSdkImageLiteralResources} from './sdk-image-literal-resources.js';
 import {proveNamedFunctionSource} from './named-function-source.js';
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
 import {proveClassCallableSource} from './class-callable-source-flow.js';
@@ -1335,7 +1336,10 @@ class ArcadeEmitter {
         case 'arcade_bufferToHex': return `${v('BUFFER')}.toHex()`;
         case 'arcade_bufferToText': return `${v('BUFFER')}.toString()`;
         case 'arcade_songFromBuffer': return `music.createSong(${v('BUFFER')})`;
-        case 'arcade_cloneImage': return `${v('IMAGE')}.clone()`;
+        case 'arcade_cloneImage': {
+            if(this.callableExports?.get(this.target)?.sdkImageEnabled){const image=this.sdkImageLiteralResources?.allocation(this.target,b);if(image)return toImgLiteral(image);}
+            return `${v('IMAGE')}.clone()`;
+        }
         case 'arcade_settingsRead': {
             const type=settingType(b, this.blocks);
             if(type==='List')return `settings.list(${v('KEY')})`;
@@ -3432,6 +3436,7 @@ class ArcadeEmitter {
 
     prepareCallableExport() {
         this.callableExports=new Map();this.callableGlobals=new Map();this.classCallableDefaultTargets=new Set();
+        this.sdkImageLiteralResources=createSdkImageLiteralResources(this.project,this.opts.costumeSvg,this.palette);
         for(const target of this.project.targets) {
             const blocks=target.blocks || {},literal=(block,name)=>{
                 const slot=block.inputs?.[name]?.[1];

@@ -270,7 +270,7 @@ export function prepareObjectClassExport(emitter) {
     const classCallableProvider=(target,{sdkImagePrototype=emitter.opts.sdkImagePrototype===true||emitter.callableExports?.get(target)?.sdkImageEnabled===true}={})=>{
         if(!classCallableProviders.has(target))classCallableProviders.set(target,new Map());
         const modes=classCallableProviders.get(target);
-        if(!modes.has(sdkImagePrototype))modes.set(sdkImagePrototype,createClassCallableExportProvider({target,project:emitter.project,classes,definitions,valueTypes,literal,key,builtinNames,sdkImagePrototype}));
+        if(!modes.has(sdkImagePrototype))modes.set(sdkImagePrototype,createClassCallableExportProvider({target,project:emitter.project,classes,definitions,valueTypes,literal,key,builtinNames,sdkImagePrototype,literalResource:emitter.sdkImageLiteralResources?.resource}));
         return modes.get(sdkImagePrototype);
     };
     return {classes,procedures,variableTypes,valueTypes,inputTypes:(target,block,name)=>new Set(graph.node(input(target,block,name)).types),fontGlyphInput:(target,block,name)=>graph.node(input(target,block,name))===graph.node('field:__bwSDK_Font:data'),localType,render,receiver,superCall,parameterPropertyBlocks,
