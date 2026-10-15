@@ -120,7 +120,7 @@ function withKindReset(){
     const [writeId,write]=Object.entries(blocks).find(([,b])=>b.opcode==='data_setvariableto'&&b.fields.VARIABLE[0]==='kind');
     const oldParent=write.parent;
     blocks.__reset={opcode:'data_setvariableto',parent:oldParent,next:writeId,topLevel:false,shadow:false,fields:structuredClone(write.fields),inputs:{VALUE:[2,'__undefined']}};
-    blocks.__undefined={opcode:'arrays_specialValue',parent:'__reset',next:null,topLevel:false,shadow:false,fields:{},inputs:{KIND:[1,[10,'undefined']]}};
+    blocks.__undefined={opcode:'arrays_specialValue',parent:'__reset',next:null,topLevel:false,shadow:false,fields:{KIND:['undefined',null]},inputs:{}};
     blocks[oldParent].next='__reset';write.parent='__reset';
     return {creator,target,receiver,write,writeId,blocks};
 }
@@ -164,4 +164,10 @@ test('KIND aliases cannot borrow a Number allocation after their own value read'
     delete f.blocks.__reset;delete f.blocks.__undefined;
     const collection=Object.values(f.blocks).find(b=>b.opcode==='arcade_spritesOfKind');collection.inputs.KIND=[3,[12,'earlyKindAlias',aliasId],[10,'']];
     assert.equal(createArrayReferenceExportAuthority(f.creator.project).validateInput(f.target,f.receiver).ok,false);
+});
+
+test('KIND reset proof requires its actual fixed menu without hidden effect inputs',()=>{
+    for(const edit of [f=>{f.blocks.__undefined.inputs.EXTRA=[1,[4,'1']];},f=>{f.blocks.__undefined.fields.KIND=['null',null];},f=>{f.blocks.__undefined.fields.EXTRA=['undefined',null];}]){
+        const f=withKindReset();edit(f);assert.equal(createArrayReferenceExportAuthority(f.creator.project).validateInput(f.target,f.receiver).ok,false);
+    }
 });

@@ -127,17 +127,18 @@ export function createArrayReferenceExportAuthority(project) {
     // A reset can be ignored for KIND facts only when a synchronous source-start
     // segment overwrites it before any observer can read that particular cell.
     // The general Array cell writer set remains unchanged.
+    const fixedUndefined=node=>node?.opcode==='arrays_specialValue'&&exactKeys(node,[],['KIND'])&&Object.keys(node.fields||{}).length===1&&Array.isArray(node.fields.KIND)&&node.fields.KIND.length===2&&node.fields.KIND[0]==='undefined'&&node.fields.KIND[1]===null;
     const deadKindReset=(destination,writer)=>{
         const {target,node,scope}=writer;
         if(scope.root.opcode!=='arcade_whenSourceStarts'||node.opcode!=='data_setvariableto'||!exactKeys(node,['VALUE'],['VARIABLE'])||invalid.has(node)||
-            writer.value?.node?.opcode!=='arrays_specialValue'||!exactKeys(writer.value.node,['KIND'])||literal(writer.value.node,'KIND',target)!=='undefined')return false;
+            !fixedUndefined(writer.value?.node))return false;
         const knownNumbers=new Set(),seen=new Set();
         const scalar=value=>{
             if(value?.raw)return [4,5,6,7,8].includes(value.raw[0])&&!Number.isNaN(Number(value.raw[1]))?'number':null;
             const n=value?.node;if(!n||invalid.has(n))return null;
             if(n.shadow&&n.opcode==='math_number'&&!Object.keys(n.inputs||{}).length)return !Number.isNaN(Number(n.fields?.NUM?.[0]))?'number':null;
             if(n.opcode==='arcade_createSpriteKind'&&exactKeys(n,[]))return 'number';
-            if(n.opcode==='arrays_specialValue'&&exactKeys(n,['KIND'])&&literal(n,'KIND',target)==='undefined')return 'undefined';
+            if(fixedUndefined(n))return 'undefined';
             return null;
         };
         let id=node.next;
