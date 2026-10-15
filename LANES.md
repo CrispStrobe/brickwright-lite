@@ -50,6 +50,111 @@ changes no native input, firmware/Runtime/model/dependency pin, workflow or budg
 relative to its main base. Do not merge the older draft sources independently
 as a substitute for composed qualification.
 
+## WeDo clone 88005 polarity and power packet correction — 2026-10-15
+
+CLAIM — Codex, isolated existing adoption branch
+`lane/wedo-lights-adoption-20261015`, worktree `wt-wedo-adoption-sparse`.
+Follow-up to the published WeDo adoption claim and draft PR980. Human-observed
+CoreBluetooth testing on the user's unbranded clone: physical port A responds
+to protocol port 2; `[2,1,1,156]` lights the 88005 at full power and
+`[2,1,1,206]` visibly dims it. Positive power and the previous payload-length
+2 command did not light it. Internal RGB works. Standard 440/1000/1500 Hz
+piezo commands were acknowledged but produced no audible sound; do not claim
+this clone's advertised buzzer works or silently substitute host audio.
+
+Envelope: this ledger; existing dedicated `wedo2unified` pin and generated
+bundle/provenance table; focused `test/wedo2-lights-and-tones.test.mjs`.
+Source changes belong upstream in extensions PR49: one-byte signed power,
+explicit normal/reversed polarity with translated labels, and replaceable
+inferred motor/light types while preserving real attachment announcements.
+No global automatic clone detection, motor port remapping or other pin moves.
+Publish upstream first, then adopt the immutable commit with the canonical
+vendor script. Verify the measured packets, default positive polarity,
+Stop All/off, known-device protection, immutable bundle identity and local
+production build. Claim must land on remote main before Lite implementation.
+
+## iOS redundant static archive packaging — 2026-10-15
+
+CLAIMED — Codex, isolated `fix/ios-static-archive-resources-20261015` in
+`/tmp/brickwright-ios-size-fix`, base `86daec14c`. User requested shrinking the
+current iPad app. Measured signed bundle: 371.43 MiB, including 151.98 MiB
+`libapp.a` copied as a resource despite already being linked into the executable.
+
+Envelope: this ledger, `apps/tauri/scripts/prepare-ios-device-build.mjs`, and
+`test/ios-device-build-command.test.mjs`. Remove only `libapp.a in Resources`
+build-file and resource-phase references from the generated project; preserve
+its Frameworks/linking entry. Exercise actual preparation on an Xcode fixture,
+including an already-anchored project. Verify the smaller signed app and iPad
+installation/launch. No feature, frontend asset or native code is removed.
+Claim lands before implementation.
+
+## iOS shared validator compilation blocker — 2026-10-15
+
+CLAIMED — Codex, isolated `fix/ios-shared-validators-20261015` in
+`/tmp/brickwright-ios-validator-fix`, base `10edc699d`. Bounded build repair
+found while fulfilling the user-requested current iPad deployment.
+
+Envelope: this ledger and only the module declarations for `arena_inputs` and
+`spike_program_uart_contract` in `apps/tauri/src-tauri/src/lib.rs`. Both contain
+pure JSON validators already called by the shared `native_policy` core; their
+current desktop gates cause eight E0433 errors on `aarch64-apple-ios`. Keep all
+native commands, adapters, supervisors and platform integrations gated exactly
+as before. Verify by the real signed iOS build, whose baseline failure is in
+`/tmp/brickwright-rust-prebuild.log`. No simulator behavior or policy admission
+rules change. Claim lands before implementation.
+
+## WeDo 88005 lights and piezo note adoption — 2026-10-15
+
+CLAIMED — Codex, isolated branch `lane/wedo-lights-adoption-20261015`,
+worktree `wt-wedo-adoption-sparse`, base `5f790c24ae91931d51617ddd1e4c69e2d1e8cfeb`.
+User authorized publication of the upstream fixes and this adoption claim.
+
+Envelope: this ledger; a dedicated `wedo2unified` entry in `vendor-pins.json`
+and `scripts/spike/bundled-upstream.mjs`; the WeDo bundled source and its
+`bundled-upstream-pins.json` record; focused WeDo protocol tests. No other
+extension or package pin moves. Upstream: CrispStrobe/extensions PR49,
+`2cda0cf` (88005 brightness/off on A/B/both, Stop All, reliable piezo notes).
+
+Validation: immutable upstream byte identity, existing Scratch Link session
+tests, focused light/tone packet tests and the production web build. iPad
+installation verifies app deployment; real 88005 brightness and audible-tone
+verification remain explicitly pending. Claim must reach remote main before
+Lite implementation changes.
+
+## ASM example admission during pending Code compilation — 2026-10-15
+
+CLAIM — Codex circuit/instrument adoption owner, bounded blocker repair for
+PR965. Base `dccfd176b0043128b6a723e55f80a5e3b47fed4c`; isolated branch
+`docs/asm-example-serialization-claim-20261015` publishes ownership first.
+Production edits wait for this claim's merge and coordination with the A11
+owner of other blocks in the importer. Original exact-head Build38726686250
+failed only the 8086 browser journey after retarget/reload: its screenshot
+shows empty ASM and disabled Assemble. Pure actual-method/deferred-VM controls
+reproduce an example accepted during compile and then erased by its completion.
+This is not an engine or physical qualification.
+
+Envelope: this ledger; only `loadAsmExample` busy admission, including after
+asynchronous confirmation, and the ASM example picker's disabled state in
+`overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`;
+its tracked `packages/scratch-gui` twin; new
+`test/asm-example-serialization.test.mjs`; and
+`scripts/verify-i8086-browser.mjs` for a deterministic pending-compile witness.
+Do not change `setDevice`, `compile`, MakeCode/export/device-routing blocks,
+engine models, dependency pins, timeouts, compiler interception or other lanes.
+PR965's already qualified CUI adoption bytes remain unchanged.
+
+Require pure actual-method controls for busy rejection, ordinary idle loading,
+confirmation refusal and compilation starting during a pending confirmation;
+isolated entry/post-confirmation guard mutations must fail by name. The actual
+browser proof must hold only the return of a real completed VM load, observe
+the disabled picker and preserved source during the pending compile, release
+and restore the wrapper, then load and assemble through ordinary controls.
+Removing the picker guard must fail that held-state assertion, not merely time
+out later. Retain the complete keyboard/CGA/8255/refusal/reload journey and
+all enabled exact-head checks. No forced click, longer sleep, missing-scenario
+skip, unchanged failed rerun or mocked guest implementation. Move this entry
+to DONE in the final implementation candidate; keep the original red receipt.
+
 ## STM32 faithful model pin adoption (sb3-creator + bw-board) — 2026-10-15
 
 CLAIM — Claude, branch chore/stm32-faithful-pins-20261015, [local path omitted].
@@ -96,7 +201,8 @@ remain required before product integration.
 
 ## A11: Code-tab MakeCode export uses the project target — 2026-10-15
 
-CLAIMED — Codex, isolated branch `lane/a11-project-target-export-20261015`,
+DONE — merged 2026-10-15 in [PR #971](https://github.com/CrispStrobe/brickwright-lite/pull/971)
+as `f1440691`. Original branch `lane/a11-project-target-export-20261015`,
 base `c6f1ff5c3`. Single-board Code-tab MakeCode export selects the existing
 micro:bit, Calliope or EV3 emitter from the parsed project device and writes
 matching project metadata and editor guidance. Preserve unchanged imported
@@ -107,9 +213,22 @@ and its tracked `packages/` twin; a focused export-routing helper under
 `scripts/verify-makecode.mjs`; existing browser CI wiring only if needed;
 this ledger and `docs/OPEN-TASKS-2026-09-29.md`. Do not change exporters,
 applied-device routing, board model, dependency pins or another lane's behavior.
-Acceptance: micro:bit/Calliope/EV3 routing and metadata controls, meaningful
-wrong-target negative, actual built-browser Calliope download compiled by its
-own PXT target, all enabled exact-head checks. Merge claim before product edits.
+Claim landed at `015e1bdc7`. The actual handler now selects each target's
+existing emitter and file metadata, retains matching unchanged originals,
+reports the correct editor in both locales and offers EV3 export. The target
+is captured with the source before lazy compiler loading; generated micro:bit
+filename conventions and the multi-board early return are preserved.
+Validation: 39 focused export/UI/document-policy checks pass without skips;
+the old source and wrong-routing/metadata/editor/original/visibility mutations
+fail. Final hosted browser job `116518382899` downloaded a Calliope export,
+checked its own packages/editor and polling loop, reopened those exact bytes,
+and compiled and ran it in the real Calliope PXT simulator. All 11 enabled
+checks passed on the reviewed head; deployment and deployed-site verification
+were conditional skips for the pull request. Heavy-browser retry `116562834180`
+ran all 31 assigned gates with zero skips. The original harness-policy and
+npm install connection-reset failures remain recorded. The normal matched-head
+merge preserved the separately qualified debugger-capability parent, and its
+landed tree and parents matched the reviewed composition.
 
 ## Shared simulated world, step 1 — project world in Lite — 2026-10-15
 
@@ -4351,6 +4470,34 @@ implementation and require all enabled exact-head checks before integration.
 The separately claimed shared project-world work keeps its ownership. This
 claim changes no executable, dependency, fixture, capture or workflow and makes
 no fresh guest, performance, physical, reference, release or licence claim.
+
+## SPIKE NuttX Code caller ownership — 2026-10-15
+
+PROPOSED — Codex SPIKE G02 continuation, branch
+`lane/spike-g02-code-caller-20261015`. Merge this documentation claim before
+product changes. Extend the existing SPIKE session/pane/feedback envelope only
+to `runOnNuttxPython` in
+`overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx` and
+focused `test/spike-code-caller-ownership.test.mjs` controls, this ledger and the
+SPIKE status guide. Preserve the shared import, conversion, Arcade, namespace,
+lexical/type-lowering and other target dispatchers owned by their existing lanes.
+The separate G03 importer permission remains limited to SPIKE toolbar text.
+
+Two authored scheduling controls on the original dispatcher reproduce an earlier
+call's `finally` clearing a newer pending call's busy flag and an earlier `catch`
+replacing the newer call's status. They use the original feedback helper and
+controlled pane promises, with no native or guest execution. Bind callbacks,
+output, Stop ownership and post-await/catch/finally publication to the current
+NuttX Code caller; preserve current completion/error/Stop and retry/cold paths.
+
+Acceptance requires the baseline failures, positive current-owner controls,
+old callback/output/Stop and overlapping-call adversaries, affected session/pane
+regressions and guard mutations, then a source-bound installed Code scenario
+with actual owned firmware, visible controls, cleanup and distinct recovery.
+All enabled final-head CI checks must pass before normal exact-head merge.
+Do not claim host scheduling controls qualify installed concurrency, native UART
+output attribution, whole G02, physical behavior or a release. No native,
+firmware, Runtime, model, dependency pin, workflow or deadline change is included.
 
 ## SPIKE G02 compiled-model MicroPython desktop profile — 2026-10-15
 
