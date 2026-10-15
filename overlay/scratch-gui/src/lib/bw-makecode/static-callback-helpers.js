@@ -138,7 +138,7 @@ export function lowerStaticCallbackHelpers(program, {registrationSpec = () => nu
                 if (specialized) return {...node,callee:{type:'Identifier',name:specialized.name},args:rewrite(specialized.args,locals,bindings)};
             }
             const path = value => value?.type==='Identifier'?value.name:value?.type==='Member'?`${path(value.object)}.${value.name}`:null;
-            const spec=registrationSpec(path(node.callee));
+            const spec=registrationSpec(path(node.callee),node);
             if(spec && node.args?.length===spec.arity){
                 const callback=node.args[spec.handlerIndex];
                 const name=callback?.type==='Identifier' && (bindings.get(callback.name) || callback.name);
