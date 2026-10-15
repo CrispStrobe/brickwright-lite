@@ -4,7 +4,7 @@ const active = new WeakMap();
 // The engine loan and Number-input adapter share this explicit role table.
 // A loan alone does not authorize interpretation of arbitrary input sockets.
 const roles=Object.freeze(Object.fromEntries(Object.entries({
-    arcade_createCallable:[],arcade_objectField:[],
+    arcade_createCallable:[],arcade_objectField:[],procedures_call:[],
     arcade_throwValue:['VALUE'],arcade_createOwnedImageSprite:['KIND'],
     arcade_returnValue:['VALUE'],arcade_functionArgument:['VALUE'],
     arcade_setLocal:['VALUE'],arcade_setCaptured:['VALUE'],
