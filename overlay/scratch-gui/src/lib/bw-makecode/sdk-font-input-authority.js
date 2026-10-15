@@ -67,6 +67,7 @@ export function sdkFontInputAuthority(project) {
         else if(op==='arcade_fontValue')add(value,!block.inputs?.FONT&&['font5','font8','font12'].includes(fixed(block,'FONT'))?'Font':'Opaque');
         else if(op==='arcade_createImage')rules.push({value,inputs:[input(target,block,'WIDTH'),input(target,block,'HEIGHT')],needs:['Number','Number'],type:'Image'});
         else if(op==='arcade_imageLiteral')add(value,'Image');
+        else if(op==='arcade_screenImage')add(value,owner && !Object.keys(block.inputs||{}).length?'Image':'Opaque');
         else if(['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod'].includes(op))rules.push({value,inputs:[input(target,block,'NUM1'),input(target,block,'NUM2')],needs:['Number','Number'],type:'Number'});
         else if(op==='arrays_valueUnary' && ['+','-','~'].includes(literal(target,block,'OP')))rules.push({value,inputs:[input(target,block,'VALUE')],needs:['Number'],type:'Number'});
         else if(op==='arrays_valueBinary' && ['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(literal(target,block,'OP')))rules.push({value,inputs:[input(target,block,'LEFT'),input(target,block,'RIGHT')],needs:['Number','Number'],type:'Number'});

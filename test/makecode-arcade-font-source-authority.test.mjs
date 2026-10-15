@@ -212,3 +212,19 @@ test('shadowed screen and opaque dimensions or concatenation never gain Font pri
         'screen.print("A",0,unknown().height,3,image.font5)'
     ])assert.ok(lower(source).unsupported.length,source);
 });
+
+
+test('Font print screen operands require a current connected zero-input screen producer',()=>{
+ const project=projectWithFontReport('arcade_fontValue',{}, {fields:{FONT:['font8']}}),target=project.targets[0],blocks=target.blocks;
+ blocks.hat.next='print';delete blocks.set;delete blocks.font;
+ blocks.print={opcode:'arcade_printImageFont',parent:'hat',inputs:{IMAGE:[1,'screen'],TEXT:[1,'text'],X:[1,'number'],Y:[1,'number'],COLOR:[1,'number'],FONT:[1,'builtin']},fields:{}};
+ blocks.screen={opcode:'arcade_screenImage',parent:'print',inputs:{},fields:{}};
+ assert.deepEqual(projectToArcade(project).unsupported,[]);
+ assert.equal(sdkFontInputAuthority(project).accepts(target,blocks.print,'IMAGE','Image'),true);
+ blocks.screen.inputs.FOREIGN=[1,'text'];assert.ok(projectToArcade(project).unsupported.some(reason=>/proven Image/.test(reason)));delete blocks.screen.inputs.FOREIGN;
+ blocks.screen.opcode='text';blocks.screen.fields.TEXT=['screen'];assert.ok(projectToArcade(project).unsupported.some(reason=>/proven Image/.test(reason)));
+ blocks.screen.opcode='data_variable';blocks.screen.fields.VARIABLE=['screen','foreign-screen'];
+ assert.ok(projectToArcade(project).unsupported.some(reason=>/proven Image/.test(reason)),'a foreign variable name cannot supply screen Image authority');
+ blocks.screen.opcode='arcade_screenImage';blocks.screen.fields={};blocks.hat.next=null;
+ assert.equal(sdkFontInputAuthority(project).accepts(target,blocks.print,'IMAGE','Image'),false,'disconnected screen name is not current producer authority');
+});
