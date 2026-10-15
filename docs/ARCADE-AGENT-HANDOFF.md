@@ -3694,3 +3694,19 @@ connections, and metadata-preserving Code/Blocks/SB3/save/reopen/export/reimport
 Existing constraint blocks provide a starting interface; the shared text/number
 dialog and unfiltered formal menu need specific authoring work. The remaining
 GUI behaviors require actual browser evidence before they can be marked complete.
+
+
+### Correct tutorial input authority before closing converter gaps — 2026-10-15
+
+The explicit PXT 13.2.1 collector candidate preserves source, artwork and custom
+helpers while taking package identities from package fences and target defaults.
+Three actual offline CLI projections match their pure file maps. Corrected
+Rockscout and Holiday now compile successfully with the actual SDK; neither is
+a whole-case closure. Rockscout exposes 78 converter diagnostics and a Creator
+prototype failure, with every partial body and graph retained. Its later Code,
+SB3 and export/edit stages are unavailable. Do not add a whole-file native
+admission merely to remove these diagnostics: tile-map, world-map, class,
+callback and numeric producer semantics require actual support. See the
+[qualification ledger](compatibility/arcade-authentic-project-qualification.md#corrected-tutorial-inputs-and-newly-exposed-conversion-gaps--2026-10-15)
+for observations, source links and remaining gates. The original raw184 and
+pure29 counts are unchanged. The block-icons dependency authority hold remains.

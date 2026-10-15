@@ -190,3 +190,50 @@ resource matches native background data, but a resource alone does not prove the
 active binding. Physical presentation, audio, song completion, score pickup,
 original restart, current-export execution, visible authoring and whole-game
 qualification remain open.
+
+
+## Corrected tutorial inputs and newly exposed conversion gaps — 2026-10-15
+
+The opt-in collector/recovery candidate `a4e290a3` reproduces the bounded
+PXT 13.2.1 input policy: tutorial `assetjson` contributes four artwork files,
+while package fences and the selected target template determine dependencies.
+Its saved `pxt.json` must not inject a second dependency identity. Keep custom
+TypeScript helpers and selected source unchanged. This follows the actual
+[PXT tutorial asset parser](https://github.com/microsoft/pxt/blob/c40f412dc5bebb915a5891cd62fe956e198fb194/pxtlib/tutorial.ts#L540)
+and [editor project assembly](https://github.com/microsoft/pxt/blob/c40f412dc5bebb915a5891cd62fe956e198fb194/webapp/src/app.tsx#L5115).
+The legacy collection mode remains available for reproducing historical inputs.
+These are explicitly selected-snippet projections, not original editor exports.
+
+Six pure controls, three actual retained projections and three real offline CLI
+recoveries pass. All complete CLI file maps equal their corresponding pure
+projections; original source, four artwork files and custom helpers retain
+exact bytes. Earlier diagnostics remain retained separately.
+
+Two corrected projections now pass actual SDK package preparation followed by
+compilation of the same unchanged current files in fresh contexts:
+
+| Project | Preparation and compilation | Resources | Conversion status |
+| --- | --- | --- | --- |
+| [Rockscout](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/rockscout.md#10) (`72d0c967`) | 7.441 seconds; compile success, diagnostics empty | 64 resources; complete tile-map package | Partial: 78 unsupported diagnostics, then Creator prototype error |
+| Holiday (`999ed460`) | 11.668 seconds; compile success, diagnostics empty | Five root resources; four complete dependency packages | Further conversion qualification pending |
+
+Independent readers verify actual package bodies, dependency order, licenses,
+resources and all cached requests. The compiled JavaScript has not run.
+Preparation supplies no success/diagnostics fields; do not invent them. The
+existing sandbox silences SDK console messages, so those channels are
+unobserved. Saved generated companions remain unchanged: these observations do
+not establish actual editor asset regeneration or final editor source order.
+
+Rockscout's complete dependency preparation preserves all four package source
+files and all resources, without adapters or skipped packages. Its converter
+retains the complete 49,236-byte partial pseudocode and all 78 diagnostics.
+Creator attempts parsing, throws a missing/ambiguous procedure-prototype error,
+and retains four warnings and a 1,187-block partial graph. Code feedback,
+saved SB3, export/reimport and a current graph edit were never reached. Their
+absence is a failed prerequisite, not a clean result. No case is promoted.
+
+The remaining `d8509d60` projection is held because its retained block-icons
+package lacks the required raw response and recognized license authority.
+Do not synthesize its manifest, remove that dependency or assume permission.
+Native gameplay, selected-original comparison, GUI authoring, save/reopen and
+current edited export/reimport remain separate gates for these projections.
