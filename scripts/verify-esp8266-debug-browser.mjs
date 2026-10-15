@@ -113,6 +113,9 @@ try {
     await page.goto(url, {waitUntil: 'domcontentloaded', timeout: 90000});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     const select = page.getByTestId('bw-device-select');
+    // The Code tab mounts its picker after the click; count once it is there
+    // (counting immediately read 0 on a main run while the PR run read 1).
+    await select.locator('option[value="esp8266"]').waitFor({state: 'attached', timeout: 30000}).catch(() => {});
     check('the Code-tab picker offers ESP8266',
         await select.locator('option[value="esp8266"]').count() === 1);
     await select.selectOption('esp8266');
