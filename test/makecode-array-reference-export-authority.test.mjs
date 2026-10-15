@@ -182,3 +182,37 @@ test('KIND reset proof requires its actual fixed menu without hidden effect inpu
         const f=withKindReset();edit(f);assert.equal(createArrayReferenceExportAuthority(f.creator.project).validateInput(f.target,f.receiver).ok,false);
     }
 });
+
+test('global Array recursion retains initialized external callers and real allocation anchors',()=>{
+    checked('let items=[1,2];function visit(n:number){let count=items.length;if(n>0){visit(n-1)}};visit(2)');
+    checked('let items=[1,2];function first(n:number){let count=items.length;if(n>0){second(n-1)}}function second(n:number){let count=items.length;if(n>0){first(n-1)}}first(2);game.onUpdate(function(){first(1)})');
+});
+test('global Array recursion cannot bootstrap a rootless or incompatible entry and writer',()=>{
+    for(const source of [
+        'function visit(){let count=items.length;visit()}let items=[1]',
+        'function visit(){let count=items.length;visit()}visit();let items=[1];visit()',
+        'let items=[1];function visit(){let count=items.length;visit()}visit();items=0 as any',
+        'function visit(items:number[]){let count=items.length;visit(items)}let items=[1];visit(items)',
+        'function visit(){let items;let count=items.length;visit()}visit()'
+    ]){const creator=current(source);assert.ok(projectToArcade(creator.project).unsupported.some(s=>s.startsWith('Array reference ')),source);}
+});
+test('global Array recursion retains dynamic and escaped caller refusal obligations',()=>{
+    for(const escaped of [false,true]){
+        const creator=current('let items=[1];function visit(){let count=items.length;visit()}visit()'),{target,block}=lengthBlock(creator),blocks=target.blocks;
+        const root=Object.values(blocks).find(b=>b.opcode==='arcade_whenSourceStarts');
+        // Attach another actual current entry to the source body, preserving
+        // the healthy direct call. Its unresolved target cannot be ignored.
+        let id=root.next;while(blocks[id].next)id=blocks[id].next;
+        if(escaped){
+            const proc=Object.values(blocks).find(b=>b.opcode==='procedures_prototype').mutation.proccode;
+            blocks.__escape={opcode:'arcade_setLocal',parent:id,next:null,topLevel:false,shadow:false,fields:{},inputs:{NAME:[1,[10,'escaped']],VALUE:[2,'__create']}};
+            blocks.__create={opcode:'arcade_createCallable',parent:'__escape',next:null,topLevel:false,shadow:false,fields:{},inputs:{NAME:[1,[10,proc]]}};
+            blocks[id].next='__escape';
+        }else{
+            blocks.__dynamic={opcode:'arcade_callFunction',parent:id,next:null,topLevel:false,shadow:false,fields:{},inputs:{NAME:[2,'__dynamicName'],ARGS:[1,[10,'[]']]}};
+            blocks.__dynamicName={opcode:'arcade_getLocal',parent:'__dynamic',next:null,topLevel:false,shadow:false,fields:{},inputs:{NAME:[1,[10,'dynamicName']]}};
+            blocks[id].next='__dynamic';
+        }
+        assert.equal(createArrayReferenceExportAuthority(creator.project).validateInput(target,block).ok,false);
+    }
+});

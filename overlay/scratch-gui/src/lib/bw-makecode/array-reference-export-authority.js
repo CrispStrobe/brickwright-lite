@@ -60,7 +60,7 @@ export function createArrayReferenceExportAuthority(project) {
     const globalCell=(target,id)=>{
         const own=targets.filter(t=>Object.hasOwn(t.variables||{},id));if(own.length!==1)return null;
         const actual=own[0];if(actual!==target&&!actual.isStage)return null;
-        if(!nodes.has(actual))return null;let map=globalCell.maps.get(actual);if(!map)globalCell.maps.set(actual,map=new Map());if(!map.has(id))map.set(id,{});return cell(map.get(id));
+        if(!nodes.has(actual))return null;let map=globalCell.maps.get(actual);if(!map)globalCell.maps.set(actual,map=new Map());if(!map.has(id))map.set(id,{});const value=cell(map.get(id));value.global=true;return value;
     };globalCell.maps=new Map();
     const localCell=(scope,name)=>{if(!scope||scope.invalid||typeof name!=='string')return null;let map=localCell.maps.get(scope);if(!map)localCell.maps.set(scope,map=new Map());if(!map.has(name))map.set(name,{});return cell(map.get(name));};localCell.maps=new Map();
     const capturedCell=(scope,name)=>{const origin=captures.captured(captures.scopeOf(scope.root.next?block(scope.target,scope.root.next):scope.root),name);const value=origin?localCell(scopes.find(s=>s.root===origin.scope.root),name):null;if(value&&!captures.proof(origin))value.types.add(bad);return value;};
@@ -99,6 +99,21 @@ export function createArrayReferenceExportAuthority(project) {
             const call={target,node,scope,fn,args};calls.push(call);if(fn){fn.callers.push(call);if(!args||args.length!==fn.params.length)fn.invalid=true;else fn.params.forEach((name,index)=>localCell(fn,name)?.writers.push({target,node,scope,value:args[index],argument:true}));}
         }
         if(['arrays_mutateReference','arrays_referenceTake','arrays_referenceRemove'].includes(node.opcode))mutations.push({target,node,value:input(node,'VALUE',target)});
+    }
+    // An unproved dynamic or value-based entry cannot disappear from a
+    // procedure's complete caller obligations. Declaration metadata is used
+    // only to refuse such escapes, never to issue an Array fact.
+    for(const {target,node}of records){
+        const functions=procedures.get(target);if(!functions)continue;
+        if(node.opcode==='arcade_callFunction'&&literal(node,'NAME',target)===null)for(const fn of functions.values())fn.unknownEntry=true;
+        if(node.opcode==='arcade_createCallable'){
+            const fn=functions.get(literal(node,'NAME',target));if(fn)fn.unknownEntry=true;
+        }
+        if(node.opcode==='arcade_declareCallable'){
+            let owners;try{owners=JSON.parse(literal(node,'METADATA',target)).plan.owners;}catch{}
+            if(!Array.isArray(owners))for(const fn of functions.values())fn.unknownEntry=true;
+            else for(const owner of owners){const fn=functions.get(owner?.procedure);if(fn)fn.unknownEntry=true;}
+        }
     }
     // A local's explicit null reset may be dead before its first read. This is
     // proved from the current linear body, never a declaration/type exemption.
@@ -260,9 +275,10 @@ export function createArrayReferenceExportAuthority(project) {
     }while(changed);
     for(const c of cells.values())if(!c.types.size)c.types.add(bad);
     const initializingCells=new Set();
-    const available=(c,scope,node,path=new Set())=>{
-        if(!c||!scope||scope.invalid||path.has(scope))return false;if(c.formal===scope){if(initializingCells.has(c))return false;initializingCells.add(c);try{return scope.callers.length>0&&c.writers.every(writer=>!writer.argument||initialized(writer.value));}finally{initializingCells.delete(c);}}
-        if(scope.before.get(node)?.has(c))return true;
+    const availability=(c,scope,node,path=new Set())=>{
+        if(!c||!scope||scope.invalid||scope.unknownEntry)return 0;
+        if(path.has(scope))return c.global?1:0;if(c.formal===scope){if(initializingCells.has(c))return 0;initializingCells.add(c);try{return scope.callers.length>0&&c.writers.every(writer=>!writer.argument||initialized(writer.value))?2:0;}finally{initializingCells.delete(c);}}
+        if(scope.before.get(node)?.has(c))return 2;
         const next=new Set([...path,scope]);let entries=scope.callers;
         if(!entries.length){
             const registrationPairs={arcade_whenRegisteredMultiplayerConnection:'arcade_registerMultiplayerConnection',arcade_whenRegisteredControlEvent:'arcade_registerControlEvent',arcade_whenParallelHandler:'arcade_startParallelHandler',arcade_whenRegisteredLegacyWall:'arcade_registerLegacyWallHandler',arcade_whenRegisteredMultiplayerButton:'arcade_registerMultiplayerButtonHandler',arcade_whenRegisteredCreated:'arcade_registerSpriteCreated',arcade_whenRegisteredWall:'arcade_registerWallHandler',arcade_whenRegisteredTile:'arcade_registerTileHandler',arcade_whenRegisteredUpdate:'arcade_registerUpdateHandler',arcade_whenRegisteredInterval:'arcade_registerIntervalHandler',arcade_whenRegisteredButton:'arcade_registerButtonHandler',arcade_whenRegisteredPaint:'arcade_registerPaintHandler',arcade_whenRegisteredShade:'arcade_registerShadeHandler',arcade_whenRegisteredInstanceDestroyed:'arcade_registerInstanceDestroyedHandler',arcade_whenRegisteredKindDestroyed:'arcade_registerDestroyedHandler',arcade_whenRegisteredOverlap:'arcade_registerOverlapHandler',arcade_whenRegisteredScenePush:'arcade_registerScenePushHandler',arcade_whenRegisteredScenePop:'arcade_registerScenePopHandler',arcade_whenRegisteredForever:'arcade_registerForeverHandler',arcade_whenRegisteredLifeZero:'arcade_registerLifeZeroHandler',arcade_whenRegisteredCountdown:'arcade_registerCountdownHandler'};
@@ -273,8 +289,12 @@ export function createArrayReferenceExportAuthority(project) {
                 if(hats.length===1&&found.length===1&&found[0].target===scope.target&&found[0].node.inputs?.TOKEN&&!invalid.has(found[0].node))entries=found;
             }
         }
-        return entries.length>0&&entries.every(entry=>available(c,entry.scope,entry.node,next));
+        const proofs=entries.map(entry=>availability(c,entry.scope,entry.node,next));
+        return proofs.length&&proofs.every(Boolean)?proofs.some(proof=>proof===2)?2:1:0;
     };
+    // 1 is a provisional global recursion edge; only an independently
+    // initialized external entry or dominating write can finalize it as 2.
+    const available=(c,scope,node)=>availability(c,scope,node)===2;
     const numericKindInitialized=(value,path=new Set())=>{
         if(!numericKind(value))return false;
         const node=value?.node,c=value?.cell||(node&&binding(value.target,node));
