@@ -1,5 +1,6 @@
 import {proveClassCallableSource} from './class-callable-source-flow.js';
 import {withClassResultFlowProof} from './class-callable-result-flow-proof.js';
+import {numberLiteralCode,containsNonFiniteNumberLiteral} from './source-number-literal.js';
 import {lowerSdkFontValues} from './lower-sdk-font-values.js';
 import {callableSourceGate} from './callable-source-gate.js';
 import {lowerCallableValues} from './lower-callable-values.js';
@@ -706,6 +707,7 @@ class ArcadeTranslator extends BaseTranslator {
     }
 
     arrayElementValue (node) {
+        if(node?.bwPrimitiveNumberText)return `(${this.arrayElementValue(node.left)}) join ("")`;
         if(node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
         const value=this.expr(node);
         // The dialect has no value form for a Scratch predicate: in a value
@@ -1058,6 +1060,12 @@ class ArcadeTranslator extends BaseTranslator {
      * The condition() a node is being written for is not a value slot.
      */
     expr (node) {
+        if(node?.type==='Unary'&&containsNonFiniteNumberLiteral(node.argument)){this.unsupported.push('Non-finite source Number literals lack a qualified Code carrier');return 'undefined value';}
+        if(node?.type==='Number'){
+            if(!Number.isFinite(Number(node.value))){this.unsupported.push('Non-finite source Number literals lack a qualified Code carrier');return 'undefined value';}
+            return numberLiteralCode(node.value);
+        }
+        if(node?.bwPrimitiveNumberText)return `(${this.arrayElementValue(node.left)}) join ("")`;
         if(node?.type==='FontMetric')return `arcade font ${JSON.stringify(node.font)} metric ${JSON.stringify(node.property)}`;
         if(node?.type === 'Template' && this.assetKindLookup &&
             lookupAssetTemplate(this.assetKindLookup,node.tag,node.value) === null) {
@@ -1270,6 +1278,7 @@ class ArcadeTranslator extends BaseTranslator {
             // PXT's nonfolded prefix emitter subtracts for unary signs. If the
             // operand itself emits a numeric literal, both branches negate it.
             // Parentheses can block the outer constant fold but not this step.
+            if(containsNonFiniteNumberLiteral(node.argument)){this.unsupported.push('Non-finite source Number literals lack a qualified Code carrier');return 'undefined value';}
             const operand=foldPxtNumeric(node.argument,name=>['NaN','Infinity'].includes(name) && !this.bindsName(name) ? {value:name==='NaN'?NaN:Infinity} : null);
             if(operand)return pxtFoldedNumberCode(-operand.value);
             return node.op==='-' ? `calculate value ((0 + (0))) op "-" with (${this.arrayElementValue(node.argument)})` :
@@ -2100,6 +2109,7 @@ class ArcadeTranslator extends BaseTranslator {
         return rest;
     }
     objectExpression(node) {
+        if(node?.bwPrimitiveNumberText)return `(${this.arrayElementValue(node.left)}) join ("")`;
         const name=this.path(node?.callee),a=node?.args || [];
         if(node.bwFontIntrinsic && name==='__bwSdkFont_'+node.bwFontIntrinsic){
             if(node.bwFontIntrinsic==='constant' && a.length===1)return `arcade font value ${a[0].value}`;
