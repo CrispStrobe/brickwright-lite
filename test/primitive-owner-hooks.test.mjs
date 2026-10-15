@@ -57,3 +57,13 @@ test('first installation inserts the owner import and guard at actual AST source
  assert.ok(patched.includes("const BlockUtility = require('./block-utility');\nconst bwPrimitiveOwner = require('../util/bw-primitive-owner');"));
  assert.ok(patched.includes(wrapper));assert.equal(patchPrimitiveOwner(patched),patched);
 });
+
+
+test('source condition ingress precedes saved operand restoration and is exact/idempotent',()=>{
+ const source=engine();const hook='if (!bwPrimitiveOwner.beforeInputs(runtime, thread, blockContainer, blockCached)) return;';
+ assert.ok(source.indexOf(hook)>source.indexOf('let blockCached ='));
+ assert.ok(source.indexOf(hook)<source.indexOf('if (currentStackFrame.reported !== null)'));
+ assert.equal(patchPrimitiveOwner(source),source);
+ assert.throws(()=>patchPrimitiveOwner(source.replace(hook,hook.replace('blockCached','{}'))),/condition ingress differs/);
+ const removed=source.replace('    '+hook+'\n\n','');assert.equal(patchPrimitiveOwner(removed),source);
+});

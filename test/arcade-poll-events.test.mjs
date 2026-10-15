@@ -29,19 +29,14 @@ test('predicate failure is reported unchanged and cancels its polling fiber',asy
  const {clock,queue,errors}=make(),fault=new Error('owned condition failed');queue.enqueue(()=>{throw fault;},()=>assert.fail('failed predicate must not wake'));await clock.advanceTo(0);assert.deepEqual(errors,[fault]);assert.equal(queue.active,false);assert.equal(clock.pending,0);
 });
 
-test('asynchronous source sample preserves serial scan and ready delivery order',async()=>{
+test('ordinary native Promise predicate retains its original synchronous truthiness',async()=>{
  const {clock,queue,wakes}=make(),events=[];let release;
- queue.enqueue(()=>{events.push('sample');return new Promise(r=>{release=r;});},()=>events.push('ready'));
- queue.enqueue(()=>{events.push('next');return true;},()=>events.push('next-ready'));
- const tick=clock.advanceTo(0);await Promise.resolve();assert.deepEqual(events,['sample']);
- release(true);await tick;assert.deepEqual(events,['sample','ready','next','next-ready']);assert.deepEqual(wakes,[0]);queue.cancel();
+ const promise=new Promise(r=>{release=r;});queue.enqueue(()=>{events.push('condition');return promise;},()=>events.push('ready'));
+ await clock.advanceTo(0);assert.deepEqual(events,['condition','ready']);assert.deepEqual(wakes,[0]);release(false);queue.cancel();
 });
-test('cancel during asynchronous sample never delivers a stale ready event or removes a new event',async()=>{
- const {clock,queue,wakes}=make(),ready=[];let release;
- queue.enqueue(()=>new Promise(r=>{release=r;}),()=>ready.push('old'));
- const tick=clock.advanceTo(0);await Promise.resolve();queue.cancel();
- queue.enqueue(()=>true,()=>ready.push('new'));release(true);await tick;await clock.advanceTo(0);
- assert.deepEqual(ready,['new']);assert.deepEqual(wakes,[0]);queue.cancel();
+test('ordinary native thenable condition is not awaited or invoked',async()=>{
+ const {clock,queue}=make(),ready=[];const thenable={then(){assert.fail('native predicate thenable must keep synchronous semantics');}};
+ queue.enqueue(()=>thenable,()=>ready.push('ready'));await clock.advanceTo(0);assert.deepEqual(ready,['ready']);queue.cancel();
 });
 test('synchronous ready cancellation cannot splice the replacement queue',async()=>{
  const {clock,queue}=make(),ready=[];

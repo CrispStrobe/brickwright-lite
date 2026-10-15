@@ -98,4 +98,4 @@ function isActiveCall(token,util,args) {
         thread.target===target&&thread.blockContainer===container&&target.blocks===container&&
         thread.peekStack()===root&&util.runtime===runtime&&util.thread===thread;
 }
-module.exports=Object.freeze({invoke,current,stepNested,handles,permitsNumberInput,captureActiveCall,isActiveCall});
+module.exports=Object.freeze({beforeInputs:conditionWaits.beforeInputs,invoke,current,stepNested,handles,permitsNumberInput,captureActiveCall,isActiveCall});

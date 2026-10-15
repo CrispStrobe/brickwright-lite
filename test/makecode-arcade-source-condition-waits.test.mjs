@@ -101,7 +101,65 @@ test('same managed caller rereads the actual captured local cell',{timeout:2500}
 });
 test('actual dispose while parked cannot advance obsolete source caller',{timeout:2500},async()=>{
  let run;try{run=await start('let after=0;pauseUntil(function(){return false});after+=1');await bootstrap(run);
- const targets=[...run.vm.runtime.targets];await run.vm.clear();await sleep(80);
- const old=Object.fromEntries(targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));assert.equal(Number(old.after),0);assert.deepEqual(run.errors,[]);
+ const variable=run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name.replace(/^Game_/,'')==='after');assert.ok(variable);await run.vm.clear();await sleep(80);
+ assert.equal(Number(variable.value),0);assert.deepEqual(run.errors,[]);
+ }finally{close(run);}
+});
+
+
+const asyncHelper=`let checks=0;let updates=0;let done=false;let after=0;
+function condition(){checks+=1;pause(10);return checks>=3&&done}
+game.onUpdate(function(){updates+=1;done=true});pauseUntil(function(){return condition()});after+=1`;
+test('actual async effectful helper conditions retain managed lineage while independent scene updates progress',{timeout:4000},async()=>{
+ let run;try{run=await start(asyncHelper);await bootstrap(run);await until(()=>Number(values(run).after)===1,1500);
+ assert.equal(Number(values(run).checks),3,'one initial and two actual poll evaluations; no delivery reread');assert.ok(Number(values(run).updates)>1,'real scene worker progressed during condition suspension');
+ await sleep(70);assert.equal(Number(values(run).checks),3);assert.equal(Number(values(run).after),1);assert.deepEqual(run.errors,[]);
+ }finally{close(run);}
+});
+test('optimistic true effectful helper executes once and never enrolls',{timeout:2500},async()=>{
+ let run;try{run=await start('let checks=0;let after=0;function condition(){checks+=1;return true}pauseUntil(function(){return condition()});after+=1');await bootstrap(run);
+ assert.equal(Number(values(run).checks),1);assert.equal(Number(values(run).after),1);assert.equal(run.vm.runtime._arcadeFramePhase.ext._pollEvents?.size||0,0);assert.deepEqual(run.errors,[]);
+ }finally{close(run);}
+});
+for(const mutation of ['args','parent','inputs','defined'])test('positive-first child cache '+mutation+' replacement refuses before actual condition effects',{timeout:3000},async()=>{
+ let run;try{run=await start('let after=0;pauseUntil(function(){return game.runtime()<0});after+=1');await bootstrap(run);await sleep(10);
+ const rt=run.vm.runtime,thread=rt.threads.find(t=>t.peekStack()&&t.blockContainer.getBlock(t.peekStack())?.opcode==='control_wait_until');assert.ok(thread);
+ const cache=thread.blockContainer._cache._executeCached[thread.peekStack()],op=cache._ops.find(o=>o.opcode==='arcade_sceneMillis');assert.ok(op);
+ const before=run.calls.get('arcade_sceneMillis');assert.ok(before>0);
+ if(mutation==='args')op._argValues={...op._argValues};
+ if(mutation==='parent')op._parentValues={...op._parentValues};
+ if(mutation==='inputs')op._inputs={...op._inputs};
+ if(mutation==='defined')op._definedBlockFunction=false;
+ await until(()=>run.errors.some(e=>e.includes('Source pauseUntil')));assert.equal(Number(values(run).after),0);assert.equal(run.calls.get('arcade_sceneMillis'),before);
+ }finally{close(run);}
+});
+test('one refused wait removes only its entry while independent actual waiter completes',{timeout:3500},async()=>{
+ let run;try{run=await start('let bad=0;let good=0;control.runInParallel(function(){pauseUntil(function(){return control.millis()<0});bad+=1});pauseUntil(function(){return game.runtime()>=80});good+=1');await bootstrap(run);
+ const rt=run.vm.runtime,thread=rt.threads.find(t=>t.peekStack()&&t.blockContainer._cache._executeCached[t.peekStack()]?._ops.some(o=>o.opcode==='arcade_programMillis'));assert.ok(thread,'first real waiter admitted');
+ const op=thread.blockContainer._cache._executeCached[thread.peekStack()]._ops.find(o=>o.opcode==='arcade_programMillis');const before=run.calls.get('arcade_programMillis');assert.ok(before>0);op._argValues={...op._argValues};
+ await until(()=>Number(values(run).good)===1,1500);assert.equal(Number(values(run).bad),0);assert.equal(run.calls.get('arcade_programMillis'),before);assert.ok(run.errors.some(e=>e.includes('Source pauseUntil')));
+ }finally{close(run);}
+});
+test('Stop during actual async helper suspension cannot deliver or resume old wait',{timeout:3000},async()=>{
+ let run;try{run=await start('let checks=0;let after=0;function condition(){checks+=1;pause(200);return true}pauseUntil(function(){return condition()});after+=1');await bootstrap(run);assert.equal(Number(values(run).checks),1);assert.equal(Number(values(run).after),0);
+ run.vm.stopAll();await sleep(260);assert.equal(Number(values(run).after),0);assert.equal(Number(values(run).checks),1);assert.deepEqual(run.errors,[]);
+ }finally{close(run);}
+});
+
+test('initial pre-input hook refuses preexisting cached argument corruption before the first new-run effect',{timeout:3000},async()=>{
+ let run;try{run=await start('let after=0;pauseUntil(function(){return game.runtime()<0});after+=1');await bootstrap(run);
+ const rt=run.vm.runtime,container=rt.targets.find(t=>Object.values(t.blocks._blocks).some(b=>b.opcode==='control_wait_until')).blocks;
+ const block=Object.values(container._blocks).find(b=>b.opcode==='control_wait_until'),cache=container._cache._executeCached[block.id];assert.ok(cache);
+ const op=cache._ops.find(o=>o.opcode==='arcade_sceneMillis');assert.ok(op);const before=run.calls.get('arcade_sceneMillis');assert.ok(before>0);
+ run.vm.stopAll();run.vm.greenFlag();assert.equal(container._cache._executeCached[block.id],cache,'actual project restart retains the genuine cache');op._argValues.unowned='corrupt';
+ await bootstrap(run);await until(()=>run.errors.some(e=>e.includes('Source pauseUntil')));assert.equal(run.calls.get('arcade_sceneMillis'),before);assert.equal(Number(values(run).after),0);
+ }finally{close(run);}
+});
+test('ordinary Scratch wait-until retains stock yielding beside a genuine source phase',{timeout:2500},async()=>{
+ let run;try{const imported=arcadeToPseudocode('let after=0;pauseUntil(function(){return false});after+=1');assert.deepEqual(imported.unsupported,[]);
+ const code=imported.code.replaceAll('WHEN arcade source starts:','WHEN flag clicked:')+'\nSPRITE SourceSeed:\nWHEN arcade source starts:\n  arcade set background color to 0\n';
+ run=await start('let after=0;pauseUntil(function(){return false});after+=1',{code});await bootstrap(run);
+ const rt=run.vm.runtime,thread=rt.threads.find(t=>t.peekStack()&&t.blockContainer.getBlock(t.peekStack())?.opcode==='control_wait_until');assert.ok(thread);
+ assert.equal(thread.status,thread.constructor.STATUS_RUNNING);assert.equal(Number(values(run).after),0);assert.equal(rt._arcadeFramePhase.ext._pollEvents?.size||0,0);assert.deepEqual(run.errors,[]);
  }finally{close(run);}
 });
