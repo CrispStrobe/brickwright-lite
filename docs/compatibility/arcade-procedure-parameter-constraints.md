@@ -56,6 +56,17 @@ once, in order, only when their argument is Undefined. Current export may use
 required `any` parameters with explicit Undefined arguments and the same real
 conditional body; behavior, rather than original signature spelling, is kept.
 
+**Selected MakeCode compatibility hold:** the development default lowering above
+has not yet earned source-import compatibility. A real selected-compiler/runtime
+comparison found that omitted numeric defaults apply, but an explicit Undefined
+argument remains Undefined. The development conditional body applies the default
+to both. Its exported conditional program agrees with MakeCode, which does not
+prove equivalence to the original default signature. Preserve the distinction
+between omission and an explicit argument before admitting this source feature.
+The selected compiler also rejects function-call default initializers, even when
+their result would be primitive. Native portable controls do not establish
+selected-compiler support for those signatures.
+
 Optional/default Number, String or Boolean parameters remain excluded: a strict
 entry check before initialization would reject a legal omitted value. Generic,
 rest, overload, destructured, reference and callable forms remain explicit

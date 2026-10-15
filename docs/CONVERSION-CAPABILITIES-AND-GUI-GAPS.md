@@ -4822,3 +4822,21 @@ editor still needs discoverable optional/default authoring and invocation
 controls; a passing imported generated body is not that GUI. Strict typed
 optional/default formals remain open. Saved projects must preserve both the
 current initialization body and explicit Undefined input values.
+
+
+### Visible console and default-argument acceptance follow-up — 2026-10-15
+
+The official Image journey checks VM values and editable image resources. Its
+fixture changes offscreen Images and a HUD score; it does not draw those literal
+pixels to the game screen. Applying an Arcade device offers the **Game Console**
+header choice. The journey must select that actual button and observe the native
+console and actual HUD or explicitly drawn screen output. Include switching away,
+fresh load, a real edit and save/reopen. A debugger pane in a failure screenshot
+does not prove a renderer failure. Pixel-editor pixels and game-screen pixels
+need separate observations; runtime flags and variable checks cannot replace them.
+
+Default-argument GUI work must expose omission separately from explicit Undefined.
+A real selected MakeCode run found different behavior for those two calls, while
+the current development conditional lowering collapses them. Keep that source
+compatibility gap open. Do not present a generated conditional body or its
+successful export as proof that the original default signature is equivalent.

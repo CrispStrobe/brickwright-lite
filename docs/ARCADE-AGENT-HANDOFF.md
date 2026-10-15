@@ -3505,3 +3505,26 @@ behavior. It provides before-operation/body/result boundaries; it does not yet
 supply a current VM execution loan, failed-continuation coordinator, typed Array
 formal, Settings certificate, compiler pin or visible authoring workflow.
 Physical Number input preservation is a separate supplier prerequisite.
+
+
+### Actual default-argument mismatch and visible-display boundary
+
+The next selected-original comparison compiled and ran two genuinely new numeric
+Any-default programs once each. In the original default-signature program,
+omission produced 50, explicit Undefined produced NaN, and supplied arguments
+produced 15. All actual completion, trace and call-count observations were retained.
+The development native routes instead produced 50 for explicit Undefined: this is
+a compatibility failure. The independently edited current conditional export
+matched its own native 60/60/15 observations, which does not close the original
+source mismatch. An earlier function-call-default program was rejected by the
+selected compiler before any runtime start. Neither result promotes corpus rows.
+
+The canonical supplier changes are merged in
+[sb3-creator PR157](https://github.com/CrispStrobe/sb3-creator/pull/157) after all
+enabled checks passed; the reviewed and landed trees match. Consumer adoption
+still requires the coordinated pin/writer handoff and its own qualification.
+The CI-only follow-up in [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888)
+preserves product and dependency bytes while fixing TODO accounting and the Image
+journey's editor/target-selector waits. Its new hosted results remain pending.
+The [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#visible-console-and-default-argument-acceptance-follow-up--2026-10-15)
+records the untested real Game Console display workflow and omission controls.
