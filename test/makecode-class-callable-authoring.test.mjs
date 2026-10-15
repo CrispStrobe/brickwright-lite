@@ -91,9 +91,10 @@ test('stored callable discard preserves an authored formal and inherited initial
     try{assert.deepEqual(initial.errors,[]);const exported=projectToArcade(JSON.parse(initial.vm.toJSON()));assert.deepEqual(exported.unsupported,[]);const again=arcadeToPseudocode(exported.files);assert.deepEqual(again.unsupported,[]);const replay=await runProgram(again.code,{frames:40});try{assert.deepEqual(replay.errors,[]);const cell=replay.vm.runtime.targets.flatMap(target=>Object.values(target.variables)).find(value=>value.name==='total');assert.equal(BW.decode(cell.value),5);}finally{replay.vm.quit();}}finally{initial.vm.quit();clearStrayTimers();}
 });
 
-test('composed numeric default admission keeps the stored class callback profile explicitly gated',async()=>{
-    const closed=arcadeToPseudocode({'main.ts':source});assert.notEqual(closed.unsupported.length,0);
+test('default admission proves the stored class profile while retaining neighboring body refusals',async()=>{
+    const admitted=arcadeToPseudocode({'main.ts':source});assert.deepEqual(admitted.unsupported,[]);
+    const adjacent=arcadeToPseudocode({'main.ts':source+'function unproved(value:any){return value.missing()}'});assert.notEqual(adjacent.unsupported.length,0);
     const prototype=arcadeToPseudocode({'main.ts':source},{classCallablePrototype:true});assert.deepEqual(prototype.unsupported,[]);
     const run=await runProgram(prototype.code,{frames:40});
-    try{const project=JSON.parse(run.vm.toJSON());assert.notEqual(projectToArcade(project).unsupported.length,0);assert.deepEqual(projectToArcade(project,{classCallablePrototype:true}).unsupported,[]);}finally{run.vm.quit();clearStrayTimers();}
+    try{const project=JSON.parse(run.vm.toJSON());assert.deepEqual(projectToArcade(project).unsupported,[]);assert.deepEqual(projectToArcade(project,{classCallablePrototype:true}).unsupported,[]);}finally{run.vm.quit();clearStrayTimers();}
 });
