@@ -1,5 +1,29 @@
 # Arcade unit failures: exact-source follow-up
 
+## Exact integration unit shard — 2026-10-15
+
+Published integration `a30cb432c` now reaches an actual unit census after the
+canonical creator adoption. [Unit shard 2](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38701251292/job/116324641586)
+reports **3,914 tests /3,909 passes /five failures**. This is one completed
+shard, not the entire suite. The official failure log is preserved privately.
+The build and corpus jobs pass; the remaining integration checks must finish.
+
+The five failures form two repair groups:
+
+- Image lifecycle: Buffer and Font project-replacement controls throw from the
+  disposed Image owner's project-start listener. Preserve the disposed-owner
+  refusal and allow each service's legitimate replacement lifecycle.
+- Callable selection: existing registration forwarding, named scene events
+  and static callback helper controls enter the new narrow named-value bridge
+  and receive its refusal diagnostics. Preserve their already qualified
+  existing bridge without widening named-value authority.
+
+These controls remain failures until their actual current-source/native and
+portable routes pass. No assertion removal, relaxed owner check or SDK replay
+is a substitute for the underlying correction. Fresh final-head hosted checks
+remain necessary after integration.
+
+
 ## Class and runtime repair composition — 2026-10-15
 
 Local integration `ff720cda29320f352d24ad1b7cb18a5cdfafb089` passes 73 combined
