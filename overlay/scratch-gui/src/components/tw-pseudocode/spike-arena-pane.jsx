@@ -668,14 +668,32 @@ class SpikeArenaPane extends React.Component {
         const current = () => !this.disposed && this.programIntent === intent && this.bridge === bridge;
         const firmware = this.firmwareSession;
         this.firmwareSession = null;
+        let pending = this.pendingFirmwareStop;
         if (firmware) {
-            try { await firmware.stop(); }
+            // Publish the teardown before invoking stop: it can synchronously
+            // notify a listener which calls Stop again after detachment.
+            let resolveStop, rejectStop;
+            const stopped = new Promise((resolve, reject) => {
+                resolveStop = resolve; rejectStop = reject;
+            });
+            const stops = pending ? [pending, stopped] : [stopped];
+            pending = this.pendingFirmwareStop = Promise.allSettled(stops).then(results => {
+                const failed = results.find(result => result.status === 'rejected');
+                if (failed) throw failed.reason;
+            });
+            try { resolveStop(firmware.stop()); }
+            catch (error) { rejectStop(error); }
+        }
+        if (pending) {
+            try { await pending; }
             catch (error) {
                 if (current()) throw error;
                 return;
+            } finally {
+                if (this.pendingFirmwareStop === pending) this.pendingFirmwareStop = null;
             }
-            // Teardown belongs to the detached session. Shared VM, backend and
-            // port cleanup must still belong to this pane when it resumes.
+            // Even a later Stop with no attached session must wait for native
+            // clock ownership release before restoring a bridge or backend.
             if (!current()) return;
         }
         if (this.bridge && this.world && ['six-motors', 'dual-ultrasonic'].includes(this.arenaFirmwareTopology)) {
