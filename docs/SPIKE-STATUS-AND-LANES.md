@@ -551,6 +551,33 @@ remained required. The qualified follow-up above records the frozen consumers
 and finite cases now completed. Selected-image/error, deferred-storage,
 final-sampling, generation and late-poll closure across backends remains open.
 
+A replacement-upload continuation on
+`lane/spike-g02-upload-cancellation-20261015` now checks closure after awaiting
+the previous program's STOP, before replacing current code or enqueueing BEGIN.
+It also checks closure after the upload reply, before retained-program state
+and observers are published. The latter cancellation cannot roll back a program
+that has already executed.
+A real-session/production-codec control with an authored delayed native response
+shows the baseline accepting a replacement after session Stop; the live control
+passes. A completed-upload return control separately reproduces late publication
+after closure. All 59 session controls pass with both checks; each removal must
+fail its corresponding cancellation control. Fresh installed own-NuttX cancellation/recovery and
+all enabled exact-head CI checks remain pending; this finite host result does
+not close G02 or qualify guest execution. Existing transport ordering and
+firmware/Runtime/model/native pins and deadlines remain unchanged.
+
+The replacement-upload follow-up now passes four installed own-NuttX cases on
+consumer `516557dae2f3b29710318a0e9ee647715728376f`: held original STOP or
+completed-upload return, each with live delivery and actual Reset cancellation.
+Every case releases session/configuration/clock ownership, completes a distinct
+fresh guest and releases it. Standalone readers validate eight complete native
+startup transactions, original correlated packets and guest identity. Original
+selector/state-interval test failures are preserved. Initial retained state and
+held-return retained state are distinct observations. These finite results cover
+full session Stop through Reset; pending-upload Arena Stop and Code-feedback UX
+remain open. Integration preserves the qualified session/test blobs and requires
+fresh final-head CI. Later whole packages need their own qualification.
+
 ### G03 — Qualify usable sandbox and responsive editor controls
 
 **Owner:** Lite. **Start:** `docs/SPIKE-ARENA.md`,
