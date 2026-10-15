@@ -5,6 +5,7 @@ import {analyseConsoleCaptures} from './console-capture-provenance.js';
 export function createArrayReferenceExportAuthority(project) {
     const bad=Symbol('unproved value'),targets=project.targets||[],nodes=new Map(),records=[],owners=new WeakMap(),invalid=new WeakSet(),snapshots=[];
     const cells=new Map(),values=new WeakMap(),tokens=new WeakMap(),scopes=[],procedures=new Map(),calls=[],mutations=[];
+    let invalidGlobalBinding=false;
     const block=(target,id)=>typeof id==='string'?target.blocks?.[id]:null;
     const child=(node,name,target)=>block(target,node?.inputs?.[name]?.[1]);
     const literal=(node,name,target)=>{
@@ -60,6 +61,7 @@ export function createArrayReferenceExportAuthority(project) {
     const globalCell=(target,id)=>{
         const own=targets.filter(t=>Object.hasOwn(t.variables||{},id));if(own.length!==1)return null;
         const actual=own[0];if(actual!==target&&!actual.isStage)return null;
+        const name=actual.variables[id]?.[0];if(typeof name!=='string'||Object.values(actual.variables).filter(row=>row?.[0]===name).length!==1||actual!==target&&Object.values(target.variables||{}).some(row=>row?.[0]===name))return null;
         if(!nodes.has(actual))return null;let map=globalCell.maps.get(actual);if(!map)globalCell.maps.set(actual,map=new Map());if(!map.has(id))map.set(id,{});const value=cell(map.get(id));value.global=true;return value;
     };globalCell.maps=new Map();
     const localCell=(scope,name)=>{if(!scope||scope.invalid||typeof name!=='string')return null;let map=localCell.maps.get(scope);if(!map)localCell.maps.set(scope,map=new Map());if(!map.has(name))map.set(name,{});return cell(map.get(name));};localCell.maps=new Map();
@@ -84,12 +86,29 @@ export function createArrayReferenceExportAuthority(project) {
         }
         return Array.isArray(edge)&&edge[0]===10&&edge[1]==='[]'?args:null;
     };
+    // VM variable sockets use IDs; this exporter resolves the current name.
+    // Both must identify the same unique visible declaration. A mismatch must
+    // not lend facts to either the VM destination or the emitted destination.
+    const agrees=(target,name,id)=>{
+        const c=globalCell(target,id),owner=targets.find(t=>Object.hasOwn(t.variables||{},id));
+        return !!c&&typeof name==='string'&&owner.variables[id][0]===name;
+    };
+    for(const target of targets)for(const node of Object.values(target.blocks||{})){
+        if(['data_setvariableto','data_changevariableby','data_variable'].includes(node.opcode)){
+            const field=node.fields?.VARIABLE;
+            if(!Array.isArray(field)||field.length!==2||!agrees(target,field[0],field[1]))invalidGlobalBinding=true;
+            if(!exactKeys(node,node.opcode==='data_variable'?[]:['VALUE'],['VARIABLE'])||node.mutation!=null)invalidGlobalBinding=true;
+        }
+        for(const slot of Object.values(node.inputs||{}))for(const value of [slot?.[1],slot?.[2]])if(Array.isArray(value)&&value[0]===12&&
+            (value.length!==3||!agrees(target,value[1],value[2])))invalidGlobalBinding=true;
+    }
     for(const scope of scopes)for(const name of scope.params||[]){const value=localCell(scope,name);if(value)value.formal=scope;}
     for(const {target,node,scope}of records){
         let destination=null;
         if(node.opcode==='data_setvariableto'||node.opcode==='data_changevariableby')destination=globalCell(target,node.fields?.VARIABLE?.[1]);
         else if(node.opcode==='arcade_setLocal')destination=localCell(scope,literal(node,'NAME',target));
         else if(node.opcode==='arcade_setCaptured')destination=capturedCell(scope,literal(node,'NAME',target));
+        if(destination&&['arcade_setLocal','arcade_setCaptured'].includes(node.opcode)&&(!exactKeys(node,['NAME','VALUE'])||node.mutation!=null))destination.types.add(bad);
         if(destination)destination.writers.push({target,node,scope,value:node.opcode==='data_changevariableby'?null:input(node,'VALUE',target)});
         if(node.opcode==='arcade_returnValue')scope.returns.push(input(node,'VALUE',target));
         if(['arcade_callFunction','procedures_call'].includes(node.opcode)){
@@ -325,6 +344,7 @@ export function createArrayReferenceExportAuthority(project) {
     };
     const live=()=>project.targets===targets&&snapshot()===original&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
     return Object.freeze({validateInput(target,node,name='ARRAY'){
+        if(invalidGlobalBinding)return {ok:false,reason:'current variable name, ID, owner or writer schema does not agree'};
         if(!live()||!nodes.get(target)||!owners.has(node)||invalid.has(node)||nodes.get(target).get(Object.keys(target.blocks||{}).find(id=>target.blocks[id]===node))!==node)return {ok:false,reason:'current target, input or connected graph changed'};
         if(!operationShape(node))return {ok:false,reason:'requires the exact supported current operation input schema'};
         const value=input(node,name,target),types=readInput(value);return singleArray(types)&&initialized(value)?{ok:true}:{ok:false,reason:'requires an actual initialized Array producer and compatible all writers'};

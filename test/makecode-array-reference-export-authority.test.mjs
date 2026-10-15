@@ -224,3 +224,27 @@ test('global Array recursion retains dynamic and escaped caller refusal obligati
         assert.equal(createArrayReferenceExportAuthority(creator.project).validateInput(target,block).ok,false);
     }
 });
+
+test('current Array variable authority rejects disagreement between actual IDs and emitted names on both destinations',()=>{
+    for(const edit of [
+        f=>{f.write.fields.VARIABLE[0]='other';},
+        f=>{f.write.inputs.EXTRA=[1,[4,'7']];},
+        f=>{f.block.inputs.ARRAY[1][1]='other';},
+        f=>{f.target.variables.__shadow=['items',0];},
+        f=>{const id=f.write.fields.VARIABLE[1];f.target.blocks.__reader={opcode:'data_variable',parent:f.blockId,next:null,shadow:false,topLevel:false,fields:{VARIABLE:['other',id]},inputs:{}};f.block.inputs.ARRAY=[2,'__reader'];}
+    ]){
+        const creator=current('let items=[1];let other=[2];let count=items.length;let otherCount=other.length'),{target,block}=lengthBlock(creator),blocks=target.blocks;
+        const blockId=Object.keys(blocks).find(id=>blocks[id]===block),write=Object.values(blocks).find(b=>b.opcode==='data_setvariableto'&&b.fields.VARIABLE[0]==='items');
+        edit({creator,target,block,blockId,write});const proof=createArrayReferenceExportAuthority(creator.project);
+        for(const receiver of Object.values(blocks).filter(b=>b.opcode==='arrays_referenceLength'))assert.equal(proof.validateInput(target,receiver).ok,false,'neither name destination nor ID destination can borrow facts');
+    }
+});
+test('current Array variable authority preserves a genuine declaration and every-reference rename',()=>{
+    const creator=current('let items=[1];let alias=items;let count=alias.length'),stage=creator.project.targets.find(t=>t.isStage),[id]=Object.entries(stage.variables).find(([,v])=>v[0]==='items');
+    stage.variables[id][0]='renamedItems';
+    for(const target of creator.project.targets)for(const block of Object.values(target.blocks)){
+        if(block.fields?.VARIABLE?.[1]===id)block.fields.VARIABLE[0]='renamedItems';
+        for(const slot of Object.values(block.inputs||{}))for(const value of [slot[1],slot[2]])if(Array.isArray(value)&&value[0]===12&&value[2]===id)value[1]='renamedItems';
+    }
+    assert.deepEqual(projectToArcade(creator.project).unsupported,[]);
+});
