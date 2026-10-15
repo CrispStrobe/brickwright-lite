@@ -155,8 +155,9 @@ function bind(phase) {
             if(runtime.sequencer.activeThread!==thread||!runtime.isActiveThread(thread)||thread.isKilled||
                 !runtime.targets.includes(thread.target)||thread.blockContainer!==container||thread.target.blocks!==container||
                 container._cache?._executeCached?.[thread.peekStack()]!==cache)throw Error('Source condition ingress requires actual current execution cache');
+            const root=thread.peekStack(),block=container.getBlock(root);
             let record=principal(thread);
-            if(!records.has(thread)&&cache.opcode==='control_wait_until'){
+            if(!records.has(thread)&&block?.opcode==='control_wait_until'){
                 record={thread,container,root:thread.peekStack(),frame:thread.peekStackFrame(),frames:[...thread.stackFrames],
                     rootCache:cache,generation:phase.generation,state:'initial',caches:new Map(),delivery:deferred(),sample:null,
                     graph:Object.entries(container._blocks).map(([id,node])=>[id,node,structure(node)]),
@@ -165,9 +166,15 @@ function bind(phase) {
                     params:thread.stackFrames.map(frame=>[frame,frame.params])};
                 records.set(thread,record);
             }
-            if(!record)return true;
-            if(record.thread===thread&&['parked','delivery'].includes(record.state))return false;
-            try {if(!valid(record))throw Error('Source wait principal changed');checkCache(record,container,cache.id);return true;}
+            if(!record){
+                if(!block||cache.id!==root||cache.opcode!==block.opcode)throw Error('Source execution cache root ID or opcode differs from current Blocks');
+                return true;
+            }
+            try {
+                if(!block||cache.id!==root||cache.opcode!==block.opcode)throw Error('Source condition selected cache root ID or opcode changed');
+                if(record.thread===thread&&['parked','delivery'].includes(record.state))return false;
+                if(!valid(record))throw Error('Source wait principal changed');checkCache(record,container,root);return true;
+            }
             catch(error){refuse(record,error);return false;}
         },
         after(loan,result) {

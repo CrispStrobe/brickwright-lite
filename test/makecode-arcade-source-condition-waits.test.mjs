@@ -163,3 +163,18 @@ test('ordinary Scratch wait-until retains stock yielding beside a genuine source
  assert.equal(thread.status,thread.constructor.STATUS_RUNNING);assert.equal(Number(values(run).after),0);assert.equal(rt._arcadeFramePhase.ext._pollEvents?.size||0,0);assert.deepEqual(run.errors,[]);
  }finally{close(run);}
 });
+
+
+for(const mutation of ['opcode','id'])test('initial actual Blocks root refuses restarted cached '+mutation+' selector corruption before condition effects',{timeout:3000},async()=>{
+ let run;try{run=await start('let after=0;pauseUntil(function(){return game.runtime()<0});after+=1');await bootstrap(run);
+ const rt=run.vm.runtime,container=rt.targets.find(t=>Object.values(t.blocks._blocks).some(b=>b.opcode==='control_wait_until')).blocks;
+ const block=Object.values(container._blocks).find(b=>b.opcode==='control_wait_until'),cache=container._cache._executeCached[block.id];assert.ok(cache);
+ const before=run.calls.get('arcade_sceneMillis');assert.ok(before>0,'real predicate effect must first occur before this adversary');
+ const other=Object.values(container._cache._executeCached).find(c=>c.id!==block.id&&c._parentValues===null&&c._parentKey===null&&c._ops?.at(-1)===c&&container.getBlock(c.id)?.opcode===c.opcode);
+ if(mutation==='id')assert.ok(other,'different genuine current cached command root must exist');
+ run.vm.stopAll();run.vm.greenFlag();assert.equal(container._cache._executeCached[block.id],cache);
+ if(mutation==='opcode')cache.opcode='data_variable';else cache.id=other.id;
+ await bootstrap(run);await until(()=>run.errors.some(e=>e.includes('Source pauseUntil')));
+ assert.equal(run.calls.get('arcade_sceneMillis'),before,'current CONDITION must not execute after selector corruption');assert.equal(Number(values(run).after),0);
+ }finally{close(run);}
+});
