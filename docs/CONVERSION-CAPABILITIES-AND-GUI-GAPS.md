@@ -8,13 +8,18 @@ constraints/defaults and method bodies. The separately opted-in
 now qualifies the bounded State/Holder control through native execution, editable
 Code, same/fresh SB3, current-body export, selected-original execution and reimport.
 It preserves captured receiver identity and separate Number/String generic
-results. This is not default admission or complete library support.
+results. Complete library support remains open.
 
 [The default admission contract](compatibility/arcade-ordinary-class-callable-default-admission.md)
 landed in [PR937](https://github.com/CrispStrobe/brickwright-lite/pull/937).
-Implementation still requires independent complete-source and current-project
-proof before choosing that profile; a prototype flag or annotation supplies no
-such proof. The editor work below remains open.
+Its bounded implementation is now integrated: independent complete-source flow,
+current editable project validation and reconstructed-source export proof choose
+the ordinary class profile. Independent review passed 36 affected controls,
+12 source refusal cases and disconnected incompatible writers on both the same
+and a foreign target. Two new renamed/yielding source and exported originals
+matched `3 / ok / 3`; unchanged earlier originals were reused only by exact input
+bytes. An annotation or prototype flag supplies no default authority.
+Hosted visible editor qualification and the editor work below remain open.
 
 | User surface | Required remaining work |
 | --- | --- |

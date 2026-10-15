@@ -33,8 +33,8 @@ identity, vocabulary and tracked mirrors.
   unit shards remain preserved; current hosted acceptance is still required.
 - Default class callback [ownership PR937](https://github.com/CrispStrobe/brickwright-lite/pull/937)
   merged after all eleven enabled checks passed. Its complete-source and
-  current-project implementation is in progress; explicit prototype evidence
-  does not grant default or whole-library admission.
+  current-project implementation is now integrated for the bounded ordinary
+  Number/String profile; broader library and visible GUI qualification remain open.
 
 The reviewed screen operand follow-up `3d42e8855badbddf972b900b343671edbc299c49`
 is normally integrated at `990e0c961bdcb05e3c3b17fe5ba1213c8f3bb463`.

@@ -1,9 +1,24 @@
 # Bounded ordinary class callback default admission
 
-This proposed lane adds an independently proved ordinary-class profile to default
-Arcade import and export. The installed v2 prototype and its two executed
-State/Holder originals are prerequisites. They do not authorize default source
-admission. The existing version 1 numeric whole-program gate remains unchanged.
+## Current bounded implementation
+
+Reviewed candidate `1f4853394742fdf8b9e0d329ac78b5be4253ff4c` is normally
+integrated at `709a5432e23104dd5332dd40c72e95ae79181198`. Complete parsed-source
+producer flow, current-project validation and a second reconstructed-source gate
+now admit the bounded ordinary Number/String State/Holder callback profile by
+default. The existing version 1 numeric whole-program gate remains independent.
+
+Independent review passed 36 affected checks and 12 refusal cases, including
+bad disconnected writers on the same and foreign targets. Two new actual
+renamed/yielding originals, source and export, both returned `3 / ok / 3`; all
+SDK guards and actual compilation inputs matched. Earlier unchanged originals
+were reused only after exact input-byte comparison.
+
+Inheritance, accessors, intrinsic Font/Sprite classes, Array producers, module
+callable globals, recursive callbacks, optional/default parameters and generic
+constraints/defaults remain outside this profile. These are named refusals.
+Hosted editor qualification is pending. The contract below retains the remaining
+acceptance criteria; these bounded results do not complete every criterion.
 
 ## Source ownership gate
 
