@@ -3196,6 +3196,13 @@ jobs:
           BW_GUI_BUILD_ARCHIVE: ${{ steps.admitted_gui.outputs.archivePath }}
           BW_FONT_GUI_REPORT_DIR: test-results/arcade-live-font-authoring-gui
         run: node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-live-font-authoring-gui.mjs
+      - name: Actual production IDE owned Image authoring
+        env:
+          PROOF_URL: http://localhost:8617/
+          BW_GUI_BUILD_RECEIPT: ${{ steps.admitted_gui.outputs.receiptPath }}
+          BW_GUI_BUILD_ARCHIVE: ${{ steps.admitted_gui.outputs.archivePath }}
+          BW_IMAGE_GUI_REPORT_DIR: test-results/arcade-owned-image-authoring
+        run: node --import ./scripts/lib/register-gui-scope.mjs scripts/verify-arcade-owned-image-authoring-browser.mjs
       - name: Actual production IDE controller repeat authoring
         env:
           PROOF_URL: http://localhost:8617/
@@ -3218,6 +3225,7 @@ jobs:
             test-results/arcade-event-authoring-gui
             test-results/arcade-live-font-authoring-gui
             test-results/arcade-controller-repeat-authoring-gui
+            test-results/arcade-owned-image-authoring
           if-no-files-found: error
 
   deploy:
