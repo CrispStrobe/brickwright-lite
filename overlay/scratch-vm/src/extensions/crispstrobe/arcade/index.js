@@ -18,6 +18,7 @@ module.exports = makeExt(`// Name: Arcade
   const classCallableHosts = new WeakMap();
   const managedReturnHosts = new WeakMap();
   const sdkImageOwners = new WeakMap();
+  const exceptionOwners = new WeakMap();
   const speechPalette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609',
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
@@ -32,6 +33,9 @@ module.exports = makeExt(`// Name: Arcade
   class Arcade {
     constructor(runtime) {
       this._runtime = runtime;
+      const newExceptionOwner=()=>dependencies.arcadeExceptions.create(runtime,(args,util)=>
+        Scratch.BWValues.decode(dependencies.currentNumberInput(runtime,args,util,'arcade_throwValue')));
+      exceptionOwners.set(this,newExceptionOwner());
       managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
       this._sourceScalarCells = dependencies.createSourceScalarCells(runtime, Scratch.BWValues, dependencies.sourceReferenceTypes, dependencies.sourceCallableCells);
       this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells);
@@ -137,7 +141,7 @@ module.exports = makeExt(`// Name: Arcade
           this._creationWaits.clear();
           for(const dialog of this._dialogs || [])dialog.resolve(dialog.type==='ask' ? false : undefined);
           this._dialogs=[];this._cancelNativeTextDialogs();this._showNextDialog();
-          for (const call of this._functionCalls) {runtime.sequencer?.retireThread(call.thread);if(call.cancel)call.cancel();else call.resolve(0);}
+          for (const call of this._functionCalls) {call.unlink?.();runtime.sequencer?.retireThread(call.thread);if(call.cancel)call.cancel();else call.resolve(0);}
           this._functionCalls.clear();
           this._controlEvents?.cancel();this._controllerEventIds = null;this._controlEventContexts = new WeakMap();
           this._terrainEpoch++;this._terrainFrame = null;this._terrainStopped = true;
@@ -212,6 +216,7 @@ module.exports = makeExt(`// Name: Arcade
           this._changed();
         };
         runtime.on('PROJECT_LOADED', () => {
+          exceptionOwners.get(this).dispose();exceptionOwners.set(this,newExceptionOwner());
           imageOwner.dispose();imageOwner=newImageOwner();sdkImageOwners.set(this,imageOwner);
           this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.dispose();managedReturnHosts.get(this).dispose();
           this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells);
@@ -502,6 +507,8 @@ module.exports = makeExt(`// Name: Arcade
             text:'run Arcade dispatched callable' },
           { opcode: 'returnValue', blockType: Scratch.BlockType.COMMAND,
             text: 'return Arcade value [VALUE]', arguments: str('VALUE', '0') },
+          { opcode: 'throwValue', blockType: Scratch.BlockType.COMMAND,
+            text: 'Arcade throw [VALUE]', arguments: str('VALUE', '') },
           { opcode: 'setLocal', blockType: Scratch.BlockType.COMMAND,
             text: 'set Arcade local [NAME] to [VALUE]',
             arguments: { ...str('NAME', 'value'), ...str('VALUE', '') } },
@@ -1959,7 +1966,9 @@ module.exports = makeExt(`// Name: Arcade
         }
       }
     }
+    throwValue(args,util) {return exceptionOwners.get(this).raise(args,util);}
     _objectError(error) {
+      exceptionOwners.get(this).rethrow(error);
       this._runtime?.emit?.('BLOCKS_ERROR',error);return Scratch.BWValues.UNDEFINED;
     }
     declareClass(args) {
@@ -1970,7 +1979,7 @@ module.exports = makeExt(`// Name: Arcade
       try {this._objectHeap.register({name:String(args.NAME),parent:String(args.BASE),fields:JSON.parse(String(args.FIELDS)),initializer:String(args.INITIALIZER),constructor:String(args.CONSTRUCTOR),parameters:JSON.parse(String(args.PARAMETERS)),methods:JSON.parse(String(args.METHODS))});}
       catch(error){return this._objectError(error);}
     }
-    _objectProcedure(name,values,util,token) {
+    _objectProcedure(name,values,util,token,exceptionCaller=null) {
       const target=util?.target || util?.thread?.target;
       if(util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))){const error=new Error('Class construction or method invocation was cancelled');error.bwObjectCancelled=true;throw error;}
       if(this._sdkObjectClasses.matches(name))return this._sdkObjectClasses.invoke(name,values,util,token);
@@ -1978,15 +1987,18 @@ module.exports = makeExt(`// Name: Arcade
       // Dispatch through the real managed-call queue. Its source phase owns
       // runnable eligibility; a Promise continuation must not synchronously
       // re-enter execute's shared BlockUtility with a different caller.
-      return this.callFunction({NAME:name,ARGS:JSON.stringify(values,Scratch.BWValues.jsonReplacer),bwObjectConstruction:token},
+      return this.callFunction({NAME:name,ARGS:JSON.stringify(values,Scratch.BWValues.jsonReplacer),bwObjectConstruction:token,bwExceptionCaller:exceptionCaller},
         {thread:util?.thread,target,sequencer:null});
     }
     createObject(args,util) {
       // BlockUtility is reused by the sequencer. Promise continuations retain
       // the actual calling thread, not whichever thread last used that utility.
+      const originalUtil=util;
+      let exceptionCaller;
       util={thread:util?.thread,target:util?.target || util?.thread?.target,sequencer:util?.sequencer,bwObjectUtility:util};
       let allocation;
       try {
+        exceptionCaller=exceptionOwners.get(this).captureCaller(args,originalUtil);
         const argsText=String(args.ARGS),rawValues=JSON.parse(argsText);
         if(!Array.isArray(rawValues))throw new Error('Class constructor arguments must be an ordered argument list');
         const className=String(args.CLASS);
@@ -1997,15 +2009,15 @@ module.exports = makeExt(`// Name: Arcade
         const {ref,def,token}=allocation;
         if(values.length>def.parameters.length)throw new Error('Class constructor has too many arguments');
         while(values.length<def.parameters.length){const param=def.parameters[values.length];values.push(Object.prototype.hasOwnProperty.call(param,'default')?Scratch.BWValues.encode(param.default):Scratch.BWValues.UNDEFINED);}
-        const invokeConstructor=()=>{if(!this._objectHeap.constructionActive(ref,token)){const error=new Error('Class construction was cancelled by project replacement');error.bwObjectCancelled=true;throw error;}return def.constructor?this._objectProcedure(def.constructor,[ref,...values],util,token):undefined;};
-        const finish=()=>{if(util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))){this._objectHeap.abort(ref,token);return Scratch.BWValues.UNDEFINED;}return this._objectHeap.finish(ref,token);};
-        const failed=error=>{this._objectHeap.abort(ref,token);return error.bwObjectCancelled || util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))?Scratch.BWValues.UNDEFINED:this._objectError(error);};
-        const initial=def.initializer?this._objectProcedure(def.initializer,[ref],util,token):undefined;
+        const invokeConstructor=()=>{if(!this._objectHeap.constructionActive(ref,token)){const error=new Error('Class construction was cancelled by project replacement');error.bwObjectCancelled=true;throw error;}return def.constructor?this._objectProcedure(def.constructor,[ref,...values],util,token,exceptionCaller):undefined;};
+        const finish=()=>{exceptionOwners.get(this).releaseCaller(exceptionCaller);if(util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))){this._objectHeap.abort(ref,token);return Scratch.BWValues.UNDEFINED;}return this._objectHeap.finish(ref,token);};
+        const failed=error=>{exceptionOwners.get(this).releaseCaller(exceptionCaller);this._objectHeap.abort(ref,token);exceptionOwners.get(this).rethrow(error);return error.bwObjectCancelled || util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))?Scratch.BWValues.UNDEFINED:this._objectError(error);};
+        const initial=def.initializer?this._objectProcedure(def.initializer,[ref],util,token,exceptionCaller):undefined;
         if(initial && typeof initial.then==='function')return initial.then(invokeConstructor).then(finish).catch(failed);
         const body=invokeConstructor();
         if(body && typeof body.then==='function')return body.then(finish).catch(failed);
         return finish();
-      }catch(error){if(allocation)this._objectHeap.abort(allocation.ref,allocation.token);return this._objectError(error);}
+      }catch(error){exceptionOwners.get(this).releaseCaller(exceptionCaller);if(allocation)this._objectHeap.abort(allocation.ref,allocation.token);return this._objectError(error);}
     }
     objectField(args,util) {
       try{const field=this._objectHeap.property(args.OBJECT,String(args.FIELD));
@@ -2038,12 +2050,14 @@ module.exports = makeExt(`// Name: Arcade
     }
     _pumpFunctionCalls() {
       for (const call of this._functionCalls) {
+        const failure=exceptionOwners.get(this).failure(call.thread) || exceptionOwners.get(this).failure(call.caller);
+        if(failure){this._functionCalls.delete(call);call.unlink?.();call.reject(failure);continue;}
         if (call.caller && (call.caller.status === call.caller.constructor.STATUS_DONE || call.caller.isKilled || !this._runtime.threads.includes(call.caller))) {
-          this._functionCalls.delete(call);this._runtime.sequencer.retireThread(call.thread);if(call.cancel)call.cancel();else call.resolve(0);continue;
+          this._functionCalls.delete(call);call.unlink?.();this._runtime.sequencer.retireThread(call.thread);if(call.cancel)call.cancel();else call.resolve(0);continue;
         }
         if (call.thread.stack.length === 1 || call.thread.status === call.thread.constructor.STATUS_DONE || call.thread.isKilled ||
             !this._runtime.threads.includes(call.thread)) {
-          this._functionCalls.delete(call);this._runtime.sequencer.retireThread(call.thread);call.resolve(Scratch.BWValues.encode(call.thread.bwReturnValue));
+          this._functionCalls.delete(call);call.unlink?.();this._runtime.sequencer.retireThread(call.thread);call.resolve(Scratch.BWValues.encode(call.thread.bwReturnValue));
         }
       }
     }
@@ -2058,6 +2072,11 @@ module.exports = makeExt(`// Name: Arcade
       if (!Array.isArray(values)) return 0;
       const [names, , defaults] = target.blocks.getProcedureParamNamesIdsAndDefaults(name);
       const thread = runtime._pushThread(definition, target);
+      const exceptions=exceptionOwners.get(this);
+      let unlink;
+      try {unlink=exceptions.link(thread,util.thread,()=>{
+        classCallableHosts.get(this)?.abortThread(thread);managedReturnHosts.get(this).forget(thread);
+      },args.bwExceptionCaller);}catch(error){runtime.sequencer.retireThread(thread);throw error;}
       // A sentinel caller frame retains arguments/locals while the native
       // sequencer replaces body frames. Each invocation owns its own cells.
       // The caller frame carries cells but has no executable block. Reusing
@@ -2070,10 +2089,10 @@ module.exports = makeExt(`// Name: Arcade
       thread.bwObjectConstruction = args.bwObjectConstruction || util.thread?.bwObjectConstruction;
       let classSignature=null;
       try {classSignature=classCallableHosts.get(this)?.bind(thread,target,name,thread.stackFrames[0].params,thread.bwObjectConstruction,values,rawValues);}
-      catch(error){runtime.sequencer.retireThread(thread);return this._objectError(error);}
+      catch(error){unlink();classCallableHosts.get(this)?.abortThread(thread);runtime.sequencer.retireThread(thread);return this._objectError(error);}
       managedReturnHosts.get(this).bind(thread,target,name,definition,util.thread);
       const managedCaller=util.thread;
-      const complete=value=>{if(classSignature && (managedCaller.isKilled || !runtime.threads.includes(managedCaller)))return Scratch.BWValues.UNDEFINED;try{return classCallableHosts.get(this)?.result(classSignature,value) ?? value;}catch(error){return this._objectError(error);}};
+      const complete=value=>{const failure=exceptions.failure(thread) || exceptions.failure(managedCaller);if(failure)throw failure;unlink();if(classSignature && (managedCaller.isKilled || !runtime.threads.includes(managedCaller)))return Scratch.BWValues.UNDEFINED;try{return classCallableHosts.get(this)?.result(classSignature,value) ?? value;}catch(error){return this._objectError(error);}};
       thread.bwArcadeEvent = util.thread?.bwArcadeEvent;
       thread.bwArcadeCaptures = args.bwCallableCaptures || util.thread?.bwArcadeCaptures;
       thread.bwFunctionNames = new Set(util.thread?.bwFunctionNames || []);
@@ -2094,10 +2113,11 @@ module.exports = makeExt(`// Name: Arcade
             sequencer.stepThread(thread);
         }
         finally {util.thread = caller;util.sequencer = sequencer;sequencer.activeThread = active;}
-        if (!runtime.threads.includes(caller)) {sequencer.retireThread(caller);sequencer.retireThread(thread);return 0;}
+        const failure=exceptions.failure(thread) || exceptions.failure(caller);if(failure)throw failure;
+        if (!runtime.threads.includes(caller)) {unlink();sequencer.retireThread(caller);sequencer.retireThread(thread);return 0;}
       }
       if (thread.stack.length === 1 || thread.status === thread.constructor.STATUS_DONE || thread.isKilled || !runtime.threads.includes(thread)) {runtime.sequencer.retireThread(thread);return complete(Scratch.BWValues.encode(thread.bwReturnValue));}
-      return new Promise(resolve=>this._functionCalls.add({thread,resolve:value=>resolve(complete(value)),...(classSignature?{cancel:()=>resolve(Scratch.BWValues.UNDEFINED)}:{}),caller:util.thread}));
+      return new Promise((resolve,reject)=>this._functionCalls.add({thread,unlink,reject,resolve:value=>{try{resolve(complete(value));}catch(error){reject(error);}},...(classSignature?{cancel:()=>resolve(Scratch.BWValues.UNDEFINED)}:{}),caller:util.thread}));
     }
     returnValue(args, util) {
       const thread = util?.thread;if (!thread) return;
@@ -2130,10 +2150,12 @@ module.exports = makeExt(`// Name: Arcade
     }
     _callableProcedure(invocation,util) {
       const caller=util?.thread;
-      const result=this.callFunction({NAME:invocation.definition.procedure,
-        ARGS:JSON.stringify(invocation.args,Scratch.BWValues.jsonReplacer),bwCallableCaptures:invocation.captures},util);
-      const complete=value=>{try{if(!this._callableValues.hasTypedInvocation(invocation))return value;if(caller && (caller.isKilled || !this._runtime.threads.includes(caller)))return Scratch.BWValues.UNDEFINED;return this._callableValues.complete(invocation,value);}catch(error){return this._objectError(error);}};
-      return result && typeof result.then==='function'?result.then(complete):complete(result);
+      const failed=error=>{this._callableValues.failInvocation(invocation);return this._objectError(error);};
+      let result;
+      try {result=this.callFunction({NAME:invocation.definition.procedure,
+        ARGS:JSON.stringify(invocation.args,Scratch.BWValues.jsonReplacer),bwCallableCaptures:invocation.captures},util);}catch(error){return failed(error);}
+      const complete=value=>{try{const failure=exceptionOwners.get(this).failure(caller);if(failure){this._callableValues.failInvocation(invocation);throw failure;}if(!this._callableValues.hasTypedInvocation(invocation))return value;if(caller && (caller.isKilled || !this._runtime.threads.includes(caller)))return Scratch.BWValues.UNDEFINED;return this._callableValues.complete(invocation,value);}catch(error){return this._objectError(error);}};
+      return result && typeof result.then==='function'?result.then(complete,failed):complete(result);
     }
     callCallable(args,util) {
       try {const argsText=String(args.ARGS),rawValues=JSON.parse(argsText),values=JSON.parse(argsText,(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
@@ -5867,6 +5889,7 @@ module.exports = makeExt(`// Name: Arcade
   sourceCallableCells: require('./source-callable-cells'),
   CallableValues: require('./callable-values'),
   createSdkImageOwner: require('./sdk-image-owner'),
+  arcadeExceptions: require('../../../util/bw-arcade-exceptions'),
   createClassCallableHost: require('./class-callable-host'),
   CallableDispatch: require('./callable-dispatch'),
   sourceReferenceTypes: require('./source-reference-types'),
