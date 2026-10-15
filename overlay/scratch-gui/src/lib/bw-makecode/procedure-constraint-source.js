@@ -9,7 +9,9 @@ function constraints(fn,explicit=false) {
  if(!annotated.length)return [];
  // Reference/callable routes remain independently checked, outside this protocol.
  if(annotated.some(name=>!TYPES[fn.paramTypes[name].text]))return [];
- if(fn.optionalParams?.length||fn.defaultParams&&Object.keys(fn.defaultParams).length||fn.restParam||fn.typeParameters?.length){if(explicit)fail('optional/default/rest/generic parameters are outside the primitive protocol');return [];}
+ const optional=fn.optionalParams||[],firstOptional=fn.params.findIndex(name=>optional.includes(name));
+ const optionalAny=optional.every(name=>fn.params.includes(name)&&fn.paramTypes?.[name]?.text==='any')&&(firstOptional<0||fn.params.slice(firstOptional).every(name=>optional.includes(name)));
+ if(!optionalAny||fn.parameterDefaults?.length||fn.defaultParams&&Object.keys(fn.defaultParams).length||fn.restParam||fn.typeParameters?.length){if(explicit)fail('optional typed/default/rest/generic parameters are outside the primitive protocol');return [];}
  return annotated.map(name=>Object.freeze({name,type:TYPES[fn.paramTypes[name].text]}));
 }
 export function procedureConstraintPrefix(fn,procedure,parameterName=name=>name) {
@@ -44,7 +46,7 @@ export function validateProcedureConstraintSource(program,{onlyFunctions=null}={
   const requireTypes=(types,type,label)=>{if(type==='Any')return;if(!types.size||[...types].some(actual=>actual!==type))diagnostics.push(`Procedure parameter constraint: ${label} requires ${type} from actual producers`);};
   const incoming=calls.filter(call=>graph.immutableFunctionAt(call)===fn);
   for(const call of incoming) {
-   if(call.isNew||call.typeArguments?.length||call.args.length!==fn.params.length){diagnostics.push('Procedure parameter constraint: actual call argument count/shape differs');continue;}
+   if(call.isNew||call.typeArguments?.length||call.args.length>fn.params.length||fn.params.slice(call.args.length).some(name=>!fn.optionalParams?.includes(name)||fn.paramTypes?.[name]?.text!=='any')){diagnostics.push('Procedure parameter constraint: actual call argument count/shape differs');continue;}
    for(const constraint of entry.selected)requireTypes(constraintTypes(call.args[fn.params.indexOf(constraint.name)]),constraint.type,`${fn.name}.${constraint.name}`);
   }
   // All assignments into an actual formal must discharge its contract. Its
