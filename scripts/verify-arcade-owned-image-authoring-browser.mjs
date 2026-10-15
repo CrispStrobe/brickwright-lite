@@ -97,7 +97,7 @@ const journey=async()=>{
 const boundedCleanup=async(operation,milliseconds)=>{let timer;try{return await Promise.race([operation,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Owned Image GUI cleanup deadline exceeded')),milliseconds);})]);}finally{clearTimeout(timer);}};
 try{
  await Promise.race([journey(),new Promise((_,reject)=>{deadlineTimer=setTimeout(()=>{deadlineExpired=true;reject(new Error('Owned Image GUI journey exceeded its 180-second deadline'));},180000);})]);
-}catch(error){report.status='failed';report.failure=String(error.stack||error);if(page){report.body=await page.evaluate(()=>document.body.innerText).catch(e=>String(e));await page.screenshot({path:path.join(out,'failure.png'),timeout:5000}).catch(()=>{});}throw error;
+}catch(error){report.status='failed';report.failure=String(error.stack||error);if(page){report.body=await boundedCleanup(page.evaluate(()=>document.body.innerText),3000).catch(e=>String(e));await page.screenshot({path:path.join(out,'failure.png'),timeout:5000}).catch(()=>{});}throw error;
 }finally{
  clearTimeout(deadlineTimer);
  try{if(browser)await boundedCleanup(browser.close(),5000);}catch(error){report.cleanupFailure=String(error);report.status='failed';process.exitCode=1;}
