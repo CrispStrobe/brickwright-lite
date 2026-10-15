@@ -662,12 +662,26 @@ class SpikeArenaPane extends React.Component {
     }
 
     async pause () {
-        if (this.firmwareSession?.storageSupported) {
-            try { await this.firmwareSession.stopProgram(); this.setState({status: 'paused', message: this.locale === 'de' ? 'Programm gestoppt. Speicher verfügbar, sobald die Firmware vollständig angehalten hat.' : 'Program stopped. Storage is available when firmware finishes stopping.'}); }
-            catch (error) { this.setState({message: error.message}); }
+        const session = this.firmwareSession;
+        if (session?.storageSupported) {
+            const current = () => !this.disposed && this.firmwareSession === session && !session.closed;
+            try {
+                await session.stopProgram();
+                if (current()) this.setState({status: 'paused', message: this.locale === 'de' ? 'Programm gestoppt. Speicher verfügbar, sobald die Firmware vollständig angehalten hat.' : 'Program stopped. Storage is available when firmware finishes stopping.'});
+            } catch (error) {
+                if (current()) this.setState({message: error.message});
+            }
             return;
         }
-        if (this.firmwareSession || this.hubState?.externalBackend) await this.stopProgram();
+        if (this.firmwareSession || this.hubState?.externalBackend) {
+            const bridge = this.bridge;
+            const stopped = this.stopProgram();
+            // stopProgram creates its intent before awaiting firmware teardown.
+            const intent = this.programIntent;
+            await stopped;
+            if (this.disposed || this.programIntent !== intent || this.bridge !== bridge) return;
+        }
+        if (this.disposed) return;
         this.setState({status: 'paused'});
     }
 

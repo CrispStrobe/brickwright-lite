@@ -539,6 +539,16 @@ remained required. The qualified follow-up above records the frozen consumers
 and finite cases now completed. Selected-image/error, deferred-storage,
 final-sampling, generation and late-poll closure across backends remains open.
 
+A Pause feedback continuation on `lane/spike-g02-pause-ownership-20261015`
+prevents a delayed success or error from overwriting feedback after Stop, pane
+disposal or session replacement. Storage Pause checks its captured live session;
+non-storage Pause checks teardown intent and bridge ownership before publication.
+All 16 authored-boundary controls and 14 existing pane lifecycle controls pass;
+the baseline fails 12 stale-result cases while its four current controls pass.
+Removing any of the three feedback/ownership guards is detected. These are host
+controls; fresh installed own-guest normal/cancellation/recovery and exact-head
+CI remain pending. No guest, whole-G02, physical or release claim follows.
+
 ### G03 — Qualify usable sandbox and responsive editor controls
 
 **Owner:** Lite. **Start:** `docs/SPIKE-ARENA.md`,

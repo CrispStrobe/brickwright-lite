@@ -4075,3 +4075,20 @@ No STM32/Arcade/SPIKE/world implementation, new workflow, unrelated package,
 deployment or physical-accuracy claim. Publish claim before implementation.
 This is task 2 of the ordered circuit campaign in upstream CUI documentation;
 later stratified-regression and realism work needs its own measured envelope.
+
+## SPIKE Pause feedback ownership continuation — 2026-10-15
+
+Continuation in the merged G02 pane/lifecycle envelope, branch
+`lane/spike-g02-pause-ownership-20261015`, same Codex owner.
+A delayed firmware Pause success or error could publish after Stop, pane disposal
+or session replacement. Storage-capable Pause now checks the captured live
+session before feedback. Non-storage Pause checks the teardown intent and bridge
+before publishing paused state. Current success and error behavior is retained.
+
+Sixteen actual-method controls use authored delayed replies: four current cases
+pass on the baseline and twelve stale cases fail. The candidate passes all sixteen
+and the fourteen existing pane lifecycle controls. Removing each storage feedback
+guard or the non-storage teardown fence is detected. This is host evidence only;
+fresh source-bound installed normal/cancellation/recovery and every enabled
+exact-head check remain required before integration. No firmware, Runtime, model,
+native, dependency, deadline or workflow change; no full G02 or rollback claim.
