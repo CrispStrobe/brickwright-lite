@@ -1,3 +1,4 @@
+import {prepareThrowSource} from './throw-source-gate.js';
 import {proveArrayMapValues} from './lower-array-map-values.js';
 import {selectNamedFunctionSourceProof} from './named-function-source-selection.js';
 import {lowerNamedFunctionValues} from './lower-named-function-values.js';
@@ -282,7 +283,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.pendingClone = outer;
     }
 
-    get nativeValues () {return !!this.handleTemplates || this.referenceArrayProgram || this.fontValueProgram;}
+    get nativeValues () {return !!this.handleTemplates || this.referenceArrayProgram || this.fontValueProgram || this.throwValueProgram;}
 
     sprite (name) {
         return this.sprites.find(s => s.name === name) || null;
@@ -336,6 +337,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.referenceArrayProgram=containsAst(node,value=>value.type==='Array' || references.arrays.has(value));
         this.fontValueProgram=containsAst(node,value=>!!value.bwFontIntrinsic);
+        this.throwValueProgram=node.bwProvedThrowProgram===true;
         this.provenArrayReferences=references.provenArrays;
         this.inferredSpriteParameters = references.parameters;
         this.primitiveReferences=references.primitives;
@@ -536,6 +538,10 @@ class ArcadeTranslator extends BaseTranslator {
         if(kindBinding)out.push(`${'  '.repeat(indent)}arcade bind sprite kind name ${JSON.stringify(kindBinding)} to (${this.expr({type:'Identifier',name:st.expr.spriteKindBinding})})`);
     }
     arcadeStatement(st, indent, out) {
+        if(st.type==='ThrowStatement'){
+            if(!this.throwValueProgram){out.push(`${'  '.repeat(indent)}${this.note('Throw source requires qualified source context and canonical protocol')}`);return;}
+            out.push(`${'  '.repeat(indent)}arcade throw (${this.arrayElementValue(st.argument)})`);return;
+        }
         if(st.type==='ExpressionStatement' && st.expr?.bwNativeNamedArray && st.expr.bwNativeNamedArray.kind!=='get') {
             this.usesArrays=true;
             const node=st.expr,{kind,registry}=node.bwNativeNamedArray,name=JSON.stringify(registry),args=node.args.slice(1).map(arg=>this.expr(arg));
@@ -5043,7 +5049,11 @@ export function arcadeToPseudocode (files, opts = {}) {
     const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && assetKindLookup && ['assets.image','assets.tile'].includes(node.tag) ? lookupAssetTemplate(assetKindLookup,node.tag,node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ?
         assets[tileImagePath(node)] || assets[node.name] || (BUILTIN_IMAGES[tileImagePath(node)] ? decodeMkcdImage(BUILTIN_IMAGES[tileImagePath(node)]) : null) :
         node?.type==='Identifier' ? assets[node.name] : null;
-    const inspectionValues=lowerConsoleInspectValues(namespaceBindings.program || parsed);
+    const throwSource=prepareThrowSource(namespaceBindings.program || parsed);
+    projectInputDiagnostics.push(...throwSource.unsupported);
+    if(throwSource.present&&opts.throwPrototype!==true)projectInputDiagnostics.push('Throw source requires its qualified canonical protocol; prototype admission is not enabled');
+    const throwProgram=throwSource.present&&!throwSource.unsupported.length&&opts.throwPrototype===true?{...throwSource.program,bwProvedThrowProgram:true}:throwSource.program;
+    const inspectionValues=lowerConsoleInspectValues(throwProgram);
     projectInputDiagnostics.push(...inspectionValues.unsupported);
     const fontValues = lowerSdkFontValues(inspectionValues.program);
     projectInputDiagnostics.push(...fontValues.unsupported);
@@ -5633,7 +5643,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     // ── assemble
     const out = [];
     out.push('DEVICE ARCADE', '');
-    if(t.referenceArrayProgram || t.fontValueProgram){
+    if(t.referenceArrayProgram || t.fontValueProgram || t.throwValueProgram){
         const globals=ast.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls)
             .filter(decl=>!decl.temporary && !t.sprite(decl.name) && !(decl.init?.type==='Call' && t.path(decl.init.callee)==='sprites.create'));
         out.push(...globals.map(decl=>`GLOBAL ${t.varName(decl.name)}`),'');

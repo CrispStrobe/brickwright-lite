@@ -1,11 +1,26 @@
+import {analyseSourceNormalCompletion,sourceNormalCompletionFor} from './source-normal-completion.js';
 import {multiplayerPlayerSourceCalls} from './multiplayer-player-source.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {consoleInspectSourceCalls} from './console-inspect-source.js';
 import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
 
+export function analyseSourceValueProducers(program,options={}) {
+    if(options.normalCompletion&&!sourceNormalCompletionFor(program,options.normalCompletion))throw new Error('Source completion proof must belong to the actual Program');
+    const containsThrow=node=>node&&typeof node==='object'&&(node.type==='ThrowStatement'||Object.values(node).some(value=>Array.isArray(value)?value.some(containsThrow):containsThrow(value)));
+    if(!containsThrow(program))return analyseGraph(program,options);
+    // Bootstrap is private. No public option can bypass exceptional reachability
+    // or supply a caller-made callee table after a consumer clones the AST.
+    const initial=analyseGraph(program,{...options,normalCompletion:null});
+    const completion=analyseSourceNormalCompletion(program,initial.immutableFunctionAt);
+    return Object.freeze({...analyseGraph(program,{...options,normalCompletion:completion}),normalCompletion:completion,constraintTypesAt:node=>new Set(initial.typesAt(node))});
+}
+
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-export function analyseSourceValueProducers(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false}={}) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,normalCompletion=null}={}) {
+    const completion=normalCompletion?sourceNormalCompletionFor(program,normalCompletion):null;
+    if(normalCompletion&&!completion)throw new Error('Source completion proof must belong to the actual Program');
+    const unreachableCells=new Set();
     const numericArrows=new Set(provedArrows),numericHelpers=new Set(provedHelpers);
     // Optional actual Array allocations retain per-allocation element cells.
     // Default consumers receive exactly their prior domain and traversal.
@@ -24,7 +39,7 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
     const writing=new WeakSet(),owners=new WeakMap(),cells=new WeakMap(),types=new Map(),edges=[],scales=[],texts=[],derived=[],prints=[],classes=new Map(),classCalls=[],classWrites=new Set(),declarations=new Map(),functions=new Map(),calls=[],numericCalls=[],unsupported=[];
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const scope=parent=>({parent,bindings:new Map()});
-    const global=scope(null),key=()=>Symbol(),add=(cell,type)=>{if(!types.has(cell))types.set(cell,new Set());const set=types.get(cell),before=set.size;set.add(type);return before!==set.size;};
+    const global=scope(null),key=()=>Symbol(),add=(cell,type)=>{if(!types.has(cell))types.set(cell,new Set());const set=types.get(cell),before=set.size;set.add(unreachableCells.has(cell)?'Opaque':type);return before!==set.size;};
     const binding=(owner,name)=>{for(let current=owner;current;current=current.parent)if(current.bindings.has(name))return current.bindings.get(name);if(!global.bindings.has(name))global.bindings.set(name,key());return global.bindings.get(name);};
     const declare=(owner,name)=>{if(!owner.bindings.has(name))owner.bindings.set(name,key());return owner.bindings.get(name);};
     const declaration=(owner,name,node)=>{const id=declare(owner,name);if(!declarations.has(id))declarations.set(id,new Set());declarations.get(id).add(node);};
@@ -41,16 +56,16 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
         owners.set(node,owner);if(['FunctionDeclaration','Class'].includes(node.type) && (node.name?.startsWith('__bwSdkFont_') || node.name==='__bwSDK_Font'))fail('Internal Font descriptor and intrinsic names are not source bindings');
         if(node.type==='Declaration' && node.decls.some(decl=>decl.name.startsWith('__bwSdkFont_') || decl.name==='__bwSDK_Font'))fail('Internal Font descriptor and intrinsic names are not source bindings');
         if(node.type==='Identifier'){if(node.name.startsWith('__bwSdkFont_'))fail('Internal Font intrinsic names are not source bindings');if(!writing.has(node)){cells.set(node,key());if(node.name==='screen'&&sdk.has(node))add(cell(node),screenWritten?'Opaque':'Image');else {const id=binding(owner,node.name);edge(id,cell(node));if(unboundIsOpaque&&!declarations.has(id)||opaqueDeclarationValues&&[...(declarations.get(id)||[])].some(value=>(['FunctionDeclaration','Class','Enum'].includes(value?.type)||value?.isArray||value?.typeName&&!['number','boolean','string','any'].includes(value.typeName)&&!(multiplayer&&value.typeName==='mp.Player'))))add(cell(node),'Opaque');else if(opaqueDeclarationValues&&multiplayer&&[...(declarations.get(id)||[])].some(value=>value?.typeName==='mp.Player'))add(cell(node),'OpaquePlayerConstraint');}}return;}
-        cells.set(node,key());const current=cell(node);
+        cells.set(node,key());const current=cell(node);if(completion&&!completion.isReachable(node))unreachableCells.add(current);
         if(node.bwConsoleInspectIntrinsic===true&&node.callee?.name==='__bwConsoleInspectValue')internalInspection=true;
         if(node.type==='Program'){predeclare(node.body,owner);vars(node.body,owner);node.body.forEach(value=>visit(value,owner));return;}
         if(node.type==='Block'){body(node.body,owner);return;}
         if(node.type==='FunctionDeclaration'){
             const result=key(),entry={node,result,owner:null},functionBinding=binding(owner,node.name);
             if(functions.has(functionBinding)){functions.set(functionBinding,null);fail('SDK Font procedure flow requires a unique lexical declaration');}else functions.set(functionBinding,entry);
-            entry.owner=body(node.body,owner,{params:node.params,paramTypes:node.paramTypes,result});if(arrayValues&&new Set(node.params).size!==node.params.length)for(const param of node.params)add(entry.owner.bindings.get(param),'Opaque');if(!complete(node.body))add(result,'Undefined');return;
+            entry.owner=body(node.body,owner,{params:node.params,paramTypes:node.paramTypes,result});if(arrayValues&&new Set(node.params).size!==node.params.length)for(const param of node.params)add(entry.owner.bindings.get(param),'Opaque');if(completion?completion.functionFallsThrough(node):!complete(node.body))add(result,'Undefined');return;
         }
-        if(node.type==='FunctionExpression'){add(current,numericArrows.has(node)&&node.functionKind==='arrow'&&!node.params.length?'NumericCallable':'Opaque');functionScopes.set(node,body(node.body,owner,{params:node.params,paramTypes:node.paramTypes,result:key()}));if(arrayValues&&!complete(node.body))add(functionScopes.get(node).result,'Undefined');return;}
+        if(node.type==='FunctionExpression'){add(current,numericArrows.has(node)&&node.functionKind==='arrow'&&!node.params.length?'NumericCallable':'Opaque');functionScopes.set(node,body(node.body,owner,{params:node.params,paramTypes:node.paramTypes,result:key()}));if((arrayValues||completion)&&(completion?completion.functionFallsThrough(node):!complete(node.body)))add(functionScopes.get(node).result,'Undefined');return;}
         if(node.type==='Class'){
             const name=binding(owner,node.name);classes.set(name,(classes.get(name)||0)+1);add(current,'Opaque');for(const field of node.fields||[])visit(field.init,owner);
             for(const method of [node.ctor,...(node.methods||[])].filter(Boolean))body(method.body,owner,{params:method.params,paramTypes:method.paramTypes,result:key()});return;
@@ -66,7 +81,8 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
                 else if(declaredLocalUndefined&&functionOwner&&node.kind==='let'&&declarations.get(target)?.size===1&&!decl.isArray&&(!decl.typeName||['number','string','boolean','any'].includes(decl.typeName))){add(target,'Undefined');localUndefinedDeclarations.add(decl);}
                 if(decl.typeName==='image.Font')owner.fontAnnotations=(owner.fontAnnotations||new Set()).add(target);}return;
         }
-        if(node.type==='Return'){visit(node.value,owner);let fn=owner;while(fn&&!fn.result)fn=fn.parent;if(fn){if(node.value)edge(cell(node.value),fn.result);else add(fn.result,'Undefined');}return;}
+        if(node.type==='Return'){visit(node.value,owner);if(completion&&!completion.isReachable(node))return;let fn=owner;while(fn&&!fn.result)fn=fn.parent;if(fn){if(node.value)edge(cell(node.value),fn.result);else add(fn.result,'Undefined');}return;}
+        if(node.type==='ThrowStatement'){visit(node.argument,owner);return;}
         if(node.type==='Assignment'&&node.op==='='&&node.left?.type==='Identifier')writing.add(node.left);
         for(const value of Object.values(node))if(value&&typeof value==='object')visit(value,owner);
         if(node.type==='Assignment'){if(arrayValues&&node.left?.type==='Member'&&node.left.name!=='length')arrayOperations.push({kind:'methodWrite',receiver:cell(node.left.object)});if(arrayValues&&node.left?.type==='Index')arrayOperations.push({kind:'write',receiver:cell(node.left.object),index:cell(node.left.index),value:cell(node.right)});if(node.left?.type==='Identifier')classWrites.add(binding(owners.get(node.left),node.left.name));if(node.op==='=')edge(cell(node.right),cell(node.left));else if(node.left?.type==='Identifier')derived.push({result:binding(owners.get(node.left),node.left.name),type:'Number',operands:[cell(node.left),cell(node.right)],signature:['+=','-=','*=','/=','%=','&=','|=','^=','<<=','>>=','>>>='].includes(node.op),domain:'Number'});else add(cell(node.left),'Opaque');edge(cell(node.right),current);return;}
@@ -137,7 +153,7 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
     const resultFunctions=new Map([...functions].filter(([,fn])=>fn).map(([name,fn])=>[fn.result,name])),callGraph=new Map();
     for(const call of calls){let owner=owners.get(call.node);while(owner&&!owner.result)owner=owner.parent;const origin=resultFunctions.get(owner?.result);if(origin){if(!callGraph.has(origin))callGraph.set(origin,new Set());callGraph.get(origin).add(call.callee);}}
     const cyclic=(origin,current=origin,seen=new Set())=>{if(seen.has(current))return false;seen.add(current);for(const next of callGraph.get(current)||[])if(next===origin||cyclic(origin,next,seen))return true;return false;};
-    for(const call of calls){const fn=functions.get(call.callee);if(!fn||declarations.get(call.callee)?.size!==1||classWrites.has(call.callee)){
+    for(const call of calls){if(completion&&!completion.isReachable(call.node)){add(call.result,'Opaque');continue;}const fn=functions.get(call.callee);if(!fn||declarations.get(call.callee)?.size!==1||classWrites.has(call.callee)){
             if(numericArrows.size)numericCalls.push({node:call.node,result:call.result,receiver:cell(call.node.callee)});
             else add(call.result,'Opaque');if(arrayValues)for(const argument of call.node.args)arrayOperations.push({kind:'escape',receiver:cell(argument)});continue;
         }if(numericHelpers.has(fn.node)) {

@@ -17,6 +17,7 @@ export function procedureConstraintPrefix(fn,procedure,parameterName=name=>name)
 // the actual flattened ordinary-declaration AST before rendering its bodies.
 export function validateProcedureConstraintSource(program,{onlyFunctions=null}={}) {
  const graph=analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true});
+ const constraintTypes=graph.constraintTypesAt||graph.typesAt;
  const functions=new Map(),uses=[],calls=[],writes=[];
  const ordinary=new Set((program.body||[]).filter(node=>node.type==='FunctionDeclaration'&&(!onlyFunctions||onlyFunctions.has(node.name))));
  const walk=(node,parent=null,key=null)=>{
@@ -42,7 +43,7 @@ export function validateProcedureConstraintSource(program,{onlyFunctions=null}={
   const incoming=calls.filter(call=>graph.immutableFunctionAt(call)===fn);
   for(const call of incoming) {
    if(call.isNew||call.typeArguments?.length||call.args.length!==fn.params.length){diagnostics.push('Procedure parameter constraint: actual call argument count/shape differs');continue;}
-   for(const constraint of entry.selected)requireTypes(graph.typesAt(call.args[fn.params.indexOf(constraint.name)]),constraint.type,`${fn.name}.${constraint.name}`);
+   for(const constraint of entry.selected)requireTypes(constraintTypes(call.args[fn.params.indexOf(constraint.name)]),constraint.type,`${fn.name}.${constraint.name}`);
   }
   // All assignments into an actual formal must discharge its contract. Its
   // declared type is deliberately absent from the actual RHS producer proof.
@@ -52,7 +53,7 @@ export function validateProcedureConstraintSource(program,{onlyFunctions=null}={
    const lhs=writer.type==='Update'?writer.argument:writer.left;
    if(lhs?.type!=='Identifier')continue;const name=formalBindings.get(graph.bindingOf(lhs)),constraint=entry.selected.find(c=>c.name===name);if(!constraint)continue;
    if(writer.type==='Update'||writer.op!=='='){if(constraint.type!=='Number'&&constraint.type!=='Any')diagnostics.push(`Procedure parameter constraint: ${fn.name}.${name} compound writer differs`);}
-   else requireTypes(graph.typesAt(writer.right),constraint.type,`${fn.name}.${name} writer`);
+   else requireTypes(constraintTypes(writer.right),constraint.type,`${fn.name}.${name} writer`);
   }
  }
  return Object.freeze([...new Set(diagnostics)]);
