@@ -460,6 +460,99 @@ independent source phase, class/accessor, Scene/controller and supplier lanes.
 No product command or source prelude changes until this claim lands. Private
 prototypes and original controls are preparation only; no whole-game promotion.
 
+## Arcade ordinary procedure parameter constraints — 2026-10-15
+
+CLAIM — corpus-gap lane, branch `docs/arcade-procedure-constraints-20261015`.
+Bounded [ownership and acceptance contract](docs/compatibility/arcade-procedure-parameter-constraints.md)
+for one explicit editable ordinary-procedure parameter-constraint protocol and
+its canonical word, consumer/source/native/current-export integration, controls,
+and hosted GUI journey. Bind actual unique prototypes and ordered formals;
+retain constraints separately from actual producer facts and validate all
+callers, aliases, and local/captured writers. No annotation value seed, hidden
+source restoration, helper pruning, generic/reference/callable widening, or
+unrelated pin changes. Old already-erased projects remain refused until an
+actual constraint is authored and proved. Implementation is held until this
+claim lands normally; supplier, selected SDK, consumer, and GUI qualification
+are separate gates. Preserve every other lane.
+## Arcade Array.map values and callback iteration — 2026-10-15
+
+PROPOSED — Codex Array-map value lane. Merge this docs-only claim before product
+changes. Contract: [Array-map values](docs/compatibility/arcade-array-map-values.md).
+Own focused map lowering, optional actual Array/element producer facts, narrowly
+coordinated sequencing hooks and source/current-Code/Blocks/SB3/export controls.
+Preserve actual allocation/binding/all-writer authority, cached initial length,
+current indexed reads, callback order and fresh result/alias identity. Audit
+existing forEach/filter only against concrete selected-helper counterexamples.
+Reference-valued and generic results remain explicit residuals until proved;
+annotations, method names and opaque values do not grant Array authority.
+Coordinate shared source analysis and callable owners. No canonical physical
+Number-input Array changes, pin/vocabulary adoption or whole-context promotion.
+
+## Arcade discarded value statements — 2026-10-15
+
+CLAIM — root-owned bounded discarded-value expression lane.
+[Ownership and acceptance contract](docs/compatibility/arcade-discarded-value-statements.md)
+for once-only evaluation of already supported expressions in statement position,
+with proper activation ownership, collision-free generated storage if a current
+sink qualifies, current edited export and reversible Code/Blocks/SB3. Preserve
+selected PXT staging and effects, ordinary assignments/updates/command calls,
+and all independent producer/current-body proofs. Unknown bindings, operators,
+opaque coercions and unsupported constituent expressions remain refused.
+If a proper local sink cannot preserve the contract, a canonical editable
+command requires its own qualified supplier route; no vocabulary or pin move
+is assumed. Implementation waits for this claim's normal qualified merge.
+Procedure constraints, Array.map and independently owned API lanes remain separate.
+
+## Arcade Throw statements and exception handoff — 2026-10-15
+
+CLAIM — root-owned bounded Throw syntax and native exception handoff lane.
+[Ownership and acceptance contract](docs/compatibility/arcade-throw-statements.md)
+for a proper editable canonical throw command, actual supported primitive values,
+once-only operand effects, source/current-export integration and minimal managed
+call/engine failure handoff. Unwind real affected stock and managed activations,
+settle owned continuations exceptionally exactly once, and preserve ticket,
+capture, Stop/reload and current-input ownership. Determine current/other-fiber
+termination from the selected original; emitting an error and returning Undefined
+or normally completing the throwing child is insufficient. Keep neighboring
+try/catch/finally and unsupported reference/coercion forms explicitly refused.
+Implementation waits for this claim's normal qualified merge; supplier, original
+and visible GUI gates remain independent. No Array-map, parameter-constraint,
+discarded-value, Image or unrelated device scope is absorbed.
+
+## Owned SDK Sprite values in ordinary class callbacks — 2026-10-15
+
+CLAIM — root-owned bounded physical Sprite producer and ordinary class/callback
+bridge, coordinated with the existing class, Image and native ownership lanes.
+[Ownership and acceptance contract](docs/compatibility/arcade-owned-sprite-class-callables.md)
+requires actual unshadowed Sprite allocation, completed creation, current body and
+eligible scene ownership, and a private issued capability distinct from raw ID
+text. Current export signature/role constraints never issue runtime authority.
+Preserve fields, aliases, captures, arguments/results and single-use completion
+proofs; initially prove only x/y, width/height and setPosition operations listed
+in the contract. Preserve actual Stop/restart/Load and separate destruction/scene
+lifetimes, rejecting unqualified transfers and stale/forged ingress. Keep default
+admission closed until current source/Blocks, editable portable routes, native
+lifetime and genuinely new selected originals agree. No Sprite inheritance,
+reference Arrays, broad SDK APIs or complete-context promotion is included.
+Any required supplier schema remains separately claimed and qualified.
+
+## Ordinary handler-record Arrays with primitive callbacks — 2026-10-15
+
+CLAIM — root-owned bounded ordinary handler-record collection bridge.
+[Ownership and acceptance contract](docs/compatibility/arcade-handler-record-arrays.md)
+starts with one-dimensional actual Arrays of one completed ordinary handler
+class and one exact primitive or Void callback signature. Preserve shared Array,
+record, closure and captured-cell identities, all actual writers and callers,
+read presence, alias replacement/removal and exactly-once serial completion,
+including pause. Existing metadata and Array transports never issue callback
+or element authority; validate raw ingress and actual current resource/graph
+ownership before normalization. Keep direct callable Arrays, generic class
+containers, nested/mixed elements and SDK values refused. Primitive Map and
+future owned Sprite capability remain independent contracts. Implementation waits for normal qualified claim merge. Default admission waits
+for full portable/current-edit/lifecycle proof, independent review and genuinely
+new selected-original controls; no complete library or corpus promotion follows
+from the first registry subset.
+
 ## Arcade classes and mutable object semantics — proposed
 
 Claim proposed for the Arcade compatibility lane. Contract:
