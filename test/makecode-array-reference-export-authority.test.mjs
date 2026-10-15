@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
@@ -312,7 +313,14 @@ test('repeated shared-global returns preserve their genuine single allocation al
 });
 
 test('formal identity returns preserve the actual once-allocated argument body',()=>{
-    checked('function identity(values:number[][]):number[][]{return values};let first:number[][]=[];let alias=identity(first);alias.push([1]);let row=first[0];let count=row.length');
+    const source='function identity(values:number[][]):number[][]{return values};let first:number[][]=[];let alias=identity(first);alias.push([1]);let row=first[0];let count=row.length';
+    const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
+    const creator=new Creator();creator.parse(imported.code);assert.deepEqual(creator.warnings,[]);
+    const report=process.env.BW_ARRAY_FORMAL_CURRENT_REPORT;
+    if(report)fs.writeFileSync(report,JSON.stringify({source,imported,creatorWarnings:creator.warnings,project:creator.project},null,2)+'\n',{flag:'wx'});
+    const result=projectToArcade(creator.project);
+    if(report)fs.writeFileSync(report+'.export.json',JSON.stringify(result,null,2)+'\n',{flag:'wx'});
+    assert.deepEqual(result.unsupported,[],result.unsupported.join('\n'));
 });
 
 test('repeated initially populated factory bodies keep constructor presence independently of mutation credit',()=>{
@@ -399,4 +407,29 @@ test('opaque or cross-target managed entry declarations cannot hide additional i
         managedOccurrenceDeclaration(creator,role);const {target,block}=lengthBlock(creator);
         assert.equal(createArrayReferenceExportAuthority(creator.project).validateInput(target,block).ok,false);
     }
+});
+
+
+test('pending formal facts cannot invent a dominating mutation that is absent',()=>{
+    const creator=current('function identity(values:number[][]):number[][]{return values};let first:number[][]=[];let alias=identity(first);let row=first[0];let count=row.length');
+    assert.ok(projectToArcade(creator.project).unsupported.some(s=>s.startsWith('Array reference ')));
+});
+
+test('explicit opaque formal arguments cannot remain pending or authorize a receiver',()=>{
+    const creator=current('function identity(values:number[][]):number[][]{return values};let first:number[][]=[];let alias=identity(first);alias.push([1]);let row=first[0];let count=row.length');
+    const target=creator.project.targets.find(t=>Object.values(t.blocks).some(b=>b.opcode==='arcade_callFunction'));
+    const call=Object.values(target.blocks).find(b=>b.opcode==='arcade_callFunction'),argument=target.blocks[call.inputs.ARGS[1]];assert.equal(argument.opcode,'arcade_functionArgument');
+    const old=argument.inputs.VALUE[1];if(typeof old==='string'){assert.equal(Object.keys(target.blocks[old].inputs||{}).length,0);delete target.blocks[old];}
+    argument.inputs.VALUE=[1,[10,'opaque']];
+    assert.ok(projectToArcade(creator.project).unsupported.some(s=>s.startsWith('Array reference ')));
+});
+
+test('a resolved different empty Array is not an unresolved formal receiver',()=>{
+    const creator=current('function identity(values:number[][]):number[][]{return values};let first:number[][]=[];let other:number[][]=[];let alias=identity(other);alias.push([1]);let row=first[0];let count=row.length');
+    assert.ok(projectToArcade(creator.project).unsupported.some(s=>s.startsWith('Array reference ')));
+});
+
+test('late incompatible formal aliases cannot gain presence from pending dataflow',()=>{
+    const creator=current('function identity(values:number[][]):number[][]{return values};let first:number[][]=[];let alias=identity(first);alias.push([1]);let row=first[0];let count=row.length;alias=0 as any');
+    assert.ok(projectToArcade(creator.project).unsupported.some(s=>s.startsWith('Array reference ')));
 });

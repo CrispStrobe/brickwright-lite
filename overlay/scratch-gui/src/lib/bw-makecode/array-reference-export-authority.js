@@ -261,7 +261,16 @@ export function createArrayReferenceExportAuthority(project) {
         }
         if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(node.opcode)||node.opcode==='arrays_mutateReference'&&['pop','shift','removeAt'].includes(literal(node,'OP',target))){
             const receiver=readInput(input(node,'ARRAY',target));if(!operationShape(node))return new Set([bad]);if(!receiver.size)return new Set();if(!singleArray(receiver))return new Set([bad]);const result=new Set();
-            for(const a of receiver){if(!presentAt(a,target,node))result.add(bad);for(const item of a.elements)result.add(item);}return result;
+            for(const a of receiver){
+                if(!presentAt(a,target,node)){
+                    // Empty MAY facts are pending, not a proved absent body.
+                    // Do not poison a cell irreversibly before formal/alias
+                    // argument facts reach a dominating mutation receiver.
+                    if(pendingPresence(a,node))return new Set();
+                    result.add(bad);
+                }
+                for(const item of a.elements)result.add(item);
+            }return result;
         }
         if(node.opcode==='arcade_callFunction'){
             const call=calls.find(call=>call.node===node);if(!call?.fn||call.fn.invalid||!call.args||!returnsAlways(target,call.fn.root.next))return new Set([bad]);
@@ -361,6 +370,11 @@ export function createArrayReferenceExportAuthority(project) {
         // a unique actual target receives guaranteed-presence credit.
         for(const {target,node}of mutations){const receiver=readInput(input(node,'ARRAY',target));if(before.has(node)&&['push','unshift'].includes(literal(node,'OP',target))&&receiver.size===1&&receiver.has(allocation)&&uniqueAllocation(allocation)&&qualifies(target,node))length++;}
         return length;
+    };
+    const pendingPresence=(allocation,at)=>{
+        if(!uniqueAllocation(allocation))return false;
+        const before=owners.get(at)?.executedBefore.get(at)||new Set();
+        return mutations.some(({target,node})=>before.has(node)&&['push','unshift'].includes(literal(node,'OP',target))&&readInput(input(node,'ARRAY',target)).size===0);
     };
     const presentAt=(allocation,target,node,qualifies)=>{
         const length=minimumAt(allocation,node,qualifies),index=literalNumber(target,node,'INDEX');
