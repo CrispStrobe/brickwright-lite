@@ -10,7 +10,7 @@ test('stock procedure installer binds checked entry before body execution and re
     const patched=patchProcedureConstraints(source);
     assert.equal(patchProcedureConstraints(patched),patched);
     const declaration='const bwConstraintEntry = bwProcedureEntry.entry(this.runtime, procedureCode, args, util);';
-    const binding='if (bwConstraintEntry) bwProcedureEntry.bind(this.runtime, util.thread, util.thread.target, procedureCode, util.stackFrame.params, bwConstraintEntry.values, args, util);';
+    const binding='if (bwConstraintEntry) bwProcedureEntry.bind(this.runtime, util.thread, util.thread.target, procedureCode, util.thread.peekStackFrame().params, bwConstraintEntry.values, args, util);';
     assert.ok(patched.indexOf(declaration)<patched.indexOf('util.initParams();'));
     assert.ok(patched.indexOf(binding)>patched.indexOf('util.pushParam(paramNames[i], bwConstraintEntry.values[i]);'));
     assert.ok(patched.indexOf(binding)<patched.indexOf('util.startProcedure(procedureCode);'));
