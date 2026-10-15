@@ -3,7 +3,7 @@
 // Copyright (c) 2026 Brickwright contributors
 // Freeze an already staged support profile. Never fetch or copy firmware images.
 import {resolve, join, sep, relative, dirname, basename} from 'node:path';
-import {mkdir, readFile, writeFile, copyFile, realpath, stat} from 'node:fs/promises';
+import {mkdir, readFile, writeFile, copyFile, realpath, stat, lstat} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 const [sourceArg,runtimeArg,outputArg,mode,resourceArg]=process.argv.slice(2);
 if (!outputArg || !([5,7].includes(process.argv.length)) ||
@@ -34,15 +34,38 @@ const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
 const manifestPath=join(source,'manifest.json');
 if ((await stat(manifestPath)).size>65536) throw new Error('Support manifest exceeds bounds');
 const manifest=JSON.parse(await readFile(manifestPath,'utf8'));
+const compiled=manifest && Object.hasOwn(manifest,'profile.json');
+if (compiled) names.push('profile.json');
+else {
+    try {
+        await lstat(join(source,'profile.json'));
+        throw new Error('Unlisted compiled model descriptor');
+    } catch (error) { if (error.code!=='ENOENT') throw error; }
+}
 if (!manifest || Array.isArray(manifest) || Object.keys(manifest).length!==names.length ||
     names.some(name=>!Object.hasOwn(manifest,name) || !/^[0-9a-f]{64}$/.test(manifest[name]))) {
     throw new Error('Support manifest must contain the closed MicroPython profile');
 }
+const runtimeSha256=digest(await readFile(runtime));
+
 for (const name of names) {
     const file=await realpath(join(source,name)),meta=await stat(file);
     if (!file.startsWith(source+sep) || !meta.isFile() || meta.size>16*1024*1024 ||
         (name==='boot-seed.bin' && meta.size!==65536) || digest(await readFile(file))!==manifest[name]) {
         throw new Error('Support artifact failed verification');
+    }
+}
+if (compiled) {
+    const file=join(source,'profile.json');
+    if ((await stat(file)).size>4096) throw new Error('Compiled model profile exceeds bounds');
+    const profile=JSON.parse(await readFile(file,'utf8'));
+    const keys=['schemaVersion','kind','runtimeSha256','platformSourceCommit','modelContractCommit'];
+    if (!profile || Array.isArray(profile) || Object.keys(profile).length!==keys.length ||
+        keys.some(key=>!Object.hasOwn(profile,key)) || profile.schemaVersion!==1 ||
+        profile.kind!=='compiled-prime-models/v1' || profile.runtimeSha256!==runtimeSha256 ||
+        !/^[0-9a-f]{40}$/.test(profile.platformSourceCommit) ||
+        !/^[0-9a-f]{40}$/.test(profile.modelContractCommit)) {
+        throw new Error('Compiled model runtime/contract mismatch');
     }
 }
 await mkdir(output); // Preserve every existing directory and package.
@@ -54,8 +77,9 @@ for (const name of names) {
 await writeFile(join(output,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 const locations=resourceRoot ? {BW_RENODE_RESOURCE_EXECUTABLE:runtimeRelative,
     BW_RENODE_MICROPYTHON_RESOURCE_ROOT:supportRelative} : {BW_RENODE_EXECUTABLE:runtime,BW_RENODE_MICROPYTHON_ROOT:output};
-const pins={...locations,BW_RENODE_SHA256:digest(await readFile(runtime)),
+const pins={...locations,BW_RENODE_SHA256:runtimeSha256,
     BW_RENODE_MICROPYTHON_MANIFEST_SHA256:digest(await readFile(join(output,'manifest.json')))};
+if (compiled) pins.BW_RENODE_MICROPYTHON_PROFILE_SHA256=manifest['profile.json'];
 await writeFile(join(output,'pins.json'),JSON.stringify(pins,null,2)+'\n');
 if (resourceRoot) {
     const resources=Object.fromEntries([...names,'manifest.json'].map(name=>

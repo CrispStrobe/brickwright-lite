@@ -4004,9 +4004,9 @@ backends/final-sampling/generation, physical/reference, G05 and release remain o
 
 ## SPIKE G02 compiled-model MicroPython desktop profile — 2026-10-15
 
-PROPOSED — Codex, isolated branch
-`lane/spike-g02-compiled-micropython-claim-20261015`. Continue G02 after PR936
-is adopted. Merge this claim before implementation. The existing desktop
+IN PROGRESS — Codex, isolated implementation branch
+`lane/spike-g02-compiled-micropython-20261015`. Claim PR946 and predecessor PR936
+are merged. The existing desktop
 MicroPython launcher always includes source models; the retained desktop
 runtime already contains compiled Prime models. Earlier qualification kept
 those compiled and legacy source-overlay routes separate. Support metadata
@@ -4036,6 +4036,18 @@ from actual native attachment transitions. All enabled exact-head CI and the
 affected installed checks must pass before matched-head integration. Preserve
 failed originals and existing budgets; no full SDK, reference, physical,
 distribution/licence, release or whole-G02 claim from a finite profile slice.
+
+The implementation adds an explicit native descriptor pin, offline native
+platform assembly from immutable public inputs, and preserved legacy support.
+The 25 packaging controls, two actual Rust planner controls and meaningful
+guard/order-removal negatives pass. The source-bound installed Linux package
+passes six real MicroPython contexts: Code/raw-REPL completion, guest error,
+Stop during final sampling, two authored client-delivery identity adversaries
+and distinct fresh recovery. A wrong-caller native UART generation request is
+refused while the original attachment remains ready. An independent reader
+checks original UART envelopes, six completed startups, distinct generations
+and ownership release. Exact-head CI remains required before integration; this
+finite profile slice does not close G02 or qualify every evolving-main package.
 
 ## Arrays physical Number input boundary — 2026-10-15
 
