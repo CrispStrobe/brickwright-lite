@@ -3,7 +3,7 @@
 CLAIMED — Codex, branch `lane/a10-v2-serial-consumer-20261015`, base `015e1bdc7`.
 After the owning LabWired UARTE source qualifies and lands, adopt its one-time
 qualified deterministic engine release and the resulting exact bw-board package.
-Remove the V2 serial withholding in `scripts/lib/makecode-run.mjs` and the
+Remove the V2 serial withholding in `scripts/makecode.mjs` and the
 Code-tab status text only with that artifact. Require exact greeting/counter
 serial from real compiled MakeCode firmware, preserving display, guest-time,
 fault, firmware identity and board-model assertions. Keep A11's export changes.
@@ -13,7 +13,7 @@ Envelope: this ledger and `docs/OPEN-TASKS-2026-09-29.md`;
 `.github/workflows/target-performance.yml` matching engine identity;
 `vendor-pins.json`, package/lock specifications and existing generated
 provenance/census/matrix/report/adoption-test surfaces changed by canonical
-bw-board pin writers; `scripts/lib/makecode-run.mjs`,
+bw-board pin writers; `scripts/makecode.mjs`, `scripts/lib/makecode-run.mjs`,
 `test/makecode-cli-run.test.mjs`,
 `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
 and its tracked twin; `scripts/verify-makecode.mjs` serial assertions only.
