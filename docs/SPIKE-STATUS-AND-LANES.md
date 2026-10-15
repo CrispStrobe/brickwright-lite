@@ -142,15 +142,27 @@ landed versions, and the landed tree equals the reviewed prediction. Independent
 main pin adoptions are retained; this is not qualification of every evolving-main
 package. Existing product budgets and firmware/Runtime/model pins did not change.
 
-The next G02 prerequisite is the [compiled-profile claim PR946](https://github.com/CrispStrobe/brickwright-lite/pull/946).
-The current MicroPython launcher includes source models, while the retained
-runtime contains compiled models. Earlier supplier evidence treats compiled and
-legacy source-overlay routes separately. Admit an explicit compatible profile
-and platform type contract, preserve the qualified legacy route, then qualify
-real selected-image Code execution, final-sampling cancellation and UART/image
-boundaries. Support metadata alone does not qualify a current installed
-MicroPython boot. The claim is preparation; implementation and those actual
-MicroPython cases remain pending, with no image download or bundling implied.
+The [compiled-profile claim PR946](https://github.com/CrispStrobe/brickwright-lite/pull/946)
+is merged. Its implementation is in progress: explicit native descriptor/runtime
+pins select native platform types while retaining the legacy source-overlay
+route. Initial host packaging and actual Rust planner checks pass, including
+rejection of mismatched profiles and motor attachment order in both routes.
+The source-bound installed Linux package now passes six actual MicroPython
+contexts: selected-image Code execution and raw-REPL completion, guest ValueError,
+Stop during final sampling, two authored client-delivery identity adversaries
+and distinct fresh recovery. A native UART request with a wrong caller generation
+is refused, then a read confirms the original attachment remains ready. The
+client-delivery adversaries do not simulate actual native attachment transitions.
+A standalone reader checks ten original UART reads, six completed native startups,
+six distinct generations, ownership release and stopped/non-OOM container state.
+The built implementation is `8c1ec5ef066b4d18ab99bd80d569620425c89c03`;
+fixture-only follow-up `1058d91cacad66c1a4bf88d08c7e12d0374f4bca` has identical
+production sources. All enabled final-head CI checks remain required for
+[implementation PR948](https://github.com/CrispStrobe/brickwright-lite/pull/948).
+This finite package result does not qualify unrelated later main changes.
+Earlier chooser-control, backend-button and sanitized-error expectation failures
+remain preserved separately; they are not product fixes or passing matrix runs.
+No image download or bundling is implied.
 
 G02 remains open for its full deferred-storage matrix, selected-image and chooser
 error races, and complete installed startup/final-sampling, UART-generation and

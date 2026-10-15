@@ -43,7 +43,7 @@ unknown channels cannot pass a strict gate.
 The selected-original Map semantic contract now records 69 global observations.
 Its first readiness observer failure and successful cached-binary recovery remain
 retained, with source unchanged. This is original-runtime observation only;
-source/native Map implementation remains held.
+source/native Map implementation is in progress under the merged claim.
 
 ### Hosted checks and held candidates
 
@@ -57,15 +57,18 @@ unit censuses are:
 | [One](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38718916848/job/116380209371) | 2364 | 2356 | 1 | 6 | 1 |
 | [Three](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38718916848/job/116380209378) | 2436 | 2425 | 2 | 8 | 1 |
 
-Neither shard has cancelled tests. Shard four is successful; its census has not
-been acquired. Other jobs remain live. Local corrections `02b87cc72`, `40048a9c7` and `5c4b3a762`
+Neither shard has cancelled tests. Shards two and four are successful; their
+censuses have not been acquired. All six parent campaigns and 24 actual child
+jobs are closed, including successful official numeric authoring and debugger
+checks. The original run remains failed on the two recorded shards. Local corrections `02b87cc72`, `40048a9c7` and `5c4b3a762`
 are reviewed stale-test candidates, not new hosted passes. The new GUI candidate
 `a11` has not run. Preserve earlier failures and cancelled/incomplete runs;
 the older eleven-failure/no-census text below describes those earlier runs.
 
 The six coordinated claims in
 [PR954](https://github.com/CrispStrobe/brickwright-lite/pull/954), head `e978`,
-remain unmerged; implementation under those claims stays held. The supplier's
+merged normally at `8205ef07`, with every enabled exact-head check successful.
+Bounded implementation is in progress; product and GUI qualification remain open. The supplier's
 canonical protocol docs [PR156](https://github.com/CrispStrobe/sb3-creator/pull/156)
 are merged without a compiler pin move. No final all-enabled-checks, installed
 GUI or complete-game claim follows from these partial results.

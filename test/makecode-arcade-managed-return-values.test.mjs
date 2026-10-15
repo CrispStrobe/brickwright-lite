@@ -100,3 +100,15 @@ test('ordinary managed Number and text returns retain distinct types and once-on
         const reimport=await runProgram(restored.code,{frames:6,storage:true,uploads:restored.costumes});runs.push(reimport);check(reimport);
     } finally {for(const run of runs){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
 });
+
+test('forgetting one managed return lease preserves another thread and actual parameter data',()=>{
+    const f=fixture(),frame={waitingReporter:'read',params:{captured:7}},second={...f.thread,stackFrames:[frame,{}]};
+    f.runtime.threads.push(second);f.runtime.sequencer.activeThread=f.caller;
+    f.service.bind(second,f.target,'read','definition',f.caller);
+    assert.equal(f.service.forget(f.thread),true);assert.equal(f.service.forget(f.thread),false);
+    f.runtime.sequencer.activeThread=f.thread;assert.equal(f.invoke(),'20');
+    const util={...f.util,thread:second};f.runtime.sequencer.activeThread=second;
+    assert.equal(loan.invoke(f.runtime,second,f.container,f.operation,f.args,util,()=>f.service.value(f.args,util)),20);
+    assert.equal(frame.params.captured,7);assert.equal(f.service.forget(second),true);
+    assert.equal(loan.invoke(f.runtime,second,f.container,f.operation,f.args,util,()=>f.service.value(f.args,util)),'20');
+});

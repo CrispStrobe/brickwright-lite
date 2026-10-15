@@ -37,6 +37,6 @@ module.exports=function createManagedReturnValues(runtime) {
             return currentNumberInput(runtime,args,util,'arcade_returnValue');
         } catch (_) {return original;} // An unproved input keeps its original value and downstream refusal.
     };
-    return Object.freeze({bind,value,start:()=>{records=new WeakMap();if(bound&&!disposed)active=true;},
+    return Object.freeze({bind,value,forget:thread=>records.delete(thread),start:()=>{records=new WeakMap();if(bound&&!disposed)active=true;},
         invalidate:()=>{active=false;records=new WeakMap();},dispose:()=>{disposed=true;active=false;records=new WeakMap();}});
 };
