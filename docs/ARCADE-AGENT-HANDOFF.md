@@ -10,8 +10,8 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ## Current composition and canonical creator adoption — 2026-10-15
 
-Implementation checkpoint `7bf88f925` includes current main, the qualified
-creator repairs and the opt-in owned Image class/callback bridge. The creator
+Implementation checkpoint `2211aeb61` includes current main, the qualified
+creator repairs and default admission for the bounded owned Image class/callback bridge. The creator
 pin is `f2d4f879ba40dd9025070ed51af11ebe1ef14808`; standard sync checks all
 20 mapped files with zero downstream differences. Supplier
 [PR153](https://github.com/CrispStrobe/sb3-creator/pull/153) and
@@ -24,7 +24,12 @@ After creator adoption, another 24 affected consumer controls and six vendor
 identity controls pass; these overlapping groups are not a full-suite census.
 Two exact Image source/edited-export SDK programs pass, as recorded in the
 [Image contract](compatibility/arcade-owned-image-class-callables.md).
-Default Image admission and hosted class authoring remain open.
+Default admission now passes 119 affected controls and seven independent
+controls. The source selector retains the actual completed proof identity;
+current export validates the full current graph and reconstructed source.
+Native, Code, edited blocks, same/fresh SB3 and export/reimport routes pass.
+Duplicate variable IDs across targets refuse; legitimate Stage globals retain
+their actual producer ownership. Hosted class authoring remains open.
 
 The [Arrays Number-input contract](compatibility/arcade-arrays-current-number-inputs.md)
 is merged. Shared current-input ownership and the candidate canonical source
@@ -39,11 +44,11 @@ its build and unit prerequisites stopped on a stale expected compiler pin.
 The complete SPIKE artifact control now passes at the actual adopted revision.
 Fresh final-head hosted qualification is still required.
 
-The unchanged raw184 audit at `7bf88f925` remains **147 translated /36 partial
+The unchanged raw184 audit at `2211aeb61` remains **147 translated /36 partial
 /one parse failure**, with every original Git blob verified. Authentic contexts
 remain a separate **29 original-valid /20 strict /nine blocked** observation.
-Next: bounded default Image selection from completed actual proofs; the
-procedure parameter contract and value-map lanes; canonical Arrays CI and
+Next: Image literal-resource producer proofs; the procedure parameter contract
+and value-map lanes; canonical Arrays CI and
 consumer/GUI qualification. The under-20-partials milestone is not reached.
 
 ## Captured cells and valid class exports integrated — 2026-10-15

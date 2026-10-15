@@ -1,6 +1,6 @@
 # Owned Images in ordinary class callbacks
 
-The reviewed opt-in implementation extends the ordinary class/callable proof
+The reviewed implementation extends the ordinary class/callable proof
 with owned SDK Image values. It reuses existing Image operations and the
 six-word callable ABI. Default source selection admits only the completed bounded producer proof;
 hosted class authoring remains unqualified. No supplier, pin or physical Sprite signature changes follow

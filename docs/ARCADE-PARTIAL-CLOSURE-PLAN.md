@@ -27,8 +27,9 @@ that parses structurally remains excluded from the 20.
 
 The canonical class-topology and named-label repairs are now qualified and
 adopted at creator `f2d4f879`; all 20 vendor identities match. Captured primitive
-inspection and the opt-in Image source/current-export originals also pass.
-The latest integration checkpoint is `7bf88f925`; raw counts remain unchanged.
+inspection and the Image source/current-export originals also pass. Default
+Image admission is integrated at `2211aeb61`, with 119 affected and seven
+independent controls; raw counts remain unchanged.
 Array Number interpretation has a reviewed candidate fix, while supplier CI is
 externally rejected as disabled and adoption remains pending.
 
@@ -45,7 +46,8 @@ Continue these areas in order, using the owners in LANES.md:
    metadata and annotations constrain values rather than create them.
 3. Finish actual owned Image values in ordinary class callbacks and fields.
    The opt-in source/native/current-export and two selected-original programs
-   are qualified. Complete actual-proof default selection and hosted authoring;
+   are qualified, and actual-proof default selection is integrated. Complete
+   literal-resource producer proofs and hosted authoring;
    keep malformed/raw transport and before-body catalogue refusals.
 4. Fix authored Number inputs in the Arrays value operations through the
    shared current-input boundary and separately qualified canonical supplier.
