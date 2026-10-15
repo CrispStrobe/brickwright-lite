@@ -150,11 +150,15 @@ affected engine provenance/notices through canonical writers if required.
 No NPM package/compiler pin bump, copied engine, invented source/hash, SDK
 rebuild, optional motion run, physical-accuracy claim or threshold relaxation.
 
-The core fix is merged. Consumer JSON/text serial and visible-console checks
-are prepared; final tests require the exact complete greeting, ordered counter,
+The core fix is merged in labwired-core PR244 and the producer in bw-board
+PR621. Release `labwired-wasm-6a769a59` is published: two independent builds
+agreed, and the retained-byte qualification passed all 123 tests without skips.
+Original logs, byte lineage and release asset digests were independently checked.
+[Consumer PR988](https://github.com/CrispStrobe/brickwright-lite/pull/988) adopts
+that engine. Final tests require the exact complete greeting, ordered counter,
 unchanged matrix/fault/guest-time bounds, and the fresh nRF52833 V2 emulator ELF.
-Engine publication/original admission, all enabled final checks and actual
-released-engine CLI/browser qualification remain pending before integration.
+Actual released-engine CLI/browser qualification and all enabled final checks
+remain pending before consumer integration.
 
 ## A11: Code-tab MakeCode export uses the project target — 2026-10-15
 
