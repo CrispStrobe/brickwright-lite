@@ -234,7 +234,7 @@ export function inspectCallableExportGraph(target, plan, literalInput, {classPro
     return {plan, target, procedures, declarations, creates, services,globalBindings,...(classPrototype?{classProvider}:{})};
 }
 export function renderCallableSignature(signature) {
-    if (signature.kind === 'named') return signature.name;
+    if (signature.kind === 'named' || signature.kind === 'sdk' && signature.name === 'Image') return signature.name;
     return '(' + signature.parameters.map(parameter => parameter.name + (parameter.optional ? '?' : '') + ': ' +
         renderCallableSignature(parameter.type)).join(', ') + ') => ' + renderCallableSignature(signature.result);
 }

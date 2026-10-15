@@ -1,11 +1,11 @@
 // Invocation-local class/callable type authority. This module does not admit
 // source syntax or execute callbacks; the caller must own the resource/frame.
-module.exports = function createClassCallableTypes(runtime, values, heap, signatureOf) {
+module.exports = function createClassCallableTypes(runtime, values, heap, signatureOf, sdkImages, {sdkSchema=false}={}) {
     const primitive = new Set(['number','string','boolean','void','null','undefined']);
     const fail = message => { throw new Error('Class callable type: ' + message); };
     const ownKeys = (value, names) => value && typeof value === 'object' && !Array.isArray(value) &&
         Object.keys(value).every(key => names.includes(key));
-    const same = (left, right) => left.kind === right.kind && (left.kind === 'named' ? left.name === right.name :
+    const same = (left, right) => left.kind === right.kind && (['named','sdk'].includes(left.kind) ? left.name === right.name :
         left.parameters.length === right.parameters.length && left.parameters.every((parameter, index) =>
             parameter.optional === right.parameters[index].optional && same(parameter.type, right.parameters[index].type)) &&
         same(left.result, right.result));
@@ -18,6 +18,16 @@ module.exports = function createClassCallableTypes(runtime, values, heap, signat
         }
     }
     function validate(type, generics = new Set()) {
+        const kindDescriptor = type && typeof type === 'object' && Object.getOwnPropertyDescriptor(type, 'kind');
+        if (kindDescriptor && !Object.prototype.hasOwnProperty.call(kindDescriptor, 'value')) fail('malformed signature');
+        if (kindDescriptor?.value === 'sdk') {
+            const descriptors = Object.getOwnPropertyDescriptors(type);
+            if (Reflect.ownKeys(descriptors).length !== 2 || !descriptors.kind || !descriptors.name ||
+                !Object.prototype.hasOwnProperty.call(descriptors.kind, 'value') ||
+                !Object.prototype.hasOwnProperty.call(descriptors.name, 'value') || descriptors.name.value !== 'Image' ||
+                (!sdkImages || typeof sdkImages.assert !== 'function')&&!sdkSchema) fail('unqualified SDK signature domain');
+            return {kind:'sdk',name:'Image'};
+        }
         if (!ownKeys(type, type?.kind === 'named' ? ['kind','name'] : ['kind','parameters','result'])) fail('malformed signature');
         if (type.kind === 'named') {
             if (typeof type.name !== 'string' || !/^[A-Za-z_]\w*$/.test(type.name) || ['any','unknown'].includes(type.name)) fail('opaque signature domain');
@@ -35,9 +45,25 @@ module.exports = function createClassCallableTypes(runtime, values, heap, signat
         return structuredClone(type);
     }
     function actual(value) {
+        // The codec restores transports. Prove an Image's original exact shape
+        // before restoration can discard malformed extra transport fields.
+        if (sdkImages && value && typeof value === 'object') {
+            const transport = Object.getOwnPropertyDescriptor(value, 'bwReference');
+            if (!transport && 'bwReference' in value) fail('malformed reference transport');
+            if (transport) {
+                if (!Object.prototype.hasOwnProperty.call(transport, 'value')) fail('malformed reference transport');
+                const kind = transport.value && Object.getOwnPropertyDescriptor(transport.value, 'kind');
+                if (!kind || !Object.prototype.hasOwnProperty.call(kind, 'value')) fail('malformed reference transport');
+                if (kind?.value === 'image') {sdkImages.assert(value); return {kind:'sdk',name:'Image'};}
+            }
+        }
         const decoded = values.decode(value);
         if (values.isReference(decoded)) {
             if (values.referenceId(runtime, decoded, decoded.bwReference.kind) === null) fail('foreign reference');
+            if (decoded.bwReference.kind === 'image') {
+                if (!sdkImages || typeof sdkImages.assert !== 'function') fail('unqualified reference domain');
+                sdkImages.assert(decoded); return {kind:'sdk',name:'Image'};
+            }
             if (decoded.bwReference.kind === 'object') {
                 const name = heap.inspect(decoded).className; ordinary(name); return {kind:'named',name};
             }
@@ -72,6 +98,10 @@ module.exports = function createClassCallableTypes(runtime, values, heap, signat
                 substitutions.set(expected.name, supplied); return;
             }
             if (expected.kind !== supplied.kind) fail('argument structure differs');
+            if (expected.kind === 'sdk') {
+                if (expected.name !== supplied.name) fail('SDK argument type differs');
+                return;
+            }
             if (expected.kind === 'named') {
                 if (expected.name === supplied.name) return;
                 if (!primitive.has(expected.name) && !primitive.has(supplied.name)) {
@@ -91,6 +121,7 @@ module.exports = function createClassCallableTypes(runtime, values, heap, signat
         };
         signature.parameters.forEach((parameter, index) => bind(parameter.type, actual(args[index])));
         const substitute = type => {
+            if (type.kind === 'sdk') return {...type};
             if (type.kind === 'named') {
                 if (!generics.has(type.name)) return {...type};
                 if (!substitutions.has(type.name)) fail('unresolved generic result');

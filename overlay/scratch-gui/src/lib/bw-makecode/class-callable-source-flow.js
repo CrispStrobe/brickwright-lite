@@ -1,5 +1,6 @@
+import {createSdkImageSourceTypes,sdkImageRolesForClass} from './sdk-image-source-types.js';
+import {createSdkImageSourceProducers} from './sdk-image-source-producers.js';
 import {analyseCallableFlow} from './callable-flow.js';
-import {parseCallableType} from './callable-type-syntax.js';
 import {instantiateCallableSignature} from './callable-signatures.js';
 import {alternatives,joinProducedValues,presenceAlternatives} from './class-callable-branch-values.js';
 const completedResultProofs=new WeakMap();
@@ -13,6 +14,16 @@ export function classMethodSourceSignature(proof,program,method) {
     if(!record||record.program!==program||JSON.stringify(program)!==record.source)throw Error('Class method requires its actual unchanged source proof');
     const row=record.methods.get(method);return row?structuredClone(row.signature):null;
 }
+export function classSdkImageRoles(proof,program,cls) {
+    const record=completedResultProofs.get(proof);
+    if(!record||record.program!==program||JSON.stringify(program)!==record.source)throw Error('SDK Image roles require their actual unchanged source proof');
+    const roles=record.sdkRoles.get(cls);return roles?structuredClone(roles):null;
+}
+export function classSdkImageValue(proof,program,node) {
+    const record=completedResultProofs.get(proof);
+    if(!record||record.program!==program||JSON.stringify(program)!==record.source)throw Error('SDK Image value requires its actual unchanged source proof');
+    return record.sdkExpressions.get(node)?.size===1&&record.sdkExpressions.get(node).has('Image');
+}
 export function classCallableReflectionSource(proof,program,node) {
     const record=completedResultProofs.get(proof);
     if(!record||record.program!==program||JSON.stringify(program)!==record.source)throw Error('Class reflection requires its actual unchanged source proof');
@@ -22,24 +33,24 @@ export function classCallableReflectionSource(proof,program,node) {
 // This is a bounded, sequential producer proof over source AST, not an
 // interpreter for source values. Annotations constrain produced values but
 // never create an allocation, initialized field, closure or return value.
-export function proveClassCallableSource(program) {
-    const flow=analyseCallableFlow(program),{lexical}=flow;
+export function proveClassCallableSource(program,{sdkImagePrototype=false}={}) {
+    const flow=analyseCallableFlow(program,{sdkImagePrototype}),{lexical}=flow;
     const classes=new Map(),errors=[],visited=new Set(),constructed=new Set(),resultFlows=new WeakMap(),reflectedClosures=new Map(),reflections=new WeakSet();
     const fail=message=>{throw Error('Class callable source: '+message);};
     const named=name=>({kind:'named',name});
     const scalar=name=>({type:named(name)});
     const undef=()=>scalar('undefined');
-    const annotation=value=>parseCallableType(typeof value==='string'?value:value?.text||'');
-    const equal=(a,b)=>a&&b&&a.kind===b.kind&&(a.kind==='named'?a.name===b.name:
+    const {annotation}=createSdkImageSourceTypes(program,lexical,{enabled:sdkImagePrototype}),images=createSdkImageSourceProducers();
+    const equal=(a,b)=>a&&b&&a.kind===b.kind&&(['named','sdk'].includes(a.kind)?a.name===b.name:
         a.kind==='callable'&&a.parameters.length===b.parameters.length&&
         a.parameters.every((p,i)=>p.optional===b.parameters[i].optional&&equal(p.type,b.parameters[i].type))&&equal(a.result,b.result));
-    const environments=new Set(),instances=new Set();let branchDepth=0;
+    const environments=new Set(),instances=new Set(),sdkExpressions=new WeakMap();let branchDepth=0;
     const env=(parent=null)=>{const row={parent,cells:new Map()};environments.add(row);return row;};
     const moduleEnv=env(),active=new Set(),primitiveHelpers=new Map();
     const cell=(binding,context)=>{if(!binding)return null;for(let e=context;e;e=e.parent)if(e.cells.has(binding))return e.cells.get(binding);return null;};
     const supportedType=(type,generics=new Set())=>type?.kind==='named'?
         ['number','string','boolean','void','undefined'].includes(type.name)||generics.has(type.name)||classes.has(type.name):
-        type?.kind==='callable'&&type.parameters.every(p=>!p.optional&&supportedType(p.type,generics))&&supportedType(type.result,generics);
+        sdkImagePrototype&&type?.kind==='sdk'&&type.name==='Image'||type?.kind==='callable'&&type.parameters.every(p=>!p.optional&&supportedType(p.type,generics))&&supportedType(type.result,generics);
     const scopes=new Map(lexical.functions.map(scope=>[scope.node,scope]));
     const signature=node=>flow.signature(flow.profiles.get(node));
     const constrain=(value,type,label)=>{
@@ -52,6 +63,7 @@ export function proveClassCallableSource(program) {
             constrain(row,type,label);
         }return value;}
         if(value.genericOrigin&&type){if(type.kind!=='named'||type.name!==value.genericOrigin)fail(label+' narrows an unbound generic result');return value;}
+        if(type?.kind==='sdk'&&!images.isProduced(value))fail(label+' lacks an actual owned Image producer');
         if(type&&!equal(value.type,type))fail(label+' has an incompatible actual producer');
         return value;
     };
@@ -73,7 +85,7 @@ export function proveClassCallableSource(program) {
         for(const binding of scope.names.values())local.cells.set(binding,{value:undef(),constraint:null});
         for(let i=0;i<args.length;i++){
             const binding=scope.names.get(node.params[i]);if(!binding||binding.kind!=='parameter'||binding.scope!==scope)fail('missing actual parameter binding');
-            local.cells.set(binding,{value:args[i],constraint:annotation(node.paramTypes?.[node.params[i]])});
+            local.cells.set(binding,{value:args[i],constraint:annotation(node.paramTypes?.[node.params[i]],node)});
         }
         if(context.receiver&&scope.kind==='method'){const binding=scope.names.get('this');
             if(!binding||binding.kind!=='receiver'||binding.scope!==scope)fail('missing actual constructor/method receiver binding');
@@ -94,7 +106,7 @@ export function proveClassCallableSource(program) {
         try {
             const result=body(node.body,context);
             const expected=inst.signature.result;
-            if(node.type==='FunctionExpression'&&!['number','string','void'].includes(expected.name))fail('default callbacks require concrete Number, String or Void results');
+            if(node.type==='FunctionExpression'&&!(sdkImagePrototype&&expected.kind==='sdk')&&!['number','string','void'].includes(expected.name))fail('default callbacks require concrete Number, String or Void results');
             const genericResult=raw.result.kind==='named'&&inst.substitutions.has(raw.result.name);
             const nullable=genericResult&&node.type!=='FunctionExpression'&&result.conditional===true;
             const returnedRows=alternatives(result.value);
@@ -118,9 +130,14 @@ export function proveClassCallableSource(program) {
     };
     const read=node=>lexical.references.get(node);
     const expression=(node,context,ignoreAssertion=false)=>{
+        const value=expressionInner(node,context,ignoreAssertion);
+        if(sdkImagePrototype&&node&&typeof node==='object'){if(!sdkExpressions.has(node))sdkExpressions.set(node,new Set());sdkExpressions.get(node).add(images.isProduced(value)?'Image':'other');}
+        return value;
+    };
+    const expressionInner=(node,context,ignoreAssertion=false)=>{
         if(!node)return undef();
         if(node.assertedType&&!ignoreAssertion){
-            const value=expression(node,context,true),type=annotation(node.assertedType);
+            const value=expression(node,context,true),type=annotation(node.assertedType,context.node);
             constrain(value,type,'identity assertion');return value;
         }
         if(node.type==='Parenthesized')return expression(node.expression,context);
@@ -129,6 +146,7 @@ export function proveClassCallableSource(program) {
         if(node.type==='Identifier') {
             const binding=read(node),current=cell(binding,context.env);if(!current)fail('unresolved lexical value '+node.name);
             if(binding.kind==='local'&&!current.declared)fail('local read lacks a dominating declaration');
+            if(current.constraint?.kind==='sdk'&&!images.isProduced(current.value))fail('SDK Image read lacks a dominating actual producer');
             if(current.value.classDeclaration)fail('class declaration is not an instance producer');
             return current.value;
         }
@@ -140,6 +158,11 @@ export function proveClassCallableSource(program) {
         }
         if(node.type==='Member') {
             const object=expression(node.object,context);
+            if(sdkImagePrototype&&images.isProduced(object)){
+                if(['width','height'].includes(node.name))return scalar('number');
+                if(node.name==='clone')return {type:{kind:'callable',parameters:[],result:{kind:'sdk',name:'Image'}},sdkCloneReceiver:object};
+                fail('unqualified SDK Image member '+node.name);
+            }
             if(!object.instance)fail('member receiver is opaque for '+node.name+' in '+(context.node?.name||'callback'));
             const cls=classes.get(object.instance.className),method=cls.methods.find(m=>m.name===node.name);
             if(method?.modifiers?.some(m=>m==='private'||m==='protected')&&context.className!==cls.name)fail('method access differs from its actual lexical class');
@@ -176,6 +199,7 @@ export function proveClassCallableSource(program) {
         }
         if(node.type==='Binary')return binary(node.op,expression(node.left,context),expression(node.right,context));
         if(node.type==='Call') {
+            if(sdkImagePrototype&&node.callee?.type==='Member'&&node.callee.name==='create'&&node.callee.object?.type==='Identifier'&&node.callee.object.name==='image'&&!read(node.callee.object))return images.factory(node);
             let callee=node.callee;while(callee?.type==='Parenthesized'&&!callee.assertedType)callee=callee.expression;
             if(!['Identifier','Member'].includes(callee?.type))fail('dynamic callees require their separate callable lane');
             if(node.isNew) {
@@ -187,7 +211,7 @@ export function proveClassCallableSource(program) {
                 for(const f of cls.fields)instance.fields.set(f.name,{value:undef(),constraint:annotation(f.typeName),initialized:false});
                 for(const f of cls.fields)if(f.init){const value=expression(f.init,{env:moduleEnv,scope:lexical.global,generics:new Map()});constrain(value,annotation(f.typeName),'field initializer');Object.assign(instance.fields.get(f.name),{value,initialized:true});}
                 const ctorContext=bindScope(cls.ctor,moduleEnv,args,{className:cls.name,receiver:result,constructor:true,generics:new Map()});
-                args.forEach((arg,i)=>constrain(arg,annotation(cls.ctor.paramTypes?.[cls.ctor.params[i]]),'constructor argument'));
+                args.forEach((arg,i)=>constrain(arg,annotation(cls.ctor.paramTypes?.[cls.ctor.params[i]],cls.ctor),'constructor argument'));
                 if(active.has(cls.ctor))fail('recursive construction');active.add(cls.ctor);visited.add(cls.ctor);
                 try {const completion=body(cls.ctor.body,ctorContext);if(completion.returned&&completion.value.type.name!=='undefined')fail('constructor returns a value');}
                 finally {active.delete(cls.ctor);}
@@ -202,16 +226,18 @@ export function proveClassCallableSource(program) {
             if(helper){const args=node.args.map(arg=>expression(arg,context));if(args.length!==2)fail('primitive helper actual arity differs');args.forEach((arg,i)=>{const type=annotation(helper.paramTypes?.[helper.params[i]]);if(type?.name!=='any')constrain(arg,type,'primitive helper argument');});
                 visited.add(helper);const value=binary(helper.body[0].value.op,args[0],args[1]);const type=annotation(helper.returnType);if(type?.name!=='any')constrain(value,type,'primitive helper result');return value;}
             const callable=expression(node.callee,context),args=node.args.map(arg=>expression(arg,context));
+            if(callable.sdkCloneReceiver)return images.clone(node,callable.sdkCloneReceiver);
             if(callable.receiver&&!callable.receiver.instance.complete)fail('method invocation precedes constructor completion');
             if(callable.receiver&&callable.receiver===context.receiver&&!context.receiver?.instance.complete)fail('callback invocation escapes incomplete constructor');
             const result=invoke(callable,args,context);
-            const binding=callee.type==='Identifier'&&read(callee),declared=binding&&annotation(context.node?.paramTypes?.[binding.name]);
+            const binding=callee.type==='Identifier'&&read(callee),declared=binding&&annotation(context.node?.paramTypes?.[binding.name],context.node);
             return declared?.kind==='callable'&&declared.result.kind==='named'&&context.generics?.has(declared.result.name)?
                 {...result,genericOrigin:declared.result.name}:result;
         }
         fail('unsupported expression '+node.type);
     };
     const binary=(op,left,right)=>{
+        if(sdkImagePrototype&&images.isProduced(left)&&images.isProduced(right)&&['===','!=='].includes(op))return scalar('boolean');
         if(left.alternatives||right.alternatives){
             if(!['==','===','!=','!=='].includes(op))fail('nullable arithmetic requires separate primitive qualification');
             for(const l of alternatives(left))for(const r of alternatives(right))binary(op,l,r);
@@ -246,7 +272,7 @@ export function proveClassCallableSource(program) {
                 for(const row of statement.decls) {
                     const binding=context.scope.names.get(row.name),current=cell(binding,context.env);
                     if(!binding||!['global','local'].includes(binding.kind)||binding.node!==row||binding.scope!==context.scope||!current||current.declared)fail('duplicate or foreign lexical declaration');
-                    const value=expression(row.init,context),constraint=annotation(row.typeName);
+                    const value=expression(row.init,context),constraint=annotation(row.typeName,context.node);
                     if(row.init&&!(row.init.type==='Undefined'&&constraint?.kind==='named'&&['number','string','boolean'].includes(constraint.name)))constrain(value,constraint,'initializer '+row.name);
                     if(context.scope===lexical.global&&alternatives(value).some(row=>row.type?.kind==='callable'))fail('module callable value cells require separate qualification');
                     if(context.scope===lexical.global&&value.conditionalResult===true&&alternatives(value).every(row=>row.type?.name==='undefined'))fail('module Void result cells require separate declaration/export qualification');
@@ -314,7 +340,7 @@ export function proveClassCallableSource(program) {
             const fields=new Set();for(const f of cls.fields){if(fields.has(f.name)||f.isStatic||!supportedType(annotation(f.typeName)))fail('unqualified field catalogue');fields.add(f.name);if(f.init&&annotation(f.typeName)?.kind==='callable')fail('callable field initializers require their own receiver/lexical ABI');}
             for(const node of [cls.ctor,...cls.methods]) {
                 if(new Set(node.params||[]).size!==(node.params||[]).length)fail('duplicate actual parameters');
-                if((node.params||[]).some(name=>!supportedType(annotation(node.paramTypes?.[name]),new Set((node.typeParameters||[]).map(p=>p.name)))))fail('unresolved parameter constraints');
+                if((node.params||[]).some(name=>!supportedType(annotation(node.paramTypes?.[name],node),new Set((node.typeParameters||[]).map(p=>p.name)))))fail('unresolved parameter constraints');
                 if(node.isStatic||node.kind&&node.kind!=='method'||node.optionalParams?.length||node.parameterDefaults?.length||node.parameterProperties?.length)
                     fail('unqualified method, defaults or parameter properties');
                 if(node.typeParameters?.length>1||node.typeParameters?.some(p=>p.constraint||p.defaultType))fail('unqualified generic method');
@@ -356,6 +382,7 @@ export function proveClassCallableSource(program) {
         for(const scope of lexical.functions)if(!visited.has(scope.node))fail('adjacent callable body has no proved actual invocation');
         const proof={eligible:true,unsupported:[],flow,resultFlows};
         const methods=new Map();for(const cls of classes.values())for(const method of cls.methods)methods.set(method,{signature:structuredClone(signature(method)),resultFlow:resultFlows.get(method)?structuredClone(resultFlows.get(method)):null});
-        completedResultProofs.set(proof,{program,source:JSON.stringify(program),methods,reflections});return proof;
+        const sdkRoles=new Map();if(sdkImagePrototype)for(const cls of classes.values()){const roles=sdkImageRolesForClass(cls,annotation,signature);if(roles)sdkRoles.set(cls,roles);}
+        completedResultProofs.set(proof,{program,source:JSON.stringify(program),methods,reflections,sdkRoles,sdkExpressions});return proof;
     } catch(error) {errors.push(error.message);return {eligible:false,unsupported:errors,flow};}
 }

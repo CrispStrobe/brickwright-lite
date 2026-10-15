@@ -17,6 +17,7 @@ module.exports = makeExt(`// Name: Arcade
   const spriteUpdateHosts = new WeakMap();
   const classCallableHosts = new WeakMap();
   const managedReturnHosts = new WeakMap();
+  const sdkImageOwners = new WeakMap();
   const speechPalette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609',
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
@@ -50,9 +51,13 @@ module.exports = makeExt(`// Name: Arcade
       this._sceneFlags=dependencies.sceneFlags.create();
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
       this._sdkObjectClasses=dependencies.sdkObjectClasses.create(this,Scratch.BWValues);
+      let imageOwner;
+      const newImageOwner=()=>dependencies.createSdkImageOwner(runtime,Scratch.BWValues,()=>({extension:this,images:this._images,identities:this._imageIds,resolve:this._image,current:sdkImageOwners.get(this)===imageOwner}));
+      imageOwner=newImageOwner();sdkImageOwners.set(this,imageOwner);
+      const sdkImages=Object.freeze({assert:value=>imageOwner.assert(value)});
       let classCallableOwner;
       const classCallables=dependencies.createClassCallableHost(runtime,Scratch.BWValues,dependencies.createObjectHeap,
-        this._sdkObjectClasses.heapHooks,()=>classCallableOwner);
+        this._sdkObjectClasses.heapHooks,()=>classCallableOwner,sdkImages);
       if(classCallables)classCallableHosts.set(this,classCallables);
       this._objectHeap=classCallables?.heap || dependencies.createObjectHeap(runtime,Scratch.BWValues,this._sdkObjectClasses.heapHooks);
       const spriteUpdates=dependencies.spriteUpdateActivation.create(this);
@@ -141,7 +146,7 @@ module.exports = makeExt(`// Name: Arcade
           if(this._foreverTimer!==undefined)clearTimeout(this._foreverTimer);this._foreverTimer=undefined;
         };
         runtime.on('PROJECT_STOP_ALL', () => {this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.invalidate();managedReturnHosts.get(this).invalidate();});
-        runtime.on('RUNTIME_DISPOSED', () => {this._sourceScalarCells.dispose();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.invalidate();managedReturnHosts.get(this).invalidate();this._sourceTypeOfDisposed=true;this._consoleInspectValues.dispose();managedReturnHosts.get(this).dispose();});
+        runtime.on('RUNTIME_DISPOSED', () => {imageOwner.dispose();this._sourceScalarCells.dispose();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.invalidate();managedReturnHosts.get(this).invalidate();this._sourceTypeOfDisposed=true;this._consoleInspectValues.dispose();managedReturnHosts.get(this).dispose();});
         runtime.on('PROJECT_STOP_ALL', () => this._stopProgramClock());
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
         runtime.on('PROJECT_STOP_ALL', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._musicHost?.stopAll();});
@@ -207,6 +212,7 @@ module.exports = makeExt(`// Name: Arcade
           this._changed();
         };
         runtime.on('PROJECT_LOADED', () => {
+          imageOwner.dispose();imageOwner=newImageOwner();sdkImageOwners.set(this,imageOwner);
           this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.dispose();managedReturnHosts.get(this).dispose();
           this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells);
           managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
@@ -216,7 +222,7 @@ module.exports = makeExt(`// Name: Arcade
           reset();
           this._bufferSuspended = false;this._sourceTypeOfDisposed=false;
         });
-        runtime.on('PROJECT_START',()=>{if(!this._sdkFontValues?.isDisposed())this._sdkFontValues?.startProgram();reset();this._sourceScalarCells.initialize();this._sourceTypeOf.snapshotInputs();this._consoleInspectValues.snapshot();managedReturnHosts.get(this).start();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
+        runtime.on('PROJECT_START',()=>{if(!this._sdkFontValues?.isDisposed())this._sdkFontValues?.startProgram();reset();imageOwner.start();this._sourceScalarCells.initialize();this._sourceTypeOf.snapshotInputs();this._consoleInspectValues.snapshot();managedReturnHosts.get(this).start();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
         runtime.on('targetWasRemoved', target => {
           for (const [id, entry] of this._imageSkins) if (entry.target === target) this._clearImage(id);
           for (const [id, entry] of this._speech) if (entry.target === target) this._clearSpeech(id);
@@ -1981,10 +1987,13 @@ module.exports = makeExt(`// Name: Arcade
       util={thread:util?.thread,target:util?.target || util?.thread?.target,sequencer:util?.sequencer,bwObjectUtility:util};
       let allocation;
       try {
-        let values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
-        if(!Array.isArray(values))throw new Error('Class constructor arguments must be an ordered argument list');
+        const argsText=String(args.ARGS),rawValues=JSON.parse(argsText);
+        if(!Array.isArray(rawValues))throw new Error('Class constructor arguments must be an ordered argument list');
+        const className=String(args.CLASS);
+        classCallableHosts.get(this)?.validateConstructor(this._objectHeap.definition(className),rawValues,util.target);
+        let values=JSON.parse(argsText,(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
         values=values.map(value=>this._objectHeap.hold(value));
-        allocation=this._objectHeap.allocate(String(args.CLASS));
+        allocation=this._objectHeap.allocate(className);
         const {ref,def,token}=allocation;
         if(values.length>def.parameters.length)throw new Error('Class constructor has too many arguments');
         while(values.length<def.parameters.length){const param=def.parameters[values.length];values.push(Object.prototype.hasOwnProperty.call(param,'default')?Scratch.BWValues.encode(param.default):Scratch.BWValues.UNDEFINED);}
@@ -2013,7 +2022,10 @@ module.exports = makeExt(`// Name: Arcade
     callObjectMethod(args,util) {
       try {
         const method=this._objectHeap.method(args.OBJECT,String(args.METHOD));
-        let values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
+        const argsText=String(args.ARGS),rawValues=JSON.parse(argsText);
+        if(!Array.isArray(rawValues))throw new Error('Class method arguments must be an ordered argument list');
+        classCallableHosts.get(this)?.validateMethodInputs(method,rawValues);
+        let values=JSON.parse(argsText,(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
         if(!Array.isArray(values))throw new Error('Class method arguments must be an ordered argument list');
         if(values.length>method.parameters.length)throw new Error('Class method has too many arguments');
         while(values.length<method.parameters.length){const param=method.parameters[values.length];values.push(Object.prototype.hasOwnProperty.call(param,'default')?Scratch.BWValues.encode(param.default):Scratch.BWValues.UNDEFINED);}
@@ -2041,7 +2053,7 @@ module.exports = makeExt(`// Name: Arcade
       if(this._sdkObjectClasses.matches(name)) {try {const values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));if(!Array.isArray(values))throw new Error('SDK Sprite call requires ordered arguments');return this._sdkObjectClasses.invoke(name,values,util,args.bwObjectConstruction || util?.thread?.bwObjectConstruction);}catch(error){return this._objectError(error);}}
       const definition = target?.blocks?.getProcedureDefinition(name);
       if (!definition || !runtime?._pushThread) return 0;
-      let values;try {values = JSON.parse(String(args.ARGS), (_key,value)=>
+      let values,rawValues;try {const argsText=String(args.ARGS);rawValues=JSON.parse(argsText);values = JSON.parse(argsText, (_key,value)=>
         Scratch.BWValues.encode(Scratch.BWValues.decode(value)));} catch {return 0;}
       if (!Array.isArray(values)) return 0;
       const [names, , defaults] = target.blocks.getProcedureParamNamesIdsAndDefaults(name);
@@ -2057,7 +2069,7 @@ module.exports = makeExt(`// Name: Arcade
       thread.pushStack(definition);
       thread.bwObjectConstruction = args.bwObjectConstruction || util.thread?.bwObjectConstruction;
       let classSignature=null;
-      try {classSignature=classCallableHosts.get(this)?.bind(thread,target,name,thread.stackFrames[0].params,thread.bwObjectConstruction,values);}
+      try {classSignature=classCallableHosts.get(this)?.bind(thread,target,name,thread.stackFrames[0].params,thread.bwObjectConstruction,values,rawValues);}
       catch(error){runtime.sequencer.retireThread(thread);return this._objectError(error);}
       managedReturnHosts.get(this).bind(thread,target,name,definition,util.thread);
       const managedCaller=util.thread;
@@ -2124,8 +2136,8 @@ module.exports = makeExt(`// Name: Arcade
       return result && typeof result.then==='function'?result.then(complete):complete(result);
     }
     callCallable(args,util) {
-      try {const values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
-        return this._callableProcedure(this._callableValues.invocation(args.CALLABLE,values),util);}
+      try {const argsText=String(args.ARGS),rawValues=JSON.parse(argsText),values=JSON.parse(argsText,(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
+        return this._callableProcedure(this._callableValues.invocation(args.CALLABLE,values,rawValues),util);}
       catch(error){return this._objectError(error);}
     }
     holdCallable(reference) {return this._callableValues.hold(reference);}
@@ -5854,6 +5866,7 @@ module.exports = makeExt(`// Name: Arcade
   createObjectHeap: require('./object-heap'),
   sourceCallableCells: require('./source-callable-cells'),
   CallableValues: require('./callable-values'),
+  createSdkImageOwner: require('./sdk-image-owner'),
   createClassCallableHost: require('./class-callable-host'),
   CallableDispatch: require('./callable-dispatch'),
   sourceReferenceTypes: require('./source-reference-types'),

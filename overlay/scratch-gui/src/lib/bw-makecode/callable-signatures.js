@@ -11,7 +11,8 @@ export function callableSignature(node) {
     return parameters.every(parameter=>parameter.type) && result ? {kind:'callable',parameters,result}:null;
 }
 
-const sameType=(a,b)=>a?.kind===b?.kind && (a.kind==='named'?a.name===b.name:
+const sdkImage=type=>type?.kind==='sdk'&&type.name==='Image'&&Reflect.ownKeys(type).length===2&&Object.keys(type).every(key=>['kind','name'].includes(key));
+const sameType=(a,b)=>a?.kind===b?.kind && (['named','sdk'].includes(a.kind)?a.name===b.name:
     a.kind==='array'?sameType(a.element,b.element):
         a.parameters.length===b.parameters.length && a.parameters.every((parameter,index)=>
             parameter.optional===b.parameters[index].optional && sameType(parameter.type,b.parameters[index].type)) &&
@@ -32,7 +33,7 @@ export function instantiateCallableSignature(signature,typeParameters,arguments_
     if(arguments_.length>signature.parameters.length)fail('Callable invocation has too many supplied arguments');
     const concrete=type=>type?.kind==='named' ?
         !variables.has(type.name) && !['any','unknown','undefined','null'].includes(type.name) :
-        type?.kind==='array' ? concrete(type.element) : type?.kind==='callable' &&
+        type?.kind==='sdk' ? sdkImage(type) : type?.kind==='array' ? concrete(type.element) : type?.kind==='callable' &&
             type.parameters.every(parameter=>concrete(parameter.type)) && concrete(type.result);
     const bind=(expected,actual)=>{
         if(!expected || !actual){fail('Callable invocation has an unresolved argument type');return;}
@@ -46,7 +47,9 @@ export function instantiateCallableSignature(signature,typeParameters,arguments_
             return;
         }
         if(expected.kind!==actual.kind){fail('Callable argument structure differs from its declared signature');return;}
-        if(expected.kind==='named') {
+        if(expected.kind==='sdk') {
+            if(!sdkImage(expected)||!sdkImage(actual))fail('Callable SDK Image type requires the exact domain');
+        } else if(expected.kind==='named') {
             if(['any','unknown'].includes(expected.name) || ['any','unknown'].includes(actual.name))
                 fail('Opaque callable argument types require separate qualification');
             else if(expected.name!==actual.name)fail('Callable argument type differs from its declared signature');
@@ -72,6 +75,7 @@ export function instantiateCallableSignature(signature,typeParameters,arguments_
         else if(!parameter.optional)fail('Callable invocation omits a required parameter');
     });
     const substitute=type=>{
+        if(type.kind==='sdk'){if(!sdkImage(type))fail('Callable SDK Image type requires the exact domain');return {...type};}
         if(type.kind==='named') {
             if(!variables.has(type.name))return {...type};
             if(!substitutions.has(type.name)){fail('Callable generic result remains unresolved for '+type.name);return {...type};}

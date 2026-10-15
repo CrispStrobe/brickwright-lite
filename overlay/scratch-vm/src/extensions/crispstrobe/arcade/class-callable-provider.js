@@ -3,13 +3,22 @@ const createTypes = require('./class-callable-types');
 
 // Private optional provider for the class-only v2 profile. A validated plan is
 // never a frame issuer. The installed caller must supply its real graph guard.
-module.exports = function createClassCallableProvider(runtime, values, heap, frames, {currentGraph,currentCall,signatureOf} = {}) {
-    const types = createTypes(runtime, values, heap, signatureOf), proofs = new WeakMap();
+module.exports = function createClassCallableProvider(runtime, values, heap, frames, {currentGraph,currentCall,signatureOf,sdkImages,sdkSchema=false} = {}) {
+    const types = createTypes(runtime, values, heap, signatureOf, sdkImages,{sdkSchema}), proofs = new WeakMap();
     const fail = message => { throw new Error('Class callable provider: ' + message); };
-    const catalogue = plan => {
+    const catalogue = (plan,selected=null) => {
         for (const row of plan.classes) {
+            if(selected&&!selected.has(row.name))continue;
             const definition = heap.definition(row.name);
             if (definition.intrinsic || (definition.parent || null) !== row.parent) fail('class catalogue differs from actual ordinary heap');
+            const hasSdk=type=>type?.kind==='sdk'||type?.kind==='callable'&&(type.parameters.some(parameter=>hasSdk(parameter.type))||hasSdk(type.result));
+            const actualRoles={fields:[...definition.fields.values()].filter(field=>field.valueKind==='sdk'||field.valueKind==='callable'&&hasSdk(field.callableSignature)).map(field=>field.valueKind==='sdk'?{name:field.name,type:field.type,sdkType:field.sdkType}:{name:field.name,type:field.type,callableSignature:field.callableSignature}),
+                constructor:definition.parameters.flatMap((parameter,index)=>parameter.sdkType?[{index,name:parameter.name,type:parameter.type,sdkType:parameter.sdkType}]:[]),
+                methods:[...definition.methods.values()].filter(method=>hasSdk(method.callableSignature)).map(method=>({name:method.name,typeParameters:method.typeParameters,callableSignature:method.callableSignature}))};
+            const canonical=roles=>({fields:[...roles.fields].sort((a,b)=>a.name.localeCompare(b.name)),constructor:roles.constructor,methods:[...roles.methods].sort((a,b)=>a.name.localeCompare(b.name))});
+            const expected=row.sdkRoles||{fields:[],constructor:[],methods:[]};
+            if(JSON.stringify(canonical(actualRoles))!==JSON.stringify(canonical(expected)))fail('SDK class roles differ from actual registered heap');
+
         }
     };
     const current = (record, target) => {
@@ -30,7 +39,7 @@ module.exports = function createClassCallableProvider(runtime, values, heap, fra
                 if(JSON.stringify(selected.callableSignature)!==JSON.stringify(owner.signature)||
                     JSON.stringify(selected.typeParameters)!==JSON.stringify(owner.typeParameters))fail('source creator differs from its actual heap signature');
             }else if(owner.typeParameters.length||selected.parameters.some((parameter,index)=>
-                owner.signature.parameters[index].type.kind!=='named'||owner.signature.parameters[index].type.name!==parameter.type)||
+                (parameter.sdkType?parameter.type!=='Image'||JSON.stringify(parameter.sdkType)!==JSON.stringify(owner.signature.parameters[index].type):owner.signature.parameters[index].type.kind!=='named'||owner.signature.parameters[index].type.name!==parameter.type))||
                 owner.kind==='method'&&(owner.signature.result.kind!=='named'||owner.signature.result.name!==selected.returnType))
                 fail('source creator differs from its actual heap signature');
         }
@@ -57,7 +66,7 @@ module.exports = function createClassCallableProvider(runtime, values, heap, fra
             }else if(parameter.type!==expected.type.name||parameter.callableSignature!==undefined)fail('method parameter type differs');
             return structuredClone(parameter);
         });
-        if(method.returnType!==(signature.result.kind==='named'?signature.result.name:'callable'))fail('method return type differs');
+        if(method.returnType!==(['named','sdk'].includes(signature.result.kind)?signature.result.name:'callable'))fail('method return type differs');
         if(method.resultFlow!==undefined){
             const flow=method.resultFlow;
             if(!flow||typeof flow!=='object'||Array.isArray(flow)||Object.keys(flow).some(key=>!['schema','presenceField','absent','present'].includes(key))||
@@ -94,6 +103,11 @@ module.exports = function createClassCallableProvider(runtime, values, heap, fra
         proofs.set(proof, record);return proof;
     }
     return Object.freeze({prepareDeclaration,methodSignature,
+        assertSdkCatalogue(target,plan,className=null) {
+            if(typeof currentGraph!=='function'||!currentGraph(target,plan))fail('requires current canonical class block graph');
+            let selected=null;if(className){selected=new Set();let definition=heap.definition(className);while(definition){if(selected.has(definition.name))fail('cyclic SDK class ancestry');selected.add(definition.name);definition=definition.parent?heap.definition(definition.parent):null;}}
+            catalogue(validateClassCallablePlan(plan),selected);
+        },
         assertCurrent(proof,target) {current(recordFor(proof),target);},
         assertCreate(proof,target,util,operationArgs) {
             const record=recordFor(proof);current(record,target);
@@ -110,7 +124,7 @@ module.exports = function createClassCallableProvider(runtime, values, heap, fra
             return frames.receiverCell(util,receiver);
         },
         signature(proof) {const record=recordFor(proof);current(record,record.target);return structuredClone(record.signature);},
-        invocation(proof,args) {const record=recordFor(proof);current(record,record.target);return types.instantiate(record.signature,[],args);},
+        invocation(proof,args,rawArgs=args) {const record=recordFor(proof);current(record,record.target);const signature=types.instantiate(record.signature,[],args);signature.parameters.forEach((parameter,index)=>{if(parameter.type.kind==='sdk')types.result({kind:'callable',parameters:[],result:parameter.type},rawArgs[index]);});return signature;},
         result(signature,value) {return types.result(signature,value);},
         fieldSignature(signature) {
             const validated=types.validate(signature);
