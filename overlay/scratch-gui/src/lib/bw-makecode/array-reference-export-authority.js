@@ -285,7 +285,48 @@ export function createArrayReferenceExportAuthority(project) {
     // Mutation-derived presence needs an independent proof that this actual
     // allocation occurrence executes at most once in the current startup.
     // In particular neither a factory return site nor a loop callsite is a body.
+    // Managed heap/label entry is not a static calls[] edge. This catalogue
+    // only removes once authority: metadata can never create a producer fact.
+    // Object dispatch uses the invocation target, so names poison matching
+    // procedures across targets, not merely the declaration's target.
+    const implicitEntries=new WeakSet();
+    const managedName=name=>{
+        if(typeof name!=='string'){for(const scope of scopes)if(scope.proc)implicitEntries.add(scope);return;}
+        if(name)for(const scope of scopes)if(scope.proc===name)implicitEntries.add(scope);
+    };
+    for(const target of targets)for(const node of Object.values(target.blocks||{})){
+        if(['arcade_declareClass','arcade_declareSubclass'].includes(node.opcode)){
+            try{
+                managedName(literal(node,'INITIALIZER',target));managedName(literal(node,'CONSTRUCTOR',target));
+                const fields=JSON.parse(literal(node,'FIELDS',target)),methods=JSON.parse(literal(node,'METHODS',target));
+                if(!Array.isArray(fields)||!Array.isArray(methods))throw Error('opaque managed entry');
+                for(const field of fields){if(!field||typeof field!=='object')throw Error('opaque accessor');
+                    if(Object.hasOwn(field,'getter')){if(typeof field.getter!=='string')throw Error('opaque getter');managedName(field.getter);}
+                    if(Object.hasOwn(field,'setter')){if(!field.setter||typeof field.setter.procedure!=='string')throw Error('opaque setter');managedName(field.setter.procedure);}}
+                for(const method of methods){if(!method||typeof method.procedure!=='string')throw Error('opaque method');managedName(method.procedure);}
+            }catch{managedName(null);}
+        }
+        if(['arcade_declareCallable','arcade_createCallable','arcade_whenCallableDispatched'].includes(node.opcode))managedName(literal(node,'NAME',target));
+    }
     const onceScopes=new WeakMap();
+    // Closed evaluation contexts only. Repeat header reporters are reevaluated
+    // by execute._ops on later entries; even TIMES/list inputs are not once.
+    // Unknown headers and extra effect sockets cannot lend execution bounds.
+    const onceParent=(parent,name)=>{
+        if(['control_if','control_if_else'].includes(parent.opcode))return exactKeys(parent,parent.opcode==='control_if'?['CONDITION','SUBSTACK']:['CONDITION','SUBSTACK','SUBSTACK2']);
+        if(parent.opcode==='data_setvariableto')return name==='VALUE'&&exactKeys(parent,['VALUE'],['VARIABLE']);
+        if(['arcade_setLocal','arcade_setCaptured'].includes(parent.opcode))return name==='VALUE'&&exactKeys(parent,['NAME','VALUE']);
+        if(parent.opcode==='arcade_returnValue')return name==='VALUE'&&exactKeys(parent,['VALUE']);
+        if(parent.opcode==='arrays_createReference')return name==='VALUES'&&exactKeys(parent,['VALUES']);
+        if(['arrays_referenceValues','arcade_functionArgument'].includes(parent.opcode))return exactKeys(parent,['VALUE','REST']);
+        if(parent.opcode==='arcade_callFunction')return name==='ARGS'&&exactKeys(parent,['NAME','ARGS'])&&typeof literal(parent,'NAME',owners.get(parent).target)==='string';
+        if(parent.opcode==='procedures_call'){const call=calls.find(call=>call.node===parent);return !!call?.fn&&!call.fn.invalid&&!!call.args&&Object.keys(parent.fields||{}).length===0;}
+        if(schemas[parent.opcode])return operationShape(parent);
+        const scalarInputs={arrays_valueBinary:['LEFT','RIGHT'],arrays_valueUnary:['VALUE'],operator_add:['NUM1','NUM2'],operator_subtract:['NUM1','NUM2'],operator_multiply:['NUM1','NUM2'],operator_divide:['NUM1','NUM2'],operator_mod:['NUM1','NUM2'],operator_lt:['OPERAND1','OPERAND2'],operator_gt:['OPERAND1','OPERAND2'],operator_equals:['OPERAND1','OPERAND2'],operator_and:['OPERAND1','OPERAND2'],operator_or:['OPERAND1','OPERAND2'],operator_not:['OPERAND'],operator_join:['STRING1','STRING2'],operator_length:['STRING'],operator_letter_of:['LETTER','STRING'],operator_contains:['STRING1','STRING2'],operator_round:['NUM']};
+        const inputs=scalarInputs[parent.opcode];if(!inputs)return false;
+        if(parent.opcode.startsWith('arrays_value'))return exactKeys(parent,Object.hasOwn(parent.fields||{},'OP')?inputs:[...inputs,'OP'],['OP'])&&inputs.includes(name);
+        return exactKeys(parent,inputs);
+    };
     const onceNode=(node,path=new Set())=>{
         const scope=owners.get(node);if(!scope||scope.invalid||invalid.has(node))return false;
         let current=node;const seen=new Set();
@@ -295,12 +336,7 @@ export function createArrayReferenceExportAuthority(project) {
             const id=Object.keys(scope.target.blocks).find(id=>scope.target.blocks[id]===current);
             if(parent.next!==id){
                 const inputs=Object.entries(parent.inputs||{}).filter(([,slot])=>slot[1]===id);
-                if(inputs.length!==1)return false;
-                const [name]=inputs[0];
-                // Unknown substacks never establish a single execution. Repeat
-                // conditions are also reevaluated, unlike an ordinary argument.
-                if(name.startsWith('SUBSTACK')&&!['control_if','control_if_else'].includes(parent.opcode)||
-                    ['arcade_sourceWhile','control_repeat_until','control_wait_until'].includes(parent.opcode))return false;
+                if(inputs.length!==1||!onceParent(parent,inputs[0][0]))return false;
             }
             current=parent;
         }
@@ -308,7 +344,7 @@ export function createArrayReferenceExportAuthority(project) {
     };
     const onceScope=(scope,path)=>{
         if(onceScopes.has(scope))return onceScopes.get(scope);
-        if(scope.invalid||scope.unknownEntry||path.has(scope))return false;
+        if(scope.invalid||scope.unknownEntry||implicitEntries.has(scope)||path.has(scope))return false;
         const next=new Set([...path,scope]);
         const result=scope.proc?scope.callers.length===1&&!!scope.callers[0].args&&onceNode(scope.callers[0].node,next):scope.root.opcode==='arcade_whenSourceStarts';
         onceScopes.set(scope,result);return result;

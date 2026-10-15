@@ -332,3 +332,71 @@ DEFINE make:
   arcade return value (new array reference from (array value (new array reference from ("[1]")) rest ("[]")))
 `);assert.deepEqual(creator.warnings,[]);assert.deepEqual(projectToArcade(creator.project).unsupported,[]);
 });
+
+function occurrenceHeaderProject(){
+    const creator=new Creator();creator.parse(`DEVICE ARCADE
+GLOBAL counter
+SPRITE Game:
+WHEN arcade source starts:
+  hide
+  REPEAT (arcade call function "ticks" arguments ("[]")):
+    hide
+DEFINE ticks:
+  arcade set local items to (new array reference from ("[]"))
+  mutate array reference (arcade local items) op "push" index (0) value (new array reference from ("[1]"))
+  arcade set local row to (item (0) of array reference (arcade local items))
+  arcade return value (length of array reference (arcade local row))
+`);assert.deepEqual(creator.warnings,[]);return creator;
+}
+
+test('repeat and for-each header reporter evaluations never issue once-allocation authority',()=>{
+    for(const opcode of ['control_repeat','control_for_each']){
+        const creator=occurrenceHeaderProject(),{target,block}=lengthBlock(creator);
+        const header=Object.values(target.blocks).find(node=>node.opcode==='control_repeat');assert.ok(header);
+        if(opcode==='control_for_each'){
+            header.opcode=opcode;header.inputs.VALUE=header.inputs.TIMES;delete header.inputs.TIMES;
+            const [id,row]=creator.project.targets.flatMap(t=>Object.entries(t.variables||{})).find(([,row])=>row[0]==='counter');header.fields.VARIABLE=[row[0],id];
+        }
+        assert.equal(createArrayReferenceExportAuthority(creator.project).validateInput(target,block).ok,false,opcode);
+    }
+});
+
+test('unknown headers and forged extra if sockets cannot lend once-allocation authority',()=>{
+    for(const opcode of ['arcade_unqualifiedHeader','control_if']){
+        const creator=occurrenceHeaderProject(),{target,block}=lengthBlock(creator);
+        const header=Object.values(target.blocks).find(node=>node.opcode==='control_repeat');header.opcode=opcode;
+        if(opcode==='control_if'){header.inputs.EXTRA=header.inputs.TIMES;delete header.inputs.TIMES;header.inputs.CONDITION=[1,[4,'1']];}
+        assert.equal(createArrayReferenceExportAuthority(creator.project).validateInput(target,block).ok,false,opcode);
+    }
+});
+
+test('the exact ordinary if condition remains an at-most-once evaluation context',()=>{
+    const creator=occurrenceHeaderProject(),{target,block}=lengthBlock(creator);
+    const header=Object.values(target.blocks).find(node=>node.opcode==='control_repeat');header.opcode='control_if';header.inputs.CONDITION=header.inputs.TIMES;delete header.inputs.TIMES;
+    assert.equal(createArrayReferenceExportAuthority(creator.project).validateInput(target,block).ok,true);
+});
+
+function managedOccurrenceDeclaration(creator,options={}){
+    const {initializer='',fields=[],methods=[],opaque=false,foreign=false}=options;
+    const constructor=Object.hasOwn(options,'constructor')?options.constructor:'';
+    const target=creator.project.targets.find(t=>foreign?t.isStage:!t.isStage);
+    const text=value=>[1,[10,typeof value==='string'?value:JSON.stringify(value)]];
+    target.blocks.__managedOccurrence={opcode:'arcade_declareClass',next:null,parent:null,inputs:{NAME:text('Holder'),FIELDS:text(opaque?'not-json':fields),INITIALIZER:text(initializer),CONSTRUCTOR:text(constructor),PARAMETERS:text([]),METHODS:text(methods)},fields:{},shadow:false,topLevel:true,x:0,y:0};
+}
+
+test('constructor initializer methods accessors and Sprite updates are implicit procedure entries',()=>{
+    const method=name=>({name,procedure:'make',parameters:[],returnType:'number[][]'});
+    for(const role of [{initializer:'make'},{constructor:'make'},{methods:[method('obtain')]},{methods:[method('update')]},{fields:[{name:'value',type:'number[][]',readonly:true,getter:'make'}]},{fields:[{name:'value',type:'number[][]',readonly:false,setter:{procedure:'make',parameters:[{name:'value',type:'number[][]',optional:false}]}}]}]){
+        const creator=current('function make():number[][]{return []};let first=make();first.push([1]);let row=first[0];let count=row.length');
+        managedOccurrenceDeclaration(creator,role);const {target,block}=lengthBlock(creator);
+        assert.equal(createArrayReferenceExportAuthority(creator.project).validateInput(target,block).ok,false,JSON.stringify(role));
+    }
+});
+
+test('opaque or cross-target managed entry declarations cannot hide additional invocations',()=>{
+    for(const role of [{opaque:true},{methods:[{name:'update',procedure:'make',parameters:[],returnType:'number[][]'}],foreign:true}]){
+        const creator=current('function make():number[][]{return []};let first=make();first.push([1]);let row=first[0];let count=row.length');
+        managedOccurrenceDeclaration(creator,role);const {target,block}=lengthBlock(creator);
+        assert.equal(createArrayReferenceExportAuthority(creator.project).validateInput(target,block).ok,false);
+    }
+});
