@@ -702,6 +702,7 @@ class ArcadeTranslator extends BaseTranslator {
     }
 
     arrayElementValue (node) {
+        if(node?.bwPrimitiveNumberText)return `(${this.arrayElementValue(node.left)}) join ("")`;
         if(node?.type==='Boolean')return node.value?ARCADE_TRUE:ARCADE_FALSE;
         const value=this.expr(node);
         // The dialect has no value form for a Scratch predicate: in a value
@@ -1055,6 +1056,7 @@ class ArcadeTranslator extends BaseTranslator {
      */
     expr (node) {
         if(node?.type==='Number')return numberLiteralCode(node.value);
+        if(node?.bwPrimitiveNumberText)return `(${this.arrayElementValue(node.left)}) join ("")`;
         if(node?.type==='FontMetric')return `arcade font ${JSON.stringify(node.font)} metric ${JSON.stringify(node.property)}`;
         if(node?.type === 'Template' && this.assetKindLookup &&
             lookupAssetTemplate(this.assetKindLookup,node.tag,node.value) === null) {
@@ -2097,6 +2099,7 @@ class ArcadeTranslator extends BaseTranslator {
         return rest;
     }
     objectExpression(node) {
+        if(node?.bwPrimitiveNumberText)return `(${this.arrayElementValue(node.left)}) join ("")`;
         const name=this.path(node?.callee),a=node?.args || [];
         if(node.bwFontIntrinsic && name==='__bwSdkFont_'+node.bwFontIntrinsic){
             if(node.bwFontIntrinsic==='constant' && a.length===1)return `arcade font value ${a[0].value}`;

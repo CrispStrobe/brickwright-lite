@@ -1,5 +1,6 @@
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
+import {lowerNumberTextValue} from './lower-number-text-values.js';
 
 // Directed actual-producer authority. An annotation, assertion or SDK-looking
 // name does not allocate a Font, and no class/member result is guessed.
@@ -61,6 +62,7 @@ export function lowerSdkFontValues(program) {
         else if(node.type==='Call'&&!node.isNew&&sdk.has(node.callee)&&path(node.callee)==='image.create')derived.push({result:current,type:'Image',operands:node.args.map(cell),signature:node.args.length===2,domain:'Number'});
         else if(node.type==='Template'&&node.tag==='img')add(current,'Image');
         else if(node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&node.callee.name==='clone')derived.push({result:current,type:'Image',operands:[cell(node.callee.object)],signature:node.args.length===0,domain:'Image'});
+        else if(node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&node.callee.name==='toString')derived.push({result:current,type:'String',operands:[cell(node.callee.object)],signature:node.args.length===0,domain:'Number'});
         else if(node.type==='Unary'&&['+','-','~'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.argument)],signature:true,domain:'Number'});
         else if(node.type==='Binary'&&['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(node.op))derived.push({result:current,type:'Number',operands:[cell(node.left),cell(node.right)],signature:true,domain:'Number',stringConcat:node.op==='+'});
         else if(node.type==='Call'&&!node.isNew&&node.callee?.type==='Identifier')calls.push({node,callee:binding(owner,node.callee.name),result:current});
@@ -115,6 +117,9 @@ export function lowerSdkFontValues(program) {
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
     const rewrite=(node,target=false)=>{
         if(!node||typeof node!=='object')return node;if(Array.isArray(node))return node.map(value=>rewrite(value,target));
+        const numberText=lowerNumberTextValue(node,value=>types.get(cell(value)));
+        if(numberText?.unsupported)fail(numberText.unsupported);
+        if(numberText?.value)return {...numberText.value,left:rewrite(numberText.value.left)};
         if(node.type==='Member'&&fields.has(node.name)&&(types.get(cell(node.object))?.has('Font')||fontAnnotations.has(cell(node.object)))){
             if(!isFont(cell(node.object))){fail('SDK Font field requires proven actual producer authority');return node;}
             if(target){fail('SDK Font field mutation is not qualified by the read slice');return node;}
