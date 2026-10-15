@@ -4050,3 +4050,28 @@ callback/class widening or independent generated-bundle edits. Coordinate
 primitive owner/index hooks with Image and console owners; other owners keep
 class/callable producer and lexical source graph files. Product implementation
 follows this claim's normal qualified merge.
+
+## Circuit instruments: coordinated consumer adoption — 2026-10-15
+
+CLAIM — Codex bwcx, branch lane/circuit-instrument-consumer-20261015.
+Exact base bf0d5cc23fa9321b63b9df3084965026d5054080, after STM32 PR952.
+Preserve its Board b4b4c87f70624dfb570a6d21391c5a2d5a40a0e8 and
+SB3 c9be966fc6cf2f4343ca96c1a4477c91e05854ee pins. Adopt qualified CUI
+1db1bb9ee565338672c7acfefec4cf94b27196e1 (CI38677905766 all four jobs pass,
+independent six-case precision audit passes). No competing Board/SB3 movement.
+Envelope: this ledger; vendor-pins.json; root and integrated GUI package
+specifications/locks; canonical package-upstream notices and required generated
+reports/census/matrix; affected existing exact-pin adoption assertions and their
+tracked generated twins; existing test/lm741-package-adoption.test.mjs for
+actual installed CLI precision receipt; README.md, PLAN.md and ROADMAP.md for
+current circuit campaign and removal of obsolete adoption priorities. Use the
+existing package writer, no source copies, vendor forks or engine behavior edits.
+Also update only the three CUI supplier-SHA bindings in the existing
+.github/workflows/i80386-freedos-circuits-direct-actual.yml; preserve its
+jobs, triggers, assertions and one-shot execution policy. No diagnostic dispatch.
+Require installed supplier identity, existing pin/integration/provenance gates,
+actual CLI numerical/receipt control and full built-GUI instrument checks.
+No STM32/Arcade/SPIKE/world implementation, new workflow, unrelated package,
+deployment or physical-accuracy claim. Publish claim before implementation.
+This is task 2 of the ordered circuit campaign in upstream CUI documentation;
+later stratified-regression and realism work needs its own measured envelope.
