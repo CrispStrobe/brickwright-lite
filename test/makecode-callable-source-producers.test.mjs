@@ -117,3 +117,24 @@ test('numeric proof does not coalesce competing local or parameter declarations'
         'function sum(left:any,left:any):any{return left+left}'+factory.replace('value+=4','value=sum(value,4)')+'let callback=make(2);let result=callback();'
     ])assert.equal(gate(source).eligible,false,source);
 });
+
+
+test('helper normalization refuses constructor and generic call descriptors at every actual use',()=>{
+    const helper='function sum(left:any,right:any):any{return left+right}';
+    const source=helper+factory.replace('value+=4','value=sum(value,4)')+'let callback=make(2);let result=callback();';
+    for(const changed of [source+'let extra=new sum(1,2);',
+        source+'let extra=sum(new sum(1,2),3);',
+        source.replace('make(2)','make(new sum(1,2))'),
+        source+'let extra=sum<number>(1,2);',
+        source.replace('make(2)','make<number>(2)'),
+        source.replace('callback()','callback<number>()')]) {
+        const result=callableSourceGate(parse(changed),{normalize:true});
+        assert.equal(result.eligible,false,changed);
+        assert.equal(Object.hasOwn(result,'program'),false,'refused descriptors must not be normalized away');
+        assert.ok(arcadeToPseudocode(changed).unsupported.length,changed);
+    }
+    // The parser has no optional-call or spread-argument representation.
+    // These syntaxes refuse at parsing rather than becoming a plain helper call.
+    for(const suffix of ['let extra=sum?.(1,2);','let extra=sum(...items);'])
+        assert.throws(()=>parse(source+suffix));
+});

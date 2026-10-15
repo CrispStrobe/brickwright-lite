@@ -27,6 +27,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
     const numericHelpers=new Set([...helpers.values()].map(helper=>helper.scope.node));
     actual=analyseSourceValueProducers(program,{numericHelpers,parenthesized:true});
     const actualNumber=types=>types.size===1&&types.has('Number');
+    const plainCall=node=>node?.type==='Call'&&!node.isNew&&!node.constructorCall&&!Object.hasOwn(node,'typeArguments');
     const numericExpression=node=>{
         if(!node)return false;
         if(node.type==='Parenthesized')return numericExpression(node.expression);
@@ -45,7 +46,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
         }
         if(node.type==='Call'&&node.callee?.type==='Identifier') {
             const helper=helpers.get(flow.lexical.references.get(node.callee));
-            return !!helper&&node.args.length===2&&node.args.every(numericExpression);
+            return !!helper&&plainCall(node)&&node.args.length===2&&node.args.every(numericExpression);
         }
         if(node.type==='Binary')return ['+','-','*','/','%'].includes(node.op)&&numericExpression(node.left)&&numericExpression(node.right);
         return false;
@@ -56,7 +57,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
         if(node.type==='Identifier') {
             const helper=helpers.get(flow.lexical.references.get(node));
             if(helper) {
-                if(parent?.type!=='Call'||key!=='callee'||parent.args.length!==2)
+                if(!plainCall(parent)||key!=='callee'||parent.args.length!==2)
                     fail('Callable source gate requires concrete numeric operands at every operator helper use');
                 else helper.calls++;
             }
@@ -76,7 +77,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
         if(Array.isArray(node)){node.forEach(value=>inspectFactoryCalls(value,parent,key));return;}
         if(node.type==='Identifier') {
             const factory=factoryBindings.get(flow.lexical.references.get(node));
-            if(factory&&(parent?.type!=='Call'||key!=='callee'||parent.isNew||
+            if(factory&&(!plainCall(parent)||key!=='callee'||
                 actual.immutableFunctionAt(parent)!==factory.node||
                 parent.args.length!==factory.node.params.length||
                 !parent.args.every(arg=>numericExpression(arg)&&actualNumber(actual.typesAt(arg)))))
@@ -155,7 +156,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
             if(!node||typeof node!=='object')return;
             if(Array.isArray(node)){node.forEach(checkHelperOperands);return;}
             if(node.type==='Call'&&zeroNumeric(flow.expressionTypes.get(node.callee))&&
-                (node.isNew||node.args.length||actual.typesAt(node.callee).size!==1||!actual.typesAt(node.callee).has('NumericCallable')))
+                (!plainCall(node)||node.args.length||actual.typesAt(node.callee).size!==1||!actual.typesAt(node.callee).has('NumericCallable')))
                 fail('Callable source gate requires actual initialized numeric callback producers at every invocation');
             if(node.type==='Call'&&node.callee?.type==='Identifier'&&helpers.has(flow.lexical.references.get(node.callee))&&
                 !node.args.every(numericExpression))
