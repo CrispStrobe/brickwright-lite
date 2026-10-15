@@ -277,7 +277,7 @@ export function createArrayReferenceExportAuthority(project) {
     const initializingCells=new Set();
     const availability=(c,scope,node,path=new Set())=>{
         if(!c||!scope||scope.invalid||scope.unknownEntry)return 0;
-        if(path.has(scope))return c.global?1:0;if(c.formal===scope){if(initializingCells.has(c))return 0;initializingCells.add(c);try{return scope.callers.length>0&&c.writers.every(writer=>!writer.argument||initialized(writer.value))?2:0;}finally{initializingCells.delete(c);}}
+        if(path.has(scope))return c.global&&singleArray(c.types)?1:0;if(c.formal===scope){if(initializingCells.has(c))return 0;initializingCells.add(c);try{return scope.callers.length>0&&c.writers.every(writer=>!writer.argument||initialized(writer.value))?2:0;}finally{initializingCells.delete(c);}}
         if(scope.before.get(node)?.has(c))return 2;
         const next=new Set([...path,scope]);let entries=scope.callers;
         if(!entries.length){
