@@ -3828,6 +3828,25 @@ enabled exact-head CI check remain mandatory before integration. Firmware,
 Runtime, models, native code, pins, workflows and budgets are unchanged; no
 whole-G02, rollback, physical, reference or release claim.
 
+
+Installed qualification completed on tested consumer
+`516557dae2f3b29710318a0e9ee647715728376f`. Four real own-NuttX Code replacement
+cases pass: cancellation and normal delivery while the original STOP reply is
+held, and cancellation and normal delivery while a completed upload return is
+held. Actual Arena Reset invokes full pane/session Stop for cancellation. Each
+case releases ownership, completes a different fresh guest and releases it on
+final Stop. Standalone readers verify the original correlated STOP replies,
+completed-upload START replies, fixed guest identity and eight complete native
+startup transactions. The initial retained program is checked separately from
+the flag at the held-return boundary; no closed-session program/frame callback
+is admitted. Original selector and state-interval test failures remain preserved.
+
+This qualifies the frozen consumer and finite session boundaries. Pending-upload
+Arena Stop availability and Code feedback remain open; Reset coverage does not
+establish that UX. An executed upload remains executed. The session and test
+blobs are preserved during integration with separately qualified main changes;
+final-head CI remains required, and later whole packages need their own evidence.
+
 ## SPIKE remaining lifecycle boundaries — 2026-10-13
 
 Continuation candidate `lane/spike-g02-output-stop-20261014` stays in this

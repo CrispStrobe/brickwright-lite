@@ -566,6 +566,18 @@ all enabled exact-head CI checks remain pending; this finite host result does
 not close G02 or qualify guest execution. Existing transport ordering and
 firmware/Runtime/model/native pins and deadlines remain unchanged.
 
+The replacement-upload follow-up now passes four installed own-NuttX cases on
+consumer `516557dae2f3b29710318a0e9ee647715728376f`: held original STOP or
+completed-upload return, each with live delivery and actual Reset cancellation.
+Every case releases session/configuration/clock ownership, completes a distinct
+fresh guest and releases it. Standalone readers validate eight complete native
+startup transactions, original correlated packets and guest identity. Original
+selector/state-interval test failures are preserved. Initial retained state and
+held-return retained state are distinct observations. These finite results cover
+full session Stop through Reset; pending-upload Arena Stop and Code-feedback UX
+remain open. Integration preserves the qualified session/test blobs and requires
+fresh final-head CI. Later whole packages need their own qualification.
+
 ### G03 — Qualify usable sandbox and responsive editor controls
 
 **Owner:** Lite. **Start:** `docs/SPIKE-ARENA.md`,
