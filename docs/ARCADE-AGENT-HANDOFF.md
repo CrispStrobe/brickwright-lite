@@ -66,8 +66,8 @@ there is no heuristic repair of ambiguous user actors.
 One unchanged authentic project also passes its first cached-original startup
 and real DOM controller check: Right moves its sprite, release stops it, and
 life remains three. This reused its retained compiled binary without another
-compile. The genuinely new current export still needs its own original-runtime
-comparison. Neither result establishes complete gameplay or visible authoring,
+compile. Its genuinely new current export also passes the selected startup and
+controller comparison described below. Neither result establishes complete gameplay or visible authoring,
 and neither changes the whole-project census.
 
 Two more authentic projects now pass the same five native routes. Basketball
@@ -79,21 +79,35 @@ failures. The corrected observations preserve all actors and input files.
 These are bounded local controls with headless warnings, not original-runtime,
 visible-editor or whole-project promotions.
 
-The optional Array ownership prototype remains held. It now retires the calling
-lineage when the current graph changes, but an index conversion can still change
-the graph and commit a write before final validation. The supplier successor
-must validate after coercion and before each actual mutation. Keep it isolated;
-passing downstream-stop controls does not prove that a write was prevented.
+The private development composition `50d863fbc` includes the reviewed optional
+Array owner and supplier pre-effect pairing. It validates after argument
+coercions and before corresponding writes, preventing the earlier observed
+mutation. Across 29 modules, 207 controls passed with one sparse-metadata setup
+failure; materializing the unchanged tracked metadata allowed only that module's
+six controls to pass. Six actual mutation-boundary probes and the production
+default-off control also pass. Independent review verifies all 175 installed VM
+overlays and the full canonical compiler source. Old failures remain evidence.
+This is an optional untyped host: the production supplier pin and registration
+are unchanged. Typed Array formals, derived views and named-registry restart
+policy still require real producer, writer and lifetime proofs.
 
 The [authentic project ledger](compatibility/arcade-authentic-project-qualification.md)
 now separates the sixteen retained compile-valid asset contexts by pure, native,
-selected-original and visible-authoring gates. Nine have bounded five-route
+selected-original and visible-authoring gates. Eleven have bounded five-route
 native controls. The difficulty sample uses the real prompt queue and one answer
 per route, then Right press/release. The flamethrower current export also matches
 all six retained selected-original observations, including measured clock/frame
 and trusted input edges, after one new compile and one start. Its actual emitted
 Sprite/Info bindings are derived independently from the new binary. No original
 replay, whole-game, visible-editor or census promotion follows.
+
+Both pizza contexts now pass their ten native routes with real splash input,
+complete resources and a four-second song wait. The conditional helper observes
+no connection before the splash and creates no actor; this is retained, not
+silently repaired. Exact selected-original startup remains a separate gate.
+The first observer failed after another VM replaced a global registry entry;
+sequential VM ownership preserves the same checks without dispatcher rebinding.
+See the ledger for the precise behavior and remaining qualification gates.
 
 ### Current hosted checks and held candidates
 

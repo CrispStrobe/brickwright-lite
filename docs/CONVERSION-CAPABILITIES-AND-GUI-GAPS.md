@@ -62,11 +62,14 @@ passed its three jobs and 38 selected Array controls. The production pin and
 bundle are unchanged; the new mutation fix needs its own qualification. Qualify the actual
 shipped supplier before the hosted Number-versus-text authoring journey.
 
-The opt-in Array operation prototype is separately held on a real index
-coercion that changes the current graph before a write. A late private rejection
-stops continuation but does not undo that write. Finish the supplier's actual
-mutation-boundary checks before enabling it or admitting typed Array formals;
-this is also a prerequisite for a trustworthy visible invalid-input refusal.
+The optional Array host and supplier successor now pass six actual
+mutation-boundary probes, preventing the earlier write after coercion changed
+the current graph. The independently reviewed private composition has 213
+successful controls across its retained run and one metadata-only correction.
+It remains default-off and untyped. Before visible enrollment, qualify the
+actual adopted supplier, stale named-registry restart/rebinding policy, typed
+body/view producers and all writers. A visible invalid-input journey must show
+that the refused write did not happen, while unrelated work keeps running.
 
 ## Captured inspection and class constraint editing — 2026-10-15
 

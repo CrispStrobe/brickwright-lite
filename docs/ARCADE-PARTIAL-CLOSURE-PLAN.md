@@ -13,6 +13,15 @@ conversion, runtime, authoring and roundtrips without suppressing diagnostics.â€
 
 ## Current execution frontier â€” 2026-10-15
 
+The [authentic-project stage ledger](compatibility/arcade-authentic-project-qualification.md)
+now records eleven projects with five bounded native routes each. Both pizza
+contexts include their original helper files, actual splash input and timed
+music. One exact source/current-export startup and Right-input comparison is
+also closed. These controls leave original-runtime, visible authoring and
+whole-game gates open; they do not change the census below. The reviewed private
+Array owner composition remains optional and untyped pending supplier adoption
+and real view/formal/lifecycle proofs.
+
 The immutable 184 raw inputs report **147 translated / 36 partial / one parse
 failure**. At least 20 of those partial rows have actual external asset
 references without their definitions in the raw input. Implementation alone

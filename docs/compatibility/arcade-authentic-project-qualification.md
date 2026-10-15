@@ -24,7 +24,7 @@ matched to the exact input and source before being credited here.
 | [Alien](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/alien.md#8) (`0a50646d`) | Pass | Pass | — | — | — |
 | [Free throw](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/free-throw.md#13) (`2cdb086e`) | Pass | Pass | — | — | — |
 | [Arrow](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/arrow.md#20) (`5d0c02f5`) | Source blocked | — | — | — | — |
-| [New pizza party](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/new-pizza-party.md#23) (`67958b6a`) | Pass | — | — | — | — |
+| [New pizza party](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/new-pizza-party.md#23) (`67958b6a`) | Pass | Pass | — | — | — |
 | [Lyla Jr](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/lyla-jr.md#4) (`7b258f52`) | Later helper refusal | — | — | — | — |
 | [Horse](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/horse.md#6) (`90a0e61d`) | Source blocked | — | — | — | — |
 | [Icecube](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0201-part2.md#1) (`a03d93d1`) | Pass | Pass | — | — | — |
@@ -32,13 +32,13 @@ matched to the exact input and source before being credited here.
 | [Difficulty prompt](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0206-part4.md#2) (`c0609881`) | Pass | Pass | — | — | — |
 | [Birthday](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/birthday.md#18) (`c2576ea3`) | Source blocked | — | — | — | — |
 | [Winter](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/winter.md#4) (`ddc8f1ca`) | Pass | Pass | — | — | — |
-| [Pizza party](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/pizza-party.md#26) (`e4b668bd`) | Pass | — | — | — | — |
+| [Pizza party](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/pizza-party.md#26) (`e4b668bd`) | Pass | Pass | — | — | — |
 | [Crystal ball](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0205-part3.md#1) (`e7ab5324`) | Pass | Pass | — | — | — |
 | [Flamethrower controller](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0201-part3.md#2) (`f1f82cba`) | Pass | Pass | Startup + Right | Startup + Right | — |
 | [Flame handler with null receiver](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0201-part1.md#4) (`f583b791`) | Pass | — | — | — | — |
 | [Froggy](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/froggy.md#11) (`f65a6b2d`) | Pass | Pass | — | — | — |
 
-Nine contexts now have these bounded native route controls; one additionally
+Eleven contexts now have these bounded native route controls; one additionally
 has its exact selected-original source/current-export startup and controller
 comparison. No complete-project or raw-census promotion follows.
 
@@ -57,16 +57,29 @@ comparison. No complete-project or raw-census promotion follows.
 - The difficulty project observes the real QUESTION queue and one ANSWER per
   route, then actual Right press/release. This checks the native prompt protocol;
   it does not establish its visible widget or controller-pane journey.
+- Both pizza projects retain their complete helper dependencies, four character
+  images, background and music. Actual A input closes the splash and the song
+  waits four seconds on each of the five routes. One helper unconditionally
+  creates a Player; the other checks player connection before the splash and
+  creates none in the observed native startup. Its selected-original startup
+  still needs comparison; do not manufacture a player to match expectations.
+- The first pizza observer looked up a service through a global registry after
+  creating another VM. Per-VM registration names collided there; actual guest
+  primitives retained their local service object. That observer failure is
+  preserved. Sequential VM ownership keeps the original ownership assertions
+  and all actors, inputs and music checks, without rebinding the dispatcher.
 - The null-receiver flame handler compiles, but its A callback reads a Sprite
   variable which the original source leaves null. Observe the original failure
   boundary before changing compatibility behavior; never repair that input.
 
 ## Next dependency order
 
-1. Finish the supplier pre-mutation Array guards and independent review; keep
-   the held prototypes out of default enrollment. Qualify the actual consumer.
-2. Prepare the two pizza contexts from their complete dependencies, including
-   their real startup dialogs and music waits. Preserve every initial failure.
+1. Finish hosted supplier qualification and actual consumer adoption of the
+   reviewed pre-mutation guards. The private composition passes its bounded
+   controls; typed Array formals and default enrollment remain closed.
+2. Compare the pizza projects with exact selected-original startup and music
+   behavior, including the conditional connection query. Their ten native
+   route controls do not establish original-runtime parity.
 3. Compare additional exact current exports with retained originals. Bind actual
    emitted observation slots rather than matching variable names or reusing old
    numeric slots. Reuse successful original observations without replaying them.
