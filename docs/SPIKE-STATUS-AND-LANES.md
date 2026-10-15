@@ -26,6 +26,10 @@ composition. The new overlapping Code-caller proposal is separate and has no
 product implementation here. Native sources and dependency pins match main.
 This does not close G02 or establish physical/reference/release qualification.
 
+Qualification receipts must name the final consumer commit, including any
+documentation checkpoint. A checkpoint retains the tested product sources and
+uses a current fully labelled PR event for both enabled CI tiers.
+
 ## Pause integration qualification — 2026-10-15
 
 The pane ownership fix on `lane/spike-g02-pause-ownership-20261015` preserves
