@@ -136,7 +136,9 @@ export function tokenize (src) {
                 i += 2;
                 while (i < src.length && /[0-9a-fA-F]/.test(src[i])) s += src[i++];
             } else {
-                while (i < src.length && /[0-9.eE]/.test(src[i])) s += src[i++];
+                const literal=/^(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?/.exec(src.slice(i));
+                s=literal[0];i+=s.length;
+                if(/[eE]/.test(src[i]||''))throw new Error(`MakeCode TS: malformed numeric exponent on line ${line}`);
             }
             push('number', s);
             continue;
