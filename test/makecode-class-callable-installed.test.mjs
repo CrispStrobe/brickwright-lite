@@ -15,10 +15,12 @@ const check=run=>{
     assert.equal(heap.get(read('holder'),'state'),read('state'),'callback mutation uses the same actual State allocation');
     assert.equal(heap.get(read('state'),'value'),3);
 };
-test('prototype class callbacks use real managed frames and invocation-local types through Code and same-VM SB3',async()=>{
-    const converted=arcadeToPseudocode({'main.ts':source},{classCallablePrototype:true});
+test('qualified default class callbacks use real managed frames and invocation-local types through Code and same-VM SB3',async()=>{
+    const converted=arcadeToPseudocode({'main.ts':source});
     assert.deepEqual(converted.unsupported,[]);
-    assert.ok(arcadeToPseudocode({'main.ts':source}).unsupported.length,'default class callback source admission stays closed');
+    const prototype=arcadeToPseudocode({'main.ts':source},{classCallablePrototype:true});
+    assert.deepEqual(prototype.unsupported,[]);
+    assert.equal(converted.code,prototype.code,'qualified default uses the same managed class representation');
     const run=await runProgram(converted.code,{frames:40});
     try {
         check(run);
