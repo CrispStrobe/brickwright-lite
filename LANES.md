@@ -4076,19 +4076,21 @@ deployment or physical-accuracy claim. Publish claim before implementation.
 This is task 2 of the ordered circuit campaign in upstream CUI documentation;
 later stratified-regression and realism work needs its own measured envelope.
 
-## SPIKE Pause feedback ownership continuation — 2026-10-15
+## SPIKE pane action ownership continuation — 2026-10-15
 
 Continuation in the merged G02 pane/lifecycle envelope, branch
 `lane/spike-g02-pause-ownership-20261015`, same Codex owner.
-A delayed firmware Pause success or error could publish after Stop, pane disposal
-or session replacement. Storage-capable Pause now checks the captured live
-session before feedback. Non-storage Pause checks the teardown intent and bridge
-before publishing paused state. Current success and error behavior is retained.
+Delayed Pause feedback and Reset/Step continuations could publish or touch a
+replacement world after Stop, disposal or session replacement. Storage Pause
+checks its captured live session before feedback. Non-storage Pause, Reset and
+Step check teardown intent and bridge ownership after awaiting cleanup. The
+intent records a bridge restored by its own topology teardown so legitimate
+six-motor or dual-ultrasonic cleanup does not cancel the current action.
 
-Sixteen actual-method controls use authored delayed replies: four current cases
-pass on the baseline and twelve stale cases fail. The candidate passes all sixteen
-and the fourteen existing pane lifecycle controls. Removing each storage feedback
-guard or the non-storage teardown fence is detected. This is host evidence only;
-fresh source-bound installed normal/cancellation/recovery and every enabled
-exact-head check remain required before integration. No firmware, Runtime, model,
-native, dependency, deadline or workflow change; no full G02 or rollback claim.
+Thirty new actual-method controls use authored delayed replies; the original
+baseline passes ten and fails twenty. The candidate passes all thirty and the
+fourteen existing pane lifecycle controls. Six targeted guard/bookkeeping
+removals are detected. These are host results only. Fresh source-bound installed
+normal/cancellation/recovery and every enabled exact-head check remain required
+before integration. No firmware, Runtime, model, native, dependency, deadline or
+workflow change; no full G02 or rollback claim.

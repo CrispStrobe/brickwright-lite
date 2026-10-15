@@ -630,7 +630,7 @@ class SpikeArenaPane extends React.Component {
     async stopProgram ({restart = false} = {}) {
         // Invalidate a pending native Start even when Reset retains its bridge
         // and execution backend, or a backend selection returns to native.
-        const intent = this.programIntent = {};
+        const intent = this.programIntent = {bridge: this.bridge};
         const bridge = this.bridge;
         const current = () => !this.disposed && this.programIntent === intent && this.bridge === bridge;
         const firmware = this.firmwareSession;
@@ -650,6 +650,8 @@ class SpikeArenaPane extends React.Component {
             this.bridge = new ArenaHubBridge({hubState: this.hubState, world: this.world});
         }
         this.arenaFirmwareTopology = null;
+        // A topology teardown may replace the bridge while retaining its intent.
+        intent.bridge = this.bridge;
         this.clock.uninstall();
         if (restart) this.setState({status: 'ready'});
         const external = this.hubState?.externalBackend;
@@ -674,27 +676,34 @@ class SpikeArenaPane extends React.Component {
             return;
         }
         if (this.firmwareSession || this.hubState?.externalBackend) {
-            const bridge = this.bridge;
             const stopped = this.stopProgram();
             // stopProgram creates its intent before awaiting firmware teardown.
             const intent = this.programIntent;
             await stopped;
-            if (this.disposed || this.programIntent !== intent || this.bridge !== bridge) return;
+            if (this.disposed || this.programIntent !== intent || this.bridge !== intent.bridge) return;
         }
         if (this.disposed) return;
         this.setState({status: 'paused'});
     }
 
     async reset () {
-        await this.stopProgram();
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        await stopped;
+        if (this.disposed || this.programIntent !== intent || this.bridge !== intent.bridge) return;
         if (this.bridge) this.bridge.reset();
         this.setState({status: 'ready', verdict: null, message: ''}, () => this.draw());
     }
 
     async step () {
-        if (!this.bridge) return;
+        if (this.disposed || !this.bridge) return;
         if (this.state.execution !== 'native') return;
-        if (this.hubState?.externalBackend) await this.stopProgram();
+        if (this.hubState?.externalBackend) {
+            const stopped = this.stopProgram();
+            const intent = this.programIntent;
+            await stopped;
+            if (this.disposed || this.programIntent !== intent || this.bridge !== intent.bridge) return;
+        }
         this.advance(STEP_BUTTON_MS);
         this.setState({status: 'paused'});
     }
