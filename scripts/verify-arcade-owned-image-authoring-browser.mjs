@@ -74,12 +74,12 @@ const paint=async()=>{
  report.artwork={before:{...before,svg:undefined},after:{...after,svg:undefined},svgSHA256:sha(after.svg),pixels:Array.from(decoded.pixels)};await chooseTarget(before.owner);report.journeys.push('actual Pixel canvas pointer strokes and save create current canonical SVG3/0/0/4');
 };
 const blockPaint=async(from,to)=>{
- await page.getByRole('tab',{name:'Blocks',exact:true}).click();
+ await page.getByRole('tab',{name:'Blocks',exact:true}).click();await editor().waitFor({state:'hidden'});
  const locate=()=>page.evaluate(from=>{const ws=window.Blockly?.getMainWorkspace();const rows=ws?.getAllBlocks(false).filter(b=>b.type==='arcade_setImagePixel'&&String(b.getInputTargetBlock('COLOR')?.getFieldValue('NUM'))===String(from));if(rows?.length!==1)throw Error('Missing unique visible Image COLOR numeric field');const field=rows[0].getInputTargetBlock('COLOR').getField('NUM'),r=field.getSvgRoot().getBoundingClientRect();const svg=ws.getParentSvg().getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2,id:rows[0].id,left:svg.left+ws.getMetrics().absoluteLeft,right:svg.right,top:svg.top};},from);
  let position=await locate();const center={x:(position.left+position.right)/2,y:position.top+160};await page.mouse.move(center.x,center.y);await page.mouse.wheel(position.x-center.x,position.y-center.y);
  await page.waitForFunction(id=>{const block=window.Blockly.getMainWorkspace().getBlockById(id),field=block?.getInputTargetBlock('COLOR')?.getField('NUM'),r=field?.getSvgRoot().getBoundingClientRect();return !!r&&block.getSvgRoot().contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));},position.id);position=await locate();
  // A missing/unreachable field is an authoring gap, not permission to setFieldValue.
- assert.ok(position.x>0&&position.y>0&&position.x<1600&&position.y<1100,'Image Number field must be visibly reachable without a state workaround');await page.mouse.dblclick(position.x,position.y);const input=page.locator('.blocklyHtmlInput:visible');await input.waitFor();await input.fill(String(to));await input.press('Enter');
+ assert.ok(position.x>0&&position.y>0&&position.x<1600&&position.y<1100,'Image Number field must be visibly reachable without a state workaround');await page.mouse.dblclick(position.x,position.y);const input=page.locator('.blocklyHtmlInput:visible');await input.waitFor();await input.fill(String(to));await input.press('Enter');await page.locator('.blocklyHtmlInput').waitFor({state:'hidden'});
  await page.waitForFunction(({id,to})=>String(window.Blockly.getMainWorkspace().getBlockById(id)?.getInputTargetBlock('COLOR')?.getFieldValue('NUM'))===String(to),{id:position.id,to});report.journeys.push(`visible Blocks COLOR edit ${from} to ${to}`);
 };
 let deadlineTimer,deadlineExpired=false;
