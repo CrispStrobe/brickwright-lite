@@ -3779,12 +3779,12 @@ Continuation in the merged G02 pane/lifecycle envelope, branch
 An installed upload probe found no Arena Stop element at a pending return.
 Keep Stop visible whenever the current session is uploading, including paused
 program observations. Pending-upload Stop delegates to full session teardown
-with ready feedback, using the qualified upload closure guards. Ordinary retained
+with ready feedback and cleared upload text, using the qualified closure guards. Ordinary retained
 program Stop keeps its storage session. A delayed cancellation error must retain
 pane intent ownership before changing feedback.
 
 All 14 new controls and 14 existing pane lifecycle controls pass. The baseline
-passes five new cases and fails nine; four targeted visibility/routing/feedback
+passes five new cases and fails nine; five targeted visibility/routing/feedback
 mutations are detected. Host coverage evaluates the shipped JSX branch predicate
 and actual pane methods, with authored stop/error promises. Actual installed
 visible-control cancellation and distinct guest recovery remain required, along

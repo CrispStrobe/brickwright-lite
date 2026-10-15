@@ -627,7 +627,7 @@ class SpikeArenaPane extends React.Component {
         this.setState({status: 'running', verdict: this.bridge.verdict, message});
     }
 
-    async stopProgram ({restart = false} = {}) {
+    async stopProgram ({restart = false, clearMessage = false} = {}) {
         // Invalidate a pending native Start even when Reset retains its bridge
         // and execution backend, or a backend selection returns to native.
         const intent = this.programIntent = {};
@@ -651,7 +651,7 @@ class SpikeArenaPane extends React.Component {
         }
         this.arenaFirmwareTopology = null;
         this.clock.uninstall();
-        if (restart) this.setState({status: 'ready'});
+        if (restart) this.setState({status: 'ready', ...(clearMessage ? {message: ''} : {})});
         const external = this.hubState?.externalBackend;
         if (external) external.cancel();
         this.hubState.backend.cancel();
@@ -663,7 +663,7 @@ class SpikeArenaPane extends React.Component {
 
     async pause () {
         if (this.firmwareSession?.uploading) {
-            const stopped = this.stopProgram({restart: true});
+            const stopped = this.stopProgram({restart: true, clearMessage: true});
             const intent = this.programIntent;
             try { await stopped; }
             catch (error) {

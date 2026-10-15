@@ -32,7 +32,7 @@ for (const outcome of ['success', 'error']) {
                 stopProgram () { events.push('retained-program-stop'); return Promise.resolve(); },
                 stop () { this.closed = true; events.push('full-session-stop'); return pending; }};
             const pane = new Function('ArenaHubBridge', `return ({${methods}});`)(class {});
-            Object.assign(pane, {firmwareSession: session, state: {status: 'paused'}, bridge: {},
+            Object.assign(pane, {firmwareSession: session, state: {status: 'paused', message: 'Uploading current code...'}, bridge: {},
                 clock: {uninstall () { events.push('clock.uninstall'); }}, hubState: {backend: {cancel () {}}},
                 setState (patch) { Object.assign(this.state, patch); events.push(['state', patch]); }});
             const task = pane.pause();
@@ -55,6 +55,7 @@ for (const outcome of ['success', 'error']) {
                     assert.equal(pane.state.status, 'running');
                 } else if (outcome === 'success') {
                     assert.equal(pane.state.status, 'ready'); assert.ok(events.includes('clock.uninstall'));
+                    assert.equal(pane.state.message, '', 'Finished cancellation must clear stale upload feedback');
                 } else { assert.equal(pane.state.status, 'failed'); assert.equal(pane.state.message, 'authored cancellation failure'); }
             } finally { resolve(); await task; }
         });
