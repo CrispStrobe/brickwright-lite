@@ -33,9 +33,10 @@ all managed input boundaries or a newly executed original export.
 
 ## Number inputs across managed calls and writes — 2026-10-15
 
-**Open implementation gap.** A saved-project probe distinguishes an actual
+**Bounded local correction; editor and class export qualification open.**
+A saved-project probe distinguishes an actual
 connected `math_number` block containing `20` from a text block containing
-`"20"`. Both currently travel as String through managed arguments, local writes,
+`"20"`. Both previously traveled as String through managed arguments, local writes,
 captured writes and ordinary class field writes, as well as returns. A factory
 argument entered as a Number consequently produces String `"201"` after adding
 `1`. The probe covers 16 ordinary and class cases without runtime errors; those
@@ -52,7 +53,37 @@ Acceptance includes creating these calls and writes in Blocks, editing Number
 and text inputs independently, checking both value and type in the debugger,
 and keeping the distinction through Code, same/fresh SB3 and current export.
 Test replaced or disconnected inputs, foreign targets, Stop/restart and project
-reload. The correction and visible editor journey remain unqualified here.
+reload. The integrated correction now passes 50 affected controls, including
+six formerly failing Number boundaries. Each Number/text fixture checks native,
+Code, same/fresh SB3 and current export/reimport, with existing incompatible
+callback export refusals retained. Visible editor qualification remains open.
+A pure reimport is not a MakeCode compiler check; the class constraint gap below
+also applies to these routes.
+
+## Current class constraints on export — 2026-10-15
+
+**Confirmed export validation gap.** Changing a Number-declared class field to
+text preserves the actual text in native execution. Current export nevertheless
+emits `value: number` together with `this.value = "20"` and reports no
+unsupported elements. Source reimport alone accepts it. Two newly compiled
+actual exports establish the boundary with the selected MakeCode Arcade
+compiler: the Number `20` variant succeeds without diagnostics; the text
+variant fails with `Type '"20"' is not assignable to type 'number'.` These are
+compiler controls, without original guest execution.
+
+Additional current-project probes expose analogous unchecked String/Number and
+Boolean/text field writes and incompatible method returns. They remain static
+observations until independently compiled. The repair must separate declared
+constraints from directed actual producer facts, validate every current writer
+and return in its real class/procedure owner, and diagnose incompatible edits
+before export. Preserve native text values; casting the text or rewriting the
+metadata would conceal the user's edit. Mixed or unresolved producers cannot
+borrow type authority from annotations or symmetric inferred-type unions.
+
+Blocks needs usable field and method type controls with a diagnostic at the
+incompatible write or return. Code, graphics-linked class values, saved projects
+and current MakeCode export must preserve that contract. The runtime Number-input
+correction above does not qualify these class export constraints.
 
 ## Actual numeric callback producers — 2026-10-15
 

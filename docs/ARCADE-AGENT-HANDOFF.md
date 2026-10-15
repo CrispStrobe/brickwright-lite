@@ -23,6 +23,17 @@ is not a claim that remote main or the published PR already contains the change.
 Its immutable raw184 audit remains **147 translated / 36 partial / one parse
 failure**; the below-20 milestone is not reached.
 
+Local integration `afa49ca09` additionally contains the proper managed
+Number-input correction: current argument packing, local/captured writes,
+ordinary class setters and managed returns interpret only their actual
+connected Number shadow. Text `"20"` stays text. Fifty affected controls pass
+with actual current-block edits, Code, same/fresh SB3 and export/reimport.
+The [GUI and export ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) records a
+new confirmed class-export constraint failure: a text writer can still export
+under an unchanged Number field declaration. Its newly compiled Number control
+passes, while its newly compiled text export fails in the selected compiler.
+Do not treat native or pure reimport success as compiler-valid class export.
+
 Relevant implementation entry points:
 
 - `overlay/scratch-gui/src/lib/bw-makecode/source-value-producers.js`: one
