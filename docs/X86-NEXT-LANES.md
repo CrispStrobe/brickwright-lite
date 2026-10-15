@@ -65,8 +65,23 @@ memory pane currently covers only 64 KiB and offers byte editing; that is not
 sufficient for a read-only 386 target with physical addresses above 1 MiB.
 Use explicit validated target memory bounds and read/write capabilities, not
 linear code-address limits as a substitute for physical memory metadata.
-Any missing board metadata or capability-schema extension needs its own reviewed
-scope before implementation. Preserve other targets' declared address spaces.
+This reviewed extension owns canonical
+`overlay/scratch-gui/src/lib/bw-debug/debug-capabilities.js` and existing
+`test/debug-capabilities.test.mjs`. Preserve schema-1 legacy spaces and normalize
+the board's optional `spaces.mem` fields: `addressSpace: 'physical'`, inclusive
+`addressMin`/`addressMax`, `maxReadBytes`, and existing `read`/`write`/`passiveRead`.
+The proposed 386 values are 0 through `0xffffffff`, at most 1048576 bytes per
+read, and `write: false`. This is a physical bus domain, not mapped RAM; passive
+read claims require board observation controls. Absent optional metadata keeps
+legacy behavior; presence of any new metadata field selects complete strict
+validation. Partial or malformed descriptors fail closed without an editable
+64 KiB fallback. Read lengths must be nonnegative safe integers. Preserve an
+empty read at `addressMax + 1`, but never treat that endpoint as an addressable
+byte or valid UI jump/page start; nonempty reads stay within inclusive bounds.
+Test zero-length reads, the top byte and one-past empty endpoint explicitly. Use `write: false` as the read-only authority, not a duplicate
+contradictory flag. Freeze normalized nested descriptors. Board implementation
+waits for PR599 merge and explicit handoff under its separate metadata claim.
+Preserve other targets' declared address spaces.
 Display full-width registers and physical addresses without truncation. Offer a
 bounded address jump/page view, report read refusals, and disable editing when
 the target refuses writes. Unsupported 386 disassembly, step-over/out, symbols
