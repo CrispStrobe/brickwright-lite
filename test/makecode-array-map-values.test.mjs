@@ -140,3 +140,12 @@ test('Map callback control proof refuses actual structured controls and future e
   assert.equal(JSON.stringify(program),before,'analysis must not rewrite '+type);
  }
 });
+
+test('actual Array method and unproved computed updates poison Map authority, while numeric element updates remain supported',()=>{
+ for(const source of [
+  'let a:any=[1];a.map++;let b=a.map(()=>1);',
+  'let a:any=[1];let key=unknown;a[key]++;let b=a.map(()=>1);',
+  'let a:any=[1];a["map"]++;let b=a.map(()=>1);'
+ ])assert.ok(arcadeToPseudocode(source).unsupported.some(text=>text.startsWith('Array.map:')),source);
+ assert.deepEqual(arcadeToPseudocode('let a=[1];a[0]++;let b=a.map(value=>value);').unsupported,[]);
+});
