@@ -49,3 +49,63 @@ The [optional real FreeDOS interaction probe](I80386-FREEDOS-INTERACTION.md) ext
 ## Working order and ownership
 
 A frontend worker can take A while a shared-media worker takes B; coordinate Machine Manager and adapter edits. C follows an upstream implementation change. D supplies regression scenarios for either lane. CPU RAM ownership, clock batching, protected-mode oracle expansion and RTx calibration remain the board lanes. Each task should end in a reviewable change with relevant evidence and an updated handoff, not a stale implicit SHA.
+
+
+## Qualified 386 debugging and media workflows
+
+Staged proposed continuation, not completed functionality. Refresh board PR599,
+its subscribed free-guest qualification, performance decisions and this app's
+actual selected supplier. The shared adoption owner in PR961 must hand off
+package/lock/vendor work explicitly before x86 changes those surfaces. Adopt
+only qualified source and preserve unrelated supplier changes; a successful
+board diagnostic does not qualify the installed app.
+
+First qualify forward debugging in the actual installed package. The generic
+memory pane currently covers only 64 KiB and offers byte editing; that is not
+sufficient for a read-only 386 target with physical addresses above 1 MiB.
+Use explicit validated target memory bounds and read/write capabilities, not
+linear code-address limits as a substitute for physical memory metadata.
+Any missing board metadata or capability-schema extension needs its own reviewed
+scope before implementation. Preserve other targets' declared address spaces.
+Display full-width registers and physical addresses without truncation. Offer a
+bounded address jump/page view, report read refusals, and disable editing when
+the target refuses writes. Unsupported 386 disassembly, step-over/out, symbols
+and reverse execution must be clearly unavailable, not rendered as valid legacy
+operations. Keep ordinary 8086 controls and inspection working.
+
+Use an existing free client through the exact installed supplier: visible guest
+completion/input, pause, linear code breakpoint, one instruction, full-width
+register/physical-memory observation, resume and Circuits/Widgets/Code transitions
+without session loss. Retain source/package/media/build identities and actual
+browser/native observations. A synthetic adapter test is not this acceptance.
+Historical application/browser receipts remain source-bound; do not repeat them
+as missing capability or promote them to a newer package without evidence.
+
+Next add explicit raw-HDD download after the board export API qualifies. The
+action applies to the active paused target and downloads detached raw bytes plus
+geometry/hash metadata. Revoke Blob URLs on success, failure and disposal; never
+write the originally selected file, silently autosave or store binary media in
+the configuration library. Machine Manager's existing chooser supplies reload.
+Controls cover live-session selection, unsupported/busy/capped export, download
+failure/disposal and byte isolation. Actual installed acceptance captures the
+genuine browser download, reloads those exact bytes through the real chooser
+into a fresh machine, and verifies the guest-written marker and unchanged input.
+Preserve the original session independently.
+
+Then add one bounded DOS package chooser using the board's canonical admission
+policy. Reuse the existing ZIP dependency only with raw-record preflight and
+bounded extraction; no shared dependency edits belong here. Accept only the
+explicit COM/MZ-plus-virtual-files or raw-HDD/CHS subset. Show deterministic config
+selection and persistent useful rejection for ambiguity, unsupported commands,
+unsafe paths, malformed archives or unsupported devices. No host-shell, package
+JavaScript or network fallback runs. Actual CLI and GUI acceptance use the same
+free/authored archive bytes and demonstrate guest input/output, target selection,
+error recovery and tab/session retention. Keep raw-image loading available.
+
+ISO/CD-ROM support remains a separate board/device task; do not advertise an ISO
+picker before that path qualifies. Free application expansion follows these user
+journeys: requalify an existing protected client first, then an explicitly licensed
+engine/assets build with visible frames, live input and a repeatable workload.
+Public examples and new notes use free/authored media with exact notices; private
+licensed-media records remain in the private repository. No calibrated RTx,
+physical 386 timing, whole-OS, broad DOSBox or release claim follows from this lane.
