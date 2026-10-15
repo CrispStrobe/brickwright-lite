@@ -54,6 +54,13 @@ const isBare = specifier => !/^(?:\.{1,2}\/|\/|[a-zA-Z]:[\\/]|file:|node:|data:|
 const NOT_FOUND = new Set(['ERR_MODULE_NOT_FOUND', 'ERR_PACKAGE_PATH_NOT_EXPORTED']);
 
 export async function resolve (specifier, context, nextResolve) {
+    // Overlay-only pure/corpus tests have no installed VM package. Resolve this
+    // shared owned source only for its exact overlay importer. Installed GUI
+    // sources keep normal package resolution; this is not a dependency fallback.
+    if (specifier === 'scratch-vm/src/util/bw-procedure-constraint-model.js' &&
+        context.parentURL === pathToFileURL(path.join(repoRoot, 'overlay', 'scratch-gui', 'src', 'lib', 'bw-makecode', 'procedure-constraint-export.js')).href) {
+        return nextResolve(pathToFileURL(path.join(repoRoot, 'overlay', 'scratch-vm', 'src', 'util', 'bw-procedure-constraint-model.js')).href, context);
+    }
     try {
         return await nextResolve(specifier, context);
     } catch (err) {

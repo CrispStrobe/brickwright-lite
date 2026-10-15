@@ -1,4 +1,4 @@
-import model from '../../../../scratch-vm/src/util/bw-procedure-constraint-model.js';
+import model from 'scratch-vm/src/util/bw-procedure-constraint-model.js';
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
 const fail=message=>{throw Error('Procedure parameter constraint: '+message);};
 const field=(block,name)=>block.fields?.[name]?.[0];
