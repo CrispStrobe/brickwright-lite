@@ -126,7 +126,7 @@ export function compileTargetFor (device) {
  */
 export function compileFormatFor (device) {
     const lower = String(device || '').toLowerCase();
-    return (lower === 'pico' || lower === 'stm32f030') ? 'bin' : 'ihx';
+    return (lower === 'pico' || lower === 'stm32f030' || lower === 'esp8266') ? 'bin' : 'ihx';
 }
 
 /** Where the generated manifest and its images live under the app's own origin. */

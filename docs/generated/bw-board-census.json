@@ -2,7 +2,7 @@
   "schema": 1,
   "source": {
     "repo": "https://github.com/CrispStrobe/bw-board",
-    "sha": "370be6994dcc6ffcef852f8f1d67861e3e98dd70",
+    "sha": "3b03d226cb1e7ecfcbbd28bc42fe492f8d2b6cf1",
     "read": "2026-10-14"
   },
   "rows": [
@@ -122,7 +122,7 @@
       "kind": "oracle",
       "present": true,
       "ciAvailable": true,
-      "ci": "yes — the `vectors` job checks out v1_binary and grinds all 646,000 per push",
+      "ci": "yes — the `vectors` job checks out v1_binary and grinds all 646,000 nightly, on master pushes and on PRs labelled ci:full",
       "via": "[local path omitted]",
       "gates": [
         "test/i8086.test.mjs",
@@ -138,7 +138,7 @@
       "kind": "oracle",
       "present": false,
       "ciAvailable": true,
-      "ci": "yes — `vectors` blocks on 200 vectors from every opcode file; the dedicated 286 qualification runs the full pinned corpus and retains separate fast/Harris reports",
+      "ci": "yes — `vectors` blocks on 200 vectors from every opcode file; the dedicated 286 qualification runs the full pinned corpus and retains separate fast/Harris reports; `vectors` runs nightly, on master pushes and on PRs labelled ci:full",
       "via": "tried $I80286_VECTORS, [local path omitted]",
       "gates": [
         "scripts/grind-i8086-286.mjs",
@@ -164,7 +164,7 @@
       "kind": "oracle",
       "present": true,
       "ciAvailable": true,
-      "ci": "yes — the `vectors186` job checks out SingleStepTests/v20 at a pinned ref. This row said \"not yet\" while that job already existed; the claim was about the SCORES still moving, which is a different question from whether CI has the input",
+      "ci": "yes — the `vectors186` job checks out SingleStepTests/v20 at a pinned ref. This row said \"not yet\" while that job already existed; the claim was about the SCORES still moving, which is a different question from whether CI has the input. The job runs nightly, on master pushes and on PRs labelled ci:full",
       "via": "[local path omitted]",
       "gates": [
         "scripts/grind-i8088-cycles.mjs"
@@ -176,7 +176,7 @@
       "kind": "oracle",
       "present": true,
       "ciAvailable": true,
-      "ci": "yes — the `vectors-full` job, on a schedule rather than per push (1.6 GB unpacked)",
+      "ci": "yes — the `vectors-full` job, nightly, on demand and on PRs labelled ci:full rather than per push (1.6 GB unpacked)",
       "via": "[local path omitted]",
       "gates": [
         "test/z80-disasm.test.mjs",
@@ -189,7 +189,7 @@
       "kind": "oracle",
       "present": true,
       "ciAvailable": true,
-      "ci": "yes — the `vectors-full` job, on a schedule rather than per push",
+      "ci": "yes — the `vectors-full` job, nightly, on demand and on PRs labelled ci:full rather than per push",
       "via": "[local path omitted]",
       "gates": [
         "test/w65c02.test.mjs",
@@ -356,7 +356,7 @@
       "kind": "fixture",
       "present": false,
       "ciAvailable": true,
-      "ci": "yes — the `corpus` job (ci.yml:287) checks out Amey-Thakur/…, asserts all 525 are present (ci.yml:304), and assembles and runs each per push on VERDICT COUNTS rather than a text diff. The unit test reads a local /tmp/amey copy and its corpus subtests skip without it, but the claim is standing via that job.",
+      "ci": "yes — the `corpus` job (ci.yml:287) checks out Amey-Thakur/…, asserts all 525 are present (ci.yml:304), and assembles and runs each nightly, on master pushes and on PRs labelled ci:full on VERDICT COUNTS rather than a text diff. The unit test reads a local /tmp/amey copy and its corpus subtests skip without it, but the claim is standing via that job.",
       "via": "tried [local path omitted] Code",
       "gates": [
         "test/i8086-asm.test.mjs"
