@@ -419,3 +419,53 @@ observations. Native controls retain the original assertions and exercise
 Code, export/reimport and saved-project restart. Creation callback timing,
 physics engine membership/cadence, sprite event continuation and device
 settings still require their affected hosted results and focused investigation.
+
+
+## Current observer follow-up
+
+Pixel controller edits and hat speech now await the actual asynchronous VM tick.
+Sprite lookup uses the current numeric kind reporter. Snapshot destruction and
+yielding overlap/destruction checks use the shared program timer platform across
+source, Code, export/reimport and saved-project restart. Their original source
+programs, event traces, retained handles and callback assertions are unchanged.
+
+The yielding creation control retains its real pending `pause(0)` timer after
+the initial observation and allows a real timer turn between the same twelve
+subsequent VM frames. A failed discrete-clock preparation is retained: repeatedly
+scheduling zero-delay callbacks at the same timestamp starved the later external
+input. The production pause implementation was not changed for that preparation.
+
+The Chromium persistence control now loads the actual `string-array-settings`
+dependency required by the production settings codec. Page reload and browser
+process restart both pass with the saved identity, latest local record and
+detached array assertions intact. These focused checks do not replace the next
+complete hosted unit shard. Physics engine membership/cadence remains open;
+the original fixed-point round bound is preserved.
+
+
+The membership fixture now has explicit cadence controls: at 21 ms the actual
+low-speed actor remains at x=20 with vx=40; at 50 ms all membership, clamping,
+replacement and restoration assertions pass. Both use the selected fixed-point
+algorithm and an independent program timer platform. The 50 ms profile passes
+source, Code, current export/reimport and saved-project restart. This is a finite
+frame-profile comparison, not a measurement of the earlier original simulator's
+unrecorded wall-clock frame cadence. The original source fixture is unchanged.
+
+
+## Composed branch authoring requalification
+
+The [official authoring job for `0ddf0c69a`](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38668906753/job/116209738911)
+passed on actual build checkout `36d65a29d39e2774e7e5d9570d3db791b91b8b73`.
+Its [retained proof artifact](https://api.github.com/repos/CrispStrobe/brickwright-lite/actions/artifacts/11944260336/zip)
+contains passing numeric, event, live-Font and controller-repeat reports with
+empty page-error lists. Numeric, event and repeat retain twelve original
+observations each; Font retains four. This requalifies those existing editor
+journeys on the composed branch. It does not qualify every newly added class
+or Number operation in the GUI, nor replace the still-running unit shards.
+
+
+The pixel reload control also distinguishes held and released physical input.
+With A held across reload, the new handler clears the pixel; after release and
+restart, the initial painted pixel returns. Both states retain the complete
+twelve-pixel comparison. The fresh-reload fixture now explicitly releases A
+before saving; the failed held-input expectation is preserved separately.

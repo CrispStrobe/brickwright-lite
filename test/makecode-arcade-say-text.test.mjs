@@ -140,8 +140,10 @@ test('the pinned hat overlap game speaks from the colliding handle while its scr
         run.vm.runtime._primitives.arcade_setSpriteProperty({ID: sprite.id, PROPERTY: 'x', VALUE: 80}, {});
         run.vm.runtime._primitives.arcade_setSpriteProperty({ID: sprite.id, PROPERTY: 'y', VALUE: 60}, {});
     }
-    run.vm.runtime._step(1000 / 30);
-    const player = Object.values(state.sprites).find(sprite => sprite.kind === 'Player');
+    await stepFrames(run.vm, 1);
+    const playerKind = run.vm.runtime._primitives.arcade_spriteKindValue({NAME: 'Player'}, {});
+    const player = Object.values(state.sprites).find(sprite => sprite.kind === playerKind);
+    assert.ok(player, 'the current numeric Player kind identifies the colliding sprite');
     assert.equal(state.speech[player.id].text, 'Excuse Me!');
     assert.equal(state.speech[player.id].duration, 500);
     assert.equal(state.speech[player.id].animated, false);
