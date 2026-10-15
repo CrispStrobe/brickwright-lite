@@ -191,9 +191,7 @@ class ArcadeCallableValues {
     hold(reference) { return this.resource(reference).reference; }
 
     signature(reference) {
-        const resource = this.resource(reference), named=namedState.get(this).declarations.get(resource.definition);
-        if(named)return structuredClone(named.signature);
-        const declaration = classState.get(this).declarations.get(resource.definition);
+        const resource = this.resource(reference), declaration = classState.get(this).declarations.get(resource.definition);
         if (!declaration) throw new Error('Callable resource has no qualified class signature');
         return classState.get(this).provider.signature(declaration);
     }

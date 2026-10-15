@@ -96,6 +96,7 @@ test('actual named resources refuse stopped, edited, foreign and fabricated call
         const variable=()=>run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name==='first');
         const label=variable().value,target=run.vm.runtime.targets.find(t=>Object.values(t.blocks._blocks).some(b=>b.opcode==='arcade_createCallable'));
         assert.equal(ext._callableValues.hold(label),label);
+        assert.throws(()=>ext._callableValues.signature(label),/no qualified class signature/,'a declaration label does not enter the deferred class Holder domain');
         assert.throws(()=>ext._callableValues.create(target,'numberLabel',{sourceModule:true,util:{runtime:run.vm.runtime,target},operationArgs:{NAME:'numberLabel'}}),/actual live declaration read/);
         run.vm.stopAll();assert.throws(()=>ext._callableValues.hold(label),/Stale|stopped|edited/);
         run.vm.greenFlag();await stepFrames(run.vm,25);assert.deepEqual(run.errors,[]);const renewed=variable().value;assert.notEqual(renewed,label);
