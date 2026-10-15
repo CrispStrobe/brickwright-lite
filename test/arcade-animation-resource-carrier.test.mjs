@@ -33,13 +33,13 @@ test('edited resource pixels persist through current Code, same and fresh SB3 an
  try{
   await run(opened.vm,{count:2,first:2,second:5});
   const costume=opened.vm.runtime.targets.find(getAssetLibraryRole).sprite.costumes[0],document=structuredClone(getCostumeDocument(costume));
-  document.animation.frames[0].layers[0].content.value.pixels=[4];document.layers=structuredClone(document.animation.frames[0].layers);
+  document.animation.resource.name="Renamed Walk";document.animation.frames[0].layers[0].content.value.pixels=[4];document.layers=structuredClone(document.animation.frames[0].layers);
   setCostumeDocument(costume,document);syncAnimationResources(opened.vm);await run(opened.vm,{count:2,first:4,second:5});
   const saved=await JSZip.loadAsync(await(await opened.vm.saveProjectSb3()).arrayBuffer());assert.equal(await writeArtworkToZip(saved,opened.vm),true);const bytes=await saved.generateAsync({type:'uint8array'});
   const sameInspection=await inspectArtwork(bytes);await opened.vm.loadProject(bytes);applyArtwork(sameInspection,opened.vm);await run(opened.vm,{count:2,first:4,second:5});
-  fresh=await open(bytes);await run(fresh.vm,{count:2,first:4,second:5});
+  fresh=await open(bytes);await run(fresh.vm,{count:2,first:4,second:5});assert.equal(fresh.inspection.records.find(row=>row.document?.animation).document.animation.resource.name,"Renamed Walk");
   const exported=projectToArcade(withoutAssetLibraries(JSON.parse(fresh.vm.toJSON()),fresh.inspection.libraries),{animationDocuments:fresh.inspection.records.map(row=>row.document)});assert.deepEqual(exported.unsupported,[]);assert.deepEqual(exported.warnings,[]);
-  const again=importProjectFiles(exported.files,{animationResources:true});assert.deepEqual(again.unsupported,[]);assert.equal(again.animationResources[0].frames[0].pixels[0],4);
+  const again=importProjectFiles(exported.files,{animationResources:true});assert.deepEqual(again.unsupported,[]);assert.equal(again.animationResources[0].frames[0].pixels[0],4);assert.equal(again.animationResources[0].document.animation.resource.name,"Renamed Walk");
   const next=new Creator();next.parse(again.code);assert.deepEqual(next.warnings,[]);const finalZip=await JSZip.loadAsync(await(await next.generateSB3()).arrayBuffer());await installAnimationImport(finalZip,again.animationResources,hash);last=await open(await finalZip.generateAsync({type:'uint8array'}));await run(last.vm,{count:2,first:4,second:5});assert.equal(Object.values(last.vm.runtime.bwArcadeDeviceState.sprites).length,0,'resource-only program has no hidden Player');
  }finally{for(const row of [opened,fresh,last])if(row){row.vm.stopAll();row.vm.quit();}}
 
