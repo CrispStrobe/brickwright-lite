@@ -21,6 +21,8 @@ module.exports = makeExt(`// Name: Arcade
   const ownedSpriteOwners = new WeakMap();
   const ownedSpriteBridges = new WeakMap();
   const exceptionOwners = new WeakMap();
+  const procedureOwners = new WeakMap();
+  const procedureEntryDisposers = new WeakMap();
   const speechPalette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609',
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
@@ -41,6 +43,14 @@ module.exports = makeExt(`// Name: Arcade
       managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
       this._sourceScalarCells = dependencies.createSourceScalarCells(runtime, Scratch.BWValues, dependencies.sourceReferenceTypes, dependencies.sourceCallableCells);
       this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells);
+      const installProcedureOwner=()=>{
+        procedureEntryDisposers.get(this)?.();procedureOwners.get(this)?.dispose();
+        const owner=dependencies.createProcedureConstraints(runtime,this._consoleInspectValues);
+        procedureOwners.set(this,owner);
+        procedureEntryDisposers.set(this,dependencies.procedureEntry.register(runtime,owner,
+          (args,util,error)=>exceptionOwners.get(this).rejectConstraint(args,util,error)));
+      };
+      installProcedureOwner();
       this._resetProgramClock();
       this._bufferSuspended = false;
       this._sdkFontValues=runtime && typeof runtime.on==='function' ? dependencies.sdkFontValues.create(runtime,Scratch.BWValues,
@@ -172,8 +182,8 @@ module.exports = makeExt(`// Name: Arcade
           this._terrainWaits.clear();
           if(this._foreverTimer!==undefined)clearTimeout(this._foreverTimer);this._foreverTimer=undefined;
         };
-        runtime.on('PROJECT_STOP_ALL', () => {this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.invalidate();managedReturnHosts.get(this).invalidate();});
-        runtime.on('RUNTIME_DISPOSED', () => {spriteOwner.dispose();imageOwner.dispose();this._sourceScalarCells.dispose();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.invalidate();managedReturnHosts.get(this).invalidate();this._sourceTypeOfDisposed=true;this._consoleInspectValues.dispose();managedReturnHosts.get(this).dispose();});
+        runtime.on('PROJECT_STOP_ALL', () => {procedureOwners.get(this).invalidate();this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.invalidate();managedReturnHosts.get(this).invalidate();});
+        runtime.on('RUNTIME_DISPOSED', () => {procedureEntryDisposers.get(this)?.();procedureOwners.get(this).dispose();spriteOwner.dispose();imageOwner.dispose();this._sourceScalarCells.dispose();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.invalidate();managedReturnHosts.get(this).invalidate();this._sourceTypeOfDisposed=true;this._consoleInspectValues.dispose();managedReturnHosts.get(this).dispose();});
         runtime.on('PROJECT_STOP_ALL', () => this._stopProgramClock());
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
         runtime.on('PROJECT_STOP_ALL', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._musicHost?.stopAll();});
@@ -244,6 +254,7 @@ module.exports = makeExt(`// Name: Arcade
           spriteOwner.dispose();spriteOwner=newSpriteOwner();ownedSpriteOwners.set(this,spriteOwner);
           this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.dispose();managedReturnHosts.get(this).dispose();
           this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells);
+          installProcedureOwner();
           managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
           // Registry publications belong to the loaded project. GUI artwork
           // restoration repopulates them after successful deserialization.
@@ -251,7 +262,7 @@ module.exports = makeExt(`// Name: Arcade
           reset();
           this._bufferSuspended = false;this._sourceTypeOfDisposed=false;
         });
-        runtime.on('PROJECT_START',()=>{if(!this._sdkFontValues?.isDisposed())this._sdkFontValues?.startProgram();reset();if(!imageOwner.isDisposed())imageOwner.start();if(!spriteOwner.isDisposed())spriteOwner.start();this._sourceScalarCells.initialize();this._sourceTypeOf.snapshotInputs();this._consoleInspectValues.snapshot();managedReturnHosts.get(this).start();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
+        runtime.on('PROJECT_START',()=>{if(!this._sdkFontValues?.isDisposed())this._sdkFontValues?.startProgram();reset();if(!imageOwner.isDisposed())imageOwner.start();if(!spriteOwner.isDisposed())spriteOwner.start();this._sourceScalarCells.initialize();this._sourceTypeOf.snapshotInputs();this._consoleInspectValues.snapshot();procedureOwners.get(this).start();managedReturnHosts.get(this).start();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
         runtime.on('targetWasRemoved', target => {
           for (const [id, entry] of this._imageSkins) if (entry.target === target) this._clearImage(id);
           for (const [id, entry] of this._speech) if (entry.target === target) this._clearSpeech(id);
@@ -272,6 +283,7 @@ module.exports = makeExt(`// Name: Arcade
         blocks: [
           {opcode:'whenSourceStarts',blockType:Scratch.BlockType.HAT,text:'when Arcade source starts',isEdgeActivated:false},
           {opcode:'declareSourceReference',blockType:Scratch.BlockType.COMMAND,text:'declare Arcade source reference [VARIABLE] as [TYPE]',arguments:{VARIABLE:{type:Scratch.ArgumentType.STRING},TYPE:{type:Scratch.ArgumentType.STRING,menu:'sourceReferenceTypes',defaultValue:'Sprite'}}},
+          {opcode:'declareParameterConstraint',blockType:Scratch.BlockType.COMMAND,text:'declare Arcade procedure [PROCEDURE] parameter [PARAMETER] as [TYPE]',arguments:{PROCEDURE:{type:Scratch.ArgumentType.STRING,menu:'constraintProcedures'},PARAMETER:{type:Scratch.ArgumentType.STRING,menu:'constraintParameters'},TYPE:{type:Scratch.ArgumentType.STRING,menu:'sourceScalarTypes',defaultValue:'Any'}}},
           {opcode:'declareSourceScalar',blockType:Scratch.BlockType.COMMAND,text:'declare Arcade source scalar [VARIABLE] as [TYPE]',arguments:{VARIABLE:{type:Scratch.ArgumentType.STRING},TYPE:{type:Scratch.ArgumentType.STRING,menu:'sourceScalarTypes',defaultValue:'Any'}}},
           {opcode:'sourceWhile',blockType:Scratch.BlockType.LOOP,text:'Arcade repeat while [CONDITION]',arguments:{CONDITION:{type:Scratch.ArgumentType.BOOLEAN}}},
           {opcode:'sceneMillis',blockType:Scratch.BlockType.REPORTER,text:'Arcade scene runtime milliseconds'},
@@ -953,6 +965,8 @@ module.exports = makeExt(`// Name: Arcade
           fontMetricFonts:{acceptReporters:false,items:['font5','font8','font12']},
           fontMetricProperties:{acceptReporters:false,items:['charWidth','charHeight']},
           sourceReferenceTypes:{acceptReporters:false,items:'_sourceReferenceChoices'},
+          constraintProcedures:{acceptReporters:false,items:'_constraintProcedures'},
+          constraintParameters:{acceptReporters:false,items:'_constraintParameters'},
           sourceScalarTypes:{acceptReporters:false,items:['Number','Boolean','String','Any']},
           mathOperations:{acceptReporters:false,items:['min','max','randomRange']},
           hudElements:{acceptReporters:false,items:['score','life','countdown']},
@@ -1995,6 +2009,18 @@ module.exports = makeExt(`// Name: Arcade
         }
       }
     }
+    _constraintDefinitions() {
+      const target=this._runtime?.getEditingTarget?.() || this._runtime?.targets?.find(target=>!target.isStage);
+      return Object.values(target?.blocks?._blocks || {}).filter(block=>block?.opcode==='procedures_prototype' && block.mutation);
+    }
+    _constraintProcedures() {const values=[...new Set(this._constraintDefinitions().map(block=>block.mutation.proccode))];return values.length?values:[''];}
+    _constraintParameters() {
+      const values=new Set();for(const block of this._constraintDefinitions()) {
+        try {for(const name of JSON.parse(block.mutation.argumentnames))values.add(String(name));}catch {}
+      }
+      return values.size?[...values]:[''];
+    }
+    declareParameterConstraint(args,util) {return procedureOwners.get(this).declare(args,util);}
     throwValue(args,util) {return exceptionOwners.get(this).raise(args,util);}
     _objectError(error) {
       exceptionOwners.get(this).rethrow(error);
@@ -2103,6 +2129,10 @@ module.exports = makeExt(`// Name: Arcade
         Scratch.BWValues.encode(Scratch.BWValues.decode(value)));} catch {return 0;}
       if (!Array.isArray(values)) return 0;
       try {rawValues.forEach(value=>this._objectHeap.validateTransport(value));}catch(error){return this._objectError(error);}
+      let checkedEntry;
+      try {checkedEntry=procedureOwners.get(this).managedEntry(target,name,values,rawValues,util,args);}
+      catch(error){return exceptionOwners.get(this).rejectConstraint(args,util,error);}
+      if(checkedEntry)values=checkedEntry;
       const [names, , defaults] = target.blocks.getProcedureParamNamesIdsAndDefaults(name);
       const thread = runtime._pushThread(definition, target);
       const exceptions=exceptionOwners.get(this);
@@ -2118,6 +2148,10 @@ module.exports = makeExt(`// Name: Arcade
       thread.stack[0] = null;
       thread.stackFrames[0].waitingReporter = name;
       thread.stackFrames[0].params = Object.fromEntries(names.map((n,i)=>[n,i < values.length ? values[i] : defaults[i]]));
+      if(checkedEntry) {
+        try {procedureOwners.get(this).bind(thread,target,name,thread.stackFrames[0].params,checkedEntry);}
+        catch(error){unlink();runtime.sequencer.retireThread(thread);return exceptions.rejectConstraint(args,util,error);}
+      }
       thread.pushStack(definition);
       thread.bwObjectConstruction = args.bwObjectConstruction || util.thread?.bwObjectConstruction;
       let classSignature=null;
@@ -2219,7 +2253,12 @@ module.exports = makeExt(`// Name: Arcade
     }
     setLocal(args, util) {
       const params = this._localParams(util);
-      if (params) params[String(args.NAME)] = dependencies.currentNumberInput(this._runtime,args,util,'arcade_setLocal');
+      if (params) {
+        const name=String(args.NAME),value=dependencies.currentNumberInput(this._runtime,args,util,'arcade_setLocal');
+        try {procedureOwners.get(this).write(params,name,value,util,args);}
+        catch(error){return exceptionOwners.get(this).rejectConstraint(args,util,error);}
+        params[name]=value;
+      }
     }
     getLocal(args, util) {
       const params = this._localParams(util);
@@ -2328,7 +2367,12 @@ module.exports = makeExt(`// Name: Arcade
     }
     setCaptured(args, util) {
       const cell = util?.thread?.bwArcadeCaptures?.get(String(args.NAME));
-      if (cell) cell.values[cell.key] = dependencies.currentNumberInput(this._runtime,args,util,'arcade_setCaptured');
+      if (cell) {
+        const value=dependencies.currentNumberInput(this._runtime,args,util,'arcade_setCaptured');
+        try {procedureOwners.get(this).write(cell.values,cell.key,value,util,args);}
+        catch(error){return exceptionOwners.get(this).rejectConstraint(args,util,error);}
+        cell.values[cell.key]=value;
+      }
     }
     _askForString(args, util, answerLength=12, numbersOnly=false) {
       const ask = this._runtime && this._runtime.getOpcodeFunction &&
@@ -5970,6 +6014,8 @@ module.exports = makeExt(`// Name: Arcade
   createSourceScalarCells: require('./source-scalar-cells'),
   createSourceTypeOfValues: require('./source-typeof-values'),
   createConsoleInspectValues: require('./console-inspect-values'),
+  createProcedureConstraints: require('./procedure-parameter-constraints'),
+  procedureEntry: require('../../../util/bw-procedure-entry'),
   createManagedReturnValues: require('./managed-return-values'),
   currentNumberInput: require('./current-number-input'),
   createSceneFrameContexts: require('./scene-frame-contexts'),

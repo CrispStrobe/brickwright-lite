@@ -4,7 +4,7 @@ const parse=source=>require('@babel/parser').parse(source,{sourceType:'script'})
 const shape=node=>JSON.stringify(node,(key,value)=>['start','end','loc','extra','leadingComments','trailingComments','innerComments'].includes(key)?undefined:value);
 const statements=source=>parse('function expected(){'+source+'}').program.body[0].body.body;
 const expectedEntry='const bwConstraintEntry = bwProcedureEntry.entry(this.runtime, procedureCode, args, util);';
-const expectedBind='if (bwConstraintEntry) bwProcedureEntry.bind(this.runtime, util.thread, util.thread.target, procedureCode, util.stackFrame.params, bwConstraintEntry.values);';
+const expectedBind='if (bwConstraintEntry) bwProcedureEntry.bind(this.runtime, util.thread, util.thread.target, procedureCode, util.stackFrame.params, bwConstraintEntry.values, args, util);';
 const isCall=(node,object,property)=>node?.type==='CallExpression'&&node.callee.type==='MemberExpression'&&
     !node.callee.computed&&node.callee.object.name===object&&node.callee.property.name===property;
 

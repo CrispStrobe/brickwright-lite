@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import {patchPrimitiveOwner} from './lib/primitive-owner-hooks.mjs';
+import {patchProcedureConstraints} from './lib/procedure-constraint-hooks.mjs';
 import {patchArcadeExceptions} from './lib/arcade-exception-hooks.mjs';
 // Lay our owned scratch-vm delta (built-in extensions + their registration in the builtinExtensions
 // map) over the installed node_modules/scratch-vm. Run AFTER `npm install`, BEFORE `npm run build`.
@@ -163,6 +164,10 @@ if (!executeSource.includes('bwPromiseReported')) {
 
 executeSource = patchArcadeExceptions(executeSource);
 writeFileSync(executePath, executeSource);
+
+// Validate the actual ordinary-procedure call before installing its body frame.
+const procedurePath = path.join(DEST, 'src', 'blocks', 'scratch3_procedures.js');
+writeFileSync(procedurePath, patchProcedureConstraints(readFileSync(procedurePath, 'utf8')));
 
 // Managed Arcade functions retain argument cells in a non-executable root.
 // Ordinary Scratch procedures can be called from those functions; recursion
