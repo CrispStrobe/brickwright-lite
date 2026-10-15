@@ -48,3 +48,23 @@ test('current class pixel operations reject wrong actual inputs and unproved lit
   f=>{f.resource.costumes[0].rotationCenterY=99;},f=>{f.reader=()=>null;}
  ]){const f=fixture();mutate(f);assert.ok(exportProject(f).unsupported.length,String(mutate));}
 });
+test('shared frame keys and resource bodies use one decoded snapshot and require exclusive actual clone input edges',()=>{
+ const make=()=>{
+  const blocks={},target={isStage:false,name:'Game',blocks},resource={isStage:false,name:'Art',blocks:{},costumes:[{name:'art',assetId:'resource_file',md5ext:'resource_file.svg',dataFormat:'svg',rotationCenterX:4,rotationCenterY:4}]};
+  for(const n of [1,2]){
+   blocks['f'+n]={opcode:'arcade_frameImage',parent:'c'+n,shadow:false,topLevel:false,next:null,fields:{},inputs:{KEY:[1,[10,'shared']],TEMPLATE:[1,[10,'Art']],START:[1,[4,'0']],COUNT:[1,[4,'1']],INDEX:[1,[4,'0']]}};
+   blocks['c'+n]={opcode:'arcade_cloneImage',parent:'owner'+n,shadow:false,topLevel:false,next:null,fields:{},inputs:{IMAGE:[1,'f'+n]}};
+   blocks['owner'+n]={opcode:'data_setvariableto',parent:null,topLevel:true,next:null,fields:{VARIABLE:['out'+n,'var'+n]},inputs:{VALUE:[1,'c'+n]}};
+  }return {project:{targets:[target,resource]},target,resource};
+ };
+ const a=fixture().svg,b=a.replace('fill="#ffffff"','fill="#ff93c4"'),f=make();let reads=0;
+ const proof=createSdkImageLiteralResources(f.project,()=>++reads===1?a:b),before=JSON.stringify(f.project),first=proof.resource(f.target,f.target.blocks.f1),second=proof.resource(f.target,f.target.blocks.f2);
+ assert.deepEqual(first.pixels,[1,0,0,2]);assert.equal(first,second);assert.equal(reads,1);assert.equal(JSON.stringify(f.project),before);
+ const g=make();g.target.blocks.f2.inputs.KEY[1][1]='other';let resourceReads=0;const shared=createSdkImageLiteralResources(g.project,()=>++resourceReads===1?a:b);assert.equal(shared.resource(g.target,g.target.blocks.f1),shared.resource(g.target,g.target.blocks.f2));assert.equal(resourceReads,1);
+ for(const mutate of [
+  g=>{g.target.blocks.exposed={opcode:'arcade_setImagePixel',parent:null,topLevel:true,next:null,fields:{},inputs:{IMAGE:[1,'f1'],X:[1,[4,'0']],Y:[1,[4,'0']],COLOR:[1,[4,'7']]}};},
+  g=>{g.target.blocks.c2.inputs.IMAGE[2]='f1';},g=>{g.target.blocks.alias=g.target.blocks.f1;},
+  g=>{g.target.blocks.c1.inputs.IMAGE[0]=99;}
+ ]){const g=make();mutate(g);assert.equal(createSdkImageLiteralResources(g.project,()=>a).resource(g.target,g.target.blocks.f1),null,String(mutate));}
+ f.resource.costumes[0].assetId='changed';f.resource.costumes[0].md5ext='changed.svg';assert.equal(proof.resource(f.target,f.target.blocks.f2),null,'changed resource cannot borrow the key snapshot');
+});

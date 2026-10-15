@@ -5,7 +5,7 @@ import {svgToPixels} from './pixel-image.js';
 // img literal. The current asset reader supplies bytes for the actual costume;
 // names/file identifiers alone never supply pixel or runtime Image authority.
 export function createSdkImageLiteralResources(project,readSvg,palette=ARCADE_PALETTE) {
-    const cached=new WeakMap();
+    const cached=new WeakMap(),resources=new WeakMap(),keys=new Map();
     const text=(target,block,name)=>{
         const input=block.inputs?.[name],slot=input?.[1];
         if(!input||![1,3].includes(input[0]))return null;
@@ -25,8 +25,17 @@ export function createSdkImageLiteralResources(project,readSvg,palette=ARCADE_PA
         return key&&template&&number(target,block,'START')===0&&number(target,block,'COUNT')===1&&number(target,block,'INDEX')===0?{key,template}:null;
     };
     const cloneFor=(target,frame)=>{
-        const id=Object.keys(target.blocks||{}).find(id=>target.blocks[id]===frame),clone=target.blocks[frame?.parent];
-        return id&&clone?.opcode==='arcade_cloneImage'&&!clone.shadow&&!clone.topLevel&&!clone.next&&!Object.keys(clone.fields||{}).length&&Object.keys(clone.inputs||{}).length===1&&clone.inputs.IMAGE?.[1]===id?clone:null;
+        const ids=Object.keys(target.blocks||{}).filter(id=>target.blocks[id]===frame);if(ids.length!==1)return null;
+        const id=ids[0],clone=target.blocks[frame?.parent],input=clone?.inputs?.IMAGE;
+        if(clone?.opcode!=='arcade_cloneImage'||clone.shadow||clone.topLevel||clone.next||Object.keys(clone.fields||{}).length||Object.keys(clone.inputs||{}).length!==1||!Array.isArray(input)||![1,2,3].includes(input[0])||input[1]!==id)return null;
+        if(Object.values(target.blocks).filter(block=>block===clone).length!==1)return null;
+        // Parent fields do not prove exclusive use: check every actual input
+        // edge, including shadow alternatives, in this block container.
+        const incoming=[];
+        for(const block of Object.values(target.blocks))for(const [name,slot]of Object.entries(block.inputs||{}))if(Array.isArray(slot)){
+            for(let i=1;i<slot.length;i++)if(slot[i]===id)incoming.push({block,name,index:i});
+        }
+        return incoming.length===1&&incoming[0].block===clone&&incoming[0].name==='IMAGE'&&incoming[0].index===1?clone:null;
     };
     const inspect=(target,frame)=>{
         if(!project.targets.includes(target)||typeof readSvg!=='function')return null;
@@ -44,12 +53,24 @@ export function createSdkImageLiteralResources(project,readSvg,palette=ARCADE_PA
         if(!costume||costume.dataFormat!=='svg'||typeof costume.assetId!=='string'||!costume.assetId||costume.md5ext!==costume.assetId+'.svg')return null;
         const snapshot=JSON.stringify([target.name,frame,clone,resource.name,costume,uses]);
         const previous=cached.get(frame);if(previous)return previous.snapshot===snapshot?previous.image:null;
-        const svg=readSvg(resource,costume);if(typeof svg!=='string')return null;
-        const image=svgToPixels(svg,palette);
-        if(!image||!Number.isInteger(image.width)||!Number.isInteger(image.height)||image.width<1||image.height<1||image.width>2000||image.height>2000||image.pixels.length!==image.width*image.height||
-            costume.rotationCenterX!==image.width*2||costume.rotationCenterY!==image.height*2||image.pixels.some(pixel=>!Number.isInteger(pixel)||pixel<0||pixel>15)||
-            image.palette&&JSON.stringify(image.palette)!==JSON.stringify(palette)||imageToSvg(image,{palette})!==svg||JSON.stringify([target.name,frame,clone,resource.name,costume,uses])!==snapshot)return null;
-        const owned=Object.freeze({width:image.width,height:image.height,pixels:Object.freeze(Array.from(image.pixels))});
+        const resourceSnapshot=JSON.stringify([resource.name,resource.isStage,costume]);
+        const keyProof=keys.get(selected.key),resourceProof=resources.get(costume);
+        if(keyProof&&(keyProof.resource!==resource||keyProof.costume!==costume||keyProof.snapshot!==resourceSnapshot))return null;
+        if(resourceProof&&(resourceProof.resource!==resource||resourceProof.snapshot!==resourceSnapshot))return null;
+        let owned=resourceProof?.image;
+        if(!owned){
+            const svg=readSvg(resource,costume);if(typeof svg!=='string')return null;
+            const image=svgToPixels(svg,palette);
+            if(!image||!Number.isInteger(image.width)||!Number.isInteger(image.height)||image.width<1||image.height<1||image.width>2000||image.height>2000||image.pixels.length!==image.width*image.height||
+                costume.rotationCenterX!==image.width*2||costume.rotationCenterY!==image.height*2||image.pixels.some(pixel=>!Number.isInteger(pixel)||pixel<0||pixel>15)||
+                image.palette&&JSON.stringify(image.palette)!==JSON.stringify(palette)||imageToSvg(image,{palette})!==svg||JSON.stringify([target.name,frame,clone,resource.name,costume,uses])!==snapshot)return null;
+            owned=Object.freeze({width:image.width,height:image.height,pixels:Object.freeze(Array.from(image.pixels))});
+            resources.set(costume,{resource,snapshot:resourceSnapshot,image:owned});
+        }
+        // All clones of the same actual resource, including distinct keys,
+        // render one immutable body snapshot. Each key separately binds the
+        // exact resource/metadata used by the native first-definition cache.
+        keys.set(selected.key,{resource,costume,snapshot:resourceSnapshot,image:owned});
         cached.set(frame,{snapshot,image:owned});return owned;
     };
     return Object.freeze({
