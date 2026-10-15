@@ -1,3 +1,4 @@
+import {checkClassPrimitiveExport} from './class-primitive-export-proof.js';
 import {hasSdkFontValues,seedSdkFontValueType,sdkFontGraphType} from './sdk-font-export-types.js';
 import {sdkExportClasses,sdkClassPublicName,sdkClassName} from './sdk-class-descriptors.js';
 import {ValueTypeGraph} from './value-type-graph.js';
@@ -244,6 +245,16 @@ export function prepareObjectClassExport(emitter) {
         }
         Object.assign(emitter,saved);return out;
     }
+    checkClassPrimitiveExport({project:emitter.project,classes,procedures,note:message=>emitter.note(message),dynamicReceiver:(target,block,write,method,currentClassName)=>{
+        if(!['arcade_setObjectField','arcade_callObjectMethod'].includes(block.opcode))return false;
+        const name=literal(target,block,method?'METHOD':'FIELD');
+        return [...graph.node(input(target,block,'OBJECT')).types].some(type=>{
+            const cls=classes.get(type),member=cls&&resolveMember(cls,name,method);
+            if(member&&((member.visibility&&member.visibility!=='public'&&currentClassName!==type)||write&&member.readonly))return true;
+            return write&&member&&(member.getter||member.setter)&&['number','boolean','string'].includes(member.type)&&
+                (member.type!=='boolean'&&emitter.isBoolean(child(target,block,'VALUE'))||[...graph.node(input(target,block,'VALUE')).types].some(value=>['number','boolean','string'].includes(value)&&value!==member.type));
+        });
+    }});
     const valueTypes=(target,block)=>new Set(graph.node(cell(target,block)).types);
     const classCallableProviders=new Map();
     const classCallableProvider=target=>{
