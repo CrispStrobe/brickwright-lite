@@ -267,11 +267,13 @@ export function prepareObjectClassExport(emitter) {
     }
     const valueTypes=(target,block)=>new Set(graph.node(cell(target,block)).types);
     const classCallableProviders=new Map();
-    const classCallableProvider=target=>{
-        if(!classCallableProviders.has(target))classCallableProviders.set(target,createClassCallableExportProvider({target,project:emitter.project,classes,definitions,valueTypes,literal,key,builtinNames,sdkImagePrototype:emitter.opts.sdkImagePrototype===true}));
-        return classCallableProviders.get(target);
+    const classCallableProvider=(target,{sdkImagePrototype=emitter.opts.sdkImagePrototype===true||emitter.callableExports?.get(target)?.sdkImageEnabled===true}={})=>{
+        if(!classCallableProviders.has(target))classCallableProviders.set(target,new Map());
+        const modes=classCallableProviders.get(target);
+        if(!modes.has(sdkImagePrototype))modes.set(sdkImagePrototype,createClassCallableExportProvider({target,project:emitter.project,classes,definitions,valueTypes,literal,key,builtinNames,sdkImagePrototype}));
+        return modes.get(sdkImagePrototype);
     };
     return {classes,procedures,variableTypes,valueTypes,inputTypes:(target,block,name)=>new Set(graph.node(input(target,block,name)).types),fontGlyphInput:(target,block,name)=>graph.node(input(target,block,name))===graph.node('field:__bwSDK_Font:data'),localType,render,receiver,superCall,parameterPropertyBlocks,
-        sdkVariable:name=>emitter.project.targets.some(target=>Object.entries(target.variables||{}).some(([id,value])=>emitter.varName(target,value[0])===name&&[...classCallableProviders.values()].some(provider=>provider.sdkVariable(id)))),
+        sdkVariable:name=>emitter.project.targets.some(target=>Object.entries(target.variables||{}).some(([id,value])=>emitter.varName(target,value[0])===name&&[...(emitter.callableExports||[])].some(([actual,entry])=>entry.sdkImageEnabled&&classCallableProvider(actual).sdkVariable(id)))),
         classCallableProvider,publicName:sdkClassPublicName,hasType:type=>classes.has(sdkClassName(type.replace(/(?:\[\])+$/,'')))};
 }

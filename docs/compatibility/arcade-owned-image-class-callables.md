@@ -2,8 +2,8 @@
 
 The reviewed opt-in implementation extends the ordinary class/callable proof
 with owned SDK Image values. It reuses existing Image operations and the
-six-word callable ABI. Default source selection and hosted class authoring
-remain closed. No supplier, pin or physical Sprite signature changes follow
+six-word callable ABI. Default source selection admits only the completed bounded producer proof;
+hosted class authoring remains unqualified. No supplier, pin or physical Sprite signature changes follow
 from this checkpoint.
 
 ## Actual dependency requirement
@@ -144,11 +144,37 @@ The programs use synchronous main completion and their actual scalar results;
 no readiness code was appended to either input. Prior failed preparations and
 raw-transport/coercion counterexamples remain retained separately.
 
-This is the opt-in source/native/current-export boundary. It does not qualify
+This checkpoint first qualified the opt-in source/native/current-export boundary.
+It does not qualify
 complete dependency libraries, all neighboring contexts, full GUI authoring,
-physical Sprite signatures or arbitrary Image producers. Default selection
-requires a separately reviewed composition with the current consumer, exact
-source/current-body eligibility and preserved refusal controls. Class palette,
+physical Sprite signatures or arbitrary Image producers. Default selection retains exact source/current-body eligibility and refusal
+controls; it does not infer producers from the serialized catalogue. Class palette,
 handler and field editability still need actual hosted authoring qualification.
 Literal resources, dynamic dimensions, screen/Sprite image views and the
 independent invalid-dimension factory absence carrier remain explicit gaps.
+
+
+## Bounded default selection
+
+Ordinary class proof runs first. Only if it does not qualify the program does
+selection try the existing SDK Image source proof. The original completed proof
+object and exact source AST remain bound to the private issuer. At least one
+actual class SDK role must be present for the default fallback. An annotation,
+option, copied proof or class called `Image` cannot establish an Image producer.
+Explicit prototype options retain their full source proof and named refusals.
+
+Default export independently validates the actual v2 catalogue, all connected
+class/callable bodies, every ingress and all relevant writers. SDK roles select
+only the candidate type vocabulary; they do not complete the current graph
+proof. Only an accepted target can supply Image global declarations. The
+complete reconstructed current TypeScript must then pass source proof again.
+The source and export gates share the same ordinary-first selection policy.
+
+Focused controls exercise default source, Code, same/fresh SB3, a connected
+width edit, export and native reimport, including zero-sized clone identity.
+The source and actual edited export remain byte-identical to the two successful
+selected-SDK programs above, so this routing change requires no unchanged
+original replay. Literal artwork, dynamic dimensions, screen/Sprite views and
+all previously unqualified neighboring domains remain refusals. This source
+selection checkpoint does not establish hosted GUI field/handler authoring or
+complete library admission.

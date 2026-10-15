@@ -1,3 +1,4 @@
+import {validateClassCallablePlan} from './class-callable-plan.js';
 import {inspectCallableExportGraph,validateCallableCurrentBodyTypes} from './callable-export-graph.js';
 
 // First half of default export admission. This proves the actual current
@@ -12,7 +13,7 @@ export function classCallableDefaultProjectGate(target,project,model,literal) {
         if(!declarations.length)return {eligible:false,unsupported:[]};
         const envelopes=declarations.map(block=>JSON.parse(literal(block,'METADATA')));
         if(envelopes.some(row=>row.version!==2))return {eligible:false,unsupported:[]};
-        const plan=envelopes[0].plan;
+        const plan=validateClassCallablePlan(envelopes[0].plan);
         if(envelopes.some(row=>JSON.stringify(row.plan)!==JSON.stringify(plan)))throw Error('declarations have different current plans');
         const classes=[...model.classes.values()].filter(cls=>cls.target===target&&!cls.intrinsic);
         if(classes.length!==plan.classes?.length||classes.some(cls=>
@@ -21,10 +22,11 @@ export function classCallableDefaultProjectGate(target,project,model,literal) {
             throw Error('ordinary class catalogue differs or has unqualified ancestry/accessors');
         // Each declaration/site/procedure and every actual class writer must
         // pass the existing independently grounded current-body provider.
-        const classProvider=model.classCallableProvider(target);
+        const sdkImageCandidate=plan.classes.some(row=>row.sdkRoles);
+        const classProvider=model.classCallableProvider(target,{sdkImagePrototype:sdkImageCandidate});
         const graph=inspectCallableExportGraph(target,plan,literal,{classProvider});
         validateCallableCurrentBodyTypes(graph,literal);
-        return {eligible:true,unsupported:[],graph};
+        return {eligible:true,unsupported:[],graph,sdkImageEnabled:sdkImageCandidate};
     } catch(error) {unsupported.push('Class callable default project: '+error.message);}
     return {eligible:false,unsupported};
 }
