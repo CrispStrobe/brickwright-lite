@@ -6,7 +6,7 @@
  * What is held here:
  *  1. The exposure: every adapter-built extension sees `Scratch.BWValues`, and
  *     it is the SAME module instance the VM's own require resolves (one intern
- *     table, one scope per runtime). The shim gains exactly that one key.
+ *     table, one scope per runtime). The value and Number-input seams retain their actual VM instances.
  *  2. The API surface E1 uses: create / identify / compare / stringify a
  *     reference value, UNDEFINED, the array heap, non-finite numbers in JSON.
  *  2a. Parity with the Arrays extension's built-in copy of the same rules
@@ -79,10 +79,57 @@ const probeShim = runtime => {
 test('exposure: an adapter-built extension sees Scratch.BWValues, the VM\'s own instance', () => {
     const {shim} = probeShim(fakeRuntime());
     assert.equal(shim.BWValues, BW, 'Scratch.BWValues must be the module require() resolves in the VM (one intern table)');
-    // The shim gains exactly these keys (BWConfirm since E7, test/extension-confirm-seam.test.mjs);
+    // The shim gains exactly these keys (BWConfirm since E7 and the current Number-input seam);
     // nothing an existing extension reads changes.
     assert.deepEqual(Object.keys(shim).sort(),
-        ['ArgumentType', 'BWConfirm', 'BWValues', 'BlockType', 'Cast', 'TargetType', 'extensions', 'runtime', 'translate', 'vm']);
+        ['ArgumentType', 'BWConfirm', 'BWNumberInput', 'BWValues', 'BlockType', 'Cast', 'TargetType', 'extensions', 'runtime', 'translate', 'vm']);
+});
+
+test('exposure: BWNumberInput uses the VM issuer, bound runtime and synchronous input lifetime', () => {
+    const owner = installed('util/bw-primitive-owner.js');
+    const interpret = installed('util/bw-current-number-input.js');
+    for (const leafOpcode of ['math_number', 'text']) {
+        const args = {VALUE: '20'};
+        const leaf = {id: 'leaf', opcode: leafOpcode, parent: 'call', inputs: {},
+            fields: {[leafOpcode === 'math_number' ? 'NUM' : 'TEXT']: {value: '20'}}};
+        const block = {id: 'call', opcode: 'arcade_returnValue', fields: {},
+            inputs: {VALUE: {block: leaf.id}}, parent: null};
+        const blocks = {call: block, leaf};
+        const container = {getBlock: id => blocks[id], getInputs: b => b.inputs,
+            _cache: {_executeCached: {}}};
+        const target = {blocks: container};
+        const thread = {target, blockContainer: container, peekStack: () => block.id};
+        const runtime = {targets: [target], threads: [thread], sequencer: {activeThread: thread},
+            isActiveThread: t => runtime.threads.includes(t)};
+        const util = {runtime, thread, target};
+        const {shim} = probeShim(runtime);
+        const foreign = probeShim(fakeRuntime()).shim;
+        assert.equal(typeof shim.BWNumberInput, 'function');
+        assert.notEqual(shim.BWNumberInput, foreign.BWNumberInput, 'each adapter binds its actual runtime');
+        const primitive = () => {
+            const expected = leafOpcode === 'math_number' ? 20 : '20';
+            assert.equal(shim.BWNumberInput(args, util, block.opcode), expected);
+            assert.equal(shim.BWNumberInput(args, util, block.opcode),
+                interpret(runtime, args, util, block.opcode), 'adapter delegates to the installed VM interpreter');
+            assert.equal(foreign.BWNumberInput(args, util, block.opcode), '20', 'another runtime cannot borrow the issuer');
+            assert.equal(shim.BWNumberInput({...args}, util, block.opcode), '20', 'copied args have no input loan');
+            assert.equal(shim.BWNumberInput(args, util, block.opcode, 'OP'), undefined, 'unlisted sockets gain no authority');
+            return expected;
+        };
+        const op = {id: block.id, opcode: block.opcode, _argValues: args, _blockFunction: primitive,
+            fields: block.fields, inputs: block.inputs};
+        runtime.getOpcodeFunction = () => primitive;
+        container._cache._executeCached.call = {_ops: [op]};
+        container._cache._executeCached.leaf = {id: leaf.id, opcode: leafOpcode,
+            fields: leaf.fields, inputs: leaf.inputs, _isShadowBlock: true,
+            _shadowValue: '20', _parentValues: args, _parentKey: 'VALUE'};
+        assert.equal(shim.BWNumberInput(args, util, block.opcode), '20', 'no loan exists before invocation');
+        assert.equal(owner.invoke(runtime, thread, container, op, args, util, primitive),
+            leafOpcode === 'math_number' ? 20 : '20');
+        assert.equal(shim.BWNumberInput(args, util, block.opcode), '20', 'the synchronous loan expires on return');
+        thread.isKilled = true;
+        assert.throws(() => owner.invoke(runtime, thread, container, op, args, util, primitive), /actual cached caller/);
+    }
 });
 
 test('explicit adapter dependencies retain closures and the VM value identity', () => {
