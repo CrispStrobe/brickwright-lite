@@ -6,6 +6,17 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Proposed G02 Code caller ownership — 2026-10-15
+
+The next narrow lifecycle slice addresses overlapping NuttX Code callers in
+`runOnNuttxPython`. Two authored baseline scheduling controls reproduce an old
+call clearing a newer call's busy flag or replacing its status. The proposal
+covers current-caller callbacks, output, Stop and post-await publication; shared
+import/conversion and other target dispatchers retain their existing owners.
+See the claim in [LANES.md](../LANES.md). No fix or installed qualification is
+claimed. Product work follows the claim merge; actual owned-firmware Code
+qualification, cleanup/recovery and final-head CI remain required.
+
 ## Qualified G02 lifecycle boundaries — 2026-10-15
 
 Seven focused changes have landed, each with a separately frozen installed
