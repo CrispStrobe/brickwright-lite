@@ -1,3 +1,41 @@
+## WeDo clone 88005 polarity and power packet correction — 2026-10-15
+
+CLAIM — Codex, isolated existing adoption branch
+`lane/wedo-lights-adoption-20261015`, worktree `wt-wedo-adoption-sparse`.
+Follow-up to the published WeDo adoption claim and draft PR980. Human-observed
+CoreBluetooth testing on the user's unbranded clone: physical port A responds
+to protocol port 2; `[2,1,1,156]` lights the 88005 at full power and
+`[2,1,1,206]` visibly dims it. Positive power and the previous payload-length
+2 command did not light it. Internal RGB works. Standard 440/1000/1500 Hz
+piezo commands were acknowledged but produced no audible sound; do not claim
+this clone's advertised buzzer works or silently substitute host audio.
+
+Envelope: this ledger; existing dedicated `wedo2unified` pin and generated
+bundle/provenance table; focused `test/wedo2-lights-and-tones.test.mjs`.
+Source changes belong upstream in extensions PR49: one-byte signed power,
+explicit normal/reversed polarity with translated labels, and replaceable
+inferred motor/light types while preserving real attachment announcements.
+No global automatic clone detection, motor port remapping or other pin moves.
+Publish upstream first, then adopt the immutable commit with the canonical
+vendor script. Verify the measured packets, default positive polarity,
+Stop All/off, known-device protection, immutable bundle identity and local
+production build. Claim must land on remote main before Lite implementation.
+
+## iOS redundant static archive packaging — 2026-10-15
+
+CLAIMED — Codex, isolated `fix/ios-static-archive-resources-20261015` in
+`/tmp/brickwright-ios-size-fix`, base `86daec14c`. User requested shrinking the
+current iPad app. Measured signed bundle: 371.43 MiB, including 151.98 MiB
+`libapp.a` copied as a resource despite already being linked into the executable.
+
+Envelope: this ledger, `apps/tauri/scripts/prepare-ios-device-build.mjs`, and
+`test/ios-device-build-command.test.mjs`. Remove only `libapp.a in Resources`
+build-file and resource-phase references from the generated project; preserve
+its Frameworks/linking entry. Exercise actual preparation on an Xcode fixture,
+including an already-anchored project. Verify the smaller signed app and iPad
+installation/launch. No feature, frontend asset or native code is removed.
+Claim lands before implementation.
+
 ## iOS shared validator compilation blocker — 2026-10-15
 
 CLAIMED — Codex, isolated `fix/ios-shared-validators-20261015` in
@@ -88,26 +126,35 @@ claim first; implementation lands only after full CI and owner review.
 ## A10: micro:bit V2 serial consumer adoption — 2026-10-15
 
 CLAIMED — Codex, branch `lane/a10-v2-serial-consumer-20261015`, base `015e1bdc7`.
-After the owning LabWired UARTE source qualifies and lands, adopt its one-time
-qualified deterministic engine release and the resulting exact bw-board package.
-Remove the V2 serial withholding in `scripts/makecode.mjs` and the
-Code-tab status text only with that artifact. Require exact greeting/counter
-serial from real compiled MakeCode firmware, preserving display, guest-time,
-fault, firmware identity and board-model assertions. Keep A11's export changes.
+Adopt the qualified deterministic LabWired engine release after its source fix
+lands. Remove V2 serial withholding and verify real compiled firmware through
+both CLI modes and the visible Debug console. Preserve A11's landed export fix.
+
+Consumer scope is engine-only. The shipped bw-board client's LabWired adapter,
+bridge, debugger and firmware helpers are byte-identical to the qualified
+producer, and all chip/board catalog payloads are identical (source identity
+only differs). No client API change is needed for the UARTE source fix; actual
+released-engine qualification against this shipped client remains mandatory.
+The separate STM32 package/compiler adoption belongs to its existing owner.
+This lane leaves board, compiler and circuit-UI package pin fields untouched;
+qualified mainline changes from those owners are preserved when integrated.
 
 Envelope: this ledger and `docs/OPEN-TASKS-2026-09-29.md`;
 `scripts/sync-labwired-wasm.mjs` PIN/TAG/EXPECT and
 `.github/workflows/target-performance.yml` matching engine identity;
-`vendor-pins.json`, package/lock specifications and existing generated
-provenance/census/matrix/report/adoption-test surfaces changed by canonical
-bw-board pin writers; `scripts/makecode.mjs`, `scripts/lib/makecode-run.mjs`,
+`scripts/makecode.mjs`, `scripts/lib/makecode-run.mjs` if needed,
 `test/makecode-cli-run.test.mjs`,
 `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
-and its tracked twin; `scripts/verify-makecode.mjs` serial assertions only.
-No copied engine, invented source/hash, SDK rebuild, unrelated pin movement,
-physical-accuracy claim or optional motion run. Preserve all existing failures;
-all enabled final-head checks and actual released-engine/consumer guest results
-remain required before product integration.
+and its tracked twin; `scripts/verify-makecode.mjs` serial assertions only;
+affected engine provenance/notices through canonical writers if required.
+No NPM package/compiler pin bump, copied engine, invented source/hash, SDK
+rebuild, optional motion run, physical-accuracy claim or threshold relaxation.
+
+The core fix is merged. Consumer JSON/text serial and visible-console checks
+are prepared; final tests require the exact complete greeting, ordered counter,
+unchanged matrix/fault/guest-time bounds, and the fresh nRF52833 V2 emulator ELF.
+Engine publication/original admission, all enabled final checks and actual
+released-engine CLI/browser qualification remain pending before integration.
 
 Consumer implementation is prepared locally: JSON and streamed CLI serial,
 complete ordered greeting/counter assertions, updated status text and an
@@ -4321,6 +4368,34 @@ The separately claimed shared project-world work keeps its ownership. This
 claim changes no executable, dependency, fixture, capture or workflow and makes
 no fresh guest, performance, physical, reference, release or licence claim.
 
+## SPIKE NuttX Code caller ownership — 2026-10-15
+
+PROPOSED — Codex SPIKE G02 continuation, branch
+`lane/spike-g02-code-caller-20261015`. Merge this documentation claim before
+product changes. Extend the existing SPIKE session/pane/feedback envelope only
+to `runOnNuttxPython` in
+`overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx` and
+focused `test/spike-code-caller-ownership.test.mjs` controls, this ledger and the
+SPIKE status guide. Preserve the shared import, conversion, Arcade, namespace,
+lexical/type-lowering and other target dispatchers owned by their existing lanes.
+The separate G03 importer permission remains limited to SPIKE toolbar text.
+
+Two authored scheduling controls on the original dispatcher reproduce an earlier
+call's `finally` clearing a newer pending call's busy flag and an earlier `catch`
+replacing the newer call's status. They use the original feedback helper and
+controlled pane promises, with no native or guest execution. Bind callbacks,
+output, Stop ownership and post-await/catch/finally publication to the current
+NuttX Code caller; preserve current completion/error/Stop and retry/cold paths.
+
+Acceptance requires the baseline failures, positive current-owner controls,
+old callback/output/Stop and overlapping-call adversaries, affected session/pane
+regressions and guard mutations, then a source-bound installed Code scenario
+with actual owned firmware, visible controls, cleanup and distinct recovery.
+All enabled final-head CI checks must pass before normal exact-head merge.
+Do not claim host scheduling controls qualify installed concurrency, native UART
+output attribution, whole G02, physical behavior or a release. No native,
+firmware, Runtime, model, dependency pin, workflow or deadline change is included.
+
 ## SPIKE G02 compiled-model MicroPython desktop profile — 2026-10-15
 
 IN PROGRESS — Codex, isolated implementation branch
@@ -4444,3 +4519,35 @@ download/reload acceptance. DOS package work owns new
 `scripts/verify-dos-package-gui.mjs`. Claim any extra shared runner, further capability
 schema, further board metadata or dependency changes separately before coding.
 No private media, ISO picker, native addon backend or general OS claim.
+
+
+## 386 master-disk runner bridge — 2026-10-15
+
+CLAIM — Codex x86, serialized within the media workflow above, after required
+board qualification and explicit handoff.
+Additional ownership is limited to canonical
+`overlay/scratch-gui/src/lib/bw-debug/debug-runner.js`, its tracked generated
+`packages/scratch-gui/src/lib/bw-debug/debug-runner.js` mirror, and new
+`test/debug-runner-hdd-snapshot.test.mjs`. Publish and merge this contract before
+runner implementation. Preserve concurrent runner changes and the supplier
+owner's package/lock/vendor surfaces.
+
+Add only a focused `snapshotAtaMaster()` bridge to the current target's method.
+Keep the target private. Do not add arbitrary method dispatch, direct ATA access,
+auto-pause/resume, storage persistence, or a new capability schema. Require an
+active paused session and the underlying method, preserve structured refusals,
+and reject pending results after stop, replacement, or destroy using session
+ownership that cannot become valid again after stop/start. Mere target reference
+equality is insufficient. A completed copy remains a point-in-time snapshot;
+it does not grant a continuous paused lease or guest flush/completion.
+
+Execute the actual bridge and lifecycle paths in focused controls: unsupported
+and running targets make zero calls; board refusals survive; accepted bytes and
+boundary survive ordinary resume after copying; stale destroy/replacement/
+stop-start results fail closed. Preserve legacy targets and mirror equality.
+The separate download helper must recheck the active GUI session during awaits,
+clean up URLs on failure/disposal, and describe clicks as download initiation.
+Actual installed browser download and fresh chooser reload remain mandatory
+before a user-facing qualification claim. No supplier pin or chooser geometry
+limit changes belong to this extension. See the
+[handoff](docs/X86-NEXT-LANES.md#master-disk-export-continuation).
