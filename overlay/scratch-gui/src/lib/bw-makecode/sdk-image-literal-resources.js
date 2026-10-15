@@ -42,28 +42,31 @@ export function createSdkImageLiteralResources(project,readSvg,palette=ARCADE_PA
         const selected=definition(target,frame),clone=cloneFor(target,frame);if(!selected||!clone)return null;
         // The native cache uses the first definition for each key. Unknown or
         // incompatible definitions and uncloned exposure cannot borrow it.
-        const uses=[];
+        const uses=[],useOwners=[];
         for(const actual of project.targets)for(const block of Object.values(actual.blocks||{}))if(block.opcode==='arcade_frameImage'){
             const key=text(actual,block,'KEY');if(key===null)return null;if(key!==selected.key)continue;
             const row=definition(actual,block);if(!row||row.template!==selected.template||!cloneFor(actual,block))return null;
-            uses.push([actual.name,block]);
+            uses.push([actual.name,block]);useOwners.push([actual,block,cloneFor(actual,block)]);
         }
         const targets=project.targets.filter(actual=>!actual.isStage&&actual.name===selected.template);if(targets.length!==1)return null;
         const resource=targets[0],costume=resource.costumes?.[0];
         if(!costume||costume.dataFormat!=='svg'||typeof costume.assetId!=='string'||!costume.assetId||costume.md5ext!==costume.assetId+'.svg')return null;
-        const snapshot=JSON.stringify([target.name,frame,clone,resource.name,costume,uses]);
-        const previous=cached.get(frame);if(previous)return previous.snapshot===snapshot?previous.image:null;
+        const inputSnapshot=()=>JSON.stringify(project.targets.map(actual=>[actual.name,Object.entries(actual.blocks||{}).filter(([,block])=>block.opcode==='arcade_frameImage'||Object.values(block.inputs||{}).some(input=>Array.isArray(input)&&input.slice(1).some(slot=>typeof slot==='string'&&actual.blocks[slot]?.opcode==='arcade_frameImage')))]));
+        const incoming=inputSnapshot(),snapshot=JSON.stringify([target.name,frame,clone,resource.name,costume,uses,incoming]);
+        const current=()=>project.targets.includes(target)&&project.targets.includes(resource)&&resource.costumes?.[0]===costume&&project.targets.filter(actual=>!actual.isStage&&actual.name===selected.template).length===1&&
+            useOwners.every(([actual,block,copy])=>project.targets.includes(actual)&&cloneFor(actual,block)===copy)&&JSON.stringify([target.name,frame,clone,resource.name,costume,uses,inputSnapshot()])===snapshot;
         const resourceSnapshot=JSON.stringify([resource.name,resource.isStage,costume]);
         const keyProof=keys.get(selected.key),resourceProof=resources.get(costume);
         if(keyProof&&(keyProof.resource!==resource||keyProof.costume!==costume||keyProof.snapshot!==resourceSnapshot))return null;
         if(resourceProof&&(resourceProof.resource!==resource||resourceProof.snapshot!==resourceSnapshot))return null;
+        const previous=cached.get(frame);if(previous)return previous.target===target&&previous.clone===clone&&previous.snapshot===snapshot?previous.image:null;
         let owned=resourceProof?.image;
         if(!owned){
             const svg=readSvg(resource,costume);if(typeof svg!=='string')return null;
             const image=svgToPixels(svg,palette);
             if(!image||!Number.isInteger(image.width)||!Number.isInteger(image.height)||image.width<1||image.height<1||image.width>2000||image.height>2000||image.pixels.length!==image.width*image.height||
                 costume.rotationCenterX!==image.width*2||costume.rotationCenterY!==image.height*2||image.pixels.some(pixel=>!Number.isInteger(pixel)||pixel<0||pixel>15)||
-                image.palette&&JSON.stringify(image.palette)!==JSON.stringify(palette)||imageToSvg(image,{palette})!==svg||JSON.stringify([target.name,frame,clone,resource.name,costume,uses])!==snapshot)return null;
+                image.palette&&JSON.stringify(image.palette)!==JSON.stringify(palette)||imageToSvg(image,{palette})!==svg||!current())return null;
             owned=Object.freeze({width:image.width,height:image.height,pixels:Object.freeze(Array.from(image.pixels))});
             resources.set(costume,{resource,snapshot:resourceSnapshot,image:owned});
         }
@@ -71,7 +74,7 @@ export function createSdkImageLiteralResources(project,readSvg,palette=ARCADE_PA
         // render one immutable body snapshot. Each key separately binds the
         // exact resource/metadata used by the native first-definition cache.
         keys.set(selected.key,{resource,costume,snapshot:resourceSnapshot,image:owned});
-        cached.set(frame,{snapshot,image:owned});return owned;
+        cached.set(frame,{target,clone,snapshot,image:owned});return owned;
     };
     return Object.freeze({
         resource(target,block){return inspect(target,block);},
