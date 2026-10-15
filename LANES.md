@@ -4473,9 +4473,9 @@ no fresh guest, performance, physical, reference, release or licence claim.
 
 ## SPIKE NuttX Code caller ownership — 2026-10-15
 
-PROPOSED — Codex SPIKE G02 continuation, branch
-`lane/spike-g02-code-caller-20261015`. Merge this documentation claim before
-product changes. Extend the existing SPIKE session/pane/feedback envelope only
+IN PROGRESS — Codex SPIKE G02 continuation, branch
+`lane/spike-g02-code-caller-20261015`. Scope claim [PR978](https://github.com/CrispStrobe/brickwright-lite/pull/978)
+merged before product changes. Extend the existing SPIKE session/pane/feedback envelope only
 to `runOnNuttxPython` in
 `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx` and
 focused `test/spike-code-caller-ownership.test.mjs` controls, this ledger and the
@@ -4498,6 +4498,23 @@ All enabled final-head CI checks must pass before normal exact-head merge.
 Do not claim host scheduling controls qualify installed concurrency, native UART
 output attribution, whole G02, physical behavior or a release. No native,
 firmware, Runtime, model, dependency pin, workflow or deadline change is included.
+
+Implementation now binds a NuttX caller token before opening the arena, installs
+Stop cancellation before either wait, checks ownership after each wait, and
+scopes feedback, captured callbacks/output, queued Stop and asynchronous Stop
+errors to that caller. Its existing tracked generated importer twin receives
+the same method projection; bytes outside this method remain unchanged in both
+files. No removed arena source mirror is recreated.
+
+All 20 focused authored scheduling controls pass; the unchanged dispatcher
+passes six and fails fourteen of those controls. Ten deliberate ownership,
+resume, cancellation, callback/output and error-publication mutations each fail
+a behavioral control with canonical and generated twin mutated together. These
+are host controls, including calls through the existing shared Stop handler;
+they do not establish that a Stop button is rendered during every cold phase.
+Installed overlapping-Code qualification, output attribution and final-head CI
+are pending. The independently frozen lifecycle-batch package does not contain
+this dispatcher change.
 
 ## SPIKE G02 compiled-model MicroPython desktop profile — 2026-10-15
 
