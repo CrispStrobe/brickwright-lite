@@ -3,11 +3,13 @@
 ## Owned Image callbacks and authored Array Number inputs — 2026-10-15
 
 Owned Image fields, constructor arguments, captured class parameters and
-callback inputs/results now pass the opt-in source, Code, same/fresh SB3 and
+callback inputs/results now pass default source, Code, same/fresh SB3 and
 current edited export/reimport controls. Two exact selected-original programs
-agree on dimensions, clone identity and callback effects. This does not yet
-make the default importer choose that bridge. Selection must use completed
-actual source/current-project proofs, including every writer and body.
+agree on dimensions, clone identity and callback effects. Default selection
+uses completed actual source/current-project proofs, including every writer
+and body; 119 affected controls and seven independent controls pass. Duplicate
+SDK variable IDs across targets refuse. These are native and conversion
+checks; the visible editor journeys below remain open.
 
 The GUI still needs reachable class/field/handler authoring controls, genuine
 Image parameters and results, an actual captured-parameter rename, graphics
