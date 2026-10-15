@@ -1,5 +1,34 @@
 # Arcade unit failures: exact-source follow-up
 
+## Integration review at e422d3145 — 2026-10-15
+
+[Run 38672271891](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38672271891)
+checks PR head `e422d3145446cb5d0af9c93dccba6c76ec64ab60`.
+[Shard two](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38672271891/job/116218549815)
+completed **3,819 tests: 3,812 passed, zero failed, five skipped, two TODO**.
+The overall run was cancelled. Shard one has no completed census; its retained
+log contains **34 top-level failures**, separately from one nested declared TODO.
+A passing shard and passing authoring/browser checks do not qualify this branch
+for merge. Preserve the original log and cancellation metadata.
+
+Three focused native observer repairs retain the unchanged source programs:
+
+- Concurrent loop calls use the actual shared timer platform through 200 ms,
+  including source pauses, rather than interpreting fast physical frame steps
+  as elapsed program time. Source, Code, export/reimport and same/fresh SB3 retain
+  `first=0`, `second=9`, and `done=1`.
+- Legacy mutable tile art is observed at 120 ms, after its source pause and a
+  subsequent rendered frame. All 19,200 pixels match the original expectation
+  retained in the failed hosted assertion; the frame pixel buffer stays stable.
+  This control does not add an export route for this raster fixture.
+- Controller gating observes the queued input dispatch before awaiting its
+  current continuation. Source, Code, export/reimport and same/fresh SB3 retain
+  both held-state observations, one press callback and two release callbacks.
+
+These are native controls, without a new original compilation or browser run.
+The remaining shard-one failures are under review; raw corpus counts stay
+**147 translated, 36 partial, one parse failure**.
+
 ## Latest completed hosted result — 2026-10-15
 
 [Run 38657701085](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38657701085)

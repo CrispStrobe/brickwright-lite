@@ -13,7 +13,9 @@ const checked=(actual,expected,label)=>{for(const[name,value]of Object.entries(e
 async function finish(run,ms=0,actions=[]) {
     run.vm.stopAll();const clock=createArcadeDiscreteTimers();run.vm.runtime.bwArcadeProgramClock=clock;
     run.vm.runtime.updateCurrentMSecs=()=>{run.vm.runtime.currentMSecs=clock.now();};run.vm.greenFlag();await stepFrames(run.vm,1,0);
-    for(const action of actions){await clock.advanceTo(action.at);run.vm.postIOData('keyboard',{key:' ',isDown:action.held});await run.vm.runtime._arcadeFramePhase?.continuation;}
+    // Input dispatch is queued before the source continuation is replaced.
+    // Observe that dispatch before awaiting its current continuation.
+    for(const action of actions){await clock.advanceTo(action.at);run.vm.postIOData('keyboard',{key:' ',isDown:action.held});await nextTurn();await run.vm.runtime._arcadeFramePhase?.continuation;}
     if(ms)await clock.advanceTo(ms);else await stepFrames(run.vm,150,0);
     assert.deepEqual(run.errors,[]);
 }

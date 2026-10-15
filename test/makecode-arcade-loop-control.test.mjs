@@ -4,6 +4,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {runTimedArcadeProgram,restartTimedArcadeRun} from './helpers/arcade-timed-native.mjs';
 const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 const fixtures=[
  ['nested break remainder','let trace="";for(let i=0;i<5;i++){if(i==2){if(true){break;trace+="BAD1"};trace+="BAD2"};trace+=""+i};let done=1',['trace']],
@@ -26,7 +27,8 @@ for(const [name,source,names,standard]of fixtures)test(name+(standard?' keeps na
  const observed=await runPxtArcade(source,{fakeClock:true});const original=standard || observed;const runs=[];
  if(standard)await t.test('selected original SDK do-while continue preserves the posttest boundary',{todo:'Pinned SDK compiler jumps continue to body, skipping posttest; bounded original discrepancy retained'},()=>assert.deepEqual(Object.fromEntries(names.map(n=>[n,observed[n]])),standard));
  const check=run=>{for(const n of names)assert.equal(values(run)[n],original[n],n);assert.equal(values(run).done,1);assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
- const execute=async imported=>{assert.deepEqual(imported.unsupported,[]);const run=await runProgram(imported.code,{frames:50,storage:true});runs.push(run);check(run);return run;};
+ const timed=name==='overlapping function exit cells';
+ const execute=async imported=>{assert.deepEqual(imported.unsupported,[]);const run=timed?await runTimedArcadeProgram(imported.code,{milliseconds:200,storage:true}):await runProgram(imported.code,{frames:50,storage:true});runs.push(run);check(run);return run;};
  try{
   const imported=arcadeToPseudocode(source),run=await execute(imported);
   const generated=new Set([...imported.code.matchAll(/arcade set local (__bwLoopExit\d+)/g)].map(m=>m[1]));const flags=run.creator.project.targets.flatMap(t=>t.variables?Object.values(t.variables):[]).filter(v=>generated.has(v[0]));assert.deepEqual(flags,[],'exit flags never become shared Scratch variables');
@@ -34,7 +36,7 @@ for(const [name,source,names,standard]of fixtures)test(name+(standard?' keeps na
   const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);
   const emitted=await runPxtArcade(exported.files,{fakeClock:true});for(const n of names)assert.equal(emitted[n],original[n],n+' exported');
   await execute(arcadeToPseudocode(exported.files));
-  run.vm.stopAll();const saved=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());await run.vm.loadProject(saved);run.vm.greenFlag();await stepFrames(run.vm,50);check(run);
+  run.vm.stopAll();const saved=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());await run.vm.loadProject(saved);if(timed)await restartTimedArcadeRun(run,200);else{run.vm.greenFlag();await stepFrames(run.vm,50);}check(run);
  }finally{for(const run of runs)run.vm.quit();clearStrayTimers();}
 });
 test('unimplemented switch fallthrough remains explicit',()=>assert.match(arcadeToPseudocode('for(let i=0;i<4;i++){switch(i){case 0:continue;case 1:i++;case 2:break;}}').unsupported.join('\n'),/falls through/));
