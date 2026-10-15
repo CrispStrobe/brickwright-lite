@@ -1852,11 +1852,12 @@ class PseudocodeImporter extends React.Component {
      * typed is worse than no example.
      */
     async loadAsmExample (id) {
-        if (!id) return;
+        if (!id || this.state.busy) return;
         const example = this._asmExamples().find(e => e.id === id);
         if (!example) return;
         const current = (this.state.buffers.asm || '').trim();
         if (current && !(await confirmAsync(this.L.asmExampleReplace))) return;
+        if (this.state.busy) return;
         this.setState(state => ({
             buffers: {...state.buffers, asm: example.source},
             asmMode: 'source',
@@ -5870,6 +5871,7 @@ class PseudocodeImporter extends React.Component {
                                 {this.L.asmExampleLabel}
                                 <select
                                     data-testid="bw-asm-examples"
+                                    disabled={this.state.busy}
                                     onChange={e => this.loadAsmExample(e.target.value)}
                                     style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}
                                     value=""

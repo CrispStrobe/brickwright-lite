@@ -1,6 +1,6 @@
 ## ASM example admission during pending Code compilation — 2026-10-15
 
-CLAIM — Codex circuit/instrument adoption owner, bounded blocker repair for
+DONE — Codex circuit/instrument adoption owner, bounded blocker repair for
 PR965. Base `dccfd176b0043128b6a723e55f80a5e3b47fed4c`; isolated branch
 `docs/asm-example-serialization-claim-20261015` publishes ownership first.
 Production edits wait for this claim's merge and coordination with the A11
@@ -31,6 +31,16 @@ out later. Retain the complete keyboard/CGA/8255/refusal/reload journey and
 all enabled exact-head checks. No forced click, longer sleep, missing-scenario
 skip, unchanged failed rerun or mocked guest implementation. Move this entry
 to DONE in the final implementation candidate; keep the original red receipt.
+
+Implementation: early and post-confirmation busy guards plus a disabled picker,
+with byte-identical tracked twin. Pure UI protocol checks: 20/20 passed,
+including seven new controls and isolated entry/post-confirmation/picker
+omission negatives; the broader protocol/browser-policy/gate-shape selection
+passed 55/55. The browser journey now holds only the return of an actual
+completed VM load, checks disabled admission and preserved source, then releases
+and restores the wrapper before ordinary example selection and assembly.
+Canonical claim merged in PR977; fresh combined qualification remains on PR965.
+The original Build38726686250 failure is preserved, not rerun unchanged.
 
 ## STM32 faithful model pin adoption (sb3-creator + bw-board) — 2026-10-15
 

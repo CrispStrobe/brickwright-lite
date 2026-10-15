@@ -80,6 +80,20 @@ let page = null;
 let url = process.env.PROOF_URL || process.env.BW_URL || null;
 const hostedCompilerRequests = [];
 let interceptionControls = 0;
+const waitForCodeIdle = async () => page.waitForFunction(() => {
+    const control = document.querySelector('[data-testid="bw-device-select"]');
+    if (!control) return false;
+    const key = Object.keys(control).find(name =>
+        name.startsWith('__reactFiber') || name.startsWith('__reactInternalInstance'));
+    let fiber = key && control[key];
+    for (let depth = 0; fiber && depth < 64; depth++, fiber = fiber.return) {
+        const node = fiber.stateNode;
+        if (node && typeof node.loadAsmExample === 'function' && typeof node.setDevice === 'function') {
+            return !node.state.busy;
+        }
+    }
+    return false;
+}, null, {timeout: 15000});
 
 try {
     if (!url) ({server, url} = await serveBuild());
@@ -150,6 +164,7 @@ try {
     await page.waitForFunction(() =>
         document.querySelector('[data-testid="bw-device-select"]')?.value === 'i8086',
     null, {timeout: 15000});
+    await waitForCodeIdle();
     await page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/}).click();
 
     const examples = page.getByTestId('bw-asm-examples');
@@ -316,7 +331,68 @@ try {
     await page.keyboard.press('Escape');
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     await device.selectOption('i8086');
+    await waitForCodeIdle();
     await page.getByTestId('bw-lang-row').getByRole('button', {name: /ASM/}).click();
+    await examples.selectOption('keys');
+    await page.waitForFunction(() => /A Program That Waits For You/.test(
+        document.querySelector('.cm-content')?.textContent || ''), null, {timeout: 15000});
+    // Hold only the return of the real completed VM load. The guest/archive is
+    // not replaced: retargeting stays busy until this explicit gate is released.
+    await page.evaluate(() => {
+        const control = document.querySelector('[data-testid="bw-device-select"]');
+        if (!control) throw new Error('device control missing for pending-compile proof');
+        const key = Object.keys(control).find(name =>
+            name.startsWith('__reactFiber') || name.startsWith('__reactInternalInstance'));
+        let fiber = key && control[key];
+        let importer;
+        for (let depth = 0; fiber && depth < 64; depth++, fiber = fiber.return) {
+            const node = fiber.stateNode;
+            if (node && typeof node.loadAsmExample === 'function' && typeof node.setDevice === 'function' && node.props?.vm) {
+                importer = node;
+                break;
+            }
+        }
+        if (!importer) throw new Error('actual Code importer missing for pending-compile proof');
+        if (importer.state.busy) throw new Error('unexpected compile already pending');
+        const vm = importer.props.vm;
+        const original = vm.loadProject;
+        let release;
+        const gate = new Promise(resolve => { release = resolve; });
+        const proof = {importer, held: false, consumed: false, before: importer.state.buffers.asm};
+        const wrapper = async function (...args) {
+            const result = await original.apply(this, args);
+            if (!proof.consumed) {
+                proof.consumed = true;
+                proof.held = true;
+                await gate;
+            }
+            return result;
+        };
+        proof.cleanup = () => {
+            release();
+            if (vm.loadProject === wrapper) vm.loadProject = original;
+        };
+        window.__bwAsmCompileProof = proof;
+        vm.loadProject = wrapper;
+    });
+    try {
+        await device.selectOption('i8086');
+        await page.waitForFunction(() => window.__bwAsmCompileProof?.held &&
+            window.__bwAsmCompileProof.importer.state.busy, null, {timeout: 15000});
+        record('ASM example picker is disabled while a real completed VM load awaits publication',
+            await examples.isDisabled());
+        record('direct ASM example admission preserves source during pending compilation', await page.evaluate(async () => {
+            const proof = window.__bwAsmCompileProof;
+            if (!proof.before || !/A Program That Waits For You/.test(proof.before)) return false;
+            await proof.importer.loadAsmExample('pins');
+            return proof.importer.state.busy && proof.importer.state.buffers.asm === proof.before;
+        }));
+    } finally {
+        await page.evaluate(() => window.__bwAsmCompileProof?.cleanup());
+    }
+    await page.waitForFunction(() => !window.__bwAsmCompileProof.importer.state.busy,
+        null, {timeout: 15000});
+    await page.evaluate(() => { delete window.__bwAsmCompileProof; });
     await examples.selectOption('pins');
     await page.waitForFunction(() => /An LED and a Switch on the 8255/.test(
         document.querySelector('.cm-content')?.textContent || ''), null, {timeout: 15000});
@@ -353,6 +429,10 @@ try {
     record('the complete 8086 browser journey finishes', false, error.message || String(error));
 } finally {
     if (page) {
+        await page.evaluate(() => {
+            window.__bwAsmCompileProof?.cleanup();
+            delete window.__bwAsmCompileProof;
+        }).catch(error => diagnostics.push(`pending-compile cleanup: ${error.message}`));
         await page.screenshot({path: join(artifacts, 'final.png'), fullPage: true}).catch(error => {
             diagnostics.push(`screenshot: ${error.message}`);
         });
