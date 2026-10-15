@@ -31,6 +31,7 @@ module.exports = makeExt(`// Name: Arcade
     constructor(runtime) {
       this._runtime = runtime;
       this._sourceScalarCells = dependencies.createSourceScalarCells(runtime, Scratch.BWValues, dependencies.sourceReferenceTypes, dependencies.sourceCallableCells);
+      this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells);
       this._resetProgramClock();
       this._bufferSuspended = false;
       this._sdkFontValues=runtime && typeof runtime.on==='function' ? dependencies.sdkFontValues.create(runtime,Scratch.BWValues,
@@ -137,8 +138,8 @@ module.exports = makeExt(`// Name: Arcade
           this._terrainWaits.clear();
           if(this._foreverTimer!==undefined)clearTimeout(this._foreverTimer);this._foreverTimer=undefined;
         };
-        runtime.on('PROJECT_STOP_ALL', () => {this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();});
-        runtime.on('RUNTIME_DISPOSED', () => {this._sourceScalarCells.dispose();this._sourceTypeOf.invalidateInputs();this._sourceTypeOfDisposed=true;});
+        runtime.on('PROJECT_STOP_ALL', () => {this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.invalidate();});
+        runtime.on('RUNTIME_DISPOSED', () => {this._sourceScalarCells.dispose();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.invalidate();this._sourceTypeOfDisposed=true;this._consoleInspectValues.dispose();});
         runtime.on('PROJECT_STOP_ALL', () => this._stopProgramClock());
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
         runtime.on('PROJECT_STOP_ALL', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._musicHost?.stopAll();});
@@ -204,14 +205,15 @@ module.exports = makeExt(`// Name: Arcade
           this._changed();
         };
         runtime.on('PROJECT_LOADED', () => {
-          this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();
+          this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.dispose();
+          this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells);
           // Registry publications belong to the loaded project. GUI artwork
           // restoration repopulates them after successful deserialization.
           runtime.bwArcadeAnimationResources = new Map();
           reset();
           this._bufferSuspended = false;this._sourceTypeOfDisposed=false;
         });
-        runtime.on('PROJECT_START',()=>{if(!this._sdkFontValues?.isDisposed())this._sdkFontValues?.startProgram();reset();this._sourceScalarCells.initialize();this._sourceTypeOf.snapshotInputs();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
+        runtime.on('PROJECT_START',()=>{if(!this._sdkFontValues?.isDisposed())this._sdkFontValues?.startProgram();reset();this._sourceScalarCells.initialize();this._sourceTypeOf.snapshotInputs();this._consoleInspectValues.snapshot();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
         runtime.on('targetWasRemoved', target => {
           for (const [id, entry] of this._imageSkins) if (entry.target === target) this._clearImage(id);
           for (const [id, entry] of this._speech) if (entry.target === target) this._clearSpeech(id);
@@ -278,6 +280,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'whenRegisteredShade',blockType:Scratch.BlockType.HAT,isEdgeActivated:false,text:'when Arcade shade handler [TOKEN] runs',arguments:str('TOKEN','handler')},
           {opcode:'screenImage',blockType:Scratch.BlockType.REPORTER,text:'Arcade screen image'},
           {opcode:'sourceTypeOf',blockType:Scratch.BlockType.REPORTER,text:'Arcade source type of [VALUE]',arguments:{VALUE:{type:Scratch.ArgumentType.STRING}}},
+          {opcode:'inspectValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade inspect value [VALUE] limit [LIMIT]',output:'String',arguments:{...str('VALUE',''),...n('LIMIT',20)}},
           {opcode:'fontValue',blockType:Scratch.BlockType.REPORTER,text:'Arcade font [FONT]',arguments:{FONT:{type:Scratch.ArgumentType.STRING,menu:'fontValueNames',defaultValue:'font8'}}},
           {opcode:'fontForText',blockType:Scratch.BlockType.REPORTER,text:'Arcade font for text [TEXT]',arguments:{TEXT:{type:Scratch.ArgumentType.STRING,defaultValue:''}}},
           {opcode:'scaleFont',blockType:Scratch.BlockType.REPORTER,text:'Arcade scale font [FONT] by [SIZE]',arguments:{FONT:{type:Scratch.ArgumentType.STRING,defaultValue:''},SIZE:{type:Scratch.ArgumentType.NUMBER,defaultValue:2}}},
@@ -4994,6 +4997,7 @@ module.exports = makeExt(`// Name: Arcade
       });
       return this._textModule;
     }
+    inspectValue(args,util) {return this._consoleInspectValues.inspect(args,util,error=>this._objectError(error));}
     sourceTypeOf(args,util) {
       try {this._sourceTypeOf.assertOwner();const literalType=this._sourceTypeOf.validateInput(this._sourceScalarCells,util,args.VALUE,args);return literalType || this._sourceTypeOf(args.VALUE);}catch(error){return this._objectError(error);}
     }
@@ -5850,6 +5854,7 @@ module.exports = makeExt(`// Name: Arcade
   sourceReferenceTypes: require('./source-reference-types'),
   createSourceScalarCells: require('./source-scalar-cells'),
   createSourceTypeOfValues: require('./source-typeof-values'),
+  createConsoleInspectValues: require('./console-inspect-values'),
   createSceneFrameContexts: require('./scene-frame-contexts'),
   createControlEvents: require('./control-events'),
   createPollEvents: require('./poll-events'),
