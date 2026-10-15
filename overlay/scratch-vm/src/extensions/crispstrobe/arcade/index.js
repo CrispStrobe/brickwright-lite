@@ -2134,16 +2134,20 @@ module.exports = makeExt(`// Name: Arcade
       runtime._arcadeFramePhase?.linkManagedCall(thread,util.thread);
       if (util.sequencer === runtime.sequencer && !recursive) {
         const caller = util.thread, sequencer = util.sequencer, active = sequencer.activeThread;
+        const currentLoan=dependencies.primitiveOwner.current(util,args);
+        const step=()=>{
+          if(currentLoan)return dependencies.primitiveOwner.stepNested(util,args,thread);
+          sequencer.activeThread=thread;return sequencer.stepThread(thread);
+        };
         try {
-          sequencer.activeThread = thread;
           const deadline=Date.now()+0.75*runtime.currentStepTime;
-          sequencer.stepThread(thread);
+          step();
           // Native source functions do not add a physics frame for finite loop
           // bookkeeping. Continue only loop yields within the real scheduler
           // budget; promises, explicit waits and stop retirements still suspend.
           while(runtime.threads.includes(thread) && thread.status===thread.constructor.STATUS_RUNNING &&
             thread.peekStackFrame()?.isLoop && !thread.peekStackFrame()?.timer && Date.now()<deadline)
-            sequencer.stepThread(thread);
+            step();
         }
         finally {util.thread = caller;util.sequencer = sequencer;sequencer.activeThread = active;}
         const failure=exceptions.failure(thread) || exceptions.failure(caller);if(failure)throw failure;
