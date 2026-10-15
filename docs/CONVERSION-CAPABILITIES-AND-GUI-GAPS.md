@@ -4990,3 +4990,25 @@ Stop/restart, Code feedback, same/fresh saved projects and current export.
 The optional timeout is still explicitly unsupported and has no qualified
 Blocks/Code/persistence representation. No visible-authoring or whole-game
 claim follows from the minimal native controls.
+
+### Nested named helpers with captures — tracked gap, 2026-10-15
+
+A real integer-division control exposed a separate source capability gap:
+`outer(a)` contains a nested named `read()` helper returning the captured `a`.
+The operand analysis can prove that Number, but the current ordinary procedure
+emitter does not carry the nested declaration's actual capture and invocation
+identity. Supporting the operation alone does not close that helper route.
+
+The existing named-function and numeric factory contracts exclude these nested
+owners. A separate implementation claim must cover the complete helper body,
+per-invocation capture cells, declaration initialization, current export and
+Code/SB3 feedback. Replacing the helper with its returned expression or pruning
+its declaration is not a solution. Recursive declaration identity for parameter
+contracts is a distinct capability and cannot grant a recursive result type.
+
+GUI work must then provide an authorable nested declaration, its actual outer
+owner and captures, editable body and arguments, binding rename and writer edits,
+and diagnostics which locate an invalid capture or call. Verify two outer
+invocations keep separate storage, same/fresh reopen, changed exported bodies
+and native failure/Stop/disposal handling. No nested-helper or visible GUI
+support is claimed by this tracking entry.
