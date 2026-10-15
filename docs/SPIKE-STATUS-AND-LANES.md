@@ -6,7 +6,47 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
-## Pending G02 replacement-output phase follow-up — 2026-10-15
+## Installed G02 Code caller and output qualification — 2026-10-15
+
+Frozen consumer `59ddd74174f644f330f06ce567fac6b8c5f7dde3` passes three
+installed own-NuttX cases and their standalone readers, with six successful
+native startup transactions, full cleanup and distinct recovery in every case.
+Official frontend checkout and consumer trees match; independent package/input
+audits pass. Its eleven enabled source-head checks pass in
+[run38790549120](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38790549120)
+and the separate vendor check; two conditional GUI/deployment jobs skip.
+
+- An older Code call's original successful return cannot clear a newer pending
+  caller's busy flag, completed status or exact `42\n` output.
+- An authored error delivered from the older call likewise leaves the newer
+  caller's feedback unchanged. Both cases begin through the real Code control,
+  preserve the original pane/native calls for two Python uploads, and explicitly
+  author concurrent mounted-handler entry while the ordinary toolbar is busy.
+  They do not establish two clickable busy toolbar runs or arbitrary scheduling.
+- A fresh original old-Python output frame is held across actual replacement,
+  STOP and upload preparation. No old/preparatory output reaches the new Code
+  consumer before the original START reply is accepted. Current output first
+  arrives in a later `state.read`; immediate START output remains host-covered.
+
+Three failed test attempts remain preserved: a missing expected print newline,
+a snapshot of a not-yet-created log, and a guest-time delay that did not fit the
+unchanged observation window. Corrected controls require exact print bytes,
+record absent logs explicitly and use a shorter authored guest delay. They
+retain fresh native frame/sequence/reply provenance, original calls, cleanup,
+recovery and the same observation/resource bounds. Successful cases were not
+replayed to read evidence. Product sources and the installed package did not
+change during these corrections.
+
+This result belongs to the named frozen package. Integration preserves its
+SPIKE/native inputs and both importer copies while retaining newer main work.
+Final documentation-head CI, the lifecycle integration in
+[PR979](https://github.com/CrispStrobe/brickwright-lite/pull/979), and exact-head
+merge review remain required. The repeated-Stop follow-up in
+[PR990](https://github.com/CrispStrobe/brickwright-lite/pull/990) is separate and
+not installed-qualified here. Whole G02, reference/physical behavior, rollback,
+licensing, distribution and release qualification remain open.
+
+## G02 replacement-output phase follow-up — 2026-10-15
 
 `lane/spike-g02-output-phase-20261015` keeps prior poll/STOP and upload-preparation
 output out of the new Code consumer. The existing reply decoder must admit the
@@ -18,8 +58,9 @@ Thirteen authored session/client/pane controls pass; the original baseline fails
 eight, and ten broken guards are detected. All 112 affected host controls pass.
 The initial broader run lacked a sparse importer input; it is preserved, the
 tracked input was materialized, and the final affected run passes. These are host
-controls. Source-bound installed output/frame/reply evidence and final-head CI
-are pending. This is separate from the frozen composed qualification below;
+controls. The frozen consumer above now passes source-bound installed output,
+frame/reply, cleanup and recovery qualification; final documentation-head CI
+and merge review remain pending. This is separate from the frozen composed qualification below;
 it changes no firmware/native/model pin or importer logic and does not establish
 physical UART attribution or close G02.
 
@@ -102,7 +143,7 @@ Concurrent caller completion and broader output attribution remain separate
 boundaries. These controls do not qualify every evolving package or close G02,
 G03, physical safety, rollback, distribution or licensing.
 
-## G02 Code caller ownership in progress — 2026-10-15
+## G02 Code caller ownership — 2026-10-15
 
 The scope claim in [PR978](https://github.com/CrispStrobe/brickwright-lite/pull/978)
 is merged. The implementation gives each NuttX Code run its own caller token:
@@ -115,8 +156,9 @@ same method change. See [LANES.md](../LANES.md) for the bounded ownership scope.
 Twenty focused authored host controls pass; the original dispatcher passes six
 and fails fourteen. All ten deliberately weakened variants are detected by
 behavioral tests. These controls cover caller scheduling rather than native
-UART output attribution or rendered cold-phase controls. Actual owned-firmware
-overlapping Code qualification, cleanup/recovery and final-head CI remain
+UART output attribution or rendered cold-phase controls. The frozen consumer
+above now passes both finite installed caller cases, cleanup and distinct
+recovery. Final documentation-head CI and exact-head merge review remain
 required. The separate frozen lifecycle-batch package contains neither this
 caller change nor the later output-phase follow-up.
 
