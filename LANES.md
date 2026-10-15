@@ -4027,6 +4027,48 @@ qualification remain pending. Builds on the separately qualified PR895 source
 candidate, whose hosted merge gates are still pending. No startup failure
 attribution, deadline fix or full G02 completion is claimed.
 
+## SPIKE replacement upload cancellation after STOP — 2026-10-15
+
+Continuation in the merged G02 session/test envelope, branch
+`lane/spike-g02-upload-cancellation-20261015`, same Codex owner.
+When a replacement upload awaits its initial STOP response, a concurrent session
+Stop used to let the resumed method replace the source and begin a new upload
+after closure. Check closure after that awaited response, before changing source
+or enqueueing BEGIN. Also check closure after the upload reply returns, before
+retained-program state or observers are published. An already executed upload
+cannot be rolled back by cancelling delivery of its result. Keep the serialized
+transport's existing STOP ordering.
+
+A real session and production codec with an authored delayed STOP response
+reproduce the gap: the normal control passes and cancellation fails on the
+baseline. A second completed-upload return control also reproduces late
+publication after closure while retaining real codec execution. All 59 session
+controls pass with both guards; each guard removal must fail its corresponding
+cancellation control. This is host boundary evidence, not a guest
+result. Source-bound installed own-NuttX cancellation, fresh recovery and every
+enabled exact-head CI check remain mandatory before integration. Firmware,
+Runtime, models, native code, pins, workflows and budgets are unchanged; no
+whole-G02, rollback, physical, reference or release claim.
+
+
+Installed qualification completed on tested consumer
+`516557dae2f3b29710318a0e9ee647715728376f`. Four real own-NuttX Code replacement
+cases pass: cancellation and normal delivery while the original STOP reply is
+held, and cancellation and normal delivery while a completed upload return is
+held. Actual Arena Reset invokes full pane/session Stop for cancellation. Each
+case releases ownership, completes a different fresh guest and releases it on
+final Stop. Standalone readers verify the original correlated STOP replies,
+completed-upload START replies, fixed guest identity and eight complete native
+startup transactions. The initial retained program is checked separately from
+the flag at the held-return boundary; no closed-session program/frame callback
+is admitted. Original selector and state-interval test failures remain preserved.
+
+This qualifies the frozen consumer and finite session boundaries. Pending-upload
+Arena Stop availability and Code feedback remain open; Reset coverage does not
+establish that UX. An executed upload remains executed. The session and test
+blobs are preserved during integration with separately qualified main changes;
+final-head CI remains required, and later whole packages need their own evidence.
+
 ## SPIKE remaining lifecycle boundaries — 2026-10-13
 
 Continuation candidate `lane/spike-g02-output-stop-20261014` stays in this
@@ -4376,6 +4418,40 @@ native source and dependency pins are preserved. The receipts qualify the frozen
 consumer and this finite fix, not every later package. Full G02, other images/
 backends/final-sampling/generation, physical/reference, G05 and release remain open.
 
+
+## SPIKE G03 sandbox and editor UI qualification — 2026-10-15
+
+CLAIMED — Codex SPIKE integration, branch `docs/spike-g03-ui-claim-20261015`.
+Implementation starts after PR948, PR962 and the remaining G02 acceptance review.
+Contract: [G03](docs/SPIKE-STATUS-AND-LANES.md#g03--qualify-usable-sandbox-and-responsive-editor-controls).
+First inventory working features in the actual rendered UI; fix demonstrated
+gaps rather than replacing existing controls or adding unsupported backends.
+
+Envelope: this ledger; `docs/SPIKE-ARENA.md` and
+`docs/SPIKE-STATUS-AND-LANES.md`; SPIKE presentation, sandbox editing/persistence,
+view switching and bounded Identify feedback in
+`overlay/scratch-gui/src/components/tw-pseudocode/{spike-arena-pane,spike-simulator-pane,spike-port-monitor}.jsx`;
+SPIKE-only text in `overlay/scratch-gui/src/lib/spike-arena/l10n.js`; focused
+`test/spike-arena-{3d-pane,pane-units}.test.mjs` and new scoped UI controls.
+In shared `pseudocode-importer.jsx`, only SPIKE entry/run/import toolbar labels
+and SPIKE-specific report presentation belong here. In shared
+`components/gui/gui.jsx`, only demonstrated SPIKE dock sizing/visibility defects
+belong here. Preserve other owners' Arcade/MakeCode/importer/lexical/type work
+and use only existing tracked package twins through repository-prescribed writers.
+Any wider shared-file or model change needs a separately coordinated envelope.
+
+Acceptance: free sandbox entry; shared 2D/3D world and one firmware owner;
+backend/topology admission; reset/edit/save/reopen; narrow desktop/mobile widths;
+long errors and conversion reports; keyboard/touch; EN/DE labels; explicit
+image/backdrop selection, clear import actions and compact run/undo controls;
+a usable right pane at 50–75 percent width. Identify A–F must show its actual
+observable boundary and a bounded failure instead of an indefinite pending state.
+Qualify real rendered behavior and relevant installed ownership paths; retain
+G02 regressions, immutable pins and product budgets. Merge this claim before
+implementation and require all enabled exact-head checks before integration.
+The separately claimed shared project-world work keeps its ownership. This
+claim changes no executable, dependency, fixture, capture or workflow and makes
+no fresh guest, performance, physical, reference, release or licence claim.
 
 ## SPIKE G02 compiled-model MicroPython desktop profile — 2026-10-15
 
