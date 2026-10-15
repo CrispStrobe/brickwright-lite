@@ -19,13 +19,18 @@ compiler used by that hosted editor evidence.
 
 ## Current method and qualification frontier — 2026-10-15
 
+Exact source `Math.idiv` now has [bounded native conversion and current-edit
+qualification](compatibility/arcade-source-math-idiv.md). A nested named helper
+capturing an outer parameter remains an explicit failing case; original-runtime
+and visible-authoring gates are open.
+
 Start with the [partial closure plan](ARCADE-PARTIAL-CLOSURE-PLAN.md) and
 [LANES.md](../LANES.md). The raw corpus remains **147 translated / 36 partial /
 one parse failure** with immutable inputs. A conservative 20-row floor contains
 external asset references absent from those raw files. Use authentic project
 context to investigate them; do not repair snippets or relabel the raw census.
 
-The latest separate 29-project profile at development source `de740879`, using
+The latest separate 29-project profile at development composition `36805661`, using
 the complete canonical compiler `8b620dd`, selects the same retained
 original-compiler successes: **20 source/Creator clean, 20 current-export clean
 after clean input, 19 complete pure routes clean**. All twenty clean-input
@@ -33,7 +38,9 @@ exports and nineteen complete identities from `d14e9ccf` remain clean. Two
 already partial graphs now receive explicit Array export diagnostics; neither
 was a complete case. See [the ten incomplete routes](compatibility/arcade-current-remaining-project-gaps.md)
 and [current Array export authority](compatibility/arcade-array-current-export-authority.md).
-It exercises import, Creator, Code feedback,
+The same identities remain clean after the source wait and Math.idiv composition;
+actual Creator `unparsed` diagnostics are now retained as well. This does not
+promote a whole project. It exercises import, Creator, Code feedback,
 saved Blocks/assets and current export/reimport, with all diagnostic channels
 retained. It runs no SDK, native game or GUI. The historical `a32d6ef0a` profile
 had eighteen complete routes; `b1ef5e4ea` measured

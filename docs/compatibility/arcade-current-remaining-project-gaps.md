@@ -34,6 +34,23 @@ and cannot pass a clean gate. Usable downstream graphs are inspected even after
 a diagnostic, and are labeled partial. A required stage which throws leaves its
 dependent outputs unavailable. Missing stages are never counted as clean.
 
+## Combined-source regression check
+
+The same 29 inputs were checked once more at development composition `36805661`
+with the unchanged complete canonical compiler `8b620dd`. All twenty clean
+source/Creator routes, twenty clean-input exports and nineteen complete pure
+identities remain clean. No partial-input graph exports cleanly. All measured
+stage flags and the same eight exception identities agree with `de740879`.
+The run completed in 48.121 seconds with all 7,340 file guards unchanged.
+
+The reader now also retains the actual Creator `unparsed` channel: 76 returned
+channel observations include eleven entries across five already incomplete
+projects. Six already partial sources gain explicit Math.idiv argument
+obligations. These diagnostics are preserved; the previous absence of an
+observed channel is not retroactively credited as a pass. Eight input tamper
+controls and eleven diagnostic controls remain in place. This check ran no
+native game, SDK or browser and closes no whole-project gap.
+
 ## Ten incomplete project routes
 
 These rows describe capability groups, not counts of independent missing APIs.
@@ -49,7 +66,7 @@ Repeated diagnostics from complete helper dependencies remain in the evidence.
 | [Turkey](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/turkey-jr.md#10) (`b8a65f49`) | Source / Creator | Carnival classes and callbacks, genuine Font / SDK producer contracts and unresolved helper calls. |
 | [Birthday](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/birthday.md#18) (`c2576ea3`) | Source / Creator | Carnival classes and callbacks, genuine Font / SDK producer contracts and unresolved helper calls. |
 | [betterSettings](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-3/lab0304-part3.md#1) (`c88488d3`) | Source / reimport | Primitive Throw, typed Array formals, actual Settings Array / Undefined / Null results and refinement. The partial export also exposes an unproved String.concat input. |
-| [Sparks](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/sparks-jr.md#14) (`d90dfaf5`) | Source / export | Exact Math.idiv and Number text producers; callback forwarding, HUD visibility, renderable lifetime, screen.isMono and Font ownership. |
+| [Sparks](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/sparks-jr.md#14) (`d90dfaf5`) | Source / export | Remaining Math.idiv argument producers and Number text producers; callback forwarding, HUD visibility, renderable lifetime, screen.isMono and Font ownership. |
 | [Bubbles](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/bubbles.md#10) (`faf26051`) | Source / reimport | Mixed named, Arrow, class and generic handlers / collections. Its newly observed partial export contains invalid 0.length syntax; valid authored reachability still needs investigation. |
 
 ## Newly complete conversion route and retained partial failures
@@ -103,12 +120,14 @@ both operands before division. The development correction exports the current
 connected expression, including any explicit operand conversions. A regression
 first reproduced result zero instead of two for `(1 / 0.5) | 0`; nine focused
 pure emitter tests then passed, including operand order and a changed input.
-This is not Arcade `Math.idiv` import, original-runtime agreement, a native game,
-GUI qualification or a corpus promotion. Full API lowering remains open.
+That emitter result alone did not qualify Arcade `Math.idiv` import. The later
+[exact source implementation](arcade-source-math-idiv.md) now passes two bounded
+native conversion/edit/export controls. Nested captured named helpers remain
+held. Original-runtime agreement, visible GUI and whole-case promotion are open.
 
 Next, qualify consumer adoption and authoring of the primitive formal protocol
-and implement exact division producers,
-then the typed Array / Settings and class / handler / Font groups. Preserve real
+and complete the remaining exact Number producers and nested captured helper
+ownership, then the typed Array / Settings and class / handler / Font groups. Preserve real
 bodies and qualify every caller, writer and runtime boundary. Production compiler
 adoption, Code / Blocks authoring, graphics editing, save / reopen and original
 exported gameplay retain their own gates. No original-source restoration,
