@@ -57,3 +57,23 @@ test('compound syntax does not grant opaque operands or erase the actual factory
         'function combine(left:number,right:number){return left|right}function make(seed:number):()=>number{let value=seed;return()=>{value|=4;return value}}let callback=make(new combine(1,2));let result=callback();'
     ])assert.ok(arcadeToPseudocode(source).unsupported.length,source);
 });
+
+
+test('negative Number factory operands retain recursive producer and initialization proof',async()=>{
+    const source='function make(seed:number):()=>number{let current=-seed;return()=>{current|=-2;return current}}let input=-5.75;let callback=make(-input);let result=callback();';
+    const runs=[],execute=async imported=>{assert.deepEqual(imported.unsupported,[]);const run=await runProgram(imported.code,{frames:35,storage:true});runs.push(run);check(run,{input:-5.75,result:-1});return run;};
+    try {
+        const imported=arcadeToPseudocode(source),run=await execute(imported);
+        await execute({...imported,code:run.creator.decompile(JSON.parse(run.vm.toJSON()))});
+        const saved=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());
+        run.vm.stopAll();await run.vm.loadProject(saved);run.vm.greenFlag();await stepFrames(run.vm,35);check(run,{input:-5.75,result:-1});
+        const fresh=await execute(imported);fresh.vm.stopAll();await fresh.vm.loadProject(saved);fresh.vm.greenFlag();await stepFrames(fresh.vm,35);check(fresh,{input:-5.75,result:-1});
+        const exported=projectToArcade(JSON.parse(run.vm.toJSON()));assert.deepEqual(exported.unsupported,[]);
+        await execute(arcadeToPseudocode(exported.files));
+    } finally {for(const run of runs){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+    const factory='function make(seed:number):()=>number{let current=seed;return()=>{current|=2;return current}}';
+    for(const input of ['screen','image.create(1,1) as any','"5" as any','undefined as any'])
+        assert.ok(arcadeToPseudocode(factory+`let callback=make(-(${input}));let result=callback();`).unsupported.length,input);
+    for(const body of ['let current:number;current=-current;', 'let current:number=undefined;current=-current;'])
+        assert.ok(arcadeToPseudocode(`function make(seed:number):()=>number{${body}return()=>{current|=2;return current}}let callback=make(2);let result=callback();`).unsupported.length,body);
+});

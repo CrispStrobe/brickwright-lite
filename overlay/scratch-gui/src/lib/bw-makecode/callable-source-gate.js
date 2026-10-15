@@ -32,6 +32,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
         if(!node)return false;
         if(node.type==='Parenthesized')return numericExpression(node.expression);
         if(node.type==='Number')return true;
+        if(node.type==='Unary'&&node.op==='-')return numericExpression(node.argument);
         if(node.type==='Identifier') {
             const binding=flow.lexical.references.get(node),owner=flow.lexical.scopes.get(node)?.functionOwner;
             // Only the existing factory/Arrow initialization witness can
@@ -91,6 +92,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
         const initializedExpression=node=>numericExpression(node)&&(()=>{
             if(node.type==='Identifier')return initialized.has(flow.lexical.references.get(node));
             if(node.type==='Number')return true;
+            if(node.type==='Unary'&&node.op==='-')return initializedExpression(node.argument);
             if(node.type==='Binary')return initializedExpression(node.left)&&initializedExpression(node.right);
             if(node.type==='Call')return node.args.every(initializedExpression);
             if(node.type==='Parenthesized')return initializedExpression(node.expression);
