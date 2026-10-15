@@ -16,6 +16,7 @@ module.exports = makeExt(`// Name: Arcade
   const fontSelectorOwner = dependencies.fontSelectorOwner;
   const spriteUpdateHosts = new WeakMap();
   const classCallableHosts = new WeakMap();
+  const managedReturnHosts = new WeakMap();
   const speechPalette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609',
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
@@ -30,6 +31,7 @@ module.exports = makeExt(`// Name: Arcade
   class Arcade {
     constructor(runtime) {
       this._runtime = runtime;
+      managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
       this._sourceScalarCells = dependencies.createSourceScalarCells(runtime, Scratch.BWValues, dependencies.sourceReferenceTypes, dependencies.sourceCallableCells);
       this._resetProgramClock();
       this._bufferSuspended = false;
@@ -137,8 +139,8 @@ module.exports = makeExt(`// Name: Arcade
           this._terrainWaits.clear();
           if(this._foreverTimer!==undefined)clearTimeout(this._foreverTimer);this._foreverTimer=undefined;
         };
-        runtime.on('PROJECT_STOP_ALL', () => {this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();});
-        runtime.on('RUNTIME_DISPOSED', () => {this._sourceScalarCells.dispose();this._sourceTypeOf.invalidateInputs();this._sourceTypeOfDisposed=true;});
+        runtime.on('PROJECT_STOP_ALL', () => {this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();managedReturnHosts.get(this).invalidate();});
+        runtime.on('RUNTIME_DISPOSED', () => {this._sourceScalarCells.dispose();this._sourceTypeOf.invalidateInputs();this._sourceTypeOfDisposed=true;managedReturnHosts.get(this).dispose();});
         runtime.on('PROJECT_STOP_ALL', () => this._stopProgramClock());
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
         runtime.on('PROJECT_STOP_ALL', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._musicHost?.stopAll();});
@@ -204,14 +206,15 @@ module.exports = makeExt(`// Name: Arcade
           this._changed();
         };
         runtime.on('PROJECT_LOADED', () => {
-          this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();
+          managedReturnHosts.get(this).dispose();managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
+          this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();managedReturnHosts.get(this).invalidate();
           // Registry publications belong to the loaded project. GUI artwork
           // restoration repopulates them after successful deserialization.
           runtime.bwArcadeAnimationResources = new Map();
           reset();
           this._bufferSuspended = false;this._sourceTypeOfDisposed=false;
         });
-        runtime.on('PROJECT_START',()=>{if(!this._sdkFontValues?.isDisposed())this._sdkFontValues?.startProgram();reset();this._sourceScalarCells.initialize();this._sourceTypeOf.snapshotInputs();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
+        runtime.on('PROJECT_START',()=>{if(!this._sdkFontValues?.isDisposed())this._sdkFontValues?.startProgram();reset();this._sourceScalarCells.initialize();this._sourceTypeOf.snapshotInputs();managedReturnHosts.get(this).start();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
         runtime.on('targetWasRemoved', target => {
           for (const [id, entry] of this._imageSkins) if (entry.target === target) this._clearImage(id);
           for (const [id, entry] of this._speech) if (entry.target === target) this._clearSpeech(id);
@@ -2052,6 +2055,7 @@ module.exports = makeExt(`// Name: Arcade
       let classSignature=null;
       try {classSignature=classCallableHosts.get(this)?.bind(thread,target,name,thread.stackFrames[0].params,thread.bwObjectConstruction,values);}
       catch(error){runtime.sequencer.retireThread(thread);return this._objectError(error);}
+      managedReturnHosts.get(this).bind(thread,target,name,definition,util.thread);
       const managedCaller=util.thread;
       const complete=value=>{if(classSignature && (managedCaller.isKilled || !runtime.threads.includes(managedCaller)))return Scratch.BWValues.UNDEFINED;try{return classCallableHosts.get(this)?.result(classSignature,value) ?? value;}catch(error){return this._objectError(error);}};
       thread.bwArcadeEvent = util.thread?.bwArcadeEvent;
@@ -2083,7 +2087,7 @@ module.exports = makeExt(`// Name: Arcade
       const thread = util?.thread;if (!thread) return;
       let frame = thread.stackFrames.length - 1;
       while (frame >= 0 && thread.stackFrames[frame].params == null) frame--;
-      if (frame < 0 || (frame === 0 && thread.stackFrames[0].waitingReporter)) {thread.bwReturnValue = args.VALUE;util.sequencer.retireThread(thread);return;}
+      if (frame < 0 || (frame === 0 && thread.stackFrames[0].waitingReporter)) {thread.bwReturnValue = managedReturnHosts.get(this).value(args,util);util.sequencer.retireThread(thread);return;}
       // A command procedure discards its value but an early return must leave
       // only this invocation, including any nested loop/control frames.
       while (thread.stack.length > frame + 1) thread.popStack();
@@ -5850,6 +5854,7 @@ module.exports = makeExt(`// Name: Arcade
   sourceReferenceTypes: require('./source-reference-types'),
   createSourceScalarCells: require('./source-scalar-cells'),
   createSourceTypeOfValues: require('./source-typeof-values'),
+  createManagedReturnValues: require('./managed-return-values'),
   createSceneFrameContexts: require('./scene-frame-contexts'),
   createControlEvents: require('./control-events'),
   createPollEvents: require('./poll-events'),
