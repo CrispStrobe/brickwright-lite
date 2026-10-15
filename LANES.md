@@ -1,3 +1,44 @@
+## A10: micro:bit V2 serial consumer adoption — 2026-10-15
+
+CLAIMED — Codex, branch `lane/a10-v2-serial-consumer-20261015`, base `015e1bdc7`.
+After the owning LabWired UARTE source qualifies and lands, adopt its one-time
+qualified deterministic engine release and the resulting exact bw-board package.
+Remove the V2 serial withholding in `scripts/makecode.mjs` and the
+Code-tab status text only with that artifact. Require exact greeting/counter
+serial from real compiled MakeCode firmware, preserving display, guest-time,
+fault, firmware identity and board-model assertions. Keep A11's export changes.
+
+Envelope: this ledger and `docs/OPEN-TASKS-2026-09-29.md`;
+`scripts/sync-labwired-wasm.mjs` PIN/TAG/EXPECT and
+`.github/workflows/target-performance.yml` matching engine identity;
+`vendor-pins.json`, package/lock specifications and existing generated
+provenance/census/matrix/report/adoption-test surfaces changed by canonical
+bw-board pin writers; `scripts/makecode.mjs`, `scripts/lib/makecode-run.mjs`,
+`test/makecode-cli-run.test.mjs`,
+`overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
+and its tracked twin; `scripts/verify-makecode.mjs` serial assertions only.
+No copied engine, invented source/hash, SDK rebuild, unrelated pin movement,
+physical-accuracy claim or optional motion run. Preserve all existing failures;
+all enabled final-head checks and actual released-engine/consumer guest results
+remain required before product integration.
+
+## A11: Code-tab MakeCode export uses the project target — 2026-10-15
+
+CLAIMED — Codex, isolated branch `lane/a11-project-target-export-20261015`,
+base `c6f1ff5c3`. Single-board Code-tab MakeCode export selects the existing
+micro:bit, Calliope or EV3 emitter from the parsed project device and writes
+matching project metadata and editor guidance. Preserve unchanged imported
+original files for their own supported target and the multi-board early return.
+Envelope: `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
+and its tracked `packages/` twin; a focused export-routing helper under
+`overlay/scratch-gui/src/lib/bw-makecode/` if needed; focused tests;
+`scripts/verify-makecode.mjs`; existing browser CI wiring only if needed;
+this ledger and `docs/OPEN-TASKS-2026-09-29.md`. Do not change exporters,
+applied-device routing, board model, dependency pins or another lane's behavior.
+Acceptance: micro:bit/Calliope/EV3 routing and metadata controls, meaningful
+wrong-target negative, actual built-browser Calliope download compiled by its
+own PXT target, all enabled exact-head checks. Merge claim before product edits.
+
 ## Shared simulated world, step 1 — project world in Lite — 2026-10-15
 
 CLAIM — Claude, branch feat/world-step1-20261015, [local path omitted]
@@ -469,6 +510,99 @@ binding, unknown mutation attributes or a project-wide typing switch. Preserve
 independent source phase, class/accessor, Scene/controller and supplier lanes.
 The documentation claim is merged. Implementation and focused qualification are
 active; no whole-game promotion.
+
+## Arcade ordinary procedure parameter constraints — 2026-10-15
+
+CLAIM — corpus-gap lane, branch `docs/arcade-procedure-constraints-20261015`.
+Bounded [ownership and acceptance contract](docs/compatibility/arcade-procedure-parameter-constraints.md)
+for one explicit editable ordinary-procedure parameter-constraint protocol and
+its canonical word, consumer/source/native/current-export integration, controls,
+and hosted GUI journey. Bind actual unique prototypes and ordered formals;
+retain constraints separately from actual producer facts and validate all
+callers, aliases, and local/captured writers. No annotation value seed, hidden
+source restoration, helper pruning, generic/reference/callable widening, or
+unrelated pin changes. Old already-erased projects remain refused until an
+actual constraint is authored and proved. Implementation is held until this
+claim lands normally; supplier, selected SDK, consumer, and GUI qualification
+are separate gates. Preserve every other lane.
+## Arcade Array.map values and callback iteration — 2026-10-15
+
+PROPOSED — Codex Array-map value lane. Merge this docs-only claim before product
+changes. Contract: [Array-map values](docs/compatibility/arcade-array-map-values.md).
+Own focused map lowering, optional actual Array/element producer facts, narrowly
+coordinated sequencing hooks and source/current-Code/Blocks/SB3/export controls.
+Preserve actual allocation/binding/all-writer authority, cached initial length,
+current indexed reads, callback order and fresh result/alias identity. Audit
+existing forEach/filter only against concrete selected-helper counterexamples.
+Reference-valued and generic results remain explicit residuals until proved;
+annotations, method names and opaque values do not grant Array authority.
+Coordinate shared source analysis and callable owners. No canonical physical
+Number-input Array changes, pin/vocabulary adoption or whole-context promotion.
+
+## Arcade discarded value statements — 2026-10-15
+
+CLAIM — root-owned bounded discarded-value expression lane.
+[Ownership and acceptance contract](docs/compatibility/arcade-discarded-value-statements.md)
+for once-only evaluation of already supported expressions in statement position,
+with proper activation ownership, collision-free generated storage if a current
+sink qualifies, current edited export and reversible Code/Blocks/SB3. Preserve
+selected PXT staging and effects, ordinary assignments/updates/command calls,
+and all independent producer/current-body proofs. Unknown bindings, operators,
+opaque coercions and unsupported constituent expressions remain refused.
+If a proper local sink cannot preserve the contract, a canonical editable
+command requires its own qualified supplier route; no vocabulary or pin move
+is assumed. Implementation waits for this claim's normal qualified merge.
+Procedure constraints, Array.map and independently owned API lanes remain separate.
+
+## Arcade Throw statements and exception handoff — 2026-10-15
+
+CLAIM — root-owned bounded Throw syntax and native exception handoff lane.
+[Ownership and acceptance contract](docs/compatibility/arcade-throw-statements.md)
+for a proper editable canonical throw command, actual supported primitive values,
+once-only operand effects, source/current-export integration and minimal managed
+call/engine failure handoff. Unwind real affected stock and managed activations,
+settle owned continuations exceptionally exactly once, and preserve ticket,
+capture, Stop/reload and current-input ownership. Determine current/other-fiber
+termination from the selected original; emitting an error and returning Undefined
+or normally completing the throwing child is insufficient. Keep neighboring
+try/catch/finally and unsupported reference/coercion forms explicitly refused.
+Implementation waits for this claim's normal qualified merge; supplier, original
+and visible GUI gates remain independent. No Array-map, parameter-constraint,
+discarded-value, Image or unrelated device scope is absorbed.
+
+## Owned SDK Sprite values in ordinary class callbacks — 2026-10-15
+
+CLAIM — root-owned bounded physical Sprite producer and ordinary class/callback
+bridge, coordinated with the existing class, Image and native ownership lanes.
+[Ownership and acceptance contract](docs/compatibility/arcade-owned-sprite-class-callables.md)
+requires actual unshadowed Sprite allocation, completed creation, current body and
+eligible scene ownership, and a private issued capability distinct from raw ID
+text. Current export signature/role constraints never issue runtime authority.
+Preserve fields, aliases, captures, arguments/results and single-use completion
+proofs; initially prove only x/y, width/height and setPosition operations listed
+in the contract. Preserve actual Stop/restart/Load and separate destruction/scene
+lifetimes, rejecting unqualified transfers and stale/forged ingress. Keep default
+admission closed until current source/Blocks, editable portable routes, native
+lifetime and genuinely new selected originals agree. No Sprite inheritance,
+reference Arrays, broad SDK APIs or complete-context promotion is included.
+Any required supplier schema remains separately claimed and qualified.
+
+## Ordinary handler-record Arrays with primitive callbacks — 2026-10-15
+
+CLAIM — root-owned bounded ordinary handler-record collection bridge.
+[Ownership and acceptance contract](docs/compatibility/arcade-handler-record-arrays.md)
+starts with one-dimensional actual Arrays of one completed ordinary handler
+class and one exact primitive or Void callback signature. Preserve shared Array,
+record, closure and captured-cell identities, all actual writers and callers,
+read presence, alias replacement/removal and exactly-once serial completion,
+including pause. Existing metadata and Array transports never issue callback
+or element authority; validate raw ingress and actual current resource/graph
+ownership before normalization. Keep direct callable Arrays, generic class
+containers, nested/mixed elements and SDK values refused. Primitive Map and
+future owned Sprite capability remain independent contracts. Implementation waits for normal qualified claim merge. Default admission waits
+for full portable/current-edit/lifecycle proof, independent review and genuinely
+new selected-original controls; no complete library or corpus promotion follows
+from the first registry subset.
 
 ## Native Arcade splash and long text — 2026-10-13
 
@@ -4225,9 +4359,9 @@ backends/final-sampling/generation, physical/reference, G05 and release remain o
 
 ## SPIKE G02 compiled-model MicroPython desktop profile — 2026-10-15
 
-PROPOSED — Codex, isolated branch
-`lane/spike-g02-compiled-micropython-claim-20261015`. Continue G02 after PR936
-is adopted. Merge this claim before implementation. The existing desktop
+IN PROGRESS — Codex, isolated implementation branch
+`lane/spike-g02-compiled-micropython-20261015`. Claim PR946 and predecessor PR936
+are merged. The existing desktop
 MicroPython launcher always includes source models; the retained desktop
 runtime already contains compiled Prime models. Earlier qualification kept
 those compiled and legacy source-overlay routes separate. Support metadata
@@ -4257,6 +4391,18 @@ from actual native attachment transitions. All enabled exact-head CI and the
 affected installed checks must pass before matched-head integration. Preserve
 failed originals and existing budgets; no full SDK, reference, physical,
 distribution/licence, release or whole-G02 claim from a finite profile slice.
+
+The implementation adds an explicit native descriptor pin, offline native
+platform assembly from immutable public inputs, and preserved legacy support.
+The 25 packaging controls, two actual Rust planner controls and meaningful
+guard/order-removal negatives pass. The source-bound installed Linux package
+passes six real MicroPython contexts: Code/raw-REPL completion, guest error,
+Stop during final sampling, two authored client-delivery identity adversaries
+and distinct fresh recovery. A wrong-caller native UART generation request is
+refused while the original attachment remains ready. An independent reader
+checks original UART envelopes, six completed startups, distinct generations
+and ownership release. Exact-head CI remains required before integration; this
+finite profile slice does not close G02 or qualify every evolving-main package.
 
 ## Arrays physical Number input boundary — 2026-10-15
 
@@ -4296,3 +4442,41 @@ No STM32/Arcade/SPIKE/world implementation, new workflow, unrelated package,
 deployment or physical-accuracy claim. Publish claim before implementation.
 This is task 2 of the ordered circuit campaign in upstream CUI documentation;
 later stratified-regression and realism work needs its own measured envelope.
+
+
+## Qualified 386 consumer and media workflow continuation — 2026-10-15
+
+CLAIM — Codex x86, staged implementation after merged ownership and board
+qualification. Preserve PR961's coordinated supplier ownership; this claim
+owns no package/lock/vendor/generated matrix pin update. Obtain a recorded
+handoff before a later adoption change. Work follows the
+[contract](docs/X86-NEXT-LANES.md#qualified-386-debugging-and-media-workflows).
+Own focused debugger presentation in canonical overlay
+`src/components/tw-pseudocode/{debug-drawer,debug-panel}.jsx`, additive
+`src/lib/bw-debug/memory-view.js` and focused
+`test/i80386-debugger-user-paths.test.mjs`. Paths under `src/` here are relative
+to `overlay/scratch-gui`; tracked `packages/scratch-gui` mirrors follow the
+repository's generation policy, never independent implementation.
+
+A separately reviewed metadata extension in this section also owns canonical
+`overlay/scratch-gui/src/lib/bw-debug/debug-capabilities.js` and its existing
+`test/debug-capabilities.test.mjs` normalization controls. Preserve schema-1
+legacy spaces; retain validated optional physical bounds/kind/read-size fields
+without inferring them from code run-to. Absent metadata keeps legacy behavior;
+presence of any new metadata field requires complete strict validation, so
+partial or malformed descriptors fail closed. Lengths are nonnegative safe
+integers; allow the one-past endpoint only for an empty read, not a byte or UI
+jump/page start. Board target changes wait for PR599's
+merge and explicit owner handoff, with a separate new board test.
+
+Later in this same serialized lane, own new
+`src/lib/bw-machines/raw-hdd-download.js`,
+`test/i80386-hdd-download.test.mjs`, and a narrow export action in the already
+owned debug panel; extend `scripts/verify-i80386-local-hdd-gui.mjs` for actual
+download/reload acceptance. DOS package work owns new
+`src/lib/bw-machines/{local-dos-package,dos-package-zip}.js`,
+`test/local-dos-package.test.mjs`, a narrow package chooser in
+`src/components/tw-pseudocode/machine-manager.jsx`, and new
+`scripts/verify-dos-package-gui.mjs`. Claim any extra shared runner, further capability
+schema, further board metadata or dependency changes separately before coding.
+No private media, ISO picker, native addon backend or general OS claim.
