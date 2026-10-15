@@ -1,3 +1,4 @@
+import {inspectNamedCallableCurrent} from './named-callable-current.js';
 import {validateCallableLexicalPlan} from './callable-lexical-plan.js';
 import {validateClassCallablePlan} from './class-callable-plan.js';
 
@@ -90,11 +91,12 @@ export function callableDeclarationEnvelope(plan, site, {classPrototype=false}={
 }
 export function validateCallableDeclarationEnvelope(envelope, {classPrototype=false}={}) {
     if (!envelope || Object.keys(envelope).some(key => !['schema','version','site','plan'].includes(key)) ||
-        envelope.schema !== 'bw-callable-declaration' || (envelope.version !== 1 && !(classPrototype&&envelope.version===2)) ||
+        envelope.schema !== 'bw-callable-declaration' || (![1,3].includes(envelope.version) && !(classPrototype&&envelope.version===2)) ||
         envelope.version!==envelope.plan?.version) fail('unknown declaration envelope');
     return callableDeclarationEnvelope(envelope.plan, envelope.site,{classPrototype});
 }
-export function inspectCallableExportGraph(target, plan, literalInput, {classProvider=null}={}) {
+export function inspectCallableExportGraph(target, plan, literalInput, {classProvider=null,project=null}={}) {
+    if(plan?.version===3){validateCallableLexicalPlan(plan);return inspectNamedCallableCurrent(target,plan,project);}
     const classPrototype=plan?.version===2;
     if(classPrototype&&!classProvider)fail('class plan requires its actual current class provider');
     validatePlan(plan,classPrototype&&!!classProvider);
@@ -283,9 +285,9 @@ export function createCallableLexicalEmitter(graph, compileCurrentBody) {
                 mutationSnapshot(graph,blockId)===proof.snapshot;
         },
         create: blockId=>{
-            const site=plan.sites.find(site=>graph.creates.get(site.id)===blockId);
+            const site=graph.creationSites?.get(blockId)||plan.sites.find(site=>graph.creates.get(site.id)===blockId);
             if(!site || site.createdIn!==owner.id)fail('edited creation is not owned here');
-            return emit(owners.get(site.owner));
+            return plan.version===3?owners.get(site.owner).sourceName:emit(owners.get(site.owner));
         }
     });
     const emit = owner => {
@@ -311,6 +313,10 @@ export function createCallableLexicalEmitter(graph, compileCurrentBody) {
         } finally { active.delete(owner.id); }
     };
     return {
+        moduleContext:root=>{
+            if(plan.version!==3||root.opcode!=='arcade_whenSourceStarts'||!Object.values(graph.target.blocks).includes(root))fail('named module context requires its actual source root');
+            return {statementTerminator:true,create:id=>{const site=graph.creationSites.get(id);if(!site)fail('unowned named module read');return owners.get(site.owner).sourceName;},discardLocal:id=>graph.moduleDiscards.has(id),local:()=>fail('unowned module local'),capture:()=>fail('named module has no captures')};
+        },
         contextForProcedure:procedure=>{
             const owner=plan.owners.find(owner=>owner.procedure===procedure);
             if(!owner || !['method','constructor'].includes(owner.kind) || !graph.classProvider || !graph.procedures.has(owner.id))
@@ -319,9 +325,9 @@ export function createCallableLexicalEmitter(graph, compileCurrentBody) {
         },
         declarations:()=>plan.owners.filter(owner=>owner.kind==='declaration' && owner.parent===plan.module).map(emit),
         moduleCreate:blockId=>{
-            const site=plan.sites.find(site=>graph.creates.get(site.id)===blockId);
+            const site=graph.creationSites?.get(blockId)||plan.sites.find(site=>graph.creates.get(site.id)===blockId);
             if(!site || site.createdIn!==plan.module) fail('creation is not module-owned');
-            return emit(owners.get(site.owner));
+            return plan.version===3?owners.get(site.owner).sourceName:emit(owners.get(site.owner));
         }
     };
 }
@@ -337,6 +343,7 @@ export function callableVariableEnvelope(plan, bindingId) {
 // Unknown edited reporters fail explicitly; inert signatures never authorize a
 // replacement body or invent an opaque reporter's type.
 export function validateCallableCurrentBodyTypes(graph,literalInput) {
+    if(graph.plan.version===3){inspectNamedCallableCurrent(graph.target,graph.plan);return;}
     const {plan,target,procedures}=graph,blocks=target.blocks;
     currentTypeProofs.delete(graph);discardedMutationProofs.delete(graph);generatedLocalProofs.delete(graph);const discarded=new Map(),generated=new Map(),generatedNames=new Map();
     const named=name=>({kind:'named',name}),same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);

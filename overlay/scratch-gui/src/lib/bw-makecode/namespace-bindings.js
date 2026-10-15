@@ -7,7 +7,7 @@ import {parseCallableType, mapCallableType, renderCallableType} from './callable
  * members are lowered. Escapes, computed access and unresolved/private members
  * retain an explicit diagnostic instead of acquiring a guessed binding.
  */
-export const lowerNamespaceBindings = (program, {spriteKinds = false, textSpriteInitializer = false} = {}) => {
+export const lowerNamespaceBindings = (program, {spriteKinds = false, textSpriteInitializer = false, namedFunctionValues = false} = {}) => {
     // Ordinary programs already have their binding behavior in the translator.
     // Do not impose namespace declaration rules on them (including collected
     // block-generated projects that redeclare a top-level sprite variable).
@@ -54,6 +54,8 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
     const namespaceScopes = new WeakMap();
     const enumScopes = new WeakMap();
     const errors = [];
+    // Actual namespace symbols mint this mapping; generated name spellings do not.
+    const namedFunctionOrigins = new WeakMap();
     const warnings = [];
     const warn=message=>{if(!warnings.includes(message))warnings.push(message);};
     const classSymbols=[];
@@ -253,7 +255,7 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
                 object ? {type: 'Member', object, name} : {type: 'Identifier', name}, null);
             if (symbol?.kind === 'invalid') return node;
             if (symbol?.kind === 'value') {
-                if (symbol.procedure && context !== 'callee') fail(`namespace procedure ${symbol.name} used as a runtime function value`);
+                if (symbol.procedure && context !== 'callee' && !namedFunctionValues) fail(`namespace procedure ${symbol.name} used as a runtime function value`);
                 if(symbol.hoistedLiteral && symbol.bindingScope!==root && context!=='write')return {...symbol.hoistedLiteral};
                 return {type: 'Identifier', name: symbol.name, assetPath: symbol.sourcePath};
             }
@@ -291,7 +293,11 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
         if (node.type === 'FunctionDeclaration' || node.type === 'FunctionExpression') {
             const generics = new Set((node.typeParameters || []).map(parameter=>parameter.name));
             const local = childShadows(shadows, [...(node.params || []), ...functionVars(node.body), ...generics]);
-            return {...node, paramTypes:Object.fromEntries(Object.entries(node.paramTypes || {}).map(([name,type])=>[name,classType(type,generics)])), returnType:classType(node.returnType,generics), ...(node.type === 'FunctionDeclaration' && namespaceBody ? {name:scope.symbols.get(node.name)?.name || node.name} : {}), body: rewriteBody(node.body, scope, local)};
+            const rewritten = {...node, paramTypes:Object.fromEntries(Object.entries(node.paramTypes || {}).map(([name,type])=>[name,classType(type,generics)])), returnType:classType(node.returnType,generics), ...(node.type === 'FunctionDeclaration' && namespaceBody ? {name:scope.symbols.get(node.name)?.name || node.name} : {}), body: rewriteBody(node.body, scope, local)};
+            const symbol = node.type === 'FunctionDeclaration' && namespaceBody && scope.symbols.get(node.name);
+            if (namedFunctionValues && symbol?.functionNode === node)
+                namedFunctionOrigins.set(rewritten, Object.freeze({declaration:node, kind:scope.path.length?'namespace':'module', path:symbol.sourcePath, name:symbol.name}));
+            return rewritten;
         }
         if (node.type === 'Block') return {...node, body: rewriteBody(node.body, scope, shadows)};
         if (node.type === 'If') return {...node, test: rewrite(node.test, scope, shadows), consequent:rewriteBody(node.consequent, scope, shadows), alternate:rewriteBody(node.alternate || [], scope, shadows)};
@@ -425,5 +431,5 @@ export const lowerNamespaceBindings = (program, {spriteKinds = false, textSprite
         const kindDeclarations=body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls.filter(decl=>decl.spriteKindName));
         body.unshift(...kindDeclarations.map(decl=>({type:'SpriteKindReset',name:decl.name})));
     }
-    return errors.length ? {program:null,unsupported:errors,warnings} : {program:{...program,body},unsupported:[],warnings};
+    return errors.length ? {program:null,unsupported:errors,warnings} : {program:{...program,body},unsupported:[],warnings,...(namedFunctionValues?{namedFunctionOrigins}:{})};
 };

@@ -52,7 +52,7 @@ module.exports={
                     fail('source plan requires fixed declaration metadata');
                 let envelope;try{envelope=JSON.parse(child.fields?.TEXT?.value);}catch(_){fail('malformed source plan metadata');}
                 if(envelope?.schema!=='bw-callable-declaration')continue;
-                if(envelope.version!==1 || !only(envelope,['schema','version','site','plan']))fail('unknown source plan envelope');
+                if(![1,3].includes(envelope.version) || !only(envelope,['schema','version','site','plan']))fail('unknown source plan envelope');
                 const plan=validateCallableLexicalPlan(envelope.plan);
                 if(!plan.sites.some(site=>site.id===envelope.site))fail('foreign source plan site');
                 plans.push(plan);

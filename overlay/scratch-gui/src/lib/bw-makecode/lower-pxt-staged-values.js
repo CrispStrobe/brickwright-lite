@@ -150,6 +150,13 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
             const key=node.type==='Unary'?'argument':'object',result=expression(node[key]);
             return {prefix:result.prefix,value:{...node,[key]:result.value}};
         }
+        // A qualified zero-argument declaration invocation carries an ordered
+        // argument syntax container, not an allocated source Array.
+        if(node.type==='Call' && node.bwCallableIntrinsic==='invoke' && node.args?.length===2 &&
+            node.args[1]?.type==='Array' && node.args[1].items.length===0) {
+            const receiver=expression(node.args[0]);
+            return {prefix:receiver.prefix,value:{...node,args:[receiver.value,node.args[1]]}};
+        }
         if(node.type==='Call'){
             const method=node.callee?.type==='Member' && !namespace(node.callee.object);
             const dynamic=!method && node.callee?.type!=='Identifier' && !namespace(node.callee?.object);
