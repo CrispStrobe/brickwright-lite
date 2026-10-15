@@ -17,9 +17,10 @@ The immutable 184 raw inputs report **147 translated / 36 partial / one parse
 failure**. At least 20 of those partial rows have actual external asset
 references without their definitions in the raw input. Implementation alone
 cannot close that measured floor while the input omits its real project
-context. Preserve raw bytes, statuses and denominator; never invent assets or
-silently substitute an enriched project. The original 142/41/1 checkpoint below
-remains historical evidence.
+context. Preserve the immutable baseline report, raw bytes and denominator.
+Report a new implementation census separately with its actual source identity;
+never relabel the baseline, invent assets or substitute enriched inputs. The
+original 142/41/1 checkpoint below remains historical evidence.
 
 A separate offline whole-project profile at `b1ef5e4ea` selected the 29 authentic
 contexts with retained successful original compilation. It measured **20 clean
