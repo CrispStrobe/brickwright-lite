@@ -68,21 +68,49 @@ const normalizeRunTo = value => {
     return descriptors;
 };
 
+const MEMORY_FIELDS = ['addressSpace', 'addressMin', 'addressMax', 'maxReadBytes'];
+
+// This layer negotiates descriptors only. Targets enforce individual read
+// ranges/lengths; UI callers must honor these bounds before issuing requests.
+const boundedMemory = value => {
+    if (Array.isArray(value)) return null;
+    const snapshot = {};
+    for (const key of ['read', 'write', 'passiveRead', ...MEMORY_FIELDS]) {
+        const field = Object.getOwnPropertyDescriptor(value, key);
+        if (!field || !Object.prototype.hasOwnProperty.call(field, 'value')) return null;
+        snapshot[key] = field.value;
+    }
+    if (snapshot.addressSpace !== 'physical' ||
+        typeof snapshot.read !== 'boolean' || typeof snapshot.write !== 'boolean' ||
+        typeof snapshot.passiveRead !== 'boolean' ||
+        !Number.isSafeInteger(snapshot.addressMin) || snapshot.addressMin < 0 ||
+        !Number.isSafeInteger(snapshot.addressMax) || snapshot.addressMax < snapshot.addressMin ||
+        snapshot.addressMax > 0xffffffff ||
+        !Number.isSafeInteger(snapshot.maxReadBytes) || snapshot.maxReadBytes < 1 ||
+        snapshot.maxReadBytes > 1048576) return null;
+    return snapshot;
+};
+
 const normalizeSpaces = (raw) => {
     const spaces = {};
     const writable = new Set(uniqueStrings(raw.writable));
     if (Array.isArray(raw.spaces)) {
         for (const name of uniqueStrings(raw.spaces)) {
-            spaces[name] = {read: true, write: writable.has(name), passiveRead: null};
+            spaces[name] = Object.freeze({read: true, write: writable.has(name), passiveRead: null});
         }
     } else if (raw.spaces && typeof raw.spaces === 'object') {
         for (const [name, value] of Object.entries(raw.spaces)) {
             if (!value || typeof value !== 'object') continue;
-            spaces[name] = {
+            if (MEMORY_FIELDS.some(key => key in value)) {
+                const descriptor = boundedMemory(value);
+                if (descriptor) spaces[name] = Object.freeze(descriptor);
+                continue;
+            }
+            spaces[name] = Object.freeze({
                 read: value.read === true,
                 write: value.write === true || value.write === 'curated' ? value.write : false,
                 passiveRead: typeof value.passiveRead === 'boolean' ? value.passiveRead : null
-            };
+            });
         }
     }
     return spaces;
