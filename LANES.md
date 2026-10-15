@@ -65,8 +65,9 @@ IMPLEMENTED LOCALLY / CONTINUING — Codex Image domain in the existing
 ordinary class/callable bridge. The claim is merged. Bounded default admission
 is integrated at `2211aeb61`: 119 affected and seven independent controls pass,
 and two byte-identical selected originals retain their compiler evidence.
-Literal-resource producer proof is the active continuation; hosted authoring
-and broader SDK domains remain open. Contract: [owned Image class callbacks](docs/compatibility/arcade-owned-image-class-callables.md).
+Literal-resource proof and exact source/current-artwork originals are now
+integrated at `d011d18fe`; six independent integrated controls pass. Hosted
+authoring and broader SDK domains remain open. Contract: [owned Image class callbacks](docs/compatibility/arcade-owned-image-class-callables.md).
 Own new actual Image producer/owner proof helpers and coordinated narrow source,
 v2 signature/plan, native field/invocation/result, current Blocks and export hooks.
 Preserve primitive/class/callable identity, all-writer and initialization proof,
