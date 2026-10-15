@@ -275,3 +275,148 @@ test('disposal while Blob readback awaits prevents hashing and all URLs', async 
     assert.equal((await pending).refused.code, 'download-disposed');
     assert.equal(hashes, 0); assert.equal(f.calls.urls.length, 0);
 });
+
+// Panel integration: execute exact class methods/onChange body, with only React
+// state batching and runner/browser interfaces stubbed. No JSX/compiler/engine.
+const panelSource = fs.readFileSync(new URL('../overlay/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx', import.meta.url), 'utf8');
+function panelMethod (name) {
+    const pattern = new RegExp(`^    (?:async )?${name} \\([^\\n]*?\\) \\{`, 'm');
+    const start = panelSource.search(pattern);
+    assert.ok(start >= 0, `exact panel method ${name}`);
+    const lineEnd = panelSource.indexOf('\n', start);
+    const line = panelSource.slice(start, lineEnd);
+    if (line.endsWith('}')) return line;
+    const end = panelSource.indexOf('\n    }', start);
+    assert.ok(end > start); return panelSource.slice(start, end + '\n    }'.length);
+}
+const methodNames = ['_supportsHddDownload', '_invalidateHddDownload', '_updateHddDownloadSession',
+    '_hddDownloadSession', 'onHddDownload', 'onStart', 'onStop', 'onStep', '_teardownRunner',
+    'componentWillUnmount', 'onReverseStep', 'onReverseCycle', 'onReverseContinue', 'onRestoreLast',
+    'onTimelineGoSelected', 'onCorrelatedRestore', 'onDebugSessionImport'];
+function panelFixture (f = fixture(), asyncState = false) {
+    const events = []; const pendingState = [];
+    const fakeWindow = {removeEventListener () {}, bwStopMachineVideo () {}, bwStopMachineKeyboard () {}, bwStopMachineAudio () {}};
+    const Panel = new Function('createRawHddDownload', 'window', `return class {\n${methodNames.map(panelMethod).join('\n')}\n};`)(
+        options => createRawHddDownload({...options, browser: f.browser}), fakeWindow);
+    const panel = new Panel();
+    const runner = {supports: name => name === 'snapshotAtaMaster', snapshotAtaMaster: async () => f.supplied,
+        resume () {events.push('resume');}, start () {events.push('start');}, stop () {events.push('stop');},
+        step (kind) {events.push(`step-${kind}`);}, destroy () {events.push('destroy');},
+        reverseStepDebugInstruction () {return {accepted: true};}, reverseStepDebugCycle () {return {accepted: true};},
+        reverseContinueDebug () {return {accepted: true};}, restoreDebugCheckpoint () {return {accepted: true};},
+        seekSelectedDebugEvent () {return {accepted: true};}, restoreCorrelatedDebugTargets () {},
+        debugRecorder () {return {checkpointSummary: () => [{eventCursor: 1}]};},
+        debugRecordingStatus () {return {};}, importDebugSession: async () => ({accepted: true})};
+    panel.state = {runner, ui: {phase: 'paused', session: {why: {pc: 1}}}, hddDownloadBusy: false, hddDownloadStatus: null};
+    Object.assign(panel, {_hddDownloadMounted: true, _hddDownloadToken: {}, _hddDownloadRunner: runner,
+        _hddDownloadPhase: 'paused', _hddDownloadHalt: panel.state.ui.session.why, _hddDownload: null,
+        _hddDownloadPending: false, _runnerPromise: null});
+    panel.props = {vm: {}, onRunnerGone: () => events.push('gone'), onRunnerChange: () => events.push('change')};
+    panel._mouseLeave = () => {};
+    panel.tx = key => ({hddDownloadPreparing: 'Preparing image + JSON', hddDownloadInitiated: 'Image + JSON downloads initiated, not saved'}[key] || key);
+    panel.setState = change => {events.push('setState'); if (asyncState) pendingState.push(change); else Object.assign(panel.state, change);};
+    panel.runner = async () => runner; panel.mirrorLabwiredDisplay = () => {};
+    const marker = '            onChange: (ui) => {';
+    const start = panelSource.indexOf(marker) + marker.length;
+    const end = panelSource.indexOf('\n            }\n        });', start);
+    assert.ok(end > start);
+    const onChange = new Function('runner', 'ReactDOM', `return function (ui) {${panelSource.slice(start, end)}\n};`)(
+        runner, {unstable_batchedUpdates: fn => fn()}).bind(panel);
+    return {panel, runner, f, events, onChange, flush: () => {for (const state of pendingState.splice(0)) Object.assign(panel.state, state);}};
+}
+
+test('panel gates both bridge and supplier support, paused selection, and visible JSX action', () => {
+    const {panel, runner} = panelFixture();
+    assert.equal(panel._supportsHddDownload(runner), true); assert.ok(panel._hddDownloadSession());
+    runner.supports = () => false; assert.equal(panel._supportsHddDownload(runner), false); assert.equal(panel._hddDownloadSession(), null);
+    runner.supports = () => true; delete runner.snapshotAtaMaster; assert.equal(panel._supportsHddDownload(runner), false);
+    assert.match(panelSource, /\{canDownloadHdd \? \([\s\S]*?data-debug-hdd-download[\s\S]*?onClick=\{this\.onHddDownload\}/);
+    assert.match(panelSource, /disabled=\{!paused \|\| this\.state\.hddDownloadBusy\}/);
+    assert.match(panelSource, /createRawHddDownload.*|import \{createRawHddDownload\}/);
+});
+
+test('actual panel action uses current runner, real helper and image/JSON initiation status', async () => {
+    const {panel, f} = panelFixture(); await panel.onHddDownload();
+    assert.deepEqual(f.calls.clicks, ['386-master-hdd.img', '386-master-hdd.json']);
+    assert.match(panel.state.hddDownloadStatus, /initiated, not saved/); assert.equal(panel.state.hddDownloadBusy, false);
+    allRevoked(f);
+});
+
+test('panel synchronous pending guard prevents duplicate actions before React state commits', async () => {
+    const {panel, runner, f, flush} = panelFixture(fixture(), true); const gate = deferred(); let requests = 0;
+    runner.snapshotAtaMaster = () => {requests++; return gate.promise;};
+    const first = panel.onHddDownload(); const second = panel.onHddDownload(); await second;
+    assert.equal(requests, 1); gate.resolve(f.supplied); await first; flush(); assert.equal(f.calls.clicks.length, 2);
+});
+
+test('exact onChange keeps benign paused token but invalidates synchronous paused-step halt boundary', async () => {
+    const {panel, runner, f, onChange} = panelFixture(); const token = panel._hddDownloadToken;
+    onChange({phase: 'paused', session: {why: panel.state.ui.session.why}}); assert.equal(panel._hddDownloadToken, token);
+    const gate = hashGate(f); const pending = panel.onHddDownload(); await gate.entered.promise;
+    onChange({phase: 'paused', session: {why: {pc: 2}}}); assert.notEqual(panel._hddDownloadToken, token);
+    assert.equal(panel._hddDownloadRunner, runner); gate.release.resolve(); await pending;
+    assert.equal(f.calls.clicks.length, 0); assert.equal(panel.state.hddDownloadStatus, null);
+});
+
+for (const method of ['onStart', 'onStop', 'onStep', 'onReverseStep', 'onReverseCycle',
+    'onReverseContinue', 'onRestoreLast', 'onTimelineGoSelected', 'onCorrelatedRestore']) {
+    test(`exact panel ${method} invalidates pending hashed copy even if fake runner remains paused`, async () => {
+        const {panel, f} = panelFixture(); const gate = hashGate(f); const pending = panel.onHddDownload();
+        await gate.entered.promise; const token = panel._hddDownloadToken; await panel[method]();
+        assert.notEqual(panel._hddDownloadToken, token); gate.release.resolve(); await pending;
+        assert.equal(f.calls.clicks.length, 0); assert.equal(panel.state.hddDownloadStatus, null);
+    });
+}
+
+test('run-to/phase ABA through exact onChange cannot resurrect an earlier pending copy', async () => {
+    const {panel, f, onChange} = panelFixture(); const gate = hashGate(f); const pending = panel.onHddDownload();
+    await gate.entered.promise; const why = panel.state.ui.session.why;
+    onChange({phase: 'running', session: {why}}); onChange({phase: 'paused', session: {why}});
+    gate.release.resolve(); await pending; assert.equal(f.calls.clicks.length, 0); assert.equal(panel.state.hddDownloadStatus, null);
+});
+
+test('teardown and unmount dispose helper; late completion cannot update replacement UI', async () => {
+    for (const unmount of [false, true]) {
+        const {panel, f, events} = panelFixture(); const gate = hashGate(f); const pending = panel.onHddDownload();
+        await gate.entered.promise; if (unmount) panel.componentWillUnmount(); else panel._teardownRunner();
+        const writes = events.filter(e => e === 'setState').length;
+        gate.release.resolve(); await pending;
+        assert.equal(events.filter(e => e === 'setState').length, writes); assert.equal(f.calls.clicks.length, 0);
+        assert.ok(events.includes('destroy'));
+    }
+});
+
+test('session import invalidates immediately before mutation after its own async file read', async () => {
+    const {panel, f} = panelFixture(); const read = deferred(); const importing = panel.onDebugSessionImport({text: () => read.promise});
+    const gate = hashGate(f); const downloading = panel.onHddDownload(); await gate.entered.promise;
+    read.resolve('{}'); await importing; gate.release.resolve(); await downloading;
+    assert.equal(f.calls.clicks.length, 0); assert.equal(panel.state.hddDownloadStatus, null);
+});
+
+test('panel surfaces snapshot refusal without claiming saved output', async () => {
+    const {panel, runner, f} = panelFixture(); runner.snapshotAtaMaster = async () => ({refused: {code: 'snapshot-ata-busy', reason: 'ATA DRQ is active'}});
+    await panel.onHddDownload(); assert.equal(panel.state.hddDownloadStatus, 'ATA DRQ is active');
+    assert.equal(panel.state.hddDownloadBusy, false); assert.equal(f.calls.clicks.length, 0);
+});
+
+test('replacement can finish its own action while old snapshot completion stays silent', async () => {
+    const {panel, runner, f, events} = panelFixture(); const old = deferred();
+    runner.snapshotAtaMaster = () => old.promise; const pending = panel.onHddDownload();
+    panel._teardownRunner();
+    const replacement = {supports: () => true, snapshotAtaMaster: async () => snapshot()};
+    panel.state.runner = replacement;
+    const ui = {phase: 'paused', session: {why: {pc: 9}}};
+    panel._updateHddDownloadSession(replacement, ui); panel.state.ui = ui;
+    await panel.onHddDownload(); const status = panel.state.hddDownloadStatus;
+    const writes = events.filter(e => e === 'setState').length;
+    old.resolve(snapshot()); await pending;
+    assert.equal(events.filter(e => e === 'setState').length, writes);
+    assert.equal(panel.state.hddDownloadStatus, status); assert.equal(f.calls.clicks.length, 2);
+    allRevoked(f);
+});
+
+test('panel lifecycle source mounts the guard and mirrors only the existing tracked panel', () => {
+    assert.match(panelSource, /componentDidMount \(\) \{\s*this\._hddDownloadMounted = true;/);
+    assert.match(panelSource, /componentWillUnmount \(\) \{\s*this\._hddDownloadMounted = false;/);
+    assert.equal(fs.readFileSync(new URL('../packages/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx', import.meta.url), 'utf8'), panelSource);
+});
