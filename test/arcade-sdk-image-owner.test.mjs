@@ -56,7 +56,7 @@ test('Stop preserves Image body lifetime while restart, replacement and dispose 
     f.restart();assert.throws(()=>f.service.body(image.ref),/epoch/);f.service.start();assert.throws(()=>f.service.body(image.ref),/body is missing/);
     const fresh=f.image();assert.equal(f.service.body(fresh.ref),fresh.body);
     f.replaceService();assert.throws(()=>f.service.body(fresh.ref),/current extension/);
-    const g=fixture();g.service.start();const retained=g.image();g.service.dispose();assert.throws(()=>g.service.start(),/disposed/);assert.throws(()=>g.service.body(retained.ref),/inactive/);
+    const g=fixture();g.service.start();const retained=g.image();assert.equal(g.service.isDisposed(),false);g.service.dispose();assert.equal(g.service.isDisposed(),true);assert.throws(()=>g.service.start(),/disposed/);assert.equal(g.service.isDisposed(),true);assert.throws(()=>g.service.body(retained.ref),/inactive/);
 });
 test('actual Arcade-created and cloned Images use the real map, reverse identity and reset lifetime',async()=>{
     const {loadExtensionClass,bundledExtensionIds}=await import('./helpers/bw-extensions.mjs');

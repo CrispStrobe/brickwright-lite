@@ -222,7 +222,7 @@ module.exports = makeExt(`// Name: Arcade
           reset();
           this._bufferSuspended = false;this._sourceTypeOfDisposed=false;
         });
-        runtime.on('PROJECT_START',()=>{if(!this._sdkFontValues?.isDisposed())this._sdkFontValues?.startProgram();reset();imageOwner.start();this._sourceScalarCells.initialize();this._sourceTypeOf.snapshotInputs();this._consoleInspectValues.snapshot();managedReturnHosts.get(this).start();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
+        runtime.on('PROJECT_START',()=>{if(!this._sdkFontValues?.isDisposed())this._sdkFontValues?.startProgram();reset();if(!imageOwner.isDisposed())imageOwner.start();this._sourceScalarCells.initialize();this._sourceTypeOf.snapshotInputs();this._consoleInspectValues.snapshot();managedReturnHosts.get(this).start();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
         runtime.on('targetWasRemoved', target => {
           for (const [id, entry] of this._imageSkins) if (entry.target === target) this._clearImage(id);
           for (const [id, entry] of this._speech) if (entry.target === target) this._clearSpeech(id);
