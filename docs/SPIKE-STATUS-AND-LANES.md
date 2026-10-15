@@ -541,6 +541,13 @@ final-sampling, generation and late-poll closure across backends remains open.
 
 ### G03 — Qualify usable sandbox and responsive editor controls
 
+The scoped ownership claim is recorded in
+[the lane ledger](../LANES.md#spike-g03-sandbox-and-editor-ui-qualification--2026-10-15)
+on `docs/spike-g03-ui-claim-20261015`. Implementation follows PR948, PR962 and
+G02's remaining acceptance review. The first pass records working rendered
+features and fixes only demonstrated gaps; shared project-world and unrelated
+importer owners keep their own files and behavior.
+
 **Owner:** Lite. **Start:** `docs/SPIKE-ARENA.md`,
 `overlay/scratch-gui/src/components/tw-pseudocode/`,
 `test/spike-arena-3d-pane.test.mjs`, `test/spike-arena-pane-units.test.mjs`.
