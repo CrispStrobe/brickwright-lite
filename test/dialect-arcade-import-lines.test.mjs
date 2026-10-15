@@ -118,9 +118,10 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the qualified Arcade word table (398 opcodes)', () => {
-    assert.equal(ARCADE_DIALECT_OPS.length, 398);
+test('the pinned parser has the qualified Arcade word table (399 opcodes)', () => {
+    assert.equal(ARCADE_DIALECT_OPS.length, 399);
     const qualifiedWords = [
+        {op: 'arcade_inspectValue', kind: 'reporter', words: 'arcade inspect value {VALUE} limit {LIMIT}'},
         {op: 'arcade_sourceTypeOf', kind: 'reporter', words: 'arcade source type of {VALUE}'},
         {op: 'arcade_fontValue', kind: 'reporter', words: 'arcade font value {FONT:font5|font8|font12}'},
         {op: 'arcade_fontForText', kind: 'reporter', words: 'arcade font for text {TEXT}'},

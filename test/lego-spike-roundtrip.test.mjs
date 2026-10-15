@@ -298,9 +298,15 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> 4e8a2872 (2026-10-15): connected Arcade inspection reporter and STM32
     // test-only changes; producer diff leaves SPIKE emitters unchanged. Re-run
     // the complete executable artifact and round-trip assertions below.
+    // -> c47b9680 (2026-10-13): board sections (DEVICE <id> AS <Name>:) and the Calliope motor word (sb3-creator #112, #113); SPIKE artifact unchanged.
+    // -> 0e486e0f (2026-10-14): DEVICE CPX and cpxDialect.js (sb3-creator #136) plus the Arcade lane's words; `git diff c47b9680 0e486e0f -- src/` touches only the arcade/CPX dialects, the runtime registry and sb3Creator.js, with no SPIKE line among them; SPIKE artifact unchanged, re-run at the new pin.
+    // -> 8472098b (2026-10-14): DEVICE ESP8266 C back end (sb3-creator #144) plus the Arcade repeat/typeof/font-metric words, explicit procedure calls and the SEVENSEG8 long show_number (#137-#142); `git diff 0e486e0f 8472098b -- src/` touches only arcadeDialect.js and sb3Creator.js.
+    // -> c9be966f (2026-10-15): STM32G030/F103 C fixes, F103 ADC and chip temperature (sb3-creator #152) and DEVICE-line device C (sb3-creator #145, #149-#151) plus the Arcade callable/circle/font/inspect words (#143, #146-#148); src/ changes are sb3Creator.js and arcadeDialect.js only.
+    // -> f2d4f879 (2026-10-15): qualified condition topology and named-label rename
+    // repairs (#153/#154), retaining main STM32/i8086 work; re-run all artifact
+    // and round-trip assertions with this exact combined producer.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        '4e8a287244d31d82ac84dbef609f48f2c10efab2');
-
+        'f2d4f879ba40dd9025070ed51af11ebe1ef14808');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);
