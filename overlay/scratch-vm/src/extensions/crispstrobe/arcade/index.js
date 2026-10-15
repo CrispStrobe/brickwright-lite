@@ -34,9 +34,9 @@ module.exports = makeExt(`// Name: Arcade
       this._resetProgramClock();
       this._bufferSuspended = false;
       this._sdkFontValues=runtime && typeof runtime.on==='function' ? dependencies.sdkFontValues.create(runtime,Scratch.BWValues,
-        {reference:body=>this._bufferReference(body),resolve:ref=>this._buffer(ref)}) : null;
+        {reference:body=>this._bufferReference(body),resolve:ref=>this._buffer(ref)},{managedStart:true}) : null;
       runtime?.on?.('PROJECT_LOADED',()=>{if(this._sdkFontValues?.isDisposed())this._sdkFontValues=dependencies.sdkFontValues.create(runtime,Scratch.BWValues,
-        {reference:body=>this._bufferReference(body),resolve:ref=>this._buffer(ref)});});
+        {reference:body=>this._bufferReference(body),resolve:ref=>this._buffer(ref)},{managedStart:true});});
       this._speechEngine = dependencies.createSpeechEngine(dependencies.initializeSpeech, dependencies.fonts,
         dependencies.initializeNativeLegacy);
       this._fallbackState = null;
@@ -206,7 +206,7 @@ module.exports = makeExt(`// Name: Arcade
           reset();
           this._bufferSuspended = false;this._sourceTypeOfDisposed=false;
         });
-        runtime.on('PROJECT_START',()=>{reset();this._sourceScalarCells.initialize();this._sourceTypeOf.snapshotInputs();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
+        runtime.on('PROJECT_START',()=>{if(!this._sdkFontValues?.isDisposed())this._sdkFontValues?.startProgram();reset();this._sourceScalarCells.initialize();this._sourceTypeOf.snapshotInputs();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
         runtime.on('targetWasRemoved', target => {
           for (const [id, entry] of this._imageSkins) if (entry.target === target) this._clearImage(id);
           for (const [id, entry] of this._speech) if (entry.target === target) this._clearSpeech(id);
