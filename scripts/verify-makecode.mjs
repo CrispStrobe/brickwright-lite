@@ -256,6 +256,43 @@ try {
         check('the serial guest remains on a running V2 emulator session', await statusText() === 'running');
     }
 
+    // A11: the actual Code-tab download must compile in its own target.
+    // This fixture contains wait-until: the old micro:bit exporter writes
+    // pauseUntil, which pxt-calliope does not provide.
+    await input.setInputFiles(join(fixtures, 'calliope-images.hex'));
+    const calliopeCode = await waitFor(() => page.evaluate(() => {
+        const editor = document.querySelector('.cm-content');
+        return editor ? editor.innerText : '';
+    }), t => /DEVICE CALLIOPEMINI/.test(t), 30000);
+    check('a Calliope project selects its own device before export', /DEVICE CALLIOPEMINI/.test(calliopeCode));
+    const calliopeDownload = page.waitForEvent('download', {timeout: 30000});
+    await clickAction('bw-makecode-export');
+    const calliopeFile = await calliopeDownload;
+    const calliopeBytes = await readFile(await calliopeFile.path());
+    const calliopeEnvelope = JSON.parse(calliopeBytes.toString('utf8'));
+    const calliopeFiles = JSON.parse(calliopeEnvelope.source);
+    check('Code export downloads a Calliope .mkcd with Calliope packages',
+        /\.mkcd$/i.test(calliopeFile.suggestedFilename()) && calliopeEnvelope.meta.cloudId === 'pxt/calliopemini' &&
+        JSON.stringify(JSON.parse(calliopeFiles['pxt.json']).dependencies) === JSON.stringify({core: '*', radio: '*'}));
+    check('Calliope wait-until is a polling loop, not micro:bit pauseUntil',
+        !/pauseUntil/.test(calliopeFiles['main.ts']) && /basic\.pause\(20\)/.test(calliopeFiles['main.ts']));
+    const calliopeStatus = await paneText();
+    check('the Code export points to the Calliope editor', /https:\/\/makecode\.calliope\.cc\//.test(calliopeStatus));
+    if (runtime) {
+        // Reopen exactly the downloaded bytes, preserving their .mkcd name.
+        // Running this recovered project invokes Calliope's real PXT compiler.
+        await input.setInputFiles({name: calliopeFile.suggestedFilename(), mimeType: 'application/octet-stream', buffer: calliopeBytes});
+        await waitFor(paneText, t => /calliopemini|Calliope/.test(t), 30000);
+        await clickAction('bw-makecode-run');
+        const pane = page.locator('[data-testid="bw-makecode-pane"][data-target="calliopemini"]');
+        await pane.waitFor({state: 'visible', timeout: 60000});
+        const state = await waitFor(() => pane.locator('[data-testid="bw-makecode-state"]').innerText().catch(() => ''),
+            t => /Running|Läuft|Error|Fehler/.test(t), 60000);
+        check('the downloaded Calliope project compiles and runs in its own simulator', /Running|Läuft/.test(state), state);
+        const frame = await simFrame('calliopemini');
+        check('the exported project uses the real Calliope simulator frame', !!frame);
+    }
+
     // ── 2. an Arcade game brings its sprites ──────────────────────────
     await input.setInputFiles(join(fixtures, 'arcade-assets.hex'));
     // Both locales, because the browser's language decides which string

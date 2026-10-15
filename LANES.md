@@ -32,7 +32,7 @@ publishing this final adoption candidate and preserve both browser scenarios.
 
 ## A11: Code-tab MakeCode export uses the project target — 2026-10-15
 
-CLAIMED — Codex, isolated branch `lane/a11-project-target-export-20261015`,
+DONE candidate — Codex, isolated branch `lane/a11-project-target-export-20261015`,
 base `c6f1ff5c3`. Single-board Code-tab MakeCode export selects the existing
 micro:bit, Calliope or EV3 emitter from the parsed project device and writes
 matching project metadata and editor guidance. Preserve unchanged imported
@@ -43,9 +43,17 @@ and its tracked `packages/` twin; a focused export-routing helper under
 `scripts/verify-makecode.mjs`; existing browser CI wiring only if needed;
 this ledger and `docs/OPEN-TASKS-2026-09-29.md`. Do not change exporters,
 applied-device routing, board model, dependency pins or another lane's behavior.
-Acceptance: micro:bit/Calliope/EV3 routing and metadata controls, meaningful
-wrong-target negative, actual built-browser Calliope download compiled by its
-own PXT target, all enabled exact-head checks. Merge claim before product edits.
+Claim landed at `015e1bdc7`. The actual handler now selects each target's
+existing emitter and file metadata, retains matching unchanged originals,
+reports the correct editor in both locales and offers EV3 export. The target
+is captured with the source before lazy compiler loading; generated micro:bit
+filename conventions and the multi-board early return are preserved.
+Validation: 39 focused export/UI/document-policy checks pass without skips;
+the old source and five wrong-routing/metadata/editor/original/visibility
+mutations fail. The existing browser gate now downloads the Calliope fixture's
+export, checks its polling loop and packages, reopens those exact bytes and
+runs its own PXT simulator. Built-browser and all enabled final-head CI remain
+pending; this candidate is not yet qualified or merged.
 
 ## Shared simulated world, step 1 — project world in Lite — 2026-10-15
 
