@@ -1,4 +1,5 @@
 import {analyseCallableFlow} from './callable-flow.js';
+import {analyseSourceValueProducers} from './source-value-producers.js';
 
 // Source admission is narrower than the authoring/transport vocabulary. This
 // gate reads actual lexical signatures and bodies; metadata cannot widen it.
@@ -7,6 +8,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
     const expressions=flow.lexical.functions.filter(scope=>scope.node.type==='FunctionExpression');
     const factories=flow.lexical.functions.filter(scope=>flow.profiles.get(scope.node)?.result?.kind==='callable');
     if(!factories.length)return {eligible:false,unsupported:[]};
+    let actual;
     const unsupported=[...flow.unsupported];
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const number=type=>type?.kind==='named'&&type.name==='number';
@@ -14,7 +16,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
     const helpers=new Map();
     for(const scope of flow.lexical.functions) {
         const fn=scope.node,value=fn.body?.length===1&&fn.body[0].type==='Return'&&fn.body[0].value;
-        if(fn.type!=='FunctionDeclaration'||scope.parent!==flow.lexical.global||fn.params.length!==2||
+        if(fn.type!=='FunctionDeclaration'||scope.parent!==flow.lexical.global||fn.params.length!==2||new Set(fn.params).size!==2||
             value?.type!=='Binary'||!['+','-','*','/','%'].includes(value.op)||
             value.left?.type!=='Identifier'||value.right?.type!=='Identifier'||
             flow.lexical.references.get(value.left)!==scope.names.get(fn.params[0])||
@@ -22,11 +24,25 @@ export function callableSourceGate(program,{normalize=false}={}) {
         const binding=flow.lexical.global.names.get(fn.name);
         if(binding?.node===fn)helpers.set(binding,{scope,calls:0});
     }
+    const numericHelpers=new Set([...helpers.values()].map(helper=>helper.scope.node));
+    actual=analyseSourceValueProducers(program,{numericHelpers,parenthesized:true});
+    const actualNumber=types=>types.size===1&&types.has('Number');
     const numericExpression=node=>{
         if(!node)return false;
         if(node.type==='Parenthesized')return numericExpression(node.expression);
         if(node.type==='Number')return true;
-        if(node.type==='Identifier')return number(flow.bindingTypes.get(flow.lexical.references.get(node)));
+        if(node.type==='Identifier') {
+            const binding=flow.lexical.references.get(node),owner=flow.lexical.scopes.get(node)?.functionOwner;
+            // Only the existing factory/Arrow initialization witness can
+            // discharge captured entry. Globals retain occurrence Undefined.
+            const captured=factories.includes(binding?.functionOwner)&&
+                (owner===binding.functionOwner||owner?.parent===binding.functionOwner);
+            const types=captured?actual.bindingTypesAt(node):actual.typesAt(node);
+            // A factory's explicit undefined local initializer is discharged
+            // only by statements()'s dominating assignment/capture check.
+            const numericBinding=types.has('Number')&&[...types].every(type=>type==='Number'||type==='Undefined');
+            return number(flow.bindingTypes.get(binding))&&(captured?numericBinding:actualNumber(types));
+        }
         if(node.type==='Call'&&node.callee?.type==='Identifier') {
             const helper=helpers.get(flow.lexical.references.get(node.callee));
             return !!helper&&node.args.length===2&&node.args.every(numericExpression);
@@ -40,7 +56,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
         if(node.type==='Identifier') {
             const helper=helpers.get(flow.lexical.references.get(node));
             if(helper) {
-                if(parent?.type!=='Call'||key!=='callee'||parent.args.length!==2||!parent.args.every(numericExpression))
+                if(parent?.type!=='Call'||key!=='callee'||parent.args.length!==2)
                     fail('Callable source gate requires concrete numeric operands at every operator helper use');
                 else helper.calls++;
             }
@@ -48,16 +64,25 @@ export function callableSourceGate(program,{normalize=false}={}) {
         for(const [childKey,value]of Object.entries(node))if(!['originalBody','parameterDefaults'].includes(childKey)&&value&&typeof value==='object')inspectHelpers(value,node,childKey);
     };
     inspectHelpers(program.body);
-    const inspectFactoryCalls=node=>{
+    const factoryBindings=new Map();
+    for(const factory of factories) {
+        const binding=flow.lexical.global.names.get(factory.node.name);
+        if(binding?.node!==factory.node||actual.immutableFunctionAt(factory.node)!==factory.node)
+            fail('Callable source gate requires one unchanged lexical factory declaration');
+        if(binding)factoryBindings.set(binding,factory);
+    }
+    const inspectFactoryCalls=(node,parent,key)=>{
         if(!node||typeof node!=='object')return;
-        if(Array.isArray(node)){node.forEach(inspectFactoryCalls);return;}
-        if(node.type==='Call'&&node.callee?.type==='Identifier') {
-            const binding=flow.lexical.references.get(node.callee);
-            const factory=factories.find(scope=>scope.node===binding?.node);
-            if(factory&&(node.isNew||node.args.length!==factory.node.params.length||!node.args.every(numericExpression)))
-                fail('Callable source gate requires every factory call to provide concrete numeric operands');
+        if(Array.isArray(node)){node.forEach(value=>inspectFactoryCalls(value,parent,key));return;}
+        if(node.type==='Identifier') {
+            const factory=factoryBindings.get(flow.lexical.references.get(node));
+            if(factory&&(parent?.type!=='Call'||key!=='callee'||parent.isNew||
+                actual.immutableFunctionAt(parent)!==factory.node||
+                parent.args.length!==factory.node.params.length||
+                !parent.args.every(arg=>numericExpression(arg)&&actualNumber(actual.typesAt(arg)))))
+                fail('Callable source gate requires every factory call to provide concrete numeric operands from a direct unchanged declaration');
         }
-        for(const [key,value]of Object.entries(node))if(!['originalBody','parameterDefaults'].includes(key)&&value&&typeof value==='object')inspectFactoryCalls(value);
+        for(const [childKey,value]of Object.entries(node))if(!['originalBody','parameterDefaults'].includes(childKey)&&value&&typeof value==='object')inspectFactoryCalls(value,node,childKey);
     };
     inspectFactoryCalls(program.body);
     const statements=(body,closure,scope)=>{
@@ -75,6 +100,8 @@ export function callableSourceGate(program,{normalize=false}={}) {
                 if(closure||statement.kind!=='let')fail('Callable source gate requires numeric let cells in the factory');
                 for(const row of statement.decls) {
                     const binding=scope.names.get(row.name);
+                    if(actual.declarationCountAt(statement,row.name)!==1)
+                        fail('Callable source gate requires unique lexical numeric cell declarations');
                     if(initializedExpression(row.init))initialized.add(binding);
                     else if(row.typeName!=='number'||(row.init&&row.init.type!=='Undefined'))
                         fail('Callable source gate requires a numeric initializer or typed undefined numeric local');
@@ -102,6 +129,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
         const node=scope.node,profile=flow.profiles.get(node);
         const helper=helpers.get(flow.lexical.global.names.get(node.name));
         if(helper?.scope===scope&&helper.calls>0&&!node.optionalParams?.length&&!node.parameterDefaults?.length&&!node.typeParameters?.length)continue;
+        if(new Set(node.params).size!==node.params.length)fail('Callable source gate requires unique lexical parameter bindings');
         if(node.optionalParams?.length||node.parameterDefaults?.length||node.typeParameters?.length)
             fail('Callable source gate does not admit defaults, optional parameters or generics');
         if(node.type==='FunctionDeclaration') {
@@ -118,6 +146,24 @@ export function callableSourceGate(program,{normalize=false}={}) {
         }
     }
     if(!expressions.length)fail('Callable source gate requires an actual captured Arrow expression');
+    if(!unsupported.length) {
+        // The preceding gate proves the actual Arrow bodies/capture initialization
+        // and every immutable factory call. Only then can their actual invocation
+        // results participate in outer operator helper operand proofs.
+        actual=analyseSourceValueProducers(program,{numericArrows:new Set(expressions.map(scope=>scope.node)),numericHelpers,parenthesized:true});
+        const checkHelperOperands=node=>{
+            if(!node||typeof node!=='object')return;
+            if(Array.isArray(node)){node.forEach(checkHelperOperands);return;}
+            if(node.type==='Call'&&zeroNumeric(flow.expressionTypes.get(node.callee))&&
+                (node.isNew||node.args.length||actual.typesAt(node.callee).size!==1||!actual.typesAt(node.callee).has('NumericCallable')))
+                fail('Callable source gate requires actual initialized numeric callback producers at every invocation');
+            if(node.type==='Call'&&node.callee?.type==='Identifier'&&helpers.has(flow.lexical.references.get(node.callee))&&
+                !node.args.every(numericExpression))
+                fail('Callable source gate requires concrete numeric operands at every operator helper use');
+            for(const [key,value]of Object.entries(node))if(!['originalBody','parameterDefaults'].includes(key)&&value&&typeof value==='object')checkHelperOperands(value);
+        };
+        checkHelperOperands(program.body);
+    }
     const result={eligible:unsupported.length===0,unsupported};
     if(normalize&&result.eligible) {
         const rewrite=node=>{
