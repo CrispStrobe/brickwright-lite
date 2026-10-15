@@ -26,6 +26,40 @@ Do not claim host scheduling controls qualify installed concurrency, native UART
 output attribution, whole G02, physical behavior or a release. No native,
 firmware, Runtime, model, dependency pin, workflow or deadline change is included.
 
+## ASM example admission during pending Code compilation — 2026-10-15
+
+CLAIM — Codex circuit/instrument adoption owner, bounded blocker repair for
+PR965. Base `dccfd176b0043128b6a723e55f80a5e3b47fed4c`; isolated branch
+`docs/asm-example-serialization-claim-20261015` publishes ownership first.
+Production edits wait for this claim's merge and coordination with the A11
+owner of other blocks in the importer. Original exact-head Build38726686250
+failed only the 8086 browser journey after retarget/reload: its screenshot
+shows empty ASM and disabled Assemble. Pure actual-method/deferred-VM controls
+reproduce an example accepted during compile and then erased by its completion.
+This is not an engine or physical qualification.
+
+Envelope: this ledger; only `loadAsmExample` busy admission, including after
+asynchronous confirmation, and the ASM example picker's disabled state in
+`overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`;
+its tracked `packages/scratch-gui` twin; new
+`test/asm-example-serialization.test.mjs`; and
+`scripts/verify-i8086-browser.mjs` for a deterministic pending-compile witness.
+Do not change `setDevice`, `compile`, MakeCode/export/device-routing blocks,
+engine models, dependency pins, timeouts, compiler interception or other lanes.
+PR965's already qualified CUI adoption bytes remain unchanged.
+
+Require pure actual-method controls for busy rejection, ordinary idle loading,
+confirmation refusal and compilation starting during a pending confirmation;
+isolated entry/post-confirmation guard mutations must fail by name. The actual
+browser proof must hold only the return of a real completed VM load, observe
+the disabled picker and preserved source during the pending compile, release
+and restore the wrapper, then load and assemble through ordinary controls.
+Removing the picker guard must fail that held-state assertion, not merely time
+out later. Retain the complete keyboard/CGA/8255/refusal/reload journey and
+all enabled exact-head checks. No forced click, longer sleep, missing-scenario
+skip, unchanged failed rerun or mocked guest implementation. Move this entry
+to DONE in the final implementation candidate; keep the original red receipt.
+
 ## STM32 faithful model pin adoption (sb3-creator + bw-board) — 2026-10-15
 
 CLAIM — Claude, branch chore/stm32-faithful-pins-20261015, [local path omitted].
