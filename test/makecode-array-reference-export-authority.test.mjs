@@ -113,3 +113,43 @@ test('every actual current caller must supply a real Array and malformed prototy
 test('shrinking writers cannot turn an absent nested element into an Array producer',()=>{
     const creator=current('let rows=[[1]];rows.pop();let row=rows[0];let count=row.length');assert.ok(projectToArcade(creator.project).unsupported.some(s=>s.startsWith('Array reference ')));
 });
+
+function withKindReset(){
+    const creator=current('let kind=SpriteKind.create();let items=sprites.allOfKind(kind);let count=items.length');
+    const {target,block:receiver}=lengthBlock(creator),blocks=target.blocks;
+    const [writeId,write]=Object.entries(blocks).find(([,b])=>b.opcode==='data_setvariableto'&&b.fields.VARIABLE[0]==='kind');
+    const oldParent=write.parent;
+    blocks.__reset={opcode:'data_setvariableto',parent:oldParent,next:writeId,topLevel:false,shadow:false,fields:structuredClone(write.fields),inputs:{VALUE:[2,'__undefined']}};
+    blocks.__undefined={opcode:'arrays_specialValue',parent:'__reset',next:null,topLevel:false,shadow:false,fields:{},inputs:{KIND:[1,[10,'undefined']]}};
+    blocks[oldParent].next='__reset';write.parent='__reset';
+    return {creator,target,receiver,write,writeId,blocks};
+}
+function interposeReset(fixture,operation){
+    const {blocks,writeId,write}=fixture;blocks.__interposed={topLevel:false,shadow:false,fields:{},inputs:{},...operation,parent:'__reset',next:writeId};
+    blocks.__reset.next='__interposed';write.parent='__interposed';
+}
+test('KIND reset is excluded only across an actual uninterrupted overwrite before its receiver',()=>{
+    const f=withKindReset();assert.deepEqual(projectToArcade(f.creator.project).unsupported,[]);
+    // A genuine current numeric edit retains producer authority.
+    const producer=f.blocks[f.write.inputs.VALUE[1]];producer.opcode='math_number';producer.shadow=true;producer.fields={NUM:['7',null]};producer.inputs={};
+    f.write.inputs.VALUE=[1,f.write.inputs.VALUE[1]];
+    assert.deepEqual(projectToArcade(f.creator.project).unsupported,[]);
+});
+test('KIND reset cannot hide an intervening read, call, registration, yield or control branch',()=>{
+    for(const operation of [
+        {opcode:'arcade_bindSpriteKind',inputs:{NAME:[1,[10,'early']],KIND:[3,[12,'kind',null],[10,'']]}},
+        {opcode:'arcade_callFunction',inputs:{NAME:[1,[10,'unknown']],ARGS:[1,[10,'[]']]}},
+        {opcode:'arcade_registerUpdateHandler',inputs:{TOKEN:[1,[10,'handler']]}},
+        {opcode:'arcade_pause',inputs:{DURATION:[1,[4,'1']]}},
+        {opcode:'control_if',inputs:{CONDITION:[1,[4,'1']]}}
+    ]){
+        const f=withKindReset();if(operation.opcode==='arcade_bindSpriteKind')operation.inputs.KIND[1][2]=f.write.fields.VARIABLE[1];interposeReset(f,operation);
+        assert.equal(createArrayReferenceExportAuthority(f.creator.project).validateInput(f.target,f.receiver).ok,false,operation.opcode);
+    }
+});
+test('KIND reset proof retains malformed topology and every later incompatible writer obligation',()=>{
+    for(const edit of [f=>{f.write.parent='foreign';},f=>{f.blocks.__reset.next='__reset';},f=>{
+        const tail=Object.entries(f.blocks).find(([,b])=>b.opcode==='data_setvariableto'&&b.fields.VARIABLE[0]==='count');
+        f.blocks.__late={opcode:'data_setvariableto',parent:tail[0],next:null,shadow:false,topLevel:false,fields:structuredClone(f.write.fields),inputs:{VALUE:[1,[10,'wrong']]}};tail[1].next='__late';
+    }]){const f=withKindReset();edit(f);assert.equal(createArrayReferenceExportAuthority(f.creator.project).validateInput(f.target,f.receiver).ok,false);}
+});

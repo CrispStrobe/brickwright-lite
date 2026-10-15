@@ -124,11 +124,43 @@ export function createArrayReferenceExportAuthority(project) {
         if(!value)return new Set([bad]);if(value.cell)return new Set(value.cell.types);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
     };
     const literalNumber=(target,node,name)=>{const v=input(node,name,target);if(v.raw&&[4,5,6,7,8].includes(v.raw[0]))return Number(v.raw[1]);if(v.node?.shadow&&v.node.opcode==='math_number')return Number(v.node.fields?.NUM?.[0]);return null;};
+    // A reset can be ignored for KIND facts only when a synchronous source-start
+    // segment overwrites it before any observer can read that particular cell.
+    // The general Array cell writer set remains unchanged.
+    const deadKindReset=(destination,writer)=>{
+        const {target,node,scope}=writer;
+        if(scope.root.opcode!=='arcade_whenSourceStarts'||node.opcode!=='data_setvariableto'||!exactKeys(node,['VALUE'],['VARIABLE'])||invalid.has(node)||
+            writer.value?.node?.opcode!=='arrays_specialValue'||!exactKeys(writer.value.node,['KIND'])||literal(writer.value.node,'KIND',target)!=='undefined')return false;
+        const knownNumbers=new Set(),seen=new Set();
+        const scalar=value=>{
+            if(value?.raw)return [4,5,6,7,8].includes(value.raw[0])&&!Number.isNaN(Number(value.raw[1]))?'number':null;
+            const n=value?.node;if(!n||invalid.has(n))return null;
+            if(n.shadow&&n.opcode==='math_number'&&!Object.keys(n.inputs||{}).length)return !Number.isNaN(Number(n.fields?.NUM?.[0]))?'number':null;
+            if(n.opcode==='arcade_createSpriteKind'&&exactKeys(n,[]))return 'number';
+            if(n.opcode==='arrays_specialValue'&&exactKeys(n,['KIND'])&&literal(n,'KIND',target)==='undefined')return 'undefined';
+            return null;
+        };
+        let id=node.next;
+        while(id&&!seen.has(id)){
+            seen.add(id);const next=block(target,id);if(!next||invalid.has(next)||owners.get(next)!==scope)return false;
+            if(next.opcode==='data_setvariableto'&&exactKeys(next,['VALUE'],['VARIABLE'])){
+                const name=next.fields?.VARIABLE,id= name?.[1],declaration=target.variables?.[id],c=globalCell(target,id),kind=scalar(input(next,'VALUE',target));
+                if(!c||declaration?.[0]!==name?.[0]||!kind)return false;
+                if(c===destination)return kind==='number';
+                if(kind==='number')knownNumbers.add(c);else knownNumbers.delete(c);
+            }else if(next.opcode==='arcade_bindSpriteKind'&&exactKeys(next,['NAME','KIND'])&&typeof literal(next,'NAME',target)==='string'){
+                const value=input(next,'KIND',target),c=value.cell||(value.node&&binding(target,value.node));
+                if(!c||c===destination||!knownNumbers.has(c))return false;
+            }else return false;
+            id=next.next;
+        }
+        return false;
+    };
     // Existing allOfKind completes with a fresh Array; its elements are not
     // issued SDK Sprite facts here. KIND still needs actual numeric producers.
     const numericKind=(value,path=new Set())=>{
         if(!value)return false;if(value.raw)return [4,5,6,7,8].includes(value.raw[0])&&!Number.isNaN(Number(value.raw[1]));
-        const node=value.node,c=value.cell||(node&&binding(value.target,node));if(c){if(path.has(c)||!c.writers.length)return false;const next=new Set([...path,c]);return c.writers.every(w=>w.value&&numericKind(w.value,next));}
+        const node=value.node,c=value.cell||(node&&binding(value.target,node));if(c){if(path.has(c)||!c.writers.length)return false;const next=new Set([...path,c]);return c.writers.every(w=>deadKindReset(c,w)||w.value&&numericKind(w.value,next));}
         if(!node||invalid.has(node)||path.has(node))return false;const next=new Set([...path,node]);
         if(node.shadow&&node.opcode==='math_number')return !Number.isNaN(Number(node.fields?.NUM?.[0]));
         if(node.opcode==='arcade_createSpriteKind')return exactKeys(node,[]);
@@ -259,7 +291,8 @@ export function createArrayReferenceExportAuthority(project) {
             if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom','arrays_mutateReference'].includes(node.opcode))for(const allocation of readInput(input(node,'ARRAY',target)))for(const source of allocation.sources||[])if(!initialized(source,next))return false;
             return true;
         }
-        return node.opcode==='arcade_spritesOfKind'&&exactKeys(node,['KIND'])&&numericKind(input(node,'KIND',target));
+        if(node.opcode==='arcade_spritesOfKind'&&exactKeys(node,['KIND'])&&numericKind(input(node,'KIND',target))){const value=input(node,'KIND',target),c=value.cell||(value.node&&binding(target,value.node));return !c||available(c,owners.get(node),node);}
+        return false;
     };
     const live=()=>project.targets===targets&&snapshot()===original&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
     return Object.freeze({validateInput(target,node,name='ARRAY'){
