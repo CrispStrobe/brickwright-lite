@@ -804,7 +804,7 @@ jobs:
           node scripts/check-gui-scope.mjs --log test-results/fast.gui-scope.tsv
           # Did the run report on what it was handed? Every file
           # scripts/list-tests.mjs puts in this set must appear in the per-file
-          # census with at least one test, and any `not ok` must be counted by
+          # census with at least one test, and ordinary failures must be counted by
           # the summary (header of the script). On a red run this still names a
           # file that vanished or failed to construct, beside the real failure.
           node scripts/check-test-run.mjs --set fast --shard "$BW_TEST_SHARD" --tap /tmp/unit.tap --census test-results/fast.census.json --max-stdout-bytes 0
@@ -825,12 +825,8 @@ jobs:
           # A construction failure is the WORST kind to lose: the gate did not
           # run at all, so it cannot have found anything, and a green line says
           # it did. This repo has found five gates that could not fail; this one
-          # could not even be built. Read the stream, not the summary.
-          if grep -qE '^not ok ' /tmp/unit.tap; then
-            echo "::error::TAP reports failures the summary did not count — a suite probably threw while being CONSTRUCTED (a missing import, a fixture that cannot be built). Those are not counted in \`# fail\` and may not affect the exit code."
-            grep -E '^not ok ' /tmp/unit.tap | head -20
-            exit 1
-          fi
+          # could not even be built. Classify the stream; TODO stays explicitly pending.
+          node scripts/check-tap-failures.mjs /tmp/unit.tap
           exit "$rc"
 
       - name: Preserve unit shard evidence
@@ -2976,11 +2972,7 @@ jobs:
           if [ -s test-results/corpus.gui-scope.tsv ]; then cut -f1 test-results/corpus.gui-scope.tsv | sort | uniq -c | sort -rn; else echo "  (none)"; fi
           node scripts/check-gui-scope.mjs --log test-results/corpus.gui-scope.tsv
           node scripts/check-test-run.mjs --set corpus --tap /tmp/corpus.tap --census test-results/corpus.census.json --max-stdout-bytes 0
-          if grep -qE '^not ok ' /tmp/corpus.tap; then
-            echo "::error::TAP reports failures the summary did not count — a suite probably threw while being CONSTRUCTED."
-            grep -E '^not ok ' /tmp/corpus.tap | head -20
-            exit 1
-          fi
+          node scripts/check-tap-failures.mjs /tmp/corpus.tap
           exit "$rc"
 
   # THE FLAG-ON BROWSER JOB, the open follow-up named in test/gate-coverage.test.mjs.
