@@ -1,3 +1,20 @@
+## A11: Code-tab MakeCode export uses the project target — 2026-10-15
+
+CLAIMED — Codex, isolated branch `lane/a11-project-target-export-20261015`,
+base `c6f1ff5c3`. Single-board Code-tab MakeCode export selects the existing
+micro:bit, Calliope or EV3 emitter from the parsed project device and writes
+matching project metadata and editor guidance. Preserve unchanged imported
+original files for their own supported target and the multi-board early return.
+Envelope: `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
+and its tracked `packages/` twin; a focused export-routing helper under
+`overlay/scratch-gui/src/lib/bw-makecode/` if needed; focused tests;
+`scripts/verify-makecode.mjs`; existing browser CI wiring only if needed;
+this ledger and `docs/OPEN-TASKS-2026-09-29.md`. Do not change exporters,
+applied-device routing, board model, dependency pins or another lane's behavior.
+Acceptance: micro:bit/Calliope/EV3 routing and metadata controls, meaningful
+wrong-target negative, actual built-browser Calliope download compiled by its
+own PXT target, all enabled exact-head checks. Merge claim before product edits.
+
 ## Shared simulated world, step 1 — project world in Lite — 2026-10-15
 
 CLAIM — Claude, branch feat/world-step1-20261015, [local path omitted]
