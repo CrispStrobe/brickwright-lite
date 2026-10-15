@@ -49,10 +49,11 @@ module.exports = function createClassCallableTypes(runtime, values, heap, signat
         // before restoration can discard malformed extra transport fields.
         if (sdkImages && value && typeof value === 'object') {
             const transport = Object.getOwnPropertyDescriptor(value, 'bwReference');
+            if (!transport && 'bwReference' in value) fail('malformed reference transport');
             if (transport) {
                 if (!Object.prototype.hasOwnProperty.call(transport, 'value')) fail('malformed reference transport');
                 const kind = transport.value && Object.getOwnPropertyDescriptor(transport.value, 'kind');
-                if (kind && !Object.prototype.hasOwnProperty.call(kind, 'value')) fail('malformed reference transport');
+                if (!kind || !Object.prototype.hasOwnProperty.call(kind, 'value')) fail('malformed reference transport');
                 if (kind?.value === 'image') {sdkImages.assert(value); return {kind:'sdk',name:'Image'};}
             }
         }
@@ -60,7 +61,7 @@ module.exports = function createClassCallableTypes(runtime, values, heap, signat
         if (values.isReference(decoded)) {
             if (values.referenceId(runtime, decoded, decoded.bwReference.kind) === null) fail('foreign reference');
             if (decoded.bwReference.kind === 'image') {
-                if (!sdkImages || typeof sdkImages.assert !== 'function') fail('unqualified SDK reference domain');
+                if (!sdkImages || typeof sdkImages.assert !== 'function') fail('unqualified reference domain');
                 sdkImages.assert(decoded); return {kind:'sdk',name:'Image'};
             }
             if (decoded.bwReference.kind === 'object') {

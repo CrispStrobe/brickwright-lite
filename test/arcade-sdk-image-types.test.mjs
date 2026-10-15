@@ -29,6 +29,7 @@ test('SDK invocation arguments and results require the actual live Image owner',
     for(const value of ['',undefined,20,{width:0,height:0,pixels:new Uint8Array()},BW.reference(f.runtime,'image','missing'),BW.reference(new EventEmitter(),'image','actual')])assert.throws(()=>f.types.instantiate(sig,[],[value]));
     let getters=0;assert.throws(()=>f.types.actual({get bwReference(){getters++;return f.ref.bwReference;}}),/malformed/);assert.equal(getters,0);
     assert.throws(()=>f.types.actual({bwReference:{...f.ref.bwReference,annotation:true}}),/owned Image/);
+    assert.throws(()=>f.types.actual({bwReference:Object.assign(Object.create({kind:'image'}),{id:'actual',scope:f.ref.bwReference.scope})}),/malformed/);
     f.runtime.emit('PROJECT_STOP_ALL');assert.equal(f.types.result(sig,f.ref),f.ref);
     f.restart();assert.throws(()=>f.types.result(sig,f.ref),/epoch/);f.owner.start();assert.throws(()=>f.types.result(sig,f.ref),/body is missing/);
     f.owner.dispose();assert.throws(()=>f.types.actual(f.ref),/inactive/);
