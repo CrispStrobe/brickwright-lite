@@ -6,7 +6,7 @@ primitive divide and bitwise value operations. Convert both actual Number
 operands to signed32 before dividing, then convert the quotient; preserve each
 argument once, left to right. No new opcode, word, menu item or dependency pin.
 
-Envelope: this ledger; [the bounded contract](docs/compatibility/arcade-integer-division.md);
+Envelope: this ledger; [the bounded contract](docs/ARCADE-INTEGER-DIVISION.md);
 a focused helper under `overlay/scratch-gui/src/lib/bw-makecode/`;
 coordinated narrow `arcade-translate.js` and actual shared source-producer hooks
 if needed; affected current-export validation only if needed; focused tests and
