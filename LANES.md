@@ -3895,18 +3895,56 @@ distribution qualification remain open.
 
 ## SPIKE late scheduled-poll errors — 2026-10-14
 
-Continuation in the merged G02 session/test envelope after adopted PR930. A
-scheduled poll can reject after original Stop has already closed its session,
-then invoke an obsolete error observer. Ignore that late rejection at the
-scheduled error-notification boundary; keep live poll errors and owned cleanup.
-Three actual-session controls cover live rejection, late successful delivery and
-late rejection after Stop. The first two pass on the prior source; late rejection
-reports an error after closure. All 55 affected controls pass; removing the new
-check is detected by that late-error control. An installed prior-consumer case
-reproduces the late callback using an original real native observation followed
-by an explicitly authored client-delivery error after original pane Stop;
-cleanup and fresh guest recovery pass. This is not a native/firmware fault.
-Fresh installed candidate real native observations with
-explicitly authored delivery failures, cleanup/recovery and every enabled
-exact-head check remain required before adoption. No native/firmware fault,
-whole G02, physical or release claim; no dependency or workflow change.
+ADOPTED — [PR936](https://github.com/CrispStrobe/brickwright-lite/pull/936),
+qualified source `65494ed81b8751f2f6f2f3e9e6c57e5f07e125c0`, merged as
+`e22fd9fe0017b4e8291b4ff2af44ff6b9d6efde1`. Scheduled poll errors delivered
+after Stop stay silent; live errors still report and close their owned session.
+All 55 affected controls pass, with the late-error baseline/removal failure
+retained. Two installed own-NuttX cases use actual native observations followed
+by explicitly authored client-delivery failures: 0 closed error callbacks versus
+1 live callback, released ownership, distinct fresh guest completion and final
+Stop. Each standalone reader binds 191 control files and 28 raw startup records.
+These are client-delivery adversaries, not actual native/firmware fault evidence.
+
+All 11 current enabled readiness/vendor checks pass. The prior pre-label gate
+failure remains preserved; the final readiness run is successful. Predicted and
+landed merge trees match, as do qualified implementation/test blobs; current-main
+native source and dependency pins are preserved. The receipts qualify the frozen
+consumer and this finite fix, not every later package. Full G02, other images/
+backends/final-sampling/generation, physical/reference, G05 and release remain open.
+
+
+## SPIKE G02 compiled-model MicroPython desktop profile — 2026-10-15
+
+PROPOSED — Codex, isolated branch
+`lane/spike-g02-compiled-micropython-claim-20261015`. Continue G02 after PR936
+is adopted. Merge this claim before implementation. The existing desktop
+MicroPython launcher always includes source models; the retained desktop
+runtime already contains compiled Prime models. Earlier qualification kept
+those compiled and legacy source-overlay routes separate. Support metadata
+alone does not qualify a selected image or a current installed MicroPython boot.
+
+Envelope: this ledger; the MicroPython profile/launch contract in
+`apps/tauri/src-tauri/src/{spike_micropython_launch,renode_supervisor,renode_debugger}.rs`;
+`scripts/{prepare-spike-micropython-pins,build-spike-linux-desktop}.mjs`;
+`scripts/prepare-spike-compiled-micropython-support.mjs` if needed; focused
+`test/spike-compiled-micropython-profile.test.mjs` and inline Rust profile/launch
+controls; `docs/SPIKE-STATUS-AND-LANES.md` and
+`docs/spike-micropython-{launch-plan,installed-resources}.md`. Supplier staging
+changes require a separate supplier claim. Retain
+the qualified legacy source-overlay path and credited components. Make profile
+selection explicit and bound to the reviewed runtime/model closure; skipping
+includes without admitting compatible platform type names is insufficient.
+No silent dependency adoption, runtime/model implementation change, firmware
+bundling or image download. Use the existing operator-supplied application only
+after exact identity/format admission, with immutable original bytes retained.
+
+Acceptance: reject mixed or mismatched profiles before launch; retain positive
+legacy and compiled contracts with meaningful removal/admission negatives;
+qualify the actual selected-image Code path, normal raw-REPL completion/error,
+Stop during final sampling, ownership release and distinct fresh recovery on a
+source-bound installed package. Record generation/image adversaries separately
+from actual native attachment transitions. All enabled exact-head CI and the
+affected installed checks must pass before matched-head integration. Preserve
+failed originals and existing budgets; no full SDK, reference, physical,
+distribution/licence, release or whole-G02 claim from a finite profile slice.
