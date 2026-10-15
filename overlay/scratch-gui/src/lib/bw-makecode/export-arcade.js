@@ -1,3 +1,4 @@
+import {throwExportOwners} from './throw-export-owners.js';
 import {prepareProcedureConstraintExport} from './procedure-constraint-export.js';
 import {validateProcedureConstraintSource} from './procedure-constraint-source.js';
 import {createSdkImageLiteralResources} from './sdk-image-literal-resources.js';
@@ -851,7 +852,7 @@ class ArcadeEmitter {
     /** An input as a JavaScript value (Arcade programs); a Scratch-only project reads it as `value` does. */
     arrayValue (b, name) {
         if (!this.arcadeValues) return this.value(b, name);
-        if(this.procedureConstraints?.obligations(b).some(obligation=>obligation.input===name)) {
+        if(this.procedureConstraints?.obligations(b).some(obligation=>obligation.input===name)||b.opcode==='arcade_throwValue'&&name==='VALUE') {
             const reporter=this.block(b.inputs?.[name]?.[1]);
             if(reporter?.opcode==='text'&&reporter.shadow&&!Object.keys(reporter.inputs||{}).length&&typeof reporter.fields?.TEXT?.[0]==='string')return JSON.stringify(reporter.fields.TEXT[0]);
         }
@@ -1823,6 +1824,10 @@ class ArcadeEmitter {
         if (/^data_(addtolist|deletealloflist|deleteoflist|insertatlist|replaceitemoflist)$/.test(b.opcode) && this.listStmt(b, push)) return;
         if (this.newStmt(b, push, me, depth, out)) return;
         switch (b.opcode) {
+        case 'arcade_throwValue': {
+            if(!this.throwExportOperands?.has(b)){this.note('Arcade Throw export requires a proved primitive operand and qualified main/button/ordinary procedure owner');return;}
+            push(`throw ${this.arrayValue(b,'VALUE')}`);return;
+        }
         case 'arcade_bindSpriteKind': {
             const name=this.literalInput(b,'NAME');
             if(!this.boundSpriteKinds.has(name)){push(`// ${this.note('Arcade kind binding needs an exported mutable named kind')}`);return;}
@@ -2934,7 +2939,7 @@ class ArcadeEmitter {
         const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],arrayCopies=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
         const inspectionOperatorProofs=new Map(),inspectionLeaves=new Map(),inspectionProducers=new Map(),inspectionOpaqueCells=new Set(),inspectionOperators=[],inspectionGlobalReaders=new Map(),inspectionVisited=new Set();
-        const procedureInputs=[],inspectionInputs=new Map(),sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
+        const throwInputs=new Map(),procedureInputs=[],inspectionInputs=new Map(),sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
         const inputBlock = (blocks, b, name) => {
             const input=b.inputs?.[name]?.[1];
             if(Array.isArray(input) && input[0]===12) return {opcode:'data_variable',fields:{VARIABLE:[input[1],input[2]]}};
@@ -3136,6 +3141,10 @@ class ArcadeEmitter {
             const visit = id => {
                 if (typeof id !== 'string' || seen.has(id) || !blocks[id]) return;
                 seen.add(id);const block = blocks[id];inspectionVisited.add(block);
+                if(block.opcode==='arcade_throwValue'){
+                    const operand=inputBlock(blocks,block,'VALUE');
+                    throwInputs.set(block,ref(operand?.opcode==='text'&&operand.shadow&&!Object.keys(operand.inputs||{}).length&&typeof operand.fields?.TEXT?.[0]==='string'?{opcode:'bw_stringLiteral',value:operand.fields.TEXT[0]}:operand));
+                }
                 for(const obligation of this.procedureConstraints?.obligations(block)||[]){
                     const actual=inputBlock(blocks,block,obligation.input);
                     const operand=actual?.opcode==='text'&&actual.shadow&&!Object.keys(actual.inputs||{}).length&&typeof actual.fields?.TEXT?.[0]==='string'?{opcode:'bw_stringLiteral',value:actual.fields.TEXT[0]}:actual;
@@ -3325,6 +3334,10 @@ class ArcadeEmitter {
             const actual=procedureInputs.find(item=>item.block===expected.block&&item.obligation===expected.obligation);
             if(!actual||actual.obligation.type!=='Any'&&!inspectionTypes(actual.value,[actual.obligation.type.toLowerCase()]))this.note('Procedure parameter constraint: actual current caller or writer requires '+expected.obligation.type);
         }
+        this.throwExportOperands=new Set();
+        const throwOwners=throwExportOwners(this.project,this.objectClassExport.procedures);
+        for(const [block,value]of throwInputs)if(throwOwners.has(block)&&inspectionTypes(value,['number','boolean','string','null','undefined']))this.throwExportOperands.add(block);
+        for(const target of this.project.targets)for(const block of Object.values(target.blocks||{}))if(block.opcode==='arcade_throwValue'&&!this.throwExportOperands.has(block))this.note('Arcade Throw export requires a proved primitive operand and qualified main/button/ordinary procedure owner');
         for(const [block,input]of inspectionInputs)if(inspectionTypes(input.value,['number','boolean','string','null','undefined'])&&inspectionTypes(input.limit,['number','undefined']))this.inspectionExportOperands.add(block);
         // Unknown operations remain dynamic. Propagate that fact through the
         // same result/alias graph rather than prematurely widening known sums.
