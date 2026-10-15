@@ -4813,3 +4813,12 @@ Null as well as Undefined. An annotation, an empty input socket or a desired
 consumer type must not manufacture an Array. Include save/reopen and current
 export/reimport with edited elements, captured aliases and an independent
 script continuing after a rejected operation.
+
+
+Optional Any and supported primitive Any defaults now have development portable
+controls: actual omission, explicit Undefined and supplied values retain their
+conditional initializer behavior through current export/reimport. The visible
+editor still needs discoverable optional/default authoring and invocation
+controls; a passing imported generated body is not that GUI. Strict typed
+optional/default formals remain open. Saved projects must preserve both the
+current initialization body and explicit Undefined input values.

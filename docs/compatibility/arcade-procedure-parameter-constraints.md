@@ -1,8 +1,9 @@
 # Ordinary procedure parameter constraints
 
-Status: proposed ownership and acceptance contract. Implementation requires this
-claim to land normally first. Compiler adoption, selected original execution,
-and hosted graphical authoring remain separate gates.
+Status: the claim is merged and the bounded development prototype has source,
+native and portable-project controls. Canonical compiler qualification and
+consumer adoption, selected original execution and visible authoring remain
+separate gates. The production compiler pin does not yet expose the new word.
 
 ## Concrete gap
 
@@ -46,12 +47,22 @@ not regain them from retained source, hidden original text, a fixture, or a
 consumer's desired type. The user may author an explicit constraint in Code or
 Blocks, subject to the same complete current-graph checks.
 
-The first source scope is ordinary module/namespace function declarations with
-required, simple primitive parameters. Unsupported optional/default/rest,
-generic, overload, destructured, reference, or callable parameter forms must be
-explicitly refused by this protocol. This does not introduce function values,
-new callback signatures, inheritance, physical Sprite/Font admission, or a
-broader callable default gate.
+The bounded source scope covers ordinary module/namespace declarations with
+required simple primitive parameters and supported trailing optional `Any`
+parameters. Omitted arguments become actual Undefined. Supported `Any` defaults
+retain the parser's real metadata and matching conditional initialization;
+their actual default expressions must have primitive producer proof. They run
+once, in order, only when their argument is Undefined. Current export may use
+required `any` parameters with explicit Undefined arguments and the same real
+conditional body; behavior, rather than original signature spelling, is kept.
+
+Optional/default Number, String or Boolean parameters remain excluded: a strict
+entry check before initialization would reject a legal omitted value. Generic,
+rest, overload, destructured, reference and callable forms remain explicit
+refusals. Self/later-formal default references and unsupported default producers
+also refuse in this bounded slice. No annotation becomes a value producer.
+This does not introduce function values, new callback signatures, inheritance,
+physical Sprite/Font admission or a broader callable default gate.
 
 ## Constraints and actual values
 

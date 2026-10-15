@@ -94,10 +94,11 @@ Map lowering and current export. They do not establish production adoption.
 
 The ordinary Procedure source prototype retains required primitive constraints
 for supported ordinary and namespace declarations. Number compound writes
-require real Number operands. Unsupported optional/default, generic,
-reference and mixed signatures remain explicit diagnostics. The authentic Lyla
-follow-up still has six source diagnostics; preserving one unused helper is
-not whole-project completion. Constraints remain obligations and never become
+require real Number operands. The later explicit prototype also preserves
+supported optional Any parameters and conditional primitive Any defaults.
+Typed optional/default, generic, reference and mixed signatures remain explicit
+diagnostics. The exact authentic Lyla source follow-up improves from six to
+five diagnostics through optional Any support; it is not whole-project closure. Constraints remain obligations and never become
 observations that a parameter has an actual value.
 
 The corrected [canonical candidate](https://github.com/CrispStrobe/sb3-creator/pull/157)
@@ -119,9 +120,10 @@ lanes' hardware pins. Do not edit copied vendor files to introduce the words.
    Throw and owned Sprite authoring in the installed Blocks and Code editors.
    Follow the [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md); native
    registration alone does not establish visible authoring.
-3. Preserve optional/default argument behavior through actual Undefined and
-   invocation rules. Do not use a strict Number constraint before a default
-   initializer and thereby reject a legal omitted argument.
+3. Extend the now passing optional Any/primitive Any-default prototype only
+   with proper invocation rules. Typed optional/default entry remains open;
+   do not place a strict Number constraint before a default initializer and
+   thereby reject a legal omitted argument.
 4. Add real Array operation and alias guards before admitting Array formal
    constraints. Cover raw inputs, named aliases, all mutation paths, captured
    lifetimes, foreign runtimes and failure completion. Existing Array transport
@@ -3479,3 +3481,27 @@ directory; `runProgram` does not honor that setting. Do not mistake a narrow
 table projection for qualification of parsing, decompilation or saved projects.
 GUI acceptance remains separately tracked in the
 [capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md#next-canonical-protocols-native-prototypes-and-gui-work--2026-10-15).
+
+
+### Combined optional/default and CI accounting follow-up
+
+Composition `196e61cc7` passes 151 affected controls with the complete corrected
+compiler candidate `9d3e222e`: zero failures, skips or TODOs in that focused run,
+784 selected file guards unchanged and 174 VM overlay mirrors equal. This adds
+portable actual optional/default Any behavior and the test-accounting repair;
+it does not change the measured raw corpus or complete-project profile.
+
+The original published consumer unit-three job remains failed. Its actual
+census was 2437 tests, 2428 pass, zero fail, eight skips and one TODO. The old
+auditor mistook that explicit pending compiler discrepancy for an ordinary
+failure. The development correction retains passing and failing pending bodies
+separately, distinguishes pending suites from leaf summary counts, and still
+rejects ordinary, escaped-name and construction failures. Actual hosted
+qualification of the corrected consumer remains required.
+
+The optional Arrays supplier hook has a separate 32-control frozen candidate
+and independent review, covering its actual 62-method inventory and no-host
+behavior. It provides before-operation/body/result boundaries; it does not yet
+supply a current VM execution loan, failed-continuation coordinator, typed Array
+formal, Settings certificate, compiler pin or visible authoring workflow.
+Physical Number input preservation is a separate supplier prerequisite.
