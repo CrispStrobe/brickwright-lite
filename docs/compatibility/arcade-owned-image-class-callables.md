@@ -178,3 +178,67 @@ original replay. Literal artwork, dynamic dimensions, screen/Sprite views and
 all previously unqualified neighboring domains remain refusals. This source
 selection checkpoint does not establish hosted GUI field/handler authoring or
 complete library admission.
+
+## Literal resource producer follow-up
+
+QUALIFIED within the bounded source/current-project surface — this tranche extends
+the factory and clone checkpoint. The earlier source and current-export refusals
+are retained as the baseline. Native authoring controls cover repeated factory
+allocation, alias mutation, current SVG artwork and portable save/reopen routes.
+
+The tranche admits only an actual unshadowed, rectangular `img` Template
+with exact palette characters and bounded dimensions. Resolve the tag in its
+actual lexical scope: the parser retains a tag string, not an Identifier whose
+name alone proves SDK ownership. Unknown characters, interpolation, opaque
+assets, `assets.image`, dynamic dimensions and Sprite views remain excluded.
+
+The current-project counterpart must prove a connected clone of a single-frame
+resource with fixed key, target, range and index. Resolve one actual target and
+its selected current SVG costume, asset/file identifiers, dimensions, centres
+and complete decoded palette pixels. Resource identifiers select stored data;
+they are not content hashes. No placeholder, raster approximation, costume name
+or annotation establishes this fact. Conflicting or dynamic uses of the same
+resource key, uncloned exposure and foreign or missing assets refuse.
+
+An accepted allocation may export as an inline `img` literal only when the
+current connected proof establishes its fresh clone semantics and no other use
+can mutate or expose the underlying shared resource. Render from the same
+validated current pixel snapshot. Do not restore retained source artwork or
+silently widen the class source proof to arbitrary generated arrays.
+
+Qualify actual source and current Code, same/fresh SB3, renamed resource targets,
+edited costume pixels, export and native reimport. Preserve alias identity,
+distinct clone allocations, all writer/ingress proof and Image-owner lifetime.
+New selected-SDK source and edited-art export inputs require a fresh serialized
+lease and exact input/binary/observation/guard closure. No unchanged original
+replay or broader class/Image/GUI qualification follows from this plan.
+
+The qualified current resource format is the pixel editor's opaque, scale-four
+rect-SVG output in the SDK palette. The editor's actual save method writes the
+asset through `vm.updateSvg`; current bytes are resolved again after asset-ID
+remapping and fresh SB3 load. Transparent palette entries remain supported.
+Partially opaque layers, custom palettes, PNG/bitmap costumes and other SVG
+layouts remain explicit refusals for this producer proof.
+
+Only actual owned Image `getPixel(x, y)` and `setPixel(x, y, color)` calls are
+added here, with exact arity and Number producers for every coordinate/color.
+The existing pixel operations determine bounds and mutation effects. Current
+serialized operands are checked before numeric socket rendering, so a text
+numeral cannot borrow Number authority from export formatting. No other Image
+member, dynamic dimension, Sprite or annotation producer is added.
+
+The new selected-SDK source and actual edited-art export both compiled and ran
+successfully with their exact prepared inputs. Repeated literal factory calls
+produce distinct Images; writes through an alias change only that allocation,
+and later factory calls retain the template pixels. The source and edited-art
+programs observed three calls and scores 19 and 23 respectively, with the same
+alias/distinct-identity and out-of-range pixel results as native execution.
+Every native portable route additionally checks all four pixels in each actual
+owned Image body. This is no broader editor, bitmap or full Image API claim.
+
+Export binds one immutable decoded snapshot to the actual costume and each
+native resource key. All frame uses must have exactly one actual incoming clone
+edge. Actual target/costume identities are checked before cache hits, and the
+current frame/input-edge graph is recomputed after reading the asset before a
+snapshot is published. Replacing an owner, changing metadata, adding an exposure
+or appending a frame during decoding cannot borrow a previous proof.

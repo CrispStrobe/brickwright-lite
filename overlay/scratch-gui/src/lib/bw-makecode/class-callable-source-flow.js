@@ -144,6 +144,11 @@ export function proveClassCallableSource(program,{sdkImagePrototype=false}={}) {
         if(node.type==='Parenthesized')return expression(node.expression,context);
         const primitive={Number:'number',String:'string',Boolean:'boolean',Undefined:'undefined'}[node.type];
         if(primitive)return scalar(primitive);
+        if(sdkImagePrototype&&node.type==='Template') {
+            let scope=lexical.scopes.get(node);if(!scope||node.tag!=='img')fail('SDK Image literal requires its actual unshadowed img tag');
+            for(;scope;scope=scope.parent)if(scope.names.has('img'))fail('SDK Image literal tag is lexically shadowed');
+            return images.literal(node,lexical.scopes.get(node));
+        }
         if(node.type==='Identifier') {
             const binding=read(node),current=cell(binding,context.env);if(!current)fail('unresolved lexical value '+node.name);
             if(binding.kind==='local'&&!current.declared)fail('local read lacks a dominating declaration');
@@ -161,6 +166,7 @@ export function proveClassCallableSource(program,{sdkImagePrototype=false}={}) {
             const object=expression(node.object,context);
             if(sdkImagePrototype&&images.isProduced(object)){
                 if(['width','height'].includes(node.name))return scalar('number');
+                if(['getPixel','setPixel'].includes(node.name))return {type:{kind:'callable',parameters:(node.name==='getPixel'?['x','y']:['x','y','color']).map(name=>({name,optional:false,type:named('number')})),result:named(node.name==='getPixel'?'number':'void')},sdkImageMethod:node.name};
                 if(node.name==='clone')return {type:{kind:'callable',parameters:[],result:{kind:'sdk',name:'Image'}},sdkCloneReceiver:object};
                 fail('unqualified SDK Image member '+node.name);
             }
@@ -234,6 +240,11 @@ export function proveClassCallableSource(program,{sdkImagePrototype=false}={}) {
                 visited.add(helper);const value=binary(helper.body[0].value.op,args[0],args[1]);const type=annotation(helper.returnType);if(type?.name!=='any')constrain(value,type,'primitive helper result');return value;}
             const callable=expression(node.callee,context),args=node.args.map(arg=>expression(arg,context));
             if(callable.sdkCloneReceiver)return images.clone(node,callable.sdkCloneReceiver);
+            if(callable.sdkImageMethod){
+                if(node.isNew||node.constructorCall||node.typeArguments||args.length!==callable.type.parameters.length)fail('SDK Image pixel call requires its plain exact argument shape');
+                args.forEach(value=>constrain(value,named('number'),'SDK Image pixel argument'));
+                return callable.sdkImageMethod==='getPixel'?scalar('number'):undef();
+            }
             if(callable.receiver&&!callable.receiver.instance.complete)fail('method invocation precedes constructor completion');
             if(callable.receiver&&callable.receiver===context.receiver&&!context.receiver?.instance.complete)fail('callback invocation escapes incomplete constructor');
             const result=invoke(callable,args,context);

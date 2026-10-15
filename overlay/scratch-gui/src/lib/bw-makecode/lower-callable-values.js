@@ -166,7 +166,7 @@ export function lowerCallableValues(program,{legacyCallbacks=new WeakSet(),class
             const possible=flow.expressionTargets.get(node.callee);
             const classMethod=node.callee?.type==='Member' && possible?.size && [...possible].every(target=>target.kind==='method');
             const type=flow.expressionTypes.get(node.callee);
-            const sdkClone=sdkImagePrototype&&node.callee?.type==='Member'&&node.callee.name==='clone'&&flow.expressionTypes.get(node.callee.object)?.kind==='sdk';
+            const sdkClone=sdkImagePrototype&&node.callee?.type==='Member'&&['clone','getPixel','setPixel'].includes(node.callee.name)&&flow.expressionTypes.get(node.callee.object)?.kind==='sdk';
             if(type?.kind==='callable' && !direct && !classMethod&&!sdkClone) {
                 const invocation=flow.invocations.get(node);
                 if(!invocation?.signature)fail('Source callable invocation requires a qualified concrete signature');
