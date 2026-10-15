@@ -1,4 +1,5 @@
 import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
+import {createProcedureOwnerEmission} from './procedure-owner-emission.js';
 import {prepareThrowSource} from './throw-source-gate.js';
 import {proveArrayMapValues} from './lower-array-map-values.js';
 import {selectNamedFunctionSourceProof} from './named-function-source-selection.js';
@@ -5739,13 +5740,12 @@ export function arcadeToPseudocode (files, opts = {}) {
     });
     const definesFor = new Map(t.sprites.map(s => [s.name, []]));
     const defined = new Set();
+    const markProcedureEmitted = createProcedureOwnerEmission();
     const defineOn = (sprite, roots) => {
-        const done = new Set();
         const queue = [...roots];
         while (queue.length) {
             const fn = queue.shift();
-            if (done.has(fn)) continue;
-            done.add(fn);
+            if (!markProcedureEmitted(sprite, fn)) continue;
             defined.add(fn);
             const lines = translateFunction(fn, sprite);
             definesFor.get(sprite.name).push(lines);
