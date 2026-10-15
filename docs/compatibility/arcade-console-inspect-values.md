@@ -125,7 +125,10 @@ and untyped globals and locals without initializers, including a local alias,
 function return and a read before a later assignment. The primitive source and
 its actual edited export also matched their native String results, once-only
 effects and all 19,200 image and presented frame pixels. These are bounded local
-SDK controls; the hosted editor journey remains pending.
+SDK controls; the hosted editor journey remains pending. The declaration-site
+follow-up's actual new export also compiled and executed with all twelve observed
+Undefined strings, the combined text and readiness unchanged. Its original
+source was reused only after an exact byte comparison, without another execution.
 
 For eligible inspection programs, an actual primitive or untyped function-local
 declaration without an initializer now emits the existing explicit Undefined
