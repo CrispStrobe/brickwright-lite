@@ -25,7 +25,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
         if(binding?.node===fn)helpers.set(binding,{scope,calls:0});
     }
     const numericHelpers=new Set([...helpers.values()].map(helper=>helper.scope.node));
-    actual=analyseSourceValueProducers(program,{numericHelpers,parenthesized:true});
+    actual=analyseSourceValueProducers(program,{numericHelpers,parenthesized:true,unboundIsOpaque:true});
     const actualNumber=types=>types.size===1&&types.has('Number');
     const plainCall=node=>node?.type==='Call'&&!node.isNew&&!node.constructorCall&&!Object.hasOwn(node,'typeArguments');
     const numericExpression=node=>{
@@ -151,17 +151,29 @@ export function callableSourceGate(program,{normalize=false}={}) {
         // The preceding gate proves the actual Arrow bodies/capture initialization
         // and every immutable factory call. Only then can their actual invocation
         // results participate in outer operator helper operand proofs.
-        actual=analyseSourceValueProducers(program,{numericArrows:new Set(expressions.map(scope=>scope.node)),numericHelpers,parenthesized:true});
-        const checkHelperOperands=node=>{
+        actual=analyseSourceValueProducers(program,{numericArrows:new Set(expressions.map(scope=>scope.node)),numericHelpers,parenthesized:true,unboundIsOpaque:true});
+        const checkHelperOperands=(node,parent,key)=>{
             if(!node||typeof node!=='object')return;
-            if(Array.isArray(node)){node.forEach(checkHelperOperands);return;}
+            if(Array.isArray(node)){node.forEach(value=>checkHelperOperands(value,parent,key));return;}
+            if(node.type==='Declaration')for(const row of node.decls) {
+                const binding=flow.lexical.scopes.get(node)?.names.get(row.name),types=actual.bindingTypesAt(node,row.name);
+                if((zeroNumeric(flow.bindingTypes.get(binding))||types.has('NumericCallable'))&&
+                    (!types.has('NumericCallable')||[...types].some(type=>type!=='NumericCallable'&&type!=='Undefined')))
+                    fail('Callable source gate requires compatible actual writers for every numeric callback cell');
+            }
+            if(node.type==='Identifier'&&!(parent?.type==='Assignment'&&key==='left')) {
+                const binding=flow.lexical.references.get(node),types=actual.bindingTypesAt(node);
+                if((zeroNumeric(flow.bindingTypes.get(binding))||types.has('NumericCallable'))&&
+                    (!actual.isInitializedAt(node)||actual.typesAt(node).size!==1||!actual.typesAt(node).has('NumericCallable')))
+                    fail('Callable source gate requires initialization dominating every numeric callback read');
+            }
             if(node.type==='Call'&&zeroNumeric(flow.expressionTypes.get(node.callee))&&
                 (!plainCall(node)||node.args.length||actual.typesAt(node.callee).size!==1||!actual.typesAt(node.callee).has('NumericCallable')))
                 fail('Callable source gate requires actual initialized numeric callback producers at every invocation');
             if(node.type==='Call'&&node.callee?.type==='Identifier'&&helpers.has(flow.lexical.references.get(node.callee))&&
                 !node.args.every(numericExpression))
                 fail('Callable source gate requires concrete numeric operands at every operator helper use');
-            for(const [key,value]of Object.entries(node))if(!['originalBody','parameterDefaults'].includes(key)&&value&&typeof value==='object')checkHelperOperands(value);
+            for(const [key,value]of Object.entries(node))if(!['originalBody','parameterDefaults'].includes(key)&&value&&typeof value==='object')checkHelperOperands(value,node,key);
         };
         checkHelperOperands(program.body);
     }

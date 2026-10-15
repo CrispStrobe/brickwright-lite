@@ -138,3 +138,54 @@ test('helper normalization refuses constructor and generic call descriptors at e
     for(const suffix of ['let extra=sum?.(1,2);','let extra=sum(...items);'])
         assert.throws(()=>parse(source+suffix));
 });
+
+
+test('unused callback cells and aliases still require compatible complete writer domains',()=>{
+    for(const suffix of [
+        'let callback=make(2);callback=image.create(1,1) as any;',
+        'let callback=make(2);if(true){callback=image.create(1,1) as any;}',
+        'let callback=make(2);let alias=callback;alias=image.create(1,1) as any;',
+        'let callback:()=>number=image.create(1,1) as any;',
+        'let callback:any=make(2);callback=image.create(1,1);',
+        'let callback=make(2);let alias:any=callback;alias=unknownCallback;'
+    ]) {
+        const source=factory+suffix;
+        assert.equal(gate(source).eligible,false,source);
+        assert.ok(arcadeToPseudocode(source).unsupported.length,source);
+    }
+});
+
+test('callback initialization must dominate ordinary reads as well as invocations',async()=>{
+    for(const suffix of ['let unused:()=>number;', 'let unused:()=>number=undefined;',
+        'let callback:()=>number;let alias=callback;callback=make(2);',
+        'let callback:()=>number;let early=callback===undefined;callback=make(2);',
+        'let callback:()=>number;let before=typeof callback;callback=make(2);let result=callback();'])
+        assert.equal(gate(factory+suffix).eligible,false,suffix);
+    const source=factory+'let callback:()=>number;callback=make(2);let result=callback();';
+    assert.equal(gate(source).eligible,true);
+    const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
+    const {runProgram,clearStrayTimers}=await import('./helpers/bw-vm.mjs');
+    const {importGuiDependency}=await import('./helpers/bw-integrated.mjs');
+    const BW=(await importGuiDependency('scratch-vm/src/util/bw-values.js')).default;
+    const run=await runProgram(imported.code,{frames:8});
+    try {
+        assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+        const variables=run.vm.runtime.targets.flatMap(target=>Object.values(target.variables));
+        assert.equal(BW.decode(variables.find(variable=>variable.name==='result').value),6);
+    } finally {run.vm.quit();clearStrayTimers();}
+});
+
+
+test('read-only binding kinds distinguish undeclared and declaration values from real scalar bindings',()=>{
+    const program=parse('function value(argument:number){return argument}class Box{constructor(){}}enum Mode{A}let scalar:number;value=unknownFunction;let a=value;let b=Box;let c=Mode;let d=scalar;let e=missing;');
+    const proof=analyseSourceValueProducers(program);
+    for(const [name,kind]of [['value','function'],['Box','class'],['Mode','enum'],['scalar','variable'],['argument','parameter']]) {
+        const read=nodes(program,node=>node.type==='Identifier'&&node.name===name).at(-1);
+        assert.deepEqual([...proof.bindingKindsAt(read)],[kind],name);
+        proof.bindingKindsAt(read).clear();
+        assert.deepEqual([...proof.bindingKindsAt(read)],[kind]);
+    }
+    const missing=nodes(program,node=>node.type==='Identifier'&&node.name==='missing')[0];
+    assert.deepEqual([...proof.bindingKindsAt(missing)],[]);
+    assert.equal(proof.immutableFunctionAt(nodes(program,node=>node.type==='Identifier'&&node.name==='value').at(-1)),null,'written function remains a function declaration value');
+});

@@ -3,13 +3,14 @@ import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-export function analyseSourceValueProducers(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false}={}) {
+export function analyseSourceValueProducers(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false}={}) {
     const numericArrows=new Set(provedArrows),numericHelpers=new Set(provedHelpers);
     // Only a consumer with an independently validated zero-argument Number body
     // may supply these actual AST allocation sites. Ordinary analysis is unchanged.
     const sdk=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['screen']}),fields=new Map(SDK_FONT_FIELDS.map(field=>[field.name,field.type]));
     let screenWritten=false;
     const scanScreenWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanScreenWrites);return;}const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;if(target?.type==='Identifier'&&target.name==='screen'&&sdk.has(target))screenWritten=true;Object.values(node).forEach(scanScreenWrites);};scanScreenWrites(program);
+    const initializedReads=new WeakSet();
     const writing=new WeakSet(),owners=new WeakMap(),cells=new WeakMap(),types=new Map(),edges=[],scales=[],texts=[],derived=[],prints=[],classes=new Map(),classCalls=[],classWrites=new Set(),declarations=new Map(),functions=new Map(),calls=[],numericCalls=[],unsupported=[];
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const scope=parent=>({parent,bindings:new Map()});
@@ -29,7 +30,7 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
         if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(value=>visit(value,owner));return;}
         owners.set(node,owner);if(['FunctionDeclaration','Class'].includes(node.type) && (node.name?.startsWith('__bwSdkFont_') || node.name==='__bwSDK_Font'))fail('Internal Font descriptor and intrinsic names are not source bindings');
         if(node.type==='Declaration' && node.decls.some(decl=>decl.name.startsWith('__bwSdkFont_') || decl.name==='__bwSDK_Font'))fail('Internal Font descriptor and intrinsic names are not source bindings');
-        if(node.type==='Identifier'){if(node.name.startsWith('__bwSdkFont_'))fail('Internal Font intrinsic names are not source bindings');if(!writing.has(node)){cells.set(node,key());if(node.name==='screen'&&sdk.has(node))add(cell(node),screenWritten?'Opaque':'Image');else edge(binding(owner,node.name),cell(node));}return;}
+        if(node.type==='Identifier'){if(node.name.startsWith('__bwSdkFont_'))fail('Internal Font intrinsic names are not source bindings');if(!writing.has(node)){cells.set(node,key());if(node.name==='screen'&&sdk.has(node))add(cell(node),screenWritten?'Opaque':'Image');else {const id=binding(owner,node.name);edge(id,cell(node));if(unboundIsOpaque&&!declarations.has(id))add(cell(node),'Opaque');}}return;}
         cells.set(node,key());const current=cell(node);
         if(node.type==='Program'){predeclare(node.body,owner);vars(node.body,owner);node.body.forEach(value=>visit(value,owner));return;}
         if(node.type==='Block'){body(node.body,owner);return;}
@@ -81,7 +82,10 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
         if(!node||typeof node!=='object')return known;
         if(Array.isArray(node)){for(const value of node)known=entry(value,known);return known;}
         const owner=owners.get(node)||global;
-        if(node.type==='Identifier'){if(!writing.has(node)&&!(node.name==='screen'&&sdk.has(node))&&!known.has(binding(owner,node.name)))add(cell(node),'Undefined');return known;}
+        if(node.type==='Identifier'){
+            if(known.has(binding(owner,node.name)))initializedReads.add(node);
+            if(!writing.has(node)&&!(node.name==='screen'&&sdk.has(node))&&!known.has(binding(owner,node.name)))add(cell(node),'Undefined');return known;
+        }
         if(node.type==='FunctionDeclaration'||node.type==='FunctionExpression'){const entryOwner=node.type==='FunctionDeclaration'?functions.get(binding(owner,node.name))?.owner:null;const first=node.body?.[0],methodOwner=entryOwner||owners.get(first);entry(node.body,new Set((node.params||[]).map(name=>binding(methodOwner||owner,name))));return known;}
         if(node.type==='Class'){for(const field of node.fields||[])entry(field.init,new Set());for(const method of [node.ctor,...(node.methods||[])].filter(Boolean)){const methodOwner=owners.get(method.body?.[0])||owner;entry(method.body,new Set((method.params||[]).map(name=>binding(methodOwner,name))));}return known;}
         if(node.type==='Declaration'){for(const decl of node.decls){known=entry(decl.init,known);if(decl.init)known=new Set([...known,binding(owner,decl.name)]);}return known;}
@@ -142,6 +146,9 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
         typesAt:node=>new Set(owners.has(node)?types.get(cell(node))||[]:[]),
         bindingTypesAt:(node,name=node?.name)=>new Set(types.get(knownBinding(node,name))||[]),
         bindingOf:knownBinding,
+        bindingKindsAt:(node,name=node?.name)=>new Set([...(declarations.get(knownBinding(node,name))||[])].map(declaration=>
+            typeof declaration==='symbol'?'parameter':({FunctionDeclaration:'function',Class:'class',Enum:'enum'}[declaration.type]||'variable'))),
+        isInitializedAt:node=>initializedReads.has(node),
         declarationCountAt:(node,name=node?.name)=>declarations.get(knownBinding(node,name))?.size||0,
         immutableFunctionAt:immutableFunction,
         isSdkNamespace:node=>sdk.has(node),
