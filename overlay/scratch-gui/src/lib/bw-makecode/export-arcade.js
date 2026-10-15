@@ -1,4 +1,5 @@
 import {proveNamedFunctionSource} from './named-function-source.js';
+import {analyseConsoleCaptures} from './console-capture-provenance.js';
 import {classCallableSourceGate} from './class-callable-source-gate.js';
 import {classCallableDefaultProjectGate} from './class-callable-default-project-gate.js';
 import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
@@ -2920,6 +2921,16 @@ class ArcadeEmitter {
             const input = b.inputs?.[name]?.[1];
             return Array.isArray(input) ? String(input[1]) : String(blocks[input]?.fields?.TEXT?.[0] || '');
         };
+        const inspectionCaptures=analyseConsoleCaptures({targets:this.project.targets,blocks:target=>target.blocks||{},
+            input:(node,name,target)=>inputBlock(target.blocks||{},node,name),
+            literal:(node,name,target)=>{
+                if(node?.fields?.[name])return String(node.fields[name][0]);
+                const slot=node?.inputs?.[name]?.[1];
+                return Array.isArray(slot)&&slot[0]===10?String(slot[1]):target.blocks?.[slot]?.opcode==='text'?target.blocks[slot].fields?.TEXT?.[0]:null;
+            }});
+        const inspectionCellKey=cell=>cell.scope.procedure?
+            `${cell.scope.target.isStage?'':cell.scope.target.name}:${cell.scope.procedure}:${cell.scope.params.includes(cell.name)?'param':'local'}:${cell.name}`:
+            `${cell.scope.target.name}:script:${cell.scope.id}:local:${cell.name}`;
         for (const target of this.project.targets) {
             const blocks = target.blocks || {};
             for (const b of Object.values(blocks)) {
@@ -2963,7 +2974,7 @@ class ArcadeEmitter {
             collectScope(b.next);
             const scopeValues = [...scopeBlocks].map(id => blocks[id]);
             const fixedName=value=>{const input=value.inputs?.NAME?.[1];return value.fields?.NAME?.[0]??(Array.isArray(input)&&input[0]===10?String(input[1]):blocks[input]?.opcode==='text'?blocks[input].fields?.TEXT?.[0]:null);};
-            const unsafeInspectionLocals=scopeValues.some(value=>value.opcode==='arcade_setLocal'&&typeof fixedName(value)!=='string'||value.opcode==='arcade_createCallable'||value.opcode.startsWith('arcade_register')&&(value.inputs?.CAPTURES||value.fields?.CAPTURES));
+            const unsafeInspectionLocals=scopeValues.some(value=>value.opcode==='arcade_setLocal'&&typeof fixedName(value)!=='string'||value.opcode==='arcade_createCallable');
             const physicalNumber=value=>value?.opcode==='bw_numberLiteral'?value.value:value?.opcode==='math_number'?Number(value.fields?.NUM?.[0]):null;
             const ownsEventPlayer=value=>{
                 if(b.opcode!=='arcade_whenRegisteredMultiplayerConnection')return false;
@@ -3023,9 +3034,9 @@ class ArcadeEmitter {
                     const id=`${key}:primitive:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
                     (this.isBoolean(value)?booleans:['operator_join','operator_letter_of'].includes(value.opcode)?strings:numbers).add(id);const operands=Object.keys(value.inputs||{}).map(name=>ref(inputBlock(blocks,value,name)));inspectionOperators.push([id,operands]);inspectionOperatorProofs.set(id,{type:this.isBoolean(value)?'boolean':['operator_join','operator_letter_of'].includes(value.opcode)?'string':'number',operands});return id;
                 }
-                if (/^argument_reporter_/.test(value.opcode)){const id=`${key}:param:${value.fields.VALUE[0]}`;if(unsafeInspectionLocals)inspectionOpaqueCells.add(id);return id;}
-                if (value.opcode === 'arcade_getCaptured'){const id=`${key}:capture:${literal(blocks,value,'NAME')}`;inspectionOpaqueCells.add(id);return id;}
-                if (value.opcode === 'arcade_getLocal') {const cell=localKey(literal(blocks,value,'NAME'));if(unsafeInspectionLocals||typeof fixedName(value)!=='string')inspectionOpaqueCells.add(cell);arrayLocalReaders.set(value,cell);return cell;}
+                if (/^argument_reporter_/.test(value.opcode)){const id=`${key}:param:${value.fields.VALUE[0]}`;if(unsafeInspectionLocals||!inspectionCaptures.proof(inspectionCaptures.local(inspectionCaptures.scopeOf(value),value.fields.VALUE[0])))inspectionOpaqueCells.add(id);return id;}
+                if (value.opcode === 'arcade_getCaptured'){const id=`${key}:capture:${literal(blocks,value,'NAME')}`,cell=inspectionCaptures.captured(inspectionCaptures.scopeOf(value),fixedName(value));if(!inspectionCaptures.proof(cell))inspectionOpaqueCells.add(id);else connect(id,inspectionCellKey(cell));return id;}
+                if (value.opcode === 'arcade_getLocal') {const cell=localKey(literal(blocks,value,'NAME'));if(unsafeInspectionLocals||typeof fixedName(value)!=='string'||!inspectionCaptures.proof(inspectionCaptures.local(inspectionCaptures.scopeOf(value),fixedName(value))))inspectionOpaqueCells.add(cell);arrayLocalReaders.set(value,cell);return cell;}
                 if (value.opcode === 'arcade_callFunction') {
                     const code=`${target.isStage ? '' : target.name}:${literal(blocks,value,'NAME')}`,id=`${code}:result`;
                     if(this.objectClassExport.procedures.has(code))opaqueCells.add(id);
@@ -3173,7 +3184,7 @@ class ArcadeEmitter {
                     const id=Symbol('sprite data assignment');dataProperties.push([ref(inputBlock(blocks,block,'ID')),id]);
                     connect(id,ref(inputBlock(blocks,block,'VALUE')));
                 }
-                if(block.opcode==='arcade_setCaptured')connect(`${key}:capture:${literal(blocks,block,'NAME')}`,ref(inputBlock(blocks,block,'VALUE')));
+                if(block.opcode==='arcade_setCaptured'){const cell=inspectionCaptures.captured(inspectionCaptures.scopeOf(block),fixedName(block));connect(cell?inspectionCellKey(cell):`${key}:capture:${literal(blocks,block,'NAME')}`,ref(inputBlock(blocks,block,'VALUE')));}
                 if (block.opcode === 'arcade_setLocal') connect(localKey(literal(blocks,block,'NAME')),ref(inputBlock(blocks,block,'VALUE')));
                 if (block.opcode === 'data_setvariableto') connect(`variable:${block.fields.VARIABLE[1] || block.fields.VARIABLE[0]}`,ref(inputBlock(blocks,block,'VALUE')));
                 if (block.opcode === 'arcade_returnValue') connect(`${key}:result`,ref(inputBlock(blocks,block,'VALUE')));
