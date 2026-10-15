@@ -594,6 +594,18 @@ full session Stop through Reset; pending-upload Arena Stop and Code-feedback UX
 remain open. Integration preserves the qualified session/test blobs and requires
 fresh final-head CI. Later whole packages need their own qualification.
 
+A stacked world-action continuation on
+`lane/spike-g02-world-action-ownership-20261015` extends the existing G02 pane
+ownership checks to delayed lesson/world selection, sandbox persistence and
+manual driving. Old teardown or load returns cannot replace a newer world or
+feedback; old render callbacks cannot report readiness. Stop during a manual
+motor notification prevents further motor commands and running feedback.
+All 32 new authored-boundary controls and 44 inherited pane controls pass; the
+baseline fails 18 new cases, and eight ownership/callback mutations are detected.
+Fresh source-bound installed representative cancellation/recovery and final-head
+CI remain pending. This changes lifecycle admission, not sandbox features or
+model behavior, and does not close G02.
+
 ### G03 — Qualify usable sandbox and responsive editor controls
 
 The scoped ownership claim is recorded in

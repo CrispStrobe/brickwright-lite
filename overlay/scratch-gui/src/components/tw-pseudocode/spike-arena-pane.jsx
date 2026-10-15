@@ -108,19 +108,23 @@ class SpikeArenaPane extends React.Component {
 
     /** Loads a unit and selects one of its challenges (the first when `wanted` is not in it). */
     async openUnit (unitId, wanted) {
-        await this.stopProgram();
-        if (this.disposed) return;
         const token = this.unitToken = {};
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.unitToken === token &&
+            this.programIntent === intent && this.bridge === intent.bridge;
+        await stopped;
+        if (!current()) return;
         this.setState({status: 'loading', sandbox: null, topology: 'default', message: ''});
         try {
             const {unit, challenges, folder} = await loadUnit(unitId);
-            if (token !== this.unitToken) return;
+            if (!current()) return;
             this.folder = folder;
             const index = Math.max(0, wanted ? challenges.findIndex(c => c.id === wanted) : 0);
             this.bridge = null;
             this.setState({unit, challenges, index, readout: null, status: 'ready'}, () => this.select(index));
         } catch (error) {
-            if (token === this.unitToken) this.setState({status: 'failed', message: this.t('loadFailed', {error: error.message})});
+            if (current()) this.setState({status: 'failed', message: this.t('loadFailed', {error: error.message})});
         }
     }
 
@@ -152,12 +156,17 @@ class SpikeArenaPane extends React.Component {
     get world () { return this.state.sandbox || this.state.challenges[this.state.index] || null; }
 
     async select (index) {
-        await this.stopProgram();
-        if (this.disposed) return;
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.programIntent === intent && this.bridge === intent.bridge;
+        await stopped;
+        if (!current()) return;
         const world = this.state.challenges[index];
         if (!world) return;
         this.bridge = new ArenaHubBridge({hubState: this.hubState, world});
+        intent.bridge = this.bridge;
         this.setState({index, sandbox: null, topology: 'default', readout: null, verdict: null, status: 'ready', message: '', hintsOpen: false}, () => {
+            if (!current()) return;
             // A new world needs a new scene; the renderer is not reused across worlds.
             if (this.view3d) this.mountView3D();
             this.draw();
@@ -167,14 +176,19 @@ class SpikeArenaPane extends React.Component {
 
     async setSandbox (world) {
         this.unitToken = null;
-        await this.stopProgram();
-        if (this.disposed) return;
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.programIntent === intent && this.bridge === intent.bridge;
+        await stopped;
+        if (!current()) return;
         this.unitToken = null;
         this.bridge = new ArenaHubBridge({hubState: this.hubState, world});
+        intent.bridge = this.bridge;
         this.lastFrame = null;
         this.clock.clear();
         try { localStorage.setItem(SANDBOX_STORAGE_KEY, JSON.stringify(world)); } catch { /* local storage may be unavailable */ }
         this.setState({sandbox: world, status: 'ready', verdict: null, readout: null, message: ''}, () => {
+            if (!current()) return;
             if (this.view3d) this.mountView3D();
             this.draw();
         });
@@ -234,15 +248,21 @@ class SpikeArenaPane extends React.Component {
 
     async manualDrive (direction) {
         if (!this.state.sandbox || !this.bridge) return;
-        await this.stopProgram();
-        if (this.disposed) return;
+        const stopped = this.stopProgram();
+        const intent = this.programIntent;
+        const current = () => !this.disposed && this.programIntent === intent && this.bridge === intent.bridge;
+        await stopped;
+        if (!current()) return;
         this.hubState.setSimulationEnabled(true);
+        if (!current()) return;
         const speeds = {forward: [1, 1], back: [-1, -1], left: [-1, 1], right: [1, -1], stop: [0, 0]}[direction];
         if (!speeds) return;
         for (const [i, side] of [this.bridge.robot.left, this.bridge.robot.right].entries()) {
+            if (!current()) return;
             const speed = this.hubState.backend.percentToDps(side.port, this.state.driveSpeed * speeds[i] * (side.reversed ? -1 : 1));
             this.hubState.backend.runAtSpeed(side.port, speed);
         }
+        if (!current()) return;
         this.lastFrame = null;
         this.setState({execution: 'native', topology: 'default', status: 'running', message: ''});
     }
