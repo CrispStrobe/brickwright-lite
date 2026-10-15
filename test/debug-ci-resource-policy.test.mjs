@@ -41,7 +41,10 @@ function runBrowserInstallWithRegistryUnavailable(hasLocalCli) {
         executable('bin/timeout', 'echo "bound $1 $2" >> "$BW_INSTALL_COMMAND_LOG"\nshift 2\nexec "$@"');
         if (hasLocalCli) executable('node_modules/.bin/playwright',
             'echo "playwright $*" >> "$BW_INSTALL_COMMAND_LOG"');
-        const result = spawnSync('bash', ['-e', '-c', browserInstallScript()], {
+        // This Linux workflow runs Bash explicitly. Bind the interpreter rather
+        // than letting the fixture's PATH select a different shell. A missing
+        // interpreter remains an execution error, never a passing setup test.
+        const result = spawnSync('/bin/bash', ['-e', '-c', browserInstallScript()], {
             cwd,
             env: {...process.env, PATH: join(cwd, 'bin') + ':/usr/bin:/bin', BW_INSTALL_COMMAND_LOG: commandLog},
             encoding: 'utf8', timeout: 5000
