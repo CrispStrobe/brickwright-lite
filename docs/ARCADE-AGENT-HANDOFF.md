@@ -52,7 +52,8 @@ Freethrow's 26 root-only reimport refusals disappear with its actual declared
 profile. Lyla's current required primitive formal metadata survives the complete
 pure route, including its unused String helper. Its corrected source
 `pauseUntil` scheduling now passes five bounded native startup/input/restart
-routes; [pickup, original and visible-authoring gates remain open](compatibility/arcade-authentic-project-qualification.md#lyla-condition-wait-correction--2026-10-15).
+routes; its selected original now also confirms bounded startup/A/Right behavior.
+[Pickup, current-export and visible-authoring gates remain open](compatibility/arcade-authentic-project-qualification.md#lyla-condition-wait-correction--2026-10-15).
 Never prune its unused helper or restore original source.
 
 The development composition `049bf6b5a` passes 155 affected controls against the

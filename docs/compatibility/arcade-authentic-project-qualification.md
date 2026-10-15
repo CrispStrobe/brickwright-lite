@@ -26,7 +26,7 @@ matched to the exact input and source before being credited here.
 | [Free throw](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/free-throw.md#13) (`2cdb086e`) | Pass | Pass | — | — | — |
 | [Arrow](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/arrow.md#20) (`5d0c02f5`) | Source blocked | — | — | — | — |
 | [New pizza party](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/new-pizza-party.md#23) (`67958b6a`) | Pass | Pass | — | — | — |
-| [Lyla Jr](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/lyla-jr.md#4) (`7b258f52`) | Later pass (`de740879`) | Startup + input + restart | — | — | — |
+| [Lyla Jr](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/lyla-jr.md#4) (`7b258f52`) | Later pass (`de740879`) | Startup + input + restart | Startup + A + Right (bounded) | — | — |
 | [Horse](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/horse.md#6) (`90a0e61d`) | Source blocked | — | — | — | — |
 | [Icecube](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0201-part2.md#1) (`a03d93d1`) | Pass | Pass | — | — | — |
 | [Hundred](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/hundred.md#16) (`b1c05d93`) | Pass | Pass | — | — | — |
@@ -39,9 +39,10 @@ matched to the exact input and source before being credited here.
 | [Flame handler with null receiver](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/courses/csintro/blocks/unit-2/lab0201-part1.md#4) (`f583b791`) | Pass | Hold: null read | Null-getter fault observed | — | — |
 | [Froggy](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/froggy.md#11) (`f65a6b2d`) | Pass | Pass | — | — | — |
 
-Twelve contexts now have these bounded native route controls; one additionally
-has its exact selected-original source/current-export startup and controller
-comparison. No complete-project or raw-census promotion follows.
+Twelve contexts now have these bounded native route controls. Two have
+selected-original startup and controller observations; one also has the
+current-export original-runtime comparison. The null-receiver fault remains a
+separate held-native comparison. No complete-project or raw-census promotion follows.
 
 ## Lyla condition-wait correction — 2026-10-15
 
@@ -154,3 +155,36 @@ errors remain retained. The corrected observer reads actual Board/ScreenState
 data and leaves the production presentation callback untouched. Visible
 presentation, audio, native agreement, editable authoring and full-game behavior
 are not qualified by this original capture.
+
+## Lyla selected-original input observation — 2026-10-15
+
+One cached-original run completed startup and received genuine Space and Right
+key pairs. Before input, controller 1 was already connected and the dialog's
+actual suspended splash, pause and poll frames shared the expected captured
+cells. A pending neutral dialog was positively observed. After the first A
+press, the original scene returned, the saved-scene stack became empty, the
+poll queue became undefined and user events resumed. A second A was unnecessary.
+Right then moved the Player from center x=40 to x=50 at y=30; velocity was zero
+after release. Player and projectile pixel hashes match all five retained native
+routes. The original retains an additional Renderable used by its HUD; native
+HUD state is separate. Preserve both complete inventories.
+
+The native routes move x=40 to x=48 under their 80-millisecond clock schedule.
+The original's real key holds measured 108.6 milliseconds for Space and 103.5
+milliseconds for Right. These establish bounded input behavior, not equal
+trajectories or a shared clock. Random actors and paths are not forced to match.
+
+The run took 14.823 seconds with all 398 file guards unchanged, one runtime
+start, no compile and no external requests. Window, page and observer error
+arrays are empty; all eight actual messages, including multiplayer icon bytes,
+remain retained. Its producer reports HOLD because no second pending dialog was
+found. That original label remains unchanged. Independent reading of the before
+and after snapshots establishes that the first press had already dismissed the
+genuine dialog; the second press was correctly withheld. No replay was needed.
+
+The observer incorrectly read Background `image` where the actual setter stores
+`_image`. Active original background pixels are therefore unobserved. The diner
+resource matches native background data, but a resource alone does not prove the
+active binding. Physical presentation, audio, song completion, score pickup,
+original restart, current-export execution, visible authoring and whole-game
+qualification remain open.
