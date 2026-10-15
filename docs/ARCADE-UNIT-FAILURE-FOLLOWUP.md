@@ -403,3 +403,19 @@ export and reimport. Both page-error and block-error lists are empty. This
 closes the observed Font restart failure for that browser scenario. The full
 integration still requires every other enabled check; corpus partial counts
 are not reduced by these browser results.
+
+## Remaining official unit failures
+
+The completed [unit shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38664222463/job/116192614182)
+reported 3,783 tests: 3,761 pass, 15 fail, five skips and two TODOs. Repeated
+log sections contain thirty failure lines representing fifteen distinct tests.
+The other enabled checks, including both browser suites and the official
+Arcade authoring job, passed. Preserve this failed shard when qualifying the
+next source; it is not a passing integration gate.
+
+The next branch includes current screen Image provenance for Font export,
+visible nested expression diagnostics and corrected actual clock/controller
+observations. Native controls retain the original assertions and exercise
+Code, export/reimport and saved-project restart. Creation callback timing,
+physics engine membership/cadence, sprite event continuation and device
+settings still require their affected hosted results and focused investigation.

@@ -4434,3 +4434,33 @@ Acceptance includes visible connected-input edits, aliases, Code reconstruction,
 same/fresh saved projects, executed export and reimport. Headless native pixels,
 palette descriptors and a prepared browser script do not establish these
 visible editor journeys.
+
+## Ordinary conditional callbacks and Number text — 2026-10-15
+
+The [conditional callback contract](compatibility/arcade-class-callback-result-flow.md)
+now has bounded source, native, Code, same/fresh saved-project, original-export
+and reimport qualification. A method can save its ordinary backing field, test
+its presence, run a typed action, perform serial Void followups and return the
+action result or actual Undefined. Number, String and effect-only Void actions
+retain observed order and alias identity. Completion binds the actual field
+read and complete current method body. Stored module Void declarations, SDK
+reference fields, physical Sprite inheritance and whole StatusBar remain gaps.
+
+GUI work: provide an authoring flow for the ordinary class, backing field,
+typed action parameter and present/absent branches. The generated editable
+Blocks and Code are covered; a class creation editor and a browser journey
+creating this shape from scratch remain unqualified. Include body edits during
+a paused callback and show the resulting current-body refusal clearly.
+
+[Primitive Number text](compatibility/arcade-number-to-text.md) uses the existing
+join operator with an actual Number producer, consumed once. Native edits,
+Code, saved projects, executed source and an actual edited export preserve the
+selected formatting, including finite scientific notation and subnormal values.
+Number annotations, mixed writers, custom methods and references provide no
+primitive authority. Radix and nonfinite literal overflow remain explicit gaps.
+
+GUI work: expose this operation as a discoverable Number-to-text action while
+retaining its ordinary editable join operands. The current block edit changing
+the Number operand is covered; add a browser journey for creation, edit, save,
+export and reimport. Do not grant Number authority to an absent conditional
+result or an arbitrary class method named `toString`.
