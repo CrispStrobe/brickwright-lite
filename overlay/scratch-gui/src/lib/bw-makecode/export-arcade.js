@@ -4120,7 +4120,7 @@ export function projectToArcade (project, opts = {}) {
     }
     if(e.procedureConstraints?.procedures().length){
         const selected=new Set(e.procedureConstraints.procedures().map(({target,code})=>e.fnNames.get(`${target.isStage?'':target.name}:${code}`)));
-        try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected}))e.note(diagnostic);}catch(error){e.note(error.message);}
+        try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
     }
     return {ts, files, unsupported: e.unsupported, warnings: e.warnings};
 }

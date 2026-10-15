@@ -816,9 +816,18 @@ class Parser {
         this.skipTypeAnnotation();
         const returnType = this.lastType;
         const body = this.parseBlock();
+        // Ordinary primitive defaults need their actual conditional prologue,
+        // without opting mixed signatures or callback expressions into the
+        // separate callable metadata route.
+        const optional = params.optionalParams, firstOptional = params.findIndex(name => optional.includes(name));
+        const primitiveDefaults = this.retainPrimitiveProcedureDefaults && params.parameterDefaults.length > 0 &&
+            !typeParameters.length && params.every(name => ['number', 'string', 'boolean', 'any'].includes(paramTypes[name]?.text)) &&
+            optional.every(name => paramTypes[name]?.text === 'any') &&
+            params.slice(firstOptional).every(name => optional.includes(name));
         return {type: 'FunctionDeclaration', name, params, paramTypes, returnType, typeParameters,
             ...(this.retainCallableMetadata ? {functionKind: 'declaration', parameterDefaults: params.parameterDefaults,
-                parameterDefaultPrologue: this.parameterDefaults} : {}),
+                parameterDefaultPrologue: this.parameterDefaults} : primitiveDefaults ? {
+                parameterDefaults: params.parameterDefaults, parameterDefaultPrologue: this.parameterDefaults} : {}),
             optionalParams: params.optionalParams, body: [...this.defaultStatements(params), ...body]};
     }
 
@@ -1315,5 +1324,6 @@ export function parseMakeCodeTs (source, opts = {}) {
     parser.retainWhenUsed = Boolean(opts.retainWhenUsed);
     parser.retainClassHeritage = Boolean(opts.retainClassHeritage);
     parser.retainCallableMetadata = Boolean(opts.retainCallableMetadata);
+    parser.retainPrimitiveProcedureDefaults = Boolean(opts.retainPrimitiveProcedureDefaults);
     return parser.parseProgram();
 }

@@ -3,6 +3,11 @@ import {callableSourceGate} from './callable-source-gate.js';
 import {analyseCallableFlow} from './callable-flow.js';
 const TYPES=Object.freeze({number:'Number',string:'String',boolean:'Boolean',any:'Any'});
 const fail=message=>{throw Error('Procedure parameter constraint: '+message);};
+// Only the bound prefix operation belongs on the executable AST. In particular,
+// the preparation result's Program must never become an enumerable AST child.
+export function procedureConstraintAstMetadata(prepared) {
+ return Object.freeze({prefix:prepared.prefix});
+}
 function actualAnyDefaultPrologue(fn) {
  const defaults=fn.parameterDefaults||[];
  if(!Array.isArray(defaults)||defaults.some(row=>!row||typeof row!=='object'||Array.isArray(row)))return false;
@@ -27,8 +32,8 @@ export function procedureConstraintPrefix(fn,procedure,parameterName=name=>name)
 }
 // This checker adds obligations, never types to the producer graph. Call it on
 // the actual flattened ordinary-declaration AST before rendering its bodies.
-export function validateProcedureConstraintSource(program,{onlyFunctions=null}={}) {
- const graph=analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true});
+export function validateProcedureConstraintSource(program,{onlyFunctions=null,ordinaryPrimitiveSdkNumbers=false}={}) {
+ const graph=analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers});
  const constraintTypes=graph.constraintTypesAt||graph.typesAt;
  const functions=new Map(),uses=[],calls=[],writes=[];
  const ordinary=new Set((program.body||[]).filter(node=>node.type==='FunctionDeclaration'&&(!onlyFunctions||onlyFunctions.has(node.name))));
@@ -124,7 +129,9 @@ function lowerOmittedDefaults(program,selected,graph) {
 
 // Select only real module/flattened-namespace ordinary declarations BEFORE class
 // lowering creates additional functions. The catalogue retains constraints only.
-export function prepareProcedureConstraintSource(program) {
+export function prepareProcedureConstraintSource(program,{mode='prototype'}={}) {
+ if(!['prototype','supported-default'].includes(mode))fail('unknown ordinary constraint selection policy');
+ const excludedSignature=(messages,message)=>{if(mode==='prototype')messages.push(message);};
  const graph=analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true});
  // A complete existing callable certificate owns its factory ABI. Primitive
  // annotations on that factory do not opt it into this ordinary protocol.
@@ -134,7 +141,7 @@ export function prepareProcedureConstraintSource(program) {
  for(const fn of program.body||[])if(fn.type==='FunctionDeclaration'){
   if(independent.has(fn))continue;
   const primitive=(fn.params||[]).some(name=>TYPES[fn.paramTypes?.[name]?.text]);
-  if(!constraints(fn).length){if(primitive)excluded.push('Procedure parameter constraint: '+fn.name+' optional/default/rest/generic or mixed reference formals are outside the ordinary primitive protocol');continue;}
+  if(!constraints(fn).length){if(primitive)excludedSignature(excluded,'Procedure parameter constraint: '+fn.name+' optional/default/rest/generic or mixed reference formals are outside the ordinary primitive protocol');continue;}
   if(new Set(fn.params).size!==fn.params.length){excluded.push('Procedure parameter constraint: '+fn.name+' requires unique actual formal bindings');continue;}
   if(selected.has(fn.name))duplicates.add(fn.name);
   selected.set(fn.name,{fn,params:[...fn.params],types:fn.params.map(name=>fn.paramTypes?.[name]?.text)});
@@ -142,10 +149,11 @@ export function prepareProcedureConstraintSource(program) {
  const uses=[];const visit=(node,parent=null,key=null)=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(child=>visit(child,parent,key));return;}if(node.type==='Identifier')uses.push({node,parent,key});for(const [name,value]of Object.entries(node))if(value&&typeof value==='object')visit(value,node,name);};visit(program);
  for(const {node,parent,key}of uses){const entry=selected.get(node.name);if(entry&&graph.immutableFunctionAt(node)===entry.fn&&!(parent?.type==='Call'&&key==='callee'&&!parent.isNew&&!parent.typeArguments?.length)){selected.delete(node.name);excluded.push('Procedure parameter constraint: '+node.name+' escaped or nonordinary call remains outside this protocol');}}
  for(const [name,entry]of selected)if(graph.immutableFunctionAt(entry.fn)!==entry.fn){selected.delete(name);excluded.push('Procedure parameter constraint: '+name+' requires a unique unchanged actual ordinary declaration');}
- const diagnostics=[...excluded,...validateProcedureConstraintSource(program,{onlyFunctions:new Set(selected.keys())})];
+ const validation={onlyFunctions:new Set(selected.keys()),ordinaryPrimitiveSdkNumbers:mode==='supported-default'};
+ const diagnostics=[...excluded,...validateProcedureConstraintSource(program,validation)];
  for(const name of duplicates)diagnostics.push('Procedure parameter constraint: duplicate ordinary declaration '+name);
  const lowered=diagnostics.length?program:lowerOmittedDefaults(program,selected,graph);
- if(lowered!==program)diagnostics.push(...validateProcedureConstraintSource(lowered,{onlyFunctions:new Set(selected.keys())}));
+ if(lowered!==program)diagnostics.push(...validateProcedureConstraintSource(lowered,validation));
  return Object.freeze({program:lowered,independentRoutes:Object.freeze([...independent].map(fn=>Object.freeze({name:fn.name,protocol:'existing-numeric-callable'}))),diagnostics:Object.freeze([...diagnostics]),prefix(fn,procedure,parameterName=name=>name){
   const entry=selected.get(fn.source||fn.name);if(!entry||duplicates.has(fn.source||fn.name))return [];
   if(JSON.stringify(fn.params)!==JSON.stringify(entry.params)||JSON.stringify(fn.params.map(name=>fn.paramTypes?.[name]?.text))!==JSON.stringify(entry.types))fail('lowered ordinary formal metadata differs from its actual source declaration');

@@ -99,8 +99,10 @@ test('registered callback mutates its actual constrained formal after the instal
   const target=run.creator.project.targets.find(target=>Object.values(target.blocks).some(block=>block.opcode==='procedures_definition'));assert.ok(target);
   const definitions=Object.entries(target.blocks).filter(([,block])=>block.opcode==='procedures_definition');assert.equal(definitions.length,1);
   const [id,definition]=definitions[0],prototype=target.blocks[definition.inputs.custom_block[1]],names=JSON.parse(prototype.mutation.argumentnames);assert.equal(names.length,1);
-  const next=definition.next;definition.next='capturedConstraint';target.blocks[next].parent='capturedConstraint';
-  target.blocks.capturedConstraint={opcode:'arcade_declareParameterConstraint',parent:id,next,topLevel:false,shadow:false,inputs:{},fields:{PROCEDURE:[prototype.mutation.proccode,null],PARAMETER:[names[0],null],TYPE:['Number',null]}};
+  // Default source import already emits the genuine bound prefix. Do not add
+  // a second declaration to this actual project: duplicates must still refuse.
+  const constraint=target.blocks[definition.next];assert.equal(constraint.opcode,'arcade_declareParameterConstraint');
+  assert.equal(constraint.parent,id);assert.deepEqual(constraint.fields,{PROCEDURE:[prototype.mutation.proccode,null],PARAMETER:[names[0],null],TYPE:['Number',null]});
   assert.ok(Object.values(target.blocks).some(block=>block.opcode==='arcade_setCaptured'),'actual captured write exists');
   const bytes=Buffer.from(await(await run.creator.generateSB3()).arrayBuffer());await run.vm.loadProject(bytes);run.errors.length=0;run.vm.greenFlag();await stepFrames(run.vm,8);
   const first=values(run);t.diagnostic(JSON.stringify({first,errors:run.errors}));assert.deepEqual(run.errors,[]);assert.equal(first.observed,22);assert.equal(first.ticks,2);

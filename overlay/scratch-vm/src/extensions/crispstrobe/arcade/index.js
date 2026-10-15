@@ -1,4 +1,5 @@
 const makeExt = require('../adapter');
+const createConsoleInspectValues = require('./console-inspect-values');
 
 // Shared game-console blocks. The original extension described a micro:bit
 // 5x5 game API but implemented every VM method as a no-op. Keep its opcodes
@@ -22,6 +23,7 @@ module.exports = makeExt(`// Name: Arcade
   const ownedSpriteBridges = new WeakMap();
   const exceptionOwners = new WeakMap();
   const procedureOwners = new WeakMap();
+  const scoreNumberOwners = new WeakMap();
   const procedureEntryDisposers = new WeakMap();
   const speechPalette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609',
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
@@ -42,7 +44,17 @@ module.exports = makeExt(`// Name: Arcade
       exceptionOwners.set(this,newExceptionOwner());
       managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
       this._sourceScalarCells = dependencies.createSourceScalarCells(runtime, Scratch.BWValues, dependencies.sourceReferenceTypes, dependencies.sourceCallableCells);
-      this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells);
+      // A module-held owner ties the narrow score Number ingress to this actual
+      // implementation, including its writers. It exposes no score/state value.
+      const scorePrototype=Object.getPrototypeOf(this),scoreMethods=new Map(
+        ['getInfo','getPlayerScore','setPlayerScore','changePlayerScore','_lifeState','_infoState','_state'].map(name=>
+          [name,Object.getOwnPropertyDescriptor(scorePrototype,name)?.value]));
+      const scoreNumberOwner=Object.freeze({isInstance:value=>value===this,isCurrent:()=>Object.getPrototypeOf(this)===scorePrototype &&
+        Object.getOwnPropertyDescriptor(this,'_runtime')?.value===runtime && [...scoreMethods].every(([name,method])=>
+          typeof method==='function' && !Object.prototype.hasOwnProperty.call(this,name) &&
+          Object.getOwnPropertyDescriptor(scorePrototype,name)?.value===method)});
+      scoreNumberOwners.set(this,scoreNumberOwner);
+      this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner);
       const installProcedureOwner=()=>{
         procedureEntryDisposers.get(this)?.();procedureOwners.get(this)?.dispose();
         const owner=dependencies.createProcedureConstraints(runtime,this._consoleInspectValues);
@@ -253,7 +265,7 @@ module.exports = makeExt(`// Name: Arcade
           imageOwner.dispose();imageOwner=newImageOwner();sdkImageOwners.set(this,imageOwner);
           spriteOwner.dispose();spriteOwner=newSpriteOwner();ownedSpriteOwners.set(this,spriteOwner);
           this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.dispose();managedReturnHosts.get(this).dispose();
-          this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells);
+          this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner);
           installProcedureOwner();
           managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
           // Registry publications belong to the loaded project. GUI artwork
@@ -274,7 +286,7 @@ module.exports = makeExt(`// Name: Arcade
     getInfo() {
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def == null ? 0 : def } });
-      return {
+      return dependencies.createConsoleInspectValues.scoreInfo({
         id: 'arcade',
         name: 'Arcade',
         color1: '#E64980',
@@ -1056,7 +1068,7 @@ module.exports = makeExt(`// Name: Arcade
           spriteFlags: {acceptReporters: false, items: Object.keys(spriteFlags)}
           ,speechModes: {acceptReporters: false, items: ['text', 'legacy']}
         }
-      };
+      },scoreNumberOwners.get(this));
     }
 
     // An owned runtime may inject {now:()=>milliseconds} for deterministic
@@ -6034,7 +6046,8 @@ module.exports = makeExt(`// Name: Arcade
   sourceReferenceTypes: require('./source-reference-types'),
   createSourceScalarCells: require('./source-scalar-cells'),
   createSourceTypeOfValues: require('./source-typeof-values'),
-  createConsoleInspectValues: require('./console-inspect-values'),
+  createConsoleInspectValues,
+  bindScoreAdapterInfo: createConsoleInspectValues.bindScoreAdapterInfo,
   createProcedureConstraints: require('./procedure-parameter-constraints'),
   procedureEntry: require('../../../util/bw-procedure-entry'),
   createManagedReturnValues: require('./managed-return-values'),
