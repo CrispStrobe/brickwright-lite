@@ -1,9 +1,10 @@
 # Owned Images in ordinary class callbacks
 
-PROPOSED. Merge this ownership claim before production changes. The first slice
-extends the qualified ordinary class/callable proof with live SDK Image values.
-It reuses existing Image operations and the six-word callable ABI. It does not
-adopt a supplier, change a pin or enable physical Sprite callback signatures.
+The reviewed opt-in implementation extends the ordinary class/callable proof
+with owned SDK Image values. It reuses existing Image operations and the
+six-word callable ABI. Default source selection and hosted class authoring
+remain closed. No supplier, pin or physical Sprite signature changes follow
+from this checkpoint.
 
 ## Actual dependency requirement
 
@@ -38,8 +39,10 @@ any preparation adapters remain distinct in qualification records.
 
 Annotations constrain accepted producers; they never create an Image. Prove
 actual unshadowed SDK Image producers and all connected aliases and writers.
-The initial producer set is literal Images, `image.create` with actual numeric
-arguments, and clone of an already proved Image. Other producers, including
+The qualified producer set is unshadowed `image.create` with finite literal
+dimensions whose actual integer values are in the supported range, and clone
+of an already proved Image. Literal-resource decoding and dynamic dimensions
+remain separate producer requirements. Other producers, including
 screen and Sprite image views, need their own explicit connected-producer and
 alias proof before admission. Uninitialized, optional or mixed values remain
 refusals unless the existing independent presence proof proves the actual read.
@@ -109,3 +112,43 @@ serialized execution, exact compiled inputs and binaries, observations, and
 unchanged consumed SDK/helper guards. Retained originals may be reused only
 with byte-identical inputs. Preserve first failures. Independent review and
 all enabled exact-head checks precede normal matched-head integration.
+
+
+## Opt-in checkpoint — 2026-10-15
+
+Reviewed executable source: `41fdecf1d88c4a512873b69feacbc522a6cf3a1f`.
+The final affected suite passed 106 pure/native controls with no failures,
+skips or TODOs. Independent review checked the six-path capture/ancestry delta
+and passed eight focused controls. The selected source, helper, creator and
+native-provider hashes were unchanged during the affected run.
+
+The owned fixture uses an Image field, an Image constructor argument, a generic
+`apply<T>`, a captured ordinary-class parameter, Image callback parameters and
+real Image callback results. Source, Code, current connected edits, same/fresh
+SB3 and native export reimport agree. Lifted captures follow their actual lexical
+binding; an unrelated global with the same name cannot supply its class type.
+Copied or changed lowering metadata cannot issue that private source proof.
+Native constructor reproof checks the affected class and its actual SDK-bearing
+ancestry before allocation. Unrelated classes can construct before future SDK
+class declarations, while removed, unused and callback-only SDK roles refuse.
+
+Two genuinely new selected-SDK programs compiled and executed successfully:
+the owned source and its actual connected factory-width edit from 2 to 3.
+Both compiled file maps exactly matched the prepared inputs; diagnostics were
+empty and the actual binary outputs were retained. Width changed from 2 to 3
+and the corresponding effect score from 14 to 15. Height stayed 2, shared-input
+identity and distinct clone identity remained true, the zero-sized clone
+reported 0 by 0 with distinct identity, and the callback effect count stayed 3.
+All nine consumed SDK/helper guards and six auxiliary guards stayed unchanged.
+The programs use synchronous main completion and their actual scalar results;
+no readiness code was appended to either input. Prior failed preparations and
+raw-transport/coercion counterexamples remain retained separately.
+
+This is the opt-in source/native/current-export boundary. It does not qualify
+complete dependency libraries, all neighboring contexts, full GUI authoring,
+physical Sprite signatures or arbitrary Image producers. Default selection
+requires a separately reviewed composition with the current consumer, exact
+source/current-body eligibility and preserved refusal controls. Class palette,
+handler and field editability still need actual hosted authoring qualification.
+Literal resources, dynamic dimensions, screen/Sprite image views and the
+independent invalid-dimension factory absence carrier remain explicit gaps.
