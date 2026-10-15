@@ -682,17 +682,87 @@ class ArcadeEmitter {
 
     /**
      * E1's import keeps an Arcade program's own code on a sprite named Game.
-     * When nothing of it is a sprite (no artwork, no motion or looks), it is
-     * no Arcade sprite: its scripts run with no `self`.
+     * Dormant artwork on a hidden program host does not create an Arcade
+     * actor. Current self behavior and references still need sprite identity.
      */
     isScriptHost (target) {
         if (!this.arcadeValues || target.name !== 'Game') return false;
         if (this.hasHandles) return true;
+        const usesSelf = Object.values(target.blocks || {}).some(b => b && b.opcode !== 'looks_hide' &&
+            /^(motion_|looks_|pen_|sensing_touchingobject|sensing_distanceto|sensing_touchingcolor|sensing_coloristouchingcolor|control_create_clone_of|control_start_as_clone|control_delete_this_clone)/.test(b.opcode));
+        if (usesSelf) return false;
+        // A hidden program host can retain the editor's dormant costume. Merely
+        // making that costume readable through the GUI rasterizer must not
+        // allocate an extra gameplay actor. Current references still need one.
+        if (this.referencedSpriteIdentity(target)) return false;
+        if (target.visible === false || this.startsHidden(target)) return true;
         if (target.costumes?.some(c =>
             (this.opts.costumeSvg && svgToPixels(this.opts.costumeSvg(target, c) || '')) ||
             (this.opts.costumeRgba && this.opts.costumeRgba(target, c)))) return false;
-        return !Object.values(target.blocks || {}).some(b => b && b.opcode !== 'looks_hide' &&
-            /^(motion_|looks_|pen_|sensing_touchingobject|sensing_distanceto)/.test(b.opcode));
+        return true;
+    }
+
+    startsHidden (target) {
+        const starts = Object.entries(target.blocks || {}).filter(([, block]) => block?.topLevel &&
+            ['event_whenflagclicked', 'arcade_whenSourceStarts'].includes(block.opcode));
+        return starts.length > 0 && starts.every(([id, start]) => {
+            let parent = id, next = start.next;
+            const seen = new Set([id]);
+            while (['arcade_declareSourceScalar', 'arcade_declareSourceReference'].includes(target.blocks[next]?.opcode)) {
+                const declaration = target.blocks[next];
+                if (seen.has(next) || start.opcode !== 'arcade_whenSourceStarts' || !this.validScalarPrelude ||
+                    declaration.parent !== parent || declaration.shadow !== false || declaration.topLevel !== false ||
+                    declaration.mutation != null || Object.keys(declaration.inputs || {}).join(',') !== 'VARIABLE' ||
+                    Object.keys(declaration.fields || {}).join(',') !== 'TYPE') return false;
+                const slot = declaration.inputs.VARIABLE;
+                if (!Array.isArray(slot) || ![1, 2, 3].includes(slot[0])) return false;
+                let variable;
+                if (Array.isArray(slot[1]) && slot[1][0] === 12) variable = slot[1];
+                else {
+                    const reporter = typeof slot[1] === 'string' && target.blocks[slot[1]];
+                    if (reporter?.opcode !== 'data_variable' || reporter.parent !== next || reporter.next != null ||
+                        reporter.shadow !== false || reporter.topLevel !== false ||
+                        reporter.mutation != null || Object.keys(reporter.inputs || {}).length ||
+                        Object.keys(reporter.fields || {}).join(',') !== 'VARIABLE') return false;
+                    variable = [12, ...reporter.fields.VARIABLE];
+                }
+                if (variable.length !== 3 || typeof variable[1] !== 'string' || typeof variable[2] !== 'string') return false;
+                const inventory = declaration.opcode === 'arcade_declareSourceScalar' ? this.sourceScalarCells : this.sourceReferenceCells;
+                const entry = inventory.get(variable[2]);
+                if (!entry || entry.name !== variable[1] || entry.type !== declaration.fields.TYPE[0]) return false;
+                seen.add(next); parent = next; next = declaration.next;
+            }
+            const hide = target.blocks[next];
+            return start.shadow === false && start.parent == null &&
+                !seen.has(next) && hide?.opcode === 'looks_hide' && hide.parent === parent && hide.shadow === false &&
+                hide.topLevel === false && Object.keys(hide.inputs || {}).length === 0 &&
+                Object.keys(hide.fields || {}).length === 0 && hide.mutation == null;
+        });
+    }
+
+    referencedSpriteIdentity (target) {
+        if (this.clonable.has(target.name) || this.sprites.filter(t => t.name === target.name).length !== 1) return true;
+        const selectors = {motion_goto: 'TO', motion_glideto: 'TO', motion_pointtowards: 'TOWARDS',
+            sensing_touchingobject: 'TOUCHINGOBJECTMENU', sensing_distanceto: 'DISTANCETOMENU',
+            sensing_of: 'OBJECT', control_create_clone_of: 'CLONE_OPTION'};
+        for (const owner of this.project.targets) for (const block of Object.values(owner.blocks || {})) {
+            const field = selectors[block?.opcode];
+            if (!field) continue;
+            const slot = block.inputs?.[field];
+            // Unknown and dynamic selectors can name this target. Read only the
+            // actual input in its own target; a fallback shadow proves nothing.
+            if (!Array.isArray(slot) || slot[0] !== 1) return true;
+            let name;
+            if (Array.isArray(slot[1]) && slot[1][0] === 10 && typeof slot[1][1] === 'string') name = slot[1][1];
+            else {
+                const menu = typeof slot[1] === 'string' && owner.blocks[slot[1]];
+                if (!menu?.shadow || Object.keys(menu.inputs || {}).length ||
+                    Object.keys(menu.fields || {}).length !== 1 || typeof menu.fields?.[field]?.[0] !== 'string') return true;
+                name = menu.fields[field][0];
+            }
+            if (name === target.name || (name === '_myself_' && owner === target)) return true;
+        }
+        return false;
     }
 
     self () {
