@@ -26,7 +26,29 @@ Three focused native observer repairs retain the unchanged source programs:
   both held-state observations, one press callback and two release callbacks.
 
 These are native controls, without a new original compilation or browser run.
-The remaining shard-one failures are under review; raw corpus counts stay
+Further reviewed test corrections cover the other failures found in this log:
+
+- Four animation/scrolling harnesses wait for an actual first callback even while
+  the frame variable is Undefined. They retain the original zero-delta first
+  frame, complete callback traces and original pixel comparisons. No frame is
+  added to the runtime. Four focused native recording controls pass.
+- Friction motion uses the actual 2,000 ms timer observation profile for its
+  authored pauses. Five native authoring routes retain all five motion results,
+  both friction values of 200, and completion.
+- Number-to-text and default ordinary class callback tests exercise their
+  qualified support. The importer corpus's three additional distinct programs
+  are verified against their exact invalid-argument fixtures and named
+  diagnostics; its original 433 inputs are unchanged.
+- Text truthiness preserves actual Boolean identity. Sprite declarations retain
+  their uninitialized state instead of an invented null initializer. Blocking
+  dialog tests check actual Undefined before the later initializer executes.
+- Dialog controls use real keyboard input and current scene ownership. Sequential
+  and concurrent source dialogs, blocked sibling continuations, Stop cancellation
+  and fresh owner restart are covered; no browser dismissal callback is mocked.
+
+Each of the 34 observed failures has a focused correction. This is not a
+completed replacement shard census: the stopped run did not reach every test.
+Hosted exact-source verification remains required. Raw corpus counts stay
 **147 translated, 36 partial, one parse failure**.
 
 ## Latest completed hosted result — 2026-10-15
