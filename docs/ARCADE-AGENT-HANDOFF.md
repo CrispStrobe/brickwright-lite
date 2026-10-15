@@ -10,7 +10,7 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ## Current composition and canonical creator adoption — 2026-10-15
 
-Implementation checkpoint `d011d18fe` includes the previously integrated main, qualified
+Implementation checkpoint `8a11fd58d` includes main `06f647be5`, qualified
 creator repairs and default admission for the bounded owned Image class/callback bridge. The creator
 pin is `f2d4f879ba40dd9025070ed51af11ebe1ef14808`; standard sync checks all
 20 mapped files with zero downstream differences. Supplier
@@ -41,6 +41,22 @@ identities before sharing one decoded snapshot. PNG, custom palettes, dynamic
 dimensions and Sprite producers remain excluded; hosted visual authoring is
 still open. See the Image contract for the exact admitted boundary.
 
+The bounded Image drawing follow-up now admits actual `fill` and `fillRect`
+receivers and Number operands in those callbacks. Two new exact source and
+connected-color-edited export programs match all nine pixels and one argument
+callback effect in the selected runtime. Native source, Code, same/fresh SB3,
+current edited export and reimport pass. An unused fill replacement socket
+cannot erase an evaluated reporter during export; only inert Number literals
+are admitted there. Existing drawing blocks implement the operations.
+
+Two integration regressions are locally corrected. Disposed Image services stay
+inert during shared Start events and become live only through a legitimate
+project replacement and subsequent Start. Existing static/forwarded callbacks
+and named scene procedures keep their complete established lowering route;
+stored named values still require their separate strict proof. Six routing
+controls and a nine-control routing/drawing composition pass. These are local
+corrections, not a passing final-head hosted claim.
+
 A follow-up at `e577d6547` fixes two actual class roundtrip boundaries:
 finite signed Number literals retain their existing carrier, and proved Void
 calls beginning with parentheses have explicit statement delimiters. Three
@@ -58,7 +74,14 @@ from absent checks. Preserve that rejection while continuing independent work.
 The previous integration run passed both browser shards, FPGA and corpus;
 its build and unit prerequisites stopped on a stale expected compiler pin.
 The complete SPIKE artifact control now passes at the actual adopted revision.
-Fresh final-head hosted qualification is still required.
+At published `a30cb432c`, both browser shards, the official numeric authoring
+journey, build and corpus now pass. The animation Pixel/Code/Blocks/export
+journey genuinely ran and passed on that source. Unit shard two has five
+failures; shard one reached its unchanged 30-minute bound without a census and
+contains one additional Sprite constructor-service export failure. Their
+original results remain retained. The local workload correction requires four
+complete, independently audited unit shards with the same budgets and hard
+publication gates. Fresh final-head hosted qualification is still required.
 
 The unchanged raw184 audit at clean `d011d18fe` remains **147 translated /36 partial
 /one parse failure**, with every original Git blob verified. Authentic contexts

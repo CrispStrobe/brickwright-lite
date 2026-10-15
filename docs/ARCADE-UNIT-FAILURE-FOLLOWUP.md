@@ -24,6 +24,20 @@ is a substitute for the underlying correction. Fresh final-head hosted checks
 remain necessary after integration.
 
 
+Local follow-up: the Image listener correction passes five independent controls,
+including the exact retained Buffer/Font failures, strict disposal and actual
+VM clear/load/restart. The callback-routing correction passes six portable
+controls; a combined drawing/routing selection passes nine. Their final hosted
+integration is still pending.
+
+[Unit shard one](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38701251292/job/116324641612)
+was cancelled at its existing 30-minute job bound, without a completed census.
+Its retained log contains a genuine Sprite constructor-service export refusal
+for an actual factory receiver; that is a separate open correction. The known
+selected-SDK do-while TODO remains a TODO, not a new failed assertion count.
+The workload split now requires four complete shards, with every test selected
+exactly once, unchanged budgets and all four publication verdicts required.
+
 ## Class and runtime repair composition — 2026-10-15
 
 Local integration `ff720cda29320f352d24ad1b7cb18a5cdfafb089` passes 73 combined

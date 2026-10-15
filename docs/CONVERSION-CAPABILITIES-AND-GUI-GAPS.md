@@ -1,5 +1,22 @@
 # Conversion capabilities and GUI closure ledger
 
+## Bounded Image drawing and hosted animation journey — 2026-10-15
+
+Actual owned Image callback receivers now support `fill` and `fillRect` through
+source, Code, saved projects and current export/reimport. Three focused native
+controls inspect all nine pixels and a connected Number color edit from 5 to 9.
+Two exact selected-runtime programs agree on those pixels and once-only argument
+effects. Dynamic dimensions, Sprite views, arbitrary image methods and bitmap
+resource proof remain separate gaps.
+
+The hosted animation resource journey now passes at `a30cb432c`, including real
+Pixel/Code/Blocks and original export controls. This closes the previously
+observed extension-refresh failure for that tested journey. It does not qualify
+a class/callback authoring designer. Reachable Image-parameter/handler creation,
+visible invalid-input navigation and the new drawing journey through actual UI
+controls remain open. Native field editing is recorded separately from those
+visible interactions.
+
 ## Owned Image callbacks and authored Array Number inputs — 2026-10-15
 
 Owned Image fields, constructor arguments, captured class parameters and
