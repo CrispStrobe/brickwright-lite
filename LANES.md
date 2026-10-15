@@ -1,3 +1,46 @@
+## Arcade owned named function values — 2026-10-15
+
+PROPOSED — Codex named function declaration value lane.
+Merge this docs-only claim before product changes. Contract:
+[owned named function values](docs/compatibility/arcade-named-function-values.md).
+Own the module/namespace declaration-site and current-body bridge, directed
+zero-argument Number/String/Void signature proof, native stable-label binding
+and source/Code/Blocks/export/SB3 controls. Coordinate namespace/callable
+lowering, class holder producer acceptance and lexical export hooks with their
+owners. Preserve unique actual bindings, all-writer refusal, target/procedure
+identity and stopped/stale/foreign-owner guards. No name or annotation grants,
+SDK signature widening, captured nested declarations, callable arrays, generic
+class factories, scene/score API completion or whole-context promotion.
+
+## Owned Images in ordinary class callbacks — 2026-10-15
+
+CLAIMED / PROPOSED — Codex Image domain in the existing ordinary class/callable bridge.
+Contract: [owned Image class callbacks](docs/compatibility/arcade-owned-image-class-callables.md).
+Own new actual Image producer/owner proof helpers and coordinated narrow source,
+v2 signature/plan, native field/invocation/result, current Blocks and export hooks.
+Preserve primitive/class/callable identity, all-writer and initialization proof,
+generic invocation-local substitution, lifecycle and conditional result tickets.
+Annotations, plain carriers and SDK-looking names grant no Image authority.
+Initial source producers are literal Images, actual unshadowed image.create
+and clone of a proved Image; screen/Sprite views need separate explicit proof.
+No Sprite/Buffer/Font signature widening, intrinsic class inheritance, Any grant,
+new word, pin or supplier adoption. Canonical Arrays already transports Images;
+any discovered supplier change requires a separately qualified claim.
+Keep Console942, shared finite Number carriers and identifier compound assignment
+ownership intact. Product changes wait for this claim's normal qualified merge.
+
+## Primitive identifier bitwise compound assignments — 2026-10-15
+
+PROPOSED — Codex Arcade integration, isolated statement conversion lane.
+Merge this docs-only claim before product changes. Contract:
+[primitive bitwise compound assignments](docs/compatibility/arcade-primitive-bitwise-compound.md).
+Own the identifier compound-assignment operator selection in
+`Arcade.expressionStatement` and focused source/current-block/native/export
+controls. Reuse existing primitive producer proof, native value operations and
+local/captured/global assignment paths. No opaque coercion, assignment-as-value,
+member/index widening, new vocabulary, dependency pin or frame-clock change.
+Coordinate the Arcade translator with callable, inspection and numeric owners.
+
 ## ESP8266 follow-up: hosted generator and browser run gate — 2026-10-15
 
 CLAIM EXTENSION — Claude, of the merged ESP8266 device claim (#932; device
