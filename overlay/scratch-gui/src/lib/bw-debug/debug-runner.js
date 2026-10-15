@@ -4185,7 +4185,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         /** Detached copy at the supplier's settled boundary, not a paused lease. */
         async snapshotAtaMaster() {
             const refused = (code, reason) => ({refused: {code, reason}});
-            if (destroyed || !target || !session) {
+            if (destroyed || i8086ExecutionLifetime.signal.aborted || !target || !session) {
                 return refused('snapshot-no-session', 'No active machine session');
             }
             if (session.state().intent !== 'paused' || target.state() !== 'halted') {
@@ -4198,7 +4198,7 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
             const owner = hddSnapshotOwner;
             const originalTarget = target;
             const originalSession = session;
-            const current = () => !destroyed && owner === hddSnapshotOwner &&
+            const current = () => !destroyed && !i8086ExecutionLifetime.signal.aborted && owner === hddSnapshotOwner &&
                 originalTarget === target && originalSession === session;
             try {
                 const result = await capture.call(originalTarget);
@@ -5152,9 +5152,10 @@ export function createDebugRunner({ vm, compilerUrl = 'https://stc-compiler.verc
         symbols: () => symbols,
 
         destroy() {
-            hddSnapshotOwner = {};
             i8086ExecutionLifetime.abort();
             i8086Execution.release(i8086ExecutionResult);
+            // The aborted lifetime fences reentry even if release throws.
+            hddSnapshotOwner = {};
             i8086ExecutionResult = null;
             destroyed = true;
             setValueResolver(null);

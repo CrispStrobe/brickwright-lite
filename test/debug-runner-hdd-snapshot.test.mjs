@@ -26,7 +26,8 @@ function fixture () {
         let debugEventsTarget = null, i8086ExecutionResult = null;
         let engineNotes, serialTerminal, serialEsc, terminalOutput, linuxProgressWatch;
         const i8086ExecutionLifetime = new AbortController();
-        const i8086Execution = {release() {}};
+        let releaseHook = () => {};
+        const i8086Execution = {release() {releaseHook();}};
         const forkRecordingStore = {summaries: () => []};
         const debugFoundation = {clear() {}};
         const unschedule = () => {}, clearGlow = () => {}, setStatus = () => {};
@@ -35,6 +36,8 @@ function fixture () {
         const runner = {${method}\n${stop}\n${destroy}};
         ${attach} throw new Error('authored-engine-construction-stop'); }
         globalThis.api = {runner, attach,
+            onAbort(fn) {i8086ExecutionLifetime.signal.addEventListener('abort',fn);},
+            onRelease(fn) {releaseHook = fn;},
             set(t, s) {target = t; session = s;},
             get() {return {target, session};}};
     `, sandbox);
@@ -92,4 +95,22 @@ test('stale rejection supersedes an obsolete supplier exception', async () => {
 });
 test('tracked package mirror matches canonical bytes', () => {
     assert.equal(source,readFileSync(new URL('../packages/scratch-gui/src/lib/bw-debug/debug-runner.js',import.meta.url),'utf8'));
+});
+
+test('actual abort listener cannot start a reentrant snapshot before release', async () => {
+    const f=fixture();let reentrant;
+    f.api.onAbort(()=>{reentrant=f.api.runner.snapshotAtaMaster();});
+    f.api.runner.destroy();
+    assert.equal((await reentrant).refused.code,'snapshot-no-session');
+    assert.equal(f.calls(),0);
+});
+test('release failure preserves destroyed lifetime fence for pending and future snapshots', async () => {
+    const f=fixture(), gate=deferred(), primary=new Error('execution-release-primary');
+    f.target.snapshotAtaMaster=()=>gate.promise;
+    const pending=f.api.runner.snapshotAtaMaster();
+    f.api.onRelease(()=>{throw primary;});
+    assert.throws(()=>f.api.runner.destroy(),e=>e===primary);
+    gate.resolve(f.result);
+    assert.equal((await pending).refused.code,'snapshot-stale-session');
+    assert.equal((await f.api.runner.snapshotAtaMaster()).refused.code,'snapshot-no-session');
 });
