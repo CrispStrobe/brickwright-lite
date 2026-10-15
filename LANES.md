@@ -1,3 +1,25 @@
+## ESP8266 follow-up: hosted generator and browser run gate — 2026-10-15
+
+CLAIM EXTENSION — Claude, of the merged ESP8266 device claim (#932; device
+work landed in #934). Branch feat/esp8266-followup-20261015,
+[local path omitted]. Production stc-compiler now serves `esp8266`
+(deployed e21b64c), so this also completes plan N13: refresh
+docs/generated/hosted-targets.json with the repo generator against the
+deployed source (taking whatever other targets it produces, unedited), mark
+the ESP8266 C cell and its lowered paths shipped and set its picker compile
+flag in the capabilities table (overlay and tracked twin) with the
+regenerated matrix doc.
+
+Envelope: this ledger; scripts/gen-hosted-targets.mjs (read stc-compiler's
+ESP8266_TARGETS so a post-deploy refresh picks it up) with a new fixture
+test; N13 in docs/LANGUAGE-DEVICE-MATRIX-PLAN.md; one new browser verify
+script driving the debug runner's ESP8266 attach path end to end with bw-board's
+SDK-free blink image (embedded, sha256-checked) through the user-picked .bin
+route, its light-shard step in .github/workflows/build.yml with a PROVISIONAL
+budget, and the companion browser-gate census entries the existing gates
+require. Existing budgets, gates and thresholds stay unchanged. Merge this
+extension before implementation.
+
 ## Arcade console inspection values — 2026-10-15
 
 PROPOSED — `corpus_gap_analysis`, isolated console inspection lane.
@@ -3869,6 +3891,28 @@ configuration/first-frame cancellation and fresh guest recovery cases passed
 standalone audits; all current required exact-head contexts pass. No dependency pin,
 native code, firmware, Runtime, model, budget or workflow changes. Full G02 and
 distribution qualification remain open.
+
+
+## SPIKE late scheduled-poll errors — 2026-10-14
+
+ADOPTED — [PR936](https://github.com/CrispStrobe/brickwright-lite/pull/936),
+qualified source `65494ed81b8751f2f6f2f3e9e6c57e5f07e125c0`, merged as
+`e22fd9fe0017b4e8291b4ff2af44ff6b9d6efde1`. Scheduled poll errors delivered
+after Stop stay silent; live errors still report and close their owned session.
+All55 affected controls pass, with the late-error baseline/removal failure
+retained. Two installed own-NuttX cases use actual native observations followed
+by explicitly authored client-delivery failures:0closed error callbacks versus
+1live callback, released ownership, distinct fresh guest completion and final
+Stop. Each standalone reader binds191control files and28raw startup records.
+These are client-delivery adversaries, not actual native/firmware fault evidence.
+
+All11current enabled readiness/vendor checks pass. The prior pre-label gate
+failure remains preserved; the final readiness run is successful. Predicted and
+landed merge trees match, as do qualified implementation/test blobs; current-main
+native source and dependency pins are preserved. The receipts qualify the frozen
+consumer and this finite fix, not every later package. Full G02, other images/
+backends/final-sampling/generation, physical/reference, G05 and release remain open.
+
 
 ## SPIKE G02 compiled-model MicroPython desktop profile — 2026-10-15
 

@@ -1,14 +1,14 @@
 # SPIKE execution: current state and next lanes
 
-Recorded 2026-10-05; adoption checkpoint 2026-10-07; lifecycle follow-up 2026-10-14. Refresh the public default branches and `LANES.md` before
+Recorded 2026-10-05; adoption checkpoint 2026-10-07; lifecycle follow-up 2026-10-15. Refresh the public default branches and `LANES.md` before
 claiming a task. This is a bounded handover, not full firmware compatibility or
 physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
-## Qualified G02 lifecycle boundaries — 2026-10-14
+## Qualified G02 lifecycle boundaries — 2026-10-15
 
-Six focused changes have landed, each with a separately frozen installed
+Seven focused changes have landed, each with a separately frozen installed
 consumer. These observations qualify the named source and owned guest scenarios;
 they do not qualify every later package assembled from main.
 
@@ -62,6 +62,16 @@ they do not qualify every later package assembled from main.
   beginning after closure, complete a distinct fresh guest and release it on
   final Stop. Configuration cancellation admits zero arena-session native calls; first-frame
   cancellation permits only native start/read/close.
+
+- [PR936](https://github.com/CrispStrobe/brickwright-lite/pull/936), tested
+  consumer `65494ed81b8751f2f6f2f3e9e6c57e5f07e125c0`, merged as
+  `e22fd9fe0017b4e8291b4ff2af44ff6b9d6efde1`: a scheduled poll failure delivered
+  after original pane Stop no longer invokes an obsolete error observer. Both
+  installed own-NuttX cases pass after real native state reads and explicitly
+  authored client-delivery errors: the closed case has no error callback; the
+  live case still reports exactly one error before cleanup. Each releases all
+  ownership, completes a distinct fresh guest and releases final Stop. This is
+  not evidence of an actual native or firmware fault.
 
 PR912 also passes eight installed GUI regressions on that same consumer:
 native Start, backend change, Reset and closure; real Code Stop during pending
@@ -120,10 +130,32 @@ failure and failed baseline/fixture attempts remain preserved. The later PR928 b
 run. Qualification kept the existing product deadlines, acceptance thresholds
 and dependency pins.
 
+PR936's55 affected session controls pass; the late-rejection baseline fails,
+and removing its new closure check restores that failure. Both installed cases
+retain191control-file hashes and28raw startup records. Package readers bind
+180installer files/23directories,177native source files,5919frontend files and
+126runtime inputs. The [final readiness run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38673916767)
+passes all ten enabled build jobs; its vendor check also passes. The original
+pre-label full-CI gate failure remains preserved, with the later label verdict
+and final readiness gate successful. Qualified session/test blobs match their
+landed versions, and the landed tree equals the reviewed prediction. Independent
+main pin adoptions are retained; this is not qualification of every evolving-main
+package. Existing product budgets and firmware/Runtime/model pins did not change.
+
+The next G02 prerequisite is the [compiled-profile claim PR946](https://github.com/CrispStrobe/brickwright-lite/pull/946).
+The current MicroPython launcher includes source models, while the retained
+runtime contains compiled models. Earlier supplier evidence treats compiled and
+legacy source-overlay routes separately. Admit an explicit compatible profile
+and platform type contract, preserve the qualified legacy route, then qualify
+real selected-image Code execution, final-sampling cancellation and UART/image
+boundaries. Support metadata alone does not qualify a current installed
+MicroPython boot. The claim is preparation; implementation and those actual
+MicroPython cases remain pending, with no image download or bundling implied.
+
 G02 remains open for its full deferred-storage matrix, selected-image and chooser
 error races, and complete installed startup/final-sampling, UART-generation and
-late-poll matrix across supported backends, including poll errors delivered after
-Stop. The older opaque
+late-poll matrix across supported backends, beyond the finite own-NuttX
+client-delivery cases above. The older opaque
 cold-start failures remain unexplained; successful new startups do not diagnose
 them. No timeout increase, dependency adoption, physical/reference compatibility,
 release or G05 licence/source-to-binary clearance follows from these receipts.
