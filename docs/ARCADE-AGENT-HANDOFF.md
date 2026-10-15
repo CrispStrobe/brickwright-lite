@@ -3570,3 +3570,22 @@ retained successful compilation and actual observations, without replay. Earlier
 compiler rejections and the real Undefined mismatch remain intact. This closes
 the bounded numeric-default mismatch, not typed defaults, complete corpus games,
 visible default-authoring controls or production dependency adoption.
+
+
+### Three authentic asset-context native follow-ups
+
+Three retained authentic projects now pass 15 bounded native portable route
+controls: flamethrower movement, crystal-ball button input, and Froggy's authored
+scene/countdown setup. Each checks source import, current Code, same-VM SB3,
+fresh-VM SB3 and current export/reimport using genuine resources. Actual direction
+press/release moves and stops the flamethrower; the crystal-ball A edge produces
+its authored response; Froggy creates its two authored sprites and starts the
+countdown. All 5,225 selected source/provider/compiler hashes remain unchanged.
+
+First private observers incorrectly located a life field and saved SVG assets;
+their failures are retained separately from the corrected native controls.
+Headless renderer/audio and listener warnings remain in raw logs. These checks
+establish neither rendering nor zero runtime warnings. Original compiler success
+is not original gameplay: exact-input SDK runtime, visible editor/controller,
+artwork/save/reopen and complete-case qualification remain open. The raw census
+and the 29-project aggregate are unchanged.

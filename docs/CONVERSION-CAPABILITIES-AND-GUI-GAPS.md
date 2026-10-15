@@ -4844,3 +4844,20 @@ Discoverable omission/default controls remain open: expose intentional omission
 separately from explicit Undefined, preserve that distinction during argument
 editing and save/reopen, and validate actual current callers. The generated
 formals alone do not qualify a usable optional-parameter editor.
+
+
+### Authentic-context and Array-owner GUI boundaries
+
+The flamethrower, crystal-ball and Froggy authentic inputs pass bounded native
+Code/SB3/current-export routes with actual authored input and state controls.
+Their headless execution does not qualify screen pixels, visible button editing,
+controller-pane use or graphics-editor persistence. A future browser journey
+must import the exact complete files, select Game Console through the header,
+use its actual controls, edit current code/art and save/reopen. Keep native,
+selected-original and visible-editor evidence separate.
+
+The opt-in Array ownership prototype is not a typed Array feature. It still
+needs current-graph rejection, private failure completion, body/element proofs,
+trusted builtin adoption and qualified parameter/Settings source admission before
+the corresponding editors can promise typed collections. Do not treat a generic
+operation loan or imported metadata as an Array element certificate.
