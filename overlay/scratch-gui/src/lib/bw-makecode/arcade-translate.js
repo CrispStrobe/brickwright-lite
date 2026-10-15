@@ -1,4 +1,4 @@
-import {proveNamedFunctionSource} from './named-function-source.js';
+import {selectNamedFunctionSourceProof} from './named-function-source-selection.js';
 import {lowerNamedFunctionValues} from './lower-named-function-values.js';
 import {selectClassCallableSourceProof} from './class-callable-source-gate.js';
 import {withClassResultFlowProof} from './class-callable-result-flow-proof.js';
@@ -4941,7 +4941,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true};
     const ordinarySource=parseMakeCodeTs(source,callableParseOptions);
     const callableSourceParsed=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true});
-    const namedEligibility=proveNamedFunctionSource(callableSourceParsed);
+    const namedEligibility=selectNamedFunctionSourceProof(callableSourceParsed,{ordinaryProgram:ordinarySource,registrationSpec:sceneRegistrationSpec});
     const namedEnabled=namedEligibility.eligible;
     const namedLowering=namedEnabled?lowerNamedFunctionValues(callableSourceParsed):null;
     const callableEligibility=callableSourceGate(callableSourceParsed,{normalize:true});
