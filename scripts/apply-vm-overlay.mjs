@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import {patchPrimitiveOwner} from './lib/primitive-owner-hooks.mjs';
+import {patchArcadeExceptions} from './lib/arcade-exception-hooks.mjs';
 // Lay our owned scratch-vm delta (built-in extensions + their registration in the builtinExtensions
 // map) over the installed node_modules/scratch-vm. Run AFTER `npm install`, BEFORE `npm run build`.
 //
@@ -159,6 +160,9 @@ if (!executeSource.includes('bwPromiseReported')) {
     writeFileSync(executePath, executeSource);
     console.log('  patched execute.js (null promise reporter results)');
 }
+
+executeSource = patchArcadeExceptions(executeSource);
+writeFileSync(executePath, executeSource);
 
 // Managed Arcade functions retain argument cells in a non-executable root.
 // Ordinary Scratch procedures can be called from those functions; recursion

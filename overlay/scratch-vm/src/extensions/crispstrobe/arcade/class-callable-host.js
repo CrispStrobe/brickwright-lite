@@ -31,7 +31,7 @@ module.exports = function createClassCallableHost(runtime, values, createHeap, n
     const types = createTypes(runtime, values, heap, signatureOf, sdkImages);
     const resultReads=createResultReads(runtime,values,heap,frames,{currentGraph:graph.current,subscribeLifecycle,
         validateBody:(target,method,receiver)=>conditionalBodyOwner(target,method,heap,receiver)});
-    const completions=new WeakMap();
+    const completions=new WeakMap(),threadTickets=new WeakMap();
     const matches = (procedure, args, token) => {
         if (!args.length) return [];
         let actual;
@@ -76,10 +76,13 @@ module.exports = function createClassCallableHost(runtime, values, createHeap, n
             const result = method?.callableSignature ? types.instantiate(method.callableSignature, method.typeParameters, args.slice(1)) : null;
             if(result)rawSdkInputs(result,rawArgs.slice(1));
             frames.bind(thread, target, procedure, params, token);
+            const tickets=new Set();threadTickets.set(thread,tickets);
             if(!result)return null;
-            const ticket=Object.freeze({});
-            completions.set(ticket,{target,method,signature:result,metadata:JSON.stringify(method),resultRead:resultReads.prepare(thread,target,method,args[0])});
-            return ticket;
+            try {
+                const ticket=Object.freeze({});
+                completions.set(ticket,{thread,target,method,signature:result,metadata:JSON.stringify(method),resultRead:resultReads.prepare(thread,target,method,args[0])});
+                tickets.add(ticket);return ticket;
+            } catch(error) {threadTickets.delete(thread);frames.abortThread(thread);resultReads.abortThread(thread);throw error;}
         },
         result(ticket, value) {
             if(!ticket)return value;
@@ -87,8 +90,16 @@ module.exports = function createClassCallableHost(runtime, values, createHeap, n
             if(!completion||!graph.current(completion.target)||JSON.stringify(completion.method)!==completion.metadata)
                 throw new Error('Class callable result outlived its actual invocation');
             completions.delete(ticket);
+            threadTickets.get(completion.thread)?.delete(ticket);
             if(completion.resultRead&&resultReads.complete(completion.resultRead,value))return value;
             return types.result(completion.signature,value);
+        },
+        abortThread(thread) {
+            const tickets=threadTickets.get(thread);
+            if(tickets)for(const ticket of tickets)completions.delete(ticket);
+            threadTickets.delete(thread);
+            const read=resultReads.abortThread(thread),frame=frames.abortThread(thread);
+            return Boolean(tickets||read||frame);
         },
         observeObjectField(args,util,value){return resultReads.observe(util,args,value);},
         dispose() {resultReads.dispose();frames.dispose();graph.dispose();}

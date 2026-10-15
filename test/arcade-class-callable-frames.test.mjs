@@ -117,3 +117,20 @@ test('a frame binding cannot capture without the separate canonical block-graph 
         assert.throws(()=>unwired.receiverCell(call.util,call.expected),/current canonical class block graph/);
     }
 });
+
+test('aborting one issuer removes constructor authority without deleting captured parameters or sibling frames',()=>{
+    const f=fixture(),failed=f.spawn(f.spec.constructor),survivor=f.spawn(f.spec.methods[0].procedure);
+    f.service.bind(failed.thread,f.target,failed.expected.procedure,failed.params,f.allocation.token);
+    f.service.bind(survivor.thread,f.target,survivor.expected.procedure,survivor.params);
+    f.runtime.sequencer.activeThread=failed.thread;
+    const escaped=f.service.receiverCell(failed.util,failed.expected);
+    assert.equal(f.service.abortThread(failed.thread),true);
+    assert.equal(f.service.abortThread(failed.thread),false);
+    assert.equal(failed.thread.stackFrames[0].params,failed.params);
+    assert.equal(failed.params.receiver,f.allocation.ref);
+    assert.equal(escaped.values.value,f.allocation.ref);
+    assert.throws(()=>f.service.receiverCell(failed.util,failed.expected),/actual current class invocation/);
+    f.runtime.sequencer.activeThread=survivor.thread;
+    assert.equal(f.service.receiverCell(survivor.util,survivor.expected).values.value,f.allocation.ref);
+    f.heap.set(escaped.values.value,'value',11);assert.equal(f.heap.get(f.allocation.ref,'value'),11);
+});

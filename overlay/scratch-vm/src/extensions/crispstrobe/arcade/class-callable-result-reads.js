@@ -77,6 +77,10 @@ module.exports = function createResultReads(runtime, values, heap, frames,
             if(!record.read)fail('method never performed its actual certified field read');
             return record.absent&&values.decode(value)===undefined;
         },
+        abortThread(thread) {
+            const record=threads.get(thread);if(!record)return false;
+            threads.delete(thread);tickets.delete(record.ticket);return true;
+        },
         dispose(){disposed=true;reset();subscriptions.forEach(unsubscribe=>unsubscribe());}
     });
 };

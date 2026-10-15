@@ -5,6 +5,7 @@ const active = new WeakMap();
 // A loan alone does not authorize interpretation of arbitrary input sockets.
 const roles=Object.freeze(Object.fromEntries(Object.entries({
     arcade_createCallable:[],arcade_objectField:[],
+    arcade_throwValue:['VALUE'],arcade_createOwnedImageSprite:['KIND'],
     arcade_returnValue:['VALUE'],arcade_functionArgument:['VALUE'],
     arcade_setLocal:['VALUE'],arcade_setCaptured:['VALUE'],
     arcade_setObjectField:['VALUE'],arcade_inspectValue:['VALUE','LIMIT'],

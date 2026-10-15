@@ -5,6 +5,7 @@ const {validateCallableLexicalPlan} = require('./callable-lexical-plan.generated
 let nextCallableId = 0;
 const classState = new WeakMap();
 const namedState = new WeakMap();
+const invocationState = new WeakMap();
 
 class ArcadeCallableValues {
     constructor(runtime, values, classProvider = null, subscribeLifecycle = null) {
@@ -14,6 +15,7 @@ class ArcadeCallableValues {
         this.labels = new WeakMap();
         this.resources = new Map();
         this.resetListeners = new Set();
+        invocationState.set(this,new WeakMap());
         this.generation = 0;
         this.disposed = false;
         namedState.set(this,{host:createNamedCallableHost(runtime,values,subscribeLifecycle),declarations:new WeakMap(),invocations:new WeakMap()});
@@ -216,12 +218,25 @@ class ArcadeCallableValues {
         if(namedDeclaration){if(args.length)throw new Error('Named declaration invocation requires zero actual arguments');namedState.get(this).invocations.set(invocation,{resource,declaration:namedDeclaration});}
         const declaration = classState.get(this).declarations.get(resource.definition);
         if (declaration) classState.get(this).invocations.set(invocation, {signature:classState.get(this).provider.invocation(declaration, supplied, rawArgs),resource});
+        invocationState.get(this).set(invocation,{failed:false});
         return invocation;
     }
 
-    hasTypedInvocation(invocation) {return classState.get(this).invocations.has(invocation)||namedState.get(this).invocations.has(invocation);}
+    // Failed invocations still require settlement checking, including v1 calls
+    // that would otherwise take the dispatcher's ordinary untyped-success path.
+    hasTypedInvocation(invocation) {return invocationState.get(this).get(invocation)?.failed===true||classState.get(this).invocations.has(invocation)||namedState.get(this).invocations.has(invocation);}
+
+    failInvocation(invocation) {
+        const state=invocationState.get(this).get(invocation);
+        if(!state)throw new Error('Callable failure requires its actual issued invocation');
+        state.failed=true;
+        classState.get(this).invocations.delete(invocation);
+        namedState.get(this).invocations.delete(invocation);
+    }
 
     complete(invocation, value) {
+        if(invocationState.get(this).get(invocation)?.failed)
+            throw new Error('Failed callable invocation cannot complete normally');
         const named=namedState.get(this).invocations.get(invocation);
         if(named){if(this.resource(invocation.reference)!==named.resource)throw new Error('Named completion outlived its actual invocation');return namedState.get(this).host.result(named.declaration,value);}
         const record = classState.get(this).invocations.get(invocation);
