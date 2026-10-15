@@ -149,6 +149,20 @@ peer-owned Arrays scalar-return, controller-repeat, callable or font hunks.
 
 # Who is doing what — merge the claim before implementation
 
+## Arcade primitive Number to text — 2026-10-15
+
+PROPOSED — Codex Arcade primitive source integration,
+`lane/arcade-number-text-claim-20261015`.
+Contract: [primitive Number to text](docs/compatibility/arcade-number-to-text.md).
+Scope: zero-argument Number `toString` with actual producer/current-writer
+authority, narrow source/native primitive String representation, current Code
+and Blocks, original export and same/fresh saved-project reimport. Preserve
+class custom methods, SDK reference exclusions, Font proof and Source frame
+ownership. No new canonical word, pin change, radix, global String-name grant
+or whole-library promotion is claimed. Product work waits for the normal claim
+merge after every enabled exact-head check succeeds.
+
+
 ## CI fast and thorough tiers — 2026-10-14
 
 PROPOSED — VPS Claude (opus), `lane/ci-tiers-20261014`. Owner decision
