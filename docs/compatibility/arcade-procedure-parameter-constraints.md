@@ -18,6 +18,12 @@ The helper stays present. The solution must preserve an authored constraint,
 not infer String from the desired display operation or manufacture a caller.
 A parameter constraint is not an observation that a String value exists.
 
+Measured source controls also accept a Number passed to, or written into, a
+declared String formal when its consumer merely requires a primitive value.
+An Image producer is already refused there. The new protocol must check the
+Number/String declaration contradiction independently of that primitive API
+guard; it must not convert the Number or infer a String value from the consumer.
+
 ## First bounded protocol
 
 Add one explicit ordinary-procedure parameter-constraint declaration protocol,
