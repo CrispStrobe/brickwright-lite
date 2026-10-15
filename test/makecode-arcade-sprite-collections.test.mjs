@@ -60,10 +60,26 @@ let otherFoodIdentity=currentFood.indexOf(food)`;
 });
 
 
-test('unsupported dynamic sprite-kind queries remain named diagnostics',()=>{
+test('fixed kind aliases retain actual sprite identity for queries and destruction',async()=>{
     const imported=arcadeToPseudocode(`let kind=0
-let actors=sprites.allOfKind(kind)`);
-    assert.ok(imported.unsupported.some(reason=>reason.includes('sprites.allOfKind')));
+let hero=sprites.create(img\`2\`,SpriteKind.Player)
+let enemy=sprites.create(img\`7\`,SpriteKind.Enemy)
+hero.setKind(kind)
+let players=sprites.allOfKind(kind)
+let before=players.length
+let same=players[0]===hero
+sprites.destroyAllSpritesOfKind(kind)
+let after=sprites.allOfKind(kind).length
+let enemies=sprites.allOfKind(SpriteKind.Enemy).length`);
+    assert.deepEqual(imported.unsupported,[]);
+    const run=await runProgram(imported.code,{frames:10,uploads:imported.costumes,storage:true});
+    try {assert.deepEqual([vars(run).before,vars(run).same,vars(run).after,vars(run).enemies],[1,true,0,1]);assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);}
+    finally {run.vm.stopAll();run.vm.quit();}
+});
+
+test('unknown sprite-kind producers remain named diagnostics',()=>{
+    const imported=arcadeToPseudocode('let kind=unknown()\nlet actors=sprites.allOfKind(kind)');
+    assert.ok(imported.unsupported.some(reason=>reason.includes('unknown')));
 });
 
 
@@ -115,10 +131,10 @@ let finished=1`;
     run.vm.greenFlag();await stepFrames(run.vm,100);check(run);
 });
 
-test('destroyAllSpritesOfKind rejects dynamic kinds, effects and duration explicitly',()=>{
+test('destroyAllSpritesOfKind rejects unknown producers, effects and duration explicitly',()=>{
     for(const call of ['sprites.destroyAllSpritesOfKind(kind)','sprites.destroyAllSpritesOfKind(SpriteKind.Enemy,effects.fire)','sprites.destroyAllSpritesOfKind(SpriteKind.Enemy,effects.fire,100)']){
-        const imported=arcadeToPseudocode('let kind=0\n'+call);
-        assert.ok(imported.unsupported.some(reason=>reason.includes('sprites.destroyAllSpritesOfKind')),call);
+        const imported=arcadeToPseudocode((call.endsWith('(kind)')?'let kind=unknown()\n':'')+call);
+        assert.ok(imported.unsupported.some(reason=>reason.includes(call.endsWith('(kind)')?'unknown':'sprites.destroyAllSpritesOfKind')),call);
     }
 });
 
