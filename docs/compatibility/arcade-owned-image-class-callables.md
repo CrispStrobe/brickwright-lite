@@ -178,3 +178,38 @@ original replay. Literal artwork, dynamic dimensions, screen/Sprite views and
 all previously unqualified neighboring domains remain refusals. This source
 selection checkpoint does not establish hosted GUI field/handler authoring or
 complete library admission.
+
+## Literal resource producer follow-up
+
+PLANNED — the existing ownership includes literal Images. The default factory
+and clone checkpoint does not yet admit them. An actual two-by-two `img`
+literal passed to the class holder is refused by source proof. The equivalent
+current Code resource already executes with the real pixels and clone identity,
+but its current class export refuses the unproved constructor argument.
+
+The next tranche admits only an actual unshadowed, rectangular `img` Template
+with exact palette characters and bounded dimensions. Resolve the tag in its
+actual lexical scope: the parser retains a tag string, not an Identifier whose
+name alone proves SDK ownership. Unknown characters, interpolation, opaque
+assets, `assets.image`, dynamic dimensions and Sprite views remain excluded.
+
+The current-project counterpart must prove a connected clone of a single-frame
+resource with fixed key, target, range and index. Resolve one actual target and
+its selected current SVG costume, asset/file identifiers, dimensions, centres
+and complete decoded palette pixels. Resource identifiers select stored data;
+they are not content hashes. No placeholder, raster approximation, costume name
+or annotation establishes this fact. Conflicting or dynamic uses of the same
+resource key, uncloned exposure and foreign or missing assets refuse.
+
+An accepted allocation may export as an inline `img` literal only when the
+current connected proof establishes its fresh clone semantics and no other use
+can mutate or expose the underlying shared resource. Render from the same
+validated current pixel snapshot. Do not restore retained source artwork or
+silently widen the class source proof to arbitrary generated arrays.
+
+Qualify actual source and current Code, same/fresh SB3, renamed resource targets,
+edited costume pixels, export and native reimport. Preserve alias identity,
+distinct clone allocations, all writer/ingress proof and Image-owner lifetime.
+New selected-SDK source and edited-art export inputs require a fresh serialized
+lease and exact input/binary/observation/guard closure. No unchanged original
+replay or broader class/Image/GUI qualification follows from this plan.
