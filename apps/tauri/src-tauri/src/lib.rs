@@ -1,6 +1,6 @@
 //! Brickwright native app (Tauri 2) — shared entry point for desktop and mobile.
 
-#[cfg(desktop)]
+// Pure JSON validators are also used by the shared policy core on mobile.
 mod arena_inputs;
 mod assetserver;
 mod downloads;
@@ -16,7 +16,6 @@ mod native_broker_adapter;
 mod native_capability;
 #[cfg(desktop)]
 mod renode_brick_state;
-#[cfg(desktop)]
 mod spike_program_uart_contract;
 #[cfg(desktop)]
 mod renode_debugger;
