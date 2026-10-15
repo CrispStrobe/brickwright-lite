@@ -1,3 +1,4 @@
+const sourceConditions=require('../../../util/bw-source-condition-waits');
 // Condition polling follows Microsoft PXT base/poll.ts (MIT; notice beside this
 // file). One shared queue has a 50 ms polling fiber. An empty final iteration
 // still pauses before releasing the queue, so registrations during that pause
@@ -9,12 +10,21 @@ module.exports = function createPollEvents({now,setTimeout:delay,clearTimeout:cl
             timer=undefined;
             if(epoch!==generation || !queue)return;
             if(!queue.length){queue=undefined;return;}
-            const current=now();let woke=false;
+            const current=now(),events=queue;let woke=false;
             try {
                 for(let i=0;i<queue.length;i++) {
                     const event=queue[i];
-                    if(event.condition() || (event.timeout>0 && current-event.start>event.timeout)) {
+                    const sampled=event.condition();
+                    // Existing synchronous predicates keep their original turn.
+                    // Only native source sampling waits for a VM evaluation.
+                    const sourceSample=sourceConditions.takeSample(sampled);
+                    const outcome=sourceSample ? await sourceSample : null;
+                    const ready=sourceSample ? outcome.ready : sampled;
+                    if(epoch!==generation || queue!==events)return;
+                    if(sourceSample && outcome.cancelled){queue.splice(i,1);i--;continue;}
+                    if(ready || (event.timeout>0 && current-event.start>event.timeout)) {
                         event.ready();woke=true;
+                        if(epoch!==generation || queue!==events)return;
                         if(event.once){queue.splice(i,1);i--;}
                     }
                 }

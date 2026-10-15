@@ -31,6 +31,8 @@ async function pulse(r,delta) {
 }
 test('existing authored forever tick is eligible once across pre/frame/post phases',async()=>{
     const r=await setup();try {
+        assert.ok((r.calls.get('arcade_whenSourceStarts')||0)>0,'real greenFlag/Runtime.startHats must evaluate its non-wait source hat');
+        assert.equal(!!r.vm.runtime.sequencer.activeThread,false,'direct hat enumeration requires no synthetic sequencer loan');
         const counts=[];
         for(let i=0;i<4;i++){r.time(i*20);await pulse(r,i?20:0);counts.push(r.value());}
         assert.deepEqual(counts,[1,2,3,4]);assert.deepEqual(r.errors,[]);

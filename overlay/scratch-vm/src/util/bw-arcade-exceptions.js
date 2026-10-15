@@ -120,6 +120,14 @@ function create(runtime, readValue) {
             signals.set(signal,Object.freeze({owner,runtime,generation,kind:'array-constraint',message:message.value,target:thread.target,block:witness.block,stack:Object.freeze([...thread.stack])}));
             retireLineage(thread,signal);
         },
+        rejectConditionWait(thread,error) {
+            const witness=require('./bw-source-condition-waits').consumeFailure(runtime,thread,error);
+            if(!witness || !live(thread))throw Error('Source condition rejection requires its private current wait');
+            const signal=new Error(error.message,{cause:error});
+            signals.set(signal,Object.freeze({owner,runtime,generation,kind:'condition-wait',message:error.message,
+                target:thread.target,block:witness.block,stack:Object.freeze([...thread.stack])}));
+            retireLineage(thread,signal);
+        },
         rejectConstraint(args,util,error) {
             const thread=util?.thread,priorIssued=signals.get(error);
             if(priorIssued?.runtime===runtime&&failure(thread)===error)throw error;
@@ -167,7 +175,7 @@ function failed(runtime, thread) {return failedThreads.get(thread)?.runtime === 
 function capture(runtime,thread) {return owners.get(runtime)?.capture(thread) || null;}
 function diagnostic(runtime,error) {
     const record=signals.get(error);
-    return record?.runtime===runtime ? ['constraint','array-constraint'].includes(record.kind) ? Object.freeze({kind:record.kind,message:record.message,block:record.block,target:record.target.id}) : Object.freeze({value:record.value,block:record.block,target:record.target.id}) : null;
+    return record?.runtime===runtime ? ['constraint','array-constraint','condition-wait'].includes(record.kind) ? Object.freeze({kind:record.kind,message:record.message,block:record.block,target:record.target.id}) : Object.freeze({value:record.value,block:record.block,target:record.target.id}) : null;
 }
 function stale(runtime,thread,lease) {
     if (failed(runtime,thread)) return true;
@@ -178,4 +186,9 @@ function stale(runtime,thread,lease) {
 
 function arrayCoordinatorReady(runtime) {return !!owners.get(runtime)?.arrayReady();}
 function rejectArrayOperation(runtime,args,util,error,lease) {const owner=owners.get(runtime);if(!owner)throw Error('Array operation rejection requires a shared exception owner');return owner.rejectArrayOperation(args,util,error,lease);}
-module.exports = Object.freeze({create, consume, failed, capture, stale, diagnostic,arrayCoordinatorReady,rejectArrayOperation});
+function rejectConditionWait(runtime,thread,error) {
+    const owner=owners.get(runtime);
+    if(!owner)throw Error('Source condition rejection requires the current Arcade exception owner');
+    return owner.rejectConditionWait(thread,error);
+}
+module.exports = Object.freeze({rejectConditionWait,create, consume, failed, capture, stale, diagnostic,arrayCoordinatorReady,rejectArrayOperation});

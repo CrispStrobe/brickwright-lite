@@ -37,7 +37,7 @@ const declarations=source=>{
 const wrapper=`            bwPrimitiveOwner.invoke(sequencer.runtime, thread, blockContainer, opCached, argValues, blockUtility,
                 () => blockFunction(argValues, blockUtility)) : blockFunction(argValues, blockUtility)`;
 
-export function patchPrimitiveOwner(source){
+function patchInvocation(source){
  const actual=declarations(source),imported=actual('BlockUtility'),reported=actual('primitiveReportedValue'),owner=actual('bwPrimitiveOwner',true);
  if(source.slice(imported.node.start,imported.node.end)!=="BlockUtility = require('./block-utility')")throw Error('execute.js actual primitive ownership source anchor differs');
  const init=reported.node.init;
@@ -56,4 +56,35 @@ export function patchPrimitiveOwner(source){
  if(![current,...prior].includes(marker))throw Error('execute.js unknown primitive ownership marker');
  if(source.slice(init.start,init.end)!==marker+' ?\n'+wrapper)throw Error('execute.js actual primitive ownership invocation wrapper differs');
  return source.slice(0,init.test.start)+current+source.slice(init.test.end);
+}
+
+
+// The actual root cache exists here, before saved reporter-prefix restoration
+// or any operand executes. Ordinary Scratch returns through this hook unchanged.
+const conditionIngress="    if (!bwPrimitiveOwner.beforeInputs(runtime, thread, blockContainer, blockCached)) return;\n\n";
+export function patchPrimitiveOwner(source) {
+ source=patchInvocation(source);
+ const execute=declarations(source)('execute').node.init;
+ if(execute?.type!=='FunctionExpression')throw Error('execute.js actual condition ingress function differs');
+ const statements=execute.body.body;
+ const ops=statements.filter(node=>node.type==='VariableDeclaration'&&node.kind==='const'&&node.declarations.length===1&&node.declarations[0].id?.name==='ops');
+ if(ops.length!==1||source.slice(ops[0].declarations[0].start,ops[0].declarations[0].end)!=='ops = blockCached._ops')
+  throw Error('execute.js actual pre-input condition cache anchor differs');
+ const anchor=ops[0].start,existing=statements.filter(node=>node.type==='IfStatement'&&source.slice(node.start,node.end).includes('bwPrimitiveOwner.beforeInputs'));
+ const calls=[];
+ const visit=node=>{if(!node||typeof node!=='object')return;
+  if(node.type==='CallExpression'&&node.callee?.type==='MemberExpression'&&!node.callee.computed&&
+    node.callee.object?.name==='bwPrimitiveOwner'&&node.callee.property?.name==='beforeInputs')calls.push(node);
+  for(const[key,value]of Object.entries(node))if(!['comments','tokens','loc','extra'].includes(key)){
+   if(Array.isArray(value))value.forEach(visit);else if(value&&typeof value==='object')visit(value);
+  }
+ };
+ visit(execute.body);
+ if(calls.length!==(existing.length?1:0))throw Error('execute.js actual condition ingress is missing, nested or duplicated');
+ if(existing.length){
+  if(existing.length!==1||source.slice(existing[0].start,existing[0].end)!==conditionIngress.trim()||
+    existing[0]!==statements[statements.indexOf(ops[0])-1])throw Error('execute.js actual condition ingress differs');
+  return source;
+ }
+ return source.slice(0,anchor)+conditionIngress.trimStart()+'    '+source.slice(anchor);
 }

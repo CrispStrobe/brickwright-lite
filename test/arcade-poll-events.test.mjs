@@ -28,3 +28,18 @@ test('cancel rejects an already captured predecessor timer and new registrations
 test('predicate failure is reported unchanged and cancels its polling fiber',async()=>{
  const {clock,queue,errors}=make(),fault=new Error('owned condition failed');queue.enqueue(()=>{throw fault;},()=>assert.fail('failed predicate must not wake'));await clock.advanceTo(0);assert.deepEqual(errors,[fault]);assert.equal(queue.active,false);assert.equal(clock.pending,0);
 });
+
+test('ordinary native Promise predicate retains its original synchronous truthiness',async()=>{
+ const {clock,queue,wakes}=make(),events=[];let release;
+ const promise=new Promise(r=>{release=r;});queue.enqueue(()=>{events.push('condition');return promise;},()=>events.push('ready'));
+ await clock.advanceTo(0);assert.deepEqual(events,['condition','ready']);assert.deepEqual(wakes,[0]);release(false);queue.cancel();
+});
+test('ordinary native thenable condition is not awaited or invoked',async()=>{
+ const {clock,queue}=make(),ready=[];const thenable={then(){assert.fail('native predicate thenable must keep synchronous semantics');}};
+ queue.enqueue(()=>thenable,()=>ready.push('ready'));await clock.advanceTo(0);assert.deepEqual(ready,['ready']);queue.cancel();
+});
+test('synchronous ready cancellation cannot splice the replacement queue',async()=>{
+ const {clock,queue}=make(),ready=[];
+ queue.enqueue(()=>true,()=>{ready.push('old');queue.cancel();queue.enqueue(()=>true,()=>ready.push('new'));});
+ await clock.advanceTo(0);assert.deepEqual(ready,['old','new']);queue.cancel();
+});
