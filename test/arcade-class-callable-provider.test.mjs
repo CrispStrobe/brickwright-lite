@@ -157,3 +157,15 @@ test('generic method parameter/result mismatch, defaults and unwired signatures 
     const runtime=new EventEmitter(),heap=createHeap(runtime,BW);
     assert.throws(()=>heap.register({name:'Bad',fields:[],initializer:'',constructor:'',parameters:[],methods:[method()]}),/Invalid declared class method/);
 });
+
+test('failed typed invocation cannot complete while another invocation of the same resource remains valid',()=>{
+    const f=fixture(),ref=f.service.create(f.target,'ReadHolder',f.context);
+    const failed=f.service.invocation(ref,[]),survivor=f.service.invocation(ref,[]);
+    f.service.failInvocation(failed);f.service.failInvocation(failed);
+    assert.equal(f.service.hasTypedInvocation(failed),true);
+    assert.throws(()=>f.service.complete(failed,7),/Failed callable invocation/);
+    assert.equal(f.service.complete(survivor,8),8);
+    assert.equal(f.service.hold(ref),ref);
+    assert.equal(f.heap.inspect(failed.captures.get('capturedSelf').values.value).className,'Holder');
+    assert.throws(()=>f.service.failInvocation({...failed}),/actual issued invocation/);
+});

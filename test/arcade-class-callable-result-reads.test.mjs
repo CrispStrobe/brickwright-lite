@@ -96,3 +96,16 @@ test('a ticket retains complete body names, order, identities and immutable sema
   assert.throws(()=>f.reads.complete(ticket,BW.UNDEFINED),/body differs/);
  }
 });
+
+test('aborting a result read retires only that thread ticket and preserves a sibling invocation',()=>{
+ const f=fixture(),second={...f.thread,stackFrames:[{params:{...f.params},waitingReporter:'Holder_apply %s %s'}]};
+ f.runtime.threads.push(second);f.frames.bind(second,f.util.target,'Holder_apply %s %s',second.stackFrames[0].params);
+ const ticket=f.reads.prepare(second,f.util.target,f.heap.definition('Holder').methods.get('apply'),f.ref);
+ f.runtime.sequencer.activeThread=f.thread;assert.equal(f.observe(),true);
+ const util={...f.util,thread:second};f.runtime.sequencer.activeThread=second;
+ assert.equal(primitive.invoke(f.runtime,second,f.util.target.blocks,f.operation,f.args,util,()=>f.reads.observe(util,f.args,f.heap.get(f.ref,'state'))),true);
+ assert.equal(f.reads.abortThread(f.thread),true);assert.equal(f.reads.abortThread(f.thread),false);
+ f.finish();assert.throws(()=>f.reads.complete(f.ticket,BW.UNDEFINED),/unknown or retired/);
+ second.status=4;assert.equal(f.reads.complete(ticket,BW.UNDEFINED),true);
+ assert.equal(f.params.self,f.ref);assert.equal(f.heap.inspect(f.ref).className,'Holder');
+});

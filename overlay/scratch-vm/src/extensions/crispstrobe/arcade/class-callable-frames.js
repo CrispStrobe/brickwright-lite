@@ -72,5 +72,5 @@ module.exports = function createClassCallableFrames(runtime, heap, {currentGraph
             throw new Error('Callable constructor receiver capture outlived construction');
         return Object.freeze({values:Object.freeze({value:record.receiver}),key:'value'});
     }
-    return {bind,receiverCell,dispose() {suspend();unsubscribers.forEach(unsubscribe=>unsubscribe());}};
+    return {bind,receiverCell,abortThread:thread=>frames.delete(thread),dispose() {suspend();unsubscribers.forEach(unsubscribe=>unsubscribe());}};
 };
