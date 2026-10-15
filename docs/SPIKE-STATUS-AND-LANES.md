@@ -130,11 +130,11 @@ failure and failed baseline/fixture attempts remain preserved. The later PR928 b
 run. Qualification kept the existing product deadlines, acceptance thresholds
 and dependency pins.
 
-PR936's55 affected session controls pass; the late-rejection baseline fails,
+PR936's 55 affected session controls pass; the late-rejection baseline fails,
 and removing its new closure check restores that failure. Both installed cases
-retain191control-file hashes and28raw startup records. Package readers bind
-180installer files/23directories,177native source files,5919frontend files and
-126runtime inputs. The [final readiness run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38673916767)
+retain 191 control-file hashes and 28 raw startup records. Package readers bind
+180 installer files/23 directories, 177 native source files, 5919 frontend files and
+126 runtime inputs. The [final readiness run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38673916767)
 passes all ten enabled build jobs; its vendor check also passes. The original
 pre-label full-CI gate failure remains preserved, with the later label verdict
 and final readiness gate successful. Qualified session/test blobs match their
