@@ -1,3 +1,4 @@
+import BWValues from '../overlay/scratch-vm/src/util/bw-values.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -75,7 +76,7 @@ for (const [name, source] of Object.entries(scenarios)) {
         const trace = entries(expected.trace);
         const run = await nativeWithLegacyHost(source);
         try {
-            for (let guard = 0; Number(values(run).frame) < 1; guard++) {
+            for (let guard = 0; !(Number(values(run).frame) >= 1); guard++) {
                 assert.ok(guard < 100, 'native recording begins');
                 await stepFrames(run.vm, 1, Number(trace[0].at(-1)) * 1000);
             }
@@ -130,4 +131,22 @@ let done=true`;
             assert.ok(run.loadedOpcodes.has('arcade_' + opcode), 'actual native word API ' + opcode);
         }
     } finally {run.vm.quit(); clearStrayTimers();}
+});
+
+// Complete callback rows retained from the actual original observations printed
+// by the hosted test; this native control does not execute an original program.
+const observedRecordingTraces={"speed":[["0","0","0"],["0","0","0.02"],["159.26","0.24","0.02"],["158.51999999999998","0.48","0.02"],["157.77999999999997","0.72","0.02"],["157.03999999999996","0.96","0.02"],["156.29999999999995","1.2","0.02"],["155.55999999999995","1.44","0.02"],["154.81999999999994","1.68","0.02"],["154.81999999999994","1.68","0.02"],["154.81999999999994","1.68","0.02"],["154.81999999999994","1.68","0.02"]],"camera":[["0","0","0"],["0","0","0.02"],["0","0","0.02"],["159","0","0.02"],["158","0","0.02"],["157","0","0.02"],["156","0","0.02"],["155","0","0.02"],["154","0","0.02"],["153","0","0.02"],["152","0","0.02"],["152","0","0.02"]]};
+test("native legacy scroller recordings observe Undefined startup and every original callback frame",async()=>{
+ for(const [name,expected]of Object.entries(observedRecordingTraces)){
+  const source=scenarios[name];const run=await nativeWithLegacyHost(source);
+  try {
+   assert.equal(BWValues.decode(values(run).frame),undefined);
+   for(let guard=0;!(Number(values(run).frame)>=1);guard++){assert.ok(guard<100,"native recording starts");await stepFrames(run.vm,1,Number(expected[0].at(-1))*1000);}
+   assert.equal(Number(values(run).frame),1);assert.equal(entries(values(run).trace).length,1);
+   assert.equal(Number(entries(values(run).trace)[0].at(-1)),Number(expected[0].at(-1)),"actual first callback observes original zero delta exactly once");
+   for(let i=1;i<expected.length;i++)await stepFrames(run.vm,1,Number(expected[i].at(-1))*1000);
+   assert.deepEqual(entries(values(run).trace),expected,"complete original trace including every numeric delta");
+   assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+  }finally{run.vm.stopAll();run.vm.quit();clearStrayTimers();}
+ }
 });

@@ -1,3 +1,4 @@
+import BWValues from '../overlay/scratch-vm/src/util/bw-values.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -81,7 +82,7 @@ for (const [name, source] of Object.entries(scenarios)) {
         const trace = entries(expected.trace);
         const run = await native(source);
         try {
-            for (let guard = 0; Number(values(run).frame) < 1; guard++) {
+            for (let guard = 0; !(Number(values(run).frame) >= 1); guard++) {
                 assert.ok(guard < 100, 'native recording begins');
                 await stepFrames(run.vm, 1, Number(trace[0].at(-1)) * 1000);
             }
@@ -205,4 +206,22 @@ test('default modern module retains all modern APIs and exact original rule-to-s
         assert.equal(ext._scenePushHandlers.length, 0);
         assert.deepEqual(run.errors, []);
     } finally {run.vm.quit(); clearStrayTimers();}
+});
+
+// Complete callback rows retained from the actual original observations printed
+// by the hosted test; this native control does not execute an original program.
+const observedRecordingTraces={"destroyedCleanup":[["4","1","0"],["2","1","0.02"],["3","1","0.02"],["2","1","0.02"],["2","1","0.02"],["3","0","0.02"],["3","0","0.02"],["3","0","0.02"],["3","0","0.02"],["3","0","0.02"],["3","0","0.02"],["3","0","0.02"]],"legacyReenable":[["4","0","0"],["1","0","0.02"],["3","1","0.02"],["1","0","0.02"],["1","0","0.02"],["1","0","0.02"],["1","0","0.02"],["2","0","0.02"],["2","0","0.02"],["2","0","0.02"],["2","0","0.02"],["2","0","0.02"]],"runLoopManual":[["4","0","0"],["7","1","0.02"],["9","1","0.02"],["10","1","0.02"],["11","1","0.02"],["11","1","0.02"],["11","1","0.02"],["12","0","0.02"],["7","0","0.02"],["7","0","0.02"],["9","1","0.02"],["10","1","0.02"],["11","1","0.02"],["11","1","0.02"],["11","1","0.02"],["12","1","0.02"]]};
+test("native legacy character recordings observe Undefined startup and every original callback frame",async()=>{
+ for(const [name,expected]of Object.entries(observedRecordingTraces)){
+  const source=scenarios[name];const run=await native(source);
+  try {
+   assert.equal(BWValues.decode(values(run).frame),undefined);
+   for(let guard=0;!(Number(values(run).frame)>=1);guard++){assert.ok(guard<100,"native recording starts");await stepFrames(run.vm,1,Number(expected[0].at(-1))*1000);}
+   assert.equal(Number(values(run).frame),1);assert.equal(entries(values(run).trace).length,1);
+   assert.equal(Number(entries(values(run).trace)[0].at(-1)),Number(expected[0].at(-1)),"actual first callback observes original zero delta exactly once");
+   for(let i=1;i<expected.length;i++)await stepFrames(run.vm,1,Number(expected[i].at(-1))*1000);
+   assert.deepEqual(entries(values(run).trace),expected,"complete original trace including every numeric delta");
+   assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
+  }finally{run.vm.stopAll();run.vm.quit();clearStrayTimers();}
+ }
 });
