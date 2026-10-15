@@ -274,6 +274,14 @@ export function createArrayReferenceExportAuthority(project) {
         }
         return entries.length>0&&entries.every(entry=>available(c,entry.scope,entry.node,next));
     };
+    const numericKindInitialized=(value,path=new Set())=>{
+        if(!numericKind(value))return false;
+        const node=value?.node,c=value?.cell||(node&&binding(value.target,node));
+        if(!c)return true;
+        const at=value.at||node;if(path.has(c)||!available(c,owners.get(at),at))return false;
+        const next=new Set([...path,c]);
+        return c.writers.length>0&&c.writers.every(writer=>deadKindReset(c,writer)||numericKindInitialized(writer.value,next));
+    };
     const checkingWriterInitialization=new Set();
     const initialized=(value,path=new Set())=>{
         if(!value)return false;if(value.jsonArray)return true;
@@ -291,7 +299,7 @@ export function createArrayReferenceExportAuthority(project) {
             if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom','arrays_mutateReference'].includes(node.opcode))for(const allocation of readInput(input(node,'ARRAY',target)))for(const source of allocation.sources||[])if(!initialized(source,next))return false;
             return true;
         }
-        if(node.opcode==='arcade_spritesOfKind'&&exactKeys(node,['KIND'])&&numericKind(input(node,'KIND',target))){const value=input(node,'KIND',target),c=value.cell||(value.node&&binding(target,value.node));return !c||available(c,owners.get(node),node);}
+        if(node.opcode==='arcade_spritesOfKind'&&exactKeys(node,['KIND']))return numericKindInitialized(input(node,'KIND',target));
         return false;
     };
     const live=()=>project.targets===targets&&snapshot()===original&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));

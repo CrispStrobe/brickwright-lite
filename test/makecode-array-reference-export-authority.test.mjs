@@ -153,3 +153,11 @@ test('KIND reset proof retains malformed topology and every later incompatible w
         f.blocks.__late={opcode:'data_setvariableto',parent:tail[0],next:null,shadow:false,topLevel:false,fields:structuredClone(f.write.fields),inputs:{VALUE:[1,[10,'wrong']]}};tail[1].next='__late';
     }]){const f=withKindReset();edit(f);assert.equal(createArrayReferenceExportAuthority(f.creator.project).validateInput(f.target,f.receiver).ok,false);}
 });
+
+test('KIND aliases cannot borrow a Number allocation after their own value read',()=>{
+    const f=withKindReset(),aliasId='__earlyKindAlias';
+    f.target.variables[aliasId]=['earlyKindAlias',0];
+    interposeReset(f,{opcode:'data_setvariableto',fields:{VARIABLE:['earlyKindAlias',aliasId]},inputs:{VALUE:[3,[12,'kind',f.write.fields.VARIABLE[1]],[10,'']]}});
+    const collection=Object.values(f.blocks).find(b=>b.opcode==='arcade_spritesOfKind');collection.inputs.KIND=[3,[12,'earlyKindAlias',aliasId],[10,'']];
+    assert.equal(createArrayReferenceExportAuthority(f.creator.project).validateInput(f.target,f.receiver).ok,false);
+});
