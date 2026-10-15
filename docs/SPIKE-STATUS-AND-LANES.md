@@ -6,6 +6,23 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Pending G02 replacement-output phase follow-up — 2026-10-15
+
+`lane/spike-g02-output-phase-20261015` keeps prior poll/STOP and upload-preparation
+output out of the new Code consumer. The existing reply decoder must admit the
+requested START operation/id with success and an executing or terminal state
+before that consumer receives output. Immediate and terminal START output,
+delayed fresh output, Stop reentry and retry stay covered.
+
+Thirteen authored session/client/pane controls pass; the original baseline fails
+eight, and ten broken guards are detected. All 112 affected host controls pass.
+The initial broader run lacked a sparse importer input; it is preserved, the
+tracked input was materialized, and the final affected run passes. These are host
+controls. Source-bound installed output/frame/reply evidence and final-head CI
+are pending. This is separate from the frozen composed qualification below;
+it changes no firmware/native/model pin or importer logic and does not establish
+physical UART attribution or close G02.
+
 ## Composed G02 qualification target — 2026-10-15
 
 `lane/spike-g02-lifecycle-batch-20261015` integrates the existing fixes from
