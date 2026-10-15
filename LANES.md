@@ -3891,3 +3891,22 @@ configuration/first-frame cancellation and fresh guest recovery cases passed
 standalone audits; all current required exact-head contexts pass. No dependency pin,
 native code, firmware, Runtime, model, budget or workflow changes. Full G02 and
 distribution qualification remain open.
+
+
+## SPIKE late scheduled-poll errors — 2026-10-14
+
+Continuation in the merged G02 session/test envelope after adopted PR930. A
+scheduled poll can reject after original Stop has already closed its session,
+then invoke an obsolete error observer. Ignore that late rejection at the
+scheduled error-notification boundary; keep live poll errors and owned cleanup.
+Three actual-session controls cover live rejection, late successful delivery and
+late rejection after Stop. The first two pass on the prior source; late rejection
+reports an error after closure. All 55 affected controls pass; removing the new
+check is detected by that late-error control. An installed prior-consumer case
+reproduces the late callback using an original real native observation followed
+by an explicitly authored client-delivery error after original pane Stop;
+cleanup and fresh guest recovery pass. This is not a native/firmware fault.
+Fresh installed candidate real native observations with
+explicitly authored delivery failures, cleanup/recovery and every enabled
+exact-head check remain required before adoption. No native/firmware fault,
+whole G02, physical or release claim; no dependency or workflow change.
