@@ -63,3 +63,15 @@ test('native SDK method parameter and result roles agree with the one structured
   assert.equal(f.BW.decode(f.extension.callObjectMethod({OBJECT:object,METHOD:'copy',ARGS:JSON.stringify([picture])})),undefined);assert.match(f.errors.at(-1).message,/procedure is not defined/);
  }finally{f.dispose();}
 });
+
+test('raw and dispatched Image arguments bind the same once-coerced JSON text',async()=>{
+ const f=await fixture();try{
+  const {extension:e,BW}=f;e._objectHeap.register({...spec(),methods:[{name:'copy',procedure:'CopyImage %s %s',parameters:[{name:'picture',type:'Image',optional:false}],returnType:'Image',typeParameters:[],callableSignature:{kind:'callable',parameters:[{name:'picture',optional:false,type:sdk()}],result:sdk()}}]});
+  const image=e.createImage({WIDTH:1,HEIGHT:1}),good=JSON.stringify([image]),bad=JSON.stringify([{bwReference:{...image.bwReference,extra:1}}]);
+  let conversions=0;const changing={toString(){return ++conversions===1?good:bad;}};
+  const object=e.createObject({CLASS:'PictureHolder',ARGS:changing});assert.equal(conversions,1);assert.equal(e._objectHeap.inspect(object).className,'PictureHolder');
+  conversions=0;e.callObjectMethod({OBJECT:object,METHOD:'copy',ARGS:changing});assert.equal(conversions,1);assert.match(f.errors.at(-1).message,/procedure is not defined/);
+  conversions=0;const reversed={toString(){return ++conversions===1?bad:good;}};
+  assert.equal(BW.decode(e.createObject({CLASS:'PictureHolder',ARGS:reversed})),undefined);assert.equal(conversions,1);assert.match(f.errors.at(-1).message,/owned Image/);
+ }finally{f.dispose();}
+});
