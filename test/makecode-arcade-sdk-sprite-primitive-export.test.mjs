@@ -109,6 +109,18 @@ test('nullish-only and mixed ordinary-class receiver facts never acquire an SDK 
     assert.ok(output(counterfeit).unsupported.some(message=>message.includes('field writer requires an actual declared receiver')));
 });
 
+test('local and returned factory aliases cannot bypass SDK checks after current malformed readonly edits',()=>{
+    const sources=[
+        'class Direct extends Sprite{}function run(){let factory=sprites.create(img`1`,SpriteKind.Player);factory.vx=100;}run();',
+        'class Direct extends Sprite{}function make(){let factory=sprites.create(img`1`,SpriteKind.Player);return factory;}let alias=make();alias.vx=100;let speed=alias.vx;'
+    ];assert.equal(sources.length,2);
+    for(const text of sources){const {creator}=build(text);assert.deepEqual(output(creator).unsupported,[]);
+        one(creator,'arcade_createSprite').block.inputs.WIDTH=[1,[10,'1']];write(creator).inputs.FIELD=[1,[10,'width']];
+        const before=JSON.stringify(creator.project),current=output(creator);assert.equal(JSON.stringify(creator.project),before);
+        assert.ok(current.unsupported.some(message=>message.includes('field writer requires an actual declared receiver')));
+    }
+});
+
 test('real SDK factory Number fields survive native Code saved reload current leaf edit and export reimport',async()=>{
     const {runProgram,stepFrames,clearStrayTimers}=await import('./helpers/bw-vm.mjs');
     const {default:BW}=await import('../overlay/scratch-vm/src/util/bw-values.js');
