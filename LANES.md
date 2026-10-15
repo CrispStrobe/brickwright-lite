@@ -40,12 +40,31 @@ Pause branch. All 176 affected host controls pass. An attempted extra rendered
 unit suite lacked React in the sparse validation environment; its original
 failure is preserved and hosted CI must run with installed dependencies.
 
-Qualify one exact composed package across Pause, representative world/manual
-controls, visible Arena Stop with retained Stop positives, and Code feedback,
-then audit cleanup and distinct recovery for every finite case. Prior source
-qualifications remain attributed to their original consumers. Final-head hosted
-CI and fresh installed qualification are pending; no whole-G02, hardware,
-reference-boot, rollback, distribution or licensing claim is made. This lane
+The frozen composed consumer `f903a966ea348fd7c3abd0ba693194fc813b4997`
+passes all fifteen installed own-NuttX cases: four Pause, four representative
+world/manual-drive, four pending-upload Arena Stop cases with retained-session
+Stop positives, and three Code completion/error/retry/cancellation cases. All
+fifteen standalone readers and the combined cohort reader pass, including thirty
+successful native startup transactions, cleanup and distinct recovery per case.
+The official frontend checkout tree equals this consumer; package payload and
+input audits pass. Its eleven enabled CI checks pass in
+[run38769805667](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38769805667);
+the conditional GUI verification and deploy jobs skip.
+
+Original failed test attempts remain preserved: a circular held-reply cleanup
+wait, React component-pointer compatibility, recovery language conversion,
+retry recorder lifetime, and a direct duplicate Stop before pending teardown
+completed. Corrected tests retain the observation limits and two-START retry
+gate. Visible Code cancellation awaits the original Stop method's returned
+promise rather than issuing a second pane Stop. That direct repeated-Stop
+boundary remains open below.
+
+Current main's unrelated importer/debug changes are preserved exactly during
+integration; the SPIKE session/pane/native inputs and NuttX Code dispatcher
+method remain unchanged from the tested source. Final documentation-head CI
+and merge review remain required. This result qualifies the named frozen
+package, not every later frontend package or whole G02, hardware,
+reference boot, rollback, distribution or licensing. This lane
 changes no native input, firmware/Runtime/model/dependency pin, workflow or budget
 relative to its main base. Do not merge the older draft sources independently
 as a substitute for composed qualification.
@@ -4504,6 +4523,23 @@ implementation and require all enabled exact-head checks before integration.
 The separately claimed shared project-world work keeps its ownership. This
 claim changes no executable, dependency, fixture, capture or workflow and makes
 no fresh guest, performance, physical, reference, release or licence claim.
+
+## Proposed SPIKE pending Stop teardown continuation — 2026-10-15
+
+A direct second pane `stopProgram()` while the visible Code Stop's original
+teardown is pending can encounter `Clock is owned by another backend`. The
+closed flag and stopped Code feedback precede full ownership release. The
+frozen lifecycle qualification observes the original Stop promise and preserves
+this repeated-call failure separately; it does not claim arbitrary Stop reentry.
+
+Proposed next bounded G02 slice: serialize pending firmware teardown before a
+later Stop or Start tries shared clock/backend cleanup, while preserving pane
+intent ownership and original error delivery. Own only the existing pane's
+`stopProgram` method, a focused pending-Stop test, this ledger and the SPIKE
+guide; other shared pane methods require their existing contracts. Preserve
+current teardown/replacement/disposal positives, failure and listener reentry
+adversaries, and qualify the affected installed own-guest cleanup/recovery
+before exact-head merge. No implementation or new guest result is claimed here.
 
 ## SPIKE NuttX Code caller ownership — 2026-10-15
 

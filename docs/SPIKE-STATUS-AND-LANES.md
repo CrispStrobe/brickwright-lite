@@ -35,13 +35,35 @@ retained-session ownership guard. All 176 affected host controls pass; a new
 combined sequence rejects both single-fix baselines. Eleven unchanged pane
 methods and the session file match their reviewed inputs.
 
-The integration needs one source-bound installed package covering each affected
-finite Pause/world/Stop/Code scenario, cleanup and distinct recovery, plus every
-enabled final-head CI check. These gates are pending. Earlier package results
-remain evidence for their exact original sources; they do not qualify this
-composition. The new overlapping Code-caller proposal is separate and has no
-product implementation here. Native sources and dependency pins match main.
-This does not close G02 or establish physical/reference/release qualification.
+The frozen consumer `f903a966ea348fd7c3abd0ba693194fc813b4997` now passes
+all fifteen source-bound installed own-NuttX cases: Pause four, world/manual
+drive four, upload/Stop four and Code three. All individual readers and the
+combined reader pass, with cleanup, distinct recovery and thirty successful
+native startups. Official frontend checkout and consumer trees match; package
+payload/input audits pass. All eleven enabled source-head checks pass in
+[run38769805667](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38769805667)
+(two conditional GUI/deployment jobs skip).
+
+Five earlier failed test attempts remain preserved. Corrections address held
+reply ordering, both React component-pointer forms, real editor clearing before
+recovery language selection, native recorder lifetime through retry, and waiting
+the original visible Stop's returned teardown promise. Neither deadlines nor
+the requirement to capture both real retry START replies was weakened. A direct
+second pane Stop before the first teardown completes still has an open clock
+ownership boundary; see the proposed continuation in [LANES.md](../LANES.md).
+
+Current main's separate importer/debug work is retained; SPIKE session/pane/
+native inputs and the NuttX dispatcher method remain unchanged from the tested
+consumer. Final documentation-head checks and merge review are pending. Earlier
+and current installed results remain attributed to their exact packages. The
+new overlapping caller/output changes in
+[PR985](https://github.com/CrispStrobe/brickwright-lite/pull/985) are separate and
+are not installed-qualified by this result. G02, physical/reference behavior,
+rollback, licensing and release qualification remain open.
+
+Qualification receipts must name the final consumer commit, including any
+documentation checkpoint. A checkpoint retains the tested product sources and
+uses a current fully labelled PR event for both enabled CI tiers.
 
 ## Pause integration qualification — 2026-10-15
 
