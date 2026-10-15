@@ -178,7 +178,7 @@ test('KIND aliases cannot borrow a Number allocation after their own value read'
 });
 
 test('KIND reset proof requires its actual fixed menu without hidden effect inputs',()=>{
-    for(const edit of [f=>{f.blocks.__undefined.inputs.EXTRA=[1,[4,'1']];},f=>{f.blocks.__undefined.fields.KIND=['null',null];},f=>{f.blocks.__undefined.fields.EXTRA=['undefined',null];}]){
+    for(const edit of [f=>{f.blocks.__undefined.inputs.EXTRA=[1,[4,'1']];},f=>{f.blocks.__undefined.inputs.KIND=[1,[10,'undefined']];},f=>{f.blocks.__undefined.fields.KIND=['null',null];},f=>{f.blocks.__undefined.fields.EXTRA=['undefined',null];}]){
         const f=withKindReset();edit(f);assert.equal(createArrayReferenceExportAuthority(f.creator.project).validateInput(f.target,f.receiver).ok,false);
     }
 });
