@@ -6,11 +6,51 @@ import {mkdtemp, mkdir, writeFile, readFile, rm, access} from 'node:fs/promises'
 import {tmpdir} from 'node:os';
 import {join, dirname} from 'node:path';
 import {createHash} from 'node:crypto';
-import {execFileSync, spawnSync} from 'node:child_process';
+import {spawnSync} from 'node:child_process';
+import {deflateSync} from 'node:zlib';
 
 const prepare = new URL('../scripts/prepare-spike-micropython-pins.mjs', import.meta.url).pathname;
 const assemble = new URL('../scripts/prepare-spike-compiled-micropython-support.mjs', import.meta.url).pathname;
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+// Author real loose Git objects instead of running an ambient Git initializer
+// in the test. The production assembler still reads these with actual Git.
+async function repositoryFixture(repo, files) {
+    const git = join(repo, '.git');
+    await mkdir(join(git, 'refs/heads'), {recursive: true});
+    async function object(kind, bytes) {
+        const body = Buffer.concat([Buffer.from(`${kind} ${bytes.length}\0`), bytes]);
+        const oid = createHash('sha1').update(body).digest('hex');
+        const file = join(git, 'objects', oid.slice(0, 2), oid.slice(2));
+        await mkdir(dirname(file), {recursive: true}); await writeFile(file, deflateSync(body));
+        return oid;
+    }
+    const tree = new Map();
+    for (const [name, bytes] of files) {
+        const parts = name.split('/'); let parent = tree;
+        for (const part of parts.slice(0, -1)) {
+            if (!parent.has(part)) parent.set(part, new Map());
+            parent = parent.get(part);
+        }
+        parent.set(parts.at(-1), bytes);
+    }
+    async function writeTree(entries) {
+        const rows = [];
+        const order = ([name, value]) => name + (value instanceof Map ? '/' : '');
+        for (const [name, value] of [...entries].sort((a, b) => order(a).localeCompare(order(b), 'en'))) {
+            const directory = value instanceof Map;
+            const oid = directory ? await writeTree(value) : await object('blob', value);
+            rows.push(Buffer.from(`${directory ? '40000' : '100644'} ${name}\0`), Buffer.from(oid, 'hex'));
+        }
+        return object('tree', Buffer.concat(rows));
+    }
+    const root = await writeTree(tree);
+    const author = 'Profile fixture <fixture@example.invalid> 0 +0000';
+    const commit = await object('commit', Buffer.from(`tree ${root}\nauthor ${author}\ncommitter ${author}\n\nSynthetic platforms\n`));
+    await writeFile(join(git, 'HEAD'), 'ref: refs/heads/main\n');
+    await writeFile(join(git, 'refs/heads/main'), commit + '\n');
+    await writeFile(join(git, 'config'), '[core]\nrepositoryformatversion = 0\nbare = false\n');
+    return commit;
+}
 const names = ['models.cs', 'program-uart.cs', 'boot-seed.bin',
     'platforms/boards/spike-prime.repl', 'platforms/boards/spike-prime-brick-devices.repl',
     'platforms/cpus/stm32f413vg.repl', 'platforms/cpus/stm32f4.repl',
@@ -32,17 +72,16 @@ async function fixture(t) {
     const save = () => writeFile(join(source, 'manifest.json'), JSON.stringify(manifest));
     await save();
     const modelCommit = '1'.repeat(40);
+    const publicFiles = new Map();
     for (const name of [...names.filter(name => name.startsWith('platforms/')), 'tools/stage_prime_micropython.py']) {
         let text = '// synthetic native platform\ncompiled: Native.PrimeModel\n';
         if (name.endsWith('stm32f413vg.repl')) text += '    PerformanceInMips: 96\n    systickFrequency: 96000000\n    frequency: 96000000\n';
         if (name.endsWith('/spike-prime.repl')) text += 'spi2:\n    DMAReceive -> dma1@3\n';
         if (name.endsWith('.py')) text = `INFRASTRUCTURE_COMMIT = "${modelCommit}"\n`;
         await mkdir(dirname(join(repo, name)), {recursive: true}); await writeFile(join(repo, name), text);
+        publicFiles.set(name, Buffer.from(text));
     }
-    const git = args => execFileSync('git', ['-C', repo, ...args], {encoding: 'utf8'}).trim();
-    git(['init', '--quiet']); git(['add', '.']);
-    git(['-c', 'user.name=Profile fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '--quiet', '-m', 'Synthetic platforms']);
-    const platformCommit = git(['rev-parse', 'HEAD']);
+    const platformCommit = await repositoryFixture(repo, publicFiles);
     const output = join(root, 'compiled'), frozen = join(root, 'frozen');
     const run = (model = modelCommit, commit = platformCommit) => spawnSync(process.execPath,
         [assemble, source, repo, commit, model, runtime, output], {encoding: 'utf8'});
@@ -99,6 +138,16 @@ test('assembly rejects a different model contract and unavailable commit without
     const f = await fixture(t);
     assert.notEqual(f.run('2'.repeat(40)).status, 0);
     assert.notEqual(f.run(f.modelCommit, '3'.repeat(40)).status, 0);
+    await assert.rejects(access(f.output), {code: 'ENOENT'});
+});
+
+test('missing Git fails closed before producing a support directory', async t => {
+    const f = await fixture(t);
+    const result = spawnSync(process.execPath,
+        [assemble, f.source, f.repo, f.platformCommit, f.modelCommit, f.runtime, f.output],
+        {encoding: 'utf8', env: {...process.env, PATH: join(f.root, 'no-tools')}});
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /ENOENT/);
     await assert.rejects(access(f.output), {code: 'ENOENT'});
 });
 
