@@ -1,5 +1,19 @@
 # Conversion capabilities and GUI closure ledger
 
+## Identifier compound authoring checkpoint — 2026-10-15
+
+All six bitwise identifier compound assignments now use existing primitive
+value blocks and global/local/parameter/captured setters. Actual connected
+operator and Number operand edits, Code, same/fresh SB3 and current
+export/reimport pass focused native checks. Two exact ordinary source/export
+programs also pass the selected original SDK; captured factories have native
+and portable evidence only. See the [lane contract](compatibility/arcade-primitive-bitwise-compound.md).
+
+GUI work remains: expose and verify all six operators through reachable menus,
+author the equivalent assignments in Code and Blocks, change connected operands,
+then save/reopen and export the edited project in an actual browser journey.
+This is an authoring qualification gap; no graphics capability is added here.
+
 ## Managed return values authored in blocks — 2026-10-15
 
 **Bounded local correction; editor qualification open.** A Number literal

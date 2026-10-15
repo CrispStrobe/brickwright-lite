@@ -8,6 +8,30 @@ operator's actual checkouts, tools, private corpus and original receipts.
 Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
 
+## Latest integration checkpoint — 2026-10-15
+
+Local `1e65f988c24df35ec99a33ba68520ec529f7fb7a` normally composes main
+`84da6d07e` and the qualified managed Number adapters. It also implements the
+[six identifier bitwise compounds](compatibility/arcade-primitive-bitwise-compound.md).
+Eighteen focused checks pass independently; two exact ordinary source/export
+programs pass selected-original execution. Captured factories have native and
+portable evidence, with original execution still open. The raw184 count remains
+**147 translated / 36 partial / one parse failure**.
+
+Published PR888 remains `60de95e9`. Its replacement full run is complete and
+failed: unit shard 1 reports 4,705 tests, 4,686 passes, three failures, 14 skips
+and two TODOs. Shard 2 was cancelled and supplies no completed census. The three
+failures concern legacy scene timer observation, yielding speech creation and
+terrain contact timing. Local test corrections preserve original source and
+assertions; their complete hosted rerun is still required. Keep the original
+failure record and distinguish these fixes from runtime feature changes.
+
+Class primitive export constraints and console inspection remain under review;
+neither is adopted on this integration. Console supplier PR150 is merged, but
+the consumer compiler pin remains unchanged. Named function values have an
+approved separate declaration model under implementation. None of these
+checkpoints establishes full game or GUI compatibility.
+
 ## Current local integration and next prerequisite — 2026-10-15
 
 Refresh [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) and
