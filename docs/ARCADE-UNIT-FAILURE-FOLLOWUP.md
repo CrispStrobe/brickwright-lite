@@ -469,3 +469,16 @@ With A held across reload, the new handler clears the pixel; after release and
 restart, the initial painted pixel returns. Both states retain the complete
 twelve-pixel comparison. The fresh-reload fixture now explicitly releases A
 before saving; the failed held-input expectation is preserved separately.
+
+
+## Completed composed-branch unit shard
+
+The [unit shard for `0ddf0c69a`](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38668906753/job/116207175452)
+completed with 3,806 tests: 3,793 pass, six fail, five skips and two TODOs.
+The six failures are membership cadence, pixel callback/reload observation,
+hat kind lookup, browser settings dependencies, snapshot destruction and
+yielding sprite registration. All six now have focused native or real-browser
+controls on the follow-up source, including held/released reload input and both
+physics cadence profiles. The earlier fifteen-failure result remains retained.
+These focused passes are preparation for a new complete hosted result; they do
+not turn either failed shard into a passing gate.
