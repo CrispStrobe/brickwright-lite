@@ -2994,9 +2994,9 @@ class ArcadeEmitter {
                 if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);inspectionLeaves.set(id,'string');return id;}
                 if(['arrays_valueBinary','arrays_valueUnary'].includes(value.opcode)) {
                     const id=`${key}:value-operation:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
-                    if(value.opcode==='arrays_valueBinary' && literal(blocks,value,'OP')==='+')valueOperations.push([id,ref(inputBlock(blocks,value,'LEFT')),ref(inputBlock(blocks,value,'RIGHT'))]);
-                    else numbers.add(id);
                     const operands=(value.opcode==='arrays_valueUnary'?['VALUE']:['LEFT','RIGHT']).map(name=>ref(inputBlock(blocks,value,name)));
+                    if(value.opcode==='arrays_valueBinary' && literal(blocks,value,'OP')==='+')valueOperations.push([id,...operands]);
+                    else numbers.add(id);
                     inspectionOperatorProofs.set(id,{type:literal(blocks,value,'OP')==='+'&&value.opcode==='arrays_valueBinary'?null:'number',operands,numeric:literal(blocks,value,'OP')!=='+'||value.opcode==='arrays_valueUnary'});
                     return id;
                 }

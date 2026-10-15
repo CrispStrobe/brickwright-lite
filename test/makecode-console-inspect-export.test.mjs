@@ -59,3 +59,10 @@ test('current inspection export proves every value binary and unary operand',()=
         assert.equal(exported.unsupported.some(reason=>reason.includes('inspection export')),opaque!==null,opcode+' '+op+' '+opaque);
     }
 });
+
+test('nested current arithmetic exports through shared directed operand cells',()=>{
+    const creator=make(),target=creator.project.targets.find(t=>!t.isStage),inspect=Object.values(target.blocks).find(b=>b.opcode==='arcade_inspectValue');
+    for(let index=0;index<24;index++)target.blocks['sum'+index]={opcode:'arrays_valueBinary',inputs:{LEFT:index?[2,'sum'+(index-1)]:[1,[4,'1']],RIGHT:[1,[4,'1']]},fields:{OP:['+',null]}};
+    inspect.inputs.VALUE=[2,'sum23'];const exported=projectToArcade(creator.project);
+    assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/console\.inspect\(__bwBinaryAdd/);
+});
