@@ -8,7 +8,7 @@ import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
  * Source: microsoft/pxt v13.2.1 pxtcompiler/emitter/emitter.ts (MIT).
  * The original selected worker execution remains the semantic authority.
  */
-export function lowerPxtStagedValues(program, {isStaticResource = () => false, isArrayQuery = () => false, lowerArrayMap = () => null} = {}) {
+export function lowerPxtStagedValues(program, {isStaticResource = () => false, isArrayQuery = () => false, lowerArrayMap = () => null, lowerIntegerDivision = () => null, onlySelected = null} = {}) {
     const names=new Set();
     const scan=node=>{
         if(!node || typeof node!=='object')return;
@@ -48,12 +48,18 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
     // Visit operands in source order, but retain ordinary IR until all eagerly
     // emitted sibling statements finish. Earlier aggregate construction is an
     // emitted operation and must finish before later sibling staging.
+    const selected=new WeakMap();
+    const containsSelected=node=>{
+        if(!onlySelected||!node||typeof node!=='object')return !onlySelected;
+        if(selected.has(node))return selected.get(node);
+        const result=onlySelected(node)||Object.values(node).some(value=>Array.isArray(value)?value.some(containsSelected):containsSelected(value));selected.set(node,result);return result;
+    };
     const sequence=nodes=>{
         const prefix=[],values=[];
         for(const node of nodes){
             const next=expression(node);
             if(next.prefix.length)for(let i=0;i<values.length;i++){
-                if(!values[i]?.temporary && (next.prefix.some(statement=>statement.bwMapOrdered===true) || ['Array','New','Object'].includes(values[i]?.type)))values[i]=save(values[i],prefix);
+                if(!values[i]?.temporary && (next.prefix.some(statement=>statement.bwMapOrdered===true || statement.bwOrderedValuePrefix===true) || ['Array','New','Object'].includes(values[i]?.type)))values[i]=save(values[i],prefix);
             }
             prefix.push(...next.prefix);values.push(next.value);
         }
@@ -73,7 +79,8 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
         return {prefix:[],value:node};
     };
     function expression(node) {
-        if(!node)return {prefix:[],value:node};
+        if(!node || onlySelected&&!containsSelected(node))return {prefix:[],value:node};
+        const divided=lowerIntegerDivision(node,{expression,save});if(divided){changed=true;return divided;}
         const mapped=lowerArrayMap(node,{expression,body});if(mapped){changed=true;return mapped;}
         if(fixedControllerRepeatReceiver(node) && namespace(node.object))return {prefix:[],value:node};
         // Fully decoded SDK resource factories are compile-time values. Keep
@@ -176,6 +183,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
         return {prefix:[],value:node};
     }
     function statement(st) {
+        if(onlySelected&&!containsSelected(st))return [st];
         if(st.type==='Class')return [{...st,fields:st.fields.map(field=>{if(!field.init)return field;const result=expression(field.init);return {...field,pxtStagingPrefix:result.prefix,pxtStagedInit:result.value};}),ctor:st.ctor?{...st.ctor,body:body(st.ctor.body),...(st.ctor.originalBody?{originalBody:body(st.ctor.originalBody)}:{})}:null,methods:st.methods.map(method=>({...method,body:body(method.body),...(method.originalBody?{originalBody:body(method.originalBody)}:{})}))}];
         if(st.type==='FunctionDeclaration')return [{...st,body:body(st.body),...(st.originalBody?{originalBody:body(st.originalBody)}:{})}];
         if(st.type==='Block' || st.type==='Namespace')return [{...st,body:body(st.body),...(st.originalBody?{originalBody:body(st.originalBody)}:{})}];

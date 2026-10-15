@@ -6,6 +6,7 @@ import {lowerNamedFunctionValues} from './lower-named-function-values.js';
 import {selectClassCallableSourceProof} from './class-callable-source-gate.js';
 import {withClassResultFlowProof} from './class-callable-result-flow-proof.js';
 import {numberLiteralCode,containsNonFiniteNumberLiteral} from './source-number-literal.js';
+import {lowerMathIdivValues} from './math-idiv-source.js';
 import {lowerConsoleInspectValues} from './lower-console-inspect-values.js';
 import {lowerSdkFontValues} from './lower-sdk-font-values.js';
 import {callableSourceGate} from './callable-source-gate.js';
@@ -3482,7 +3483,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             if(api==='characterAnimations.ruleToString' && node.args.length===1)return new Set(['string']);
             if(['characterAnimations.rule','characterAnimations._predicate','characterAnimations._direction'].includes(api))return new Set(['number']);
             if(api==='characterAnimations.matchesRule')return new Set(['boolean']);
-            if(!mathDeclared && /^Math\.(?:abs|min|max|pow|round|floor|ceil|trunc|sign|sqrt|sin|cos|tan|asin|acos|atan|atan2|log|exp|random|randomRange|clamp|imul|idiv)$/.test(api || ''))return new Set(['number']);
+            if(!mathDeclared && /^Math\.(?:abs|min|max|pow|round|floor|ceil|trunc|sign|sqrt|sin|cos|tan|asin|acos|atan|atan2|log|exp|random|randomRange|clamp|imul)$/.test(api || ''))return new Set(['number']);
             if(['mp.playerSelector','mp.getPlayerByNumber','mp.getPlayerByIndex','mp.getPlayerBySprite'].includes(api))return new Set(['player']);
             if(api==='bwStringArraySettings.read')return new Set(['array','string-array']);
             if(['control.createBuffer','control.createBufferFromUTF8','Buffer.fromHex','Buffer.fromUTF8'].includes(api) && !binding(owner,api.split('.')[0]).size)return new Set(['buffer']);
@@ -5061,11 +5062,13 @@ export function arcadeToPseudocode (files, opts = {}) {
         assets[tileImagePath(node)] || assets[node.name] || (BUILTIN_IMAGES[tileImagePath(node)] ? decodeMkcdImage(BUILTIN_IMAGES[tileImagePath(node)]) : null) :
         node?.type==='Identifier' ? assets[node.name] : null;
     const ordinaryProgram=namespaceBindings.program || parsed;
-    const procedureConstraints=prepareProcedureConstraintSource(ordinaryProgram,{mode:opts.procedureConstraintsPrototype===true?'prototype':'supported-default'});
+    const integerDivisions=lowerMathIdivValues(ordinaryProgram);
+    projectInputDiagnostics.push(...integerDivisions.unsupported);
+    const procedureConstraints=prepareProcedureConstraintSource(integerDivisions.program,{mode:opts.procedureConstraintsPrototype===true?'prototype':'supported-default'});
     if(procedureConstraints)projectInputDiagnostics.push(...procedureConstraints.diagnostics);
     // Never attach the preparation's Program inside the executable AST: general
     // walkers would otherwise see a second copy of all declarations and effects.
-    const protocolProgram=procedureConstraints?{...procedureConstraints.program,bwProcedureConstraintSource:procedureConstraintAstMetadata(procedureConstraints)}:ordinaryProgram;
+    const protocolProgram=procedureConstraints?{...procedureConstraints.program,bwProcedureConstraintSource:procedureConstraintAstMetadata(procedureConstraints)}:integerDivisions.program;
     const throwSource=prepareThrowSource(protocolProgram);
     projectInputDiagnostics.push(...throwSource.unsupported);
     if(throwSource.present&&opts.throwPrototype!==true)projectInputDiagnostics.push('Throw source requires its qualified canonical protocol; prototype admission is not enabled');
