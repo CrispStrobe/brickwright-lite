@@ -6,6 +6,17 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Proposed G02 Code caller ownership — 2026-10-15
+
+The next narrow lifecycle slice addresses overlapping NuttX Code callers in
+`runOnNuttxPython`. Two authored baseline scheduling controls reproduce an old
+call clearing a newer call's busy flag or replacing its status. The proposal
+covers current-caller callbacks, output, Stop and post-await publication; shared
+import/conversion and other target dispatchers retain their existing owners.
+See the claim in [LANES.md](../LANES.md). No fix or installed qualification is
+claimed. Product work follows the claim merge; actual owned-firmware Code
+qualification, cleanup/recovery and final-head CI remain required.
+
 ## Qualified G02 lifecycle boundaries — 2026-10-15
 
 Seven focused changes have landed, each with a separately frozen installed
@@ -551,7 +562,41 @@ remained required. The qualified follow-up above records the frozen consumers
 and finite cases now completed. Selected-image/error, deferred-storage,
 final-sampling, generation and late-poll closure across backends remains open.
 
+A replacement-upload continuation on
+`lane/spike-g02-upload-cancellation-20261015` now checks closure after awaiting
+the previous program's STOP, before replacing current code or enqueueing BEGIN.
+It also checks closure after the upload reply, before retained-program state
+and observers are published. The latter cancellation cannot roll back a program
+that has already executed.
+A real-session/production-codec control with an authored delayed native response
+shows the baseline accepting a replacement after session Stop; the live control
+passes. A completed-upload return control separately reproduces late publication
+after closure. All 59 session controls pass with both checks; each removal must
+fail its corresponding cancellation control. Fresh installed own-NuttX cancellation/recovery and
+all enabled exact-head CI checks remain pending; this finite host result does
+not close G02 or qualify guest execution. Existing transport ordering and
+firmware/Runtime/model/native pins and deadlines remain unchanged.
+
+The replacement-upload follow-up now passes four installed own-NuttX cases on
+consumer `516557dae2f3b29710318a0e9ee647715728376f`: held original STOP or
+completed-upload return, each with live delivery and actual Reset cancellation.
+Every case releases session/configuration/clock ownership, completes a distinct
+fresh guest and releases it. Standalone readers validate eight complete native
+startup transactions, original correlated packets and guest identity. Original
+selector/state-interval test failures are preserved. Initial retained state and
+held-return retained state are distinct observations. These finite results cover
+full session Stop through Reset; pending-upload Arena Stop and Code-feedback UX
+remain open. Integration preserves the qualified session/test blobs and requires
+fresh final-head CI. Later whole packages need their own qualification.
+
 ### G03 — Qualify usable sandbox and responsive editor controls
+
+The scoped ownership claim is recorded in
+[the lane ledger](../LANES.md#spike-g03-sandbox-and-editor-ui-qualification--2026-10-15)
+on `docs/spike-g03-ui-claim-20261015`. Implementation follows PR948, PR962 and
+G02's remaining acceptance review. The first pass records working rendered
+features and fixes only demonstrated gaps; shared project-world and unrelated
+importer owners keep their own files and behavior.
 
 **Owner:** Lite. **Start:** `docs/SPIKE-ARENA.md`,
 `overlay/scratch-gui/src/components/tw-pseudocode/`,
