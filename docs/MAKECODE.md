@@ -437,6 +437,12 @@ packages (`core`, `radio`), and `wait until` becomes the polling loop it stands
 for: pxt-calliope 3.0.30 has no `pauseUntil` (pxt-microbit's core poll.ts), and
 a Calliope corpus program failed to compile on it until this (task A6).
 
+The Code tab does not use that emitter yet. Its MakeCode export (`exportMakeCode`
+in pseudocode-importer.jsx) sends every project through the micro:bit exporter
+and labels the file `microbit`, so a Calliope project's `wait until` does not
+compile for a Calliope mini there, and an EV3 project is not exported as
+pxt-ev3. Only the CLI writes each target in its own words (task A11).
+
 `run <file> [--target microbit|calliopemini] [--seconds N] [--json]` (task A7)
 runs the program on LabWired's `microbit-v1` board: an nRF51822 with the Nordic
 S110 SoftDevice EMULATED (only the application window of the `.hex` is loaded;
