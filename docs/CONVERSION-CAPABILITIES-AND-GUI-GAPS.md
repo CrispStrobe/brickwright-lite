@@ -21,6 +21,29 @@ not an inspection-specific numeric text conversion.
 | Runtime and debugger | Validate actual frame/input ownership and cancellation; report unsupported producers without showing a fabricated Number |
 | Visible editor | Create and edit this program using actual controls; native block-graph tests alone do not establish the browser journey |
 
+## Number inputs across managed calls and writes — 2026-10-15
+
+**Open implementation gap.** A saved-project probe distinguishes an actual
+connected `math_number` block containing `20` from a text block containing
+`"20"`. Both currently travel as String through managed arguments, local writes,
+captured writes and ordinary class field writes, as well as returns. A factory
+argument entered as a Number consequently produces String `"201"` after adding
+`1`. The probe covers 16 ordinary and class cases without runtime errors; those
+clean error lists do not establish correct value types.
+
+Preserve Number intent while the exact connected producer and current operation
+are available. Share the narrow producer check across these boundaries, while
+retaining each operation's invocation, target, field and lifetime checks. Type
+annotations and numeric-looking text cannot supply that intent. Keep variable,
+argument and reference reporters unchanged unless their own actual producer
+protocol establishes a Number.
+
+Acceptance includes creating these calls and writes in Blocks, editing Number
+and text inputs independently, checking both value and type in the debugger,
+and keeping the distinction through Code, same/fresh SB3 and current export.
+Test replaced or disconnected inputs, foreign targets, Stop/restart and project
+reload. The correction and visible editor journey remain unqualified here.
+
 ## Actual numeric callback producers — 2026-10-15
 
 The [bounded callback contract](compatibility/arcade-numeric-callable-default-admission.md)
