@@ -4,6 +4,8 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
+import {runTimedArcadeProgram,restartTimedArcadeRun} from './helpers/arcade-timed-native.mjs';
+import BW from '../overlay/scratch-vm/src/util/bw-values.js';
 const bindClock=(run,now)=>{
     const runtime=run.vm.runtime;runtime.updateCurrentMSecs=()=>{runtime.currentMSecs=now();};runtime.currentMSecs=now();runtime.ioDevices.clock.resetProjectTimer();runtime.bwArcadeProgramClock={now};run.vm.greenFlag();
     // The existing BlockUtility stack timers read runtime.currentMSecs too.
@@ -30,11 +32,11 @@ test('explicit function waits survive export while stop and restart cancel pendi
     const observe='\nlet oracleElapsed=control.millis();oracleElapsed+=0';
     const original=await runPxtArcade(source+observe,{fakeClock:true});assert.equal(original.result,7);assert.equal(original.oracleElapsed,40);
     const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
-    let run,now=0;
+    let run;
     try{
-        run=await runProgram(imported.code,{frames:0});bindClock(run,()=>now);await stepFrames(run.vm,2);assert.equal(values(run).done,0);
-        run.vm.stopAll();assert.equal(run.vm.runtime.threads.length,0);now=40;await stepFrames(run.vm,2);assert.equal(values(run).done,0);
-        run.vm.greenFlag();await stepFrames(run.vm,2);assert.equal(values(run).done,0);now=80;await stepFrames(run.vm,2);assert.equal(values(run).done,1);assert.equal(values(run).result,7);assert.equal(run.vm.runtime.ioDevices.clock.projectTimer()*1000,40);assert.deepEqual(run.errors,[]);
+        run=await runTimedArcadeProgram(imported.code,{milliseconds:39});assert.equal(BW.decode(values(run).done),undefined);
+        run.vm.stopAll();assert.equal(run.vm.runtime.threads.length,0);await run.clock.advanceTo(80);assert.equal(BW.decode(values(run).done),undefined);
+        const clock=await restartTimedArcadeRun(run,39);assert.equal(BW.decode(values(run).done),undefined);await clock.advanceTo(40);assert.equal(values(run).done,1);assert.equal(values(run).result,7);assert.equal(run.vm.runtime._primitives.arcade_programMillis({},{}),40);assert.deepEqual(run.errors,[]);
     }finally{run?.vm.quit?.();clearStrayTimers();}
     const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/pause\(0\.04 \* 1000\)/);assert.ok(!exported.ts.includes('pause(20)'));
     // Observe the independent original program clock at explicit wait completion.
@@ -48,4 +50,17 @@ test('ordinary Scratch hat and command-procedure loops retain scheduling pauses 
         const exported=projectToArcade(run.creator.project);assert.deepEqual(exported.unsupported,[]);
         assert.ok((exported.ts.match(/pause\(20\)/g)||[]).length>=2);assert.match(exported.ts,/_dead\(_t\)/);assert.match(exported.ts,/_stopAll\(\)/);
     }finally{run?.vm.quit?.();clearStrayTimers();}
+});
+
+
+test('native explicit function pause retains Undefined until completion and cancels stopped calls',async()=>{
+ const source='function delayed():number{let n=0;while(n<3){n++}pause(40);return 7}let result=delayed();result+=0;let done=1;done+=0';
+ const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
+ const run=await runTimedArcadeProgram(imported.code,{milliseconds:39});
+ try {
+  assert.equal(BW.decode(values(run).done),undefined);assert.equal(BW.decode(values(run).result),undefined);assert.deepEqual(run.errors,[]);
+  run.vm.stopAll();assert.equal(run.vm.runtime.threads.length,0);await run.clock.advanceTo(80);assert.equal(BW.decode(values(run).done),undefined);
+  const clock=await restartTimedArcadeRun(run,39);assert.equal(BW.decode(values(run).done),undefined);await clock.advanceTo(40);
+  assert.equal(values(run).done,1);assert.equal(values(run).result,7);assert.deepEqual(run.errors,[]);assert.equal(run.vm.runtime._primitives.arcade_programMillis({},{}),40);
+ } finally {run.vm.stopAll();run.vm.quit();clearStrayTimers();}
 });
