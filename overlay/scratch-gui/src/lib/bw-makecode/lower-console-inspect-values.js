@@ -3,7 +3,8 @@ import {consoleInspectSourceCalls} from './console-inspect-source.js';
 
 export function lowerConsoleInspectValues(program) {
     const qualified=consoleInspectSourceCalls(program),unsupported=[...qualified.diagnostics];
-    const analysis=analyseSourceValueProducers(program,{consoleInspection:true,opaqueDeclarationValues:true,unboundIsOpaque:true,uninitializedLocalsAreOpaque:true});
+    const analysis=analyseSourceValueProducers(program,{consoleInspection:true,opaqueDeclarationValues:true,unboundIsOpaque:true,uninitializedLocalsAreOpaque:true,declaredLocalUndefined:qualified.calls.some(node=>qualified.isIntrinsicCall(node))});
+    const undefinedDeclarations=new Set(analysis.localUndefinedDeclarations);
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const domain=(node,allowed)=>{const types=analysis.typesAt(node);return types.size>0&&[...types].every(type=>allowed.includes(type));};
     const rewrite=node=>{
@@ -16,7 +17,10 @@ export function lowerConsoleInspectValues(program) {
                 fail('console.inspect requires actual primitive VALUE and Number or Undefined LIMIT producers');
             } else return {type:'Call',callee:{type:'Identifier',name:'__bwConsoleInspectValue'},args:[rewrite(node.args[0]),node.args.length===2?rewrite(node.args[1]):{type:'Number',value:20}],bwConsoleInspectIntrinsic:true};
         }
-        return Object.fromEntries(Object.entries(node).map(([name,value])=>[name,value&&typeof value==='object'?rewrite(value):value]));
+        const result=Object.fromEntries(Object.entries(node).map(([name,value])=>[name,value&&typeof value==='object'?rewrite(value):value]));
+        // An actual declaration initializes its own cell. Earlier lexical reads
+        // remain refused; this never changes an unresolved getLocal fallback.
+        return undefinedDeclarations.has(node)?{...result,init:{type:'Undefined'}}:result;
     };
     return {program:rewrite(program),unsupported};
 }

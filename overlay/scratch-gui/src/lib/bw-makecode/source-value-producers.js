@@ -4,7 +4,7 @@ import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-export function analyseSourceValueProducers(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,consoleInspection=false}={}) {
+export function analyseSourceValueProducers(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,consoleInspection=false}={}) {
     const numericArrows=new Set(provedArrows),numericHelpers=new Set(provedHelpers);
     const inspection=consoleInspection?consoleInspectSourceCalls(program):null;
     let internalInspection=false;
@@ -13,7 +13,7 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
     const sdk=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['screen']}),fields=new Map(SDK_FONT_FIELDS.map(field=>[field.name,field.type]));
     let screenWritten=false;
     const scanScreenWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanScreenWrites);return;}const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;if(target?.type==='Identifier'&&target.name==='screen'&&sdk.has(target))screenWritten=true;Object.values(node).forEach(scanScreenWrites);};scanScreenWrites(program);
-    const initializedReads=new WeakSet();
+    const initializedReads=new WeakSet(),localUndefinedDeclarations=new Set();
     const writing=new WeakSet(),owners=new WeakMap(),cells=new WeakMap(),types=new Map(),edges=[],scales=[],texts=[],derived=[],prints=[],classes=new Map(),classCalls=[],classWrites=new Set(),declarations=new Map(),functions=new Map(),calls=[],numericCalls=[],unsupported=[];
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const scope=parent=>({parent,bindings:new Map()});
@@ -54,7 +54,10 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
             for(const value of [node.init,node.test,node.update,node.iterable])visit(value,loop);body(node.body,loop);return;
         }
         if(node.type==='Declaration'){
-            for(const decl of node.decls){const target=binding(owner,decl.name);if(decl.init){visit(decl.init,owner);edge(cell(decl.init),target);}if(decl.typeName==='image.Font')owner.fontAnnotations=(owner.fontAnnotations||new Set()).add(target);}return;
+            let functionOwner=owner;while(functionOwner&&!functionOwner.result)functionOwner=functionOwner.parent;
+            for(const decl of node.decls){const target=binding(owner,decl.name);if(decl.init){visit(decl.init,owner);edge(cell(decl.init),target);}
+                else if(declaredLocalUndefined&&functionOwner&&node.kind==='let'&&declarations.get(target)?.size===1&&!decl.isArray&&(!decl.typeName||['number','string','boolean','any'].includes(decl.typeName))){add(target,'Undefined');localUndefinedDeclarations.add(decl);}
+                if(decl.typeName==='image.Font')owner.fontAnnotations=(owner.fontAnnotations||new Set()).add(target);}return;
         }
         if(node.type==='Return'){visit(node.value,owner);let fn=owner;while(fn&&!fn.result)fn=fn.parent;if(fn){if(node.value)edge(cell(node.value),fn.result);else add(fn.result,'Undefined');}return;}
         if(node.type==='Assignment'&&node.op==='='&&node.left?.type==='Identifier')writing.add(node.left);
@@ -98,7 +101,7 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
         }
         if(node.type==='FunctionDeclaration'||node.type==='FunctionExpression'){const entryOwner=node.type==='FunctionDeclaration'?functions.get(binding(owner,node.name))?.owner:null;const first=node.body?.[0],methodOwner=entryOwner||owners.get(first);entry(node.body,new Set((node.params||[]).map(name=>binding(methodOwner||owner,name))));return known;}
         if(node.type==='Class'){for(const field of node.fields||[])entry(field.init,new Set());for(const method of [node.ctor,...(node.methods||[])].filter(Boolean)){const methodOwner=owners.get(method.body?.[0])||owner;entry(method.body,new Set((method.params||[]).map(name=>binding(methodOwner,name))));}return known;}
-        if(node.type==='Declaration'){for(const decl of node.decls){known=entry(decl.init,known);if(decl.init)known=new Set([...known,binding(owner,decl.name)]);}return known;}
+        if(node.type==='Declaration'){for(const decl of node.decls){known=entry(decl.init,known);if(decl.init||localUndefinedDeclarations.has(decl))known=new Set([...known,binding(owner,decl.name)]);}return known;}
         if(node.type==='Assignment'){known=entry(node.right,known);if(node.left?.type==='Identifier'&&node.op==='=')known=new Set([...known,binding(owners.get(node.left),node.left.name)]);else known=entry(node.left,known);return known;}
         if(node.type==='Conditional'){known=entry(node.test,known);const left=entry(node.consequent,new Set(known)),right=entry(node.alternate,new Set(known));return new Set([...left].filter(value=>right.has(value)));}
         if(node.type==='Logical'||node.type==='Binary'&&['&&','||','??'].includes(node.op)){known=entry(node.left,known);entry(node.right,new Set(known));return known;}
@@ -160,6 +163,7 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
         bindingKindsAt:(node,name=node?.name)=>new Set([...(declarations.get(knownBinding(node,name))||[])].map(declaration=>
             typeof declaration==='symbol'?'parameter':({FunctionDeclaration:'function',Class:'class',Enum:'enum'}[declaration.type]||'variable'))),
         isInitializedAt:node=>initializedReads.has(node),
+        localUndefinedDeclarations:Object.freeze([...localUndefinedDeclarations]),
         declarationCountAt:(node,name=node?.name)=>declarations.get(knownBinding(node,name))?.size||0,
         immutableFunctionAt:immutableFunction,
         isSdkNamespace:node=>sdk.has(node),

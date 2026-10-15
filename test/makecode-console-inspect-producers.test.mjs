@@ -10,9 +10,9 @@ test('declaration values and missing origins cannot bootstrap an inspection Stri
  for(const source of ['function read(){return 3}let out=console.inspect(read)','class Box{}function read(){return Box}let out=console.inspect(read())','function f(){return 3}let alias=f;let out=console.inspect(alias)','enum Kind{A}let out=console.inspect(Kind)','function f(){return 3}f=undefined;let out=console.inspect(f)','function read(){let value;return value}let out=console.inspect(read())','function read(){let value;let alias=value;return alias}let out=console.inspect(read())','function read(){return value;let value}let out=console.inspect(read())','function read(){let value;let early=value;value=3;return early}let out=console.inspect(read())','let out=console.inspect(missing)','function format(value:any){value=console.inspect(value)}','let out=console.inspect("text","20")','let value:Image;let out=console.inspect(value)','let value:image.Font;function read(){return value}let out=console.inspect(read())','let out=console.inspect(image.create(1,1))','console.inspect=(v:any)=>"changed";let out=console.inspect("text")'])assert.ok(result(source).every(types=>!types.has('String')||types.has('Opaque')),source);
 });
 
-test('uninitialized lexical local reads retain a source refusal until their ABI is qualified',async()=>{
+test('predeclaration lexical reads retain their selected compiler refusal',async()=>{
  const {arcadeToPseudocode}=await import('../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js');
- for(const source of ['function f(){let value;return console.inspect(value)}let out=f()','function f(){return console.inspect(value);let value}let out=f()','function f(){let value;let alias=value;return alias}let out=console.inspect(f())']){
+ for(const source of ['function f(){return console.inspect(value);let value}let out=f()','function f(){let alias=value;let value;return alias}let out=console.inspect(f())']){
   const converted=arcadeToPseudocode(source);assert.ok(converted.unsupported.some(message=>message.includes('actual primitive VALUE')),source);assert.doesNotMatch(converted.code,/arcade inspect value/);
  }
 });

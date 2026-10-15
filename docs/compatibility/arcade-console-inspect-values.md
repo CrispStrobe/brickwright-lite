@@ -120,11 +120,19 @@ writer. Mixed primitive writers remain eligible; a reference or unknown writer
 refuses. Current export follows directed writers separately from an Any storage
 annotation, and refuses hidden/foreign writers or computed local names.
 
-Uninitialized lexical local reads retain an explicit producer refusal while their
-source local-storage ABI is qualified. Explicit Undefined initializers and omitted
-optional actual arguments remain separate cases. This is not a change to the
-default value of an ordinary Scratch local.
+Selected-SDK controls observed Undefined for typed Number, String and Boolean
+and untyped globals and locals without initializers, including a local alias,
+function return and a read before a later assignment. The primitive source and
+its actual edited export also matched their native String results, once-only
+effects and all 19,200 image and presented frame pixels. These are bounded local
+SDK controls; the hosted editor journey remains pending.
 
-Native and source portable controls do not establish selected-original execution
-or the hosted editor journey. Arrays and reference values remain outside this
-initial slice.
+For eligible inspection programs, an actual primitive or untyped function-local
+declaration without an initializer now emits the existing explicit Undefined
+value at that declaration. The directed producer graph records that initialization
+only from the declaration onward and still checks all later writers. A lexical
+read before its declaration remains refused, matching the selected compiler's
+actual diagnostic. Image, Font and Array declarations receive no primitive grant;
+ordinary Scratch local defaults and unresolved local reads are unchanged.
+
+Arrays and reference values remain outside this initial inspection slice.
