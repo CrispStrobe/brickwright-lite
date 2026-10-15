@@ -160,7 +160,7 @@ export function createArrayReferenceExportAuthority(project) {
     // issued SDK Sprite facts here. KIND still needs actual numeric producers.
     const numericKind=(value,path=new Set())=>{
         if(!value)return false;if(value.raw)return [4,5,6,7,8].includes(value.raw[0])&&!Number.isNaN(Number(value.raw[1]));
-        const node=value.node,c=value.cell||(node&&binding(value.target,node));if(c){if(path.has(c)||!c.writers.length)return false;const next=new Set([...path,c]);return c.writers.every(w=>deadKindReset(c,w)||w.value&&numericKind(w.value,next));}
+        const node=value.node,c=value.cell||(node&&binding(value.target,node));if(c){if(path.has(c)||!c.writers.length)return false;const next=new Set([...path,c]);return c.writers.every(w=>!invalid.has(w.node)&&!w.scope.invalid&&(deadKindReset(c,w)||w.value&&numericKind(w.value,next)));}
         if(!node||invalid.has(node)||path.has(node))return false;const next=new Set([...path,node]);
         if(node.shadow&&node.opcode==='math_number')return !Number.isNaN(Number(node.fields?.NUM?.[0]));
         if(node.opcode==='arcade_createSpriteKind')return exactKeys(node,[]);
