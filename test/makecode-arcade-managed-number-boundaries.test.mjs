@@ -54,7 +54,8 @@ for(const fixture of managedNumberBoundaries)for(const opcode of ['math_number',
                 const exported=projectToArcade(project);
                 if(opcode==='text'&&['captured-write','factory-argument'].includes(fixture.name)){
                     assert.ok(exported.unsupported.length,'non-numeric callback writers retain bounded source export refusal');
-                    assert.ok(exported.unsupported.some(message=>/Callable.*numeric|Callable.*capture/i.test(message)));
+                    const refusal=fixture.name==='captured-write'?'Callable export graph: edited current assignment differs from its concrete lexical signature':'Callable source gate requires every factory call to provide concrete numeric operands from a direct unchanged declaration';
+                    assert.ok(exported.unsupported.includes(refusal),JSON.stringify(exported.unsupported));
                     observations.push({route:'export-reimport-refusal',unsupported:exported.unsupported});return;
                 }
                 assert.deepEqual(exported.unsupported,[],'current edited graph export diagnostics');
