@@ -151,12 +151,16 @@ function bind(phase) {
     };
     const owner={
         beforeInputs(thread,container,cache) {
-            if(!phase._sourceOwned(thread))return true;
-            if(runtime.sequencer.activeThread!==thread||!runtime.isActiveThread(thread)||thread.isKilled||
-                !runtime.targets.includes(thread.target)||thread.blockContainer!==container||thread.target.blocks!==container||
-                container._cache?._executeCached?.[thread.peekStack()]!==cache)throw Error('Source condition ingress requires actual current execution cache');
             const root=thread.peekStack(),block=container.getBlock(root);
             let record=principal(thread);
+            // Runtime.startHats evaluates non-wait hats directly, outside a
+            // sequencer loan. They are not condition ingress. Existing actual
+            // wait principals and genuine descendants keep every loan fence.
+            if(!record&&!(block?.opcode==='control_wait_until'&&phase._sourceOwned(thread)))return true;
+            if(!phase._sourceOwned(thread)){if(record)refuse(record);return false;}
+            if(runtime.sequencer.activeThread!==thread||!runtime.isActiveThread(thread)||thread.isKilled||
+                !runtime.targets.includes(thread.target)||thread.blockContainer!==container||thread.target.blocks!==container||
+                container._cache?._executeCached?.[root]!==cache)throw Error('Source condition ingress requires actual current execution cache');
             if(!records.has(thread)&&block?.opcode==='control_wait_until'){
                 record={thread,container,root:thread.peekStack(),frame:thread.peekStackFrame(),frames:[...thread.stackFrames],
                     rootCache:cache,generation:phase.generation,state:'initial',caches:new Map(),delivery:deferred(),sample:null,
