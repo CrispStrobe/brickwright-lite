@@ -17,7 +17,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
     for(const scope of flow.lexical.functions) {
         const fn=scope.node,value=fn.body?.length===1&&fn.body[0].type==='Return'&&fn.body[0].value;
         if(fn.type!=='FunctionDeclaration'||scope.parent!==flow.lexical.global||fn.params.length!==2||new Set(fn.params).size!==2||
-            value?.type!=='Binary'||!['+','-','*','/','%'].includes(value.op)||
+            value?.type!=='Binary'||!['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(value.op)||
             value.left?.type!=='Identifier'||value.right?.type!=='Identifier'||
             flow.lexical.references.get(value.left)!==scope.names.get(fn.params[0])||
             flow.lexical.references.get(value.right)!==scope.names.get(fn.params[1]))continue;
@@ -48,7 +48,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
             const helper=helpers.get(flow.lexical.references.get(node.callee));
             return !!helper&&plainCall(node)&&node.args.length===2&&node.args.every(numericExpression);
         }
-        if(node.type==='Binary')return ['+','-','*','/','%'].includes(node.op)&&numericExpression(node.left)&&numericExpression(node.right);
+        if(node.type==='Binary')return ['+','-','*','/','%','&','|','^','<<','>>','>>>'].includes(node.op)&&numericExpression(node.left)&&numericExpression(node.right);
         return false;
     };
     const inspectHelpers=(node,parent,key)=>{
@@ -117,7 +117,7 @@ export function callableSourceGate(program,{normalize=false}={}) {
                 }
             } else if(statement.type==='ExpressionStatement') {
                 const expression=statement.expr;
-                if(expression?.type!=='Assignment'||!(closure?['=','+=','-=','*=','/=','%=']:['=']).includes(expression.op)||
+                if(expression?.type!=='Assignment'||!(closure?['=','+=','-=','*=','/=','%=','&=','|=','^=','<<=','>>=','>>>=']:['=']).includes(expression.op)||
                     expression.left?.type!=='Identifier'||!numericExpression(expression.left)||
                     !(closure?numericExpression(expression.right):initializedExpression(expression.right)))
                     fail('Callable source gate requires straight-line numeric capture assignments');

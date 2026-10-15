@@ -86,8 +86,9 @@ test('unproved global initialization is not discharged by the capture witness',(
     }
 });
 
-test('numeric producer prerequisite does not add compound operator vocabulary',()=>{
-    assert.equal(gate(factory.replace('value+=4','value|=4')+'let input=2;'+tail).eligible,false);
+test('bitwise capture assignments retain actual Number producer and initialization proof',()=>{
+    assert.equal(gate(factory.replace('value+=4','value|=4')+'let input=2;'+tail).eligible,true);
+    assert.equal(gate(factory.replace('value+=4','value|=4')+'let input=image.create(1,1) as any;'+tail).eligible,false);
 });
 
 

@@ -2702,7 +2702,7 @@ class ArcadeTranslator extends BaseTranslator {
             const op=expr.type==='Update'?(expr.op==='++'?'+':'-'):expr.op.slice(0,-1);
             let value;
             if(expr.type==='Assignment' && expr.op==='=')value=this.arrayElementValue(expr.right);
-            else if(['+','-','*','/','%'].includes(op)) {
+            else if(['+','-','*','/','%','|','&','^','<<','>>','>>>'].includes(op)) {
                 const left=expr.type==='Update'?{type:'Unary',op:'+',argument:target}:target;
                 value=this.expr({type:'Binary',op,left,right:expr.type==='Update'?{type:'Number',value:'1'}:expr.right});
             } else {push(this.note(`${target.name} ${expr.op} — unsupported value assignment`));return;}
