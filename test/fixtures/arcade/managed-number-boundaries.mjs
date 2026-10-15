@@ -10,4 +10,4 @@ const cases=[
  {name:'captured-write',source:factory,kind:'capture'},
  {name:'factory-argument',source:factory,kind:'arg'}
 ];
-export const managedNumberBoundaries=Object.freeze(cases.map(item=>Object.freeze({...item,numberResult:item.name==='captured-write'||item.name==='factory-argument'?21:20,textResult:item.name==='captured-write'?20:item.name==='factory-argument'?'201':'20'})));
+export const managedNumberBoundaries=Object.freeze(cases.map(item=>Object.freeze({...item,numberResult:item.name==='factory-argument'?21:20,textResult:item.name==='factory-argument'?'201':'20'})));
