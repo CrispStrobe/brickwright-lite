@@ -3,6 +3,14 @@ import {callableSourceGate} from './callable-source-gate.js';
 import {analyseCallableFlow} from './callable-flow.js';
 const TYPES=Object.freeze({number:'Number',string:'String',boolean:'Boolean',any:'Any'});
 const fail=message=>{throw Error('Procedure parameter constraint: '+message);};
+function actualAnyDefaultPrologue(fn) {
+ const defaults=fn.parameterDefaults||[];
+ if(!Array.isArray(defaults)||defaults.some(row=>!row||typeof row!=='object'||Array.isArray(row)))return false;
+ if(!defaults.length)return true;
+ if(fn.parameterDefaultPrologue!==true||new Set(defaults.map(row=>row.name)).size!==defaults.length)return false;
+ const expected=defaults.map(({name,value})=>({type:'If',test:{type:'Binary',op:'===',left:{type:'Identifier',name},right:{type:'Undefined'}},consequent:[{type:'ExpressionStatement',expr:{type:'Assignment',op:'=',left:{type:'Identifier',name},right:value}}],alternate:[]}));
+ return defaults.every(row=>row&&Object.keys(row).length===2&&Object.hasOwn(row,'value')&&fn.params.includes(row.name)&&fn.optionalParams?.includes(row.name)&&fn.paramTypes?.[row.name]?.text==='any')&&JSON.stringify(fn.body?.slice(0,defaults.length))===JSON.stringify(expected);
+}
 function constraints(fn,explicit=false) {
  if(fn?.bwCallableDefinition || fn?.bwClassCallableMethod || fn?.bwObjectClass || !fn?.params?.length)return [];
  const annotated=fn.params.filter(name=>fn.paramTypes?.[name]?.text);
@@ -11,7 +19,7 @@ function constraints(fn,explicit=false) {
  if(annotated.some(name=>!TYPES[fn.paramTypes[name].text]))return [];
  const optional=fn.optionalParams||[],firstOptional=fn.params.findIndex(name=>optional.includes(name));
  const optionalAny=optional.every(name=>fn.params.includes(name)&&fn.paramTypes?.[name]?.text==='any')&&(firstOptional<0||fn.params.slice(firstOptional).every(name=>optional.includes(name)));
- if(!optionalAny||fn.parameterDefaults?.length||fn.defaultParams&&Object.keys(fn.defaultParams).length||fn.restParam||fn.typeParameters?.length){if(explicit)fail('optional typed/default/rest/generic parameters are outside the primitive protocol');return [];}
+ if(!optionalAny||!actualAnyDefaultPrologue(fn)||fn.defaultParams&&Object.keys(fn.defaultParams).length||fn.restParam||fn.typeParameters?.length){if(explicit)fail('optional typed/default/rest/generic parameters are outside the primitive protocol');return [];}
  return annotated.map(name=>Object.freeze({name,type:TYPES[fn.paramTypes[name].text]}));
 }
 export function procedureConstraintPrefix(fn,procedure,parameterName=name=>name) {
@@ -44,6 +52,14 @@ export function validateProcedureConstraintSource(program,{onlyFunctions=null}={
  for(const [fn,entry] of functions) {
   if(entry.escaped)continue;
   const requireTypes=(types,type,label)=>{if(type==='Any')return;if(!types.size||[...types].some(actual=>actual!==type))diagnostics.push(`Procedure parameter constraint: ${label} requires ${type} from actual producers`);};
+  // Default metadata is not a producer. Check the actual conditional RHS on
+  // the same source AST; only this bounded primitive default slice is selected.
+  for(let index=0;index<(fn.parameterDefaults||[]).length;index++){
+   const value=fn.body[index].consequent[0].expr.right,types=constraintTypes(value),parameterIndex=fn.params.indexOf(fn.parameterDefaults[index].name);
+   const formalBindings=new Map(fn.params.map((name,index)=>[graph.bindingOf(fn.body[0],name),index]).filter(([binding])=>binding));
+   const inspect=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(inspect);return;}if(node.type==='Identifier'&&formalBindings.has(graph.bindingOf(node))&&formalBindings.get(graph.bindingOf(node))>=parameterIndex)diagnostics.push(`Procedure parameter constraint: ${fn.name} default cannot reference its own or a later formal`);for(const child of Object.values(node))if(child&&typeof child==='object')inspect(child);};inspect(value);
+   if(!types.size||[...types].some(type=>!['Number','String','Boolean','Null','Undefined'].includes(type)))diagnostics.push(`Procedure parameter constraint: ${fn.name} default requires actual primitive producers`);
+  }
   const incoming=calls.filter(call=>graph.immutableFunctionAt(call)===fn);
   for(const call of incoming) {
    if(call.isNew||call.typeArguments?.length||call.args.length>fn.params.length||fn.params.slice(call.args.length).some(name=>!fn.optionalParams?.includes(name)||fn.paramTypes?.[name]?.text!=='any')){diagnostics.push('Procedure parameter constraint: actual call argument count/shape differs');continue;}

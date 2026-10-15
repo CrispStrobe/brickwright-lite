@@ -12,7 +12,7 @@ test('optional Any pads missing arguments without introducing a new type or defa
  assert.doesNotMatch(arcadeToPseudocode(source).code,/declare arcade procedure/);
  const mixed=arcadeToPseudocode('function keep(title:string,subtitle?:any){return subtitle}let result=keep("title");',options);assert.deepEqual(mixed.unsupported,[]);assert.match(mixed.code,/parameter "title" as String/);
 });
-test('only trailing optional Any without defaults enters the existing protocol',()=>{
+test('only supported trailing optional Any enters the existing protocol',()=>{
  const cases=[
  'function keep(required:string,optional?:any){}keep();',
  'function keep(value?:any){}keep(1,2);',
@@ -20,7 +20,7 @@ test('only trailing optional Any without defaults enters the existing protocol',
  'function keep(value?:number){}keep();',
  'function keep(value?:string){}keep();',
  'function keep(value?:boolean){}keep();',
- 'function keep(value:any=20){}keep();',
+ 'function keep(value:any=image.create(1,1)){}keep();',
  'function keep(value:number=20){}keep();',
  'function keep<T>(value?:any){}keep();',
  'function keep(picture:Image,value?:any){}keep(image.create(1,1));',
