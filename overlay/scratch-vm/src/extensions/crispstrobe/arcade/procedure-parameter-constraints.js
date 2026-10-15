@@ -27,9 +27,10 @@ module.exports=function createProcedureConstraints(runtime,provenance) {
  };
  const owned=util=>{const thread=util?.thread,target=thread?.target;if(!thread||thread.isKilled||util.runtime!==runtime||runtime.sequencer?.activeThread!==thread||!runtime.threads?.includes(thread)||thread.blockContainer!==target?.blocks)fail('entry caller is not current');assertTarget(target);return target;};
  const stockEntry=(proccode,args,util)=>{
-  const target=owned(util),call=primitiveOwner.current(util,args);
+  const target=util?.thread?.target,record=entry(target,proccode);if(!record)return null;
+  if(owned(util)!==target)fail('stock target differs');
+  const call=primitiveOwner.current(util,args);
   if(call?.opcode!=='procedures_call'||call.mutation?.proccode!==proccode)fail('stock call requires its actual current primitive');
-  const record=entry(target,call.mutation?.proccode);if(!record)return null;
   for(const id of record.ids)if(!model.stockFormal(target,call,id)&&record.constraints.has(record.names[record.ids.indexOf(id)]))fail('stock formal binding differs');
   for(const id of record.ids)if(!Object.hasOwn(args,id))fail('required argument is missing');
   domains(record,args,util,record.ids);
@@ -37,7 +38,8 @@ module.exports=function createProcedureConstraints(runtime,provenance) {
   return Object.freeze({names:record.names,ids:record.ids,values:issue(check(record,values),target,record,util.thread)});
  };
  const managedEntry=(target,code,values,rawValues,util,operationArgs)=>{
-  if(owned(util)!==target)fail('managed target differs');const record=entry(target,code);if(!record)return null;
+  const record=entry(target,code);if(!record)return null;
+  if(owned(util)!==target)fail('managed target differs');
   const block=primitiveOwner.current(util,operationArgs),all=target.blocks._blocks;
   if(block?.opcode!=='arcade_callFunction')fail('managed entry requires its actual current primitive');
   const name=all[model.input(block,'NAME')];

@@ -124,3 +124,18 @@ test('formal domain proof includes real inherited captured writes and survives n
  assert.equal(write(),22);child.bwArcadeCaptures.clear();assert.throws(write,/does not own/);child.bwArcadeCaptures.set('value',{values:params,key:'value'});
  f.host.invalidate();f.host.start();assert.throws(write,/stale invocation/);
 });
+
+test('unconstrained stock and synthetic class calls bypass new operation and runtime-util requirements',()=>{
+ const f=fixture(),synthetic={thread:f.thread,target:f.target,sequencer:null};
+ // The target may contain a different constrained procedure. Its model must
+ // not turn the absence of a protocol for an actual class body into a lease.
+ assert.equal(f.host.managedEntry(f.target,'__class_constructor',[],[],synthetic,{}),null);
+ assert.equal(f.host.managedEntry(f.target,'__class_method',[{bwReference:{kind:'object',id:'actual'}}],[],synthetic,{}),null);
+ assert.equal(f.host.stockEntry('ordinary Scratch %s',{},synthetic),null);
+ assert.throws(()=>f.host.managedEntry(f.target,'hold %s',[20],[20],synthetic,{}),/entry caller is not current/);
+ assert.throws(()=>f.host.stockEntry('hold %s',{},synthetic),/entry caller is not current/);
+ // A previously constrained procedure cannot escape validation by removing
+ // its declaration prefix, even through the synthetic path.
+ f.blocks.def.next='effect';f.blocks.effect.parent='def';delete f.blocks.declare;
+ assert.throws(()=>f.host.managedEntry(f.target,'hold %s',[20],[20],synthetic,{}),/current graph changed/);
+});
