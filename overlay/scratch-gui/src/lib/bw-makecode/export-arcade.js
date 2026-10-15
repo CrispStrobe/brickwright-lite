@@ -1547,7 +1547,7 @@ class ArcadeEmitter {
         case 'arcade_playerBySprite': this.requiresMultiplayerPackage=true;return `mp.getPlayerBySprite(${v('ID')})`;
         case 'arcade_playerProperty': {
             this.requiresMultiplayerPackage=true;const read=this.field(b,'READ'),property=this.literalNumber(b,'PROPERTY');
-            if(read==='safe')return `mp.getPlayerProperty(${v('PLAYER')}, ${v('PROPERTY')})`;
+            if(read==='safe')return `mp.getPlayerProperty(${v('PLAYER')}, ${property===2?'mp.PlayerProperty.Number':v('PROPERTY')})`;
             if(read==='member' && [1,2].includes(property))return `(${v('PLAYER')}).${property===1?'index':'number'}`;
             this.note('Arcade player member reads require fixed index/number properties; safe reads permit dynamic selectors');return this.na();
         }
@@ -2327,7 +2327,7 @@ class ArcadeEmitter {
             if(kind==='interval')args.push(this.arrayValue(b,'INTERVAL'));
             if(kind==='destroyed' || kind==='overlap')args.push(this.kindExpr(b,'KIND'));
             if(kind==='overlap')args.push(this.kindExpr(b,'OTHER_KIND'));
-            if(kind==='multiplayerConnection'){this.requiresMultiplayerPackage=true;api='mp.onControllerEvent';args.push(this.arrayValue(b,'EVENT'));}
+            if(kind==='multiplayerConnection'){this.requiresMultiplayerPackage=true;api='mp.onControllerEvent';const event=this.literalNumber(b,'EVENT');args.push(event===1?'ControllerEvent.Connected':event===2?'ControllerEvent.Disconnected':this.arrayValue(b,'EVENT'));}
             if(kind==='multiplayerButton'){this.requiresMultiplayerPackage=true;api='mp.onButtonEvent';args.push(this.arrayValue(b,'BUTTON'),this.arrayValue(b,'EVENT'));}
             if(kind==='button'){
                 const button=this.literalInput(b,'BUTTON');
@@ -2928,6 +2928,7 @@ class ArcadeEmitter {
                 const key = `${target.isStage ? '' : target.name}:${proto.mutation.proccode}`;
                 const names = JSON.parse(proto.mutation.argumentnames || '[]');
                 const keys = names.map(name => `${key}:param:${name}`);
+                if(parameters.has(key)||new Set(names).size!==names.length){for(const name of [...keys,...(parameters.get(key)||[])])inspectionOpaqueCells.add(name);inspectionOpaqueCells.add(`${key}:result`);}
                 parameters.set(key, keys);
                 definitions.push({target,blocks,b,key});
             }
@@ -2962,6 +2963,22 @@ class ArcadeEmitter {
             const scopeValues = [...scopeBlocks].map(id => blocks[id]);
             const fixedName=value=>{const input=value.inputs?.NAME?.[1];return value.fields?.NAME?.[0]??(Array.isArray(input)&&input[0]===10?String(input[1]):blocks[input]?.opcode==='text'?blocks[input].fields?.TEXT?.[0]:null);};
             const unsafeInspectionLocals=scopeValues.some(value=>value.opcode==='arcade_setLocal'&&typeof fixedName(value)!=='string'||value.opcode==='arcade_createCallable'||value.opcode.startsWith('arcade_register')&&(value.inputs?.CAPTURES||value.fields?.CAPTURES));
+            const physicalNumber=value=>value?.opcode==='bw_numberLiteral'?value.value:value?.opcode==='math_number'?Number(value.fields?.NUM?.[0]):null;
+            const ownsEventPlayer=value=>{
+                if(b.opcode!=='arcade_whenRegisteredMultiplayerConnection')return false;
+                const token=literal(blocks,b,'TOKEN');if(!token)return false;
+                const hats=Object.values(blocks).filter(node=>node.opcode===b.opcode&&literal(blocks,node,'TOKEN')===token);
+                const registrations=Object.values(blocks).filter(node=>node.opcode==='arcade_registerMultiplayerConnection'&&literal(blocks,node,'TOKEN')===token);
+                if(hats.length!==1||registrations.length!==1||![1,2].includes(physicalNumber(inputBlock(blocks,registrations[0],'EVENT'))))return false;
+                const parents=new Set();let current=value;
+                while(current&&current!==b){
+                    if(parents.has(current))return false;parents.add(current);
+                    const parent=blocks[current.parent],id=Object.keys(blocks).find(id=>blocks[id]===current);
+                    if(!parent||parent.next!==id&&!Object.values(parent.inputs||{}).some(slot=>slot[1]===id))return false;
+                    current=parent;
+                }
+                return current===b;
+            };
             const ref = value => {
                 if (!value) return null;
                 if(value.opcode==='arrays_namedReference'){const id='named-array:'+literal(blocks,value,'NAME');arrays.add(id);return id;}
@@ -3027,11 +3044,15 @@ class ArcadeEmitter {
                 if(value.opcode==='arcade_tileHitFrom'){const id=Symbol('hit tile index');numbers.add(id);return id;}
                 if(['arcade_cameraProperty','arcade_cameraDrawOffset'].includes(value.opcode)){const id=Symbol('camera numeric property');numbers.add(id);return id;}
                 if(['arcade_tileLocationProperty','arcade_legacyTileProperty'].includes(value.opcode)){const id=Symbol('tile numeric property');numbers.add(id);return id;}
-                if(['arcade_playerLookup','arcade_playerBySprite','arcade_eventPlayer'].includes(value.opcode)){const id=Symbol('player value');graphPlayerValues.add(id);return id;}
+                if(['arcade_playerLookup','arcade_playerBySprite','arcade_eventPlayer'].includes(value.opcode)){const id=Symbol('player value');graphPlayerValues.add(id);if(value.opcode==='arcade_eventPlayer'&&ownsEventPlayer(value))inspectionLeaves.set(id,'Player');return id;}
                 if(value.opcode==='arcade_allPlayers'){const id=Symbol('player array');arrays.add(id);return id;}
                 if(['arcade_playerConnected','arcade_playerButtonPressed','arcade_ask'].includes(value.opcode)){const id=Symbol('player button pressed');booleans.add(id);return id;}
                 if(['arcade_createPlayerState','arcade_getPlayerState'].includes(value.opcode)){const id=Symbol('player state number');numbers.add(id);return id;}
-                if(value.opcode==='arcade_playerProperty'){const id=Symbol('player property');numbers.add(id);return id;}
+                if(value.opcode==='arcade_playerProperty'){
+                    const id=Symbol('player property');numbers.add(id);
+                    const valid=literal(blocks,value,'READ')==='safe'&&physicalNumber(inputBlock(blocks,value,'PROPERTY'))===2;
+                    inspectionOperatorProofs.set(id,{type:'number',operands:[ref(inputBlock(blocks,value,'PLAYER'))],domain:valid?['Player','null','undefined']:[],requirePlayer:true});return id;
+                }
                 if(value.opcode==='arcade_currentScene'){const id=Symbol('scene value');graphSceneValues.add(id);return id;}
                 if(['arcade_scenePhysicsEngine','arcade_createPhysicsEngine'].includes(value.opcode)){const id=Symbol('physics engine value');graphPhysicsEngineValues.add(id);return id;}
                 if(['arcade_sourceTypeOf','arcade_inspectValue'].includes(value.opcode)){const id=Symbol('owned String reporter result');strings.add(id);return id;}
@@ -3231,15 +3252,21 @@ class ArcadeEmitter {
         let inspectionChanged;do{inspectionChanged=false;for(const [result,inputs]of inspectionOperators)if(inputs.some(value=>!value||inspectionOpaqueNodes.has(graph.node(value))||!graph.node(value).types.size||[...graph.node(value).types].some(type=>!['number','boolean','string','null','undefined'].includes(type)))){const node=graph.node(result);if(!inspectionOpaqueNodes.has(node)){inspectionOpaqueNodes.add(node);inspectionChanged=true;}}}while(inspectionChanged);
         this.inspectionExportOperands=new Set();
         const inspectionUndefinedCells=new Set([...this.sourceScalarCells.values()].filter(cell=>cell.type==='Any').map(cell=>`variable:${cell.id}`));
-        const inspectionTypes=(value,allowed,seen=new Set())=>{
-            if(!value)return false;if(inspectionLeaves.has(value))return allowed.includes(inspectionLeaves.get(value));
+        const inspectionTypes=(value,allowed,seen=new Set(),origins=null)=>{
+            if(!value)return false;if(inspectionLeaves.has(value)){const type=inspectionLeaves.get(value);if(type==='Player'&&allowed.includes(type))origins?.add(value);return allowed.includes(type);}
             const operation=inspectionOperatorProofs.get(value);if(operation){
                 const output=operation.type?[operation.type]:[...graph.node(value).types];
                 if(!output.length||!output.every(type=>allowed.includes(type)))return false;
                 if(seen.has(value))return true;const next=new Set([...seen,value]);
-                return operation.operands.every(operand=>inspectionTypes(operand,operation.numeric?['number','undefined']:['number','boolean','string','null','undefined'],next));
+                const evidence=operation.requirePlayer?new Set():origins;
+                return operation.operands.every(operand=>inspectionTypes(operand,operation.domain||(operation.numeric?['number','undefined']:['number','boolean','string','null','undefined']),next,evidence))&&(!operation.requirePlayer||evidence.size>0);
             }
             const node=graph.node(value);
+            if(allowed.includes('Player')){
+                const producers=inspectionProducers.get(value);
+                if(inspectionOpaqueNodes.has(node)||seen.has(value)||!producers?.size)return false;
+                const next=new Set([...seen,value]);return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins));
+            }
             if(inspectionOpaqueNodes.has(node)||!node.types.size||[...node.types].some(type=>type!=='any'&&!allowed.includes(type)))return false;
             if(!node.types.has('any'))return true;
             // An Any declaration resets a real scalar cell to Undefined. It
@@ -3249,7 +3276,7 @@ class ArcadeEmitter {
             const producers=inspectionProducers.get(value);
             if(!producers?.size)return inspectionUndefinedCells.has(value)&&allowed.includes('undefined');
             if(seen.has(value))return true;const next=new Set([...seen,value]);
-            return [...producers].every(producer=>inspectionTypes(producer,allowed,next));
+            return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins));
         };
         for(const [block,input]of inspectionInputs)if(inspectionTypes(input.value,['number','boolean','string','null','undefined'])&&inspectionTypes(input.limit,['number','undefined']))this.inspectionExportOperands.add(block);
         // Unknown operations remain dynamic. Propagate that fact through the
