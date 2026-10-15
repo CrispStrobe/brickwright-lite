@@ -158,6 +158,10 @@ test('KIND aliases cannot borrow a Number allocation after their own value read'
     const f=withKindReset(),aliasId='__earlyKindAlias';
     f.target.variables[aliasId]=['earlyKindAlias',0];
     interposeReset(f,{opcode:'data_setvariableto',fields:{VARIABLE:['earlyKindAlias',aliasId]},inputs:{VALUE:[3,[12,'kind',f.write.fields.VARIABLE[1]],[10,'']]}});
+    // Remove the reset so this isolates the alias occurrence prerequisite,
+    // rather than the separate uninterrupted-reset observation barrier.
+    const parent=f.blocks.__reset.parent;f.blocks[parent].next='__interposed';f.blocks.__interposed.parent=parent;
+    delete f.blocks.__reset;delete f.blocks.__undefined;
     const collection=Object.values(f.blocks).find(b=>b.opcode==='arcade_spritesOfKind');collection.inputs.KIND=[3,[12,'earlyKindAlias',aliasId],[10,'']];
     assert.equal(createArrayReferenceExportAuthority(f.creator.project).validateInput(f.target,f.receiver).ok,false);
 });
