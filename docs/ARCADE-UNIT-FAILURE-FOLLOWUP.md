@@ -360,3 +360,25 @@ One actual changed export preserves all five original values, including five
 argument evaluations and the distinct NaN includes/indexOf results. All nine
 SDK/bridge guards remain unchanged; this grants no general callable or Any
 result admission. The original export and reimport refusals remain retained.
+
+## Integrated Font reporter and restart repairs
+
+The reporter ownership repair (`4cb5993db`) and startup ordering repair
+(`2228b4574`) are integrated. Nested Font reporters now validate their own
+current cached operation, fixed fields, inputs and primitive. Integrated
+startup resets the current Font epoch before initializing implicit text kinds.
+Stopped or disposed references remain unavailable; a legitimate project load
+creates a new owner.
+
+Independent review passed 42 affected checks with 219 consumed file hashes
+unchanged. The composed branch separately passed the same 42 checks and all
+57,600 native pixel comparisons plus 21 values across three authoring variants.
+The exported Font fixture still matches the previously executed original input
+bytes. These results do not replace fresh hosted browser qualification.
+
+Transparent pixel collision checks now use the actual scene and pause clock
+through source, Code, export/reimport and saved-project restart. Both local and
+independent native controls pass with the original collision and identity
+assertions retained. Circle import and TextSprite admission checks now describe
+the implemented capabilities while retaining malformed-call and bounded
+qualification checks. None of these test corrections promotes corpus rows.
