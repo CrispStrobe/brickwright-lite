@@ -34,11 +34,14 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
     function object(ref) {
         live(); const external = native.external?.(ref), id = referenceKey(ref);
         let state = id !== null && objects.get(id);
-        if (!state && external) {const def=definition(native.externalClass(ref));state={ref,def,generation,construction:null,fields:new Map([...def.fields].filter(([,field])=>!field.getter&&!field.setter).map(([key])=>[key,values.UNDEFINED]))};objects.set(id,state);}
+        if (!state && external) {const def=definition(native.externalClass(ref));state={ref,def,generation,external:true,construction:null,fields:new Map([...def.fields].filter(([,field])=>!field.getter&&!field.setter).map(([key])=>[key,values.UNDEFINED]))};objects.set(id,state);}
         if (!state || state.generation !== generation) throw new Error('Unknown or stale class object reference');
+        if(state.external)native.assertExternal?.(ref,state.def);
         return state;
     }
+    function validateTransport(value) {native.assertTransport?.(value);return value;}
     function hold(value) {
+        validateTransport(value);
         value = values.encode(values.decode(value));
         if (Array.isArray(value)) return values.arrayReference(runtime, value);
         if (values.isReference(value)) {
@@ -146,7 +149,7 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
         if (!found) throw new Error(`Unknown class method ${name}`);
         return found;
     }
-    return {register, definition, allocate, finish, abort, get, set, method, hold, reset, dispose,
+    return {register, definition, allocate, finish, abort, get, set, method, hold, validateTransport, reset, dispose,
         property(ref,name) {const field=object(ref).def.fields.get(name);if(!field)throw new Error('Unknown class field '+name);return field;},
         constructionActive(ref,token) {try{return object(ref).construction===token && token.generation===generation;}catch{return false;}},
         inspect(ref) { const state = object(ref); return {className: state.def.name, constructing: !!state.construction}; }};

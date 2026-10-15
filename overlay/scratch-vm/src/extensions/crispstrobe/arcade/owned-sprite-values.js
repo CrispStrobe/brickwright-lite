@@ -115,8 +115,14 @@ module.exports = function createOwnedSpriteValues(runtime, values, images, curre
         // Domain routing only. Retain issued id/scope identity after revocation
         // so cached external heap records still reach this owner's refusal.
         ownsReference(value) {
-            try {const ref = referenceShape(value);return issuedScopes.get(ref.id) === ref.scope;}
-            catch (_) {return false;}
+            try {
+                if(!value||typeof value!=='object')return false;
+                const wrapper=Object.getOwnPropertyDescriptor(value,'bwReference');
+                if(!wrapper||!Object.prototype.hasOwnProperty.call(wrapper,'value')||!wrapper.value||typeof wrapper.value!=='object')return false;
+                const fields=Object.getOwnPropertyDescriptors(wrapper.value),data=name=>fields[name]&&Object.prototype.hasOwnProperty.call(fields[name],'value')?fields[name].value:undefined;
+                const id=data('id'),scope=data('scope');
+                return data('kind')==='object'&&typeof id==='string'&&typeof scope==='string'&&issuedScopes.get(id)===scope;
+            } catch (_) {return false;}
         }
     });
 };
