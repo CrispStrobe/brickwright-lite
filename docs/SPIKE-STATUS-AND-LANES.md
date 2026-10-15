@@ -6,6 +6,22 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Pause integration qualification — 2026-10-15
+
+The pane ownership fix on `lane/spike-g02-pause-ownership-20261015` preserves
+current Pause/Reset/Step actions while rejecting obsolete continuations. Its
+first tested consumer `beb518eaba4597afe6ee75fe14a699cc7d9c8ab9` passed four
+installed own-NuttX Pause success/error-delivery cases, including real Reset
+replacement, cleanup and distinct recovery. Eight native startup transactions
+and four standalone readers passed. Generic Step/backend paths remain host-only.
+
+The branch now integrates main's separately qualified compiled MicroPython
+launch work. Three native inputs differ from that first NuttX consumer. The
+composed source therefore still needs a fresh source-bound own-NuttX matrix and
+final exact-head CI; the earlier result does not qualify every evolving package.
+Firmware, Runtime/model and dependency pins are unchanged by this lane. Full G02,
+physical safety, reference boot, release and licensing remain outside this result.
+
 ## Qualified G02 lifecycle boundaries — 2026-10-15
 
 Seven focused changes have landed, each with a separately frozen installed
@@ -142,15 +158,27 @@ landed versions, and the landed tree equals the reviewed prediction. Independent
 main pin adoptions are retained; this is not qualification of every evolving-main
 package. Existing product budgets and firmware/Runtime/model pins did not change.
 
-The next G02 prerequisite is the [compiled-profile claim PR946](https://github.com/CrispStrobe/brickwright-lite/pull/946).
-The current MicroPython launcher includes source models, while the retained
-runtime contains compiled models. Earlier supplier evidence treats compiled and
-legacy source-overlay routes separately. Admit an explicit compatible profile
-and platform type contract, preserve the qualified legacy route, then qualify
-real selected-image Code execution, final-sampling cancellation and UART/image
-boundaries. Support metadata alone does not qualify a current installed
-MicroPython boot. The claim is preparation; implementation and those actual
-MicroPython cases remain pending, with no image download or bundling implied.
+The [compiled-profile claim PR946](https://github.com/CrispStrobe/brickwright-lite/pull/946)
+is merged. Its implementation is in progress: explicit native descriptor/runtime
+pins select native platform types while retaining the legacy source-overlay
+route. Initial host packaging and actual Rust planner checks pass, including
+rejection of mismatched profiles and motor attachment order in both routes.
+The source-bound installed Linux package now passes six actual MicroPython
+contexts: selected-image Code execution and raw-REPL completion, guest ValueError,
+Stop during final sampling, two authored client-delivery identity adversaries
+and distinct fresh recovery. A native UART request with a wrong caller generation
+is refused, then a read confirms the original attachment remains ready. The
+client-delivery adversaries do not simulate actual native attachment transitions.
+A standalone reader checks ten original UART reads, six completed native startups,
+six distinct generations, ownership release and stopped/non-OOM container state.
+The built implementation is `8c1ec5ef066b4d18ab99bd80d569620425c89c03`;
+fixture-only follow-up `1058d91cacad66c1a4bf88d08c7e12d0374f4bca` has identical
+production sources. All enabled final-head CI checks remain required for
+[implementation PR948](https://github.com/CrispStrobe/brickwright-lite/pull/948).
+This finite package result does not qualify unrelated later main changes.
+Earlier chooser-control, backend-button and sanitized-error expectation failures
+remain preserved separately; they are not product fixes or passing matrix runs.
+No image download or bundling is implied.
 
 G02 remains open for its full deferred-storage matrix, selected-image and chooser
 error races, and complete installed startup/final-sampling, UART-generation and
@@ -539,19 +567,41 @@ remained required. The qualified follow-up above records the frozen consumers
 and finite cases now completed. Selected-image/error, deferred-storage,
 final-sampling, generation and late-poll closure across backends remains open.
 
-A pane-action continuation on `lane/spike-g02-pause-ownership-20261015`
-prevents delayed Pause feedback and Reset/Step continuations from changing a
-replacement world or feedback after Stop, disposal or session replacement.
-Storage Pause checks its captured live session; the other awaited continuations
-check teardown intent and bridge ownership. A bridge restored by that same
-teardown remains valid, including six-motor and dual-ultrasonic cleanup.
-All 30 new authored-boundary controls and 14 existing pane lifecycle controls
-pass; the original baseline fails 20 new stale-result cases and passes ten.
-Six guard/bookkeeping removals are detected. These are host controls; fresh
-installed own-guest normal/cancellation/recovery and exact-head CI remain pending.
-No guest, whole-G02, physical or release claim follows.
+A replacement-upload continuation on
+`lane/spike-g02-upload-cancellation-20261015` now checks closure after awaiting
+the previous program's STOP, before replacing current code or enqueueing BEGIN.
+It also checks closure after the upload reply, before retained-program state
+and observers are published. The latter cancellation cannot roll back a program
+that has already executed.
+A real-session/production-codec control with an authored delayed native response
+shows the baseline accepting a replacement after session Stop; the live control
+passes. A completed-upload return control separately reproduces late publication
+after closure. All 59 session controls pass with both checks; each removal must
+fail its corresponding cancellation control. Fresh installed own-NuttX cancellation/recovery and
+all enabled exact-head CI checks remain pending; this finite host result does
+not close G02 or qualify guest execution. Existing transport ordering and
+firmware/Runtime/model/native pins and deadlines remain unchanged.
+
+The replacement-upload follow-up now passes four installed own-NuttX cases on
+consumer `516557dae2f3b29710318a0e9ee647715728376f`: held original STOP or
+completed-upload return, each with live delivery and actual Reset cancellation.
+Every case releases session/configuration/clock ownership, completes a distinct
+fresh guest and releases it. Standalone readers validate eight complete native
+startup transactions, original correlated packets and guest identity. Original
+selector/state-interval test failures are preserved. Initial retained state and
+held-return retained state are distinct observations. These finite results cover
+full session Stop through Reset; pending-upload Arena Stop and Code-feedback UX
+remain open. Integration preserves the qualified session/test blobs and requires
+fresh final-head CI. Later whole packages need their own qualification.
 
 ### G03 — Qualify usable sandbox and responsive editor controls
+
+The scoped ownership claim is recorded in
+[the lane ledger](../LANES.md#spike-g03-sandbox-and-editor-ui-qualification--2026-10-15)
+on `docs/spike-g03-ui-claim-20261015`. Implementation follows PR948, PR962 and
+G02's remaining acceptance review. The first pass records working rendered
+features and fixes only demonstrated gaps; shared project-world and unrelated
+importer owners keep their own files and behavior.
 
 **Owner:** Lite. **Start:** `docs/SPIKE-ARENA.md`,
 `overlay/scratch-gui/src/components/tw-pseudocode/`,
