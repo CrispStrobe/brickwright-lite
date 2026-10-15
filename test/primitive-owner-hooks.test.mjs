@@ -1,3 +1,5 @@
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -15,4 +17,8 @@ test('unknown or ambiguous owned engine markers refuse without dropping caller o
  const source=engine();assert.throws(()=>patchPrimitiveOwner(source.replace('bwPrimitiveOwner.handles(opCached.opcode)','opCached.opcode.startsWith("arrays_")')),/unknown primitive ownership marker/);
  assert.throws(()=>patchPrimitiveOwner(source+"\nconst bwPrimitiveOwner = require('../util/bw-primitive-owner');"),/ambiguous/);
  assert.throws(()=>patchPrimitiveOwner('const BlockUtility = require("wrong");'),/anchor missing/);
+});
+
+test('the standard overlay CLI remains parseable by the actual Node entrypoint',()=>{
+ assert.doesNotThrow(()=>execFileSync(process.execPath,['--check',fileURLToPath(new URL('../scripts/apply-vm-overlay.mjs',import.meta.url))],{stdio:'pipe'}));
 });
