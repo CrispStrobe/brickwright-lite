@@ -139,3 +139,16 @@ test('unconstrained stock and synthetic class calls bypass new operation and run
  f.blocks.def.next='effect';f.blocks.effect.parent='def';delete f.blocks.declare;
  assert.throws(()=>f.host.managedEntry(f.target,'hold %s',[20],[20],synthetic,{}),/current graph changed/);
 });
+
+
+test('constrained current stock calls refuse extra and disconnected input sockets',()=>{
+ for(const change of [f=>{f.blocks.call.inputs.EXTRA={block:'leaf'};},f=>{f.blocks.call.inputs.arg={block:null};}]){
+  const f=fixture();change(f);assert.throws(()=>model.prepare(f.target),/stock call requires exactly/);assert.throws(f.run,/stock call requires exactly/);
+ }
+ const f=fixture();f.blocks.call.mutation.proccode='unconstrained %s';f.blocks.call.inputs.EXTRA={block:'leaf'};assert.doesNotThrow(()=>model.prepare(f.target));
+});
+test('constrained managed call and argument chains reject unrepresented sockets',()=>{
+ for(const selector of ['call','argument']){
+  const f=fixture(),run=managed(f);f.blocks[selector].inputs.EXTRA={block:'leaf'};f.proof.snapshot();assert.throws(run,/requires exactly its actual input sockets/);
+ }
+});

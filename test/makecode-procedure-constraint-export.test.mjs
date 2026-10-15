@@ -37,3 +37,17 @@ test('typed formal text writes preserve physical numeric-looking text; Any does 
  const opaque=fixture('Any'),o=opaque.targets[0].blocks;o.display.inputs.TEXT=[1,'inspect'];o.inspect={opcode:'arcade_inspectValue',parent:'display',fields:{},inputs:{VALUE:[1,'read'],LIMIT:[1,'undef']}};o.read.parent='inspect';o.undef={opcode:'arrays_specialValue',parent:'inspect',fields:{},inputs:{KIND:text('undefined')}};
  assert.ok(projectToArcade(opaque).unsupported.some(message=>message.includes('primitive VALUE')));
 });
+
+
+test('current export reports extra constrained inputs instead of dropping their effects',()=>{
+ for(const location of ['stock','managed','argument']){
+  const project=fixture('Number',{opcode:'math_number',fields:{NUM:['20',null]}}),b=project.targets[0].blocks;
+  if(location!=='stock'){
+   b.call.opcode='arcade_callFunction';delete b.call.mutation;b.call.inputs={NAME:text('holdText %s'),ARGS:[1,'args']};
+   b.args={opcode:'arcade_functionArgument',parent:'call',next:null,fields:{},inputs:{VALUE:[1,'leaf'],REST:text('[]')}};b.leaf.parent='args';
+  }
+  const owner=location==='argument'?'args':'call';b[owner].inputs.EXTRA=[1,'sideEffect'];
+  b.sideEffect={opcode:'arcade_callFunction',parent:owner,next:null,fields:{},inputs:{NAME:text('sideEffect'),ARGS:text('[]')}};
+  const exported=projectToArcade(project);assert.ok(exported.unsupported.some(message=>message.includes('requires exactly its actual input sockets')),JSON.stringify({location,unsupported:exported.unsupported}));
+ }
+});

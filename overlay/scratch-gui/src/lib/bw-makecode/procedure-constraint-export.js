@@ -26,8 +26,10 @@ export function prepareProcedureConstraintExport(project) {
   }
   if(block.opcode==='arcade_callFunction') {
    const entry=prepared.procedures.get(literal(block,'NAME',target));if(!entry)continue;
+   model.exactInputs(block,['NAME','ARGS'],'managed call');
    const args=[],seen=new Set();let current=child(target,block,'ARGS'),tail=block.inputs?.ARGS?.[1];
    while(current?.opcode==='arcade_functionArgument') {
+    model.exactInputs(current,['VALUE','REST'],'managed argument');
     if(seen.has(current))fail('cyclic managed argument chain');seen.add(current);args.push(current);tail=current.inputs?.REST?.[1];current=child(target,current,'REST');
    }
    const empty=Array.isArray(tail)&&tail[0]===10&&tail[1]==='[]'||current?.opcode==='text'&&field(current,'TEXT')==='[]';

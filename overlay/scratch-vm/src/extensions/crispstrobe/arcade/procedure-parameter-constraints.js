@@ -42,10 +42,12 @@ module.exports=function createProcedureConstraints(runtime,provenance) {
   if(owned(util)!==target)fail('managed target differs');
   const block=primitiveOwner.current(util,operationArgs),all=target.blocks._blocks;
   if(block?.opcode!=='arcade_callFunction')fail('managed entry requires its actual current primitive');
+  model.exactInputs(block,['NAME','ARGS'],'managed call');
   const name=all[model.input(block,'NAME')];
   if(name?.opcode!=='text'||name.fields?.TEXT?.value!==code||operationArgs.NAME!==code)fail('managed procedure name is not its fixed actual input');
   const paths=[];let current=all[model.input(block,'ARGS')],path=['ARGS'];const seen=new Set();
   while(current?.opcode==='arcade_functionArgument'){
+   model.exactInputs(current,['VALUE','REST'],'managed argument');
    if(seen.has(current))fail('cyclic actual argument chain');seen.add(current);paths.push([...path,'VALUE']);path=[...path,'REST'];current=all[model.input(current,'REST')];
   }
   if(current?.opcode!=='text'||current.fields?.TEXT?.value!=='[]'||paths.length!==record.names.length)fail('managed actual argument chain differs');
