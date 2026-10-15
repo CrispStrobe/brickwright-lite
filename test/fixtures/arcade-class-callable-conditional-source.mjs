@@ -31,3 +31,6 @@ export const orderedEffectSource=effectSource
  .replace('state.value+=2;', 'state.trace+="A";state.value+=2;')
  .replace('(state:State)=>"ok"', '(state:State)=>{state.trace+="S";return "ok";}')
  .replace('state.value+=1;', 'state.trace+="V";state.value+=1;');
+
+export const oracleSource=orderedEffectSource+'\nlet finalValue=state.value;let displays=state.display;let imageUpdates=state.image;let order=state.trace;let alias=present.state===state;let missing=absentResult===undefined;';
+export const oracleProject={'main.ts':oracleSource,'pxt.json':JSON.stringify({name:'class-conditional-result-control',dependencies:{device:'*'},files:['main.ts']},null,2)+'\n'};

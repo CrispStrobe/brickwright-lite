@@ -125,6 +125,10 @@ requires a separate declaration/export domain and remains unsupported. The
 first fixture retaining such a cell is kept as a diagnostic control.
 
 Native, Code, same/fresh saved-project and exported-source reimport controls
-are implementation evidence. Selected-original and hosted GUI qualification
-are still pending for this slice. No StatusBar graphics or complete-project
+are implementation evidence. Two selected-original source/export controls also match Number 3, String
+"ok", observed absent Undefined, field totals 4/3/3, alias identity and the
+exact action/display/image trace `ADISDIVDI`. The first source compile using
+an observation named `images` was refused by the real SDK namespace; the
+corrected control uses `imageUpdates`. Hosted GUI qualification remains
+pending for this slice. No StatusBar graphics or complete-project
 promotion follows from its scalar followup observations.
