@@ -60,15 +60,15 @@ test('retained Sprite/Image aliases support explicit overlap queries across susp
 });
 
 
-test('a fast crossing delivers one event, stops its mover and preserves callback geometry across all paths',async()=>{
-    const source='game.onUpdate(function(){pause(20)})\n'+multiPhysicsControllerSource()+`
+const fastCrossingSource=()=>'game.onUpdate(function(){pause(20)})\n'+multiPhysicsControllerSource()+`
 crossingArmed=true
 mover.vx=500
 pause(300)
 let stopped=mover.vx===0
 let geometryConsistent=endFrameTouching===mover.overlapsWith(target)
 let crossingDone=passes===1`;
-    const expected=await verify(source,['fastOverlapSeen','passes','stopped','geometryConsistent','crossingDone'],'crossingDone');
+test('a fast crossing delivers one event, stops its mover and preserves callback geometry across all paths',async()=>{
+    const expected=await verify(fastCrossingSource(),['fastOverlapSeen','passes','stopped','geometryConsistent','crossingDone'],'crossingDone',{milliseconds:1000});
     assert.equal(expected.stopped,true);
     assert.equal(expected.geometryConsistent,true);
     assert.equal(expected.passes,1);
@@ -82,6 +82,18 @@ test('native transparent pixel collision waits for actual scene and pause contin
   const execute=async input=>{const run=await runTimedArcadeProgram(input.code,{milliseconds:1000,uploads:input.costumes,storage:true});runs.push(run);check(run);return run;};
   const run=await execute(imported);await execute({...imported,code:run.creator.decompile()});
   const exported=projectToArcade(run.creator.project,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});assert.deepEqual(exported.unsupported,[]);const again=arcadeToPseudocode(exported.files);assert.deepEqual(again.unsupported,[]);await execute(again);
+  await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));await restartTimedArcadeRun(run,1000);check(run);
+ } finally {for(const run of runs){run.vm.stopAll();run.vm.quit();}}
+});
+
+
+test('native fast crossing waits for actual pause completion through all editable routes',async()=>{
+ const imported=arcadeToPseudocode(fastCrossingSource());assert.deepEqual(imported.unsupported,[]);const runs=[];
+ const check=run=>{const actual=values(run);assert.equal(actual.passes,1);for(const name of ['fastOverlapSeen','stopped','geometryConsistent','crossingDone'])assert.equal(actual[name],true,name);assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
+ try {
+  const execute=async input=>{assert.deepEqual(input.unsupported,[]);const run=await runTimedArcadeProgram(input.code,{milliseconds:1000,uploads:input.costumes,storage:true});runs.push(run);check(run);return run;};
+  const run=await execute(imported);await execute({...imported,code:run.creator.decompile()});
+  const exported=projectToArcade(run.creator.project,{costumeSvg:(target,costume)=>run.creator.assets.get(costume.assetId)?.data});assert.deepEqual(exported.unsupported,[]);await execute(arcadeToPseudocode(exported.files));
   await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));await restartTimedArcadeRun(run,1000);check(run);
  } finally {for(const run of runs){run.vm.stopAll();run.vm.quit();}}
 });
