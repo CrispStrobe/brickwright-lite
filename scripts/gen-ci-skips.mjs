@@ -27,7 +27,7 @@ import {parsePointers, judgeSkips} from './lib/skip-pointers.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const READINGS = path.join(ROOT, 'docs', 'generated', 'ci-skip-census.json');
-const RUNS = 20, JOBS = new Set(['build', 'unit (1/2)', 'unit (2/2)', 'corpus']);
+const RUNS = 20, JOBS = new Set(['build', 'unit (1/2)', 'unit (2/2)', 'unit (1/4)', 'unit (2/4)', 'unit (3/4)', 'unit (4/4)', 'corpus']);
 const gh = args => execFileSync('gh', args, {encoding: 'utf8', maxBuffer: 256 << 20});
 
 export const classify = (t) => t.executed > 0 ? 'b' : /\b(floor|corpus rule|sample)\b/i.test(t.reason) ? 'c' : 'a';

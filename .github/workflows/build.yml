@@ -253,7 +253,7 @@ jobs:
   # joins a group, whatever cancel-in-progress says.
   #
   # Instead: a commit that is no longer main's tip by the time its run starts
-  # still gets `build`, both `unit` shards and `corpus` (source and unit verdicts
+  # still gets `build`, all four `unit` shards and `corpus` (source and unit verdicts
   # remain attributable to that commit), and skips the heavy tail —
   # browser, fpga-surface, deploy, verify-gui — which the tip's own run re-covers
   # anyway, unless main advanced only through excluded documentation (which has
@@ -291,13 +291,13 @@ jobs:
   # Each shard retains identical integrated prerequisites and its own audited
   # file/skip/GUI-resolution census. No Pages artifact is produced here.
   unit:
-    name: unit (${{ matrix.shard }}/2)
+    name: unit (${{ matrix.shard }}/4)
     needs: scope
     if: needs.scope.outputs.fast == 'true'
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -773,7 +773,7 @@ jobs:
       - name: Run unit tests
         if: ${{ !cancelled() && steps.overlays.outcome == 'success' && steps.unit_playwright.outcome == 'success' && steps.stc_flasher_pin.outcome == 'success' && steps.stc_flasher_source.outcome == 'success' }}
         env:
-          BW_TEST_SHARD: ${{ matrix.shard }}/2
+          BW_TEST_SHARD: ${{ matrix.shard }}/4
           STC_COMPILER_FLASHER_DIR: ${{ github.workspace }}/.stc-compiler-flasher
         run: |
           if ! grep -q '"test"' package.json; then
@@ -783,7 +783,7 @@ jobs:
           set -o pipefail
           # This shard partitions the complete non-corpus suite; the two corpus
           # walks remain in their existing required job. They run in the `corpus` job below, in parallel with this
-          # one, and deployment requires corpus, both unit shards and the build. `npm test` locally is still all of it.
+          # one, and deployment requires corpus, all four unit shards and the build. `npm test` locally is still all of it.
           mkdir -p test-results
           # The runner's OWN exit status is captured and returned at the end, so
           # the two readings below print on red runs too — the days they matter
