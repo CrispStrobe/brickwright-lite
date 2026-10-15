@@ -147,10 +147,22 @@ is merged. Its implementation is in progress: explicit native descriptor/runtime
 pins select native platform types while retaining the legacy source-overlay
 route. Initial host packaging and actual Rust planner checks pass, including
 rejection of mismatched profiles and motor attachment order in both routes.
-Real selected-image Code execution, final-sampling cancellation and UART/image
-boundaries still need installed qualification. Support metadata and host checks
-alone do not qualify a current installed MicroPython boot. No image download
-or bundling is implied.
+The source-bound installed Linux package now passes six actual MicroPython
+contexts: selected-image Code execution and raw-REPL completion, guest ValueError,
+Stop during final sampling, two authored client-delivery identity adversaries
+and distinct fresh recovery. A native UART request with a wrong caller generation
+is refused, then a read confirms the original attachment remains ready. The
+client-delivery adversaries do not simulate actual native attachment transitions.
+A standalone reader checks ten original UART reads, six completed native startups,
+six distinct generations, ownership release and stopped/non-OOM container state.
+The built implementation is `8c1ec5ef066b4d18ab99bd80d569620425c89c03`;
+fixture-only follow-up `1058d91cacad66c1a4bf88d08c7e12d0374f4bca` has identical
+production sources. All enabled final-head CI checks remain required for
+[implementation PR948](https://github.com/CrispStrobe/brickwright-lite/pull/948).
+This finite package result does not qualify unrelated later main changes.
+Earlier chooser-control, backend-button and sanitized-error expectation failures
+remain preserved separately; they are not product fixes or passing matrix runs.
+No image download or bundling is implied.
 
 G02 remains open for its full deferred-storage matrix, selected-image and chooser
 error races, and complete installed startup/final-sampling, UART-generation and
