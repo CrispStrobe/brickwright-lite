@@ -92,13 +92,18 @@ export function createFixedImageResourceMaterializer(originalFiles, resolved) {
             if (sources.has(key)) fail('duplicate configured dependency source: ' + id + '/' + file);
             sources.set(key,text);
         }
-        const records = new Map(), bodies = [], declared = new Map();
-        const names = (body,scope=[]) => {
+        const records = new Map(), bodies = [], declared = new Map(), bindings = new Map();
+        const names = (body,sourceKey,scope=[]) => {
             const key = scope.join('.'), set = declared.get(key) || new Set(); declared.set(key,set);
             for (const node of body || []) {
-                if (node.type === 'Declaration') node.decls.forEach(decl => set.add(decl.name));
-                if (['FunctionDeclaration','Class','Enum','Namespace'].includes(node.type)) set.add(node.name);
-                if (node.type === 'Namespace') names(node.body,[...scope,node.name]);
+                const add = (name,decl) => {
+                    set.add(name);
+                    const qualified = keyOf(scope,name), owners = bindings.get(qualified) || [];
+                    owners.push({sourceKey,node,decl});bindings.set(qualified,owners);
+                };
+                if (node.type === 'Declaration') node.decls.forEach(decl => add(decl.name,decl));
+                if (['FunctionDeclaration','Class','Enum','Namespace'].includes(node.type)) add(node.name,null);
+                if (node.type === 'Namespace') names(node.body,sourceKey,[...scope,node.name]);
             }
         };
         for (const [key,text] of sources) {
@@ -106,7 +111,7 @@ export function createFixedImageResourceMaterializer(originalFiles, resolved) {
             if (tokens.some(token => token.unknownBefore || token.invalidLiteral)) fail('incomplete lexical source proof: ' + key);
             let program; try {program = parseMakeCodeTs(text,parseOptions);} catch (error) {fail('source proof refused ' + key + ': ' + error.message);}
             walk(program,node => {if (node.type === 'Unknown' || node.unsupported?.length) fail('incomplete executable source proof: ' + key);});
-            records.set(key,{program,tokens,text});bodies.push(...program.body);names(program.body);
+            records.set(key,{program,tokens,text});bodies.push(...program.body);names(program.body,key);
         }
         const program = {type:'Program',body:bodies}, sdk = staticSdkNamespaceReceivers(program,{builtinIdentifiers:['hex','img','globalThis','window','self','global','eval','Function']});
         walk(program,(node,parent) => {
@@ -125,7 +130,7 @@ export function createFixedImageResourceMaterializer(originalFiles, resolved) {
         for (const [id,pkg] of Object.entries(resolved.packages)) for (const key of pkg.resourceIds || []) {
             const owners = resourceOwners.get(key) || new Set(); owners.add(id);resourceOwners.set(key,owners);
         }
-        context = {records,declared,sdk,resourceOwners};return context;
+        context = {records,declared,bindings,sdk,resourceOwners};return context;
     };
     return (packageId,file,source) => {
         // No parser/source-census work for packages with no bounded candidates.
@@ -147,7 +152,8 @@ export function createFixedImageResourceMaterializer(originalFiles, resolved) {
                 const lineNumber = index + 1, scope = lineScopes.get(lineNumber), key = scope && keyOf(scope,match[2]);
                 const entries = key && declarations.get(key);
                 if (entries?.length !== 1) fail('missing or ambiguous actual declaration: ' + match[2]);
-                const {node,decl,scope:actualScope} = entries[0];
+                const {node,decl,scope:actualScope} = entries[0], owners = ctx.bindings.get(key);
+                if (owners?.length !== 1 || owners[0].decl !== decl || owners[0].sourceKey !== 'dependency:' + packageId + '/' + file) fail('ambiguous configured declaration: ' + key);
                 if (node.kind !== 'const' || !node.exported || node.decls.length !== 1 || !factory(decl) || !ctx.sdk.has(decl.init.callee)) fail('factory is not the unchanged actual SDK declaration: ' + key);
                 const actualTokens = record.tokens.filter(token => token.startLine === lineNumber);
                 const expected = ['export','const',match[2],'=','image','.','ofBuffer','(','hex','',')'];

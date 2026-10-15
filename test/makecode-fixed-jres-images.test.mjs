@@ -158,3 +158,19 @@ test('Unicode text and line separators preserve original bytes outside the call'
     f.resolved.packages.art.files['art.ts']=text;
     assert.equal(materialize(f).source,text.replace('image.ofBuffer(hex``)',literal));
 });
+
+
+test('qualified declaration collisions in root, generated root and other dependency sources refuse', () => {
+    for (const declaration of ['export const hero = image.create(2,2)','export function hero() { return 1 }',
+        'export namespace hero { export const unrelated = 1 }']) {
+        const duplicate='namespace gallery { '+declaration+' }';
+        const f=appendSource(fixture(),duplicate), before=JSON.stringify(f);
+        assert.throws(()=>materialize(f),/ambiguous configured declaration: gallery.hero/);
+        assert.equal(JSON.stringify(f),before);
+        const g=fixture();g.resolved.packages.other={files:{'other.ts':duplicate},resourceIds:[]};
+        g.resolved.sourceOrder.push({id:'other',file:'other.ts'});
+        assert.throws(()=>materialize(g),/ambiguous configured declaration: gallery.hero/);
+        const h=fixture();h.resolved.generatedRootFiles={'images.g.ts':duplicate};
+        assert.throws(()=>materialize(h),/ambiguous configured declaration: gallery.hero/);
+    }
+});
