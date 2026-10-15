@@ -22,12 +22,28 @@ Report a new implementation census separately with its actual source identity;
 never relabel the baseline, invent assets or substitute enriched inputs. The
 original 142/41/1 checkpoint below remains historical evidence.
 
-A separate offline whole-project profile at `b1ef5e4ea` selected the 29 authentic
-contexts with retained successful original compilation. It measured **20 clean
-source/Creator imports, 18 clean current exports and 16 clean complete pure
-routes**. The complete route includes Code feedback, saved current Blocks and
-assets, current export, and reimport/Creator. These are stage counts for that
-one profile, not game, native execution or GUI results.
+The latest separate offline whole-project profile at `31abb5767` selected the
+29 authentic contexts with retained successful original compilation. It measured
+**20 clean source/Creator imports, 20 clean current exports and 18 clean complete
+pure routes**. The historical `b1ef5e4ea` profile measured 20/18/16. The complete
+route includes Code feedback, saved current Blocks and assets, current export,
+and reimport/Creator. These are pure stage counts, not game, native execution or
+GUI results.
+
+A read-only input audit now verifies that all 20 asset-floor cases have genuine
+nonempty bytes for their referenced resources in retained compiler-resolved
+contexts. Sixteen have successful original compilation; four retain original
+compiler failures. No new acquisition is needed to prepare those exact inputs.
+Availability is not a closure: disclose added genuine files in a separate
+complete-context census and qualify conversion, runtime, current roundtrips and
+visible editing. Preserve unresolved extension revisions and licence boundaries.
+Do not redistribute assets whose applicable terms remain unknown.
+
+Sixteen genuine closures would leave 20 cases from the current 36-case backlog.
+Reaching fewer than 20 therefore also needs at least one further genuine
+implementation closure. Prioritize the existing nine source-blocked projects
+by their actual diagnostics, then verify complete project behavior. A focused
+primitive test or a successful original compilation cannot close a whole case.
 
 Follow-ups retain that baseline rather than invent a new aggregate:
 
