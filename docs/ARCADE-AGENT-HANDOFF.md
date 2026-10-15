@@ -73,6 +73,68 @@ canonical protocol docs [PR156](https://github.com/CrispStrobe/sb3-creator/pull/
 are merged without a compiler pin move. No final all-enabled-checks, installed
 GUI or complete-game claim follows from these partial results.
 
+## Later measured frontier — 2026-10-15
+
+This section supersedes the earlier development and profile status above.
+The raw corpus remains **147 translated / 36 partial / one malformed input**.
+The new profile at `31abb5767`, using the same 29 original-valid complete
+projects, measures **20 source/Creator clean, 20 current-export clean and
+18 complete pure routes clean**. The full candidate compiler plus explicit
+Throw prototype measures the same counts. These are portable conversion
+results; no SDK game, controller or graphics-editor result follows from them.
+Nine projects still fail at source admission. The two later-stage cases retain
+a missing dependency context and unsupported helper constraints respectively.
+
+Private development composition `0fa7d5ff9` passes **138 affected controls**
+with the complete corrected canonical compiler candidate `9d3e222e`.
+All 779 selected source, installed and compiler file guards remain unchanged;
+174 VM overlay mirrors match. The tests cover native Procedure entry and
+writes, source annotation prefixes, primitive Throw, owned Sprite creation,
+Map lowering and current export. They do not establish production adoption.
+
+The ordinary Procedure source prototype retains required primitive constraints
+for supported ordinary and namespace declarations. Number compound writes
+require real Number operands. Unsupported optional/default, generic,
+reference and mixed signatures remain explicit diagnostics. The authentic Lyla
+follow-up still has six source diagnostics; preserving one unused helper is
+not whole-project completion. Constraints remain obligations and never become
+observations that a parameter has an actual value.
+
+The corrected [canonical candidate](https://github.com/CrispStrobe/sb3-creator/pull/157)
+rejects hidden inputs, inconsistent prototypes and malformed constrained
+calls instead of dropping executable data on Code reconstruction. Its 457
+focused controls pass. Its new exact-head hosted checks and normal merge are
+still required. Consumer adoption must use the repository's vendor writers,
+include the new constraint module in the identity mapping, and preserve other
+lanes' hardware pins. Do not edit copied vendor files to introduce the words.
+
+### Next work in dependency order
+
+1. Finish all actual hosted jobs for the current published consumer and
+   corrected compiler heads. Preserve the original failures. The consumer's
+   unit-four failure exposed missing editor-closing assertions; the reviewed
+   correction passes eleven focused controls with the baseline unchanged.
+   Its actual browser execution remains pending.
+2. Qualify and adopt the canonical words, then verify ordinary annotation,
+   Throw and owned Sprite authoring in the installed Blocks and Code editors.
+   Follow the [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md); native
+   registration alone does not establish visible authoring.
+3. Preserve optional/default argument behavior through actual Undefined and
+   invocation rules. Do not use a strict Number constraint before a default
+   initializer and thereby reject a legal omitted argument.
+4. Add real Array operation and alias guards before admitting Array formal
+   constraints. Cover raw inputs, named aliases, all mutation paths, captured
+   lifetimes, foreign runtimes and failure completion. Existing Array transport
+   already preserves references; converting them to strings is not the gap.
+5. Prove Settings results from the real decoder. Numeric settings can return
+   an Array, Undefined or Null. An Undefined-only branch does not prove Array;
+   a nullish Map must not silently act like an empty Array. Only then reassess
+   the unchanged Settings project and handler-record Array cases.
+6. Re-run affected complete-project routes after genuine capabilities land.
+   Promote a case only when all diagnostic channels and current roundtrip
+   stages pass. Keep raw-input, authentic-context, native and GUI counts
+   separate. Missing authentic assets remain named input limitations.
+
 ## Earlier composition and canonical creator adoption — 2026-10-15
 
 The following checkpoints are retained in chronological context and superseded

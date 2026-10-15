@@ -4790,3 +4790,26 @@ Discarded expressions are an additional open source/editor lane; see
 hidden global or an unsupported word is not an authoring solution. Qualify an
 existing activation-local sink or a proper editable evaluate/discard command
 through the canonical compiler before admitting that source syntax.
+
+
+### Procedure and nullable collection follow-up — 2026-10-15
+
+The development source prototype now retains required primitive annotations
+through a first-command declaration prefix. Actual native stock and managed
+calls validate complete inputs; local and captured writes enforce the same
+obligations. Extra executable inputs and inconsistent prototypes refuse rather
+than disappearing on Code reconstruction. These are passing development
+controls, not an installed editor qualification or production compiler adoption.
+
+Optional and default parameters need actual omission/Undefined behavior in
+addition to visible type fields. Do not present a required Number declaration
+as equivalent to an optional/default Number formal. Show unsupported signatures
+in the Code import diagnostic and retain their source for review.
+
+Array authoring needs real reference creation, alias-aware mutations and
+parameter constraints connected to the same backing Array. The visible editor
+must expose absence checks and precise nullish failures: Settings may produce
+Null as well as Undefined. An annotation, an empty input socket or a desired
+consumer type must not manufacture an Array. Include save/reopen and current
+export/reimport with edited elements, captured aliases and an independent
+script continuing after a rejected operation.
