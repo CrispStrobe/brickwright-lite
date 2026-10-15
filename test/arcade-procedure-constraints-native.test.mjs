@@ -9,12 +9,12 @@ import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 // This is native boundary coverage, not qualification of the new Code grammar.
 const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(target=>Object.values(target.variables)).map(variable=>[variable.name,variable.value]));
 const finish=run=>{run.vm.stopAll();run.vm.quit();clearStrayTimers();};
-async function fixture({route='stock',type='Number',physical='math_number',writer=false,unused=false,transport=null,protocol=true}={}){
+async function fixture({route='stock',type='Number',physical='math_number',writer=false,unused=false,transport=null,protocol=true,extra=null}={}){
  const invoke=route==='stock'?'CALL: (hold (20))':'set ignored to arcade call function "hold %s" arguments (arcade function argument (20) rest ("[]"))';
- const run=await runProgram(`DEVICE ARCADE\nGLOBAL entered\nGLOBAL observed\nGLOBAL after\nGLOBAL independent\nGLOBAL ignored\nSPRITE Game:\nWHEN flag clicked:\n  ${unused?'set ignored to 0':invoke}\n  change after by 1\nWHEN flag clicked:\n  change independent by 1\nDEFINE hold (value):\n  change entered by 1\n  set observed to value\n`,{frames:0});
+ const run=await runProgram(`DEVICE ARCADE\nGLOBAL entered\nGLOBAL observed\nGLOBAL after\nGLOBAL independent\nGLOBAL ignored\nGLOBAL sideEffects\nSPRITE Game:\nWHEN flag clicked:\n  ${unused?'set ignored to 0':invoke}\n  change after by 1\nWHEN flag clicked:\n  change independent by 1\nDEFINE hold (value):\n  change entered by 1\n  set observed to value\nDEFINE sideEffect:\n  change sideEffects by 1\n  arcade return value (1)\n`,{frames:0});
  run.vm.stopAll();
  const project=run.creator.project,target=project.targets.find(target=>Object.values(target.blocks||{}).some(block=>block.opcode==='procedures_definition'));
- const blocks=target.blocks,definitions=Object.entries(blocks).filter(([,block])=>block.opcode==='procedures_definition');assert.equal(definitions.length,1);
+ const blocks=target.blocks,definitions=Object.entries(blocks).filter(([,block])=>block.opcode==='procedures_definition'&&blocks[block.inputs.custom_block[1]].mutation.proccode==='hold %s');assert.equal(definitions.length,1);
  const [definitionId,definition]=definitions[0],prototype=blocks[definition.inputs.custom_block[1]],names=JSON.parse(prototype.mutation.argumentnames),ids=JSON.parse(prototype.mutation.argumentids),code=prototype.mutation.proccode;
  assert.equal(names.length,1);assert.equal(ids.length,1);assert.equal(blocks[prototype.inputs[ids[0]][1]].fields.VALUE[0],names[0]);
  const first=definition.next;assert.ok(first);blocks[first].parent='constraint';definition.next='constraint';
@@ -35,6 +35,13 @@ async function fixture({route='stock',type='Number',physical='math_number',write
   assert.equal(route,'managed');const [id,call]=Object.entries(blocks).find(([,block])=>block.opcode==='arcade_callFunction');
   const remove=id=>{if(typeof id!=='string'||!blocks[id])return;const node=blocks[id];for(const input of Object.values(node.inputs||{}))remove(input[1]);delete blocks[id];};
   remove(call.inputs.ARGS[1]);blocks.transport={opcode:'text',parent:id,topLevel:false,shadow:true,next:null,inputs:{},fields:{TEXT:[transport,null]}};call.inputs.ARGS=[1,'transport'];
+ }
+ if(extra){
+  const opcode=extra==='stock'?'procedures_call':extra==='managed'?'arcade_callFunction':'arcade_functionArgument';
+  const [ownerId,owner]=Object.entries(blocks).find(([,block])=>block.opcode===opcode);assert.ok(owner);
+  const sideDefinition=Object.values(blocks).find(block=>block.opcode==='procedures_definition'&&blocks[block.inputs.custom_block[1]].mutation.proccode==='sideEffect');assert.ok(sideDefinition,'actual authored side-effect procedure');
+  blocks.hiddenExtraCall={opcode:'arcade_callFunction',parent:ownerId,next:null,topLevel:false,shadow:false,fields:{},inputs:{NAME:[1,[10,'sideEffect']],ARGS:[1,[10,'[]']]}};
+  owner.inputs.EXTRA=[2,'hiddenExtraCall'];
  }
  if(!protocol){definition.next=first;blocks[first].parent=definitionId;delete blocks.constraint;}
  const bytes=Buffer.from(await(await run.creator.generateSB3()).arrayBuffer());
@@ -99,4 +106,13 @@ test('registered callback mutates its actual constrained formal after the instal
   const first=values(run);t.diagnostic(JSON.stringify({first,errors:run.errors}));assert.deepEqual(run.errors,[]);assert.equal(first.observed,22);assert.equal(first.ticks,2);
   run.vm.stopAll();await stepFrames(run.vm,4);assert.deepEqual(values(run),first);run.vm.greenFlag();await stepFrames(run.vm,8);assert.deepEqual(run.errors,[]);assert.equal(values(run).observed,22);assert.equal(values(run).ticks,2,'restart allocates and constrains a fresh formal cell');
  }finally{if(run)finish(run);}
+});
+
+for(const extra of ['stock','managed','argument'])test('constrained '+extra+' hidden connected input refuses without callee effects',async t=>{
+ let run;try{run=await fixture({route:extra==='stock'?'stock':'managed',extra});await stepFrames(run.vm,8);const actual=values(run);t.diagnostic(JSON.stringify({extra,actual,errors:run.errors}));assert.equal(actual.entered,0);assert.equal(actual.after,0);assert.equal(actual.independent,1);assert.equal(actual.sideEffects,extra==='stock'?0:1,'argument evaluation precedes managed entry rejection');assert.equal(run.errors.length,1);assert.match(run.errors[0],/Procedure parameter constraint/);assert.match(run.errors[0],/input|socket/i);await stepFrames(run.vm,4);assert.equal(run.errors.length,1,'invalid continuation retired once');assert.equal(values(run).sideEffects,actual.sideEffects,'no repeated argument effect');}
+ finally{if(run)finish(run);}
+});
+test('unconstrained stock hidden input preserves its existing evaluation',async t=>{
+ let run;try{run=await fixture({route:'stock',extra:'stock',protocol:false});await stepFrames(run.vm,8);const actual=values(run);t.diagnostic(JSON.stringify({actual,errors:run.errors}));assert.deepEqual(run.errors,[]);assert.equal(actual.entered,1);assert.equal(actual.after,1);assert.equal(actual.independent,1);assert.equal(actual.sideEffects,1);}
+ finally{if(run)finish(run);}
 });
