@@ -62,6 +62,7 @@ module.exports = function createSdkImageOwner(runtime, values, currentState) {
             expected = {extension:value.extension, images:value.images, identities:value.identities, resolve:value.resolve};
         },
         body,
+        isDisposed() {return disposed;},
         assert(value) {body(value); return value;},
         dispose() {disposed = true; expected = null;}
     });
