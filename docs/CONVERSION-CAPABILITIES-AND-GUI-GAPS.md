@@ -4464,3 +4464,22 @@ retaining its ordinary editable join operands. The current block edit changing
 the Number operand is covered; add a browser journey for creation, edit, save,
 export and reimport. Do not grant Number authority to an absent conditional
 result or an arbitrary class method named `toString`.
+
+
+### Owned callable reflection and shared numeric carriers
+
+Owned callable `typeof` now has source/current-body/native/Code/saved-project/
+export/reimport qualification, including selected-original execution of an
+actual callback edit. Captured actions and noncapturing labels preserve the
+selected MakeCode `object`/`function` distinction. Actual current producers,
+writers, capture uses and lifecycle remain required. Factory/class/reflection
+authoring from scratch still needs a visible browser journey and discoverable
+editor guidance; this is not general callable or inheritance completion. See
+[the bounded contract](compatibility/arcade-owned-callable-typeof.md).
+
+Micro:bit, Calliope and EV3 now preserve finite scientific literals in actual
+numeric Code inputs, including tiny/subnormal values and current numeric field
+edits through saved projects and target export/reimport. No new blocks are
+needed. Visible three-target editing of those fields, readable subnormal Code
+spelling, target hardware precision and full non-finite carriers remain open.
+See [shared finite carriers](compatibility/shared-finite-number-carriers.md).
