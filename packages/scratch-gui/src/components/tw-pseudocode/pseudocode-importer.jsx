@@ -121,9 +121,9 @@ const L10N = {
         mcShareLoading: 'Fetching the shared project…',
         mcExport: '⬆ To MakeCode',
         mcExportTitle: 'Save this project as a native MakeCode project (.mkcd)',
-        mcExportDone: (f, u) => (u ?
-            `Saved ${f} — drop it on makecode.microbit.org to open it there. ${u} block(s) had no MakeCode equivalent.` :
-            `Saved ${f} — drop it on makecode.microbit.org to open it there.`),
+        mcExportDone: (f, u, editor) => (u ?
+            `Saved ${f} — drop it on ${editor} to open it there. ${u} block(s) had no MakeCode equivalent.` :
+            `Saved ${f} — drop it on ${editor} to open it there.`),
         mcExportEmpty: 'Nothing to export — write some blocks first.',
         mcRun: '▶ Run in MakeCode simulator',
         mcRunTitle: 'Compile this MakeCode project with MakeCode\'s own compiler and run it in MakeCode\'s simulator — nothing is translated, so nothing is lost',
@@ -452,9 +452,9 @@ const L10N = {
         mcShareLoading: 'Geteiltes Projekt wird geladen…',
         mcExport: '⬆ Zu MakeCode',
         mcExportTitle: 'Dieses Projekt als natives MakeCode-Projekt (.mkcd) speichern',
-        mcExportDone: (f, u) => (u ?
-            `${f} gespeichert — auf makecode.microbit.org ablegen, um es dort zu öffnen. Für ${u} Block/Blöcke gibt es in MakeCode keine Entsprechung.` :
-            `${f} gespeichert — auf makecode.microbit.org ablegen, um es dort zu öffnen.`),
+        mcExportDone: (f, u, editor) => (u ?
+            `${f} gespeichert — auf ${editor} ablegen, um es dort zu öffnen. Für ${u} Block/Blöcke gibt es in MakeCode keine Entsprechung.` :
+            `${f} gespeichert — auf ${editor} ablegen, um es dort zu öffnen.`),
         mcExportEmpty: 'Nichts zu exportieren — zuerst Blöcke schreiben.',
         mcRun: '▶ Im MakeCode-Simulator ausführen',
         mcRunTitle: 'Dieses MakeCode-Projekt mit dem MakeCode-eigenen Compiler übersetzen und im MakeCode-Simulator ausführen — es wird nichts umgewandelt, also geht nichts verloren',
@@ -1998,35 +1998,33 @@ class PseudocodeImporter extends React.Component {
         }
     }
 
-    /**
-     * Save this project as a .hex makecode.microbit.org will import.
-     *
-     * MakeCode's importer does not read the machine code in a .hex — it
-     * scans for the source-embedding header and opens the project inside.
-     * So a hex carrying nothing but that embed is a valid MakeCode
-     * project file, and this is the one export that lands as a PROJECT
-     * over there rather than as text to paste.
-     */
+    /** Save the single-board program for its own MakeCode editor. */
     async exportMakeCode () {
         const source = this.state.buffers.pseudocode || '';
         if (!source.trim()) { this.setState({status: this.L.mcExportEmpty}); return; }
         if (this.hasBoards(source)) { await this.exportBoardsMakeCode(source); return; }
+        const target = this.currentDevice();
         this.setState({busy: true});
         try {
             const SB3Creator = (await this.lib()).default;
             const creator = new SB3Creator();
             const project = creator.parse(source);
-            const {exportToMakeCode, makeCodeProjectFile} = await import(
+            const {exportToMakeCode, exportToMakeCodeCalliope, exportToMakeCodeEv3, makeCodeProjectFile} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
+            const exporter = {microbit: exportToMakeCode, calliopemini: exportToMakeCodeCalliope,
+                ev3: exportToMakeCodeEv3}[target];
+            if (!exporter) throw new Error(`MakeCode export is not available for ${target || 'this device'}.`);
             const name = (source.match(/^#\s*(.+)$/m) || [])[1] || 'brickwright';
             const original = this.makeCodeOriginalStatus();
-            // F10: an imported micro:bit project, unchanged since import, exports its own files.
-            const out = original.status === 'current' && original.target === 'microbit' ?
-                {files: original.files, unsupported: [], filename: `${String(original.name || name).trim().slice(0, 40)}.hex`} :
-                exportToMakeCode(project, {name: name.trim().slice(0, 40)});
-            const filename = out.filename.replace(/\.hex$/i, '.mkcd');
-            await downloadBlob(filename, new Blob([makeCodeProjectFile(out.files, {name: name.trim().slice(0, 40), target: 'microbit'})], {type: 'application/octet-stream'}));
-            this.setState({busy: false, status: this.L.mcExportDone(filename, out.unsupported.length)});
+            // F10: unchanged imported projects retain their own target's files.
+            const keepOriginal = original.status === 'current' && original.target === target;
+            const exportName = String(keepOriginal && original.name || name).trim().slice(0, 40);
+            const out = keepOriginal ? {files: original.files, unsupported: []} : exporter(project, {name: exportName});
+            const basename = keepOriginal ? exportName : String(exportName).replace(/[^A-Za-z0-9_-]+/g, '-').toLowerCase() || 'project';
+            const filename = `${basename}.mkcd`;
+            await downloadBlob(filename, new Blob([makeCodeProjectFile(out.files, {name: exportName, target})],
+                {type: 'application/octet-stream'}));
+            this.setState({busy: false, status: this.L.mcExportDone(filename, out.unsupported.length, MAKECODE_EDITOR[target])});
         } catch (err) {
             this.setState({busy: false, status: this.L.mcFailed('MakeCode export', (err && err.message) || String(err))});
         }
@@ -5426,7 +5424,7 @@ class PseudocodeImporter extends React.Component {
                         title={this.L.mcShareTitle} data-testid="bw-makecode-share">
                         {this.L.mcShare}
                     </button>
-                    {['microbit', 'calliopemini'].includes(this.currentDevice()) ? (
+                    {['microbit', 'calliopemini', 'ev3'].includes(this.currentDevice()) ? (
                         <button type="button" onClick={this.exportMakeCode} style={item}
                             title={this.L.mcExportTitle} disabled={this.state.busy}
                             data-testid="bw-makecode-export">{this.L.mcExport}</button>
