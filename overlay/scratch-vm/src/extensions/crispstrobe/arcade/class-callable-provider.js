@@ -110,7 +110,7 @@ module.exports = function createClassCallableProvider(runtime, values, heap, fra
             return frames.receiverCell(util,receiver);
         },
         signature(proof) {const record=recordFor(proof);current(record,record.target);return structuredClone(record.signature);},
-        invocation(proof,args) {const record=recordFor(proof);current(record,record.target);return types.instantiate(record.signature,[],args);},
+        invocation(proof,args,rawArgs=args) {const record=recordFor(proof);current(record,record.target);const signature=types.instantiate(record.signature,[],args);signature.parameters.forEach((parameter,index)=>{if(parameter.type.kind==='sdk')types.result({kind:'callable',parameters:[],result:parameter.type},rawArgs[index]);});return signature;},
         result(signature,value) {return types.result(signature,value);},
         fieldSignature(signature) {
             const validated=types.validate(signature);

@@ -1984,14 +1984,15 @@ module.exports = makeExt(`// Name: Arcade
       util={thread:util?.thread,target:util?.target || util?.thread?.target,sequencer:util?.sequencer,bwObjectUtility:util};
       let allocation;
       try {
+        const rawValues=JSON.parse(String(args.ARGS));
+        if(!Array.isArray(rawValues))throw new Error('Class constructor arguments must be an ordered argument list');
+        classCallableHosts.get(this)?.validateConstructor(this._objectHeap.definition(String(args.CLASS)),rawValues);
         let values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
-        if(!Array.isArray(values))throw new Error('Class constructor arguments must be an ordered argument list');
         values=values.map(value=>this._objectHeap.hold(value));
         allocation=this._objectHeap.allocate(String(args.CLASS));
         const {ref,def,token}=allocation;
         if(values.length>def.parameters.length)throw new Error('Class constructor has too many arguments');
         while(values.length<def.parameters.length){const param=def.parameters[values.length];values.push(Object.prototype.hasOwnProperty.call(param,'default')?Scratch.BWValues.encode(param.default):Scratch.BWValues.UNDEFINED);}
-        classCallableHosts.get(this)?.validateConstructor(def,values);
         const invokeConstructor=()=>{if(!this._objectHeap.constructionActive(ref,token)){const error=new Error('Class construction was cancelled by project replacement');error.bwObjectCancelled=true;throw error;}return def.constructor?this._objectProcedure(def.constructor,[ref,...values],util,token):undefined;};
         const finish=()=>{if(util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))){this._objectHeap.abort(ref,token);return Scratch.BWValues.UNDEFINED;}return this._objectHeap.finish(ref,token);};
         const failed=error=>{this._objectHeap.abort(ref,token);return error.bwObjectCancelled || util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))?Scratch.BWValues.UNDEFINED:this._objectError(error);};
@@ -2017,6 +2018,9 @@ module.exports = makeExt(`// Name: Arcade
     callObjectMethod(args,util) {
       try {
         const method=this._objectHeap.method(args.OBJECT,String(args.METHOD));
+        const rawValues=JSON.parse(String(args.ARGS));
+        if(!Array.isArray(rawValues))throw new Error('Class method arguments must be an ordered argument list');
+        classCallableHosts.get(this)?.validateMethodInputs(method,rawValues);
         let values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
         if(!Array.isArray(values))throw new Error('Class method arguments must be an ordered argument list');
         if(values.length>method.parameters.length)throw new Error('Class method has too many arguments');
@@ -2045,7 +2049,7 @@ module.exports = makeExt(`// Name: Arcade
       if(this._sdkObjectClasses.matches(name)) {try {const values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));if(!Array.isArray(values))throw new Error('SDK Sprite call requires ordered arguments');return this._sdkObjectClasses.invoke(name,values,util,args.bwObjectConstruction || util?.thread?.bwObjectConstruction);}catch(error){return this._objectError(error);}}
       const definition = target?.blocks?.getProcedureDefinition(name);
       if (!definition || !runtime?._pushThread) return 0;
-      let values;try {values = JSON.parse(String(args.ARGS), (_key,value)=>
+      let values,rawValues;try {rawValues=JSON.parse(String(args.ARGS));values = JSON.parse(String(args.ARGS), (_key,value)=>
         Scratch.BWValues.encode(Scratch.BWValues.decode(value)));} catch {return 0;}
       if (!Array.isArray(values)) return 0;
       const [names, , defaults] = target.blocks.getProcedureParamNamesIdsAndDefaults(name);
@@ -2061,7 +2065,7 @@ module.exports = makeExt(`// Name: Arcade
       thread.pushStack(definition);
       thread.bwObjectConstruction = args.bwObjectConstruction || util.thread?.bwObjectConstruction;
       let classSignature=null;
-      try {classSignature=classCallableHosts.get(this)?.bind(thread,target,name,thread.stackFrames[0].params,thread.bwObjectConstruction,values);}
+      try {classSignature=classCallableHosts.get(this)?.bind(thread,target,name,thread.stackFrames[0].params,thread.bwObjectConstruction,values,rawValues);}
       catch(error){runtime.sequencer.retireThread(thread);return this._objectError(error);}
       managedReturnHosts.get(this).bind(thread,target,name,definition,util.thread);
       const managedCaller=util.thread;
@@ -2128,8 +2132,8 @@ module.exports = makeExt(`// Name: Arcade
       return result && typeof result.then==='function'?result.then(complete):complete(result);
     }
     callCallable(args,util) {
-      try {const values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
-        return this._callableProcedure(this._callableValues.invocation(args.CALLABLE,values),util);}
+      try {const rawValues=JSON.parse(String(args.ARGS)),values=JSON.parse(String(args.ARGS),(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
+        return this._callableProcedure(this._callableValues.invocation(args.CALLABLE,values,rawValues),util);}
       catch(error){return this._objectError(error);}
     }
     holdCallable(reference) {return this._callableValues.hold(reference);}

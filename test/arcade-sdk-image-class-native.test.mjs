@@ -23,13 +23,13 @@ test('native SDK Image fields and unused constructor arguments use the actual ow
   assert.equal(e._objectHeap.inspect(object).className,'PictureHolder');assert.equal(BW.decode(e._objectHeap.get(object,'picture')),undefined);
   e._objectHeap.set(object,'picture',picture);assert.equal(e._objectHeap.get(object,'picture'),picture);
   const clone=e.cloneImage({IMAGE:picture});e._objectHeap.set(object,'picture',clone);assert.notEqual(e._image(clone),e._image(picture));
-  for(const value of [20,'20',undefined,BW.reference(f.runtime,'image','missing')]){
+  for(const value of [20,'20',undefined,BW.reference(f.runtime,'image','missing'),{bwReference:{...picture.bwReference,extra:1}},{...picture,extra:1}]){
    assert.throws(()=>e._objectHeap.set(object,'picture',value));
-   const count=f.errors.length;assert.equal(BW.decode(e.createObject({CLASS:'GuardedBodyHolder',ARGS:JSON.stringify([BW.encode(value)],BW.jsonReplacer)})),undefined);assert.equal(f.errors.length,count+1);
+   const count=f.errors.length;assert.equal(BW.decode(e.createObject({CLASS:'GuardedBodyHolder',ARGS:JSON.stringify([value===undefined?BW.UNDEFINED:value])})),undefined);assert.equal(f.errors.length,count+1);
   }
   assert.equal(e._objectHeap.get(object,'picture'),clone);f.runtime.emit('PROJECT_STOP_ALL');assert.equal(e._objectHeap.get(object,'picture'),clone);
-  assert.equal(f.errors.length,4);
-  assert.ok(f.errors.every(error=>/argument structure differs|body is missing/.test(error.message)));
+  assert.equal(f.errors.length,6);
+  assert.ok(f.errors.every(error=>/argument structure differs|body is missing|owned Image/.test(error.message)));
  }finally{f.dispose();}
 });
 test('native SDK class markers require exact fields and constructor source-facing types',async()=>{
@@ -57,5 +57,9 @@ test('native SDK method parameter and result roles agree with the one structured
   const bad=[{...method,returnType:'Number'},{...method,parameters:[{...method.parameters[0],type:'String'}]},{...method,parameters:[{...method.parameters[0],sdkType:sdk()}]},{...method,callableSignature:{...method.callableSignature,result:{...sdk(),extra:true}}}];
   for(const current of bad)assert.throws(()=>f.extension._objectHeap.register({...spec(),methods:[current]}));
   const definition=f.extension._objectHeap.register({...spec(),methods:[method]});assert.deepEqual(definition.methods.get('copy').callableSignature.result,sdk());
+  const picture=f.extension.createImage({WIDTH:1,HEIGHT:1}),object=f.extension.createObject({CLASS:'PictureHolder',ARGS:JSON.stringify([picture])});
+  const malformed={bwReference:{...picture.bwReference,extra:1}};
+  assert.equal(f.BW.decode(f.extension.callObjectMethod({OBJECT:object,METHOD:'copy',ARGS:JSON.stringify([malformed])})),undefined);assert.match(f.errors.at(-1).message,/owned Image/);
+  assert.equal(f.BW.decode(f.extension.callObjectMethod({OBJECT:object,METHOD:'copy',ARGS:JSON.stringify([picture])})),undefined);assert.match(f.errors.at(-1).message,/procedure is not defined/);
  }finally{f.dispose();}
 });

@@ -193,7 +193,7 @@ class ArcadeCallableValues {
         return typeof decoded;
     }
 
-    invocation(reference, args) {
+    invocation(reference, args, rawArgs = args) {
         if (!Array.isArray(args)) throw new Error('Callable invocation requires ordered arguments');
         const resource = this.resource(reference);
         const supplied = args.slice();
@@ -203,7 +203,7 @@ class ArcadeCallableValues {
         // Each invocation gets its own map, while captured variable cells stay live.
         const invocation = {...resource, args:supplied, captures:new Map(resource.captures)};
         const declaration = classState.get(this).declarations.get(resource.definition);
-        if (declaration) classState.get(this).invocations.set(invocation, {signature:classState.get(this).provider.invocation(declaration, supplied),resource});
+        if (declaration) classState.get(this).invocations.set(invocation, {signature:classState.get(this).provider.invocation(declaration, supplied, rawArgs),resource});
         return invocation;
     }
 
