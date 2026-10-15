@@ -23,7 +23,7 @@ test('default SDK selection retains the completed actual proof identity and keep
  const other=selectClassCallableSourceProof(parse(nominal));assert.equal(other.proof.eligible,true);assert.equal(other.sdkImageEnabled,false);assert.deepEqual(arcadeToPseudocode(nominal).unsupported,[]);
 });
 test('default Image selection refuses annotations, opaque or deferred producers, lexical shadows and adjacent bodies',()=>{
- for(const value of ['20 as Image','unknown as Image','image.create(-1,2)','image.create(2001,2)','image.create(width,2)','img`1`','screen','sprites.create(img`1`,SpriteKind.Player).image']){
+ for(const value of ['20 as Image','unknown as Image','image.create(-1,2)','image.create(2001,2)','image.create(width,2)','img`z`','screen','sprites.create(img`1`,SpriteKind.Player).image']){
   const input=source.replace('image.create(2,2)',value);assert.ok(arcadeToPseudocode(input).unsupported.length,value);assert.ok(arcadeToPseudocode(input,{sdkImagePrototype:true}).unsupported.length,value+' explicit option');
  }
  for(const input of [

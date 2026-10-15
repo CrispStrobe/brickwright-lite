@@ -181,13 +181,12 @@ complete library admission.
 
 ## Literal resource producer follow-up
 
-PLANNED — the existing ownership includes literal Images. The default factory
-and clone checkpoint does not yet admit them. An actual two-by-two `img`
-literal passed to the class holder is refused by source proof. The equivalent
-current Code resource already executes with the real pixels and clone identity,
-but its current class export refuses the unproved constructor argument.
+IMPLEMENTED, original qualification pending — the literal producer tranche extends
+the factory and clone checkpoint. The earlier source and current-export refusals
+are retained as the baseline. Native authoring controls cover repeated factory
+allocation, alias mutation, current SVG artwork and portable save/reopen routes.
 
-The next tranche admits only an actual unshadowed, rectangular `img` Template
+The tranche admits only an actual unshadowed, rectangular `img` Template
 with exact palette characters and bounded dimensions. Resolve the tag in its
 actual lexical scope: the parser retains a tag string, not an Identifier whose
 name alone proves SDK ownership. Unknown characters, interpolation, opaque
@@ -213,3 +212,17 @@ distinct clone allocations, all writer/ingress proof and Image-owner lifetime.
 New selected-SDK source and edited-art export inputs require a fresh serialized
 lease and exact input/binary/observation/guard closure. No unchanged original
 replay or broader class/Image/GUI qualification follows from this plan.
+
+The qualified current resource format is the pixel editor's opaque, scale-four
+rect-SVG output in the SDK palette. The editor's actual save method writes the
+asset through `vm.updateSvg`; current bytes are resolved again after asset-ID
+remapping and fresh SB3 load. Transparent palette entries remain supported.
+Partially opaque layers, custom palettes, PNG/bitmap costumes and other SVG
+layouts remain explicit refusals for this producer proof.
+
+Only actual owned Image `getPixel(x, y)` and `setPixel(x, y, color)` calls are
+added here, with exact arity and Number producers for every coordinate/color.
+The existing pixel operations determine bounds and mutation effects. Current
+serialized operands are checked before numeric socket rendering, so a text
+numeral cannot borrow Number authority from export formatting. No other Image
+member, dynamic dimension, Sprite or annotation producer is added.

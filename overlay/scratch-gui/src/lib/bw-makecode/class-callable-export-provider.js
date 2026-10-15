@@ -252,13 +252,14 @@ export function createClassCallableExportProvider({target,project,classes,defini
     };
     const verifyWriters=()=>{
         for(const other of project.targets)for(const block of Object.values(other.blocks||{})){
-            if(!['arcade_setObjectField','arcade_assignObjectField'].includes(block.opcode))continue;
+            const pixel=sdkImagePrototype&&['arcade_imagePixel','arcade_setImagePixel'].includes(block.opcode);
+            if(!pixel&&!['arcade_setObjectField','arcade_assignObjectField'].includes(block.opcode))continue;
             if(other!==target)fail('foreign class field writer has no owned lexical provenance');
             const owner=scope(block),actual=operation(block,owner,{
-                inputType:name=>slotType(block.inputs?.[name]?.[1],owner),
+                inputType:name=>slotType(block.inputs?.[name]?.[1],owner,new Set(),block),
                 argsType:()=>[],localType:name=>local(owner,name,block)
             });
-            if(!actual)fail('current class field write differs from its concrete signature');
+            if(!actual)fail(pixel?'current Image pixel operation lacks its actual owned receiver and Number operands':'current class field write differs from its concrete signature');
         }
     };
     return Object.freeze({
