@@ -370,6 +370,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
             verifyWriters();
             const provider=this;
             return {
+                statementTerminator:true,
                 generatedLocal(id){const block=target.blocks[id],proof=provider.localAssignment(block,owner);if(proof)cells.set(proof.name,proof.type);return proof;},
                 discardLocal(id){
                     const block=target.blocks[id];if(block?.opcode!=='arcade_setLocal'||!contains(root,id))return false;
@@ -388,6 +389,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
             const owner={className:cls.name,receiverParameter:definition.parameters[0],parameters:method.parameters,procedure:code};
             const provider=this,cells=new Map();
             return {
+                statementTerminator:true,
                 generatedLocal(id){
                     const block=target.blocks[id],branch=conditional(owner);if(!branch){const proof=provider.localAssignment(block,owner);if(proof)cells.set(proof.name,proof.type);return proof;}
                     if(block?.opcode!=='arcade_setLocal')return null;
