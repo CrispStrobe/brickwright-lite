@@ -3,7 +3,7 @@ import {consoleInspectSourceCalls} from './console-inspect-source.js';
 
 export function lowerConsoleInspectValues(program) {
     const qualified=consoleInspectSourceCalls(program),unsupported=[...qualified.diagnostics];
-    const analysis=analyseSourceValueProducers(program,{consoleInspection:true,opaqueDeclarationValues:true,unboundIsOpaque:true});
+    const analysis=analyseSourceValueProducers(program,{consoleInspection:true,opaqueDeclarationValues:true,unboundIsOpaque:true,uninitializedLocalsAreOpaque:true});
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const domain=(node,allowed)=>{const types=analysis.typesAt(node);return types.size>0&&[...types].every(type=>allowed.includes(type));};
     const rewrite=node=>{

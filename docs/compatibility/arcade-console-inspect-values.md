@@ -120,6 +120,11 @@ writer. Mixed primitive writers remain eligible; a reference or unknown writer
 refuses. Current export follows directed writers separately from an Any storage
 annotation, and refuses hidden/foreign writers or computed local names.
 
+Uninitialized lexical local reads retain an explicit producer refusal while their
+source local-storage ABI is qualified. Explicit Undefined initializers and omitted
+optional actual arguments remain separate cases. This is not a change to the
+default value of an ordinary Scratch local.
+
 Native and source portable controls do not establish selected-original execution
 or the hosted editor journey. Arrays and reference values remain outside this
 initial slice.

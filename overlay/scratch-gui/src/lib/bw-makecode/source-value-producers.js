@@ -4,7 +4,7 @@ import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-export function analyseSourceValueProducers(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,consoleInspection=false}={}) {
+export function analyseSourceValueProducers(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,consoleInspection=false}={}) {
     const numericArrows=new Set(provedArrows),numericHelpers=new Set(provedHelpers);
     const inspection=consoleInspection?consoleInspectSourceCalls(program):null;
     let internalInspection=false;
@@ -90,7 +90,11 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
         const owner=owners.get(node)||global;
         if(node.type==='Identifier'){
             if(known.has(binding(owner,node.name)))initializedReads.add(node);
-            if(!writing.has(node)&&!(node.name==='screen'&&sdk.has(node))&&!known.has(binding(owner,node.name)))add(cell(node),'Undefined');return known;
+            if(!writing.has(node)&&!(node.name==='screen'&&sdk.has(node))&&!known.has(binding(owner,node.name))){
+                const id=binding(owner,node.name);
+                if(uninitializedLocalsAreOpaque&&global.bindings.get(node.name)!==id&&[...(declarations.get(id)||[])].some(declaration=>typeof declaration==='object'&&!['FunctionDeclaration','Class','Enum'].includes(declaration.type)))add(cell(node),'Opaque');
+                add(cell(node),'Undefined');
+            }return known;
         }
         if(node.type==='FunctionDeclaration'||node.type==='FunctionExpression'){const entryOwner=node.type==='FunctionDeclaration'?functions.get(binding(owner,node.name))?.owner:null;const first=node.body?.[0],methodOwner=entryOwner||owners.get(first);entry(node.body,new Set((node.params||[]).map(name=>binding(methodOwner||owner,name))));return known;}
         if(node.type==='Class'){for(const field of node.fields||[])entry(field.init,new Set());for(const method of [node.ctor,...(node.methods||[])].filter(Boolean)){const methodOwner=owners.get(method.body?.[0])||owner;entry(method.body,new Set((method.params||[]).map(name=>binding(methodOwner,name))));}return known;}
