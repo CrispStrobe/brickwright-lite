@@ -67,3 +67,35 @@ remain verified. No new original SDK execution was needed. Wider v2/class,
 generic, FunctionExpression, defaulted and typeof surfaces are not admitted by
 this gate. Combined exact-source hosted checks and visible authoring remain
 pending.
+
+## Actual producer and binding checks
+
+Numeric annotations constrain the source signature; they do not prove a Number
+producer. Every factory use must resolve to one unchanged lexical declaration
+and be an ordinary direct call with actual Number arguments. Complete writer
+unions reject opaque or reference assignments, including incompatible writes to
+unused callback cells and aliases. Constructor and explicit generic calls refuse
+before helper normalization.
+
+Capture initialization remains a separate proof. A typed numeric local may
+begin undefined only when an actual Number assignment dominates its Arrow
+creation and subsequent writers remain numeric. A later factory assignment to a
+callback cell must dominate every read, including alias copies and reflection.
+Each callback value read must have one actual initialized numeric callable
+producer. Callback declarations with no actual allocation producer remain
+refused; this repair does not add uninitialized callback startup semantics.
+
+The source analyzer is shared with Font and Number text lowering and does not
+rewrite the AST. Ordinary consumers retain their existing policy. The numeric
+factory gate supplies an Arrow invocation-result fact only after validating its
+actual body, captures, initialization and immutable factory calls; return
+annotations cannot seed it. Structural binary helper facts are checked for each
+actual call's operands.
+
+Ninety-one focused pure/native controls pass, including Code, saved-project and
+current export/reimport routes. A differential check preserves 406 retained
+input AST and diagnostic results for ordinary Font lowering. Independent review
+also passes the new source controls and directed refusal cases on the current
+composed runtime. No new selected-original execution or hosted GUI qualification
+is claimed by this correctness repair. Wider callable types and direct nested
+callback-invocation operands remain outside this gate.
