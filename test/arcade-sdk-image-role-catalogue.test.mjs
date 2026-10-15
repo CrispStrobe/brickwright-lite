@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
+import createHost from '../overlay/scratch-vm/src/extensions/crispstrobe/arcade/class-callable-host.js';
 import createGraph from '../overlay/scratch-vm/src/extensions/crispstrobe/arcade/class-callable-graph.js';
 import createProvider from '../overlay/scratch-vm/src/extensions/crispstrobe/arcade/class-callable-provider.js';
 import createHeap from '../overlay/scratch-vm/src/extensions/crispstrobe/arcade/object-heap.js';
@@ -61,4 +62,24 @@ test('dispatch catalogue constraints require current fixed metadata and cannot b
  ambiguous.blocks.secondMetadata.fields.TEXT.value=JSON.stringify({schema:'bw-callable-declaration',version:2,site:'site',plan:other});
  ambiguous.blocks.secondName={...structuredClone(ambiguous.blocks.name),id:'secondName',parent:'second'};
  ambiguous.runtime.emit('PROJECT_START');assert.throws(()=>ambiguous.graph.sdkPlans(ambiguous.target),/ambiguous current class roles/);
+});
+
+
+test('constructor catalogue reproof follows actual inherited SDK roles before allocation',()=>{
+ for(const missing of ['none','parent','child']){
+  const runtime=new EventEmitter();runtime.targets=[];
+  const host=createHost(runtime,BW,createHeap,{},()=>({signature(){throw Error('no callable resource');}}),{assert(){throw Error('no Image value');}});
+  const plan=structuredClone(fixture().descriptor.plan);
+  plan.classes[0].sdkRoles={fields:[{name:'picture',type:'Image',sdkType:sdk()}],constructor:[],methods:[]};
+  plan.classes.push({name:'Child',parent:'Picture',...(missing==='child'?{}:{sdkRoles:structuredClone(plan.classes[0].sdkRoles)})},{name:'Decoy',parent:null},{name:'Future',parent:null,sdkRoles:{fields:[],constructor:[{index:0,name:'image',type:'Image',sdkType:sdk()}],methods:[]}});
+  const blocks={definition:{id:'definition',opcode:'procedures_definition',parent:null,inputs:{},fields:{}},declaration:{id:'declaration',opcode:'arcade_declareCallable',parent:null,inputs:{METADATA:{block:'metadata',shadow:'metadata'},NAME:{block:'name',shadow:'name'}},fields:{}},metadata:{id:'metadata',opcode:'text',parent:'declaration',shadow:true,inputs:{},fields:{TEXT:{value:JSON.stringify({schema:'bw-callable-declaration',version:2,site:'site',plan})}}},name:{id:'name',opcode:'text',parent:'declaration',shadow:true,inputs:{},fields:{TEXT:{value:'Read'}}}};
+  const target={blocks:{_blocks:blocks,getBlock:id=>blocks[id],getProcedureDefinition:()=> 'definition',getProcedureParamNamesIdsAndDefaults:()=>[[],[],[]]}};runtime.targets.push(target);runtime.emit('PROJECT_START');
+  host.heap.register({name:'Decoy',fields:[],parameters:[],methods:[],constructor:'DecoyCtor',initializer:''});
+  assert.doesNotThrow(()=>host.validateConstructor(host.heap.definition('Decoy'),[],target),'ordinary constructor must not borrow an unrelated future catalogue');
+  host.heap.register({name:'Picture',fields:missing==='parent'?[]:[{name:'picture',type:'Image',valueKind:'sdk',sdkType:sdk(),readonly:false}],parameters:[],methods:[],constructor:'PictureCtor',initializer:''});
+  host.heap.register({name:'Child',parent:'Picture',fields:[],parameters:[],methods:[],constructor:'ChildCtor',initializer:''});
+  if(missing==='none')assert.doesNotThrow(()=>host.validateConstructor(host.heap.definition('Child'),[],target),'matching inherited catalogue is supported');
+  else assert.throws(()=>host.validateConstructor(host.heap.definition('Child'),[],target),/SDK class roles differ/,'absent own SDK roles must not hide parent constraints');
+  host.dispose();host.heap.dispose();
+ }
 });

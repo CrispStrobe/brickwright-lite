@@ -1,3 +1,4 @@
+import {classCallableCapturedBindings} from './lower-callable-values.js';
 import {SDK_CLASS_NODES,SDK_SPRITE_CLASS_NODES,SDK_DIALOG_CLASS_NODES,sdkClassName} from './sdk-class-descriptors.js';
 import {SDK_DIALOG_OPAQUE_PARAMETERS} from './sdk-dialog-class-descriptors.js';
 import {ValueTypeGraph} from './value-type-graph.js';
@@ -11,6 +12,7 @@ export function lowerObjectClasses(program,{classCallablePrototype=false,sdkImag
     if(callableModel?.unsupported.length)return {program,unsupported:callableModel.unsupported};
     if(classCallablePrototype && JSON.stringify(program.bwClassCallableDescriptors)!==JSON.stringify({schema:callableModel.schema,version:callableModel.version,classes:callableModel.classes}))
         return {program,unsupported:['Class callable descriptors differ from actual source declarations']};
+    const liftedCallables=new Set((program.bwCallables||[]).map(row=>row.name));
     const callableClass=name=>callableModel?.classes.find(row=>row.name===name);
     const callableField=(name,field)=>callableClass(name)?.fields.find(row=>row.name===field);
     const callableMethod=(name,method)=>callableClass(name)?.methods.find(row=>row.name===method);
@@ -154,6 +156,16 @@ export function lowerObjectClasses(program,{classCallablePrototype=false,sdkImag
         if (['FunctionDeclaration','FunctionExpression'].includes(node.type)) {
             owner = {parent, bindings: new Map(), className: null, result: Symbol('function result')};
             for (const name of node.params || []) { binding(owner, name, true); addType(binding(owner, name), node.paramTypes?.[name]); }
+            if(classCallablePrototype&&(node.bwCallableDefinition||liftedCallables.has(node.name))){
+                const captures=classCallableCapturedBindings(node);
+                if(!captures)fail('Class capture lowering requires its actual unchanged lexical binding proof');
+                else for(const capture of captures){
+                    if((node.params||[]).includes(capture.name)){fail('Class capture conflicts with its actual formal binding');continue;}
+                    const key=binding(owner,capture.name,true);
+                    if(capture.type?.kind==='named')addType(key,capture.type.name);
+                    else if(sdkImagePrototype&&capture.type?.kind==='sdk'&&capture.type.name==='Image')addType(key,'Image');
+                }
+            }
             if (node.type === 'FunctionDeclaration') functions.set(node.name, {node, owner});
         }
         owners.set(node, owner); entries.push(node);

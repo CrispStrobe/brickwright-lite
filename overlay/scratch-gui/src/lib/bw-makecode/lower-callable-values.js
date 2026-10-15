@@ -5,6 +5,15 @@ import {createCallableLexicalPlan} from './callable-lexical-plan.js';
 import {createClassCallableDescriptors} from './callable-class-descriptors.js';
 import {createClassCallablePlan} from './class-callable-plan.js';
 
+// Ephemeral source-lowering ownership. Portable execution/export uses the
+// actual lexical plan instead; an AST property cannot issue this proof.
+const classCaptureProofs=new WeakMap();
+export function classCallableCapturedBindings(definition) {
+    const record=classCaptureProofs.get(definition);
+    if(!record||JSON.stringify(definition)!==record.snapshot)return null;
+    return structuredClone(record.bindings);
+}
+
 // An unadmitted source lowering prototype. The caller must qualify the complete
 // descriptor, declaration-prefix and authoring bridge before connecting it.
 export function lowerCallableValues(program,{legacyCallbacks=new WeakSet(),classPrototype=false,sdkImagePrototype=false}={}) {
@@ -186,12 +195,21 @@ export function lowerCallableValues(program,{legacyCallbacks=new WeakSet(),class
         const info=sites.get(scope.node);if(!info)continue;
         const defaults=callableDefaultBody(scope.node);
         unsupported.push(...defaults.unsupported);
-        definitions.push({type:'FunctionDeclaration',name:info.name,params:info.parameters,
+        const definition={type:'FunctionDeclaration',name:info.name,params:info.parameters,
             paramTypes:Object.fromEntries(info.signature.parameters.map(parameter=>[parameter.name,{text:renderCallableType(parameter.type)}])),
             returnType:renderCallableType(info.signature.result),body:rewrite(defaults.body,{ownerScope:scope}),
             bwCallableDefinition:{site:info.site,signature:info.signature,
                 captures:info.captures,defaults:info.defaults,
-                functionKind:scope.node.functionKind}});
+                functionKind:scope.node.functionKind}};
+        if(classPrototype){
+            const bindings=scope.captureSpecifications.map(capture=>{
+                const binding=capture.binding;
+                if(!flow.lexical.bindings.includes(binding)||!binding.functionOwner)throw Error('Class capture requires its actual lexical binding');
+                return {name:cellName(binding),binding:binding.id,owner:binding.functionOwner.id,type:structuredClone(flow.bindingTypes.get(binding)||null)};
+            });
+            classCaptureProofs.set(definition,{snapshot:JSON.stringify(definition),bindings});
+        }
+        definitions.push(definition);
     }
     const body=rewrite(program.body);
     if(unsupported.length)return {program,unsupported:[...new Set(unsupported)],flow};

@@ -6,8 +6,9 @@ const createTypes = require('./class-callable-types');
 module.exports = function createClassCallableProvider(runtime, values, heap, frames, {currentGraph,currentCall,signatureOf,sdkImages,sdkSchema=false} = {}) {
     const types = createTypes(runtime, values, heap, signatureOf, sdkImages,{sdkSchema}), proofs = new WeakMap();
     const fail = message => { throw new Error('Class callable provider: ' + message); };
-    const catalogue = plan => {
+    const catalogue = (plan,selected=null) => {
         for (const row of plan.classes) {
+            if(selected&&!selected.has(row.name))continue;
             const definition = heap.definition(row.name);
             if (definition.intrinsic || (definition.parent || null) !== row.parent) fail('class catalogue differs from actual ordinary heap');
             const hasSdk=type=>type?.kind==='sdk'||type?.kind==='callable'&&(type.parameters.some(parameter=>hasSdk(parameter.type))||hasSdk(type.result));
@@ -102,7 +103,11 @@ module.exports = function createClassCallableProvider(runtime, values, heap, fra
         proofs.set(proof, record);return proof;
     }
     return Object.freeze({prepareDeclaration,methodSignature,
-        assertSdkCatalogue(target,plan) {if(typeof currentGraph!=='function'||!currentGraph(target,plan))fail('requires current canonical class block graph');catalogue(validateClassCallablePlan(plan));},
+        assertSdkCatalogue(target,plan,className=null) {
+            if(typeof currentGraph!=='function'||!currentGraph(target,plan))fail('requires current canonical class block graph');
+            let selected=null;if(className){selected=new Set();let definition=heap.definition(className);while(definition){if(selected.has(definition.name))fail('cyclic SDK class ancestry');selected.add(definition.name);definition=definition.parent?heap.definition(definition.parent):null;}}
+            catalogue(validateClassCallablePlan(plan),selected);
+        },
         assertCurrent(proof,target) {current(recordFor(proof),target);},
         assertCreate(proof,target,util,operationArgs) {
             const record=recordFor(proof);current(record,target);
