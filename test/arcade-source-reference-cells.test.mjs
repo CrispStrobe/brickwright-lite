@@ -49,7 +49,7 @@ test('class declarations are bound by actual project metadata identity and never
     assert.throws(()=>f.host.declareReference({},f.util('ref')));
   }
   const f=fixture('Box');declareClass(f);f.blocks.clone={...f.blocks.cls,id:'clone'};
-  assert.throws(()=>f.host.initialize(),/duplicate/);assert.equal(f.scalar.value,41);
+  assert.throws(()=>f.host.initialize(),/duplicate/i);assert.equal(f.scalar.value,41);
 });
 test('replacement targets cannot reuse declaration authority and ordinary source-independent cells stay saved',()=>{
   const f=fixture();f.host.initialize();f.host.dispose();

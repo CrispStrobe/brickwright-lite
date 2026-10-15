@@ -70,6 +70,9 @@ export function sdkFontInputAuthority(project) {
         else if(['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod'].includes(op))rules.push({value,inputs:[input(target,block,'NUM1'),input(target,block,'NUM2')],needs:['Number','Number'],type:'Number'});
         else if(op==='arrays_valueUnary' && ['+','-','~'].includes(literal(target,block,'OP')))rules.push({value,inputs:[input(target,block,'VALUE')],needs:['Number'],type:'Number'});
         else if(op==='arrays_valueBinary' && ['+','-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(literal(target,block,'OP')))rules.push({value,inputs:[input(target,block,'LEFT'),input(target,block,'RIGHT')],needs:['Number','Number'],type:'Number'});
+        else if(op==='arcade_fontMetric' && !block.inputs?.FONT && !block.inputs?.PROPERTY &&
+            ['font5','font8','font12'].includes(block.fields?.FONT?.[0]) &&
+            ['charWidth','charHeight'].includes(block.fields?.PROPERTY?.[0]))add(value,'Number');
         else if(op==='arcade_fontForText')rules.push({value,inputs:[input(target,block,'TEXT')],needs:['String'],type:'Font'});
         else if(op==='arcade_scaleFont')rules.push({value,inputs:[input(target,block,'FONT'),input(target,block,'SIZE')],needs:['Font','Number'],type:'Font'});
         else if(op==='arcade_objectField'){

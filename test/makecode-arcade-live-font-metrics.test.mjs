@@ -6,7 +6,7 @@ import {sourceScalarDeclarations} from '../overlay/scratch-gui/src/lib/bw-makeco
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 test('six direct live metrics have Number provenance without literal replacement',()=>{
  for(const font of ['font5','font8','font12'])for(const property of ['charWidth','charHeight']){
-  const source=`let result=image.${font}.${property};let masked=result|0`,r=arcadeToPseudocode(source);assert.deepEqual(r.unsupported,[]);assert.ok(r.code.includes(`arcade font value ${font}`));assert.ok(r.code.includes(`field ("${property}")`));
+  const source=`let result=image.${font}.${property};let masked=result|0`,r=arcadeToPseudocode(source);assert.deepEqual(r.unsupported,[]);assert.ok(r.code.includes(`arcade font "${font}" metric "${property}"`));assert.ok(r.code.includes("declare arcade source scalar result as Number"));
   assert.deepEqual(sourceScalarDeclarations(lowerLiveFontMetrics(parseMakeCodeTs(`let result=image.${font}.${property}`))),[{name:'result',type:'Number'}]);
  }
 });

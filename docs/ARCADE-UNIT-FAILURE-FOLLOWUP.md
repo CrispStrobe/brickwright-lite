@@ -1,5 +1,67 @@
 # Arcade unit failures: exact-source follow-up
 
+## Latest completed hosted result — 2026-10-15
+
+[Run 38657701085](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38657701085)
+reviewed PR head `ec3f294706e101647ca0c356387773b971410c6b` and actually built
+merge-ref checkout `f664ffaee02a495e900055922ca51d6e7d32c30d`. Keep those identities
+separate. Build, heavy browser, gallery, corpus, focused, supplier and FPGA
+checks passed; the overall run failed.
+
+- Unit shard two completed **3,775 tests: 3,746 passed, 22 failed, five skipped,
+  two TODO**. Its 42 failure log lines include repeated cases, not 42 distinct
+  failures. Shard one was cancelled and has no completed census.
+- The numeric and event authoring reports each passed five visible cycles,
+  including saved-project reopening and actual export/reimport, with twelve
+  original observations. The combined job failed later on Font authoring.
+- Font authoring could not find six metric dropdown blocks. The new live Font
+  lowerer had replaced direct constant metrics with object-field readers.
+  Local repair preserves the existing editable metric words and proves their
+  fixed menu inputs; aliases and scaled Font records retain live field readers.
+- The light browser suite's owned text game passed initial controls and original
+  pixel comparison, then failed after costume editing and restart with a stopped
+  Font-owner error. Actual native reload reproduces that ordering defect. Its
+  separate candidate resets the current Font epoch before implicit text setup;
+  permanently disposed owners remain closed. Independent review is pending.
+- A separate nested Font-selector defect inspected the enclosing command's
+  connected input instead of the actual cached reporter. The candidate validates
+  the reporter's argument identity, current operation and fixed fields.
+  Independent actual-program review is pending.
+
+Original reports, artifacts and logs are preserved privately. These observations
+supersede the pending conclusions in the earlier checkpoint below. Local repairs
+still require a new exact-source hosted run; the corpus remains **147/36/1**.
+
+## Latest bounded controls — 2026-10-15
+
+The integrated class/default and Font branch
+`ec3f294706e101647ca0c356387773b971410c6b` passes its
+[hosted production build](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38657701085/job/116171389346),
+[gallery browser check](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38657701122/job/116171292199),
+focused controls, supplier freshness, corpus and FPGA checks. Full unit shards,
+heavy/light browser suites and numeric authoring are still running at this
+checkpoint. Their conclusions must be refreshed before any merge.
+
+Further local controls, with first failures retained:
+
+- Screen reads observe the actual 199/200 ms pause deadline. The unchanged source
+  and original comparisons retain all three composed-pixel values: `4, 9, 209`.
+- Life and countdown ordering uses real zero and elapsed timer deadlines. The
+  original trace `L9M10T10` and one countdown callback remain unchanged. Only the
+  zero case proves same-frame ordering; the elapsed case spans normal frames.
+- Callable `typeof` controls verify the actual current resource owner and retain
+  unsupported, forged and stale carrier refusals. They do not admit callable
+  classification through the source `typeof` adapter.
+- Fixed numeric Sprite-kind aliases execute queries and destruction with actual
+  identity. The after query checks the same numeric kind, so a no-op destruction
+  would fail. Unknown producers and unsupported effects/duration remain refused.
+- Malformed source-prelude mocks now provide the real block-container lookup
+  interface. Duplicate declarations still refuse before any scalar write.
+
+These controls require hosted integration qualification. They do not change the
+184-input corpus denominator or claim a new full-shard census. The complete
+historical failures below remain preserved.
+
 This is a triage list from reviewed integration source
 `2c2141954cbc3063274a18650d9e248f63bfdf92`,
 [completed unit shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38586245394/job/115928912237).
@@ -298,3 +360,25 @@ One actual changed export preserves all five original values, including five
 argument evaluations and the distinct NaN includes/indexOf results. All nine
 SDK/bridge guards remain unchanged; this grants no general callable or Any
 result admission. The original export and reimport refusals remain retained.
+
+## Integrated Font reporter and restart repairs
+
+The reporter ownership repair (`4cb5993db`) and startup ordering repair
+(`2228b4574`) are integrated. Nested Font reporters now validate their own
+current cached operation, fixed fields, inputs and primitive. Integrated
+startup resets the current Font epoch before initializing implicit text kinds.
+Stopped or disposed references remain unavailable; a legitimate project load
+creates a new owner.
+
+Independent review passed 42 affected checks with 219 consumed file hashes
+unchanged. The composed branch separately passed the same 42 checks and all
+57,600 native pixel comparisons plus 21 values across three authoring variants.
+The exported Font fixture still matches the previously executed original input
+bytes. These results do not replace fresh hosted browser qualification.
+
+Transparent pixel collision checks now use the actual scene and pause clock
+through source, Code, export/reimport and saved-project restart. Both local and
+independent native controls pass with the original collision and identity
+assertions retained. Circle import and TextSprite admission checks now describe
+the implemented capabilities while retaining malformed-call and bounded
+qualification checks. None of these test corrections promotes corpus rows.

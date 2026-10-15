@@ -15,7 +15,8 @@ test('exact TextSprite admission retains the genuine kind initializer and immuta
     assert.equal(receipt.replacementSource,source.slice(0,source.indexOf('\n\n//% blockNamespace')));
     assert.match(receipt.replacementSource,/export const Text = SpriteKind\.create\(\)/);
     assert.ok(!receipt.replacementSource.includes('class TextSprite'));
-    assert.match(receipt.boundary,/numeric kind allocation is not qualified/);
+    assert.match(receipt.boundary,/numeric allocation has finite original\/native registry roundtrip qualification/);
+    assert.match(receipt.boundary,/full scheduling and arbitrary games remain separate/);
     assert.equal(receipt.nativeOpcodes.length,9);
     for(const value of [receipt,receipt.apis,receipt.nativeOpcodes,receipt.source,receipt.source.sha256])assert.ok(Object.isFrozen(value));
     assert.throws(()=>{receipt.source.sha256['text.ts']='wrong';},TypeError);

@@ -174,6 +174,19 @@ records remain mutable. General Font-valued class fields/callbacks, full mutatio
 hardware glyph subsets and complete library/GUI closure remain follow-up work.
 Preserve glyph notices, fixed metric words, class/callback ownership and Source
 frame contracts. No global scheduler ownership is claimed.
+## Arcade primitive Number to text — 2026-10-15
+
+PROPOSED — Codex Arcade primitive source integration,
+`lane/arcade-number-text-claim-20261015`.
+Contract: [primitive Number to text](docs/compatibility/arcade-number-to-text.md).
+Scope: zero-argument Number `toString` with actual producer/current-writer
+authority, narrow source/native primitive String representation, current Code
+and Blocks, original export and same/fresh saved-project reimport. Preserve
+class custom methods, SDK reference exclusions, Font proof and Source frame
+ownership. No new canonical word, pin change, radix, global String-name grant
+or whole-library promotion is claimed. Product work waits for the normal claim
+merge after every enabled exact-head check succeeds.
+
 
 ## CI fast and thorough tiers — 2026-10-14
 

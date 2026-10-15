@@ -29,7 +29,7 @@ test('native-only mock explicitly owns an empty compiled-target collection and r
 });
 test('adding empty-target mock contract does not bypass validation of a malformed nonempty source prelude',()=>{
  const runtime=createArcadeRuntimeMock();new(loadExtensionClass('arcade'))(runtime);
- runtime.targets.push({id:'malformed',isOriginal:true,blocks:{_blocks:{late:{id:'late',opcode:'arcade_declareSourceScalar'}}}});
+ runtime.targets.push({id:'malformed',isOriginal:true,blocks:{_blocks:{late:{id:'late',opcode:'arcade_declareSourceScalar'}},getBlock(id){return this._blocks[id];}}});
  assert.throws(()=>runtime.emit('PROJECT_START'),/declarations must precede source initializers/);
  assert.deepEqual(runtime.hatRequests,[],'no startup dispatch follows a refused declaration');
 });

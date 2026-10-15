@@ -20,7 +20,7 @@ const RESOURCE_MANIFEST = Object.freeze({
     textSHA256: '2ff6f11be61e3953a316ab3655c405861aaac3d76043ed88da02b535fa159a33',
     font12ResourceSHA256: '2347313d1a7022d77108da534d3cc2f661a25c0af64befb3a139675ab0b8b46e'
 });
-function create(runtime, values, bufferOwner) {
+function create(runtime, values, bufferOwner, {managedStart = false} = {}) {
     const bufferReference=bufferOwner?.reference,resolveBuffer=bufferOwner?.resolve;
     if (!runtime || typeof runtime.on !== 'function' || typeof bufferReference !== 'function' || typeof resolveBuffer !== 'function')
         throw new Error('SDK Font needs its actual runtime and Buffer owner');
@@ -90,10 +90,15 @@ function create(runtime, values, bufferOwner) {
         glyphStorage.set(view.buffer,spans);return ref;
     };
     reset();
-    runtime.on('PROJECT_START', reset); runtime.on('PROJECT_LOADED', reset);
+    if(!managedStart)runtime.on('PROJECT_START', reset); runtime.on('PROJECT_LOADED', reset);
     const dispose=()=>service.dispose();
     runtime.on('PROJECT_STOP_ALL', suspend); runtime.on('RUNTIME_DISPOSED', dispose);
     const service={
+        // The integrated startup coordinator resets before implicit text hosts.
+        startProgram() {
+            if(!managedStart || closed)throw new Error('SDK Font startup owner is unavailable');
+            reset();
+        },
         matches:()=>false,
         isDisposed:()=>closed,
         resourceManifest: RESOURCE_MANIFEST,

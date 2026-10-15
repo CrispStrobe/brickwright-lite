@@ -100,10 +100,13 @@ controller.A.onEvent(ControllerButtonEvent.Pressed, function () { foe.image.fill
     assert.deepEqual([...Object.values(again.vm.runtime.bwArcadeDeviceState.sprites).find(s => s.kind === again.vm.runtime._primitives.arcade_spriteKindValue({NAME:'Player'},{})).image.pixels], [0,3,5,1]);
 });
 
-test('real flip game imports without gaps, while unsupported pixel drawing remains explicit', () => {
+test('real flip game and implemented circle drawing import, while invalid circle arguments remain explicit', () => {
     const source = readFileSync(new URL('./fixtures/makecode/arcade-flip-image.ts', import.meta.url), 'utf8');
     assert.deepEqual(arcadeToPseudocode(source).unsupported, []);
-    const unsupported = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nhero.image.drawCircle(0,0,1,2)');
+    const circle = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nhero.image.drawCircle(0,0,1,2)');
+    assert.deepEqual(circle.unsupported, []);
+    assert.match(circle.code, /arcade draw circle drawCircle of/);
+    const unsupported = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nhero.image.drawCircle(0,0,1)');
     assert.ok(unsupported.unsupported.some(gap => gap.includes('drawCircle')));
 });
 

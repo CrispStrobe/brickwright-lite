@@ -118,6 +118,11 @@ export function lowerSdkFontValues(program) {
         if(node.type==='Member'&&fields.has(node.name)&&(types.get(cell(node.object))?.has('Font')||fontAnnotations.has(cell(node.object)))){
             if(!isFont(cell(node.object))){fail('SDK Font field requires proven actual producer authority');return node;}
             if(target){fail('SDK Font field mutation is not qualified by the read slice');return node;}
+            // Keep the existing editable metric selectors for direct SDK constants.
+            // Aliases and scaled records still read their actual live Font object.
+            if(['charWidth','charHeight'].includes(node.name) && sdk.has(node.object) &&
+                ['image.font5','image.font8','image.font12'].includes(path(node.object)))
+                return {type:'FontMetric',font:node.object.name,property:node.name};
             return intrinsic('field',[rewrite(node.object),{type:'String',value:node.name}],fields.get(node.name));
         }
         if(node.type==='Call'&&node.callee?.type==='Member'&&types.get(cell(node.callee.object))?.has('GlyphBuffer')&&['setNumber','setByte','write','fill','shift','rotate','packAt'].includes(node.callee.name))fail('SDK Font glyph Buffer mutation is not qualified by the read slice');
