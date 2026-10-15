@@ -52,7 +52,11 @@ text inputs, nested calls, a changed limit, save/reopen and visible export
 refusals. Runtime and pure graph checks do not qualify menu reachability or
 error navigation. Arrays value reporters have a separately confirmed input
 bug: raw Number 20 + Number 1 gives text `"201"`; raw Number zero is truthy.
-Source-inserted numeric wrappers conceal this Blocks authoring failure. Track
+A nine-case current-block native probe additionally observes fractional Number
+addition joining text and Number 20 strictly comparing equal to text `"20"`.
+Text-only addition, mixed addition and the text `"0"` truth case already behave
+correctly and must retain those results. Source-inserted numeric wrappers
+conceal this Blocks authoring failure. Track
 the shared input/canonical supplier correction in
 [PR949](https://github.com/CrispStrobe/brickwright-lite/pull/949); preserve text
 behavior while qualifying actual Number producers.
