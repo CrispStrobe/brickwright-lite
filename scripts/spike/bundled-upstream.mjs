@@ -86,7 +86,7 @@ export const MAP = {
     stc12: 'extensions/CrispStrobe/stc12.js',
     stc12live: 'extensions/CrispStrobe/stc12live.js',
     universalgamepad: 'extensions/CrispStrobe/gamepad.js',
-    wedo2unified: 'extensions/CrispStrobe/lego_wedo2_universal.js',
+    wedo2unified: {repo: 'CrispStrobe/extensions', pin: 'wedo2unified', path: 'extensions/CrispStrobe/lego_wedo2_universal.js'},
 
     // Written in Lite, upstreamed 2026-09-20 (CrispStrobe/extensions#4), and
     // vendored back so the gate covers them like everything else. bitops and
