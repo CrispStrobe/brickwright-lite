@@ -95,7 +95,7 @@ export function lowerSdkFontValues(program) {
     const resultFunctions=new Map([...functions].filter(([,fn])=>fn).map(([name,fn])=>[fn.result,name])),callGraph=new Map();
     for(const call of calls){let owner=owners.get(call.node);while(owner&&!owner.result)owner=owner.parent;const origin=resultFunctions.get(owner?.result);if(origin){if(!callGraph.has(origin))callGraph.set(origin,new Set());callGraph.get(origin).add(call.callee);}}
     const cyclic=(origin,current=origin,seen=new Set())=>{if(seen.has(current))return false;seen.add(current);for(const next of callGraph.get(current)||[])if(next===origin||cyclic(origin,next,seen))return true;return false;};
-    for(const call of calls){const fn=functions.get(call.callee);if(!fn){add(call.result,'Opaque');continue;}if(cyclic(call.callee))add(call.result,'Opaque');
+    for(const call of calls){const fn=functions.get(call.callee);if(!fn||declarations.get(call.callee)?.size!==1||classWrites.has(call.callee)){add(call.result,'Opaque');continue;}if(cyclic(call.callee))add(call.result,'Opaque');
         fn.node.params.forEach((name,index)=>{const arg=call.node.args[index],param=fn.owner.bindings.get(name);if(arg)edge(cell(arg),param);else add(param,'Undefined');});edge(fn.result,call.result);
     }
     const isFont=current=>{const set=types.get(current);return !!set?.has('Font')&&set.size===1;};
