@@ -8,6 +8,46 @@ operator's actual checkouts, tools, private corpus and original receipts.
 Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
 
+## Console and real local defaults integrated — 2026-10-15
+
+Local integration `cceebcfc4d4109f216fb38e7db50e7860d9c0283` normally adopts
+reviewed console inspection and real primitive local declaration defaults. The
+consumer compiler pin is now qualified supplier
+`4e8a287244d31d82ac84dbef609f48f2c10efab2` (399 operations, 404 spellings).
+The qualified current VM overlay contains 162 source files. Source admission
+uses actual lexical producers, initialization and every writer; edited export
+independently checks directed primitive operands. Image operands and generic
+`console.inspect<number>` cannot obtain a primitive grant.
+
+Four genuinely new original compiler attempts produced three successful guests
+and one retained predeclaration compiler refusal. Primitive source and its
+actual edited export match their expected strings, once-only effects and all
+19,200 Image/display pixels. The original local-default program observes
+`undefined` for typed/untyped primitive locals and globals, aliases and returns.
+A fifth, genuinely changed current export separately compiles and executes with
+those same observations. The unchanged source was not replayed.
+
+Local declarations now emit actual Undefined at their declaration when the
+unique primitive/untyped `let` binding is proved. Predeclaration reads and
+unsupported reference declarations remain refused. No blanket local lookup
+fallback or annotation supplies the value. The composed selection reports 98
+passes and one environment failure from an obsolete external creator override;
+the affected local-default selection passes all three checks with the current
+bundled creator. Existing class, managed Number, bitwise and Font controls pass.
+
+The newly repeated immutable raw184 audit still reports **147 translated /
+36 partial / one parse failure**; all 184 files match the frozen corpus Git
+blobs. This bounded integration makes no complete-project promotion. PR888 is
+still published at `6350fba49` while that full diagnostic runs; do not overwrite
+it with this later local source until the surviving run finishes.
+
+A separate [Arrays input claim](https://github.com/CrispStrobe/brickwright-lite/pull/949)
+is under review in PR949. Actual authored Number shadows currently lose their
+intent in Arrays value operations: 20 + 1 yields text `"201"`, and Number zero
+is treated as truthy text. The canonical supplier and shared current-input
+bridge must be corrected with exact producer ownership. A global Scratch
+shadow conversion would exceed this contract.
+
 ## Latest integration checkpoint — 2026-10-15
 
 Local `1e65f988c24df35ec99a33ba68520ec529f7fb7a` normally composes main

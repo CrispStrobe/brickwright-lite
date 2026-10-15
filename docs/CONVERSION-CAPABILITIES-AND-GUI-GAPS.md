@@ -1,5 +1,26 @@
 # Conversion capabilities and GUI closure ledger
 
+## Console and primitive declaration authoring — 2026-10-15
+
+Console inspection now converts proved primitive expressions to String using
+actual source and current-block producer checks. It does not authorize opaque
+image arithmetic or generic calls merely because an annotation names a type.
+Original source and current edited export have compiler/guest, once-effect and
+pixel evidence. Real uninitialized primitive locals now receive Undefined at
+their declaration; early reads remain refused, matching the selected compiler.
+Current Code, restart, same/fresh SB3 and a newly compiled edited export preserve
+all 12 observed default strings.
+
+The GUI still needs an authored inspection reporter journey with Number and
+text inputs, nested calls, a changed limit, save/reopen and visible export
+refusals. Runtime and pure graph checks do not qualify menu reachability or
+error navigation. Arrays value reporters have a separately confirmed input
+bug: raw Number 20 + Number 1 gives text `"201"`; raw Number zero is truthy.
+Source-inserted numeric wrappers conceal this Blocks authoring failure. Track
+the shared input/canonical supplier correction in
+[PR949](https://github.com/CrispStrobe/brickwright-lite/pull/949); preserve text
+behavior while qualifying actual Number producers.
+
 ## Identifier compound authoring checkpoint — 2026-10-15
 
 All six bitwise identifier compound assignments now use existing primitive
