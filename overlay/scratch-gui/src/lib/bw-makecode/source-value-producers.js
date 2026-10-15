@@ -18,7 +18,7 @@ export function analyseSourceValueProducers(program,options={}) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,ordinaryPrimitiveSdkNumbers=false,normalCompletion=null}={}) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,ordinaryPrimitiveSdkNumbers=false,initializationEntries=false,normalCompletion=null}={}) {
     const completion=normalCompletion?sourceNormalCompletionFor(program,normalCompletion):null;
     if(normalCompletion&&!completion)throw new Error('Source completion proof must belong to the actual Program');
     const unreachableCells=new Set();
@@ -37,7 +37,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const ordinaryNumbers=ordinaryPrimitiveSdkNumbers?ordinaryPrimitiveSdkNumberCalls(program):null;
     let screenWritten=false;
     const scanScreenWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanScreenWrites);return;}const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;if(target?.type==='Identifier'&&target.name==='screen'&&sdk.has(target))screenWritten=true;Object.values(node).forEach(scanScreenWrites);};scanScreenWrites(program);
-    const initializedReads=new WeakSet(),localUndefinedDeclarations=new Set();
+    const initializedReads=new WeakSet(),initializationAt=new WeakMap(),localUndefinedDeclarations=new Set();
     const writing=new WeakSet(),owners=new WeakMap(),cells=new WeakMap(),types=new Map(),edges=[],scales=[],texts=[],derived=[],prints=[],classes=new Map(),classCalls=[],classWrites=new Set(),declarations=new Map(),functions=new Map(),calls=[],numericCalls=[],unsupported=[];
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const scope=parent=>({parent,bindings:new Map()});
@@ -130,7 +130,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     function entry(node,known=new Set()){
         if(!node||typeof node!=='object')return known;
         if(Array.isArray(node)){for(const value of node)known=entry(value,known);return known;}
-        const owner=owners.get(node)||global;
+        const owner=owners.get(node)||global;if(initializationEntries)initializationAt.set(node,new Set(known));
         if(node.type==='Identifier'){
             if(known.has(binding(owner,node.name)))initializedReads.add(node);
             if(!writing.has(node)&&!(node.name==='screen'&&sdk.has(node))&&!known.has(binding(owner,node.name))){
@@ -224,6 +224,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         bindingKindsAt:(node,name=node?.name)=>new Set([...(declarations.get(knownBinding(node,name))||[])].map(declaration=>
             typeof declaration==='symbol'?'parameter':({FunctionDeclaration:'function',Class:'class',Enum:'enum'}[declaration.type]||'variable'))),
         isInitializedAt:node=>initializedReads.has(node),
+        isBindingInitializedAt:(node,binding)=>initializationAt.get(node)?.has(binding)===true,
         localUndefinedDeclarations:Object.freeze([...localUndefinedDeclarations]),
         declarationCountAt:(node,name=node?.name)=>declarations.get(knownBinding(node,name))?.size||0,
         immutableFunctionAt:immutableFunction,
