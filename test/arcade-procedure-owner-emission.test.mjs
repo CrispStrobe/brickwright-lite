@@ -33,23 +33,23 @@ const definitions = output => [...output.code.matchAll(/^DEFINE ([\w$]+)(?:\s|:)
 const translate = source => {
     const output = arcadeToPseudocode(source);
     assert.deepEqual(output.unsupported, [], JSON.stringify(output.unsupported));
+    assert.doesNotMatch(output.code, /^WHEN arcade source starts:/m, 'these authored controls use generic procedure emission');
     return output;
 };
 
 test('an unused retained helper does not re-emit an already called dependency', () => {
-    const output = translate(`let trace=0;
-function shared(){trace+=1}
+    const output = translate(`function shared(){console.log(1)}
 function unused(){shared()}
 shared();`);
     const names = definitions(output);
     assert.equal(names.filter(name => name === 'shared').length, 1);
     assert.equal(names.filter(name => name === 'unused').length, 1);
     assert.match(output.code, /DEFINE unused:[\s\S]*CALL: \(shared\)/);
+    assert.equal((output.code.match(/^  arcade log /gm) || []).length, 1, 'the real effect body is retained once');
 });
 
 test('diamond dependencies retain deterministic first-emission order across called and unused roots', () => {
-    const output = translate(`let trace=0;
-function leaf(){trace+=1}
+    const output = translate(`function leaf(){console.log(1)}
 function left(){leaf()}
 function right(){leaf()}
 left();`);
