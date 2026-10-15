@@ -1,3 +1,15 @@
+## Primitive identifier bitwise compound assignments — 2026-10-15
+
+PROPOSED — Codex Arcade integration, isolated statement conversion lane.
+Merge this docs-only claim before product changes. Contract:
+[primitive bitwise compound assignments](docs/compatibility/arcade-primitive-bitwise-compound.md).
+Own the identifier compound-assignment operator selection in
+`Arcade.expressionStatement` and focused source/current-block/native/export
+controls. Reuse existing primitive producer proof, native value operations and
+local/captured/global assignment paths. No opaque coercion, assignment-as-value,
+member/index widening, new vocabulary, dependency pin or frame-clock change.
+Coordinate the Arcade translator with callable, inspection and numeric owners.
+
 ## Owned callable typeof — 2026-10-15
 
 PROPOSED — `extension_parser`, isolated owned callable reflection lane.
