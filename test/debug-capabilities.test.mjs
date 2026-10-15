@@ -137,3 +137,99 @@ test('run-to is never inferred and unknown or malformed descriptors fail closed'
     assert.equal(commandCapability(malformed, 'runTo').accepted, false);
     assert.deepEqual(normalizeDebugCapabilities({runTo: {kind: 'address'}}).runTo, []);
 });
+
+
+test('bounded physical memory metadata survives without code-space inference', () => {
+    const mem = {read: true, write: false, passiveRead: true,
+        addressSpace: 'physical', addressMin: 0, addressMax: 0xffffffff, maxReadBytes: 1048576};
+    const caps = normalizeDebugCapabilities({spaces: {mem, code: {read: true}}});
+    assert.deepEqual(caps.spaces.mem, mem);
+    assert.ok(Object.isFrozen(caps.spaces.mem));
+    mem.addressMax = 1;
+    assert.equal(caps.spaces.mem.addressMax, 0xffffffff);
+    assert.equal(memoryCapability(caps, 'mem', 'read').accepted, true);
+    assert.equal(memoryCapability(caps, 'mem', 'write').accepted, false);
+    assert.deepEqual(caps.spaces.code, {read: true, write: false, passiveRead: null});
+    assert.equal(caps.spaces.code.addressMax, undefined);
+    // Negotiation has no address/length operation: top-byte and one-past-empty
+    // enforcement remains the target/read caller's responsibility.
+});
+
+test('any explicit memory field selects complete strict validation, never legacy fallback', () => {
+    const valid = {read: true, write: false, passiveRead: true,
+        addressSpace: 'physical', addressMin: 0, addressMax: 0xffffffff, maxReadBytes: 1048576};
+    const bad = [];
+    for (const key of Object.keys(valid)) {
+        const row = {...valid}; delete row[key]; bad.push(row);
+    }
+    for (const [key, values] of Object.entries({
+        addressSpace: ['linear', '', null],
+        addressMin: [-1, 0.5, NaN, true, '0'],
+        addressMax: [-1, 0x100000000, Infinity, false, '4294967295'],
+        maxReadBytes: [0, -1, 1048577, 0.5, true, '1'],
+        read: [1, undefined], write: ['curated', undefined], passiveRead: [1, null]
+    })) for (const value of values) bad.push({...valid, [key]: value});
+    for (const key of ['addressSpace', 'addressMin', 'addressMax', 'maxReadBytes']) {
+        bad.push({read: true, write: true, [key]: valid[key]});
+        bad.push({...valid, [key]: undefined});
+    }
+    for (const mem of bad) {
+        const caps = normalizeDebugCapabilities({spaces: {mem, legacy: {read: true, write: true}}});
+        assert.equal(caps.spaces.mem, undefined, JSON.stringify(mem));
+        assert.equal(memoryCapability(caps, 'mem', 'write').accepted, false);
+        assert.equal(memoryCapability(caps, 'legacy', 'write').accepted, true);
+    }
+    const inverted = normalizeDebugCapabilities({spaces: {mem: {...valid, addressMin: 4, addressMax: 3}}});
+    assert.equal(inverted.spaces.mem, undefined);
+});
+
+
+test('inherited metadata and array descriptors cannot select editable legacy fallback', () => {
+    const valid = {read: true, write: false, passiveRead: true,
+        addressSpace: 'physical', addressMin: 0, addressMax: 0xffffffff, maxReadBytes: 1048576};
+    const inheritedPartial = Object.assign(Object.create({addressMax: 0xffffffff}), {read: true, write: true});
+    const inheritedComplete = Object.create(valid);
+    const inheritedFlags = Object.assign(Object.create({read: true, write: true, passiveRead: true}), {
+        addressSpace: 'physical', addressMin: 0, addressMax: 255, maxReadBytes: 16});
+    const array = Object.assign([], valid);
+    for (const mem of [inheritedPartial, inheritedComplete, inheritedFlags, array]) {
+        const caps = normalizeDebugCapabilities({spaces: {mem}});
+        assert.equal(caps.spaces.mem, undefined);
+        assert.equal(memoryCapability(caps, 'mem', 'write').accepted, false);
+        assert.equal(memoryCapability(caps, 'mem', 'read').accepted, false);
+    }
+    const legacy = Object.create({read: true, write: true});
+    assert.equal(memoryCapability(normalizeDebugCapabilities({spaces: {legacy}}), 'legacy', 'write').accepted, true);
+});
+
+test('complete own primitive descriptors retain narrower bounds and false capabilities', () => {
+    for (const flags of [{read: false, write: false, passiveRead: false},
+        {read: true, write: true, passiveRead: false}]) {
+        const mem = {...flags, addressSpace: 'physical', addressMin: 128, addressMax: 255, maxReadBytes: 16};
+        const caps = normalizeDebugCapabilities({spaces: {mem}});
+        assert.deepEqual(caps.spaces.mem, mem);
+        assert.ok(Object.isFrozen(caps.spaces.mem));
+        assert.equal(memoryCapability(caps, 'mem', 'write').accepted, flags.write);
+    }
+});
+
+
+test('bounded descriptors are data-only and never invoke accessor fields', () => {
+    const valid = {read: true, write: false, passiveRead: true,
+        addressSpace: 'physical', addressMin: 0, addressMax: 255, maxReadBytes: 16};
+    for (const key of Object.keys(valid)) {
+        for (const throws of [false, true]) {
+            let calls = 0;
+            const mem = {...valid};
+            Object.defineProperty(mem, key, {enumerable: true, get () {
+                calls++;
+                if (throws) throw new Error('getter must not run');
+                return calls < 4 ? valid[key] : Infinity;
+            }});
+            const caps = normalizeDebugCapabilities({spaces: {mem}});
+            assert.equal(caps.spaces.mem, undefined);
+            assert.equal(calls, 0);
+        }
+    }
+    assert.deepEqual(normalizeDebugCapabilities({spaces: {mem: valid}}).spaces.mem, valid);
+});

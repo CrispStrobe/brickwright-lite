@@ -1,3 +1,90 @@
+## iOS shared validator compilation blocker — 2026-10-15
+
+CLAIMED — Codex, isolated `fix/ios-shared-validators-20261015` in
+`/tmp/brickwright-ios-validator-fix`, base `10edc699d`. Bounded build repair
+found while fulfilling the user-requested current iPad deployment.
+
+Envelope: this ledger and only the module declarations for `arena_inputs` and
+`spike_program_uart_contract` in `apps/tauri/src-tauri/src/lib.rs`. Both contain
+pure JSON validators already called by the shared `native_policy` core; their
+current desktop gates cause eight E0433 errors on `aarch64-apple-ios`. Keep all
+native commands, adapters, supervisors and platform integrations gated exactly
+as before. Verify by the real signed iOS build, whose baseline failure is in
+`/tmp/brickwright-rust-prebuild.log`. No simulator behavior or policy admission
+rules change. Claim lands before implementation.
+
+## WeDo 88005 lights and piezo note adoption — 2026-10-15
+
+CLAIMED — Codex, isolated branch `lane/wedo-lights-adoption-20261015`,
+worktree `wt-wedo-adoption-sparse`, base `5f790c24ae91931d51617ddd1e4c69e2d1e8cfeb`.
+User authorized publication of the upstream fixes and this adoption claim.
+
+Envelope: this ledger; a dedicated `wedo2unified` entry in `vendor-pins.json`
+and `scripts/spike/bundled-upstream.mjs`; the WeDo bundled source and its
+`bundled-upstream-pins.json` record; focused WeDo protocol tests. No other
+extension or package pin moves. Upstream: CrispStrobe/extensions PR49,
+`2cda0cf` (88005 brightness/off on A/B/both, Stop All, reliable piezo notes).
+
+Validation: immutable upstream byte identity, existing Scratch Link session
+tests, focused light/tone packet tests and the production web build. iPad
+installation verifies app deployment; real 88005 brightness and audible-tone
+verification remain explicitly pending. Claim must reach remote main before
+Lite implementation changes.
+
+## ASM example admission during pending Code compilation — 2026-10-15
+
+CLAIM — Codex circuit/instrument adoption owner, bounded blocker repair for
+PR965. Base `dccfd176b0043128b6a723e55f80a5e3b47fed4c`; isolated branch
+`docs/asm-example-serialization-claim-20261015` publishes ownership first.
+Production edits wait for this claim's merge and coordination with the A11
+owner of other blocks in the importer. Original exact-head Build38726686250
+failed only the 8086 browser journey after retarget/reload: its screenshot
+shows empty ASM and disabled Assemble. Pure actual-method/deferred-VM controls
+reproduce an example accepted during compile and then erased by its completion.
+This is not an engine or physical qualification.
+
+Envelope: this ledger; only `loadAsmExample` busy admission, including after
+asynchronous confirmation, and the ASM example picker's disabled state in
+`overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`;
+its tracked `packages/scratch-gui` twin; new
+`test/asm-example-serialization.test.mjs`; and
+`scripts/verify-i8086-browser.mjs` for a deterministic pending-compile witness.
+Do not change `setDevice`, `compile`, MakeCode/export/device-routing blocks,
+engine models, dependency pins, timeouts, compiler interception or other lanes.
+PR965's already qualified CUI adoption bytes remain unchanged.
+
+Require pure actual-method controls for busy rejection, ordinary idle loading,
+confirmation refusal and compilation starting during a pending confirmation;
+isolated entry/post-confirmation guard mutations must fail by name. The actual
+browser proof must hold only the return of a real completed VM load, observe
+the disabled picker and preserved source during the pending compile, release
+and restore the wrapper, then load and assemble through ordinary controls.
+Removing the picker guard must fail that held-state assertion, not merely time
+out later. Retain the complete keyboard/CGA/8255/refusal/reload journey and
+all enabled exact-head checks. No forced click, longer sleep, missing-scenario
+skip, unchanged failed rerun or mocked guest implementation. Move this entry
+to DONE in the final implementation candidate; keep the original red receipt.
+
+## STM32 faithful model pin adoption (sb3-creator + bw-board) — 2026-10-15
+
+CLAIM — Claude, branch chore/stm32-faithful-pins-20261015, [local path omitted].
+Adopt sb3-creator a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76 (merge of its PR #155:
+clock setup, G030 GPIO, F103 pull-up/TIM2 PWM/DS18B20, G030 ADC and temperature,
+tone fixes, named refusals for servo/NeoPixel/LCD/OLED/broadcast, timer) and
+bw-board 04f19952cea008b7498c701c16be5cc7ea1bdf63 (merge of its PR #600: faithful
+STM32 F0/G0 model — G0 memory map, RCC clock tree so speed follows firmware, RAM
+pattern at reset, USART/PWM need AF; STM32 adapters refuse a `clockHz` option).
+Sequenced AFTER bw-circuit-ui adoption PR #965, whose pin is kept exactly.
+
+Envelope: this ledger; vendor-pins.json; root and packages/scratch-gui package
+specifications/locks; outputs of the repo's writers and their tracked packages
+twins; exact-pin and count assertions in existing tests the bump moves;
+removal of any `clockHz` Lite passes to the STM32 debug targets/adapters
+(debug-runner and its tracked twin) and tests or gates that depended on the
+old fixed clock or zeroed RAM; gallery/example/reach expectations regenerated
+by the repo's measurement scripts where the new refusals move them. Merge this
+claim first; implementation lands only after full CI and owner review.
+
 ## A10: micro:bit V2 serial consumer adoption — 2026-10-15
 
 CLAIMED — Codex, branch `lane/a10-v2-serial-consumer-20261015`, base `015e1bdc7`.
@@ -479,6 +566,99 @@ binding, unknown mutation attributes or a project-wide typing switch. Preserve
 independent source phase, class/accessor, Scene/controller and supplier lanes.
 No product command or source prelude changes until this claim lands. Private
 prototypes and original controls are preparation only; no whole-game promotion.
+
+## Arcade ordinary procedure parameter constraints — 2026-10-15
+
+CLAIM — corpus-gap lane, branch `docs/arcade-procedure-constraints-20261015`.
+Bounded [ownership and acceptance contract](docs/compatibility/arcade-procedure-parameter-constraints.md)
+for one explicit editable ordinary-procedure parameter-constraint protocol and
+its canonical word, consumer/source/native/current-export integration, controls,
+and hosted GUI journey. Bind actual unique prototypes and ordered formals;
+retain constraints separately from actual producer facts and validate all
+callers, aliases, and local/captured writers. No annotation value seed, hidden
+source restoration, helper pruning, generic/reference/callable widening, or
+unrelated pin changes. Old already-erased projects remain refused until an
+actual constraint is authored and proved. Implementation is held until this
+claim lands normally; supplier, selected SDK, consumer, and GUI qualification
+are separate gates. Preserve every other lane.
+## Arcade Array.map values and callback iteration — 2026-10-15
+
+PROPOSED — Codex Array-map value lane. Merge this docs-only claim before product
+changes. Contract: [Array-map values](docs/compatibility/arcade-array-map-values.md).
+Own focused map lowering, optional actual Array/element producer facts, narrowly
+coordinated sequencing hooks and source/current-Code/Blocks/SB3/export controls.
+Preserve actual allocation/binding/all-writer authority, cached initial length,
+current indexed reads, callback order and fresh result/alias identity. Audit
+existing forEach/filter only against concrete selected-helper counterexamples.
+Reference-valued and generic results remain explicit residuals until proved;
+annotations, method names and opaque values do not grant Array authority.
+Coordinate shared source analysis and callable owners. No canonical physical
+Number-input Array changes, pin/vocabulary adoption or whole-context promotion.
+
+## Arcade discarded value statements — 2026-10-15
+
+CLAIM — root-owned bounded discarded-value expression lane.
+[Ownership and acceptance contract](docs/compatibility/arcade-discarded-value-statements.md)
+for once-only evaluation of already supported expressions in statement position,
+with proper activation ownership, collision-free generated storage if a current
+sink qualifies, current edited export and reversible Code/Blocks/SB3. Preserve
+selected PXT staging and effects, ordinary assignments/updates/command calls,
+and all independent producer/current-body proofs. Unknown bindings, operators,
+opaque coercions and unsupported constituent expressions remain refused.
+If a proper local sink cannot preserve the contract, a canonical editable
+command requires its own qualified supplier route; no vocabulary or pin move
+is assumed. Implementation waits for this claim's normal qualified merge.
+Procedure constraints, Array.map and independently owned API lanes remain separate.
+
+## Arcade Throw statements and exception handoff — 2026-10-15
+
+CLAIM — root-owned bounded Throw syntax and native exception handoff lane.
+[Ownership and acceptance contract](docs/compatibility/arcade-throw-statements.md)
+for a proper editable canonical throw command, actual supported primitive values,
+once-only operand effects, source/current-export integration and minimal managed
+call/engine failure handoff. Unwind real affected stock and managed activations,
+settle owned continuations exceptionally exactly once, and preserve ticket,
+capture, Stop/reload and current-input ownership. Determine current/other-fiber
+termination from the selected original; emitting an error and returning Undefined
+or normally completing the throwing child is insufficient. Keep neighboring
+try/catch/finally and unsupported reference/coercion forms explicitly refused.
+Implementation waits for this claim's normal qualified merge; supplier, original
+and visible GUI gates remain independent. No Array-map, parameter-constraint,
+discarded-value, Image or unrelated device scope is absorbed.
+
+## Owned SDK Sprite values in ordinary class callbacks — 2026-10-15
+
+CLAIM — root-owned bounded physical Sprite producer and ordinary class/callback
+bridge, coordinated with the existing class, Image and native ownership lanes.
+[Ownership and acceptance contract](docs/compatibility/arcade-owned-sprite-class-callables.md)
+requires actual unshadowed Sprite allocation, completed creation, current body and
+eligible scene ownership, and a private issued capability distinct from raw ID
+text. Current export signature/role constraints never issue runtime authority.
+Preserve fields, aliases, captures, arguments/results and single-use completion
+proofs; initially prove only x/y, width/height and setPosition operations listed
+in the contract. Preserve actual Stop/restart/Load and separate destruction/scene
+lifetimes, rejecting unqualified transfers and stale/forged ingress. Keep default
+admission closed until current source/Blocks, editable portable routes, native
+lifetime and genuinely new selected originals agree. No Sprite inheritance,
+reference Arrays, broad SDK APIs or complete-context promotion is included.
+Any required supplier schema remains separately claimed and qualified.
+
+## Ordinary handler-record Arrays with primitive callbacks — 2026-10-15
+
+CLAIM — root-owned bounded ordinary handler-record collection bridge.
+[Ownership and acceptance contract](docs/compatibility/arcade-handler-record-arrays.md)
+starts with one-dimensional actual Arrays of one completed ordinary handler
+class and one exact primitive or Void callback signature. Preserve shared Array,
+record, closure and captured-cell identities, all actual writers and callers,
+read presence, alias replacement/removal and exactly-once serial completion,
+including pause. Existing metadata and Array transports never issue callback
+or element authority; validate raw ingress and actual current resource/graph
+ownership before normalization. Keep direct callable Arrays, generic class
+containers, nested/mixed elements and SDK values refused. Primitive Map and
+future owned Sprite capability remain independent contracts. Implementation waits for normal qualified claim merge. Default admission waits
+for full portable/current-edit/lifecycle proof, independent review and genuinely
+new selected-original controls; no complete library or corpus promotion follows
+from the first registry subset.
 
 ## Arcade classes and mutable object semantics — proposed
 
@@ -3866,6 +4046,48 @@ qualification remain pending. Builds on the separately qualified PR895 source
 candidate, whose hosted merge gates are still pending. No startup failure
 attribution, deadline fix or full G02 completion is claimed.
 
+## SPIKE replacement upload cancellation after STOP — 2026-10-15
+
+Continuation in the merged G02 session/test envelope, branch
+`lane/spike-g02-upload-cancellation-20261015`, same Codex owner.
+When a replacement upload awaits its initial STOP response, a concurrent session
+Stop used to let the resumed method replace the source and begin a new upload
+after closure. Check closure after that awaited response, before changing source
+or enqueueing BEGIN. Also check closure after the upload reply returns, before
+retained-program state or observers are published. An already executed upload
+cannot be rolled back by cancelling delivery of its result. Keep the serialized
+transport's existing STOP ordering.
+
+A real session and production codec with an authored delayed STOP response
+reproduce the gap: the normal control passes and cancellation fails on the
+baseline. A second completed-upload return control also reproduces late
+publication after closure while retaining real codec execution. All 59 session
+controls pass with both guards; each guard removal must fail its corresponding
+cancellation control. This is host boundary evidence, not a guest
+result. Source-bound installed own-NuttX cancellation, fresh recovery and every
+enabled exact-head CI check remain mandatory before integration. Firmware,
+Runtime, models, native code, pins, workflows and budgets are unchanged; no
+whole-G02, rollback, physical, reference or release claim.
+
+
+Installed qualification completed on tested consumer
+`516557dae2f3b29710318a0e9ee647715728376f`. Four real own-NuttX Code replacement
+cases pass: cancellation and normal delivery while the original STOP reply is
+held, and cancellation and normal delivery while a completed upload return is
+held. Actual Arena Reset invokes full pane/session Stop for cancellation. Each
+case releases ownership, completes a different fresh guest and releases it on
+final Stop. Standalone readers verify the original correlated STOP replies,
+completed-upload START replies, fixed guest identity and eight complete native
+startup transactions. The initial retained program is checked separately from
+the flag at the held-return boundary; no closed-session program/frame callback
+is admitted. Original selector and state-interval test failures remain preserved.
+
+This qualifies the frozen consumer and finite session boundaries. Pending-upload
+Arena Stop availability and Code feedback remain open; Reset coverage does not
+establish that UX. An executed upload remains executed. The session and test
+blobs are preserved during integration with separately qualified main changes;
+final-head CI remains required, and later whole packages need their own evidence.
+
 ## SPIKE remaining lifecycle boundaries — 2026-10-13
 
 Continuation candidate `lane/spike-g02-output-stop-20261014` stays in this
@@ -4062,6 +4284,40 @@ native source and dependency pins are preserved. The receipts qualify the frozen
 consumer and this finite fix, not every later package. Full G02, other images/
 backends/final-sampling/generation, physical/reference, G05 and release remain open.
 
+
+## SPIKE G03 sandbox and editor UI qualification — 2026-10-15
+
+CLAIMED — Codex SPIKE integration, branch `docs/spike-g03-ui-claim-20261015`.
+Implementation starts after PR948, PR962 and the remaining G02 acceptance review.
+Contract: [G03](docs/SPIKE-STATUS-AND-LANES.md#g03--qualify-usable-sandbox-and-responsive-editor-controls).
+First inventory working features in the actual rendered UI; fix demonstrated
+gaps rather than replacing existing controls or adding unsupported backends.
+
+Envelope: this ledger; `docs/SPIKE-ARENA.md` and
+`docs/SPIKE-STATUS-AND-LANES.md`; SPIKE presentation, sandbox editing/persistence,
+view switching and bounded Identify feedback in
+`overlay/scratch-gui/src/components/tw-pseudocode/{spike-arena-pane,spike-simulator-pane,spike-port-monitor}.jsx`;
+SPIKE-only text in `overlay/scratch-gui/src/lib/spike-arena/l10n.js`; focused
+`test/spike-arena-{3d-pane,pane-units}.test.mjs` and new scoped UI controls.
+In shared `pseudocode-importer.jsx`, only SPIKE entry/run/import toolbar labels
+and SPIKE-specific report presentation belong here. In shared
+`components/gui/gui.jsx`, only demonstrated SPIKE dock sizing/visibility defects
+belong here. Preserve other owners' Arcade/MakeCode/importer/lexical/type work
+and use only existing tracked package twins through repository-prescribed writers.
+Any wider shared-file or model change needs a separately coordinated envelope.
+
+Acceptance: free sandbox entry; shared 2D/3D world and one firmware owner;
+backend/topology admission; reset/edit/save/reopen; narrow desktop/mobile widths;
+long errors and conversion reports; keyboard/touch; EN/DE labels; explicit
+image/backdrop selection, clear import actions and compact run/undo controls;
+a usable right pane at 50–75 percent width. Identify A–F must show its actual
+observable boundary and a bounded failure instead of an indefinite pending state.
+Qualify real rendered behavior and relevant installed ownership paths; retain
+G02 regressions, immutable pins and product budgets. Merge this claim before
+implementation and require all enabled exact-head checks before integration.
+The separately claimed shared project-world work keeps its ownership. This
+claim changes no executable, dependency, fixture, capture or workflow and makes
+no fresh guest, performance, physical, reference, release or licence claim.
 
 ## SPIKE G02 compiled-model MicroPython desktop profile — 2026-10-15
 
