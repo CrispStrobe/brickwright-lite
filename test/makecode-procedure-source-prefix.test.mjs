@@ -62,3 +62,23 @@ test('only fully certified existing callable factories report an independent rou
   assert.ok(arcadeToPseudocode(invalid,option).unsupported.length>0);
  }
 });
+
+test('Number compound writers require actual Number RHS producers, including captured writers',()=>{
+ const operators=['+=','-=','*=','/=','%=','|=','&=','^=','<<=','>>=','>>>='];assert.equal(operators.length,11);
+ for(const op of operators)for(const rhs of ['"bad"','image.create(1,1) as any','undefined','unknown','true']){
+  const source=`function hold(value:number){value${op}${rhs};return value}hold(20);`;
+  assert.ok(arcadeToPseudocode(source,option).unsupported.some(message=>/Procedure parameter constraint:.*compound writer.*Number/.test(message)),source);
+ }
+ for(const source of [
+  'function hold(value:number){game.onUpdate(()=>{value+="bad"})}hold(20);',
+  'function hold(value:number){let rhs=1;rhs=image.create(1,1) as any;value+=rhs}hold(20);',
+  'function hold(value:string){value+="ok"}hold("20");',
+  'function hold(value:string){value++}hold("20");'
+ ])assert.ok(arcadeToPseudocode(source,option).unsupported.some(message=>/Procedure parameter constraint:/.test(message)),source);
+ for(const source of [
+  'function hold(value:number){value+=2;value-=1;return value}let result=hold(20);',
+  'function amount(){return 2}function hold(value:number){value+=amount();return value}let result=hold(20);',
+  'function hold(value:number){game.onUpdate(()=>{value+=2})}hold(20);',
+  'function hold(value:number){value++;--value;return value}let result=hold(20);'
+ ])assert.deepEqual(arcadeToPseudocode(source,option).unsupported,[],source);
+});

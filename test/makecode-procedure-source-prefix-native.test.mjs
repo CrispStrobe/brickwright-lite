@@ -55,3 +55,9 @@ test('independent numeric callable factory keeps its actual capture behavior wit
  try{run=await runProgram(imported.code,{frames:30});assert.deepEqual(run.creator.warnings,[]);assert.deepEqual(run.errors,[]);assert.equal(value(run,'result'),21);}
  finally{if(run){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
 });
+
+test('actual Number compound inputs and explicit updates retain ordinary parameter effects',async()=>{
+ const imported=arcadeToPseudocode('function amount(){return 2}function hold(value:number){value+=amount();value-=1;value++;--value;return value}let result=hold(20);',options);assert.deepEqual(imported.unsupported,[]);let run;
+ try{run=await runProgram(imported.code,{frames:30});assert.deepEqual(run.creator.warnings,[]);assert.deepEqual(run.errors,[]);assert.equal(prefixCount(run),1);assert.equal(value(run,'result'),21);const exported=projectToArcade(JSON.parse(run.vm.toJSON()));assert.deepEqual(exported.unsupported,[]);assert.deepEqual(arcadeToPseudocode(exported.files,options).unsupported,[]);}
+ finally{if(run){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+});

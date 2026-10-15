@@ -54,8 +54,12 @@ export function validateProcedureConstraintSource(program,{onlyFunctions=null}={
   for(const writer of writes) {
    const lhs=writer.type==='Update'?writer.argument:writer.left;
    if(lhs?.type!=='Identifier')continue;const name=formalBindings.get(graph.bindingOf(lhs)),constraint=entry.selected.find(c=>c.name===name);if(!constraint)continue;
-   if(writer.type==='Update'||writer.op!=='='){if(constraint.type!=='Number'&&constraint.type!=='Any')diagnostics.push(`Procedure parameter constraint: ${fn.name}.${name} compound writer differs`);}
-   else requireTypes(constraintTypes(writer.right),constraint.type,`${fn.name}.${name} writer`);
+   if(writer.type==='Update'||writer.op!=='='){
+    if(constraint.type==='Any')continue;
+    const numeric=constraint.type==='Number'&&(writer.type==='Update'?['++','--'].includes(writer.op):['+=','-=','*=','/=','%=','|=','&=','^=','<<=','>>=','>>>='].includes(writer.op));
+    if(!numeric)diagnostics.push(`Procedure parameter constraint: ${fn.name}.${name} compound writer differs`);
+    else if(writer.type!=='Update')requireTypes(constraintTypes(writer.right),'Number',`${fn.name}.${name} compound writer`);
+   }else requireTypes(constraintTypes(writer.right),constraint.type,`${fn.name}.${name} writer`);
   }
  }
  return Object.freeze([...new Set(diagnostics)]);
