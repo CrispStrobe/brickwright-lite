@@ -20,7 +20,7 @@ test('source typeof actual Array Image Buffer class construction identity qualif
  assert.equal(f.native._objectHeap.inspect(r.object).constructing,true);f.native._objectHeap.finish(r.object,r.allocation.token);assert.equal(f.type(r.object),'object');
 });
 test('source typeof refuses callable transport despite its actual service owner and rejects forged refs',()=>{
- const f=fixture(),carrier=BW.reference(f.runtime,'callable','fake');assert.throws(()=>f.native._callableValues.resource(carrier),/Stale or foreign callable reference/);assert.throws(()=>f.type(carrier),/unsupported reference owner callable/);
+ const f=fixture(),carrier=BW.reference(f.runtime,'callable','fake');assert.throws(()=>f.native._callableValues.resource(carrier),/Stale or foreign callable reference/);assert.throws(()=>f.type(carrier),/callable body missing or stale/);
  assert.throws(()=>f.type({bwReference:{kind:'callable',id:'fake',scope:'fake'}}),/foreign or stale callable reference/);
  for(const kind of ['array','image','buffer','object'])assert.throws(()=>f.type(BW.reference(f.runtime,kind,'missing')),/typeof:/);
  assert.equal(f.native._bufferHeap,undefined);for(const x of [{},[],()=>1])assert.throws(()=>f.type(x),/unregistered/);

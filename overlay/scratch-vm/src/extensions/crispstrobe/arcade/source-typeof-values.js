@@ -1,5 +1,13 @@
 // Source typeof uses the current owner of a value, never its token spelling.
-// Callable and ambiguous native Sprite carriers require separate qualification.
+// Ambiguous native Sprite carriers require their separate source proof.
+const sourceGraphCurrent = (runtime, snapshots, semantic) => {
+    const originals = runtime.targets.filter(target => target.isOriginal !== false);
+    return snapshots.size === originals.length && originals.every(target => {
+        const saved = snapshots.get(target), current = Object.entries(target.blocks._blocks);
+        return saved && saved.container === target.blocks && saved.entries.size === current.length && current.every(([id, block]) =>
+            saved.entries.get(id)?.block === block && saved.entries.get(id)?.semantic === semantic(block));
+    });
+};
 module.exports = function createSourceTypeOfValues(runtime, values, owners) {
     const fail = reason => {throw new Error('Arcade source typeof: ' + reason);};
     const assertOwner = () => {if (!owners.current()) fail('native owner changed or disposed');};
@@ -13,6 +21,14 @@ module.exports = function createSourceTypeOfValues(runtime, values, owners) {
         const kind = decoded.bwReference.kind;
         const id = values.referenceId(runtime, decoded, kind);
         if (id === null) fail('foreign or stale ' + kind + ' reference');
+        if (kind === 'callable' && typeof owners.callable === 'function') {
+            let classification;
+            try {classification = owners.callable(decoded, id);} catch (_) {fail('callable body missing or stale');}
+            if (!['function', 'object'].includes(classification)) fail('callable ownership classification missing');
+            if (!inputSnapshots.size || !sourceGraphCurrent(runtime, inputSnapshots, semantic))
+                fail('callable source graph changed or uninitialized; restart the project');
+            return classification;
+        }
         if (!['array', 'image', 'buffer', 'object'].includes(kind)) fail('unsupported reference owner ' + kind);
         const validate = owners[kind];
         if (typeof validate !== 'function') fail(kind + ' ownership adapter missing');

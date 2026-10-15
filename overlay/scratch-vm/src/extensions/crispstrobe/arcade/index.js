@@ -73,12 +73,17 @@ module.exports = makeExt(`// Name: Arcade
       this._images = new Map();
       this._sourceTypeOfDisposed = false;
       const sourceObjectOwner = this._objectHeap;
+      const sourceCallableOwner = this._callableValues;
       this._sourceTypeOf = dependencies.createSourceTypeOfValues(runtime, Scratch.BWValues, {
-        current: () => this._runtime === runtime && this._objectHeap === sourceObjectOwner && !this._sourceTypeOfDisposed,
+        current: () => this._runtime === runtime && this._objectHeap === sourceObjectOwner && this._callableValues === sourceCallableOwner && !this._sourceTypeOfDisposed,
         array: value => Array.isArray(Scratch.BWValues.arrayValue(runtime, value)),
         image: (value, id) => this._images.has(id) && this._image(value) === this._images.get(id),
         buffer: (value, id) => !this._bufferSuspended && Boolean(this._bufferHeap?.values.get(id)),
-        object: value => {sourceObjectOwner.inspect(value);return true;}
+        object: value => {sourceObjectOwner.inspect(value);return true;},
+        callable: value => {
+          if(sourceCallableOwner.resource(value).target.isOriginal===false)throw new Error('Callable reflection on clone targets is not qualified');
+          return sourceCallableOwner.typeOf(value);
+        }
       });
       this._spriteValues = new Map();
       this._playerValues = new Map();this._nextPlayerValue=0;

@@ -13,13 +13,18 @@ export function classMethodSourceSignature(proof,program,method) {
     if(!record||record.program!==program||JSON.stringify(program)!==record.source)throw Error('Class method requires its actual unchanged source proof');
     const row=record.methods.get(method);return row?structuredClone(row.signature):null;
 }
+export function classCallableReflectionSource(proof,program,node) {
+    const record=completedResultProofs.get(proof);
+    if(!record||record.program!==program||JSON.stringify(program)!==record.source)throw Error('Class reflection requires its actual unchanged source proof');
+    return record.reflections.has(node);
+}
 
 // This is a bounded, sequential producer proof over source AST, not an
 // interpreter for source values. Annotations constrain produced values but
 // never create an allocation, initialized field, closure or return value.
 export function proveClassCallableSource(program) {
     const flow=analyseCallableFlow(program),{lexical}=flow;
-    const classes=new Map(),errors=[],visited=new Set(),constructed=new Set(),resultFlows=new WeakMap();
+    const classes=new Map(),errors=[],visited=new Set(),constructed=new Set(),resultFlows=new WeakMap(),reflectedClosures=new Map(),reflections=new WeakSet();
     const fail=message=>{throw Error('Class callable source: '+message);};
     const named=name=>({kind:'named',name});
     const scalar=name=>({type:named(name)});
@@ -160,6 +165,14 @@ export function proveClassCallableSource(program) {
             if(node.op!=='=')value=binary(node.op.slice(0,-1),destination.value,value);
             constrain(value,destination.constraint,'writer');destination.value=value;destination.initialized=true;
             return value;
+        }
+        if(node.type==='Unary' && node.op==='typeof') {
+            const produced=alternatives(expression(node.argument,context));
+            if(!produced.length || produced.some(value=>value.type?.kind!=='callable'||value.node?.type!=='FunctionExpression'))
+                fail('callable reflection requires actual owned closure producers');
+            for(const value of produced)reflectedClosures.set(value.node,value);
+            reflections.add(node);
+            return scalar('string');
         }
         if(node.type==='Binary')return binary(node.op,expression(node.left,context),expression(node.right,context));
         if(node.type==='Call') {
@@ -326,10 +339,23 @@ export function proveClassCallableSource(program) {
             moduleEnv.cells.set(binding,{value,constraint:null});
         }
         body(program.body,{env:moduleEnv,scope:lexical.global,generics:new Map()});
+        // Reflection must not invoke a callback to qualify it. An otherwise
+        // unvisited zero-argument scalar leaf can be checked without effects;
+        // complex uninvoked bodies retain their separate source refusal.
+        const pure=node=>!!node&&(['Number','String','Boolean','Identifier'].includes(node.type)||
+            node.type==='Parenthesized'&&pure(node.expression)||node.type==='Binary'&&pure(node.left)&&pure(node.right));
+        for(const value of reflectedClosures.values())if(!visited.has(value.node)) {
+            const fn=value.node;
+            if(fn.params.length||fn.body?.length!==1||fn.body[0].type!=='Return'||!pure(fn.body[0].value)||
+                value.type.result.kind!=='named'||!['number','string','boolean'].includes(value.type.result.name))
+                fail('uninvoked reflected closure requires a pure zero-argument scalar return');
+            const context=bindScope(fn,value.env,[],{className:value.className,receiver:value.receiver,generics:new Map()});
+            constrain(expression(fn.body[0].value,context),value.type.result,'reflected scalar body');visited.add(fn);
+        }
         for(const cls of classes.values())if(!constructed.has(cls))fail('adjacent class has no proved actual construction');
         for(const scope of lexical.functions)if(!visited.has(scope.node))fail('adjacent callable body has no proved actual invocation');
         const proof={eligible:true,unsupported:[],flow,resultFlows};
         const methods=new Map();for(const cls of classes.values())for(const method of cls.methods)methods.set(method,{signature:structuredClone(signature(method)),resultFlow:resultFlows.get(method)?structuredClone(resultFlows.get(method)):null});
-        completedResultProofs.set(proof,{program,source:JSON.stringify(program),methods});return proof;
+        completedResultProofs.set(proof,{program,source:JSON.stringify(program),methods,reflections});return proof;
     } catch(error) {errors.push(error.message);return {eligible:false,unsupported:errors,flow};}
 }

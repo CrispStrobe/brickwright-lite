@@ -6,6 +6,65 @@ import {validateClassCallablePlan} from './class-callable-plan.js';
 const fail = message => { throw new Error('Callable export graph: ' + message); };
 const discardedMutationProofs=new WeakMap();
 const generatedLocalProofs=new WeakMap();
+const currentTypeProofs=new WeakMap();
+export function callableReflectionVariable(graph,block) {
+    if(!graph||!block)return false;
+    const slot=block.inputs?.VALUE?.[1],value=typeof slot==='string'?graph.target.blocks[slot]:null;
+    const id=Array.isArray(slot)&&slot[0]===12?slot[2]:value?.opcode==='data_variable'?value.fields?.VARIABLE?.[1]:null;
+    return typeof id==='string'&&[...graph.globalBindings.values()].some(row=>row.variableId===id);
+}
+export function callableReflectionOperand(graph,block,project) {
+    try {
+    const proof=currentTypeProofs.get(graph);
+    if(!proof || proof.snapshot!==JSON.stringify([graph.plan,graph.target.blocks]) ||
+        !project.targets.includes(graph.target) || !Object.values(graph.target.blocks).includes(block)||
+        block.opcode!=='arcade_sourceTypeOf'||Object.keys(block.inputs||{}).some(name=>name!=='VALUE'))return false;
+    for(const site of graph.plan.sites) {
+        const used=new Set(),visited=new Set();
+        const walk=id=>{
+            if(!id||visited.has(id))return;visited.add(id);const current=graph.target.blocks[id];if(!current)return;
+            if(['arcade_getCaptured','arcade_setCaptured'].includes(current.opcode)) {
+                const name=proof.literal(current,'NAME'),capture=site.captures.find(row=>graph.plan.bindings.find(binding=>binding.id===row.binding)?.nativeName===name);
+                if(!capture||current.opcode==='arcade_setCaptured'&&capture.mode!=='cell')throw Error('edited capture mode differs');
+                used.add(capture.binding);
+            }
+            if(current.opcode==='arcade_createCallable') {
+                const nested=graph.plan.sites.find(row=>graph.target.blocks[graph.creates.get(row.id)]===current);
+                for(const capture of nested?.captures||[])if(site.captures.some(row=>row.binding===capture.binding))used.add(capture.binding);
+            }
+            for(const input of Object.values(current.inputs||{}))for(const child of input.slice(1))if(typeof child==='string')walk(child);
+            walk(current.next);
+        };
+        walk(graph.procedures.get(site.owner)?.body);
+        if(site.captures.some(row=>!used.has(row.binding)))return false;
+    }
+    const bindings=[...graph.globalBindings].map(([binding,row])=>({...row,binding}));
+    const produced=(slot,seen=new Set())=>{
+        const row=Array.isArray(slot)&&slot[0]===12?bindings.find(row=>row.variableId===slot[2]):null;
+        const value=typeof slot==='string'?graph.target.blocks[slot]:null;
+        const variable=row||value?.opcode==='data_variable'&&bindings.find(row=>row.variableId===value.fields?.VARIABLE?.[1]);
+        if(variable){
+            if(seen.has(variable.variableId))return false;
+            const writers=Object.values(graph.target.blocks).filter(writer=>writer.opcode==='data_setvariableto'&&writer.fields?.VARIABLE?.[1]===variable.variableId);
+            return !!writers.length&&writers.every(writer=>proof.input(writer,'VALUE')?.kind==='callable'&&produced(writer.inputs?.VALUE?.[1],new Set([...seen,variable.variableId])));
+        }
+        if(value?.opcode==='arcade_createCallable')return [...graph.creates.values()].some(id=>graph.target.blocks[id]===value);
+        if(value?.opcode==='arcade_callFunction')return graph.plan.owners.some(owner=>
+            owner.procedure===proof.literal(value,'NAME')&&owner.signature.result.kind==='callable');
+        return false;
+    };
+    for(const target of project.targets)for(const writer of Object.values(target.blocks||{})) {
+        if(!['data_setvariableto','data_changevariableby'].includes(writer.opcode))continue;
+        const id=writer.fields?.VARIABLE?.[1],row=bindings.find(row=>row.variableId===id);
+        if(!row)continue;
+        const expected=graph.plan.bindings.find(binding=>binding.id===row.binding)?.type;
+        if(target!==graph.target || writer.opcode!=='data_setvariableto' ||
+            JSON.stringify(proof.input(writer,'VALUE'))!==JSON.stringify(expected)||!produced(writer.inputs?.VALUE?.[1]))return false;
+    }
+    const type=proof.input(block,'VALUE') || graph.classProvider?.currentInputType?.(block,'VALUE');
+    return type?.kind==='callable';
+    } catch (_) {return false;}
+}
 const mutationSnapshot=(graph,id)=>{
     const rows=[],seen=new Set();
     const visit=(id,children=true)=>{
@@ -279,7 +338,7 @@ export function callableVariableEnvelope(plan, bindingId) {
 // replacement body or invent an opaque reporter's type.
 export function validateCallableCurrentBodyTypes(graph,literalInput) {
     const {plan,target,procedures}=graph,blocks=target.blocks;
-    discardedMutationProofs.delete(graph);generatedLocalProofs.delete(graph);const discarded=new Map(),generated=new Map(),generatedNames=new Map();
+    currentTypeProofs.delete(graph);discardedMutationProofs.delete(graph);generatedLocalProofs.delete(graph);const discarded=new Map(),generated=new Map(),generatedNames=new Map();
     const named=name=>({kind:'named',name}),same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
     const argsType=(block,owner,seen)=>{
         const result=[];let slot=block.inputs?.ARGS?.[1];const visited=new Set();
@@ -298,8 +357,8 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
             if([4,5,6,7,8].includes(slot[0]))return named('number');
             if(slot[0]===10)return named('string');
             if(slot[0]===12) {
-                const row=[...graph.globalBindings.values()].find(row=>row.variableId===slot[2]);
-                return row&&plan.bindings.find(binding=>binding.id===row.binding)?.type;
+                const row=[...graph.globalBindings].find(([,row])=>row.variableId===slot[2]);
+                return row&&plan.bindings.find(binding=>binding.id===row[0])?.type;
             }
         }
         const block=blocks[slot];if(!block||seen.has(slot))return null;
@@ -328,6 +387,19 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
         if(block.opcode==='argument_reporter_string_number')return owner.receiverParameter===block.fields?.VALUE?.[0]?named(owner.className):binding(block.fields?.VALUE?.[0])?.type;
         if(block.opcode==='math_number')return named('number');
         if(block.opcode==='text')return named('string');
+        if(block.opcode==='data_variable') {
+            const row=[...graph.globalBindings].find(([,row])=>row.variableId===block.fields?.VARIABLE?.[1]);
+            return row&&plan.bindings.find(binding=>binding.id===row[0])?.type;
+        }
+        if(block.opcode==='arcade_callFunction'||block.opcode==='arcade_callCallable') {
+            const signature=block.opcode==='arcade_callFunction'?
+                plan.owners.find(row=>row.procedure===literalInput(block,'NAME'))?.signature:input('CALLABLE');
+            if(signature?.kind!=='callable')return null;
+            const args=argsType(block,owner,seen);
+            if(args.length!==signature.parameters.length || args.some((type,index)=>!same(type,signature.parameters[index].type)))return null;
+            return signature.result;
+        }
+        if(block.opcode==='arcade_sourceTypeOf')return input('VALUE')?.kind==='callable'?named('string'):null;
         if(block.opcode==='arrays_valueUndefined')return named('undefined');
         if(block.opcode==='arrays_specialValue'&&['undefined','null'].includes(block.fields?.KIND?.[0]))return named(block.fields.KIND[0]);
         if(block.opcode==='arrays_valueNull')return named('null');
@@ -402,4 +474,13 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
         }
     }
     discardedMutationProofs.set(graph,discarded);generatedLocalProofs.set(graph,generated);
+    const currentOwner=block=>{
+        let current=block;const seen=new Set();
+        while(current?.parent){if(seen.has(current))return null;seen.add(current);current=blocks[current.parent];}
+        const procedure=[...procedures].find(([,row])=>blocks[row.id]===current);
+        return procedure?plan.owners.find(row=>row.id===procedure[0]):current?.opcode==='arcade_whenSourceStarts'?plan.owners.find(row=>row.id===plan.module):null;
+    };
+    currentTypeProofs.set(graph,{snapshot:JSON.stringify([plan,blocks]),literal:literalInput,input:(block,name)=>{
+        const owner=currentOwner(block);return owner?typeOf(block.inputs?.[name]?.[1],owner):null;
+    }});
 }

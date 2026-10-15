@@ -3,7 +3,7 @@ import {classCallableDefaultProjectGate} from './class-callable-default-project-
 import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
 import {parseMakeCodeTs} from './ts-import.js';
 import {callableSourceGate} from './callable-source-gate.js';
-import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes} from './callable-export-graph.js';
+import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes,callableReflectionOperand,callableReflectionVariable} from './callable-export-graph.js';
 import {namedArrayItemExportAuthority} from './named-array-item-export-authority.js';
 import {NAMED_ARRAY_GET_SOURCE} from './named-array-item-helpers.js';
 import {sourceReferenceProject} from './source-reference-project.js';
@@ -1350,9 +1350,11 @@ class ArcadeEmitter {
         case 'arcade_spriteDataReadBoolean': this.requiresSpriteDataPackage=true;return `sprites.readDataBoolean(${v('ID')}, ${v('KEY')})`;
         case 'arcade_imageEquals': return `${v('IMAGE')}.equals(${v('OTHER')})`;
         case 'arcade_screenImage': return 'screen';
-        case 'arcade_sourceTypeOf':
-            if(!this.sourceTypeOfExportOperands?.has(b))this.note('Arcade source typeof export requires a proven primitive or owned Array, class, Image or Buffer; Sprite, callable and opaque ownership is not qualified');
+        case 'arcade_sourceTypeOf': {
+            const graph=this.callableExports?.get(this.target)?.graph,callable=callableReflectionOperand(graph,b,this.project);
+            if(callableReflectionVariable(graph,b)?!callable:!this.sourceTypeOfExportOperands?.has(b)&&!callable)this.note('Arcade source typeof export requires a proven primitive or current owned resource; Sprite and opaque ownership is not qualified');
             return `(typeof (${this.arrayValue(b,'VALUE')}))`;
+        }
         case 'arcade_fontValue': {
             const font=this.field(b,'FONT');if(!['font5','font8','font12'].includes(font)||b.inputs?.FONT){this.note('SDK Font value requires a fixed builtin selection');return 'undefined';}
             return `image.${font}`;

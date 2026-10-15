@@ -1205,7 +1205,7 @@ class ArcadeTranslator extends BaseTranslator {
         }
         if (this.nativeValues && node?.type === 'Unary' && node.op === 'typeof') {
             const value = node.argument;
-            if (!this.sourceTypeOfOperands?.has(value)) {
+            if (!this.sourceTypeOfOperands?.has(value) && node.bwSourceCallableTypeOf!==true) {
                 this.unsupported.push('Source typeof requires a proven primitive or owned Array, class, Image or Buffer; Sprite, callable and opaque ownership is not qualified');
                 return 'undefined value';
             }
