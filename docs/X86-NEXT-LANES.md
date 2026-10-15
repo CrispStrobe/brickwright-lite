@@ -28,6 +28,18 @@ The [optional real FreeDOS interaction probe](I80386-FREEDOS-INTERACTION.md) ext
 
 **Work:** align config-relative media resolution, explicit CHS validation, unsupported-command reporting and CLI/GUI selection. Add bounded ZIP admission with traversal/count/size protections, deterministic config choice and no host-shell execution. A DOSBox package is an input format, not a promise of DOSBox compatibility. ISO support needs a real upstream CD-ROM/ATAPI path; do not enable a file picker that implies an absent device. Disk writeback/export is a separate explicit workflow.
 
+The first connected GUI slice is proposed in
+[PR992](https://github.com/CrispStrobe/brickwright-lite/pull/992). It admits only a
+STORED ZIP of at most 16 MiB and 32 regular ASCII-named files: one `dosbox.conf`,
+one matching config-relative `.img` HDD and optional `LICENSE.txt` notices.
+Raw local/central records, extents, CRCs and paths are checked before extraction;
+commands are checked against a closed subset around the canonical board AST.
+Only explicit HDD CHS plus `boot -l c` selects the existing ordinary 386 route.
+DEFLATE, COM/MZ virtual files, host mounts and ISO devices remain unsupported.
+Source controls and an activation sink do not qualify a browser or guest boot.
+Same-archive CLI loading, installed GUI input and tab retention remain next
+acceptance work; claim the CLI entry/test changes before implementing them.
+
 **Deliverable:** shared parser tests and one freely licensed package loaded in both CLI and GUI. **Done when:** the same bytes reach the intended functional target, malformed inputs produce useful persistent errors, and actual guest input/output passes. Document unsupported formats and disk persistence accurately.
 
 ## Task C: upstream adoption and matrix gaps
