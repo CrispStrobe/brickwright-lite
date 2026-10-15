@@ -1,4 +1,5 @@
-import {classCallableSourceGate} from './class-callable-source-gate.js';
+import {proveClassCallableSource} from './class-callable-source-flow.js';
+import {withClassResultFlowProof} from './class-callable-result-flow-proof.js';
 import {lowerSdkFontValues} from './lower-sdk-font-values.js';
 import {callableSourceGate} from './callable-source-gate.js';
 import {lowerCallableValues} from './lower-callable-values.js';
@@ -4926,11 +4927,11 @@ export function arcadeToPseudocode (files, opts = {}) {
     const callableSourceParsed=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true});
     const callableEligibility=callableSourceGate(callableSourceParsed,{normalize:true});
     const callableEnabled=opts.callableLexicalPrototype===true || callableEligibility.eligible;
-    const classEligibility=classCallableSourceGate(callableSourceParsed);
+    const classEligibility=proveClassCallableSource(callableSourceParsed);
     const classEnabled=opts.classCallablePrototype===true || classEligibility.eligible;
     // Ordinary programs retain their ordinary parse. Only the proved numeric
     // surface uses lexical metadata and the existing callable lowering path.
-    const callableSourceInput=classEnabled ? callableSourceParsed : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
+    const callableSourceInput=classEnabled ? withClassResultFlowProof(callableSourceParsed,classEligibility) : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
     if(!opts.callableLexicalPrototype&&!opts.classCallablePrototype&&!classEligibility.eligible){
         projectInputDiagnostics.push(...callableEligibility.unsupported,...classEligibility.unsupported);
     }

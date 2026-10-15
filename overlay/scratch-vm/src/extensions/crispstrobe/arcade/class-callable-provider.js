@@ -58,6 +58,15 @@ module.exports = function createClassCallableProvider(runtime, values, heap, fra
             return structuredClone(parameter);
         });
         if(method.returnType!==(signature.result.kind==='named'?signature.result.name:'callable'))fail('method return type differs');
+        if(method.resultFlow!==undefined){
+            const flow=method.resultFlow;
+            if(!flow||typeof flow!=='object'||Array.isArray(flow)||Object.keys(flow).some(key=>!['schema','presenceField','absent','present'].includes(key))||
+                flow.schema!=='bw-class-result-flow/v1'||!/^[A-Za-z_]\w*$/.test(flow.presenceField||'')||flow.absent!=='undefined'||flow.present!=='callback'||
+                generics.size!==1||signature.result.kind!=='named'||!generics.has(signature.result.name)||signature.parameters.length!==1||
+                signature.parameters[0].type.kind!=='callable'||signature.parameters[0].type.result.kind!=='named'||
+                signature.parameters[0].type.result.name!==signature.result.name||signature.parameters[0].type.parameters.length!==1)
+                fail('unqualified conditional method result flow');
+        }
         return freeze({...method,parameters,typeParameters:structuredClone(method.typeParameters),callableSignature:signature});
     }
     function prepareDeclaration(target, descriptor) {

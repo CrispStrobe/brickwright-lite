@@ -2,6 +2,8 @@ const createGraph = require('./class-callable-graph');
 const createFrames = require('./class-callable-frames');
 const createProvider = require('./class-callable-provider');
 const createTypes = require('./class-callable-types');
+const createResultReads = require('./class-callable-result-reads');
+const conditionalBodyOwner = require('./class-callable-conditional-body-owner');
 
 // Private extension integration. Serialized declarations cannot issue a frame;
 // only the real managed procedure dispatch supplies its sentinel parameter map.
@@ -25,6 +27,8 @@ module.exports = function createClassCallableHost(runtime, values, createHeap, n
     provider = createProvider(runtime, values, heap, frames, {
         currentGraph: graph.current, currentCall: graph.callerCurrent, signatureOf});
     const types = createTypes(runtime, values, heap, signatureOf);
+    const resultReads=createResultReads(runtime,values,heap,frames,{currentGraph:graph.current,subscribeLifecycle,
+        validateBody:(target,method,receiver)=>conditionalBodyOwner(target,method,heap,receiver)});
     const completions=new WeakMap();
     const matches = (procedure, args, token) => {
         if (!args.length) return [];
@@ -56,7 +60,7 @@ module.exports = function createClassCallableHost(runtime, values, createHeap, n
             frames.bind(thread, target, procedure, params, token);
             if(!result)return null;
             const ticket=Object.freeze({});
-            completions.set(ticket,{target,method,signature:result,metadata:JSON.stringify(method)});
+            completions.set(ticket,{target,method,signature:result,metadata:JSON.stringify(method),resultRead:resultReads.prepare(thread,target,method,args[0])});
             return ticket;
         },
         result(ticket, value) {
@@ -65,8 +69,10 @@ module.exports = function createClassCallableHost(runtime, values, createHeap, n
             if(!completion||!graph.current(completion.target)||JSON.stringify(completion.method)!==completion.metadata)
                 throw new Error('Class callable result outlived its actual invocation');
             completions.delete(ticket);
+            if(completion.resultRead&&resultReads.complete(completion.resultRead,value))return value;
             return types.result(completion.signature,value);
         },
-        dispose() {frames.dispose();graph.dispose();}
+        observeObjectField(args,util,value){return resultReads.observe(util,args,value);},
+        dispose() {resultReads.dispose();frames.dispose();graph.dispose();}
     });
 };

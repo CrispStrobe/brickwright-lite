@@ -1990,7 +1990,8 @@ module.exports = makeExt(`// Name: Arcade
     objectField(args,util) {
       try{const field=this._objectHeap.property(args.OBJECT,String(args.FIELD));
         if(field.getter || field.setter){if(!field.getter)throw new Error('Class accessor has no getter');return this._objectProcedure(field.getter,[args.OBJECT],util,util?.thread?.bwObjectConstruction);}
-        return this._objectHeap.get(args.OBJECT,String(args.FIELD));}catch(error){return this._objectError(error);}
+        const value=this._objectHeap.get(args.OBJECT,String(args.FIELD));
+        classCallableHosts.get(this)?.observeObjectField(args,util,value);return value;}catch(error){return this._objectError(error);}
     }
     setObjectField(args,util) {
       try{const field=this._objectHeap.property(args.OBJECT,String(args.FIELD));

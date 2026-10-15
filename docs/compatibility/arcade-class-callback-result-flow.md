@@ -112,3 +112,19 @@ frame phase remain unchanged.
 Merge this documentation claim with enabled checks and reviewed/landed tree
 equality before product admission changes. Then qualify the bounded whole
 vertical slice; a pure branch helper alone is not completion.
+
+## First implementation boundary
+
+The first connected method shape saves one backing ordinary-class field, tests
+its presence, retains one action result in the present arm, calls zero-argument
+Void followups on that same saved receiver, and returns the retained result.
+The absent arm returns actual Undefined. Other branch layouts, conditional
+allocations and callback creation need separate current-body qualification.
+Void actions used as effects are included; storing Void in a module variable
+requires a separate declaration/export domain and remains unsupported. The
+first fixture retaining such a cell is kept as a diagnostic control.
+
+Native, Code, same/fresh saved-project and exported-source reimport controls
+are implementation evidence. Selected-original and hosted GUI qualification
+are still pending for this slice. No StatusBar graphics or complete-project
+promotion follows from its scalar followup observations.

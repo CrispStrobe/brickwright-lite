@@ -35,7 +35,11 @@ function catalogue(targets) {
             if(field.setter!==undefined&&(!field.setter||typeof field.setter.procedure!=='string'||!field.setter.procedure||!validParams(field.setter.parameters)||field.setter.parameters.length!==1||field.setter.parameters[0].optional||Object.hasOwn(field.setter.parameters[0],'default')||Object.keys(field.setter).some(key=>!['procedure','parameters'].includes(key))))throw Error('Invalid source reference setter');
             if((field.getter||field.setter)&&(field.initializer!==undefined||field.parameterProperty||field.readonly!==!!(field.getter&&!field.setter)))throw Error('Invalid source reference accessor storage metadata');
         }
-        if(methods.some(method=>!method.procedure||Object.keys(method).some(key=>!['name','procedure','parameters','returnType','visibility','typeParameters','callableSignature'].includes(key))||method.visibility!==undefined&&!['public','private','protected'].includes(method.visibility)))throw Error('Invalid source reference class method metadata');
+        if(methods.some(method=>!method.procedure||Object.keys(method).some(key=>!['name','procedure','parameters','returnType','visibility','typeParameters','callableSignature','resultFlow'].includes(key))||method.visibility!==undefined&&!['public','private','protected'].includes(method.visibility)))throw Error('Invalid source reference class method metadata');
+        for(const method of methods)if(method.resultFlow!==undefined){const flow=method.resultFlow;
+            if(!flow||typeof flow!=='object'||Array.isArray(flow)||Object.keys(flow).some(key=>!['schema','presenceField','absent','present'].includes(key))||flow.schema!=='bw-class-result-flow/v1'||!/^[A-Za-z_]\w*$/.test(flow.presenceField||'')||flow.absent!=='undefined'||flow.present!=='callback'||!fields.some(field=>field.name===flow.presenceField)||!method.callableSignature||method.typeParameters?.length!==1||method.callableSignature.result?.name!==method.typeParameters[0].name)
+                throw Error('Invalid source reference conditional method result flow');
+        }
         const initializer=literal(target,block,'INITIALIZER'),constructor=literal(target,block,'CONSTRUCTOR');
         if(typeof initializer!=='string'||typeof constructor!=='string')throw Error('Invalid source reference class procedure metadata');
         const parent=block.opcode==='arcade_declareSubclass'?literal(target,block,'BASE'):null;

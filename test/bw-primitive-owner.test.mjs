@@ -27,3 +27,15 @@ test('foreign container, retired caller and replacement block invalidate primiti
     }
     const f=fixture();f.runtime.sequencer.activeThread=null;assert.throws(()=>f.invoke(()=>0),/actual cached caller/);
 });
+test('object field read loan requires its exact actual operation and clears immediately',()=>{
+    const f=fixture();f.blocks.a.opcode=f.operation.opcode='arcade_objectField';
+    f.args.OBJECT='actual-reference';f.args.FIELD='state';
+    f.invoke(()=>{assert.equal(owner.current(f.util,f.args),f.blocks.a);
+        assert.equal(owner.current(f.util,{...f.args}),null);
+        assert.equal(owner.current(f.util,f.siblingArgs),null);
+        f.thread.isKilled=true;assert.equal(owner.current(f.util,f.args),null);
+    });
+    assert.equal(owner.current(f.util,f.args),null);
+    const unrelated=fixture();unrelated.blocks.a.opcode=unrelated.operation.opcode='arcade_fontValue';
+    assert.throws(()=>unrelated.invoke(()=>0),/actual cached caller/);
+});
