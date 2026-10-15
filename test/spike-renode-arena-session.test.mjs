@@ -747,3 +747,29 @@ for (const boundary of ['live','first-frame','configuration']) test(`startup obs
   else {assert.ok(!s.closed);assert.deepEqual(calls.map(c=>c.op),['session.start','state.read','arena.inputs.write','run']);assert.equal(b.hubState.externalBackend,s);}
  }finally{unsubscribe();await s.stop();}
 });
+
+// Real scheduled polling with authored delayed/error-capable native replies.
+for(const boundary of ['live-error','closed-result','closed-error'])test(`scheduled poll ${boundary}`,{timeout:5000},async()=>{
+ const b=new ArenaHubBridge({hubState:new Hub(),world:sandboxWorld()});let s,finish,fail,entered,reads=0;const events=[];
+ const pending=new Promise(resolve=>{entered=resolve;});
+ const frame=seq=>({schemaVersion:1,type:'snapshot',seq,clockNs:seq*1000000,target:{board:'spike-prime',firmware:'brickwright-arena-demo',transport:'none',imageSha256:'a'.repeat(64),capabilities:['arena-inputs/v1','arena-clock/v1','guest-motor-output/v1','state-sample/v1']},lifecycle:{connectionGeneration:1},ports:[{id:'C',attached:true,kind:'color'},{id:'D',attached:true,kind:'distance'},{id:'E',attached:true,kind:'force'}],motors:['A','B'].map(port=>({port,position:0,speedDps:0,demandDirection:0,stalled:false}))});
+ const capabilities=Object.fromEntries(['session.start','session.close','state.read','run','arena.inputs.write'].map(op=>[`renode.spike.${op}`,async()=>{
+  if(op==='state.read'){
+   if(++reads===1)return JSON.stringify(frame(1));
+   entered();return new Promise((resolve,reject)=>{finish=()=>resolve(JSON.stringify(frame(2)));fail=()=>reject(new Error('authored native poll failure'));});
+  }
+  events.push({op,closed:s.closed});return 'ready';
+ }]));
+ s=new RenodeArenaSession({bridge:b,capabilities,onError:error=>events.push({op:'onError',closed:s.closed,message:error.message}),onStopped:()=>events.push({op:'onStopped',closed:s.closed})});
+ try{
+  await s.start();await pending;
+  if(boundary==='live-error'){fail();await new Promise(resolve=>setTimeout(resolve,0));await s.completion;}
+  else{const stopping=s.stop();boundary==='closed-result'?finish():fail();await stopping;}
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.ok(s.closed);assert.equal(events.filter(e=>e.op==='onStopped').length,1);
+  const errors=events.filter(e=>e.op==='onError');
+  assert.equal(errors.length,boundary==='live-error'?1:0,'Closed session must not announce an error from its late poll');
+  if(errors.length)assert.equal(errors[0].closed,false);
+  assert.equal(b.hubState.clockOwner,null);assert.equal(b.hubState.configurationOwner,null);assert.equal(b.hubState.externalBackend,null);
+ }finally{await s.stop();}
+});
