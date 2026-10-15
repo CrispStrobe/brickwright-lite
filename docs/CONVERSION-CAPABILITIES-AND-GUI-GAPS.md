@@ -4891,3 +4891,67 @@ needs current-graph rejection, private failure completion, body/element proofs,
 trusted builtin adoption and qualified parameter/Settings source admission before
 the corresponding editors can promise typed collections. Do not treat a generic
 operation loan or imported metadata as an Array element certificate.
+
+### Required primitive formals: local native controls and GUI acceptance
+
+The locally reviewed development candidate preserves required Number, String
+and Boolean annotations on supported ordinary function declarations during
+default source conversion. An unused String formal retains its declaration
+without an invented call. Current callers and formal assignments, including
+captured writers, must satisfy the declared obligation; an annotation or a
+desired input type does not establish a producer's actual type. Existing mixed
+reference, callback and strict typed optional/default boundaries remain separate.
+Previously erased String metadata is not reconstructed by guessing.
+
+The score route uses the genuine player 1 score reporter as a Number producer
+for the supported `info.score()` source form. Source admission checks the actual
+unshadowed API use across the source root; aliases, replacement and unsupported
+access do not gain Number evidence. Native admission binds the actual Arcade
+owner, concrete adapter, current reporter/cache and numeric result. Genuine
+registration metadata can renew the binding once; replayed, stale, foreign or
+unissued metadata cannot. Disposal and current-graph checks remain enforced.
+The ordinary two-argument adapter and independent Array constructor retain
+their existing boundaries.
+
+A focused local batch passed 29 selected controls covering source preservation,
+genuine score production, current inputs/cache, registration renewal and
+refusal/lifetime boundaries. Earlier unused-String portable controls remain
+separate evidence. A separate fresh 29-project pure profile at development source `d14e9ccf`
+and complete canonical compiler `8b620dd` retained twenty clean source/Creator
+projects and twenty clean exports from those inputs. Complete measured pure
+routes rose from eighteen to nineteen: Lyla now preserves its unused String
+formal through export/reimport. No previously complete route was lost. Canonical compiler consumer adoption and its qualification remain
+pending. These results establish neither native Lyla gameplay, selected-original
+agreement nor visible GUI acceptance.
+
+The current source already exposes a procedure-constraint block with Number,
+String, Boolean and Any choices. The custom-procedure dialog offers Boolean
+and combined text/number arguments; it does not provide a separate Number versus
+String declaration control there. The constraint parameter menu currently lists
+formal names across the editing target, rather than filtering to the selected
+procedure. These are concrete authoring limitations. Persistence and interaction
+behaviors below are untested GUI requirements, not assertions that all their
+underlying mechanisms are absent.
+
+| GUI journey still required | Acceptance boundary |
+| --- | --- |
+| Create and edit required formals in Code and Blocks | Create Number, String and Boolean parameters; retain an unused String helper without adding a call. Make the declared type discoverable despite the shared text/number argument shape. |
+| Select and change constraints | Bind the actual procedure and its actual formal. Cover renaming, reordering, duplicate names and incompatible selections with readable refusal; filter the parameter menu to the chosen procedure. |
+| Edit current callers and writers | Accept genuine matching inputs; reject Text `20` supplied to Number and incompatible body/captured writes. Show the actual diagnostic and independent script continuation. Include changes after an initially valid call. |
+| Use player 1 score in numeric sockets | Connect the real player 1 score reporter to a required Number input and edit its current connection. Reject invalid current player/input shapes without assigning a type from the destination socket. |
+| Preserve metadata through editor transitions | Move Code to Blocks and back with the actual declaration prefix, unused formal and current body intact; do not silently discard malformed declarations or restore annotations from old text. |
+| Save, reopen, export and reimport | Preserve actual constraints, calls and writers in saved SB3 and current export/reimport. Run the reopened project and observe accepted and rejected behavior in the real GUI. |
+
+Relevant implementation is in
+`overlay/scratch-gui/src/lib/bw-makecode/procedure-constraint-source.js`,
+`ordinary-primitive-sdk-number-source.js`, `source-value-producers.js`,
+`arcade-translate.js`, `ts-import.js` and `export-arcade.js` in that directory,
+plus `overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js`,
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/console-inspect-values.js`
+and `overlay/scratch-vm/src/extensions/crispstrobe/adapter.js`.
+The existing dialog is
+`overlay/scratch-gui/src/containers/custom-procedures.jsx`.
+Focused controls include `test/makecode-default-primitive-formals.test.mjs`,
+`test/arcade-default-primitive-formals-native.test.mjs`,
+`test/arcade-score-number-producer-native.test.mjs` and
+`test/arcade-procedure-constraints-native.test.mjs`.

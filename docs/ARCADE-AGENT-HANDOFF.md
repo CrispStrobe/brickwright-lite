@@ -3650,3 +3650,23 @@ establish neither rendering nor zero runtime warnings. Original compiler success
 is not original gameplay: exact-input SDK runtime, visible editor/controller,
 artwork/save/reopen and complete-case qualification remain open. The raw census
 and the 29-project aggregate are unchanged.
+
+### Required primitive-formal preservation and genuine score producer
+
+The reviewed local native candidate now retains supported ordinary required
+primitive annotations by default, including an unused String formal, and admits
+the genuine player 1 score reporter through source and native producer checks.
+The focused 29-control batch covers current inputs/cache, trusted registration
+renewal and lifetime refusal; a separate full
+29-project pure profile retained twenty clean source/Creator inputs and twenty
+clean exports from those inputs, and improved complete measured pure routes
+from eighteen to nineteen through Lyla. No previously complete route was lost. Canonical compiler consumer adoption remains a gate.
+Do not infer native Lyla, selected-original or GUI acceptance.
+
+Track the Code/Blocks authoring journeys in the capability ledger: explicit
+Number/String/Boolean constraints, unused-formal preservation, procedure-specific
+selection, valid and invalid current callers/body writers, player 1 score numeric
+connections, and metadata-preserving Code/Blocks/SB3/save/reopen/export/reimport.
+Existing constraint blocks provide a starting interface; the shared text/number
+dialog and unfiltered formal menu need specific authoring work. The remaining
+GUI behaviors require actual browser evidence before they can be marked complete.
