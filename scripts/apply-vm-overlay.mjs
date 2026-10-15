@@ -14,6 +14,7 @@ import {patchArcadeSettingsSB3} from './lib/arcade-settings-sb3-hooks.mjs';
 import {patchArcadeManagedThread} from './lib/arcade-managed-thread-hooks.mjs';
 import {patchSavedProjectDeviceReset} from './lib/saved-project-device-vm-hooks.mjs';
 import {patchExtensionPrimitiveCaches} from './lib/extension-primitive-cache-hooks.mjs';
+import {patchNestedExecuteContext} from './lib/nested-execute-context-hooks.mjs';
 
 const ROOT = process.cwd();
 const SRC = path.join(ROOT, 'overlay', 'scratch-vm');
@@ -137,6 +138,8 @@ writeFileSync(keyboardPath, keyboardSource);
 // Track promise completion separately from its payload on the owning frame.
 const executePath = path.join(DEST, 'src', 'engine', 'execute.js');
 let executeSource = readFileSync(executePath, 'utf8');
+executeSource = patchNestedExecuteContext(executeSource);
+writeFileSync(executePath, executeSource);
 if (!executeSource.includes("const bwPrimitiveOwner = require('../util/bw-primitive-owner');")) {
     const importAnchor="const BlockUtility = require('./block-utility');";
     const callAnchor='        const primitiveReportedValue = blockFunction(argValues, blockUtility);';

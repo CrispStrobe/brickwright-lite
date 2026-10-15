@@ -32,6 +32,17 @@ failures reproduce independently of extension refresh and need a separate
 runtime correction. The export lane must extend actual current-graph proofs
 for these valid programs while preserving incompatible Number/Text refusals.
 
+The separate native Sprite failure is now isolated to shared `BlockUtility`
+state: synchronous nested callback execution replaces its `thread`, although
+the outer operation and every other ownership witness remain current. The
+engine now restores its caller's utility context in `finally` when nested
+execution returns or throws, preserving existing top-level behavior. Four
+retained constructor scenarios execute natively without ownership errors;
+new controls exercise three nested creation callbacks, subsequent managed
+results, refresh/restart and saved-project reload. Twelve affected controls
+and an independent two-control replay pass. This does not replace the pending
+class-export repairs or hosted SDK Sprite and GUI checks.
+
 ## Replacement full run at 60de95e9 — 2026-10-15
 
 [Run 38676138489](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38676138489)
