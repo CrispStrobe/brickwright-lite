@@ -44,3 +44,14 @@ test('handle-based source renderer preserves actual primitive procedure metadata
  try{run=await runProgram(imported.code,{frames:30});assert.deepEqual(run.creator.warnings,[]);assert.deepEqual(run.errors,[]);assert.equal(prefixCount(run),1);assert.equal(value(run,'result'),21);}
  finally{if(run){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
 });
+
+test('multiple Any formals preserve actual heterogeneous values and hygienic formal-name collisions',async()=>{
+ const imported=arcadeToPseudocode('function keep(answer:any,answer_:any){return answer_}let result=keep(20,"20");',options);assert.deepEqual(imported.unsupported,[]);assert.match(imported.code,/parameter "answer__" as Any/);assert.match(imported.code,/parameter "answer_" as Any/);let run;
+ try{run=await runProgram(imported.code,{frames:20});assert.deepEqual(run.creator.warnings,[]);assert.deepEqual(run.errors,[]);assert.equal(prefixCount(run),2);assert.equal(value(run,'result'),'20');const exported=projectToArcade(JSON.parse(run.vm.toJSON()));assert.deepEqual(exported.unsupported,[]);const reimport=arcadeToPseudocode(exported.files,options);assert.deepEqual(reimport.unsupported,[]);}
+ finally{if(run){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+});
+test('independent numeric callable factory keeps its actual capture behavior with the explicit protocol',async()=>{
+ const imported=arcadeToPseudocode('function make(seed:number){let value=seed;return ()=>{value+=1;return value}}let callback=make(20);let result=callback();',options);assert.deepEqual(imported.unsupported,[]);assert.doesNotMatch(imported.code,/declare arcade procedure/);let run;
+ try{run=await runProgram(imported.code,{frames:30});assert.deepEqual(run.creator.warnings,[]);assert.deepEqual(run.errors,[]);assert.equal(value(run,'result'),21);}
+ finally{if(run){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+});

@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
+import {prepareProcedureConstraintSource} from '../overlay/scratch-gui/src/lib/bw-makecode/procedure-constraint-source.js';
 const option={procedureConstraintsPrototype:true};
 test('ordinary declaration prefix is explicit and precedes local/body initialization',()=>{
  const source='function keep(value:number){let local=1;return value+local}let result=keep(20);';
@@ -27,4 +29,36 @@ test('existing independent optional/reference/class and escaped function paths g
 test('explicit Throw and parameter protocols compose without annotation producer grants',()=>{
  const result=arcadeToPseudocode('function fail(value:number){throw value}fail(20);',{...option,throwPrototype:true});assert.deepEqual(result.unsupported,[]);assert.match(result.code,/DEFINE fail \(value\):\n  declare arcade procedure "fail %s" parameter "value" as Number\n  arcade throw/);
  const bad=arcadeToPseudocode('function fail(value:number){throw value}fail("20");',{...option,throwPrototype:true});assert.ok(bad.unsupported.some(message=>/Procedure parameter constraint/.test(message)));
+});
+
+test('explicit excluded selections and competing actual bindings are named rather than silently preserved',()=>{
+ for(const source of [
+  'function keep(value:number=1){return value}let result=keep();',
+  'function keep(value?:number){return value}let result=keep(1);',
+  'function keep<T>(value:number){return value}let result=keep(1);',
+  'function keep(value:number,picture:Image){return value}let result=keep(1,image.create(1,1));',
+  'function keep(value:number){return value}let alias=keep;',
+  'function keep(value:number){return value}let result=new keep(1);',
+  'function keep(value:number){return value}keep=other;keep(20);',
+  'function keep(value:number){return value}function keep(value:number){return value+1}keep(20);',
+  'class keep{}function keep(value:number){return value}keep(20);',
+  'function keep(value:number,value:number){return value}keep(1,2);'
+ ])assert.ok(arcadeToPseudocode(source,option).unsupported.some(message=>/Procedure parameter constraint:/.test(message)),source);
+});
+test('retained constraints never seed Number intrinsic operand producers',()=>{
+ const result=arcadeToPseudocode('function format(value:number){return value.toString()}',option);
+ assert.ok(result.unsupported.some(message=>/toString|Number/.test(message)),JSON.stringify(result.unsupported));
+});
+
+test('only fully certified existing callable factories report an independent route without a new prefix',()=>{
+ const source='function make(seed:number){let value=seed;return ()=>{value+=1;return value}}let callback=make(20);let result=callback();';
+ const parse=text=>parseMakeCodeTs(text,{parameterDefaults:true,retainCallableMetadata:true});
+ const ast=parse(source),prepared=prepareProcedureConstraintSource(ast);
+ assert.deepEqual(prepared.diagnostics,[]);assert.deepEqual(prepared.independentRoutes,[{name:'make',protocol:'existing-numeric-callable'}]);
+ assert.equal(Object.isFrozen(prepared.independentRoutes),true);assert.equal(Object.isFrozen(prepared.independentRoutes[0]),true);
+ assert.deepEqual(prepared.prefix(ast.body[0],'make %s'),[]);
+ for(const invalid of [source.replace('make(20)','make(image.create(1,1) as any)'),source+'make=image.create(1,1) as any;']){
+  assert.deepEqual(prepareProcedureConstraintSource(parse(invalid)).independentRoutes,[]);
+  assert.ok(arcadeToPseudocode(invalid,option).unsupported.length>0);
+ }
 });
