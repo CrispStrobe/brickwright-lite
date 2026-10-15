@@ -124,3 +124,42 @@ engine/assets build with visible frames, live input and a repeatable workload.
 Public examples and new notes use free/authored media with exact notices; private
 licensed-media records remain in the private repository. No calibrated RTx,
 physical 386 timing, whole-OS, broad DOSBox or release claim follows from this lane.
+
+
+## Master-disk export continuation
+
+Updated 2026-10-15. The board's master-copy API is merged in
+[PR623](https://github.com/CrispStrobe/bw-board/pull/623); explicit CLI raw output
+is merged in [PR618](https://github.com/CrispStrobe/bw-board/pull/618).
+The two-session FreeDOS persistence fixture is proposed in
+[PR625](https://github.com/CrispStrobe/bw-board/pull/625). Its publication is not an
+actual guest result. The GUI memory descriptor normalization is merged in
+[PR970](https://github.com/CrispStrobe/brickwright-lite/pull/970), while the
+[memory drawer PR972](https://github.com/CrispStrobe/brickwright-lite/pull/972)
+needs its final checks and merge. These source checkpoints do not adopt a newer
+board package or qualify the installed app.
+
+Proceed through the existing bounded write/export/fresh-process reload fixture,
+then the mocked browser download helper, then the separately claimed runner
+bridge and panel action. The bridge calls only the current target's
+`snapshotAtaMaster()` and rejects stale session ownership after stop,
+replacement, or destroy. Do not expose the target object or infer support merely
+because a bridge method exists on every runner. Preserve the board's copy-time
+boundary and refusals; no continuous pause or guest flush is implied.
+
+Before installed acceptance, coordinate the supplier handoff and verify the
+actual package includes the qualified API. Capture genuine browser image and
+metadata downloads, compare the downloaded image hash, then use the real
+**Boot FreeDOS VGA** chooser with the same free boot floppy and the exported
+306×4×17 master data image. Start a fresh machine and read the guest-written
+marker without rewriting it. Preserve the original input and session separately.
+The **Boot disk** shortcut boots an HDD and is not the data-disk reload route.
+Keep the existing authored boot-sector acceptance intact when extending its
+harness. Exercise browser download permission behavior: two mocked anchor clicks
+do not prove two files were saved.
+
+Board export geometry is broader than the current GUI BIOS loader's accepted
+geometry. Do not promise arbitrary exports can be reloaded: the named FreeDOS
+route accepts the fixture's 306×4×17 image, while the generic DOSBox-config route
+has its own CHS limits. Geometry metadata is a sidecar, not a config import
+format. A wider chooser or ISO/CD-ROM path needs its own claim and qualification.

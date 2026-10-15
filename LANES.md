@@ -1,3 +1,26 @@
+## WeDo clone 88005 polarity and power packet correction — 2026-10-15
+
+CLAIM — Codex, isolated existing adoption branch
+`lane/wedo-lights-adoption-20261015`, worktree `wt-wedo-adoption-sparse`.
+Follow-up to the published WeDo adoption claim and draft PR980. Human-observed
+CoreBluetooth testing on the user's unbranded clone: physical port A responds
+to protocol port 2; `[2,1,1,156]` lights the 88005 at full power and
+`[2,1,1,206]` visibly dims it. Positive power and the previous payload-length
+2 command did not light it. Internal RGB works. Standard 440/1000/1500 Hz
+piezo commands were acknowledged but produced no audible sound; do not claim
+this clone's advertised buzzer works or silently substitute host audio.
+
+Envelope: this ledger; existing dedicated `wedo2unified` pin and generated
+bundle/provenance table; focused `test/wedo2-lights-and-tones.test.mjs`.
+Source changes belong upstream in extensions PR49: one-byte signed power,
+explicit normal/reversed polarity with translated labels, and replaceable
+inferred motor/light types while preserving real attachment announcements.
+No global automatic clone detection, motor port remapping or other pin moves.
+Publish upstream first, then adopt the immutable commit with the canonical
+vendor script. Verify the measured packets, default positive polarity,
+Stop All/off, known-device protection, immutable bundle identity and local
+production build. Claim must land on remote main before Lite implementation.
+
 ## iOS redundant static archive packaging — 2026-10-15
 
 CLAIMED — Codex, isolated `fix/ios-static-archive-resources-20261015` in
@@ -126,7 +149,8 @@ remain required before product integration.
 
 ## A11: Code-tab MakeCode export uses the project target — 2026-10-15
 
-DONE candidate — Codex, isolated branch `lane/a11-project-target-export-20261015`,
+DONE — merged 2026-10-15 in [PR #971](https://github.com/CrispStrobe/brickwright-lite/pull/971)
+as `f1440691`. Original branch `lane/a11-project-target-export-20261015`,
 base `c6f1ff5c3`. Single-board Code-tab MakeCode export selects the existing
 micro:bit, Calliope or EV3 emitter from the parsed project device and writes
 matching project metadata and editor guidance. Preserve unchanged imported
@@ -143,15 +167,16 @@ reports the correct editor in both locales and offers EV3 export. The target
 is captured with the source before lazy compiler loading; generated micro:bit
 filename conventions and the multi-board early return are preserved.
 Validation: 39 focused export/UI/document-policy checks pass without skips;
-the old source and five wrong-routing/metadata/editor/original/visibility
-mutations fail. The existing browser gate now downloads the Calliope fixture's
-export, checks its polling loop and packages, reopens those exact bytes and
-runs its own PXT simulator. Hosted browser job `116412929942` passed the
-actual download/reopen/compile/Running checks in the real Calliope simulator;
-its tested merge `b8ca6b7d` has the same product bytes as this candidate.
-The original harness regex-policy failure is repaired with one exact checked
-lazy-import substitution; all 39 focused checks and six negative variants pass.
-All enabled final-head CI remains required before merge.
+the old source and wrong-routing/metadata/editor/original/visibility mutations
+fail. Final hosted browser job `116518382899` downloaded a Calliope export,
+checked its own packages/editor and polling loop, reopened those exact bytes,
+and compiled and ran it in the real Calliope PXT simulator. All 11 enabled
+checks passed on the reviewed head; deployment and deployed-site verification
+were conditional skips for the pull request. Heavy-browser retry `116562834180`
+ran all 31 assigned gates with zero skips. The original harness-policy and
+npm install connection-reset failures remain recorded. The normal matched-head
+merge preserved the separately qualified debugger-capability parent, and its
+landed tree and parents matched the reviewed composition.
 
 ## Shared simulated world, step 1 — project world in Lite — 2026-10-15
 
@@ -4187,6 +4212,27 @@ Live root tracing and aggregate allocation budgets remain explicit next work;
 no whole-app corpus promotion follows from reset/disposal controls. Lower
 Arcade integration branches are landing separately by normal merges.
 
+## Arcade signed integer division through existing value blocks — 2026-10-15
+
+CLAIM — Codex Arcade integration, branch `lane/arcade-idiv-claim-20261015`.
+Implement exact selected `Math.idiv` import and current export through existing
+primitive divide and bitwise value operations. Convert both actual Number
+operands to signed32 before dividing, then convert the quotient; preserve each
+argument once, left to right. No new opcode, word, menu item or dependency pin.
+
+Envelope: this ledger; [the bounded contract](docs/ARCADE-INTEGER-DIVISION.md);
+a focused helper under `overlay/scratch-gui/src/lib/bw-makecode/`;
+coordinated narrow `arcade-translate.js` and actual shared source-producer hooks
+if needed; affected current-export validation only if needed; focused tests and
+a self-authored freely licensed original/export fixture. Reuse actual Number
+proof and complete SDK root/member write checks. No broad Math return seed,
+annotation producer, Text/reference coercion or unrelated Array/callable/default
+change. Merge this claim before product edits. Acceptance: signed/fractional/
+wrapped inputs, zero divisor, computed nonfinite inputs, effect order,
+source/Code/Blocks/same-fresh SB3/current export/reimport, meaningful refusal
+controls, exact selected-original and edited-export execution, and every enabled
+exact-head hosted check. This API alone does not close a whole stopwatch game.
+
 ## Arcade Buffer destination storage — 2026-10-13
 
 CLAIMED — Codex, `lane/arcade-buffer-storage-20261013`, stacked on PR853.
@@ -4326,6 +4372,34 @@ The separately claimed shared project-world work keeps its ownership. This
 claim changes no executable, dependency, fixture, capture or workflow and makes
 no fresh guest, performance, physical, reference, release or licence claim.
 
+## SPIKE NuttX Code caller ownership — 2026-10-15
+
+PROPOSED — Codex SPIKE G02 continuation, branch
+`lane/spike-g02-code-caller-20261015`. Merge this documentation claim before
+product changes. Extend the existing SPIKE session/pane/feedback envelope only
+to `runOnNuttxPython` in
+`overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx` and
+focused `test/spike-code-caller-ownership.test.mjs` controls, this ledger and the
+SPIKE status guide. Preserve the shared import, conversion, Arcade, namespace,
+lexical/type-lowering and other target dispatchers owned by their existing lanes.
+The separate G03 importer permission remains limited to SPIKE toolbar text.
+
+Two authored scheduling controls on the original dispatcher reproduce an earlier
+call's `finally` clearing a newer pending call's busy flag and an earlier `catch`
+replacing the newer call's status. They use the original feedback helper and
+controlled pane promises, with no native or guest execution. Bind callbacks,
+output, Stop ownership and post-await/catch/finally publication to the current
+NuttX Code caller; preserve current completion/error/Stop and retry/cold paths.
+
+Acceptance requires the baseline failures, positive current-owner controls,
+old callback/output/Stop and overlapping-call adversaries, affected session/pane
+regressions and guard mutations, then a source-bound installed Code scenario
+with actual owned firmware, visible controls, cleanup and distinct recovery.
+All enabled final-head CI checks must pass before normal exact-head merge.
+Do not claim host scheduling controls qualify installed concurrency, native UART
+output attribution, whole G02, physical behavior or a release. No native,
+firmware, Runtime, model, dependency pin, workflow or deadline change is included.
+
 ## SPIKE G02 compiled-model MicroPython desktop profile — 2026-10-15
 
 IN PROGRESS — Codex, isolated implementation branch
@@ -4450,23 +4524,34 @@ download/reload acceptance. DOS package work owns new
 schema, further board metadata or dependency changes separately before coding.
 No private media, ISO picker, native addon backend or general OS claim.
 
-## Arcade signed integer division through existing value blocks — 2026-10-15
 
-CLAIM — Codex Arcade integration, branch `lane/arcade-idiv-claim-20261015`.
-Implement exact selected `Math.idiv` import and current export through existing
-primitive divide and bitwise value operations. Convert both actual Number
-operands to signed32 before dividing, then convert the quotient; preserve each
-argument once, left to right. No new opcode, word, menu item or dependency pin.
+## 386 master-disk runner bridge — 2026-10-15
 
-Envelope: this ledger; [the bounded contract](docs/ARCADE-INTEGER-DIVISION.md);
-a focused helper under `overlay/scratch-gui/src/lib/bw-makecode/`;
-coordinated narrow `arcade-translate.js` and actual shared source-producer hooks
-if needed; affected current-export validation only if needed; focused tests and
-a self-authored freely licensed original/export fixture. Reuse actual Number
-proof and complete SDK root/member write checks. No broad Math return seed,
-annotation producer, Text/reference coercion or unrelated Array/callable/default
-change. Merge this claim before product edits. Acceptance: signed/fractional/
-wrapped inputs, zero divisor, computed nonfinite inputs, effect order,
-source/Code/Blocks/same-fresh SB3/current export/reimport, meaningful refusal
-controls, exact selected-original and edited-export execution, and every enabled
-exact-head hosted check. This API alone does not close a whole stopwatch game.
+CLAIM — Codex x86, serialized within the media workflow above, after required
+board qualification and explicit handoff.
+Additional ownership is limited to canonical
+`overlay/scratch-gui/src/lib/bw-debug/debug-runner.js`, its tracked generated
+`packages/scratch-gui/src/lib/bw-debug/debug-runner.js` mirror, and new
+`test/debug-runner-hdd-snapshot.test.mjs`. Publish and merge this contract before
+runner implementation. Preserve concurrent runner changes and the supplier
+owner's package/lock/vendor surfaces.
+
+Add only a focused `snapshotAtaMaster()` bridge to the current target's method.
+Keep the target private. Do not add arbitrary method dispatch, direct ATA access,
+auto-pause/resume, storage persistence, or a new capability schema. Require an
+active paused session and the underlying method, preserve structured refusals,
+and reject pending results after stop, replacement, or destroy using session
+ownership that cannot become valid again after stop/start. Mere target reference
+equality is insufficient. A completed copy remains a point-in-time snapshot;
+it does not grant a continuous paused lease or guest flush/completion.
+
+Execute the actual bridge and lifecycle paths in focused controls: unsupported
+and running targets make zero calls; board refusals survive; accepted bytes and
+boundary survive ordinary resume after copying; stale destroy/replacement/
+stop-start results fail closed. Preserve legacy targets and mirror equality.
+The separate download helper must recheck the active GUI session during awaits,
+clean up URLs on failure/disposal, and describe clicks as download initiation.
+Actual installed browser download and fresh chooser reload remain mandatory
+before a user-facing qualification claim. No supplier pin or chooser geometry
+limit changes belong to this extension. See the
+[handoff](docs/X86-NEXT-LANES.md#master-disk-export-continuation).
