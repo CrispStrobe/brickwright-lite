@@ -85,6 +85,16 @@ the graph and commit a write before final validation. The supplier successor
 must validate after coercion and before each actual mutation. Keep it isolated;
 passing downstream-stop controls does not prove that a write was prevented.
 
+The [authentic project ledger](compatibility/arcade-authentic-project-qualification.md)
+now separates the sixteen retained compile-valid asset contexts by pure, native,
+selected-original and visible-authoring gates. Nine have bounded five-route
+native controls. The difficulty sample uses the real prompt queue and one answer
+per route, then Right press/release. The flamethrower current export also matches
+all six retained selected-original observations, including measured clock/frame
+and trusted input edges, after one new compile and one start. Its actual emitted
+Sprite/Info bindings are derived independently from the new binary. No original
+replay, whole-game, visible-editor or census promotion follows.
+
 ### Current hosted checks and held candidates
 
 Canonical [PR157](https://github.com/CrispStrobe/sb3-creator/pull/157) is merged

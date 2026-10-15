@@ -57,8 +57,9 @@ See the [qualified Image boundary](compatibility/arcade-owned-image-class-callab
 
 The candidate Array Number bridge corrects nine real current-block cases while
 preserving text. Native evidence does not close operator-menu or save/export
-journeys. The supplier fork's Actions have been reenabled; one exact-head CI run is
-pending, with its production pin and bundle unchanged. Qualify the actual
+journeys. The supplier fork's Actions have been reenabled; the single exact-head CI run
+passed its three jobs and 38 selected Array controls. The production pin and
+bundle are unchanged; the new mutation fix needs its own qualification. Qualify the actual
 shipped supplier before the hosted Number-versus-text authoring journey.
 
 The opt-in Array operation prototype is separately held on a real index
