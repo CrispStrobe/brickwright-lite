@@ -1,8 +1,10 @@
+const createNamedCallableHost = require('./named-callable-host');
 const {validateCallableLexicalPlan} = require('./callable-lexical-plan.generated');
 // Explicit PXT callable resources. Executable bodies remain real VM procedures.
 // This service retains captured cells; it never executes JavaScript functions.
 let nextCallableId = 0;
 const classState = new WeakMap();
+const namedState = new WeakMap();
 
 class ArcadeCallableValues {
     constructor(runtime, values, classProvider = null, subscribeLifecycle = null) {
@@ -14,6 +16,7 @@ class ArcadeCallableValues {
         this.resetListeners = new Set();
         this.generation = 0;
         this.disposed = false;
+        namedState.set(this,{host:createNamedCallableHost(runtime,values,subscribeLifecycle),declarations:new WeakMap(),invocations:new WeakMap()});
         classState.set(this, {provider:classProvider, declarations:new WeakMap(), invocations:new WeakMap()});
         // Metadata-only extension construction has no runtime or resources.
         // Never turn it into a resource host by attaching a target afterward.
@@ -47,7 +50,7 @@ class ArcadeCallableValues {
 
     declare(target, descriptor, declarationOwner = null) {
         this.assertRuntime();
-        let sourceOwner, classDeclaration;
+        let sourceOwner, classDeclaration, namedDeclaration;
         if(descriptor?.schema==='bw-callable-declaration') {
             if (descriptor.version === 2) {
                 if (!classState.get(this).provider) throw new Error('Class callable declarations require their owned provider');
@@ -55,9 +58,11 @@ class ArcadeCallableValues {
                 sourceOwner = classDeclaration.sourceOwner;
                 descriptor = classDeclaration.descriptor;
             } else {
-            if(Object.keys(descriptor).some(key=>!['schema','version','site','plan','procedure'].includes(key)) || descriptor.version!==1)
+            if(Object.keys(descriptor).some(key=>!['schema','version','site','plan','procedure'].includes(key)) || ![1,3].includes(descriptor.version))
                 throw new Error('Unknown callable source declaration envelope');
             const plan=validateCallableLexicalPlan(descriptor.plan);
+            if(descriptor.version===3)namedDeclaration=namedState.get(this).host?.prepare(target,descriptor);
+            if(descriptor.version===3&&!namedDeclaration)throw new Error('Named callable requires its actual owned runtime');
             const site=plan.sites.find(row=>row.id===descriptor.site), owner=site&&plan.owners.find(row=>row.id===site.owner);
             if(!owner || owner.procedure!==descriptor.procedure)throw new Error('Callable source site/procedure owner mismatch');
             sourceOwner=site.createdIn===plan.module ? {module:true} : {procedure:plan.owners.find(row=>row.id===site.createdIn).procedure};
@@ -104,6 +109,7 @@ class ArcadeCallableValues {
             representation:captureSpecs.length ? 'action' : 'label',
             defaults:Object.freeze(Object.fromEntries(defaults.map(entry => [parameters.indexOf(entry.name),entry.value])))});
         if (classDeclaration) classState.get(this).declarations.set(registered, classDeclaration);
+        if (namedDeclaration) namedState.get(this).declarations.set(registered,namedDeclaration);
         declarations.set(procedure, registered);
     }
 
@@ -113,6 +119,8 @@ class ArcadeCallableValues {
         if (!definition) throw new Error('Unknown callable definition');
         this.declarationCurrent(target,definition);
         const classDeclaration=classState.get(this).declarations.get(definition);
+        const namedDeclaration=namedState.get(this).declarations.get(definition);
+        if(namedDeclaration)namedState.get(this).host.assertCreate(namedDeclaration,target,util,operationArgs);
         if(classDeclaration)classState.get(this).provider.assertCreate(classDeclaration,target,util,operationArgs);
         if(definition.sourceOwner && (definition.sourceOwner.module ? !sourceModule : ownerProcedure!==definition.sourceOwner.procedure))
             throw new Error('Callable creation requires its actual lexical frame owner');
@@ -151,6 +159,8 @@ class ArcadeCallableValues {
     }
 
     declarationCurrent(target, definition) {
+        const namedDeclaration=namedState.get(this).declarations.get(definition);
+        if(namedDeclaration)namedState.get(this).host.assertCurrent(namedDeclaration,target);
         const classDeclaration = classState.get(this).declarations.get(definition);
         if (classDeclaration) classState.get(this).provider.assertCurrent(classDeclaration, target);
         const owner=definition.declarationOwner;
@@ -202,14 +212,18 @@ class ArcadeCallableValues {
                 this.values.encode(resource.definition.defaults[index]) : this.values.UNDEFINED);
         // Each invocation gets its own map, while captured variable cells stay live.
         const invocation = {...resource, args:supplied, captures:new Map(resource.captures)};
+        const namedDeclaration=namedState.get(this).declarations.get(resource.definition);
+        if(namedDeclaration){if(args.length)throw new Error('Named declaration invocation requires zero actual arguments');namedState.get(this).invocations.set(invocation,{resource,declaration:namedDeclaration});}
         const declaration = classState.get(this).declarations.get(resource.definition);
         if (declaration) classState.get(this).invocations.set(invocation, {signature:classState.get(this).provider.invocation(declaration, supplied),resource});
         return invocation;
     }
 
-    hasTypedInvocation(invocation) {return classState.get(this).invocations.has(invocation);}
+    hasTypedInvocation(invocation) {return classState.get(this).invocations.has(invocation)||namedState.get(this).invocations.has(invocation);}
 
     complete(invocation, value) {
+        const named=namedState.get(this).invocations.get(invocation);
+        if(named){if(this.resource(invocation.reference)!==named.resource)throw new Error('Named completion outlived its actual invocation');return namedState.get(this).host.result(named.declaration,value);}
         const record = classState.get(this).invocations.get(invocation);
         if (!record) throw new Error('Class callable completion requires its actual owned invocation');
         const current = this.resource(invocation.reference);
@@ -219,6 +233,7 @@ class ArcadeCallableValues {
     }
 
     dispose() {
+        namedState.get(this).host?.dispose();
         this.removeEvents();
         this.suspend();
     }

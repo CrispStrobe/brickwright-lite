@@ -1,3 +1,5 @@
+import {proveNamedFunctionSource} from './named-function-source.js';
+import {lowerNamedFunctionValues} from './lower-named-function-values.js';
 import {proveClassCallableSource} from './class-callable-source-flow.js';
 import {withClassResultFlowProof} from './class-callable-result-flow-proof.js';
 import {numberLiteralCode,containsNonFiniteNumberLiteral} from './source-number-literal.js';
@@ -4939,15 +4941,18 @@ export function arcadeToPseudocode (files, opts = {}) {
     const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true};
     const ordinarySource=parseMakeCodeTs(source,callableParseOptions);
     const callableSourceParsed=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true});
+    const namedEligibility=proveNamedFunctionSource(callableSourceParsed);
+    const namedEnabled=namedEligibility.eligible;
+    const namedLowering=namedEnabled?lowerNamedFunctionValues(callableSourceParsed):null;
     const callableEligibility=callableSourceGate(callableSourceParsed,{normalize:true});
     const callableEnabled=opts.callableLexicalPrototype===true || callableEligibility.eligible;
     const classEligibility=proveClassCallableSource(callableSourceParsed);
     const classEnabled=opts.classCallablePrototype===true || classEligibility.eligible;
     // Ordinary programs retain their ordinary parse. Only the proved numeric
     // surface uses lexical metadata and the existing callable lowering path.
-    const callableSourceInput=classEnabled ? withClassResultFlowProof(callableSourceParsed,classEligibility) : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
-    if(!opts.callableLexicalPrototype&&!opts.classCallablePrototype&&!classEligibility.eligible){
-        projectInputDiagnostics.push(...callableEligibility.unsupported,...classEligibility.unsupported);
+    const callableSourceInput=namedEnabled ? namedLowering.program : classEnabled ? withClassResultFlowProof(callableSourceParsed,classEligibility) : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
+    if(!namedEnabled&&!opts.callableLexicalPrototype&&!opts.classCallablePrototype&&!classEligibility.eligible){
+        projectInputDiagnostics.push(...callableEligibility.unsupported,...classEligibility.unsupported,...namedEligibility.unsupported);
     }
     const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput,true));
     const parsed = lowerSourceLoopControl(inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
@@ -5049,8 +5054,8 @@ export function arcadeToPseudocode (files, opts = {}) {
             ['indexOf','removeElement'].includes(node.callee.name) && queryReferences.arrays.has(node.callee.object)
     });
     stagedSource.sourceReferenceDeclarations = sourceReferenceDeclarations(stagedSource);
-    stagedSource.sourceCallableDeclarations=callableEnabled?sourceCallableDeclarations(stagedSource).declarations:[];
-    const callables=classEnabled?lowerCallableValues(stagedSource,{classPrototype:true}):callableEnabled?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
+    stagedSource.sourceCallableDeclarations=namedEnabled?stagedSource.sourceCallableDeclarations || []:callableEnabled?sourceCallableDeclarations(stagedSource).declarations:[];
+    const callables=namedEnabled?{program:stagedSource,unsupported:namedLowering.unsupported}:classEnabled?lowerCallableValues(stagedSource,{classPrototype:true}):callableEnabled?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
     projectInputDiagnostics.push(...callables.unsupported);
     const objectClasses = lowerObjectClasses(callables.program,{classCallablePrototype:classEnabled});
     if(classEnabled && !callables.unsupported.length && !objectClasses.unsupported.length) {

@@ -1,3 +1,4 @@
+import {proveNamedFunctionSource} from './named-function-source.js';
 import {classCallableSourceGate} from './class-callable-source-gate.js';
 import {classCallableDefaultProjectGate} from './class-callable-default-project-gate.js';
 import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
@@ -2261,7 +2262,7 @@ class ArcadeEmitter {
                     const id=Object.entries(this.blocks).find(([,block])=>block===b)?.[0];
                     const generated=this.currentCallableContext.generatedLocal?.(id);
                     if(generated)push(`${generated.first?'let ':''}${generated.name}${generated.first?': '+renderCallableSignature(generated.type):''} = ${this.arrayValue(b,'VALUE')}`);
-                    else if(this.currentCallableContext.discardLocal?.(id))push(this.arrayValue(b,'VALUE'));
+                    else if(this.currentCallableContext.discardLocal?.(id))push((this.currentCallableContext.statementTerminator?';':'')+this.arrayValue(b,'VALUE')+(this.currentCallableContext.statementTerminator?';':''));
                     else push(`${this.currentCallableContext.local(this.literalInput(b,'NAME'),true)} = ${this.arrayValue(b,'VALUE')}`);
                 }catch(error){this.note(error.message);}return;
             }
@@ -3405,7 +3406,7 @@ class ArcadeEmitter {
                     const proof=classCallableDefaultProjectGate(target,this.project,this.objectClassExport,literal);
                     if(!proof.eligible)throw Error(proof.unsupported.join('; ')||'Class callable default project is unproved');
                     graph=proof.graph;this.classCallableDefaultTargets.add(target);
-                }else graph=inspectCallableExportGraph(target,envelope.plan,literal,envelope.version===2&&this.opts.classCallablePrototype?{classProvider:this.objectClassExport.classCallableProvider(target)}:{});
+                }else graph=inspectCallableExportGraph(target,envelope.plan,literal,envelope.version===2&&this.opts.classCallablePrototype?{classProvider:this.objectClassExport.classCallableProvider(target),project:this.project}:{project:this.project});
                 validateCallableCurrentBodyTypes(graph,literal);
                 if(this.clonable.has(target.name))throw Error('Callable lexical export on clone targets is not qualified');
                 for(const [bindingId,row] of graph.globalBindings) {
@@ -3613,6 +3614,7 @@ class ArcadeEmitter {
                         const creates=new Set(entry.graph.plan.sites.filter(site=>site.createdIn===entry.graph.plan.module).map(site=>entry.graph.creates.get(site.id)));
                         this.currentCallableContext=this.objectClassExport.classCallableProvider(t).contextForModuleRoot(b,entry.emitter,creates);
                     }
+                    if(entry?.graph.plan.version===3&&b.opcode==='arcade_whenSourceStarts')this.currentCallableContext=entry.emitter.moduleContext(b);
                     const lines = emitBody();
                     const locals = [...this.currentLocalNames].filter(name => !parameters.includes(name));
                     this.currentLocalNames = saved;this.currentCallableContext=savedContext;
@@ -4015,7 +4017,8 @@ export function projectToArcade (project, opts = {}) {
         // adjacent functions; lexical metadata cannot grant a broader surface.
         const reconstructed=parseMakeCodeTs(projectTs,{parameterDefaults:true,
             retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainCallableMetadata:true});
-        const gate=e.classCallableDefaultTargets.size?classCallableSourceGate(reconstructed):callableSourceGate(reconstructed);
+        const named=proveNamedFunctionSource(reconstructed);
+        const gate=named.eligible?named:e.classCallableDefaultTargets.size?classCallableSourceGate(reconstructed):callableSourceGate(reconstructed);
         if(!gate.eligible)e.note(e.classCallableDefaultTargets.size?'Class callable default export requires the proved complete ordinary-class source surface':'Callable default export requires the bounded numeric factory surface');
         for(const diagnostic of gate.unsupported)e.note(diagnostic);
     }

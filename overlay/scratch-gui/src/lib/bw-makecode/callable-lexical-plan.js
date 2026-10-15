@@ -57,14 +57,15 @@ const validateDefaults = (defaults, signature) => {
 };
 export function validateCallableLexicalPlan(plan) {
     keys(plan, ['schema', 'version', 'module', 'owners', 'bindings', 'sites']);
-    if (plan.schema !== 'bw-callable-lexical' || plan.version !== 1) fail('unsupported schema version');
+    if (plan.schema !== 'bw-callable-lexical' || ![1, 3].includes(plan.version)) fail('unsupported schema version');
     const owners = unique(plan.owners, 'owner'), bindings = unique(plan.bindings, 'binding'), sites = unique(plan.sites, 'site');
     const module = owners.get(plan.module);
     if (!module || module.kind !== 'module' || module.parent !== null) fail('missing module owner');
     const procedures = new Set();
+    const namedPlan = plan.version === 3;
     for (const owner of owners.values()) {
-        keys(owner, ['id', 'kind', 'parent', 'sourceName', 'procedure', 'signature', 'parameters', 'defaults']);
-        if (!['module', 'declaration', 'arrow', 'function'].includes(owner.kind)) fail('unqualified lexical owner kind');
+        keys(owner, ['id', 'kind', 'parent', 'sourceName', 'procedure', 'signature', 'parameters', 'defaults', ...(plan.version===3?['origin']:[])]);
+        if (!(plan.version===3?['module','declaration']:['module','declaration','arrow','function']).includes(owner.kind)) fail('unqualified lexical owner kind');
         if (owner.kind === 'module') {
             if (owner !== module || owner.parent !== null || Object.keys(owner).length !== 3) fail('duplicate or malformed module');
             continue;
@@ -74,6 +75,11 @@ export function validateCallableLexicalPlan(plan) {
             fail('missing lexical parent or procedure');
         if (procedures.has(owner.procedure)) fail('duplicate procedure ownership');
         procedures.add(owner.procedure); type(owner.signature);
+        if(namedPlan && (!object(owner.origin)||Object.keys(owner.origin).some(key=>!['kind','path'].includes(key))||
+            !['module','namespace'].includes(owner.origin.kind)||typeof owner.origin.path!=='string'||
+            !/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$/.test(owner.origin.path)||owner.parent!==plan.module||
+            owner.parameters?.length||owner.signature.parameters?.length||owner.signature.result?.kind!=='named'||
+            !['number','string','void'].includes(owner.signature.result.name)))fail('invalid actual named declaration origin or signature');
         if (owner.signature.kind !== 'callable' || !Array.isArray(owner.parameters) ||
             owner.parameters.length !== owner.signature.parameters.length) fail('procedure signature mismatch');
         validateDefaults(owner.defaults, owner.signature);
@@ -84,7 +90,7 @@ export function validateCallableLexicalPlan(plan) {
         }
     }
     for (const binding of bindings.values()) {
-        keys(binding, ['id', 'owner', 'sourceName', 'nativeName', 'kind', 'declarationKind', 'type', 'written']);
+        keys(binding, ['id', 'owner', 'sourceName', 'nativeName', 'kind', 'declarationKind', 'type', 'written', ...(namedPlan?['targets']:[])]);
         if (!owners.has(binding.owner) || !identifier(binding.sourceName) || !identifier(binding.nativeName) ||
             !['global', 'local', 'parameter', 'function'].includes(binding.kind) || typeof binding.written !== 'boolean')
             fail('invalid lexical binding');
@@ -92,6 +98,10 @@ export function validateCallableLexicalPlan(plan) {
             fail('missing declaration syntax');
         if (!['global', 'local'].includes(binding.kind) && binding.declarationKind !== undefined) fail('unexpected declaration syntax');
         type(binding.type);
+        if(namedPlan && binding.type.kind==='callable' && (!Array.isArray(binding.targets)||
+            binding.kind!=='function'&&!binding.targets.length||new Set(binding.targets).size!==binding.targets.length||
+            binding.targets.some(id=>!sites.has(id)||!sameType(owners.get(sites.get(id).owner).signature,binding.type))))fail('named callable binding lacks actual declaration targets');
+        if(namedPlan && binding.type.kind!=='callable' && binding.targets!==undefined)fail('primitive binding has declaration targets');
     }
     for (const owner of owners.values()) {
         for (const [index, bindingId] of (owner.parameters || []).entries()) {
@@ -108,8 +118,9 @@ export function validateCallableLexicalPlan(plan) {
     for (const site of sites.values()) {
         keys(site, ['id', 'owner', 'createdIn', 'captures', 'defaults']);
         const owner = owners.get(site.owner);
-        if (!owner || !['arrow', 'function'].includes(owner.kind) || owner.parent !== site.createdIn || !Array.isArray(site.captures))
+        if (!owner || !(namedPlan?['declaration']:['arrow','function']).includes(owner.kind) || owner.parent !== site.createdIn || !Array.isArray(site.captures))
             fail('creation owner mismatch');
+        if(namedPlan && (site.captures.length||site.defaults.length))fail('named labels do not allocate captures/defaults');
         const seen = new Set();
         for (const capture of site.captures) {
             keys(capture, ['binding', 'mode']);
