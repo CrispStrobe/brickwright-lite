@@ -7,7 +7,26 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {MATH_IDIV_SOURCE} from './fixtures/arcade/math-idiv.mjs';
 const visit=(node,predicate)=>node&&typeof node==='object'&&(predicate(node)||Object.values(node).some(value=>Array.isArray(value)?value.some(item=>visit(item,predicate)):visit(value,predicate)));
-function current(source){const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[],imported.unsupported.join('\n'));const creator=new Creator();creator.parse(imported.code);assert.deepEqual(creator.warnings,[]);return {imported,creator};}
+let diagnosticCounter=0;
+function captureDiagnostics(value,required){
+    const keys=Object.keys(value),channels={};
+    for(const key of new Set([...keys.filter(key=>/unsupported|warning|error|unparsed|diagnostic|refusal/i.test(key)),...required])){
+        const provided=Object.hasOwn(value,key),actual=value[key];channels[key]={provided,valueKind:!provided?'notprovided':actual===undefined?'undefined':Array.isArray(actual)?'array':actual===null?'null':typeof actual,value:!provided||actual===undefined?null:structuredClone(actual)};
+    }
+    return {returnedKeys:keys,channels};
+}
+const diagnosticIssue=value=>Array.isArray(value)?value.length>0:value&&typeof value==='object'?Object.keys(value).length>0:typeof value==='number'?value!==0:Boolean(value);
+function requireClear(observed,required,source){
+    for(const key of required)assert.ok(observed.channels[key]?.provided&&observed.channels[key].valueKind==='array'&&observed.channels[key].value.length===0,key+' diagnostic; actual source: '+source);
+    for(const [key,row]of Object.entries(observed.channels))if(row.provided)assert.ok(row.valueKind!=='undefined'&&!diagnosticIssue(row.value),key+' diagnostic; actual source: '+source);
+}
+function current(source){
+    const actualSource=typeof source==='string'?source:source['main.ts'],imported=arcadeToPseudocode(source),sourceDiagnostics=captureDiagnostics(imported,['unsupported','warnings']);
+    console.error(JSON.stringify({kind:'idiv-pure-diagnostics',counter:++diagnosticCounter,stage:'source',source:actualSource,...sourceDiagnostics}));requireClear(sourceDiagnostics,['unsupported','warnings'],actualSource);
+    const creator=new Creator();let parseError=null;
+    try{creator.parse(imported.code);}catch(error){parseError=error;throw error;}finally{console.error(JSON.stringify({kind:'idiv-pure-diagnostics',counter:++diagnosticCounter,stage:'Creator',parseError:parseError?{message:parseError.message,stack:parseError.stack,cause:Object.hasOwn(parseError,'cause')?String(parseError.cause):null}:null,...captureDiagnostics(creator,['errors','warnings','unparsed'])}));}
+    requireClear(captureDiagnostics(creator,['errors','warnings','unparsed']),['errors','warnings','unparsed'],actualSource);return {imported,creator};
+}
 const idiv=node=>node.type==='Call'&&node.callee?.type==='Member'&&node.callee.name==='idiv'&&node.callee.object?.name==='Math';
 
 test('idiv selected source exposes real converted editable operands and downstream Number text',()=>{

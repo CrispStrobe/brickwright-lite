@@ -199,9 +199,16 @@ export async function stepFrames(vm, frames, frameMs = 1000 / 30) {
     }
 }
 
-export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false, retainExtensionTimers = false, frameAuthority = 'manual'} = {}) {
+export async function runProgram (source, {frames = 12, keys = [], uploads = [], storage = false, retainExtensionTimers = false, frameAuthority = 'manual', observeCreator = null} = {}) {
     const creator = new SB3Creator();
-    creator.parse(source);
+    try { creator.parse(source); }
+    catch (parseError) {
+        // Observing a failed parse must never replace the actual parser error.
+        try { if (observeCreator) observeCreator(creator, parseError); }
+        catch (observerError) { try { process.stderr.write(JSON.stringify({kind:'creator-observer-failed',message:String(observerError?.message ?? observerError),stack:observerError?.stack})+'\n'); } catch {} }
+        throw parseError;
+    }
+    if (observeCreator) observeCreator(creator, null);
     for (const upload of uploads) {
         if (upload.mode === 'add') {
             // Code read back from blocks already declares the frame (COSTUME name);
