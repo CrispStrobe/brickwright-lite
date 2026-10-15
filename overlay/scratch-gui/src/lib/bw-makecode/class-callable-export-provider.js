@@ -214,6 +214,25 @@ export function createClassCallableExportProvider({target,project,classes,defini
             if(image?.kind!=='sdk'||image.name!=='Image'||names.some(name=>{const value=inputType(name);return value?.kind!=='named'||value.name!=='number';}))return null;
             return named(block.opcode==='arcade_imagePixel'?'number':'void');
         }
+        if(sdkImagePrototype&&['arcade_mutateImage','arcade_drawImage'].includes(block.opcode)){
+            const fill=block.opcode==='arcade_mutateImage',names=fill?['COLOR','TO']:['X','Y','W','H','COLOR'];
+            if(Object.keys(block.fields||{}).join(',')!=='OP'||block.fields.OP?.[0]!== (fill?'fill':'fillRect')||
+                Object.keys(block.inputs||{}).sort().join(',')!==['IMAGE',...names].sort().join(','))return null;
+            const image=inputType('IMAGE');
+            if(image?.kind!=='sdk'||image.name!=='Image'||names.some(name=>{const value=inputType(name);return value?.kind!=='named'||value.name!=='number';}))return null;
+            // Native fill evaluates the otherwise unused replacement socket.
+            // Export drops that operand: only a proved inert Number literal may
+            // disappear, never an effectful Number reporter or numeric text.
+            if(fill){
+                const slot=block.inputs.TO[1],leaf=typeof slot==='string'?target.blocks[slot]:null;
+                const inert=Array.isArray(slot)?slot.length===2&&[4,5,6,7,8].includes(slot[0]):
+                    leaf?.shadow===true&&/^math_(?:number|whole_number|integer|positive_number|angle)$/.test(leaf.opcode)&&
+                    !Object.keys(leaf.inputs||{}).length&&Object.keys(leaf.fields||{}).join(',')==='NUM'&&!leaf.next;
+                const replacement=literal(target,block,'TO');
+                if(!inert||replacement===null||!Number.isFinite(Number(replacement)))return null;
+            }
+            return named('void');
+        }
         if(block.opcode==='arcade_getLocal')return localType(literal(target,block,'NAME')) || local(owner,literal(target,block,'NAME'),block);
         if(block.opcode==='arcade_createObject'){
             const name=literal(target,block,'CLASS'),cls=classes.get(name);if(!cls)return null;templates.ordinary(name);
@@ -252,14 +271,14 @@ export function createClassCallableExportProvider({target,project,classes,defini
     };
     const verifyWriters=()=>{
         for(const other of project.targets)for(const block of Object.values(other.blocks||{})){
-            const pixel=sdkImagePrototype&&['arcade_imagePixel','arcade_setImagePixel'].includes(block.opcode);
-            if(!pixel&&!['arcade_setObjectField','arcade_assignObjectField'].includes(block.opcode))continue;
+            const imageOperation=sdkImagePrototype&&['arcade_imagePixel','arcade_setImagePixel','arcade_mutateImage','arcade_drawImage'].includes(block.opcode);
+            if(!imageOperation&&!['arcade_setObjectField','arcade_assignObjectField'].includes(block.opcode))continue;
             if(other!==target)fail('foreign class field writer has no owned lexical provenance');
             const owner=scope(block),actual=operation(block,owner,{
                 inputType:name=>slotType(block.inputs?.[name]?.[1],owner,new Set(),block),
                 argsType:()=>[],localType:name=>local(owner,name,block)
             });
-            if(!actual)fail(pixel?'current Image pixel operation lacks its actual owned receiver and Number operands':'current class field write differs from its concrete signature');
+            if(!actual)fail(imageOperation?'current Image operation lacks its actual owned receiver, exact shape and Number operands':'current class field write differs from its concrete signature');
         }
     };
     return Object.freeze({

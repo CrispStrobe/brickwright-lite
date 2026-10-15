@@ -242,3 +242,23 @@ edge. Actual target/costume identities are checked before cache hits, and the
 current frame/input-edge graph is recomputed after reading the asset before a
 snapshot is published. Replacing an owner, changing metadata, adding an exposure
 or appending a frame during decoding cannot borrow a previous proof.
+
+## Fill and rectangle follow-up
+
+IMPLEMENTED LOCALLY, independent and selected-original qualification pending.
+Actual owned Image callback receivers now admit `fill(color)` and
+`fillRect(x, y, width, height, color)` with exact plain-call arity and actual
+Number operands. Both return Void. Existing native Image algorithms and
+editable drawing blocks implement the operations; no new compiler word,
+reference producer, dimension rule or native Image method is invented.
+
+Three focused controls pass source/native, current Code, same/fresh SB3,
+export/reimport and a real connected Number-input edit from color 5 to 9.
+They observe all nine pixels and one argument callback effect, including the
+rectangle clipped at a negative x coordinate. Current export binds the actual
+Image receiver, exact operation/menu/input shape and every Number operand.
+The unused replacement socket on the fill block must be an inert actual
+Number literal: an evaluated reporter cannot silently disappear from export.
+Numeric text, forged Image values, wrong arity/operations and extra inputs
+remain explicit refusals. This checkpoint adds no hosted visual GUI or new
+selected-original result claim.

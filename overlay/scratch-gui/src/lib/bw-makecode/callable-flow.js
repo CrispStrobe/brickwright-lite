@@ -1,3 +1,4 @@
+import {sdkImageNumberMethod} from './sdk-image-methods.js';
 import {createSdkImageSourceProducers} from './sdk-image-source-producers.js';
 import {createSdkImageSourceTypes} from './sdk-image-source-types.js';
 import {analyseCallableBindings} from './callable-bindings.js';
@@ -46,7 +47,8 @@ export function analyseCallableFlow(program,{sdkImagePrototype=false}={}) {
         {kind:'callable',parameters:profile.parameters.map(parameter=>({...parameter})),result:profile.result}:null;
     const member=(type,name)=>{
         if(sdkImagePrototype&&type?.kind==='sdk'&&type.name==='Image'){
-            if(['getPixel','setPixel'].includes(name))return {type:{kind:'callable',parameters:(name==='getPixel'?['x','y']:['x','y','color']).map(name=>({name,optional:false,type:named('number')})),result:named(name==='getPixel'?'number':'void')}};
+            const method=sdkImageNumberMethod(name);
+            if(method)return {type:{kind:'callable',parameters:method.parameters.map(name=>({name,optional:false,type:named('number')})),result:named(method.result)}};
             if(name==='clone')return {type:{kind:'callable',parameters:[],result:{kind:'sdk',name:'Image'}}};
             if(['width','height'].includes(name))return {type:named('number')};
         }

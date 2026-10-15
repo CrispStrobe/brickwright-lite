@@ -1,3 +1,4 @@
+import {sdkImageNumberMethod} from './sdk-image-methods.js';
 import {containsNonFiniteNumberLiteral} from './source-number-literal.js';
 import {createSdkImageSourceTypes,sdkImageRolesForClass} from './sdk-image-source-types.js';
 import {createSdkImageSourceProducers} from './sdk-image-source-producers.js';
@@ -166,7 +167,8 @@ export function proveClassCallableSource(program,{sdkImagePrototype=false}={}) {
             const object=expression(node.object,context);
             if(sdkImagePrototype&&images.isProduced(object)){
                 if(['width','height'].includes(node.name))return scalar('number');
-                if(['getPixel','setPixel'].includes(node.name))return {type:{kind:'callable',parameters:(node.name==='getPixel'?['x','y']:['x','y','color']).map(name=>({name,optional:false,type:named('number')})),result:named(node.name==='getPixel'?'number':'void')},sdkImageMethod:node.name};
+                const method=sdkImageNumberMethod(node.name);
+                if(method)return {type:{kind:'callable',parameters:method.parameters.map(name=>({name,optional:false,type:named('number')})),result:named(method.result)},sdkImageMethod:node.name};
                 if(node.name==='clone')return {type:{kind:'callable',parameters:[],result:{kind:'sdk',name:'Image'}},sdkCloneReceiver:object};
                 fail('unqualified SDK Image member '+node.name);
             }
@@ -241,8 +243,8 @@ export function proveClassCallableSource(program,{sdkImagePrototype=false}={}) {
             const callable=expression(node.callee,context),args=node.args.map(arg=>expression(arg,context));
             if(callable.sdkCloneReceiver)return images.clone(node,callable.sdkCloneReceiver);
             if(callable.sdkImageMethod){
-                if(node.isNew||node.constructorCall||node.typeArguments||args.length!==callable.type.parameters.length)fail('SDK Image pixel call requires its plain exact argument shape');
-                args.forEach(value=>constrain(value,named('number'),'SDK Image pixel argument'));
+                if(node.isNew||node.constructorCall||node.typeArguments||args.length!==callable.type.parameters.length)fail('SDK Image method requires its plain exact argument shape');
+                args.forEach(value=>constrain(value,named('number'),'SDK Image method argument'));
                 return callable.sdkImageMethod==='getPixel'?scalar('number'):undef();
             }
             if(callable.receiver&&!callable.receiver.instance.complete)fail('method invocation precedes constructor completion');
