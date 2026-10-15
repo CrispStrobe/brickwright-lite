@@ -4941,3 +4941,66 @@ Actual installed browser download and fresh chooser reload remain mandatory
 before a user-facing qualification claim. No supplier pin or chooser geometry
 limit changes belong to this extension. See the
 [handoff](docs/X86-NEXT-LANES.md#master-disk-export-continuation).
+
+## Arcade nested ordinary declarations with captures — proposed
+
+PROPOSED — Codex generic nested declaration/capture lane. Merge this separate
+contract before product changes: [nested declarations with captures](docs/ARCADE-NESTED-DECLARATION-CAPTURES.md).
+Own actual nested declaration initialization, source/caller/all-writer primitive
+proof, versioned lexical declaration-allocation schema, managed capture/label
+bridge, current-body export and focused source/native/Code/SB3 tests. Coordinate
+shared translator/source graph/export/native hooks with their existing owners.
+Preserve original helper bodies; no Arrow wrappers, expression substitution,
+annotation authority or generated-name grants. Existing module/namespace named
+labels and version 1 numeric factory admission remain unchanged. Visible GUI
+editing and precise diagnostics require their own actual authoring evidence.
+No SDK reference captures/results, callable arrays, generic/default/recursive
+nested functions or new supplier word/pin follows from this claim.
+
+## Arcade physical null Sprite getter failure — 2026-10-15
+
+CLAIM — root-owned bounded null Sprite getter fault and actual native failure
+handoff, coordinated with the existing Throw and physical Sprite owners.
+[Contract](docs/ARCADE-NULL-SPRITE-GETTER.md) covers x/y/width/height individually (only x has an original runtime observation),
+and requires an actual current
+primitive null receiver, private fault provenance, real managed-lineage unwind,
+exceptional exactly-once continuation settlement, preserved earlier effects and
+no later success effects. Existing non-null/missing-ID service behavior stays
+intact; strings, annotations, copied arguments and arbitrary Errors grant no
+fault or Sprite authority. Retain the selected original without replay; qualify
+authentic portable native routes and unrelated-fiber/restart/Load controls.
+Implementation waits for this clarification's normal qualified merge. No broad
+Sprite admission, caught exceptions, supplier/pin change or whole-case promotion.
+
+
+## Dependency-prepared Arcade import — 2026-10-15
+
+PROPOSED EXTENSION — Codex Arcade integration, extending the merged extension-
+project qualification lane. Merge this claim before product changes. Contract:
+[dependency-prepared Arcade import](docs/ARCADE-DEPENDENCY-PREPARED-IMPORT.md).
+Own one shared asynchronous dependency preparation/import boundary, coordinated
+public browser resolver and file/share entrypoints, existing CLI/Node resolver
+integration, focused controls and Arcade handoff. Resolve the actual current
+input or exported project's declared package/version/ref identities; retain
+original files, source provenance, resource order and every diagnostic channel.
+Preserve the synchronous offline path and existing fetch policy; missing,
+disabled, mismatched and ambiguous dependencies remain named failures. No
+original-source restoration, fixture-specific preparation, compile, guest run,
+pin adoption or whole-case promotion. Actual SDK package preparation requires
+its separately reviewed bounded execution and is not inferred from source tests.
+
+
+## Exact Arcade scene-clock Number producer — 2026-10-15
+
+PROPOSED CLARIFICATION — Codex Arcade integration, coordinated with the existing
+distinct scene/program clock and primitive producer owners. Merge before product
+changes. [Contract](docs/ARCADE-CLOCK-NUMBER-PRODUCER.md) owns only unchanged
+unshadowed zero-argument game.runtime source proof, actual current scene-clock
+primitive Number completion and current Code/Blocks/SB3/export controls. Bind
+all SDK accesses/writes and the real cached operation/registration/active loan;
+execution ownership alone is not a Number certificate. Preserve current graph,
+Stop/load and private proof lifetimes, direct-service compatibility and all other
+primitive roles. No control.millis, broad SDK result seed, class/callback widening,
+new word or pin. The stopwatch Timer external writer and cyclic field/result
+invariant remain HELD pending complete separate proof. Native, selected-original
+and visible authoring gates remain independent; no whole-case promotion.
