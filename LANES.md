@@ -1,3 +1,30 @@
+## SPIKE G02 composed lifecycle integration — 2026-10-15
+
+Continuation of the merged SPIKE G02 pane/session claims, branch
+`lane/spike-g02-lifecycle-batch-20261015`. Integrate the existing Pause ownership,
+world-action ownership, pending-upload Arena Stop and replacement Code-feedback
+fixes in that order. Preserve shared importer/conversion and other lanes.
+The separate NuttX Code caller proposal remains outside this product change.
+
+The Pause conflict retains both the full-session upload cancellation prefix and
+the captured-session/teardown ownership branches. Stop keeps intent/bridge
+bookkeeping and optional upload-message clearing. Eleven other inherited pane
+methods and the feedback session file match their reviewed source inputs.
+A new authored sequence catches either single-fix baseline losing the other
+Pause branch. All 176 affected host controls pass. An attempted extra rendered
+unit suite lacked React in the sparse validation environment; its original
+failure is preserved and hosted CI must run with installed dependencies.
+
+Qualify one exact composed package across Pause, representative world/manual
+controls, visible Arena Stop with retained Stop positives, and Code feedback,
+then audit cleanup and distinct recovery for every finite case. Prior source
+qualifications remain attributed to their original consumers. Final-head hosted
+CI and fresh installed qualification are pending; no whole-G02, hardware,
+reference-boot, rollback, distribution or licensing claim is made. This lane
+changes no native input, firmware/Runtime/model/dependency pin, workflow or budget
+relative to its main base. Do not merge the older draft sources independently
+as a substitute for composed qualification.
+
 ## STM32 faithful model pin adoption (sb3-creator + bw-board) — 2026-10-15
 
 CLAIM — Claude, branch chore/stm32-faithful-pins-20261015, [local path omitted].

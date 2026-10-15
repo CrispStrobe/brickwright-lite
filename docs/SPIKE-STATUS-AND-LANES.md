@@ -6,6 +6,26 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Composed G02 qualification target — 2026-10-15
+
+`lane/spike-g02-lifecycle-batch-20261015` integrates the existing fixes from
+[PR966](https://github.com/CrispStrobe/brickwright-lite/pull/966),
+[PR967](https://github.com/CrispStrobe/brickwright-lite/pull/967),
+[PR973](https://github.com/CrispStrobe/brickwright-lite/pull/973) and
+[PR974](https://github.com/CrispStrobe/brickwright-lite/pull/974), in that order.
+The Pause conflict preserves full-session pending-upload cancellation and the
+retained-session ownership guard. All 176 affected host controls pass; a new
+combined sequence rejects both single-fix baselines. Eleven unchanged pane
+methods and the session file match their reviewed inputs.
+
+The integration needs one source-bound installed package covering each affected
+finite Pause/world/Stop/Code scenario, cleanup and distinct recovery, plus every
+enabled final-head CI check. These gates are pending. Earlier package results
+remain evidence for their exact original sources; they do not qualify this
+composition. The new overlapping Code-caller proposal is separate and has no
+product implementation here. Native sources and dependency pins match main.
+This does not close G02 or establish physical/reference/release qualification.
+
 ## Pause integration qualification — 2026-10-15
 
 The pane ownership fix on `lane/spike-g02-pause-ownership-20261015` preserves
