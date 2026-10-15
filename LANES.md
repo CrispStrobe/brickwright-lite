@@ -4002,6 +4002,40 @@ consumer and this finite fix, not every later package. Full G02, other images/
 backends/final-sampling/generation, physical/reference, G05 and release remain open.
 
 
+## SPIKE G03 sandbox and editor UI qualification — 2026-10-15
+
+CLAIMED — Codex SPIKE integration, branch `docs/spike-g03-ui-claim-20261015`.
+Implementation starts after PR948, PR962 and the remaining G02 acceptance review.
+Contract: [G03](docs/SPIKE-STATUS-AND-LANES.md#g03--qualify-usable-sandbox-and-responsive-editor-controls).
+First inventory working features in the actual rendered UI; fix demonstrated
+gaps rather than replacing existing controls or adding unsupported backends.
+
+Envelope: this ledger; `docs/SPIKE-ARENA.md` and
+`docs/SPIKE-STATUS-AND-LANES.md`; SPIKE presentation, sandbox editing/persistence,
+view switching and bounded Identify feedback in
+`overlay/scratch-gui/src/components/tw-pseudocode/{spike-arena-pane,spike-simulator-pane,spike-port-monitor}.jsx`;
+SPIKE-only text in `overlay/scratch-gui/src/lib/spike-arena/l10n.js`; focused
+`test/spike-arena-{3d-pane,pane-units}.test.mjs` and new scoped UI controls.
+In shared `pseudocode-importer.jsx`, only SPIKE entry/run/import toolbar labels
+and SPIKE-specific report presentation belong here. In shared
+`components/gui/gui.jsx`, only demonstrated SPIKE dock sizing/visibility defects
+belong here. Preserve other owners' Arcade/MakeCode/importer/lexical/type work
+and use only existing tracked package twins through repository-prescribed writers.
+Any wider shared-file or model change needs a separately coordinated envelope.
+
+Acceptance: free sandbox entry; shared 2D/3D world and one firmware owner;
+backend/topology admission; reset/edit/save/reopen; narrow desktop/mobile widths;
+long errors and conversion reports; keyboard/touch; EN/DE labels; explicit
+image/backdrop selection, clear import actions and compact run/undo controls;
+a usable right pane at 50–75 percent width. Identify A–F must show its actual
+observable boundary and a bounded failure instead of an indefinite pending state.
+Qualify real rendered behavior and relevant installed ownership paths; retain
+G02 regressions, immutable pins and product budgets. Merge this claim before
+implementation and require all enabled exact-head checks before integration.
+The separately claimed shared project-world work keeps its ownership. This
+claim changes no executable, dependency, fixture, capture or workflow and makes
+no fresh guest, performance, physical, reference, release or licence claim.
+
 ## SPIKE G02 compiled-model MicroPython desktop profile — 2026-10-15
 
 IN PROGRESS — Codex, isolated implementation branch
@@ -4088,36 +4122,40 @@ deployment or physical-accuracy claim. Publish claim before implementation.
 This is task 2 of the ordered circuit campaign in upstream CUI documentation;
 later stratified-regression and realism work needs its own measured envelope.
 
-## SPIKE G03 sandbox and editor UI qualification — 2026-10-15
 
-CLAIMED — Codex SPIKE integration, branch `docs/spike-g03-ui-claim-20261015`.
-Implementation starts after PR948, PR962 and the remaining G02 acceptance review.
-Contract: [G03](docs/SPIKE-STATUS-AND-LANES.md#g03--qualify-usable-sandbox-and-responsive-editor-controls).
-First inventory working features in the actual rendered UI; fix demonstrated
-gaps rather than replacing existing controls or adding unsupported backends.
+## Qualified 386 consumer and media workflow continuation — 2026-10-15
 
-Envelope: this ledger; `docs/SPIKE-ARENA.md` and
-`docs/SPIKE-STATUS-AND-LANES.md`; SPIKE presentation, sandbox editing/persistence,
-view switching and bounded Identify feedback in
-`overlay/scratch-gui/src/components/tw-pseudocode/{spike-arena-pane,spike-simulator-pane,spike-port-monitor}.jsx`;
-SPIKE-only text in `overlay/scratch-gui/src/lib/spike-arena/l10n.js`; focused
-`test/spike-arena-{3d-pane,pane-units}.test.mjs` and new scoped UI controls.
-In shared `pseudocode-importer.jsx`, only SPIKE entry/run/import toolbar labels
-and SPIKE-specific report presentation belong here. In shared
-`components/gui/gui.jsx`, only demonstrated SPIKE dock sizing/visibility defects
-belong here. Preserve other owners' Arcade/MakeCode/importer/lexical/type work
-and use only existing tracked package twins through repository-prescribed writers.
-Any wider shared-file or model change needs a separately coordinated envelope.
+CLAIM — Codex x86, staged implementation after merged ownership and board
+qualification. Preserve PR961's coordinated supplier ownership; this claim
+owns no package/lock/vendor/generated matrix pin update. Obtain a recorded
+handoff before a later adoption change. Work follows the
+[contract](docs/X86-NEXT-LANES.md#qualified-386-debugging-and-media-workflows).
+Own focused debugger presentation in canonical overlay
+`src/components/tw-pseudocode/{debug-drawer,debug-panel}.jsx`, additive
+`src/lib/bw-debug/memory-view.js` and focused
+`test/i80386-debugger-user-paths.test.mjs`. Paths under `src/` here are relative
+to `overlay/scratch-gui`; tracked `packages/scratch-gui` mirrors follow the
+repository's generation policy, never independent implementation.
 
-Acceptance: free sandbox entry; shared 2D/3D world and one firmware owner;
-backend/topology admission; reset/edit/save/reopen; narrow desktop/mobile widths;
-long errors and conversion reports; keyboard/touch; EN/DE labels; explicit
-image/backdrop selection, clear import actions and compact run/undo controls;
-a usable right pane at 50–75 percent width. Identify A–F must show its actual
-observable boundary and a bounded failure instead of an indefinite pending state.
-Qualify real rendered behavior and relevant installed ownership paths; retain
-G02 regressions, immutable pins and product budgets. Merge this claim before
-implementation and require all enabled exact-head checks before integration.
-The separately claimed shared project-world work keeps its ownership. This
-claim changes no executable, dependency, fixture, capture or workflow and makes
-no fresh guest, performance, physical, reference, release or licence claim.
+A separately reviewed metadata extension in this section also owns canonical
+`overlay/scratch-gui/src/lib/bw-debug/debug-capabilities.js` and its existing
+`test/debug-capabilities.test.mjs` normalization controls. Preserve schema-1
+legacy spaces; retain validated optional physical bounds/kind/read-size fields
+without inferring them from code run-to. Absent metadata keeps legacy behavior;
+presence of any new metadata field requires complete strict validation, so
+partial or malformed descriptors fail closed. Lengths are nonnegative safe
+integers; allow the one-past endpoint only for an empty read, not a byte or UI
+jump/page start. Board target changes wait for PR599's
+merge and explicit owner handoff, with a separate new board test.
+
+Later in this same serialized lane, own new
+`src/lib/bw-machines/raw-hdd-download.js`,
+`test/i80386-hdd-download.test.mjs`, and a narrow export action in the already
+owned debug panel; extend `scripts/verify-i80386-local-hdd-gui.mjs` for actual
+download/reload acceptance. DOS package work owns new
+`src/lib/bw-machines/{local-dos-package,dos-package-zip}.js`,
+`test/local-dos-package.test.mjs`, a narrow package chooser in
+`src/components/tw-pseudocode/machine-manager.jsx`, and new
+`scripts/verify-dos-package-gui.mjs`. Claim any extra shared runner, further capability
+schema, further board metadata or dependency changes separately before coding.
+No private media, ISO picker, native addon backend or general OS claim.
