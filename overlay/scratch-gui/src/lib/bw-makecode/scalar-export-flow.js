@@ -36,7 +36,7 @@ export function scalarExportFlow(project, isBoolean, sourceCells = new Map()) {
         const value=cell(target,block),owner=owners.get(block),op=block.opcode;
         if(isBoolean(block))add(value,'boolean');
         if(['math_number','bw_numberLiteral','arrays_referenceLength','arrays_referenceIndex','arrays_referenceFind','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','operator_random','planetemaths_min','planetemaths_max'].includes(op))add(value,'number');
-        if(['text','bw_stringLiteral','operator_join','arcade_sourceTypeOf'].includes(op))add(value,'string');
+        if(['text','bw_stringLiteral','operator_join','arcade_sourceTypeOf','arcade_inspectValue'].includes(op))add(value,'string');
         if(op==='arrays_valueUnary'){const operation=literal(target,block,'OP');add(value,operation==='typeof'?'string':operation==='!'?'boolean':'number');}
         if(op==='arrays_valueBinary'){
             const operation=literal(target,block,'OP');

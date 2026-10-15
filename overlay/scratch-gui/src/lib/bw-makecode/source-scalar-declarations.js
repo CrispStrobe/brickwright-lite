@@ -77,6 +77,8 @@ export function sourceScalarDeclarations(program) {
             ['number','boolean','string'].includes(node.bwClassCallableResultType)) {
             (node.args || []).forEach(argument=>visit(argument,scope));
             add(cell,{number:'Number',boolean:'Boolean',string:'String'}[node.bwClassCallableResultType]);
+        } else if(node.type==='Call' && node.bwConsoleInspectIntrinsic===true && node.callee?.name==='__bwConsoleInspectValue') {
+            (node.args||[]).forEach(argument=>visit(argument,scope));add(cell,'String');
         } else if (node.type === 'Call') {
             const arguments_ = (node.args || []).map(argument => visit(argument, scope));
             const fn = node.callee?.type === 'Identifier' && functions.get(node.callee.name);
@@ -121,6 +123,7 @@ export function sourceScalarDeclarations(program) {
         const declared = {number: 'Number', boolean: 'Boolean', string: 'String', any: 'Any'}[declaration.typeName];
         const inferred = [...(types.get(global(name)) || [])].filter(type => type !== 'Undefined' && type !== 'Null');
         if (declared) declarations.push({name, type: declared});
+        else if(!declaration.typeName&&!declaration.init&&!inferred.length)declarations.push({name,type:'Any'});
         else if (inferred.length && inferred.every(type => ['Number', 'Boolean', 'String'].includes(type))) declarations.push({name, type: inferred.length === 1 ? inferred[0] : 'Any'});
     }
     return declarations;

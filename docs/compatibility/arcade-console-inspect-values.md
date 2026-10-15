@@ -104,3 +104,35 @@ must not invoke a user object's conversion method while deciding admission.
 Keep immutable raw184 and authenticated complete-context measurements separate.
 Do not promote a game, legal/resource closure or the raw corpus denominator from
 this bounded reporter or a private project comparison.
+
+## Primitive implementation boundary
+
+The primitive source slice uses the shared directed producer graph. Function,
+class and enum values, reference declarations, unresolved names and unknown
+writers do not become Undefined evidence. A direct unchanged ordinary function
+can still supply its proved primitive return. Optional absent arguments and real
+fallthrough Undefined remain distinct from unknown producers.
+
+An untyped global without an initializer or inferred concrete/unknown writer
+uses the existing Any scalar declaration to reset its storage to Undefined.
+That reset is not evidence for later values: inspection checks every actual
+writer. Mixed primitive writers remain eligible; a reference or unknown writer
+refuses. Current export follows directed writers separately from an Any storage
+annotation, and refuses hidden/foreign writers or computed local names.
+
+Selected-SDK controls observed Undefined for typed Number, String and Boolean
+and untyped globals and locals without initializers, including a local alias,
+function return and a read before a later assignment. The primitive source and
+its actual edited export also matched their native String results, once-only
+effects and all 19,200 image and presented frame pixels. These are bounded local
+SDK controls; the hosted editor journey remains pending.
+
+For eligible inspection programs, an actual primitive or untyped function-local
+declaration without an initializer now emits the existing explicit Undefined
+value at that declaration. The directed producer graph records that initialization
+only from the declaration onward and still checks all later writers. A lexical
+read before its declaration remains refused, matching the selected compiler's
+actual diagnostic. Image, Font and Array declarations receive no primitive grant;
+ordinary Scratch local defaults and unresolved local reads are unchanged.
+
+Arrays and reference values remain outside this initial inspection slice.

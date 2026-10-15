@@ -166,7 +166,7 @@ module.exports.validateInput = function validateInput(runtime, values, cells, ut
                 'operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','operator_random',
                 'operator_join', 'operator_letter_of', 'arrays_valueTruthy', 'arrays_valueCompare',
                 'operator_equals', 'operator_gt', 'operator_lt', 'operator_not', 'operator_and', 'operator_or',
-                'arrays_jsonValue', 'arcade_askForString', 'arcade_sourceTypeOf', 'arcade_spriteToString',
+                'arrays_jsonValue', 'arcade_askForString', 'arcade_sourceTypeOf', 'arcade_inspectValue', 'arcade_spriteToString',
                 'arcade_bufferToString', 'arcade_bufferToHex'].includes(op)) return true;
             if (op === 'data_variable') {
                 const id = node.fields?.VARIABLE?.id;

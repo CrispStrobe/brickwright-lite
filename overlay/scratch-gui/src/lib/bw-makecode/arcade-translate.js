@@ -1,6 +1,7 @@
 import {proveClassCallableSource} from './class-callable-source-flow.js';
 import {withClassResultFlowProof} from './class-callable-result-flow-proof.js';
 import {numberLiteralCode,containsNonFiniteNumberLiteral} from './source-number-literal.js';
+import {lowerConsoleInspectValues} from './lower-console-inspect-values.js';
 import {lowerSdkFontValues} from './lower-sdk-font-values.js';
 import {callableSourceGate} from './callable-source-gate.js';
 import {lowerCallableValues} from './lower-callable-values.js';
@@ -2111,6 +2112,7 @@ class ArcadeTranslator extends BaseTranslator {
     objectExpression(node) {
         if(node?.bwPrimitiveNumberText)return `(${this.arrayElementValue(node.left)}) join ("")`;
         const name=this.path(node?.callee),a=node?.args || [];
+        if(node.bwConsoleInspectIntrinsic===true&&name==='__bwConsoleInspectValue'&&a.length===2)return `arcade inspect value (${this.arrayElementValue(a[0])}) limit (${this.arrayElementValue(a[1])})`;
         if(node.bwFontIntrinsic && name==='__bwSdkFont_'+node.bwFontIntrinsic){
             if(node.bwFontIntrinsic==='constant' && a.length===1)return `arcade font value ${a[0].value}`;
             if(node.bwFontIntrinsic==='getFontForText' && a.length===1)return `arcade font for text (${this.expr(a[0])})`;
@@ -3399,6 +3401,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
     const mathDeclared=entries.some(({node})=>node.type==='Declaration' && node.decls?.some(decl=>decl.name==='Math') ||
         ['FunctionDeclaration','FunctionExpression'].includes(node.type) && (node.params || []).includes('Math'));
     const typeOf = (node, owner) => {
+        if(node?.bwConsoleInspectIntrinsic===true && node.callee?.name==='__bwConsoleInspectValue')return new Set(['string']);
         if(node?.bwFontIntrinsic && node.bwFontType==='image.Font')return new Set(['font']);
         if(node?.bwFontIntrinsic==='field' && node.bwFontType==='number')return new Set(['number']);
         if(node?.bwFontIntrinsic==='field' && node.bwFontType==='Buffer')return new Set(['buffer']);
@@ -3587,6 +3590,7 @@ const inferImageReferences = (ast, pathOf, imageOf, isScopedAssetFactory = () =>
             const name={font:'Font',buffer:'Buffer',image:'Image',sprite:'Sprite',tile:'TileLocation','legacy-tile':'LegacyTile',animation:'Animation','sevenseg-digit':'SevenSegDigit','sevenseg-counter':'DigitCounter',dart:'Dart',corgio:'Corgio','text-sprite':'TextSprite',scene:'Scene','physics-engine':'PhysicsEngine',player:'Player',number:'number',string:'string',boolean:'boolean',null:'null',undefined:'undefined',object:'object',any:'unknown',array:'array'}[type];
             if(name)graph.add(value,name);
         }
+        if(node.bwConsoleInspectIntrinsic===true && node.callee?.name==='__bwConsoleInspectValue')graph.add(value,'string');
         if(node.bwFontType==='image.Font' && ['constant','getFontForText','scaledFont'].includes(node.bwFontIntrinsic))graph.add(value,'Font');
         if(node.bwFontIntrinsic==='field' && node.bwFontType==='number')graph.add(value,'number');
         if(node.bwFontIntrinsic==='field' && node.bwFontType==='Buffer')graph.add(value,'Buffer');
@@ -5032,7 +5036,9 @@ export function arcadeToPseudocode (files, opts = {}) {
     const tileImageOf = node => node?.type==='Template' && node.tag==='img' ? parseImageLiteral(node.value) : node?.type==='Template' && assetKindLookup && ['assets.image','assets.tile'].includes(node.tag) ? lookupAssetTemplate(assetKindLookup,node.tag,node.value) : node?.type==='Template' && /^assets\./.test(node.tag||'') ? assets[node.value.trim()] : node?.type==='Member' ?
         assets[tileImagePath(node)] || assets[node.name] || (BUILTIN_IMAGES[tileImagePath(node)] ? decodeMkcdImage(BUILTIN_IMAGES[tileImagePath(node)]) : null) :
         node?.type==='Identifier' ? assets[node.name] : null;
-    const fontValues = lowerSdkFontValues(namespaceBindings.program || parsed);
+    const inspectionValues=lowerConsoleInspectValues(namespaceBindings.program || parsed);
+    projectInputDiagnostics.push(...inspectionValues.unsupported);
+    const fontValues = lowerSdkFontValues(inspectionValues.program);
     projectInputDiagnostics.push(...fontValues.unsupported);
     const fontSource = lowerLiveFontMetrics(fontValues.program);
     const queryReferences = inferImageReferences(fontSource,tileImagePath,tileImageOf,

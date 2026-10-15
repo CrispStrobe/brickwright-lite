@@ -139,7 +139,7 @@ export function prepareObjectClassExport(emitter) {
         revision=graph.revision;
         for(const target of emitter.project.targets)for(const block of Object.values(target.blocks||{})) {
             const value=cell(target,block),owner=owners.get(block),op=block.opcode;
-            if(op==='arcade_sourceTypeOf')graph.add(value,'string');
+            if(['arcade_sourceTypeOf','arcade_inspectValue'].includes(op))graph.add(value,'string');
             seedSdkFontValueType(block,value,addType);
             if(op==='arcade_createObject'){const name=literal(target,block,'CLASS');if(classes.has(name)){addType(value,name);bind(target,classes.get(name).constructor,args(target,block),1);}}
             if(op==='arcade_callFunction'){const code=literal(target,block,'NAME');graph.merge(value,`${key(target,code)}:result`);bind(target,code,args(target,block));}
