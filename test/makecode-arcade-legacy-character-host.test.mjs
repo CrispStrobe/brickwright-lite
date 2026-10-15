@@ -7,6 +7,7 @@ import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {runProgram, stepFrames, clearStrayTimers} from './helpers/bw-vm.mjs';
+import {restartTimedArcadeRun} from './helpers/arcade-timed-native.mjs';
 import {importGuiDependency} from './helpers/bw-integrated.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const require = createRequire(import.meta.url);
@@ -22,10 +23,10 @@ const entries = trace => String(trace).split(';').filter(Boolean).map(entry => e
 const palette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609', '#249ca3', '#78dc52',
     '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 const color = v => '#' + [v & 255, (v >>> 8) & 255, (v >>> 16) & 255].map(b => b.toString(16).padStart(2, '0')).join('');
-async function native(source) {
+async function native(source, {frameAuthority = 'manual'} = {}) {
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, []);
-    const run = await runProgram(imported.code, {frames: 0, uploads: imported.costumes, storage: true});
+    const run = await runProgram(imported.code, {frames: 0, uploads: imported.costumes, storage: true, frameAuthority});
     const {default: dispatch} = await importGuiDependency('scratch-vm/src/dispatch/central-dispatch.js');
     const adapter = Object.values(dispatch.services).findLast(s => s?._inst && s.getInfo?.().id === 'arcade');
     assert.ok(adapter?._inst, 'actual VM extension instance exists');
@@ -109,8 +110,7 @@ for (const [name, source] of Object.entries(scenarios)) {
         } finally {run.vm.quit(); clearStrayTimers();}
     });
 }
-test('old public helpers, rule strings, and independent scene state preserve original behavior', async () => {
-    const source = `${setup}
+const sceneIsolationSource = `${setup}
 characterAnimations.loopFrames(alias,[img\`1\`],1000,characterAnimations.rule(Predicate.NotMoving))
 characterAnimations.setCharacterState(hero,characterAnimations.rule(Predicate.MovingRight))
 let rootMoving=characterAnimations.matchesRule(alias,characterAnimations.rule(Predicate.MovingRight))
@@ -123,6 +123,8 @@ game.popScene()
 let restoredMoving=characterAnimations.matchesRule(hero,characterAnimations.rule(Predicate.MovingRight))
 let restoredPixel=hero.image.getPixel(0,0)
 let done=true`;
+test('old public helpers, rule strings, and independent scene state preserve original behavior', async () => {
+    const source = sceneIsolationSource;
     const expected = await runPxtArcade(files(source), {fakeClock: true});
     const helperExpected = await runPxtArcade(files(`let description=characterAnimations.ruleToString(Predicate.MovingRight | Predicate.FacingRight | Predicate.HittingWallLeft)
 let negativeFraction=characterAnimations.ruleToString(-1.5)
@@ -130,11 +132,15 @@ let identity=characterAnimations._predicate(Predicate.MovingRight)
 let frameArray=characterAnimations._animationFrames([img\`2\`])
 let pixel=frameArray[0].getPixel(0,0)
 let done=true`), {fakeClock: true});
-    const run = await native(source);
+    const run = await native(source, {frameAuthority: 'timed'});
     try {
+        const clock = await restartTimedArcadeRun(run, 0, {beforeFirstFrame: () => {
+            run.adapter.setCharacterAnimationVersion({VERSION: initializeOriginal.sourceIdentity.revision});
+            run.ext._characterAnimations();
+        }});
         for (let guard = 0; values(run).done !== true; guard++) {
-            assert.ok(guard < 100, 'scene callbacks complete');
-            await stepFrames(run.vm, 1, 20);
+            assert.ok(guard < 10, 'scene callbacks complete on the shared program timer');
+            await clock.advanceTo(clock.now() + 20);
         }
         for (const key of ['rootMoving','nextMoving','restoredMoving','restoredPixel']) assert.equal(values(run)[key], expected[key], key);
         const module = run.ext._characterAnimationModule;
@@ -224,4 +230,20 @@ test("native legacy character recordings observe Undefined startup and every ori
    assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);
   }finally{run.vm.stopAll();run.vm.quit();clearStrayTimers();}
  }
+});
+
+
+test('legacy scene callbacks consume both actual pause deadlines without a wall clock race', async () => {
+    const run = await native(sceneIsolationSource, {frameAuthority: 'timed'});
+    try {
+        const clock = await restartTimedArcadeRun(run, 0, {beforeFirstFrame: () => {
+            run.adapter.setCharacterAnimationVersion({VERSION: initializeOriginal.sourceIdentity.revision});
+            run.ext._characterAnimations();
+        }});
+        await clock.advanceTo(39);assert.equal(run.ext._sceneStack.length,0);assert.equal(values(run).rootMoving,true);
+        await clock.advanceTo(40);assert.equal(run.ext._sceneStack.length,1);assert.equal(values(run).nextMoving,false);
+        await clock.advanceTo(79);assert.equal(run.ext._sceneStack.length,1);assert.notEqual(values(run).done,true);
+        await clock.advanceTo(80);assert.equal(run.ext._sceneStack.length,0);assert.equal(values(run).done,true);
+        assert.equal(values(run).restoredMoving,true);assert.equal(values(run).restoredPixel,8);assert.deepEqual(run.errors,[]);
+    } finally {run.vm.stopAll();run.vm.quit();clearStrayTimers();}
 });
