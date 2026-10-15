@@ -78,3 +78,7 @@ test('entry tickets are one-use and bind only the installed actual validated cel
 test('constrained body ownership rejects shared children, missing nodes and cycles before entry',()=>{
  for(const change of [f=>{f.blocks.effect.next='effect';},f=>{f.blocks.effect.next='missing';},f=>{f.blocks.effect.inputs.A={block:'leaf'};},f=>{f.blocks.declare.parent='effect';}]){const f=fixture();change(f);assert.throws(()=>model.prepare(f.target),/constraint/);}
 });
+
+test('constraint metadata never hides extra evaluated inputs or unsupported fields',()=>{
+ for(const edit of [f=>{f.blocks.declare.inputs.EXTRA={block:'leaf'};},f=>{f.blocks.declare.fields.EXTRA=field('hidden');}]){const f=fixture();edit(f);assert.throws(()=>model.prepare(f.target),/zero inputs/);}
+});

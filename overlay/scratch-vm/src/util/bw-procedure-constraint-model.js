@@ -30,6 +30,7 @@ function prepare(target) {
   const constraints=new Map(),seen=new Set();let previous=definitionId;
   while(first?.opcode===OPCODE) {
    if(seen.has(first)||first.parent!==previous)fail('cyclic or detached declaration prefix');seen.add(first);
+   if(Object.keys(first.inputs||{}).length||Object.keys(first.fields||{}).sort().join(',')!=='PARAMETER,PROCEDURE,TYPE')fail('declaration requires exactly three selector fields and zero inputs');
    const procedure=field(first,'PROCEDURE'),parameter=field(first,'PARAMETER'),type=field(first,'TYPE');
    // PARAMETER is the real name in visible Code/Blocks; the certificate binds
    // that unique name to the actual ordered ID, never a guessed external ID.
