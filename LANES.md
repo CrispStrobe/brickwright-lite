@@ -191,16 +191,18 @@ Preserve glyph notices, fixed metric words, class/callback ownership and Source
 frame contracts. No global scheduler ownership is claimed.
 ## Arcade primitive Number to text — 2026-10-15
 
-PROPOSED — Codex Arcade primitive source integration,
-`lane/arcade-number-text-claim-20261015`.
+QUALIFIED BOUNDED SLICE — Codex Arcade primitive source integration.
+The merged claim owns the source helper, literal carrier and focused controls.
 Contract: [primitive Number to text](docs/compatibility/arcade-number-to-text.md).
 Scope: zero-argument Number `toString` with actual producer/current-writer
 authority, narrow source/native primitive String representation, current Code
 and Blocks, original export and same/fresh saved-project reimport. Preserve
 class custom methods, SDK reference exclusions, Font proof and Source frame
 ownership. No new canonical word, pin change, radix, global String-name grant
-or whole-library promotion is claimed. Product work waits for the normal claim
-merge after every enabled exact-head check succeeds.
+or whole-library promotion is claimed. Source and actual edited export
+qualification preserve current connected operands and exact formatter effects.
+Non-finite literals, additional SDK/member producers and unresolved aliases
+remain explicit follow-up boundaries.
 
 
 ## CI fast and thorough tiers — 2026-10-14
