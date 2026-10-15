@@ -41,3 +41,13 @@ parameter-constraint round-trip limitation. Its body is retained and the
 reimport diagnostic remains explicit. This does not qualify the whole game,
 assets for redistribution, audio, or graphical authoring, and does not change
 the raw corpus denominator or partial-case count.
+
+A separate deterministic source control and its actual edited export have also
+passed the selected original SDK compiler and execution. Two registered ticks
+mutate a captured Number and String, while an unrelated captured Image remains
+separate. Changing the connected seed return from 2 to 7 changes the final
+Number from 4 to 9 and text from `captured !!4` to `captured !!9`. Both programs
+observe exactly one seed call and stop their effects after those two ticks.
+Native Code, current edit, same/fresh SB3, and export/reimport controls retain
+those assertions. This is the bounded self-authored control, not a complete
+Lyla runtime or hosted graphical-authoring result.
