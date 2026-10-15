@@ -21,6 +21,7 @@
  *
  * @module
  */
+import {numberLiteralCode} from './source-number-literal.js';
 
 /**
  * 180/pi, to five places. The pseudocode has no pi of its own without
@@ -360,9 +361,13 @@ export class BaseTranslator {
         switch (node.type) {
         case 'Number': {
             const v = node.value;
+            if (!Number.isFinite(Number(v))) {
+                this.unsupported.push('Non-finite source Number literals require a qualified numeric carrier');
+                return '0';
+            }
             if (/^0[xX]/.test(v)) return String(parseInt(v, 16));
             if (/^0[bB]/.test(v)) return String(parseInt(v.slice(2), 2));
-            return v;
+            return numberLiteralCode(v);
         }
         case 'String': return tsTextLiteral(node);
         // A VALUE: the dialect's truth is 1 and 0 (its conditions read a
