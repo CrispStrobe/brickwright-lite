@@ -40,6 +40,10 @@ const MUSIC_MELODIES = new Set(['baDing', 'wawawawaa', 'jumpUp', 'jumpDown', 'po
 // Numeric enum values of the selected MIT Arcade Sprite/physics sources.
 const SPRITE_FLAG_VALUES=Object.freeze({AutoDestroy:4,StayInScreen:8,DestroyOnWall:16,BounceOnWall:32,ShowPhysics:64,Invisible:128,RelativeToCamera:512,GhostThroughTiles:1024,GhostThroughWalls:2048,GhostThroughSprites:4096,Ghost:7168});
 const PRIVATE_SPRITE_FLAG_VALUES=Object.freeze({...SPRITE_FLAG_VALUES,None:0,Destroyed:2,IsClipping:256,HitboxOverlaps:8192});
+// Only source animation lowering issues this complete Array factory node. Its
+// validated resource owns the frames; child literals are inference payload only.
+const isAnimationResourceFactory = node => node?.type === 'Array' &&
+    typeof node.bwAnimationResourceId === 'string' && node.bwAnimationResourceId.length > 0;
 const CHARACTER_PREDICATES = Object.freeze({NotMoving: 1, Moving: 2, FacingUp: 4, FacingRight: 8, FacingDown: 16, FacingLeft: 32,
     MovingUp: 64, MovingRight: 128, MovingDown: 256, MovingLeft: 512, HittingWallUp: 1024, HittingWallRight: 2048,
     HittingWallDown: 4096, HittingWallLeft: 8192});
@@ -1083,7 +1087,7 @@ class ArcadeTranslator extends BaseTranslator {
             lookupAssetTemplate(this.assetKindLookup,node.tag,node.value) === null) {
             this.usesArrays=true;return 'null value';
         }
-        if (node?.bwAnimationResourceId) return `arcade animation fresh frames resource ${JSON.stringify(node.bwAnimationResourceId)}`;
+        if (isAnimationResourceFactory(node)) return `arcade animation fresh frames resource ${JSON.stringify(node.bwAnimationResourceId)}`;
         const value=this.valueExpr(node);
         if(!node || node===this.conditionNode)return value;
         // On the fixed-sprite path a truth node's value text IS its condition
@@ -4353,6 +4357,9 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     const collectImageValues = (node, parent) => {
         if (!node || typeof node !== 'object') return;
         if (t.imageValueResources.has(node)) return;
+        // Emission consumes this whole factory, so allocating its child images
+        // would leave an unused ordinary target that export makes an actor.
+        if (isAnimationResourceFactory(node)) return;
         if (node.type==='Declaration' && node.decls.every(d=>frameArrays.has(d.name))) return;
         // Map resources are embedded in tile data; they are not sprite image values.
         if(node.type==='Call' && nameOf(node)==='tiles.createTilemap')return;
