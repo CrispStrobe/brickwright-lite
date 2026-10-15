@@ -25,7 +25,7 @@ async function setup() {
   const pending = extension.connect().catch(() => {});
   await pending;
   assert.ok(hub);
-  hub._connection = {isConnected: () => true, send: async (uuid, bytes) => writes.push({uuid, bytes: Array.from(bytes)})};
+  hub._connection = {isConnected: () => true, send: (uuid, bytes) => { writes.push({uuid, bytes: Array.from(bytes)}); return Promise.resolve(); }};
   extension._hub = hub;
   return {extension, hub, writes, pending};
 }
@@ -100,7 +100,7 @@ test('long and high notes clamp instead of wrapping; nonpositive durations send 
 
 test('note block exposes Bluetooth write failure instead of silently waiting', async () => {
   const {extension, hub} = await setup();
-  hub._connection.send = async () => { throw new Error('write failed'); };
+  hub._connection.send = () => Promise.reject(new Error('write failed'));
   await assert.rejects(extension.playNote({NOTE: 69, DURATION: 1}), /write failed/);
 });
 

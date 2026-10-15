@@ -20,7 +20,7 @@ Publish upstream first, then adopt the immutable commit with the canonical
 vendor script. Verify the measured packets, default positive polarity,
 Stop All/off, known-device protection, immutable bundle identity and local
 production build. Claim landed on remote main as `669107598` before Lite implementation.
-Upstream `3f75b816` is published; 28 focused adoption tests and immutable
+Upstream `5fe7033f` is published; 28 focused adoption tests and immutable
 targeted vendoring pass. Physical LED full power and dimming are user-confirmed;
 local production compilation is qualified separately.
 
