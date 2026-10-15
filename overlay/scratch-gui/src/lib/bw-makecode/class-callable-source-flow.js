@@ -1,3 +1,4 @@
+import {containsNonFiniteNumberLiteral} from './source-number-literal.js';
 import {createSdkImageSourceTypes,sdkImageRolesForClass} from './sdk-image-source-types.js';
 import {createSdkImageSourceProducers} from './sdk-image-source-producers.js';
 import {analyseCallableFlow} from './callable-flow.js';
@@ -194,6 +195,12 @@ export function proveClassCallableSource(program,{sdkImagePrototype=false}={}) {
             if(node.op!=='=')value=binary(node.op.slice(0,-1),destination.value,value);
             constrain(value,destination.constraint,'writer');destination.value=value;destination.initialized=true;
             return value;
+        }
+        // A sign on a lexed finite Number is literal syntax, including the
+        // qualified (0 + -n) current Code carrier. This is not unary coercion.
+        if(node.type==='Unary'&&['-','+'].includes(node.op)&&node.argument?.type==='Number'){
+            if(!['number','string'].includes(typeof node.argument.value)||containsNonFiniteNumberLiteral(node))fail('signed Number literal must be finite');
+            return scalar('number');
         }
         if(node.type==='Unary' && node.op==='typeof') {
             const produced=alternatives(expression(node.argument,context));
