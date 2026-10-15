@@ -28,7 +28,7 @@ export function prepareObjectClassExport(emitter) {
             if(!/^[A-Za-z_]\w*$/.test(name||'') || classes.has(name) || !Array.isArray(fields) || !Array.isArray(parameters) || !Array.isArray(methods))throw Error('invalid declaration');
             const validType=type=>typeof type==='string' && /^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\[\])*$/.test(type);
             const names=new Set();
-            for(const field of fields){if(!/^[A-Za-z_]\w*$/.test(field?.name||'') || names.has(field.name) || !validType(field.type) || Object.keys(field).some(key=>!['name','type','readonly','visibility','initializer','parameterProperty','getter','setter','valueKind','callableSignature'].includes(key)) || typeof field.readonly!=='boolean' || field.visibility!==undefined&&!['public','private','protected'].includes(field.visibility))throw Error('invalid field');if(field.getter!==undefined && (typeof field.getter!=='string'||!field.getter) || field.setter!==undefined && (!field.setter || typeof field.setter.procedure!=='string'||!field.setter.procedure||Object.keys(field.setter).some(key=>!['procedure','parameters'].includes(key))||!Array.isArray(field.setter.parameters)||field.setter.parameters.length!==1||field.setter.parameters.some(param=>!validType(param.type)||!/^[A-Za-z_]\w*$/.test(param.name)||param.optional!==false||Object.hasOwn(param,'default')||Object.keys(param).some(key=>!['name','type','optional'].includes(key)))))throw Error('invalid accessor');if((field.getter||field.setter)&&(field.initializer!==undefined||field.parameterProperty||field.readonly!==!!(field.getter&&!field.setter)))throw Error('invalid accessor storage metadata');names.add(field.name);}
+            for(const field of fields){if(!/^[A-Za-z_]\w*$/.test(field?.name||'') || names.has(field.name) || !validType(field.type) || Object.keys(field).some(key=>!['name','type','readonly','visibility','initializer','parameterProperty','getter','setter','valueKind','callableSignature','sdkType'].includes(key)) || typeof field.readonly!=='boolean' || field.visibility!==undefined&&!['public','private','protected'].includes(field.visibility))throw Error('invalid field');if(field.getter!==undefined && (typeof field.getter!=='string'||!field.getter) || field.setter!==undefined && (!field.setter || typeof field.setter.procedure!=='string'||!field.setter.procedure||Object.keys(field.setter).some(key=>!['procedure','parameters'].includes(key))||!Array.isArray(field.setter.parameters)||field.setter.parameters.length!==1||field.setter.parameters.some(param=>!validType(param.type)||!/^[A-Za-z_]\w*$/.test(param.name)||param.optional!==false||Object.hasOwn(param,'default')||Object.keys(param).some(key=>!['name','type','optional'].includes(key)))))throw Error('invalid accessor');if((field.getter||field.setter)&&(field.initializer!==undefined||field.parameterProperty||field.readonly!==!!(field.getter&&!field.setter)))throw Error('invalid accessor storage metadata');names.add(field.name);}
             for(const param of parameters)if(!/^[A-Za-z_]\w*$/.test(param?.name||'') || !validType(param.type))throw Error('invalid constructor parameter');
             for(const method of methods)if(!/^[A-Za-z_]\w*$/.test(method?.name||'') || names.has(method.name) || !validType(method.returnType) || method.visibility!==undefined&&!['public','private','protected'].includes(method.visibility) || !Array.isArray(method.parameters) || method.parameters.some(param=>!validType(param.type)||!/^[A-Za-z_]\w*$/.test(param.name)))throw Error('invalid method');
             classes.set(name,{name,parent:block.opcode==='arcade_declareSubclass'?literal(target,block,'BASE'):null,target,fields,parameters,methods,initializer:literal(target,block,'INITIALIZER'),constructor:literal(target,block,'CONSTRUCTOR')});
@@ -39,8 +39,12 @@ export function prepareObjectClassExport(emitter) {
     if(!classes.size && !builtinObject && !hasSdkFontValues(emitter.project))return {classes,procedures,variableTypes:new Map(),valueTypes:()=>new Set(),inputTypes:()=>new Set(),fontGlyphInput:()=>false,localType:()=> 'any',render:()=>[],receiver:block=>{emitter.note('Arcade object member export requires a valid class declaration');return emitter.arrayValue(block,'OBJECT');}};
     for(const cls of sdkExportClasses())if(!classes.has(cls.name))classes.set(cls.name,cls);
     const callableTypes=classCallableExportTypes(classes,builtinNames);
+    const parameterText=parameter=>{try{return callableTypes.parameter(parameter);}catch(error){emitter.note(error.message);return parameter.type;}};
+    const fieldText=field=>{try{return callableTypes.field(field);}catch(error){emitter.note(error.message);return field.type;}};
+    const methodText=method=>{try{return callableTypes.method(method);}catch(error){emitter.note(error.message);return null;}};
     for(const cls of classes.values())try {
-        for(const field of cls.fields)if(field.valueKind!==undefined||field.callableSignature!==undefined){callableTypes.ordinary(cls.name);callableTypes.field(field);}
+        for(const parameter of cls.parameters)callableTypes.parameter(parameter);
+        for(const field of cls.fields)if(field.valueKind!==undefined||field.callableSignature!==undefined||field.sdkType!==undefined){callableTypes.ordinary(cls.name);callableTypes.field(field);}
         for(const method of cls.methods)if(method.typeParameters!==undefined||method.callableSignature!==undefined){
             callableTypes.ordinary(cls.name);callableTypes.method(method);
             const definition=definitions.get(key(cls.target,method.procedure));
@@ -227,7 +231,7 @@ export function prepareObjectClassExport(emitter) {
         for(const cls of classes.values()) {
             if(cls.intrinsic)continue;
             const ctor=definitions.get(key(cls.target,cls.constructor));
-            const params=cls.parameters.map((param,index)=>{const field=cls.fields.find(field=>field.parameterProperty&&field.name===param.name);return `${field?(field.visibility||'public')+' '+(field.readonly?'readonly ':''):''}${ctor?.parameters[index+1] || param.name}${param.optional&&!Object.prototype.hasOwnProperty.call(param,'default')?'?':''}: ${param.type}${Object.prototype.hasOwnProperty.call(param,'default')?' = '+JSON.stringify(param.default):''}`;}).join(', ');
+            const params=cls.parameters.map((param,index)=>{const field=cls.fields.find(field=>field.parameterProperty&&field.name===param.name);return `${field?(field.visibility||'public')+' '+(field.readonly?'readonly ':''):''}${ctor?.parameters[index+1] || param.name}${param.optional&&!Object.prototype.hasOwnProperty.call(param,'default')?'?':''}: ${parameterText(param)}${Object.prototype.hasOwnProperty.call(param,'default')?' = '+JSON.stringify(param.default):''}`;}).join(', ');
             const lines=[`class ${cls.name}${cls.parent?' extends '+sdkClassPublicName(cls.parent):''} {`];
             for(const field of cls.fields){
                 if(field.parameterProperty)continue;
@@ -242,7 +246,7 @@ export function prepareObjectClassExport(emitter) {
                     if(!def||def.parameters.length||!fn)emitter.note('Class field initializer export requires its fixed zero-argument procedure');
                     else initializer=` = ${fn}()`;
                 }
-                lines.push(`    ${field.visibility && field.visibility!=='public'?field.visibility+' ':''}${field.readonly?'readonly ':''}${field.name}: ${field.valueKind==='callable'?callableTypes.field(field):field.type}${initializer}`);
+                lines.push(`    ${field.visibility && field.visibility!=='public'?field.visibility+' ':''}${field.readonly?'readonly ':''}${field.name}: ${field.valueKind==='callable'?fieldText(field):field.type}${initializer}`);
             }
             const implicit=cls.parent && cls.constructor===classes.get(cls.parent)?.constructor;
             if(!implicit){
@@ -251,7 +255,7 @@ export function prepareObjectClassExport(emitter) {
             }
             for(const method of cls.methods) {
                 const def=definitions.get(key(cls.target,method.procedure));
-                const callable=method.callableSignature?callableTypes.method(method):null;
+                const callable=method.callableSignature?methodText(method):null;
                 const params=method.parameters.map((param,index)=>`${def?.parameters[index+1] || param.name}${param.optional&&!Object.prototype.hasOwnProperty.call(param,'default')?'?':''}: ${callable?.parameters[index] || param.type}${Object.prototype.hasOwnProperty.call(param,'default')?' = '+JSON.stringify(param.default):''}`).join(', ');
                 const script=body(method.procedure,cls,method.parameters),returns=script.some(line=>/^\s*return\s+\S/.test(line));
                 const result=callable?callable.result:method.returnType==='any'?typeOf(`${key(cls.target,method.procedure)}:result`):method.returnType;
@@ -264,9 +268,10 @@ export function prepareObjectClassExport(emitter) {
     const valueTypes=(target,block)=>new Set(graph.node(cell(target,block)).types);
     const classCallableProviders=new Map();
     const classCallableProvider=target=>{
-        if(!classCallableProviders.has(target))classCallableProviders.set(target,createClassCallableExportProvider({target,project:emitter.project,classes,definitions,valueTypes,literal,key,builtinNames}));
+        if(!classCallableProviders.has(target))classCallableProviders.set(target,createClassCallableExportProvider({target,project:emitter.project,classes,definitions,valueTypes,literal,key,builtinNames,sdkImagePrototype:emitter.opts.sdkImagePrototype===true}));
         return classCallableProviders.get(target);
     };
     return {classes,procedures,variableTypes,valueTypes,inputTypes:(target,block,name)=>new Set(graph.node(input(target,block,name)).types),fontGlyphInput:(target,block,name)=>graph.node(input(target,block,name))===graph.node('field:__bwSDK_Font:data'),localType,render,receiver,superCall,parameterPropertyBlocks,
+        sdkVariable:name=>emitter.project.targets.some(target=>Object.entries(target.variables||{}).some(([id,value])=>emitter.varName(target,value[0])===name&&[...classCallableProviders.values()].some(provider=>provider.sdkVariable(id)))),
         classCallableProvider,publicName:sdkClassPublicName,hasType:type=>classes.has(sdkClassName(type.replace(/(?:\[\])+$/,'')))};
 }

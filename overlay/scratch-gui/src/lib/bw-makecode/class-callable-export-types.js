@@ -11,7 +11,9 @@ export function classCallableExportTypes(classes,builtinNames=new Set()) {
         while(cls){if(seen.has(cls.name)||builtinNames.has(cls.name))fail('intrinsic or cyclic class signatures are not qualified');seen.add(cls.name);if(cls.parent&&!classes.has(cls.parent))fail('unresolved ordinary parent '+cls.parent);cls=cls.parent?classes.get(cls.parent):null;}
     };
     const type=(value,generics=new Set())=>{
-        if(value?.kind==='named') {
+        if(value?.kind==='sdk') {
+            if(!keys(value,['kind','name'])||value.name!=='Image')fail('unqualified SDK signature domain');
+        }else if(value?.kind==='named') {
             if(!keys(value,['kind','name'])||!/^[A-Za-z_]\w*$/.test(value.name||'')||['any','unknown'].includes(value.name))fail('opaque or malformed signature');
             if(!generics.has(value.name)&&!['number','string','boolean','null','undefined','void'].includes(value.name))ordinary(value.name);
         }else if(value?.kind==='callable') {
@@ -22,6 +24,10 @@ export function classCallableExportTypes(classes,builtinNames=new Set()) {
         }else fail('unsupported signature domain');
     };
     const field=field=>{
+        if(field.valueKind==='sdk'){
+            if(field.type!=='Image'||field.sdkType?.kind!=='sdk'||field.getter||field.setter||field.callableSignature!==undefined)fail('invalid explicit SDK Image field');
+            type(field.sdkType);return 'Image';
+        }
         if(field.type!=='callable'||field.valueKind!=='callable'||field.getter||field.setter)fail('invalid explicit callable field');
         type(field.callableSignature);if(field.callableSignature.kind!=='callable')fail('field requires a callable signature');
         return renderCallableType(field.callableSignature);
@@ -39,8 +45,13 @@ export function classCallableExportTypes(classes,builtinNames=new Set()) {
                 if(parameter.type!=='callable'||JSON.stringify(parameter.callableSignature)!==JSON.stringify(expected.type))fail('callback signature differs');
             }else if(parameter.type!==expected.type.name||parameter.callableSignature!==undefined)fail('method parameter type differs');
         });
-        if(method.returnType!==(method.callableSignature.result.kind==='named'?method.callableSignature.result.name:'callable'))fail('method result differs');
+        if(method.returnType!==(['named','sdk'].includes(method.callableSignature.result.kind)?method.callableSignature.result.name:'callable'))fail('method result differs');
         return {generics:[...generics],parameters:method.callableSignature.parameters.map(parameter=>renderCallableType(parameter.type)),result:renderCallableType(method.callableSignature.result)};
     };
-    return Object.freeze({field,method,ordinary});
+    const parameter=parameter=>{
+        if(parameter.sdkType===undefined)return parameter.type;
+        if(parameter.type!=='Image'||parameter.sdkType?.kind!=='sdk'||parameter.callableSignature!==undefined)fail('invalid explicit SDK Image constructor parameter');
+        type(parameter.sdkType);return 'Image';
+    };
+    return Object.freeze({field,method,ordinary,parameter});
 }

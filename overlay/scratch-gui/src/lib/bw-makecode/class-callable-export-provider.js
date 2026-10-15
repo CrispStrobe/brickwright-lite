@@ -1,3 +1,4 @@
+import {currentSdkImageProducer,currentSdkImageRoles} from './sdk-image-current-producers.js';
 import {inspectClassConditionalBody} from './class-callable-conditional-body.js';
 import {validateClassCallablePlan} from './class-callable-plan.js';
 import {instantiateCallableSignature} from './callable-signatures.js';
@@ -5,7 +6,7 @@ import {classCallableExportTypes} from './class-callable-export-types.js';
 
 // Current serialized blocks, actual class declarations and procedure owners.
 // No runtime values or retained source bodies supply export type authority.
-export function createClassCallableExportProvider({target,project,classes,definitions,valueTypes,literal,key,builtinNames}) {
+export function createClassCallableExportProvider({target,project,classes,definitions,valueTypes,literal,key,builtinNames,sdkImagePrototype=false}) {
     const templates=classCallableExportTypes(classes,builtinNames),named=name=>({kind:'named',name});
     const fail=message=>{throw new Error('Class callable export: '+message);};
     let plan=null;
@@ -15,19 +16,36 @@ export function createClassCallableExportProvider({target,project,classes,defini
         while(cls&&!seen.has(cls.name)){seen.add(cls.name);const found=(method?cls.methods:cls.fields).find(row=>row.name===field);if(found)return {cls,value:found};cls=classes.get(cls.parent);}
         return null;
     };
-    const same=(a,b)=>a?.kind===b?.kind&&(a.kind==='named'?a.name===b.name:a.parameters.length===b.parameters.length&&a.parameters.every((parameter,index)=>same(parameter.type,b.parameters[index].type))&&same(a.result,b.result));
+    const same=(a,b)=>a?.kind===b?.kind&&(['named','sdk'].includes(a.kind)?a.name===b.name:a.parameters.length===b.parameters.length&&a.parameters.every((parameter,index)=>same(parameter.type,b.parameters[index].type))&&same(a.result,b.result));
     const subtype=(actual,expected)=>{
         if(same(actual,expected))return true;
         if(actual?.kind!=='named'||expected?.kind!=='named')return false;
         let cls=classes.get(actual.name);const seen=new Set();while(cls&&!seen.has(cls.name)){seen.add(cls.name);if(cls.name===expected.name)return true;cls=classes.get(cls.parent);}return false;
     };
-    const fieldType=field=>field.valueKind==='callable'?field.callableSignature:named(field.type);
+    const fieldType=field=>field.valueKind==='sdk'?field.sdkType:field.valueKind==='callable'?field.callableSignature:named(field.type);
+    const parameterType=parameter=>parameter.sdkType||parameter.callableSignature||named(parameter.type);
     const checkingVariables=new Map();
-    const variableType=block=>{
+    const containsInput=(block,wanted,seen=new Set())=>{
+        if(block===wanted)return true;if(!block||seen.has(block))return false;seen.add(block);
+        return Object.values(block.inputs||{}).some(input=>typeof input[1]==='string'&&containsInput(target.blocks[input[1]],wanted,seen));
+    };
+    const initializedBefore=(id,readBlock)=>{
+        if(!readBlock||!Object.values(target.blocks).includes(readBlock))return false;
+        const owner=scope(readBlock),root=owner.rootBlock||definitions.get(key(target,owner.procedure))?.block;if(!root)return false;
+        let current=target.blocks[root.next],initialized=false;const seen=new Set();
+        while(current){
+            if(seen.has(current)||Object.keys(current.inputs||{}).some(name=>name.startsWith('SUBSTACK')))return false;seen.add(current);
+            if(containsInput(current,readBlock))return initialized;
+            if(current.opcode==='data_setvariableto'&&current.fields?.VARIABLE?.[1]===id)initialized=true;
+            current=target.blocks[current.next];
+        }
+        return false;
+    };
+    const variableType=(block,readBlock=block)=>{
         const id=block.fields?.VARIABLE?.[1];if(!id)return null;
         const owners=project.targets.filter(other=>Object.hasOwn(other.variables||{},id));
         if(owners.length!==1||owners[0]!==target&&!owners[0].isStage)return null;
-        if(checkingVariables.has(id))return checkingVariables.get(id);
+        if(checkingVariables.has(id)){const cached=checkingVariables.get(id);return cached?.kind==='sdk'&&!initializedBefore(id,readBlock)?null:cached;}
         checkingVariables.set(id,null);
         try {
             const writers=[];
@@ -38,12 +56,12 @@ export function createClassCallableExportProvider({target,project,classes,defini
             if(!writers.length)return null;
             let anchor=null;
             for(const writer of writers){
-                const type=slotType(writer.inputs.VALUE?.[1],scope(writer));
-                if(type?.kind==='named'&&classes.has(type.name)){anchor=type;checkingVariables.set(id,anchor);break;}
+                const type=slotType(writer.inputs.VALUE?.[1],scope(writer),new Set(),writer);
+                if(type?.kind==='sdk'||type?.kind==='named'&&classes.has(type.name)){anchor=type;checkingVariables.set(id,anchor);break;}
             }
             if(!anchor)return null;
-            for(const writer of writers){const type=slotType(writer.inputs.VALUE?.[1],scope(writer));if(!type||!subtype(type,anchor))return null;}
-            return anchor;
+            for(const writer of writers){const type=slotType(writer.inputs.VALUE?.[1],scope(writer),new Set(),writer);if(!type||!subtype(type,anchor))return null;}
+            return anchor.kind==='sdk'&&!initializedBefore(id,readBlock)?null:anchor;
         }finally{checkingVariables.delete(id);}
     };
     const scope=block=>{
@@ -89,7 +107,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
         const binding=plan?.bindings.find(row=>row.owner===owner.id&&row.nativeName===name);
         if(binding)return binding.type;
         const parameter=owner.parameters?.find(row=>typeof row==='object'&&row.name===name);
-        if(parameter)return parameter.callableSignature || named(parameter.type);
+        if(parameter)return parameterType(parameter);
         if(!readBlock)return null;
         const branch=conditional(owner);
         if(branch){
@@ -122,19 +140,19 @@ export function createClassCallableExportProvider({target,project,classes,defini
             return null;
         }finally{checkingLocals.delete(identity);}
     };
-    const slotType=(slot,owner,seen=new Set())=>{
+    const slotType=(slot,owner,seen=new Set(),readAt=null)=>{
         if(Array.isArray(slot)){
             if([4,5,6,7,8].includes(slot[0]))return named('number');
             if(slot[0]===10)return named('string');
-            if(slot[0]===12)return variableType({opcode:'data_variable',fields:{VARIABLE:[slot[1],slot[2]]}});
+            if(slot[0]===12)return variableType({opcode:'data_variable',fields:{VARIABLE:[slot[1],slot[2]]}},readAt);
             return null;
         }
         const block=target.blocks[slot];if(!block||seen.has(block))return null;seen=new Set([...seen,block]);
-        const inputType=name=>slotType(block.inputs?.[name]?.[1],owner,seen);
+        const inputType=name=>slotType(block.inputs?.[name]?.[1],owner,seen,block);
         const argsType=()=>{
             const args=[];let rest=block.inputs?.ARGS?.[1],visited=new Set();
             while(typeof rest==='string'&&target.blocks[rest]?.opcode==='arcade_functionArgument'){
-                if(visited.has(rest))fail('cyclic current arguments');visited.add(rest);const arg=target.blocks[rest];args.push(slotType(arg.inputs.VALUE?.[1],owner,seen));rest=arg.inputs.REST?.[1];
+                if(visited.has(rest))fail('cyclic current arguments');visited.add(rest);const arg=target.blocks[rest];args.push(slotType(arg.inputs.VALUE?.[1],owner,seen,arg));rest=arg.inputs.REST?.[1];
             }
             const end=typeof rest==='string'&&target.blocks[rest];if(!(Array.isArray(rest)&&rest[0]===10&&rest[1]==='[]')&&!(end?.opcode==='text'&&end.shadow&&end.fields.TEXT?.[0]==='[]'))fail('unproved current ordered argument list');
             return args;
@@ -161,6 +179,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
             if(left?.name==='number'&&right?.name==='number'&&['+','-','*','/','%'].includes(op))return named('number');
             if(op==='+'&&left?.name==='string'&&right?.name==='string')return named('string');
         }
+        if(sdkImagePrototype&&['arcade_createImage','arcade_cloneImage'].includes(block.opcode))return currentSdkImageProducer(target,block,inputType);
         if(block.opcode==='arcade_setObjectField')return null;
         return operation(block,owner,{inputType,argsType,localType:name=>local(owner,name)});
     };
@@ -186,10 +205,12 @@ export function createClassCallableExportProvider({target,project,classes,defini
         const actualOwner=scope(block);
         if(owner.id&&actualOwner.id!==owner.id||owner.procedure&&actualOwner.procedure!==owner.procedure||owner.rootBlock&&actualOwner.rootBlock!==owner.rootBlock)return null;
         const {inputType,argsType,localType}=environment;
+        if(sdkImagePrototype&&['arcade_createImage','arcade_cloneImage'].includes(block.opcode))return currentSdkImageProducer(target,block,inputType);
+        if(sdkImagePrototype&&block.opcode==='arcade_imageProperty'&&['width','height'].includes(block.fields?.PROPERTY?.[0]||literal(target,block,'PROPERTY'))){const image=inputType('IMAGE');return image?.kind==='sdk'&&image.name==='Image'?named('number'):null;}
         if(block.opcode==='arcade_getLocal')return localType(literal(target,block,'NAME')) || local(owner,literal(target,block,'NAME'),block);
         if(block.opcode==='arcade_createObject'){
             const name=literal(target,block,'CLASS'),cls=classes.get(name);if(!cls)return null;templates.ordinary(name);
-            const args=argsType();if(args.length!==cls.parameters.length||args.some((type,index)=>!type||!subtype(type,named(cls.parameters[index].type))))fail('current constructor arguments differ');return named(name);
+            const args=argsType();if(args.length!==cls.parameters.length||args.some((type,index)=>!type||!subtype(type,parameterType(cls.parameters[index]))))fail('current constructor arguments differ');return named(name);
         }
         if(['arcade_objectField','arcade_assignObjectField','arcade_setObjectField','arcade_callObjectMethod'].includes(block.opcode)){
             const receiver=inputType('OBJECT');if(!receiver||receiver.kind!=='named'||!classes.has(receiver.name))return null;templates.ordinary(receiver.name);
@@ -238,22 +259,31 @@ export function createClassCallableExportProvider({target,project,classes,defini
             plan=null;let accepted=false;
             try {
             validateClassCallablePlan(candidate);if(actualTarget!==target)return false;
-            for(const row of candidate.classes){const cls=classes.get(row.name);if(!cls||cls.target!==target||(cls.parent||null)!==row.parent)return false;templates.ordinary(row.name);}
+            const sdk=type=>type?.kind==='sdk'||type?.kind==='callable'&&(type.parameters.some(parameter=>sdk(parameter.type))||sdk(type.result));
+            if(!sdkImagePrototype&&(candidate.classes.some(row=>row.sdkRoles)||candidate.owners.some(row=>sdk(row.signature))||candidate.bindings.some(row=>sdk(row.type))))return false;
+            for(const row of candidate.classes){const cls=classes.get(row.name);if(!cls||cls.target!==target||(cls.parent||null)!==row.parent)return false;templates.ordinary(row.name);
+                const actual=currentSdkImageRoles(cls),expected=row.sdkRoles||{fields:[],constructor:[],methods:[]};
+                const canonical=roles=>({fields:[...roles.fields].sort((a,b)=>a.name.localeCompare(b.name)),constructor:roles.constructor,methods:[...roles.methods].sort((a,b)=>a.name.localeCompare(b.name))});
+                if(JSON.stringify(actual)!==JSON.stringify(canonical(expected)))return false;
+            }
             for(const owner of candidate.owners.filter(row=>['constructor','method'].includes(row.kind))){
                 const cls=classes.get(owner.className),selected=owner.kind==='constructor'?{procedure:cls.constructor,parameters:cls.parameters}:cls.methods.find(row=>row.name===owner.memberName);
                 const def=selected&&definitions.get(key(target,selected.procedure));if(!def||selected.procedure!==owner.procedure||def.parameters[0]!==owner.receiverParameter||def.parameters.length!==selected.parameters.length+1||selected.parameters.some((parameter,index)=>def.parameters[index+1]!==parameter.name)||selected.parameters.length!==owner.signature.parameters.length)return false;
-                if(selected.parameters.some((parameter,index)=>parameter.name!==owner.signature.parameters[index].name||parameter.type!==(owner.signature.parameters[index].type.kind==='named'?owner.signature.parameters[index].type.name:'callable')))return false;
+                if(selected.parameters.some((parameter,index)=>parameter.name!==owner.signature.parameters[index].name||parameter.type!==(['named','sdk'].includes(owner.signature.parameters[index].type.kind)?owner.signature.parameters[index].type.name:'callable')))return false;
                 if(owner.kind==='constructor'){
                     if(owner.typeParameters.length||owner.signature.result.kind!=='named'||owner.signature.result.name!=='void')return false;
                     if(selected.parameters.some((parameter,index)=>{
                         const expected=owner.signature.parameters[index].type;
-                        return expected.kind==='callable'?JSON.stringify(parameter.callableSignature)!==JSON.stringify(expected):parameter.callableSignature!==undefined;
+                        return expected.kind==='sdk'?parameter.type!=='Image'||JSON.stringify(parameter.sdkType)!==JSON.stringify(expected):expected.kind==='callable'?JSON.stringify(parameter.callableSignature)!==JSON.stringify(expected):parameter.callableSignature!==undefined||parameter.sdkType!==undefined;
                     }))return false;
                 }
                 if(owner.kind==='method' && (JSON.stringify(selected.callableSignature)!==JSON.stringify(owner.signature)||JSON.stringify(selected.typeParameters)!==JSON.stringify(owner.typeParameters)))return false;
             }
             plan=candidate;
             verifyWriters();
+            if(candidate.classes.some(row=>row.sdkRoles))for(const block of Object.values(target.blocks))if(['arcade_createObject','arcade_callObjectMethod','arcade_callCallable'].includes(block.opcode)){
+                const id=Object.entries(target.blocks).find(([,row])=>row===block)?.[0];if(!slotType(id,scope(block)))return false;
+            }
             for(const cls of classes.values())if(cls.target===target)for(const method of cls.methods)if(method.callableSignature){
                 const definition=definitions.get(key(target,method.procedure));if(!definition)return false;
                 const owner={className:cls.name,receiverParameter:definition.parameters[0],parameters:method.parameters,procedure:method.procedure};
@@ -281,7 +311,7 @@ export function createClassCallableExportProvider({target,project,classes,defini
         },
         currentInputType(block,name){
             if(!plan||!Object.values(target.blocks).includes(block))return null;
-            verifyWriters();return slotType(block.inputs?.[name]?.[1],scope(block));
+            verifyWriters();return slotType(block.inputs?.[name]?.[1],scope(block),new Set(),block);
         },
         valueType(block,owner,environment){verifyWriters();return block.opcode==='arcade_setObjectField'?null:operation(block,owner,environment);},
         statementType(block,owner,environment){verifyWriters();return operation(block,owner,environment)!==null;},
@@ -289,6 +319,16 @@ export function createClassCallableExportProvider({target,project,classes,defini
             if(!plan)return null;
             const id=Object.entries(target.blocks).find(([,value])=>value===block)?.[0];
             return id?slotType(id,scope(block)):null;
+        },
+        sdkVariable(id){
+            if(!plan?.classes.some(row=>row.sdkRoles))return false;
+            const reads=[];
+            const scan=(value,block)=>{if(!Array.isArray(value))return;if(value[0]===12&&value[2]===id)reads.push(block);else for(const child of value)scan(child,block);};
+            for(const block of Object.values(target.blocks)){
+                if(block.opcode==='data_variable'&&block.fields?.VARIABLE?.[1]===id)reads.push(block);
+                for(const input of Object.values(block.inputs||{}))scan(input,block);
+            }
+            return reads.length>0&&reads.every(block=>variableType({fields:{VARIABLE:['',id]}},block)?.kind==='sdk');
         },
         localType:local,
         localAssignment(block,owner){

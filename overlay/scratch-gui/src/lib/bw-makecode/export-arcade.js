@@ -1,3 +1,4 @@
+import {proveClassCallableSource} from './class-callable-source-flow.js';
 import {classCallableSourceGate} from './class-callable-source-gate.js';
 import {classCallableDefaultProjectGate} from './class-callable-default-project-gate.js';
 import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
@@ -3739,6 +3740,7 @@ class ArcadeEmitter {
             if(referenceCell){out.push(`let ${n}: ${referenceCell.type}`);continue;}
             const sourceCell=[...this.sourceScalarCells.values()].find(cell=>cell.ts===n);
             if (sourceCell) {out.push(`let ${n}: ${sourceCell.type.toLowerCase()}`);continue;}
+            if(this.opts.sdkImagePrototype&&this.objectClassExport?.sdkVariable?.(n)){out.push(`let ${n}: Image`);continue;}
             const objectType=this.objectClassExport?.variableTypes.get(n);
             if(objectType && this.objectClassExport.hasType?.(objectType)){out.push(`let ${n}: ${objectType} = null`);continue;}
             if(['number','boolean','string'].includes(objectType)){out.push(`let ${n}: ${objectType} = ${objectType==='string'?'\"\"':objectType==='boolean'?'false':'0'}`);continue;}
@@ -3970,6 +3972,13 @@ export function projectToArcade (project, opts = {}) {
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`
     };
+    if(opts.sdkImagePrototype&&e.callableExports.size){
+        const reconstructed=parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true,
+            retainWhenUsed:true,retainClassHeritage:true,retainCallableMetadata:true});
+        const proof=proveClassCallableSource(reconstructed,{sdkImagePrototype:true});
+        if(!proof.eligible)e.note('SDK Image export requires actual producers throughout the complete reconstructed current program');
+        for(const diagnostic of proof.unsupported)e.note(diagnostic);
+    }
     if(e.callableExports.size && !opts.callableLexicalPrototype && !opts.classCallablePrototype) {
         // Approval covers the complete reconstructed current program, including
         // adjacent functions; lexical metadata cannot grant a broader surface.
