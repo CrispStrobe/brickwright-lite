@@ -1,3 +1,49 @@
+## SPIKE G02 composed lifecycle integration — 2026-10-15
+
+Continuation of the merged SPIKE G02 pane/session claims, branch
+`lane/spike-g02-lifecycle-batch-20261015`. Integrate the existing Pause ownership,
+world-action ownership, pending-upload Arena Stop and replacement Code-feedback
+fixes in that order. Preserve shared importer/conversion and other lanes.
+The separate NuttX Code caller proposal remains outside this product change.
+
+The Pause conflict retains both the full-session upload cancellation prefix and
+the captured-session/teardown ownership branches. Stop keeps intent/bridge
+bookkeeping and optional upload-message clearing. Eleven other inherited pane
+methods and the feedback session file match their reviewed source inputs.
+A new authored sequence catches either single-fix baseline losing the other
+Pause branch. All 176 affected host controls pass. An attempted extra rendered
+unit suite lacked React in the sparse validation environment; its original
+failure is preserved and hosted CI must run with installed dependencies.
+
+The frozen composed consumer `f903a966ea348fd7c3abd0ba693194fc813b4997`
+passes all fifteen installed own-NuttX cases: four Pause, four representative
+world/manual-drive, four pending-upload Arena Stop cases with retained-session
+Stop positives, and three Code completion/error/retry/cancellation cases. All
+fifteen standalone readers and the combined cohort reader pass, including thirty
+successful native startup transactions, cleanup and distinct recovery per case.
+The official frontend checkout tree equals this consumer; package payload and
+input audits pass. Its eleven enabled CI checks pass in
+[run38769805667](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38769805667);
+the conditional GUI verification and deploy jobs skip.
+
+Original failed test attempts remain preserved: a circular held-reply cleanup
+wait, React component-pointer compatibility, recovery language conversion,
+retry recorder lifetime, and a direct duplicate Stop before pending teardown
+completed. Corrected tests retain the observation limits and two-START retry
+gate. Visible Code cancellation awaits the original Stop method's returned
+promise rather than issuing a second pane Stop. That direct repeated-Stop
+boundary remains open below.
+
+Current main's unrelated importer/debug changes are preserved exactly during
+integration; the SPIKE session/pane/native inputs and NuttX Code dispatcher
+method remain unchanged from the tested source. Final documentation-head CI
+and merge review remain required. This result qualifies the named frozen
+package, not every later frontend package or whole G02, hardware,
+reference boot, rollback, distribution or licensing. This lane
+changes no native input, firmware/Runtime/model/dependency pin, workflow or budget
+relative to its main base. Do not merge the older draft sources independently
+as a substitute for composed qualification.
+
 ## WeDo clone 88005 polarity and power packet correction — 2026-10-15
 
 DONE — Codex, isolated existing adoption branch
@@ -4058,6 +4104,51 @@ importer/shared type helper ownership. Hosted qualification and corpus recensus
 remain separate from focused source controls.
 
 
+## SPIKE replacement Code feedback boundary — 2026-10-15
+
+Continuation in the merged G02 session/pane/feedback envelope, branch
+`lane/spike-g02-code-feedback-20261015`, stacked on the pending-upload Stop fix.
+Keep Code Stop available while replacement waits. Old poll/STOP and upload READY
+observations do not finish the replacement's feedback; publish its status after
+upload/START succeeds. A current live-session upload rejection notifies its Code
+error consumer and ends that consumer's running state. Later native observations
+remain live in the pane without replacing the failed Code run's error. A retry
+or fresh cold run invalidates retained-upload listeners; cancellation of an
+already closed session remains Stop rather than a new upload error.
+
+Twelve authored controls exercise the real session/client/feedback and original
+Code dispatcher with shipped pane methods. The original phase controls reproduced
+six failures; three additional error/consumer controls reproduced three failures.
+All twelve and 99 affected host controls pass; eleven broken guards are detected.
+The initial candidate's explicit-cancellation regression is retained and fixed.
+These are host protocol controls, not rendered or actual guest evidence.
+Fresh source-bound installed Code re-upload, visible Stop, completion, live error,
+late telemetry, retry/cold recovery and final-head CI remain required before merge.
+Cold-listener, output-attribution and concurrent caller completion boundaries are
+not promoted beyond their named controls. No importer, native/model/firmware/pin/
+workflow/deadline change or whole-G02/physical/rollback/release claim.
+
+## SPIKE pending-upload Arena Stop control — 2026-10-15
+
+Continuation in the merged G02 pane/lifecycle envelope, branch
+`lane/spike-g02-upload-stop-control-20261015`, stacked on PR962.
+An installed upload probe found no Arena Stop element at a pending return.
+Keep Stop visible whenever the current session is uploading, including paused
+program observations. Pending-upload Stop delegates to full session teardown
+with ready feedback and cleared upload text, using the qualified closure guards. Ordinary retained
+program Stop keeps its storage session. A delayed cancellation error must retain
+pane intent ownership before changing feedback.
+
+All 14 new controls and 14 existing pane lifecycle controls pass. The baseline
+passes five new cases and fails nine; five targeted visibility/routing/feedback
+mutations are detected. Host coverage evaluates the shipped JSX branch predicate
+and actual pane methods, with authored stop/error promises. Actual installed
+visible-control cancellation and distinct guest recovery remain required, along
+with every enabled exact-head check. Preserve parent merge gates and retarget
+only after PR962 integration. Code-feedback generation remains a separate open
+boundary. No importer, native, pin, firmware, Runtime, model, deadline or workflow
+change; no full G02, rendered-UI, guest, physical or release claim from host tests.
+
 ## SPIKE G02 native startup diagnostics and deadlines — 2026-10-13
 
 CLAIMED — Codex SPIKE integration, isolated branch
@@ -4132,6 +4223,29 @@ Arena Stop availability and Code feedback remain open; Reset coverage does not
 establish that UX. An executed upload remains executed. The session and test
 blobs are preserved during integration with separately qualified main changes;
 final-head CI remains required, and later whole packages need their own evidence.
+
+## SPIKE pane action ownership continuation — 2026-10-15
+
+Continuation in the merged G02 pane/lifecycle envelope, branch
+`lane/spike-g02-pause-ownership-20261015`, same Codex owner. Pause, Reset and Step
+admit their current teardown intent and owned bridge/session before continuing.
+The intent records its own restored topology bridge, preserving legitimate
+six-motor and dual-ultrasonic cleanup. All 44 affected host controls pass; six
+broken guard/bookkeeping variants are detected.
+
+Tested consumer `beb518eaba4597afe6ee75fe14a699cc7d9c8ab9` passed four fresh
+installed own-NuttX Pause cases: live success/error delivery and Reset before
+success/error delivery. Four standalone readers and the cohort reader passed
+with eight complete native startup transactions, released ownership and a
+distinct recovery guest per case. These qualify that finite consumer; generic
+Step/backend paths retain separate host controls.
+
+Main integration includes the separately qualified compiled MicroPython launch
+work. Three native source inputs differ from the earlier NuttX consumer, so a
+fresh source-bound NuttX matrix and every enabled final-head check remain
+required for this composed head. Keep both earlier passing and failure records.
+No firmware, Runtime/model or dependency pin is advanced by this lane. No full
+G02, physical safety, rollback, reference boot, release or licensing claim.
 
 ## SPIKE remaining lifecycle boundaries — 2026-10-13
 
@@ -4385,6 +4499,23 @@ The separately claimed shared project-world work keeps its ownership. This
 claim changes no executable, dependency, fixture, capture or workflow and makes
 no fresh guest, performance, physical, reference, release or licence claim.
 
+## Proposed SPIKE pending Stop teardown continuation — 2026-10-15
+
+A direct second pane `stopProgram()` while the visible Code Stop's original
+teardown is pending can encounter `Clock is owned by another backend`. The
+closed flag and stopped Code feedback precede full ownership release. The
+frozen lifecycle qualification observes the original Stop promise and preserves
+this repeated-call failure separately; it does not claim arbitrary Stop reentry.
+
+Proposed next bounded G02 slice: serialize pending firmware teardown before a
+later Stop or Start tries shared clock/backend cleanup, while preserving pane
+intent ownership and original error delivery. Own only the existing pane's
+`stopProgram` method, a focused pending-Stop test, this ledger and the SPIKE
+guide; other shared pane methods require their existing contracts. Preserve
+current teardown/replacement/disposal positives, failure and listener reentry
+adversaries, and qualify the affected installed own-guest cleanup/recovery
+before exact-head merge. No implementation or new guest result is claimed here.
+
 ## SPIKE NuttX Code caller ownership — 2026-10-15
 
 PROPOSED — Codex SPIKE G02 continuation, branch
@@ -4536,6 +4667,27 @@ download/reload acceptance. DOS package work owns new
 `scripts/verify-dos-package-gui.mjs`. Claim any extra shared runner, further capability
 schema, further board metadata or dependency changes separately before coding.
 No private media, ISO picker, native addon backend or general OS claim.
+
+## SPIKE world action ownership continuation — 2026-10-15
+
+Continuation in the merged G02 pane/lifecycle envelope, branch
+`lane/spike-g02-world-action-ownership-20261015`, stacked on PR966.
+After delayed teardown, obsolete lesson loads, challenge selections, sandbox
+updates and manual-drive requests must not replace the current world, persist
+old sandbox data, or send motor commands. Admit the current teardown intent and
+its owned bridge before continuation; retain the selected bridge for delayed
+render callbacks. Unit-load success/error also checks ownership after fetching.
+Stop reentering manual-drive notifications suppresses subsequent motor commands
+and running feedback. This adds no sandbox feature or new model behavior.
+
+All 32 new actual-method authored-boundary controls and 44 inherited pane controls
+pass. The baseline passes fourteen new cases and fails eighteen; eight ownership,
+render-callback and bridge-recording mutations are detected. Fresh installed
+own-guest representative world/action cancellation and recovery plus every enabled
+final-head check remain required. Keep the parent qualification and merge gates;
+retarget to main only after parent integration and review composition again.
+No native, dependency, firmware, Runtime, model, deadline or workflow changes;
+no guest, whole-G02, physical, release or distribution claim from host controls.
 
 
 ## 386 master-disk runner bridge — 2026-10-15

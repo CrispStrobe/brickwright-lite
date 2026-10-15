@@ -106,13 +106,13 @@ test('reupload replaces the previous program callbacks instead of accumulating l
     pane.firmwareSession = session;
     for (const run of ['first', 'second']) {
         await pane.startFirmware(null, {source: 'pass',
-            onStarting: () => events.push([run, 'unexpected startup']),
+            onStarting: () => events.push([run, 'starting']),
             onProgramState: state => events.push([run, state]), onStopped: () => events.push([run, 'closed'])});
         assert.equal(pane.state.status, 'paused');
         assert.equal(pane.state.message, 'Program stopped.');
     }
     session.onStopped();
-    assert.deepEqual(events, [['first', 2], ['first', 4], ['second', 2], ['second', 4], ['second', 'closed']]);
+    assert.deepEqual(events, [['first', 'starting'], ['first', 2], ['first', 4], ['second', 'starting'], ['second', 2], ['second', 4], ['second', 'closed']]);
 });
 
 test('actual Code Stop handler is usable during startup before any firmware observation', async () => {
