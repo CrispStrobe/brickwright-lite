@@ -3772,6 +3772,25 @@ importer/shared type helper ownership. Hosted qualification and corpus recensus
 remain separate from focused source controls.
 
 
+## SPIKE replacement Code feedback boundary — 2026-10-15
+
+Continuation in the merged G02 session/pane/feedback envelope, branch
+`lane/spike-g02-code-feedback-20261015`, stacked on the pending-upload Stop fix.
+New Code callbacks previously received the old poll's terminal state and the
+replacement's preparatory STOP/READY observations. Keep Code Stop available
+while replacement waits; publish new program feedback after upload and START
+succeed. Preserve completion on the first poll after a delayed START return,
+explicit cancellation and correlated upload rejection.
+
+Eight authored controls exercise the real session/client/feedback and shipped
+pane methods: baseline two pass/six fail; the candidate passes all eight.
+Five broken-boundary mutations are detected; 95 affected host controls pass.
+These are host protocol controls, not rendered or actual guest evidence.
+Fresh source-bound installed Code re-upload, visible Stop, terminal feedback,
+error/cancellation and distinct guest recovery remain required before merge.
+Later poll feedback after a failed upload remains a separate acceptance boundary.
+No importer, native/model/firmware/pin/workflow/deadline change or whole-G02 claim.
+
 ## SPIKE pending-upload Arena Stop control — 2026-10-15
 
 Continuation in the merged G02 pane/lifecycle envelope, branch

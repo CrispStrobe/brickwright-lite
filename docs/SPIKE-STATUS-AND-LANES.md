@@ -6,6 +6,24 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Pending replacement Code feedback fix — 2026-10-15
+
+On `lane/spike-g02-code-feedback-20261015`, Code receives a starting notification
+before replacement waits for the previous poll and STOP. The session retains
+internal firmware observations while withholding old/preparatory program
+feedback from the replacement's callbacks. A successful upload publishes the
+replacement status; subsequent completion remains observable, including after
+a delayed START reply. Explicit Stop and upload rejection remain distinct.
+
+Eight authored protocol controls reproduce six failures in the prior source;
+all eight and 95 affected host controls pass with the fix. Five broken guards
+are detected. These checks use the real session/client/feedback and shipped
+pane methods with authored native replies. Exact-head CI and a fresh installed
+own-NuttX Code re-upload/Stop/completion/error/recovery matrix remain pending.
+Later polls after failed upload need separate acceptance coverage. This is
+stacked on the pending-upload Arena Stop fix, not qualification of every evolving
+package or closure of G02, G03, physical safety, distribution or licensing.
+
 ## Qualified G02 lifecycle boundaries — 2026-10-15
 
 Seven focused changes have landed, each with a separately frozen installed
