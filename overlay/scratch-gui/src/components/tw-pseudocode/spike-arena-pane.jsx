@@ -662,6 +662,17 @@ class SpikeArenaPane extends React.Component {
     }
 
     async pause () {
+        if (this.firmwareSession?.uploading) {
+            const stopped = this.stopProgram({restart: true});
+            const intent = this.programIntent;
+            try { await stopped; }
+            catch (error) {
+                if (!this.disposed && this.programIntent === intent) {
+                    this.setState({status: 'failed', message: error.message});
+                }
+            }
+            return;
+        }
         if (this.firmwareSession?.storageSupported) {
             try { await this.firmwareSession.stopProgram(); this.setState({status: 'paused', message: this.locale === 'de' ? 'Programm gestoppt. Speicher verfügbar, sobald die Firmware vollständig angehalten hat.' : 'Program stopped. Storage is available when firmware finishes stopping.'}); }
             catch (error) { this.setState({message: error.message}); }
@@ -837,7 +848,7 @@ class SpikeArenaPane extends React.Component {
                     </select>
                     </>}
                     <div style={{display: 'flex', flexWrap: 'wrap', gap: 6}}>
-                        {status === 'running' || (status === 'starting' && this.firmwareSession) ? (
+                        {status === 'running' || (status === 'starting' && this.firmwareSession) || this.firmwareSession?.uploading ? (
                             <button type="button" style={btn} onClick={() => this.pause()} data-testid="bw-spike-arena-stop">{t('stop')}</button>
                         ) : (
                             <button type="button" style={{...btn, background: '#2f9e44', color: '#fff', border: '1px solid #2b8a3e'}}

@@ -578,6 +578,15 @@ full session Stop through Reset; pending-upload Arena Stop and Code-feedback UX
 remain open. Integration preserves the qualified session/test blobs and requires
 fresh final-head CI. Later whole packages need their own qualification.
 
+A pending-upload Stop continuation on
+`lane/spike-g02-upload-stop-control-20261015` keeps Arena Stop visible while a
+replacement upload is pending and routes that action through full session Stop.
+Ordinary retained program Stop keeps its storage session; current cancellation
+errors remain visible and old delivery errors cannot overwrite a replacement.
+All 14 new predicate/actual-method controls and 14 existing lifecycle controls
+pass, with four detected mutations. Installed visible-control cancellation and
+recovery plus final-head CI remain pending. Code-feedback generation remains open.
+
 ### G03 — Qualify usable sandbox and responsive editor controls
 
 **Owner:** Lite. **Start:** `docs/SPIKE-ARENA.md`,
