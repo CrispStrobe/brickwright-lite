@@ -2547,6 +2547,87 @@ class SB3Creator {
      * take. `read` reads a value slot (a statement's `val`, so a reporter
      * spilled over its slots is refused; parseValue for a reporter's slot).
      */
+    callableSourceEnvelope(value) {
+        if (!value || value.schema !== 'bw-callable-variable') return null;
+        const allowed = ['schema', 'version', 'binding', 'signature', 'variableId', 'variableName'];
+        if (Object.keys(value).some(key => !allowed.includes(key)) || value.version !== 1 ||
+            !/^binding_\d+$/.test(value.binding) || typeof value.variableName !== 'string' || !value.variableName ||
+            value.variableId !== undefined && (typeof value.variableId !== 'string' || !value.variableId) ||
+            !value.signature || value.signature.kind !== 'callable') {
+            throw new ParseError('Malformed lexical callable variable envelope');
+        }
+        return value;
+    }
+
+    materializeCallableVariable(inputs, context) {
+        const text = inputs.SIGNATURE?.[1];
+        if (!Array.isArray(text) || text[0] !== 10) throw new ParseError('Callable signature requires fixed text');
+        let value;
+        try { value = JSON.parse(text[1]); } catch { throw new ParseError('Malformed callable signature JSON'); }
+        const envelope = this.callableSourceEnvelope(value);
+        if (!envelope) {
+            if (!value || value.kind !== 'callable' || value.schema !== undefined) throw new ParseError('Unknown callable declaration signature');
+            return;
+        }
+        const input = inputs.VARIABLE?.[1];
+        const reporter = typeof input === 'string' ? context.extraBlocks[input] : null;
+        const tuple = Array.isArray(input) ? input : reporter?.opcode === 'data_variable' ?
+            [12, reporter.fields.VARIABLE[0], reporter.fields.VARIABLE[1]] : null;
+        const owner = this.project.targets.find(target => Object.prototype.hasOwnProperty.call(target.variables || {}, tuple?.[2]) &&
+            (target === context.target || target.isStage));
+        if (!tuple || tuple[0] !== 12 || typeof tuple[2] !== 'string' || !tuple[2] || !owner ||
+            owner.variables[tuple[2]][0] !== tuple[1] || tuple[1] !== envelope.variableName) {
+            throw new ParseError('Lexical callable declaration must retain its actual variable binding');
+        }
+        // Code is deliberately materialized again; an unchanged spelling seal
+        // permits fresh generated IDs, never declaration-only name rewiring.
+        inputs.SIGNATURE = [1, [10, JSON.stringify({...envelope, variableId: tuple[2]})]];
+    }
+
+    refreshCallableSourceBindings(project) {
+        if (!project.targets.some(target => Object.values(target.blocks || {}).some(block => block.opcode === 'arcade_declareSourceCallable'))) return project;
+        project = JSON.parse(JSON.stringify(project));
+        const literal = (blocks, input) => Array.isArray(input?.[1]) && input[1][0] === 10 ?
+            {get: () => input[1][1], set: value => {input[1][1] = value;}} :
+            blocks[input?.[1]]?.opcode === 'text' && blocks[input[1]].shadow ?
+                {get: () => blocks[input[1]].fields.TEXT[0], set: value => {blocks[input[1]].fields.TEXT[0] = value;}} : null;
+        for (const target of project.targets) {
+            const blocks = target.blocks || {}, renamed = new Map();
+            for (const block of Object.values(blocks)) {
+                if (block.opcode !== 'arcade_declareSourceCallable') continue;
+                const signature = literal(blocks, block.inputs.SIGNATURE);
+                if (!signature) throw new ParseError('Callable signature requires fixed text');
+                let value; try { value = JSON.parse(signature.get()); } catch { throw new ParseError('Malformed callable signature JSON'); }
+                const envelope = this.callableSourceEnvelope(value); if (!envelope) continue;
+                const input = block.inputs.VARIABLE?.[1], reporter = blocks[input];
+                const tuple = Array.isArray(input) ? input : reporter?.opcode === 'data_variable' ?
+                    [12, reporter.fields.VARIABLE[0], reporter.fields.VARIABLE[1]] : null;
+                const owner = project.targets.find(candidate => Object.prototype.hasOwnProperty.call(candidate.variables || {}, tuple?.[2]) && (candidate === target || candidate.isStage));
+                if (!tuple || tuple[0] !== 12 || !owner || envelope.variableId !== tuple[2] || renamed.has(envelope.binding))
+                    throw new ParseError('Current callable lexical variable ID seal changed');
+                const name = owner.variables[tuple[2]][0];
+                renamed.set(envelope.binding, {before: envelope.variableName, after: name});
+                signature.set(JSON.stringify({...envelope, variableName: name}));
+            }
+            for (const block of Object.values(blocks)) {
+                if (block.opcode !== 'arcade_declareCallable') continue;
+                const metadata = literal(blocks, block.inputs.METADATA);
+                if (!metadata) throw new ParseError('Callable plan requires fixed declaration metadata');
+                let value; try { value = JSON.parse(metadata.get()); } catch { throw new ParseError('Malformed callable plan JSON'); }
+                if (value?.schema !== 'bw-callable-declaration') continue;
+                if (value.version !== 1 || !value.plan || !Array.isArray(value.plan.bindings)) throw new ParseError('Malformed callable lexical plan');
+                for (const [id, rename] of renamed) {
+                    const binding = value.plan.bindings.find(binding => binding.id === id);
+                    if (!binding || binding.owner !== value.plan.module || binding.kind !== 'global' || binding.nativeName !== rename.before)
+                        throw new ParseError('Callable spelling seal differs from its lexical plan');
+                    binding.nativeName = rename.after;
+                }
+                metadata.set(JSON.stringify(value));
+            }
+        }
+        return project;
+    }
+
     arcadeSlots(entry, groups, context, read) {
         const { parts } = compileArcadeWord(entry);
         const slots = [];
@@ -2592,6 +2673,7 @@ class SB3Creator {
                 throw new ParseError('Source declaration requires an ordinary variable reporter');
             }
         }
+        if (entry.op === 'arcade_declareSourceCallable') this.materializeCallableVariable(inputs, context);
         for (const [slot, text] of Object.entries(entry.defaults || {})) inputs[slot] = this.parseValue(text, context);
         return { inputs, fields };
     }
@@ -4488,6 +4570,7 @@ class SB3Creator {
             const cfg = this.stcConfig();
             const wasDefault = cfg.clock === 11059200 && cfg.device === 'stc12c5a60s2';
             cfg.device = device;
+            cfg.deviceDeclared = true;
             // The seeded default clock belongs to the seeded default device.
             // A DEVICE line that changes chips takes the chip's own default
             // with it — an explicit CLOCK line still wins, before or after.
@@ -4614,13 +4697,25 @@ class SB3Creator {
             if (cfg.device === 'stm32f030' && /^analog$/i.test(direction) && !/^PA[0-7]$/i.test(where)) {
                 return this.refuseDeclaration(lineIndex, trimmed, `ANALOG on the STM32F030 means PA0-PA7 (ADC_IN0-7), not ${where.toUpperCase()}`);
             }
+            if (cfg.device === 'stm32g030' && /^analog$/i.test(direction) && !/^PA[0-7]$/i.test(where)) {
+                return this.refuseDeclaration(lineIndex, trimmed, `ANALOG on the STM32G030 means PA0-PA7 (ADC_IN0-7), not ${where.toUpperCase()}`);
+            }
+            if (cfg.device === 'stm32f103' && /^analog$/i.test(direction) && !/^(PA[0-7]|PB[01])$/i.test(where)) {
+                return this.refuseDeclaration(lineIndex, trimmed, `ANALOG on the STM32F103 means PA0-PA7 or PB0-PB1 (ADC1_IN0-9), not ${where.toUpperCase()}`);
+            }
             if (cfg.device === 'stm32f030' && /^pwm$/i.test(direction) && !/^(PA[67]|PB1)$/i.test(where)) {
                 return this.refuseDeclaration(lineIndex, trimmed, `PWM on the STM32F030 means PA6, PA7 or PB1 (TIM3 channels), not ${where.toUpperCase()}`);
+            }
+            if (cfg.device === 'stm32g030' && /^pwm$/i.test(direction) && !/^(PA[67]|PB1)$/i.test(where)) {
+                return this.refuseDeclaration(lineIndex, trimmed, `PWM on the STM32G030 means PA6, PA7 or PB1 (TIM3 channels), not ${where.toUpperCase()}`);
+            }
+            if (cfg.device === 'stm32f103' && /^pwm$/i.test(direction) && !/^(PA[0-3]|PA[67]|PB[01])$/i.test(where)) {
+                return this.refuseDeclaration(lineIndex, trimmed, `PWM on the STM32F103 means PA0-PA3 (TIM2) or PA6, PA7, PB0, PB1 (TIM3), not ${where.toUpperCase()}`);
             }
             if (cfg.device === 'esp8266' && /^analog$/i.test(direction)) {
                 return this.refuseDeclaration(lineIndex, trimmed, `ANALOG is not available on the ESP8266: its runtime has no analogRead, so ${where.toUpperCase()} cannot be an ANALOG pin`);
             }
-            if (core === 'rp2040' && cfg.device !== 'stm32f030' && /^analog$/i.test(direction) && !/^GP2[678]$/i.test(where)) {
+            if (core === 'rp2040' && !cfg.device.startsWith('stm32') && cfg.device !== 'esp8266' && /^analog$/i.test(direction) && !/^GP2[678]$/i.test(where)) {
                 return this.refuseDeclaration(lineIndex, trimmed, `ANALOG on the Pico means GP26, GP27 or GP28 (ADC0-2), not ${where.toUpperCase()}`);
             }
             // The ATtinys name their ADC pins by port: PC0-PC5 on the tiny88
@@ -8693,6 +8788,7 @@ class SB3Creator {
 
     // Decompile a whole project back into pseudocode.
     decompile(project = this.project) {
+        project = this.refreshCallableSourceBindings(project);
         const out = [];
         const stage = project.targets.find(t => t.isStage);
         // STC12 / 8051 device declarations first — they are read before any script.
@@ -10821,7 +10917,7 @@ class SB3Creator {
         // The board dialects name the C core differently (see generateC's
         // _core): 'rp2040' covers the Pico and the STM32F030, 'arduino' the AVRs.
         if (part.esp8266) return null;   // the runtime exposes no temperature reading
-        if (part.core === 'rp2040') return part.stm32f0 ? 'stm32f0' : 'rp2040';
+        if (part.core === 'rp2040') return part.stm32f0 ? 'stm32f0' : (part.stm32g0 ? 'stm32g0' : (part.stm32f1 ? 'stm32f1' : 'rp2040'));
         if (part.core !== 'arduino') return null;
         if (part.tiny85) return 'attiny85';
         if (part.tiny88) return 'attiny88';
@@ -11173,16 +11269,26 @@ class SB3Creator {
     /** The GPIO index for a Pico pin record (GP<n> -> n), or null. */
     armHw(pin) {
         if (this._cStm32) {
-            // F030 (TSSOP20): PA0-PA7 gpio 0-7, PA9/PA10 (USART pins,
-            // usable as GPIO when print is off) 9-10, PB1 gpio 17.
-            // Linear index: port = idx>>4 (0=A, 1=B), bit = idx&15 —
+            // F030/G030/F103: Linear index: port = idx>>4 (0=A, 1=B, 2=C), bit = idx&15 —
             // the C-side bw_pin_* helpers decode the same way.
-            const m = String(pin.where || '').toUpperCase().match(/^P([AB])(\d+)$/);
+            const m = String(pin.where || '').toUpperCase().match(/^P([A-C])(\d+)$/);
             if (!m) return null;
+            const port = m[1] === 'A' ? 0 : m[1] === 'B' ? 1 : 2;
             const bit = Number(m[2]);
-            const idx = (m[1] === 'B' ? 16 : 0) + bit;
-            const ok = m[1] === 'A' ? (bit <= 7 || bit === 9 || bit === 10) : bit === 1;
-            return ok ? { gpio: idx } : null;
+            const idx = (port << 4) + bit;
+            if (this._device === 'stm32f030') {
+                const ok = m[1] === 'A' ? (bit <= 7 || bit === 9 || bit === 10) : bit === 1;
+                return ok ? { gpio: idx } : null;
+            }
+            if (this._device === 'stm32g030') {
+                const ok = m[1] === 'A' ? bit <= 15 : m[1] === 'B' ? bit <= 9 : (bit === 14 || bit === 15);
+                return ok ? { gpio: idx } : null;
+            }
+            if (this._device === 'stm32f103') {
+                const ok = m[1] === 'A' ? bit <= 15 : m[1] === 'B' ? bit <= 15 : (bit >= 13 && bit <= 15);
+                return ok ? { gpio: idx } : null;
+            }
+            return { gpio: idx };
         }
         if (this._cEsp8266) {
             // GPIO numbers as the runtime takes them; 6-11 are the SPI
@@ -11233,6 +11339,8 @@ class SB3Creator {
         // PA23/PB23) would have carried that looseness from one digit to
         // two, so the row now says what its own message says.
         stm32f030: [/^(PA[0-7]|PA9|PA10|PB1)$/i, 'PA0-PA7, PA9, PA10 or PB1'],
+        stm32g030: [/^(PA[0-9]|PA1[0-5]|PB[0-9]|PC1[45])$/i, 'PA0-PA15, PB0-PB9 or PC14-PC15'],
+        stm32f103: [/^(PA[0-9]|PA1[0-5]|PB[0-9]|PB1[0-5]|PC1[3-5])$/i, 'PA0-PA15, PB0-PB15 or PC13-PC15'],
         // GPIO numbers, Pico-style: GPIO6-11 carry the SPI flash and the
         // runtime does not drive GPIO16, so neither is offered.
         esp8266: [/^GP([0-5]|1[2-5])$/i, 'GP0-GP5 or GP12-GP15 (GPIO6-11 are the flash bus; GPIO16 is unsupported)'],
@@ -15770,7 +15878,15 @@ class SB3Creator {
         const hasHardware = hasPins || !!(stc && stc.ledcube)
             || !!(stc && stc.parts && stc.parts.length)
             || !!(stc && stc.ports && stc.ports.length);
-        const want = opts.target || (hasHardware ? 'device' : 'host');
+        // An explicit DEVICE line means "build for that chip", pins or no
+        // pins: `DEVICE STM32F030` + `print n` used to fall to host C
+        // (stdio.h) and fail the device compile. The parser records the
+        // line as stc.deviceDeclared; a project from elsewhere that names a
+        // non-default chip counts as declared too. No DEVICE line keeps the
+        // host-C default.
+        const declaredDevice = !!(stc && (stc.deviceDeclared
+            || (stc.device && String(stc.device).toLowerCase() !== 'stc12c5a60s2')));
+        const want = opts.target || ((hasHardware || declaredDevice) ? 'device' : 'host');
         if (want === 'host') return this.generateHostC(project, opts);
 
         this._cNames = new Map();
@@ -15814,9 +15930,12 @@ class SB3Creator {
                         : (part && part.core === 'i8086') ? 'i8086' : '8051';
         const parallelLcd = this._cLcdParallelPart();
         this._cMega = !!(part && part.mega);
-        this._cTiny88 = !!(part && part.tiny88);
         this._cTiny85 = !!(part && part.tiny85);
-        this._cStm32 = !!(part && part.stm32f0);
+        this._cTiny88 = !!(part && part.tiny88);
+        this._cStm32 = !!(part && (part.stm32f0 || part.stm32g0 || part.stm32f1 || part.stm32));
+        this._cStm32F0 = !!(part && part.stm32f0);
+        this._cStm32G0 = !!(part && part.stm32g0);
+        this._cStm32F1 = !!(part && part.stm32f1);
         this._cEsp8266 = !!(part && part.esp8266);
         // The ATtinys' print/ask: a software UART on SOFT_SERIAL_PINS.
         this._cSoftSerial = (this._cTiny85 || this._cTiny88)
@@ -16717,52 +16836,101 @@ class SB3Creator {
         } else if (this._core === 'arm' && this._cStm32) {
             out.push('#include <stdint.h>', '');
             out.push(`#define F_CPU ${clock}UL`, '');
-            out.push('/* Freestanding Cortex-M0: no HAL, no headers — the registers this',
-                ' * program touches, spelled as addresses from RM0360 (STM32F030).',
+            out.push('/* Freestanding Cortex-M0/M0+/M3: no HAL, no headers — the registers this',
+                ' * program touches, spelled as addresses from RM0360/RM0444/RM0008.',
                 ' * A peripheral with its RCC clock off does not function; the',
                 ' * enables come FIRST in bw_setup, on silicon and emulator alike. */',
                 '#define BW_MMIO(a) (*(volatile uint32_t *)(a))',
-                '#define RCC_AHBENR   BW_MMIO(0x40021014u)',
-                '#define RCC_APB1ENR  BW_MMIO(0x4002101cu)',
-                '#define RCC_APB2ENR  BW_MMIO(0x40021018u)',
-                '#define GPIOA_MODER  BW_MMIO(0x48000000u)',
-                '#define GPIOA_PUPDR  BW_MMIO(0x4800000cu)',
-                '#define GPIOA_IDR    BW_MMIO(0x48000010u)',
-                '#define GPIOA_ODR    BW_MMIO(0x48000014u)',
-                '#define GPIOA_BSRR   BW_MMIO(0x48000018u)',
-                '#define GPIOB_MODER  BW_MMIO(0x48000400u)',
-                '#define GPIOB_PUPDR  BW_MMIO(0x4800040cu)',
-                '#define GPIOB_IDR    BW_MMIO(0x48000410u)',
-                '#define GPIOB_ODR    BW_MMIO(0x48000414u)',
-                '#define GPIOB_BSRR   BW_MMIO(0x48000418u)',
+                ...(this._cStm32G0 ? [
+                    '#define RCC_IOPENR   BW_MMIO(0x40021034u)',
+                    '#define RCC_APBENR1  BW_MMIO(0x4002103cu)',
+                    '#define RCC_APBENR2  BW_MMIO(0x40021040u)',
+                ] : this._cStm32F1 ? [
+                    '#define RCC_APB2ENR  BW_MMIO(0x40021018u)',
+                    '#define RCC_APB1ENR  BW_MMIO(0x4002101cu)',
+                ] : [
+                    '#define RCC_AHBENR   BW_MMIO(0x40021014u)',
+                    '#define RCC_APB1ENR  BW_MMIO(0x4002101cu)',
+                    '#define RCC_APB2ENR  BW_MMIO(0x40021018u)',
+                ]),
+                ...(this._cStm32F1 ? [
+                    '#define GPIOA_CRL    BW_MMIO(0x40010800u)',
+                    '#define GPIOA_CRH    BW_MMIO(0x40010804u)',
+                    '#define GPIOA_IDR    BW_MMIO(0x40010808u)',
+                    '#define GPIOA_ODR    BW_MMIO(0x4001080cu)',
+                    '#define GPIOA_BSRR   BW_MMIO(0x40010810u)',
+                    '#define GPIOB_CRL    BW_MMIO(0x40010c00u)',
+                    '#define GPIOB_CRH    BW_MMIO(0x40010c04u)',
+                    '#define GPIOB_IDR    BW_MMIO(0x40010c08u)',
+                    '#define GPIOB_ODR    BW_MMIO(0x40010c0cu)',
+                    '#define GPIOB_BSRR   BW_MMIO(0x40010c10u)',
+                    '#define GPIOC_CRL    BW_MMIO(0x40011000u)',
+                    '#define GPIOC_CRH    BW_MMIO(0x40011004u)',
+                    '#define GPIOC_IDR    BW_MMIO(0x40011008u)',
+                    '#define GPIOC_ODR    BW_MMIO(0x4001100cu)',
+                    '#define GPIOC_BSRR   BW_MMIO(0x40011010u)',
+                ] : [
+                    '#define GPIOA_MODER  BW_MMIO(0x48000000u)',
+                    '#define GPIOA_PUPDR  BW_MMIO(0x4800000cu)',
+                    '#define GPIOA_IDR    BW_MMIO(0x48000010u)',
+                    '#define GPIOA_ODR    BW_MMIO(0x48000014u)',
+                    '#define GPIOA_BSRR   BW_MMIO(0x48000018u)',
+                    '#define GPIOB_MODER  BW_MMIO(0x48000400u)',
+                    '#define GPIOB_PUPDR  BW_MMIO(0x4800040cu)',
+                    '#define GPIOB_IDR    BW_MMIO(0x48000410u)',
+                    '#define GPIOB_ODR    BW_MMIO(0x48000414u)',
+                    '#define GPIOB_BSRR   BW_MMIO(0x48000418u)',
+                    '#define GPIOC_MODER  BW_MMIO(0x48000800u)',
+                    '#define GPIOC_PUPDR  BW_MMIO(0x4800080cu)',
+                    '#define GPIOC_IDR    BW_MMIO(0x48000810u)',
+                    '#define GPIOC_ODR    BW_MMIO(0x48000814u)',
+                    '#define GPIOC_BSRR   BW_MMIO(0x48000818u)',
+                ]),
                 '#define TIM3_CR1     BW_MMIO(0x40000400u)',
                 '#define TIM3_DIER    BW_MMIO(0x4000040cu)',
                 '#define TIM3_SR      BW_MMIO(0x40000410u)',
                 '#define TIM3_PSC     BW_MMIO(0x40000428u)',
                 '#define TIM3_ARR     BW_MMIO(0x4000042cu)',
-                '#define USART1_CR1   BW_MMIO(0x40013800u)',
-                '#define USART1_BRR   BW_MMIO(0x4001380cu)',
-                '#define USART1_ISR   BW_MMIO(0x4001381cu)',
-                '#define USART1_TDR   BW_MMIO(0x40013828u)',
+                ...(this._cStm32F1 ? [
+                    // RM0008 §27.6: the F1 USART is the older layout — SR,
+                    // DR, BRR, CR1 — with TXE bit 7 / RXNE bit 5 in SR and
+                    // one DR for both directions. The ISR/TDR/RDR names
+                    // alias it so the shared print/ask helpers stay one.
+                    '#define USART1_SR    BW_MMIO(0x40013800u)',
+                    '#define USART1_DR    BW_MMIO(0x40013804u)',
+                    '#define USART1_BRR   BW_MMIO(0x40013808u)',
+                    '#define USART1_CR1   BW_MMIO(0x4001380cu)',
+                    '#define USART1_ISR   USART1_SR',
+                    '#define USART1_TDR   USART1_DR',
+                    '#define USART1_RDR   USART1_DR',
+                ] : [
+                    '#define USART1_CR1   BW_MMIO(0x40013800u)',
+                    '#define USART1_BRR   BW_MMIO(0x4001380cu)',
+                    '#define USART1_ISR   BW_MMIO(0x4001381cu)',
+                    '#define USART1_TDR   BW_MMIO(0x40013828u)',
+                    '#define GPIOA_AFRH   BW_MMIO(0x48000024u)',
+                ]),
                 '#define TIM3_CCMR1   BW_MMIO(0x40000418u)',
                 '#define TIM3_CCMR2   BW_MMIO(0x4000041cu)',
                 '#define TIM3_CCER    BW_MMIO(0x40000420u)',
                 '#define TIM3_CCR1    BW_MMIO(0x40000434u)',
                 '#define TIM3_CCR2    BW_MMIO(0x40000438u)',
                 '#define TIM3_CCR4    BW_MMIO(0x40000440u)',
-                '#define GPIOA_AFRL   BW_MMIO(0x48000020u)',
-                '#define GPIOB_AFRL   BW_MMIO(0x48000420u)',
+                ...(this._cStm32F1 ? [] : [
+                    '#define GPIOA_AFRL   BW_MMIO(0x48000020u)',
+                    '#define GPIOB_AFRL   BW_MMIO(0x48000420u)',
+                ]),
                 '#define ADC_ISR      BW_MMIO(0x40012400u)',
                 '#define ADC_CR       BW_MMIO(0x40012408u)',
                 '#define ADC_CHSELR   BW_MMIO(0x40012428u)',
                 '#define ADC_DR       BW_MMIO(0x40012440u)',
                 '#define NVIC_ISER    BW_MMIO(0xe000e100u)', '',
-                '/* Virtual pin n: port = n>>4 (0=A, 1=B), bit = n&15. With a',
+                '/* Virtual pin n: port = n>>4 (0=A, 1=B, 2=C), bit = n&15. With a',
                 ' * constant n, -Os folds each helper to a single store. */',
-                'static inline void bw_pin_set(uint32_t n) { if (n < 16u) GPIOA_BSRR = 1u << n; else GPIOB_BSRR = 1u << (n - 16u); }',
-                'static inline void bw_pin_clr(uint32_t n) { if (n < 16u) GPIOA_BSRR = 1u << (n + 16u); else GPIOB_BSRR = 1u << (n - 16u + 16u); }',
-                'static inline void bw_pin_xor(uint32_t n) { if (n < 16u) GPIOA_ODR ^= 1u << n; else GPIOB_ODR ^= 1u << (n - 16u); }',
-                'static inline uint32_t bw_pin_get(uint32_t n) { return n < 16u ? (GPIOA_IDR >> n) & 1u : (GPIOB_IDR >> (n - 16u)) & 1u; }', '');
+                'static inline void bw_pin_set(uint32_t n) { if (n < 16u) GPIOA_BSRR = 1u << n; else if (n < 32u) GPIOB_BSRR = 1u << (n - 16u); else GPIOC_BSRR = 1u << (n - 32u); }',
+                'static inline void bw_pin_clr(uint32_t n) { if (n < 16u) GPIOA_BSRR = 1u << (n + 16u); else if (n < 32u) GPIOB_BSRR = 1u << (n - 16u + 16u); else GPIOC_BSRR = 1u << (n - 32u + 16u); }',
+                'static inline void bw_pin_xor(uint32_t n) { if (n < 16u) GPIOA_ODR ^= 1u << n; else if (n < 32u) GPIOB_ODR ^= 1u << (n - 16u); else GPIOC_ODR ^= 1u << (n - 32u); }',
+                'static inline uint32_t bw_pin_get(uint32_t n) { return n < 16u ? (GPIOA_IDR >> n) & 1u : (n < 32u ? (GPIOB_IDR >> (n - 16u)) & 1u : (GPIOC_IDR >> (n - 32u)) & 1u); }', '');
         } else if (this._core === 'arm') {
             out.push('#include <stdint.h>', '');
             out.push(`#define F_CPU ${clock}UL`, '');
@@ -16977,8 +17145,11 @@ class SB3Creator {
                     '}', '');
             }
         } else if (this._cTasks && this._core === 'arm' && this._cStm32) {
+            const stmSp = this._cStm32F1 ? '0x20005000' : (this._cStm32G0 ? '0x20002000' : '0x20001000');
+            const tim3Irq = this._cStm32F1 ? 29 : 16;
+            const numVectors = this._cStm32F1 ? 68 : 48;
             out.push('/* One script = one cooperative task; tasks yield at every wait and',
-                ' * at every loop iteration. TIM3 raises IRQ16 every millisecond; the',
+                ' * at every loop iteration. TIM3 raises IRQ every millisecond; the',
                 ' * handler maintains bw_ms (a 32-bit load is atomic on this core, so',
                 ' * bw_now needs no guard). WFI parks the core between ticks — the',
                 ' * vector table is real, so the wake VECTORS, unlike the pico\'s',
@@ -16992,11 +17163,11 @@ class SB3Creator {
                 'static uint32_t bw_now(void) { return bw_ms; }',
                 'static void bw_idle(void) { __asm__ volatile ("wfi"); }',
                 '__attribute__((section(".vectors"), used))',
-                'const void *bw_vectors[48] = {',
-                '    (void *)0x20001000,             /* initial SP: top of the F030\'s 4K */',
+                `const void *bw_vectors[${numVectors}] = {`,
+                `    (void *)${stmSp},             /* initial SP */`,
                 '    (void *)main,                   /* reset */',
                 '    [3] = (void *)bw_fault,         /* HardFault */',
-                '    [16 + 16] = (void *)bw_tick_irq, /* TIM3 = IRQ16 */',
+                `    [16 + ${tim3Irq}] = (void *)bw_tick_irq, /* TIM3 = IRQ${tim3Irq} */`,
                 ...(this._cUses.tone ? ['    [16 + 19] = (void *)bw_tone_irq, /* TIM14 = IRQ19: the tone */'] : []),
                 '};', '');
             this._cUses.now = true;
@@ -17485,7 +17656,8 @@ class SB3Creator {
                 ' * PB1=CH4 (AF1, RM0360 alternate-function table); the call site',
                 ' * refused every other pin at emit time. CCR=0 is constant low and',
                 ' * CCR=1000 (> ARR) constant high, so 0%% and 100%% need no special',
-                ' * case. MODER moves to AF here — one pin, one job per program,',
+                ' * case. MODER (CRL on the F103: CNF=10 MODE=11, default TIM3',
+                ' * remap, RM0008 §9.3.7) moves to AF here — one pin, one job per program,',
                 ' * the same takeover rule as the pico\'s funcsel and the PCA. */',
                 'static void pwm_set(unsigned char gpio, unsigned int percent)',
                 '{',
@@ -17493,20 +17665,32 @@ class SB3Creator {
                 '    if (percent > 100) percent = 100;',
                 '    duty = (percent * 1000u + 50u) / 100u;',
                 '    if (gpio == 6u) {          /* PA6 = TIM3_CH1 */',
-                '        GPIOA_AFRL  = (GPIOA_AFRL & ~(0xFu << 24)) | (1u << 24);',
-                '        GPIOA_MODER = (GPIOA_MODER & ~(3u << 12)) | (2u << 12);',
+                ...(this._cStm32F1 ? [
+                    '        GPIOA_CRL   = (GPIOA_CRL & ~(0xFu << 24)) | (0xBu << 24);   /* AF push-pull 50 MHz */',
+                ] : [
+                    '        GPIOA_AFRL  = (GPIOA_AFRL & ~(0xFu << 24)) | (1u << 24);',
+                    '        GPIOA_MODER = (GPIOA_MODER & ~(3u << 12)) | (2u << 12);',
+                ]),
                 '        TIM3_CCMR1  = (TIM3_CCMR1 & ~0x00FFu) | 0x0060u;  /* OC1M=PWM1 */',
                 '        TIM3_CCER  |= 1u;',
                 '        TIM3_CCR1   = duty;',
                 '    } else if (gpio == 7u) {   /* PA7 = TIM3_CH2 */',
-                '        GPIOA_AFRL  = (GPIOA_AFRL & ~(0xFu << 28)) | (1u << 28);',
-                '        GPIOA_MODER = (GPIOA_MODER & ~(3u << 14)) | (2u << 14);',
+                ...(this._cStm32F1 ? [
+                    '        GPIOA_CRL   = (GPIOA_CRL & ~(0xFu << 28)) | (0xBu << 28);   /* AF push-pull 50 MHz */',
+                ] : [
+                    '        GPIOA_AFRL  = (GPIOA_AFRL & ~(0xFu << 28)) | (1u << 28);',
+                    '        GPIOA_MODER = (GPIOA_MODER & ~(3u << 14)) | (2u << 14);',
+                ]),
                 '        TIM3_CCMR1  = (TIM3_CCMR1 & ~0xFF00u) | 0x6000u;  /* OC2M=PWM1 */',
                 '        TIM3_CCER  |= (1u << 4);',
                 '        TIM3_CCR2   = duty;',
                 '    } else if (gpio == 17u) {  /* PB1 = TIM3_CH4 */',
-                '        GPIOB_AFRL  = (GPIOB_AFRL & ~(0xFu << 4)) | (1u << 4);',
-                '        GPIOB_MODER = (GPIOB_MODER & ~(3u << 2)) | (2u << 2);',
+                ...(this._cStm32F1 ? [
+                    '        GPIOB_CRL   = (GPIOB_CRL & ~(0xFu << 4)) | (0xBu << 4);   /* AF push-pull 50 MHz */',
+                ] : [
+                    '        GPIOB_AFRL  = (GPIOB_AFRL & ~(0xFu << 4)) | (1u << 4);',
+                    '        GPIOB_MODER = (GPIOB_MODER & ~(3u << 2)) | (2u << 2);',
+                ]),
                 '        TIM3_CCMR2  = (TIM3_CCMR2 & ~0xFF00u) | 0x6000u;  /* OC4M=PWM1 */',
                 '        TIM3_CCER  |= (1u << 12);',
                 '        TIM3_CCR4   = duty;',
@@ -19414,67 +19598,156 @@ class SB3Creator {
                 out.push('    bw_serial_begin(9600);        /* print: 9600 baud */');
             }
         } else if (this._core === 'arm' && this._cStm32) {
-            // RM0360 order: clocks first — a peripheral with its RCC clock
+            // RM0360/RM0444/RM0008 order: clocks first — a peripheral with its RCC clock
             // off does not function, on silicon and in the emulator alike.
             const usedPorts = new Set();
             for (const p of pins) {
                 const hw = this.armHw(p);
                 if (hw) usedPorts.add(hw.gpio >> 4);
             }
-            let ahb = 0;
-            if (usedPorts.has(0)) ahb |= (1 << 17);
-            if (usedPorts.has(1)) ahb |= (1 << 18);
-            out.push(`    RCC_AHBENR  = 0x${(ahb >>> 0).toString(16)}u;      /* GPIO clocks */`,
-                '    RCC_APB1ENR = (1u << 1);       /* TIM3: the millisecond tick */');
-            const apb2 = (this._cUses.print ? (1 << 14) : 0) | (this._cUses.adc ? (1 << 9) : 0);
-            if (apb2) {
-                out.push(`    RCC_APB2ENR = 0x${(apb2 >>> 0).toString(16)}u;      /*${
-                    this._cUses.print ? ' USART1' : ''}${this._cUses.adc ? ' ADC' : ''} */`);
-            }
-            let moderA = 0, moderB = 0, pupdrA = 0, pupdrB = 0;
-            for (const p of pins) {
-                const hw = this.armHw(p);
-                if (!hw) continue;
-                const bit = hw.gpio & 15;
-                if (p.direction === 'output' || p.direction === 'tone') {   // TIM14 toggles a tone pin
-                    if ((hw.gpio >> 4) === 0) moderA |= (1 << (2 * bit)); else moderB |= (1 << (2 * bit));
-                } else if (p.direction === 'analog') {
-                    // MODER 11 = analog: the Schmitt input stage disconnects,
-                    // which is what the ADC pad wants (RM0360 §8.3.12).
-                    if ((hw.gpio >> 4) === 0) moderA |= (3 << (2 * bit)); else moderB |= (3 << (2 * bit));
-                } else if (p.direction === 'input') {
-                    // ACTIVE LOW → pull-up (button to GND); active high →
-                    // pull-down — the same no-external-resistor idioms the
-                    // pico build keeps.
-                    // An open-drain line (1-Wire, I2C) gets none: its pull-up
-                    // is on the bus.
-                    const pull = p.openDrain ? 0 : p.activeLow ? 1 : 2;
-                    if ((hw.gpio >> 4) === 0) pupdrA |= (pull << (2 * bit)); else pupdrB |= (pull << (2 * bit));
+            if (this._cStm32G0) {
+                let iopenr = 0;
+                if (usedPorts.has(0)) iopenr |= (1 << 0);
+                if (usedPorts.has(1)) iopenr |= (1 << 1);
+                if (usedPorts.has(2)) iopenr |= (1 << 2);
+                // USART1 TX/RX are PA9/PA10: print needs port A clocked.
+                if (this._cUses.print) iopenr |= (1 << 0);
+                out.push(`    RCC_IOPENR  = 0x${(iopenr >>> 0).toString(16)}u;      /* GPIO clocks */`,
+                    '    RCC_APBENR1 = (1u << 1);       /* TIM3: the millisecond tick */');
+                // RM0444 §5.4.15: USART1EN is APBENR2 bit 14, ADCEN bit 20
+                // (not APB2ENR bit 9 as on the F0).
+                const apb2 = (this._cUses.print ? (1 << 14) : 0) | (this._cUses.adc ? (1 << 20) : 0);
+                if (apb2) {
+                    out.push(`    RCC_APBENR2 = 0x${(apb2 >>> 0).toString(16)}u;      /*${
+                        this._cUses.print ? ' USART1' : ''}${this._cUses.adc ? ' ADC' : ''} */`);
+                }
+            } else if (this._cStm32F1) {
+                let apb2 = 0;
+                if (usedPorts.has(0)) apb2 |= (1 << 2);
+                if (usedPorts.has(1)) apb2 |= (1 << 3);
+                if (usedPorts.has(2)) apb2 |= (1 << 4);
+                if (this._cUses.print) apb2 |= (1 << 14) | (1 << 2);   /* USART1 + IOPA (PA9/PA10) */
+                if (this._cUses.adc) apb2 |= (1 << 9);
+                out.push(`    RCC_APB2ENR = 0x${(apb2 >>> 0).toString(16)}u;      /* GPIO + peripheral clocks */`,
+                    '    RCC_APB1ENR = (1u << 1);       /* TIM3: the millisecond tick */');
+            } else {
+                let ahb = 0;
+                if (usedPorts.has(0)) ahb |= (1 << 17);
+                if (usedPorts.has(1)) ahb |= (1 << 18);
+                if (usedPorts.has(2)) ahb |= (1 << 19);
+                if (this._cUses.print) ahb |= (1 << 17);   /* PA9/PA10 carry USART1 */
+                out.push(`    RCC_AHBENR  = 0x${(ahb >>> 0).toString(16)}u;      /* GPIO clocks */`,
+                    '    RCC_APB1ENR = (1u << 1);       /* TIM3: the millisecond tick */');
+                const apb2 = (this._cUses.print ? (1 << 14) : 0) | (this._cUses.adc ? (1 << 9) : 0);
+                if (apb2) {
+                    out.push(`    RCC_APB2ENR = 0x${(apb2 >>> 0).toString(16)}u;      /*${
+                        this._cUses.print ? ' USART1' : ''}${this._cUses.adc ? ' ADC' : ''} */`);
                 }
             }
             for (const p of pins) {
                 // Level BEFORE mode: an ACTIVE LOW load must never see a
-                // power-on glitch while MODER flips the pin to output.
+                // power-on glitch while MODER/CRL flips the pin to output.
                 const hw = this.armHw(p);
                 if (!hw || (p.direction !== 'output' && p.direction !== 'tone')) continue;
                 out.push(`    ${p.activeLow ? this.armSet(hw) : this.armClr(hw)}      /* ${p.name}: start OFF */`);
             }
-            if (usedPorts.has(0)) {
-                out.push(`    GPIOA_MODER = 0x${(moderA >>> 0).toString(16)}u;`,
-                    `    GPIOA_PUPDR = 0x${(pupdrA >>> 0).toString(16)}u;`);
-            }
-            if (usedPorts.has(1)) {
-                out.push(`    GPIOB_MODER = 0x${(moderB >>> 0).toString(16)}u;`,
-                    `    GPIOB_PUPDR = 0x${(pupdrB >>> 0).toString(16)}u;`);
+            if (this._cStm32F1) {
+                let crlA = 0x44444444, crhA = 0x44444444;
+                let crlB = 0x44444444, crhB = 0x44444444;
+                let crlC = 0x44444444, crhC = 0x44444444;
+                for (const p of pins) {
+                    const hw = this.armHw(p);
+                    if (!hw) continue;
+                    const port = hw.gpio >> 4;
+                    const bit = hw.gpio & 15;
+                    let modeBits = 0x4; // floating input default
+                    if (p.direction === 'output' || p.direction === 'tone') {
+                        modeBits = 0x2; // Output push-pull 2MHz
+                    } else if (p.direction === 'analog') {
+                        modeBits = 0x0; // Analog input
+                    } else if (p.direction === 'input') {
+                        modeBits = p.openDrain ? 0x4 : 0x8; // Input pull-up/down
+                    }
+                    const shift = (bit & 7) * 4;
+                    const mask = ~(0xF << shift);
+                    const val = (modeBits << shift);
+                    if (port === 0) {
+                        if (bit < 8) crlA = (crlA & mask) | val; else crhA = (crhA & mask) | val;
+                    } else if (port === 1) {
+                        if (bit < 8) crlB = (crlB & mask) | val; else crhB = (crhB & mask) | val;
+                    } else if (port === 2) {
+                        if (bit < 8) crlC = (crlC & mask) | val; else crhC = (crhC & mask) | val;
+                    }
+                }
+                if (this._cUses.print) {
+                    // PA9 = USART1_TX: AF push-pull 50 MHz (CNF=10 MODE=11 -> 0xB);
+                    // PA10 = USART1_RX: input floating (0x4). RM0008 §9.1.11.
+                    crhA = (crhA & ~0xFF0) | (0xB << 4) | (0x4 << 8);
+                }
+                if (usedPorts.has(0) || this._cUses.print) {
+                    out.push(`    GPIOA_CRL = 0x${(crlA >>> 0).toString(16)}u;`,
+                        `    GPIOA_CRH = 0x${(crhA >>> 0).toString(16)}u;`);
+                }
+                if (usedPorts.has(1)) {
+                    out.push(`    GPIOB_CRL = 0x${(crlB >>> 0).toString(16)}u;`,
+                        `    GPIOB_CRH = 0x${(crhB >>> 0).toString(16)}u;`);
+                }
+                if (usedPorts.has(2)) {
+                    out.push(`    GPIOC_CRL = 0x${(crlC >>> 0).toString(16)}u;`,
+                        `    GPIOC_CRH = 0x${(crhC >>> 0).toString(16)}u;`);
+                }
+            } else {
+                let moderA = 0, moderB = 0, moderC = 0, pupdrA = 0, pupdrB = 0, pupdrC = 0;
+                for (const p of pins) {
+                    const hw = this.armHw(p);
+                    if (!hw) continue;
+                    const port = hw.gpio >> 4;
+                    const bit = hw.gpio & 15;
+                    if (p.direction === 'output' || p.direction === 'tone') {
+                        if (port === 0) moderA |= (1 << (2 * bit));
+                        else if (port === 1) moderB |= (1 << (2 * bit));
+                        else moderC |= (1 << (2 * bit));
+                    } else if (p.direction === 'analog') {
+                        if (port === 0) moderA |= (3 << (2 * bit));
+                        else if (port === 1) moderB |= (3 << (2 * bit));
+                        else moderC |= (3 << (2 * bit));
+                    } else if (p.direction === 'input') {
+                        const pull = p.openDrain ? 0 : p.activeLow ? 1 : 2;
+                        if (port === 0) pupdrA |= (pull << (2 * bit));
+                        else if (port === 1) pupdrB |= (pull << (2 * bit));
+                        else pupdrC |= (pull << (2 * bit));
+                    }
+                }
+                if (this._cUses.print) {
+                    // PA9/PA10 to alternate function (MODER=10) — USART1 is AF1 on
+                    // both the F030 (RM0360/DS) and the G030 (RM0444/DS).
+                    moderA = (moderA & ~(0xF << 18)) | (2 << 18) | (2 << 20);
+                }
+                if (usedPorts.has(0) || this._cUses.print) {
+                    out.push(`    GPIOA_MODER = 0x${(moderA >>> 0).toString(16)}u;`,
+                        `    GPIOA_PUPDR = 0x${(pupdrA >>> 0).toString(16)}u;`);
+                }
+                if (this._cUses.print) {
+                    out.push('    GPIOA_AFRH = (GPIOA_AFRH & ~0xFF0u) | (1u << 4) | (1u << 8);   /* PA9/PA10 = AF1 USART1 */');
+                }
+                if (usedPorts.has(1)) {
+                    out.push(`    GPIOB_MODER = 0x${(moderB >>> 0).toString(16)}u;`,
+                        `    GPIOB_PUPDR = 0x${(pupdrB >>> 0).toString(16)}u;`);
+                }
+                if (usedPorts.has(2)) {
+                    out.push(`    GPIOC_MODER = 0x${(moderC >>> 0).toString(16)}u;`,
+                        `    GPIOC_PUPDR = 0x${(pupdrC >>> 0).toString(16)}u;`);
+                }
             }
             out.push('    TIM3_PSC = (uint16_t)(F_CPU / 1000000UL - 1UL);  /* 1 MHz count */',
                 '    TIM3_ARR = 999u;               /* update every millisecond */',
                 '    TIM3_DIER = 1u;                /* UIE: the WFI wake */',
                 '    TIM3_CR1 = 1u;                 /* CEN */');
             if (this._cUses.print) {
+                const ue = this._cStm32F1 ? '(1u << 13)' : '1u';   /* F1: UE is CR1 bit 13 */
                 out.push('    USART1_BRR = (uint32_t)(F_CPU / 9600UL);',
-                    this._cUses.ask ? '    USART1_CR1 = (1u << 3) | (1u << 2) | 1u;   /* TE + RE (ask) + UE */'
-                        : '    USART1_CR1 = (1u << 3) | 1u;   /* TE + UE */');
+                    this._cUses.ask ? `    USART1_CR1 = (1u << 3) | (1u << 2) | ${ue};   /* TE + RE (ask) + UE */`
+                        : `    USART1_CR1 = (1u << 3) | ${ue};   /* TE + UE */`);
             }
         } else if (this._core === 'arm') {
             out.push('    /* On real silicon the TIMER counts watchdog ticks; the bootrom',
@@ -19933,7 +20206,7 @@ class SB3Creator {
         if (this._cTasks && this._core === 'arm') {
             out.push('',
                 ...(this._cStm32 ? [
-                    '    NVIC_ISER = (1u << 16);        /* TIM3 wakes bw_idle (vectors are real) */'
+                    `    NVIC_ISER = (1u << ${this._cStm32F1 ? 29 : 16});        /* TIM3 wakes bw_idle (vectors are real) */`
                 ] : [
                     '    BW_SCB_VTOR = (uint32_t)bw_vectors;  /* the wake handler owns every vector */',
                     '    BW_TIMER_INTE = 1u;            /* alarm 0 may interrupt */',
@@ -20008,7 +20281,7 @@ class SB3Creator {
             out.push(stayFinished);
         } else if (this._core === 'arm') {
             out.push(...(this._cStm32 ? [
-                '    NVIC_ISER = (1u << 16);        /* TIM3 wakes bw_idle (vectors are real) */'
+                `    NVIC_ISER = (1u << ${this._cStm32F1 ? 29 : 16});        /* TIM3 wakes bw_idle (vectors are real) */`
             ] : [
                 '    BW_SCB_VTOR = (uint32_t)bw_vectors;  /* the wake handler owns every vector */',
                 '    BW_TIMER_INTE = 1u;            /* alarm 0 may interrupt */',
@@ -20551,6 +20824,14 @@ SB3Creator.RETARGET_POOLS = (() => {
             analog: ['PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7'],
             input: ['PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA0', 'PB1', 'PA6', 'PA7'],
             pwm: ['PA6', 'PA7', 'PB1'], ledActiveLow: false },
+        stm32g030: { digital: ['PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PB1', 'PA6', 'PA7', 'PB0', 'PA8', 'PB2', 'PB3', 'PB4', 'PB5', 'PB6', 'PB7', 'PB8', 'PB9'],
+            analog: ['PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7'],
+            input: ['PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA0', 'PB1', 'PA6', 'PA7', 'PB0', 'PA8', 'PB2', 'PB3', 'PB4', 'PB5', 'PB6', 'PB7', 'PB8', 'PB9'],
+            pwm: ['PA6', 'PA7', 'PB1'], ledActiveLow: false },
+        stm32f103: { digital: ['PC13', 'PB12', 'PB13', 'PB14', 'PB15', 'PA8', 'PB0', 'PB1', 'PB10', 'PB11', 'PA4', 'PA5', 'PA6', 'PA7', 'PA0', 'PA1', 'PA2', 'PA3'],
+            analog: ['PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7', 'PB0', 'PB1'],
+            input: ['PA0', 'PA1', 'PA2', 'PA3', 'PA4', 'PA5', 'PA6', 'PA7', 'PB0', 'PB1', 'PB10', 'PB11', 'PB12', 'PB13', 'PB14', 'PB15', 'PC13'],
+            pwm: ['PA1', 'PA2', 'PA3', 'PA6', 'PA7', 'PB0', 'PB1'], ledActiveLow: true },
         pico: { digital: ['GP25', 'GP15', 'GP14', 'GP13', 'GP12', 'GP11', 'GP10', ...seq('GP%', 0, 9), ...seq('GP%', 18, 22)],
             analog: ['GP26', 'GP27', 'GP28'],
             input: ['GP2', 'GP3', 'GP4', 'GP5', ...seq('GP%', 6, 15), ...seq('GP%', 18, 22), 'GP0', 'GP1'],
@@ -20851,8 +21132,8 @@ SB3Creator.retargetPseudocode = function retargetPseudocode(src, device) {
     // The F0 tier cap (STM32-PATH.md): digital I/O, tick, print, ADC, PWM.
     // Servo needs a 50 Hz frame and TIM3's 1 kHz frame IS the tick — a
     // second timer is beyond the cap; displays need the I2C/SPI port.
-    if ((used.servo || used.motor) && device === 'stm32f030') reasons.push('servo/motor need a 50 Hz PWM frame — TIM3 is the 1 kHz tick, and a second timer is beyond the F0 tier cap');
-    if (used.display && device === 'stm32f030') reasons.push('displays need the I2C/SPI port, which is beyond the F0 tier cap');
+    if ((used.servo || used.motor) && (device === 'stm32f030' || device === 'stm32g030' || device === 'stm32f103')) reasons.push(`servo/motor need a 50 Hz PWM frame — TIM3 is the 1 kHz tick, and a second timer is beyond the ${device} tier cap`);
+    if (used.display && (device === 'stm32f030' || device === 'stm32g030' || device === 'stm32f103')) reasons.push(`displays need the I2C/SPI port, which is beyond the ${device} tier cap`);
     if (used.pwmPins.size && !pools.pwm.length) reasons.push(`${device} has no PWM-capable convention pins`);
 
     // ---- allocate pins from the pools ----------------------------------
@@ -21141,6 +21422,8 @@ SB3Creator.STC_PARTS = {
     // bw-board's STM32-PATH.md and test/stm32f0-board.test.mjs — that
     // firmware IS this emission's contract.
     stm32f030: { core: 'rp2040', stm32f0: true, header: null, portModes: false, aux1T: false, adc: true },
+    stm32g030: { core: 'rp2040', stm32g0: true, header: null, portModes: false, aux1T: false, adc: true },
+    stm32f103: { core: 'rp2040', stm32f1: true, header: null, portModes: false, aux1T: false, adc: true },
     // core 'rp2040' + esp8266: the ESP8266 (Tensilica LX106) is NOT an ARM
     // part — it rides the same structural emission (cooperative scheduler,
     // per-pin helpers) the way the STM32F030 does, but every hardware verb
@@ -21199,6 +21482,8 @@ SB3Creator.defaultClock = (device) => {
     if (part.tiny85 || part.tiny88) return 8000000;
     if (part.core === 'arduino') return 16000000;
     if (part.stm32f0) return 48000000;
+    if (part.stm32g0) return 64000000;
+    if (part.stm32f1) return 72000000;
     if (part.esp8266) return 80000000;
     if (part.core === 'rp2040') return 125000000;
     if (part.core === 'w65c02') return 1000000;

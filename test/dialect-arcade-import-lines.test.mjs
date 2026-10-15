@@ -97,9 +97,10 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the Arcade word table (385 opcodes)', () => {
+test('the pinned parser has the Arcade word table (399 opcodes)', () => {
     // 380 -> 385 with sb3-creator 8472098b (#137 repeat property, #139 font metric, #141 source typeof).
-    assert.equal(ARCADE_DIALECT_OPS.length, 385);
+    // 385 -> 399 with sb3-creator 6212f86e (#143 callable words, #146 circle drawing, #147 font values, #148 console inspect).
+    assert.equal(ARCADE_DIALECT_OPS.length, 399);
     for (const opcode of ['arcade_setPalette', 'arcade_registerInstanceDestroyedHandler',
         'arcade_whenRegisteredInstanceDestroyed', 'arcade_startParallelHandler',
         'arcade_whenParallelHandler', 'arcade_carnivalCountdown',

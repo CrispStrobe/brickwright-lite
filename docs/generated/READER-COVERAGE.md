@@ -23,9 +23,9 @@ Each run of a fixture through its reader is one of three outcomes:
 
 ## Overall
 
-516 clean · 376 degraded · 15 refused (of 907; 57% clean)
+491 clean · 401 degraded · 15 refused (of 907; 54% clean)
 
-- round-trip (emit → read back): 516 clean · 374 degraded · 4 refused (of 894; 58% clean)
+- round-trip (emit → read back): 491 clean · 399 degraded · 4 refused (of 894; 55% clean)
 - native (real source fed to the reader): 0 clean · 2 degraded · 11 refused (of 13; 0% clean)
 
 ## By method, language and device family
@@ -64,11 +64,11 @@ programs are refused as foreign. The refusal reasons below say which.
 | round-trip | javascript | z80 | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
 | round-trip | c | 6502 | 4 clean · 1 degraded · 0 refused (of 5; 80% clean) |
 | round-trip | c | 8051 | 63 clean · 9 degraded · 0 refused (of 72; 88% clean) |
-| round-trip | c | arduino | 74 clean · 7 degraded · 0 refused (of 81; 91% clean) |
+| round-trip | c | arduino | 60 clean · 21 degraded · 0 refused (of 81; 74% clean) |
 | round-trip | c | i8086 | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
-| round-trip | c | microbit | 10 clean · 0 degraded · 0 refused (of 10; 100% clean) |
+| round-trip | c | microbit | 0 clean · 10 degraded · 0 refused (of 10; 0% clean) |
 | round-trip | c | pico | 0 clean · 8 degraded · 0 refused (of 8; 0% clean) |
-| round-trip | c | spike | 1 clean · 0 degraded · 0 refused (of 1; 100% clean) |
+| round-trip | c | spike | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
 | round-trip | c | z80 | 0 clean · 1 degraded · 0 refused (of 1; 0% clean) |
 | round-trip | basic | 6502 | 2 clean · 0 degraded · 0 refused (of 2; 100% clean) |
 | round-trip | basic | 8051 | 39 clean · 33 degraded · 0 refused (of 72; 54% clean) |
@@ -96,10 +96,13 @@ programs are refused as foreign. The refusal reasons below say which.
 | fixtures | construct kept as a placeholder |
 | --- | --- |
 | 196 | dropped expression statement |
-| 63 | no pins found |
+| 88 | no pins found |
 | 41 | no dialect form for "…" |
 | 32 | unstructured "…" |
 | 22 | dropped call in expression |
+| 13 | no clock #define found |
+| 11 | no register header found |
+| 11 | no main() and no @bw script markers |
 | 8 | top-level declaration dropped (no block equivalent): typedef void ( * bw_vec_t ) ( void … |
 | 7 | top-level declaration dropped (no block equivalent): struct __bw_bits2 |
 | 7 | no pseudocode for the call "…" |
@@ -122,7 +125,6 @@ programs are refused as foreign. The refusal reasons below say which.
 | 2 | stc12_seg_shownum: no equivalent on this board; the block was not translated |
 | 2 | early ENDPROC |
 | 2 | top-level declaration dropped (no block equivalent): static int _servo_angle [ 2 ] |
-| 2 | no clock #define found |
 | 1 | stc12_setpart: no equivalent on this board; the block was not translated |
 | 1 | Port 1 has 8 output pins |
 | 1 | Port 0 has 7 output pins |
@@ -323,6 +325,7 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | micropython | arduino | arduino-03-smoothing | degraded | data_deletealloflist: no equivalent on this board; the block was not translated; data_addtolist: no equivalent on this board; the block was not translated; data_replaceitemoflist: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | python | arduino | arduino-04-ascii-table | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-04-ascii-table | degraded | dropped expression statement |
+| round-trip | c | arduino | arduino-04-ascii-table | degraded | no pins found |
 | round-trip | micropython | arduino | arduino-04-ascii-table | degraded | no pins found |
 | round-trip | python | arduino | arduino-04-dimmer | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-04-dimmer | degraded | dropped expression statement |
@@ -351,45 +354,58 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | javascript | arduino | arduino-07-row-column-scanning | degraded | dropped expression statement |
 | round-trip | python | arduino | arduino-08-char-analysis | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-char-analysis | degraded | dropped expression statement |
+| round-trip | c | arduino | arduino-08-char-analysis | degraded | no pins found |
 | round-trip | micropython | arduino | arduino-08-char-analysis | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-addition | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-addition | degraded | dropped expression statement |
 | round-trip | basic | arduino | arduino-08-string-addition | degraded | no dialect form for "…"combined: "…" |
 | round-trip | python | arduino | arduino-08-string-append | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-append | degraded | dropped expression statement |
+| round-trip | c | arduino | arduino-08-string-append | degraded | no pins found |
 | round-trip | micropython | arduino | arduino-08-string-append | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-case | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-case | degraded | dropped expression statement |
+| round-trip | c | arduino | arduino-08-string-case | degraded | no pins found |
 | round-trip | micropython | arduino | arduino-08-string-case | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-chars | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-chars | degraded | dropped expression statement |
+| round-trip | c | arduino | arduino-08-string-chars | degraded | no pins found |
 | round-trip | micropython | arduino | arduino-08-string-chars | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-compare | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-compare | degraded | dropped expression statement |
+| round-trip | c | arduino | arduino-08-string-compare | degraded | no pins found |
 | round-trip | micropython | arduino | arduino-08-string-compare | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-constructors | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-constructors | degraded | dropped expression statement |
+| round-trip | c | arduino | arduino-08-string-constructors | degraded | no pins found |
 | round-trip | micropython | arduino | arduino-08-string-constructors | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-indexof | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-indexof | degraded | dropped expression statement |
+| round-trip | c | arduino | arduino-08-string-indexof | degraded | no pins found |
 | round-trip | micropython | arduino | arduino-08-string-indexof | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-length | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-length | degraded | dropped expression statement |
+| round-trip | c | arduino | arduino-08-string-length | degraded | no pins found |
 | round-trip | micropython | arduino | arduino-08-string-length | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-length-trim | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-length-trim | degraded | dropped expression statement |
+| round-trip | c | arduino | arduino-08-string-length-trim | degraded | no pins found |
 | round-trip | micropython | arduino | arduino-08-string-length-trim | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-replace | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-replace | degraded | dropped expression statement |
+| round-trip | c | arduino | arduino-08-string-replace | degraded | no pins found |
 | round-trip | micropython | arduino | arduino-08-string-replace | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-startswith | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-startswith | degraded | dropped expression statement |
+| round-trip | c | arduino | arduino-08-string-startswith | degraded | no pins found |
 | round-trip | micropython | arduino | arduino-08-string-startswith | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-substring | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-substring | degraded | dropped expression statement |
+| round-trip | c | arduino | arduino-08-string-substring | degraded | no pins found |
 | round-trip | micropython | arduino | arduino-08-string-substring | degraded | no pins found |
 | round-trip | python | arduino | arduino-08-string-toint | degraded | dropped expression statement |
 | round-trip | javascript | arduino | arduino-08-string-toint | degraded | dropped expression statement |
+| round-trip | c | arduino | arduino-08-string-toint | degraded | no pins found |
 | round-trip | micropython | arduino | arduino-08-string-toint | degraded | no pins found |
 | round-trip | basic | arduino | arduino-sk-p02-spaceship | degraded | no dialect form for "…"; unstructured "…" |
 | round-trip | python | arduino | arduino-sk-p03-love-o-meter | degraded | dropped expression statement |
@@ -490,19 +506,28 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | python | 8051 | idea-generator | degraded | dropped expression statement |
 | round-trip | javascript | 8051 | idea-generator | degraded | dropped expression statement |
 | round-trip | basic | 8051 | idea-generator | degraded | no dialect form for "…"; unstructured "…" |
+| round-trip | c | microbit | mb01-display | degraded | no register header found; no clock #define found; no pins found; no main() and no @bw script markers |
 | round-trip | micropython | microbit | mb01-display | degraded | no pins found |
 | round-trip | python | microbit | mb02-sensors | degraded | dropped call in expression |
+| round-trip | c | microbit | mb02-sensors | degraded | no register header found; no clock #define found; no pins found; no main() and no @bw script markers |
 | round-trip | micropython | microbit | mb02-sensors | degraded | no pins found |
 | round-trip | python | microbit | mb03-pins | degraded | dropped call in expression |
+| round-trip | c | microbit | mb03-pins | degraded | no register header found; no clock #define found; no pins found; no main() and no @bw script markers |
 | round-trip | python | microbit | mb04-radio | degraded | dropped call in expression |
+| round-trip | c | microbit | mb04-radio | degraded | no register header found; no clock #define found; no pins found; no main() and no @bw script markers |
 | round-trip | micropython | microbit | mb04-radio | degraded | no pins found |
+| round-trip | c | microbit | mb05-faceplate-matrix | degraded | no register header found; no clock #define found; no pins found; no main() and no @bw script markers |
 | round-trip | basic | microbit | mb05-faceplate-matrix | degraded | unstructured "…" |
 | round-trip | micropython | microbit | mb05-faceplate-matrix | degraded | no pins found |
 | round-trip | python | microbit | mb05-lesson | degraded | dropped call in expression |
+| round-trip | c | microbit | mb05-lesson | degraded | no register header found; no clock #define found; no pins found; no main() and no @bw script markers |
 | round-trip | python | microbit | mb06-reaction | degraded | dropped call in expression |
+| round-trip | c | microbit | mb06-reaction | degraded | no register header found; no clock #define found; no pins found; no main() and no @bw script markers |
 | round-trip | python | microbit | mb07-stepcounter | degraded | dropped call in expression |
+| round-trip | c | microbit | mb07-stepcounter | degraded | no register header found; no clock #define found; no pins found; no main() and no @bw script markers |
 | round-trip | micropython | microbit | mb07-stepcounter | degraded | no pins found |
 | round-trip | python | microbit | mb08-thermometer | degraded | dropped call in expression |
+| round-trip | c | microbit | mb08-thermometer | degraded | no register header found; no clock #define found; no pins found; no main() and no @bw script markers |
 | round-trip | basic | microbit | mb08-thermometer | degraded | unstructured "…" |
 | round-trip | micropython | microbit | mb08-thermometer | degraded | no pins found |
 | round-trip | python | arduino | mega02-adc-print | degraded | dropped expression statement |
@@ -514,6 +539,7 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | basic | 8051 | melody-lists | degraded | no dialect form for "…"; early ENDPROC |
 | round-trip | micropython | 8051 | melody-lists | degraded | no pins found |
 | round-trip | python | microbit | microbit01-hello | degraded | dropped call in expression |
+| round-trip | c | microbit | microbit01-hello | degraded | no register header found; no clock #define found; no pins found; no main() and no @bw script markers |
 | round-trip | python | arduino | nano02-pot-print | degraded | dropped expression statement |
 | round-trip | javascript | arduino | nano02-pot-print | degraded | dropped expression statement |
 | round-trip | micropython | arduino | nano02-pot-print | degraded | no pins found |
@@ -557,6 +583,7 @@ fixture appears here so its verdict is traceable to the program that caused it.
 | round-trip | basic | 8051 | sense-twilight-switch | degraded | unstructured "…" |
 | round-trip | python | spike | spike01-obstacle-avoid | degraded | dropped expression statement; dropped call in expression |
 | round-trip | javascript | spike | spike01-obstacle-avoid | degraded | dropped expression statement; dropped call in expression |
+| round-trip | c | spike | spike01-obstacle-avoid | degraded | no register header found; no clock #define found; no pins found; no main() and no @bw script markers |
 | round-trip | micropython | spike | spike01-obstacle-avoid | degraded | spikeprime_motorStart: no equivalent on this board; the block was not translated; spikeprime_motorStop: no equivalent on this board; the block was not translated; spikeprime_displayText: no equivalent on this board; the block was not translated; spikeprime_displayClear: no equivalent on this board; the block was not translated; no pins found |
 | round-trip | c | z80 | z80-pd-bench | degraded | 8 output pins × 20 mA = up to 160 mA at maximum pin ratings (actual current depends on ser |
 | round-trip | asm | 8086 | i8086_analog | refused | refused (refused): line N: the "…" statement is not lifted yet (displays, tones, PWM, keypad, broadcast and " |
