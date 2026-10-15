@@ -16,7 +16,7 @@
  *   - a target with no board model, and a missing engine, are refused by name;
  *   - --board v2 (task A8): the program compiled for the EMULATOR onto the
  *     Bluetooth-free bases runs on the micro:bit V2 board model and draws its
- *     picture; its serial is withheld by name (task A10); a universal hex (whose
+ *     picture and exact serial lines (task A10); a universal hex (whose
  *     V2 section carries Nordic's SoftDevice) is refused there, as is a
  *     Calliope program.
  */
@@ -151,9 +151,24 @@ test('--board v2: the emulator image runs on the micro:bit V2 board model and dr
         assert.equal(out.universal, false, 'the emulator image is a plain nRF52833 hex');
         assert.equal(out.fault, null);
         assert.ok(out.frames.some(f => f.rows.join('/') === X.join('/')), JSON.stringify(out.frames));
-        assert.equal(out.serial, null, 'serial is withheld on the V2 model, not reported wrong');
-        assert.match(out.serialWithheld, /transmit buffer when the transfer completes.*task A10/);
-        assert.match(r.stderr, /note: serial is not reported on the V2 board model yet/);
+        assert.equal(typeof out.serial, 'string');
+        const serial = out.serial.replace(/\r/g, '');
+        assert.match(serial, /(?:^|\n)hello bw\n/, 'the complete greeting survives CODAL stack reuse');
+        const ticks = [...serial.matchAll(/(?:^|\n)tick (\d+)(?=\n|$)/g)].map(m => Number(m[1]));
+        assert.ok(ticks.length >= 2 && ticks.length <= 5, serial);
+        assert.deepEqual(ticks, Array.from({length: ticks.length}, (_, i) => i + 1), 'complete ordered counter lines');
+        assert.equal(out.guestSeconds, 1);
+        assert.equal('serialWithheld' in out, false);
+        assert.doesNotMatch(r.stderr, /serial is not reported/);
+    });
+
+test('--board v2 streams the real serial bytes in the text CLI as well',
+    {skip: engine && runtime('microbit') && emuBases ? false : SKIP_V2, timeout: 900000}, () => {
+        const r = run(['run', programFile, '--board', 'v2', '--seconds', '1']);
+        assert.equal(r.status, 0, r.stderr);
+        assert.match(r.stdout.replace(/\r/g, ''), /(?:^|\n)hello bw\n/);
+        assert.match(r.stdout, /ran 1\.00 s of guest time on the micro:bit V2 board model/);
+        assert.doesNotMatch(r.stderr, /serial is not reported/);
     });
 
 test('--board v2 refuses a universal hex (its V2 section carries the SoftDevice) and a Calliope program',
