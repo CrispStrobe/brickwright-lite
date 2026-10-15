@@ -4,7 +4,7 @@
 
 Published integration `a30cb432c` now reaches an actual unit census after the
 canonical creator adoption. [Unit shard 2](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38701251292/job/116324641586)
-reports **3,914 tests /3,909 passes /five failures**. This is one completed
+reports **3,914 tests /3,902 passes /five failures /five skipped /two TODO**. This is one completed
 shard, not the entire suite. The official failure log is preserved privately.
 The build and corpus jobs pass; the remaining integration checks must finish.
 
