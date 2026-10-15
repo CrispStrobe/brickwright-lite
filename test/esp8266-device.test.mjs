@@ -51,10 +51,11 @@ test('ESP8266 is a picker device in its own group, with core esp8266 and the esp
     const group = DEVICE_GROUPS.find(g => g.devices.some(x => x.id === 'esp8266'));
     assert.equal(group.core, 'esp8266');
     assert.equal(group.devices.find(x => x.id === 'esp8266').emulator, 'esp8266');
-    // Until the hosted snapshot lists the target, the C cell is open and the
-    // picker does not advertise compile (the conformance gate ties the two).
+    // The hosted snapshot lists the esp8266 target (plan N13), so the C cell is
+    // shipped and the picker advertises compile (the conformance gate ties the two).
     assert.equal(CELLS.esp8266.c.native.where, 'hosted');
-    assert.equal(d.pickerCompile, false);
+    assert.equal(CELLS.esp8266.c.native.status, 'shipped');
+    assert.equal(d.pickerCompile, true);
     assert.equal(DEVICES.filter(x => x.id === 'esp8266').length, 1);
 });
 
