@@ -1,6 +1,7 @@
 // Native Arcade source phases use the actual VM executor and one cooperative
 // deadline. Plain Scratch projects retain the synchronous kernel path.
 // Program and scene clocks remain owned by their existing runtime services.
+const conditionWaits = require('../../../util/bw-source-condition-waits');
 function browserTurn() {
     return new Promise(resolve => {
         if(typeof MessageChannel !== 'function') {setTimeout(resolve,0);return;}
@@ -15,8 +16,9 @@ class ArcadeFramePhase {
         this.generation=0;this.disposed=false;this.active=false;this.notes=[];this.pending=null;
         this.waitTimers=new Map();this.tickYields=new WeakMap();
         this.sourceAuthority=new WeakMap();this.managedLinks=new WeakMap();this.phaseContext=null;
+        this.conditionWaits=conditionWaits.bind(this);
         this.nativeCallbackOpcodes=new Set(ext.getInfo().blocks.filter(b=>b.blockType==='hat').map(b=>'arcade_'+b.opcode));
-        this.cancel=()=>{this.generation++;this.pending=null;this.queuedDelta=null;
+        this.cancel=()=>{this.conditionWaits.cancel();this.generation++;this.pending=null;this.queuedDelta=null;
             for(const wait of this.waitTimers.values())wait.epoch.clearTimeout(wait.handle);this.waitTimers.clear();};
         this.dispose=()=>{this.disposed=true;this.cancel();};
         // Runtime.dispose clears a project during loadProject as well as on
@@ -32,7 +34,7 @@ class ArcadeFramePhase {
         for(const event of ['PROJECT_START','PROJECT_STOP_ALL'])this.runtime.off(event,this.cancel);
         this.runtime.off('PROJECT_LOADED',this.loaded);
         this.runtime.off('RUNTIME_DISPOSED',this.dispose);
-        this.dispose();
+        this.dispose();this.conditionWaits.detach();
     }
     linkManagedCall(thread,caller) {
         if(caller)this.managedLinks.set(thread,{caller,generation:this.generation});
@@ -209,6 +211,8 @@ class ArcadeFramePhase {
             for(const t of [...rt.threads]) {
                 if(this.workNow()>=deadline)return false;
                 if(!this._live(t)||held.has(t)||!this._eligible(t))continue;
+                if(this.conditionWaits.parked(t))continue;
+                this.conditionWaits.beforeStep(t);
                 if(this._waitingTimer(t)||(this.waitTimers.has(t)&&!this.waitTimers.get(t).ready)){this._armSourceWait(t);held.add(t);continue;}
                 if(t.status!==t.constructor.STATUS_RUNNING)continue;
                 rt.redrawRequested=false;
@@ -256,6 +260,8 @@ class ArcadeFramePhase {
             return;
         }
         const sourceBefore=this._eligible(t);
+        if(sourceBefore && this.conditionWaits.parked(t))return;
+        if(sourceBefore)this.conditionWaits.beforeStep(t);
         if(sourceBefore && (held.has(t)||this._waitingTimer(t)||(this.waitTimers.has(t)&&!this.waitTimers.get(t).ready))){held.add(t);park();return;}
         if(sourceBefore && this.workNow()>=deadline){
             context.exhausted=true;
