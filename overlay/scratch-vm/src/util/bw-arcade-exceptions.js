@@ -106,16 +106,18 @@ function create(runtime, readValue) {
         rejectArrayOperation(args,util,error,lease) {
             const thread=util?.thread;
             if(signals.get(error)?.runtime===runtime&&failure(thread)===error)throw error;
-            const block=primitiveOwner.current(util,args);
-            if(!live(thread)||util.runtime!==runtime||!block)throw Error('Array operation rejection requires its actual current primitive');
-            cachedPrimitiveOwner(runtime,util,args,block.opcode,[]);
             if(signals.has(error))throw error;
             const message=error instanceof Error&&Object.getOwnPropertyDescriptor(error,'message');
             if(!message||!Object.hasOwn(message,'value')||typeof message.value!=='string')throw Error('Array operation rejection requires its private Error');
             const prior=failure(thread);if(prior)throw prior;
-            if(!require('./bw-array-operations').consumeFailureLease(runtime,args,util,error,lease))throw Error('Array operation rejection requires its private failure lease');
+            // A graph/cache/registration change may itself require rejection.
+            // The unforgeable lease validates the original still-active call,
+            // not the now-invalid source metadata. No other Error is adopted.
+            if(!live(thread)||util.runtime!==runtime)throw Error('Array operation rejection requires its private failure lease');
+            const witness=require('./bw-array-operations').consumeFailureLease(runtime,args,util,error,lease);
+            if(!witness)throw Error('Array operation rejection requires its private failure lease');
             const signal=new Error(message.value,{cause:error});
-            signals.set(signal,Object.freeze({owner,runtime,generation,kind:'array-constraint',message:message.value,target:thread.target,block:block.id,stack:Object.freeze([...thread.stack])}));
+            signals.set(signal,Object.freeze({owner,runtime,generation,kind:'array-constraint',message:message.value,target:thread.target,block:witness.block,stack:Object.freeze([...thread.stack])}));
             retireLineage(thread,signal);
         },
         rejectConstraint(args,util,error) {

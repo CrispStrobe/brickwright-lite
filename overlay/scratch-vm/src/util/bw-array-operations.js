@@ -34,17 +34,60 @@ function registerSource(source) {
     if(typeof source!=='string'||!source)throw Error('Array operation registration requires actual source bytes');
     const token=Object.freeze({});registrations.set(token,source);return token;
 }
-function current(record) {
-    return !record.closed && record.state.active && !record.state.disposed &&
-        record.generation===record.state.generation && record.instance()===record.boundInstance &&
-        primitiveOwner.current(record.util,record.args)===record.block &&
-        record.runtime.getOpcodeFunction(record.block.opcode)===record.primitive &&
-        record.util.thread===record.thread && record.thread.peekStack()===record.root;
+function ownsActualCall(record) {
+    return !record.closed&&record.state.active&&!record.state.disposed&&
+        record.generation===record.state.generation&&record.instance()===record.boundInstance&&
+        primitiveOwner.isActiveCall(record.actualCall,record.util,record.args);
+}
+// Capture data without invoking metadata accessors. Identity alone cannot
+// detect in-place changes to fields, input entries or mutation properties.
+function captureMetadata(...values) {
+    const objects=[],seen=new Set();
+    const visit=value=>{
+        if(!value||typeof value!=='object'||seen.has(value))return;
+        seen.add(value);const keys=Reflect.ownKeys(value),descriptors=keys.map(key=>Object.getOwnPropertyDescriptor(value,key));
+        if(descriptors.some(d=>!d||!Object.hasOwn(d,'value')))throw Error('Array operation metadata requires data properties');
+        objects.push({value,keys,descriptors});for(const d of descriptors)visit(d.value);
+    };
+    for(const value of values)visit(value);
+    return ()=>objects.every(({value,keys,descriptors})=>{
+        const currentKeys=Reflect.ownKeys(value);
+        return currentKeys.length===keys.length&&keys.every((key,i)=>currentKeys[i]===key)&&
+            keys.every((key,i)=>{const d=Object.getOwnPropertyDescriptor(value,key),saved=descriptors[i];
+                return d&&Object.hasOwn(d,'value')&&Object.is(d.value,saved.value)&&
+                    d.enumerable===saved.enumerable&&d.configurable===saved.configurable&&d.writable===saved.writable;});
+    });
+}
+function captureContext(util,block) {
+    const container=util.thread.blockContainer,seen=new Set();
+    const path=id=>{
+        if(seen.has(id))return null;seen.add(id);
+        const node=container.getBlock(id);if(!node)return null;
+        if(node===block)return [node];
+        for(const input of Object.values(node.inputs||{}))if(input.block){const rest=path(input.block);if(rest)return [node,...rest];}
+        return null;
+    };
+    const nodes=path(util.thread.peekStack());if(!nodes)throw Error('Array operation has no actual connected path');
+    const keys=['id','opcode','parent','next','fields','inputs','mutation'];
+    const records=nodes.map(node=>({node,id:node.id,descriptors:keys.map(key=>Object.getOwnPropertyDescriptor(node,key))}));
+    if(records.some(r=>r.descriptors.some(d=>d&&!Object.hasOwn(d,'value'))))throw Error('Array operation context requires data properties');
+    const unchanged=captureMetadata(...nodes.flatMap(node=>[node.fields,node.inputs,node.mutation]));
+    return ()=>records.every(({node,id,descriptors})=>container.getBlock(id)===node&&keys.every((key,i)=>{
+        const now=Object.getOwnPropertyDescriptor(node,key),saved=descriptors[i];
+        return !saved?!now:now&&Object.hasOwn(now,'value')&&Object.is(now.value,saved.value)&&
+            now.enumerable===saved.enumerable&&now.configurable===saved.configurable&&now.writable===saved.writable;
+    }))&&unchanged();
+}
+function graphValid(record) {
+    if(!ownsActualCall(record))return false;
+    try {return record.metadataUnchanged()&&primitiveOwner.current(record.util,record.args)===record.block&&
+        cachedOwner(record.runtime,record.util,record.args,record.opcode,[])===record.block;}
+    catch {return false;}
 }
 function consumeFailureLease(runtime,args,util,error,lease) {
     const saved=failures.get(lease);
-    if(!saved||saved.error!==error||saved.record.runtime!==runtime||saved.record.args!==args||saved.record.util!==util||!current(saved.record))return false;
-    failures.delete(lease);return true;
+    if(!saved||saved.error!==error||saved.record.runtime!==runtime||saved.record.args!==args||saved.record.util!==util||!ownsActualCall(saved.record))return false;
+    failures.delete(lease);return Object.freeze({block:saved.record.blockId});
 }
 function bind(runtime,registration,source,instance) {
     if(!registrations.has(registration)||registrations.get(registration)!==source)throw Error('Array operation registration/source binding differs');
@@ -62,7 +105,7 @@ function bind(runtime,registration,source,instance) {
     });
     const reject=(record,message)=>{
         const error=new Error('Array operation ownership: '+message);
-        if(record&&current(record)&&exceptions.arrayCoordinatorReady(runtime)){
+        if(record&&ownsActualCall(record)&&exceptions.arrayCoordinatorReady(runtime)){
             const lease=Object.freeze({});failures.set(lease,{record,error});
             try {return exceptions.rejectArrayOperation(runtime,record.args,record.util,error,lease);}
             finally {failures.delete(lease);}
@@ -72,7 +115,7 @@ function bind(runtime,registration,source,instance) {
     const checkBody=(record,body)=>{
         const saved=body&&typeof body==='object'&&bodies.get(body);
         if(!saved)return;
-        if(!record||!current(record))reject(record,'tracked Array requires its current operation');
+        if(!record||!ownsActualCall(record))reject(record,'tracked Array requires its current operation');
         if(saved.runtime!==runtime||saved.state!==state||saved.generation!==state.generation||saved.state.disposed||!state.active)reject(record,'foreign or stale Array body');
     };
     const scan=(record,value,seen=new Set())=>{
@@ -101,13 +144,15 @@ function bind(runtime,registration,source,instance) {
             const boundInstance=instance();if(!boundInstance)return undefined;
             const previous=inflight.get(runtime);
             if(previous&&!previous.closed&&previous.thread===util.thread)reject(previous,'current Array operation cannot be reentered');
-            const ticket=Object.freeze({}),record={runtime,binding,state,generation:state.generation,args,util,thread:util.thread,root:util.thread.peekStack(),block,primitive:runtime.getOpcodeFunction(block.opcode),instance,boundInstance,method,closed:false,previous};
+            const actualCall=primitiveOwner.captureActiveCall(util,args);if(!actualCall)return undefined;
+            const ticket=Object.freeze({}),record={runtime,binding,actualCall,blockId:block.id,opcode:block.opcode,metadataUnchanged:captureContext(util,block),state,generation:state.generation,args,util,thread:util.thread,root:util.thread.peekStack(),block,primitive:runtime.getOpcodeFunction(block.opcode),instance,boundInstance,method,closed:false,previous};
             tickets.set(ticket,record);inflight.set(runtime,record);return ticket;
         },
         access(ticket,facts){
             const record=tickets.get(ticket);
             if(record&&(record.runtime!==runtime||record.binding!==binding))throw Error('Array operation ticket belongs to another binding');
-            if(record&&!current(record))reject(null,'operation ticket is stale');
+            if(record&&!ownsActualCall(record))reject(null,'operation ticket is stale');
+            if(record&&!graphValid(record))reject(record,'current cached operation graph changed');
             if(!facts||facts.runtime!==runtime||!Object.isFrozen(facts)||record&&facts.opcode!==record.method)reject(record,'actual supplier access binding differs');
             scan(record,facts.raw);scan(record,facts.body);
             if(facts.kind==='escape'&&facts.body&&bodies.has(facts.body))reject(record,'tracked Array cannot escape to a legacy callback');
@@ -119,7 +164,8 @@ function bind(runtime,registration,source,instance) {
             // The original private failure must survive supplier finally cleanup.
             if(facts?.status==='throw'){close();return;}
             try {
-                if(!current(record)||facts?.runtime!==runtime||facts.opcode!==record.method||facts.status!=='return'||!Object.isFrozen(facts))reject(record,'completion ticket differs');
+                if(!graphValid(record))reject(record,'current cached operation graph changed');
+                if(facts?.runtime!==runtime||facts.opcode!==record.method||facts.status!=='return'||!Object.isFrozen(facts))reject(record,'completion ticket differs');
                 scan(record,result);scan(record,facts.body);
                 if(allocationMethods.has(record.method)&&Array.isArray(facts.body)){
                     const known=bodies.get(facts.body);

@@ -73,3 +73,26 @@ test('nested VM exception and Stop restore shared context without reviving the o
         assert.equal(owner.current(f.util,f.args),null);
     }
 });
+
+test('rejection-only active-call witness survives graph invalidation but never copied arguments or invoker return',()=>{
+ const f=fixture();f.thread.status=0;f.thread.constructor={STATUS_DONE:4};
+ f.blocks.root={id:'root',inputs:{VALUE:{block:'a'}}};
+ f.blocks.a.fields={};f.blocks.a.inputs={};f.blocks.a.mutation={};
+ f.operation.fields=f.blocks.a.fields;f.operation.inputs=f.blocks.a.inputs;f.operation.mutation=f.blocks.a.mutation;
+ f.container.getInputs=block=>block.inputs;
+ let token;
+ f.invoke(()=>{
+  token=owner.captureActiveCall(f.util,f.args);assert.ok(token);
+  assert.equal(owner.isActiveCall(token,f.util,f.args),true);
+  assert.equal(owner.isActiveCall(token,{...f.util},f.args),false);
+  assert.equal(owner.isActiveCall(token,f.util,{...f.args}),false);
+  assert.equal(owner.isActiveCall({},f.util,f.args),false);
+  f.blocks.a.fields={changed:{value:'invalid'}};
+  assert.equal(owner.captureActiveCall(f.util,f.args),null,'invalid graph cannot mint another witness');
+  f.blocks.a.opcode='arrays_length';f.operation._argValues={};f.operation._blockFunction=()=>99;
+  assert.equal(owner.current(f.util,f.args),null);
+  assert.equal(owner.isActiveCall(token,f.util,f.args),true,'original invoker alone retains rejection authority');
+ });
+ assert.equal(owner.isActiveCall(token,f.util,f.args),false);
+ assert.equal(owner.captureActiveCall(f.util,f.args),null);
+});

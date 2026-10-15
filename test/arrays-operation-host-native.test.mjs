@@ -11,12 +11,33 @@ for(const file of ['bw-array-operations.js','bw-primitive-owner.js','bw-arcade-e
 async function fixture(mode='normal',options={}){
  const vm=new VM(),runtime=vm.runtime,errors=[],captures=[],refusals=[];runtime.on('BLOCKS_ERROR',error=>errors.push(error));
  let owner;const arrays=new(makeArrays(source,null,ops.registerSource(source)))(runtime);let saved;
- let reentryArgs,reentryUtil;const originalLength=arrays.length;arrays.length=(args,util)=>{reentryArgs=args;reentryUtil=util;return originalLength(args,util);};
+ let reentryArgs,reentryUtil,actualCall;const originalLength=arrays.length;arrays.length=(args,util)=>{reentryArgs=args;reentryUtil=util;actualCall=primitiveOwner.captureActiveCall(util,args);return originalLength(args,util);};
  const original=arrays.referenceLength;
  arrays.referenceLength=(args,util)=>{saved={args,util};captures.push(args.ARRAY);if(options.copyArgs||options.copyUtil){try{original(options.copyArgs?{...args}:args,options.copyUtil?{...util}:util);assert.fail('copied operation accepted');}catch(error){assert.match(error.message,/current operation/);refusals.push(error);}}if(options.foreignSignal){assert.throws(()=>owner.rejectArrayOperation(args,util,options.foreignSignal,{}),error=>error===options.foreignSignal);}if(options.arbitraryFailure){assert.throws(()=>owner.rejectArrayOperation(args,util,new Error('arbitrary'),{}),/private.*lease|actual.*lease/);}return original(args,util);};
  let childId,cleanups=0;const bridge={getInfo:()=>({id:'arcade',name:'Native test invocation',blocks:[{opcode:'callFunction',blockType:'command',text:'invoke'}]}),callFunction(args,util){const child=runtime._pushThread(childId,util.target,{stackClick:false});owner.link(child,util.thread,()=>cleanups++);primitiveOwner.stepNested(util,args,child);const failure=owner.failure(child)||owner.failure(util.thread);if(failure)owner.rethrow(failure);}};const bs=vm.extensionManager._registerInternalExtension(bridge);vm.extensionManager._loadedExtensions.set('arcade',bs);
  const service=vm.extensionManager._registerInternalExtension(arrays);vm.extensionManager._loadedExtensions.set('arrays',service);
- const probe={getInfo:()=>({id:'hostprobe',name:'Host probe',blocks:[{opcode:'change',blockType:'command',text:'change'},{opcode:'name',blockType:'reporter',text:'name'}]}),name(){return{toString(){return arrays.length(reentryArgs,reentryUtil);}};},change(_args,util){const cell=util.target.variables.array;
+ const probe={getInfo:()=>({id:'hostprobe',name:'Host probe',blocks:[{opcode:'change',blockType:'command',text:'change'},{opcode:'name',blockType:'reporter',text:'name'}]}),name(){return{toString(){if(options.graphChange){
+  const container=runtime.getTargetForStage().blocks,block=container.getBlock(length),root=reentryUtil.thread.peekStack();
+  const operation=container._cache._executeCached[root]._ops.find(op=>op._argValues===reentryArgs);
+  if(options.graphChange==='input')block.inputs.NAME={...block.inputs.NAME};
+  if(options.graphChange==='inputValue')block.inputs.NAME.block='absent';
+  if(options.graphChange==='fields')block.fields={...block.fields};
+  if(options.graphChange==='fieldValue')block.fields.added={value:'edited'};
+  if(options.graphChange==='mutation')block.mutation={changed:true};
+  if(options.graphChange==='opcode')block.opcode='arrays_shape';
+  if(options.graphChange==='reachability')container.getBlock(result).inputs.VALUE.block='absent';
+  if(options.graphChange==='blockIdentity')container._blocks[length]={...block};
+  if(options.graphChange==='cachedArgs')operation._argValues={...reentryArgs};
+  if(options.graphChange==='cachedFunction')operation._blockFunction=()=>99;
+  if(options.graphChange==='ancestorInput')container.getBlock(result).inputs.VALUE={...container.getBlock(result).inputs.VALUE};
+  if(options.graphChange==='ancestorOpcode')container.getBlock(result).opcode='data_changevariableby';
+  if(options.graphChange==='ancestorMutation')container.getBlock(result).mutation={changed:true};
+  if(options.graphChange==='registeredFunction')runtime._primitives.arrays_length=()=>99;
+  assert.equal(primitiveOwner.isActiveCall(actualCall,reentryUtil,reentryArgs),true,'source change cannot cancel original rejection witness');
+  assert.equal(primitiveOwner.isActiveCall(actualCall,{...reentryUtil},reentryArgs),false);
+  assert.equal(primitiveOwner.isActiveCall(actualCall,reentryUtil,{...reentryArgs}),false);
+  return 'owned';
+ }return arrays.length(reentryArgs,reentryUtil);}};},change(_args,util){const cell=util.target.variables.array;
   if(mode==='copy')cell.value=JSON.parse(JSON.stringify(cell.value));
   if(mode==='malformed'||mode==='nested')cell.value={bwReference:{...cell.value.bwReference,extra:1}};
   if(mode==='foreign')cell.value=typeof options.foreign==='function'?options.foreign(runtime):options.foreign;
@@ -31,16 +52,17 @@ async function fixture(mode='normal',options={}){
  const result=add('data_setvariableto',change,null,{}, {VARIABLE:['result','result']});blocks[change].next=result;
  const length=add('arrays_referenceLength',result);blocks[result].inputs.VALUE=[1,length];blocks[length].inputs.ARRAY=[1,variable(length)];
  if(mode==='reentry'){blocks[length].opcode='arrays_length';blocks[length].inputs={NAME:[1,add('hostprobe_name',length)]};}
- if(mode==='escape'){blocks[setup].opcode='arrays_create1D';blocks[setup].fields={};blocks[setup].inputs={NAME:[1,text('owned',setup)],JSON:[1,text('[1,2]',setup)]};blocks[length].opcode='arrays_map';blocks[length].inputs={NAME:[1,text('owned',length)],FUNC:[1,text('(value)=>{globalThis.__arrayEscapeRan=true;return value}',length)]};}
+ if(mode==='escape'||options.graphChange){blocks[setup].opcode='arrays_create1D';blocks[setup].fields={};blocks[setup].inputs={NAME:[1,text('owned',setup)],JSON:[1,text('[1,2]',setup)]};blocks[length].opcode='arrays_map';blocks[length].inputs={NAME:[1,text('owned',length)],FUNC:[1,text('(value)=>{globalThis.__arrayEscapeRan=true;return value}',length)]};}
+ if(options.graphChange){blocks[length].opcode='arrays_length';blocks[length].inputs={NAME:[1,add('hostprobe_name',length)]};}
  const after=add('data_setvariableto',result,null,{}, {VARIABLE:['after','after']});blocks[result].next=after;blocks[after].inputs.VALUE=[1,text('1',after)];
- if(mode==='nested'){const call=add('arcade_callFunction',setup);blocks[setup].next=call;blocks[call].next=after;childId=change;blocks[change].parent=null;blocks[change].topLevel=true;blocks[result].next=null;}
+ if(mode==='nested'||options.nestedGraph){const call=add('arcade_callFunction',setup);blocks[setup].next=call;blocks[call].next=after;childId=change;blocks[change].parent=null;blocks[change].topLevel=true;blocks[result].next=null;}
  const independent=add('event_whenflagclicked',null),forever=add('control_forever',independent);blocks[independent].next=forever;
  const tick=add('data_changevariableby',forever,null,{}, {VARIABLE:['ticks','ticks']});blocks[forever].inputs.SUBSTACK=[2,tick];blocks[tick].inputs.VALUE=[1,text('1',tick)];
  const project={targets:[{isStage:true,name:'Stage',variables,lists:{},broadcasts:{},blocks,comments:{},costumes:[{assetId:'cd21514d0531fdffb22204e0ec5ed84a',name:'backdrop',dataFormat:'svg',md5ext:'cd21514d0531fdffb22204e0ec5ed84a.svg',rotationCenterX:240,rotationCenterY:180}],sounds:[],currentCostume:0,volume:100,layerOrder:0}],monitors:[],extensions:['arrays','hostprobe'],meta:{semver:'3.0.0',vm:'0.2.0',agent:''}};
  await vm.loadProject(JSON.stringify(project));owner=exceptions.create(runtime,args=>args.VALUE);runtime.currentStepTime=1000/30;
  const step=async()=>{for(let i=0;i<4;i++){await runtime._step();await new Promise(resolve=>setImmediate(resolve));}};
  vm.greenFlag();await step();const stage=runtime.getTargetForStage();
- return{vm,runtime,arrays,original,stage,errors,captures,refusals,get cleanups(){return cleanups;},get saved(){return saved;},step,project,get owner(){return owner;},async restartWith(value){mode='foreign';options.foreign=value;vm.greenFlag();await step();},async reload(){mode='normal';await vm.loadProject(JSON.stringify(project));owner=exceptions.create(runtime,args=>args.VALUE);vm.greenFlag();await step();},close(){vm.stopAll();vm.quit();owner.dispose();}};
+ return{vm,runtime,arrays,original,stage,errors,captures,refusals,get actualCall(){return actualCall;},get actualArgs(){return reentryArgs;},get actualUtil(){return reentryUtil;},get cleanups(){return cleanups;},get saved(){return saved;},step,project,get owner(){return owner;},async restartWith(value){mode='foreign';options.foreign=value;vm.greenFlag();await step();},async reload(){mode='normal';await vm.loadProject(JSON.stringify(project));owner=exceptions.create(runtime,args=>args.VALUE);vm.greenFlag();await step();},close(){vm.stopAll();vm.quit();owner.dispose();}};
 }
 test('trusted actual registered Array factories preserve genuine serialized aliases and reject cached access',async()=>{
  for(const mode of ['normal','copy']){const run=await fixture(mode);try{
@@ -81,3 +103,14 @@ test('a fresh genuine operation after Start cannot revive a previously tracked r
 test('disposed facade ignores GreenFlag until an actual new project load renews its source-bound owner',async()=>{const run=await fixture();try{const old=run.stage.variables.array.value;run.vm.clear();assert.doesNotThrow(()=>run.vm.greenFlag());assert.throws(()=>run.original({ARRAY:old},run.saved.util),/current operation/);await run.reload();assert.equal(run.runtime.getTargetForStage().variables.result.value,2);assert.equal(run.errors.length,0);}finally{run.close();}});
 
 test('another runtime issued failure cannot be adopted as this runtime Array failure',async()=>{const origin=await fixture('malformed');try{const signal=origin.errors[0],run=await fixture('normal',{foreignSignal:signal});try{assert.deepEqual(run.errors,[]);assert.equal(run.stage.variables.result.value,2);assert.equal(run.stage.variables.after.value,'1');assert.equal(exceptions.diagnostic(run.runtime,signal),null);}finally{run.close();}}finally{origin.close();}});
+
+for(const graphChange of ['input','inputValue','fields','fieldValue','mutation','opcode','reachability','blockIdentity','cachedArgs','cachedFunction','registeredFunction','ancestorInput','ancestorOpcode','ancestorMutation'])test('coercion changing '+graphChange+' privately rejects the original active call before access',async()=>{
+ const run=await fixture('normal',{graphChange});try{
+  assert.equal(run.errors.length,1);assert.match(run.errors[0].message,/current cached operation graph changed/);
+  assert.equal(exceptions.diagnostic(run.runtime,run.errors[0]).kind,'array-constraint');
+  assert.equal(run.stage.variables.result.value,-1);assert.equal(run.stage.variables.after.value,0);
+  assert.equal(primitiveOwner.isActiveCall(run.actualCall,run.actualUtil,run.actualArgs),false,'witness expires at invoker return');
+  const ticks=run.stage.variables.ticks.value;await run.step();assert.ok(run.stage.variables.ticks.value>ticks);assert.equal(run.errors.length,1);
+ }finally{run.close();}
+});
+test('graph-invalid child call retires actual parent and cleanup once without swallowing its own private failure',async()=>{const run=await fixture('normal',{graphChange:'opcode',nestedGraph:true});try{assert.equal(run.errors.length,1);assert.match(run.errors[0].message,/current cached operation graph changed/);assert.equal(run.cleanups,1);assert.equal(run.stage.variables.after.value,0);assert.equal(run.stage.variables.result.value,-1);const before=run.stage.variables.ticks.value;await run.step();assert.ok(run.stage.variables.ticks.value>before);assert.equal(run.cleanups,1);}finally{run.close();}});
