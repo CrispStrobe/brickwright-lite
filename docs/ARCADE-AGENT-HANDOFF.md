@@ -8,6 +8,15 @@ operator's actual checkouts, tools, private corpus and original receipts.
 Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
 
+Latest hosted editor evidence: the five journeys on consumer `777aae8e`
+pass the official [authoring job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38793608489/job/116659147575).
+They cover visible Blocks and Code edits, fresh-session save/reopen and current
+export/reimport. See the [exact scope and remaining limits](compatibility/arcade-numeric-authoring-gui.md#official-five-journey-result--2026-10-15).
+The same workflow retains three failed unit shards; this is not an all-checks
+passing integration. The corrected canonical compiler is separately under
+[PR158](https://github.com/CrispStrobe/sb3-creator/pull/158); it is not the
+compiler used by that hosted editor evidence.
+
 ## Current method and qualification frontier — 2026-10-15
 
 Start with the [partial closure plan](ARCADE-PARTIAL-CLOSURE-PLAN.md) and

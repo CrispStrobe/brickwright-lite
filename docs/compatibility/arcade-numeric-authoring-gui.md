@@ -117,3 +117,36 @@ The helper refuses mismatched metadata before requesting the archive. It retains
 Extraction validates ZIP central records before normalization and TAR headers before writing. It rejects duplicate or escaping paths, symlinks, hardlinks, special files, corrupt checksums and incomplete containers. The current Pages ZIP containing one GNU `artifact.tar` is supported; ZIP64, PAX and other layouts are explicitly refused. A new owned site directory is required. After verifying the full-source manifest, the helper inventories all extracted members with both SHA256 and original byte length and writes the private receipt.
 
 The comparison compiler must use that admitted site's `static/makecode` directory through the consumer checkout's ignored `packages/scratch-gui/static/makecode` path. A preexisting different SDK must be refused, never relabeled or silently replaced. No MakeCode SDK download or second GUI build belongs in the consumer. The full journey checks target and worker bytes before using the original compiler. `test/official-gui-artifact.test.mjs` covers metadata/checkout/pin/SDK refusals, unsafe ZIP/TAR entries, one acquisition and reuse, and a producer manifest generated from an actual owned Git fixture. Its synthetic archive/worker fixtures do not qualify a hosted app or original SDK; actual artifact execution remains separate.
+
+
+## Official five-journey result — 2026-10-15
+
+The official [authoring job](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38793608489/job/116659147575)
+passes all five journeys. The [retained proof artifact](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38793608489/artifacts/12006424917)
+binds reviewed consumer `777aae8e0d49cf692ba7bb6ca6915fe4f47016e1` and actual
+merge checkout `1d0336a2e60cb95c8063f82d3376ef59975d02db` to the same tree
+`3861ed9baa1d2d85d66f17ea1f5b3505ed0e169f`. Its compiler is
+`f2d4f879ba40dd9025070ed51af11ebe1ef14808`; its admitted Array-values source is
+`4db2813d366af8a110fc79599afb55d1cd42d8df`. Newer development compositions
+and supplier fixes need separate consumer qualification.
+
+| Journey | Actual editor and persistence observations |
+| --- | --- |
+| Numeric/settings/source loop | Visible dropdown and Number edits; Code feedback; File save and Load in a fresh context; current export/reimport. Ten initial/pressed state and frame phases agree with retained original observations. |
+| Foreground event/wait and multiplayer connection | Real palette drag/delete, player 2→3 dropdown edit and Code trace edit; fresh SB3 reopen and export/reimport. Ten state and frame phases agree with retained originals. |
+| Live Font | Visible font and metric fields, Code charWidth→charHeight, fresh SB3 reopen and export/reimport. Four distinct original compilation inputs and raw original frame hashes are independently joined to retained results. |
+| Two-player repeat controller | Actual pane hold/release/repress for player 1 A and player 2 B; Blocks and Code delay/interval edits, fresh reopen and export/reimport. Ten initial/held state and frame phases agree with retained originals. |
+| Owned literal Image | Real Pixel canvas strokes/save, Code and Blocks color edits, fresh reopen and export/reimport. Saved SVG pixels and asset digest persist; the current export no longer adds an unintended GameSprite declaration. |
+
+The Image journey observes native HUD changes separately from resource pixels;
+it does not draw the literal Image on the game screen or provide an exact HUD
+glyph oracle. A pointer press is observed as input state; this fixture has no A
+handler. It performs no new original execution. Random values in the numeric
+journey are bounded, not seeded or equated across independent executions.
+
+The earlier `9133a871b` Image export failure remains a failure on its own build;
+the owned source fixture is unchanged. The passing `777aae8e` GUI job does not
+remove its workflow's three failed unit shards: network setup, initial clock
+setup and the ambient shell gate. No complete authentic corpus game is promoted
+by these five owned editor fixtures; the immutable raw census remains
+147 translated / 36 partial / one parse failure.
