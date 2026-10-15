@@ -1,5 +1,43 @@
 # Conversion capabilities and GUI closure ledger
 
+## Managed return values authored in blocks — 2026-10-15
+
+**Open implementation gap.** A Number literal returned by the existing Arcade
+managed function protocol can arrive as String text. An inspection LIMIT of 20
+returned from a function exposes this difference; replacing the return with
+`0 + 20` would hide the gap. The in-progress inspection reporter remains a
+candidate, without consumer pin or complete source admission.
+
+The correction must use the actual issued frame, active return operation and
+connected Number input before return provenance is lost. A text input `"20"`,
+an unknown producer, an opaque reference or a foreign/disconnected block cannot
+be converted merely because it looks numeric. This is a shared return boundary,
+not an inspection-specific numeric text conversion.
+
+| Surface | Required acceptance |
+| --- | --- |
+| Blocks and pseudocode | Return a plain Number literal from an authored function; pass its result to a typed reporter; preserve quoted numeric text as String |
+| Code and saved projects | Keep both distinctions through Code, same/fresh SB3, current export and reimport; evaluate operand effects once and in order |
+| Runtime and debugger | Validate actual frame/input ownership and cancellation; report unsupported producers without showing a fabricated Number |
+| Visible editor | Create and edit this program using actual controls; native block-graph tests alone do not establish the browser journey |
+
+## Actual numeric callback producers — 2026-10-15
+
+The [bounded callback contract](compatibility/arcade-numeric-callable-default-admission.md)
+now records actual producer, all-writer, initialization and unchanged-callee
+checks. Annotation-only Number authority, incompatible unused callback writers,
+early reads, and constructor/generic calls that normalization would erase are
+refused. The source prerequisite passed 91 affected controls and 122 composed
+native/pure controls; these are different test selections. Default Font lowering
+matched 406 retained AST and diagnostic results.
+
+This adds no callable type or new editor feature. Code diagnostics should point
+to the incompatible writer/read and preserve the remaining source. Blocks and
+inspector work must expose the actual callable identity and initialization state
+without using declarations as authority. Mixed callable/reference unions and
+bare uninitialized callable cells remain outside the current guarantee.
+
+
 ## Generic class methods and stored callbacks
 
 The parser retains generic method names, ordered type parameters,

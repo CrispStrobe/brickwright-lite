@@ -8,6 +8,47 @@ operator's actual checkouts, tools, private corpus and original receipts.
 Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
 
+## Current local integration and next prerequisite — 2026-10-15
+
+Refresh [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) and
+its exact checks before adoption. Published `60de95e9c4dc4a6b4fe73ad30e7cf5713f85d750`
+contains focused corrections for all 34 top-level failures observed before the
+previous unit shard stopped; it has no completed replacement shard census yet.
+See [the full retained failure record](ARCADE-UNIT-FAILURE-FOLLOWUP.md).
+
+Local integration `8aae5ea3f4fa2786dd096c363f81f85b5a07d8f1` also normally
+composes source freeze `d511484d6b8458c6b961d433cc22f9a4b5ae1b91` and its
+contract clarification. It passes 122 composed native/pure checks. That source
+is not a claim that remote main or the published PR already contains the change.
+Its immutable raw184 audit remains **147 translated / 36 partial / one parse
+failure**; the below-20 milestone is not reached.
+
+Relevant implementation entry points:
+
+- `overlay/scratch-gui/src/lib/bw-makecode/source-value-producers.js`: one
+  read-only actual lexical producer/writer analysis shared with Font lowering.
+  Its copied occurrence facts, binding kinds, initialization and actual unique
+  function nodes do not derive authority from type annotations.
+- `overlay/scratch-gui/src/lib/bw-makecode/callable-source-gate.js`: validates
+  factory bodies, capture initialization, every writer/read and plain immutable
+  calls before issuing numeric Arrow result facts. Constructor and explicit
+  generic call descriptors must not be normalized away.
+- `test/makecode-callable-source-producers.test.mjs`: regression entry point for
+  misleading annotations, actual Image writers, unchanged callee identity,
+  initialization, aliases, unused writers and constructor/generic descriptors.
+- `test/helpers/arcade-timed-native.mjs`: actual shared timer observation for
+  source pauses; physical frame counts do not imply elapsed program deadlines.
+
+The proposed inspection word is isolated in
+[supplier PR148](https://github.com/CrispStrobe/sb3-creator/pull/148). Its exact
+parent is the current compiler pin; its one-word candidate has 399 operations
+and 404 spellings. Do not move the consumer pin before supplier qualification.
+Inspection's source/native/current-project proofs and the
+[managed return Number gap](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md)
+remain required. A Number return must not be repaired with an inspector-specific
+text caster or source rewriting workaround. Preserve earlier candidate failures
+and separate native, selected-original and browser conclusions.
+
 ## Latest integrated follow-up — 2026-10-14
 
 Integration `7878106481d56bf1d9722f75a9362aad44c169a7` normally composes
