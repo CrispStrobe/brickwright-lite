@@ -102,6 +102,14 @@ module.exports = function makeCrispExtension (source, dependencies = null, array
                 }
             }
         }
-        getInfo () { return localizeLegacyMenus(this._inst.getInfo()); }
+        getInfo () {
+            const info = localizeLegacyMenus(this._inst.getInfo());
+            // Only Arcade's supplied module closure owns this optional hook.
+            // Ordinary adapters and the separate Array token path are unchanged.
+            if (typeof dependencies?.bindScoreAdapterInfo === 'function') {
+                dependencies.bindScoreAdapterInfo(info, this, this._inst);
+            }
+            return info;
+        }
     };
 };

@@ -7,6 +7,96 @@ const analyseCaptures = require('./console-capture-provenance');
 const kinds = new Set(['Number','Boolean','String','Any']);
 const semantic = block => JSON.stringify([block.opcode,block.fields,block.inputs,block.next,
     block.mutation,block.shadow,block.parent,block.topLevel]);
+const scoreRegistrations = new WeakMap();
+const scoreInfoOwner = Symbol('actual Arcade score declaration owner');
+const scoreAdapters = new WeakMap();
+const scoreSourceRows = new WeakMap();
+const scoreIssue = Symbol('actual Arcade score metadata issuance');
+const scoreIssues = new WeakMap();
+let scoreIssueSerial = 0;
+function scoreInfo(info,owner) {
+    const entries=info?.id==='arcade'&&info.blocks?.filter(block=>block.opcode==='getPlayerScore');
+    if(entries?.length!==1||!owner)throw Error('Arcade score declaration owner is missing');
+    Object.defineProperty(entries[0],scoreInfoOwner,{value:owner,enumerable:true});
+    scoreSourceRows.set(entries[0],owner);
+    return info;
+}
+function scoreAdapterCurrent(owner,record) {
+    return !!record&&record.valid&&owner.isCurrent()&&owner.isInstance(record.instance)&&
+        Object.getOwnPropertyDescriptor(record.adapter,'_inst')?.value===record.instance&&
+        Object.getOwnPropertyDescriptor(record.adapter,'getPlayerScore')?.value===record.delegate&&
+        Object.getPrototypeOf(record.adapter)===record.prototype&&!Object.prototype.hasOwnProperty.call(record.adapter,'getInfo')&&
+        Object.getOwnPropertyDescriptor(record.prototype,'getInfo')?.value===record.getInfo;
+}
+function bindScoreAdapterInfo(info,adapter,instance) {
+    const entry=info?.id==='arcade'&&info.blocks?.find(block=>block.opcode==='getPlayerScore');
+    const owner=entry&&Object.getOwnPropertyDescriptor(entry,scoreInfoOwner)?.value;
+    if(scoreSourceRows.get(entry)!==owner||!owner?.isInstance(instance)||!owner.isCurrent())throw Error('Arcade score adapter source owner differs');
+    const delegate=Object.getOwnPropertyDescriptor(adapter,'getPlayerScore')?.value;
+    if(Object.getOwnPropertyDescriptor(adapter,'_inst')?.value!==instance||typeof delegate!=='function')throw Error('Arcade score adapter delegate is missing');
+    const existing=scoreAdapters.get(owner);
+    if(existing){if(existing.adapter!==adapter||existing.instance!==instance||existing.delegate!==delegate)existing.valid=false;}
+    else {
+        const prototype=Object.getPrototypeOf(adapter),getInfo=Object.getOwnPropertyDescriptor(prototype,'getInfo')?.value;
+        if(typeof getInfo!=='function'||Object.prototype.hasOwnProperty.call(adapter,'getInfo'))throw Error('Arcade score adapter getInfo owner differs');
+        scoreAdapters.set(owner,{adapter,instance,delegate,prototype,getInfo,valid:true});
+    }
+    // Only genuine source getInfo rows may issue metadata. The ExtensionManager
+    // shallow preparation preserves this token and the actual argument schema.
+    if(!scoreAdapterCurrent(owner,scoreAdapters.get(owner)))throw Error('Arcade score adapter issuance owner differs');
+    if(Object.prototype.hasOwnProperty.call(entry,scoreIssue))throw Error('Arcade score metadata row was already issued');
+    const token=Object.freeze({});
+    scoreIssues.set(token,{owner,adapter:scoreAdapters.get(owner),arguments:entry.arguments,serial:++scoreIssueSerial,consumed:false});
+    Object.defineProperty(entry,scoreIssue,{value:token,enumerable:true});
+}
+// Initial registration and ordinary refresh consume genuine, single-use source
+// metadata issuances. Reading the current primitive alone never grants renewal.
+function scoreRegistration(runtime,owner) {
+    if (!runtime || typeof runtime.on!=='function' || !owner) return null;
+    const existing=scoreRegistrations.get(runtime);
+    if(existing)return existing.owner===owner ? existing : null;
+    const getter=runtime.getOpcodeFunction;
+    const record={owner,category:null,entry:null,func:null,valid:true,reason:null,disposed:false,targets:new Set(),getter,serial:0};
+    const refuseRegistration=reason=>{record.valid=false;record.reason=reason;};
+    const capture=(category,refresh=false)=>{
+        if(category?.id!=='arcade')return;
+        if(!record.valid)return;
+        if(refresh ? !record.category||category!==record.category : !!record.category){refuseRegistration(refresh?'refresh category identity differs':'registration was republished');return;}
+        const entries=(category.blocks||[]).filter(value=>value.json?.type==='arcade_getPlayerScore');
+        const entry=entries.length===1&&entries[0],func=entry?.info?.func;
+        const adapter=scoreAdapters.get(owner);
+        const issue=scoreIssues.get(entry?.info?.[scoreIssue]);
+        if(!issue||issue.consumed||issue.serial<=record.serial||issue.owner!==owner||issue.adapter!==adapter||issue.arguments!==entry?.info?.arguments){refuseRegistration('metadata issuance is missing, stale or foreign');return;}
+        // _prepareBlockInfo's Object.assign preserves the private row Symbol;
+        // runtime retains that exact prepared row as convertedBlock.info.
+        if(entry?.info?.[scoreInfoOwner]!==owner){refuseRegistration('original declaration owner differs');return;}
+        if(!scoreAdapterCurrent(owner,adapter)){refuseRegistration('original implementation or adapter differs');return;}
+        if(!runtime._blockInfo?.includes(category)){refuseRegistration('original category is not installed');return;}
+        if(typeof func!=='function'){refuseRegistration('original score primitive is missing');return;}
+        if(typeof getter!=='function'){refuseRegistration('original primitive lookup is missing');return;}
+        if(runtime.getOpcodeFunction!==getter){refuseRegistration('original primitive lookup changed');return;}
+        if(getter.call(runtime,'arcade_getPlayerScore')!==func){refuseRegistration('original score primitive differs');return;}
+        issue.consumed=true;record.serial=issue.serial;
+        record.category=category;record.entry=entry;record.func=func;record.adapter=adapter;
+    };
+    scoreRegistrations.set(runtime,record);
+    const categories=(runtime._blockInfo||[]).filter(value=>value.id==='arcade');
+    // This constructor precedes its genuine builtin registration. Never turn
+    // an arbitrary preexisting same-opcode category into a producer certificate.
+    if(categories.length)refuseRegistration('registration existed before this implementation');
+    runtime.on('EXTENSION_ADDED',capture);
+    runtime.on('BLOCKSINFO_UPDATE',category=>capture(category,true));
+    runtime.on('RUNTIME_DISPOSED',()=>{record.disposed=true;});
+    runtime.on('PROJECT_LOADED',()=>{
+        // VM.loadProject disposes the previous target graph, retaining builtins.
+        // Resume only for new targets under the identical captured registration;
+        // the old local inspector stays disposed and cannot borrow this renewal.
+        if(record.disposed&&runtime.targets?.length&&runtime.targets.every(target=>!record.targets.has(target))&&
+            record.valid&&scoreAdapterCurrent(owner,record.adapter)&&runtime.getOpcodeFunction===getter&&
+            getter.call(runtime,'arcade_getPlayerScore')===record.func){record.disposed=false;record.targets=new Set(runtime.targets);}
+    });
+    return record;
+}
 
 function primitive(value) {
     if (value === null || ['undefined','string','number','boolean'].includes(typeof value)) return value;
@@ -22,9 +112,10 @@ function primitive(value) {
     throw new Error('reference or opaque inspection value');
 }
 
-function create(runtime, cells) {
+function create(runtime, cells, scoreOwner=null) {
     let snapshots = new Map(), disposed = false, active = false;
     const bound = !!runtime && typeof runtime.on === 'function' && Array.isArray(runtime.targets);
+    const score=scoreRegistration(runtime,scoreOwner);
     const fail = reason => {throw new Error('Arcade inspection: ' + reason);};
     const current = () => {
         if (!bound || disposed || !snapshots.size) fail('inactive native owner; start the current project');
@@ -39,15 +130,63 @@ function create(runtime, cells) {
     const snapshot = () => {
         snapshots = new Map();
         if (!bound || disposed) return;
+        if(score&&!score.disposed)score.targets=new Set(runtime.targets);
         for (const target of runtime.targets) if (target.isOriginal !== false)
             snapshots.set(target,{container:target.blocks,variables:new Map(Object.entries(target.variables||{}).map(([id,variable])=>[id,{variable,signature:JSON.stringify([variable.id,variable.name,variable.type])}])),blocks:new Map(Object.entries(target.blocks._blocks).map(([id,block]) =>
                 [id,{block,semantic:semantic(block)}]))});
     };
-    const prove = (target, block, requested=null, possible=null) => {
+    const prove = (target, block, requested=null, possible=null, util=null) => {
         const all = target.blocks._blocks, read = id => target.blocks.getBlock(id);
         const input = (node,name) => read(node?.inputs?.[name]?.block);
         const text = node => node?.opcode === 'text' ? node.fields?.TEXT?.value : null;
         const literal = (node,name) => node?.fields?.[name]?.value ?? text(input(node,name));
+        let scoreRefusal=null;
+        const refuseScore=reason=>{scoreRefusal=reason;return false;};
+        const scoreDetail=()=>scoreRefusal?' (score producer: '+scoreRefusal+')':'';
+        const scoreNumber=node=>{
+            if(!score?.valid)return refuseScore(score?'original registration invalid: '+score.reason:'original registration unavailable');
+            if(score.disposed)return refuseScore('registration suspended');
+            if(!score.category)return refuseScore('original registration missing');
+            if(!scoreOwner.isCurrent())return refuseScore('implementation changed');
+            if(!scoreAdapterCurrent(scoreOwner,score.adapter))return refuseScore('adapter changed');
+            if(runtime.getOpcodeFunction!==score.getter)return refuseScore('primitive lookup changed');
+            if(score.getter.call(runtime,'arcade_getPlayerScore')!==score.func)return refuseScore('score primitive changed');
+            if(!runtime._blockInfo?.includes(score.category))return refuseScore('registered category changed');
+            if(score.category.id!=='arcade')return refuseScore('registered category identity changed');
+            if(score.category.blocks?.filter(entry=>entry.json?.type==='arcade_getPlayerScore').length!==1)return refuseScore('registered score declaration is missing or ambiguous');
+            if(!score.category.blocks?.includes(score.entry))return refuseScore('registered score declaration changed');
+            if(score.entry.json?.type!=='arcade_getPlayerScore')return refuseScore('registered score opcode changed');
+            if(score.entry.info?.[scoreInfoOwner]!==scoreOwner)return refuseScore('registered source owner changed');
+            if(score.entry.info?.func!==score.func)return refuseScore('registered score function changed');
+            if(node.shadow!==false||node.topLevel!==false||node.next!=null||node.mutation!=null||Object.keys(node.fields||{}).length||
+                Object.keys(node.inputs||{}).join(',')!=='PLAYER')return refuseScore('score reporter schema differs');
+            const player=input(node,'PLAYER');
+            if(!player||player.parent!==node.id||player.opcode!=='math_number'||player.shadow!==true||player.topLevel!==false||player.next!=null||player.mutation!=null||
+                Object.keys(player.inputs||{}).length||Object.keys(player.fields||{}).join(',')!=='NUM'||
+                String(player.fields.NUM.value)!=='1')return refuseScore('player1 shadow schema differs');
+            const parent=read(node.parent);
+            if(!parent||Object.values(parent.inputs||{}).filter(slot=>slot.block===node.id).length!==1)return refuseScore('score parent ownership differs');
+            const root=util?.thread?.peekStack?.(),operations=target.blocks._cache?._executeCached?.[root]?._ops||[];
+            const reachable=new Set();
+            const visit=id=>{if(reachable.has(id))return;reachable.add(id);for(const slot of Object.values(read(id)?.inputs||{}))if(slot.block)visit(slot.block);};visit(root);
+            if(reachable.has(node.id)){
+                const actual=operations.filter(operation=>operation.id===node.id);
+                if(actual.length!==1)return refuseScore('active score cache is missing or ambiguous');
+                const operation=actual[0];
+                try{if(reporterOwner(runtime,util,operation._argValues,'arcade_getPlayerScore',[])!==node)return refuseScore('active score primitive ownership differs');}catch{return refuseScore('active score primitive ownership refused');}
+                const shadow=target.blocks._cache?._executeCached?.[player.id];
+                if(operation._blockFunction!==score.func)return refuseScore('active score function differs');
+                if(Object.keys(operation._argValues||{}).sort().join(',')!=='PLAYER,mutation')return refuseScore('active score argument schema differs');
+                if(operation._argValues.mutation!==operation.mutation||operation.mutation!==node.mutation)return refuseScore('active score mutation differs');
+                if(String(operation._argValues.PLAYER)!=='1')return refuseScore('active player argument differs');
+                if(shadow?.id!==player.id||shadow.opcode!=='math_number'||shadow.fields!==player.fields||
+                    shadow.inputs!==target.blocks.getInputs(player))return refuseScore('active player shadow cache differs');
+                if(shadow._isShadowBlock!==true||shadow._shadowValue!==operation._argValues.PLAYER||
+                    shadow._parentValues!==operation._argValues||shadow._parentKey!=='PLAYER')return refuseScore('active player shadow value or ownership differs');
+                if(!operation._parentValues||typeof operation._parentValues[operation._parentKey]!=='number')return refuseScore('active score result is not native Number');
+            }
+            return true;
+        };
         const captureProof=analyseCaptures({targets:runtime.targets.filter(value=>value.isOriginal!==false),blocks:value=>value.blocks._blocks,
             input:(node,name,owner)=>owner.blocks.getBlock(node?.inputs?.[name]?.block),
             literal:(node,name,owner)=>node?.fields?.[name]?.value??(owner.blocks.getBlock(node?.inputs?.[name]?.block)?.opcode==='text'?owner.blocks.getBlock(node.inputs[name].block).fields?.TEXT?.value:null)});
@@ -126,6 +265,10 @@ function create(runtime, cells) {
             visited.add(node);
             try {
                 const op=node.opcode;
+                if(!player&&op==='arcade_getPlayerScore'){
+                    if(!scoreNumber(node))return false;
+                    origins?.add(node);domains?.add('number');return true;
+                }
                 if(player&&op==='arcade_eventPlayer'){
                     const owner=owners.get(node),token=literal(owner,'TOKEN');
                     if(owner?.opcode!=='arcade_whenRegisteredMultiplayerConnection'||typeof token!=='string'||!token)return false;
@@ -188,8 +331,8 @@ function create(runtime, cells) {
                 return false;
             } finally {visited.delete(node);}
         };
-        if(requested){for(const [index,request]of requested.entries()){const domains=new Set();if(request.procedure){const scopes=captureProof.scopes.filter(scope=>scope.target===target&&scope.procedure===request.procedure);if(scopes.length!==1||!scopes[0].params.includes(request.formal))fail('actual formal binding differs');request.cell=captureProof.local(scopes[0],request.formal);}if(!(request.cell?safeCell(request.cell,false,null,domains):safe(input(request.node,request.name),false,null,domains))||!domains.size||domains.has('unknown'))fail('connected input lacks complete primitive domain evidence');possible.set(index,domains);}return;}
-        if (!safe(input(block,'VALUE')) || !safe(input(block,'LIMIT'))) fail('connected input lacks primitive producer authority');
+        if(requested){for(const [index,request]of requested.entries()){const domains=new Set();if(request.procedure){const scopes=captureProof.scopes.filter(scope=>scope.target===target&&scope.procedure===request.procedure);if(scopes.length!==1||!scopes[0].params.includes(request.formal))fail('actual formal binding differs');request.cell=captureProof.local(scopes[0],request.formal);}if(!(request.cell?safeCell(request.cell,false,null,domains):safe(input(request.node,request.name),false,null,domains))||!domains.size||domains.has('unknown'))fail('connected input lacks complete primitive domain evidence'+scoreDetail());possible.set(index,domains);}return;}
+        if (!safe(input(block,'VALUE')) || !safe(input(block,'LIMIT'))) fail('connected input lacks primitive producer authority'+scoreDetail());
         return {value:input(block,'VALUE'),limit:input(block,'LIMIT')};
     };
     const inspect = (args,util,onError) => {
@@ -202,7 +345,7 @@ function create(runtime, cells) {
             reporterOwner(runtime,util,args,'arcade_inspectValue',[]);
             const target=util.thread.target;
             if (!snapshots.has(target)) fail('foreign or cloned target');
-            const source=prove(target,block);
+            const source=prove(target,block,null,null,util);
             const actual = (node,value) => {
                 const decoded=primitive(value);
                 if (node.opcode!=='math_number') return decoded;
@@ -242,10 +385,10 @@ function create(runtime, cells) {
                 const name=path[path.length-1],child=target.blocks.getBlock(node.inputs?.[name]?.block);if(!child||child.parent!==node.id)fail('actual primitive input slot is missing or disconnected');
                 return {node,name};
             });
-            const possible=new Map();prove(target,block,requests,possible);
+            const possible=new Map();prove(target,block,requests,possible,util);
             return Object.freeze(requests.map((_,index)=>Object.freeze([...possible.get(index)])));
         }finally{active=false;}
     };
     return Object.freeze({inspect,inputDomains,snapshot,invalidate:()=>{snapshots=new Map();},dispose:()=>{disposed=true;snapshots=new Map();}});
 }
-module.exports=Object.assign(create,{primitive});
+module.exports=Object.assign(create,{primitive,scoreInfo,bindScoreAdapterInfo});

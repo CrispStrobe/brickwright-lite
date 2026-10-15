@@ -1,4 +1,4 @@
-import {prepareProcedureConstraintSource} from './procedure-constraint-source.js';
+import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
 import {prepareThrowSource} from './throw-source-gate.js';
 import {proveArrayMapValues} from './lower-array-map-values.js';
 import {selectNamedFunctionSourceProof} from './named-function-source-selection.js';
@@ -912,7 +912,7 @@ class ArcadeTranslator extends BaseTranslator {
         // Arcade's score is the game's on-screen score: the extension's own, on both
         // paths. (The fixed-sprite path used to keep it in a Scratch variable named
         // `score`, which the export could not tell from a user's, so the HUD was lost.)
-        case 'info.score': return 'arcade score';
+        case 'info.score': return 'arcade player (1) score';
         case 'info.life': return 'lives';
         case 'game.ask':
             if(a.length>=1 && a.length<=2)return `arcade ask yes ${this.expr(a[0])} subtitle ${a[1]?this.expr(a[1]):'""'}`;
@@ -4956,7 +4956,8 @@ export function arcadeToPseudocode (files, opts = {}) {
         return Object.fromEntries(Object.entries(node).map(([key, value]) => [key, lowerAnimationAssets(value)]));
     };
     const callableParseOptions={parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true};
-    const ordinarySource=parseMakeCodeTs(source,{...callableParseOptions,...(opts.procedureConstraintsPrototype===true?{retainCallableMetadata:true}:{})});
+    const ordinarySource=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:opts.procedureConstraintsPrototype===true,
+        retainPrimitiveProcedureDefaults:opts.procedureConstraintsPrototype!==true});
     const callableSourceParsed=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true});
     const namedEligibility=selectNamedFunctionSourceProof(callableSourceParsed,{ordinaryProgram:ordinarySource,registrationSpec:sceneRegistrationSpec});
     const namedEnabled=namedEligibility.eligible;
@@ -5060,9 +5061,11 @@ export function arcadeToPseudocode (files, opts = {}) {
         assets[tileImagePath(node)] || assets[node.name] || (BUILTIN_IMAGES[tileImagePath(node)] ? decodeMkcdImage(BUILTIN_IMAGES[tileImagePath(node)]) : null) :
         node?.type==='Identifier' ? assets[node.name] : null;
     const ordinaryProgram=namespaceBindings.program || parsed;
-    const procedureConstraints=opts.procedureConstraintsPrototype===true?prepareProcedureConstraintSource(ordinaryProgram):null;
+    const procedureConstraints=prepareProcedureConstraintSource(ordinaryProgram,{mode:opts.procedureConstraintsPrototype===true?'prototype':'supported-default'});
     if(procedureConstraints)projectInputDiagnostics.push(...procedureConstraints.diagnostics);
-    const protocolProgram=procedureConstraints?{...procedureConstraints.program,bwProcedureConstraintSource:procedureConstraints}:ordinaryProgram;
+    // Never attach the preparation's Program inside the executable AST: general
+    // walkers would otherwise see a second copy of all declarations and effects.
+    const protocolProgram=procedureConstraints?{...procedureConstraints.program,bwProcedureConstraintSource:procedureConstraintAstMetadata(procedureConstraints)}:ordinaryProgram;
     const throwSource=prepareThrowSource(protocolProgram);
     projectInputDiagnostics.push(...throwSource.unsupported);
     if(throwSource.present&&opts.throwPrototype!==true)projectInputDiagnostics.push('Throw source requires its qualified canonical protocol; prototype admission is not enabled');
