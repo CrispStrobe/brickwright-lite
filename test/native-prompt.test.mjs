@@ -79,6 +79,7 @@ const commonJs = (file, source = read(file)) => {
 };
 const modal = commonJs(MODAL);
 const replay = commonJs(REPLAY);
+const memoryView = commonJs('overlay/scratch-gui/src/lib/bw-debug/memory-view.js');
 
 // The helper is loaded as the module it is; its lazy import of the modal is pointed at the modal
 // compiled above (the one rewrite of the subject this file makes, asserted to apply).
@@ -340,10 +341,20 @@ const SITES = [
         async drive (helper, src, answers) {
             const writes = [];
             const runner = {writeMem: (...args) => writes.push(args)};
-            const click = asArrow(onClickSource(this.file, 'spec.label} ${hex16(row.addr + i)}', src), {
-                promptAsync: helper.promptAsync, hex8, hex16, runner,
-                spec: {id: 'xram', label: 'XRAM'}, row: {addr: 0x0100}, i: 2, b: 0x33
-            }, {forceUpdate () {}});
+            const capabilities = {spaces: {xram: {read: true, write: true}}};
+            const session = {runner, capabilities, spacesDeclared: true};
+            const self = {props: {runner, ui: {phase: 'halted', debugCapabilities: capabilities}},
+                setState () {}, forceUpdate () {}};
+            const click = asArrow(onClickSource(this.file, 'spec.label} ${address(row.addr + i)}', src), {
+                promptAsync: helper.promptAsync, hex8, runner,
+                address: value => memoryView.formatMemoryAddress(value, {explicit: false}),
+                memorySessionCurrent: memoryView.memorySessionCurrent,
+                memoryWritable: memoryView.memoryWritable, session,
+                current: () => ({runner: self.props.runner, capabilities: self.props.ui.debugCapabilities,
+                    spacesDeclared: true, mounted: true}),
+                writable: true, spec: {id: 'xram', label: 'XRAM', writable: true},
+                row: {addr: 0x0100}, i: 2, b: 0x33
+            }, self);
             const {asked} = await driveWith(() => click(), answers);
             if (asked.length) assert.deepEqual(asked[0], {message: 'XRAM 0102', value: '33'});
             return {asked, result: writes};

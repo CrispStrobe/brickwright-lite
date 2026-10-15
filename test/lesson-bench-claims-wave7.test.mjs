@@ -513,7 +513,7 @@ test('D7 CLOSED for the two 6502 benches: they ship an image and the example loa
     }
 });
 
-test('machines-6502-execution: the debugger reports everything the checkpoint asks for', () => {
+test('machines-6502-execution: the debugger reports everything the checkpoint asks for', async () => {
     // Nearly mis-called: DebugStatus.jsx alone shows none of this. The faces do.
     const m = extract6502Machine(circuitOf('eater6502-blink'));
     const rom = new Uint8Array(readFileSync(
@@ -538,7 +538,22 @@ test('machines-6502-execution: the debugger reports everything the checkpoint as
     assert.match(face, /debugState\.disasm\(r\.pc\)/);
     const drawer = readFileSync(path.join(GUI, 'components/tw-pseudocode/debug-drawer.jsx'), 'utf8');
     assert.match(drawer, /renderMemory/, 'the debug drawer lost its memory view');
-    assert.match(drawer, /runner\.readMem\(spec\.id, start, perPage\)/);
+    assert.match(drawer, /readMemoryPage\(runner, spec, page\)/,
+        'the rendered memory view must use the bounded reader');
+    const memorySource = readFileSync(path.join(GUI, 'lib/bw-debug/memory-view.js'), 'utf8');
+    const {readMemoryPage} = await import(`data:text/javascript,${encodeURIComponent(memorySource)}`);
+    const requests = [];
+    const spec = {id: 'mem', addressMin: 0, addressMax: 0xffff, maxReadBytes: 128};
+    const memory = readMemoryPage({readMem: (...args) => {
+        requests.push(args); return Array.from({length: args[2]}, (_, i) => i);
+    }}, spec, 0x1ff);
+    assert.deepEqual(requests, [['mem', 0xff80, 128]]);
+    assert.equal(memory.error, null);
+    assert.deepEqual(memory.bytes, Array.from({length: 128}, (_, i) => i));
+    assert.ok(readMemoryPage({readMem: () => { throw new Error('refused read'); }}, spec, 0).error);
+    const outside = readMemoryPage({readMem: () => assert.fail('out-of-range read')}, spec, 0x200);
+    assert.deepEqual(outside.bytes, []);
+    assert.ok(outside.error);
 });
 
 // D25 was adjudicated 2026-08-29 rather than simply fixed, and this test

@@ -97,8 +97,10 @@
         },
         "wedo2unified": {
             "path": "extensions/CrispStrobe/lego_wedo2_universal.js",
-            "sha256": "c8b36c5ad2bfdabd6d273da20adc86f64c2dad41d94ff8dda5c19da2613e9660",
-            "bytes": 61533
+            "sha256": "07bb17b4e16aa98e45d381ea83d135723baf29d80d68cd76fbff04454a3f0222",
+            "bytes": 66312,
+            "repo": "CrispStrobe/extensions",
+            "commit": "5fe7033f8b320b2f5819c20860b10c05aeff3c16"
         },
         "bitops": {
             "path": "extensions/CrispStrobe/bitops.js",
