@@ -2,9 +2,13 @@
 
 CLAIM EXTENSION — Claude, of the merged ESP8266 device claim (#932; device
 work landed in #934). Branch feat/esp8266-followup-20261015,
-[local path omitted]. Production stc-compiler still does not serve
-`esp8266`, so nothing here changes the hosted snapshot content, the ESP8266
-C cell or its picker compile flag.
+[local path omitted]. Production stc-compiler now serves `esp8266`
+(deployed e21b64c), so this also completes plan N13: refresh
+docs/generated/hosted-targets.json with the repo generator against the
+deployed source (taking whatever other targets it produces, unedited), mark
+the ESP8266 C cell and its lowered paths shipped and set its picker compile
+flag in the capabilities table (overlay and tracked twin) with the
+regenerated matrix doc.
 
 Envelope: this ledger; scripts/gen-hosted-targets.mjs (read stc-compiler's
 ESP8266_TARGETS so a post-deploy refresh picks it up) with a new fixture
