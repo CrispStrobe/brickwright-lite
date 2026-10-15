@@ -132,3 +132,12 @@ proceed on own-built test firmware regardless.
   lane's planned replacement — is the only real-firmware image admitted, once its linker map shows no
   chip-restricted byte (base-licences.js "verified-free" rule).
 - Option (a) — a ruling that running the CDN image in an emulator is permitted use — is not taken.
+
+## Task rows (2026-10-15)
+The steps above are queued as claimable tasks in `docs/OPEN-TASKS-2026-09-29.md`. Each row has its own goal,
+guest, done-when and mutations:
+- B19: C0–C2, boot and system tick;
+- B20: C3–C4, ring and buttons;
+- B21: C5–C7, sensors and sound;
+- B22: the from-source CPX image on the shared permissive ASF4 replacement (route (b)), then C8.
+All run only owned firmware until B22's image is classified `clean`.
