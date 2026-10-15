@@ -22,3 +22,15 @@ test('unknown or ambiguous owned engine markers refuse without dropping caller o
 test('the standard overlay CLI remains parseable by the actual Node entrypoint',()=>{
  assert.doesNotThrow(()=>execFileSync(process.execPath,['--check',fileURLToPath(new URL('../scripts/apply-vm-overlay.mjs',import.meta.url))],{stdio:'pipe'}));
 });
+
+test('comment decoys, altered owner arguments and removed wrappers cannot satisfy migration',()=>{
+ const source=engine(),call=`bwPrimitiveOwner.invoke(sequencer.runtime, thread, blockContainer, opCached, argValues, blockUtility,
+                () => blockFunction(argValues, blockUtility))`;
+ assert.ok(source.includes(call));
+ const decoy=source.replace(call,'(/* bwPrimitiveOwner.invoke( */ blockFunction(argValues, blockUtility))');
+ assert.throws(()=>patchPrimitiveOwner(decoy),/actual primitive ownership invocation wrapper differs/);
+ assert.throws(()=>patchPrimitiveOwner(source.replace(call,call.replace('argValues, blockUtility,','{}, blockUtility,'))),/actual primitive ownership invocation wrapper differs/);
+ const start=source.indexOf('const primitiveReportedValue = bwPrimitiveOwner.handles('),end=source.indexOf(';',start)+1;
+ assert.ok(start>0&&end>start);
+ assert.throws(()=>patchPrimitiveOwner(source.slice(0,start)+'/*'+source.slice(start,end)+'*/'+source.slice(end)),/actual primitive ownership declaration missing/);
+});
