@@ -1,6 +1,6 @@
 ## WeDo clone 88005 polarity and power packet correction — 2026-10-15
 
-CLAIM — Codex, isolated existing adoption branch
+DONE — Codex, isolated existing adoption branch
 `lane/wedo-lights-adoption-20261015`, worktree `wt-wedo-adoption-sparse`.
 Follow-up to the published WeDo adoption claim and draft PR980. Human-observed
 CoreBluetooth testing on the user's unbranded clone: physical port A responds
@@ -19,7 +19,10 @@ No global automatic clone detection, motor port remapping or other pin moves.
 Publish upstream first, then adopt the immutable commit with the canonical
 vendor script. Verify the measured packets, default positive polarity,
 Stop All/off, known-device protection, immutable bundle identity and local
-production build. Claim must land on remote main before Lite implementation.
+production build. Claim landed on remote main as `669107598` before Lite implementation.
+Upstream `5fe7033f` is published; 28 focused adoption tests and immutable
+targeted vendoring pass. Physical LED full power and dimming are user-confirmed;
+local production compilation is qualified separately.
 
 ## iOS redundant static archive packaging — 2026-10-15
 
@@ -53,7 +56,7 @@ rules change. Claim lands before implementation.
 
 ## WeDo 88005 lights and piezo note adoption — 2026-10-15
 
-CLAIMED — Codex, isolated branch `lane/wedo-lights-adoption-20261015`,
+DONE — Codex, isolated branch `lane/wedo-lights-adoption-20261015`,
 worktree `wt-wedo-adoption-sparse`, base `5f790c24ae91931d51617ddd1e4c69e2d1e8cfeb`.
 User authorized publication of the upstream fixes and this adoption claim.
 
@@ -63,11 +66,12 @@ and `scripts/spike/bundled-upstream.mjs`; the WeDo bundled source and its
 extension or package pin moves. Upstream: CrispStrobe/extensions PR49,
 `2cda0cf` (88005 brightness/off on A/B/both, Stop All, reliable piezo notes).
 
-Validation: immutable upstream byte identity, existing Scratch Link session
-tests, focused light/tone packet tests and the production web build. iPad
-installation verifies app deployment; real 88005 brightness and audible-tone
-verification remain explicitly pending. Claim must reach remote main before
-Lite implementation changes.
+Validation: 25 focused tests pass (light/tone packets, existing Scratch Link
+sessions, bundled extension identity including the planted-divergence negative);
+immutable targeted vendoring check passes. Production compilation is being
+qualified locally. iPad installation verifies app deployment; real 88005
+brightness and audible-tone verification remain explicitly pending. Claim
+landed as `10edc699d` before Lite implementation changes.
 
 ## ASM example admission during pending Code compilation — 2026-10-15
 
