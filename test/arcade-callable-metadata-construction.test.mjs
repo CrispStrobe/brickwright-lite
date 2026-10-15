@@ -39,11 +39,34 @@ test('inert callable service cannot acquire authority from later runtime attachm
 
 test('bound callable service preserves listener cleanup and rejects foreign or disposed resources',()=>{
     const runtime=new EventEmitter();runtime.targets=[];
+    const events=['PROJECT_START','PROJECT_STOP_ALL','PROJECT_LOADED','RUNTIME_DISPOSED'];
+    const foreignCalls=new Map(events.map(event=>[event,0]));
+    const initial=new Map(events.map(event=>{
+        runtime.on(event,()=>foreignCalls.set(event,foreignCalls.get(event)+1));
+        return [event,runtime.listeners(event)];
+    }));
     const service=new CallableValues(runtime,values);
-    for(const event of ['PROJECT_START','PROJECT_STOP_ALL','PROJECT_LOADED','RUNTIME_DISPOSED'])assert.equal(runtime.listenerCount(event),1);
+    for(const event of events) {
+        const listeners=runtime.listeners(event);
+        assert.deepEqual(listeners.filter(listener=>initial.get(event).includes(listener)),initial.get(event));
+        assert.equal(listeners.filter(listener=>listener===service.events.get(event)).length,1);
+        assert.equal(new Set(listeners).size,listeners.length,'lifecycle handlers are not duplicated');
+        const generation=service.generation;
+        runtime.emit(event);
+        assert.equal(service.generation,generation+1,'one callable reset per lifecycle event');
+        assert.equal(foreignCalls.get(event),1);
+    }
     assert.throws(()=>service.declare({},{}),/Unknown callable definition fields|Invalid callable definition/);
     assert.throws(()=>service.invocation(values.UNDEFINED,[]),/Stale or foreign callable/);
     service.dispose();
-    for(const event of ['PROJECT_START','PROJECT_STOP_ALL','PROJECT_LOADED','RUNTIME_DISPOSED'])assert.equal(runtime.listenerCount(event),0);
+    for(const event of events)assert.deepEqual(runtime.listeners(event),initial.get(event));
+    service.dispose();
+    const generation=service.generation;
+    for(const event of events) {
+        assert.deepEqual(runtime.listeners(event),initial.get(event),'repeated disposal preserves foreign listeners');
+        runtime.emit(event);
+        assert.equal(foreignCalls.get(event),2);
+    }
+    assert.equal(service.generation,generation,'disposed service receives no later lifecycle events');
     assert.throws(()=>service.invocation(values.UNDEFINED,[]),/Stale or foreign callable/);
 });
