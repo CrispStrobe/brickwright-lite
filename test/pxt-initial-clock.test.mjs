@@ -14,7 +14,7 @@ before(async () => {
 after(async () => { await browser?.close(); });
 
 test('initial clock stays zero across host delay and navigation; only runFor releases authored timers', {timeout: 5000}, async () => {
-    const context = await browser.newContext({serviceWorkers: 'block'});
+    const context = await browser.newContext({serviceWorkers: 'block', offline: true});
     const requests = [];
     await context.route('**/*', route => { requests.push(route.request().url()); return route.abort('blockedbyclient'); });
     try {
@@ -45,7 +45,7 @@ test('initial clock stays zero across host delay and navigation; only runFor rel
 });
 
 test('a live context is refused before clock setup', {timeout: 3000}, async () => {
-    const context = await browser.newContext({serviceWorkers: 'block'});
+    const context = await browser.newContext({serviceWorkers: 'block', offline: true});
     try {
         await context.newPage();
         await assert.rejects(preparePxtInitialClock(context), /requires an empty browser context/);
@@ -53,7 +53,7 @@ test('a live context is refused before clock setup', {timeout: 3000}, async () =
 });
 
 test('missing initial clock observation cannot pass guest startup admission', {timeout: 3000}, async () => {
-    const context = await browser.newContext({serviceWorkers: 'block'});
+    const context = await browser.newContext({serviceWorkers: 'block', offline: true});
     try {
         const page = await context.newPage();
         await assert.rejects(assertPxtInitialClock(page), /was not paused at Date\/performance zero/);
