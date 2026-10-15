@@ -1,5 +1,35 @@
 # Arcade unit failures: exact-source follow-up
 
+## Latest bounded controls — 2026-10-15
+
+The integrated class/default and Font branch
+`ec3f294706e101647ca0c356387773b971410c6b` passes its
+[hosted production build](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38657701085/job/116171389346),
+[gallery browser check](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38657701122/job/116171292199),
+focused controls, supplier freshness, corpus and FPGA checks. Full unit shards,
+heavy/light browser suites and numeric authoring are still running at this
+checkpoint. Their conclusions must be refreshed before any merge.
+
+Further local controls, with first failures retained:
+
+- Screen reads observe the actual 199/200 ms pause deadline. The unchanged source
+  and original comparisons retain all three composed-pixel values: `4, 9, 209`.
+- Life and countdown ordering uses real zero and elapsed timer deadlines. The
+  original trace `L9M10T10` and one countdown callback remain unchanged. Only the
+  zero case proves same-frame ordering; the elapsed case spans normal frames.
+- Callable `typeof` controls verify the actual current resource owner and retain
+  unsupported, forged and stale carrier refusals. They do not admit callable
+  classification through the source `typeof` adapter.
+- Fixed numeric Sprite-kind aliases execute queries and destruction with actual
+  identity. The after query checks the same numeric kind, so a no-op destruction
+  would fail. Unknown producers and unsupported effects/duration remain refused.
+- Malformed source-prelude mocks now provide the real block-container lookup
+  interface. Duplicate declarations still refuse before any scalar write.
+
+These controls require hosted integration qualification. They do not change the
+184-input corpus denominator or claim a new full-shard census. The complete
+historical failures below remain preserved.
+
 This is a triage list from reviewed integration source
 `2c2141954cbc3063274a18650d9e248f63bfdf92`,
 [completed unit shard](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38586245394/job/115928912237).
