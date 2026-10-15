@@ -11,8 +11,12 @@ const source = readFileSync(new URL('../overlay/scratch-gui/src/components/tw-ps
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 // Execute the actual UI method. Only its lazy module loader, parser boundary
 // and file download are supplied here; emission and the project writer are real.
+const methodSource = scopeAfter(source, 'async exportMakeCode ()');
+const lazyImport = `await import(
+                /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js')`;
+assert.equal(methodSource.split(lazyImport).length, 2, 'replace exactly the shipped lazy compiler import');
 const method = new AsyncFunction('downloadBlob', 'loadMakeCode', 'MAKECODE_EDITOR',
-    scopeAfter(source, 'async exportMakeCode ()').replace(/await import\([\s\S]*?\)/, 'await loadMakeCode()'));
+    methodSource.replace(lazyImport, 'await loadMakeCode()'));
 const editors = {microbit: 'https://makecode.microbit.org/', calliopemini: 'https://makecode.calliope.cc/',
     ev3: 'https://makecode.mindstorms.com/'};
 const done = [...source.matchAll(/mcExportDone: ([\s\S]*?),\n\s*mcExportEmpty:/g)]
