@@ -15,6 +15,6 @@ test('installed callable reflection uses current owned action without changing i
  const target=resource.target,definition=target.blocks.getBlock(target.blocks.getProcedureDefinition(resource.definition.procedure));const old=definition.next;definition.next=null;assert.throws(()=>native._sourceTypeOf(read('first')),/source graph changed/);definition.next=old;
  const owner=native._callableValues;native._callableValues={};assert.throws(()=>native._sourceTypeOf(read('first')),/native owner changed/);native._callableValues=owner;
  run.vm.stopAll();assert.throws(()=>native._sourceTypeOf(read('first')),/body missing or stale/);
- assert.ok(arcadeToPseudocode(source+'let reflected=typeof first;').unsupported.length,'source operand remains closed until independently qualified');
+ assert.deepEqual(arcadeToPseudocode(source+'let reflected=typeof first;').unsupported,[]);
  }finally{run.vm.stopAll();run.vm.quit();clearStrayTimers();}
 });

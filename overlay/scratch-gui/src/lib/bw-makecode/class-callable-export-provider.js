@@ -279,6 +279,10 @@ export function createClassCallableExportProvider({target,project,classes,defini
             accepted=true;return true;
             }finally{if(!accepted)plan=null;}
         },
+        currentInputType(block,name){
+            if(!plan||!Object.values(target.blocks).includes(block))return null;
+            verifyWriters();return slotType(block.inputs?.[name]?.[1],scope(block));
+        },
         valueType(block,owner,environment){verifyWriters();return block.opcode==='arcade_setObjectField'?null:operation(block,owner,environment);},
         statementType(block,owner,environment){verifyWriters();return operation(block,owner,environment)!==null;},
         expressionType(block){
@@ -317,7 +321,13 @@ export function createClassCallableExportProvider({target,project,classes,defini
                 if(block===target.blocks[id])return true;if(!block||seen.has(block))return false;seen.add(block);
                 return Object.values(block.inputs||{}).some(input=>typeof input[1]==='string'&&contains(target.blocks[input[1]],id,seen))||contains(target.blocks[block.next],id,seen);
             };
-            if(![...moduleCreates].some(id=>contains(definition.block,id)))return null;
+            const constructor=Object.entries(target.blocks).some(([id,block])=>{
+                if(block.opcode!=='arcade_createObject'||!contains(definition.block,id))return false;
+                const type=slotType(id,scope(block)),cls=type?.kind==='named'&&classes.get(type.name);
+                return !!cls&&cls.target===target&&!cls.intrinsic&&plan.classes.some(row=>row.name===cls.name);
+            });
+            if(![...moduleCreates].some(id=>contains(definition.block,id))&&!constructor)return null;
+            verifyWriters();
             const provider=this;
             return {
                 generatedLocal(id){const block=target.blocks[id],proof=provider.localAssignment(block,owner);if(proof)cells.set(proof.name,proof.type);return proof;},

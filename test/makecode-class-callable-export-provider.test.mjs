@@ -122,3 +122,17 @@ test('class global reference type follows actual allocations and every writer, n
     f.target.blocks.write.inputs.VALUE=[1,'read'];
     assert.equal(p.expressionType(f.target.blocks.read),null,'unanchored variable alias cycle has no allocation authority');
 });
+
+test('constructor-only startup context requires its connected current ordinary allocation',()=>{
+ const f=fixture();f.cls.constructor='ctor %s';f.cls.parameters=[];const ctor=f.plan.owners[1];ctor.procedure=f.cls.constructor;ctor.parameters=[];ctor.signature.parameters=[];f.plan.bindings=f.plan.bindings.filter(row=>row.kind!=='parameter');f.definitions.clear();f.definitions.set(f.cls.constructor,{target:f.target,code:f.cls.constructor,block:f.target.blocks.definition,parameters:['self']});
+ const root=f.target.blocks.startup={opcode:'arcade_whenSourceStarts',topLevel:true,parent:null,next:'set',inputs:{}};
+ f.target.blocks.set={opcode:'arcade_setLocal',parent:'startup',next:null,inputs:{NAME:[1,[10,'temp']],VALUE:[1,'allocation']}};
+ const allocation=f.target.blocks.allocation={opcode:'arcade_createObject',parent:'set',inputs:{CLASS:[1,[10,'Box']],ARGS:[1,[10,'[]']]}};
+ const provider=f.provider();assert.equal(provider.validateCurrentPlan(f.plan,f.target),true);
+ const context=provider.contextForModuleRoot(root,{},new Set());assert.ok(context);assert.deepEqual(context.generatedLocal('set'),{name:'temp',type:named('Box'),first:true});
+ allocation.inputs.ARGS=[1,'argument'];f.target.blocks.argument={opcode:'arcade_functionArgument',parent:'allocation',inputs:{VALUE:[1,[4,'3']],REST:[1,[10,'[]']]}};assert.throws(()=>provider.contextForModuleRoot(root,{},new Set()),/constructor arguments differ/);
+ allocation.inputs.ARGS=[1,[10,'[]']];delete f.target.blocks.argument;
+ f.target.blocks.set.inputs.VALUE=[1,[4,'2']];assert.equal(provider.contextForModuleRoot(root,{},new Set()),null,'disconnected allocation is not a typed startup anchor');f.target.blocks.set.inputs.VALUE=[1,'allocation'];
+ allocation.inputs.CLASS=[1,'opaque'];f.target.blocks.opaque={opcode:'data_variable',parent:'allocation',fields:{VARIABLE:['Box','foreign']}};assert.equal(provider.contextForModuleRoot(root,{},new Set()),null);allocation.inputs.CLASS=[1,[10,'Box']];delete f.target.blocks.opaque;
+ f.cls.target={...f.target};assert.equal(provider.contextForModuleRoot(root,{},new Set()),null,'a foreign class registration cannot anchor this startup');
+});

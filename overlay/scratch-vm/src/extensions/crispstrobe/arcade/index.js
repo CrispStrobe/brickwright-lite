@@ -80,7 +80,10 @@ module.exports = makeExt(`// Name: Arcade
         image: (value, id) => this._images.has(id) && this._image(value) === this._images.get(id),
         buffer: (value, id) => !this._bufferSuspended && Boolean(this._bufferHeap?.values.get(id)),
         object: value => {sourceObjectOwner.inspect(value);return true;},
-        callable: value => sourceCallableOwner.typeOf(value)
+        callable: value => {
+          if(sourceCallableOwner.resource(value).target.isOriginal===false)throw new Error('Callable reflection on clone targets is not qualified');
+          return sourceCallableOwner.typeOf(value);
+        }
       });
       this._spriteValues = new Map();
       this._playerValues = new Map();this._nextPlayerValue=0;

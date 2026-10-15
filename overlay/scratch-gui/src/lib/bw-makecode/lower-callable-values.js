@@ -59,9 +59,69 @@ export function lowerCallableValues(program,{legacyCallbacks=new WeakSet(),class
         if(node.paramTypes)out.paramTypes={...node.paramTypes};
         return out;
     };
+    const reflectionWriters=new Map();
+    const writer=(binding,value,op='=',source=null)=>{if(!binding)return;if(!reflectionWriters.has(binding))reflectionWriters.set(binding,[]);reflectionWriters.get(binding).push({value,op,source});};
+    const collectWriters=node=>{
+        if(!node||typeof node!=='object')return;
+        if(Array.isArray(node)){node.forEach(collectWriters);return;}
+        if(node.type==='Declaration')for(const row of node.decls)writer(flow.lexical.scopes.get(node)?.names.get(row.name),row.init,'=',row);
+        if(node.type==='Assignment'&&node.left?.type==='Identifier')writer(flow.lexical.references.get(node.left),node.right,node.op,node);
+        if(node.type==='Update'&&node.argument?.type==='Identifier')writer(flow.lexical.references.get(node.argument),null,node.op);
+        for(const[key,value]of Object.entries(node))if(!['originalBody','parameterDefaults','paramTypes','typeParameters'].includes(key)&&value&&typeof value==='object')collectWriters(value);
+    };
+    collectWriters(program.body);
+    const moduleOrder=new WeakMap();let ordinal=0;
+    const orderedExpression=node=>{
+        if(!node||typeof node!=='object'||['FunctionExpression','Conditional'].includes(node.type)||node.type==='Binary'&&['&&','||','??'].includes(node.op))return;
+        if(Array.isArray(node)){node.forEach(orderedExpression);return;}
+        for(const[key,value]of Object.entries(node))if(!['originalBody','parameterDefaults'].includes(key)&&value&&typeof value==='object')orderedExpression(value);
+        moduleOrder.set(node,++ordinal);
+    };
+    for(const statement of program.body){
+        if(statement.type==='Declaration')for(const row of statement.decls){orderedExpression(row.init);moduleOrder.set(row,++ordinal);}
+        else if(statement.type==='ExpressionStatement')orderedExpression(statement.expr);
+    }
+    const numericReflectionArgument=(node,seen=new Set())=>{
+        if(node?.type==='Parenthesized')return numericReflectionArgument(node.expression,seen);
+        if(node?.type==='Number')return Number.isFinite(Number(node.value));
+        if(node?.type==='Unary'&&['+','-','~'].includes(node.op))return numericReflectionArgument(node.argument,seen);
+        if(node?.type==='Binary'&&['+','-','*','/','%'].includes(node.op))return numericReflectionArgument(node.left,seen)&&numericReflectionArgument(node.right,seen);
+        if(node?.type!=='Identifier')return false;
+        const binding=flow.lexical.references.get(node),writes=reflectionWriters.get(binding);
+        return !!writes?.length&&!seen.has(binding)&&writes.every(row=>
+            ['=','+=','-=','*=','/=','%='].includes(row.op)&&numericReflectionArgument(row.value,new Set([...seen,binding])));
+    };
+    const reflectionProducer=(node,seen=new Set())=>{
+        if(node?.type==='Parenthesized')return reflectionProducer(node.expression,seen);
+        const type=flow.expressionTypes.get(node),targets=flow.expressionTargets.get(node);
+        if(type?.kind!=='callable'||!targets?.size||![...targets].every(target=>sites.has(target)))return false;
+        if(node.type==='FunctionExpression')return sites.has(node);
+        if(node.type==='Member')return classPrototype;
+        if(node.type==='Identifier') {
+            const binding=flow.lexical.references.get(node);
+            if(!binding||seen.has(binding))return false;
+            if(classPrototype&&binding.kind==='parameter')return true;
+            const writes=reflectionWriters.get(binding);
+            if(!writes?.length)return false;
+            const concrete=writes.filter(row=>row.value&&row.value.type!=='Undefined'),empty=writes.filter(row=>!row.value||row.value.type==='Undefined');
+            if(empty.length && (empty.length!==1||writes[0]!==empty[0]||binding.kind!=='global'||
+                !moduleOrder.has(node)||!concrete.some(row=>moduleOrder.has(row.source)&&moduleOrder.get(row.source)<moduleOrder.get(node))))return false;
+            return !!concrete.length&&concrete.every(row=>row.op==='='&&reflectionProducer(row.value,new Set([...seen,binding])));
+        }
+        if(node.type==='Call'&&node.callee?.type==='Identifier') {
+            const binding=flow.lexical.references.get(node.callee);
+            return binding?.kind==='function'&&!binding.written&&binding.node?.type==='FunctionDeclaration'&&
+                node.args.every(argument=>numericReflectionArgument(argument));
+        }
+        return false;
+    };
     const rewrite=(node,{callee=false,ownerScope=null}={})=>{
         if(!node || typeof node!=='object')return node;
         if(Array.isArray(node))return node.map(value=>rewrite(value,{ownerScope}));
+        if(node.type==='Unary' && node.op==='typeof') {
+            if(classPrototype?node.bwSourceCallableTypeOf===true:reflectionProducer(node.argument))
+                return {...node,bwSourceCallableTypeOf:true,argument:rewrite(node.argument,{ownerScope})};
+        }
         if(node.type==='FunctionExpression' && !legacyCallbacks.has(node)) {
             const info=sites.get(node);if(!info)return node;
             const targets=flow.expressionTargets.get(node) || new Set([node]);
