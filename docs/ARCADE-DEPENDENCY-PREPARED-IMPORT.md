@@ -46,9 +46,10 @@ including warnings and exceptions; a failed or unknown stage is not clean.
 
 ## Execution boundary
 
-The browser worker already supports package-input preparation through
-`projectInputs: true`; expose that operation without compiling the user's
-program. The Node resolver and browser resolver supply the same shared helper
+The SDK glue has a package-input preparation branch for `projectInputs: true`.
+The current browser worker transport does not forward that option. Add an
+explicit preparation operation and expose it without compiling the user's
+program; a compile request that drops the option is not preparation. The Node resolver and browser resolver supply the same shared helper
 contract. Package loading and asset generation still execute SDK preparation:
 source-only tests do not qualify that execution. Any actual SDK preparation
 needs its separately reviewed finite execution plan and retained evidence.
