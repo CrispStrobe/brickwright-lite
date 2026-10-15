@@ -1,6 +1,6 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
-Updated 2026-10-14. The current-state refresh below supersedes the older
+Updated 2026-10-15. The current-state refresh below supersedes the older
 2026-10-10 checkpoints retained later in this guide. This is the public
 entry point for continuing MakeCode compatibility work without chat history.
 Read the optional, gitignored `docs/ARCADE-AGENT-HANDOFF.local.md` for the
