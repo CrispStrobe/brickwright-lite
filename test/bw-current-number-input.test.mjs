@@ -17,7 +17,8 @@ test('only explicit current primitive input roles interpret Number leaves',()=>{
   assert.equal(fixture(opcode,'OP').run(),'20','operator socket has no Number authority');
  }
  for(const opcode of ['arcade_createCallable','arcade_objectField'])assert.equal(fixture(opcode,'VALUE').run(),'20','loan alone is insufficient');
- for(const opcode of ['arrays_createReference','arrays_namedReference','arrays_referenceItem','__proto__','toString','unknown'])assert.equal(owner.handles(opcode),false);
+ for(const opcode of ['arrays_createReference','arrays_namedReference','arrays_referenceItem']){assert.equal(owner.handles(opcode),true);assert.equal(fixture(opcode,'VALUE').run(),'20','loan-only operation has no Number socket');}
+ for(const opcode of ['__proto__','toString','unknown'])assert.equal(owner.handles(opcode),false);
 });
 test('Array input interpretation preserves signed zero and finite leaf spellings without decoding text',()=>{
  for(const value of ['-0','0.25','-3','5e-324','1e+21'])assert.ok(Object.is(fixture('arrays_valueUnary','VALUE',value).run(),Number(value)));
