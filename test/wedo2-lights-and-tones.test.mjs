@@ -39,7 +39,7 @@ test('88005 A/B/ALL brightness uses raw light bytes, even when limiter denies ev
   hub._rateLimiter.okayToSend = () => false;
   await extension.setLightBrightness({PORT: 'ALL', BRIGHTNESS: 25});
   await extension.lightOff({PORT: 'B'});
-  assert.deepEqual(packets(writes), [[1, 1, 2, 25], [2, 1, 2, 25], [2, 1, 2, 0]]);
+  assert.deepEqual(packets(writes), [[1, 1, 1, 25], [2, 1, 1, 25], [2, 1, 1, 0]]);
   assert.ok(writes.every(w => w.uuid === '00001565-1212-efde-1523-785feabcd123'));
 });
 
@@ -69,7 +69,7 @@ test('unannounced ports work, later announcements win, and stop-all switches off
   const {extension, hub, writes} = await setup();
   await extension.setLightBrightness({PORT: 'ALL', BRIGHTNESS: 100});
   await hub.stopAll();
-  assert.deepEqual(packets(writes), [[1, 1, 2, 100], [2, 1, 2, 100], [1, 1, 2, 0], [2, 1, 2, 0]]);
+  assert.deepEqual(packets(writes), [[1, 1, 1, 100], [2, 1, 1, 100], [1, 1, 1, 0], [2, 1, 1, 0]]);
   hub._handleAttachedIO([1, 0]);
   hub._handleAttachedIO([1, 1, 0, 1]);
   assert.equal(hub.getLight(1), null);
@@ -102,4 +102,40 @@ test('note block exposes Bluetooth write failure instead of silently waiting', a
   const {extension, hub} = await setup();
   hub._connection.send = async () => { throw new Error('write failed'); };
   await assert.rejects(extension.playNote({NOTE: 69, DURATION: 1}), /write failed/);
+});
+
+
+test('clone light witnessed on protocol port 2: negative full power, dimming and off', async () => {
+  const {extension, writes} = await setup();
+  await extension.setLightBrightness({PORT: 'B', BRIGHTNESS: 100, POLARITY: 'reversed'});
+  await extension.setLightBrightness({PORT: 'B', BRIGHTNESS: 50, POLARITY: 'reversed'});
+  await extension.lightOff({PORT: 'B'});
+  assert.deepEqual(packets(writes), [[2, 1, 1, 0x9c], [2, 1, 1, 0xce], [2, 1, 1, 0]]);
+  const block = extension.getInfo().blocks.find(b => b.opcode === 'setLightBrightness');
+  assert.equal(block.arguments.POLARITY.defaultValue, 'normal');
+  assert.equal(block.arguments.POLARITY.menu, 'lightPolarity');
+});
+
+test('unannounced motor/light guesses do not permanently lock the port type', async () => {
+  const {extension, hub, writes} = await setup();
+  assert.ok(hub.getMotor(2));
+  await extension.setLightBrightness({PORT: 'B', BRIGHTNESS: 100, POLARITY: 'reversed'});
+  assert.deepEqual(packets(writes), [[2, 1, 1, 0x9c]]);
+  assert.ok(hub.getMotor(2));
+  // A real attachment announcement still takes precedence over guesses.
+  hub._handleAttachedIO([2, 1, 0, 1]);
+  await extension.setLightBrightness({PORT: 'B', BRIGHTNESS: 100, POLARITY: 'reversed'});
+  assert.equal(writes.length, 1);
+});
+
+
+test('reversed BOTH clamps brightness and Stop All switches off every light', async () => {
+  const {extension, hub, writes} = await setup();
+  hub._rateLimiter.okayToSend = () => false;
+  await extension.setLightBrightness({PORT: 'ALL', BRIGHTNESS: 999, POLARITY: 'reversed'});
+  await hub.stopAll();
+  await extension.setLightBrightness({PORT: 'B', BRIGHTNESS: -1, POLARITY: 'reversed'});
+  assert.deepEqual(packets(writes), [
+    [1, 1, 1, 156], [2, 1, 1, 156], [1, 1, 1, 0], [2, 1, 1, 0], [2, 1, 1, 0],
+  ]);
 });
