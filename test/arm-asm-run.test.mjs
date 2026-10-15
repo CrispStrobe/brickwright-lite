@@ -63,14 +63,17 @@ async function edgesOf (fixtureId, target, clockHz) {
     const edges = {};
     const setPin = board.setPin.bind(board);
     board.setPin = (pin, mode, level) => { edges[pin] = (edges[pin] || 0) + 1; return setPin(pin, mode, level); };
-    const {target: t, adapter} = await bw.createDebugTarget(run.kind, {board, program, symbols: null, clockHz});
+    // STM32 targets take their clock from the firmware's RCC setup and refuse
+    // a `clockHz` (bw-board #600); only rp2040js is still told its clock.
+    const {target: t, adapter} = await bw.createDebugTarget(run.kind,
+        {board, program, symbols: null, ...(clockHz !== undefined ? {clockHz} : {})});
     bw.createDebugSession(t, {onChange: () => {}}).start();
     for (let i = 0; i < 20; i++) adapter.advanceNs(10_000_000);     // 200 ms
     return edges;
 }
 
 test('the STM32F030 program toggles PA5 on the light tier', async () => {
-    const edges = await edgesOf('stm32f030-blink', 'stm32f030', 8_000_000);
+    const edges = await edgesOf('stm32f030-blink', 'stm32f030');
     assert.ok(edges.PA5 >= 10, `PA5 changed ${edges.PA5 || 0} times in 200 ms`);
     assert.ok(!edges.PA6 || edges.PA6 <= 1, 'only PA5 is driven');
 });
