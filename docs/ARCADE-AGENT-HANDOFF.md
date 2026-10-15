@@ -70,6 +70,21 @@ compile. The genuinely new current export still needs its own original-runtime
 comparison. Neither result establishes complete gameplay or visible authoring,
 and neither changes the whole-project census.
 
+Two more authentic projects now pass the same five native routes. Basketball
+preserves its athlete, hoop, motion and countdown. Winter's complete context
+initializes three actors and a splash before registering the root interval;
+real A input resumes that scene, then its snow callbacks advance. The first two
+Winter observers made incorrect root-only assumptions and remain recorded as
+failures. The corrected observations preserve all actors and input files.
+These are bounded local controls with headless warnings, not original-runtime,
+visible-editor or whole-project promotions.
+
+The optional Array ownership prototype remains held. It now retires the calling
+lineage when the current graph changes, but an index conversion can still change
+the graph and commit a write before final validation. The supplier successor
+must validate after coercion and before each actual mutation. Keep it isolated;
+passing downstream-stop controls does not prove that a write was prevented.
+
 ### Current hosted checks and held candidates
 
 Canonical [PR157](https://github.com/CrispStrobe/sb3-creator/pull/157) is merged

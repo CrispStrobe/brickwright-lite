@@ -57,9 +57,15 @@ See the [qualified Image boundary](compatibility/arcade-owned-image-class-callab
 
 The candidate Array Number bridge corrects nine real current-block cases while
 preserving text. Native evidence does not close operator-menu or save/export
-journeys. Canonical supplier CI is currently rejected as disabled; its pin and
-bundle remain unchanged. Qualify the actual shipped supplier before the hosted
-Number-versus-text authoring journey.
+journeys. The supplier fork's Actions have been reenabled; one exact-head CI run is
+pending, with its production pin and bundle unchanged. Qualify the actual
+shipped supplier before the hosted Number-versus-text authoring journey.
+
+The opt-in Array operation prototype is separately held on a real index
+coercion that changes the current graph before a write. A late private rejection
+stops continuation but does not undo that write. Finish the supplier's actual
+mutation-boundary checks before enabling it or admitting typed Array formals;
+this is also a prerequisite for a trustworthy visible invalid-input refusal.
 
 ## Captured inspection and class constraint editing — 2026-10-15
 
