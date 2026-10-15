@@ -1,5 +1,23 @@
 # Arcade unit failures: exact-source follow-up
 
+## Class and runtime repair composition — 2026-10-15
+
+Local integration `ff720cda29320f352d24ad1b7cb18a5cdfafb089` passes 73 combined
+native/source controls. Valid class exports now handle actual Undefined/Null,
+array-held class receivers and current mutations, staged call equations and
+inherited intrinsic constructor descriptors. Nested condition inputs receive
+their real parent in the producer. This restores the retained eleven-context
+native/Code/export selection without relaxing incompatible primitive edits.
+
+Independent review found an additional malformed-root bypass: breaking a
+source-root parent could hide a String write to a Number class field. The
+repair explicitly refuses malformed non-class roots as well as class owners.
+Shared reporter occurrences and missing edges refuse; cyclic statement chains
+produce a diagnostic and terminate. The original failed counterexample and
+terminated cycle probe remain retained. The new full hosted run must establish
+that these corrections close the observed failures; no cancelled shard is
+reclassified as passing.
+
 ## Extension refresh failure at 6350fba49 — 2026-10-15
 
 [Run 38684882095](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38684882095)

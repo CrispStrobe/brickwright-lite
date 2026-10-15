@@ -8,6 +8,38 @@ operator's actual checkouts, tools, private corpus and original receipts.
 Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
 
+## Captured cells and valid class exports integrated — 2026-10-15
+
+Local integration `ff720cda29320f352d24ad1b7cb18a5cdfafb089` adds reviewed
+[captured primitive cells](compatibility/arcade-console-captured-cells.md) and
+valid class-export repairs. A 73-control combined selection passes with named
+functions, Player producers, managed Number boundaries, Code/SB3 roundtrips,
+the two runtime repairs and the source/mirror check. Full hosted qualification
+is still required; this is not a full-suite or main-adoption claim.
+
+Captured inspection now follows actual globally unique registration tokens,
+scoped cells, forwarded formals and every local/captured writer, including
+nested registrations and mutable primitive siblings beside an opaque Image.
+Stop/restart and current graph edits retain their ownership guards. Lyla now
+exports without the captured-inspection refusal, but its unused text helper
+loses a parameter constraint on export and still prevents full reimport.
+Preserve that body and fix the parameter ABI; do not prune it or waive the
+text producer check. Selected-original captured controls are a separate gate.
+
+Class exports now retain actual Undefined/Null facts, concrete array allocation
+and element/writer flow, converged producer equations and exact inherited
+intrinsic constructor descriptors. Incompatible Number/Text edits still refuse.
+The producer repairs incorrect parent links in nested conditions; the matching
+canonical change is [sb3-creator PR153](https://github.com/CrispStrobe/sb3-creator/pull/153),
+with separate qualification and pin adoption. Malformed source roots, missing
+edges, shared children and cycles explicitly refuse; cyclic statement walks
+terminate. A genuine malformed-root bypass found during review remains retained.
+
+The static rerun at `e9f4a909b` still reports **147 translated / 36 partial /
+one parse failure**. Every input was compared again with its actual frozen Git
+blob. Authentic context structural counts remain 20 of 29 original-valid
+contexts; neither those counts nor focused passes establish complete gameplay.
+
 ## Named values, Player producers and runtime follow-up — 2026-10-15
 
 Local integration `4638b66172ca53dc6154ebb01217e7eb0ddbbe40` adopts the

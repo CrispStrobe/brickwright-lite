@@ -1,5 +1,22 @@
 # Conversion capabilities and GUI closure ledger
 
+## Captured inspection and class constraint editing — 2026-10-15
+
+Current captured Number/String cells now have scoped registration, all-writer
+and lifecycle proofs for inspection. Native, Code, same/fresh saved projects
+and current export/reimport controls cover nested mutable captures beside an
+opaque sibling. An authentic Lyla export advances, but its unused text helper's
+parameter contract still prevents reimport. That separate ABI gap remains open.
+
+Valid class constraint exports now retain staged values, defaults and class
+array receivers. Malformed roots/edges, shared reporters and cyclic chains
+produce explicit refusals. GUI acceptance still requires editing these cases
+in Blocks, displaying the exact refused field/parameter/procedure, navigating
+to the affected blocks and preserving edited values after save/reopen. A
+native diagnostic string alone does not close that interaction. The producer
+parent repair and the extension-refresh animation journey also need hosted
+qualification on the integrated source.
+
 ## Declaration values and Player inspection — 2026-10-15
 
 Qualified local conversion/runtime lanes now cover zero-argument named
