@@ -1,0 +1,24 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {createRequire}from'node:module';
+import {arcadeToPseudocode}from'../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {parseMakeCodeTs}from'../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
+import {prepareProcedureConstraintSource}from'../overlay/scratch-gui/src/lib/bw-makecode/procedure-constraint-source.js';
+import {projectToArcade}from'../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {runProgram,stepFrames,clearStrayTimers}from'./helpers/bw-vm.mjs';import{VM_SRC}from'./helpers/bw-extensions.mjs';
+const BW=createRequire(import.meta.url)(VM_SRC+'/util/bw-values.js'),options={procedureConstraintsPrototype:true};
+const source='let trace="";let defaultCalls=0;let argCalls=0;function nextA(){defaultCalls+=1;trace+="A";return 20}function nextB(){defaultCalls+=1;trace+="B";return 30}function supplied(){argCalls+=1;return 8}function choose(first:any=nextA(),second:any=nextB()){trace+="C";return first+second}let omitted=choose();let explicit=choose(undefined,undefined);let present=choose(supplied(),7);';
+test('Any defaults require actual parser metadata, matching conditional bodies and primitive default producers',()=>{
+ assert.deepEqual(arcadeToPseudocode(source,options).unsupported,[]);
+ assert.deepEqual(arcadeToPseudocode('function f(first:any=1,second:any=first){return second}let result=f();',options).unsupported,[]);
+ const cases=['function f(x:number=1){}f();','function f(x:string="ok"){}f();','function f(x:boolean=true){}f();','function f(x:any=image.create(1,1)){}f();','function f(x:any=unknown){}f();','function f(x:any=[]){}f();','function f<T>(x:any=1){}f();','function f(x:any=()=>1){}f();','function f(required:number,x:Image=image.create(1,1)){}f(1);','function f(required:string,x:any=1){}f();','function f(x:any=x){}f();','function f(first:any=second,second:any=1){}f();'];assert.equal(cases.length,12);
+ for(const text of cases)assert.ok(arcadeToPseudocode(text,options).unsupported.some(m=>/Procedure parameter constraint:/.test(m)),text);
+ assert.throws(()=>arcadeToPseudocode('function f(...x:any[]){}f();',options),/expected ident/);
+ const parsed=()=>parseMakeCodeTs('function f(x:any=20){return x}f();',{parameterDefaults:true,retainCallableMetadata:true});
+ const changes=[fn=>{fn.parameterDefaultPrologue=false;},fn=>{fn.body.shift();},fn=>{fn.body[0].test.op='!==';},fn=>{fn.body[0].consequent[0].expr.right={type:'String',value:'wrong'};},fn=>{fn.parameterDefaults.push(fn.parameterDefaults[0]);},fn=>{fn.parameterDefaults[0].name='other';}];assert.equal(changes.length,6);
+ for(const change of changes){const ast=parsed();change(ast.body[0]);assert.ok(prepareProcedureConstraintSource(ast).diagnostics.some(m=>/Procedure parameter constraint:/.test(m)));}
+ const anySuppliedReference=arcadeToPseudocode('function f(x:any=1){return x}let result=f(image.create(1,1));',options);assert.equal(anySuppliedReference.unsupported.some(m=>/Procedure parameter constraint:/.test(m)),false);
+});
+test('actual Any default source preserves conditional once-only order through portable current export',async()=>{
+ const imported=arcadeToPseudocode(source,options);assert.deepEqual(imported.unsupported,[]);const runs=[];
+ const check=run=>{const vars=run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)),actual=Object.fromEntries(['omitted','explicit','present','trace','defaultCalls','argCalls'].map(name=>[name,BW.decode(vars.find(v=>v.name===name)?.value)]));assert.deepEqual(actual,{omitted:50,explicit:50,present:15,trace:'ABCABCC',defaultCalls:4,argCalls:1});assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);};
+ try{const first=await runProgram(imported.code,{frames:50});runs.push(first);check(first);const feedback=await runProgram(first.creator.decompile(JSON.parse(first.vm.toJSON())),{frames:50});runs.push(feedback);check(feedback);const bytes=Buffer.from(await(await first.vm.saveProjectSb3()).arrayBuffer());first.vm.stopAll();await first.vm.loadProject(bytes);first.vm.greenFlag();await stepFrames(first.vm,50);check(first);const fresh=await runProgram('DEVICE ARCADE\nSPRITE Game:\nWHEN arcade source starts:\n  hide',{frames:0});runs.push(fresh);fresh.vm.stopAll();await fresh.vm.loadProject(bytes);fresh.vm.greenFlag();await stepFrames(fresh.vm,50);check(fresh);const exported=projectToArcade(JSON.parse(fresh.vm.toJSON()));assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/first:\s*any/);assert.match(exported.ts,/undefined/);const again=arcadeToPseudocode(exported.files,options);assert.deepEqual(again.unsupported,[]);const last=await runProgram(again.code,{frames:50});runs.push(last);check(last);}finally{for(const run of runs){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+});
