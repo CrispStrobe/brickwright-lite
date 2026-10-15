@@ -1,3 +1,11 @@
+# SPIKE execution: current state and next lanes
+
+Recorded 2026-10-05; adoption checkpoint 2026-10-07; lifecycle follow-up 2026-10-15. Refresh the public default branches and `LANES.md` before
+claiming a task. This is a bounded handover, not full firmware compatibility or
+physical SPIKE qualification. Repository-relative paths below belong to the
+named owner. Operational locations, reference images and raw transcripts are
+not public documentation inputs.
+
 ## Pending native Stop serialization — 2026-10-15
 
 A direct second pane Stop can arrive after session detachment but before native
@@ -9,20 +17,53 @@ controls pass, six broken guards are caught, and 220 affected controls passed
 before the final focused case was added. Older timing controls preserve late
 reply delivery after actual teardown instead of waiting circularly.
 
-This source is stacked on the unqualified Code caller/output follow-up. Fresh
-installed own-guest repeated-Stop cleanup/recovery and final-head CI are still
+This source is stacked on the Code caller/output follow-up; its three frozen
+package cases do not qualify repeated Stop. Fresh installed own-guest repeated-Stop cleanup/recovery and final-head CI are still
 required; the earlier lifecycle package does not qualify this implementation.
 Full G02, physical/reference, licensing and release qualification remain open.
 
-# SPIKE execution: current state and next lanes
 
-Recorded 2026-10-05; adoption checkpoint 2026-10-07; lifecycle follow-up 2026-10-15. Refresh the public default branches and `LANES.md` before
-claiming a task. This is a bounded handover, not full firmware compatibility or
-physical SPIKE qualification. Repository-relative paths below belong to the
-named owner. Operational locations, reference images and raw transcripts are
-not public documentation inputs.
+## Installed G02 Code caller and output qualification — 2026-10-15
 
-## Pending G02 replacement-output phase follow-up — 2026-10-15
+Frozen consumer `59ddd74174f644f330f06ce567fac6b8c5f7dde3` passes three
+installed own-NuttX cases and their standalone readers, with six successful
+native startup transactions, full cleanup and distinct recovery in every case.
+Official frontend checkout and consumer trees match; independent package/input
+audits pass. Its eleven enabled source-head checks pass in
+[run38790549120](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38790549120)
+and the separate vendor check; two conditional GUI/deployment jobs skip.
+
+- An older Code call's original successful return cannot clear a newer pending
+  caller's busy flag, completed status or exact `42\n` output.
+- An authored error delivered from the older call likewise leaves the newer
+  caller's feedback unchanged. Both cases begin through the real Code control,
+  preserve the original pane/native calls for two Python uploads, and explicitly
+  author concurrent mounted-handler entry while the ordinary toolbar is busy.
+  They do not establish two clickable busy toolbar runs or arbitrary scheduling.
+- A fresh original old-Python output frame is held across actual replacement,
+  STOP and upload preparation. No old/preparatory output reaches the new Code
+  consumer before the original START reply is accepted. Current output first
+  arrives in a later `state.read`; immediate START output remains host-covered.
+
+Three failed test attempts remain preserved: a missing expected print newline,
+a snapshot of a not-yet-created log, and a guest-time delay that did not fit the
+unchanged observation window. Corrected controls require exact print bytes,
+record absent logs explicitly and use a shorter authored guest delay. They
+retain fresh native frame/sequence/reply provenance, original calls, cleanup,
+recovery and the same observation/resource bounds. Successful cases were not
+replayed to read evidence. Product sources and the installed package did not
+change during these corrections.
+
+This result belongs to the named frozen package. Integration preserves its
+SPIKE/native inputs and both importer copies while retaining newer main work.
+Final documentation-head CI, the lifecycle integration in
+[PR979](https://github.com/CrispStrobe/brickwright-lite/pull/979), and exact-head
+merge review remain required. The repeated-Stop follow-up in
+[PR990](https://github.com/CrispStrobe/brickwright-lite/pull/990) is separate and
+not installed-qualified here. Whole G02, reference/physical behavior, rollback,
+licensing, distribution and release qualification remain open.
+
+## G02 replacement-output phase follow-up — 2026-10-15
 
 `lane/spike-g02-output-phase-20261015` keeps prior poll/STOP and upload-preparation
 output out of the new Code consumer. The existing reply decoder must admit the
@@ -34,8 +75,9 @@ Thirteen authored session/client/pane controls pass; the original baseline fails
 eight, and ten broken guards are detected. All 112 affected host controls pass.
 The initial broader run lacked a sparse importer input; it is preserved, the
 tracked input was materialized, and the final affected run passes. These are host
-controls. Source-bound installed output/frame/reply evidence and final-head CI
-are pending. This is separate from the frozen composed qualification below;
+controls. The frozen consumer above now passes source-bound installed output,
+frame/reply, cleanup and recovery qualification; final documentation-head CI
+and merge review remain pending. This is separate from the frozen composed qualification below;
 it changes no firmware/native/model pin or importer logic and does not establish
 physical UART attribution or close G02.
 
@@ -51,13 +93,35 @@ retained-session ownership guard. All 176 affected host controls pass; a new
 combined sequence rejects both single-fix baselines. Eleven unchanged pane
 methods and the session file match their reviewed inputs.
 
-The integration needs one source-bound installed package covering each affected
-finite Pause/world/Stop/Code scenario, cleanup and distinct recovery, plus every
-enabled final-head CI check. These gates are pending. Earlier package results
-remain evidence for their exact original sources; they do not qualify this
-composition. The new overlapping Code-caller proposal is separate and has no
-product implementation here. Native sources and dependency pins match main.
-This does not close G02 or establish physical/reference/release qualification.
+The frozen consumer `f903a966ea348fd7c3abd0ba693194fc813b4997` now passes
+all fifteen source-bound installed own-NuttX cases: Pause four, world/manual
+drive four, upload/Stop four and Code three. All individual readers and the
+combined reader pass, with cleanup, distinct recovery and thirty successful
+native startups. Official frontend checkout and consumer trees match; package
+payload/input audits pass. All eleven enabled source-head checks pass in
+[run38769805667](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38769805667)
+(two conditional GUI/deployment jobs skip).
+
+Five earlier failed test attempts remain preserved. Corrections address held
+reply ordering, both React component-pointer forms, real editor clearing before
+recovery language selection, native recorder lifetime through retry, and waiting
+the original visible Stop's returned teardown promise. Neither deadlines nor
+the requirement to capture both real retry START replies was weakened. A direct
+second pane Stop before the first teardown completes still has an open clock
+ownership boundary; see the proposed continuation in [LANES.md](../LANES.md).
+
+Current main's separate importer/debug work is retained; SPIKE session/pane/
+native inputs and the NuttX dispatcher method remain unchanged from the tested
+consumer. Final documentation-head checks and merge review are pending. Earlier
+and current installed results remain attributed to their exact packages. The
+new overlapping caller/output changes in
+[PR985](https://github.com/CrispStrobe/brickwright-lite/pull/985) are separate and
+are not installed-qualified by this result. G02, physical/reference behavior,
+rollback, licensing and release qualification remain open.
+
+Qualification receipts must name the final consumer commit, including any
+documentation checkpoint. A checkpoint retains the tested product sources and
+uses a current fully labelled PR event for both enabled CI tiers.
 
 ## Pause integration qualification — 2026-10-15
 
@@ -96,7 +160,7 @@ Concurrent caller completion and broader output attribution remain separate
 boundaries. These controls do not qualify every evolving package or close G02,
 G03, physical safety, rollback, distribution or licensing.
 
-## G02 Code caller ownership in progress — 2026-10-15
+## G02 Code caller ownership — 2026-10-15
 
 The scope claim in [PR978](https://github.com/CrispStrobe/brickwright-lite/pull/978)
 is merged. The implementation gives each NuttX Code run its own caller token:
@@ -109,8 +173,9 @@ same method change. See [LANES.md](../LANES.md) for the bounded ownership scope.
 Twenty focused authored host controls pass; the original dispatcher passes six
 and fails fourteen. All ten deliberately weakened variants are detected by
 behavioral tests. These controls cover caller scheduling rather than native
-UART output attribution or rendered cold-phase controls. Actual owned-firmware
-overlapping Code qualification, cleanup/recovery and final-head CI remain
+UART output attribution or rendered cold-phase controls. The frozen consumer
+above now passes both finite installed caller cases, cleanup and distinct
+recovery. Final documentation-head CI and exact-head merge review remain
 required. The separate frozen lifecycle-batch package contains neither this
 caller change nor the later output-phase follow-up.
 

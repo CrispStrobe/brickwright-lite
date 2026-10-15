@@ -1,7 +1,8 @@
 ## SPIKE pending Stop teardown implementation — 2026-10-15
 
 G02 continuation, branch `lane/spike-g02-pending-stop-20261015`, stacked on the
-separate unqualified Code caller/output follow-up. A second Stop can see no
+Code caller/output follow-up. Its frozen-package qualification below does not
+qualify this new teardown change. A second Stop can see no
 attached session while native teardown still owns the hub clock. Remember the
 pending teardown before invoking the native Stop, and await it before restoring
 topology, cancelling the shared backend or continuing Start. A synchronous Stop
@@ -28,6 +29,45 @@ installed own-guest repeated Stop, cleanup and distinct recovery, plus every
 enabled exact-head check before merge. Firmware, Runtime/models, dependency
 pins, protocol, product budgets and other pane methods are unchanged. This does
 not close G02 or establish reference, physical, licensing or release results.
+## Installed G02 Code caller and output qualification — 2026-10-15
+
+Frozen consumer `59ddd74174f644f330f06ce567fac6b8c5f7dde3` passes three
+installed own-NuttX cases and their standalone readers, with six successful
+native startup transactions, full cleanup and distinct recovery in every case.
+Official frontend checkout and consumer trees match; independent package/input
+audits pass. Its eleven enabled source-head checks pass in
+[run38790549120](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38790549120)
+and the separate vendor check; two conditional GUI/deployment jobs skip.
+
+- An older Code call's original successful return cannot clear a newer pending
+  caller's busy flag, completed status or exact `42\n` output.
+- An authored error delivered from the older call likewise leaves the newer
+  caller's feedback unchanged. Both cases begin through the real Code control,
+  preserve the original pane/native calls for two Python uploads, and explicitly
+  author concurrent mounted-handler entry while the ordinary toolbar is busy.
+  They do not establish two clickable busy toolbar runs or arbitrary scheduling.
+- A fresh original old-Python output frame is held across actual replacement,
+  STOP and upload preparation. No old/preparatory output reaches the new Code
+  consumer before the original START reply is accepted. Current output first
+  arrives in a later `state.read`; immediate START output remains host-covered.
+
+Three failed test attempts remain preserved: a missing expected print newline,
+a snapshot of a not-yet-created log, and a guest-time delay that did not fit the
+unchanged observation window. Corrected controls require exact print bytes,
+record absent logs explicitly and use a shorter authored guest delay. They
+retain fresh native frame/sequence/reply provenance, original calls, cleanup,
+recovery and the same observation/resource bounds. Successful cases were not
+replayed to read evidence. Product sources and the installed package did not
+change during these corrections.
+
+This result belongs to the named frozen package. Integration preserves its
+SPIKE/native inputs and both importer copies while retaining newer main work.
+Final documentation-head CI, the lifecycle integration in
+[PR979](https://github.com/CrispStrobe/brickwright-lite/pull/979), and exact-head
+merge review remain required. The repeated-Stop follow-up in
+[PR990](https://github.com/CrispStrobe/brickwright-lite/pull/990) is separate and
+not installed-qualified here. Whole G02, reference/physical behavior, rollback,
+licensing, distribution and release qualification remain open.
 
 ## SPIKE replacement output phase continuation — 2026-10-15
 
@@ -38,7 +78,7 @@ admit the observed output sequence without publishing its text to the new Code
 consumer. Admit execution output only after the original request's START reply
 passes the existing operation/id decoder, succeeds and reports RUNNING, COMPLETE
 or FAULT. Preserve immediate or terminal START output, later fresh output, retry
-and Stop reentry. The importer caller proposal remains separate.
+and Stop reentry. The Code caller token change is separately scoped below.
 
 Thirteen authored controls execute the real session/client and shipped pane
 consumers; the baseline passes five and fails eight. All thirteen and 112
@@ -48,9 +88,8 @@ those original failures remain preserved. A now-redundant source-null guard
 change was removed after admission moved to START. Shared protocol helpers,
 frame formats, native/firmware/Runtime/model sources and pins are unchanged.
 
-This is host API-phase evidence. Fresh installed owned-firmware output capture,
-original frame/reply provenance, cleanup/recovery and final-head CI remain
-required before merge. Do not infer physical UART attribution, new reference
+These host API controls are complemented by the named frozen installed capture
+above. Final documentation-head CI and exact-head merge review remain required. Do not infer physical UART attribution, new reference
 mapping, whole G02, rollback, licensing or release qualification. Keep this
 follow-up out of the already frozen composed-package qualification target.
 
@@ -71,19 +110,38 @@ Pause branch. All 176 affected host controls pass. An attempted extra rendered
 unit suite lacked React in the sparse validation environment; its original
 failure is preserved and hosted CI must run with installed dependencies.
 
-Qualify one exact composed package across Pause, representative world/manual
-controls, visible Arena Stop with retained Stop positives, and Code feedback,
-then audit cleanup and distinct recovery for every finite case. Prior source
-qualifications remain attributed to their original consumers. Final-head hosted
-CI and fresh installed qualification are pending; no whole-G02, hardware,
-reference-boot, rollback, distribution or licensing claim is made. This lane
+The frozen composed consumer `f903a966ea348fd7c3abd0ba693194fc813b4997`
+passes all fifteen installed own-NuttX cases: four Pause, four representative
+world/manual-drive, four pending-upload Arena Stop cases with retained-session
+Stop positives, and three Code completion/error/retry/cancellation cases. All
+fifteen standalone readers and the combined cohort reader pass, including thirty
+successful native startup transactions, cleanup and distinct recovery per case.
+The official frontend checkout tree equals this consumer; package payload and
+input audits pass. Its eleven enabled CI checks pass in
+[run38769805667](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38769805667);
+the conditional GUI verification and deploy jobs skip.
+
+Original failed test attempts remain preserved: a circular held-reply cleanup
+wait, React component-pointer compatibility, recovery language conversion,
+retry recorder lifetime, and a direct duplicate Stop before pending teardown
+completed. Corrected tests retain the observation limits and two-START retry
+gate. Visible Code cancellation awaits the original Stop method's returned
+promise rather than issuing a second pane Stop. That direct repeated-Stop
+boundary remains open below.
+
+Current main's unrelated importer/debug changes are preserved exactly during
+integration; the SPIKE session/pane/native inputs and NuttX Code dispatcher
+method remain unchanged from the tested source. Final documentation-head CI
+and merge review remain required. This result qualifies the named frozen
+package, not every later frontend package or whole G02, hardware,
+reference boot, rollback, distribution or licensing. This lane
 changes no native input, firmware/Runtime/model/dependency pin, workflow or budget
 relative to its main base. Do not merge the older draft sources independently
 as a substitute for composed qualification.
 
 ## WeDo clone 88005 polarity and power packet correction — 2026-10-15
 
-CLAIM — Codex, isolated existing adoption branch
+DONE — Codex, isolated existing adoption branch
 `lane/wedo-lights-adoption-20261015`, worktree `wt-wedo-adoption-sparse`.
 Follow-up to the published WeDo adoption claim and draft PR980. Human-observed
 CoreBluetooth testing on the user's unbranded clone: physical port A responds
@@ -102,7 +160,10 @@ No global automatic clone detection, motor port remapping or other pin moves.
 Publish upstream first, then adopt the immutable commit with the canonical
 vendor script. Verify the measured packets, default positive polarity,
 Stop All/off, known-device protection, immutable bundle identity and local
-production build. Claim must land on remote main before Lite implementation.
+production build. Claim landed on remote main as `669107598` before Lite implementation.
+Upstream `5fe7033f` is published; 28 focused adoption tests and immutable
+targeted vendoring pass. Physical LED full power and dimming are user-confirmed;
+local production compilation is qualified separately.
 
 ## iOS redundant static archive packaging — 2026-10-15
 
@@ -136,7 +197,7 @@ rules change. Claim lands before implementation.
 
 ## WeDo 88005 lights and piezo note adoption — 2026-10-15
 
-CLAIMED — Codex, isolated branch `lane/wedo-lights-adoption-20261015`,
+DONE — Codex, isolated branch `lane/wedo-lights-adoption-20261015`,
 worktree `wt-wedo-adoption-sparse`, base `5f790c24ae91931d51617ddd1e4c69e2d1e8cfeb`.
 User authorized publication of the upstream fixes and this adoption claim.
 
@@ -146,11 +207,12 @@ and `scripts/spike/bundled-upstream.mjs`; the WeDo bundled source and its
 extension or package pin moves. Upstream: CrispStrobe/extensions PR49,
 `2cda0cf` (88005 brightness/off on A/B/both, Stop All, reliable piezo notes).
 
-Validation: immutable upstream byte identity, existing Scratch Link session
-tests, focused light/tone packet tests and the production web build. iPad
-installation verifies app deployment; real 88005 brightness and audible-tone
-verification remain explicitly pending. Claim must reach remote main before
-Lite implementation changes.
+Validation: 25 focused tests pass (light/tone packets, existing Scratch Link
+sessions, bundled extension identity including the planted-divergence negative);
+immutable targeted vendoring check passes. Production compilation is being
+qualified locally. iPad installation verifies app deployment; real 88005
+brightness and audible-tone verification remain explicitly pending. Claim
+landed as `10edc699d` before Lite implementation changes.
 
 ## ASM example admission during pending Code compilation — 2026-10-15
 
@@ -209,26 +271,35 @@ claim first; implementation lands only after full CI and owner review.
 ## A10: micro:bit V2 serial consumer adoption — 2026-10-15
 
 CLAIMED — Codex, branch `lane/a10-v2-serial-consumer-20261015`, base `015e1bdc7`.
-After the owning LabWired UARTE source qualifies and lands, adopt its one-time
-qualified deterministic engine release and the resulting exact bw-board package.
-Remove the V2 serial withholding in `scripts/makecode.mjs` and the
-Code-tab status text only with that artifact. Require exact greeting/counter
-serial from real compiled MakeCode firmware, preserving display, guest-time,
-fault, firmware identity and board-model assertions. Keep A11's export changes.
+Adopt the qualified deterministic LabWired engine release after its source fix
+lands. Remove V2 serial withholding and verify real compiled firmware through
+both CLI modes and the visible Debug console. Preserve A11's landed export fix.
+
+Consumer scope is engine-only. The shipped bw-board client's LabWired adapter,
+bridge, debugger and firmware helpers are byte-identical to the qualified
+producer, and all chip/board catalog payloads are identical (source identity
+only differs). No client API change is needed for the UARTE source fix; actual
+released-engine qualification against this shipped client remains mandatory.
+The separate STM32 package/compiler adoption belongs to its existing owner.
+This lane leaves board, compiler and circuit-UI package pin fields untouched;
+qualified mainline changes from those owners are preserved when integrated.
 
 Envelope: this ledger and `docs/OPEN-TASKS-2026-09-29.md`;
 `scripts/sync-labwired-wasm.mjs` PIN/TAG/EXPECT and
 `.github/workflows/target-performance.yml` matching engine identity;
-`vendor-pins.json`, package/lock specifications and existing generated
-provenance/census/matrix/report/adoption-test surfaces changed by canonical
-bw-board pin writers; `scripts/makecode.mjs`, `scripts/lib/makecode-run.mjs`,
+`scripts/makecode.mjs`, `scripts/lib/makecode-run.mjs` if needed,
 `test/makecode-cli-run.test.mjs`,
 `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
-and its tracked twin; `scripts/verify-makecode.mjs` serial assertions only.
-No copied engine, invented source/hash, SDK rebuild, unrelated pin movement,
-physical-accuracy claim or optional motion run. Preserve all existing failures;
-all enabled final-head checks and actual released-engine/consumer guest results
-remain required before product integration.
+and its tracked twin; `scripts/verify-makecode.mjs` serial assertions only;
+affected engine provenance/notices through canonical writers if required.
+No NPM package/compiler pin bump, copied engine, invented source/hash, SDK
+rebuild, optional motion run, physical-accuracy claim or threshold relaxation.
+
+The core fix is merged. Consumer JSON/text serial and visible-console checks
+are prepared; final tests require the exact complete greeting, ordered counter,
+unchanged matrix/fault/guest-time bounds, and the fresh nRF52833 V2 emulator ELF.
+Engine publication/original admission, all enabled final checks and actual
+released-engine CLI/browser qualification remain pending before integration.
 
 ## A11: Code-tab MakeCode export uses the project target — 2026-10-15
 
@@ -4363,6 +4434,27 @@ Live root tracing and aggregate allocation budgets remain explicit next work;
 no whole-app corpus promotion follows from reset/disposal controls. Lower
 Arcade integration branches are landing separately by normal merges.
 
+## Arcade signed integer division through existing value blocks — 2026-10-15
+
+CLAIM — Codex Arcade integration, branch `lane/arcade-idiv-claim-20261015`.
+Implement exact selected `Math.idiv` import and current export through existing
+primitive divide and bitwise value operations. Convert both actual Number
+operands to signed32 before dividing, then convert the quotient; preserve each
+argument once, left to right. No new opcode, word, menu item or dependency pin.
+
+Envelope: this ledger; [the bounded contract](docs/ARCADE-INTEGER-DIVISION.md);
+a focused helper under `overlay/scratch-gui/src/lib/bw-makecode/`;
+coordinated narrow `arcade-translate.js` and actual shared source-producer hooks
+if needed; affected current-export validation only if needed; focused tests and
+a self-authored freely licensed original/export fixture. Reuse actual Number
+proof and complete SDK root/member write checks. No broad Math return seed,
+annotation producer, Text/reference coercion or unrelated Array/callable/default
+change. Merge this claim before product edits. Acceptance: signed/fractional/
+wrapped inputs, zero divisor, computed nonfinite inputs, effect order,
+source/Code/Blocks/same-fresh SB3/current export/reimport, meaningful refusal
+controls, exact selected-original and edited-export execution, and every enabled
+exact-head hosted check. This API alone does not close a whole stopwatch game.
+
 ## Arcade Buffer destination storage — 2026-10-13
 
 CLAIMED — Codex, `lane/arcade-buffer-storage-20261013`, stacked on PR853.
@@ -4501,6 +4593,23 @@ implementation and require all enabled exact-head checks before integration.
 The separately claimed shared project-world work keeps its ownership. This
 claim changes no executable, dependency, fixture, capture or workflow and makes
 no fresh guest, performance, physical, reference, release or licence claim.
+
+## Proposed SPIKE pending Stop teardown continuation — 2026-10-15
+
+A direct second pane `stopProgram()` while the visible Code Stop's original
+teardown is pending can encounter `Clock is owned by another backend`. The
+closed flag and stopped Code feedback precede full ownership release. The
+frozen lifecycle qualification observes the original Stop promise and preserves
+this repeated-call failure separately; it does not claim arbitrary Stop reentry.
+
+Proposed next bounded G02 slice: serialize pending firmware teardown before a
+later Stop or Start tries shared clock/backend cleanup, while preserving pane
+intent ownership and original error delivery. Own only the existing pane's
+`stopProgram` method, a focused pending-Stop test, this ledger and the SPIKE
+guide; other shared pane methods require their existing contracts. Preserve
+current teardown/replacement/disposal positives, failure and listener reentry
+adversaries, and qualify the affected installed own-guest cleanup/recovery
+before exact-head merge. No implementation or new guest result is claimed here.
 
 ## SPIKE NuttX Code caller ownership — 2026-10-15
 
