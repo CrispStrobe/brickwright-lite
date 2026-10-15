@@ -234,6 +234,12 @@ export const ARCADE_WORDS = Object.freeze([
     w('arcade_setCaptured', 'command', 'arcade set captured {NAME:name} to {VALUE}'),
     w('arcade_setLocal', 'command', 'arcade set local {NAME:name} to {VALUE}'),
     w('arcade_returnValue', 'command', 'arcade return value {VALUE}'),
+    w('arcade_declareSourceCallable', 'command', 'declare arcade source callable {VARIABLE} signature {SIGNATURE}', {variableInputs: ['VARIABLE'], fixedTextInputs: {SIGNATURE: '{"kind":"callable","parameters":[],"result":{"kind":"named","name":"number"}}'}}),
+    w('arcade_declareCallable', 'command', 'arcade declare callable {NAME} metadata {METADATA}'),
+    w('arcade_runCallableDispatch', 'command', 'arcade run dispatched callable'),
+    w('arcade_whenCallableDispatched', 'hat', 'when arcade callable {NAME} dispatched'),
+    w('arcade_createCallable', 'reporter', 'arcade callable {NAME}'),
+    w('arcade_callCallable', 'reporter', 'arcade invoke callable {CALLABLE} arguments {ARGS}'),
 
     // ---- commands: sprites ------------------------------------------------------
     // Particle effects (PXT effects.ParticleEffect / ScreenEffect instances).
@@ -261,6 +267,8 @@ export const ARCADE_WORDS = Object.freeze([
     w('arcade_stopControllingSprite', 'command', 'arcade controller {CONTROLLER:1|2|3|4} stop controlling sprite {ID}'),
     w('arcade_setSpriteImage', 'command', 'arcade set image of {ID} to {IMAGE}'),
     w('arcade_setSpritePixel', 'command', 'arcade set pixel of {ID} x {X} y {Y} color {COLOR}'),
+    w('arcade_drawSpriteCircle', 'command',
+        'arcade draw circle {OP:drawCircle|fillCircle} of {ID} x {X} y {Y} radius {RADIUS} color {COLOR}'),
     w('arcade_drawSpriteImage', 'command',
         'arcade draw {OP:fillRect|drawLine} of {ID} x {X} y {Y} width {W} height {H} color {COLOR}'),
     w('arcade_mutateSpriteImage', 'command',
@@ -284,6 +292,13 @@ export const ARCADE_WORDS = Object.freeze([
     // Image.print; font auto is image.getFontForText's choice.
     w('arcade_printImageText', 'command',
         'arcade print {TEXT} on image {IMAGE} x {X} y {Y} color {COLOR} font {FONT:auto|normal|small|large}'),
+    // Live Font references are connected values, distinct from the fixed selector.
+    w('arcade_printImageFontCenter', 'command',
+        'arcade print centered {TEXT} on image {IMAGE} y {Y} color {COLOR} using font {FONT}'),
+    w('arcade_printImageFont', 'command',
+        'arcade print {TEXT} on image {IMAGE} x {X} y {Y} color {COLOR} using font {FONT}'),
+    w('arcade_drawImageCircle', 'command',
+        'arcade draw image circle {OP:drawCircle|fillCircle} {IMAGE} x {X} y {Y} radius {RADIUS} color {COLOR}'),
     w('arcade_drawImage', 'command',
         'arcade draw image {OP:fillRect|drawLine} {IMAGE} x {X} y {Y} width {W} height {H} color {COLOR}'),
 
@@ -428,7 +443,11 @@ export const ARCADE_WORDS = Object.freeze([
     w('arcade_backgroundImage', 'reporter', 'arcade background image'),
     w('arcade_screenImage', 'reporter', 'arcade screen image'),
     w('arcade_sourceTypeOf', 'reporter', 'arcade source type of {VALUE}'),
+    w('arcade_inspectValue', 'reporter', 'arcade inspect value {VALUE} limit {LIMIT}', {early: true}),
     w('arcade_fontMetric', 'reporter', 'arcade font {FONT:"font5"|"font8"|"font12"} metric {PROPERTY:"charWidth"|"charHeight"}', {strictFields: true}),
+    w('arcade_fontForText', 'reporter', 'arcade font for text {TEXT}'),
+    w('arcade_scaleFont', 'reporter', 'arcade scaled font {FONT} by {SIZE}'),
+    w('arcade_fontValue', 'reporter', 'arcade font value {FONT:font5|font8|font12}', {strictFields: true}),
     w('arcade_backgroundColor', 'reporter', 'arcade background color'),
     w('arcade_truncateNumber', 'reporter', 'arcade truncate {NUM}', {early: true}),
     w('arcade_signNumber', 'reporter', 'arcade sign of {NUM}', {early: true}),
