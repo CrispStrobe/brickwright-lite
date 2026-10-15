@@ -16,22 +16,27 @@ one parse failure** with immutable inputs. A conservative 20-row floor contains
 external asset references absent from those raw files. Use authentic project
 context to investigate them; do not repair snippets or relabel the raw census.
 
-The separate 29-project profile at `b1ef5e4ea` selects only retained
-original-compiler successes: **20 source/Creator clean, 18 current-export clean,
-16 complete pure routes clean**. All actual diagnostic channels are retained,
-including unknown/unattempted channels. This profile exercised normal import,
-Creator, Code feedback, saved Blocks/assets and current export/reimport; it ran
-no SDK, native game or GUI. Nine projects remain source-blocked; four additional
-projects exposed later-stage barriers. Historic structural 20/29 was not a
-complete roundtrip claim.
+The latest separate 29-project profile at `31abb5767` selects only retained
+original-compiler successes: **20 source/Creator clean, 20 current-export clean,
+18 complete pure routes clean**. It exercises import, Creator, Code feedback,
+saved Blocks/assets and current export/reimport, with all diagnostic channels
+retained. It runs no SDK, native game or GUI. Nine projects remain source-blocked;
+two retain later-stage barriers. The historical `b1ef5e4ea` profile measured
+20/18/16. Do not confuse structural source admission with complete roundtrips.
 
-Two follow-ups leave those measured aggregate counts unchanged. Tile candidate
-`653a88dd4` passes six focused controls and removes false anonymous/named ID
-collisions in two retained projects without changing tile pixels. Freethrow's
-26 root-only reimport refusals disappear with the exact declared `arcade-text`
-dependency context; a separate Creator parse is also clean. No new complete
-profile or game result follows. Lyla's remaining unused helper needs an explicit
-ordinary parameter declaration protocol, not body pruning or restored source.
+Tile reservation fixes account for the two measured complete-route improvements.
+Freethrow's 26 root-only reimport refusals disappear with its actual declared
+`arcade-text` dependency context, but that focused check does not promote a whole
+profile. Development optional-Any support removes one of Lyla's six source
+refusals; five remain. Never prune its unused helper or restore original source.
+
+The development composition `196e61cc7` passes 151 affected controls against the
+complete corrected canonical compiler, with 784 unchanged file guards and 174
+matching VM overlays. This qualifies those native/portable controls only. A real
+selected-runtime comparison exposed an omission-versus-explicit-Undefined default
+argument mismatch; the default source feature is held pending its proper fix.
+See [the actual mismatch](#actual-default-argument-mismatch-and-visible-display-boundary).
+No newer whole-profile measurement or whole-game promotion follows.
 
 Existing `.mkcd` import/CLI support already accepts complete project files.
 Offline preparation must bind actual dependencies to the current exported root,
@@ -42,10 +47,26 @@ unknown channels cannot pass a strict gate.
 
 The selected-original Map semantic contract now records 69 global observations.
 Its first readiness observer failure and successful cached-binary recovery remain
-retained, with source unchanged. This is original-runtime observation only;
-source/native Map implementation is in progress under the merged claim.
+retained, with source unchanged. The native/source Map development prototype has focused conversion and lifetime
+controls; consumer adoption and visible authoring remain separate gates.
 
-### Hosted checks and held candidates
+### Current hosted checks and held candidates
+
+Canonical [PR157](https://github.com/CrispStrobe/sb3-creator/pull/157) is merged
+at `ca0e177b`, with every enabled check successful and reviewed/landed trees equal.
+Consumer adoption must preserve independently owned board/UI pins and use the
+normal compiler writer, including `procedureParameterConstraints.js`.
+
+Consumer [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) is now
+at CI-only `9133a871b`; [its new Build](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38763540246)
+is pending. The preceding `b190d3e7d` campaign is closed: heavy/light browser,
+build, corpus and FPGA passed; unit-three TODO accounting, unit-four event
+observation and the official Image selector wait failed. These original failures
+are retained. The new head changes seven test/workflow files, with product and
+pins unchanged; it needs its own hosted qualification. The prepared visible
+Game Console journey is a later candidate, not part of this published head.
+
+### Historical hosted checkpoint (superseded by the current head)
 
 [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888),
 [Build38718916848](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38718916848),
