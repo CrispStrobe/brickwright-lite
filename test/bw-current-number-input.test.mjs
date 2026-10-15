@@ -10,8 +10,8 @@ function fixture(opcode,name,value='20',leafOpcode='math_number'){
  runtime.getOpcodeFunction=()=>primitive;container._cache._executeCached.call={_ops:[op]};container._cache._executeCached.leaf={id:'leaf',opcode:leafOpcode,fields:leaf.fields,inputs:leaf.inputs,_isShadowBlock:true,_shadowValue:value,_parentValues:args,_parentKey:name};
  return{args,block,leaf,container,target,thread,runtime,util,op,run:()=>owner.invoke(runtime,thread,container,op,args,util,primitive)};
 }
-test('only explicit value sockets in the twelve current primitive consumers interpret Number leaves',()=>{
- for(const[opcode,names]of Object.entries({arcade_returnValue:['VALUE'],arcade_functionArgument:['VALUE'],arcade_setLocal:['VALUE'],arcade_setCaptured:['VALUE'],arcade_setObjectField:['VALUE'],arcade_inspectValue:['VALUE','LIMIT'],arrays_valueBinary:['LEFT','RIGHT'],arrays_valueUnary:['VALUE'],arrays_valueCompare:['LEFT','RIGHT'],arrays_valueTruthy:['VALUE']}))for(const name of names){
+test('only explicit current primitive input roles interpret Number leaves',()=>{
+ for(const[opcode,names]of Object.entries({arcade_throwValue:['VALUE'],arcade_createOwnedImageSprite:['KIND'],arcade_returnValue:['VALUE'],arcade_functionArgument:['VALUE'],arcade_setLocal:['VALUE'],arcade_setCaptured:['VALUE'],arcade_setObjectField:['VALUE'],arcade_inspectValue:['VALUE','LIMIT'],arrays_valueBinary:['LEFT','RIGHT'],arrays_valueUnary:['VALUE'],arrays_valueCompare:['LEFT','RIGHT'],arrays_valueTruthy:['VALUE']}))for(const name of names){
   assert.equal(fixture(opcode,name).run(),20,opcode+'.'+name);
   assert.equal(fixture(opcode,name,'20','text').run(),'20');
   assert.equal(fixture(opcode,'OP').run(),'20','operator socket has no Number authority');
