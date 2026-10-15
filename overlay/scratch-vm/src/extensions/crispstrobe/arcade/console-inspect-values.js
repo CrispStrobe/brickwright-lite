@@ -3,6 +3,7 @@
 // reference, getter, custom toString or Object.keys inspection path here.
 const primitiveOwner = require('../../../util/bw-primitive-owner');
 const reporterOwner = require('./font-selector-owner');
+const analyseCaptures = require('./console-capture-provenance');
 const kinds = new Set(['Number','Boolean','String','Any']);
 const semantic = block => JSON.stringify([block.opcode,block.fields,block.inputs,block.next,
     block.mutation,block.shadow,block.parent,block.topLevel]);
@@ -47,6 +48,9 @@ function create(runtime, cells) {
         const input = (node,name) => read(node?.inputs?.[name]?.block);
         const text = node => node?.opcode === 'text' ? node.fields?.TEXT?.value : null;
         const literal = (node,name) => node?.fields?.[name]?.value ?? text(input(node,name));
+        const captureProof=analyseCaptures({targets:runtime.targets.filter(value=>value.isOriginal!==false),blocks:value=>value.blocks._blocks,
+            input:(node,name,owner)=>owner.blocks.getBlock(node?.inputs?.[name]?.block),
+            literal:(node,name,owner)=>node?.fields?.[name]?.value??(owner.blocks.getBlock(node?.inputs?.[name]?.block)?.opcode==='text'?owner.blocks.getBlock(node.inputs[name].block).fields?.TEXT?.value:null)});
         const owners = new Map(), seen = new Map([[false,new Set()],[true,new Set()]]);
         const mark = (node,owner,path=new Set()) => {
             if (!node || path.has(node)) return;
@@ -85,17 +89,17 @@ function create(runtime, cells) {
                     const valid=hats.length===1&&hats[0]===owner&&event?.opcode==='math_number'&&[1,2].includes(Number(event.fields?.NUM?.value));if(valid)origins.add(node);return valid;
                 }
                 if(player&&op==='arrays_specialValue')return ['null','undefined'].includes(literal(node,'KIND'));
-                if(player&&!['data_variable','arcade_getLocal','arcade_callFunction'].includes(op)&&!/^argument_reporter_/.test(op))return false;
+                if(player&&!['data_variable','arcade_getLocal','arcade_getCaptured','arcade_callFunction'].includes(op)&&!/^argument_reporter_/.test(op))return false;
                 if(!player&&op==='arcade_playerProperty'){
                     const property=input(node,'PROPERTY');
-                    const evidence=new Set();return literal(node,'READ')==='safe'&&property?.opcode==='math_number'&&Number(property.fields?.NUM?.value)===2&&safe(input(node,'PLAYER'),true,evidence)&&evidence.size>0;
+                    const evidence=new Set(),valid=literal(node,'READ')==='safe'&&property?.opcode==='math_number'&&Number(property.fields?.NUM?.value)===2&&safe(input(node,'PLAYER'),true,evidence)&&evidence.size>0;if(valid)origins?.add(node);return valid;
                 }
                 if (['text','bw_stringLiteral','math_number','bw_numberLiteral','arrays_specialValue',
                     'operator_join','operator_letter_of','operator_length','operator_add','operator_subtract',
                     'operator_multiply','operator_divide','operator_mod','operator_round','operator_random',
                     'operator_equals','operator_gt','operator_lt','operator_not','operator_and','operator_or',
                     'arrays_valueTruthy','arrays_valueCompare','arcade_sourceTypeOf','arcade_askForString',
-                    'arcade_spriteToString','arcade_bufferToString','arcade_bufferToHex'].includes(op)) return true;
+                    'arcade_spriteToString','arcade_bufferToString','arcade_bufferToHex'].includes(op)) {origins?.add(node);return true;}
                 if (op === 'arcade_inspectValue') return safe(input(node,'VALUE')) && safe(input(node,'LIMIT'));
                 if (op === 'data_variable') {
                     const id=node.fields?.VARIABLE?.id, variable=target.lookupVariableById(id);
@@ -103,25 +107,27 @@ function create(runtime, cells) {
                     const writers=runtime.targets.filter(t=>t.isOriginal!==false).flatMap(t=>Object.values(t.blocks._blocks)
                         .filter(b=>['data_setvariableto','data_changevariableby'].includes(b.opcode) && t.lookupVariableById(b.fields?.VARIABLE?.id)===variable)
                         .map(writer=>({target:t,writer})));
+                    if(!writers.length&&!player){try{primitive(variable.value);origins?.add(variable);}catch{return false;}}
                     return (!player||writers.length>0)&&writers.every(entry=>entry.target===target && safe(input(entry.writer,'VALUE'),player,origins));
                 }
-                if (op === 'arcade_getLocal' || /^argument_reporter_/.test(op)) {
-                    const name=op==='arcade_getLocal'?literal(node,'NAME'):node.fields?.VALUE?.value, owner=owners.get(node);
-                    if (!owner) return false;
-                    if(Object.values(all).some(writer=>owners.get(writer)===owner&&writer.opcode==='arcade_setLocal'&&typeof literal(writer,'NAME')!=='string'))return false;
-                    if(Object.values(all).some(candidate=>{if(owners.get(candidate)!==owner)return false;if(candidate.opcode==='arcade_createCallable')return true;if(!candidate.opcode.startsWith('arcade_register')||!candidate.inputs?.CAPTURES&&!candidate.fields?.CAPTURES)return false;const names=literal(candidate,'CAPTURES');return typeof names!=='string'||names.split(/\s+/).includes(name);}))return false;
-                    const writes=Object.values(all).filter(b=>owners.get(b)===owner && b.opcode==='arcade_setLocal' && literal(b,'NAME')===name);
-                    if (!writes.every(writer=>safe(input(writer,'VALUE'),player,origins))) return false;
-                    const definitions=typeof owner==='string'&&Object.values(all).filter(value=>value.opcode==='procedures_definition'&&input(value,'custom_block')?.mutation?.proccode===owner);
-                    if(definitions&&definitions.length!==1)return false;
-                    const params=typeof owner==='string' && target.blocks.getProcedureParamNamesIdsAndDefaults(owner);
-                    if(params&&(!Array.isArray(params[0])||new Set(params[0]).size!==params[0].length))return false;
-                    const index=params?.[0]?.indexOf(name) ?? -1;
-                    if (index<0) return writes.length>0;
-                    const calls=Object.values(all).filter(b=>b.opcode==='arcade_callFunction' && literal(b,'NAME')===owner);
-                    // An unresolved dynamic callee can target this procedure.
-                    if (Object.values(all).some(b=>b.opcode==='arcade_callFunction' && typeof literal(b,'NAME')!=='string')) return false;
-                    return calls.length>0 && calls.every(call=>{const arg=argumentsFor(call,index);return arg===null ? !player : arg!==false && safe(arg,player,origins);});
+                if (op === 'arcade_getLocal' || op === 'arcade_getCaptured' || /^argument_reporter_/.test(op)) {
+                    const name=/^argument_reporter_/.test(op)?node.fields?.VALUE?.value:literal(node,'NAME');
+                    const scope=captureProof.scopeOf(node),cell=op==='arcade_getCaptured'?captureProof.captured(scope,name):captureProof.local(scope,name);
+                    const proof=captureProof.proof(cell);
+                    if(!proof||cell.scope.target!==target)return false;
+                    const evidence=new Set();
+                    if(!proof.writers.every(({node:writer})=>safe(input(writer,'VALUE'),player,evidence)))return false;
+                    let valid=proof.writers.length>0;
+                    if(proof.index>=0){
+                        const procedure=cell.scope.procedure;if(typeof procedure!=='string')return false;
+                        const calls=Object.values(all).filter(value=>value.opcode==='arcade_callFunction'&&literal(value,'NAME')===procedure||value.opcode==='procedures_call'&&value.mutation?.proccode===procedure);
+                        if(Object.values(all).some(value=>value.opcode==='arcade_callFunction'&&typeof literal(value,'NAME')!=='string'))return false;
+                        valid=calls.length>0&&calls.every(call=>{
+                            if(call.opcode==='procedures_call'){let ids;try{ids=JSON.parse(call.mutation?.argumentids||'[]');}catch{return false;}if(!Array.isArray(ids)||ids.length!==cell.scope.params.length||ids.some(id=>typeof id!=='string')||new Set(ids).size!==ids.length)return false;return safe(input(call,ids[proof.index]),player,evidence);}
+                            const arg=argumentsFor(call,proof.index);if(arg===null&&!player){evidence.add(call);return true;}return arg!==false&&safe(arg,player,evidence);});
+                    }
+                    if(!valid||proof.escaped&&!evidence.size)return false;
+                    for(const origin of evidence)origins?.add(origin);return true;
                 }
                 if (op === 'arcade_callFunction') {
                     const name=literal(node,'NAME'),definitions=Object.values(all).filter(value=>value.opcode==='procedures_definition'&&input(value,'custom_block')?.mutation?.proccode===name);
