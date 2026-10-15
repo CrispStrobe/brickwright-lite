@@ -82,3 +82,30 @@ test('current parameter defaults are constraints too, without seeding argument p
     const parameters=JSON.parse(slot[1]);parameters[0].default='20';slot[1]=JSON.stringify(parameters);
     assert.ok(output(project).unsupported.some(message=>message.includes('default Reader.n conflicts with declared number')));
 });
+test('preexisting current accessor mismatch escape remains explicit and is not an authored-cast provenance proof',()=>{
+    for(const value of [[10,'20'],[4,'20']]){
+        const project=build('class Box{constructor(public n:number){}get value():number{return this.n}set value(v:number){this.n=v}}let box=new Box(1);box.value=2;let result=box.value;');
+        const writer=of(project,'arcade_setObjectField').find(({block})=>JSON.stringify(block.inputs.FIELD).includes('value'));assert.ok(writer);writer.block.inputs.VALUE=[1,value];
+        const exported=output(project);assert.deepEqual(exported.unsupported,[]);
+        if(value[0]===10)assert.match(exported.ts,/as any\)\.value = "20"/);else assert.match(exported.ts,/\.value = 20/);
+    }
+    const project=build('class Box{constructor(public n:number){}get value():number{return this.n}set value(v:number){this.n=v}}let box=new Box(1);box.value=2;let result=box.value;');
+    const writer=of(project,'arcade_setObjectField').find(({block})=>JSON.stringify(block.inputs.FIELD).includes('value'));writer.block.inputs.VALUE=[2,'booleanEdit'];
+    project.targets.find(target=>Object.values(target.blocks||{}).includes(writer.block)).blocks.booleanEdit={opcode:'operator_not',parent:Object.entries(writer.target.blocks).find(([,block])=>block===writer.block)[0],next:null,shadow:false,topLevel:false,fields:{},inputs:{OPERAND:[1,[10,'']]}};
+    const exported=output(project);assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/as any\)\.value =/);
+});
+test('edited Text and Boolean accessor stores retain actual native values and their preexisting dynamic export route',async()=>{
+    const {runProgram,stepFrames,clearStrayTimers}=await import('./helpers/bw-vm.mjs');
+    const BW=(await import('../overlay/scratch-vm/src/util/bw-values.js')).default;
+    const source='class Box{constructor(public n:number){}get value():number{return this.n}set value(v:number){this.n=v}}let box=new Box(1);box.value=2;let result=box.value;',runs=[];
+    try{for(const physical of ['text','boolean']){
+        const imported=arcadeToPseudocode(source),run=await runProgram(imported.code,{frames:8,storage:true});runs.push(run);const project=structuredClone(run.creator.project);
+        const writer=of(project,'arcade_setObjectField').find(({block})=>JSON.stringify(block.inputs.FIELD).includes('value'));assert.ok(writer);
+        if(physical==='text')writer.block.inputs.VALUE=[1,[10,'20']];
+        else{const id=Object.entries(writer.target.blocks).find(([,block])=>block===writer.block)[0];writer.block.inputs.VALUE=[2,'currentBoolean'];writer.target.blocks.currentBoolean={opcode:'operator_not',parent:id,next:null,shadow:false,topLevel:false,fields:{},inputs:{OPERAND:[1,[10,'']]}};}
+        run.creator.project=project;const saved=Buffer.from(await(await run.creator.generateSB3()).arrayBuffer());run.vm.stopAll();await run.vm.loadProject(saved);run.vm.greenFlag();await stepFrames(run.vm,8);
+        assert.deepEqual(run.errors,[]);const result=run.vm.runtime.targets.flatMap(target=>Object.values(target.variables)).find(variable=>variable.name==='result');assert.equal(BW.decode(result?.value),physical==='text'?'20':true);
+        const current=JSON.parse(run.vm.toJSON());for(const target of project.targets)target.blocks=current.targets.find(actual=>actual.name===target.name&&actual.isStage===target.isStage).blocks;
+        const exported=output(project);assert.deepEqual(exported.unsupported,[]);assert.match(exported.ts,/as any\)\.value =/);
+    }}finally{for(const run of runs){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+});

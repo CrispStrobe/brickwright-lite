@@ -3,7 +3,7 @@ import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
 // Validate current ordinary-class constraints. Declaration types constrain a
 // writer. Symbolic declaration constraints remain distinct from actual facts;
 // neither supplies runtime/provenance authority or changes a value.
-export function checkClassPrimitiveExport({project,classes,procedures,note,dynamicReceiver=()=>false}) {
+export function checkClassPrimitiveExport({project,classes,procedures,note,dynamicReceiver=()=>false,qualifiedInput=()=>null}) {
     const primitive=sdkFontInputAuthority(project),ordinary=[...classes.values()].filter(cls=>!cls.intrinsic);
     const expected=new Map([['number','Number'],['string','String'],['boolean','Boolean']]);
     if(!ordinary.length)return;
@@ -47,10 +47,18 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
     const cache=new WeakMap(),checking=new Set();
     const args=(target,block)=>{const result=[],seen=new Set();let value=child(target,block,'ARGS');if(!value)return fixed(target,block,'ARGS')==='[]'?result:null;
         while(value?.opcode==='arcade_functionArgument'){if(seen.has(value))return null;seen.add(value);result.push({target,block:value,name:'VALUE'});if(fixed(target,value,'REST')==='[]')return result;value=child(target,value,'REST');}return null;};
-    const input=(target,block,name)=>{const slot=block.inputs?.[name]?.[1],value=child(target,block,name);
-        if(value)return expression(target,value);
-        if(Array.isArray(slot)){if([4,5,6,7,8].includes(slot[0]))return new Set(['Number']);if(slot[0]===10)return new Set(['String']);if(slot[0]===12)return variable(target,slot[2]);}
-        return opaque();};
+    const input=(target,block,name)=>{const slot=block.inputs?.[name]?.[1],value=child(target,block,name);let actual;
+        if(value)actual=expression(target,value);
+        else if(Array.isArray(slot)){if([4,5,6,7,8].includes(slot[0]))actual=new Set(['Number']);else if(slot[0]===10)actual=new Set(['String']);else if(slot[0]===12)actual=variable(target,slot[2]);}
+        if(!actual)actual=opaque();
+        // Existing v2 current-body validation owns lexical Arrow parameters.
+        // Only its registered input certificate can extend this ordinary view.
+        if(actual.has('Opaque')){const certified=qualifiedInput(target,block,name);if(certified?.kind==='named'){
+            if(expected.has(certified.name))return new Set(['Constraint:'+expected.get(certified.name)]);
+            if(classes.has(certified.name))return new Set(['@'+certified.name]);
+        }}
+        return actual;
+    };
     const variable=(target,id)=>{const actual=project.targets.filter(other=>Object.hasOwn(other.variables||{},id));if(actual.length!==1||actual[0]!==target&&!actual[0].isStage)return opaque();
         const writers=rows.filter(row=>row.block.fields?.VARIABLE?.[1]===id&&['data_setvariableto','data_changevariableby'].includes(row.block.opcode));return writers.length?union(writers.map(row=>row.block.opcode==='data_setvariableto'?input(row.target,row.block,'VALUE'):opaque())):opaque();};
     function destinations(target,block){
