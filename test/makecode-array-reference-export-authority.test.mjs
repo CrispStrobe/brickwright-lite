@@ -115,13 +115,24 @@ test('shrinking writers cannot turn an absent nested element into an Array produ
 });
 
 function withKindReset(){
-    const creator=current('let kind=SpriteKind.create();let items=sprites.allOfKind(kind);let count=items.length');
+    const creator=new Creator();creator.parse(`DEVICE ARCADE
+GLOBAL kind
+GLOBAL items
+GLOBAL count
+SPRITE Game:
+WHEN arcade source starts:
+  hide
+  set kind to (undefined value)
+  set kind to (arcade create sprite kind)
+  set items to (arcade sprite array kind (kind))
+  set count to (length of array reference (items))
+`);assert.deepEqual(creator.warnings,[]);
     const {target,block:receiver}=lengthBlock(creator),blocks=target.blocks;
-    const [writeId,write]=Object.entries(blocks).find(([,b])=>b.opcode==='data_setvariableto'&&b.fields.VARIABLE[0]==='kind');
-    const oldParent=write.parent;
-    blocks.__reset={opcode:'data_setvariableto',parent:oldParent,next:writeId,topLevel:false,shadow:false,fields:structuredClone(write.fields),inputs:{VALUE:[2,'__undefined']}};
-    blocks.__undefined={opcode:'arrays_specialValue',parent:'__reset',next:null,topLevel:false,shadow:false,fields:{KIND:['undefined',null]},inputs:{}};
-    blocks[oldParent].next='__reset';write.parent='__reset';
+    const [writeId,write]=Object.entries(blocks).find(([,b])=>b.opcode==='data_setvariableto'&&blocks[b.inputs.VALUE[1]]?.opcode==='arcade_createSpriteKind');
+    const resetId=write.parent,undefinedId=blocks[resetId].inputs.VALUE[1];
+    // Stable test handles retain the actual Creator-produced blocks/schema.
+    const rename=(from,to)=>{blocks[to]=blocks[from];delete blocks[from];for(const b of Object.values(blocks)){if(b.parent===from)b.parent=to;if(b.next===from)b.next=to;for(const slot of Object.values(b.inputs||{}))for(const key of [1,2])if(slot[key]===from)slot[key]=to;}};
+    rename(resetId,'__reset');rename(undefinedId,'__undefined');
     return {creator,target,receiver,write,writeId,blocks};
 }
 function interposeReset(fixture,operation){
