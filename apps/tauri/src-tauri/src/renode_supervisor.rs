@@ -1048,7 +1048,7 @@ pub(crate) fn verify_micropython_manifest(root: &Path, manifest: &Path) -> Resul
         "tools/ev3_state_observer.py", "tools/spike_arena_inputs.py", "tools/spike_arena_mailbox.py",
         "tools/spike_nuttx_mailbox.py", "tools/spike_program_uart.py",
         "licenses/renode-models-MIT.txt", "licenses/brickwright-BSD-3-Clause.txt",
-    ], &[], 16)?;
+    ], &["profile.json"], 17)?;
     if std::fs::metadata(root.join("boot-seed.bin")).map_err(|_| "boot seed unavailable")?.len() != 65536 {
         return Err("boot seed geometry mismatch".into());
     }

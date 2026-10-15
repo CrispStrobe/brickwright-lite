@@ -142,15 +142,15 @@ landed versions, and the landed tree equals the reviewed prediction. Independent
 main pin adoptions are retained; this is not qualification of every evolving-main
 package. Existing product budgets and firmware/Runtime/model pins did not change.
 
-The next G02 prerequisite is the [compiled-profile claim PR946](https://github.com/CrispStrobe/brickwright-lite/pull/946).
-The current MicroPython launcher includes source models, while the retained
-runtime contains compiled models. Earlier supplier evidence treats compiled and
-legacy source-overlay routes separately. Admit an explicit compatible profile
-and platform type contract, preserve the qualified legacy route, then qualify
-real selected-image Code execution, final-sampling cancellation and UART/image
-boundaries. Support metadata alone does not qualify a current installed
-MicroPython boot. The claim is preparation; implementation and those actual
-MicroPython cases remain pending, with no image download or bundling implied.
+The [compiled-profile claim PR946](https://github.com/CrispStrobe/brickwright-lite/pull/946)
+is merged. Its implementation is in progress: explicit native descriptor/runtime
+pins select native platform types while retaining the legacy source-overlay
+route. Initial host packaging and actual Rust planner checks pass, including
+rejection of mismatched profiles and motor attachment order in both routes.
+Real selected-image Code execution, final-sampling cancellation and UART/image
+boundaries still need installed qualification. Support metadata and host checks
+alone do not qualify a current installed MicroPython boot. No image download
+or bundling is implied.
 
 G02 remains open for its full deferred-storage matrix, selected-image and chooser
 error races, and complete installed startup/final-sampling, UART-generation and
