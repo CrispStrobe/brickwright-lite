@@ -25,7 +25,7 @@ test('recursive declaration obligations retain incompatible entry writers escape
 });
 
 test('recursive declaration omitted defaults rewrite every actual recursive and external call',()=>{
-    const program=parseMakeCodeTs('function descend(value:number,extra:any=2){if(value>0){descend(value-1,extra)}return value};let result=descend(3)');
+    const program=parseMakeCodeTs('function descend(value:number,extra:any=2){if(value>0){descend(value-1,extra)}return value};let result=descend(3)',{parameterDefaults:true,retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainCallableMetadata:false,retainPrimitiveProcedureDefaults:true});
     const prepared=prepareProcedureConstraintSource(program,{mode:'supported-default'});assert.deepEqual(prepared.diagnostics,[]);
     const fn=prepared.program.body.find(node=>node.type==='FunctionDeclaration');assert.equal(fn.params.length,3);
     const actual=calls(prepared.program);assert.equal(actual.length,2);assert.ok(actual.every(call=>call.args.length===3));
