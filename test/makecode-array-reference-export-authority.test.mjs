@@ -192,9 +192,17 @@ test('global Array recursion cannot bootstrap a rootless or incompatible entry a
         'function visit(){let count=items.length;visit()}let items=[1]',
         'function visit(){let count=items.length;visit()}visit();let items=[1];visit()',
         'let items=[1];function visit(){let count=items.length;visit()}visit();items=0 as any',
-        'function visit(items:number[]){let count=items.length;visit(items)}let items=[1];visit(items)',
-        'function visit(){let items;let count=items.length;visit()}visit()'
+        'function visit(items:number[]){let count=items.length;visit(items)}let items=[1];visit(items)'
     ]){const creator=current(source);assert.ok(projectToArcade(creator.project).unsupported.some(s=>s.startsWith('Array reference ')),source);}
+    // Source already refuses an uninitialized local; never lower its partial
+    // output to pretend it was a current-project negative.
+    const refused=arcadeToPseudocode('function visit(){let items;let count=items.length;visit()}visit()');
+    assert.ok(refused.unsupported.some(s=>s.includes('items.length')&&s.includes('not known')));
+    const creator=current('function visit(){let items=[1];let count=items.length;visit()}visit()'),{target,block}=lengthBlock(creator),blocks=target.blocks;
+    const [localId,local]=Object.entries(blocks).find(([,b])=>b.opcode==='arcade_setLocal'&&b.inputs.NAME?.[1]?.[1]==='items');
+    const countId=local.next,count=blocks[countId],entryId=local.parent,nextId=count.next;
+    blocks[entryId].next=countId;count.parent=entryId;count.next=localId;local.parent=countId;local.next=nextId;if(nextId)blocks[nextId].parent=localId;
+    assert.equal(createArrayReferenceExportAuthority(creator.project).validateInput(target,block).ok,false,'actual local current read occurs before this activation allocation');
 });
 test('global Array recursion retains dynamic and escaped caller refusal obligations',()=>{
     for(const escaped of [false,true]){
