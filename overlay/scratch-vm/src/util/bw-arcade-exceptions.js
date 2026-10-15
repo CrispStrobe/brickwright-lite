@@ -12,6 +12,7 @@ const callerLeases = new WeakMap();
 function create(runtime, readValue) {
     if (!runtime || typeof runtime.on !== 'function' || !Array.isArray(runtime.targets)) {
         return Object.freeze({raise() {throw new Error('Arcade Throw requires a bound runtime');},
+            rejectConstraint() {throw new Error('Arcade constraint rejection requires a bound runtime');},
             failure: () => null, captureCaller:()=>null,releaseCaller() {}, rethrow() {}, dispose() {}});
     }
     if (owners.has(runtime)) throw new Error('Arcade exception runtime already has an owner');
@@ -25,6 +26,26 @@ function create(runtime, readValue) {
     const listeners = new Map();
     const listen = (event, handler) => {listeners.set(event, handler);runtime.on(event, handler);};
     const cancel = () => {active = false;generation++;};
+    const retireLineage = (thread,signal) => {
+        // Mark the complete actual lineage before any cleanup can settle
+        // a pending operation. A detached event has no implicit parent.
+        const lineage = [];
+        for (let current = thread; current && !failures.has(current);) {
+            failures.set(current, signal);failedThreads.set(current, {runtime, signal});lineage.push(current);
+            const edge = edges.get(current);
+            current = edge?.generation === generation ? edge.caller : null;
+        }
+        try {
+            const cleanupErrors = [];
+            for (const current of lineage) {
+                const edge = edges.get(current);edges.delete(current);
+                try {edge?.cleanup(signal);} catch (error) {cleanupErrors.push(error);}
+                finally {runtime.sequencer.retireThread(current);}
+            }
+            if (cleanupErrors.length) signal.cause = new AggregateError(cleanupErrors, 'Arcade invocation cleanup failed');
+            runtime.emit('BLOCKS_ERROR', signal);
+        } finally {throw signal;}
+    };
     const owner = Object.freeze({
         failure,
         captureCaller(args,util) {
@@ -77,24 +98,26 @@ function create(runtime, readValue) {
             const record = Object.freeze({owner, runtime, generation, value, target: thread.target,
                 block: block.id, stack: Object.freeze([...thread.stack])});
             signals.set(signal, record);
-            // Mark the complete actual lineage before any cleanup can settle
-            // a pending operation. A detached event has no implicit parent.
-            const lineage = [];
-            for (let current = thread; current && !failures.has(current);) {
-                failures.set(current, signal);failedThreads.set(current, {runtime, signal});lineage.push(current);
-                const edge = edges.get(current);
-                current = edge?.generation === generation ? edge.caller : null;
-            }
-            try {
-                const cleanupErrors = [];
-                for (const current of lineage) {
-                    const edge = edges.get(current);edges.delete(current);
-                    try {edge?.cleanup(signal);} catch (error) {cleanupErrors.push(error);}
-                    finally {runtime.sequencer.retireThread(current);}
-                }
-                if (cleanupErrors.length) signal.cause = new AggregateError(cleanupErrors, 'Arcade invocation cleanup failed');
-                runtime.emit('BLOCKS_ERROR', signal);
-            } finally {throw signal;}
+            retireLineage(thread,signal);
+        },
+        rejectConstraint(args,util,error) {
+            const thread=util?.thread,priorIssued=signals.get(error);
+            if(priorIssued?.runtime===runtime&&failure(thread)===error)throw error;
+            const block=primitiveOwner.current(util,args);
+            if(!live(thread)||util.runtime!==runtime||!['procedures_call','arcade_callFunction','arcade_setLocal','arcade_setCaptured'].includes(block?.opcode))
+                throw new Error('Arcade constraint rejection requires its actual current primitive');
+            cachedPrimitiveOwner(runtime,util,args,block.opcode,[]);
+            // Existing issued failures never become a second failure or acquire
+            // another runtime's ownership through this entry point.
+            if(signals.has(error))throw error;
+            const message=error instanceof Error&&Object.getOwnPropertyDescriptor(error,'message');
+            if(!message||!Object.prototype.hasOwnProperty.call(message,'value')||typeof message.value!=='string')
+                throw new Error('Arcade constraint rejection requires an actual Error diagnostic');
+            const prior=failure(thread);if(prior)throw prior;
+            const signal=new Error(message.value,{cause:error});
+            signals.set(signal,Object.freeze({owner,runtime,generation,kind:'constraint',message:message.value,
+                target:thread.target,block:block.id,stack:Object.freeze([...thread.stack])}));
+            retireLineage(thread,signal);
         },
         dispose() {
             if (disposed) return;
@@ -124,7 +147,7 @@ function failed(runtime, thread) {return failedThreads.get(thread)?.runtime === 
 function capture(runtime,thread) {return owners.get(runtime)?.capture(thread) || null;}
 function diagnostic(runtime,error) {
     const record=signals.get(error);
-    return record?.runtime===runtime ? Object.freeze({value:record.value,block:record.block,target:record.target.id}) : null;
+    return record?.runtime===runtime ? record.kind==='constraint' ? Object.freeze({kind:'constraint',message:record.message,block:record.block,target:record.target.id}) : Object.freeze({value:record.value,block:record.block,target:record.target.id}) : null;
 }
 function stale(runtime,thread,lease) {
     if (failed(runtime,thread)) return true;
