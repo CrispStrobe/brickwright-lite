@@ -22,6 +22,18 @@ fields, aliases, captures, callback arguments and returned values. A returned
 Image is the actual input or an actual supported allocation, not a reconstructed
 record, texture, Sprite handle or copied pixel array.
 
+The six retained class-dependent contexts share these concrete library callsites:
+
+| Public source | Actual requirement | Boundary retained |
+| --- | --- | --- |
+| [StatusBar `status-bar.ts`](https://github.com/jwunderl/pxt-status-bar/blob/v0.4.1/status-bar.ts): `StatusBar._image`, `StatusBarSprite.applyChange`, `onDisplayUpdated` | Image field, action result, ordered display update and Image callback argument | Physical Sprite inheritance and mixed Sprite/Image handlers remain separate. |
+| [Sprite Utils `spriteutils.ts`](https://github.com/jwunderl/arcade-sprite-util/blob/v0.3.1/spriteutils.ts): `createRenderable`, `SpriteUpdateHandler` | Image render argument and stored Sprite callback | Only the Image value prerequisite is claimed; frame registration and Sprite callbacks stay excluded. |
+| [Carnival `carnival.ts`](https://github.com/microsoft/arcade-carnival/blob/master/carnival.ts): `Ball.constructor`, `Ball.sprite` | Actual Image passed to the physical superclass and an actual Sprite result | Physical superclass construction is not admitted by an Image signature. |
+
+The inventory is a dependency requirement, not evidence that all neighboring
+library bodies are accepted. Original context source, package resolution and
+any preparation adapters remain distinct in qualification records.
+
 ## Source and native authority
 
 Annotations constrain accepted producers; they never create an Image. Prove
