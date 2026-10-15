@@ -53,7 +53,8 @@ module.exports = function createClassCallableHost(runtime, values, createHeap, n
     };
     const rawSdkInputs=(signature,args)=>{signature.parameters.forEach((parameter,index)=>{if(parameter.type.kind==='sdk')types.result({kind:'callable',parameters:[],result:parameter.type},args[index]);});};
     return Object.freeze({heap, provider, subscribeLifecycle,
-        validateConstructor(definition,args) {
+        validateConstructor(definition,args,target) {
+            if(target)for(const plan of graph.sdkPlans(target))if(plan.classes.some(row=>row.name===definition.name))provider.assertSdkCatalogue(target,plan);
             definition.parameters.forEach((parameter,index)=>{if(parameter.sdkType)types.result({kind:'callable',parameters:[],result:parameter.sdkType},args[index]);});
         },
         validateMethodInputs(method,args) {
@@ -64,6 +65,7 @@ module.exports = function createClassCallableHost(runtime, values, createHeap, n
             if (!owners.length) return null;
             if (owners.length !== 1) throw new Error('Class callable managed procedure ownership is ambiguous');
             if (!graph.current(target)) throw new Error('Class callable managed dispatch requires the current project graph');
+            for(const plan of graph.sdkPlans(target))provider.assertSdkCatalogue(target,plan);
             const method = owners[0].method;
             const result = method?.callableSignature ? types.instantiate(method.callableSignature, method.typeParameters, args.slice(1)) : null;
             if(result)rawSdkInputs(result,rawArgs.slice(1));

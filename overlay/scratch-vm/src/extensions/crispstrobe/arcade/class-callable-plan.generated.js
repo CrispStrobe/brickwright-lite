@@ -15,16 +15,26 @@ function validateClassCallablePlan(plan) {
     };
     if(!Array.isArray(plan.classes)||!plan.classes.length)fail('missing ordinary class catalogue');
     const classes=new Map();
-    for(const cls of plan.classes){keys(cls,['name','parent']);if(!identifier(cls.name)||classes.has(cls.name)||cls.parent!==null&&!identifier(cls.parent))fail('invalid ordinary class catalogue');classes.set(cls.name,cls);}
+    for(const cls of plan.classes){keys(cls,['name','parent','sdkRoles']);if(!identifier(cls.name)||classes.has(cls.name)||cls.parent!==null&&!identifier(cls.parent))fail('invalid ordinary class catalogue');classes.set(cls.name,cls);}
     for(const cls of classes.values()){const seen=new Set();let row=cls;while(row){if(seen.has(row.name))fail('cyclic class catalogue');seen.add(row.name);if(row.parent&&!classes.has(row.parent))fail('unknown class parent');row=classes.get(row.parent);}}
     const owners=rows(plan.owners,'owners'),bindings=rows(plan.bindings,'bindings'),sites=rows(plan.sites,'sites');
     const type=(value,generics=new Set(),shadowed=new Set())=>{
         if(!object(value))fail('missing signature type');
+        if(value.kind==='sdk'){keys(value,['kind','name']);if(value.name!=='Image')fail('unqualified SDK signature domain');return;}
         if(value.kind==='named'){keys(value,['kind','name']);if(shadowed.has(value.name)&&!generics.has(value.name))fail('nested generic closure signature requires invocation binding');if(!generics.has(value.name)&&!classes.has(value.name)&&!['number','string','boolean','void','null','undefined'].includes(value.name))fail('opaque or unknown signature domain');return;}
         if(value.kind!=='callable')fail('unqualified signature domain');
         keys(value,['kind','parameters','result']);if(!Array.isArray(value.parameters))fail('missing ordered callback parameters');
         const names=new Set();for(const parameter of value.parameters){keys(parameter,['name','type','optional']);if(!identifier(parameter.name)||names.has(parameter.name)||parameter.optional!==false)fail('invalid or optional callback parameter');names.add(parameter.name);type(parameter.type,generics,shadowed);}type(value.result,generics,shadowed);
     };
+    const hasSdk=value=>value?.kind==='sdk'||value?.kind==='callable'&&(value.parameters.some(parameter=>hasSdk(parameter.type))||hasSdk(value.result));
+    for(const cls of classes.values())if(Object.hasOwn(cls,'sdkRoles')){
+        const roles=cls.sdkRoles;keys(roles,['fields','constructor','methods']);
+        if(!Array.isArray(roles.fields)||!Array.isArray(roles.constructor)||!Array.isArray(roles.methods)||!roles.fields.length&&!roles.constructor.length&&!roles.methods.length)fail('missing SDK class roles');
+        const fields=new Set(),parameters=new Set(),methods=new Set();let previous=-1;
+        for(const field of roles.fields){keys(field,field.type==='callable'?['name','type','callableSignature']:['name','type','sdkType']);if(!identifier(field.name)||fields.has(field.name))fail('invalid SDK field role');fields.add(field.name);if(field.type==='callable'){type(field.callableSignature);if(field.callableSignature.kind!=='callable'||!hasSdk(field.callableSignature))fail('callback field role has no SDK type');}else{if(field.type!=='Image'||field.sdkType?.kind!=='sdk')fail('invalid SDK field role');type(field.sdkType);}}
+        for(const parameter of roles.constructor){keys(parameter,['index','name','type','sdkType']);if(!Number.isInteger(parameter.index)||parameter.index<=previous||!identifier(parameter.name)||parameters.has(parameter.name)||parameter.type!=='Image'||parameter.sdkType?.kind!=='sdk')fail('invalid ordered SDK constructor role');previous=parameter.index;parameters.add(parameter.name);type(parameter.sdkType);}
+        for(const method of roles.methods){keys(method,['name','typeParameters','callableSignature']);if(!identifier(method.name)||methods.has(method.name)||!Array.isArray(method.typeParameters))fail('invalid SDK method role');methods.add(method.name);const generics=new Set();for(const parameter of method.typeParameters){keys(parameter,['name','constraint','defaultType']);if(!identifier(parameter.name)||generics.has(parameter.name)||parameter.constraint!==''||parameter.defaultType!=='')fail('invalid SDK method generic role');generics.add(parameter.name);}type(method.callableSignature,generics);if(method.callableSignature.kind!=='callable'||!hasSdk(method.callableSignature))fail('method role has no SDK type');}
+    }
     const module=owners.get(plan.module);if(!module||module.kind!=='module'||module.parent!==null)fail('missing module owner');
     const genericNames=owner=>new Set((owner.typeParameters || []).map(parameter=>parameter.name));
     const outerGenerics=owner=>{const names=new Set(),seen=new Set();let row=owners.get(owner.parent);while(row&&!seen.has(row.id)){seen.add(row.id);for(const name of genericNames(row))names.add(name);row=owners.get(row.parent);}return names;};

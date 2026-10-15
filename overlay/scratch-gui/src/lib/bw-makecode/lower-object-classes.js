@@ -5,15 +5,17 @@ import {createClassCallableDescriptors} from './callable-class-descriptors.js';
 
 // Class structure is declarative authoring data. Instances are explicit heap
 // references; no field state, per-class numeric handles or closure snapshots.
-export function lowerObjectClasses(program,{classCallablePrototype=false}={}) {
+export function lowerObjectClasses(program,{classCallablePrototype=false,sdkImagePrototype=false}={}) {
     if(classCallablePrototype!==true&&classCallablePrototype!==false)return {program,unsupported:['Class callable class lowering requires its explicit Boolean option']};
-    const callableModel=classCallablePrototype?createClassCallableDescriptors(program):null;
+    const callableModel=classCallablePrototype?createClassCallableDescriptors(program,{sdkImagePrototype}):null;
     if(callableModel?.unsupported.length)return {program,unsupported:callableModel.unsupported};
     if(classCallablePrototype && JSON.stringify(program.bwClassCallableDescriptors)!==JSON.stringify({schema:callableModel.schema,version:callableModel.version,classes:callableModel.classes}))
         return {program,unsupported:['Class callable descriptors differ from actual source declarations']};
     const callableClass=name=>callableModel?.classes.find(row=>row.name===name);
     const callableField=(name,field)=>callableClass(name)?.fields.find(row=>row.name===field);
     const callableMethod=(name,method)=>callableClass(name)?.methods.find(row=>row.name===method);
+    const sdkField=(name,field)=>callableClass(name)?.sdkRoles?.fields.find(row=>row.name===field&&row.type==='Image');
+    const sdkParameter=(name,index)=>callableClass(name)?.sdkRoles?.constructor.find(row=>row.index===index);
     const reserved = new Set(SDK_CLASS_NODES.map(node=>node.name).filter(name=>name.startsWith('__bwSDK_')));
     const usesReserved = node => node && typeof node==='object' &&
         (reserved.has(node.type==='Identifier'||node.type==='Class'?node.name:null) || reserved.has(node.type==='Class'?node.base:null) ||
@@ -172,7 +174,7 @@ export function lowerObjectClasses(program,{classCallablePrototype=false}={}) {
         const declared=declaredTypes.get(cell(node));if(declared)return declared;
         if(node.type==='Index'){const array=staticType(node.object);return array?.endsWith('[]')?array.slice(0,-2):null;}
         if(node.type==='Member'){const names=classNames(node.object),fields=names.map(name=>findField(name,node.name));return fields.length&&fields.every(field=>field && field.typeName===fields[0].typeName)?fields[0].typeName:null;}
-        if(node.type==='Call' && node.bwClassCallableInvocation?.result?.kind==='named')return node.bwClassCallableInvocation.result.name;
+        if(node.type==='Call' && ['named','sdk'].includes(node.bwClassCallableInvocation?.result?.kind))return node.bwClassCallableInvocation.result.name;
         if(node.type==='Call' && node.callee?.type==='Member'){const names=classNames(node.callee.object),methods=names.map(name=>findMethod(name,node.callee.name));return methods.length&&methods.every(method=>method && typeText(method.returnType)===typeText(methods[0].returnType))?typeText(methods[0].returnType):null;}
         if(node.type==='Call' && node.callee?.type==='Identifier')return node.isNew?node.callee.name:typeText(functions.get(node.callee.name)?.node.returnType);
         return null;
@@ -208,7 +210,7 @@ export function lowerObjectClasses(program,{classCallablePrototype=false}={}) {
             if (node.type === 'Call' && !node.isNew) {
                 const targets = node.callee?.type === 'Identifier' && functions.has(node.callee.name) ? [functions.get(node.callee.name)] :
                     node.callee?.type === 'Member' ? classNames(node.callee.object).flatMap(name => [findMethod(name,node.callee.name)].filter(Boolean).map(method => ({node: method, owner: memberOwners.get(method)}))) : [];
-                if(classCallablePrototype && node.bwClassCallableInvocation?.result?.kind==='named')addType(value,node.bwClassCallableInvocation.result.name);
+                if(classCallablePrototype && ['named','sdk'].includes(node.bwClassCallableInvocation?.result?.kind))addType(value,node.bwClassCallableInvocation.result.name);
                 for (const target of targets) {
                     if(classCallablePrototype && callableMethod(target.owner.className,target.node.name))continue;
                     graph.merge(value, target.owner.result);
@@ -387,7 +389,7 @@ export function lowerObjectClasses(program,{classCallablePrototype=false}={}) {
                 for(const name of names)for(const index of opaqueParameters(name,node.callee.name))if(node.args[index] && !['Null','Undefined'].includes(node.args[index].type))fail('SDK Dialog Font arguments require separate native Font qualification');
                 access(node.callee.object,node.callee.name,names.map(name=>findMethod(name,node.callee.name)),context);
                 const result=call('call', [rewrite(node.callee.object, context), str(node.callee.name), {type:'Array', items:node.args.map(arg => rewrite(arg, context))}], types(node));
-                if(classCallablePrototype && node.bwClassCallableInvocation?.result?.kind==='named')result.bwClassCallableResultType=node.bwClassCallableInvocation.result.name;
+                if(classCallablePrototype && ['named','sdk'].includes(node.bwClassCallableInvocation?.result?.kind))result.bwClassCallableResultType=node.bwClassCallableInvocation.result.name;
                 return result;
             }
             fail(`Class receiver method ${node.callee.name} is not declared for every possible receiver`);
@@ -461,9 +463,9 @@ export function lowerObjectClasses(program,{classCallablePrototype=false}={}) {
                 className:name,methodName:method.name,procedure:signature(fn,params),receiverParameter:selfName});
             if(method.kind==='method')methods.push({name:method.name, procedure:signature(fn, params), parameters:method.params.map((param,index) => ({name:param,...(callableMethod(name,method.name)?.signature.parameters[index].type.kind==='callable'?{type:'callable',callableSignature:callableMethod(name,method.name).signature.parameters[index].type}:{type:typeText(method.paramTypes?.[param])}),optional:!!method.optionalParams?.includes(param),...(method.parameterDefaults?.some(value=>value.name===param)?{default:defaultValue(method.parameterDefaults.find(value=>value.name===param).value)}:{})})), returnType:callableMethod(name,method.name)?(callableMethod(name,method.name).signature.result.kind==='callable'?'callable':callableMethod(name,method.name).signature.result.name):typeText(method.returnType),visibility:visibility(method),...(callableMethod(name,method.name)?{typeParameters:callableMethod(name,method.name).typeParameters,callableSignature:callableMethod(name,method.name).signature,...(callableMethod(name,method.name).resultFlow?{resultFlow:callableMethod(name,method.name).resultFlow}:{})}:{})});
         }
-        body.push(statement(call(node.base?'declareSubclass':'declare', [str(name),...(node.base?[str(node.base)]:[]), str(JSON.stringify(node.fields.map(field => ({name:field.name,type:callableField(name,field.name)?'callable':field.typeName || 'any',...(callableField(name,field.name)?{valueKind:'callable',callableSignature:callableField(name,field.name).type}:{}),readonly:!!field.modifiers?.includes('readonly'),visibility:visibility(field),...(field.accessor?.get?{getter:signature(accessorNames.get(field.accessor.get),[selfName])}:{}),...(field.accessor?.set?{setter:{procedure:signature(accessorNames.get(field.accessor.set),[selfName,...field.accessor.set.params]),parameters:field.accessor.set.params.map(param=>({name:param,type:typeText(field.accessor.set.paramTypes?.[param]),optional:false}))}}:{}),...(field.parameterProperty?{parameterProperty:true}:{}),...(ownInitializers.has(field.name)?{initializer:ownInitializers.get(field.name)}:{})})))),
+        body.push(statement(call(node.base?'declareSubclass':'declare', [str(name),...(node.base?[str(node.base)]:[]), str(JSON.stringify(node.fields.map(field => ({name:field.name,type:callableField(name,field.name)?'callable':field.typeName || 'any',...(callableField(name,field.name)?{valueKind:'callable',callableSignature:callableField(name,field.name).type}:{}),...(sdkField(name,field.name)?{valueKind:'sdk',sdkType:sdkField(name,field.name).sdkType}:{}),readonly:!!field.modifiers?.includes('readonly'),visibility:visibility(field),...(field.accessor?.get?{getter:signature(accessorNames.get(field.accessor.get),[selfName])}:{}),...(field.accessor?.set?{setter:{procedure:signature(accessorNames.get(field.accessor.set),[selfName,...field.accessor.set.params]),parameters:field.accessor.set.params.map(param=>({name:param,type:typeText(field.accessor.set.paramTypes?.[param]),optional:false}))}}:{}),...(field.parameterProperty?{parameterProperty:true}:{}),...(ownInitializers.has(field.name)?{initializer:ownInitializers.get(field.name)}:{})})))),
             str(signature(initName, [selfName])), str(signature(`__bwClass_${actualCtor.name}_constructor`,ctorParams)),
-            str(JSON.stringify((actualCtor.ctor?.params || []).map(param => ({name:param,type:typeText(actualCtor.ctor?.paramTypes?.[param]),optional:!!actualCtor.ctor?.optionalParams?.includes(param),...(actualCtor.ctor?.parameterDefaults?.some(value=>value.name===param)?{default:defaultValue(actualCtor.ctor.parameterDefaults.find(value=>value.name===param).value)}:{})})))), str(JSON.stringify(methods))])));
+            str(JSON.stringify((actualCtor.ctor?.params || []).map((param,index) => ({name:param,type:typeText(actualCtor.ctor?.paramTypes?.[param]),...(sdkParameter(actualCtor.name,index)?{sdkType:sdkParameter(actualCtor.name,index).sdkType}:{}),optional:!!actualCtor.ctor?.optionalParams?.includes(param),...(actualCtor.ctor?.parameterDefaults?.some(value=>value.name===param)?{default:defaultValue(actualCtor.ctor.parameterDefaults.find(value=>value.name===param).value)}:{})})))), str(JSON.stringify(methods))])));
     }
     return {program:{...program,body,bwObjectClasses:true,...(classCallableProcedures.length?{bwClassCallableProcedures:classCallableProcedures}:{})}, unsupported};
 }

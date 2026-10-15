@@ -1,19 +1,20 @@
+import {createSdkImageSourceProducers} from './sdk-image-source-producers.js';
+import {createSdkImageSourceTypes} from './sdk-image-source-types.js';
 import {analyseCallableBindings} from './callable-bindings.js';
-import {parseCallableType} from './callable-type-syntax.js';
 import {instantiateCallableSignature} from './callable-signatures.js';
 import {callableDefaultBody} from './callable-defaults.js';
 
 // Callable signatures have their own directed source flow. A resource's runtime
 // reference kind cannot supply a missing parameter/result type, and a generic
 // invocation cannot specialize another invocation of the same method.
-export function analyseCallableFlow(program) {
+export function analyseCallableFlow(program,{sdkImagePrototype=false}={}) {
     const lexical=analyseCallableBindings(program),bindingTypes=new Map(),profiles=new WeakMap();
     const classes=new Map(program.body.filter(node=>node.type==='Class').map(node=>[node.name,node]));
     const expressionTypes=new WeakMap(),invocations=new WeakMap(),unsupported=[];
     const bindingTargets=new Map(),expressionTargets=new WeakMap(),fieldTargets=new WeakMap();
-    const annotation=value=>parseCallableType(typeof value==='string'?value:value?.text || '');
+    const {annotation}=createSdkImageSourceTypes(program,lexical,{enabled:sdkImagePrototype}),sdkImageProducers=createSdkImageSourceProducers();
     const named=name=>({kind:'named',name});
-    const equal=(a,b)=>a?.kind===b?.kind && !!a && (a.kind==='named'?a.name===b.name:
+    const equal=(a,b)=>a?.kind===b?.kind && !!a && (['named','sdk'].includes(a.kind)?a.name===b.name:
         a.kind==='array'?equal(a.element,b.element):a.parameters.length===b.parameters.length &&
             a.parameters.every((parameter,index)=>parameter.optional===b.parameters[index].optional &&
                 equal(parameter.type,b.parameters[index].type)) && equal(a.result,b.result));
@@ -33,17 +34,21 @@ export function analyseCallableFlow(program) {
         const node=scope.node;
         const profile={node,scope,parameters:(node.params || []).map(name=>({name,
             optional:!!node.optionalParams?.includes(name) || !!node.parameterDefaults?.some(value=>value.name===name),
-            type:annotation(node.paramTypes?.[name])})),result:annotation(node.returnType),
+            type:annotation(node.paramTypes?.[name],scope)})),result:annotation(node.returnType,scope),
             typeParameters:node.typeParameters || [],returnTargets:new Set()};
         profiles.set(node,profile);
         for(const parameter of profile.parameters)set(bindingTypes,scope.names.get(parameter.name),parameter.type);
         if(scope.kind==='method')set(bindingTypes,scope.names.get('this'),named(scope.className));
     }
     for(const binding of lexical.bindings)if(binding.node?.typeName)
-        set(bindingTypes,binding,annotation(binding.node.typeName));
+        set(bindingTypes,binding,annotation(binding.node.typeName,binding.scope));
     const signature=profile=>profile && profile.result && profile.parameters.every(parameter=>parameter.type) ?
         {kind:'callable',parameters:profile.parameters.map(parameter=>({...parameter})),result:profile.result}:null;
     const member=(type,name)=>{
+        if(sdkImagePrototype&&type?.kind==='sdk'&&type.name==='Image'){
+            if(name==='clone')return {type:{kind:'callable',parameters:[],result:{kind:'sdk',name:'Image'}}};
+            if(['width','height'].includes(name))return {type:named('number')};
+        }
         if(type?.kind!=='named')return null;
         const seen=new Set();let cls=classes.get(type.name);
         while(cls && !seen.has(cls.name)) {
@@ -122,7 +127,9 @@ export function analyseCallableFlow(program) {
             targets(expressionTargets,node,expressionTargets.get(node.consequent));targets(expressionTargets,node,expressionTargets.get(node.alternate));
         }
         else if(node.type==='Call') {
-            if(node.isNew && node.callee?.type==='Identifier' && classes.has(node.callee.name)) {
+            if(sdkImagePrototype&&node.callee?.type==='Member'&&node.callee.name==='create'&&node.callee.object?.type==='Identifier'&&node.callee.object.name==='image'&&!lexical.references.get(node.callee.object)){
+                try{result=sdkImageProducers.factory(node).type;}catch{}
+            } else if(node.isNew && node.callee?.type==='Identifier' && classes.has(node.callee.name)) {
                 const profile=constructorProfile(node.callee.name);
                 (node.args || []).forEach((argument,index)=>{
                     context(argument,profile?.parameters[index]?.type);infer(argument);
@@ -212,5 +219,5 @@ export function analyseCallableFlow(program) {
         unsupported.push(...(scope.unsupported || []));
     }
     return {lexical,profiles,bindingTypes,expressionTypes,invocations,signature,unsupported,
-        bindingTargets,expressionTargets,fieldTargets};
+        bindingTargets,expressionTargets,fieldTargets,...(sdkImagePrototype?{sdkImagePrototype:true}:{})};
 }

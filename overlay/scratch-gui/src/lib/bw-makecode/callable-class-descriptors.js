@@ -1,10 +1,11 @@
-import {parseCallableType} from './callable-type-syntax.js';
+import {analyseCallableBindings} from './callable-bindings.js';
+import {createSdkImageSourceTypes,sdkImageRolesForClass} from './sdk-image-source-types.js';
 import {instantiateCallableSignature} from './callable-signatures.js';
 
 // Source type authority for the separate class/callable bridge. This is not
 // runtime admission: a descriptor must subsequently bind actual heap classes,
 // method procedures and lexical receiver frames in the current project run.
-export function createClassCallableDescriptors(program) {
+export function createClassCallableDescriptors(program,{sdkImagePrototype=false}={}) {
     const classes=new Map(), unsupported=[];
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     for(const cls of program.body || [])if(cls.type==='Class') {
@@ -25,10 +26,11 @@ export function createClassCallableDescriptors(program) {
         if(!type)return false;
         if(type.kind==='named')return generics.has(type.name)||
             ['number','string','boolean','void','undefined','null'].includes(type.name)||ordinary(type.name);
+        if(sdkImagePrototype&&type.kind==='sdk')return type.name==='Image'&&Reflect.ownKeys(type).length===2;
         if(type.kind!=='callable')return false; // Array/callback variance is a later slice.
         return type.parameters.every(parameter=>!parameter.optional&&valid(parameter.type,generics))&&valid(type.result,generics);
     };
-    const annotation=value=>parseCallableType(typeof value==='string'?value:value?.text || '');
+    const {annotation}=createSdkImageSourceTypes(program,analyseCallableBindings(program),{enabled:sdkImagePrototype});
     const rows=[];
     for(const cls of classes.values()) {
         const fields=[],methods=[];
@@ -48,12 +50,14 @@ export function createClassCallableDescriptors(program) {
                 else {generics.add(parameter.name);typeParameters.push({...parameter});}
             }
             const signature=method.bwClassCallableSignature||{kind:'callable',parameters:(method.params || []).map(name=>({name,
-                optional:!!method.optionalParams?.includes(name),type:annotation(method.paramTypes?.[name])})),result:annotation(method.returnType)};
+                optional:!!method.optionalParams?.includes(name),type:annotation(method.paramTypes?.[name],method)})),result:annotation(method.returnType,method)};
             if(!ordinary(cls.name)||method.isStatic||method.kind!=='method'||method.parameterDefaults?.length||!valid(signature,generics))
                 fail('Class callable method requires a concrete instance signature: '+cls.name+'.'+method.name);
             else methods.push({name:method.name,typeParameters,signature,...(method.bwClassResultFlow?{resultFlow:structuredClone(method.bwClassResultFlow)}:{})});
         }
-        rows.push({name:cls.name,parent:cls.base || null,fields,methods});
+        const sdkRoles=sdkImagePrototype?sdkImageRolesForClass(cls,annotation,method=>method.bwClassCallableSignature||{kind:'callable',parameters:(method.params||[]).map(name=>({name,optional:!!method.optionalParams?.includes(name),type:annotation(method.paramTypes?.[name],method)})),result:annotation(method.returnType,method)}):null;
+        if(sdkImagePrototype&&JSON.stringify(cls.bwSdkImageRoles||null)!==JSON.stringify(sdkRoles))fail('SDK Image class roles differ from completed source proof: '+cls.name);
+        rows.push({name:cls.name,parent:cls.base || null,fields,methods,...(sdkRoles?{sdkRoles}:{})});
     }
     const owners=new Map(rows.map(row=>[row.name,row]));
     const lookup=(name,method)=>{

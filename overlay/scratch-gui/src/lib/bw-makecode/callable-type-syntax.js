@@ -54,6 +54,7 @@ export function parseCallableType(text) {
 }
 
 export function mapCallableType(type, resolveName) {
+    if (type.kind === 'sdk') return {...type};
     if (type.kind === 'named') return {...type, name:resolveName(type.name)};
     if (type.kind === 'array') return {...type, element:mapCallableType(type.element,resolveName)};
     return {...type, parameters:type.parameters.map(param => ({...param,type:mapCallableType(param.type,resolveName)})),
@@ -61,6 +62,7 @@ export function mapCallableType(type, resolveName) {
 }
 
 export function renderCallableType(type) {
+    if (type.kind === 'sdk') {if(type.name!=='Image'||Reflect.ownKeys(type).length!==2)throw Error('Unqualified SDK callable type');return 'Image';}
     if (type.kind === 'named') return type.name;
     if (type.kind === 'array') return (type.element.kind === 'callable' ? '('+renderCallableType(type.element)+')' : renderCallableType(type.element))+'[]';
     return '('+type.parameters.map(param => param.name+(param.optional?'?':'')+': '+renderCallableType(param.type)).join(', ')+') => '+renderCallableType(type.result);

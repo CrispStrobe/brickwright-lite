@@ -7,13 +7,13 @@ import {createClassCallablePlan} from './class-callable-plan.js';
 
 // An unadmitted source lowering prototype. The caller must qualify the complete
 // descriptor, declaration-prefix and authoring bridge before connecting it.
-export function lowerCallableValues(program,{legacyCallbacks=new WeakSet(),classPrototype=false}={}) {
-    const flow=analyseCallableFlow(program),unsupported=[...flow.unsupported],definitions=[];
+export function lowerCallableValues(program,{legacyCallbacks=new WeakSet(),classPrototype=false,sdkImagePrototype=false}={}) {
+    const flow=analyseCallableFlow(program,{sdkImagePrototype}),unsupported=[...flow.unsupported],definitions=[];
     const sites=new WeakMap(),siteInfos=[],taken=new Set(flow.lexical.bindings.map(binding=>binding.name));
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     if(classPrototype!==true&&classPrototype!==false)fail('Class callable prototype requires its explicit Boolean option');
     if(flow.lexical.bindings.some(binding=>binding.name==='__bwCallables'))fail('Authored __bwCallables binding conflicts with the unadmitted callable intrinsic namespace');
-    const classModel=classPrototype?createClassCallableDescriptors(program):null;
+    const classModel=classPrototype?createClassCallableDescriptors(program,{sdkImagePrototype}):null;
     if(classModel)unsupported.push(...classModel.unsupported);
     for(const cls of program.body.filter(node=>node.type==='Class'))
         if(cls.methods.some(method=>method.typeParameters?.length) || cls.fields.some(field=>/=>/.test(field.typeName || '')))
@@ -157,12 +157,14 @@ export function lowerCallableValues(program,{legacyCallbacks=new WeakSet(),class
             const possible=flow.expressionTargets.get(node.callee);
             const classMethod=node.callee?.type==='Member' && possible?.size && [...possible].every(target=>target.kind==='method');
             const type=flow.expressionTypes.get(node.callee);
-            if(type?.kind==='callable' && !direct && !classMethod) {
+            const sdkClone=sdkImagePrototype&&node.callee?.type==='Member'&&node.callee.name==='clone'&&flow.expressionTypes.get(node.callee.object)?.kind==='sdk';
+            if(type?.kind==='callable' && !direct && !classMethod&&!sdkClone) {
                 const invocation=flow.invocations.get(node);
                 if(!invocation?.signature)fail('Source callable invocation requires a qualified concrete signature');
                 const targets=flow.expressionTargets.get(node.callee) || new Set();
                 return {...call('invoke',[rewrite(node.callee,{ownerScope}),{type:'Array',items:node.args.map(argument=>rewrite(argument,{ownerScope}))}]),
                     ...(invocation?.signature?{bwCallableResultType:renderCallableType(invocation.signature.result)}:{}),
+                    ...(node.bwSdkImageValue?{bwSdkImageValue:true,bwObjectTypes:['image']}:{}),
                     bwCallableTargets:[...targets].map(target=>sites.get(target)?.name).filter(Boolean)};
             }
         }

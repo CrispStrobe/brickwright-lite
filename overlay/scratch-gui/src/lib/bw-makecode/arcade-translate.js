@@ -4937,8 +4937,9 @@ export function arcadeToPseudocode (files, opts = {}) {
     const callableSourceParsed=parseMakeCodeTs(source,{...callableParseOptions,retainCallableMetadata:true});
     const callableEligibility=callableSourceGate(callableSourceParsed,{normalize:true});
     const callableEnabled=opts.callableLexicalPrototype===true || callableEligibility.eligible;
-    const classEligibility=proveClassCallableSource(callableSourceParsed);
+    const classEligibility=proveClassCallableSource(callableSourceParsed,{sdkImagePrototype:opts.sdkImagePrototype===true});
     const classEnabled=opts.classCallablePrototype===true || classEligibility.eligible;
+    if(opts.sdkImagePrototype===true&&!classEligibility.eligible)projectInputDiagnostics.push(...classEligibility.unsupported,'SDK Image prototype requires its completed actual source producer proof');
     // Ordinary programs retain their ordinary parse. Only the proved numeric
     // surface uses lexical metadata and the existing callable lowering path.
     const callableSourceInput=classEnabled ? withClassResultFlowProof(callableSourceParsed,classEligibility) : callableEnabled ? (callableEligibility.program || callableSourceParsed) : ordinarySource;
@@ -5044,9 +5045,9 @@ export function arcadeToPseudocode (files, opts = {}) {
     });
     stagedSource.sourceReferenceDeclarations = sourceReferenceDeclarations(stagedSource);
     stagedSource.sourceCallableDeclarations=callableEnabled?sourceCallableDeclarations(stagedSource).declarations:[];
-    const callables=classEnabled?lowerCallableValues(stagedSource,{classPrototype:true}):callableEnabled?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
+    const callables=classEnabled?lowerCallableValues(stagedSource,{classPrototype:true,sdkImagePrototype:opts.sdkImagePrototype===true}):callableEnabled?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
     projectInputDiagnostics.push(...callables.unsupported);
-    const objectClasses = lowerObjectClasses(callables.program,{classCallablePrototype:classEnabled});
+    const objectClasses = lowerObjectClasses(callables.program,{classCallablePrototype:classEnabled,sdkImagePrototype:opts.sdkImagePrototype===true});
     if(classEnabled && !callables.unsupported.length && !objectClasses.unsupported.length) {
         try {objectClasses.program.bwCallableLexicalPlan=callables.finishClassPlan(objectClasses.program.bwClassCallableProcedures || []);}
         catch(error){objectClasses.unsupported.push(String(error.message));}

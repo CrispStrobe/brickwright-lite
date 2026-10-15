@@ -1,6 +1,6 @@
 // Invocation-local class/callable type authority. This module does not admit
 // source syntax or execute callbacks; the caller must own the resource/frame.
-module.exports = function createClassCallableTypes(runtime, values, heap, signatureOf, sdkImages) {
+module.exports = function createClassCallableTypes(runtime, values, heap, signatureOf, sdkImages, {sdkSchema=false}={}) {
     const primitive = new Set(['number','string','boolean','void','null','undefined']);
     const fail = message => { throw new Error('Class callable type: ' + message); };
     const ownKeys = (value, names) => value && typeof value === 'object' && !Array.isArray(value) &&
@@ -25,7 +25,7 @@ module.exports = function createClassCallableTypes(runtime, values, heap, signat
             if (Reflect.ownKeys(descriptors).length !== 2 || !descriptors.kind || !descriptors.name ||
                 !Object.prototype.hasOwnProperty.call(descriptors.kind, 'value') ||
                 !Object.prototype.hasOwnProperty.call(descriptors.name, 'value') || descriptors.name.value !== 'Image' ||
-                !sdkImages || typeof sdkImages.assert !== 'function') fail('unqualified SDK signature domain');
+                (!sdkImages || typeof sdkImages.assert !== 'function')&&!sdkSchema) fail('unqualified SDK signature domain');
             return {kind:'sdk',name:'Image'};
         }
         if (!ownKeys(type, type?.kind === 'named' ? ['kind','name'] : ['kind','parameters','result'])) fail('malformed signature');

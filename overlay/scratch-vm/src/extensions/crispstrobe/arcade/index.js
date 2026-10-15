@@ -1987,7 +1987,7 @@ module.exports = makeExt(`// Name: Arcade
         const argsText=String(args.ARGS),rawValues=JSON.parse(argsText);
         if(!Array.isArray(rawValues))throw new Error('Class constructor arguments must be an ordered argument list');
         const className=String(args.CLASS);
-        classCallableHosts.get(this)?.validateConstructor(this._objectHeap.definition(className),rawValues);
+        classCallableHosts.get(this)?.validateConstructor(this._objectHeap.definition(className),rawValues,util.target);
         let values=JSON.parse(argsText,(_key,value)=>Scratch.BWValues.encode(Scratch.BWValues.decode(value)));
         values=values.map(value=>this._objectHeap.hold(value));
         allocation=this._objectHeap.allocate(className);

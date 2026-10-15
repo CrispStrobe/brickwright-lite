@@ -3,13 +3,21 @@ const createTypes = require('./class-callable-types');
 
 // Private optional provider for the class-only v2 profile. A validated plan is
 // never a frame issuer. The installed caller must supply its real graph guard.
-module.exports = function createClassCallableProvider(runtime, values, heap, frames, {currentGraph,currentCall,signatureOf,sdkImages} = {}) {
-    const types = createTypes(runtime, values, heap, signatureOf, sdkImages), proofs = new WeakMap();
+module.exports = function createClassCallableProvider(runtime, values, heap, frames, {currentGraph,currentCall,signatureOf,sdkImages,sdkSchema=false} = {}) {
+    const types = createTypes(runtime, values, heap, signatureOf, sdkImages,{sdkSchema}), proofs = new WeakMap();
     const fail = message => { throw new Error('Class callable provider: ' + message); };
     const catalogue = plan => {
         for (const row of plan.classes) {
             const definition = heap.definition(row.name);
             if (definition.intrinsic || (definition.parent || null) !== row.parent) fail('class catalogue differs from actual ordinary heap');
+            const hasSdk=type=>type?.kind==='sdk'||type?.kind==='callable'&&(type.parameters.some(parameter=>hasSdk(parameter.type))||hasSdk(type.result));
+            const actualRoles={fields:[...definition.fields.values()].filter(field=>field.valueKind==='sdk'||field.valueKind==='callable'&&hasSdk(field.callableSignature)).map(field=>field.valueKind==='sdk'?{name:field.name,type:field.type,sdkType:field.sdkType}:{name:field.name,type:field.type,callableSignature:field.callableSignature}),
+                constructor:definition.parameters.flatMap((parameter,index)=>parameter.sdkType?[{index,name:parameter.name,type:parameter.type,sdkType:parameter.sdkType}]:[]),
+                methods:[...definition.methods.values()].filter(method=>hasSdk(method.callableSignature)).map(method=>({name:method.name,typeParameters:method.typeParameters,callableSignature:method.callableSignature}))};
+            const canonical=roles=>({fields:[...roles.fields].sort((a,b)=>a.name.localeCompare(b.name)),constructor:roles.constructor,methods:[...roles.methods].sort((a,b)=>a.name.localeCompare(b.name))});
+            const expected=row.sdkRoles||{fields:[],constructor:[],methods:[]};
+            if(JSON.stringify(canonical(actualRoles))!==JSON.stringify(canonical(expected)))fail('SDK class roles differ from actual registered heap');
+
         }
     };
     const current = (record, target) => {
@@ -30,7 +38,7 @@ module.exports = function createClassCallableProvider(runtime, values, heap, fra
                 if(JSON.stringify(selected.callableSignature)!==JSON.stringify(owner.signature)||
                     JSON.stringify(selected.typeParameters)!==JSON.stringify(owner.typeParameters))fail('source creator differs from its actual heap signature');
             }else if(owner.typeParameters.length||selected.parameters.some((parameter,index)=>
-                owner.signature.parameters[index].type.kind!=='named'||owner.signature.parameters[index].type.name!==parameter.type)||
+                (parameter.sdkType?parameter.type!=='Image'||JSON.stringify(parameter.sdkType)!==JSON.stringify(owner.signature.parameters[index].type):owner.signature.parameters[index].type.kind!=='named'||owner.signature.parameters[index].type.name!==parameter.type))||
                 owner.kind==='method'&&(owner.signature.result.kind!=='named'||owner.signature.result.name!==selected.returnType))
                 fail('source creator differs from its actual heap signature');
         }
@@ -94,6 +102,7 @@ module.exports = function createClassCallableProvider(runtime, values, heap, fra
         proofs.set(proof, record);return proof;
     }
     return Object.freeze({prepareDeclaration,methodSignature,
+        assertSdkCatalogue(target,plan) {if(typeof currentGraph!=='function'||!currentGraph(target,plan))fail('requires current canonical class block graph');catalogue(validateClassCallablePlan(plan));},
         assertCurrent(proof,target) {current(recordFor(proof),target);},
         assertCreate(proof,target,util,operationArgs) {
             const record=recordFor(proof);current(record,target);
