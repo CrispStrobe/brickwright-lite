@@ -1,5 +1,24 @@
 # Conversion capabilities and GUI closure ledger
 
+## Declaration values and Player inspection — 2026-10-15
+
+Qualified local conversion/runtime lanes now cover zero-argument named
+declaration values, identity, Number/String results and Void continuation, plus
+Number properties from actual registered multiplayer connection-event Players.
+Their current Code, saved-project and export routes have focused evidence;
+two new named-function originals preserve actual edited results and effects.
+See [the current handoff](ARCADE-AGENT-HANDOFF.md) for exact boundaries.
+
+GUI work remains: author and edit named function values visibly, distinguish
+supported callable plans from deferred Holder/capture cases, display precise
+refusals, and verify a real controller-pane connection event through its
+Player property and inspection reporter after save/reopen. Lyla's structural
+improvement does not qualify its captured inspection, export or gameplay.
+The animation library journey's extension-refresh crash has a native engine
+fix and still needs hosted browser requalification. Nested Sprite callback
+context has a separate engine fix; pending class-export proof repairs must
+preserve legitimate existing authoring routes and incompatible-type refusals.
+
 ## Console and primitive declaration authoring — 2026-10-15
 
 Console inspection now converts proved primitive expressions to String using

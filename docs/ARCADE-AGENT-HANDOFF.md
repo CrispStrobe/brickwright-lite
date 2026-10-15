@@ -8,6 +8,43 @@ operator's actual checkouts, tools, private corpus and original receipts.
 Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
 
+## Named values, Player producers and runtime follow-up — 2026-10-15
+
+Local integration `4638b66172ca53dc6154ebb01217e7eb0ddbbe40` adopts the
+reviewed named-function and Player Number lanes alongside two runtime repairs.
+These changes still require complete hosted qualification before adoption on
+main. The raw184 corpus remains **147 translated / 36 partial / one parse
+failure**; the fewer-than-20-partials milestone has not been reached.
+
+- [Named declaration values](compatibility/arcade-named-function-values.md)
+  retain real function identity, Number/String returns and Void continuation
+  across native, Code, saved-project and edited export routes. Two genuinely
+  new selected-original programs compile and execute: the actual edit changes
+  the Number result from seven to eleven while preserving identity and 19
+  once-only effects. The first fixture's compiler refusal from a global name
+  colliding with the SDK is retained. Capturing globals, mixed callable plans
+  and class Holder consumption remain explicit boundaries.
+- [Player Number producers](compatibility/arcade-player-number-producers.md)
+  require an actual unchanged registered connection-event Player and fixed
+  Number property. Aliases and forwarded arguments retain the value; falsey
+  pre-event states remain zero. Native, Code, same/fresh SB3 and current
+  export/reimport controls pass. In the authentic retained41 audit, 29 contexts
+  remain historically original-valid; 20 now pass current strict structural
+  checks and nine remain blocked. Lyla is the sole improvement, with 608 blocks
+  and 20 imported costumes. Its captured-variable inspection still prevents
+  current export; this is no runtime, full-game or GUI promotion.
+- [Runtime and hosted failures](ARCADE-UNIT-FAILURE-FOLLOWUP.md) track stale
+  executable caches after extension refresh and shared caller context lost
+  during nested Sprite callbacks. Both have actual native reproductions and
+  independently reviewed engine corrections. The cancelled hosted unit logs
+  retain eleven failed controls, including separate class-export proof gaps;
+  no complete unit census or hosted GUI repair is claimed.
+
+The named/runtime composition passes 35 selected controls; adding Player
+passes 31 affected controls. These overlapping selections are not an aggregate
+full-suite count. Image owner/source and captured-variable proof work remain
+separate lanes. Preserve Number/Text refusals while extending actual producers.
+
 ## Console and real local defaults integrated — 2026-10-15
 
 Local integration `cceebcfc4d4109f216fb38e7db50e7860d9c0283` normally adopts
