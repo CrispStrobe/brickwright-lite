@@ -17,10 +17,10 @@ async function fixture(opcode,leaf='number',mode='normal'){
  const arrays=new(makeArrays(source))(runtime),original=arrays[opcode];let saved;
  arrays[opcode]=(args,util)=>{saved={args,util};const raw=args.VALUE;calls.push({raw,util,args});const result=original(mode==='copiedArgs'?{...args}:args,mode==='copiedUtil'?{...util}:util);assert.equal(args.VALUE,raw,'semantic interpretation must not rewrite rawargs');return result;};
  const service=vm.extensionManager._registerInternalExtension(arrays);vm.extensionManager._loadedExtensions.set('arrays',service);
- const blocks={},variables={array:['array',0],result:['result',0],variableNumber:['variableNumber',20]};let serial=0;
+ const blocks={},variables={array:['array',0],result:['result',0],variableNumber:['variableNumber',20],variableText:['variableText','20']};let serial=0;
  const add=(opcode,parent,next=null,inputs={},fields={},shadow=false)=>{const id='b'+serial++;blocks[id]={opcode,parent,next,inputs,fields,shadow,topLevel:parent===null,...(parent===null?{x:0,y:0}:{})};return id;};
  const text=(value,parent)=>add('text',parent,null,{}, {TEXT:[String(value),null]},true);
- const value=(parent)=>leaf==='variable'?add('data_variable',parent,null,{}, {VARIABLE:['variableNumber','variableNumber']}):leaf==='number'?add('math_number',parent,null,{}, {NUM:['20',null]},true):text('20',parent);
+ const value=(parent)=>(leaf==='variable'||leaf==='variableText')?add('data_variable',parent,null,{}, {VARIABLE:[leaf==='variable'?'variableNumber':'variableText',leaf==='variable'?'variableNumber':'variableText']}):leaf==='number'?add('math_number',parent,null,{}, {NUM:['20',null]},true):text('20',parent);
  const variable=(parent)=>add('data_variable',parent,null,{}, {VARIABLE:['array','array']});
  const hat=add('event_whenflagclicked',null),setup=add('data_setvariableto',hat,null,{}, {VARIABLE:['array','array']});blocks[hat].next=setup;
  const create=add('arrays_createReference',setup);blocks[setup].inputs.VALUE=[1,create];
@@ -40,9 +40,9 @@ async function fixture(opcode,leaf='number',mode='normal'){
  return{vm,runtime,arrays,original,body,result:stage.variables.result.value,calls,saved,errors,close(){vm.stopAll();vm.quit();}};
 }
 test('real registered candidate preserves physical Number20 versus identical Text20 at all four reference value boundaries',async()=>{
- for(const opcode of opcodes)for(const leaf of ['number','text','variable']){
+ for(const opcode of opcodes)for(const leaf of ['number','text','variable','variableText']){
   const run=await fixture(opcode,leaf);
-  try{assert.deepEqual(run.errors,[]);assert.equal(run.calls.length,1);const numeric=leaf!=='text';
+  try{assert.deepEqual(run.errors,[]);assert.equal(run.calls.length,1);const numeric=leaf==='number'||leaf==='variable';
    if(opcode==='referenceValues'||opcode==='mutateReference')assert.deepEqual(run.body,[numeric?20:'20'],opcode+'/'+leaf);
    if(opcode==='referenceRemove'){assert.equal(run.result,true);assert.deepEqual(run.body,[numeric?'20':20],opcode+'/'+leaf);}
    if(opcode==='referenceIndexOf')assert.equal(run.result,numeric?0:1,opcode+'/'+leaf);
