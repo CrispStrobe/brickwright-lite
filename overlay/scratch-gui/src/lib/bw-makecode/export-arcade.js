@@ -1,3 +1,4 @@
+import {createArrayReferenceExportAuthority} from './array-reference-export-authority.js';
 import {throwExportOwners} from './throw-export-owners.js';
 import {prepareProcedureConstraintExport} from './procedure-constraint-export.js';
 import {validateProcedureConstraintSource} from './procedure-constraint-source.js';
@@ -808,6 +809,9 @@ class ArcadeEmitter {
     }
 
     referenceArrayValue (b, name='ARRAY') {
+        this.arrayReceiverAuthority ||= createArrayReferenceExportAuthority(this.project);
+        const authority=this.arrayReceiverAuthority.validateInput(this.target,b,name);
+        if(!authority.ok)this.note(`Array reference ${b.opcode} ${name}: ${authority.reason}`);
         const value=this.value(b,name);
         const needsArrayAccess = (block, input, seen = new Set()) => {
             if (seen.has(block)) return false;
