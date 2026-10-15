@@ -74,3 +74,7 @@ test('entry tickets are one-use and bind only the installed actual validated cel
  assert.throws(()=>f.host.bind(f.thread,f.target,'hold %s',params,checked),/entry proof/);
  const changed=f.run().values;params.value='20';assert.throws(()=>f.host.bind(f.thread,f.target,'hold %s',params,changed),/cells differ/);
 });
+
+test('constrained body ownership rejects shared children, missing nodes and cycles before entry',()=>{
+ for(const change of [f=>{f.blocks.effect.next='effect';},f=>{f.blocks.effect.next='missing';},f=>{f.blocks.effect.inputs.A={block:'leaf'};},f=>{f.blocks.declare.parent='effect';}]){const f=fixture();change(f);assert.throws(()=>model.prepare(f.target),/constraint/);}
+});

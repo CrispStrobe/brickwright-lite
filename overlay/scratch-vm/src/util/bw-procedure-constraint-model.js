@@ -39,6 +39,16 @@ function prepare(target) {
    const binding=Object.freeze({name:parameter,id:ids[index],index,type,block:first});constraints.set(parameter,binding);declarations.set(first,binding);
    previous=Object.keys(blocks).find(id=>blocks[id]===first);if(!previous)fail('missing declaration identity');first=blocks[first.next];
   }
+  const owned=new Set();
+  const visit=(id,parent)=>{
+   if(id==null)return;
+   if(typeof id!=='string'||!blocks[id])fail('body contains a missing current block');
+   if(owned.has(id))fail('body contains a cycle or shared child');owned.add(id);
+   const node=blocks[id];if(node.parent!==parent||node.topLevel===true)fail('body parent ownership differs');
+   for(const name of Object.keys(node.inputs||{})){const child=input(node,name);if(typeof child==='string')visit(child,id);}
+   visit(node.next,id);
+  };
+  visit(definition.next,definitionId);
   procedures.set(code,Object.freeze({code,definition,definitionId,prototype,prototypeId,names:Object.freeze(names),ids:Object.freeze(ids),defaults:Object.freeze(defaults),constraints:readonly(constraints),body:first}));
  }
  for(const block of Object.values(blocks))if(block?.opcode===OPCODE&&!declarations.has(block))fail('declarations must form an actual DEFINE prefix');
