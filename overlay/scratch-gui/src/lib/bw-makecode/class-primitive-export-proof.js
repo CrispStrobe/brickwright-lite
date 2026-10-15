@@ -16,7 +16,7 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
         // the selected non-strict-null source constraints that transition does
         // not change the SDK field type. This is neither a runtime owner
         // certificate nor a proof that this particular read is nonnull.
-        return concrete.length&&concrete.every(type=>type===sdkSprite)?new Set(concrete):types;
+        return concrete.length&&concrete.every(type=>isSdkSprite(type))?new Set(concrete):types;
     };
     const owned=new WeakMap(),locations=new WeakMap(),definitions=new Map(),rows=[],bad=new Set(),methodOwners=new Map(),roots=new Set();
     const blocks=target=>target.blocks||{},child=(target,block,name)=>typeof block.inputs?.[name]?.[1]==='string'?blocks(target)[block.inputs[name][1]]:null;
@@ -64,6 +64,7 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
     }
     for(const row of procedures?.values()||[]){const def=row.definition&&definitions.get(key(row.definition.target,row.definition.code));if(def&&!row.native&&!methodOwners.has(def))methodOwners.set(def,{cls:row.cls,parameters:row.params,result:row.result});}
     const ancestry=name=>{const found=[],seen=new Set();while(classes.has(name)&&!seen.has(name)){seen.add(name);const cls=classes.get(name);found.push(cls);name=cls.parent;}return found;};
+    const isSdkSprite=receiver=>receiver===sdkSprite||receiver.startsWith('@')&&ancestry(receiver.slice(1)).some(cls=>cls.intrinsic&&cls.name==='Sprite');
     const member=(name,property,method=false)=>{for(const cls of ancestry(name)){const value=(method?cls.methods:cls.fields).find(row=>row.name===property);if(value)return {cls,value};}return null;};
     let cache=new WeakMap(),previous=new WeakMap();const checking=new Set();
     const args=(target,block)=>{const result=[],seen=new Set();let value=child(target,block,'ARGS');if(!value)return fixed(target,block,'ARGS')==='[]'?result:null;
@@ -248,12 +249,12 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
             const sdkConstraint=sdkBindingConstraint(target,block,'OBJECT')||receivers.has(sdkSprite);
             const sdkMembers=[...receivers].map(receiver=>receiver.startsWith('@')&&member(receiver.slice(1),name)).filter(found=>found&&found.cls.intrinsic&&spriteClasses.has(found.cls.name));
             if(sdkConstraint||sdkMembers.length){
-                if(sdkConstraint&&(receivers.size!==1||!receivers.has(sdkSprite))){fail('field writer requires an actual declared receiver and fixed property');continue;}
+                if(sdkConstraint&&(!receivers.size||![...receivers].every(isSdkSprite))){fail('field writer requires an actual declared receiver and fixed property');continue;}
                 const fields=sdkConstraint?[spriteField(name)]:sdkMembers;
                 if(fields.some(found=>!found||found.value.readonly)){fail('SDK Sprite field writer requires an actual writable declared property');continue;}
                 for(const found of fields)requireType(input(target,block,'VALUE'),found.value.type,'field '+found.cls.name+'.'+name+' writer');
             }else if(dynamicReceiver(target,block,true,false,methodOwners.get(owner)?.cls.name))continue;
-            if(name===null||!receivers.size||receivers.has(sdkSprite)&&receivers.size!==1||[...receivers].some(receiver=>receiver!==sdkSprite&&(!receiver.startsWith('@')||!classes.has(receiver.slice(1))))){fail('field writer requires an actual declared receiver and fixed property');continue;}
+            if(name===null||!receivers.size||receivers.has(sdkSprite)&&![...receivers].every(isSdkSprite)||[...receivers].some(receiver=>receiver!==sdkSprite&&(!receiver.startsWith('@')||!classes.has(receiver.slice(1))))){fail('field writer requires an actual declared receiver and fixed property');continue;}
             for(const receiver of receivers){const found=receiver===sdkSprite?spriteField(name):receiver.startsWith('@')&&member(receiver.slice(1),name);
                 if(receiver===sdkSprite&&(!found||found.value.readonly)){fail('SDK Sprite field writer requires an actual writable declared property');continue;}
                 if(!found||found.cls.intrinsic&&!spriteClasses.has(found.cls.name)||found.value.valueKind==='callable')continue;

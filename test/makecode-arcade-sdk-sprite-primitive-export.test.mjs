@@ -28,6 +28,12 @@ test('actual SDK Sprite factories retain primitive writers through Code and curr
     }
 });
 
+test('actual canonical SDK subclass allocation retains a declared base constraint without a name-only grant',()=>{
+    const text='class Direct extends Sprite {}let factory:Sprite=new Direct(img`1`);factory.vx=100;let speed=factory.vx;';
+    const {creator}=build(text);assert.deepEqual(output(creator).unsupported,[]);
+    write(creator).inputs.FIELD=[1,[10,'width']];assert.ok(output(creator).unsupported.some(message=>message.includes('SDK Sprite field writer requires an actual writable declared property')));
+});
+
 test('physical Number20 and text20 current writers preserve distinct source constraints and values',()=>{
     for(const [literal,accepted] of [[[4,'20'],true],[[10,'20'],false]]){
         const {creator}=build(source);write(creator).inputs.VALUE=[1,literal];const before=JSON.stringify(creator.project),current=output(creator);
