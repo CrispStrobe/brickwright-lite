@@ -6,6 +6,22 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Pause integration qualification — 2026-10-15
+
+The pane ownership fix on `lane/spike-g02-pause-ownership-20261015` preserves
+current Pause/Reset/Step actions while rejecting obsolete continuations. Its
+first tested consumer `beb518eaba4597afe6ee75fe14a699cc7d9c8ab9` passed four
+installed own-NuttX Pause success/error-delivery cases, including real Reset
+replacement, cleanup and distinct recovery. Eight native startup transactions
+and four standalone readers passed. Generic Step/backend paths remain host-only.
+
+The branch now integrates main's separately qualified compiled MicroPython
+launch work. Three native inputs differ from that first NuttX consumer. The
+composed source therefore still needs a fresh source-bound own-NuttX matrix and
+final exact-head CI; the earlier result does not qualify every evolving package.
+Firmware, Runtime/model and dependency pins are unchanged by this lane. Full G02,
+physical safety, reference boot, release and licensing remain outside this result.
+
 ## Qualified G02 lifecycle boundaries — 2026-10-15
 
 Seven focused changes have landed, each with a separately frozen installed
