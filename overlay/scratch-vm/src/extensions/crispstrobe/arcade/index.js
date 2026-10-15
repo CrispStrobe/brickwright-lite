@@ -13,6 +13,7 @@ module.exports = makeExt(`// Name: Arcade
   "use strict";
 
   const dependencies = Scratch.BWExtensionDependencies;
+  const fontSelectorOwner = dependencies.fontSelectorOwner;
   const spriteUpdateHosts = new WeakMap();
   const classCallableHosts = new WeakMap();
   const speechPalette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609',
@@ -4994,8 +4995,7 @@ module.exports = makeExt(`// Name: Arcade
       try{if(!this._sdkFontValues)throw new Error('SDK Font needs its actual runtime owner');return action();}catch(error){return this._objectError(error);}
     }
     fontValue(args,util) {return this._fontGuard(()=>{
-      const block=util?.target?.blocks?.getBlock?.(util?.thread?.peekStack?.());
-      if(block?.inputs?.FONT)throw new Error('SDK Font value selector must be a fixed field, not a connected reporter');
+      fontSelectorOwner(this._runtime,util,args,'arcade_fontValue',['FONT']);
       if(!['font5','font8','font12'].includes(args.FONT))throw new Error('SDK Font value requires a fixed builtin FONT');
       return this._sdkFontValues.constant(args.FONT);
     });}
@@ -5020,9 +5020,7 @@ module.exports = makeExt(`// Name: Arcade
       this._refreshImage(image);
     });}
     fontMetric(args,util) {
-      const block=util?.target?.blocks?.getBlock?.(util?.thread?.peekStack?.());
-      if(block?.inputs?.FONT || block?.inputs?.PROPERTY)
-        throw new Error('Arcade font metric selectors must be fixed fields, not connected reporters.');
+      fontSelectorOwner(this._runtime,util,args,'arcade_fontMetric',['FONT','PROPERTY']);
       const font=args.FONT,property=args.PROPERTY;
       if(!['font5','font8','font12'].includes(font) || !['charWidth','charHeight'].includes(property))
         throw new Error('Arcade font metric requires a builtin FONT and numeric PROPERTY.');
@@ -5832,6 +5830,7 @@ module.exports = makeExt(`// Name: Arcade
   Scratch.extensions.register(new Arcade(Scratch.vm && Scratch.vm.runtime));
 })(Scratch);
 `, {
+  fontSelectorOwner: require('./font-selector-owner'),
   sdkFontValues: require('./sdk-font-values'),
   sdkSpriteClasses: require('./sdk-sprite-classes'),
   sdkObjectClasses: require('./sdk-object-classes'),
