@@ -8,7 +8,72 @@ operator's actual checkouts, tools, private corpus and original receipts.
 Historical checkpoints below are observations, not permission to assume that
 branches, checks, ownership or dependency pins remain unchanged.
 
-## Current composition and canonical creator adoption — 2026-10-15
+## Current method and qualification frontier — 2026-10-15
+
+Start with the [partial closure plan](ARCADE-PARTIAL-CLOSURE-PLAN.md) and
+[LANES.md](../LANES.md). The raw corpus remains **147 translated / 36 partial /
+one parse failure** with immutable inputs. A conservative 20-row floor contains
+external asset references absent from those raw files. Use authentic project
+context to investigate them; do not repair snippets or relabel the raw census.
+
+The separate 29-project profile at `b1ef5e4ea` selects only retained
+original-compiler successes: **20 source/Creator clean, 18 current-export clean,
+16 complete pure routes clean**. All actual diagnostic channels are retained,
+including unknown/unattempted channels. This profile exercised normal import,
+Creator, Code feedback, saved Blocks/assets and current export/reimport; it ran
+no SDK, native game or GUI. Nine projects remain source-blocked; four additional
+projects exposed later-stage barriers. Historic structural 20/29 was not a
+complete roundtrip claim.
+
+Two follow-ups leave those measured aggregate counts unchanged. Tile candidate
+`653a88dd4` passes six focused controls and removes false anonymous/named ID
+collisions in two retained projects without changing tile pixels. Freethrow's
+26 root-only reimport refusals disappear with the exact declared `arcade-text`
+dependency context; a separate Creator parse is also clean. No new complete
+profile or game result follows. Lyla's remaining unused helper needs an explicit
+ordinary parameter declaration protocol, not body pruning or restored source.
+
+Existing `.mkcd` import/CLI support already accepts complete project files.
+Offline preparation must bind actual dependencies to the current exported root,
+preserve edited source/art and distinguish original files from prepared
+sidecars. Missing package context is a named input limitation, not automatically
+an unsupported API. Retain warning, error and unsupported channels independently;
+unknown channels cannot pass a strict gate.
+
+The selected-original Map semantic contract now records 69 global observations.
+Its first readiness observer failure and successful cached-binary recovery remain
+retained, with source unchanged. This is original-runtime observation only;
+source/native Map implementation remains held.
+
+### Hosted checks and held candidates
+
+[PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888),
+[Build38718916848](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38718916848),
+has successful build, corpus, both browser shards and FPGA checks. Completed
+unit censuses are:
+
+| Required shard | Total | Pass | Fail | Skip | TODO |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| [One](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38718916848/job/116380209371) | 2364 | 2356 | 1 | 6 | 1 |
+| [Three](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38718916848/job/116380209378) | 2436 | 2425 | 2 | 8 | 1 |
+
+Neither shard has cancelled tests. Shard four is successful; its census has not
+been acquired. Other jobs remain live. Local corrections `02b87cc72`, `40048a9c7` and `5c4b3a762`
+are reviewed stale-test candidates, not new hosted passes. The new GUI candidate
+`a11` has not run. Preserve earlier failures and cancelled/incomplete runs;
+the older eleven-failure/no-census text below describes those earlier runs.
+
+The six coordinated claims in
+[PR954](https://github.com/CrispStrobe/brickwright-lite/pull/954), head `e978`,
+remain unmerged; implementation under those claims stays held. The supplier's
+canonical protocol docs [PR156](https://github.com/CrispStrobe/sb3-creator/pull/156)
+are merged without a compiler pin move. No final all-enabled-checks, installed
+GUI or complete-game claim follows from these partial results.
+
+## Earlier composition and canonical creator adoption — 2026-10-15
+
+The following checkpoints are retained in chronological context and superseded
+by the method, stage counts and hosted status above where they differ.
 
 Implementation checkpoint `8aa1dfef0` includes main `06f647be5`, qualified
 creator repairs and default admission for the bounded owned Image class/callback bridge. The creator

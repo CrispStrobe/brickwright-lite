@@ -13,59 +13,62 @@ conversion, runtime, authoring and roundtrips without suppressing diagnostics.â€
 
 ## Current execution frontier â€” 2026-10-15
 
-The original 184 inputs now report **147 translated / 36 partial / one parse
-failure**, with unchanged bytes and corpus identity below. The original
-142/41/1 checkpoint remains historical evidence. Do not subtract successes in
-context-enriched inputs from the original partial count.
+The immutable 184 raw inputs report **147 translated / 36 partial / one parse
+failure**. At least 20 of those partial rows have actual external asset
+references without their definitions in the raw input. Implementation alone
+cannot close that measured floor while the input omits its real project
+context. Preserve raw bytes, statuses and denominator; never invent assets or
+silently substitute an enriched project. The original 142/41/1 checkpoint below
+remains historical evidence.
 
-For the 41 authentic prepared contexts, 29 have retained successful original
-compiler evidence. The latest offline current-structure audit passes 20 of
-those 29 and leaves nine blocked. Lyla is the latest structural improvement;
-its captured inspection and an unused helper's parameter contract still need
-complete export/reimport and runtime qualification. A compiler-invalid context
-that parses structurally remains excluded from the 20.
+A separate offline whole-project profile at `b1ef5e4ea` selected the 29 authentic
+contexts with retained successful original compilation. It measured **20 clean
+source/Creator imports, 18 clean current exports and 16 clean complete pure
+routes**. The complete route includes Code feedback, saved current Blocks and
+assets, current export, and reimport/Creator. These are stage counts for that
+one profile, not game, native execution or GUI results.
 
-The canonical class-topology and named-label repairs are now qualified and
-adopted at creator `f2d4f879`; all 20 vendor identities match. Captured primitive
-inspection and the Image source/current-export originals also pass. Default
-Image admission is integrated at `2211aeb61`, with 119 affected and seven
-independent controls. Literal factory/current canonical SVG producers follow
-at `d011d18fe`, with six independent integrated controls and two new exact
-selected-original programs. The immutable raw census remains unchanged.
-Array Number interpretation has a reviewed candidate fix, while supplier CI is
-externally rejected as disabled and adoption remains pending.
+Follow-ups retain that baseline rather than invent a new aggregate:
 
-Continue these areas in order, using the owners in LANES.md:
+- Tile candidate `653a88dd4` reserves explicit names across all valid current
+  maps before anonymous allocation. Six focused controls pass. The two retained
+  projects with false name-conflict warnings now export/reimport without
+  diagnostics, preserving every encoded tile image and genuine conflict warnings.
+- Freethrow's root-only reimport produced 26 refusals. Preparing the current
+  exported files with their exact retained, pinned `arcade-text` dependency
+  yields no import diagnostics; a separate Creator continuation also has no
+  warnings or error. This does not establish a newly executed full roundtrip.
+- Lyla still needs its unused ordinary helper's explicit parameter contract.
+  Preserve the helper and prove all callers/writers; annotations are constraints,
+  never value producers. The same nine source-blocked contexts remain separate.
 
-1. Repair valid class-export proof regressions and actual generated block
-   topology. Preserve strict parent/receiver checks and incompatible Number/Text
-   refusals. Qualify the producer correction in both its owned consumer overlay
-   and canonical supplier; [supplier PR153](https://github.com/CrispStrobe/sb3-creator/pull/153)
-   is now followed by qualified consumer pin adoption; finish final hosted
-   integration without relaxing the parent or current-body checks.
-2. Complete captured primitive-cell proofs, directed parameter contracts and
-   current export/reimport for Lyla. Link actual registrations and cells;
-   metadata and annotations constrain values rather than create them.
-3. Finish actual owned Image values in ordinary class callbacks and fields.
-   The opt-in source/native/current-export and two selected-original programs
-   are qualified, and actual-proof default selection is integrated. Complete
-   the remaining Image producers and hosted authoring;
-   keep malformed/raw transport and before-body catalogue refusals.
-4. Fix authored Number inputs in the Arrays value operations through the
-   shared current-input boundary and separately qualified canonical supplier.
-   Keep numeric text as text; source-created numeric wrappers are insufficient
-   Blocks authoring proof.
-5. Re-audit the unchanged raw inputs and authentic contexts, then take the
-   next unresolved dependency family. Remaining contexts include sports,
-   sprite utility callbacks, story/menu classes, array mapping and scene/state
-   wrappers. Preserve every residual diagnostic and actual dependency version.
+Existing `.mkcd` import and CLI paths already accept whole-project file maps.
+Reimport of a current exported root must include its actual declared dependency
+context while preserving edited root/art bytes. Original files and prepared
+sidecars remain distinct. Record every warning, unsupported and error channel;
+missing or unmeasured channels remain unknown rather than empty successes.
 
-The full hosted integration remains open: two native runtime repairs address
-extension refresh and nested callback caller context, while the retained unit
-logs have eleven observed failed controls and no completed censuses. Finish
-those repairs before the next full merge gate. Every new capability also needs
-the relevant author/edit/run/save/reopen/export journey from the GUI ledger.
-No reliable completion date follows from these counts or overlapping tests.
+The selected-original Array.map observation is closed for its **69 global
+observations**. Preserve the first observer failure and successful cached-binary
+recovery; they did not change the source. No source/native Map implementation
+is qualified by that observation contract.
+
+[PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) currently has
+successful build, corpus, both browser shards and FPGA checks. Unit shards one
+and three completed with failures; reviewed local stale-test corrections remain
+candidates. Other checks are still live. See the [handoff](ARCADE-AGENT-HANDOFF.md)
+for the exact censuses. The new `a11` GUI candidate has not run. Earlier
+11-failure/incomplete-census observations remain historical, not the current
+unit result. No complete hosted qualification follows yet.
+
+The six coordinated claims in
+[PR954](https://github.com/CrispStrobe/brickwright-lite/pull/954), head `e978`,
+remain unmerged; their product work is held. The canonical protocol documentation
+claim [PR156](https://github.com/CrispStrobe/sb3-creator/pull/156) is merged,
+without a consumer pin move. Next priorities are actual parameter declarations,
+Map/discard/Throw and owned Sprite/handler-record Array boundaries after their
+claim and supplier gates. Keep every deferred author/edit/run/save/reopen/export
+journey in the [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md).
 
 ## Locked baseline and meaning of zero
 
