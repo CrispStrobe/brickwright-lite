@@ -29,7 +29,9 @@ The canonical class-topology and named-label repairs are now qualified and
 adopted at creator `f2d4f879`; all 20 vendor identities match. Captured primitive
 inspection and the Image source/current-export originals also pass. Default
 Image admission is integrated at `2211aeb61`, with 119 affected and seven
-independent controls; raw counts remain unchanged.
+independent controls. Literal factory/current canonical SVG producers follow
+at `d011d18fe`, with six independent integrated controls and two new exact
+selected-original programs. The immutable raw census remains unchanged.
 Array Number interpretation has a reviewed candidate fix, while supplier CI is
 externally rejected as disabled and adoption remains pending.
 
@@ -47,7 +49,7 @@ Continue these areas in order, using the owners in LANES.md:
 3. Finish actual owned Image values in ordinary class callbacks and fields.
    The opt-in source/native/current-export and two selected-original programs
    are qualified, and actual-proof default selection is integrated. Complete
-   literal-resource producer proofs and hosted authoring;
+   the remaining Image producers and hosted authoring;
    keep malformed/raw transport and before-body catalogue refusals.
 4. Fix authored Number inputs in the Arrays value operations through the
    shared current-input boundary and separately qualified canonical supplier.

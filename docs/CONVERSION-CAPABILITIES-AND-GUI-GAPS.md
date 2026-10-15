@@ -14,8 +14,13 @@ checks; the visible editor journeys below remain open.
 The GUI still needs reachable class/field/handler authoring controls, genuine
 Image parameters and results, an actual captured-parameter rename, graphics
 edits, save/reopen and visible incompatible-value refusals. Opaque metadata
-editing is not a substitute. Literal resources, dynamic dimensions, Sprite
-image views and physical Sprite signatures remain separate producer gaps.
+editing is not a substitute. Bounded literal Image resources now pass native
+full-pixel, actual editor save/rename method, asset-remap and portable export
+controls. Two new exact source/current-export originals also pass. This does
+not qualify visible graphics controls: author the factory and alias in Blocks,
+edit and rename its artwork through the real UI, save/reopen and verify the
+actual exported game. PNG, custom palettes, dynamic dimensions, Sprite image
+views and physical Sprite signatures remain separate producer gaps.
 See the [qualified Image boundary](compatibility/arcade-owned-image-class-callables.md).
 
 The candidate Array Number bridge corrects nine real current-block cases while

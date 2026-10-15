@@ -10,7 +10,7 @@ branches, checks, ownership or dependency pins remain unchanged.
 
 ## Current composition and canonical creator adoption — 2026-10-15
 
-Implementation checkpoint `2211aeb61` includes current main, the qualified
+Implementation checkpoint `d011d18fe` includes the previously integrated main, qualified
 creator repairs and default admission for the bounded owned Image class/callback bridge. The creator
 pin is `f2d4f879ba40dd9025070ed51af11ebe1ef14808`; standard sync checks all
 20 mapped files with zero downstream differences. Supplier
@@ -31,6 +31,16 @@ Native, Code, edited blocks, same/fresh SB3 and export/reimport routes pass.
 Duplicate variable IDs across targets refuse; legitimate Stage globals retain
 their actual producer ownership. Hosted class authoring remains open.
 
+Literal factory producers are now integrated at `d011d18fe`. Six independent
+controls cover fresh allocations and aliases, all four pixels, actual editor
+save/rename methods, asset remapping, same/fresh SB3 and current export/reimport.
+Two genuinely new selected-original programs match their exact frozen inputs
+and native observations, with source and edited-art scores 19 and 23. Current
+resource export requires exclusive clone edges and actual target/costume
+identities before sharing one decoded snapshot. PNG, custom palettes, dynamic
+dimensions and Sprite producers remain excluded; hosted visual authoring is
+still open. See the Image contract for the exact admitted boundary.
+
 A follow-up at `e577d6547` fixes two actual class roundtrip boundaries:
 finite signed Number literals retain their existing carrier, and proved Void
 calls beginning with parentheses have explicit statement delimiters. Three
@@ -50,11 +60,11 @@ its build and unit prerequisites stopped on a stale expected compiler pin.
 The complete SPIKE artifact control now passes at the actual adopted revision.
 Fresh final-head hosted qualification is still required.
 
-The unchanged raw184 audit at `2211aeb61` remains **147 translated /36 partial
+The unchanged raw184 audit at clean `d011d18fe` remains **147 translated /36 partial
 /one parse failure**, with every original Git blob verified. Authentic contexts
 remain a separate **29 original-valid /20 strict /nine blocked** observation.
-Next: Image literal-resource producer proofs; the procedure parameter contract
-and value-map lanes; canonical Arrays CI and
+Next: the procedure parameter contract and value-map lanes; proper discarded
+expressions and Throw syntax/runtime contracts; canonical Arrays CI and
 consumer/GUI qualification. The under-20-partials milestone is not reached.
 
 ## Captured cells and valid class exports integrated — 2026-10-15
