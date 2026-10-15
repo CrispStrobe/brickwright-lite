@@ -13,6 +13,8 @@ function create(runtime, readValue) {
     if (!runtime || typeof runtime.on !== 'function' || !Array.isArray(runtime.targets)) {
         return Object.freeze({raise() {throw new Error('Arcade Throw requires a bound runtime');},
             rejectConstraint() {throw new Error('Arcade constraint rejection requires a bound runtime');},
+            rejectArrayOperation() {throw new Error('Array operation rejection requires a bound runtime');},
+            arrayReady:()=>false,
             failure: () => null, captureCaller:()=>null,releaseCaller() {}, rethrow() {}, dispose() {}});
     }
     if (owners.has(runtime)) throw new Error('Arcade exception runtime already has an owner');
@@ -100,6 +102,24 @@ function create(runtime, readValue) {
             signals.set(signal, record);
             retireLineage(thread,signal);
         },
+        arrayReady() {return active&&!disposed;},
+        rejectArrayOperation(args,util,error,lease) {
+            const thread=util?.thread;
+            if(signals.get(error)?.runtime===runtime&&failure(thread)===error)throw error;
+            if(signals.has(error))throw error;
+            const message=error instanceof Error&&Object.getOwnPropertyDescriptor(error,'message');
+            if(!message||!Object.hasOwn(message,'value')||typeof message.value!=='string')throw Error('Array operation rejection requires its private Error');
+            const prior=failure(thread);if(prior)throw prior;
+            // A graph/cache/registration change may itself require rejection.
+            // The unforgeable lease validates the original still-active call,
+            // not the now-invalid source metadata. No other Error is adopted.
+            if(!live(thread)||util.runtime!==runtime)throw Error('Array operation rejection requires its private failure lease');
+            const witness=require('./bw-array-operations').consumeFailureLease(runtime,args,util,error,lease);
+            if(!witness)throw Error('Array operation rejection requires its private failure lease');
+            const signal=new Error(message.value,{cause:error});
+            signals.set(signal,Object.freeze({owner,runtime,generation,kind:'array-constraint',message:message.value,target:thread.target,block:witness.block,stack:Object.freeze([...thread.stack])}));
+            retireLineage(thread,signal);
+        },
         rejectConstraint(args,util,error) {
             const thread=util?.thread,priorIssued=signals.get(error);
             if(priorIssued?.runtime===runtime&&failure(thread)===error)throw error;
@@ -147,7 +167,7 @@ function failed(runtime, thread) {return failedThreads.get(thread)?.runtime === 
 function capture(runtime,thread) {return owners.get(runtime)?.capture(thread) || null;}
 function diagnostic(runtime,error) {
     const record=signals.get(error);
-    return record?.runtime===runtime ? record.kind==='constraint' ? Object.freeze({kind:'constraint',message:record.message,block:record.block,target:record.target.id}) : Object.freeze({value:record.value,block:record.block,target:record.target.id}) : null;
+    return record?.runtime===runtime ? ['constraint','array-constraint'].includes(record.kind) ? Object.freeze({kind:record.kind,message:record.message,block:record.block,target:record.target.id}) : Object.freeze({value:record.value,block:record.block,target:record.target.id}) : null;
 }
 function stale(runtime,thread,lease) {
     if (failed(runtime,thread)) return true;
@@ -156,4 +176,6 @@ function stale(runtime,thread,lease) {
     return !record || record.runtime!==runtime || record.thread!==thread || !record.owner.current(lease);
 }
 
-module.exports = Object.freeze({create, consume, failed, capture, stale, diagnostic});
+function arrayCoordinatorReady(runtime) {return !!owners.get(runtime)?.arrayReady();}
+function rejectArrayOperation(runtime,args,util,error,lease) {const owner=owners.get(runtime);if(!owner)throw Error('Array operation rejection requires a shared exception owner');return owner.rejectArrayOperation(args,util,error,lease);}
+module.exports = Object.freeze({create, consume, failed, capture, stale, diagnostic,arrayCoordinatorReady,rejectArrayOperation});

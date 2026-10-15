@@ -11,13 +11,14 @@ function fixture(opcode,name,value='20',leafOpcode='math_number'){
  return{args,block,leaf,container,target,thread,runtime,util,op,run:()=>owner.invoke(runtime,thread,container,op,args,util,primitive)};
 }
 test('only explicit current primitive input roles interpret Number leaves',()=>{
- for(const[opcode,names]of Object.entries({arcade_throwValue:['VALUE'],arcade_createOwnedImageSprite:['KIND'],arcade_returnValue:['VALUE'],arcade_functionArgument:['VALUE'],arcade_setLocal:['VALUE'],arcade_setCaptured:['VALUE'],arcade_setObjectField:['VALUE'],arcade_inspectValue:['VALUE','LIMIT'],arrays_valueBinary:['LEFT','RIGHT'],arrays_valueUnary:['VALUE'],arrays_valueCompare:['LEFT','RIGHT'],arrays_valueTruthy:['VALUE']}))for(const name of names){
+ for(const[opcode,names]of Object.entries({arcade_throwValue:['VALUE'],arcade_createOwnedImageSprite:['KIND'],arcade_returnValue:['VALUE'],arcade_functionArgument:['VALUE'],arcade_setLocal:['VALUE'],arcade_setCaptured:['VALUE'],arcade_setObjectField:['VALUE'],arcade_inspectValue:['VALUE','LIMIT'],arrays_referenceValues:['VALUE'],arrays_mutateReference:['VALUE'],arrays_referenceRemove:['VALUE'],arrays_referenceIndexOf:['VALUE'],arrays_valueBinary:['LEFT','RIGHT'],arrays_valueUnary:['VALUE'],arrays_valueCompare:['LEFT','RIGHT'],arrays_valueTruthy:['VALUE']}))for(const name of names){
   assert.equal(fixture(opcode,name).run(),20,opcode+'.'+name);
   assert.equal(fixture(opcode,name,'20','text').run(),'20');
   assert.equal(fixture(opcode,'OP').run(),'20','operator socket has no Number authority');
  }
  for(const opcode of ['arcade_createCallable','arcade_objectField'])assert.equal(fixture(opcode,'VALUE').run(),'20','loan alone is insufficient');
- for(const opcode of ['arrays_createReference','arrays_mutateReference','__proto__','toString','unknown'])assert.equal(owner.handles(opcode),false);
+ for(const opcode of ['arrays_createReference','arrays_namedReference','arrays_referenceItem']){assert.equal(owner.handles(opcode),true);assert.equal(fixture(opcode,'VALUE').run(),'20','loan-only operation has no Number socket');}
+ for(const opcode of ['__proto__','toString','unknown'])assert.equal(owner.handles(opcode),false);
 });
 test('Array input interpretation preserves signed zero and finite leaf spellings without decoding text',()=>{
  for(const value of ['-0','0.25','-3','5e-324','1e+21'])assert.ok(Object.is(fixture('arrays_valueUnary','VALUE',value).run(),Number(value)));
