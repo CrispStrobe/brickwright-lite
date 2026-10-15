@@ -1,31 +1,3 @@
-## SPIKE NuttX Code caller ownership — 2026-10-15
-
-PROPOSED — Codex SPIKE G02 continuation, branch
-`lane/spike-g02-code-caller-20261015`. Merge this documentation claim before
-product changes. Extend the existing SPIKE session/pane/feedback envelope only
-to `runOnNuttxPython` in
-`overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx` and
-focused `test/spike-code-caller-ownership.test.mjs` controls, this ledger and the
-SPIKE status guide. Preserve the shared import, conversion, Arcade, namespace,
-lexical/type-lowering and other target dispatchers owned by their existing lanes.
-The separate G03 importer permission remains limited to SPIKE toolbar text.
-
-Two authored scheduling controls on the original dispatcher reproduce an earlier
-call's `finally` clearing a newer pending call's busy flag and an earlier `catch`
-replacing the newer call's status. They use the original feedback helper and
-controlled pane promises, with no native or guest execution. Bind callbacks,
-output, Stop ownership and post-await/catch/finally publication to the current
-NuttX Code caller; preserve current completion/error/Stop and retry/cold paths.
-
-Acceptance requires the baseline failures, positive current-owner controls,
-old callback/output/Stop and overlapping-call adversaries, affected session/pane
-regressions and guard mutations, then a source-bound installed Code scenario
-with actual owned firmware, visible controls, cleanup and distinct recovery.
-All enabled final-head CI checks must pass before normal exact-head merge.
-Do not claim host scheduling controls qualify installed concurrency, native UART
-output attribution, whole G02, physical behavior or a release. No native,
-firmware, Runtime, model, dependency pin, workflow or deadline change is included.
-
 ## ASM example admission during pending Code compilation — 2026-10-15
 
 CLAIM — Codex circuit/instrument adoption owner, bounded blocker repair for
@@ -4293,6 +4265,34 @@ implementation and require all enabled exact-head checks before integration.
 The separately claimed shared project-world work keeps its ownership. This
 claim changes no executable, dependency, fixture, capture or workflow and makes
 no fresh guest, performance, physical, reference, release or licence claim.
+
+## SPIKE NuttX Code caller ownership — 2026-10-15
+
+PROPOSED — Codex SPIKE G02 continuation, branch
+`lane/spike-g02-code-caller-20261015`. Merge this documentation claim before
+product changes. Extend the existing SPIKE session/pane/feedback envelope only
+to `runOnNuttxPython` in
+`overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx` and
+focused `test/spike-code-caller-ownership.test.mjs` controls, this ledger and the
+SPIKE status guide. Preserve the shared import, conversion, Arcade, namespace,
+lexical/type-lowering and other target dispatchers owned by their existing lanes.
+The separate G03 importer permission remains limited to SPIKE toolbar text.
+
+Two authored scheduling controls on the original dispatcher reproduce an earlier
+call's `finally` clearing a newer pending call's busy flag and an earlier `catch`
+replacing the newer call's status. They use the original feedback helper and
+controlled pane promises, with no native or guest execution. Bind callbacks,
+output, Stop ownership and post-await/catch/finally publication to the current
+NuttX Code caller; preserve current completion/error/Stop and retry/cold paths.
+
+Acceptance requires the baseline failures, positive current-owner controls,
+old callback/output/Stop and overlapping-call adversaries, affected session/pane
+regressions and guard mutations, then a source-bound installed Code scenario
+with actual owned firmware, visible controls, cleanup and distinct recovery.
+All enabled final-head CI checks must pass before normal exact-head merge.
+Do not claim host scheduling controls qualify installed concurrency, native UART
+output attribution, whole G02, physical behavior or a release. No native,
+firmware, Runtime, model, dependency pin, workflow or deadline change is included.
 
 ## SPIKE G02 compiled-model MicroPython desktop profile — 2026-10-15
 
