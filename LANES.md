@@ -153,26 +153,35 @@ claim first; implementation lands only after full CI and owner review.
 ## A10: micro:bit V2 serial consumer adoption — 2026-10-15
 
 CLAIMED — Codex, branch `lane/a10-v2-serial-consumer-20261015`, base `015e1bdc7`.
-After the owning LabWired UARTE source qualifies and lands, adopt its one-time
-qualified deterministic engine release and the resulting exact bw-board package.
-Remove the V2 serial withholding in `scripts/makecode.mjs` and the
-Code-tab status text only with that artifact. Require exact greeting/counter
-serial from real compiled MakeCode firmware, preserving display, guest-time,
-fault, firmware identity and board-model assertions. Keep A11's export changes.
+Adopt the qualified deterministic LabWired engine release after its source fix
+lands. Remove V2 serial withholding and verify real compiled firmware through
+both CLI modes and the visible Debug console. Preserve A11's landed export fix.
+
+Consumer scope is engine-only. The shipped bw-board client's LabWired adapter,
+bridge, debugger and firmware helpers are byte-identical to the qualified
+producer, and all chip/board catalog payloads are identical (source identity
+only differs). No client API change is needed for the UARTE source fix; actual
+released-engine qualification against this shipped client remains mandatory.
+The separate STM32 package/compiler adoption belongs to its existing owner.
+This lane leaves board, compiler and circuit-UI package pin fields untouched;
+qualified mainline changes from those owners are preserved when integrated.
 
 Envelope: this ledger and `docs/OPEN-TASKS-2026-09-29.md`;
 `scripts/sync-labwired-wasm.mjs` PIN/TAG/EXPECT and
 `.github/workflows/target-performance.yml` matching engine identity;
-`vendor-pins.json`, package/lock specifications and existing generated
-provenance/census/matrix/report/adoption-test surfaces changed by canonical
-bw-board pin writers; `scripts/makecode.mjs`, `scripts/lib/makecode-run.mjs`,
+`scripts/makecode.mjs`, `scripts/lib/makecode-run.mjs` if needed,
 `test/makecode-cli-run.test.mjs`,
 `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
-and its tracked twin; `scripts/verify-makecode.mjs` serial assertions only.
-No copied engine, invented source/hash, SDK rebuild, unrelated pin movement,
-physical-accuracy claim or optional motion run. Preserve all existing failures;
-all enabled final-head checks and actual released-engine/consumer guest results
-remain required before product integration.
+and its tracked twin; `scripts/verify-makecode.mjs` serial assertions only;
+affected engine provenance/notices through canonical writers if required.
+No NPM package/compiler pin bump, copied engine, invented source/hash, SDK
+rebuild, optional motion run, physical-accuracy claim or threshold relaxation.
+
+The core fix is merged. Consumer JSON/text serial and visible-console checks
+are prepared; final tests require the exact complete greeting, ordered counter,
+unchanged matrix/fault/guest-time bounds, and the fresh nRF52833 V2 emulator ELF.
+Engine publication/original admission, all enabled final checks and actual
+released-engine CLI/browser qualification remain pending before integration.
 
 ## A11: Code-tab MakeCode export uses the project target — 2026-10-15
 
@@ -4618,3 +4627,35 @@ final-head check remain required. Keep the parent qualification and merge gates;
 retarget to main only after parent integration and review composition again.
 No native, dependency, firmware, Runtime, model, deadline or workflow changes;
 no guest, whole-G02, physical, release or distribution claim from host controls.
+
+
+## 386 master-disk runner bridge — 2026-10-15
+
+CLAIM — Codex x86, serialized within the media workflow above, after required
+board qualification and explicit handoff.
+Additional ownership is limited to canonical
+`overlay/scratch-gui/src/lib/bw-debug/debug-runner.js`, its tracked generated
+`packages/scratch-gui/src/lib/bw-debug/debug-runner.js` mirror, and new
+`test/debug-runner-hdd-snapshot.test.mjs`. Publish and merge this contract before
+runner implementation. Preserve concurrent runner changes and the supplier
+owner's package/lock/vendor surfaces.
+
+Add only a focused `snapshotAtaMaster()` bridge to the current target's method.
+Keep the target private. Do not add arbitrary method dispatch, direct ATA access,
+auto-pause/resume, storage persistence, or a new capability schema. Require an
+active paused session and the underlying method, preserve structured refusals,
+and reject pending results after stop, replacement, or destroy using session
+ownership that cannot become valid again after stop/start. Mere target reference
+equality is insufficient. A completed copy remains a point-in-time snapshot;
+it does not grant a continuous paused lease or guest flush/completion.
+
+Execute the actual bridge and lifecycle paths in focused controls: unsupported
+and running targets make zero calls; board refusals survive; accepted bytes and
+boundary survive ordinary resume after copying; stale destroy/replacement/
+stop-start results fail closed. Preserve legacy targets and mirror equality.
+The separate download helper must recheck the active GUI session during awaits,
+clean up URLs on failure/disposal, and describe clicks as download initiation.
+Actual installed browser download and fresh chooser reload remain mandatory
+before a user-facing qualification claim. No supplier pin or chooser geometry
+limit changes belong to this extension. See the
+[handoff](docs/X86-NEXT-LANES.md#master-disk-export-continuation).
