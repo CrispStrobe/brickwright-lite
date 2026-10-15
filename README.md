@@ -178,6 +178,10 @@ can open a cartridge and recover the **project**, not just the machine code.
   executes as a Scratch project (and a MicroPython `.hex` directly in the
   simulator), and an imported Arcade game **plays** through the Scratch renderer
   and the game console (display, controls, tilt and NeoPixels where present).
+- A micro:bit or Calliope mini MakeCode program also runs as **real firmware**
+  on the emulated board (the micro:bit V1 with its radio stack emulated, and the
+  micro:bit V2 on Bluetooth-free firmware): its LED picture and serial console
+  appear as it runs. The V2's serial output is not shown yet.
 - Anything with no equivalent here is listed, not quietly discarded.
 
 Both directions are also available from the command line — `bwlite makecode …`

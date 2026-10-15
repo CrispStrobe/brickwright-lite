@@ -250,7 +250,8 @@ impl RenodeDebugger {
         let root=supervisor.micropython_support_root()?;
         let pin=option_env!("BW_RENODE_MICROPYTHON_MANIFEST_SHA256").ok_or("MicroPython package pin unavailable")?;
         let recipe=crate::spike_micropython_launch::MicroPythonRecipe::new(
-            root,pin.into(),supervisor.local_image_staging_root()?,admitted).with_topology(topology);
+            root,pin.into(),supervisor.local_image_staging_root()?,admitted).with_topology(topology)
+            .with_models(crate::spike_micropython_launch::MicroPythonModels::from_package_pins()?);
         self.start_micropython_recipe(supervisor,recipe)
     }
 

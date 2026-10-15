@@ -144,3 +144,28 @@ setThreshold`; network: IR and cable send/receive; `keyboard`, `mouse`, `gamepad
 - **Proof:** the same program in Lite's VM and in pxt-adafruit's own simulator (already served in Lite), compared word by word on measured readings.
 - **LabWired:** running the real CPX `.uf2` on the SAMD21 model is out of A9; a separate scoping note covers that route (peripheral gap, ASF4 licence question). No code.
 - **Found while scoping, verified by reading:** `inferTarget` (overlay/scratch-gui/src/lib/bw-makecode/index.js:66) has no adafruit branch and its micro:bit sniff `/\binput\.on/` matches CPX's `input.onGesture(`, so a hint-less CPX share is sent to the micro:bit translator today. Phase 2 fixes it (adafruit sniff ahead of micro:bit) with a test; not yet reproduced by running.
+
+## Phase 1 delivered (2026-10-14)
+- **Extensions** #41 + #45: `CrispStrobe/circuitplayground.js`, 45 blocks. Menus carry MakeCode's identifiers as
+  values. VM state is `runtime.bwCpxState` and inputs go through `runtime.bwCpx`.
+- **sb3-creator** #136: `DEVICE CPX`, with aliases `circuitplayground`, `adafruit` and `circuit_playground_express`.
+  `src/utils/cpxDialect.js` has 45 words: commands and hats only under `DEVICE CPX`, reporters prefixed `cpx`.
+  Pins are A0–A7, I²C is A4/A5, and the device has no C/MicroPython core. `test/cpx-dialect.test.mjs` has 55 tests.
+- **Lite** #917:
+  - the bundled extension on its own scoped `circuitplayground` pin, plus notices;
+  - the CPX dock and pane;
+  - `scripts/lib/makecode-adafruit-sim.mjs`, which runs pxt-adafruit 1.6.8's own simulator headless on a virtual
+    clock (Bluebird first; tones decoded from the mixer's 12-byte instructions);
+  - `scripts/lib/cpx-extension-run.mjs`.
+- **Proof:** `test/cpx-device-world.test.mjs` runs 23 scenarios: ring operations, five animations frame by frame,
+  tones and six melodies note by note, click and long click, the switch, and light and loud-sound events. Each
+  scenario reads the same in Lite's extension and in MakeCode's simulator. Also `test/cpx-dock-wiring.test.mjs`.
+- **Found by the comparison** and fixed in #45:
+  - at brightness 255 MakeCode keeps the buffer unscaled;
+  - the slide switch starts on the right.
+- **Process lesson:** a merge that changes the extensions gallery reddens Lite main's vendor-freshness gate until
+  `sync-gallery-pins` is re-run after the Pages deploy. Re-pin in the same session.
+
+**Next:** OPEN-TASKS A12 (the translator: the plan's phase 2, with the refusal list above minus animations and
+built-in sounds, which are now words) and A13 (live state on the circuit face). The LabWired lane is B19–B22 (see
+`A9-CPX-LABWIRED-SCOPING.md`).
