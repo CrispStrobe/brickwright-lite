@@ -253,6 +253,10 @@ try {
             .innerText().catch(() => ''), t => t.replace(/\r/g, '').split('\n').includes(greeting), 60000);
         check('the compiled V2 guest prints the complete ordered line in the Debug console',
             serial.replace(/\r/g, '').split('\n').includes(greeting), serial.slice(0, 160));
+        const serialIdentity = await page.evaluate(() => document.body.innerText);
+        check('the serial proof uses its own micro:bit V2 board and emulator ELF',
+            /microbit-v2 board \(nrf52833/i.test(serialIdentity) &&
+            /a10-serial-microbit-v2-emu\.elf/i.test(serialIdentity), serialIdentity.slice(-600));
         check('the serial guest remains on a running V2 emulator session', await statusText() === 'running');
     }
 
