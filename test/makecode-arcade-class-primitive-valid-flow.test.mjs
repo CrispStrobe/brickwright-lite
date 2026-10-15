@@ -71,3 +71,33 @@ test('an ordinary class cannot borrow an intrinsic constructor by procedure spel
  decl.inputs.CONSTRUCTOR=[1,[10,'__bwClass_Sprite_constructor %s %s']];
  assert.ok(projectToArcade(project).unsupported.some(message=>message.includes('class Reader requires a unique actual procedure')));
 });
+
+test('malformed source-root writers cannot disappear from current class constraint checks',async()=>{
+ const {default:Creator}=await import('../overlay/scratch-gui/src/lib/sb3-creator.js');
+ const source='class Reader{value:number;constructor(){this.value=1}read():number{return this.value}}let reader=new Reader();reader.value=2;let result=reader.read();';
+ const build=()=>{const creator=new Creator();creator.parse(arcadeToPseudocode(source).code);return creator.project;};
+ const locate=project=>{for(const target of project.targets){const entry=Object.entries(target.blocks).find(([,b])=>b.opcode==='arcade_setObjectField'&&Array.isArray(b.inputs.OBJECT?.[1])&&b.inputs.OBJECT[1][0]===12);if(entry)return {target,id:entry[0],writer:entry[1]};}assert.fail('actual external field writer');};
+ const ordinary=build();locate(ordinary).writer.inputs.VALUE=[1,[10,'bad']];
+ assert.ok(projectToArcade(ordinary).unsupported.includes('Class primitive export: field Reader.value writer conflicts with declared number (actual String)'));
+ for(const change of ['parent','missing-input','missing-next','same-parent-shared-child','cross-parent-shared-child','cycle','root-parent']){
+  const project=build(),{target,id,writer}=locate(project);writer.inputs.VALUE=[1,[10,'bad']];
+  if(change==='parent')writer.parent='missing';
+  if(change==='missing-input')writer.inputs.OBJECT=[3,'missing',[10,'']];
+  if(change==='missing-next')writer.next='missing';
+  if(change==='cycle')writer.next=id;
+  if(change==='root-parent')Object.values(target.blocks).find(b=>b.opcode==='arcade_whenSourceStarts').parent='missing';
+  if(change.endsWith('shared-child')){
+   target.blocks.sharedLeaf={opcode:'math_number',fields:{NUM:['2',null]},inputs:{},next:null,parent:'sharedAdd',topLevel:false,shadow:true};
+   target.blocks.sharedAdd={opcode:'operator_add',fields:{},inputs:{NUM1:[1,'sharedLeaf'],NUM2:[1,'sharedLeaf']},next:null,parent:id,topLevel:false,shadow:false};
+   writer.inputs.VALUE=[3,'sharedAdd',[4,'0']];
+   if(change==='cross-parent-shared-child'){
+    target.blocks.sharedOther={opcode:'operator_add',fields:{},inputs:{NUM1:[1,'sharedLeaf'],NUM2:[1,[4,'1']]},next:null,parent:'sharedAdd',topLevel:false,shadow:false};
+    target.blocks.sharedAdd.inputs.NUM2=[3,'sharedOther',[4,'0']];
+   }
+  }
+  const before=JSON.stringify(project),exported=projectToArcade(project);
+  assert.ok(exported.unsupported.some(message=>message.includes('Class primitive export: current source-root ownership is malformed')),change+': '+JSON.stringify(exported.unsupported));
+  if(change==='cycle')assert.ok(exported.unsupported.includes('Cyclic statement chain cannot be exported'));
+  assert.equal(JSON.stringify(project),before);
+ }
+});

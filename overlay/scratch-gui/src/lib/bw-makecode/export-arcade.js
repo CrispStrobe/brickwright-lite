@@ -1775,7 +1775,10 @@ class ArcadeEmitter {
     // ── statements ───────────────────────────────────────────────────────
     stmts (id, depth, out) {
         let b = this.block(id);
+        const seen = new Set();
         while (b) {
+            if (seen.has(b)) { this.note('Cyclic statement chain cannot be exported'); return; }
+            seen.add(b);
             this.stmt(b, depth, out);
             // `stop all` and `stop this script` are caps: nothing after them runs.
             if (b.opcode === 'control_stop' && /^(all|this script)$/.test(this.field(b, 'STOP_OPTION'))) return;

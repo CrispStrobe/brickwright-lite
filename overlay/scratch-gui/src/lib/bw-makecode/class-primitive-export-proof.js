@@ -7,7 +7,7 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
     const primitive=sdkFontInputAuthority(project),ordinary=[...classes.values()].filter(cls=>!cls.intrinsic);
     const expected=new Map([['number','Number'],['string','String'],['boolean','Boolean']]);
     if(!ordinary.length)return;
-    const owned=new WeakMap(),locations=new WeakMap(),definitions=new Map(),rows=[],bad=new Set(),methodOwners=new Map();
+    const owned=new WeakMap(),locations=new WeakMap(),definitions=new Map(),rows=[],bad=new Set(),methodOwners=new Map(),roots=new Set();
     const blocks=target=>target.blocks||{},child=(target,block,name)=>typeof block.inputs?.[name]?.[1]==='string'?blocks(target)[block.inputs[name][1]]:null;
     const fixed=(target,block,name)=>{if(!block.inputs?.[name]&&typeof block.fields?.[name]?.[0]==='string')return block.fields[name][0];const input=block.inputs?.[name]?.[1],value=child(target,block,name);return Array.isArray(input)&&input[0]===10?String(input[1]):value?.shadow&&value.opcode==='text'?String(value.fields?.TEXT?.[0]):null;};
     const key=(target,name)=>`${project.targets.indexOf(target)}:${name}`;
@@ -22,12 +22,13 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
             definition={target,block,proto,code,names,rows:[],returns:[],fallthrough:false};
             if(typeof code!=='string'||!Array.isArray(names)||names.some(name=>typeof name!=='string'||!name)||new Set(names).size!==names.length||definitions.has(k)){bad.add(k);definitions.set(k,null);}else definitions.set(k,definition);
         }
-        const owner=definition||{target,block,rows:[]};
+        const owner=definition||{target,block,rows:[]};roots.add(owner);
+        if(block.parent!==null&&block.parent!==undefined)bad.add(owner);
         const visit=(current,parent,path=new Set())=>{
             if(!current)return;
             const where=locations.get(current);if(!where||path.has(current)||owned.has(current)&&owned.get(current)!==owner){bad.add(owner);if(owned.has(current))bad.add(owned.get(current));return;}
             if(parent&&current.parent!==locations.get(parent)?.id){bad.add(owner);return;}
-            if(owned.has(current))return;owned.set(current,owner);owner.rows.push(current);rows.push({target,block:current,owner});path=new Set(path);path.add(current);
+            if(owned.has(current)){bad.add(owner);return;}owned.set(current,owner);owner.rows.push(current);rows.push({target,block:current,owner});path=new Set(path);path.add(current);
             for(const input of Object.values(current.inputs||{}))if(typeof input?.[1]==='string'){const next=blocks(target)[input[1]];if(!next)bad.add(owner);else visit(next,current,path);}
             if(current.next){const next=blocks(target)[current.next];if(!next)bad.add(owner);else visit(next,current,path);}
         };
@@ -222,5 +223,6 @@ export function checkClassPrimitiveExport({project,classes,procedures,note,dynam
         for(const param of meta.parameters)if(Object.hasOwn(param,'default')){const value=param.default,type=value===null?'Null':typeof value==='number'?'Number':typeof value==='string'?'String':typeof value==='boolean'?'Boolean':'Opaque';requireType(new Set([type]),param.type,'default '+meta.cls.name+'.'+param.name);}
         if(bad.has(def))fail('class '+meta.cls.name+' procedure ownership is malformed');}
     for(const[def,meta]of methodOwners)if(expected.has(meta.result))requireType(result(def),meta.result,'result '+meta.cls.name+'.'+def.code);
+    for(const owner of roots)if(bad.has(owner)&&!methodOwners.has(owner))fail('current source-root ownership is malformed');
     for(const message of diagnostics)note(message);
 }
