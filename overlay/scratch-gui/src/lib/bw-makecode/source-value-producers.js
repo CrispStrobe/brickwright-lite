@@ -1,13 +1,15 @@
+import {multiplayerPlayerSourceCalls} from './multiplayer-player-source.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {consoleInspectSourceCalls} from './console-inspect-source.js';
 import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-export function analyseSourceValueProducers(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,consoleInspection=false}={}) {
+export function analyseSourceValueProducers(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false}={}) {
     const numericArrows=new Set(provedArrows),numericHelpers=new Set(provedHelpers);
     const inspection=consoleInspection?consoleInspectSourceCalls(program):null;
-    let internalInspection=false;
+    const multiplayer=multiplayerPlayerProperties?multiplayerPlayerSourceCalls(program):null,functionScopes=new WeakMap(),playerConstraints=new Set();
+    let internalInspection=false,unsafePlayerWrite=false;
     // Only a consumer with an independently validated zero-argument Number body
     // may supply these actual AST allocation sites. Ordinary analysis is unchanged.
     const sdk=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['screen']}),fields=new Map(SDK_FONT_FIELDS.map(field=>[field.name,field.type]));
@@ -28,12 +30,12 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
     const vars=(node,owner)=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(value=>vars(value,owner));return;}if(['FunctionDeclaration','FunctionExpression','Class'].includes(node.type))return;if(node.type==='Declaration'&&node.kind==='var')node.decls.forEach(decl=>declare(owner,decl.name));Object.values(node).forEach(value=>{if(value&&typeof value==='object')vars(value,owner);});};
     const cell=node=>node?.type==='Identifier'&&writing.has(node)?binding(owners.get(node)||global,node.name):cells.get(node);
     const edge=(from,to)=>{if(from&&to)edges.push([from,to]);};
-    const body=(nodes,outer,fn=null)=>{const owner=scope(outer);predeclare(nodes,owner);if(fn){for(const param of fn.params||[])declaration(owner,param,Symbol(param));vars(nodes,owner);owner.result=fn.result;}for(const node of nodes||[])visit(node,owner);return owner;};
+    const body=(nodes,outer,fn=null)=>{const owner=scope(outer);predeclare(nodes,owner);if(fn){for(const param of fn.params||[]){declaration(owner,param,Symbol(param));const annotation=fn.paramTypes?.[param];if(multiplayer&&annotation&&(annotation.isArray||annotation.text&&!['any','mp.Player'].includes(annotation.text)))playerConstraints.add(binding(owner,param));}vars(nodes,owner);owner.result=fn.result;}for(const node of nodes||[])visit(node,owner);return owner;};
     const visit=(node,owner)=>{
         if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(value=>visit(value,owner));return;}
         owners.set(node,owner);if(['FunctionDeclaration','Class'].includes(node.type) && (node.name?.startsWith('__bwSdkFont_') || node.name==='__bwSDK_Font'))fail('Internal Font descriptor and intrinsic names are not source bindings');
         if(node.type==='Declaration' && node.decls.some(decl=>decl.name.startsWith('__bwSdkFont_') || decl.name==='__bwSDK_Font'))fail('Internal Font descriptor and intrinsic names are not source bindings');
-        if(node.type==='Identifier'){if(node.name.startsWith('__bwSdkFont_'))fail('Internal Font intrinsic names are not source bindings');if(!writing.has(node)){cells.set(node,key());if(node.name==='screen'&&sdk.has(node))add(cell(node),screenWritten?'Opaque':'Image');else {const id=binding(owner,node.name);edge(id,cell(node));if(unboundIsOpaque&&!declarations.has(id)||opaqueDeclarationValues&&[...(declarations.get(id)||[])].some(value=>(['FunctionDeclaration','Class','Enum'].includes(value?.type)||value?.isArray||value?.typeName&&!['number','boolean','string','any'].includes(value.typeName))))add(cell(node),'Opaque');}}return;}
+        if(node.type==='Identifier'){if(node.name.startsWith('__bwSdkFont_'))fail('Internal Font intrinsic names are not source bindings');if(!writing.has(node)){cells.set(node,key());if(node.name==='screen'&&sdk.has(node))add(cell(node),screenWritten?'Opaque':'Image');else {const id=binding(owner,node.name);edge(id,cell(node));if(unboundIsOpaque&&!declarations.has(id)||opaqueDeclarationValues&&[...(declarations.get(id)||[])].some(value=>(['FunctionDeclaration','Class','Enum'].includes(value?.type)||value?.isArray||value?.typeName&&!['number','boolean','string','any'].includes(value.typeName)&&!(multiplayer&&value.typeName==='mp.Player'))))add(cell(node),'Opaque');else if(opaqueDeclarationValues&&multiplayer&&[...(declarations.get(id)||[])].some(value=>value?.typeName==='mp.Player'))add(cell(node),'OpaquePlayerConstraint');}}return;}
         cells.set(node,key());const current=cell(node);
         if(node.bwConsoleInspectIntrinsic===true&&node.callee?.name==='__bwConsoleInspectValue')internalInspection=true;
         if(node.type==='Program'){predeclare(node.body,owner);vars(node.body,owner);node.body.forEach(value=>visit(value,owner));return;}
@@ -41,12 +43,12 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
         if(node.type==='FunctionDeclaration'){
             const result=key(),entry={node,result,owner:null},functionBinding=binding(owner,node.name);
             if(functions.has(functionBinding)){functions.set(functionBinding,null);fail('SDK Font procedure flow requires a unique lexical declaration');}else functions.set(functionBinding,entry);
-            entry.owner=body(node.body,owner,{params:node.params,result});if(!complete(node.body))add(result,'Undefined');return;
+            entry.owner=body(node.body,owner,{params:node.params,paramTypes:node.paramTypes,result});if(!complete(node.body))add(result,'Undefined');return;
         }
-        if(node.type==='FunctionExpression'){add(current,numericArrows.has(node)&&node.functionKind==='arrow'&&!node.params.length?'NumericCallable':'Opaque');body(node.body,owner,{params:node.params,result:key()});return;}
+        if(node.type==='FunctionExpression'){add(current,numericArrows.has(node)&&node.functionKind==='arrow'&&!node.params.length?'NumericCallable':'Opaque');functionScopes.set(node,body(node.body,owner,{params:node.params,paramTypes:node.paramTypes,result:key()}));return;}
         if(node.type==='Class'){
             const name=binding(owner,node.name);classes.set(name,(classes.get(name)||0)+1);add(current,'Opaque');for(const field of node.fields||[])visit(field.init,owner);
-            for(const method of [node.ctor,...(node.methods||[])].filter(Boolean))body(method.body,owner,{params:method.params,result:key()});return;
+            for(const method of [node.ctor,...(node.methods||[])].filter(Boolean))body(method.body,owner,{params:method.params,paramTypes:method.paramTypes,result:key()});return;
         }
         if(node.type==='If'){visit(node.test,owner);body(node.consequent,owner);body(node.alternate,owner);return;}
         if(['For','ForOf','While'].includes(node.type)){
@@ -55,7 +57,7 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
         }
         if(node.type==='Declaration'){
             let functionOwner=owner;while(functionOwner&&!functionOwner.result)functionOwner=functionOwner.parent;
-            for(const decl of node.decls){const target=binding(owner,decl.name);if(decl.init){visit(decl.init,owner);edge(cell(decl.init),target);}
+            for(const decl of node.decls){const target=binding(owner,decl.name);if(multiplayer&&(decl.isArray||decl.typeName&&!['any','mp.Player'].includes(decl.typeName)))playerConstraints.add(target);if(decl.init){visit(decl.init,owner);edge(cell(decl.init),target);}
                 else if(declaredLocalUndefined&&functionOwner&&node.kind==='let'&&declarations.get(target)?.size===1&&!decl.isArray&&(!decl.typeName||['number','string','boolean','any'].includes(decl.typeName))){add(target,'Undefined');localUndefinedDeclarations.add(decl);}
                 if(decl.typeName==='image.Font')owner.fontAnnotations=(owner.fontAnnotations||new Set()).add(target);}return;
         }
@@ -65,7 +67,9 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
         if(node.type==='Assignment'){if(node.left?.type==='Identifier')classWrites.add(binding(owners.get(node.left),node.left.name));if(node.op==='=')edge(cell(node.right),cell(node.left));else if(node.left?.type==='Identifier')derived.push({result:binding(owners.get(node.left),node.left.name),type:'Number',operands:[cell(node.left),cell(node.right)],signature:['+=','-=','*=','/=','%=','&=','|=','^=','<<=','>>=','>>>='].includes(node.op),domain:'Number'});else add(cell(node.left),'Opaque');edge(cell(node.right),current);return;}
         if(node.type==='Update'&&node.argument?.type==='Identifier'){classWrites.add(binding(owners.get(node.argument),node.argument.name));derived.push({result:binding(owners.get(node.argument),node.argument.name),type:'Number',operands:[cell(node.argument)],signature:['++','--'].includes(node.op),domain:'Number'});edge(cell(node.argument),current);return;}
         if(node.type==='Call'&&node.isNew&&node.callee?.type==='Identifier'){classCalls.push({value:current,name:binding(owner,node.callee.name)});return;}
-        if(node.type==='Call'&&(inspection?.isIntrinsicCall(node)||node.bwConsoleInspectIntrinsic===true&&node.callee?.type==='Identifier'&&node.callee.name==='__bwConsoleInspectValue'&&!node.isNew&&node.args.length===2))derived.push({result:current,type:'String',operands:node.args.map(cell),signature:[1,2].includes(node.args.length),inspection:true});
+        if(multiplayer?.isRegistration(node)){const handler=node.args[1],scope=functionScopes.get(handler);if(scope)add(binding(scope,handler.params[0]),'Player');}
+        if(multiplayer?.isProperty(node))derived.push({result:current,type:'Number',operands:[cell(node.args[0])],signature:true,domain:'Player'});
+        else if(node.type==='Call'&&(inspection?.isIntrinsicCall(node)||node.bwConsoleInspectIntrinsic===true&&node.callee?.type==='Identifier'&&node.callee.name==='__bwConsoleInspectValue'&&!node.isNew&&node.args.length===2))derived.push({result:current,type:'String',operands:node.args.map(cell),signature:[1,2].includes(node.args.length),inspection:true});
         else if(node.type==='Member'&&sdk.has(node)&&['image.font5','image.font8','image.font12'].includes(path(node)))add(current,'Font');
         else if(node.type==='Call'&&!node.isNew&&sdk.has(node.callee)&&path(node.callee)==='image.getFontForText'&&node.args.length===1)texts.push({node,argument:cell(node.args[0]),result:current});
         else if(node.type==='Call'&&!node.isNew&&sdk.has(node.callee)&&path(node.callee)==='image.scaledFont'&&node.args.length===2)scales.push({node,receiver:cell(node.args[0]),result:current});
@@ -130,17 +134,20 @@ export function analyseSourceValueProducers(program,{numericArrows:provedArrows=
     const exactType=(value,type)=>types.get(value)?.size===1&&types.get(value).has(type);
     const primitiveTypes=new Set(['String','Number','Boolean','Null','Undefined']);
     const stringConcat=item=>item.stringConcat&&item.operands.some(value=>exactType(value,'String'))&&item.operands.every(value=>types.get(value)?.size&&[...types.get(value)].every(type=>primitiveTypes.has(type)));
+    const playerOperand=value=>!unsafePlayerWrite&&types.get(value)?.has('Player')&&[...types.get(value)].every(type=>['Player','Null','Undefined','OpaquePlayerConstraint'].includes(type));
     const numericOperand=value=>types.get(value)?.size&&[...types.get(value)].every(type=>type==='Number'||type==='Undefined');
     const inspectionDomain=(operand,allowed)=>types.get(operand)?.size&&[...types.get(operand)].every(type=>allowed.has(type));
-    const derivedValid=item=>item.inspectionPrimitive?(consoleInspection||internalInspection)&&item.operands.every(operand=>inspectionDomain(operand,primitiveTypes)):item.inspection?item.signature&&inspectionDomain(item.operands[0],primitiveTypes)&&(item.operands.length===1||inspectionDomain(item.operands[1],new Set(['Number','Undefined']))):item.signature&&(stringConcat(item)||item.operands.every(operand=>item.domain==='Number'&&item.type==='Number'?numericOperand(operand):exactType(operand,item.domain)));
+    const derivedValid=item=>item.inspectionPrimitive?(consoleInspection||internalInspection)&&item.operands.every(operand=>inspectionDomain(operand,primitiveTypes)):item.inspection?item.signature&&inspectionDomain(item.operands[0],primitiveTypes)&&(item.operands.length===1||inspectionDomain(item.operands[1],new Set(['Number','Undefined']))):item.signature&&(stringConcat(item)||item.operands.every(operand=>item.domain==='Player'?playerOperand(operand):item.domain==='Number'&&item.type==='Number'?numericOperand(operand):exactType(operand,item.domain)));
     const propagate=()=>{let changed;do{changed=false;
         for(const[from,to,mode,name]of edges){if(mode==='imageDimension'){if(exactType(from,'Image'))changed=add(to,'Number')||changed;else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else if(mode==='field'){if(isFont(from)){changed=add(to,name==='data'?'GlyphBuffer':'Number')||changed;if(name==='multiplier')changed=add(to,'Undefined')||changed;}else if(types.get(from)?.size)changed=add(to,'Opaque')||changed;}else for(const type of types.get(from)||[])changed=add(to,type)||changed;}
+        for(const cell of playerConstraints)if(types.get(cell)?.has('Player'))changed=add(cell,'Opaque')||changed;
         for(const item of derived)if(derivedValid(item))changed=add(item.result,stringConcat(item)?'String':item.type)||changed;
         for(const item of numericCalls)if(!item.node.args.length&&exactType(item.receiver,'NumericCallable'))changed=add(item.result,'Number')||changed;
         for(const item of scales)if(isFont(item.receiver))changed=add(item.result,'Font')||changed;
         for(const item of texts)if(types.get(item.argument)?.size===1 && types.get(item.argument).has('String'))changed=add(item.result,'Font')||changed;
     }while(changed);};propagate();
-    let invalidated;do{invalidated=false;for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
+    const playerWriteUnsafe=()=>!!multiplayer?.computedWrites.some(node=>{const keys=types.get(cell(node));return !keys?.size||[...keys].some(type=>!['Number','Boolean','Null','Undefined'].includes(type));});
+    let invalidated;do{invalidated=false;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
     const knownBinding=(node,name=node?.name)=>{
         if(typeof name!=='string')return null;

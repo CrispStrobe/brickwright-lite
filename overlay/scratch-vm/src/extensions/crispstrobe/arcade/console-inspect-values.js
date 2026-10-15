@@ -47,7 +47,7 @@ function create(runtime, cells) {
         const input = (node,name) => read(node?.inputs?.[name]?.block);
         const text = node => node?.opcode === 'text' ? node.fields?.TEXT?.value : null;
         const literal = (node,name) => node?.fields?.[name]?.value ?? text(input(node,name));
-        const owners = new Map(), seen = new Set();
+        const owners = new Map(), seen = new Map([[false,new Set()],[true,new Set()]]);
         const mark = (node,owner,path=new Set()) => {
             if (!node || path.has(node)) return;
             path.add(node);
@@ -69,12 +69,27 @@ function create(runtime, cells) {
             }
             return false;
         };
-        const safe = node => {
+        const safe = (node,player=false,origins=null) => {
             if (!node) return false;
-            if (seen.has(node)) return true; // A flow backedge cannot introduce an opaque producer; every outgoing writer is still checked.
-            seen.add(node);
+            const visited=seen.get(player);
+            if (visited.has(node)) return !player; // A flow backedge cannot introduce an opaque producer; every outgoing writer is still checked.
+            visited.add(node);
             try {
                 const op=node.opcode;
+                if(player&&op==='arcade_eventPlayer'){
+                    const owner=owners.get(node),token=literal(owner,'TOKEN');
+                    if(owner?.opcode!=='arcade_whenRegisteredMultiplayerConnection'||typeof token!=='string'||!token)return false;
+                    const hats=Object.values(all).filter(value=>value.opcode===owner.opcode&&literal(value,'TOKEN')===token);
+                    const registrations=Object.values(all).filter(value=>value.opcode==='arcade_registerMultiplayerConnection'&&literal(value,'TOKEN')===token);
+                    const event=registrations.length===1&&input(registrations[0],'EVENT');
+                    const valid=hats.length===1&&hats[0]===owner&&event?.opcode==='math_number'&&[1,2].includes(Number(event.fields?.NUM?.value));if(valid)origins.add(node);return valid;
+                }
+                if(player&&op==='arrays_specialValue')return ['null','undefined'].includes(literal(node,'KIND'));
+                if(player&&!['data_variable','arcade_getLocal','arcade_callFunction'].includes(op)&&!/^argument_reporter_/.test(op))return false;
+                if(!player&&op==='arcade_playerProperty'){
+                    const property=input(node,'PROPERTY');
+                    const evidence=new Set();return literal(node,'READ')==='safe'&&property?.opcode==='math_number'&&Number(property.fields?.NUM?.value)===2&&safe(input(node,'PLAYER'),true,evidence)&&evidence.size>0;
+                }
                 if (['text','bw_stringLiteral','math_number','bw_numberLiteral','arrays_specialValue',
                     'operator_join','operator_letter_of','operator_length','operator_add','operator_subtract',
                     'operator_multiply','operator_divide','operator_mod','operator_round','operator_random',
@@ -84,11 +99,11 @@ function create(runtime, cells) {
                 if (op === 'arcade_inspectValue') return safe(input(node,'VALUE')) && safe(input(node,'LIMIT'));
                 if (op === 'data_variable') {
                     const id=node.fields?.VARIABLE?.id, variable=target.lookupVariableById(id);
-                    if (!variable || cells.referenceTypeOf(target,id) || cells.typeOf(target,id) && !kinds.has(cells.typeOf(target,id))) return false;
+                    if (!variable || cells.referenceTypeOf(target,id) || (player?!!cells.typeOf(target,id):cells.typeOf(target,id) && !kinds.has(cells.typeOf(target,id)))) return false;
                     const writers=runtime.targets.filter(t=>t.isOriginal!==false).flatMap(t=>Object.values(t.blocks._blocks)
                         .filter(b=>['data_setvariableto','data_changevariableby'].includes(b.opcode) && t.lookupVariableById(b.fields?.VARIABLE?.id)===variable)
                         .map(writer=>({target:t,writer})));
-                    return writers.every(entry=>entry.target===target && safe(input(entry.writer,'VALUE')));
+                    return (!player||writers.length>0)&&writers.every(entry=>entry.target===target && safe(input(entry.writer,'VALUE'),player,origins));
                 }
                 if (op === 'arcade_getLocal' || /^argument_reporter_/.test(op)) {
                     const name=op==='arcade_getLocal'?literal(node,'NAME'):node.fields?.VALUE?.value, owner=owners.get(node);
@@ -96,25 +111,29 @@ function create(runtime, cells) {
                     if(Object.values(all).some(writer=>owners.get(writer)===owner&&writer.opcode==='arcade_setLocal'&&typeof literal(writer,'NAME')!=='string'))return false;
                     if(Object.values(all).some(candidate=>{if(owners.get(candidate)!==owner)return false;if(candidate.opcode==='arcade_createCallable')return true;if(!candidate.opcode.startsWith('arcade_register')||!candidate.inputs?.CAPTURES&&!candidate.fields?.CAPTURES)return false;const names=literal(candidate,'CAPTURES');return typeof names!=='string'||names.split(/\s+/).includes(name);}))return false;
                     const writes=Object.values(all).filter(b=>owners.get(b)===owner && b.opcode==='arcade_setLocal' && literal(b,'NAME')===name);
-                    if (!writes.every(writer=>safe(input(writer,'VALUE')))) return false;
+                    if (!writes.every(writer=>safe(input(writer,'VALUE'),player,origins))) return false;
+                    const definitions=typeof owner==='string'&&Object.values(all).filter(value=>value.opcode==='procedures_definition'&&input(value,'custom_block')?.mutation?.proccode===owner);
+                    if(definitions&&definitions.length!==1)return false;
                     const params=typeof owner==='string' && target.blocks.getProcedureParamNamesIdsAndDefaults(owner);
+                    if(params&&(!Array.isArray(params[0])||new Set(params[0]).size!==params[0].length))return false;
                     const index=params?.[0]?.indexOf(name) ?? -1;
                     if (index<0) return writes.length>0;
                     const calls=Object.values(all).filter(b=>b.opcode==='arcade_callFunction' && literal(b,'NAME')===owner);
                     // An unresolved dynamic callee can target this procedure.
                     if (Object.values(all).some(b=>b.opcode==='arcade_callFunction' && typeof literal(b,'NAME')!=='string')) return false;
-                    return calls.length>0 && calls.every(call=>{const arg=argumentsFor(call,index);return arg===null || arg!==false && safe(arg);});
+                    return calls.length>0 && calls.every(call=>{const arg=argumentsFor(call,index);return arg===null ? !player : arg!==false && safe(arg,player,origins);});
                 }
                 if (op === 'arcade_callFunction') {
-                    const name=literal(node,'NAME'), definition=read(target.blocks.getProcedureDefinition(name));
-                    if (!definition) return false;
+                    const name=literal(node,'NAME'),definitions=Object.values(all).filter(value=>value.opcode==='procedures_definition'&&input(value,'custom_block')?.mutation?.proccode===name);
+                    if(definitions.length!==1)return false;const definition=definitions[0];
                     const returns=Object.values(all).filter(b=>owners.get(b)===name && b.opcode==='arcade_returnValue');
-                    return returns.length>0 && returns.every(ret=>safe(input(ret,'VALUE')));
+                    if(player){let last=read(definition.next);const chain=new Set();while(last?.next&&!chain.has(last)){chain.add(last);last=read(last.next);}if(last?.opcode!=='arcade_returnValue')return false;}
+                    return returns.length>0 && returns.every(ret=>safe(input(ret,'VALUE'),player,origins));
                 }
                 if (op==='arrays_valueBinary') return safe(input(node,'LEFT'))&&safe(input(node,'RIGHT'));
                 if (op==='arrays_valueUnary') return safe(input(node,'VALUE'));
                 return false;
-            } finally {seen.delete(node);}
+            } finally {visited.delete(node);}
         };
         if (!safe(input(block,'VALUE')) || !safe(input(block,'LIMIT'))) fail('connected input lacks primitive producer authority');
         return {value:input(block,'VALUE'),limit:input(block,'LIMIT')};
