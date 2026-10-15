@@ -61,20 +61,27 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
         if (!Array.isArray(spec.fields) || !Array.isArray(spec.parameters) || !Array.isArray(spec.methods))
             throw new Error('Class fields, parameters and methods must be declared');
         const validType=type=>typeof type==='string' && /^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*(?:\[\])*$/.test(type);
-        const validParameters=params=>Array.isArray(params) && params.every(param=>param && /^[A-Za-z_]\w*$/.test(param.name||'') && validType(param.type) && typeof param.optional==='boolean' && (param.default===undefined || param.optional && (param.default===null || typeof param.default==='boolean' || typeof param.default==='number'&&Number.isFinite(param.default))) && Object.keys(param).every(key=>['name','type','optional','default'].includes(key))) && new Set(params.map(param=>param.name)).size===params.length;
-        if(!validParameters(spec.parameters))throw new Error('Invalid declared constructor parameters');
+        const validParameters=(params,allowSdk=false)=>Array.isArray(params) && params.every(param=>param && (param.sdkType===undefined||allowSdk) && /^[A-Za-z_]\w*$/.test(param.name||'') && validType(param.type) && typeof param.optional==='boolean' && (param.default===undefined || param.optional && (param.default===null || typeof param.default==='boolean' || typeof param.default==='number'&&Number.isFinite(param.default))) && Object.keys(param).every(key=>['name','type','optional','default','sdkType'].includes(key))) && new Set(params.map(param=>param.name)).size===params.length;
+        if(!validParameters(spec.parameters,true))throw new Error('Invalid declared constructor parameters');
+        const sdkType = (type,declared) => {
+            if(declared!=='Image'||typeof native.sdkSignature!=='function'||typeof native.sdkField!=='function')throw new Error('SDK class type requires its explicit owned service');
+            const result=native.sdkSignature(type);if(result.kind!=='sdk'||result.name!=='Image')throw new Error('SDK class type requires exact Image signature');return Object.freeze(result);
+        };
+        const parameters=spec.parameters.map(parameter=>parameter.sdkType!==undefined?Object.freeze({...parameter,sdkType:sdkType(parameter.sdkType,parameter.type)}):parameter);
         const fields = new Map(), methods = new Map();
         for (const field of spec.fields) {
             if (!field || typeof field.name !== 'string' || !/^[A-Za-z_]\w*$/.test(field.name) || fields.has(field.name) ||
-                Object.keys(field).some(key => !['name', 'type', 'readonly', 'visibility', 'initializer', 'parameterProperty', 'getter', 'setter', 'valueKind', 'callableSignature'].includes(key)) ||
+                Object.keys(field).some(key => !['name', 'type', 'readonly', 'visibility', 'initializer', 'parameterProperty', 'getter', 'setter', 'valueKind', 'callableSignature', 'sdkType'].includes(key)) ||
                 field.parameterProperty!==undefined && typeof field.parameterProperty!=='boolean' || field.initializer!==undefined && typeof field.initializer!=='string' || !validType(field.type) || typeof field.readonly !== 'boolean' || field.visibility !== undefined && !['public','private','protected'].includes(field.visibility)) throw new Error('Invalid declared class field');
             if(field.getter!==undefined && (typeof field.getter!=='string'||!field.getter) || field.setter!==undefined && (!field.setter || typeof field.setter.procedure!=='string' || !field.setter.procedure || !validParameters(field.setter.parameters) || field.setter.parameters.length!==1 || field.setter.parameters[0].optional || Object.hasOwn(field.setter.parameters[0],'default') || Object.keys(field.setter).some(key=>!['procedure','parameters'].includes(key))))throw new Error('Invalid class accessor descriptor');
             if((field.getter||field.setter) && (field.initializer!==undefined || field.parameterProperty || field.readonly!==!!(field.getter&&!field.setter)))throw new Error('Class accessor must retain its declared halves without a backing initializer');
-            const callableField=field.valueKind==='callable';
-            if(field.valueKind!==undefined&&!callableField || callableField!==(field.callableSignature!==undefined) || callableField &&
+            const callableField=field.valueKind==='callable',sdkField=field.valueKind==='sdk';
+            if(sdkField!==(field.sdkType!==undefined)||sdkField&&(field.getter||field.setter||field.callableSignature!==undefined))throw new Error('SDK Image field requires its exact marker');
+            if(field.valueKind!==undefined&&!callableField&&!sdkField || callableField!==(field.callableSignature!==undefined) || callableField &&
                 (field.type!=='callable'||field.getter||field.setter||typeof native.callableSignature!=='function'||typeof native.callableField!=='function'))
                 throw new Error('Class callable field requires its explicit owned signature service');
             fields.set(field.name, Object.freeze({...field,
+                ...(sdkField?{sdkType:sdkType(field.sdkType,field.type)}:{}),
                 ...(field.callableSignature!==undefined?{callableSignature:native.callableSignature(field.callableSignature)}:{}),
                 ...(field.setter?{setter:Object.freeze({...field.setter,parameters:Object.freeze(field.setter.parameters.map(param=>Object.freeze({...param})))})}:{})}));
         }
@@ -95,7 +102,7 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
         const ordinaryCodes=[spec.initializer,spec.constructor,...[...methods.values()].map(method=>method.procedure)];
         const priorCodes=[...classes.values()].flatMap(cls=>[cls.initializer,cls.constructor,...[...cls.methods.values()].map(method=>method.procedure),...[...cls.fields.values()].flatMap(field=>[field.getter,field.setter?.procedure].filter(Boolean))]);
         if([...classes.values()].some(cls=>[...cls.fields.values()].some(field=>[field.getter,field.setter?.procedure].filter(Boolean).some(code=>ordinaryCodes.includes(code)))) || new Set(accessorCodes).size!==accessorCodes.length || accessorCodes.some(code=>ordinaryCodes.includes(code)||priorCodes.includes(code)))throw new Error('Class accessor procedure must belong to exactly one declared half');
-        const def = Object.freeze({...spec, fields, methods, parameters: Object.freeze([...spec.parameters])});
+        const def = Object.freeze({...spec, fields, methods, parameters: Object.freeze(parameters)});
         classes.set(spec.name, def); return def;
     }
     function allocate(name) {
@@ -118,7 +125,9 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
         const state = object(ref);
         if (!state.def.fields.has(key)) throw new Error(`Unknown class field ${key}`);
         if(state.def.fields.get(key).getter || state.def.fields.get(key).setter)throw new Error('Class accessor read requires its managed getter');
-        return state.def.fields.get(key)?.native ? native.get(ref,key) : state.fields.get(key);
+        const field=state.def.fields.get(key),value=field.native ? native.get(ref,key) : state.fields.get(key);
+        if(field.sdkType!==undefined&&values.decode(value)!==undefined)native.sdkField(field.sdkType,value);
+        return value;
     }
     function set(ref, key, value, _token, util) {
         const state = object(ref), field = state.def.fields.get(key);
@@ -129,6 +138,7 @@ module.exports = function createObjectHeap(runtime, values, native = {}) {
         if(field.native)return native.set(ref,key,hold(value),util);
         const held=hold(value);
         if(field.callableSignature!==undefined)native.callableField(field.callableSignature,held);
+        if(field.sdkType!==undefined)native.sdkField(field.sdkType,value);
         state.fields.set(key, held);
     }
     function method(ref, name) {

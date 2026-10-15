@@ -7,10 +7,12 @@ const conditionalBodyOwner = require('./class-callable-conditional-body-owner');
 
 // Private extension integration. Serialized declarations cannot issue a frame;
 // only the real managed procedure dispatch supplies its sentinel parameter map.
-module.exports = function createClassCallableHost(runtime, values, createHeap, nativeHooks, callableOwner) {
+module.exports = function createClassCallableHost(runtime, values, createHeap, nativeHooks, callableOwner, sdkImages) {
     if (!runtime || typeof runtime.on !== 'function' || !Array.isArray(runtime.targets)) return null;
     let provider;
     const heap = createHeap(runtime, values, {...nativeHooks,
+        sdkSignature: type => types.validate(type),
+        sdkField: (type,value) => {types.result({kind:'callable',parameters:[],result:type},value);},
         callableSignature: signature => provider.fieldSignature(signature),
         callableField: (signature, value) => provider.fieldValue(signature, value),
         callableMethod: method => provider.methodSignature(method)});
@@ -25,8 +27,8 @@ module.exports = function createClassCallableHost(runtime, values, createHeap, n
     const frames = createFrames(runtime, heap, {currentGraph: util => graph.callerCurrent(util),subscribeLifecycle});
     const signatureOf = reference => callableOwner().signature(reference);
     provider = createProvider(runtime, values, heap, frames, {
-        currentGraph: graph.current, currentCall: graph.callerCurrent, signatureOf});
-    const types = createTypes(runtime, values, heap, signatureOf);
+        currentGraph: graph.current, currentCall: graph.callerCurrent, signatureOf, sdkImages});
+    const types = createTypes(runtime, values, heap, signatureOf, sdkImages);
     const resultReads=createResultReads(runtime,values,heap,frames,{currentGraph:graph.current,subscribeLifecycle,
         validateBody:(target,method,receiver)=>conditionalBodyOwner(target,method,heap,receiver)});
     const completions=new WeakMap();
@@ -40,7 +42,7 @@ module.exports = function createClassCallableHost(runtime, values, createHeap, n
         while (definition) {
             if (seen.has(definition.name) || definition.intrinsic) return [];
             seen.add(definition.name);
-            classProfile ||= [...definition.fields.values()].some(field=>field.valueKind==='callable') || [...definition.methods.values()].some(method=>method.callableSignature);
+            classProfile ||= [...definition.fields.values()].some(field=>['callable','sdk'].includes(field.valueKind)) || [...definition.methods.values()].some(method=>method.callableSignature) || definition.parameters.some(parameter=>parameter.sdkType);
             for (const method of definition.methods.values()) if (method.procedure === procedure && !methods.has(method)) {
                 methods.add(method);rows.push({method});
             }
@@ -50,6 +52,9 @@ module.exports = function createClassCallableHost(runtime, values, createHeap, n
         return classProfile ? rows : [];
     };
     return Object.freeze({heap, provider, subscribeLifecycle,
+        validateConstructor(definition,args) {
+            definition.parameters.forEach((parameter,index)=>{if(parameter.sdkType)types.result({kind:'callable',parameters:[],result:parameter.sdkType},args[index]);});
+        },
         bind(thread, target, procedure, params, token, args) {
             const owners = matches(procedure, args, token);
             if (!owners.length) return null;

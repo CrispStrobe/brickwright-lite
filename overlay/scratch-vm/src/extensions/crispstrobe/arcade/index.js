@@ -17,6 +17,7 @@ module.exports = makeExt(`// Name: Arcade
   const spriteUpdateHosts = new WeakMap();
   const classCallableHosts = new WeakMap();
   const managedReturnHosts = new WeakMap();
+  const sdkImageOwners = new WeakMap();
   const speechPalette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609',
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
 
@@ -49,9 +50,13 @@ module.exports = makeExt(`// Name: Arcade
       this._sceneFlags=dependencies.sceneFlags.create();
       this._particleScenes=new WeakMap();this._particleOverlays=new Map();this._particleAnchors=new WeakMap();
       this._sdkObjectClasses=dependencies.sdkObjectClasses.create(this,Scratch.BWValues);
+      let imageOwner;
+      const newImageOwner=()=>dependencies.createSdkImageOwner(runtime,Scratch.BWValues,()=>({extension:this,images:this._images,identities:this._imageIds,resolve:this._image,current:sdkImageOwners.get(this)===imageOwner}));
+      imageOwner=newImageOwner();sdkImageOwners.set(this,imageOwner);
+      const sdkImages=Object.freeze({assert:value=>imageOwner.assert(value)});
       let classCallableOwner;
       const classCallables=dependencies.createClassCallableHost(runtime,Scratch.BWValues,dependencies.createObjectHeap,
-        this._sdkObjectClasses.heapHooks,()=>classCallableOwner);
+        this._sdkObjectClasses.heapHooks,()=>classCallableOwner,sdkImages);
       if(classCallables)classCallableHosts.set(this,classCallables);
       this._objectHeap=classCallables?.heap || dependencies.createObjectHeap(runtime,Scratch.BWValues,this._sdkObjectClasses.heapHooks);
       const spriteUpdates=dependencies.spriteUpdateActivation.create(this);
@@ -140,7 +145,7 @@ module.exports = makeExt(`// Name: Arcade
           if(this._foreverTimer!==undefined)clearTimeout(this._foreverTimer);this._foreverTimer=undefined;
         };
         runtime.on('PROJECT_STOP_ALL', () => {this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();managedReturnHosts.get(this).invalidate();});
-        runtime.on('RUNTIME_DISPOSED', () => {this._sourceScalarCells.dispose();this._sourceTypeOf.invalidateInputs();this._sourceTypeOfDisposed=true;managedReturnHosts.get(this).dispose();});
+        runtime.on('RUNTIME_DISPOSED', () => {imageOwner.dispose();this._sourceScalarCells.dispose();this._sourceTypeOf.invalidateInputs();this._sourceTypeOfDisposed=true;managedReturnHosts.get(this).dispose();});
         runtime.on('PROJECT_STOP_ALL', () => this._stopProgramClock());
         runtime.on('PROJECT_STOP_ALL', cancelCreations);
         runtime.on('PROJECT_STOP_ALL', () => {this._carnivalHost?.cancel();this._carnivalHost=null;this._musicHost?.stopAll();});
@@ -206,6 +211,7 @@ module.exports = makeExt(`// Name: Arcade
           this._changed();
         };
         runtime.on('PROJECT_LOADED', () => {
+          imageOwner.dispose();imageOwner=newImageOwner();sdkImageOwners.set(this,imageOwner);
           managedReturnHosts.get(this).dispose();managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
           this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();managedReturnHosts.get(this).invalidate();
           // Registry publications belong to the loaded project. GUI artwork
@@ -214,7 +220,7 @@ module.exports = makeExt(`// Name: Arcade
           reset();
           this._bufferSuspended = false;this._sourceTypeOfDisposed=false;
         });
-        runtime.on('PROJECT_START',()=>{if(!this._sdkFontValues?.isDisposed())this._sdkFontValues?.startProgram();reset();this._sourceScalarCells.initialize();this._sourceTypeOf.snapshotInputs();managedReturnHosts.get(this).start();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
+        runtime.on('PROJECT_START',()=>{if(!this._sdkFontValues?.isDisposed())this._sdkFontValues?.startProgram();reset();imageOwner.start();this._sourceScalarCells.initialize();this._sourceTypeOf.snapshotInputs();managedReturnHosts.get(this).start();this._initializeImplicitTextKinds();runtime.startHats('arcade_whenSourceStarts');});
         runtime.on('targetWasRemoved', target => {
           for (const [id, entry] of this._imageSkins) if (entry.target === target) this._clearImage(id);
           for (const [id, entry] of this._speech) if (entry.target === target) this._clearSpeech(id);
@@ -1985,6 +1991,7 @@ module.exports = makeExt(`// Name: Arcade
         const {ref,def,token}=allocation;
         if(values.length>def.parameters.length)throw new Error('Class constructor has too many arguments');
         while(values.length<def.parameters.length){const param=def.parameters[values.length];values.push(Object.prototype.hasOwnProperty.call(param,'default')?Scratch.BWValues.encode(param.default):Scratch.BWValues.UNDEFINED);}
+        classCallableHosts.get(this)?.validateConstructor(def,values);
         const invokeConstructor=()=>{if(!this._objectHeap.constructionActive(ref,token)){const error=new Error('Class construction was cancelled by project replacement');error.bwObjectCancelled=true;throw error;}return def.constructor?this._objectProcedure(def.constructor,[ref,...values],util,token):undefined;};
         const finish=()=>{if(util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))){this._objectHeap.abort(ref,token);return Scratch.BWValues.UNDEFINED;}return this._objectHeap.finish(ref,token);};
         const failed=error=>{this._objectHeap.abort(ref,token);return error.bwObjectCancelled || util?.thread && (util.thread.isKilled || !this._runtime.threads.includes(util.thread))?Scratch.BWValues.UNDEFINED:this._objectError(error);};
@@ -5850,6 +5857,7 @@ module.exports = makeExt(`// Name: Arcade
   createObjectHeap: require('./object-heap'),
   sourceCallableCells: require('./source-callable-cells'),
   CallableValues: require('./callable-values'),
+  createSdkImageOwner: require('./sdk-image-owner'),
   createClassCallableHost: require('./class-callable-host'),
   CallableDispatch: require('./callable-dispatch'),
   sourceReferenceTypes: require('./source-reference-types'),

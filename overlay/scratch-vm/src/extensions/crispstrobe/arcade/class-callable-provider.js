@@ -3,8 +3,8 @@ const createTypes = require('./class-callable-types');
 
 // Private optional provider for the class-only v2 profile. A validated plan is
 // never a frame issuer. The installed caller must supply its real graph guard.
-module.exports = function createClassCallableProvider(runtime, values, heap, frames, {currentGraph,currentCall,signatureOf} = {}) {
-    const types = createTypes(runtime, values, heap, signatureOf), proofs = new WeakMap();
+module.exports = function createClassCallableProvider(runtime, values, heap, frames, {currentGraph,currentCall,signatureOf,sdkImages} = {}) {
+    const types = createTypes(runtime, values, heap, signatureOf, sdkImages), proofs = new WeakMap();
     const fail = message => { throw new Error('Class callable provider: ' + message); };
     const catalogue = plan => {
         for (const row of plan.classes) {
@@ -57,7 +57,7 @@ module.exports = function createClassCallableProvider(runtime, values, heap, fra
             }else if(parameter.type!==expected.type.name||parameter.callableSignature!==undefined)fail('method parameter type differs');
             return structuredClone(parameter);
         });
-        if(method.returnType!==(signature.result.kind==='named'?signature.result.name:'callable'))fail('method return type differs');
+        if(method.returnType!==(['named','sdk'].includes(signature.result.kind)?signature.result.name:'callable'))fail('method return type differs');
         if(method.resultFlow!==undefined){
             const flow=method.resultFlow;
             if(!flow||typeof flow!=='object'||Array.isArray(flow)||Object.keys(flow).some(key=>!['schema','presenceField','absent','present'].includes(key))||
