@@ -292,3 +292,43 @@ test('mutation before receiver allocation cannot lend later element-presence pro
     mutation.inputs.ARRAY=[3,[12,'first',first.fields.VARIABLE[1]],[10,'']];
     assert.equal(createArrayReferenceExportAuthority(creator.project).validateInput(target,block).ok,false);
 });
+
+test('repeated fresh factory evaluations cannot borrow one return-site body identity',()=>{
+    const creator=current('function make():number[][]{return []};let first=make();let second=make();let alias=first;alias=second;alias.push([1]);let row=first[0];let count=row.length');
+    assert.ok(projectToArcade(creator.project).unsupported.some(s=>s.startsWith('Array reference ')));
+});
+
+test('once-evaluated fresh factory aliases retain mutation-derived presence',()=>{
+    checked('function make():number[][]{return []};let first=make();let alias=first;alias.push([1]);let row=first[0];let count=row.length');
+});
+
+test('a loop callsite does not establish a once-evaluated factory body',()=>{
+    const creator=current('function make():number[][]{return []};let count=0;for(let i=0;i<2;i++){let items=make();items.push([1]);let row=items[0];count=row.length}');
+    assert.ok(projectToArcade(creator.project).unsupported.some(s=>s.startsWith('Array reference ')));
+});
+
+test('repeated shared-global returns preserve their genuine single allocation alias',()=>{
+    checked('let shared:number[][]=[];function obtain():number[][]{return shared};let first=obtain();let second=obtain();second.push([1]);let row=first[0];let count=row.length');
+});
+
+test('formal identity returns preserve the actual once-allocated argument body',()=>{
+    checked('function identity(values:number[][]):number[][]{return values};let first:number[][]=[];let alias=identity(first);alias.push([1]);let row=first[0];let count=row.length');
+});
+
+test('repeated initially populated factory bodies keep constructor presence independently of mutation credit',()=>{
+    const creator=new Creator();creator.parse(`DEVICE ARCADE
+GLOBAL first
+GLOBAL second
+GLOBAL row
+GLOBAL count
+SPRITE Game:
+WHEN arcade source starts:
+  hide
+  set first to (arcade call function "make" arguments ("[]"))
+  set second to (arcade call function "make" arguments ("[]"))
+  set row to (item (0) of array reference (first))
+  set count to (length of array reference (row))
+DEFINE make:
+  arcade return value (new array reference from (array value (new array reference from ("[1]")) rest ("[]")))
+`);assert.deepEqual(creator.warnings,[]);assert.deepEqual(projectToArcade(creator.project).unsupported,[]);
+});

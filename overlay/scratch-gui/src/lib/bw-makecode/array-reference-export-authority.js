@@ -153,9 +153,14 @@ export function createArrayReferenceExportAuthority(project) {
     }
     const singleArray=types=>types.size>0&&[...types].every(type=>type&&typeof type==='object'&&type.array===true);
     const token=(node,target,items,minLength=items.length)=>{if(!tokens.has(node))tokens.set(node,{array:true,node,target,items,minLength,elements:new Set(),sources:new Set(items)});return tokens.get(node);};
-    const jsonArray=(array,node,target)=>token(node,target,array.map(value=>Array.isArray(value)?{jsonArray:value,identity:{}}:{raw:[typeof value==='string'?10:4,String(value)]}),array.length);
+    const jsonArray=(array,node,target,origin=null)=>{
+        const allocation=token(node,target,array.map(value=>Array.isArray(value)?{jsonArray:value,identity:{}}:{raw:[typeof value==='string'?10:4,String(value)]}),array.length);
+        if(origin)allocation.origin=origin;
+        for(const value of allocation.items)if(value.jsonArray)value.origin=allocation;
+        return allocation;
+    };
     const readInput=value=>{
-        if(!value)return new Set([bad]);if(value.cell)return new Set(value.cell.types);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
+        if(!value)return new Set([bad]);if(value.cell)return new Set(value.cell.types);if(value.jsonArray)return new Set([jsonArray(value.jsonArray,value.identity,null,value.origin)]);if(value.node)return readNode(value.target,value.node);return new Set([bad]);
     };
     const literalNumber=(target,node,name)=>{const v=input(node,name,target);if(v.raw&&[4,5,6,7,8].includes(v.raw[0]))return Number(v.raw[1]);if(v.node?.shadow&&v.node.opcode==='math_number')return Number(v.node.fields?.NUM?.[0]);return null;};
     // A reset can be ignored for KIND facts only when a synchronous source-start
@@ -276,12 +281,49 @@ export function createArrayReferenceExportAuthority(project) {
             executed.add(node);return walk(node.next,known,next,executed);
         };walk(scope.root.next,new Set((scope.params||[]).map(name=>localCell(scope,name)).filter(Boolean)));
     }
+    // Type tokens describe allocation sites and MAY writers, not body identity.
+    // Mutation-derived presence needs an independent proof that this actual
+    // allocation occurrence executes at most once in the current startup.
+    // In particular neither a factory return site nor a loop callsite is a body.
+    const onceScopes=new WeakMap();
+    const onceNode=(node,path=new Set())=>{
+        const scope=owners.get(node);if(!scope||scope.invalid||invalid.has(node))return false;
+        let current=node;const seen=new Set();
+        while(current!==scope.root){
+            if(seen.has(current))return false;seen.add(current);
+            const parent=block(scope.target,current.parent);if(!parent||invalid.has(parent)||owners.get(parent)!==scope)return false;
+            const id=Object.keys(scope.target.blocks).find(id=>scope.target.blocks[id]===current);
+            if(parent.next!==id){
+                const inputs=Object.entries(parent.inputs||{}).filter(([,slot])=>slot[1]===id);
+                if(inputs.length!==1)return false;
+                const [name]=inputs[0];
+                // Unknown substacks never establish a single execution. Repeat
+                // conditions are also reevaluated, unlike an ordinary argument.
+                if(name.startsWith('SUBSTACK')&&!['control_if','control_if_else'].includes(parent.opcode)||
+                    ['arcade_sourceWhile','control_repeat_until','control_wait_until'].includes(parent.opcode))return false;
+            }
+            current=parent;
+        }
+        return onceScope(scope,path);
+    };
+    const onceScope=(scope,path)=>{
+        if(onceScopes.has(scope))return onceScopes.get(scope);
+        if(scope.invalid||scope.unknownEntry||path.has(scope))return false;
+        const next=new Set([...path,scope]);
+        const result=scope.proc?scope.callers.length===1&&!!scope.callers[0].args&&onceNode(scope.callers[0].node,next):scope.root.opcode==='arcade_whenSourceStarts';
+        onceScopes.set(scope,result);return result;
+    };
+    const uniqueAllocation=(allocation,path=new Set())=>{
+        if(!allocation||path.has(allocation))return false;
+        const next=new Set([...path,allocation]);
+        return allocation.origin?uniqueAllocation(allocation.origin,next):!!allocation.target&&onceNode(allocation.node);
+    };
     const minimumAt=(allocation,at,qualifies=()=>true)=>{
         if([...allocation.shrinks||[]].some(node=>node!==at))return 0;
         const scope=owners.get(at),before=scope?.executedBefore.get(at)||new Set();let length=allocation.minLength;
         // A possible target receives element-type obligations below, but only
         // a unique actual target receives guaranteed-presence credit.
-        for(const {target,node}of mutations){const receiver=readInput(input(node,'ARRAY',target));if(before.has(node)&&['push','unshift'].includes(literal(node,'OP',target))&&receiver.size===1&&receiver.has(allocation)&&qualifies(target,node))length++;}
+        for(const {target,node}of mutations){const receiver=readInput(input(node,'ARRAY',target));if(before.has(node)&&['push','unshift'].includes(literal(node,'OP',target))&&receiver.size===1&&receiver.has(allocation)&&uniqueAllocation(allocation)&&qualifies(target,node))length++;}
         return length;
     };
     const presentAt=(allocation,target,node,qualifies)=>{
