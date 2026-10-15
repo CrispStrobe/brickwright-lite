@@ -4,7 +4,7 @@ const active = new WeakMap();
 // The engine loan and Number-input adapter share this explicit role table.
 // A loan alone does not authorize interpretation of arbitrary input sockets.
 const roles=Object.freeze(Object.fromEntries(Object.entries({
-    arcade_createCallable:[],arcade_objectField:[],
+    arcade_createCallable:[],arcade_objectField:[],procedures_call:[],arcade_callFunction:[],
     arcade_throwValue:['VALUE'],arcade_createOwnedImageSprite:['KIND'],
     arcade_returnValue:['VALUE'],arcade_functionArgument:['VALUE'],
     arcade_setLocal:['VALUE'],arcade_setCaptured:['VALUE'],
@@ -32,8 +32,22 @@ function invoke(runtime,thread,container,operation,args,util,primitive) {
     active.set(runtime,record);
     try {return primitive();}finally{active.delete(runtime);}
 }
+// Only a genuine synchronous nested VM thread may suspend an existing loan.
+// No callback, copied utility or retained argument snapshot can borrow it.
+function stepNested(util,args,child) {
+    const runtime=util?.runtime,record=runtime&&active.get(runtime),sequencer=runtime?.sequencer;
+    if(!record||record.util!==util||record.args!==args||!owned(record))throw new Error('Nested primitive step requires the actual current caller');
+    if(!child||child===record.thread||!runtime.threads.includes(child)||!runtime.isActiveThread(child)||child.isKilled||
+        child.status===child.constructor.STATUS_DONE||!runtime.targets.includes(child.target)||
+        child.blockContainer!==child.target.blocks||!child.blockContainer.getBlock(child.peekStack())||
+        typeof sequencer.stepThread!=='function')throw new Error('Nested primitive step requires a distinct live VM child');
+    const previousThread=util.thread,previousSequencer=util.sequencer,previousActive=sequencer.activeThread;
+    active.delete(runtime);
+    try {sequencer.activeThread=child;return sequencer.stepThread(child);}
+    finally {util.thread=previousThread;util.sequencer=previousSequencer;sequencer.activeThread=previousActive;active.set(runtime,record);}
+}
 function current(util,args) {
     const record=util?.runtime && active.get(util.runtime);
     return record && record.util===util && record.args===args && owned(record) ? record.block : null;
 }
-module.exports=Object.freeze({invoke,current,handles,permitsNumberInput});
+module.exports=Object.freeze({invoke,current,stepNested,handles,permitsNumberInput});

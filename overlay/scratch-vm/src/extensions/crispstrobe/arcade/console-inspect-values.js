@@ -43,7 +43,7 @@ function create(runtime, cells) {
             snapshots.set(target,{container:target.blocks,variables:new Map(Object.entries(target.variables||{}).map(([id,variable])=>[id,{variable,signature:JSON.stringify([variable.id,variable.name,variable.type])}])),blocks:new Map(Object.entries(target.blocks._blocks).map(([id,block]) =>
                 [id,{block,semantic:semantic(block)}]))});
     };
-    const prove = (target, block) => {
+    const prove = (target, block, requested=null, possible=null) => {
         const all = target.blocks._blocks, read = id => target.blocks.getBlock(id);
         const input = (node,name) => read(node?.inputs?.[name]?.block);
         const text = node => node?.opcode === 'text' ? node.fields?.TEXT?.value : null;
@@ -73,7 +73,53 @@ function create(runtime, cells) {
             }
             return false;
         };
-        const safe = (node,player=false,origins=null) => {
+        const terminalDomain=(node,domains)=>{
+            if(!domains)return;
+            const op=node.opcode;
+            if(['text','bw_stringLiteral','operator_join','operator_letter_of'].includes(op))domains.add('string');
+            else if(['math_number','bw_numberLiteral','operator_length','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','operator_random'].includes(op))domains.add('number');
+            else if(['operator_equals','operator_gt','operator_lt','operator_not','operator_and','operator_or','arrays_valueTruthy','arrays_valueCompare'].includes(op))domains.add('boolean');
+            else if(op==='arrays_specialValue'){const kind=literal(node,'KIND');domains.add(['null','undefined'].includes(kind)?kind:['NaN','Infinity','-Infinity','-0'].includes(kind)?'number':'unknown');}
+            else domains.add('unknown'); // The primitive inspector's legacy surface is unchanged.
+        };
+        // For domain queries, only reachable normal completions contribute.
+        // Throw contributes no Undefined or implicit normal-result evidence.
+        const normalReturns=definition=>{
+            const results=new Set(),visited=new Set();
+            const sequence=node=>{
+                while(node){
+                    if(visited.has(node))return true;visited.add(node);
+                    if(node.opcode==='arcade_throwValue')return false;
+                    if(node.opcode==='arcade_returnValue'){results.add(node);return false;}
+                    if(node.opcode==='control_if_else'){
+                        const left=sequence(input(node,'SUBSTACK')),right=sequence(input(node,'SUBSTACK2'));
+                        if(!left&&!right)return false;
+                    }else for(const name of Object.keys(node.inputs||{}))if(name.startsWith('SUBSTACK'))sequence(input(node,name));
+                    if(node.opcode==='control_forever')return false;
+                    node=read(node.next);
+                }
+                return true;
+            };
+            const fallthrough=sequence(read(definition.next));return {results:[...results],fallthrough};
+        };
+        const safeCell = (cell,player=false,origins=null,domains=null) => {
+            const proof=captureProof.proof(cell);
+            if(!proof||cell.scope.target!==target)return false;
+            const evidence=new Set();
+            if(!proof.writers.every(({node:writer})=>safe(input(writer,'VALUE'),player,evidence,domains)))return false;
+            let valid=proof.writers.length>0;
+            if(proof.index>=0){
+                const procedure=cell.scope.procedure;if(typeof procedure!=='string')return false;
+                const calls=Object.values(all).filter(value=>value.opcode==='arcade_callFunction'&&literal(value,'NAME')===procedure||value.opcode==='procedures_call'&&value.mutation?.proccode===procedure);
+                if(Object.values(all).some(value=>value.opcode==='arcade_callFunction'&&typeof literal(value,'NAME')!=='string'))return false;
+                valid=calls.length>0&&calls.every(call=>{
+                    if(call.opcode==='procedures_call'){let ids;try{ids=JSON.parse(call.mutation?.argumentids||'[]');}catch{return false;}if(!Array.isArray(ids)||ids.length!==cell.scope.params.length||ids.some(id=>typeof id!=='string')||new Set(ids).size!==ids.length)return false;if(domains){let expected;try{expected=JSON.parse(input(cell.scope.root,'custom_block')?.mutation?.argumentids||'[]');}catch{return false;}if(JSON.stringify(ids)!==JSON.stringify(expected))return false;}return safe(input(call,ids[proof.index]),player,evidence,domains);}
+                    const arg=argumentsFor(call,proof.index);if(arg===null&&!player){evidence.add(call);domains?.add('undefined');return true;}return arg!==false&&safe(arg,player,evidence,domains);});
+            }
+            if(!valid||proof.escaped&&!evidence.size)return false;
+            for(const origin of evidence)origins?.add(origin);return true;
+        };
+        const safe = (node,player=false,origins=null,domains=null) => {
             if (!node) return false;
             const visited=seen.get(player);
             if (visited.has(node)) return !player; // A flow backedge cannot introduce an opaque producer; every outgoing writer is still checked.
@@ -92,55 +138,57 @@ function create(runtime, cells) {
                 if(player&&!['data_variable','arcade_getLocal','arcade_getCaptured','arcade_callFunction'].includes(op)&&!/^argument_reporter_/.test(op))return false;
                 if(!player&&op==='arcade_playerProperty'){
                     const property=input(node,'PROPERTY');
-                    const evidence=new Set(),valid=literal(node,'READ')==='safe'&&property?.opcode==='math_number'&&Number(property.fields?.NUM?.value)===2&&safe(input(node,'PLAYER'),true,evidence)&&evidence.size>0;if(valid)origins?.add(node);return valid;
+                    const evidence=new Set(),valid=literal(node,'READ')==='safe'&&property?.opcode==='math_number'&&Number(property.fields?.NUM?.value)===2&&safe(input(node,'PLAYER'),true,evidence)&&evidence.size>0;if(valid){origins?.add(node);domains?.add('number');}return valid;
                 }
                 if (['text','bw_stringLiteral','math_number','bw_numberLiteral','arrays_specialValue',
                     'operator_join','operator_letter_of','operator_length','operator_add','operator_subtract',
                     'operator_multiply','operator_divide','operator_mod','operator_round','operator_random',
                     'operator_equals','operator_gt','operator_lt','operator_not','operator_and','operator_or',
                     'arrays_valueTruthy','arrays_valueCompare','arcade_sourceTypeOf','arcade_askForString',
-                    'arcade_spriteToString','arcade_bufferToString','arcade_bufferToHex'].includes(op)) {origins?.add(node);return true;}
-                if (op === 'arcade_inspectValue') return safe(input(node,'VALUE')) && safe(input(node,'LIMIT'));
+                    'arcade_spriteToString','arcade_bufferToString','arcade_bufferToHex'].includes(op)) {origins?.add(node);terminalDomain(node,domains);return true;}
+                if (op === 'arcade_inspectValue') {
+                    if(!domains)return safe(input(node,'VALUE'))&&safe(input(node,'LIMIT'));
+                    const limit=new Set();if(!safe(input(node,'VALUE'))||!safe(input(node,'LIMIT'),false,null,limit))return false;
+                    domains.add(limit.size&&[...limit].every(type=>['number','undefined'].includes(type))?'string':'unknown');return true;
+                }
                 if (op === 'data_variable') {
                     const id=node.fields?.VARIABLE?.id, variable=target.lookupVariableById(id);
                     if (!variable || cells.referenceTypeOf(target,id) || (player?!!cells.typeOf(target,id):cells.typeOf(target,id) && !kinds.has(cells.typeOf(target,id)))) return false;
                     const writers=runtime.targets.filter(t=>t.isOriginal!==false).flatMap(t=>Object.values(t.blocks._blocks)
                         .filter(b=>['data_setvariableto','data_changevariableby'].includes(b.opcode) && t.lookupVariableById(b.fields?.VARIABLE?.id)===variable)
                         .map(writer=>({target:t,writer})));
-                    if(!writers.length&&!player){try{primitive(variable.value);origins?.add(variable);}catch{return false;}}
-                    return (!player||writers.length>0)&&writers.every(entry=>entry.target===target && safe(input(entry.writer,'VALUE'),player,origins));
+                    if(!writers.length&&!player){try{const value=primitive(variable.value);domains?.add(value===null?'null':typeof value);origins?.add(variable);}catch{return false;}}
+                    return (!player||writers.length>0)&&writers.every(entry=>{if(entry.target!==target)return false;if(domains&&entry.writer.opcode==='data_changevariableby'){domains.add('number');return safe(input(entry.writer,'VALUE'),player,origins);}return safe(input(entry.writer,'VALUE'),player,origins,domains);});
                 }
                 if (op === 'arcade_getLocal' || op === 'arcade_getCaptured' || /^argument_reporter_/.test(op)) {
                     const name=/^argument_reporter_/.test(op)?node.fields?.VALUE?.value:literal(node,'NAME');
                     const scope=captureProof.scopeOf(node),cell=op==='arcade_getCaptured'?captureProof.captured(scope,name):captureProof.local(scope,name);
-                    const proof=captureProof.proof(cell);
-                    if(!proof||cell.scope.target!==target)return false;
-                    const evidence=new Set();
-                    if(!proof.writers.every(({node:writer})=>safe(input(writer,'VALUE'),player,evidence)))return false;
-                    let valid=proof.writers.length>0;
-                    if(proof.index>=0){
-                        const procedure=cell.scope.procedure;if(typeof procedure!=='string')return false;
-                        const calls=Object.values(all).filter(value=>value.opcode==='arcade_callFunction'&&literal(value,'NAME')===procedure||value.opcode==='procedures_call'&&value.mutation?.proccode===procedure);
-                        if(Object.values(all).some(value=>value.opcode==='arcade_callFunction'&&typeof literal(value,'NAME')!=='string'))return false;
-                        valid=calls.length>0&&calls.every(call=>{
-                            if(call.opcode==='procedures_call'){let ids;try{ids=JSON.parse(call.mutation?.argumentids||'[]');}catch{return false;}if(!Array.isArray(ids)||ids.length!==cell.scope.params.length||ids.some(id=>typeof id!=='string')||new Set(ids).size!==ids.length)return false;return safe(input(call,ids[proof.index]),player,evidence);}
-                            const arg=argumentsFor(call,proof.index);if(arg===null&&!player){evidence.add(call);return true;}return arg!==false&&safe(arg,player,evidence);});
-                    }
-                    if(!valid||proof.escaped&&!evidence.size)return false;
-                    for(const origin of evidence)origins?.add(origin);return true;
+                    return safeCell(cell,player,origins,domains);
                 }
                 if (op === 'arcade_callFunction') {
                     const name=literal(node,'NAME'),definitions=Object.values(all).filter(value=>value.opcode==='procedures_definition'&&input(value,'custom_block')?.mutation?.proccode===name);
                     if(definitions.length!==1)return false;const definition=definitions[0];
+                    if(domains&&!player){const completion=normalReturns(definition);if(completion.fallthrough)domains.add('undefined');return (completion.fallthrough||completion.results.length>0)&&completion.results.every(ret=>safe(input(ret,'VALUE'),false,origins,domains));}
                     const returns=Object.values(all).filter(b=>owners.get(b)===name && b.opcode==='arcade_returnValue');
                     if(player){let last=read(definition.next);const chain=new Set();while(last?.next&&!chain.has(last)){chain.add(last);last=read(last.next);}if(last?.opcode!=='arcade_returnValue')return false;}
                     return returns.length>0 && returns.every(ret=>safe(input(ret,'VALUE'),player,origins));
                 }
-                if (op==='arrays_valueBinary') return safe(input(node,'LEFT'))&&safe(input(node,'RIGHT'));
-                if (op==='arrays_valueUnary') return safe(input(node,'VALUE'));
+                if (op==='arrays_valueBinary') {
+                    if(!domains)return safe(input(node,'LEFT'))&&safe(input(node,'RIGHT'));
+                    const left=new Set(),right=new Set();if(!safe(input(node,'LEFT'),false,null,left)||!safe(input(node,'RIGHT'),false,null,right))return false;
+                    const operation=literal(node,'OP');
+                    if(operation==='+') {if(left.has('string')||right.has('string'))domains.add('string');if([...left].some(type=>type!=='string')&&[...right].some(type=>type!=='string'))domains.add('number');if(!left.size||!right.size||left.has('unknown')||right.has('unknown'))domains.add('unknown');}
+                    else domains.add(['-','*','/','%','**','&','|','^','<<','>>','>>>'].includes(operation)?'number':'unknown');
+                    return true;
+                }
+                if (op==='arrays_valueUnary') {
+                    if(!safe(input(node,'VALUE')))return false;
+                    if(domains){const operation=literal(node,'OP');domains.add(operation==='typeof'?'string':operation==='!'?'boolean':['+','-','~'].includes(operation)?'number':'unknown');}return true;
+                }
                 return false;
             } finally {visited.delete(node);}
         };
+        if(requested){for(const [index,request]of requested.entries()){const domains=new Set();if(request.procedure){const scopes=captureProof.scopes.filter(scope=>scope.target===target&&scope.procedure===request.procedure);if(scopes.length!==1||!scopes[0].params.includes(request.formal))fail('actual formal binding differs');request.cell=captureProof.local(scopes[0],request.formal);}if(!(request.cell?safeCell(request.cell,false,null,domains):safe(input(request.node,request.name),false,null,domains))||!domains.size||domains.has('unknown'))fail('connected input lacks complete primitive domain evidence');possible.set(index,domains);}return;}
         if (!safe(input(block,'VALUE')) || !safe(input(block,'LIMIT'))) fail('connected input lacks primitive producer authority');
         return {value:input(block,'VALUE'),limit:input(block,'LIMIT')};
     };
@@ -170,6 +218,34 @@ function create(runtime, cells) {
             return onError(error);
         } finally {active=false;}
     };
-    return Object.freeze({inspect,snapshot,invalidate:()=>{snapshots=new Map();},dispose:()=>{disposed=true;snapshots=new Map();}});
+    const inputDomains=(args,util,inputNames)=>{
+        if(active)fail('reentrant primitive domain query');
+        active=true;
+        try{
+            current();const block=primitiveOwner.current(util,args);
+            if(!block)fail('actual current primitive ownership is missing');
+            reporterOwner(runtime,util,args,block.opcode,[]);
+            const target=util.thread.target;
+            if(!snapshots.has(target)||!Array.isArray(inputNames)||new Set(inputNames.map(value=>JSON.stringify(value))).size!==inputNames.length)fail('actual primitive input slots are missing');
+            const requests=inputNames.map(value=>{
+                if(value&&typeof value==='object'&&!Array.isArray(value)){
+                    if(Object.keys(value).sort().join(',')!=='formal,procedure'||typeof value.procedure!=='string'||typeof value.formal!=='string')fail('actual formal query differs');
+                    return {procedure:value.procedure,formal:value.formal};
+                }
+                const path=typeof value==='string'?[value]:value;
+                if(!Array.isArray(path)||!path.length||path.some(name=>typeof name!=='string'))fail('actual primitive input path differs');
+                let node=block;
+                for(const name of path.slice(0,-1)){
+                    const child=target.blocks.getBlock(node.inputs?.[name]?.block);
+                    if(!child||child.parent!==node.id)fail('actual primitive input path is not connected');node=child;
+                }
+                const name=path[path.length-1],child=target.blocks.getBlock(node.inputs?.[name]?.block);if(!child||child.parent!==node.id)fail('actual primitive input slot is missing or disconnected');
+                return {node,name};
+            });
+            const possible=new Map();prove(target,block,requests,possible);
+            return Object.freeze(requests.map((_,index)=>Object.freeze([...possible.get(index)])));
+        }finally{active=false;}
+    };
+    return Object.freeze({inspect,inputDomains,snapshot,invalidate:()=>{snapshots=new Map();},dispose:()=>{disposed=true;snapshots=new Map();}});
 }
 module.exports=Object.assign(create,{primitive});
