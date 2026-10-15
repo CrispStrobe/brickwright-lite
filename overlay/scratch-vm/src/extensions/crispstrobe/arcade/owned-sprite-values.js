@@ -12,6 +12,9 @@ const ownData = (value, keys) => {
 const actualMap = value => {try {Map.prototype.has.call(value, {});return true;} catch (_) {return false;}};
 module.exports = function createOwnedSpriteValues(runtime, values, images, currentState) {
     let expected = null, disposed = false, generation = 0;
+    // Records retain destroyed bodies until Stop, scene change or owner disposal.
+    // Per-access liveness rejects them; eager per-body pruning is a separate
+    // resource-management follow-up, not a guarantee of this prototype.
     const records = new Map(), issuedScopes = new Map(), pending = new WeakMap(), bodies = new WeakMap();
     const fail = reason => {throw new Error('Owned SDK Sprite: ' + reason);};
     const state = () => {

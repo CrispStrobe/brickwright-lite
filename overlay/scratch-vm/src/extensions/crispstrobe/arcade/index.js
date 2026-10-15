@@ -3044,7 +3044,16 @@ module.exports = makeExt(`// Name: Arcade
         if(epoch!==this._terrainEpoch||caller&&(caller.isKilled||!this._runtime.threads.includes(caller)))return Scratch.BWValues.UNDEFINED;
         return this._objectError(error);};
       try {
-        if(dependencies.primitiveOwner.current(util,args)?.opcode!=='arcade_createOwnedImageSprite')throw new Error('Owned SDK Sprite factory requires its current physical primitive');
+        const factoryBlock=dependencies.primitiveOwner.current(util,args);
+        if(factoryBlock?.opcode!=='arcade_createOwnedImageSprite')throw new Error('Owned SDK Sprite factory requires its current physical primitive');
+        dependencies.cachedPrimitiveOwner(this._runtime,util,args,'arcade_createOwnedImageSprite',[]);
+        const container=util.thread.blockContainer,templateInput=factoryBlock.inputs?.TEMPLATE,
+          literal=container.getBlock(templateInput?.block),cached=literal&&container._cache?._executeCached?.[literal.id];
+        if(!templateInput||templateInput.block!==templateInput.shadow||literal?.opcode!=='text'||literal.parent!==factoryBlock.id||
+          Object.keys(literal.inputs||{}).length||typeof args.TEMPLATE!=='string'||literal.fields?.TEXT?.value!==args.TEMPLATE||
+          cached?.id!==literal.id||cached.opcode!=='text'||cached.fields!==literal.fields||cached.inputs!==container.getInputs(literal)||
+          cached._isShadowBlock!==true||cached._shadowValue!==args.TEMPLATE||cached._parentValues!==args||cached._parentKey!=='TEMPLATE')
+          throw new Error('Owned SDK Sprite factory requires its actual literal TEMPLATE shadow');
         const image=args.IMAGE,template=args.TEMPLATE,kind=Scratch.BWValues.decode(dependencies.currentNumberInput(this._runtime,args,util,'arcade_createOwnedImageSprite','KIND'));
         if(typeof template!=='string'||typeof kind!=='number'||!Number.isFinite(kind))throw new Error('Owned SDK Sprite factory requires actual template String and Number kind');
         const body=sdkImageOwners.get(this).body(image),stableUtil={thread:caller,target,sequencer:util.sequencer};
@@ -5949,6 +5958,7 @@ module.exports = makeExt(`// Name: Arcade
   createOwnedSpriteValues: require('./owned-sprite-values'),
   createOwnedSpriteBridge: require('./owned-sprite-bridge'),
   primitiveOwner: require('../../../util/bw-primitive-owner'),
+  cachedPrimitiveOwner: require('../../../util/bw-cached-primitive-owner'),
   arcadeExceptions: require('../../../util/bw-arcade-exceptions'),
   createClassCallableHost: require('./class-callable-host'),
   CallableDispatch: require('./callable-dispatch'),

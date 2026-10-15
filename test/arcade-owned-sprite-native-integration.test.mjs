@@ -9,7 +9,7 @@ const values=(await importGuiDependency('scratch-vm/src/util/bw-values.js')).def
 const owners=new WeakMap();
 const variables=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(target=>Object.values(target.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
 const actual=run=>{const ext=owners.get(run.vm);assert.equal(ext?._runtime,run.vm.runtime);return ext;};
-async function fixture(source,{kindText=false,invalidImage=false,timed=false}={}) {
+async function fixture(source,{kindText=false,invalidImage=false,timed=false,computedTemplate=false}={}) {
  const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
  const run=await runProgram(imported.code,{frames:0,retainExtensionTimers:true,frameAuthority:timed?'timed':'manual'});
  try {
@@ -17,6 +17,7 @@ async function fixture(source,{kindText=false,invalidImage=false,timed=false}={}
   assert.equal(extension?._runtime,run.vm.runtime);owners.set(run.vm,extension);
   run.vm.stopAll();let edited=0;
   for(const target of run.creator.project.targets)for(const block of Object.values(target.blocks))if(block.opcode==='arcade_createImageSprite') {
+   if(computedTemplate){const id='ownedComputedTemplate_'+edited,shadow=block.inputs.TEMPLATE[1];target.blocks[id]={opcode:'operator_join',next:null,parent:Object.keys(target.blocks).find(key=>target.blocks[key]===block),inputs:{STRING1:[1,shadow],STRING2:[1,[10,'']]},fields:{},shadow:false,topLevel:false};block.inputs.TEMPLATE=[3,id,shadow];}
    block.opcode='arcade_createOwnedImageSprite';block.inputs.KIND=[1,[kindText?10:4,'0']];if(invalidImage)block.inputs.IMAGE=[1,[10,'']];edited++;
   }
   assert.ok(edited>0);assert.deepEqual(run.creator.warnings,[]);
@@ -95,4 +96,10 @@ test('destroyed and push-pop scene values cannot survive cached heap object acce
   assert.equal(e._spriteValues.get(body.id),body);
   for(const read of [()=>e._objectHeap.get(next,'x'),()=>e._objectHeap.inspect(next),()=>e._objectHeap.method(next,'setPosition'),()=>e._objectHeap.hold(next)])assert.throws(read,/physical body/);
  } finally {stop(run);}
+});
+
+test('connected computed template text cannot allocate even when equal to the literal shadow',async()=>{
+ const run=await fixture('let picture=image.create(1,1);let actor=sprites.create(picture,0);',{computedTemplate:true});
+ try {await stepFrames(run.vm,4);assert.ok(run.errors.some(error=>/actual literal TEMPLATE shadow/.test(error)));assert.equal(Object.keys(actual(run)._state().sprites).length,0);}
+ finally {stop(run);}
 });
