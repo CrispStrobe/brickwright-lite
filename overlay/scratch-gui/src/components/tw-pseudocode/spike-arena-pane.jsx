@@ -647,7 +647,7 @@ class SpikeArenaPane extends React.Component {
         this.setState({status: 'running', verdict: this.bridge.verdict, message});
     }
 
-    async stopProgram ({restart = false} = {}) {
+    async stopProgram ({restart = false, clearMessage = false} = {}) {
         // Invalidate a pending native Start even when Reset retains its bridge
         // and execution backend, or a backend selection returns to native.
         const intent = this.programIntent = {bridge: this.bridge};
@@ -673,7 +673,7 @@ class SpikeArenaPane extends React.Component {
         // A topology teardown may replace the bridge while retaining its intent.
         intent.bridge = this.bridge;
         this.clock.uninstall();
-        if (restart) this.setState({status: 'ready'});
+        if (restart) this.setState({status: 'ready', ...(clearMessage ? {message: ''} : {})});
         const external = this.hubState?.externalBackend;
         if (external) external.cancel();
         this.hubState.backend.cancel();
@@ -684,6 +684,17 @@ class SpikeArenaPane extends React.Component {
     }
 
     async pause () {
+        if (this.firmwareSession?.uploading) {
+            const stopped = this.stopProgram({restart: true, clearMessage: true});
+            const intent = this.programIntent;
+            try { await stopped; }
+            catch (error) {
+                if (!this.disposed && this.programIntent === intent) {
+                    this.setState({status: 'failed', message: error.message});
+                }
+            }
+            return;
+        }
         const session = this.firmwareSession;
         if (session?.storageSupported) {
             const current = () => !this.disposed && this.firmwareSession === session && !session.closed;
@@ -880,7 +891,7 @@ class SpikeArenaPane extends React.Component {
                     </select>
                     </>}
                     <div style={{display: 'flex', flexWrap: 'wrap', gap: 6}}>
-                        {status === 'running' || (status === 'starting' && this.firmwareSession) ? (
+                        {status === 'running' || (status === 'starting' && this.firmwareSession) || this.firmwareSession?.uploading ? (
                             <button type="button" style={btn} onClick={() => this.pause()} data-testid="bw-spike-arena-stop">{t('stop')}</button>
                         ) : (
                             <button type="button" style={{...btn, background: '#2f9e44', color: '#fff', border: '1px solid #2b8a3e'}}

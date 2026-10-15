@@ -606,6 +606,15 @@ Fresh source-bound installed representative cancellation/recovery and final-head
 CI remain pending. This changes lifecycle admission, not sandbox features or
 model behavior, and does not close G02.
 
+A pending-upload Stop continuation on
+`lane/spike-g02-upload-stop-control-20261015` keeps Arena Stop visible while a
+replacement upload is pending and routes that action through full session Stop.
+Ordinary retained program Stop keeps its storage session; current cancellation
+errors remain visible and old delivery errors cannot overwrite a replacement.
+All 14 new predicate/actual-method controls and 14 existing lifecycle controls
+pass, with five detected mutations. Installed visible-control cancellation and
+recovery plus final-head CI remain pending. Code-feedback generation remains open.
+
 ### G03 — Qualify usable sandbox and responsive editor controls
 
 The scoped ownership claim is recorded in
