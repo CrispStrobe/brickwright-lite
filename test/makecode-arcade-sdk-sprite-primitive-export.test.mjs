@@ -31,6 +31,8 @@ test('actual SDK Sprite factories retain primitive writers through Code and curr
 test('actual canonical SDK subclass allocation retains a declared base constraint without a name-only grant',()=>{
     const text='class Direct extends Sprite {}let factory:Sprite=new Direct(img`1`);factory.vx=100;let speed=factory.vx;';
     const {creator}=build(text);assert.deepEqual(output(creator).unsupported,[]);
+    write(creator).inputs.VALUE=[1,[10,'20']];assert.ok(output(creator).unsupported.some(message=>message.includes('field Sprite.vx writer conflicts with declared number')));
+    write(creator).inputs.VALUE=[1,[4,'20']];
     write(creator).inputs.FIELD=[1,[10,'width']];assert.ok(output(creator).unsupported.some(message=>message.includes('SDK Sprite field writer requires an actual writable declared property')));
 });
 
@@ -101,6 +103,8 @@ test('nullish-only and mixed ordinary-class receiver facts never acquire an SDK 
     }
     const mixed=build(source.replace('let factory=', 'class Pretend{vx:number;constructor(){this.vx=1}}let factory=').replace('alias.vx=100','factory=new Pretend() as any;alias.vx=100')).creator;
     assert.ok(output(mixed).unsupported.some(message=>message.includes('field writer requires an actual declared receiver')));
+    const bare=build('class Sprite{vx:number;constructor(){this.vx=1}}let factory=sprites.create(img`1`,SpriteKind.Player);factory=new Sprite() as any;factory.vx=100;let speed=factory.vx;').creator;
+    assert.ok(output(bare).unsupported.some(message=>message.includes('field writer requires an actual declared receiver')));
     const counterfeit=build(source.replace('let factory=', 'namespace pretend{export class Sprite{vx:number;constructor(){this.vx=1}}}let factory=').replace('alias.vx=100','factory=new pretend.Sprite() as any;alias.vx=100')).creator;
     assert.ok(output(counterfeit).unsupported.some(message=>message.includes('field writer requires an actual declared receiver')));
 });
