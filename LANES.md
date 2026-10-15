@@ -3883,9 +3883,11 @@ alone does not qualify a selected image or a current installed MicroPython boot.
 Envelope: this ledger; the MicroPython profile/launch contract in
 `apps/tauri/src-tauri/src/{spike_micropython_launch,renode_supervisor,renode_debugger}.rs`;
 `scripts/{prepare-spike-micropython-pins,build-spike-linux-desktop}.mjs`;
-a focused compiled-profile staging helper if needed; focused profile/admission/
-launch controls; `docs/SPIKE-STATUS-AND-LANES.md` and the existing MicroPython
-route guide. Supplier staging changes require a separate supplier claim. Retain
+`scripts/prepare-spike-compiled-micropython-support.mjs` if needed; focused
+`test/spike-compiled-micropython-profile.test.mjs` and inline Rust profile/launch
+controls; `docs/SPIKE-STATUS-AND-LANES.md` and
+`docs/spike-micropython-{launch-plan,installed-resources}.md`. Supplier staging
+changes require a separate supplier claim. Retain
 the qualified legacy source-overlay path and credited components. Make profile
 selection explicit and bound to the reviewed runtime/model closure; skipping
 includes without admitting compatible platform type names is insufficient.
