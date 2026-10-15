@@ -31,6 +31,12 @@ Native, Code, edited blocks, same/fresh SB3 and export/reimport routes pass.
 Duplicate variable IDs across targets refuse; legitimate Stage globals retain
 their actual producer ownership. Hosted class authoring remains open.
 
+A follow-up at `e577d6547` fixes two actual class roundtrip boundaries:
+finite signed Number literals retain their existing carrier, and proved Void
+calls beginning with parentheses have explicit statement delimiters. Three
+independent source/native/export/reimport controls pass. General unary
+coercion remains refused; these repairs do not qualify a new SDK program.
+
 The [Arrays Number-input contract](compatibility/arcade-arrays-current-number-inputs.md)
 is merged. Shared current-input ownership and the candidate canonical source
 correct all nine authored-block controls, including four retained failures.
