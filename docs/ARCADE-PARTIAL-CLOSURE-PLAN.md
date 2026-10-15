@@ -57,14 +57,16 @@ is qualified by that observation contract.
 [PR888](https://github.com/CrispStrobe/brickwright-lite/pull/888) currently has
 successful build, corpus, both browser shards and FPGA checks. Unit shards one
 and three completed with failures; reviewed local stale-test corrections remain
-candidates. Other checks are still live. See the [handoff](ARCADE-AGENT-HANDOFF.md)
+corrections in this candidate. All six original parent campaigns and their 24 actual
+child jobs are closed. See the [handoff](ARCADE-AGENT-HANDOFF.md)
 for the exact censuses. The new `a11` GUI candidate has not run. Earlier
 11-failure/incomplete-census observations remain historical, not the current
 unit result. No complete hosted qualification follows yet.
 
 The six coordinated claims in
 [PR954](https://github.com/CrispStrobe/brickwright-lite/pull/954), head `e978`,
-remain unmerged; their product work is held. The canonical protocol documentation
+merged normally at `8205ef07` after their enabled checks passed. Their bounded
+implementations are now in progress; this does not qualify them. The canonical protocol documentation
 claim [PR156](https://github.com/CrispStrobe/sb3-creator/pull/156) is merged,
 without a consumer pin move. Next priorities are actual parameter declarations,
 Map/discard/Throw and owned Sprite/handler-record Array boundaries after their
