@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames,clearStrayTimers,SB3Creator} from './helpers/bw-vm.mjs';
@@ -8,6 +9,7 @@ import {importGuiDependency} from './helpers/bw-integrated.mjs';
 const dispatch=(await importGuiDependency('scratch-vm/src/dispatch/central-dispatch.js')).default;
 const owners=new WeakMap();
 const captureOwner=run=>{const service=run.vm.extensionManager._loadedExtensions.get('arcade'),arcade=dispatch.services[service]?._inst;assert.ok(arcade?._runtime===run.vm.runtime);owners.set(run.vm,arcade);};
+const qualifiedExport=JSON.parse(fs.readFileSync(new URL('./fixtures/arcade/sdk-image-fill-current-export.json',import.meta.url),'utf8'));
 const wanted={fillCalls:1,fillTop:2,fillLeft:5,fillBottom:5,fillRight:2};
 const imported=()=>{const result=arcadeToPseudocode(source);assert.deepEqual(result.unsupported,[]);assert.deepEqual(result.warnings,[]);return result;};
 const inspect=(run,color=5)=>{assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);const vars=run.vm.runtime.targets.flatMap(t=>Object.values(t.variables));for(const [name,value]of Object.entries({...wanted,fillLeft:color,fillBottom:color}))assert.equal(vars.find(v=>v.name===name)?.value,value,name);const arcade=owners.get(run.vm);assert.ok(arcade?._runtime===run.vm.runtime);const image=arcade._image(vars.find(v=>v.name==='fillImage')?.value);assert.equal(image.width,3);assert.equal(image.height,3);assert.deepEqual(Array.from(image.pixels),[2,2,2,color,color,2,color,color,2]);};
@@ -26,7 +28,7 @@ test('actual owned Image fill and clipped fillRect preserve callback effects thr
   const draw=Object.values(target.blocks._blocks).find(b=>b.opcode==='arcade_drawImage'),color=target.blocks.getBlock(draw.inputs.COLOR.block);
   assert.equal(color.opcode,'math_number');target.blocks.changeBlock({id:color.id,element:'field',name:'NUM',value:'9'});
   first.vm.stopAll();first.vm.greenFlag();await stepFrames(first.vm,80,20);inspect(first,9);
-  const edited=projectToArcade(JSON.parse(first.vm.toJSON()));assert.deepEqual(edited.unsupported,[]);assert.match(edited.ts,/\.fillRect\([^;]+9\)/);
+  const edited=projectToArcade(JSON.parse(first.vm.toJSON()));assert.deepEqual(edited.unsupported,[]);assert.deepEqual(edited.files,qualifiedExport);assert.match(edited.ts,/\.fillRect\([^;]+9\)/);
   const reimport=arcadeToPseudocode(edited.files);assert.deepEqual(reimport.unsupported,[]);await start(reimport.code,9);
   const editedSave=Buffer.from(await(await first.vm.saveProjectSb3()).arrayBuffer());fresh.vm.stopAll();await fresh.vm.loadProject(editedSave);fresh.vm.runtime.bwArcadeFrameAuthority='manual';fresh.vm.greenFlag();await stepFrames(fresh.vm,80,20);inspect(fresh,9);
 

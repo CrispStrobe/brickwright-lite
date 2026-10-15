@@ -245,7 +245,7 @@ or appending a frame during decoding cannot borrow a previous proof.
 
 ## Fill and rectangle follow-up
 
-IMPLEMENTED LOCALLY, independent and selected-original qualification pending.
+QUALIFIED within the bounded source/native/current-export slice below.
 Actual owned Image callback receivers now admit `fill(color)` and
 `fillRect(x, y, width, height, color)` with exact plain-call arity and actual
 Number operands. Both return Void. Existing native Image algorithms and
@@ -260,5 +260,10 @@ Image receiver, exact operation/menu/input shape and every Number operand.
 The unused replacement socket on the fill block must be an inert actual
 Number literal: an evaluated reporter cannot silently disappear from export.
 Numeric text, forged Image values, wrong arity/operations and extra inputs
-remain explicit refusals. This checkpoint adds no hosted visual GUI or new
-selected-original result claim.
+remain explicit refusals. Two genuinely new selected-original programs passed:
+the exact source and the actual connected color-9 export. Both match all nine
+pixels, the scalar reads and one callback effect. Actual compiler inputs were
+byte-identical to the prepared files. The public current-export fixture retains
+that qualified export; native authoring checks require exact file equality.
+The explicit original tests retain full Image pixel and compilation-input
+checks. This checkpoint adds no hosted visual GUI qualification.
