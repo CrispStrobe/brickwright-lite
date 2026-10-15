@@ -28,7 +28,7 @@ The six retained class-dependent contexts share these concrete library callsites
 | --- | --- | --- |
 | [StatusBar `status-bar.ts`](https://github.com/jwunderl/pxt-status-bar/blob/v0.4.1/status-bar.ts): `StatusBar._image`, `StatusBarSprite.applyChange`, `onDisplayUpdated` | Image field, action result, ordered display update and Image callback argument | Physical Sprite inheritance and mixed Sprite/Image handlers remain separate. |
 | [Sprite Utils `spriteutils.ts`](https://github.com/jwunderl/arcade-sprite-util/blob/v0.3.1/spriteutils.ts): `createRenderable`, `SpriteUpdateHandler` | Image render argument and stored Sprite callback | Only the Image value prerequisite is claimed; frame registration and Sprite callbacks stay excluded. |
-| [Carnival `carnival.ts`](https://github.com/microsoft/arcade-carnival/blob/master/carnival.ts): `Ball.constructor`, `Ball.sprite` | Actual Image passed to the physical superclass and an actual Sprite result | Physical superclass construction is not admitted by an Image signature. |
+| [Carnival `carnival.ts`](https://github.com/microsoft/arcade-carnival/blob/v0.0.7/carnival.ts): `Ball.constructor`, `Ball.sprite` | Actual Image passed to the physical superclass and an actual Sprite result | Physical superclass construction is not admitted by an Image signature. |
 
 The inventory is a dependency requirement, not evidence that all neighboring
 library bodies are accepted. Original context source, package resolution and
