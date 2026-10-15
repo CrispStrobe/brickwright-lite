@@ -10,3 +10,10 @@ export function numberLiteralCode(value) {
     const decimal=point<=0?'0.'+'0'.repeat(-point)+digits:point>=digits.length?digits+'0'.repeat(point-digits.length):digits.slice(0,point)+'.'+digits.slice(point);
     return match[1]+decimal;
 }
+
+export function containsNonFiniteNumberLiteral(node, seen=new WeakSet()) {
+    if(!node||typeof node!=='object'||seen.has(node))return false;
+    seen.add(node);
+    if(node.type==='Number'&&!Number.isFinite(Number(node.value)))return true;
+    return Object.values(node).some(value=>containsNonFiniteNumberLiteral(value,seen));
+}
