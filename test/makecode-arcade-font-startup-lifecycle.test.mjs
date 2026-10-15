@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {VM_SRC} from './helpers/bw-extensions.mjs';
+import {runArcadeSourceCode} from './helpers/arcade-source-program.mjs';
+import {stepFrames} from './helpers/bw-vm.mjs';
+import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+const require=createRequire(import.meta.url),dispatch=require(VM_SRC+'/dispatch/central-dispatch.js');
+const owner=run=>{const instance=Object.values(dispatch.services).find(service=>service?._inst?._runtime===run.vm.runtime&&service._inst._sdkFontValues)?._inst;assert.ok(instance);assert.equal(instance._runtime===run.vm.runtime,true);return instance;};
+const values=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(target=>Object.values(target.variables).map(value=>[value.name,value.value])));
+test('actual text game reload resets its current Font epoch before implicit text startup',async()=>{
+    const converted=arcadeToPseudocode('let label=textsprite.create("A");let ready=1');assert.deepEqual(converted.unsupported,[]);
+    const run=await runArcadeSourceCode(converted.code,{frames:2,uploads:converted.costumes}),instance=owner(run),first=instance._sdkFontValues;
+    assert.deepEqual(run.errors,[]);assert.equal(values(run).ready,1);const old=first.constant('font8'),glyph=first.read(old,'data');assert.equal(first.read(old,'data'),glyph);
+    run.vm.stopAll();assert.throws(()=>first.resolve(old),/disposed or stopped/);
+    await run.vm.loadProject(run.buffer);const loaded=instance._sdkFontValues;assert.notEqual(loaded,first);assert.equal(first.isDisposed(),true);assert.throws(()=>first.resolve(old),/disposed or stopped/);
+    run.vm.greenFlag();await stepFrames(run.vm,2,20);assert.deepEqual(run.errors,[]);assert.equal(values(run).ready,1);const current=loaded.constant('font8'),data=loaded.read(current,'data');assert.equal(loaded.read(current,'data'),data);assert.throws(()=>loaded.resolve(old),/foreign|stale|unavailable/);
+    run.vm.greenFlag();await stepFrames(run.vm,2,20);assert.deepEqual(run.errors,[]);assert.equal(instance._sdkFontValues,loaded);assert.throws(()=>loaded.resolve(current),/foreign|stale|unavailable/);const newest=loaded.constant('font8');assert.equal(loaded.read(newest,'data'),loaded.read(newest,'data'));
+    const fresh=await runArcadeSourceCode(converted.code,{frames:2,uploads:converted.costumes}),freshOwner=owner(fresh);assert.notEqual(freshOwner._sdkFontValues,loaded);assert.throws(()=>freshOwner._sdkFontValues.resolve(newest),/foreign|stale|unavailable/);assert.deepEqual(fresh.errors,[]);
+    fresh.vm.stopAll();run.vm.stopAll();assert.throws(()=>loaded.resolve(newest),/disposed or stopped/);
+});
