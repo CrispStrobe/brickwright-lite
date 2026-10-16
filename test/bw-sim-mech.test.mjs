@@ -681,3 +681,28 @@ test('ground height exact: driving base top = -0.032m, rotated box/cylinder hand
     const expected = -(5 * Math.cos(ang) + 2 * Math.sin(ang));
     assert.ok(Math.abs(topCyl - expected) < 1e-6, `rot cyl top ${topCyl} expected ${expected}`);
 });
+
+test('real beam 5 with 8T and 24T on two axles 40 LDU apart -> one gear ratio -1/3', async () => {
+    const {readFileSync} = await import('node:fs');
+    const partsData = JSON.parse(readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', import.meta.url)));
+    const catalog = new Map(partsData.parts.map(p => [p.part, p]));
+    const I3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    const R_axle = [0, -1, 0, 1, 0, 0, 0, 0, 1]; // X->Y
+    const R_gear = [1, 0, 0, 0, 0, 1, 0, -1, 0]; // Z->Y
+    const model = {
+        version: 1,
+        parts: [
+            {id: 'beam', part: '32316.dat', color: 15, position: [0, 0, 0], rotation: I3},
+            {id: 'axle1', part: '3705.dat', color: 15, position: [0, 0, -40], rotation: R_axle},
+            {id: 'gear8', part: '3647.dat', color: 15, position: [0, 0, -40], rotation: R_gear},
+            {id: 'axle2', part: '3705.dat', color: 15, position: [0, 0, 0], rotation: R_axle},
+            {id: 'gear24', part: '3648.dat', color: 15, position: [0, 0, 0], rotation: R_gear},
+        ],
+    };
+    const mech = compile(model, catalog, {ground: false});
+    assert.equal(validateCompiledMechanism(mech).length, 0);
+    assert.equal(mech.gears.length, 1);
+    const g = mech.gears[0];
+    // Hand computed: 8T pitch 10, 24T pitch 30, distance 40 => mesh, axes same direction => ratio -1/3
+    assert.ok(Math.abs(g.ratio - (-1 / 3)) < 1e-9, `ratio ${g.ratio} expected -0.333`);
+});
