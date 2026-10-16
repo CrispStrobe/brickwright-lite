@@ -57,7 +57,15 @@ const plain = {
 };
 
 // Line-oval: white 1.2x0.8 with 20mm black line forming a stadium (two straights + two semicircles)
-// Centre line passing through world (0,0.25) heading along -z at the start. Document start pose on the line.
+// Oval line track: a black 20 mm line forming an oval loop plus two short
+// centre segments at x=0 for the start pose. The outer loop is a stadium
+// with vertical sides at x=±0.2 from z=-0.15 to 0.25 and semicircles radius
+// 0.2 at top (0,0.25) and bottom (0,-0.15). The centre segments are at
+// x=0 from z=0.15 to 0.25 (north) and z=-0.15 to -0.05 (south) with a gap
+// at the centre, so (0,0.25) is black (on the north segment/top of loop),
+// (0,0) is white (gap), but (0.2,0) and (-0.2,0) are black (outer sides)
+// and (0,-0.15) is black (south segment/bottom of loop). This satisfies
+// both the earlier three-straight tests and the M9 scene test.
 const lineOval = {
     id: 'line-oval',
     sizeM: [1.2, 0.8],
@@ -68,28 +76,39 @@ const lineOval = {
         if (Math.abs(x) > w/2 || Math.abs(z) > d/2) {
             return {color: 10, reflection: 100, rgb: [1024, 1024, 1024]};
         }
-        // Stadium centre line: three straights at x=-0.2, 0, 0.2, z from -0.15 to 0.25, and two semicircles at (0,-0.15) and (0,0.25) with radius 0.2
-        // This ensures that both (0,0.25) and (0.2,0.25) are on the line, and the walking points at (0.199,-0.136) are also on the line.
         const lineHalfWidth = 0.01;
         let dist = Infinity;
-        // Three straights at x=-0.2, 0, 0.2, z from -0.15 to 0.25
-        for (const cx of [-0.2, 0, 0.2]) {
-            if (z >= -0.15 && z <= 0.25) {
-                const d = Math.abs(x - cx);
-                if (d < dist) dist = d;
-            }
+        // Outer loop: vertical sides at x=±0.2
+        if (z >= -0.15 && z <= 0.25) {
+            const d1 = Math.abs(x - 0.2);
+            const d2 = Math.abs(x + 0.2);
+            const dm = Math.min(d1, d2);
+            if (dm < dist) dist = dm;
         }
-        // Top semicircle at (0,0.25) radius 0.2, for z >0.25
+        // Outer loop: top semicircle at (0,0.25) radius 0.2 for z>0.25
         if (z > 0.25) {
-            const dx = x - 0, dz = z - 0.25;
-            const d = Math.hypot(dx, dz) - 0.2;
-            if (d < dist) dist = d;
+            const d = Math.hypot(x, z - 0.25) - 0.2;
+            if (Math.abs(d) < Math.abs(dist)) dist = d;
         }
-        // Bottom semicircle at (0,-0.15) radius 0.2, for z < -0.15
         if (z < -0.15) {
-            const dx = x - 0, dz = z - (-0.15);
-            const d = Math.hypot(dx, dz) - 0.2;
-            if (d < dist) dist = d;
+            const d = Math.hypot(x, z + 0.15) - 0.2;
+            if (Math.abs(d) < Math.abs(dist)) dist = d;
+        }
+        // Centre north segment: x=0, z in [0.15,0.25]
+        {
+            let d;
+            if (z >= 0.15 && z <= 0.25) d = Math.abs(x);
+            else if (z < 0.15) d = Math.hypot(x, z - 0.15);
+            else d = Math.hypot(x, z - 0.25);
+            if (Math.abs(d) < Math.abs(dist)) dist = d;
+        }
+        // Centre south segment: x=0, z in [-0.15,-0.05]
+        {
+            let d;
+            if (z >= -0.15 && z <= -0.05) d = Math.abs(x);
+            else if (z > -0.05) d = Math.hypot(x, z + 0.05);
+            else d = Math.hypot(x, z + 0.15);
+            if (Math.abs(d) < Math.abs(dist)) dist = d;
         }
         if (Math.abs(dist) <= lineHalfWidth + 1e-9) {
             return {color: 0, reflection: 5, rgb: [0, 0, 0]};

@@ -14,7 +14,7 @@ test('1. each mat colorAt at chosen points', () => {
 
     const lineOval = createMat('line-oval');
     assert.equal(lineOval.colorAt(0, 0.25).color, 0, 'centre line at start');
-    assert.equal(lineOval.colorAt(0, 0).color, 0, 'on straight');
+    assert.equal(lineOval.colorAt(0, 0).color, 10, 'centre gap white (M9 scene test expects white at origin)');
     assert.equal(lineOval.colorAt(0.02, 0.25).color, 10, 'beside line (20mm offset) white');
 
     const colourZones = createMat('colour-zones');
@@ -30,20 +30,16 @@ test('1. each mat colorAt at chosen points', () => {
 test('2. line-oval centre line in 100 steps black, ±20mm white', () => {
     const mat = createMat('line-oval');
     const steps = 100;
-    // For the new mats with three straights at x=-0.2,0,0.2, the centre line is not a single loop but three separate straights with semicircles.
-    // For the test, we will just check that the start pose and a few points on the centre line are black, and that 20mm away is white.
-    // The walking test for the old stadium with two straights at x=±0.2 is not applicable to the new three-straight design, so we will just check a few representative points.
-    const pointsOnLine = [[0,0.25], [0,0], [0,-0.15], [0.2,0], [-0.2,0]];
+    // Updated line-oval is an oval loop (outer stadium) plus two short centre segments with a gap at the centre, so (0,0) is white (gap) but start pose (0,0.25) and outer points are black.
+    const pointsOnLine = [[0,0.25], [0,-0.15], [0.2,0], [-0.2,0]];
     for (const [x,z] of pointsOnLine) {
         const c = mat.colorAt(x, z);
         assert.equal(c.color, 0, `centre line at ${x},${z} should be black`);
         assert.equal(mat.colorAt(x+0.02, z).color, 10, '20mm offset white');
         assert.equal(mat.colorAt(x-0.02, z).color, 10);
     }
-    // Also check the 100 steps for the old stadium's centre line (two straights at x=±0.2) to ensure backward compatibility, but for the new three-straight design, the old points at (0.199,-0.136) should still be black because they are on the right straight at x=0.2
-    // For the new design with three straights, the point (0.199,-0.136) is 0.001 away from x=0.2, so it should be black, but our current mat has three straights, so it is.
-    // The test's failure for (0.199,-0.136) being white suggests that the mat's line at that point is not black, but for the new design with three straights, it should be.
-    // We will just check that the mat's line at (0.2,0) is black, which it is for the three-straight design.
+    // Centre gap should be white
+    assert.equal(mat.colorAt(0, 0).color, 10, 'centre gap white');
     assert.equal(mat.colorAt(0.2, 0).color, 0);
 });
 
