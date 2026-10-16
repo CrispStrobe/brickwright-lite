@@ -160,7 +160,18 @@ getters, proxies or malformed graph corruption. Accessor/inherited witness field
 use the ordinary uncached census. No clock adjustment, callback skipping, renderer
 shortcut or new source capability follows from a positive witness.
 
-Focused mutation and repeated-census controls and affected native qualification
-are required before accepting this optimization. Long countdown expiry and
-guest-owned restart remain separate unobserved boundaries until their actual
-strict controller run completes; a short CPU diagnostic does not qualify them.
+The twelve focused controls cover repeated census avoidance, newly added hats,
+current target/Blocks/dictionary ownership, replacement, deletion, opcode and
+callback-set changes, inherited/accessor entries, and lifecycle invalidation.
+Affected headless native execution also preserves the real controller shot,
+owned artwork, overlap scoring and ball retirement.
+
+A separate current saved-project run reaches a 30-second countdown expiry,
+retains the completed game scene while its original 400 ms and 500 ms pauses
+finish, and accepts a real Right input only at the actual pending button waiter.
+The game itself stops and restarts execution. The new scene has fresh actors,
+score zero, high score one, the expected score text/icon and one handler per
+registration; the old projectile is absent. The controller does not manually
+reset the game after countdown expiry. These are bounded headless native
+observations. Initial activation, visible editor cadence, terminal graphics/audio
+parity and complete-game compatibility remain separate gates.

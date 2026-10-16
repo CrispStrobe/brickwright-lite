@@ -23,6 +23,29 @@ success is not qualification of the additions below.
 | Procedure-owner emission | One actual helper record emits once per actual owner across called and retained uncalled roots. Focused source controls and the retained Holiday context confirm duplicate prototypes are removed while bodies, calls and dependency order remain. Distinct owners/declarations stay distinct. | Show the right procedure/formal after Code/Blocks conversion, rename and save/reopen. Locate each remaining helper diagnostic; duplicate suppression supplies neither a value type nor captured/nested-call runtime support. |
 | Physical null Sprite getter faults | Authored controls cover `x`, `y`, `width` and `height`; the selected original reference qualifies **x only**. The authentic x-fault project passes source, current Code, same/fresh SB3 and current export/reimport in headless native execution. Every route retains the real created actor, actual runtime Image pixels, current variable cells, one getter TypeError and no later position/velocity/flag effects. All provided diagnostics remain actual empty arrays; absent channels stay absent. | Qualify visible Code/Blocks getter authoring, current fault location/navigation, earlier effects and unrelated-script behavior through the actual editor/controller. Native routes do not prove on-screen pixels, first startup activation, input-duration equivalence or an original reference for the other getters. |
 
+### Native controller, countdown and restart boundary
+
+Earlier headless native checks retain a game's real shot, owned runtime artwork,
+overlap score and ball retirement through public Code, current Code and
+same/fresh saved-project routes. The current runtime composition has separate
+saved-project qualification: it preserves that shot and observes countdown expiry
+at 30 seconds, the original consecutive 400 ms and 500 ms pauses and a real Right
+input while
+the game's button waiter is pending. The game then owns its Stop/restart:
+new actors replace the previous scene, score is zero, high score remains one,
+score text/icon match the reset state, handlers are registered once and the
+previous ball is absent.
+
+The source-presence optimization still validates its current positive witness
+on every read and never caches a negative result; mutation/lifecycle controls
+and affected native execution cover that boundary. See the
+[frame scheduler contract](ARCADE-FRAME-SCHEDULER.md#current-positive-source-presence-witness).
+This does not qualify rendered Game Console/editor behavior, first startup
+activation, terminal graphics/audio parity or every portable terminal route.
+Visible Blocks/Code authoring, graphics edits, controller interaction and
+save/reopen/export journeys remain required for the same current build.
+The raw corpus remains **147 translated / 36 partial / one malformed input**.
+
 ### Resource artwork, runtime Images and clone costumes are different objects
 
 The authentic null-getter run observes an actual **8×8 runtime Sprite Image**
