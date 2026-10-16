@@ -93,10 +93,21 @@ try {
     await device.selectOption('pico');
     const badge = page.getByTestId('bw-matrix-badge');
     await badge.waitFor({state: 'visible', timeout: 15000});
-    const pseudoPico = (await badge.textContent()) || '';
+    // The badge is an (i) button: the summary is its accessible name, the
+    // sentence its title, and a click opens a popover showing both.
+    const pseudoPico = (await badge.getAttribute('aria-label')) || '';
     check('badge for pseudocode on the Pico says lowered', /lowered via/.test(pseudoPico), pseudoPico);
     const title = (await badge.getAttribute('title')) || '';
     check('badge title is the full sentence', /Pseudocode on Raspberry Pi Pico:/.test(title), title.slice(0, 80));
+    const popover = page.getByTestId('bw-matrix-badge-popover');
+    check('badge popover stays closed until asked', (await popover.count()) === 0);
+    await badge.click();
+    await popover.waitFor({state: 'visible', timeout: 5000});
+    const popoverText = (await popover.textContent()) || '';
+    check('badge popover shows the summary and the sentence',
+        /lowered via/.test(popoverText) && /Pseudocode on Raspberry Pi Pico:/.test(popoverText), popoverText.slice(0, 120));
+    await badge.click();
+    await popover.waitFor({state: 'detached', timeout: 5000});
 
     // The panel: one column per chip family, one row per language.
     await page.getByTestId('bw-matrix-toggle').click();

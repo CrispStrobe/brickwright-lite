@@ -5781,11 +5781,30 @@ class PseudocodeImporter extends React.Component {
                             an open task — one line, read from lib/bw-matrix/capabilities.js,
                             the same table the docs are generated from. Title = the long form. */}
                         {this.currentDevice() && matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale)) ? (
-                            <span data-testid="bw-matrix-badge"
-                                title={matrixExplain(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
-                                style={{...csel, alignSelf: 'center', fontSize: 11, color: '#475569', background: '#f1f5f9',
-                                    border: '1px solid #cbd5e1', whiteSpace: 'nowrap', cursor: 'help'}}>
-                                {matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                            <span style={{position: 'relative', alignSelf: 'center', display: 'inline-flex'}}>
+                                {/* The reach summary is long; keep it behind an (i) button. */}
+                                <button type="button" data-testid="bw-matrix-badge"
+                                    aria-expanded={this.state.matrixInfoOpen ? 'true' : 'false'}
+                                    aria-label={matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                                    title={matrixExplain(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                                    onClick={() => this.setState(state => ({matrixInfoOpen: !state.matrixInfoOpen}))}
+                                    style={{width: 20, height: 20, padding: 0, borderRadius: '50%', fontSize: 11,
+                                        fontWeight: 700, fontStyle: 'italic', fontFamily: 'Georgia, serif', lineHeight: '18px',
+                                        color: '#475569', background: '#f1f5f9', border: '1px solid #cbd5e1', cursor: 'pointer'}}>
+                                    i
+                                </button>
+                                {this.state.matrixInfoOpen ? (
+                                    <span data-testid="bw-matrix-badge-popover" role="status"
+                                        style={{position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 20,
+                                            width: 'max-content', maxWidth: 320, padding: '6px 8px', fontSize: 11,
+                                            color: '#334155', background: '#fff', border: '1px solid #cbd5e1',
+                                            borderRadius: 4, boxShadow: '0 2px 6px rgba(15,23,42,0.15)', whiteSpace: 'normal'}}>
+                                        <strong style={{display: 'block'}}>
+                                            {matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                                        </strong>
+                                        {matrixExplain(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                                    </span>
+                                ) : null}
                             </span>
                         ) : null}
                         {this.renderActionMenu(csel)}
