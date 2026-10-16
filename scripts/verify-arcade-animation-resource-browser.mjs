@@ -397,7 +397,7 @@ try{
             {name:'invalid-animation-source',target:'arcade'}));
         await page.getByTestId('bw-open-file').locator('input[type=file]').setInputFiles({
             name:'invalid-animation-source.hex',mimeType:'application/octet-stream',buffer:malformed});
-        await page.getByText('Could not read invalid-animation-source.hex: Animation companion JSON is malformed',{exact:true}).waitFor({state:'visible'});
+        await page.getByText('Could not read invalid-animation-source.hex: MakeCode dependency translation: Animation companion JSON is malformed',{exact:true}).waitFor({state:'visible'});
         assert.deepEqual(await page.evaluate(()=>window.__brickwrightStore.getState().scratchGui.vm.runtime.targets.map(target=>target.id)),priorIds);
         assert.equal(await editor().innerText(),priorCode);assert.deepEqual(await resource(),priorResources);
         report.journey.push('malformed companion file import names the error and preserves the loaded VM, Code and published resources');
