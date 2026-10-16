@@ -260,6 +260,13 @@ try {
             /microbit-v2 board \(nrf52833/i.test(serialIdentity) &&
             /a10-serial-microbit-v2-emu\.elf/i.test(serialIdentity), serialIdentity.slice(-600));
         check('the serial guest remains on a running V2 emulator session', await statusText() === 'running');
+        // This scenario owns a firmware override. The real global green flag
+        // intentionally restarts retained firmware as well as VM blocks; clear
+        // our image through the product control before later native scenarios.
+        await page.locator('[data-debug-panel]:visible [data-firmware-back]').click();
+        await page.locator('[data-debug-panel]:visible [data-firmware-chip]').waitFor({state: 'detached', timeout: 30000});
+        check('the serial scenario releases its own firmware override before another device starts',
+            await page.locator('[data-debug-panel] [data-firmware-chip]').count() === 0 && await statusText() === 'idle');
     }
 
     // A11: the actual Code-tab download must compile in its own target.

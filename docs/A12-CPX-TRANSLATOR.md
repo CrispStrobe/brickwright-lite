@@ -112,8 +112,21 @@ differences before retaining the original strict assertions. The actual native
 Start/button/Shake journey and timing boundary remain unqualified. In the
 [next run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38902268468),
 source import, original simulation and native block loading pass; after Start,
-the expected red ring is absent and the pane button is no longer found. The
-source/control reason remains under investigation.
+the expected red ring is absent and the pane button is no longer found. A
+[read-only Start diagnostic](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38905304607)
+then observes that the native board does contain all ten red pixels at full
+brightness while the CPX pane has unmounted. Local storage still says `cpx`;
+the actual dock-change event was not captured.
+
+The earlier serial scenario retains a user-firmware override. The global flag
+intentionally restarts retained firmware, and its LabWired display can request
+the Widgets dock without updating that local-storage key. This source path is
+consistent with the disappearance; it is not a captured full attribution.
+The next browser candidate clears only that scenario's firmware through the
+existing “back to blocks” control, requiring the firmware chip to disappear
+and the debugger to become idle before later device scenarios. Pixel values,
+input actions and observation bounds stay unchanged. Clean native browser
+qualification and the five exact timing comparisons remain pending.
 
 ## Live-share sample
 
