@@ -6057,24 +6057,45 @@ class PseudocodeImporter extends React.Component {
                     const resources = [...(this.props.vm.runtime.bwArcadeAnimationResources?.values() || [])];
                     const items = animationResourceMenuItems(this.props.vm.runtime.bwArcadeAnimationResources, this.props.vm.runtime);
                     const id = this.state.animationResourceId || resources[0]?.id || '';
-                    return <div data-testid="bw-code-animation-resources" style={{display: 'flex', gap: 6, flexWrap: 'wrap', margin: '4px 0'}}>
-                        <label>Animation{' '}
-                            <select data-testid="bw-code-animation-picker" value={id}
+                    const de = pickLocale(this.props.locale) === 'de';
+                    const ready = !this.state.busy && resources.some(resource => resource.id === id);
+                    // One compact row: picker plus an Insert menu, so the three
+                    // insert actions take no toolbar width until asked for.
+                    const insert = kind => {
+                        this.setState({animationMenuOpen: false});
+                        this.insertAnimationResource(kind);
+                    };
+                    const item = {display: 'block', width: '100%', textAlign: 'left', whiteSpace: 'nowrap'};
+                    return <div data-testid="bw-code-animation-resources"
+                        style={{display: 'flex', gap: 6, alignItems: 'center', margin: '4px 0', position: 'relative'}}>
+                        <label title="Animation">🎞{' '}
+                            <select data-testid="bw-code-animation-picker" value={id} aria-label="Animation"
                                 onChange={event => this.setState({animationResourceId: event.target.value})}>
-                                {!resources.length ? <option value="">{pickLocale(this.props.locale) === 'de' ? 'Zuerst in Pixel veröffentlichen' : 'Publish a timeline in Pixel first'}</option> : null}
-                                {items.map(item => <option key={item.value} value={item.value}>{item.text}</option>)}
+                                {!resources.length ? <option value="">{de ? 'Zuerst in Pixel veröffentlichen' : 'Publish a timeline in Pixel first'}</option> : null}
+                                {items.map(entry => <option key={entry.value} value={entry.value}>{entry.text}</option>)}
                             </select>
                         </label>
-                        <button type="button" disabled={this.state.busy || !resources.some(resource => resource.id === id)}
-                            data-testid="bw-code-animation-insert-frames" onClick={() => this.insertAnimationResource('frames')}>
-                            {pickLocale(this.props.locale) === 'de' ? 'Bilder einfügen' : 'Insert frames'}</button>
-                        <button type="button" disabled={this.state.busy || !resources.some(resource => resource.id === id)}
-                            title={pickLocale(this.props.locale) === 'de' ? 'Jeder Aufruf erzeugt neue Bilder und ein neues Array.' : 'Each call creates new images and a new array.'}
-                            data-testid="bw-code-animation-insert-fresh" onClick={() => this.insertAnimationResource('fresh')}>
-                            {pickLocale(this.props.locale) === 'de' ? 'Frische Bilder einfügen' : 'Insert fresh frames'}</button>
-                        <button type="button" disabled={this.state.busy || !resources.some(resource => resource.id === id)}
-                            data-testid="bw-code-animation-insert-interval" onClick={() => this.insertAnimationResource('interval')}>
-                            {pickLocale(this.props.locale) === 'de' ? 'Intervall einfügen' : 'Insert interval'}</button>
+                        <button type="button" disabled={!ready} data-testid="bw-code-animation-insert-menu"
+                            aria-haspopup="menu" aria-expanded={this.state.animationMenuOpen ? 'true' : 'false'}
+                            onClick={() => this.setState(state => ({animationMenuOpen: !state.animationMenuOpen}))}>
+                            {de ? 'Einfügen ▾' : 'Insert ▾'}</button>
+                        {this.state.animationMenuOpen && ready ? (
+                            <div role="menu" data-testid="bw-code-animation-insert-items"
+                                style={{position: 'absolute', top: '100%', left: 0, zIndex: 20, background: '#fff',
+                                    border: '1px solid #cbd5e1', borderRadius: 4, padding: 2,
+                                    boxShadow: '0 2px 6px rgba(15,23,42,0.15)'}}>
+                                <button type="button" role="menuitem" style={item}
+                                    data-testid="bw-code-animation-insert-frames" onClick={() => insert('frames')}>
+                                    {de ? 'Bilder einfügen' : 'Insert frames'}</button>
+                                <button type="button" role="menuitem" style={item}
+                                    title={de ? 'Jeder Aufruf erzeugt neue Bilder und ein neues Array.' : 'Each call creates new images and a new array.'}
+                                    data-testid="bw-code-animation-insert-fresh" onClick={() => insert('fresh')}>
+                                    {de ? 'Frische Bilder einfügen' : 'Insert fresh frames'}</button>
+                                <button type="button" role="menuitem" style={item}
+                                    data-testid="bw-code-animation-insert-interval" onClick={() => insert('interval')}>
+                                    {de ? 'Intervall einfügen' : 'Insert interval'}</button>
+                            </div>
+                        ) : null}
                     </div>;
                 })() : null}
                 {this.state.revealed ? (
