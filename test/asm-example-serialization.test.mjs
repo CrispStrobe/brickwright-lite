@@ -25,9 +25,10 @@ const setup = ({method = body, busy = false, current = 'owned source', confirm =
 const busyEntry = async method => {
     const {component, prompts} = setup({method, busy: true});
     const before = structuredClone(component.state);
+    const buffers = component.state.buffers;
     await component.load('pins');
     assert.equal(prompts(), 1, 'accepted replacement still asks confirmation');
-    assert.notEqual(component.state.buffers, before.buffers);
+    assert.notEqual(component.state.buffers, buffers, 'accepted request must replace the captured buffer object');
     assert.equal(component.state.buffers.asm, 'exact example', 'accepted request must reserve newer editor buffers');
     assert.equal(component.state.buffers.pseudocode, before.buffers.pseudocode);
     assert.equal(component.state.busy, true);
@@ -83,6 +84,12 @@ test('ASM examples become available again after compilation finishes', async () 
 test('dropping accepted buffer publication fails the ownership control', async () => {
     await assert.rejects(() => busyEntry(once(body, 'asm: example.source', 'asm: state.buffers.asm')),
         /accepted request must reserve/);
+});
+test('in-place buffer mutation fails captured editor ownership', async () => {
+    await assert.rejects(() => busyEntry(once(body,
+        'buffers: {...state.buffers, asm: example.source}',
+        'buffers: Object.assign(state.buffers, {asm: example.source})')),
+        /accepted request must replace the captured buffer object/);
 });
 test('the ASM picker busy expression disables pending work, with omission negative', () => {
     const picker = source.slice(source.indexOf('data-testid="bw-asm-examples"'));
