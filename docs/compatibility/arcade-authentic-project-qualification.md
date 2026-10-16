@@ -215,7 +215,7 @@ compilation of the same unchanged current files in fresh contexts:
 | Project | Preparation and compilation | Resources | Conversion status |
 | --- | --- | --- | --- |
 | [Rockscout](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/rockscout.md#10) (`72d0c967`) | 7.441 seconds; compile success, diagnostics empty | 64 resources; complete tile-map package | Partial: 78 unsupported diagnostics, then Creator prototype error |
-| Holiday (`999ed460`) | 11.668 seconds; compile success, diagnostics empty | Five root resources; four complete dependency packages | Further conversion qualification pending |
+| Holiday (`999ed460`) | 11.668 seconds; compile success, diagnostics empty | Five root resources; four complete dependency packages | Partial: 140 unsupported diagnostics and two optional-reference argument failures |
 
 Independent readers verify actual package bodies, dependency order, licenses,
 resources and all cached requests. The compiled JavaScript has not run.
@@ -237,3 +237,35 @@ package lacks the required raw response and recognized license authority.
 Do not synthesize its manifest, remove that dependency or assume permission.
 Native gameplay, selected-original comparison, GUI authoring, save/reopen and
 current edited export/reimport remain separate gates for these projections.
+
+## Dependency helpers and image values: next measured boundary — 2026-10-16
+
+Holiday exposed duplicate ordinary procedure definitions when distinct event
+roots reached the same helper. The corrected emitter records actual sprite-owner
+and declaration identities across those roots. It preserves distinct declarations,
+all helper bodies, call order and preceding effects. Six focused controls pass;
+the original emitter fails the three duplicate-count controls. An earlier test
+incorrectly inferred the selected conversion route from the normalized startup
+header; retain those failed tests separately from the corrected controls.
+
+The fresh affected Holiday conversion retains all 58 unique helpers while total
+definitions fall from 73 to 58; `newGameOver` falls from three definitions to one.
+Independent comparison preserves every helper body and non-definition segment,
+allowing only a bijective rename of generated temporaries. All 140 unsupported
+diagnostics remain. Creator still rejects two calls whose omitted optional
+reference parameters do not match their definitions. Its smaller partial graph
+is not a runnable project. Code feedback, SB3, export and editing remain blocked.
+
+A separate resource-preparation candidate materializes Rockscout's 48 actual
+package image initializers from their declared JRES entries. Independent decoding
+verifies exact pixels, palette, dimensions, tile flags and declaration order;
+the other source bytes and resources remain unchanged. Conversion still reports
+78 distinct unsupported diagnostics and produces only two costumes. The previous
+`image.ofBuffer` value diagnostic becomes an unhandled image-literal diagnostic:
+the generic conversion route lacks the resource allocation used by the native
+route. This is an exposed downstream gap, not successful image conversion.
+Implement shared resource planning and actual editable image allocations before
+claiming this preparation closes the feature.
+
+Neither change promotes a corpus case. Keep source preparation, conversion,
+Creator, current export, native execution and visible authoring results separate.

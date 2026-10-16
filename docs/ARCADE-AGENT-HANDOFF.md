@@ -3710,3 +3710,21 @@ callback and numeric producer semantics require actual support. See the
 [qualification ledger](compatibility/arcade-authentic-project-qualification.md#corrected-tutorial-inputs-and-newly-exposed-conversion-gaps--2026-10-15)
 for observations, source links and remaining gates. The original raw184 and
 pure29 counts are unchanged. The block-icons dependency authority hold remains.
+
+### Helper ownership and downstream image gaps — 2026-10-16
+
+The ordinary procedure emitter now uses actual owner/declaration identity across
+event roots. Six focused controls pass; fresh Holiday conversion retains all
+58 unique helper bodies while eliminating repeated definitions. Its 140 source
+diagnostics and two optional-reference argument parser failures remain. Correct
+the optional-argument semantics rather than padding unknown reference values or
+removing helpers. A normalized startup header does not identify the selected
+conversion route; compare actual emitted definitions and effects.
+
+Rockscout's 48 package image initializers can now be prepared with exact pixels,
+but generic conversion still lacks their actual image resources and emits
+placeholders. The unsupported count remains 78. Share proper image resource
+allocation with the native route, preserving literal evaluation position,
+alias identity, distinct allocations and editable artwork. Do not force whole
+program admission or hide unsupported classes. See the
+[measured boundary](compatibility/arcade-authentic-project-qualification.md#dependency-helpers-and-image-values-next-measured-boundary--2026-10-16).
