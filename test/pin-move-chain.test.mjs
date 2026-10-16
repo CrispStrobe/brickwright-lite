@@ -64,13 +64,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import {readFileSync, existsSync} from 'node:fs';
 import path from 'node:path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const PINS = path.join(ROOT, 'vendor-pins.json');
 const REPOS = ['bw-board', 'sb3-creator', 'bw-circuit-ui'];
-const SCOPED_PINS = ['stc-compiler-flasher', 'arrays-values', 'circuitplayground'];
+const SCOPED_PINS = ['stc-compiler-flasher', 'arrays-values', 'circuitplayground', 'wedo2unified'];
 const ENV_DIR = {'bw-board': 'BW_BOARD_DIR', 'sb3-creator': 'SB3_CREATOR_DIR', 'bw-circuit-ui': 'BW_CIRCUIT_UI_DIR'};
 const PROVENANCE = 'overlay/scratch-gui/static/roms/i8086-bios.provenance.json';
 const HEX40 = /\b[0-9a-f]{40}\b/g;
@@ -221,6 +222,46 @@ const {count, shallow, previous} = previousPinsFromHistory();
 const {history, where} = repoHistory();
 const current = new Set(REPOS.map(repo => currentPins()[repo]));
 const known = {current, previous, history};
+
+// A scoped key is admitted only with the source bytes its receipt names.
+const requireWeDo2Receipt = (pins, bundles, moduleSource) => {
+    assert.match(pins.wedo2unified || '', /^[0-9a-f]{40}$/);
+    const receipt = bundles.files.wedo2unified;
+    assert.equal(receipt.repo, 'CrispStrobe/extensions');
+    assert.equal(receipt.path, 'extensions/CrispStrobe/lego_wedo2_universal.js');
+    assert.equal(receipt.commit, pins.wedo2unified);
+    const encoded = moduleSource.match(/module\.exports\s*=\s*makeExt\(("(?:\\.|[^"\\])*")\);?/);
+    assert.ok(encoded, 'the shipped WeDo2 module must retain its original source');
+    const source = Buffer.from(JSON.parse(encoded[1]), 'utf8');
+    assert.equal(source.length, receipt.bytes);
+    assert.equal(createHash('sha256').update(source).digest('hex'), receipt.sha256);
+};
+
+test('the scoped WeDo2 pin matches the actual bundled source and its receipt', () => {
+    requireWeDo2Receipt(currentPins(), JSON.parse(readFileSync(path.join(ROOT,
+        'overlay/scratch-vm/src/extension-support/bundled-upstream-pins.json'), 'utf8')),
+    readFileSync(path.join(ROOT, 'overlay/scratch-vm/src/extensions/crispstrobe/wedo2unified/index.js'), 'utf8'));
+});
+
+test('WeDo2 receipt correlation rejects wrong identity, lengths, hashes and source bytes', () => {
+    const source = '// Name: WeDo2\n// By: ExampleAuthor\n// License: MPL-2.0\n';
+    const pins = {wedo2unified: 'a'.repeat(40)};
+    const bundles = {files: {wedo2unified: {repo: 'CrispStrobe/extensions',
+        path: 'extensions/CrispStrobe/lego_wedo2_universal.js', commit: pins.wedo2unified,
+        bytes: Buffer.byteLength(source), sha256: createHash('sha256').update(source).digest('hex')}}};
+    const moduleSource = `module.exports = makeExt(${JSON.stringify(source)});`;
+    requireWeDo2Receipt(pins, bundles, moduleSource);
+    for (const [field, value] of [['repo', 'Other/extensions'], ['path', 'other.js'],
+        ['commit', 'b'.repeat(40)], ['bytes', Buffer.byteLength(source) + 1], ['sha256', '0'.repeat(64)]]) {
+        const wrong = structuredClone(bundles); wrong.files.wedo2unified[field] = value;
+        assert.throws(() => requireWeDo2Receipt(pins, wrong, moduleSource), undefined, field);
+    }
+    assert.throws(() => requireWeDo2Receipt({}, bundles, moduleSource));
+    assert.throws(() => requireWeDo2Receipt(pins, {files: {}}, moduleSource));
+    assert.throws(() => requireWeDo2Receipt(pins, bundles, 'module.exports = broken;'));
+    assert.throws(() => requireWeDo2Receipt(pins, bundles,
+        `module.exports = makeExt(${JSON.stringify(source.replace('ExampleAuthor', 'SomeoneElse!!'))});`));
+});
 
 test('the pins file names three global repos plus explicitly scoped artifact pins', () => {
     const pins = currentPins();
