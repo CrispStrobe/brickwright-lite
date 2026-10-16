@@ -7,6 +7,9 @@ import {
 import {PSW_BITS, sfrName} from '../../lib/bw-debug/opcodes.js';
 import {downloadTraceCsv} from '../../lib/bw-debug/trace-csv.js';
 import {promptAsync} from '../../lib/native-dialog.js';
+import {memorySpaces, memoryPage, memoryJump, readMemoryPage, formatMemoryAddress,
+    memorySessionCurrent, memoryWritable, memorySpacesDeclared}
+    from '../../lib/bw-debug/memory-view.js';
 
 /**
  * "Under the hood" — parity with emu8051's TUI, as a GUI.
@@ -165,6 +168,10 @@ class DebugDrawer extends React.Component {
         };
         this.toggle = this.toggle.bind(this);
     }
+
+    componentDidMount () { this.memoryViewMounted = true; }
+
+    componentWillUnmount () { this.memoryViewMounted = false; }
 
     tx (key) {
         const table = L10N[this.props.locale] || L10N.en;
@@ -720,15 +727,24 @@ class DebugDrawer extends React.Component {
     renderMemory () {
         const {runner} = this.props;
         const snap = runner.inspect();
-        const spaces = snap && snap.flavor === 'generic' ? MACHINE_SPACES : SPACES;
+        const capabilities = this.props.ui && this.props.ui.debugCapabilities;
+        const spacesDeclared = memorySpacesDeclared(this.props.ui && this.props.ui.capabilities);
+        const spaces = memorySpaces(capabilities,
+            snap && snap.flavor === 'generic' ? MACHINE_SPACES : SPACES, spacesDeclared);
         const spec = spaces.find(s => s.id === this.state.space) || spaces[0];
-        const base = spec.base || 0;
-        const perPage = 128;
-        const start = base + (this.state.page * perPage);
-        const bytes = runner.readMem(spec.id, start, perPage);
+        if (!spec) return <div style={PANE}>Memory inspection is unavailable for this target.</div>;
+        const page = memoryPage(spec, this.state.page) ? this.state.page : 0;
+        const result = readMemoryPage(runner, spec, page);
+        const {start, length, pages} = memoryPage(spec, page);
         const rows = [];
-        for (let i = 0; i < bytes.length; i += 16) rows.push({addr: start + i, data: bytes.slice(i, i + 16)});
-        const pages = Math.ceil(spec.size / perPage);
+        for (let i = 0; i < result.bytes.length; i += 16) {
+            rows.push({addr: start + i, data: result.bytes.slice(i, i + 16)});
+        }
+        const address = value => formatMemoryAddress(value, spec);
+        const writable = memoryWritable(spec, this.props.ui && this.props.ui.phase);
+        const session = {runner, capabilities, spacesDeclared};
+        const current = () => ({runner: this.props.runner, capabilities: this.props.ui?.debugCapabilities,
+            spacesDeclared: memorySpacesDeclared(this.props.ui?.capabilities), mounted: this.memoryViewMounted === true});
 
         return (
             <div style={{...PANE, maxHeight: 240}}>
@@ -736,40 +752,55 @@ class DebugDrawer extends React.Component {
                     <span>{this.tx('memory')}</span>
                     <select
                         value={spec.id}
-                        onChange={e => this.setState({space: e.target.value, page: 0})}
+                        onChange={e => this.setState({space: e.target.value, page: 0, memoryError: null})}
                         style={{...BTN, textTransform: 'none'}}
                     >
                         {spaces.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                     </select>
                     <button
                         style={BTN}
-                        disabled={this.state.page === 0}
-                        onClick={() => this.setState(s => ({page: Math.max(0, s.page - 1)}))}
+                        disabled={page === 0}
+                        onClick={() => this.setState({page: Math.max(0, page - 1), memoryError: null})}
                     >{'◀'}</button>
-                    <span>{`${hex16(start)}–${hex16(start + perPage - 1)}`}</span>
+                    <span>{`${address(start)}–${address(start + length - 1)}`}</span>
+                    <button style={BTN} onClick={async () => {
+                        const raw = await promptAsync('Memory address (hex)', address(start));
+                        if (raw === null || !memorySessionCurrent(session, current())) return;
+                        const next = memoryJump(spec, raw);
+                        this.setState(next === null ? {memoryError: 'Address is outside the declared space'} :
+                            {space: spec.id, page: next, memoryError: null});
+                    }}>Go to address</button>
                     <button
                         style={BTN}
-                        disabled={this.state.page >= pages - 1}
-                        onClick={() => this.setState(s => ({page: Math.min(pages - 1, s.page + 1)}))}
+                        disabled={page >= pages - 1}
+                        onClick={() => this.setState({page: Math.min(pages - 1, page + 1), memoryError: null})}
                     >{'▶'}</button>
                 </div>
+                {result.error || this.state.memoryError ? <div role="alert" style={{color: '#e74c3c'}}>
+                    {result.error || this.state.memoryError}
+                </div> : null}
+                {!writable ? <div>Read-only memory</div> : null}
                 {rows.map(row => (
                     <div key={row.addr} style={{whiteSpace: 'nowrap'}}>
-                        <span style={{color: '#3498db'}}>{`${hex16(row.addr)}  `}</span>
+                        <span style={{color: '#3498db'}}>{`${address(row.addr)}  `}</span>
                         {row.data.map((b, i) => (
                             <span
                                 key={i}
-                                role="button"
+                                role={writable ? 'button' : undefined}
                                 tabIndex={-1}
-                                title={`${hex16(row.addr + i)} — ${this.tx('editHint')}`}
-                                style={{color: b ? '#ecf0f1' : '#4a5568', cursor: 'pointer', padding: '0 2px'}}
+                                title={`${address(row.addr + i)}${writable ? ` — ${this.tx('editHint')}` : ' — read-only'}`}
+                                style={{color: b ? '#ecf0f1' : '#4a5568', cursor: writable ? 'pointer' : 'default', padding: '0 2px'}}
                                 onClick={async () => {
+                                    if (!writable) return;
                                     const raw = await promptAsync(
-                                        `${spec.label} ${hex16(row.addr + i)}`, hex8(b));
-                                    if (raw === null) return;
-                                    const v = parseInt(String(raw).replace(/^0x/i, ''), 16);
+                                        `${spec.label} ${address(row.addr + i)}`, hex8(b));
+                                    if (raw === null || !memorySessionCurrent(session, current()) ||
+                                        !memoryWritable(spec, this.props.ui?.phase)) return;
+                                    const v = /^[0-9a-f]{1,2}$/i.test(String(raw).replace(/^0x/i, '')) ?
+                                        parseInt(String(raw).replace(/^0x/i, ''), 16) : NaN;
                                     if (Number.isFinite(v)) {
-                                        runner.writeMem(spec.id, row.addr + i, v);
+                                        const outcome = runner.writeMem(spec.id, row.addr + i, v);
+                                        this.setState({memoryError: outcome && (outcome.unsupported || outcome.refused) || null});
                                         this.forceUpdate();
                                     }
                                 }}
