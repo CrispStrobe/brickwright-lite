@@ -34,7 +34,7 @@ const retainedRuns=new WeakSet();
 function channels(value){
     return Object.fromEntries(Object.getOwnPropertyNames(value).filter(key=>/warn|error|unparsed|unsupported|diagnostic|refus|netAttempts/i.test(key)).map(key=>{
         const descriptor=Object.getOwnPropertyDescriptor(value,key);
-        return [key,Object.hasOwn(descriptor,'value')?{present:true,descriptor:{enumerable:descriptor.enumerable,configurable:descriptor.configurable,writable:descriptor.writable},actual:errors([descriptor.value])[0]}:{present:true,unobserved:'accessor-not-invoked'}];
+        return [key,Object.hasOwn(descriptor,'value')?{present:true,kind:Array.isArray(descriptor.value)?'array':descriptor.value===null?'null':typeof descriptor.value,descriptor:{enumerable:descriptor.enumerable,configurable:descriptor.configurable,writable:descriptor.writable},actual:errors([descriptor.value])[0]}:{present:true,unobserved:'accessor-not-invoked'}];
     }));
 }
 function observeCreator(name,fact){return (creator,error)=>{
