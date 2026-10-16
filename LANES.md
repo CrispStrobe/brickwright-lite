@@ -5525,7 +5525,7 @@ execution, mode-aware disassembler, physical timing, whole-OS or release claim.
 
 ## A13 CPX production browser gate registration — 2026-10-16
 
-CLAIMED — Codex, isolated worktree `/tmp/brickwright-lite-a13-20261016`,
+DONE candidate — Codex, isolated worktree `/tmp/brickwright-lite-a13-20261016`,
 branch `lane/a13-cpx-face-adoption-20261016`; amendment based on canonical
 `d544efb23`. Merge this claim before implementation. Extend the existing A13
 claim only to `.github/workflows/build.yml` for a standalone light-shard CPX
@@ -5543,3 +5543,12 @@ work now, while preserving the A13 adoption order: qualified upstream CUI and
 the earlier serialized STM32/translator integrations precede the final supplier
 pin and full application qualification. It transfers no other owner's paths,
 changes no runtime semantics, and claims no physical hardware acceptance.
+
+Registration is implemented on the existing A13 branch after claim PR1022
+merged as `e1e5bc30b`. The canonical writer added exactly one zero-reading gate;
+all previous measurements and budgets remain byte-for-byte unchanged. Genuine
+Node22.23.3 focused gate coverage, budget, timeout, CI census, wait census, build
+trigger and CPX host/dock controls pass: 59 tests, zero failures or skips
+(`/tmp/brickwright-a13-ci-registration.log`). Final hosted qualification remains
+with the eventual immutable supplier adoption; this registration alone does not
+claim a passing full application face journey.

@@ -2667,6 +2667,20 @@ jobs:
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: PROOF_URL=http://localhost:8617/ node scripts/verify-makecode.mjs
 
+      # Native CPX blocks must drive the same state in the pane and circuit face.
+      # Keep this journey separate so its duration and failure receipt are visible.
+      - name: Browser gate — CPX native program and live circuit face
+        id: cpx_circuit_face
+        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: PROOF_URL=http://localhost:8617/ CPX_FACE_REPORT=artifacts/cpx-circuit-face/current.json node scripts/verify-cpx-circuit-face.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && steps.cpx_circuit_face.outcome != 'skipped' && matrix.shard == 'light'
+        with:
+          name: cpx-circuit-face-proof
+          path: artifacts/cpx-circuit-face/*
+          if-no-files-found: error
+
       # Both of these were on the KNOWN_UNWIRED list as FAILING, and both
       # failed for one reason: the starter-journeys backdrop swallowed every
       # click, so each spent its whole timeout retrying the first one. That
