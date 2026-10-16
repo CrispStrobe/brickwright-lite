@@ -30,6 +30,69 @@ installed own-guest repeated Stop, cleanup and distinct recovery, plus every
 enabled exact-head check before merge. Firmware, Runtime/models, dependency
 pins, protocol, product budgets and other pane methods are unchanged. This does
 not close G02 or establish reference, physical, licensing or release results.
+
+## A12 — Circuit Playground Express MakeCode translator — 2026-10-16
+
+CLAIMED — Codex CPX translator lane, isolated worktree
+`wt-lite-a12-cpx-makecode-20261016`, branch `lane/a12-cpx-makecode-20261016`.
+Base `8da2afe2fe64f9301f9045796317e241314a26b5`. Contract: task A12 in
+[the owner-selected queue](docs/OPEN-TASKS-2026-09-29.md), following the delivered
+[A9 device world](docs/A9-CPX-SCOPING.md).
+
+Own a new `overlay/scratch-gui/src/lib/bw-makecode/adafruit-translate.js`;
+CPX-only target inference/import dispatch in that directory's `index.js`;
+narrow CPX translated-view and named-export-refusal branches of
+`components/tw-pseudocode/pseudocode-importer.jsx`; and exact tracked packages
+mirrors. Existing translators, shared base/parser, conversion ownership,
+Arcade resources and other owners' importer methods remain outside this claim.
+Own focused CPX translator/inference/behaviour tests, the CPX section of
+`scripts/makecode-census.mjs` and its generated census document, affected CPX
+browser controls in the existing MakeCode verifier, and
+`docs/A12-CPX-TRANSLATOR.md`. Preserve CPX MakeCode simulation and the pin bridge.
+Also own only gesture/acceleration input injection in the existing
+`scripts/lib/{makecode-adafruit-sim,cpx-extension-run}.mjs` test helpers, so the
+same scheduled inputs reach each original device implementation. Existing
+clock, snapshots, sound decoding and comparisons remain unchanged. Existing
+CPX event hats are preferred to invented polling when they express the source
+handler exactly; dynamic registration and unsupported event semantics stay
+named refusals.
+
+Acceptance: reproduce the hint-less inference defect first; account for all
+149 pinned pxt-adafruit docs programs without silent call loss; compare at least
+ten translated programs against the actual target simulator; preserve adjacent
+target inference; refuse CPX re-export by name until its emitter is separately
+qualified. Name polling/event and newer-API limits. Reuse existing 45 device
+words; missing supplier words require separate upstream work. No firmware
+execution, engine/package pin, workflow budget or threshold change. Land this
+claim before implementation; require fresh affected browser qualification and
+all enabled final-head checks before source merge. Preserve every other lane.
+
+## Proposed 386 Board HDD adoption handoff — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex x86, branch
+`docs/386-board-hdd-handoff-20261016`. Own only this ledger and
+`docs/X86-NEXT-LANES.md` for the
+[serialized adoption handoff](docs/X86-NEXT-LANES.md#proposed-386-board-hdd-adoption-handoff).
+This proposal reserves no implementation or dependency surface. A recorded
+handoff from the existing adoption owners and a merged implementation claim
+must precede any supplier, package, lock, generated output or shared runner edit.
+
+Preserve the STM32 adoption owner in PR975 (merged claim PR969), including its
+Board/SB3 pins, specifications, locks, notices, generated outputs and STM32
+`debug-runner` changes. PR975 is explicitly not for agent merge. Preserve the
+CUI adoption owner in PR965 (merged claim PR961), including its lock ownership;
+coordinate one serialized dependency writer. This proposal authorizes neither
+merging those PRs nor changing their pins or sequencing.
+
+Next work must select an exact qualified Board revision containing PR623's
+master-disk snapshot API, retain the qualified PR625/PR627 CLI persistence
+boundary, and review the complete installed blob graph and component diff.
+Compose the pending x86 consumers without dropping STM32, SB3 or CUI changes;
+qualify genuine hosted GUI download and fresh chooser reload through that exact
+supplier. Supplier checks, source controls and historical CLI results do not
+qualify an installed consumer. No source, pin, lock, notice, workflow or package
+change belongs to this docs-only proposal; all other owners retain their lanes.
+
 ## Installed G02 Code caller and output qualification — 2026-10-15
 
 Frozen consumer `59ddd74174f644f330f06ce567fac6b8c5f7dde3` passes three

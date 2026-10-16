@@ -223,3 +223,87 @@ geometry. Do not promise arbitrary exports can be reloaded: the named FreeDOS
 route accepts the fixture's 306×4×17 image, while the generic DOSBox-config route
 has its own CHS limits. Geometry metadata is a sidecar, not a config import
 format. A wider chooser or ISO/CD-ROM path needs its own claim and qualification.
+
+
+## Proposed 386 Board HDD adoption handoff
+
+Proposed 2026-10-16; documentation only. This is a serialized next task for a
+fresh agent, not a transfer of package or pin ownership. The
+[ledger proposal](../LANES.md#proposed-386-board-hdd-adoption-handoff--2026-10-16)
+owns only these two documents. Refresh both repositories and the existing
+adopters before implementation; do not treat this dated checkpoint as a current
+merge decision.
+
+The STM32 owner holds [PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975),
+branch `chore/stm32-faithful-pins-20261015`, at
+`fb9961382287f5981d70ea6a15f504ee45101d39`. Its merged claim PR969 covers
+Board/SB3 pins, package specifications and locks, notices and generated outputs,
+and the STM32 runner changes. The PR says **Not for agent merge**. The CUI
+adopter holds [PR965](https://github.com/CrispStrobe/brickwright-lite/pull/965),
+at `fcf39b5cdfa1d4422ec4da685730baef429b43c1`, under merged claim PR961,
+including shared lock surfaces. Preserve both owners and their recorded
+coordination; this proposal changes neither their order nor their merge authority.
+Obtain an explicit recorded handoff, agree one dependency writer and merge a
+precise implementation claim before touching those shared surfaces.
+
+At Lite main `9226b7522f69a287a9de77330d8d129ab043bdd7`, Board is pinned to
+`b4b4c87f70624dfb570a6d21391c5a2d5a40a0e8`. PR975 instead proposes Board
+`04f19952cea008b7498c701c16be5cc7ea1bdf63` and SB3
+`a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76`. Neither of those Board revisions
+contains the 386 target's `snapshotAtaMaster()` implementation. A successful
+STM32 adoption alone therefore cannot qualify the HDD export workflow. PR965
+moves CUI separately while preserving its base Board/SB3 pins; the HDD feature
+does not require its new CUI API.
+
+The required Board source anchor is
+[PR623](https://github.com/CrispStrobe/bw-board/pull/623), merged as
+`48635add0807dc37c8c26551949fb58dcc9858e7`: inspect
+[`src/i80386-debug.js`](https://github.com/CrispStrobe/bw-board/blob/48635add0807dc37c8c26551949fb58dcc9858e7/src/i80386-debug.js)
+and its factory connection in
+[`src/debug-target-factory.js`](https://github.com/CrispStrobe/bw-board/blob/48635add0807dc37c8c26551949fb58dcc9858e7/src/debug-target-factory.js).
+Preserve the helper and metadata prerequisites rather than copying only a
+method name. The related CLI persistence qualification is PR625, merged as
+`cb5058e5f8865110aa099ff3fbc84092668563c0`, tested with PR627's pacing correction
+at `b8f95cfdb8ee654407b63e626e46eb8859ce7b41` in
+[run 38806122785](https://github.com/CrispStrobe/bw-board/actions/runs/38806122785).
+The [master-disk continuation](#master-disk-export-continuation) records the
+original failed run and the finite two-session data-disk result. Preserve both;
+neither result proves installed GUI persistence or HDD boot.
+
+The pending Lite consumers are PR986 (runner bridge, `a28ac3546cf5feb1541bc636ec626faf8cd24b74`),
+PR987 (download helper/panel, `bb19267c36cda7648cdfd013344185bdeaf18716`),
+PR989 (download/reload scenario, `f1c6bcf745d99c7ea96844bb67d27962d50b5eb6`),
+and PR992 (bounded package chooser, `5b593cba63ec42896f0567b1a05fc653861e4468`).
+These are source checkpoints, not a composed installed qualification. The
+package chooser's existing canonical DOSBox parser is a separate boundary from
+the snapshot API. Keep both boundaries explicit in the composed candidate.
+
+After the owner handoff and merged claim, the fresh agent should:
+
+1. Freeze the exact supplier revision, its qualification and ancestry, and the
+   installed package's complete selected blob graph. Verify the snapshot API,
+   factory wiring, metadata and persistence prerequisites. A later Board main
+   revision is not automatically qualified by the historical tested source.
+2. Review the component diff against each current adopter. Preserve STM32 and
+   SB3 behavior and the agreed CUI revision; record unchanged component and
+   unrelated pin identities. Use the canonical dependency/notices writers and
+   inspect specifications, both locks, generated twins, notices and existing
+   provenance, pin, matrix and integration gates. Claim any extra change first.
+3. Compose one owned GUI candidate with the reviewed x86 consumers and exact
+   installed supplier identities. Retain ordinary targets, source ownership,
+   mirror equality, snapshot refusals and stale-session controls. Require every
+   enabled final-head CI check; host controls alone do not qualify the app.
+4. Admit a finite hosted source/build/free-input/resource manifest, then capture
+   genuine image and metadata downloads and reload those exact bytes through
+   the real chooser into a fresh machine. Verify the guest-written marker and
+   original input/session independently, using the documented free boot floppy
+   and 306×4×17 data image route. Qualify PR992's own package selection,
+   rejection, input/output and tab-retention route separately. Retain original
+   failures and acquire each official original once for independent audit.
+
+No implementation is authorized by this proposal. No new dependency, lock,
+notice, workflow, package or source change is made here. A future adoption is
+complete only after qualified supplier and affected clean consumer results,
+owner review and every enabled exact-head check, followed by the normal
+matched-head merge and tree/parent verification. This finite handoff grants no
+full-OS, broad DOSBox, physical-timing, RTx or release claim.
