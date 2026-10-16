@@ -28,7 +28,7 @@ function identity(program){
 }
 
 function proveOperands(program,call){
-    const facts=analyseSourceValueProducers(program,{parenthesized:true,unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers:true,initializationEntries:true});
+    const facts=analyseSourceValueProducers(program,{parenthesized:true,unboundIsOpaque:true,opaqueDeclarationValues:true,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true,initializationEntries:true});
     const owners=new WeakMap(),parents=new WeakMap(),functions=new Set(),allCalls=[],callers=new Map(),escaped=new Set();
     const scan=(node,owner=null,parent=null)=>{
         if(!node||typeof node!=='object')return;

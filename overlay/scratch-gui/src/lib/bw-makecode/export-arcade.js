@@ -22,6 +22,37 @@ import {prepareObjectClassExport} from './object-class-export.js';
 import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
 import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
 const LEGACY_CHARACTER_REVISION=LEGACY_CHARACTER_NATIVE_IDENTITY.revision;
+// Serialized current-graph eligibility only, never a runtime completion receipt.
+// Expression emission and formal/caller inference must use the same exact proof.
+function currentSceneClockNumber(blocks,block) {
+    if(!block||block.opcode!=='arcade_sceneMillis')return false;
+    const ids=Object.keys(blocks||{}).filter(id=>blocks[id]===block),id=ids[0],parent=id&&blocks[block.parent],uses=[];
+    for(const node of Object.values(blocks||{}))for(const slot of Object.values(node.inputs||{}))
+        if(Array.isArray(slot))for(let index=1;index<slot.length;index++)if(slot[index]===id)uses.push({node,index,slot});
+    if(ids.length!==1||block.shadow!==false||block.topLevel!==false||block.next!=null||block.mutation!=null||
+        Object.keys(block.fields||{}).length||Object.keys(block.inputs||{}).length||!parent||uses.length!==1||uses[0].node!==parent||uses[0].index!==1)return false;
+    if(Object.keys(blocks).filter(key=>blocks[key]===parent).length!==1)return false;
+    const slot=uses[0].slot;
+    // A non-shadow reporter cannot occupy the SAME_BLOCK_SHADOW (1) role.
+    if(slot[0]===2)return slot.length===2;
+    if(slot[0]!==3||slot.length!==3)return false;
+    const fallback=slot[2];
+    const primitive=value=>Array.isArray(value)&&value.length===2&&Number.isInteger(value[0])&&value[0]>=4&&value[0]<=10&&
+        (typeof value[1]==='string'||value[0]<=8&&typeof value[1]==='number'&&Number.isFinite(value[1]));
+    if(primitive(fallback))return true;
+    if(typeof fallback!=='string'||fallback===id)return false;
+    const shadow=blocks[fallback],names=Object.keys(blocks).filter(key=>blocks[key]===shadow);
+    if(!shadow||names.length!==1||names[0]!==fallback||shadow.shadow!==true||shadow.topLevel!==false||shadow.parent!==block.parent||
+        shadow.next!=null||shadow.mutation!=null||Object.keys(shadow.inputs||{}).length)return false;
+    const primitiveFields={math_number:'NUM',math_positive_number:'NUM',math_whole_number:'NUM',math_integer:'NUM',math_angle:'NUM',colour_picker:'COLOUR',text:'TEXT'};
+    const field=Object.hasOwn(primitiveFields,shadow.opcode)&&primitiveFields[shadow.opcode],value=shadow.fields?.[field];
+    if(!field||Object.keys(shadow.fields||{}).length!==1||!Array.isArray(value)||![1,2].includes(value.length)||value.length===2&&value[1]!==null||
+        !(typeof value[0]==='string'||field==='NUM'&&typeof value[0]==='number'&&Number.isFinite(value[0])))return false;
+    const fallbackUses=[];for(const node of Object.values(blocks))for(const input of Object.values(node.inputs||{}))
+        if(Array.isArray(input))for(let index=1;index<input.length;index++)if(input[index]===fallback)fallbackUses.push({node,index,input});
+    return fallbackUses.length===1&&fallbackUses[0].node===parent&&fallbackUses[0].index===2&&fallbackUses[0].input===slot;
+}
+
 /**
  * A Scratch project -> MakeCode Arcade TypeScript: the way back from
  * arcade-translate.js, and the way OUT for a game made here.
@@ -1864,7 +1895,12 @@ class ArcadeEmitter {
             this.note(`key "${key}" pressed (Arcade has arrows, A and B)`);
             return 'false';
         }
-        case 'arcade_sceneMillis': return 'game.runtime()';
+        case 'arcade_sceneMillis': {
+            if(!currentSceneClockNumber(this.blocks,b)) {
+                this.note('Scene clock Number: current zero-input reporter or unique parent differs');return 'undefined';
+            }
+            return 'game.runtime()';
+        }
         case 'arcade_programMillis': return 'control.millis()';
         case 'sensing_timer': return `${this.use('scratchTimer','__bwScratchTimer')}()`;
         default:
@@ -3130,6 +3166,7 @@ class ArcadeEmitter {
                 if(['arcade_bufferLength','arcade_bufferHash','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf','arcade_bufferFormatSize','arcade_bufferPackedSize'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
                 if(['arcade_bufferToHex','arcade_bufferToText','arcade_bufferToBase64'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
                 if(['arcade_bufferIsReadOnly','arcade_bufferEquals'].includes(value.opcode)){const id=Symbol('buffer readonly');booleans.add(id);return id;}
+                if(currentSceneClockNumber(blocks,value)) {const id=Symbol('current scene clock Number');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                 if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);inspectionLeaves.set(id,'string');return id;}
                 if(['arrays_valueBinary','arrays_valueUnary'].includes(value.opcode)) {
@@ -4190,7 +4227,7 @@ export function projectToArcade (project, opts = {}) {
     }
     if(e.procedureConstraints?.procedures().length){
         const selected=new Set(e.procedureConstraints.procedures().map(({target,code})=>e.functionName(target,code)));
-        try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
+        try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
     }
     // Host artwork callbacks can edit current project objects during rendering.
     // Stale owner/global/local inventories must never become a clean export.

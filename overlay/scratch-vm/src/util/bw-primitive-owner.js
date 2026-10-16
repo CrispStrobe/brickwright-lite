@@ -4,12 +4,13 @@ const active = new WeakMap();
 const activeCalls = new WeakMap();
 const cachedOwner = require('./bw-cached-primitive-owner');
 const conditionWaits = require('./bw-source-condition-waits');
+const sceneClockNumber = require('./bw-scene-clock-number');
 // The engine loan and Number-input adapter share this explicit role table.
 // A loan alone does not authorize interpretation of arbitrary input sockets.
 const roles=Object.freeze(Object.fromEntries(Object.entries({
     control_wait_until:[],
     arcade_createCallable:[],arcade_objectField:[],procedures_call:[],arcade_callFunction:[],
-    arcade_spriteProperty:[],
+    arcade_spriteProperty:[],arcade_sceneMillis:[],
     arcade_throwValue:['VALUE'],arcade_createOwnedImageSprite:['KIND'],
     arcade_returnValue:['VALUE'],arcade_functionArgument:['VALUE'],
     arcade_setLocal:['VALUE'],arcade_setCaptured:['VALUE'],
@@ -57,7 +58,7 @@ function invoke(runtime,thread,container,operation,args,util,primitive) {
     const record={runtime,thread,container,operation,args,util,root:thread.peekStack(),block:container.getBlock(operation.id),blockFunction:operation._blockFunction};
     if(!record.block || typeof primitive!=='function' || !owned(record))throw new Error('Primitive execution requires the actual cached caller');
     active.set(runtime,record);
-    try {const result=primitive();return conditionWaits.after(record,result);}finally{active.delete(runtime);}
+    try {const result=primitive();return conditionWaits.after(record,sceneClockNumber.after(record,result));}finally{try{sceneClockNumber.finish(record);}finally{active.delete(runtime);}}
 }
 // Only a genuine synchronous nested VM thread may suspend an existing loan.
 // No callback, copied utility or retained argument snapshot can borrow it.
@@ -99,4 +100,8 @@ function isActiveCall(token,util,args) {
         thread.target===target&&thread.blockContainer===container&&target.blocks===container&&
         thread.peekStack()===root&&util.runtime===runtime&&util.thread===thread;
 }
-module.exports=Object.freeze({beforeInputs:conditionWaits.beforeInputs,invoke,current,stepNested,handles,permitsNumberInput,captureActiveCall,isActiveCall});
+function beforeInputs(runtime,thread,container,blockCached) {
+    const ready=conditionWaits.beforeInputs(runtime,thread,container,blockCached);
+    sceneClockNumber.beforeInputs(runtime,thread,container,blockCached,ready);return ready;
+}
+module.exports=Object.freeze({beforeInputs,invoke,current,stepNested,handles,permitsNumberInput,captureActiveCall,isActiveCall});

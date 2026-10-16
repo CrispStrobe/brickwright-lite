@@ -5005,6 +5005,14 @@ new word or pin. The stopwatch Timer external writer and cyclic field/result
 invariant remain HELD pending complete separate proof. Native, selected-original
 and visible authoring gates remain independent; no whole-case promotion.
 
+Development source candidate now uses the existing before-input/invoke hooks for
+private finite scene-clock completions and current consumer receipts, with an
+independent game census and unchanged info producer. Focused source, modeled
+boundary and real-native controls are authored, not yet executed on this source.
+[Implementation boundary](docs/compatibility/arcade-scene-clock-number-completions.md)
+retains direct-service/clock policy and the external Timer writer/cycle holds.
+No engine ABI, word, pin, whole-case or visible GUI promotion.
+
 ## Ordinary procedure optional argument transport — 2026-10-16
 
 PROPOSED / DOCS ONLY — Codex Arcade integration. Product implementation waits
