@@ -1,3 +1,25 @@
+## Scoped WeDo2 inventory gate repair — 2026-10-15
+
+CLAIMED — SPIKE G02 integration follow-up, isolated branch
+`claim/spike-g02-wedo-inventory-20261015`.
+
+The existing `wedo2unified` artifact pin is present in `vendor-pins.json`, but
+the notices census treats it as an unknown vendored repository and the scoped
+pin inventory omits it. Both checks fail on the unchanged integration source.
+The retained generated bundle declares MPL-2.0 and records its source commit
+and SHA-256; those inputs must remain unchanged.
+
+Envelope: this ledger, `scripts/lib/notices-census.mjs`,
+`THIRD-PARTY-NOTICES.md`, `test/notices-drift.test.mjs`, and
+`test/pin-move-chain.test.mjs`. Register the already shipped scoped bundle,
+retain its declared author and license in the notices, and correlate the
+existing pin with its exact per-file bundle receipt. Missing, malformed,
+unlicensed, wrongly attributed or mismatched bundles must still fail.
+No dependency adoption, generated bundle, product runtime, firmware, model,
+workflow or budget change. This repair does not establish broader license or
+release clearance. The claim must land before implementation; then run the
+affected inventory controls and every enabled exact-head CI check.
+
 ## SPIKE G02 composed lifecycle integration — 2026-10-15
 
 Continuation of the merged SPIKE G02 pane/session claims, branch
@@ -5090,3 +5112,24 @@ single ordinary field-initializer call emission in
 under the merged roundtrip contract's matching resolved-call scope; all other
 class bodies, field/default/type semantics and class admission stay unchanged.
 B empty-Array lowering remains a separate implementation.
+
+## Ordinary local initializer transport: C1 — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this separate claim
+before implementation: [local initializer transport](docs/ARCADE-LOCAL-INITIALIZER-TRANSPORT.md).
+Own a narrow current-graph ordinary-procedure first primitive-write planner,
+coordinated local/header emission in `export-arcade.js`, focused controls and
+capability notes. At the actual proved first write, emit its initialized
+local declaration instead of adding a synthetic header plus that same write.
+Prove actual owner/cell/node identity, literal-prefix order, no earlier read or
+capture/exposure, and currentness across callbacks. Preserve every later explicit
+write, including identical null/zero resets; uncertain cases keep the old path.
+
+No generated-name authority, source restoration, default/Undefined/null policy
+change or generic declaration-only transport. Exclude callbacks/hats/startup,
+managed/class/captured locals, allocation/effectful initializers and C2/D/E.
+No runtime ABI, producer/domain, engine, supplier/pin or workflow changes.
+Existing Array receiver and A/B ownership remain separate. Require meaningful
+source/current Code/Blocks/save/export and affected own native controls; visible
+GUI, stable full projects and compatibility counts need their own evidence.
+All unrelated owners and retained failures remain preserved.
