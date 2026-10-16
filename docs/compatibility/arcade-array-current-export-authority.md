@@ -59,7 +59,10 @@ that body. These facts do not create an Array or Image type fact for any receive
 
 This is a closed current project proof. It requires the bundled Arcade and Arrays
 routes, rejects other declared extensions and saved URL overrides, and excludes
-dynamic owner/object/captured-entry routes. A saved canonical gallery URL does
+dynamic owner/object/captured-entry routes. Every physical block, including an
+orphan, and every provided monitor contributes to the native inferred extension
+owner census; the declared list must agree. Unknown owners refuse even when the
+declared metadata omits them. A saved canonical gallery URL does
 not supply implementation authority: the extension manager routes bundled IDs to
 the bundled implementations. Arbitrary privileged JavaScript examining VM thread
 internals is outside the project semantic boundary. An embedding that replaces

@@ -110,3 +110,14 @@ test('inherited native procedure-cache entries cannot establish a fresh invocati
     }
     const f=fixture();f.blocks[f.proto].mutation.proccode='constructor ordinary';f.blocks[f.call].mutation.proccode='constructor ordinary';assert.deepEqual(results(f),[true]);
 });
+
+test('declared extensions cannot hide owners inferred from physical blocks or monitors',()=>{
+    for(const edit of [
+        f=>{f.node('custom_payload');},
+        f=>{f.insert(f.overwrites[0],f.node('custom_payload'));},
+        f=>{f.project.monitors=[{opcode:'custom_payload'}];},
+        f=>{f.project.extensions=['arcade'];},
+        f=>{f.project.monitors=null;}
+    ]){const f=fixture();edit(f);refuses(f);}
+    const f=fixture();f.project.monitors=[{opcode:'data_variable'}];assert.deepEqual(results(f),[true]);
+});

@@ -161,12 +161,31 @@ export function createArrayReferenceExportAuthority(project) {
     // is outside this closed project boundary (see the compatibility notes).
     // Arrays resolves through the builtin route to the adopted implementation;
     // a saved gallery URL is checked only for consistency, never as authority.
-    const effectMetadata=()=>JSON.stringify([project.extensions,project.extensionURLs]);
+    const effectMetadata=()=>JSON.stringify([project.extensions,project.extensionURLs,project.monitors]);
     const originalEffects=effectMetadata();let extendedResetUsed=false;
     const closedEffects=()=>{
         if(!Array.isArray(project.extensions)||new Set(project.extensions).size!==project.extensions.length||
             !project.extensions.includes('arcade')||!project.extensions.includes('arrays')||
             project.extensions.some(id=>!['arcade','arrays'].includes(id)))return false;
+        // SB3 infers owners from every physical opcode, including orphans and
+        // monitor blocks; its declared extensions list is not an inventory.
+        // Match getExtensionIdForOpcode's prefix/core rules as a refusal check,
+        // never as a producer or effect certificate for an individual block.
+        const core=new Set(['argument','colour','control','data','event','looks','math','motion','operator','procedures','sensing','sound']);
+        const inferred=new Set();
+        const ownerAllowed=opcode=>{
+            if(typeof opcode!=='string')return false;
+            const index=opcode.indexOf('_');if(index<0)return opcode==='text';
+            const prefix=opcode.substring(0,index).replace(/[^\w-]/g,'-');
+            if(core.has(prefix))return true;
+            if(!['arcade','arrays'].includes(prefix))return false;
+            inferred.add(prefix);return true;
+        };
+        for(const target of targets)for(const n of Object.values(target.blocks||{}))if(!ownerAllowed(n?.opcode))return false;
+        if(project.monitors!==undefined){
+            if(!Array.isArray(project.monitors)||project.monitors.some(n=>!ownerAllowed(n?.opcode)))return false;
+        }
+        if(project.extensions.some(id=>!inferred.has(id))||[...inferred].some(id=>!project.extensions.includes(id)))return false;
         const urls=project.extensionURLs;
         if(urls!=null&&(typeof urls!=='object'||Array.isArray(urls)||Object.entries(urls).some(([id,url])=>
             id!=='arrays'||url!=='https://crispstrobe.github.io/extensions/CrispStrobe/arrays.js')))return false;
