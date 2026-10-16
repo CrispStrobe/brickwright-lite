@@ -115,7 +115,9 @@ test('physical activation rejects foreign child and does not authorize arbitrary
         assert.equal(r.provider.consumeChild(r.push(),forgedArgs,{target:r.target}),null);
         r.ext._objectProcedure=(name,values,util)=>{
             const call=r.prepare(name,values,util),child=r.push();child.target={blocks:r.blocks};
-            assert.throws(()=>r.owner.linkPhysicalUpdate(child,call.args,call.util,()=>{}),/differs/);
+            assert.throws(()=>r.owner.linkPhysicalUpdate(child,call.args,call.util,()=>{}),
+                {name:'Error',message:'Arcade physical update requires its private current entry'});
+            assert.equal(r.phase.sourceAuthority.has(child),false);
             throw new Error('foreign child retained');
         };
         assert.throws(r.iterate,/foreign child retained/);
