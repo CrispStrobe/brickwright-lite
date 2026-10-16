@@ -118,3 +118,50 @@ semantics, dependency pins, suppliers, workflows or compatibility-count changes.
 Source controls alone establish neither whole-project idempotence nor runtime,
 visible editor, reference-rendering, audio, fullcase or corpus qualification.
 The implementation must preserve honest fallback when this proof cannot close.
+
+## First source candidate
+
+The initial implementation admits exact, nonempty rectangular `img` literal
+Arrays in the entry prefix before calls, registrations, branches or repeated
+execution. Selections are finite constant numeric expressions, including the
+existing literal round and positive-wrap form. It resolves actual lexical
+bindings, all declaration and write sites, Image aliases and a closed set of
+existing native operations. Unknown receiver or extension effects retain
+ordinary staging. A whole-Array alias also retains ordinary staging for now;
+it does not silently gain a different resource identity.
+
+A private origin scalar survives ordinary compiler rewrites. After unique,
+accessor-free source admission, generated identifier sharing is materialized
+as an occurrence tree before final translator inference. Every edge, value and
+statement stays in order. Final binding, initialization, use, writer and literal
+proofs run on that actual tree. A duplicate origin, edit, lost carrier or failed
+projection uses the same current source with ordinary staging and an explicit
+refusal. No exporter or artwork callback is called as an optimization probe.
+
+The initial route leaves named function, callable and class protocol plans on
+their existing path. Their private identity facts require separate coordinated
+projection integration. Array-map and image-query facts are instead computed
+on the exact current input for each ordinary pass chain. The focused controls
+exercise source and public artifacts; they do not qualify native mutation,
+lifecycle, original SDK execution or the authentic conversion-growth witness.
+In particular, this bounded domain is not a claim that all seven backings of
+that project already qualify. The original connected growth and all other
+conversion growth remain open until the actual current input is measured.
+
+The first public controls exposed a separate named-handle setup rewrite that
+cloned the Program root and lost its private resource fact. The successor
+keeps the original root for a no-op rewrite. Actual ordered sprite creation
+receives an occurrence projection and complete resource reproof before that
+route issues its own node facts. Failed reproof leaves the outer current AST
+available to the existing generic route. The original failed run is retained;
+its ordinary Array output does not qualify shared transport.
+
+### Declarations without initializers
+
+The transport effect census distinguishes an actual declaration without an
+initializer from an unknown writer. It still requires concrete supported writers
+and refuses unknown compound or update writes. An annotation cannot create an
+Image, Array or Sprite producer. The declaration and every early read, method
+call, alias and later assignment remain in their original order; transport does
+not initialize the cell or turn an ordinary failing access into success. Native
+error behavior and the authentic application remain separate qualification gates.

@@ -1,3 +1,4 @@
+import {prepareSharedImageArrayTransport,projectSharedImageArrayTransport,finishSharedImageArrayTransport,currentSharedImageArrayTransport,reproveSharedImageArrayTransport} from './source-shared-image-array-transport.js';
 import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
 import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 import {createProcedureOwnerEmission} from './procedure-owner-emission.js';
@@ -402,6 +403,7 @@ class ArcadeTranslator extends BaseTranslator {
     }
 
     imageRef(node, allowValueCall = true) {
+        if(node?.type==='Index' && this.planImageValue)this.planImageValue(node);
         if (node?.type === 'Template' && this.assetKindLookup &&
             lookupAssetTemplate(this.assetKindLookup,node.tag,node.value) === null) return 'null value';
         const background = this.imageValueResources.get(node);
@@ -1384,6 +1386,7 @@ class ArcadeTranslator extends BaseTranslator {
             }
             return `arcade sprite array kind ${this.kindSlot(kind)}`;
         }
+        if(node?.type==='Index' && this.planImageValue)this.planImageValue(node);
         if (node?.type==='Index' && this.isArrayReference(node.object) && !this.imageValueResources.has(node)) return `item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
         if (node?.type==='Member' && node.name==='length' && this.isArrayReference(node.object)) return `length of array reference (${this.expr(node.object)})`;
 
@@ -4042,8 +4045,18 @@ const translateCreationEvents = (ast, assets, assetKindLookup = null, scrollerVe
 const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directImageOwners,
     frameArrays = new Map(), wrappedFrameValue = () => null, usedFrameArrays = new Set(),
     acceptImage = () => true, eager = true,
-    allocateName = index => `__arcadeBackground${index}`}) => {
+    allocateName = null}) => {
     const nameOf = call => call && t.path(call.callee);
+    const sharedTransport = currentSharedImageArrayTransport(ast);
+    const occupied = new Set(['Game','Stage']);
+    containsAst(ast,node=>{if(typeof node.name==='string')occupied.add(node.name);for(const decl of node.decls||[])occupied.add(decl.name);for(const name of node.params||[])occupied.add(name);return false;});
+    let nextResource=0;
+    const resourceName = index => {
+        const base=allocateName?allocateName(index):`__arcadeBackground${++nextResource}`;
+        let name=base,suffix=1;
+        while(occupied.has(name) || occupied.has(`${name}Image`))name=`${base}_${++suffix}`;
+        occupied.add(name);occupied.add(`${name}Image`);return name;
+    };
     const imageValueCostumes = [];
     const builtinImageResources = new Map();
     const sharedFrameResources = new Map();
@@ -4098,7 +4111,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
             }
         });
         for(const group of stagedImageGroups.values()) {
-            const name=allocateName(imageValueCostumes.length+1);
+            const name=resourceName(imageValueCostumes.length+1);
             const resource={name,key:`${name}Image`,count:group.count,fresh:true};
             for(let index=0;index<group.count;index++)imageValueCostumes.push({sprite:name,name:`${name}-frame-${index}`,svg:imageToSvg(group.members.get(index)),mode:index?'add':'replace'});
             for(const node of group.nodes)t.imageValueResources.set(node,{...resource,value:{type:'Number',value:node.bwImageArrayIndex}});
@@ -4111,6 +4124,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
         // Emission consumes this whole factory, so allocating its child images
         // would leave an unused ordinary target that export makes an actor.
         if (isAnimationResourceFactory(node)) return;
+        if (sharedTransport?.declarations.has(node)) return;
         if (node.type==='Declaration' && node.decls.every(d=>frameArrays.has(d.name))) return;
         // Map resources are embedded in tile data; they are not sprite image values.
         if(node.type==='Call' && nameOf(node)==='tiles.createTilemap')return;
@@ -4118,12 +4132,25 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
         // with a costume per frame, so the frames stay together in the costume
         // editor's timeline. Each element is still a fresh copy of its frame.
         if (node.type === 'Array' && node.items?.length >= 2 && node.items.every(item => item?.type === 'Template' && item.tag === 'img' && acceptImage(item) && t.imageOf(item))) {
-            const name = allocateName(imageValueCostumes.length+1);
+            const name = resourceName(imageValueCostumes.length+1);
             const resource = {name, key:`${name}Image`, count:node.items.length, fresh:true};
             node.items.forEach((item, i) => {
                 imageValueCostumes.push({sprite:name, name:`${name}-frame-${i}`, svg:imageToSvg(t.imageOf(item)), mode:i ? 'add' : 'replace'});
                 t.imageValueResources.set(item, {...resource, value:{type:'Number', value:i}});
             });
+            return;
+        }
+        const selected = sharedTransport?.selection(node);
+        if (selected) {
+            let resource=sharedFrameResources.get(selected.key);
+            if (!resource) {
+                const name=resourceName(imageValueCostumes.length+1);
+                resource={name,key:selected.key,count:selected.images.length};
+                sharedFrameResources.set(selected.key,resource);
+                selected.images.forEach((image,i)=>imageValueCostumes.push({sprite:name,name:`${name}-frame-${i}`,svg:imageToSvg(image),mode:i?'add':'replace'}));
+            }
+            usedFrameArrays.add(selected.key);
+            t.imageValueResources.set(node,{...resource,value:{type:'Number',value:selected.index}});
             return;
         }
         const image = acceptImage(node) ? t.imageOf(node) : null;
@@ -4137,7 +4164,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
             const builtin = node.type === 'Member' ? t.path(node) : node.type === 'Template' && node.tag === 'assets.tile' && image.tileId ? image.tileId : null;
             let resource = builtin && builtinImageResources.get(builtin);
             if (!resource) {
-                const name = allocateName(imageValueCostumes.length+1);
+                const name = resourceName(imageValueCostumes.length+1);
                 resource = {name,key:`${name}Image`,fresh:!builtin};
                 imageValueCostumes.push({sprite:name,name:`${name}-art`,svg:imageToSvg(image),mode:'replace'});
                 if (builtin) builtinImageResources.set(builtin,resource);
@@ -4152,7 +4179,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
             if (frames && value) {
                 let resource=sharedFrameResources.get(arrayName);
                 if (!resource) {
-                    const name=allocateName(imageValueCostumes.length+1);
+                    const name=resourceName(imageValueCostumes.length+1);
                     resource={name,key:arrayName,count:frames.length};sharedFrameResources.set(arrayName,resource);
                     frames.forEach((image,i)=>imageValueCostumes.push({sprite:name,name:`${name}-frame-${i}`,svg:imageToSvg(image),mode:i?'add':'replace'}));
                 }
@@ -4194,16 +4221,27 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     // A declaration with a sprite-valued initializer creates a handle at that
     // exact point, just like a later assignment to the same variable. Lower
     // only this form so the existing ordered setup path owns both forms.
-    ast = {...ast, body: ast.body.flatMap(st => {
+    let changedCreation=false;
+    const orderedBody = ast.body.flatMap(st => {
         if (st.type !== 'Declaration' || !st.decls.some(d => !d.temporary && d.init?.type === 'Call' &&
             creationApis.has(t.path(d.init.callee)))) return [st];
+        changedCreation=true;
         return st.decls.flatMap(d => !d.temporary && d.init?.type === 'Call' &&
             creationApis.has(t.path(d.init.callee)) ? [
                 {...st, decls: [{...d, init: {type: 'Null',spritePlaceholder:true}}]},
                 {type: 'ExpressionStatement', expr: {type: 'Assignment', op: '=',
                     left: {type: 'Identifier', name: d.name}, right: d.init}}
             ] : [{...st, decls: [d]}]);
-    })};
+    });
+    if(changedCreation) {
+        const next={...ast,body:orderedBody};
+        if(currentSharedImageArrayTransport(ast)) {
+            const projected=reproveSharedImageArrayTransport(ast,next);
+            // The outer current AST remains untouched for the generic route.
+            if(!projected)return null;
+            ast=projected;
+        } else ast=next;
+    }
     const callOf = st => st.type === 'ExpressionStatement' && st.expr?.type === 'Call' ? st.expr : null;
     const nameOf = call => call && t.path(call.callee);
     const calls = ast.body.map(callOf);
@@ -4345,12 +4383,8 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
         ['Identifier','Call','Index'].includes(st.expr.left.object?.type);
     const ordinaryAssignment = st => st.type === 'ExpressionStatement' &&
         st.expr?.type === 'Assignment' && st.expr.left?.type === 'Identifier' && !assignsCreate(st);
-    const frameArrays = new Map();
-    for (const st of ast.body) if (st.type === 'Declaration') for (const d of st.decls) {
-        if (!d.name.startsWith('__bwFrames_') || d.init?.type !== 'Array') continue;
-        const images = d.init.items.map(item => t.imageOf(item));
-        if (images.length && images.every(Boolean)) frameArrays.set(d.name, images);
-    }
+    const sharedTransport = currentSharedImageArrayTransport(ast);
+    const frameArrays = sharedTransport?.frames || new Map();
     const wrappedFrameValue = (node, count) => {
         const isCount = item => item?.type === 'Number' && Number(item.value) === count;
         if (node?.type !== 'Binary' || node.op !== '%' || !isCount(node.right)) return null;
@@ -5135,29 +5169,46 @@ export function arcadeToPseudocode (files, opts = {}) {
     const fontValues = lowerSdkFontValues(inspectionValues.program);
     projectInputDiagnostics.push(...fontValues.unsupported);
     const fontSource = lowerLiveFontMetrics(fontValues.program);
-    const queryReferences = inferImageReferences(fontSource,tileImagePath,tileImageOf,
-        node => !!assetKindLookup && node?.type==='Template' && ['assets.image','assets.tile'].includes(node.tag));
-    const arrayMaps=proveArrayMapValues(fontSource,source);
-    projectInputDiagnostics.push(...arrayMaps.unsupported);
-    const stagedSource = lowerPxtStagedValues(fontSource, {
-        lowerArrayMap:arrayMaps.lower,
-        isStaticResource: node => !!decodeTilemap(node,tileImageOf,tileImagePath),
-        isArrayQuery: node => node.callee?.type==='Member' &&
-            ['indexOf','removeElement'].includes(node.callee.name) && queryReferences.arrays.has(node.callee.object)
-    });
-    stagedSource.sourceReferenceDeclarations = sourceReferenceDeclarations(stagedSource);
-    stagedSource.sourceCallableDeclarations=namedEnabled?stagedSource.sourceCallableDeclarations || []:callableEnabled?sourceCallableDeclarations(stagedSource).declarations:[];
-    const callables=namedEnabled?{program:stagedSource,unsupported:namedLowering.unsupported}:classEnabled?lowerCallableValues(stagedSource,{classPrototype:true,sdkImagePrototype:sdkImageEnabled}):callableEnabled?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
-    projectInputDiagnostics.push(...callables.unsupported);
-    const objectClasses = lowerObjectClasses(callables.program,{classCallablePrototype:classEnabled,sdkImagePrototype:sdkImageEnabled});
-    if(classEnabled && !callables.unsupported.length && !objectClasses.unsupported.length) {
-        try {objectClasses.program.bwCallableLexicalPlan=callables.finishClassPlan(objectClasses.program.bwClassCallableProcedures || []);}
-        catch(error){objectClasses.unsupported.push(String(error.message));}
+    const sharedPreparation = !namedEnabled && !callableEnabled && !classEnabled ? prepareSharedImageArrayTransport(fontSource) : null;
+    const buildCurrentAst = (input, transport = null) => {
+        const diagnostics = [];
+        const queryReferences = inferImageReferences(input,tileImagePath,tileImageOf,
+            node => !!assetKindLookup && node?.type==='Template' && ['assets.image','assets.tile'].includes(node.tag));
+        const arrayMaps=proveArrayMapValues(input,source);
+        diagnostics.push(...arrayMaps.unsupported);
+        const stagedSource = lowerPxtStagedValues(input, {
+            sharedImageArrayPlan: transport?.plan || null,
+            lowerArrayMap:arrayMaps.lower,
+            isStaticResource: node => !!decodeTilemap(node,tileImageOf,tileImagePath),
+            isArrayQuery: node => node.callee?.type==='Member' &&
+                ['indexOf','removeElement'].includes(node.callee.name) && queryReferences.arrays.has(node.callee.object)
+        });
+        stagedSource.sourceReferenceDeclarations = sourceReferenceDeclarations(stagedSource);
+        stagedSource.sourceCallableDeclarations=namedEnabled?stagedSource.sourceCallableDeclarations || []:callableEnabled?sourceCallableDeclarations(stagedSource).declarations:[];
+        const callables=namedEnabled?{program:stagedSource,unsupported:namedLowering.unsupported}:classEnabled?lowerCallableValues(stagedSource,{classPrototype:true,sdkImagePrototype:sdkImageEnabled}):callableEnabled?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
+        diagnostics.push(...callables.unsupported);
+        const objectClasses = lowerObjectClasses(callables.program,{classCallablePrototype:classEnabled,sdkImagePrototype:sdkImageEnabled});
+        if(classEnabled && !callables.unsupported.length && !objectClasses.unsupported.length) {
+            try {objectClasses.program.bwCallableLexicalPlan=callables.finishClassPlan(objectClasses.program.bwClassCallableProcedures || []);}
+            catch(error){objectClasses.unsupported.push(String(error.message));}
+        }
+        diagnostics.push(...objectClasses.unsupported);
+        const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:sceneRegistrationSpec});
+        diagnostics.push(...callbacks.unsupported);
+        const ast = lowerLazyValues(callbacks.program);
+        return {ast:transport ? projectSharedImageArrayTransport(ast,transport.plan) : ast,diagnostics};
+    };
+    let built = buildCurrentAst(sharedPreparation?.program || fontSource,sharedPreparation);
+    if(sharedPreparation && !finishSharedImageArrayTransport(built.ast,sharedPreparation.plan)) {
+        // No emitter/artwork callback has run. Recompile this SAME current AST
+        // with ordinary staging, retaining both diagnostics and explicit refusal.
+        const refused = built.diagnostics;
+        built = buildCurrentAst(fontSource);
+        built.diagnostics.push(...refused,'Shared Image Array transport projection refused; ordinary current source staging retained');
     }
-    projectInputDiagnostics.push(...objectClasses.unsupported);
-    const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:sceneRegistrationSpec});
-    projectInputDiagnostics.push(...callbacks.unsupported);
-    const ast = lowerLazyValues(callbacks.program);
+    projectInputDiagnostics.push(...built.diagnostics);
+    const ast = built.ast;
+    const sharedImageTransport = currentSharedImageArrayTransport(ast);
     const flattened = namespaceBindings.program ? ast : null;
     const nativeTilemaps = createNativeTilemapRegistry(map,tileImageOf,assetFileOrder?{fileOrder:assetFileOrder}:{});
     const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested || sourceScalarDeclarations(flattened).length > 0, assetKindLookup, scrollerVersion, characterVersion);
@@ -5640,7 +5691,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     };
 
     for (const st of ast.body) {
-        if (st.type === 'Enum' || st.type === 'FunctionDeclaration') continue;
+        if (st.type === 'Enum' || st.type === 'FunctionDeclaration' || sharedImageTransport?.declarations.has(st)) continue;
         const call = st.type === 'ExpressionStatement' && st.expr.type === 'Call' ? st.expr : null;
         const name = call ? t.path(call.callee) : null;
         const handler = call ? (call.args || []).find(arg => arg.type === 'FunctionExpression') : null;
@@ -5793,7 +5844,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const out = [];
     out.push('DEVICE ARCADE', '');
     if(t.referenceArrayProgram || t.fontValueProgram || t.throwValueProgram){
-        const globals=ast.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls)
+        const globals=ast.body.filter(st=>st.type==='Declaration' && !sharedImageTransport?.declarations.has(st)).flatMap(st=>st.decls)
             .filter(decl=>!decl.temporary && !t.sprite(decl.name) && !(decl.init?.type==='Call' && t.path(decl.init.callee)==='sprites.create'));
         out.push(...globals.map(decl=>`GLOBAL ${t.varName(decl.name)}`),'');
     }
