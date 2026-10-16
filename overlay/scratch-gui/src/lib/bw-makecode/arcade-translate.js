@@ -1380,6 +1380,7 @@ class ArcadeTranslator extends BaseTranslator {
         if (node?.type==='Index' && this.isArrayReference(node.object) && !this.imageValueResources.has(node)) return `item (${this.expr(node.index)}) of array reference (${this.expr(node.object)})`;
         if (node?.type==='Member' && node.name==='length' && this.isArrayReference(node.object)) return `length of array reference (${this.expr(node.object)})`;
 
+        if (node?.type === 'Template' && this.planImageValue) this.planImageValue(node);
         if (this.imageValueResources.has(node)) return this.imageRef(node);
         // The Arcade exporter writes a Scratch join as `"" + left + right`.
         // Preserve its string coercion and block shape on the way back in.
@@ -4007,7 +4008,8 @@ const translateCreationEvents = (ast, assets, assetKindLookup = null, scrollerVe
 // artwork carriers are hidden templates, never additional live actors.
 const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directImageOwners,
     frameArrays = new Map(), wrappedFrameValue = () => null, usedFrameArrays = new Set(),
-    acceptImage = () => true}) => {
+    acceptImage = () => true, eager = true,
+    allocateName = index => `__arcadeBackground${index}`}) => {
     const nameOf = call => call && t.path(call.callee);
     const imageValueCostumes = [];
     const builtinImageResources = new Map();
@@ -4023,50 +4025,52 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
             else visitArtworkSource(value,visit,seen);
         }
     };
-    visitArtworkSource(ast,node=>{
-        if(node.type!=='Template' || node.tag!=='img' || !acceptImage(node) || typeof node.bwImageArrayGroup!=='string')return;
-        const {bwImageArrayGroup:id,bwImageArrayIndex:index,bwImageArrayCount:count}=node,image=t.imageOf(node);
-        if(!image || !Number.isInteger(index) || !Number.isInteger(count) || count<2 || index<0 || index>=count)return;
-        if(!stagedImageGroups.has(id))stagedImageGroups.set(id,{count,members:new Map(),nodes:[],invalid:false});
-        const group=stagedImageGroups.get(id),prior=group.members.get(index);
-        if(group.count!==count || prior && (prior.width!==image.width || prior.height!==image.height ||
-            prior.pixels.length!==image.pixels.length || prior.pixels.some((pixel,i)=>pixel!==image.pixels[i])))group.invalid=true;
-        group.members.set(index,image);group.nodes.push(node);
-    });
-    for(const [id,group] of stagedImageGroups) {
-        if(group.invalid || group.members.size!==group.count){stagedImageGroups.delete(id);continue;}
-        stagedImageAliases.set(id,new Set([id]));
-    }
-    // Union assignments conservatively: a reused name must not label a later
-    // image group as if it belonged to a unique animation/actor.
-    let artworkAliasesChanged;
-    do {
-        artworkAliasesChanged=false;
+    if (eager) {
         visitArtworkSource(ast,node=>{
-            const entries=node.type==='Declaration'?node.decls.map(d=>[d.name,d.init]):
-                node.type==='Assignment' && node.op==='=' && node.left?.type==='Identifier'?[[node.left.name,node.right]]:[];
-            for(const [name,value]of entries)if(value?.type==='Identifier' && stagedImageAliases.has(value.name)) {
-                const ids=stagedImageAliases.get(name)||new Set();
-                for(const id of stagedImageAliases.get(value.name))if(!ids.has(id)){ids.add(id);artworkAliasesChanged=true;}
-                stagedImageAliases.set(name,ids);
-                for(const id of ids)if(artworkUserName(name) && !stagedImageGroups.get(id).label)stagedImageGroups.get(id).label=artworkUserName(name);
+            if(node.type!=='Template' || node.tag!=='img' || !acceptImage(node) || typeof node.bwImageArrayGroup!=='string')return;
+            const {bwImageArrayGroup:id,bwImageArrayIndex:index,bwImageArrayCount:count}=node,image=t.imageOf(node);
+            if(!image || !Number.isInteger(index) || !Number.isInteger(count) || count<2 || index<0 || index>=count)return;
+            if(!stagedImageGroups.has(id))stagedImageGroups.set(id,{count,members:new Map(),nodes:[],invalid:false});
+            const group=stagedImageGroups.get(id),prior=group.members.get(index);
+            if(group.count!==count || prior && (prior.width!==image.width || prior.height!==image.height ||
+                prior.pixels.length!==image.pixels.length || prior.pixels.some((pixel,i)=>pixel!==image.pixels[i])))group.invalid=true;
+            group.members.set(index,image);group.nodes.push(node);
+        });
+        for(const [id,group] of stagedImageGroups) {
+            if(group.invalid || group.members.size!==group.count){stagedImageGroups.delete(id);continue;}
+            stagedImageAliases.set(id,new Set([id]));
+        }
+        // Union assignments conservatively: a reused name must not label a later
+        // image group as if it belonged to a unique animation/actor.
+        let artworkAliasesChanged;
+        do {
+            artworkAliasesChanged=false;
+            visitArtworkSource(ast,node=>{
+                const entries=node.type==='Declaration'?node.decls.map(d=>[d.name,d.init]):
+                    node.type==='Assignment' && node.op==='=' && node.left?.type==='Identifier'?[[node.left.name,node.right]]:[];
+                for(const [name,value]of entries)if(value?.type==='Identifier' && stagedImageAliases.has(value.name)) {
+                    const ids=stagedImageAliases.get(name)||new Set();
+                    for(const id of stagedImageAliases.get(value.name))if(!ids.has(id)){ids.add(id);artworkAliasesChanged=true;}
+                    stagedImageAliases.set(name,ids);
+                    for(const id of ids)if(artworkUserName(name) && !stagedImageGroups.get(id).label)stagedImageGroups.get(id).label=artworkUserName(name);
+                }
+            });
+        }while(artworkAliasesChanged);
+        visitArtworkSource(ast,node=>{
+            if(node.type!=='Call' || !['animation.runImageAnimation','characterAnimations.loopFrames','characterAnimations.runFrames'].includes(nameOf(node)))return;
+            const frames=node.args?.[1],ids=frames?.type==='Identifier' && stagedImageAliases.get(frames.name);
+            const actor=node.args?.[0];
+            if(ids?.size===1 && actor?.type==='Identifier' && artworkUserName(actor.name)) {
+                const group=stagedImageGroups.get([...ids][0]);if(!group.label)group.label=artworkUserName(actor.name)+'Animation';
             }
         });
-    }while(artworkAliasesChanged);
-    visitArtworkSource(ast,node=>{
-        if(node.type!=='Call' || !['animation.runImageAnimation','characterAnimations.loopFrames','characterAnimations.runFrames'].includes(nameOf(node)))return;
-        const frames=node.args?.[1],ids=frames?.type==='Identifier' && stagedImageAliases.get(frames.name);
-        const actor=node.args?.[0];
-        if(ids?.size===1 && actor?.type==='Identifier' && artworkUserName(actor.name)) {
-            const group=stagedImageGroups.get([...ids][0]);if(!group.label)group.label=artworkUserName(actor.name)+'Animation';
+        for(const group of stagedImageGroups.values()) {
+            const name=allocateName(imageValueCostumes.length+1);
+            const resource={name,key:`${name}Image`,count:group.count,fresh:true};
+            for(let index=0;index<group.count;index++)imageValueCostumes.push({sprite:name,name:`${name}-frame-${index}`,svg:imageToSvg(group.members.get(index)),mode:index?'add':'replace'});
+            for(const node of group.nodes)t.imageValueResources.set(node,{...resource,value:{type:'Number',value:node.bwImageArrayIndex}});
+            if(group.label)artworkNames[name]=group.label;
         }
-    });
-    for(const group of stagedImageGroups.values()) {
-        const name=`__arcadeBackground${imageValueCostumes.length+1}`;
-        const resource={name,key:`${name}Image`,count:group.count,fresh:true};
-        for(let index=0;index<group.count;index++)imageValueCostumes.push({sprite:name,name:`${name}-frame-${index}`,svg:imageToSvg(group.members.get(index)),mode:index?'add':'replace'});
-        for(const node of group.nodes)t.imageValueResources.set(node,{...resource,value:{type:'Number',value:node.bwImageArrayIndex}});
-        if(group.label)artworkNames[name]=group.label;
     }
     const collectImageValues = (node, parent) => {
         if (!node || typeof node !== 'object') return;
@@ -4081,7 +4085,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
         // with a costume per frame, so the frames stay together in the costume
         // editor's timeline. Each element is still a fresh copy of its frame.
         if (node.type === 'Array' && node.items?.length >= 2 && node.items.every(item => item?.type === 'Template' && item.tag === 'img' && acceptImage(item) && t.imageOf(item))) {
-            const name = `__arcadeBackground${imageValueCostumes.length+1}`;
+            const name = allocateName(imageValueCostumes.length+1);
             const resource = {name, key:`${name}Image`, count:node.items.length, fresh:true};
             node.items.forEach((item, i) => {
                 imageValueCostumes.push({sprite:name, name:`${name}-frame-${i}`, svg:imageToSvg(t.imageOf(item)), mode:i ? 'add' : 'replace'});
@@ -4100,7 +4104,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
             const builtin = node.type === 'Member' ? t.path(node) : node.type === 'Template' && node.tag === 'assets.tile' && image.tileId ? image.tileId : null;
             let resource = builtin && builtinImageResources.get(builtin);
             if (!resource) {
-                const name = `__arcadeBackground${imageValueCostumes.length+1}`;
+                const name = allocateName(imageValueCostumes.length+1);
                 resource = {name,key:`${name}Image`,fresh:!builtin};
                 imageValueCostumes.push({sprite:name,name:`${name}-art`,svg:imageToSvg(image),mode:'replace'});
                 if (builtin) builtinImageResources.set(builtin,resource);
@@ -4115,7 +4119,7 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
             if (frames && value) {
                 let resource=sharedFrameResources.get(arrayName);
                 if (!resource) {
-                    const name=`__arcadeBackground${imageValueCostumes.length+1}`;
+                    const name=allocateName(imageValueCostumes.length+1);
                     resource={name,key:arrayName,count:frames.length};sharedFrameResources.set(arrayName,resource);
                     frames.forEach((image,i)=>imageValueCostumes.push({sprite:name,name:`${name}-frame-${i}`,svg:imageToSvg(image),mode:i?'add':'replace'}));
                 }
@@ -4127,8 +4131,8 @@ const planImageValues = (t, ast, {creationApis, requiresSpriteRuntime, directIma
             else if (value && typeof value === 'object') collectImageValues(value,node);
         }
     };
-    collectImageValues(ast);
-    return {imageValueCostumes, artworkNames};
+    if (eager) collectImageValues(ast);
+    return {imageValueCostumes, artworkNames, collectImageValue: node => collectImageValues(node)};
 };
 
 /** Handle-valued globals plus onCreated/onOverlap callbacks. Kept separate
@@ -5134,20 +5138,44 @@ export function arcadeToPseudocode (files, opts = {}) {
     // reads the single value allocated by its initializer, not a new copy.
     // Conservative binding refusal also covers a parameter/local named img in
     // an otherwise untranslatable neighbor; a tag's spelling is no authority.
+    const tagWriter = node => {
+        const value = node.type === 'Assignment' ? node.left : node.type === 'Update' ? node.argument : null;
+        let root = value;
+        while (['Member', 'Index'].includes(root?.type)) root = root.object;
+        if (root?.type === 'Identifier' && root.name === 'img') return true;
+        // An ambient global write is also a configured replacement of the tag.
+        if (!['globalThis', 'window', 'self'].includes(value?.object?.name)) return false;
+        return value.type === 'Member' ? value.name === 'img' : value.type === 'Index' &&
+            (value.index?.type !== 'String' || value.index.value === 'img');
+    };
     const imgBound = containsAst(parsed, node =>
         node.type === 'Declaration' && node.decls.some(decl => decl.name === 'img') ||
-        node.type === 'FunctionDeclaration' && node.name === 'img' ||
-        Array.isArray(node.params) && node.params.includes('img'));
-    const {imageValueCostumes, artworkNames} = planImageValues(t, ast, {
+        ['FunctionDeclaration', 'FunctionExpression', 'Class', 'Enum', 'Namespace', 'ForOf'].includes(node.type) && node.name === 'img' ||
+        Array.isArray(node.params) && node.params.includes('img') || tagWriter(node) || node.type === 'Unknown');
+    const occupiedImageNames = new Set(['Game', 'Stage']);
+    containsAst(ast, node => {
+        if (typeof node.name === 'string') occupiedImageNames.add(node.name);
+        for (const decl of node.decls || []) occupiedImageNames.add(decl.name);
+        for (const param of node.params || []) occupiedImageNames.add(param);
+        return false;
+    });
+    let nextImageName = 0;
+    const allocateImageName = () => {
+        let name;
+        do { name = `__arcadeBackground${++nextImageName}`; } while (occupiedImageNames.has(name));
+        occupiedImageNames.add(name);
+        return name;
+    };
+    const {imageValueCostumes, artworkNames, collectImageValue} = planImageValues(t, ast, {
         creationApis: new Set(['sprites.create', 'sprites.createProjectile',
             'sprites.createProjectileFromSide', 'sprites.createProjectileFromSprite']),
         requiresSpriteRuntime: false, directImageOwners: new Set(),
-        acceptImage: node => node?.type === 'Template' && node.tag === 'img' && !imgBound
+        acceptImage: node => node?.type === 'Template' && node.tag === 'img' && !imgBound,
+        eager: false, allocateName: allocateImageName
     });
     if (imgBound && containsAst(ast, node => node.type === 'Template' && node.tag === 'img'))
-        t.unsupported.push('Image literal requires an unshadowed img binding');
-    const imageTemplates = [...new Set(imageValueCostumes.map(costume => costume.sprite))];
-    const costumes = [...imageValueCostumes];
+        t.unsupported.push('Image literal requires an unshadowed img binding and complete configured tag-writer census');
+    const costumes = [];
 
     // ── pass 1: find the sprites, because everything else refers to them
     const registerSprite = (name, createCall) => {
@@ -5496,6 +5524,9 @@ export function arcadeToPseudocode (files, opts = {}) {
     /** name → array of script line-blocks */
     const scriptsFor = new Map(t.sprites.map(s => [s.name, []]));
     const setup = [];
+    // Pass-one probes (including enum bookkeeping into discarded output) must
+    // not register resources. Only the actual script/procedure emission does.
+    t.planImageValue = collectImageValue;
 
     /** Which sprite a body is about: the first one it mentions. */
     const ownerOf = body => {
@@ -5814,6 +5845,10 @@ export function arcadeToPseudocode (files, opts = {}) {
         out.push(`SPRITE ${template.name}:`, 'WHEN flag clicked:', '  hide', '');
     }
 
+    // Only actual emitted value expressions register generic artwork. A
+    // diagnostic-only class body cannot leave an unreferenced actor on export.
+    costumes.push(...imageValueCostumes);
+    const imageTemplates = [...new Set(imageValueCostumes.map(costume => costume.sprite))];
     for (const name of imageTemplates)
         out.push(`SPRITE ${name}:`, 'WHEN flag clicked:', '  hide', '');
 

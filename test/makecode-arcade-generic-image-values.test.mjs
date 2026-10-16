@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {svgToPixels} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
 
 // This class is deliberately outside ordinary class admission. Its diagnostic
@@ -62,7 +63,11 @@ test('a repeated function literal remains an allocating expression at its evalua
 });
 
 test('shadowed img tags cannot acquire resource ownership on the fallback route', () => {
-    for (const binding of ['let img: any;\n', 'function unrelated(img: any) { console.log(img); }\n']) {
+    for (const binding of ['let img: any;\n', 'function unrelated(img: any) { console.log(img); }\n',
+        'img = replacement;\n', 'class img {}\n', 'enum img { one }\n',
+        'namespace img { export const member = 1; }\n',
+        'globalThis.img = replacement;\n', 'globalThis["img"] = replacement;\n',
+        'for (let img of [1]) { console.log(img); }\n']) {
         const result = arcadeToPseudocode(neighbor + binding + `let picture = ${literal};`);
         assert.ok(result.unsupported.some(message => /unshadowed img binding/.test(message)));
         assert.equal(copies(result.code).length, 0);
@@ -75,4 +80,45 @@ test('unreadable literal pixels retain the actual unsupported boundary and alloc
     assert.ok(result.unsupported.some(message => /image or asset literal not translated here/.test(message)));
     assert.equal(copies(result.code).length, 0);
     assert.equal(result.costumes.length, 0);
+});
+
+
+test('resource names cannot merge with actual source sprite declarations', () => {
+    const result = arcadeToPseudocode(`${neighbor}let __arcadeBackground1 = sprites.create(img` + '`2`' + `, SpriteKind.Player);
+let picture = ${literal};`);
+    const values = copies(result.code);
+    assert.equal(values.length, 1);
+    const name = values[0][2];
+    assert.notEqual(name, '__arcadeBackground1');
+    const spriteNames = [...result.code.matchAll(/^SPRITE ([^:]+):/gm)].map(match => match[1]);
+    assert.equal(new Set(spriteNames).size, spriteNames.length, 'actual actors and resources have unique sections');
+    assert.equal(result.costumes.filter(costume => costume.sprite === name).length, 1);
+    const actorArt = result.costumes.filter(costume => costume.sprite !== name);
+    assert.equal(actorArt.length, 1);
+    assert.deepEqual(Array.from(svgToPixels(actorArt[0].svg).pixels), [2]);
+    const actorSection = result.code.slice(result.code.indexOf(`SPRITE ${actorArt[0].sprite}:`)).split('\n\n')[0];
+    assert.match(actorSection, /\n  show(?:\n|$)/, 'resource hiding must not hide the actual actor');
+    assert.deepEqual(Array.from(svgToPixels(result.costumes.find(costume => costume.sprite === name).svg).pixels), [1, 0, 0, 2]);
+});
+
+test('a non-emitted class literal cannot leave orphan artwork that current export turns into an actor', () => {
+    const result = arcadeToPseudocode('class Unemitted { static picture(): Image { return ' + literal + '; } }');
+    assert.ok(result.unsupported.some(message => /class Unemitted|Class Unemitted/.test(message)));
+    assert.equal(copies(result.code).length, 0);
+    assert.equal(result.costumes.length, 0);
+    // Synthetic current-resource inventory boundary, not a Creator/VM result.
+    // An unused imported artwork target is an actor to current export. There
+    // must be no such target for a class body the source converter did not emit.
+    const assets = new Map();
+    const targets = [{isStage:true, name:'Stage', blocks:{}, variables:{}, lists:{}, broadcasts:{}, costumes:[], sounds:[]}];
+    for (const [index, costume] of result.costumes.entries()) {
+        const assetId = 'resource' + index;
+        assets.set(assetId, costume.svg);
+        targets.push({isStage:false, name:costume.sprite, visible:false, x:0, y:0, size:100, direction:90,
+            blocks:{}, variables:{}, lists:{}, broadcasts:{}, sounds:[],
+            costumes:[{name:costume.name, assetId, md5ext:assetId+'.svg', dataFormat:'svg', rotationCenterX:3, rotationCenterY:3}]});
+    }
+    const exported = projectToArcade({targets}, {costumeSvg:(_target, costume) => assets.get(costume.assetId)});
+    assert.deepEqual(exported.unsupported, []);
+    assert.doesNotMatch(exported.ts, /sprites\.create/);
 });
