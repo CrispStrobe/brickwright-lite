@@ -1,0 +1,96 @@
+# Circuit Playground Express MakeCode import
+
+A recovered MakeCode TypeScript project for Circuit Playground Express opens
+as `DEVICE CPX` code. Building it produces the existing `circuitplayground`
+blocks and device world. The original recovered files remain available for
+MakeCode's own simulator and the original-source download.
+
+This is a translator for the pinned **pxt-adafruit 1.6.8** vocabulary, using the
+45 words delivered by [A9](A9-CPX-SCOPING.md). It adds no firmware emulator,
+extension implementation or dependency pin.
+
+## Target and source identity
+
+An Adafruit editor URL selects `adafruit`. Without a positive target hint,
+CPX-specific vocabulary is checked before the shared micro:bit `input.on`
+spelling. Comments and literal text cannot supply that CPX evidence. A known
+micro:bit, Calliope, EV3 or Arcade hint retains priority. Shared vocabulary
+alone cannot establish an otherwise ambiguous project's target.
+
+Source-only `.mkcd` projects use the same import path as recovered firmware
+projects and shares. Unknown container metadata may recover CPX from its
+distinct vocabulary. CPX Python source and projects without `main.ts` are
+refused by name; their original files remain available.
+
+## Mappings and limits
+
+Ring colours, brightness, gradients, graphs, animations, sensors, tones,
+tempo, built-in sounds and static event handlers use the existing CPX words.
+Commands and inputs are read by the actual dialect parser. Enum and built-in
+sound spellings follow the MIT-licensed Microsoft target sources; their
+upstream licence notices remain with the pinned runtime.
+
+CPX already has event hats for buttons, touch, gestures, the switch, light,
+temperature and loud sounds. These use the existing device input dispatcher,
+rather than introducing a second polling implementation. Inline zero-argument
+callbacks and uniquely declared zero-argument functions retain their bodies;
+expression-bodied callbacks execute their command before returning.
+
+Project hats start with the project. Dynamic registration and registration
+after potentially yielding initialization are therefore refused by name.
+This is conservative: a helper that could yield can withhold a later handler
+even when one invocation would return immediately. No general event-bus,
+registration-order, interruption or timing-equivalence claim follows from the
+finite comparisons.
+
+Photon operations, external strips, IR/cable networking, HID, storage,
+datalogging, settings and unsupported pin/bus operations remain named refusals.
+Custom melodies and per-play sound-volume arguments also remain refused.
+Every returned refusal includes a reason and appears in an `# unsupported:`
+comment. Calls inside an entirely refused construct are named too.
+
+There is no qualified CPX MakeCode emitter. **MakeCode export is refused for
+CPX**, instead of producing micro:bit source. Downloading the original recovered
+source is a separate action and preserves the files as imported.
+
+## Evidence and acceptance
+
+Run `node scripts/makecode-census.mjs --only adafruit` to regenerate only the
+CPX section of [the census](generated/MAKECODE-CENSUS.md), preserving the other
+target sections. The source archive must match the existing exact tarball pin.
+The exhaustive input is **244 code fences**, including 163 in projects and
+tutorials; the earlier 149-program estimate was not the archive's full count.
+There is no deduplication. Original source is checked by its own compiler;
+compiler infrastructure failures cannot count as invalid source programs.
+
+The import census records 149 full, 33 partial, 27 refused by name, 26
+parser-warning cases and nine original-compiler refusals, with **zero silent
+call losses**. “Full” describes import, parsing and source-call accounting;
+it does not mean every program has a behavioural or re-export proof. Original
+compiler failures include stale animation APIs and an incomplete `Anim`
+example. Empty-body parser warnings remain visible.
+
+Required behavioural qualification compares twelve unchanged documentation
+programs in the original PXT simulator and, after translation and parsing,
+through the original CPX extension. The finite block-stack driver consumes the
+parsed project; it does not provide board behaviour. Ring frames and ordered
+tones are compared, with positive light/sound assertions to reject empty runs.
+The production browser proof separately uses the actual VM and visible CPX
+pane: import, build, Start, button A and Shake must render the expected ten
+red, blue and green pixels. It also checks named export refusal, unchanged
+source download and the preserved original MakeCode run path.
+
+These are qualification requirements, not a statement that a pending candidate
+has passed hosted CI. All enabled final-head checks and these affected proofs
+must pass before its source merge.
+
+## Live-share sample
+
+On 2026-10-16, the three shares linked by the pinned documentation were still
+retrievable: [kitchen example one](https://makecode.com/_F1oDHqek78qA),
+[kitchen example two](https://makecode.com/_TspAH0g8gcvv) and
+[beaded necklace](https://makecode.com/_MtgXgUKHhX1o). Their project metadata
+identifies target versions 1.4.43, 1.4.43 and 1.4.36 respectively. All three
+compile with the pinned target, infer CPX and retain named refusals for their
+unsupported photon, custom-melody or external-strip operations. This sample
+does not establish compatibility with newer editor APIs.

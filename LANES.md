@@ -1,10 +1,19 @@
 ## A12 — Circuit Playground Express MakeCode translator — 2026-10-16
 
-CLAIMED — Codex CPX translator lane, isolated worktree
+IMPLEMENTED CANDIDATE — Codex CPX translator lane, isolated worktree
 `wt-lite-a12-cpx-makecode-20261016`, branch `lane/a12-cpx-makecode-20261016`.
 Base `8da2afe2fe64f9301f9045796317e241314a26b5`. Contract: task A12 in
 [the owner-selected queue](docs/OPEN-TASKS-2026-09-29.md), following the delivered
 [A9 device world](docs/A9-CPX-SCOPING.md).
+
+Candidate controls: 43 host checks pass with zero failures; one existing runtime
+bridge check is unavailable locally and remains required in hosted CI. Twelve
+independent source/control mutations are detected. All 244 pinned documentation
+fences are accounted for with zero silent call losses; prior census sections and
+135 other importer methods remain byte-identical. Twelve original-simulator
+comparisons and the actual production CPX browser journey are prepared, NOT yet
+qualified. Final exact-head CI and affected hosted qualification must succeed
+before merge. [Behaviour and limits](docs/A12-CPX-TRANSLATOR.md).
 
 Own a new `overlay/scratch-gui/src/lib/bw-makecode/adafruit-translate.js`;
 CPX-only target inference/import dispatch in that directory's `index.js`;

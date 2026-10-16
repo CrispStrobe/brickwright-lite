@@ -32,6 +32,7 @@ import {extractMicroPython} from './micropython-hex.js';
 import {microbitToPseudocode} from './microbit-translate.js';
 import {arcadeToPseudocode} from './arcade-translate.js';
 import {ev3ToPseudocode} from './ev3-translate.js';
+import {adafruitToPseudocode} from './adafruit-translate.js';
 import {fetchSharedProject} from './share.js';
 
 export {sniffFormat, unpackMakeCodeSource, describeProject} from './embedded-source.js';
@@ -42,6 +43,7 @@ export {parseShareId, fetchSharedProject} from './share.js';
 export {microbitToPseudocode} from './microbit-translate.js';
 export {arcadeToPseudocode} from './arcade-translate.js';
 export {ev3ToPseudocode} from './ev3-translate.js';
+export {adafruitToPseudocode} from './adafruit-translate.js';
 export {exportToMakeCodeEv3, projectToEv3Ts} from './export-ev3.js';
 export {exportToMakeCodeCalliope, projectToCalliopeTs} from './export-calliope.js';
 export {parseImageLiteral, parseJres, imageToSvg, ARCADE_PALETTE} from './arcade-assets.js';
@@ -69,9 +71,13 @@ export function inferTarget (files = {}, hint = '') {
     if (/microbit/.test(hint)) return 'microbit';
     if (/calliope/.test(hint)) return 'calliopemini';
     if (/ev3/.test(hint)) return 'ev3';
+    if (/adafruit/.test(hint)) return 'adafruit';
     const source = files['main.ts'] || '';
+    const cpxSource = source.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`[^`]*`|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
+        text => text.startsWith('`') ? [...text.matchAll(/\$\{([\s\S]*?)\}/g)].map(m => m[1]).join(' ') : ' ');
     if (/\b(motors\.(large|medium)[A-D]|sensors\.(touch|color|ultrasonic|gyro|infrared)[1-4]|brick\.(show|button|setStatusLight))/.test(source)) return 'ev3';
     if (/\b(sprites\.create|scene\.|controller\.|tiles\.|info\.setScore)/.test(source)) return 'arcade';
+    if (/\b(light\.|input\.(button[AB]|buttonsAB|switchRight)\b|CPlayPinName\b|music\.(baDing|magicWand|siren)\b)/.test(cpxSource)) return 'adafruit';
     if (/\b(basic\.|input\.on|pins\.digital|radio\.|led\.plot)/.test(source)) return 'microbit';
     return 'unknown';
 }
@@ -89,9 +95,24 @@ export function inferTarget (files = {}, hint = '') {
  * @returns {object} the same shape importArtefact returns
  */
 export function importProjectFiles (files = {}, opts = {}) {
-    const target = opts.target || inferTarget(files);
+    let target = opts.target || inferTarget(files);
+    // Unknown container metadata is not a positive target identity. Recover
+    // CPX from its distinct vocabulary without changing other target routes.
+    if (target === 'unknown' && inferTarget(files) === 'adafruit') target = 'adafruit';
     const name = opts.name || '';
     const main = files['main.ts'] || files['main.py'] || '';
+
+    if (target === 'adafruit') {
+        const reason = files['main.py'] ? 'main.py — CPX MakeCode Python translation is not implemented'
+            : 'CPX source — no main.ts was recovered for translation';
+        const translated = files['main.ts'] ? adafruitToPseudocode(files['main.ts'], {name})
+            : {code: `DEVICE CPX\n\n# unsupported: ${reason}\n`, unsupported: [reason]};
+        return {
+            kind: 'makecode', lang: 'pseudocode', code: translated.code,
+            source: main, unsupported: translated.unsupported, costumes: [], files,
+            project: {target, name, version: opts.version || ''}, note: 'adafruit'
+        };
+    }
 
     // A Calliope mini goes through the micro:bit translator on purpose:
     // makecode.calliope.cc is a pxt-microbit derivative, and `basic.*`,
