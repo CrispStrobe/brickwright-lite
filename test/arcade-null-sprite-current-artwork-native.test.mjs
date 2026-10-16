@@ -109,20 +109,25 @@ function currentUploads(archive){
 }
 
 test('current artwork survives source/Code/same and fresh SB3/current export with the physical null x failure',async()=>{
-    const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);assert.equal(imported.costumes.length,1);onePixel(imported.costumes[0].svg);record('source-import',{source,...imported});const runs=[];
+    const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);assert.equal(imported.costumes.length,1);onePixel(imported.costumes[0].svg);record('source-import',{source,...imported});let live=null;
+    const start=async(code,options)=>{assert.equal(live,null,'only one live VM at a time');live=await runProgram(code,options);return live;};
+    const close=label=>{if(!live)return;const run=live;live=null;try{run.vm.stopAll();run.vm.clear();}finally{run.vm.quit();clearStrayTimers();record(label+'-cleanup',{phase:'after-observation cleanup',targets:run.vm.runtime.targets.length,calls:[...run.calls],errors:run.errors});}};
     try{
-        const first=await runProgram(imported.code,{frames:0,uploads:imported.costumes,storage:true});runs.push(first);assert.deepEqual(first.creator.warnings,[]);await trigger(first,'source');
+        const first=await start(imported.code,{frames:0,uploads:imported.costumes,storage:true});assert.deepEqual(first.creator.warnings,[]);await trigger(first,'source');
         const archive=await currentArchive(first,'source'),code=first.creator.decompile(archive.project);record('code-feedback',{code});
-        const codeRun=await runProgram(code,{frames:0,uploads:currentUploads(archive),storage:true});runs.push(codeRun);assert.deepEqual(codeRun.creator.warnings,[]);await trigger(codeRun,'code');await currentArchive(codeRun,'code');
-        first.vm.stopAll();await first.vm.loadProject(archive.bytes);first.calls.clear();first.errors.length=0;first.vm.greenFlag();await trigger(first,'same-sb3');await currentArchive(first,'same-sb3');
-        const fresh=await runProgram('DEVICE ARCADE\nSPRITE Game:\nWHEN arcade source starts:\n  hide',{frames:0,storage:true});runs.push(fresh);
+        // Reuse the first VM before another VM can register global dispatch
+        // service names. Actual counters/errors remain raw in prior artifacts.
+        first.vm.stopAll();await first.vm.loadProject(archive.bytes);first.calls.clear();first.errors.length=0;first.vm.greenFlag();await trigger(first,'same-sb3');await currentArchive(first,'same-sb3');close('source-and-same');
+        const codeRun=await start(code,{frames:0,uploads:currentUploads(archive),storage:true});assert.deepEqual(codeRun.creator.warnings,[]);await trigger(codeRun,'code');await currentArchive(codeRun,'code');close('code');
+        const fresh=await start('DEVICE ARCADE\nSPRITE Game:\nWHEN arcade source starts:\n  hide',{frames:0,storage:true});
         fresh.vm.stopAll();await fresh.vm.loadProject(archive.bytes);fresh.calls.clear();fresh.errors.length=0;fresh.vm.greenFlag();await trigger(fresh,'fresh-sb3');
         const current=await currentArchive(fresh,'fresh-sb3');
         const exported=projectToArcade(current.project,{costumeSvg:(_target,costume)=>{assert.ok(current.images.has(costume.assetId),'export reads actual CURRENT saved asset');return current.images.get(costume.assetId);}});
-        record('current-export',exported);assert.deepEqual(exported.unsupported,[]);assert.deepEqual(exported.warnings,[]);
+        record('current-export',exported);assert.deepEqual(exported.unsupported,[]);assert.deepEqual(exported.warnings,[]);close('fresh-sb3');
         const again=arcadeToPseudocode(exported.files);record('current-reimport',again);assert.deepEqual(again.unsupported,[]);assert.equal(again.costumes.length,1);onePixel(again.costumes[0].svg);
-        const replay=await runProgram(again.code,{frames:0,uploads:again.costumes,storage:true});runs.push(replay);assert.deepEqual(replay.creator.warnings,[]);await trigger(replay,'current-reimport');await currentArchive(replay,'current-reimport');
-    }finally{for(const run of runs){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
+        const replay=await start(again.code,{frames:0,uploads:again.costumes,storage:true});assert.deepEqual(replay.creator.warnings,[]);await trigger(replay,'current-reimport');await currentArchive(replay,'current-reimport');close('current-reimport');
+    }finally{close('final');}
+
 });
 
 test('physical nonnull getters return expected values through actual renamed variable IDs',async()=>{
