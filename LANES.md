@@ -5548,7 +5548,7 @@ changes no runtime semantics, and claims no physical hardware acceptance.
 
 ## STM32 composition: original 386 boot register reader — 2026-10-16
 
-CLAIMED — Codex root, branch `lane/stm32-compose-20261016`, isolated
+DONE candidate — Codex root, branch `lane/stm32-compose-20261016`, isolated
 `/tmp/brickwright-stm32-compose-20261016`, amendment based on main `e1e5bc30b`.
 Merge this claim before changing the existing synthetic boot assertion in
 `scripts/verify-i80386-local-hdd-gui.mjs`: read the selected supplier's `edi`
@@ -5567,3 +5567,15 @@ of those scenarios. Preserve any newer owner work during normal composition.
 No relaxed comparison, fallback register name, timeout increase, skipped gate,
 CI bypass or source rewrite is permitted. The corrected actual browser gate
 and all enabled final-head source checks must pass before integration merge.
+
+The original synthetic check now reads `edi` with all other comparisons and
+timeouts unchanged. The unchanged original failed locally at45000ms and in both
+hosted light jobs; those logs remain retained. The corrected production journey
+passes using the same selected Boardf84, owned disk SHA256
+`f9e63c15c20fc87058d053c3badbc0d146206543af0dc2af7a7e05537184474a`
+and unchanged config: halted PC31770, VGA720×400, actual guest pixels equal the
+video frame, nonblack marker and zero browser errors. Receipt and screenshot:
+`/tmp/brickwright-stm32-hdd-fixed.log`, `/tmp/brickwright-stm32-hdd-fixed.png`.
+The failed original is the regression negative; no duplicate source-spelling
+test is added for this one-line reader fix. One automatic fresh final-head CI
+set remains required before PR1017 merges; original PR975 remains untouched.
