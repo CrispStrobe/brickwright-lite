@@ -161,3 +161,11 @@ including artwork callbacks. Unresolved foreign calls remain diagnostics.
 Prototype-sensitive native procedure dictionaries remain an unresolved runtime
 name-support gap; a conservative owner refusal does not implement that support.
 Source and authored controls alone do not qualify the candidate.
+
+Owner schema checks include actual definition/prototype/formal socket tags,
+arity, parent/role/shadow identity and stock-call input shapes. Plain-project
+snapshots reject hidden or symbol properties and accessors without invoking
+getters; ordinary Array length is the schema exception. Generated legacy
+callback `sprite`/`otherSprite` formals and restart-script `_g` declarations
+also reserve lexical hygiene. Authored source controls cover these actual
+callback/restart bodies as well as malformed and post-plan hidden edits.

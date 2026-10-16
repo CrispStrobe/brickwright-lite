@@ -11,6 +11,15 @@ const literal=(target,block,name)=>{
  const slot=block.inputs?.[name]?.[1];if(Array.isArray(slot)&&slot[0]===10&&typeof slot[1]==='string')return slot[1];
  const value=typeof slot==='string'&&target.blocks[slot];return value?.opcode==='text'&&value.shadow===true&&typeof value.fields?.TEXT?.[0]==='string'?value.fields.TEXT[0]:null;
 };
+const primitive=slot=>Array.isArray(slot)&&((slot.length===2&&[4,5,6,7,8,9,10].includes(slot[0])&&['string','number'].includes(typeof slot[1]))||(slot.length===3&&[11,12,13].includes(slot[0])&&typeof slot[1]==='string'&&typeof slot[2]==='string'));
+function inputSocket(target,slot,parent){
+ if(!Array.isArray(slot))return false;
+ const node=(id,shadow)=>typeof id==='string'&&Object.hasOwn(target.blocks,id)&&target.blocks[id]?.parent===parent&&target.blocks[id]?.shadow===shadow;
+ if(slot[0]===1&&slot.length===2)return primitive(slot[1])||node(slot[1],true);
+ if(slot[0]===2&&slot.length===2)return node(slot[1],false);
+ if(slot[0]===3&&slot.length===3)return node(slot[1],false)&&(primitive(slot[2])||node(slot[2],true));
+ return false;
+}
 // A plain current project, including object identity, is the authority. This
 // snapshot never invokes accessors or stringifies a caller-supplied object.
 function snapshot(value){
@@ -22,7 +31,7 @@ function snapshot(value){
   if(typeof v!=='object'||active.has(v)){valid=false;return null;}
   const proto=Object.getPrototypeOf(v);if(proto!==Object.prototype&&proto!==Array.prototype&&proto!==null){valid=false;return null;}
   active.add(v);identities.push(v);const fields=[];
-  for(const key of Object.keys(v)){const d=Object.getOwnPropertyDescriptor(v,key);if(!d||!Object.hasOwn(d,'value')){valid=false;continue;}fields.push([key,walk(d.value)]);}
+  for(const key of Reflect.ownKeys(v)){const d=Object.getOwnPropertyDescriptor(v,key);if(typeof key!=='string'||!d||!Object.hasOwn(d,'value')||!d.enumerable&&!(Array.isArray(v)&&key==='length')){valid=false;continue;}fields.push([key,walk(d.value)]);}
   active.delete(v);return [Array.isArray(v)?'array':'object',fields];
  };
  const tree=walk(value);return valid?{text:JSON.stringify(tree),identities}:null;
@@ -57,7 +66,9 @@ function hygiene(project){
    if(block.opcode==='arcade_setTilemap'){try{const data=JSON.parse(literal(target,block,'DATA'));for(const image of data.images||[]){const id=image.tileId;if(typeof id==='string')add(id.split('.')[0]);}}catch(_){/* Original resource validator retains its diagnostics. */}}
   }
  }
- add('self');add('_t');
+ // These are real surrounding lexical declarations in the legacy callback and
+ // restart-script emitters, not current graph formal/local reporters.
+ add('self');add('_t');add('_g');add('sprite');add('otherSprite');
  return name=>reserved.has(name)||families.some(pattern=>pattern.test(name))||[...suffixBases].some(base=>name===base||name.startsWith(base)&&/^_+$/.test(name.slice(base.length)));
 }
 
@@ -65,16 +76,17 @@ export function createOrdinaryExportSymbols(project,note=()=>{}){
  const initial=snapshot(project),byTarget=new Map(),records=[],pins=new Map(),reported=new Set();
  const report=message=>{if(!reported.has(message)){reported.add(message);note('Arcade ordinary symbol: '+message);}};
  const current=()=>{const now=snapshot(project);return !!initial&&!!now&&initial.text===now.text&&initial.identities.length===now.identities.length&&initial.identities.every((v,i)=>v===now.identities[i]);};
- if(!initial||!project||!Array.isArray(project.targets)||new Set(project.targets).size!==project.targets.length){report('requires an actual plain current project');return{current:()=>false,name:()=>null,values:()=>[],pin:()=>false,call:()=>null};}
+ if(!initial||!project||!Object.hasOwn(project,'targets')||!Array.isArray(project.targets)||new Set(project.targets).size!==project.targets.length||project.targets.some(target=>!target||typeof target!=='object'||Array.isArray(target)||!Object.hasOwn(target,'name')||!Object.hasOwn(target,'isStage')||typeof target.name!=='string'||typeof target.isStage!=='boolean'||target.blocks!=null&&(typeof target.blocks!=='object'||Array.isArray(target.blocks)))){report('requires an actual plain current project');return{current:()=>false,name:()=>null,values:()=>[],pin:()=>false,call:()=>null};}
  const blocked=new Set();
  for(const[targetIndex,target]of project.targets.entries()){
   const table=new Map();byTarget.set(target,table);const blocks=target.blocks||{},definitions=new Map();
   for(const[id,definition]of Object.entries(blocks))if(definition?.opcode==='procedures_definition'){
    const protoId=definition.inputs?.custom_block?.[1],prototype=typeof protoId==='string'&&blocks[protoId],code=prototype?.mutation?.proccode;
    if(typeof code!=='string'||!code){report('definition requires a fixed actual procedure code');continue;}
+   const socket=(slot,child)=>Array.isArray(slot)&&slot.length===2&&slot[0]===1&&slot[1]===child;
    const ids=list(prototype.mutation.argumentids),names=list(prototype.mutation.argumentnames),defaults=list(prototype.mutation.argumentdefaults),placeholders=[...code.matchAll(/%([sbn])/g)];
-   let valid=definition.topLevel===true&&definition.parent==null&&keys(definition.inputs,['custom_block'])&&prototype.opcode==='procedures_prototype'&&prototype.parent===id&&prototype.next==null&&ids&&names&&defaults&&ids.length===names.length&&ids.length===defaults.length&&ids.length===placeholders.length&&ids.every(v=>typeof v==='string'&&v)&&names.every(v=>typeof v==='string'&&v)&&new Set(ids).size===ids.length&&new Set(names).size===names.length&&new Set(names.map(ident)).size===names.length&&keys(prototype.inputs||{},ids);
-   if(valid)for(let i=0;i<ids.length;i++){const childId=prototype.inputs[ids[i]]?.[1],child=typeof childId==='string'&&blocks[childId];if(!child||child.parent!==protoId||child.next!=null||child.topLevel===true||child.fields?.VALUE?.[0]!==names[i]||child.opcode!==(placeholders[i][1]==='b'?'argument_reporter_boolean':'argument_reporter_string_number'))valid=false;}
+   let valid=definition.topLevel===true&&definition.shadow===false&&definition.parent==null&&keys(definition.fields||{},[])&&keys(definition.inputs,['custom_block'])&&socket(definition.inputs.custom_block,protoId)&&Object.hasOwn(blocks,protoId)&&prototype.opcode==='procedures_prototype'&&prototype.shadow===true&&prototype.topLevel===false&&keys(prototype.fields||{},[])&&prototype.parent===id&&prototype.next==null&&ids&&names&&defaults&&ids.length===names.length&&ids.length===defaults.length&&ids.length===placeholders.length&&ids.every(v=>typeof v==='string'&&v)&&names.every(v=>typeof v==='string'&&v)&&new Set(ids).size===ids.length&&new Set(names).size===names.length&&new Set(names.map(ident)).size===names.length&&keys(prototype.inputs||{},ids);
+   if(valid)for(let i=0;i<ids.length;i++){const childId=prototype.inputs[ids[i]]?.[1],child=typeof childId==='string'&&blocks[childId];if(!socket(prototype.inputs[ids[i]],childId)||!Object.hasOwn(blocks,childId)||!child||child.shadow!==true||child.topLevel!==false||!keys(child.inputs||{},[])||!keys(child.fields||{},['VALUE'])||child.mutation!=null||child.parent!==protoId||child.next!=null||child.fields?.VALUE?.[0]!==names[i]||child.opcode!==(placeholders[i][1]==='b'?'argument_reporter_boolean':'argument_reporter_string_number'))valid=false;}
    if(Object.hasOwn(Object.prototype,code))valid=false;
    if(Object.values(blocks).filter(b=>b?.opcode==='procedures_prototype'&&b.mutation?.proccode===code).length!==1||definitions.has(code))valid=false;
    if(definitions.has(code)){blocked.add(definitions.get(code));table.delete(code);}
@@ -100,7 +112,7 @@ export function createOrdinaryExportSymbols(project,note=()=>{}){
   if(!current()||!byTarget.has(target)||Object.values(target.blocks||{}).filter(b=>b===block).length!==1){report('call is not an actual current owned block');return null;}
   const code=block?.opcode==='procedures_call'?block.mutation?.proccode:block?.opcode==='arcade_callFunction'?literal(target,block,'NAME'):null,r=typeof code==='string'&&record(target,code);
   if(!r)return null;
-  if(block.opcode==='procedures_call'){const ids=list(block.mutation?.argumentids);if(!ids||JSON.stringify(ids)!==JSON.stringify(r.ids)||!keys(block.inputs||{},r.ids)){report('call ordered formal/input binding differs');return null;}}
+  if(block.opcode==='procedures_call'){const ids=list(block.mutation?.argumentids);const callId=Object.keys(target.blocks).find(id=>target.blocks[id]===block);if(!ids||JSON.stringify(ids)!==JSON.stringify(r.ids)||!keys(block.inputs||{},r.ids)||ids.some(id=>!inputSocket(target,block.inputs[id],callId))){report('call ordered formal/input binding differs');return null;}}
   if(block.opcode==='arcade_callFunction'){const seen=new Set();let parent=block,slot=block.inputs?.ARGS?.[1],child=typeof slot==='string'&&target.blocks[slot];while(child?.opcode==='arcade_functionArgument'){if(seen.has(child)||child.parent!==Object.keys(target.blocks).find(id=>target.blocks[id]===parent)||!keys(child.inputs||{},['VALUE','REST'])){report('managed argument chain ownership differs');return null;}seen.add(child);parent=child;slot=child.inputs.REST?.[1];child=typeof slot==='string'&&target.blocks[slot];}if(!(Array.isArray(slot)&&slot[0]===10&&slot[1]==='[]')&&!(child?.opcode==='text'&&child.shadow===true&&child.fields?.TEXT?.[0]==='[]')){report('managed argument chain requires its actual terminator');return null;}}
   return name(target,code);
  };

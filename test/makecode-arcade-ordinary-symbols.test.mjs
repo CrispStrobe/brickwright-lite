@@ -121,3 +121,51 @@ test('managed calls bind actual current argument-chain ownership without padding
  const t=target('Game');procedure(t,'f');const c={opcode:'arcade_callFunction',parent:null,next:null,topLevel:true,shadow:false,fields:{},inputs:{NAME:[1,[10,'f']],ARGS:[1,[10,'[]']]}};t.blocks.call=c;const{symbols}=plan(project(t));assert.equal(symbols.call(t,c),'f');
  const other=target('Game');procedure(other,'f');const a={opcode:'arcade_functionArgument',parent:'call',next:null,topLevel:false,shadow:false,fields:{},inputs:{VALUE:[1,[4,'1']],REST:[1,'arg']}};other.blocks.call={...c,inputs:{...c.inputs,ARGS:[1,'arg']}};other.blocks.arg=a;const bad=plan(project(other));assert.equal(bad.symbols.call(other,other.blocks.call),null);assert.ok(bad.notes.some(n=>n.includes('argument chain')));
 });
+
+test('definition/prototype/formal sockets and shadow roles are actual schema, not just slot[1]',()=>{
+ const changes=[
+  (t,p)=>p.definition.inputs.custom_block[0]=99,
+  (t,p)=>p.definition.inputs.custom_block.push('extra'),
+  (t,p)=>p.definition.shadow=true,
+  (t,p)=>p.prototype.shadow=false,
+  (t,p)=>p.prototype.topLevel=true,
+  (t,p)=>p.prototype.inputs[p.ids[0]][0]=99,
+  (t,p)=>p.prototype.inputs[p.ids[0]].push('extra'),
+  (t,p)=>t.blocks[p.prototype.inputs[p.ids[0]][1]].shadow=false,
+  (t,p)=>t.blocks[p.prototype.inputs[p.ids[0]][1]].inputs.hidden=[1,[4,'0']],
+  (t,p)=>t.blocks[p.prototype.inputs[p.ids[0]][1]].fields.hidden=['x',null]
+ ];
+ for(const edit of changes){const t=target('Game'),p=procedure(t,'f %s',['value']);edit(t,p);const{symbols,notes}=plan(project(t));assert.equal(symbols.name(t,'f %s'),null);assert.ok(notes.some(n=>n.includes('malformed')));}
+ const t=target('Game'),p=procedure(t,'f %s',['value']),c=stock(t,p);c.inputs[p.ids[0]]=[99,[4,'1']];const bad=plan(project(t));assert.equal(bad.symbols.call(t,c),null);assert.ok(bad.notes.some(n=>n.includes('input binding')));
+});
+
+test('plain JSON owner snapshots reject hidden and symbol semantic properties without getter calls',()=>{
+ for(const edit of [
+  (p,t,d,get)=>Object.defineProperty(d.prototype.mutation,'proccode',{get,enumerable:false}),
+  (p,t,d,get)=>Object.defineProperty(d.prototype.mutation,'argumentnames',{get,enumerable:false}),
+  (p,t,d,get)=>Object.defineProperty(d.prototype,'hidden',{value:'unrepresented',enumerable:false}),
+  (p,t,d,get)=>Object.defineProperty(d.prototype,Symbol('hidden'),{value:'unrepresented',enumerable:true})
+ ]){const t=target('Game'),d=procedure(t,'f');let getterCalls=0;const p=project(t);edit(p,t,d,()=>{getterCalls++;return'f';});const{symbols,notes}=plan(p);assert.equal(symbols.current(),false);assert.equal(symbols.name(t,'f'),null);assert.equal(getterCalls,0);assert.ok(notes.length);}
+});
+
+test('post-plan hidden formal or managed NAME edits expire before any getter is read',()=>{
+ for(const kind of ['formal','NAME']){const t=target('Game'),d=procedure(t,'f'),c={opcode:'arcade_callFunction',inputs:{NAME:[1,[10,'f']],ARGS:[1,[10,'[]']]},fields:{},parent:null,topLevel:true,shadow:false,next:null};t.blocks.call=c;const p=project(t),{symbols,notes}=plan(p);let getterCalls=0;
+  if(kind==='formal')Object.defineProperty(d.prototype.mutation,'argumentnames',{get(){getterCalls++;return'[]';},enumerable:false});
+  else Object.defineProperty(c.inputs,'NAME',{get(){getterCalls++;return[1,[10,'f']];},enumerable:false});
+  assert.equal(symbols.current(),false);assert.equal(symbols.call(t,c),null);assert.equal(getterCalls,0);assert.ok(notes.some(n=>n.includes('changed')||n.includes('actual current')));
+ }
+});
+
+const astNodes=(root,predicate)=>{const result=[];const visit=node=>{if(!node||typeof node!=='object')return;if(predicate(node))result.push(node);for(const value of Object.values(node))if(typeof value==='object')Array.isArray(value)?value.forEach(visit):visit(value);};visit(root);return result;};
+function callbackProject(name,opcode){
+ const t=target('Game'),d=procedure(t,name),p=project(t);p.targets[0].variables.result=['answer',0];t.blocks.write={opcode:'data_setvariableto',inputs:{VALUE:[1,[4,'7']]},fields:{VARIABLE:['answer','result']},parent:d.id,next:null,topLevel:false,shadow:false};d.definition.next='write';const call=stock(t,d);call.parent='hat';call.topLevel=false;
+ t.blocks.hat={opcode,inputs:opcode==='arcade_whenSpritesOverlap'?{A:[1,[10,'0']],B:[1,[10,'1']]}:opcode==='event_whenbroadcastreceived'?{}:{KIND:[1,[10,'0']]},fields:opcode==='event_whenbroadcastreceived'?{BROADCAST_OPTION:['go','broadcast']}:{},parent:null,next:Object.keys(t.blocks).find(id=>t.blocks[id]===call),topLevel:true,shadow:false};return p;
+}
+
+test('actual legacy created and overlap callback formals cannot capture ordinary function calls',()=>{
+ for(const[name,opcode]of [['sprite','arcade_whenSpriteCreated'],['otherSprite','arcade_whenSpritesOverlap']]){const p=callbackProject(name,opcode),before=JSON.stringify(p),result=projectToArcade(p);assert.deepEqual(result.unsupported,[]);assert.equal(JSON.stringify(p),before);const ast=parseMakeCodeTs(result.files['main.ts']),callbacks=astNodes(ast,n=>n.type==='FunctionExpression'&&n.params?.includes(name));assert.equal(callbacks.length,1);const calls=astNodes(callbacks[0].body,n=>n.type==='Call'&&n.callee?.type==='Identifier');assert.equal(calls.length,1);assert.notEqual(calls[0].callee.name,name);assert.ok(ast.body.some(n=>n.type==='FunctionDeclaration'&&n.name===calls[0].callee.name));assert.match(result.files['main.ts'],/answer\s*=\s*7/);}
+});
+
+test('actual restartable broadcast script _g local cannot capture an ordinary _g call',()=>{
+ const p=callbackProject('_g','event_whenbroadcastreceived'),before=JSON.stringify(p),result=projectToArcade(p);assert.deepEqual(result.unsupported,[]);assert.equal(JSON.stringify(p),before);const ast=parseMakeCodeTs(result.files['main.ts']),scripts=astNodes(ast,n=>n.type==='FunctionDeclaration'&&astNodes(n.body,b=>b.type==='Declaration'&&b.decls?.some(d=>d.name==='_g')).length>0);assert.equal(scripts.length,1);const calls=astNodes(scripts[0].body,n=>n.type==='Call'&&n.callee?.type==='Identifier');assert.equal(calls.some(n=>n.callee.name==='_g'),false);assert.ok(calls.some(n=>ast.body.some(d=>d.type==='FunctionDeclaration'&&d.name===n.callee.name&&astNodes(d.body,b=>b.type==='Assignment'&&b.left?.name==='answer').length>0)));assert.match(result.files['main.ts'],/answer\s*=\s*7/);
+});
