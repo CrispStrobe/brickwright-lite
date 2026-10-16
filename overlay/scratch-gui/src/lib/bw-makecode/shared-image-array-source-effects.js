@@ -259,7 +259,11 @@ export function prepareSharedImageEntryEffects(program,sourceContext=null) {
             // No validity/Buffer producer or global F permission follows.
             if(api==='Buffer.fromHex'&&node.args.length===1&&node.args[0]?.type==='String'&&
                 typeof node.args[0].value==='string'&&node.args[0].value.length<=2097153&&/^[0-9a-f]*$/i.test(node.args[0].value))effect={kind:'disjoint-literal-buffer'};
-            if(api==='info.showScore'&&node.args.length===1&&node.args[0]?.type==='Boolean')effect={kind:'disjoint'};
+            if(api==='info.showScore'&&node.args.length===1&&node.args[0]?.type==='Boolean') {
+                const value=descriptor(node.args[0],'value');
+                if(value&&Object.hasOwn(value,'value')&&typeof value.value==='boolean')
+                    effect={kind:'disjoint',scoreHudVisibility:true};
+            }
             if(api==='textsprite.create'&&text&&node.args.length>=1&&node.args.length<=3)effect={kind:'private-text'};
             // music.play may yield and enter a stored callback. Its existing F
             // command permission does not make a captured entry state stable.
@@ -300,6 +304,36 @@ export function consumeSharedImageEntryEffects(program,sourceContext,consume) {
     const current=()=>!!currentSharedImageEntryEffect(program,facade,program,'current');
     let result;try{result=consume(lookup,current);}finally{active=false;}
     return current()?result:null;
+}
+
+
+// Exact physical score command only. The private entry facade already proves
+// SDK binding, all writers and method/namespace nonescape. HUD allocation,
+// scene-frame scheduling and device/redraw publication remain actual ordered
+// operations; this certificate is neither a value fact nor a reentry waiver.
+export function sourceScoreHudVisibilityNonExposure(program,sourceContext=null) {
+    const profile=prepareSharedImageEntryEffects(program,sourceContext);
+    if(!profile)return null;
+    let expired=false;
+    const current=()=>{
+        if(expired)return false;
+        try {
+            if(!currentSharedImageEntryEffect(program,profile,program,'current'))expired=true;
+        } catch(error) {expired=true;throw error;}
+        return !expired;
+    };
+    if(!current())return null;
+    const calls=new WeakSet(),p=entryProfiles.get(profile);
+    // The profile admitted this entire own-data traversal domain. No parser,
+    // producer or user method is called while collecting its exact call facts.
+    const visit=value=>{
+        if(!value||typeof value!=='object')return;
+        if(p.calls.get(value)?.scoreHudVisibility===true)calls.add(value);
+        for(const key of Reflect.ownKeys(value))if(!metadata.has(key))visit(descriptor(value,key).value);
+    };
+    visit(program);
+    if(!current())return null;
+    return Object.freeze({current,has:call=>current()&&calls.has(call)});
 }
 
 

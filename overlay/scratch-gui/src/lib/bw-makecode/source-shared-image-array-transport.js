@@ -1,5 +1,5 @@
 import {sourceImageArrayCloneEffects} from './source-value-producers.js';
-import {currentSharedImageSourceEffects,sharedImageSourceContextCurrent,sourceOverlapDestroyNonExposure} from './shared-image-array-source-effects.js';
+import {currentSharedImageSourceEffects,sharedImageSourceContextCurrent,sourceOverlapDestroyNonExposure,sourceScoreHudVisibilityNonExposure} from './shared-image-array-source-effects.js';
 import {analyseCallableBindings} from './callable-bindings.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {parseExactImgLiteral} from './arcade-assets.js';
@@ -243,9 +243,14 @@ function prove(program, sourceContext = null) {
             ['left','right','top','bottom'].includes(target.name))continue;
         return null;
     }
-    let overlapDestroyEffects,imageArrayCloneEffects;
+    let overlapDestroyEffects,imageArrayCloneEffects,scoreHudEffects;
     for(const node of nodes)if(node.type==='Call' && node.callee.type==='Member') {
-        if(sdk.has(node.callee)) {if(!sdkEffects.has(path(node.callee)) && !musicPlaybackEffect(node))return null;}
+        if(sdk.has(node.callee)) {
+            if(!sdkEffects.has(path(node.callee))&&!musicPlaybackEffect(node)) {
+                if(path(node.callee)!=='info.showScore'||
+                    !(scoreHudEffects ||= sourceScoreHudVisibilityNonExposure(program,sourceContext))?.has(node))return null;
+            }
+        }
         else if(!methods[kind(node.callee.object)]?.has(node.callee.name)) {
             if(node.callee.name==='destroy'&&(overlapDestroyEffects ||= sourceOverlapDestroyNonExposure(program,sourceContext))?.has(node))continue;
             // A successful exact ordinary entry may prove this call's receiver
@@ -254,7 +259,7 @@ function prove(program, sourceContext = null) {
                 !(imageArrayCloneEffects ||= sourceImageArrayCloneEffects(program,sourceContext))?.has(node))return null;
         }
     }
-    return {...physical,current:()=>physical.current()&&(!sourceContext||sharedImageSourceContextCurrent(sourceContext)),candidates,selections};
+    return {...physical,current:()=> (!scoreHudEffects||scoreHudEffects.current())&&physical.current()&&(!sourceContext||sharedImageSourceContextCurrent(sourceContext)),candidates,selections};
 }
 
 /** Private plan for one current compiler input. No decoder or predicate option. */

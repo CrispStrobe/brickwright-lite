@@ -767,3 +767,82 @@ test('Image callback invariant facts permanently expire and cannot be transplant
     const r=parse(callbackImageSource),query=sourceImageArrayCloneEffects(r),index=callbackUse(r).callee.object.index,old=index.right;
     index.right={type:'Number',value:'0'};assert.equal(query.has(callbackUse(r)),false);index.right=old;assert.equal(query.has(callbackUse(r)),false);
 });
+
+import {sourceScoreHudVisibilityNonExposure} from '../overlay/scratch-gui/src/lib/bw-makecode/shared-image-array-source-effects.js';
+const scoreHudSource=`let firstKind=SpriteKind.create();${array}let selected=pictures[0];info.showScore(false);let ordinary:number[]=[];ordinary.push(2);info.showScore(true);let nextKind=SpriteKind.create();console.log(selected.getPixel(0,0));console.log(ordinary[0]);`;
+const scoreHudCalls=program=>entryNodes(program).filter(node=>node.type==='Call'&&node.callee?.type==='Member'&&node.callee.object?.name==='info'&&node.callee.name==='showScore');
+const scoreHudRoles=project=>{
+    const owners=project.targets.filter(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_setHudVisibility'));assert.equal(owners.length,1);
+    const target=owners[0],blocks=target.blocks,commands=Object.entries(blocks).filter(([,block])=>block.opcode==='arcade_setHudVisibility');assert.equal(commands.length,2);
+    const roots=Object.entries(blocks).filter(([,block])=>block.opcode==='arcade_whenSourceStarts'),trace=[];
+    assert.equal(roots.length,1);let previous=roots[0][0],id=roots[0][1].next;
+    while(id){assert.ok(!trace.includes(id),'no connected command cycle');const block=blocks[id];assert.ok(block);assert.equal(block.parent,previous);trace.push(id);previous=id;id=block.next;}
+    const ordered=commands.sort((a,b)=>trace.indexOf(a[0])-trace.indexOf(b[0]));
+    const evidence=ordered.map(([id,block],index)=>{
+        assert.ok(trace.includes(id));assert.equal(block.fields.ELEMENT[0],'score');assert.equal(block.inputs.VISIBLE[0],2);
+        const booleanId=block.inputs.VISIBLE[1],boolean=blocks[booleanId];assert.ok(boolean);assert.equal(boolean.parent,id);assert.equal(boolean.opcode,'operator_equals');
+        assert.deepEqual(boolean.inputs.OPERAND1,[1,[4,index===0?'0':'1']]);assert.deepEqual(boolean.inputs.OPERAND2,[1,[4,'1']]);
+        return {id,booleanId,command:block,boolean};
+    });
+    const kinds=Object.entries(blocks).filter(([,block])=>block.opcode==='arcade_createSpriteKind');assert.equal(kinds.length,2);
+    const kindCommands=kinds.map(([,block])=>block.parent).sort((a,b)=>trace.indexOf(a)-trace.indexOf(b));assert.ok(kindCommands.every(id=>trace.includes(id)));
+    assert.ok(trace.indexOf(kindCommands[0])<trace.indexOf(evidence[0].id));assert.ok(trace.indexOf(kindCommands[1])>trace.indexOf(evidence[1].id));
+    const mutations=Object.entries(blocks).filter(([,block])=>block.opcode==='arrays_mutateReference');assert.equal(mutations.length,1);
+    assert.ok(trace.indexOf(evidence[0].id)<trace.indexOf(mutations[0][0]));assert.ok(trace.indexOf(mutations[0][0])<trace.indexOf(evidence[1].id));
+    return {owner:{isStage:target.isStage,name:target.name},root:roots[0][0],trace,evidence,kinds,mutation:mutations[0]};
+};
+test('exact score HUD visibility retains connected Boolean commands resources and public roundtrip order',async()=>{
+    const b=boundary(fixture(scoreHudSource)),direct=finish(b);assert.deepEqual([...direct.resource.frames.keys()],['pictures']);
+    const calls=scoreHudCalls(b.normalized),effect=sourceScoreHudVisibilityNonExposure(b.normalized,b.context);assert.equal(calls.length,2);assert.ok(calls.every(call=>effect?.has(call)));
+    const imported=convert(b.prepared.files);clean(imported);assert.ok(frames(imported.code).some(row=>row[1]==='pictures'));
+    const creator=new Creator();creator.parse(imported.code);record({stage:'score-hud-Creator',project:creator.project,channels:channels(creator)});clean(creator);
+    for(const item of imported.costumes)assert.equal(item.mode==='add'?creator.addCustomSVGCostume(item.sprite,item.svg,item.name):creator.applyCustomSVG(item.sprite,item.svg),true);
+    const roles=scoreHudRoles(creator.project);record({stage:'score-hud-connected-roles',roles});record({stage:'score-hud-Code',code:creator.decompile()});
+    const bytes=Buffer.from(await(await creator.generateSB3()).arrayBuffer()),zip=await JSZip.loadAsync(bytes),members={};
+    for(const [name,item]of Object.entries(zip.files))if(!item.dir)members[name]=await item.async('base64');
+    record({stage:'score-hud-SB3',bytes:bytes.toString('base64'),members,project:creator.project});
+    const exported=projectToArcade(creator.project,{costumeSvg:(_target,costume)=>creator.assets.get(costume.assetId)?.data});record({stage:'score-hud-export',result:exported,channels:channels(exported)});clean(exported);
+    const exportedCalls=scoreHudCalls(parse(arcadeProjectSource(exported.files).source));assert.equal(exportedCalls.length,2);assert.deepEqual(exportedCalls.map(call=>call.args[0]),[{type:'Boolean',value:false},{type:'Boolean',value:true}]);
+    const again=convert(prepareArcadeDependencyInputs(exported.files,fixture().resolved).files);clean(again);assert.equal(frames(again.code).filter(row=>row[1]==='pictures').length,frames(imported.code).filter(row=>row[1]==='pictures').length);
+    const second=new Creator();second.parse(again.code);record({stage:'score-hud-reimport-Creator',project:second.project,channels:channels(second)});clean(second);record({stage:'score-hud-reimport-connected-roles',roles:scoreHudRoles(second.project)});
+});
+test('score HUD effect requires exact literal Boolean own data and closed direct call schema',()=>{
+    for(const text of ['info.showScore();','info.showScore(false,true);','info.showScore(pictures);','info.showScore(pictures[0]);','info.showScore(unknown());','let visible:boolean;info.showScore(visible);','info["showScore"](false);','new info.showScore(false);','info.showScore<boolean>(false);']){
+        const p=parse(array+'let selected=pictures[0];'+text),calls=scoreHudCalls(p),proof=sourceScoreHudVisibilityNonExposure(p);
+        assert.ok(calls.every(call=>!proof?.has(call)),text);assert.equal(prepareSharedImageArrayTransport(p),null,text);
+    }
+    for(const change of [call=>{call.args[0].value='false';},call=>{delete call.args[0].value;},call=>{call.args[0].value={};},call=>{Object.defineProperty(call.args[0],'value',{get(){throw Error('never invoke Boolean accessor');}});},call=>{call.isNew=true;},call=>{call.typeArguments=[];}]){
+        const p=parse(array+'let selected=pictures[0];info.showScore(false);'),call=scoreHudCalls(p)[0];assert.equal(sourceScoreHudVisibilityNonExposure(p)?.has(call),true);change(call);
+        assert.ok(!sourceScoreHudVisibilityNonExposure(p)?.has(call));assert.equal(prepareSharedImageArrayTransport(p),null);
+    }
+    const other=parse(array+'let selected=pictures[0];info.showLife(false);');assert.equal(prepareSharedImageArrayTransport(other),null,'other HUD commands need their own effect contract');
+});
+test('score HUD exact call refuses namespace and method aliases escapes shadows and late writes',()=>{
+    const operation='info.showScore(false);',body=array+'let selected=pictures[0];';
+    for(const source of [
+        'let info=unknown;'+body+operation,body+operation+'info=unknown;',body+operation+'info.showScore=unknown;',
+        body+'let alias=info;'+operation,body+'let method=info.showScore;'+operation,
+        body+'function escape(){return info.showScore;}'+operation,
+        body+'function escape(){unknown(info.showScore);}'+operation,
+        body+'function escape(){let method=info.showScore;}'+operation,
+        body+'function escape(){info.showScore=unknown;}'+operation]){
+        const p=parse(source),calls=scoreHudCalls(p),proof=sourceScoreHudVisibilityNonExposure(p);assert.ok(calls.length);assert.ok(calls.every(call=>!proof?.has(call)),source);assert.equal(prepareSharedImageArrayTransport(p),null,source);
+    }
+    const p=parse(body+operation),call=scoreHudCalls(p)[0];assert.equal(sourceScoreHudVisibilityNonExposure(p)?.has(call),true,'physical direct callee is not method extraction');
+    const reentrant=boundary(fixture(callbackImageSource.replace('{bridge();});','{ordinary=[];bridge();});')+operation));
+    assert.equal(prepareSharedImageArrayTransport(reentrant.normalized,{sourceContext:reentrant.context}),null,'HUD permission never repairs callback-written Array invariants');
+});
+test('score HUD private certificate and finished transport retain sticky same Program dependencies',()=>{
+    const p=parse(array+'let selected=pictures[0];info.showScore(false);'),call=scoreHudCalls(p)[0],proof=sourceScoreHudVisibilityNonExposure(p);assert.equal(proof?.has(call),true);
+    assert.equal(proof.has({...call}),false);assert.equal(proof.has(scoreHudCalls(parse(array+'let selected=pictures[0];info.showScore(false);'))[0]),false);
+    const prior=call.args[0];call.args[0]={type:'Boolean',value:false};assert.equal(proof.has(call),false);call.args[0]=prior;assert.equal(proof.has(call),false);assert.equal(proof.current(),false);
+    const q=parse(array+'let selected=pictures[0];info.showScore(false);'),fresh=sourceScoreHudVisibilityNonExposure(q),value=scoreHudCalls(q)[0].args[0],d=Object.getOwnPropertyDescriptor(value,'value');
+    Object.defineProperty(value,'value',{...d,writable:false});assert.equal(fresh.current(),false);Object.defineProperty(value,'value',d);assert.equal(fresh.current(),false);
+    const observed=parse(array+'let selected=pictures[0];info.showScore(false);');let throwObservation=false;
+    observed.bwProcedureConstraintSource={opaqueObservation:new Proxy({}, {ownKeys(){if(throwObservation)throw Error('currentness observation failed');return [];}})};
+    const guarded=sourceScoreHudVisibilityNonExposure(observed);assert.equal(guarded?.has(scoreHudCalls(observed)[0]),true);
+    throwObservation=true;assert.throws(()=>guarded.current(),/currentness observation failed/);throwObservation=false;assert.equal(guarded.current(),false,'caught currentness exception also permanently expires the certificate');
+    const b=boundary(fixture(scoreHudSource));assert.equal(sourceScoreHudVisibilityNonExposure(b.normalized,{})?.has(scoreHudCalls(b.normalized)[0])??false,false);
+    const final=finish(b).final;assert.ok(currentSharedImageArrayTransport(final));const currentCall=scoreHudCalls(final)[0],old=currentCall.args[0].value;
+    currentCall.args[0].value=!old;assert.equal(currentSharedImageArrayTransport(final),null);currentCall.args[0].value=old;assert.equal(currentSharedImageArrayTransport(final),null,'restored actual AST cannot reactivate consumed HUD proof');
+});
