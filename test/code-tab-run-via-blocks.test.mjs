@@ -19,3 +19,8 @@ test('the fe tab runs fe\'s own interpreter on RISC-V through the hosted C route
     assert.match(source, /return this\.runCOnRiscv\('server', feProgramToC\(this\.activeCode\(\)\)\);/);
     assert.match(source, /async runCOnRiscv \(forceRoute, sourceOverride\)/);
 });
+
+test('the Forth tab runs zForth on RISC-V through the hosted C route', () => {
+    assert.match(source, /data-testid="bw-forth-run-riscv"/);
+    assert.match(source, /return this\.runCOnRiscv\('server', forthProgramToC\(this\.activeCode\(\)\)\);/);
+});

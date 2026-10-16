@@ -2084,6 +2084,18 @@ copyleft.
   bw-board 8086 DOS bench, which mounts the user's program as `PROG.FTH`. Blocks
   ⇄ Forth is `overlay/scratch-gui/src/lib/bw-lang/forth.js`.
 
+### zForth source for board targets
+
+`overlay/scratch-gui/src/lib/bw-lang/forth-target-c.js` (mirrored under
+`packages/scratch-gui`) embeds zForth's `zforth.h`, `zforth.c` and
+`forth/core.zf` from the same commit, with zForth's MIT licence text.
+They are unmodified except that `zforth.h`'s `#include "zfconf.h"` is
+replaced by our own configuration (after the upstream Linux `zfconf.h`:
+float cells, trace off, 16 KiB dictionary) and `zforth.c`'s
+`#include "zforth.h"` is left out. The host functions are ours. The Code
+tab joins them with the user's program into one C file, which the hosted
+RISC-V compiler builds; the image runs in the browser RISC-V simulator.
+
 ## Free 80386 AT firmware (Bochs BIOS + LGPL VGABios) — LGPL-2.1
 
 The **fully-free 386** machine boots FreeDOS in the browser on redistributable
