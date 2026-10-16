@@ -1,3 +1,4 @@
+import {preservesSharedImageArray,sharedImageArrayOrigin} from './source-shared-image-array-transport.js';
 import {analyseSourceValueProducers} from './source-value-producers.js';
 import {fixedControllerRepeatReceiver} from './controller-repeat-source.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
@@ -9,7 +10,7 @@ import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
  * Source: microsoft/pxt v13.2.1 pxtcompiler/emitter/emitter.ts (MIT).
  * The original selected worker execution remains the semantic authority.
  */
-export function lowerPxtStagedValues(program, {isStaticResource = () => false, isArrayQuery = () => false, lowerArrayMap = () => null, lowerIntegerDivision = () => null, onlySelected = null} = {}) {
+export function lowerPxtStagedValues(program, {isStaticResource = () => false, isArrayQuery = () => false, lowerArrayMap = () => null, lowerIntegerDivision = () => null, onlySelected = null, sharedImageArrayPlan = null} = {}) {
     const names=new Set();
     const scan=node=>{
         if(!node || typeof node!=='object')return;
@@ -67,7 +68,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
                 // originalBody metadata, conditions, expressions or class fields.
                 const bodyList=!Array.isArray(value)&&(['Program','FunctionDeclaration','FunctionExpression','Block','While','For'].includes(Object.getOwnPropertyDescriptor(value,'type')?.value)&&own==='body'||Object.getOwnPropertyDescriptor(value,'type')?.value==='If'&&['consequent','alternate'].includes(own));
                 if(Array.isArray(child)&&bodyList)bodyLists.add(child);
-                if(typeof child==='function'||typeof child==='symbol')closed=false;
+                if(typeof child==='function'||typeof child==='symbol'&&!sharedImageArrayOrigin(sharedImageArrayPlan,child,own))closed=false;
                 visit(child,value,own);
             }
             active.delete(value);
@@ -243,6 +244,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
             // Keep every existing value-lowering hook/resource protocol above.
             // Only the allocation transport is omitted, at this exact current
             // statement/literal position after callback currentness is checked.
+            if(directStatement&&preservesSharedImageArray(sharedImageArrayPlan,program,node,directStatement))return {prefix:[],value:node};
             if(directStatement&&directEmpty(directStatement,node))return {prefix:[],value:node};
             // Array.map supplies an index as its second argument, never an
             // actual statement/literal pair; it cannot authorize this shortcut.
