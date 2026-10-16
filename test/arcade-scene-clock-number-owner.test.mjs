@@ -2,11 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {EventEmitter} from 'node:events';
 import {createRequire} from 'node:module';
+import {readFileSync} from 'node:fs';
 const require=createRequire(import.meta.url),clock=require('../overlay/scratch-vm/src/util/bw-scene-clock-number'),loan=require('../overlay/scratch-vm/src/util/bw-primitive-owner');
 
 // Authored execution-boundary model, not a Scratch VM or original SDK run.
 // Actual source/adapter/native/current-project controls are separate tests.
-function fixture(value) {
+function fixture(value,beforeBind=null) {
     if(arguments.length===0)value=42;
     const runtime=new EventEmitter(),scene={_sceneValueId:'scene:1',elapsedMs:value},scenes=new Map([['scene:1',scene]]);
     let serial=0,reads=0,legacyReads=0;
@@ -25,7 +26,7 @@ function fixture(value) {
     const actual=(args,u)=>service.read(args,u,read,legacy);
     const prototype={getInfo(){return clock.declaration({id:'arcade',blocks:[{opcode:'sceneMillis',arguments:{}}]},owner);}};
     const adapter=Object.assign(Object.create(prototype),{_inst:instance,sceneMillis:actual});
-    const info=adapter.getInfo();clock.bindAdapterInfo(info,adapter,instance);
+    const info=adapter.getInfo();if(beforeBind)beforeBind(info.blocks[0]);clock.bindAdapterInfo(info,adapter,instance);
     const row=info.blocks[0],registered=(args,u)=>adapter.sceneMillis(args,u);
     runtime._primitives.arcade_sceneMillis=registered;runtime._primitives.arcade_inspectValue=()=>{};
     const category={id:'arcade',blocks:[{json:{type:'arcade_sceneMillis'},info:{...row,func:registered}}]};runtime._blockInfo.push(category);runtime.emit('EXTENSION_ADDED',category);
@@ -74,7 +75,7 @@ for(const mode of ['loan without read','changed return','copied arguments','thro
     assert.throws(()=>f.report(work),mode==='throw after read'?/original throw/:/real finite reporter completion/);
     assert.equal(f.consume(),false,'failed call cannot leave a completion');
 });
-for(const mode of ['parent value','block graph','cached function','cache order','argument identity','metadata function','opcode lookup','adapter delegate','scene ABA','stopped thread','foreign target','new stack frame','yield resume','Stop','Load','dispose'])test('completed clock refuses '+mode+' without rereading',()=>{
+for(const mode of ['parent value','block graph','cached function','cache order','argument identity','metadata function','metadata extra argument','metadata accessor arguments','metadata schema descriptor','opcode lookup','adapter delegate','scene ABA','stopped thread','foreign target','new stack frame','yield resume','Stop','Load','dispose'])test('completed clock refuses '+mode+' without rereading',()=>{
     const f=fixture();f.begin();assert.equal(f.report(),42);assert.equal(f.consume(),true);
     if(mode==='parent value')f.cache.root._argValues.VALUE=43;
     if(mode==='block graph')f.nodes.clock.fields.EXTRA={value:1};
@@ -82,6 +83,9 @@ for(const mode of ['parent value','block graph','cached function','cache order',
     if(mode==='cache order')f.cache.root._ops.reverse();
     if(mode==='argument identity')f.cache.clock._argValues={...f.cache.clock._argValues};
     if(mode==='metadata function')f.category.blocks[0].info.func=()=>42;
+    if(mode==='metadata extra argument')f.category.blocks[0].info.arguments.EXTRA={type:'number'};
+    if(mode==='metadata accessor arguments')Object.defineProperty(f.category.blocks[0].info,'arguments',{get(){throw Error('must not read schema accessor');}});
+    if(mode==='metadata schema descriptor')Object.defineProperty(f.category.blocks[0].info,'arguments',{writable:false});
     if(mode==='opcode lookup')f.runtime.getOpcodeFunction=function(name){return this._primitives[name];};
     if(mode==='adapter delegate')f.adapter.sceneMillis=()=>42;
     if(mode==='scene ABA')f.sceneABA();
@@ -105,4 +109,33 @@ test('only a fresh genuine registration issue renews clock ownership; an older u
 test('runtime-free and duplicate service objects retain direct fallback behavior without result ownership',()=>{
     const fallback=clock.create(null,null);assert.equal(fallback.read({},null,()=>{throw Error('not a certified read');},()=>Infinity),Infinity);assert.equal(fallback.eligible({},{}),false);
     const f=fixture(),foreign=clock.create(f.runtime,{isCurrent:()=>true});f.begin();assert.throws(()=>f.report(()=>foreign.read(f.cache.clock._argValues,f.util,f.read,f.legacy)),/real finite reporter completion/);assert.equal(f.consume(),false);assert.deepEqual(f.counts(),{reads:0,legacyReads:1});
+});
+
+test('schema mutation before adapter issuance or registration cannot authorize a clock',()=>{
+    assert.throws(()=>fixture(42,row=>{row.arguments.EXTRA={type:'number'};}),/zero-argument schema/);
+    let beforeIssueReads=0;assert.throws(()=>fixture(42,row=>Object.defineProperty(row,'arguments',{get(){beforeIssueReads++;return {};}})),/zero-argument schema/);assert.equal(beforeIssueReads,0);
+    const f=fixture(),row=f.issue();row.arguments.EXTRA={type:'number'};f.refresh(row);assert.throws(f.begin,/actual input segment owner differs/);assert.deepEqual(f.counts(),{reads:0,legacyReads:0});
+    const owner={isInstance:()=>true,isCurrent:()=>true};
+    assert.throws(()=>clock.declaration({id:'arcade',blocks:[{opcode:'sceneMillis',arguments:{EXTRA:{}}}]},owner),/zero-argument schema/);
+    let getters=0;const bad={opcode:'sceneMillis'};Object.defineProperty(bad,'arguments',{get(){getters++;return {};}});
+    assert.throws(()=>clock.declaration({id:'arcade',blocks:[bad]},owner),/zero-argument schema/);assert.equal(getters,0);
+});
+
+// Evaluate only the actual source method against a modeled read boundary. This
+// isolates its pre-read guard from unrelated real VM frame/state maintenance.
+test('actual clock read callback refuses inherited access before the existing initializer',()=>{
+    const source=readFileSync(new URL('../overlay/scratch-vm/src/extensions/crispstrobe/arcade/index.js',import.meta.url),'utf8');
+    const start=source.indexOf('    sceneMillis(args,util) {'),end=source.indexOf('\n    _state() {',start);
+    assert.ok(start>=0&&end>start);const body=source.slice(start,end),services=new WeakMap();
+    const method=Function('sceneClockValues','return ({'+body+'}).sceneMillis;')(services);
+    let accessorReads=0,initializations=0;const state={},instance={_runtime:{bwArcadeDeviceState:state},_state(){initializations++;if(state.elapsedMs===undefined)state.elapsedMs=0;return state;}};
+    services.set(instance,{read:(_args,_util,read)=>read()});
+    assert.equal(Object.getOwnPropertyDescriptor(Object.prototype,'elapsedMs'),undefined);
+    try{
+        Object.defineProperty(Object.prototype,'elapsedMs',{get(){accessorReads++;return 42;},configurable:true});
+        assert.throws(()=>method.call(instance,{},{}),/clock accessor is not owned data/);
+        assert.equal(accessorReads,0);assert.equal(initializations,0);
+    }finally{delete Object.prototype.elapsedMs;}
+    state.elapsedMs=undefined;assert.deepEqual(method.call(instance,{},{}),{state,value:0});assert.equal(initializations,1,'genuine own undefined initialization stays live');
+    services.set(instance,{read:(_args,_util,_read,legacy)=>legacy()});state.elapsedMs='historical';assert.equal(method.call(instance,{},null),'historical','direct historical path remains unchanged and uncertified');
 });

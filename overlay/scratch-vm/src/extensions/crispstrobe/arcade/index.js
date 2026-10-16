@@ -1134,7 +1134,10 @@ module.exports = makeExt(`// Name: Arcade
         const existing=current?.value;
         if(existing&&typeof existing==='object'){
           const prototype=Object.getPrototypeOf(existing),elapsed=Object.getOwnPropertyDescriptor(existing,'elapsedMs');
-          if(prototype!==Object.prototype&&prototype!==null||elapsed&&!Object.prototype.hasOwnProperty.call(elapsed,'value'))throw Error('Scene clock Number: clock accessor is not owned data');
+          // _state reads elapsedMs before initializing it: an inherited getter
+          // must not run on the certified path when the own value is absent.
+          let inherited=false;for(let parent=prototype;parent;parent=Object.getPrototypeOf(parent))if(Object.getOwnPropertyDescriptor(parent,'elapsedMs')){inherited=true;break;}
+          if(prototype!==Object.prototype&&prototype!==null||!elapsed&&inherited||elapsed&&!Object.prototype.hasOwnProperty.call(elapsed,'value'))throw Error('Scene clock Number: clock accessor is not owned data');
         }
         const state=this._state(),elapsed=Object.getOwnPropertyDescriptor(state,'elapsedMs');
         if(!elapsed||!Object.prototype.hasOwnProperty.call(elapsed,'value'))throw Error('Scene clock Number: clock value is not owned data');

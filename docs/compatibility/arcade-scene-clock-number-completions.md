@@ -73,3 +73,10 @@ interaction, same/fresh editor reopening and actual rendered output remain GUI
 acceptance work. The stopwatch's external Timer.start writer and start/millis
 cycle, plus Sparks' independent class/callback/Font gaps, remain held. This
 single clock candidate does not close them.
+
+The original empty argument schema is checked as own data at declaration,
+adapter issuance, registration and every current-proof boundary. Reusing the
+same object after adding a key or replacing its descriptor is refused. The
+certified source read also refuses inherited clock descriptors before calling
+the existing initializer; the direct historical service path stays unchanged.
+These authored successor controls remain unexecuted until finite qualification.

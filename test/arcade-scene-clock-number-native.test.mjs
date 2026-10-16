@@ -39,7 +39,7 @@ test('scene clock two sequential ordinary Number callers survive current Code, s
     }finally{if(run)finish(run);}
 });
 
-for(const mode of ['registered function','source method','adapter delegate','metadata function','opcode lookup','text clock state','nonfinite clock state','current extra field','current extra input'])test('scene clock native Number argument refuses '+mode+' before constrained effects',async t=>{
+for(const mode of ['registered function','source method','adapter delegate','metadata function','metadata extra argument','metadata accessor arguments','opcode lookup','text clock state','nonfinite clock state','current extra field','current extra input'])test('scene clock native Number argument refuses '+mode+' before constrained effects',async t=>{
     const result=imported(source);assert.deepEqual(result.unsupported,[]);let run,restore=()=>{};
     try{
         run=await runProgram(result.code,{frames:20});accepted(t,'genuine before '+mode,run);run.vm.stopAll();run.vm.greenFlag();const runtime=run.vm.runtime,{adapter,ext}=instance(run);
@@ -47,6 +47,8 @@ for(const mode of ['registered function','source method','adapter delegate','met
         if(mode==='source method'){ext.sceneMillis=()=>42;restore=()=>{delete ext.sceneMillis;};}
         if(mode==='adapter delegate'){const original=adapter.sceneMillis;adapter.sceneMillis=()=>42;restore=()=>{adapter.sceneMillis=original;};}
         if(mode==='metadata function'){const category=runtime._blockInfo.find(category=>category.id==='arcade'),entry=category.blocks.find(entry=>entry.json?.type==='arcade_sceneMillis'),original=entry.info.func;entry.info.func=()=>42;restore=()=>{entry.info.func=original;};}
+        if(mode==='metadata extra argument'){const entry=runtime._blockInfo.find(category=>category.id==='arcade').blocks.find(entry=>entry.json?.type==='arcade_sceneMillis');entry.info.arguments.EXTRA={type:'number'};restore=()=>{delete entry.info.arguments.EXTRA;};}
+        if(mode==='metadata accessor arguments'){const info=runtime._blockInfo.find(category=>category.id==='arcade').blocks.find(entry=>entry.json?.type==='arcade_sceneMillis').info,descriptor=Object.getOwnPropertyDescriptor(info,'arguments');Object.defineProperty(info,'arguments',{get(){throw Error('must not read schema accessor');},configurable:true});restore=()=>Object.defineProperty(info,'arguments',descriptor);}
         if(mode==='opcode lookup'){const original=runtime.getOpcodeFunction;runtime.getOpcodeFunction=function(name){return original.call(this,name);};restore=()=>{runtime.getOpcodeFunction=original;};}
         if(mode==='text clock state')runtime.bwArcadeDeviceState.elapsedMs='42';
         if(mode==='nonfinite clock state')runtime.bwArcadeDeviceState.elapsedMs=Infinity;

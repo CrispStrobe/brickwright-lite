@@ -8,6 +8,18 @@ let issueSerial=0;
 const fail=message=>{throw Error('Scene clock Number: '+message);};
 const own=(object,name)=>{const descriptor=object&&Object.getOwnPropertyDescriptor(object,name);return descriptor&&Object.hasOwn(descriptor,'value')?descriptor:null;};
 const loan=()=>require('./bw-primitive-owner'); // avoid a module initialization cycle
+// This reporter's genuine declaration has an empty own-data schema. Identity
+// alone cannot protect a retained object from in-place metadata mutation.
+function argumentsSchema(entry) {
+    const descriptor=own(entry,'arguments'),value=descriptor?.value;
+    if(!value||typeof value!=='object'||Object.getPrototypeOf(value)!==Object.prototype||Reflect.ownKeys(value).length)return null;
+    for(const key in value)return null;
+    return descriptor;
+}
+function sameSchema(entry,saved) {
+    const now=argumentsSchema(entry);
+    return !!now&&now.value===saved.value&&now.enumerable===saved.enumerable&&now.configurable===saved.configurable&&now.writable===saved.writable;
+}
 function adapterCurrent(owner,record) {
     return !!record&&owner.isCurrent()&&owner.isInstance(record.instance)&&
         own(record.adapter,'_inst')?.value===record.instance&&own(record.adapter,'sceneMillis')?.value===record.delegate&&
@@ -16,7 +28,7 @@ function adapterCurrent(owner,record) {
 }
 function declaration(info,owner) {
     const entries=info?.id==='arcade'&&info.blocks?.filter(row=>row.opcode==='sceneMillis');
-    if(entries?.length!==1||!owner)fail('original declaration owner missing');
+    if(entries?.length!==1||!owner||!argumentsSchema(entries[0]))fail('original declaration owner or zero-argument schema missing');
     rows.set(entries[0],owner);Object.defineProperty(entries[0],rowOwner,{value:owner,enumerable:true});return info;
 }
 function bindAdapterInfo(info,adapter,instance) {
@@ -27,7 +39,8 @@ function bindAdapterInfo(info,adapter,instance) {
     let record=adapters.get(owner);if(!record){record={adapter,instance,delegate,prototype,getInfo};adapters.set(owner,record);}
     if(record.adapter!==adapter||record.instance!==instance||record.delegate!==delegate||!adapterCurrent(owner,record))fail('adapter identity changed');
     if(Object.hasOwn(entry,rowIssue))fail('source declaration issuance was reused');
-    const token=Object.freeze({});issues.set(token,{owner,adapter:record,arguments:entry.arguments,serial:++issueSerial,consumed:false});
+    const schema=argumentsSchema(entry);if(!schema)fail('original declaration zero-argument schema changed');
+    const token=Object.freeze({});issues.set(token,{owner,adapter:record,schema,serial:++issueSerial,consumed:false});
     Object.defineProperty(entry,rowIssue,{value:token,enumerable:true});
 }
 // Snapshot own data only: public getters cannot stand in for current Blocks.
@@ -85,14 +98,14 @@ function create(runtime,owner) {
         if(category?.id!=='arcade'||!valid)return;
         const entries=category.blocks?.filter(row=>row.json?.type===opcode),entry=entries?.length===1&&entries[0],issue=issues.get(entry?.info?.[rowIssue]),adapter=adapters.get(owner),func=entry?.info?.func;
         if((refresh?registration?.category!==category:!!registration)||!issue||issue.consumed||issue.serial<=(registration?.issue.serial||0)||issue.owner!==owner||issue.adapter!==adapter||
-            issue.arguments!==entry?.info?.arguments||entry?.info?.[rowOwner]!==owner||!adapterCurrent(owner,adapter)||!runtime._blockInfo?.includes(category)||
+            !sameSchema(entry?.info,issue.schema)||entry?.info?.[rowOwner]!==owner||!adapterCurrent(owner,adapter)||!runtime._blockInfo?.includes(category)||
             typeof lookup!=='function'||runtime.getOpcodeFunction!==lookup||typeof func!=='function'||lookup.call(runtime,opcode)!==func){valid=false;return;}
-        issue.consumed=true;registration={category,entry,issue,adapter,func,arguments:entry.info.arguments};generation++;segments=new WeakMap();pending=new WeakMap();
+        issue.consumed=true;registration={category,entry,issue,adapter,func,schema:argumentsSchema(entry.info)};generation++;segments=new WeakMap();pending=new WeakMap();
     };
     const current=()=>valid&&active&&!disposed&&registration&&adapterCurrent(owner,registration.adapter)&&runtime.getOpcodeFunction===lookup&&
         lookup.call(runtime,opcode)===registration.func&&runtime._blockInfo?.includes(registration.category)&&registration.category.id==='arcade'&&
         registration.category.blocks?.filter(row=>row.json?.type===opcode).length===1&&registration.category.blocks.includes(registration.entry)&&
-        registration.entry.info?.func===registration.func&&registration.entry.info?.arguments===registration.arguments&&
+        registration.entry.info?.func===registration.func&&sameSchema(registration.entry.info,registration.schema)&&
         registration.entry.info?.[rowOwner]===owner&&issues.get(registration.entry.info?.[rowIssue])===registration.issue&&registration.issue.consumed;
     const invalidate=()=>{generation++;active=false;segments=new WeakMap();pending=new WeakMap();};
     const context=()=>{
