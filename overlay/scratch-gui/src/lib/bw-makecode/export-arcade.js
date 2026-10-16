@@ -191,6 +191,15 @@ class ArcadeEmitter {
         this.animationFrameProducers = createAnimationFrameArrayProducers(opts);
         this.arrayReceiverAuthority = createArrayReferenceExportAuthority(project, opts, this.animationFrameProducers);
         this.unsupported = [];
+        // Diagnose each physical current clock reporter without rendering its
+        // consumer. A malformed ordinary caller can be rejected before its
+        // arguments are emitted; that must not hide this independent refusal.
+        // This is validation only: it creates no Number fact or emission state.
+        for (const target of project.targets) for (const block of Object.values(target.blocks || {})) {
+            if (block?.opcode === 'arcade_sceneMillis' && !currentSceneClockNumber(target.blocks, block)) {
+                this.note('Scene clock Number: current zero-input reporter or unique parent differs');
+            }
+        }
         // Freeze actual owners before any host artwork callback can edit the project.
         this.functionSymbols=createOrdinaryExportSymbols(project,message=>this.note(message));
         this.sourceScalarCells=new Map();this.sourceReferenceCells=new Map();this.validScalarPrelude=true;
