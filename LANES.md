@@ -5693,3 +5693,12 @@ and require actual menu-driven download/import and focused omitted-wake and
 omitted-replay negatives; no direct VM state injection or invented output.
 Merge this claim before implementation. Source merge requires all enabled
 exact-head CI, with normal composition preserving the pending A13 CPX bridge.
+
+STM32 composition reconciliation (2026-10-16): previous head7a82a14f passed
+every enabled hosted check in run38945321982. Current main6f2993d6b adds the
+qualified iOS packaging and independent Sim Lab slice, plus claims. Original
+PR975 advanced to4d0cabe24: its matrix label is already present; its register
+reader fix is incorporated with the explanatory comment while retaining this
+386-only gate's strict edi assertion and existing timeout, per the merged claim.
+Normal merges preserve both histories and all newer main changes. This changed
+combined head requires fresh exact-head CI before landing.
