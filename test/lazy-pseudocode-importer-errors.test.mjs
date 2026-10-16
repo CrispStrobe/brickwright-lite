@@ -32,7 +32,11 @@ test('the innermost failing component is named from the React stack', () => {
 });
 
 test('a chunk without a default export fails with a named, stale-build error', () => {
-    assert.match(source, /\.then\(module => \{[\s\S]*?bwStaleBuild = true[\s\S]*?\}\)\.catch/);
+    // The check sits in the loader's .then, before its .catch resets the request.
+    const start = source.indexOf('.then(module => {');
+    const end = source.indexOf('}).catch(error => {', start);
+    assert.ok(start > 0 && end > start, 'the loader validates the module before its catch');
+    assert.ok(source.slice(start, end).includes('error.bwStaleBuild = true;'));
     assert.match(source, /"pseudocode-importer" chunk loaded without a default/);
     assert.match(source, /componentDidCatch \(error, info\)/);
     assert.match(source, /Reload page/);
