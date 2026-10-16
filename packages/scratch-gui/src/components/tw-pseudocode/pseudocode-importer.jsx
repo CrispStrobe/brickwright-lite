@@ -185,7 +185,7 @@ const L10N = {
         toBlocks: '⇦ To blocks', toBlocksTitle: l => `Compile this ${l} into blocks`,
         fromBlocks: 'From blocks ⇨', fromBlocksTitle: 'Read the current blocks back into all languages',
         compactToBlocks: '⇦ Blocks', compactFromBlocks: 'Blocks ⇨',
-        run: 'Run', runBasic: '▶ Run BASIC', runFe: '▶ Run fe', runTcl: '▶ Run Tcl', runForth: '▶ Run Forth',
+        run: 'Run', runBasic: '▶ Run BASIC', runFe: '▶ Run fe', runTcl: '▶ Run Tcl', runForth: '▶ Run Forth', animationLabel: 'Animation',
         nqcCompile: '⚙ Compile .rcx', nqcSend: '🧱 Send to RCX',
         nqcEmpty: 'Type some NQC first.',
         nqcNoCompiler: 'This build has no local NQC compiler.',
@@ -516,7 +516,7 @@ const L10N = {
         toBlocks: '⇦ Zu Blöcken', toBlocksTitle: l => `Diesen ${l}-Code zu Blöcken kompilieren`,
         fromBlocks: 'Von Blöcken ⇨', fromBlocksTitle: 'Das aktuelle Projekt in alle Sprachen einlesen',
         compactToBlocks: '⇦ Blöcke', compactFromBlocks: 'Blöcke ⇨',
-        run: 'Ausführen', runBasic: '▶ BASIC ausführen', runFe: '▶ fe ausführen', runTcl: '▶ Tcl ausführen', runForth: '▶ Forth ausführen',
+        run: 'Ausführen', runBasic: '▶ BASIC ausführen', runFe: '▶ fe ausführen', runTcl: '▶ Tcl ausführen', runForth: '▶ Forth ausführen', animationLabel: 'Animation',
         nqcCompile: '⚙ .rcx kompilieren', nqcSend: '🧱 An RCX senden',
         nqcEmpty: 'Zuerst NQC eingeben.',
         nqcNoCompiler: 'Dieser Build hat keinen lokalen NQC-Compiler.',
@@ -6068,8 +6068,8 @@ class PseudocodeImporter extends React.Component {
                     const item = {display: 'block', width: '100%', textAlign: 'left', whiteSpace: 'nowrap'};
                     return <div data-testid="bw-code-animation-resources"
                         style={{display: 'flex', gap: 6, alignItems: 'center', margin: '4px 0', position: 'relative'}}>
-                        <label title="Animation">🎞{' '}
-                            <select data-testid="bw-code-animation-picker" value={id} aria-label="Animation"
+                        <label title={this.L.animationLabel}>🎞{' '}
+                            <select data-testid="bw-code-animation-picker" value={id} aria-label={this.L.animationLabel}
                                 onChange={event => this.setState({animationResourceId: event.target.value})}>
                                 {!resources.length ? <option value="">{de ? 'Zuerst in Pixel veröffentlichen' : 'Publish a timeline in Pixel first'}</option> : null}
                                 {items.map(entry => <option key={entry.value} value={entry.value}>{entry.text}</option>)}
