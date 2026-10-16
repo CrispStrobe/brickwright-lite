@@ -162,3 +162,38 @@ identifies target versions 1.4.43, 1.4.43 and 1.4.36 respectively. All three
 compile with the pinned target, infer CPX and retain named refusals for their
 unsupported photon, custom-melody or external-strip operations. This sample
 does not establish compatibility with newer editor APIs.
+
+## Observed original-runtime boundaries
+
+The [fifteen-program diagnostic run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38917231822)
+has ten exact matching comparisons and the same five strict failures. The
+instrumented derivatives preserve every original captured frame, ordered tone
+and serial line before reaching those failures. All five original factory
+hashes match the compiler-only source maps used to interpret their function
+names and continuation positions. This admits the diagnostic observations;
+the failed unit shard remains failed.
+
+In the brightness program, the original `NeoPixelStrip.show()` yields at
+300 ms while its published ring still aliases the buffer being scaled. Six
+pixels already have the new brightness and four retain the previous value.
+At 900 ms, three pixels have changed and seven retain the previous value.
+The completed buffers are sent at 305 and 905 ms respectively. These are the
+exact partial arrays captured by the original headless reader; they are not
+evidence that the translator lost a pixel command.
+
+For the animation and single-pixel programs, the original runtime yields
+at the 300 ms button-release boundary before the first buffer is published
+at 305 ms. The native extension has already completed its frame at 300 ms.
+For the siren, the original mixer queues both notes at 205 ms, with offsets
+of zero and 125 ms, producing requested start times of 205 and 330 ms;
+the native readings are 200 and 326 ms. For beep-beep, the original yields
+at 300 ms, publishes its orange frame at 305 ms, and its SDK `autoShow()`
+then pauses for one millisecond before the tone is queued at 306 ms.
+The native tone is recorded at 300 ms.
+
+These observations explain the selected original-runtime boundaries in this
+finite headless comparison. They do not establish actual Scratch VM or physical
+device timing parity. The five equality assertions remain enforced. A proposed
+change to separately named exact timing-boundary tests is unapplied pending
+the owner's decision; successful actual browser qualification and fresh
+final-head CI would still be required.
