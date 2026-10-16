@@ -4412,24 +4412,56 @@ class PseudocodeImporter extends React.Component {
      * not express, and what it approximated, is listed there too.
      */
     async runOnNuttxPython () {
+        const caller = {cancelled: false};
+        this._nuttxCodeCaller = caller;
+        const owns = () => this._nuttxCodeCaller === caller;
+        const active = () => owns() && !caller.cancelled;
+        const publish = state => { if (owns()) this.setState(state); };
+        let pane = null;
         this.openSpikeArena();
-        this.setState({busy: true});
-        const feedback = createCodeRunFeedback(state => this.setState(state), {
+        if (!owns()) return;
+        publish({busy: true});
+        const feedback = createCodeRunFeedback(publish, {
             running: 'Python running in full NuttX firmware.', completed: 'Python firmware program completed.', stopped: this.L.spike3Stopped});
+        if (!owns()) return;
+        // Install cancellation before waiting for the arena or its state callback.
+        this._spike3Stop = () => {
+            if (!owns()) return;
+            caller.cancelled = true;
+            feedback.requestStop();
+            const stoppedPane = pane;
+            return Promise.resolve().then(() => {
+                if (!owns() || !stoppedPane || stoppedPane.disposed || window.__bwSpikeArena?._pane !== stoppedPane) return;
+                return stoppedPane.stopProgram();
+            }).catch(error => {
+                // The shared Stop handler has an unscoped async catch. Keep the
+                // error here so a former caller cannot publish into a new run.
+                publish({status: error.message});
+            });
+        };
         try {
             const source = this.activeCode();
             const deadline = Date.now() + 15000;
-            while (!window.__bwSpikeArena?.bridge && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
-            const pane = window.__bwSpikeArena?._pane;
-            if (!pane?.bridge) throw new Error('Open the SPIKE arena before running firmware');
+            while (active() && !window.__bwSpikeArena?.bridge && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
+            if (!active()) return;
+            pane = window.__bwSpikeArena?._pane;
+            if (!pane?.bridge || pane.disposed) throw new Error('Open the SPIKE arena before running firmware');
             await new Promise(resolve => pane.setState({execution: 'nuttx'}, resolve));
-            this._spike3Stop = () => { feedback.requestStop(); return pane.stopProgram(); };
-            await pane.startFirmware(null, {source, ...feedback.callbacks,
-                onOutput: output => this.setState({spike3Log: [{kind: 'out', text: output.text + (output.truncated ? '\n… output truncated' : '')}]})});
+            if (!active()) return;
+            if (pane.disposed || window.__bwSpikeArena?._pane !== pane) {
+                caller.cancelled = true; feedback.requestStop(); return;
+            }
+            const callbacks = Object.fromEntries(Object.entries(feedback.callbacks).map(([name, callback]) =>
+                [name, (...args) => { if (active()) return callback(...args); }]));
+            await pane.startFirmware(null, {source, ...callbacks,
+                onOutput: output => {
+                    if (active()) publish({spike3Log: [{kind: 'out', text: output.text + (output.truncated ? '\n… output truncated' : '')}]});
+                }});
+            if (!active()) return;
             if (!pane.firmwareSession) throw new Error(pane.state.message || 'Full NuttX firmware could not start');
             feedback.started();
-        } catch (error) { if (!feedback.cancelled) this.setState({status: error.message}); }
-        finally { this.setState({busy: false}); }
+        } catch (error) { if (owns() && !feedback.cancelled) publish({status: error.message}); }
+        finally { publish({busy: false}); }
     }
 
     // New MicroPython execution glue: BSD-3-Clause, (c) 2026 Brickwright contributors.
