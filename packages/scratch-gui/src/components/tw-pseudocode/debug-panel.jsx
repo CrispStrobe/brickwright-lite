@@ -15,6 +15,7 @@ import {mergeTargetKinds} from '../../lib/bw-debug/target-kinds.js';
 import {reverseCycleControlStatus} from '../../lib/bw-debug/reverse-cycle-ui.js';
 import {ps2ButtonBit, ps2Delta} from '../../lib/bw-machines/ps2-pointer.js';
 import {promptAsync} from '../../lib/native-dialog.js';
+import {createRawHddDownload} from '../../lib/bw-machines/raw-hdd-download.js';
 
 // VDP screen — lazy-loaded, only renders when the runner has video output.
 const PortLeds = React.lazy(() =>
@@ -63,6 +64,10 @@ const L10N = {
         speed: 'Speed', idle: 'not running', building: 'building…', attaching: 'starting…',
         ready: 'ready', running: 'running', paused: 'paused', stepping: 'stepping…',
         error: 'error',
+        hddDownload: 'Download HDD image + JSON',
+        hddDownloadHint: 'Download a detached paused master-disk copy and its geometry/hash metadata',
+        hddDownloadPreparing: 'Preparing HDD image and metadata…',
+        hddDownloadInitiated: 'HDD image and JSON downloads initiated; check browser downloads. This is not a guest flush.',
         stepHint: 'Run to the next block boundary',
         serialHint: 'type a line, Enter sends it',
         terminalHint: 'Click the terminal and type: every key goes straight to Linux. ' +
@@ -196,7 +201,15 @@ class DebugPanel extends React.Component {
             machineConfig: null, serialInput: '', modemInput: '', modemStatus: null,
             firmwareName: null,
             recordingStatus: null, reverseStatus: null, timelineStatus: null,
-            sessionTransferStatus: null};
+            sessionTransferStatus: null, hddDownloadStatus: null, hddDownloadBusy: false};
+        this._hddDownloadMounted = false;
+        this._hddDownloadToken = {};
+        this._hddDownloadRunner = null;
+        this._hddDownloadPhase = 'idle';
+        this._hddDownloadHalt = undefined;
+        this._hddDownload = null;
+        this._hddDownloadPending = false;
+        this.onHddDownload = this.onHddDownload.bind(this);
         this.onStart = this.onStart.bind(this);
         this.onPause = this.onPause.bind(this);
         this.onStep = this.onStep.bind(this);
@@ -526,6 +539,7 @@ class DebugPanel extends React.Component {
     }
 
     componentDidMount () {
+        this._hddDownloadMounted = true;
         this.syncDeviceKind();
         // A NEW PROGRAM must not debug through the OLD program's runner:
         // loading an example kept the previous runner alive whenever the
@@ -808,6 +822,7 @@ class DebugPanel extends React.Component {
     }
 
     componentWillUnmount () {
+        this._hddDownloadMounted = false;
         const rt = this.props.vm && this.props.vm.runtime;
         if (rt && rt.off && this._onProjectChanged) rt.off('PROJECT_CHANGED', this._onProjectChanged);
         else if (rt && rt.removeListener && this._onProjectChanged) rt.removeListener('PROJECT_CHANGED', this._onProjectChanged);
@@ -827,6 +842,9 @@ class DebugPanel extends React.Component {
      *  creation is async (a chunk import), so a plain state check races —
      *  two concurrent runner() calls once produced two live machines. */
     _teardownRunner () {
+        this._invalidateHddDownload();
+        this._hddDownloadRunner = null;
+        this._hddDownloadPhase = 'idle';
         this._runnerStoppedExplicitly = false;
         this._mouseLeave();
         // The host shows a runner's board only while that runner lives (B8).
@@ -867,6 +885,7 @@ class DebugPanel extends React.Component {
             bootMedia: this._bootMedia,
             labwiredChip: this.state.kind === 'labwired' ? (this.state.labwiredChip || null) : null,
             onChange: (ui) => {
+                this._updateHddDownloadSession(runner, ui);
                 // Runner notifications arrive from rAF/target callbacks, outside
                 // React 16's event batching. The local panel and its CircuitTab
                 // parent both consume the same snapshot; without an explicit
@@ -893,6 +912,7 @@ class DebugPanel extends React.Component {
     }
 
     async onStart () {
+        this._invalidateHddDownload();
         // The runner is no longer a stopped image once a new start begins.
         // `ui.phase` may still read idle while attach() is awaiting chunks.
         this._runnerStoppedExplicitly = false;
@@ -965,14 +985,73 @@ class DebugPanel extends React.Component {
         }
     }
 
+    _supportsHddDownload (runner) {
+        return !!(runner && typeof runner.snapshotAtaMaster === 'function' &&
+            typeof runner.supports === 'function' && runner.supports('snapshotAtaMaster') === true);
+    }
+
+    _invalidateHddDownload () {
+        this._hddDownloadToken = {};
+        if (this._hddDownload) this._hddDownload.dispose();
+        this._hddDownload = null;
+        this._hddDownloadPending = false;
+        if (this._hddDownloadMounted && (this.state.hddDownloadBusy || this.state.hddDownloadStatus)) {
+            this.setState({hddDownloadBusy: false, hddDownloadStatus: null});
+        }
+    }
+
+    _updateHddDownloadSession (runner, ui) {
+        if (runner !== this._hddDownloadRunner ||
+            (this._hddDownloadPhase === 'paused' && ui.phase !== 'paused') ||
+            (this._hddDownloadPhase === 'paused' && ui.phase === 'paused' &&
+                ui.session?.why !== this._hddDownloadHalt)) {
+            this._invalidateHddDownload();
+        }
+        this._hddDownloadRunner = runner;
+        this._hddDownloadPhase = ui.phase;
+        this._hddDownloadHalt = ui.session?.why;
+    }
+
+    _hddDownloadSession () {
+        const runner = this.state.runner;
+        if (!this._hddDownloadMounted || this.state.ui.phase !== 'paused' ||
+            this._hddDownloadPhase !== 'paused' || runner !== this._hddDownloadRunner ||
+            !this._supportsHddDownload(runner)) return null;
+        return {target: runner, identity: this._hddDownloadToken};
+    }
+
+    async onHddDownload () {
+        const session = this._hddDownloadSession();
+        if (!session || this._hddDownloadPending) return;
+        if (!this._hddDownload) this._hddDownload = createRawHddDownload({
+            getActiveSession: () => this._hddDownloadSession()
+        });
+        const helper = this._hddDownload;
+        this._hddDownloadPending = true;
+        this.setState({hddDownloadBusy: true, hddDownloadStatus: this.tx('hddDownloadPreparing')});
+        let result;
+        try { result = await helper.download(); }
+        catch (error) { result = {refused: {reason: String(error?.message || error)}}; }
+        if (!this._hddDownloadMounted || this._hddDownload !== helper ||
+            this._hddDownloadToken !== session.identity || this.state.runner !== session.target) return;
+        this._hddDownloadPending = false;
+        this.setState({hddDownloadBusy: false, hddDownloadStatus: result.refused ?
+            result.refused.reason : this.tx('hddDownloadInitiated')});
+    }
+
     onPause () { if (this.state.runner) this.state.runner.pause(); }
     onStop () {
+        this._invalidateHddDownload();
         if (!this.state.runner) return;
         this._runnerStoppedExplicitly = true;
         this.state.runner.stop();
     }
-    async onStep () { (await this.runner()).step('block'); }
+    async onStep () {
+        this._invalidateHddDownload();
+        (await this.runner()).step('block');
+    }
     onReverseStep () {
+        this._invalidateHddDownload();
         const runner = this.state.runner;
         if (!runner) return;
         const result = runner.reverseStepDebugInstruction();
@@ -980,6 +1059,7 @@ class DebugPanel extends React.Component {
     }
 
     onReverseCycle () {
+        this._invalidateHddDownload();
         const runner = this.state.runner;
         if (!runner || typeof runner.reverseStepDebugCycle !== 'function') return;
         const result = runner.reverseStepDebugCycle();
@@ -987,6 +1067,7 @@ class DebugPanel extends React.Component {
     }
 
     onReverseContinue () {
+        this._invalidateHddDownload();
         const runner = this.state.runner;
         if (!runner) return;
         const result = runner.reverseContinueDebug();
@@ -1010,6 +1091,7 @@ class DebugPanel extends React.Component {
     }
 
     onRestoreLast () {
+        this._invalidateHddDownload();
         const runner = this.state.runner;
         if (!runner) return;
         const checkpoints = runner.debugRecorder().checkpointSummary();
@@ -1045,6 +1127,7 @@ class DebugPanel extends React.Component {
     }
 
     onTimelineGoSelected () {
+        this._invalidateHddDownload();
         const runner = this.state.runner;
         if (!runner) return;
         const result = runner.seekSelectedDebugEvent();
@@ -1156,6 +1239,7 @@ class DebugPanel extends React.Component {
         this.setState({sessionTransferStatus: {message: 'Validating session…'}});
         try {
             const text = await file.text();
+            this._invalidateHddDownload();
             const result = await runner.importDebugSession(text);
             this.setState({sessionTransferStatus: result.accepted ?
                 {accepted: true, message: 'Session imported'} : result});
@@ -1174,13 +1258,14 @@ class DebugPanel extends React.Component {
     onCorrelatedTrigger () { this.state.runner?.addCorrelatedDebugTrigger(); }
     onCorrelatedCause () { this.state.runner?.followCorrelatedDebugCause(); }
     onCorrelatedCheckpoint () { this.state.runner?.checkpointCorrelatedDebugTargets(); }
-    onCorrelatedRestore () { this.state.runner?.restoreCorrelatedDebugTargets(); }
+    onCorrelatedRestore () { this._invalidateHddDownload(); this.state.runner?.restoreCorrelatedDebugTargets(); }
 
     render () {
         const {ui} = this.state;
         const {phase, message} = ui;
         const running = phase === 'running' || phase === 'stepping';
         const paused = phase === 'paused';
+        const canDownloadHdd = this._supportsHddDownload(this.state.runner);
         const busy = phase === 'building' || phase === 'attaching';
         const why = ui.session && ui.session.why;
 
@@ -1350,6 +1435,19 @@ class DebugPanel extends React.Component {
                         disabled={!running && !paused}
                         onClick={this.onStop}
                     >{'⏹ '}{this.tx('stop')}</button>
+
+                    {canDownloadHdd ? (
+                        <button
+                            data-debug-hdd-download
+                            style={paused && !this.state.hddDownloadBusy ? BTN : OFF}
+                            disabled={!paused || this.state.hddDownloadBusy}
+                            onClick={this.onHddDownload}
+                            title={this.tx('hddDownloadHint')}
+                        >{this.tx('hddDownload')}</button>
+                    ) : null}
+                    {this.state.hddDownloadStatus ? (
+                        <span data-debug-hdd-download-status role="status">{this.state.hddDownloadStatus}</span>
+                    ) : null}
 
                     <button
                         data-debug-record
@@ -1719,6 +1817,7 @@ class DebugPanel extends React.Component {
                                 style={{...BTN, padding: '2px 6px'}}
                                 title={`${this.tx('restorePointTitle')} (${p.cycles} cycles)`}
                                 onClick={() => {
+                                    this._invalidateHddDownload();
                                     const r = this.state.runner.restoreSnapshot(p.id);
                                     this.setState({savePointError: r && r.unsupported ? r.unsupported : null});
                                 }}
