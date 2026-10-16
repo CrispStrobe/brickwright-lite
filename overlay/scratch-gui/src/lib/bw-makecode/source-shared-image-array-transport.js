@@ -172,10 +172,17 @@ function prove(program, sourceContext = null) {
     // references (or preserves its existing error before PXT playback). It
     // cannot obtain the private frame Array. This is not a Playable/value fact
     // and does not allow other music APIs, dynamic modes or prefix effects.
-    const musicPlaybackEffect=node=>!node.isNew && !node.constructorCall && !Object.hasOwn(node,'typeArguments') &&
-        node.args.length===2 && sdk.has(node.callee) && path(node.callee)==='music.play' &&
+    const musicPlaybackEffect=node=>node?.type==='Call' && !node.isNew && !node.constructorCall && !Object.hasOwn(node,'typeArguments') &&
+        Array.isArray(node.args) && node.args.length===2 && sdk.has(node.callee) && path(node.callee)==='music.play' &&
         sdk.has(node.args[1]) && ['music.PlaybackMode.UntilDone','music.PlaybackMode.InBackground',
             'music.PlaybackMode.LoopingInBackground'].includes(path(node.args[1]));
+    // The closed command profile does not admit the SDK method as a value:
+    // every actual member occurrence must itself be the exact allowed callee.
+    // This is deliberately local to music.play, not a namespace-wide rule.
+    for(const node of nodes)if(node.type==='Member' && sdk.has(node) && path(node)==='music.play') {
+        const call=parents.get(node);
+        if(call?.callee!==node || !musicPlaybackEffect(call))return null;
+    }
     const methods={Image:new Set(['clone','setPixel','getPixel','fill','replace','drawLine','drawRect','fillRect','drawImage','drawTransparentImage','equals']),
         Array:new Set(['push','pop','shift','unshift']),
         Sprite:new Set(['setImage','setPosition','setVelocity','setBounceOnWall','setStayInScreen','setFlag','setKind','destroy'])};

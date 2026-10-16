@@ -251,3 +251,10 @@ Array argument still refuses transport. Dynamic modes, other music APIs,
 changed or escaped SDK roots, unknown effects and calls before initialization
 retain ordinary fallback. Native playback and later authentic effects remain
 separate qualifications.
+
+
+Every actual SDK `music.play` member occurrence must be the callee of that
+exact admitted command. Extracted, returned, captured, stored or passed method
+values retain ordinary fallback, even if a later direct call is valid. This
+closes the command-only effect profile without restricting other SDK namespaces
+or adding a runtime function-alias feature.

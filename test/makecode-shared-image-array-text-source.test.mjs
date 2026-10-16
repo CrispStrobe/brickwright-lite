@@ -242,3 +242,15 @@ test('music effects never permit prefix movement or erase unknown effects in ret
         const b=boundary(fixture(source));assert.equal(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),null);
     }
 });
+
+
+test('fixed music command proof refuses method values returned stored captured or passed',()=>{
+    for(const extra of ['let escaped=music.play;', 'function unused(){return music.play;}',
+        'function unused(){let captured=music.play;return 1;}', 'let captured=()=>music.play;',
+        'let holder={play:music.play};', 'console.log(music.play);', 'music.play;']){
+        const b=boundary(fixture(array+extra+'music.play(1,music.PlaybackMode.InBackground);let selected=pictures[0];'));
+        assert.equal(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),null,extra);
+    }
+    const b=boundary(fixture('function unused(value:any){return music.play(value,music.PlaybackMode.InBackground);}'+array+'let selected=pictures[0];'));
+    assert.ok(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),'the actual direct callee remains valid inside a complete retained return expression; no playable or return-value fact is issued');
+});
