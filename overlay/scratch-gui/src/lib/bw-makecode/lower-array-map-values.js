@@ -7,9 +7,23 @@ import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js
 // Primary helper: https://github.com/microsoft/pxt/blob/v13.2.1/libs/pxt-common/pxt-helpers.ts
 // This module proves actual source sites; the staging pass owns when they run.
 export function proveArrayMapValues(program,source='') {
+    // Discover only data-backed standalone map sites without invoking collection
+    // methods or accessors. Other programs keep the existing value-map policy.
+    const candidates=new Set(),visited=new Set();
+    const own=(value,key)=>value&&typeof value==='object'?Object.getOwnPropertyDescriptor(value,key)?.value:undefined;
+    const discover=value=>{
+        if(!value||typeof value!=='object'||visited.has(value))return;visited.add(value);
+        const expr=own(value,'expr'),callee=own(expr,'callee');
+        if(own(value,'type')==='ExpressionStatement'&&own(expr,'type')==='Call'&&own(callee,'type')==='Member'&&own(callee,'name')==='map')candidates.add(expr);
+        for(const key of Reflect.ownKeys(value)){const d=Object.getOwnPropertyDescriptor(value,key);if(d&&Object.hasOwn(d,'value'))discover(d.value);}
+    };
+    discover(program);
     let statementSnapshot;
-    try { statementSnapshot=physicalUpdateSourceSnapshot(program); } catch {}
-    if(!statementSnapshot||statementSnapshot.objects.some(value=>Array.isArray(value)&&Reflect.ownKeys(value).some(key=>typeof Object.getOwnPropertyDescriptor(value,key).value==='function')))return {unsupported:['Array.map: source requires a complete own-data acyclic descriptor snapshot'],facts:null,lower:()=>null};
+    if(candidates.size){
+        try { statementSnapshot=physicalUpdateSourceSnapshot(program); } catch {}
+        if(!statementSnapshot||statementSnapshot.objects.some(value=>Array.isArray(value)&&Reflect.ownKeys(value).some(key=>typeof Object.getOwnPropertyDescriptor(value,key).value==='function')))
+            return {unsupported:['Array.map: discarded source requires a complete own-data acyclic descriptor snapshot'],facts:null,lower:()=>null};
+    }
     let statementExpired=false;
     const statementCurrent=()=>{if(!statementSnapshot||!statementSnapshot.current())statementExpired=true;return !statementExpired;};
     const statementSites=new WeakSet();

@@ -96,10 +96,12 @@ test('discarded callback result has no value-use replacement or extra callback i
 
 test('unsafe direct proof AST accessors and cycles refuse before source graph traversal',()=>{
     const getter=parse(commandSource);let reads=0;
-    Object.defineProperty(getter,'body',{get(){reads++;throw Error('must not read');},configurable:true});
+    Object.defineProperty(getter,'extra',{get(){reads++;throw Error('must not read');},configurable:true});
     const accessorProof=proveArrayMapValues(getter);assert.equal(reads,0);assert.ok(accessorProof.unsupported.length);assert.equal(accessorProof.lower(null,{}),null);
     const ordinary=parse('let value=1;');ordinary.bwProcedureConstraintSource={prefix:()=> 'actual protocol metadata'};
     assert.deepEqual(proveArrayMapValues(ordinary).unsupported,[],'non-Array opaque protocol metadata does not become a map refusal');
+    const valueOnly=parse('let input=[1];let result=input.map(value=>value+1);');valueOnly.opaqueMetadata=new WeakMap();
+    assert.deepEqual(proveArrayMapValues(valueOnly).unsupported,[],'value-used-only maps retain existing metadata acceptance without discarded snapshot policy');
     const methods=parse(commandSource);methods.body.forEach=()=>{reads++;throw Error('must not invoke');};
     const methodProof=proveArrayMapValues(methods);assert.equal(reads,0);assert.ok(methodProof.unsupported.length);
     const cyclic=parse(commandSource);cyclic.extra=cyclic;
