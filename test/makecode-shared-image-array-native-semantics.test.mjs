@@ -73,6 +73,7 @@ test('actual shared Image aliases clones equal resources and ordinary Arrays sur
         // This is the helper's actual original buffer, retained after its load.
         // Its bootstrap activation is not claimed as observed source execution.
         out.write('actual-helper.sb3',run.buffer);
+        out.json('actual-runtime-after-helper.json',{project:JSON.parse(run.vm.toJSON()),errors:run.errors,calls:[...run.calls.entries()],bootstrap:'UNOBSERVED_HELPER_ACTIVATION'});
         const zip=await JSZip.loadAsync(run.buffer),members=[];
         for(const name of Object.keys(zip.files).sort())if(!zip.files[name].dir){const bytes=await zip.files[name].async('nodebuffer');members.push({name,bytes:bytes.length,sha256:sha(bytes)});out.write('zip-member-'+members.length+'.bin',bytes);}
         out.json('actual-helper-members.json',members);requireClean(run.creator);
