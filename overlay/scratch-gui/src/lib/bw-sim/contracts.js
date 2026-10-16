@@ -80,6 +80,7 @@ export const GROUND_FRICTION = 0.8;
  * @typedef {{
  *   part: string,                 e.g. '3713.dat'
  *   name: string,
+ *   nameDe?: string,
  *   category: string,             'beam' | 'axle' | 'pin' | 'gear' | 'wheel' | 'motor' | 'hub' | 'sensor' | 'other'
  *   massGrams: number,
  *   friction?: number,            Coulomb friction coefficient of the part surface, 0..2;
@@ -194,6 +195,7 @@ export const validatePartMeta = meta => {
     const p = typeof meta.part === 'string' ? meta.part : '?';
     if (!/^[\w.-]+\.dat$/i.test(meta.part || '')) out.push(`${p}.part: need an LDraw file name like '3713.dat'`);
     if (typeof meta.name !== 'string' || !meta.name) out.push(`${p}.name: missing`);
+    if (meta.nameDe !== undefined && (typeof meta.nameDe !== 'string' || !meta.nameDe)) out.push(`${p}.nameDe: must be a non-empty string`);
     if (typeof meta.category !== 'string' || !meta.category) out.push(`${p}.category: missing`);
     if (!(isNum(meta.massGrams) && meta.massGrams > 0)) out.push(`${p}.massGrams: need a positive number`);
     if (meta.friction !== undefined && !(isNum(meta.friction) && meta.friction >= 0 && meta.friction <= 2)) {

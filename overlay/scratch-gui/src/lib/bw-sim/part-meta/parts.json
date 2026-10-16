@@ -67,7 +67,8 @@
       29
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Lochbalken 3"
   },
   {
    "part": "32524.dat",
@@ -190,7 +191,8 @@
       69
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Lochbalken 7"
   },
   {
    "part": "2780.dat",
@@ -224,7 +226,8 @@
       8
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Verbinder/Pin mit Reibung"
   },
   {
    "part": "3673.dat",
@@ -258,7 +261,8 @@
       8
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Verbinder/Pin ohne Reibung"
   },
   {
    "part": "3705.dat",
@@ -291,7 +295,8 @@
       6
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Achse 4"
   },
   {
    "part": "3647.dat",
@@ -341,7 +346,8 @@
      0,
      0
     ]
-   }
+   },
+   "nameDe": "Technic Zahnrad 8 tooth"
   },
   {
    "part": "3648.dat",
@@ -391,7 +397,8 @@
      0,
      0
     ]
-   }
+   },
+   "nameDe": "Technic Zahnrad 24 tooth"
   },
   {
    "part": "39367p01.dat",
@@ -428,7 +435,8 @@
      ]
     }
    ],
-   "friction": 1.0
+   "friction": 1.0,
+   "nameDe": "Rad 56 x 14 with medium azure tyre (SPIKE Prime)"
   },
   {
    "part": "39370.dat",
@@ -600,7 +608,8 @@
       0
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Lochbalken 5 x 3 H-shaped with ball socket"
   },
   {
    "part": "52629.dat",
@@ -628,7 +637,8 @@
      "shape": "sphere",
      "radius": 24
     }
-   ]
+   ],
+   "nameDe": "Technic Kugelrolle 19 mm for Kugelrolle castor"
   },
   {
    "part": "54696p01.dat",
@@ -1021,7 +1031,8 @@
     "maxTorqueNm": 0.18,
     "maxSpeedDegPerSec": 1110,
     "deviceId": 48
-   }
+   },
+   "nameDe": "SPIKE medium angular Motor"
   },
   {
    "part": "45601.dat",
@@ -1714,7 +1725,8 @@
      "E",
      "F"
     ]
-   }
+   },
+   "nameDe": "SPIKE Prime Hub"
   },
   {
    "part": "32316.dat",
@@ -1807,7 +1819,8 @@
       49
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Lochbalken 5"
   },
   {
    "part": "40490.dat",
@@ -1960,7 +1973,8 @@
       89
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Lochbalken 9"
   },
   {
    "part": "32525.dat",
@@ -2143,7 +2157,8 @@
       109
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Lochbalken 11"
   },
   {
    "part": "41239.dat",
@@ -2356,7 +2371,8 @@
       129
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Lochbalken 13"
   },
   {
    "part": "32278.dat",
@@ -2599,7 +2615,8 @@
       149
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Lochbalken 15"
   },
   {
    "part": "32062.dat",
@@ -2632,7 +2649,8 @@
       6
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Achse 2 notched"
   },
   {
    "part": "4519.dat",
@@ -2665,7 +2683,8 @@
       6
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Achse 3"
   },
   {
    "part": "32073.dat",
@@ -2698,7 +2717,8 @@
       6
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Achse 5"
   },
   {
    "part": "3706.dat",
@@ -2731,7 +2751,8 @@
       6
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Achse 6"
   },
   {
    "part": "3707.dat",
@@ -2764,7 +2785,8 @@
       6
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Achse 8"
   },
   {
    "part": "6558.dat",
@@ -2798,7 +2820,8 @@
       8
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic Verbinder/Pin 3L mit Reibung"
   },
   {
    "part": "43093.dat",
@@ -2847,7 +2870,8 @@
       8
      ]
     }
-   ]
+   ],
+   "nameDe": "Technic axle Verbinder/Pin mit Reibung"
   },
   {
    "part": "3713.dat",
@@ -2877,7 +2901,8 @@
      "radius": 9,
      "halfHeight": 10
     }
-   ]
+   ],
+   "nameDe": "Technic bush"
   },
   {
    "part": "4265c.dat",
@@ -2907,7 +2932,8 @@
      "radius": 9,
      "halfHeight": 5
     }
-   ]
+   ],
+   "nameDe": "Technic half bush"
   },
   {
    "part": "94925.dat",
@@ -2957,7 +2983,8 @@
      0,
      0
     ]
-   }
+   },
+   "nameDe": "Technic Zahnrad 16 tooth"
   },
   {
    "part": "3649.dat",
@@ -3007,7 +3034,8 @@
      0,
      0
     ]
-   }
+   },
+   "nameDe": "Technic Zahnrad 40 tooth"
   },
   {
    "part": "6589.dat",
@@ -3057,7 +3085,8 @@
      0,
      0
     ]
-   }
+   },
+   "nameDe": "Technic Kegelzahnrad 12 tooth bevel"
   },
   {
    "part": "32198.dat",
@@ -3107,7 +3136,8 @@
      0,
      0
     ]
-   }
+   },
+   "nameDe": "Technic Kegelzahnrad 20 tooth bevel"
   },
   {
    "part": "54675.dat",
@@ -3410,7 +3440,8 @@
     "maxTorqueNm": 0.38,
     "maxSpeedDegPerSec": 1050,
     "deviceId": 49
-   }
+   },
+   "nameDe": "SPIKE large angular Motor"
   },
   {
    "part": "37308.dat",
@@ -3493,7 +3524,8 @@
       -19.5
      ]
     }
-   ]
+   ],
+   "nameDe": "SPIKE colour Sensor"
   },
   {
    "part": "37316.dat",
@@ -3576,7 +3608,8 @@
       -29.5
      ]
     }
-   ]
+   ],
+   "nameDe": "SPIKE distance Sensor"
   },
   {
    "part": "37312.dat",
@@ -3659,7 +3692,8 @@
       -10
      ]
     }
-   ]
+   ],
+   "nameDe": "SPIKE force Sensor"
   }
  ]
 }
