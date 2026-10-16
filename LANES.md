@@ -1,3 +1,65 @@
+## A12 — Circuit Playground Express MakeCode translator — 2026-10-16
+
+CLAIMED — Codex CPX translator lane, isolated worktree
+`wt-lite-a12-cpx-makecode-20261016`, branch `lane/a12-cpx-makecode-20261016`.
+Base `8da2afe2fe64f9301f9045796317e241314a26b5`. Contract: task A12 in
+[the owner-selected queue](docs/OPEN-TASKS-2026-09-29.md), following the delivered
+[A9 device world](docs/A9-CPX-SCOPING.md).
+
+Own a new `overlay/scratch-gui/src/lib/bw-makecode/adafruit-translate.js`;
+CPX-only target inference/import dispatch in that directory's `index.js`;
+narrow CPX translated-view and named-export-refusal branches of
+`components/tw-pseudocode/pseudocode-importer.jsx`; and exact tracked packages
+mirrors. Existing translators, shared base/parser, conversion ownership,
+Arcade resources and other owners' importer methods remain outside this claim.
+Own focused CPX translator/inference/behaviour tests, the CPX section of
+`scripts/makecode-census.mjs` and its generated census document, affected CPX
+browser controls in the existing MakeCode verifier, and
+`docs/A12-CPX-TRANSLATOR.md`. Preserve CPX MakeCode simulation and the pin bridge.
+Also own only gesture/acceleration input injection in the existing
+`scripts/lib/{makecode-adafruit-sim,cpx-extension-run}.mjs` test helpers, so the
+same scheduled inputs reach each original device implementation. Existing
+clock, snapshots, sound decoding and comparisons remain unchanged. Existing
+CPX event hats are preferred to invented polling when they express the source
+handler exactly; dynamic registration and unsupported event semantics stay
+named refusals.
+
+Acceptance: reproduce the hint-less inference defect first; account for all
+149 pinned pxt-adafruit docs programs without silent call loss; compare at least
+ten translated programs against the actual target simulator; preserve adjacent
+target inference; refuse CPX re-export by name until its emitter is separately
+qualified. Name polling/event and newer-API limits. Reuse existing 45 device
+words; missing supplier words require separate upstream work. No firmware
+execution, engine/package pin, workflow budget or threshold change. Land this
+claim before implementation; require fresh affected browser qualification and
+all enabled final-head checks before source merge. Preserve every other lane.
+
+## Proposed 386 Board HDD adoption handoff — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex x86, branch
+`docs/386-board-hdd-handoff-20261016`. Own only this ledger and
+`docs/X86-NEXT-LANES.md` for the
+[serialized adoption handoff](docs/X86-NEXT-LANES.md#proposed-386-board-hdd-adoption-handoff).
+This proposal reserves no implementation or dependency surface. A recorded
+handoff from the existing adoption owners and a merged implementation claim
+must precede any supplier, package, lock, generated output or shared runner edit.
+
+Preserve the STM32 adoption owner in PR975 (merged claim PR969), including its
+Board/SB3 pins, specifications, locks, notices, generated outputs and STM32
+`debug-runner` changes. PR975 is explicitly not for agent merge. Preserve the
+CUI adoption owner in PR965 (merged claim PR961), including its lock ownership;
+coordinate one serialized dependency writer. This proposal authorizes neither
+merging those PRs nor changing their pins or sequencing.
+
+Next work must select an exact qualified Board revision containing PR623's
+master-disk snapshot API, retain the qualified PR625/PR627 CLI persistence
+boundary, and review the complete installed blob graph and component diff.
+Compose the pending x86 consumers without dropping STM32, SB3 or CUI changes;
+qualify genuine hosted GUI download and fresh chooser reload through that exact
+supplier. Supplier checks, source controls and historical CLI results do not
+qualify an installed consumer. No source, pin, lock, notice, workflow or package
+change belongs to this docs-only proposal; all other owners retain their lanes.
+
 ## Installed G02 Code caller and output qualification — 2026-10-15
 
 Frozen consumer `59ddd74174f644f330f06ce567fac6b8c5f7dde3` passes three
@@ -1131,6 +1193,119 @@ executable digest. This closes only the zForth notice inclusion gap. Exact
 linked newlib/libi86 obligations and whole-package component review remain open.
 No executable, dependency pin, compiler, simulator or peer implementation change.
 
+
+## List monitor dependency import boundary — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge before implementation.
+Contract: [list monitor import boundary](docs/ARCADE-LIST-MONITOR-IMPORT-BOUNDARY.md).
+Own only the list-monitor-scroller owned overlay and tracked mirror, narrow
+normal production-resolution and real-widget controls, and documentation.
+Select the existing direct named List entry from the adopted dependency; keep
+its actual implementation, required initialization effects, props, locale,
+accessibility, layout, activation, scroll, resize and current save/reopen data.
+No dependency/pin/API/lazy behavior, package side-effect declaration, budget,
+workflow or unrelated editor/artwork change. Existing painter-presence startup
+ownership remains separate. Actual production size and widget qualification
+are required; source-byte attribution is no promise that the budget will pass.
+
+## Arcade per-player score Number producers — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
+implementation. Contract: [per-player score Number producers](docs/ARCADE-INFO-PLAYER-NUMBER-PRODUCERS.md).
+Own the narrow ordinary SDK source proof, any necessary existing producer
+consumer integration, and only the existing score Number proof's same-role
+fixed-player physical/cached argument binding in
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/console-inspect-values.js`.
+Own focused current Code/Blocks/saved/export and native controls and docs; keep
+all genuine registration/cache/source-owner/active-result/lifecycle checks. Prove actual unshadowed fixed-player API bindings,
+complete access/writer census and real score Number completion. Preserve the
+existing direct-info and scene-clock boundaries; no namespace/opcode type grant,
+refusal suppression, runtime semantic change, pin adoption or whole-case credit.
+Other per-player results and EV3 console/motor gaps remain separate.
+
+## Carnival package provenance and selected native APIs — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration, coordinated extension of the
+existing Carnival host/authoring and dependency-project/native-admission lanes.
+Merge [the selected Carnival source contract](docs/ARCADE-CARNIVAL-NATIVE-SOURCE-ADMISSION.md)
+before implementation. Own narrow current-package/declaration provenance,
+shared native-source admission and namespace handoff for already implemented
+countdown/scoring/dialog APIs; source identity/coverage companion and controls,
+current Code/Blocks/save/reopen/export, actual affected native and GUI journeys.
+Preserve complete module initialization including all five original SpriteKind
+allocations, source bodies/resources/order, effects and explicit unsupported
+APIs. No whole-package skip, prefix/opcode grant, source/diagnostic pruning,
+new runtime capability, pin or workflow change. Coordinate exact shared hunks;
+other adapters/importer/editor owners remain preserved. Dependency-free native
+Code authoring cannot replace authentic asynchronous package-import evidence.
+
+## Arcade managed SDK activation ownership — coordinated claim
+
+CLAIM — bounded construction continuation, existing physical Sprite update and
+synchronous nested VM handoff compatibility.
+[Ownership and acceptance contract](docs/ARCADE-MANAGED-SDK-OWNERSHIP.md)
+owns only the listed shared exception/primitive utilities, existing SDK Sprite
+activation paths and focused native/probe controls. Preserve genuine caller,
+registration/cache, instance, phase, generation and lineage authority; retain
+Stop/reload and exceptional once-only settlement. Do not fabricate a parent or
+allow arbitrary caller-less execution or reentry. Distinguish metadata-only
+second-instance probes from intentional same-runtime Buffer owner isolation.
+Coordinate existing Throw, Array, waits, Number, scene-clock and null-getter
+owners before shared edits. No blanket inheritance, SDK API, value domain,
+supplier/pin, timing or new host root-loan expansion. Implementation waits for
+this claim's normal qualified merge; affected clean native own-guest and current
+portable-route qualification remains mandatory, with GUI and whole-case gates
+separate.
+
+## Shared static Image Array source transport: F — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this coordinated contract
+before implementation: [shared Image Array transport](docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md).
+Own a narrow actual-binding, initialization, all-writer and configured-effect
+proof before eager staging, with one private current plan consumed by source
+lowering and current frame resource emission. Coordinate the exact
+`arcade-translate.js`, `lower-pxt-staged-values.js` and necessary
+`export-arcade.js` hooks with their owners; own the optional source transport
+helper, focused controls and capability notes listed in the contract.
+
+Preserve once-per-entry versus repeated fresh construction, shared Image aliases
+and mutations, clone independence, array-observable semantics, current artwork
+and lifecycle. Unknown, exposed, mutated or repeatedly allocated Arrays retain
+ordinary lowering and diagnostics, including generic and partial source routes.
+No generated-name pruning, body or diagnostic deletion, retained-source
+restoration, generic Array/Image grant, runtime/ABI/word, supplier or pin change.
+The earlier observed 204 connected blocks of growth remain an original failure;
+local initialization, startup and callback transport remain separately owned.
+
+Require complete actual Code → Blocks → SB3 → current export → fresh reimport,
+affected native guest identity/mutation/lifecycle and genuine original SDK
+compilation/simulator qualification. Existing static Image and authored animation
+Array proofs supply only their actual producer facts; the empty-Array contract
+does not authorize this nonempty transport. No whole-project stability,
+visible GUI or corpus promotion follows from focused source controls.
+
+## Arcade generated helper recognition maintenance — 2026-10-16
+
+PROPOSED / DOCS ONLY — Arcade integration, coordinated import and export
+maintenance. Product implementation waits for this claim's normal qualified
+merge. Contract: [generated helper recognition](docs/ARCADE-GENERATED-HELPER-RECOGNITION.md).
+
+Own canonical parsing and current declaration/use recognition of existing named
+Array parse/JSON/access helpers and existing stop/run-token machinery in
+`arcade-translate.js`, `named-array-item-helpers.js`, a coordinated source-proof
+helper, focused tests and documentation. Templates and input must share the
+actual admitted parser context without dropping semantic metadata. Require the
+complete canonical bodies and actual lexical bindings, all writers/escapes and
+storage relationships before a call or declaration can be replaced. Preserve
+extra effects, unknown metadata and unmatched source through existing behavior
+or explicit refusal; do not prune by generated spelling.
+
+Preserve default semantics, producer domains, runtime/stop/frame policy, engine
+ABI and pins. Generic optional/default values and nonempty Array staging remain
+outside this scope. Existing exact source, current Blocks/Code, same/fresh save,
+native effects/stop lifecycle, current export/reimport and visible GUI gates
+remain mandatory for their respective claims. Keep original failures; no corpus
+promotion from focused controls.
 
 ## Wide Arcade artwork documents and Pixel authoring — 2026-10-12
 
