@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {VM_SRC,loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
+import {currentArtworkNullSpriteRoutes,nonnullSpriteCurrentCells} from './helpers/null-sprite-current-artwork.mjs';
 const require=createRequire(import.meta.url),BW=require(VM_SRC+'/util/bw-values');
 const exceptions=require(VM_SRC+'/util/bw-arcade-exceptions');
 const value=(run,name)=>BW.decode(run.vm.runtime.targets.flatMap(target=>Object.values(target.variables)).find(variable=>variable.name===name)?.value);
@@ -41,22 +41,7 @@ for(const property of ['x','y','width','height'])test('native actual null '+prop
     finally{if(run){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
 });
 
-test('native source/Code/same and fresh SB3/current export retain the physical null x failure',async()=>{
-    const imported=arcadeToPseudocode(source('x'));assert.deepEqual(imported.unsupported,[]);const runs=[];
-    try{
-        const first=await runProgram(imported.code,{frames:0});runs.push(first);await trigger(first,'x');
-        const current=JSON.parse(first.vm.toJSON()),code=first.creator.decompile(current);
-        const codeRun=await runProgram(code,{frames:0});runs.push(codeRun);await trigger(codeRun,'x');
-        const bytes=Buffer.from(await(await first.vm.saveProjectSb3()).arrayBuffer());first.vm.stopAll();
-        // Fresh counts/errors are observations of this new activation only.
-        await first.vm.loadProject(bytes);first.calls.clear();first.errors.length=0;first.vm.greenFlag();await trigger(first,'x');
-        const fresh=await runProgram('DEVICE ARCADE\nSPRITE Game:\nWHEN arcade source starts:\n  hide',{frames:0});runs.push(fresh);
-        fresh.vm.stopAll();await fresh.vm.loadProject(bytes);fresh.calls.clear();fresh.errors.length=0;fresh.vm.greenFlag();await trigger(fresh,'x');
-        const exported=projectToArcade(JSON.parse(fresh.vm.toJSON()));assert.deepEqual(exported.unsupported,[]);
-        const again=arcadeToPseudocode(exported.files);assert.deepEqual(again.unsupported,[]);
-        const replay=await runProgram(again.code,{frames:0});runs.push(replay);await trigger(replay,'x');
-    }finally{for(const run of runs){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
-});
+test('native source/Code/same and fresh SB3/current export retain the physical null x failure',currentArtworkNullSpriteRoutes);
 
 test('direct native service retains null text, absent IDs and real Sprite getter behavior',()=>{
     const Arcade=loadExtensionClass('arcade'),runtime=createArcadeRuntimeMock();
@@ -83,10 +68,4 @@ let answer=outer();outerAfter=1;`);
     }finally{if(run){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
 });
 
-test('physical nonnull getter returns ordinary values and continues normally',async()=>{
-    const imported=arcadeToPseudocode('let receiver=sprites.create(img`1`,SpriteKind.Player);receiver.setPosition(12,34);let x=receiver.x;let y=receiver.y;let width=receiver.width;let height=receiver.height;let after=1;');
-    assert.deepEqual(imported.unsupported,[]);let run;
-    try{run=await runProgram(imported.code,{frames:16});assert.deepEqual(run.errors,[]);
-        assert.equal(value(run,'x'),12);assert.equal(value(run,'y'),34);assert.equal(value(run,'width'),1);assert.equal(value(run,'height'),1);assert.equal(value(run,'after'),1);
-    }finally{if(run){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
-});
+test('physical nonnull getter returns ordinary values and continues normally',nonnullSpriteCurrentCells);

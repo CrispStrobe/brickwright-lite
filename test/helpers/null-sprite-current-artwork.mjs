@@ -1,15 +1,14 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
 import JSZip from 'jszip';
-import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
-import {svgToPixels} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
-import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
-import {VM_SRC} from './helpers/bw-extensions.mjs';
+import {arcadeToPseudocode} from '../../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
+import {projectToArcade} from '../../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {svgToPixels} from '../../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
+import {runProgram,stepFrames,clearStrayTimers} from './bw-vm.mjs';
+import {VM_SRC} from './bw-extensions.mjs';
 const require=createRequire(import.meta.url),BW=require(VM_SRC+'/util/bw-values');
 const exceptions=require(VM_SRC+'/util/bw-arcade-exceptions'),dispatch=require(VM_SRC+'/dispatch/central-dispatch');
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
@@ -108,7 +107,7 @@ function currentUploads(archive){
     }));
 }
 
-test('current artwork survives source/Code/same and fresh SB3/current export with the physical null x failure',async()=>{
+export async function currentArtworkNullSpriteRoutes(){
     const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);assert.equal(imported.costumes.length,1);onePixel(imported.costumes[0].svg);record('source-import',{source,...imported});let live=null;
     const start=async(code,options)=>{assert.equal(live,null,'only one live VM at a time');live=await runProgram(code,options);return live;};
     const close=label=>{if(!live)return;const run=live;live=null;try{run.vm.stopAll();run.vm.clear();}finally{run.vm.quit();clearStrayTimers();record(label+'-cleanup',{phase:'after-observation cleanup',targets:run.vm.runtime.targets.length,calls:[...run.calls],errors:run.errors});}};
@@ -128,9 +127,9 @@ test('current artwork survives source/Code/same and fresh SB3/current export wit
         const replay=await start(again.code,{frames:0,uploads:again.costumes,storage:true});assert.deepEqual(replay.creator.warnings,[]);await trigger(replay,'current-reimport');await currentArchive(replay,'current-reimport');close('current-reimport');
     }finally{close('final');}
 
-});
+}
 
-test('physical nonnull getters return expected values through actual renamed variable IDs',async()=>{
+export async function nonnullSpriteCurrentCells(){
     const source='let receiver=sprites.create(img`1`,SpriteKind.Player);receiver.setPosition(12,34);let x=receiver.x;let y=receiver.y;let width=receiver.width;let height=receiver.height;let after=1;';
     const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);assert.equal(imported.costumes.length,1);onePixel(imported.costumes[0].svg);record('nonnull-import',{source,...imported});let run;
     try{
@@ -142,4 +141,4 @@ test('physical nonnull getters return expected values through actual renamed var
         }
         record('nonnull-values',{mapping,observed,calls:[...run.calls],errors:run.errors});await currentArchive(run,'nonnull');
     }finally{if(run){run.vm.stopAll();run.vm.quit();}clearStrayTimers();}
-});
+}
