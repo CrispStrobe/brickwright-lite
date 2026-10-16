@@ -37,7 +37,9 @@ Raw nested JSON constructor tails and exact mixed chain/tail transport remain se
 
 The [local reset contract](../ARCADE-ARRAY-LOCAL-RESET-PROOF.md) adds a narrow
 analysis of a Null or Undefined initializer in an ordinary zero-argument
-procedure. The current unique prototype, direct source-start callers and physical
+procedure. The native plain-object prototype setter key `__proto__` is refused: its
+assignment does not establish the own cell assumed by lexical analysis. The
+current unique prototype, direct source-start callers and physical
 connected body identify that invocation's fresh parameter object. The analysis
 starts at procedure entry, rather than immediately after the reset: an earlier
 registration retaining any key could retain the entire parameter object. Such a

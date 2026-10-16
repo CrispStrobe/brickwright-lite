@@ -179,6 +179,9 @@ export function createArrayReferenceExportAuthority(project) {
             node.opcode!=='arcade_setLocal'||!special(reset)||!shape(node,['NAME','VALUE'])||
             !closedEffects()||!scope.callers.length)return false;
         const name=literal(node,'NAME',target),origin=captures.local(captures.scopeOf(node),name);
+        // Native params are plain objects, not Maps: this inherited setter
+        // changes the prototype instead of establishing an own lexical cell.
+        if(name==='__proto__')return false;
         if(!origin||!captures.proof(origin)||localCell(scope,name)!==destination)return false;
         // Admit only direct ordinary zero-argument entries from source-start.
         // Other callers, nested entries and dynamic calls remain refusals.
@@ -212,7 +215,7 @@ export function createArrayReferenceExportAuthority(project) {
             const n=value.node;if(!n||path.has(n)||invalid.has(n)||owners.get(n)!==scope)return unproved;
             const next=new Set([...path,n]),operand=k=>scalar(input(n,k,target),next);
             if(n.opcode==='arcade_getLocal'&&shape(n,['NAME'])){
-                const c=localCell(scope,literal(n,'NAME',target));return c===destination?unproved:locals.get(c)||unproved;
+                const key=literal(n,'NAME',target),c=localCell(scope,key);return key==='__proto__'||c===destination?unproved:locals.get(c)||unproved;
             }
             if(n.opcode==='data_variable'&&shape(n,[],['VARIABLE']))return binding(target,n)===destination?unproved:{kind:'stored'};
             if(special(n))return {kind:'scalar'};
@@ -238,7 +241,7 @@ export function createArrayReferenceExportAuthority(project) {
             seen.add(at);const current=block(target,at);
             if(!current||invalid.has(current)||owners.get(current)!==scope)return false;
             if(current.opcode==='arcade_setLocal'&&shape(current,['NAME','VALUE'])){
-                const c=localCell(scope,literal(current,'NAME',target));if(!c||c.formal)return false;
+                const key=literal(current,'NAME',target),c=localCell(scope,key);if(key==='__proto__'||!c||c.formal)return false;
                 if(current===node){seenReset=true;locals.set(c,{kind:'scalar'});}
                 else {const v=scalar(input(current,'VALUE',target));if(v===unproved)return false;
                     if(c===destination){if(seenReset&&v.kind==='array'){extendedResetUsed=true;return true;}return false;}

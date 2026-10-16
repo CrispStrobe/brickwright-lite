@@ -87,3 +87,11 @@ test('unknown extension routes and dynamic owner declarations refuse',()=>{
 });
 test('a later incompatible writer remains in all-writer obligations',()=>{const f=fixture();f.insert(f.sequence.at(-1),f.set('cell0',f.number(3)));refuses(f);});
 test('metadata mutation invalidates an already-issued extended graph proof',()=>{const f=fixture(),proof=createArrayReferenceExportAuthority(f.project);assert.equal(proof.validateInput(f.target,f.blocks[f.reads[0]]).ok,true);f.project.extensions.push('custom');assert.equal(proof.validateInput(f.target,f.blocks[f.reads[0]]).ok,false);});
+
+test('native plain-object prototype setters are not actual own local cells',()=>{
+    const renamed=name=>{const f=fixture();for(const n of Object.values(f.blocks))if(n.inputs?.NAME?.[1]?.[0]===10&&n.inputs.NAME[1][1]==='cell0')n.inputs.NAME[1][1]=name;return f;};
+    const unsafe=renamed('__proto__');unsafe.blocks[unsafe.blocks[unsafe.resets[0]].inputs.VALUE[1]].fields.KIND[0]='undefined';refuses(unsafe);
+    // These inherited writable data properties become ordinary own cells on
+    // assignment; they are not the inherited __proto__ setter.
+    for(const name of ['constructor','toString','hasOwnProperty'])assert.deepEqual(results(renamed(name)),[true],name);
+});
