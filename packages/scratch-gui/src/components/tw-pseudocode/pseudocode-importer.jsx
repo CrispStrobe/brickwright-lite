@@ -185,7 +185,8 @@ const L10N = {
         toBlocks: '⇦ To blocks', toBlocksTitle: l => `Compile this ${l} into blocks`,
         fromBlocks: 'From blocks ⇨', fromBlocksTitle: 'Read the current blocks back into all languages',
         compactToBlocks: '⇦ Blocks', compactFromBlocks: 'Blocks ⇨',
-        run: 'Run', runBasic: '▶ Run BASIC', runFe: '▶ Run fe', runTcl: '▶ Run Tcl', runForth: '▶ Run Forth',
+        run: 'Run', runBasic: '▶ Run BASIC', runFe: '▶ Run fe', runTcl: '▶ Run Tcl', runForth: '▶ Run Forth', runViaBlocks: d => `▶ ${d} via blocks`,
+        runViaBlocksTitle: 'Convert to blocks, then build them as C for the selected board in the debugger',
         nqcCompile: '⚙ Compile .rcx', nqcSend: '🧱 Send to RCX',
         nqcEmpty: 'Type some NQC first.',
         nqcNoCompiler: 'This build has no local NQC compiler.',
@@ -516,7 +517,8 @@ const L10N = {
         toBlocks: '⇦ Zu Blöcken', toBlocksTitle: l => `Diesen ${l}-Code zu Blöcken kompilieren`,
         fromBlocks: 'Von Blöcken ⇨', fromBlocksTitle: 'Das aktuelle Projekt in alle Sprachen einlesen',
         compactToBlocks: '⇦ Blöcke', compactFromBlocks: 'Blöcke ⇨',
-        run: 'Ausführen', runBasic: '▶ BASIC ausführen', runFe: '▶ fe ausführen', runTcl: '▶ Tcl ausführen', runForth: '▶ Forth ausführen',
+        run: 'Ausführen', runBasic: '▶ BASIC ausführen', runFe: '▶ fe ausführen', runTcl: '▶ Tcl ausführen', runForth: '▶ Forth ausführen', runViaBlocks: d => `▶ ${d} über Blöcke`,
+        runViaBlocksTitle: 'In Blöcke umwandeln und sie im Debugger als C für das gewählte Board bauen',
         nqcCompile: '⚙ .rcx kompilieren', nqcSend: '🧱 An RCX senden',
         nqcEmpty: 'Zuerst NQC eingeben.',
         nqcNoCompiler: 'Dieser Build hat keinen lokalen NQC-Compiler.',
@@ -904,7 +906,7 @@ const CODE_ACCEPT = [...new Set(Object.values(CODE_FILES).map(f => `.${f.ext}`))
 const BW_AUTOSAVE_KEY = 'bw-code-autosave';
 // Code-tab languages most people never need: they stay out of the language row
 // until chosen from its "+" menu (remembered per browser), opened, or written in.
-const BW_OPTIONAL_LANGS = [['fe', 'λ fe', 'Lisp (fe on DOS)'], ['tcl', '○ Tcl', 'Tcl (partcl on DOS)'], ['forth', '🔺 Forth', 'Forth (zForth on DOS)']];
+const BW_OPTIONAL_LANGS = [['fe', 'λ fe', 'Lisp (fe: DOS, or any board via blocks)'], ['tcl', '○ Tcl', 'Tcl (Jim: DOS, or any board via blocks)'], ['forth', '🔺 Forth', 'Forth (zForth: DOS, or any board via blocks)']];
 const BW_EXTRA_LANGS_KEY = 'bw-code-extra-languages';
 const readExtraLangs = () => {
     try {
@@ -5020,6 +5022,12 @@ class PseudocodeImporter extends React.Component {
             asmTargetForDevice(this.currentDevice()) === 'i8086';
     }
 
+    // fe, Tcl and Forth interpreters exist only as DOS programs. On any other
+    // board the program runs as its blocks, which the debugger builds as C.
+    async runViaBlocksOnDevice () {
+        await this.compile();
+        if (this.state.conversionReport?.preserved) showCircuitDebugger();
+    }
     async compile ({strict = false, pseudocode = null} = {}) {
         const conversionRequest = {};
         this._conversionRequest = conversionRequest;
@@ -6129,6 +6137,16 @@ class PseudocodeImporter extends React.Component {
                                 style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}
                                 data-testid="bw-tcl-run">
                                 {this.L.runTcl}
+                            </button>
+                        ) : null}
+                        {['fe', 'tcl', 'forth'].includes(this.state.lang) && this.currentDevice() &&
+                            this.activeCode().trim() ? (
+                            <button onClick={() => this.runViaBlocksOnDevice()}
+                                disabled={this.state.running || this.state.busy}
+                                title={this.L.runViaBlocksTitle}
+                                style={{...actionBtn, background: 'linear-gradient(135deg,#4c97ff,#4280d7)'}}
+                                data-testid="bw-run-via-blocks">
+                                {this.L.runViaBlocks(this.currentDevice())}
                             </button>
                         ) : null}
                         {this.state.lang === 'c' ? (
