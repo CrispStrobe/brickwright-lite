@@ -301,6 +301,7 @@ export const validateCompiledMechanism = m => {
         if (!Array.isArray(b?.colliders) || b.colliders.length === 0) out.push(`${w}.colliders: need at least one collider`);
         else b.colliders.forEach((c, i) => checkCollider(c, `${w}.colliders[${i}]`, out));
         if (!Array.isArray(b?.parts)) out.push(`${w}.parts: not an array`);
+        if (b?.mat !== undefined && typeof b.mat !== 'string') out.push(`${w}.mat: need a string`);
     });
     const joints = new Map();
     uniqueIds(m.joints, 'joints', out);

@@ -73,6 +73,7 @@ const makeGround = (bodies, opts = {}) => {
         parts: [],
         friction: GROUND_FRICTION,
         color: opts.groundColor !== undefined ? opts.groundColor : 10,
+        ...(opts.mat ? {mat: opts.mat} : {}),
     };
 };
 

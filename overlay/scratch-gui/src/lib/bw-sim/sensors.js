@@ -25,6 +25,7 @@
 //     force = 100·(1 − d/0.002) (clamped), pressed when >10.
 
 /** LEGO device ids, matching lib/spike-arena/arena-hub-bridge.js. */
+import {createMat} from './world/mats.js';
 export const SENSOR_DEVICE = Object.freeze({color: 61, distance: 62, force: 63});
 
 
@@ -207,17 +208,68 @@ export const readSensors = (core, mechanism, robotBodies = []) => {
                 out[sensor.port] = {kind: 'color', color: -1, reflection: 0, red: 0, green: 0, blue: 0};
             } else {
                 const d = hit.distance;
-                const reflection = Math.round(baseReflection * (1 - d / 0.032));
-                const clampedReflection = Math.max(0, Math.min(100, reflection));
-                const rgb = isWhite ? whiteRgb : blackRgb;
-                out[sensor.port] = {
-                    kind: 'color',
-                    color: groundColor,
-                    reflection: clampedReflection,
-                    red: rgb[0],
-                    green: rgb[1],
-                    blue: rgb[2],
-                };
+                let hitColor = groundColor;
+                let useMat = false;
+                let matReflection = 100;
+                let matRgb = whiteRgb;
+                let otherBodyColor = null;
+                if (hit.bodyId === 'ground' && ground && typeof ground.mat === 'string') {
+                    const mat = createMat(ground.mat);
+                    if (mat) {
+                        const v = mat.colorAt(hit.point[0], hit.point[2]);
+                        hitColor = v.color;
+                        matReflection = v.reflection;
+                        matRgb = v.rgb;
+                        useMat = true;
+                    }
+                } else if (hit.bodyId && hit.bodyId !== 'ground') {
+                    const hitBody = mechanism.bodies.find(b => b.id === hit.bodyId);
+                    if (hitBody && typeof hitBody.color === 'number') {
+                        hitColor = hitBody.color;
+                        otherBodyColor = hitBody.color;
+                    } else {
+                        out[sensor.port] = {kind: 'color', color: -1, reflection: 0, red: 0, green: 0, blue: 0};
+                        continue;
+                    }
+                }
+                if (useMat) {
+                    const reflection = Math.round(matReflection * (1 - d / 0.032));
+                    const clampedReflection = Math.max(0, Math.min(100, reflection));
+                    out[sensor.port] = {
+                        kind: 'color',
+                        color: hitColor,
+                        reflection: clampedReflection,
+                        red: matRgb[0],
+                        green: matRgb[1],
+                        blue: matRgb[2],
+                    };
+                } else if (otherBodyColor !== null) {
+                    const isOtherWhite = otherBodyColor !== 0;
+                    const reflBase = isOtherWhite ? 100 : 5;
+                    const rgbOther = isOtherWhite ? whiteRgb : blackRgb;
+                    const reflection = Math.round(reflBase * (1 - d / 0.032));
+                    const clampedReflection = Math.max(0, Math.min(100, reflection));
+                    out[sensor.port] = {
+                        kind: 'color',
+                        color: hitColor,
+                        reflection: clampedReflection,
+                        red: rgbOther[0],
+                        green: rgbOther[1],
+                        blue: rgbOther[2],
+                    };
+                } else {
+                    const reflection = Math.round(baseReflection * (1 - d / 0.032));
+                    const clampedReflection = Math.max(0, Math.min(100, reflection));
+                    const rgb = isWhite ? whiteRgb : blackRgb;
+                    out[sensor.port] = {
+                        kind: 'color',
+                        color: hitColor,
+                        reflection: clampedReflection,
+                        red: rgb[0],
+                        green: rgb[1],
+                        blue: rgb[2],
+                    };
+                }
             }
         } else if (sensor.kind === 'force') {
             // Tip probe: cast up to 5 mm, but only 0..2 mm counts.
