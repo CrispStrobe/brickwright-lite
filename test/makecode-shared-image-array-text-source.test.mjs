@@ -802,9 +802,34 @@ test('exact score HUD visibility retains connected Boolean commands resources an
     for(const [name,item]of Object.entries(zip.files))if(!item.dir)members[name]=await item.async('base64');
     record({stage:'score-hud-SB3',bytes:bytes.toString('base64'),members,project:creator.project});
     const exported=projectToArcade(creator.project,{costumeSvg:(_target,costume)=>creator.assets.get(costume.assetId)?.data});record({stage:'score-hud-export',result:exported,channels:channels(exported)});clean(exported);
-    const exportedCalls=scoreHudCalls(parse(arcadeProjectSource(exported.files).source));assert.equal(exportedCalls.length,2);assert.deepEqual(exportedCalls.map(call=>call.args[0]),[{type:'Boolean',value:false},{type:'Boolean',value:true}]);
-    const again=convert(prepareArcadeDependencyInputs(exported.files,fixture().resolved).files);clean(again);assert.equal(frames(again.code).filter(row=>row[1]==='pictures').length,frames(imported.code).filter(row=>row[1]==='pictures').length);
-    const second=new Creator();second.parse(again.code);record({stage:'score-hud-reimport-Creator',project:second.project,channels:channels(second)});clean(second);record({stage:'score-hud-reimport-connected-roles',roles:scoreHudRoles(second.project)});
+    const exportedProgram=parse(arcadeProjectSource(exported.files).source),exportedCalls=scoreHudCalls(exportedProgram);assert.equal(exportedCalls.length,2);assert.deepEqual(exportedCalls.map(call=>call.args[0]),[{type:'Boolean',value:false},{type:'Boolean',value:true}]);
+    // The exporter intentionally chooses a collision-safe backing identifier.
+    // Bind its actual declaration and selected lookup, not a generated spelling.
+    const arrays=entryNodes(exportedProgram).filter(node=>node.type==='Declaration').flatMap(node=>node.decls.filter(decl=>decl.init?.type==='Array'&&decl.init.items.some(item=>item.type==='Template'&&item.tag==='img')).map(decl=>({statement:node,decl})));
+    assert.equal(arrays.length,1);const backing=arrays[0];assert.equal(backing.decl.init.items.length,1);assert.equal(backing.decl.init.items[0].type,'Template');assert.equal(backing.decl.init.items[0].tag,'img');
+    const selectedWrites=entryNodes(exportedProgram).filter(node=>node.type==='Assignment'&&node.op==='='&&node.left?.type==='Identifier'&&node.left.name==='selected');assert.equal(selectedWrites.length,1);
+    const lookup=selectedWrites[0].right;assert.equal(lookup.type,'Index');assert.equal(lookup.object.type,'Identifier');assert.equal(lookup.object.name,backing.decl.name);
+    const refreshed=prepareArcadeDependencyInputs(exported.files,fixture().resolved),again=convert(refreshed.files);clean(again);
+    const freshKeys=frames(again.code).map(row=>row[1]),initialKeys=frames(imported.code).map(row=>row[1]);assert.deepEqual(initialKeys,['pictures']);assert.deepEqual(freshKeys,[backing.decl.name]);assert.equal(freshKeys.length,initialKeys.length);
+    const sourceRows=backing.decl.init.items[0].value.split('\n').map(row=>row.replace(/\s/g,'')).filter(Boolean);assert.deepEqual(sourceRows,['1.','.2'],'actual exported literal retains both authored rows and all four pixel tokens');
+    const initialPixels=direct.resource.frames.get('pictures');assert.deepEqual(initialPixels.map(frame=>({width:frame.width,height:frame.height,pixels:frame.pixels})),[{width:2,height:2,pixels:[1,0,0,2]}]);
+    assert.deepEqual(again.costumes,imported.costumes,'full SVG artwork and template upload roles stay unchanged');
+    const second=new Creator();second.parse(again.code);record({stage:'score-hud-reimport-Creator',project:second.project,channels:channels(second)});clean(second);
+    for(const item of again.costumes)assert.equal(item.mode==='add'?second.addCustomSVGCostume(item.sprite,item.svg,item.name):second.applyCustomSVG(item.sprite,item.svg),true);
+    const againRoles=scoreHudRoles(second.project);record({stage:'score-hud-reimport-connected-roles',roles:againRoles});
+    const selectedFrame=project=>{
+        const rows=project.targets.flatMap(target=>Object.entries(target.blocks).filter(([,block])=>block.opcode==='arcade_frameImage').map(([id,block])=>({target,id,block})));assert.equal(rows.length,1);
+        const row=rows[0],writer=row.target.blocks[row.block.parent];assert.equal(writer.opcode,'data_setvariableto');assert.equal(writer.inputs.VALUE[1],row.id);assert.equal(writer.fields.VARIABLE[0],'selected');
+        const owners=project.targets.filter(target=>Object.hasOwn(target.variables,writer.fields.VARIABLE[1]));assert.equal(owners.length,1);assert.equal(owners[0].variables[writer.fields.VARIABLE[1]][0],'selected');
+        const literal=slot=>{const input=row.block.inputs[slot];assert.equal(input[0],1);assert.ok(Array.isArray(input[1]));return input[1];};
+        assert.deepEqual(literal('INDEX'),[4,'0']);assert.deepEqual(literal('START'),[4,'0']);assert.deepEqual(literal('COUNT'),[4,'1']);const template=literal('TEMPLATE');assert.equal(template[0],10);
+        const targets=project.targets.filter(target=>target.name===template[1]);assert.equal(targets.length,1);assert.equal(targets[0].costumes.length,1);
+        const key=literal('KEY');assert.equal(key[0],10);return {owner:{isStage:row.target.isStage,name:row.target.name},id:row.id,writerId:row.block.parent,variableId:writer.fields.VARIABLE[1],key:key[1],template:template[1],index:literal('INDEX'),start:literal('START'),count:literal('COUNT'),costume:targets[0].costumes[0]};
+    };
+    const initialFrame=selectedFrame(creator.project),freshFrame=selectedFrame(second.project);assert.equal(initialFrame.key,'pictures');assert.equal(freshFrame.key,backing.decl.name);
+    for(const field of ['owner','template','index','start','count','costume'])assert.deepEqual(freshFrame[field],initialFrame[field],field);
+    for(const [connected,frame]of [[roles,initialFrame],[againRoles,freshFrame]]){assert.ok(connected.trace.includes(frame.writerId));assert.ok(connected.trace.indexOf(frame.writerId)<connected.trace.indexOf(connected.evidence[0].id));}
+    record({stage:'score-hud-roundtrip-frame-binding',exportedBacking:backing,selectedWrite:selectedWrites[0],initialFrame,freshFrame,initialPixels,sourceRows,initialKeys,freshKeys,fullSvgEqual:true});
 });
 test('score HUD effect requires exact literal Boolean own data and closed direct call schema',()=>{
     for(const text of ['info.showScore();','info.showScore(false,true);','info.showScore(pictures);','info.showScore(pictures[0]);','info.showScore(unknown());','let visible:boolean;info.showScore(visible);','info["showScore"](false);','new info.showScore(false);','info.showScore<boolean>(false);']){
