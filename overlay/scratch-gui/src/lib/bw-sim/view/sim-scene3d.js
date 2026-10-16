@@ -90,15 +90,12 @@ export const buildSimScene = ({model, mechanism, read, colors}) => {
         const colInfo = colors.get(pl.color ?? 16) || colors.get(16);
         const matColor = colInfo ? colInfo.value : '#ffffff';
         const matAlpha = colInfo ? colInfo.alpha : 1;
-        const material = new MeshStandardMaterial({
-            color: matColor,
-            roughness: 0.6,
-            metalness: 0.1,
-            transparent: matAlpha < 1,
-            opacity: matAlpha,
-            vertexColors: true
-        });
-        createdMaterials.add(material);
+        // Group 0: the placed colour. Group 1: colours the part fixes itself (vertex colours).
+        const material = [
+            new MeshStandardMaterial({color: matColor, roughness: 0.6, metalness: 0.1, transparent: matAlpha < 1, opacity: matAlpha}),
+            new MeshStandardMaterial({color: '#ffffff', roughness: 0.6, metalness: 0.1, vertexColors: true})
+        ];
+        for (const m of material) createdMaterials.add(m);
 
         const mesh = new Mesh(geo, material);
         mesh.name = pl.id;

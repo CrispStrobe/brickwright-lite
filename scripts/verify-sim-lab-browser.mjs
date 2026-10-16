@@ -123,6 +123,60 @@ try {
     assert.ok(after.pos[2] < before.pos[2] - 0.1, `the robot did not drive forward: ${JSON.stringify({before, after})}`);
     assert.ok(Math.abs(after.a - before.a) > 90 && Math.abs(after.b - before.b) > 90, `encoders: ${JSON.stringify({before, after})}`);
     await page.screenshot({path: resolve(artifacts, 'sim-lab-driving.png'), fullPage: true});
+
+    // Build mode: the editor opens on the current model; real clicks place a part;
+    // a pin dropped onto a beam hole snaps; undo/redo; back to Simulate compiles it.
+    await page.getByTestId('bw-sim-lab-mode-build').click();
+    await page.getByTestId('bw-sim-lab-editor-canvas').waitFor({timeout: 60000});
+    await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab.editor, null, {timeout: 60000});
+    const count = () => page.evaluate(() => window.__bwSimLab.editor.model.parts.length);
+    const start = await count();
+    await page.getByTestId('bw-sim-lab-part-32524.dat').click();
+    const editorCanvas = page.getByTestId('bw-sim-lab-editor-canvas');
+    const ebox = await editorCanvas.boundingBox();
+    await page.mouse.move(ebox.x + ebox.width * 0.15, ebox.y + ebox.height * 0.85);
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.waitForFunction(n => window.__bwSimLab.editor.model.parts.length === n + 1, start, {timeout: 10000});
+    console.log('PASS Build: a palette pick and a click on the canvas place a part');
+    // The click may have attached that beam anywhere on the robot. For the snap check, lay a
+    // second beam on open floor 0.3 m to the side, where nothing else is near its holes.
+    const free = await page.evaluate(() => window.__bwSimLab.editView.placeAt('32524.dat', [0.3, 0, 0]));
+    assert.equal(free.snapped, false, 'a beam dropped on open floor lies on the floor');
+    const beam = await page.evaluate(() => {
+        const parts = window.__bwSimLab.editor.model.parts;
+        return parts[parts.length - 1];
+    });
+    // Drop a friction pin just off the beam's end hole: the hole at (0, 0, 60) in the beam's frame,
+    // 15 LDU out along its axis, through the beam's actual pose (the click may have snapped it
+    // onto the robot at any rotation), then LDraw → world (x, -y, -z) × 0.4 mm.
+    const R = beam.rotation;
+    const local = [0, -15, 60];
+    const ldraw = [0, 1, 2].map(i => R[i * 3] * local[0] + R[i * 3 + 1] * local[1] + R[i * 3 + 2] * local[2] + beam.position[i]);
+    const holeWorld = [ldraw[0] * 0.0004, (0 - ldraw[1]) * 0.0004, (0 - ldraw[2]) * 0.0004];
+    if (process.env.SIM_DEBUG) {
+        console.log('DEBUG beam', JSON.stringify(beam), 'hole', JSON.stringify(ldraw), 'parts', await count());
+        console.log('DEBUG direct', JSON.stringify(await page.evaluate(h => {
+            const pane = window.__bwSimLab._pane;
+            const model = pane.editor.model;
+            const c = pane.lib.snapCandidates({model, catalog: pane.lib.CATALOG, part: '2780.dat', pose: {position: h, rotation: [1, 0, 0, 0, 1, 0, 0, 0, 1]}});
+            return {n: c.length, first: c[0] && c[0].position, ids: model.parts.map(p => p.id), pin: pane.lib.CATALOG.get('2780.dat')?.connectors};
+        }, ldraw)));
+    }
+    const pin = await page.evaluate(p => window.__bwSimLab.editView.placeAt('2780.dat', p), holeWorld);
+    assert.equal(pin.snapped, true, 'a pin dropped on a beam hole snaps');
+    assert.equal(await count(), start + 3);
+    await page.getByTestId('bw-sim-lab-undo').click();
+    assert.equal(await count(), start + 2);
+    await page.getByTestId('bw-sim-lab-redo').click();
+    assert.equal(await count(), start + 3);
+    await page.screenshot({path: resolve(artifacts, 'sim-lab-build.png'), fullPage: true});
+    console.log('PASS Build: a pin snaps into a beam hole; undo and redo');
+    await page.getByTestId('bw-sim-lab-mode-simulate').click();
+    await page.waitForFunction(() => window.__bwSimLab.mode === 'simulate' && window.__bwSimLab.status === 'ready', null, {timeout: 60000});
+    const built = await page.evaluate(() => window.__bwSimLab._pane.session.model.parts.length);
+    assert.equal(built, start + 3, 'the built model is what Simulate runs');
+    console.log('PASS Build → Simulate compiles and runs the built model');
     console.log(`PASS a green-flag Scratch program drives the simulated robot (${(before.pos[2] - after.pos[2]).toFixed(3)} m, encoders A ${after.a.toFixed(0)}°, B ${after.b.toFixed(0)}°)`);
     await page.close();
 

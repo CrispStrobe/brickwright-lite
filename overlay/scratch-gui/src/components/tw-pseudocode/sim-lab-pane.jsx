@@ -22,7 +22,10 @@ const TEXT = {
         loading: 'Loading the model and the physics engine…', ready: 'Ready', running: 'Running', paused: 'Paused',
         failed: 'Could not load the model: {error}', noWebgl: 'This browser cannot show the 3D view ({error}). The simulation still runs.',
         connectFailed: 'Could not connect the program to the virtual hub: {error}',
-        issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model'
+        issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
+        simulate: 'Simulate', build: 'Build', parts: 'Parts', undo: 'Undo', redo: 'Redo', remove: 'Delete',
+        save: 'Save .ldr', port: 'Port', none: 'none', placing: 'Placing {part}: click to place, R turns, Esc stops',
+        buildHelp: 'Pick a part, move it over the model: it snaps green onto a matching hole or axle, blue on the floor. Click a part to select it.'
     },
     de: {
         title: 'Sim-Labor (Beta)',
@@ -31,7 +34,10 @@ const TEXT = {
         loading: 'Modell und Physik-Engine werden geladen…', ready: 'Bereit', running: 'Läuft', paused: 'Pausiert',
         failed: 'Das Modell konnte nicht geladen werden: {error}', noWebgl: 'Dieser Browser kann die 3D-Ansicht nicht zeigen ({error}). Die Simulation läuft trotzdem.',
         connectFailed: 'Das Programm konnte nicht mit dem virtuellen Hub verbunden werden: {error}',
-        issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells'
+        issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
+        simulate: 'Simulieren', build: 'Bauen', parts: 'Teile', undo: 'Rückgängig', redo: 'Wiederholen', remove: 'Löschen',
+        save: '.ldr speichern', port: 'Port', none: 'keiner', placing: '{part} platzieren: klicken setzt, R dreht, Esc beendet',
+        buildHelp: 'Wähle ein Teil und bewege es über das Modell: grün rastet es an einem passenden Loch oder einer Achse ein, blau liegt es auf dem Boden. Klicke ein Teil an, um es auszuwählen.'
     }
 };
 
@@ -44,7 +50,8 @@ class SimLabPane extends React.Component {
         const locale = pickLocale(props.locale || browserLocale(), TEXT);
         this.locale = locale;
         this.text = TEXT[locale];
-        this.state = {status: 'loading', message: '', issues: [], modelFile: null, simMs: 0, view3d: 'loading'};
+        this.state = {status: 'loading', message: '', issues: [], modelFile: null, simMs: 0, view3d: 'loading',
+            mode: 'simulate', placing: null, selected: null, editorTick: 0};
         this.box = React.createRef();
         this.file = React.createRef();
         this.lib = null;
@@ -64,6 +71,9 @@ class SimLabPane extends React.Component {
             get issues () { return this._pane.state.issues; },
             get snapshot () { return this._pane.session ? this._pane.session.snapshot() : null; },
             get view3d () { return this._pane.state.view3d; },
+            get mode () { return this._pane.state.mode; },
+            get editor () { return this._pane.editor || null; },
+            get editView () { return this._pane.editView || null; },
             _pane: this
         };
         try {
@@ -81,7 +91,58 @@ class SimLabPane extends React.Component {
         this.disposed = true;
         cancelAnimationFrame(this.raf);
         this.teardown();
+        this.teardownEditor();
         if (window.__bwSimLab && window.__bwSimLab._pane === this) delete window.__bwSimLab;
+    }
+
+    teardownEditor () {
+        if (this.editView) { try { this.editView.dispose(); } catch { /* a lost context may already be gone */ } }
+        this.editView = null;
+        this.editor = null;
+    }
+
+    /** Build mode: the current model (or an empty one) in the editor. */
+    async enterBuild () {
+        const {createEditor, createEditorView3D, fetchLDrawClosure, parseLDConfig, CATALOG} = this.lib;
+        const model = this.session ? this.session.model : {version: 1, parts: []};
+        this.pause();
+        this.teardown();
+        this.teardownEditor();
+        this.setState({mode: 'build', status: 'loading', message: '', placing: null, selected: null});
+        // Any palette part may be placed, so load the whole catalog's geometry once.
+        if (!this.catalogFiles) this.catalogFiles = await fetchLDrawClosure([...CATALOG.keys()], {withConfig: true});
+        if (this.disposed) return;
+        const {read} = this.catalogFiles;
+        this.editor = createEditor({model, catalog: CATALOG});
+        try {
+            this.editView = createEditorView3D({container: this.box.current, read, colors: parseLDConfig(read('ldconfig.ldr')),
+                catalog: CATALOG, editor: this.editor,
+                onSelect: selected => this.setState({selected}),
+                onChange: () => this.setState(s => ({editorTick: s.editorTick + 1}))});
+        } catch (error) {
+            this.setState({status: 'failed', message: this.t('noWebgl', {error: error.message})});
+            return;
+        }
+        this.setState({status: 'ready'});
+    }
+
+    /** Back to simulation: compile what was built. */
+    async exitBuild () {
+        const text = this.lib.serializeModel(this.editor.model, {name: 'my-model.ldr', title: 'Sim Lab model'});
+        this.lastText = text;
+        this.teardownEditor();
+        this.setState({mode: 'simulate', placing: null, selected: null});
+        await this.openText(text, 'my-model.ldr');
+    }
+
+    saveLdr () {
+        const text = this.lib.serializeModel(this.editor.model, {name: 'my-model.ldr', title: 'Sim Lab model'});
+        const url = URL.createObjectURL(new Blob([text], {type: 'text/plain'}));
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'my-model.ldr';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
     teardown () {
@@ -145,6 +206,7 @@ class SimLabPane extends React.Component {
         this.raf = requestAnimationFrame(this.frame);
         const dt = this.last === null ? 0 : Math.min(MAX_FRAME_MS, now - this.last);
         this.last = now;
+        if (this.editView) { this.editView.render(); return; }
         if (!this.session) return;
         if (this.state.status === 'running' && dt > 0) {
             this.session.tick(dt);
@@ -200,6 +262,67 @@ class SimLabPane extends React.Component {
         else if (this.lastText) await this.openText(this.lastText, name);
     }
 
+    renderPalette () {
+        const groups = this.lib.paletteFrom(this.lib.CATALOG, {locale: this.locale});
+        return (
+            <div data-testid="bw-sim-lab-palette" style={{width: 190, flex: '0 0 190px', overflow: 'auto', fontSize: 12, borderRight: '1px solid #e2e8f0', paddingRight: 6}}>
+                <div style={{fontWeight: 600, marginBottom: 4}}>{this.text.parts}</div>
+                {groups.map(g => (
+                    <details key={g.category} open={['hub', 'motor', 'beam', 'pin', 'axle', 'wheel'].includes(g.category)}>
+                        <summary>{g.label}</summary>
+                        {[...g.parts].sort((x, y) => x.name.localeCompare(y.name, this.locale, {numeric: true})).map(p => (
+                            <button key={p.part} type="button" data-testid={`bw-sim-lab-part-${p.part}`}
+                                aria-pressed={this.state.placing === p.part}
+                                style={{display: 'block', width: '100%', textAlign: 'left', margin: '2px 0', padding: '3px 6px', borderRadius: 4, cursor: 'pointer',
+                                    border: '1px solid ' + (this.state.placing === p.part ? '#2563eb' : '#e2e8f0'), background: this.state.placing === p.part ? '#dbeafe' : '#fff'}}
+                                onClick={() => {
+                                    const next = this.state.placing === p.part ? null : p.part;
+                                    this.editView?.setTool(next);
+                                    this.setState({placing: next});
+                                }}>
+                                {p.name}
+                            </button>
+                        ))}
+                    </details>
+                ))}
+            </div>
+        );
+    }
+
+    renderBuildBar (button) {
+        const editor = this.editor;
+        const sel = editor && this.state.selected ? editor.model.parts.find(p => p.id === this.state.selected) : null;
+        const meta = sel ? this.lib.CATALOG.get(sel.part) : null;
+        const portable = meta && (meta.motor || meta.sensor);
+        const name = part => {
+            const m = this.lib.CATALOG.get(part);
+            return m ? ((this.locale === 'de' && m.nameDe) || m.name) : part;
+        };
+        return (
+            <div style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, fontSize: 12}}>
+                <button type="button" style={button} data-testid="bw-sim-lab-undo" disabled={!editor?.canUndo}
+                    onClick={() => { editor.undo(); this.setState(s => ({editorTick: s.editorTick + 1})); }}>{this.text.undo}</button>
+                <button type="button" style={button} data-testid="bw-sim-lab-redo" disabled={!editor?.canRedo}
+                    onClick={() => { editor.redo(); this.setState(s => ({editorTick: s.editorTick + 1})); }}>{this.text.redo}</button>
+                <button type="button" style={button} data-testid="bw-sim-lab-delete" disabled={!sel}
+                    onClick={() => { editor.apply({type: 'delete', id: sel.id}); this.setState(s => ({selected: null, editorTick: s.editorTick + 1})); }}>{this.text.remove}</button>
+                {portable && (
+                    <label>{name(sel.part)} · {this.text.port}{': '}
+                        <select data-testid="bw-sim-lab-port" value={sel.port || ''}
+                            onChange={e => { editor.apply({type: 'setPort', id: sel.id, port: e.target.value || null}); this.setState(s => ({editorTick: s.editorTick + 1})); }}>
+                            <option value="">{this.text.none}</option>
+                            {['A', 'B', 'C', 'D', 'E', 'F'].map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                    </label>
+                )}
+                <button type="button" style={button} data-testid="bw-sim-lab-save" disabled={!editor} onClick={() => this.saveLdr()}>{this.text.save}</button>
+                <span role="status" data-testid="bw-sim-lab-build-status" style={{color: '#475569'}}>
+                    {this.state.placing ? this.t('placing', {part: name(this.state.placing)}) : this.text.buildHelp}
+                </span>
+            </div>
+        );
+    }
+
     render () {
         const {status, message, issues, simMs, modelFile} = this.state;
         const busy = status === 'loading';
@@ -207,7 +330,16 @@ class SimLabPane extends React.Component {
         return (
             <div data-testid="bw-sim-lab" data-status={status} style={{display: 'flex', flexDirection: 'column', gap: 8, padding: 10, height: '100%', boxSizing: 'border-box'}}>
                 <div style={{fontSize: 12, color: '#334155'}}>{this.text.intro}</div>
-                <div style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6}}>
+                <div role="tablist" style={{display: 'flex', gap: 4}}>
+                    {['simulate', 'build'].map(mode => (
+                        <button key={mode} type="button" role="tab" aria-selected={this.state.mode === mode} disabled={busy || !this.lib}
+                            data-testid={`bw-sim-lab-mode-${mode}`} style={{...button, fontWeight: this.state.mode === mode ? 600 : 400}}
+                            onClick={() => (mode === 'build' ? this.state.mode !== 'build' && this.enterBuild() : this.state.mode !== 'simulate' && this.exitBuild())}>
+                            {this.text[mode]}
+                        </button>
+                    ))}
+                </div>
+                {this.state.mode === 'simulate' && <div style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6}}>
                     <label style={{fontSize: 12}}>{this.text.model}{': '}
                         <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={this.lib?.MODELS.some(m => m.file === modelFile) ? modelFile : ''}
                             onChange={e => e.target.value && this.openShipped(e.target.value)}>
@@ -225,9 +357,13 @@ class SimLabPane extends React.Component {
                     <span role="status" data-testid="bw-sim-lab-status" style={{fontSize: 12, color: '#475569'}}>
                         {busy ? this.text.loading : this.text[status] || ''}{this.session ? ` · ${this.t('time', {s: (simMs / 1000).toFixed(1)})}` : ''}
                     </span>
-                </div>
+                </div>}
                 {message && <div role="alert" data-testid="bw-sim-lab-message" style={{fontSize: 12, color: '#b91c1c'}}>{message}</div>}
-                <div ref={this.box} data-testid="bw-sim-lab-view" style={{flex: '1 1 auto', minHeight: 240}} />
+                {this.state.mode === 'build' && this.renderBuildBar(button)}
+                <div style={{display: 'flex', flex: '1 1 auto', minHeight: 240, gap: 8}}>
+                    {this.state.mode === 'build' && this.renderPalette()}
+                    <div ref={this.box} data-testid="bw-sim-lab-view" style={{flex: '1 1 auto', minHeight: 240, position: 'relative'}} />
+                </div>
                 {issues.length > 0 && (
                     <details data-testid="bw-sim-lab-issues" style={{fontSize: 12}}>
                         <summary>{this.text.issues} ({issues.length})</summary>
