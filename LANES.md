@@ -1,3 +1,25 @@
+## Scoped WeDo2 inventory gate repair — 2026-10-15
+
+CLAIMED — SPIKE G02 integration follow-up, isolated branch
+`claim/spike-g02-wedo-inventory-20261015`.
+
+The existing `wedo2unified` artifact pin is present in `vendor-pins.json`, but
+the notices census treats it as an unknown vendored repository and the scoped
+pin inventory omits it. Both checks fail on the unchanged integration source.
+The retained generated bundle declares MPL-2.0 and records its source commit
+and SHA-256; those inputs must remain unchanged.
+
+Envelope: this ledger, `scripts/lib/notices-census.mjs`,
+`THIRD-PARTY-NOTICES.md`, `test/notices-drift.test.mjs`, and
+`test/pin-move-chain.test.mjs`. Register the already shipped scoped bundle,
+retain its declared author and license in the notices, and correlate the
+existing pin with its exact per-file bundle receipt. Missing, malformed,
+unlicensed, wrongly attributed or mismatched bundles must still fail.
+No dependency adoption, generated bundle, product runtime, firmware, model,
+workflow or budget change. This repair does not establish broader license or
+release clearance. The claim must land before implementation; then run the
+affected inventory controls and every enabled exact-head CI check.
+
 ## SPIKE G02 composed lifecycle integration — 2026-10-15
 
 Continuation of the merged SPIKE G02 pane/session claims, branch
@@ -4724,3 +4746,137 @@ Actual installed browser download and fresh chooser reload remain mandatory
 before a user-facing qualification claim. No supplier pin or chooser geometry
 limit changes belong to this extension. See the
 [handoff](docs/X86-NEXT-LANES.md#master-disk-export-continuation).
+
+## Arcade nested ordinary declarations with captures — proposed
+
+PROPOSED — Codex generic nested declaration/capture lane. Merge this separate
+contract before product changes: [nested declarations with captures](docs/ARCADE-NESTED-DECLARATION-CAPTURES.md).
+Own actual nested declaration initialization, source/caller/all-writer primitive
+proof, versioned lexical declaration-allocation schema, managed capture/label
+bridge, current-body export and focused source/native/Code/SB3 tests. Coordinate
+shared translator/source graph/export/native hooks with their existing owners.
+Preserve original helper bodies; no Arrow wrappers, expression substitution,
+annotation authority or generated-name grants. Existing module/namespace named
+labels and version 1 numeric factory admission remain unchanged. Visible GUI
+editing and precise diagnostics require their own actual authoring evidence.
+No SDK reference captures/results, callable arrays, generic/default/recursive
+nested functions or new supplier word/pin follows from this claim.
+
+## Arcade physical null Sprite getter failure — 2026-10-15
+
+CLAIM — root-owned bounded null Sprite getter fault and actual native failure
+handoff, coordinated with the existing Throw and physical Sprite owners.
+[Contract](docs/ARCADE-NULL-SPRITE-GETTER.md) covers x/y/width/height individually (only x has an original runtime observation),
+and requires an actual current
+primitive null receiver, private fault provenance, real managed-lineage unwind,
+exceptional exactly-once continuation settlement, preserved earlier effects and
+no later success effects. Existing non-null/missing-ID service behavior stays
+intact; strings, annotations, copied arguments and arbitrary Errors grant no
+fault or Sprite authority. Retain the selected original without replay; qualify
+authentic portable native routes and unrelated-fiber/restart/Load controls.
+Implementation waits for this clarification's normal qualified merge. No broad
+Sprite admission, caught exceptions, supplier/pin change or whole-case promotion.
+
+
+## Dependency-prepared Arcade import — 2026-10-15
+
+PROPOSED EXTENSION — Codex Arcade integration, extending the merged extension-
+project qualification lane. Merge this claim before product changes. Contract:
+[dependency-prepared Arcade import](docs/ARCADE-DEPENDENCY-PREPARED-IMPORT.md).
+Own one shared asynchronous dependency preparation/import boundary, coordinated
+public browser resolver and file/share entrypoints, existing CLI/Node resolver
+integration, focused controls and Arcade handoff. Resolve the actual current
+input or exported project's declared package/version/ref identities; retain
+original files, source provenance, resource order and every diagnostic channel.
+Preserve the synchronous offline path and existing fetch policy; missing,
+disabled, mismatched and ambiguous dependencies remain named failures. No
+original-source restoration, fixture-specific preparation, compile, guest run,
+pin adoption or whole-case promotion. Actual SDK package preparation requires
+its separately reviewed bounded execution and is not inferred from source tests.
+
+
+## Exact Arcade scene-clock Number producer — 2026-10-15
+
+PROPOSED CLARIFICATION — Codex Arcade integration, coordinated with the existing
+distinct scene/program clock and primitive producer owners. Merge before product
+changes. [Contract](docs/ARCADE-CLOCK-NUMBER-PRODUCER.md) owns only unchanged
+unshadowed zero-argument game.runtime source proof, actual current scene-clock
+primitive Number completion and current Code/Blocks/SB3/export controls. Bind
+all SDK accesses/writes and the real cached operation/registration/active loan;
+execution ownership alone is not a Number certificate. Preserve current graph,
+Stop/load and private proof lifetimes, direct-service compatibility and all other
+primitive roles. No control.millis, broad SDK result seed, class/callback widening,
+new word or pin. The stopwatch Timer external writer and cyclic field/result
+invariant remain HELD pending complete separate proof. Native, selected-original
+and visible authoring gates remain independent; no whole-case promotion.
+
+## Ordinary procedure optional argument transport — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Product implementation waits
+for this claim's normal qualified merge. Contract:
+[ordinary call omission](docs/ARCADE-ORDINARY-CALL-OMISSION.md).
+Own a narrow reusable per-call/per-formal missing-slot proof for uniquely bound,
+unchanged ordinary module or flattened namespace procedures. First admission has
+an actual optional trailing suffix and no signature defaults, rest/generic or
+constructor route. Emit canonical actual Undefined operands under that proof,
+independently of the selected translation route; do not pad by names or counts.
+Preserve full provided/forwarding calls, helper bodies, actual argument evaluation,
+caller/completion identity, all diagnostic channels and partial-stage boundaries.
+Optional type metadata describes a signature, never an actual reference producer.
+Unknown provided Effects/Melody or other reference inputs remain refused.
+
+After merge, own the new omission planner and coordinated narrow source-call,
+current prototype/formal/argument validation and export hooks, focused controls
+and docs. Reuse existing actual callee analysis, primitive constraints, Undefined
+reporters and default omission bits. Coordinate shared hooks with their owners.
+Current Blocks/Code, rename/reorder/reconnect/writers, save/reopen, native argument
+and exceptional completion, current export/reimport and hosted GUI each need their
+own evidence. Parsing or arity recovery is not whole-app success.
+
+No new SDK reference producer/service domain, annotation value grant, arbitrary
+reference default, generic/captured/nested callable expansion, new word, dependency
+pin or supplier adoption. Existing default-bearing protocols must preserve absent
+versus explicitly supplied Undefined behavior. All unrelated lane claims remain.
+
+
+## Current Array export: overwritten local initializers — 2026-10-16
+
+PROPOSED — Codex current Array authority continuation. Merge this documentation
+claim before implementation. Contract:
+[local initializer proof](docs/ARCADE-ARRAY-LOCAL-RESET-PROOF.md).
+Own narrow current Array receiver authority helper changes, focused authored
+controls and compatibility documentation. Prove the actual current lexical local,
+target/procedure/frame identity and definite overwrite without an intervening
+read, capture, escape, call, branch, yield, reentry or lifecycle exposure.
+Intervening palette/unrelated effects require an actual bounded implementation
+and operand effect proof; names, purity annotations and opcode whitelists grant
+nothing. Preserve every command/body and all other writer/initialization facts;
+retain the Null writer and named refusal whenever uncertain. No generic Null
+removal, new producer/domain, source lowering, runtime, supplier, pin or workflow
+change. Qualify all observed local sequences, adversarial current graph edits,
+Code/saved-project/current export/reimport and the affected actual application
+route without promoting native, GUI or whole-case results from source controls.
+
+
+## Arcade roundtrip shape: ordinary symbols and empty Arrays — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this separate contract
+before implementation: [roundtrip shape](docs/ARCADE-ROUNDTRIP-SHAPE.md).
+Own **A**, actual-owner ordinary exported function symbol inventory/allocation
+and matching resolved calls, and **B**, direct preservation of actual empty Array
+allocations only as complete declaration initializers or complete plain-Identifier
+assignment statements when scope/evaluation order is proved. Coordinate narrow
+export-arcade/staged-value hunks with their owners; own the optional pure symbol
+helper, focused controls and compatibility notes listed in the contract.
+
+Preserve every actual body, allocation, alias, effect, current binding, diagnostic
+and partial result. No prefix stripping, generated-name authority, operation
+deletion, original-source fallback or stale dependency preparation. Qualify
+collisions/recursion/current edits, identity/order/exceptions, Code/Blocks/save,
+actual current export/reimport and affected guest routes separately. Existing
+initializer receiver proof excludes lowering and does not absorb this scope.
+
+Local initialization transport (**C**), startup wrapper composition (**D**) and
+callback alias/formal allocation (**E**) remain tracked open work, not permission
+for source changes here. No runtime/ABI/domain, supplier/pin, GUI or workflow
+change; no stable whole-project or compatibility-count claim from source shape.
