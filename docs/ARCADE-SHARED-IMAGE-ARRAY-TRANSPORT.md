@@ -334,3 +334,29 @@ metadata tags as well as executable throw statements before that helper runs.
 Consumed metadata and serializer domains also refuse BigInt data before helpers,
 so unsupported source data cannot escape the optional profile as a serialization
 exception. Unconsumed root metadata still supplies no facts.
+
+
+### Exact overlap-destroy non-exposure slice
+
+The private F effect census may prove one physical zero-argument `destroy()`
+call from an actual unmodified `sprites.onOverlap` callback argument. It follows
+all current lexical writers and aliases, and requires the incoming assignment
+to dominate every immutable direct call entry. Startup null and missing
+initializers remain unchanged; no annotation, variable spelling, kind number,
+raw ID, or general Sprite value/token supplies proof.
+
+This is an exact-call boolean only. It adds no generic Sprite producer, field,
+callable or serialization authority. Mixed/unknown writes, extracted procedures
+or registrations, early ordinary entries and copied/stale calls refuse. Final
+compiler output must be re-proved on its actual current nodes.
+
+Destroy remains an effectful callback/reentry barrier for Image-entry analysis.
+This narrow slice refuses any explicit destroyed-handler registration rather
+than interpreting it as harmless. Whole-source unknown-effect and backing-Array
+escape checks remain mandatory; no body is removed and no callback is run by
+analysis. Focused source controls do not establish native or full-game coverage.
+
+This initial call-entry proof accepts only zero-formal ordinary helper procedures
+and exact zero-argument calls, without optional/default/rest/generic metadata.
+It does not hide unused argument or default-initializer effects behind a call
+entry. Callback parameters remain the exact two incoming overlap parameters.
