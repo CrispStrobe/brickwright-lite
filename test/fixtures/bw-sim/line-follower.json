@@ -1,0 +1,26 @@
+{
+  "$comment": "Line follower: S1 driving base plus colour sensor on port C at the front looking down ~8 mm above floor, pinned to the hub via beam. Start on the line-oval mat at its documented start.",
+  "mat": "line-oval",
+  "model": {
+    "version": 1,
+    "parts": [
+      {"id": "hub", "part": "45601.dat", "color": 71, "position": [0, 0, 0], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+      {"id": "motorR", "part": "54696p01.dat", "color": 71, "position": [100, 10, 80], "rotation": [0, -1, 0, -1, 0, 0, 0, 0, -1], "port": "B"},
+      {"id": "pinR", "part": "2780.dat", "color": 0, "position": [70, -10, 80], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+      {"id": "axleR", "part": "3705.dat", "color": 0, "position": [170, 10, 80], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+      {"id": "wheelR", "part": "39367p01.dat", "color": 15, "position": [170, 10, 80], "rotation": [0, 0, 1, 0, -1, 0, 1, 0, 0]},
+      {"id": "motorL", "part": "54696p01.dat", "color": 71, "position": [-100, 10, 80], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1], "port": "A"},
+      {"id": "pinL", "part": "2780.dat", "color": 0, "position": [-70, -10, 80], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+      {"id": "axleL", "part": "3705.dat", "color": 0, "position": [-170, 10, 80], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+      {"id": "wheelL", "part": "39367p01.dat", "color": 15, "position": [-170, 10, 80], "rotation": [0, 0, 1, 0, -1, 0, 1, 0, 0]},
+      {"id": "castor", "part": "39370.dat", "position": [0, 0, -80], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+      {"id": "castorPin1", "part": "2780.dat", "position": [20, -10, -80], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+      {"id": "castorPin2", "part": "2780.dat", "position": [-20, -10, -80], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+      {"id": "ball", "part": "52629.dat", "position": [0, 46, -80], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+      {"id": "beamA", "part": "32523.dat", "color": 71, "position": [60, 10, -40], "rotation": [0, 1, 0, 0, 0, 1, 1, 0, 0]},
+      {"id": "sens", "part": "37308.dat", "color": 15, "position": [48, 10, -20], "rotation": [1, 0, 0, 0, 0, -1, 0, 1, 0], "port": "C"},
+      {"id": "pin1", "part": "2780.dat", "color": 0, "position": [60, -10, -40], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+      {"id": "pin2", "part": "2780.dat", "color": 0, "position": [60, 10, -40], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]}
+    ]
+  }
+}
