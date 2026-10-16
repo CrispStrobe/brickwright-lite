@@ -19,6 +19,10 @@ WHEN button A down:
   set all pixels to blue
 WHEN button B down:
   set all pixels to green
+WHEN switch moved left:
+  set all pixels to yellow
+WHEN switch moved right:
+  set all pixels to white
 `;
 let browser;
 let page;
@@ -91,6 +95,28 @@ try {
     await page.keyboard.press('Space');
     await expectFace('rgb(0, 255, 0)');
     report.steps.push('keyboard face B starts the native green handler');
+    const slide = face.locator('[data-cpx-switch]');
+    const expectSwitch = async (right, fill) => {
+        await page.waitForFunction(expected =>
+            window.__brickwrightStore.getState().scratchGui.vm.runtime.bwCpxState?.switchRight === expected,
+        right);
+        assert.equal(await slide.getAttribute('data-cpx-switch'), right ? 'right' : 'left');
+        assert.equal(await slide.getAttribute('aria-pressed'), String(right));
+        await expectFace(fill);
+        await expectPane(fill);
+        const paneSlide = page.getByTestId('bw-cpx-switch');
+        assert.equal(await paneSlide.getAttribute('aria-pressed'), String(right));
+    };
+    // The real extension starts with the switch on the right. A pointer and a
+    // keyboard toggle must change both views and fire distinct native hats.
+    assert.equal(await slide.getAttribute('data-cpx-switch'), 'right');
+    await slide.click();
+    await expectSwitch(false, 'rgb(255, 255, 0)');
+    report.steps.push('pointer slide switch fires the native left hat; both views turn yellow');
+    await slide.focus();
+    await page.keyboard.press('Enter');
+    await expectSwitch(true, 'rgb(255, 255, 255)');
+    report.steps.push('keyboard slide switch fires the native right hat; both views turn white');
     const declarations = await page.evaluate(() => {
         const runtime = window.__brickwrightStore.getState().scratchGui.vm.runtime;
         return {device: runtime.stc?.device, source: runtime.stc?.pinsSource,

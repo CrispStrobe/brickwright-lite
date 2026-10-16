@@ -5851,3 +5851,16 @@ reader fix is incorporated with the explanatory comment while retaining this
 386-only gate's strict edi assertion and existing timeout, per the merged claim.
 Normal merges preserve both histories and all newer main changes. This changed
 combined head requires fresh exact-head CI before landing.
+
+A13 reconciliation and switch proof (2026-10-16): CPX owner PR1009 is now
+merged remotely; preserve its completion record and main5feadd082, including
+PR990 pending-stop repair. All124 affected CPX/File/SPIKE lifecycle controls
+pass without skips. Extend the existing claimed actual-browser journey to drive
+the real face slide switch by pointer left and Enter right: native switch hats
+produce yellow then white in both views; VM switch state and both accessible
+switch positions agree. All10 journey steps pass on exact325a46a production,
+zero page errors, including the existing native-button and fresh-project circuit
+round trips. No injected output or extension/runtime change. The fresh signed
+physical-device325 app is83.31MiB and passes strict verification; no physical
+installation or new simulator boot is claimed. Final reconciled production
+build/browser checks and all enabled final-head hosted checks remain required.
