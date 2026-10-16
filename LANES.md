@@ -745,21 +745,6 @@ peer-owned Arrays scalar-return, controller-repeat, callable or font hunks.
 
 # Who is doing what — merge the claim before implementation
 
-## Arcade per-player score Number producers — 2026-10-16
-
-PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
-implementation. Contract: [per-player score Number producers](docs/ARCADE-INFO-PLAYER-NUMBER-PRODUCERS.md).
-Own the narrow ordinary SDK source proof, any necessary existing producer
-consumer integration, and only the existing score Number proof's same-role
-fixed-player physical/cached argument binding in
-`overlay/scratch-vm/src/extensions/crispstrobe/arcade/console-inspect-values.js`.
-Own focused current Code/Blocks/saved/export and native controls and docs; keep
-all genuine registration/cache/source-owner/active-result/lifecycle checks. Prove actual unshadowed fixed-player API bindings,
-complete access/writer census and real score Number completion. Preserve the
-existing direct-info and scene-clock boundaries; no namespace/opcode type grant,
-refusal suppression, runtime semantic change, pin adoption or whole-case credit.
-Other per-player results and EV3 console/motor gaps remain separate.
-
 ## Arcade primitive Number to text — 2026-10-15
 
 PROPOSED — Codex Arcade primitive source integration,
@@ -1085,6 +1070,105 @@ No dependency/pin/API/lazy behavior, package side-effect declaration, budget,
 workflow or unrelated editor/artwork change. Existing painter-presence startup
 ownership remains separate. Actual production size and widget qualification
 are required; source-byte attribution is no promise that the budget will pass.
+
+## Arcade per-player score Number producers — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
+implementation. Contract: [per-player score Number producers](docs/ARCADE-INFO-PLAYER-NUMBER-PRODUCERS.md).
+Own the narrow ordinary SDK source proof, any necessary existing producer
+consumer integration, and only the existing score Number proof's same-role
+fixed-player physical/cached argument binding in
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/console-inspect-values.js`.
+Own focused current Code/Blocks/saved/export and native controls and docs; keep
+all genuine registration/cache/source-owner/active-result/lifecycle checks. Prove actual unshadowed fixed-player API bindings,
+complete access/writer census and real score Number completion. Preserve the
+existing direct-info and scene-clock boundaries; no namespace/opcode type grant,
+refusal suppression, runtime semantic change, pin adoption or whole-case credit.
+Other per-player results and EV3 console/motor gaps remain separate.
+
+## Carnival package provenance and selected native APIs — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration, coordinated extension of the
+existing Carnival host/authoring and dependency-project/native-admission lanes.
+Merge [the selected Carnival source contract](docs/ARCADE-CARNIVAL-NATIVE-SOURCE-ADMISSION.md)
+before implementation. Own narrow current-package/declaration provenance,
+shared native-source admission and namespace handoff for already implemented
+countdown/scoring/dialog APIs; source identity/coverage companion and controls,
+current Code/Blocks/save/reopen/export, actual affected native and GUI journeys.
+Preserve complete module initialization including all five original SpriteKind
+allocations, source bodies/resources/order, effects and explicit unsupported
+APIs. No whole-package skip, prefix/opcode grant, source/diagnostic pruning,
+new runtime capability, pin or workflow change. Coordinate exact shared hunks;
+other adapters/importer/editor owners remain preserved. Dependency-free native
+Code authoring cannot replace authentic asynchronous package-import evidence.
+
+## Arcade managed SDK activation ownership — coordinated claim
+
+CLAIM — bounded construction continuation, existing physical Sprite update and
+synchronous nested VM handoff compatibility.
+[Ownership and acceptance contract](docs/ARCADE-MANAGED-SDK-OWNERSHIP.md)
+owns only the listed shared exception/primitive utilities, existing SDK Sprite
+activation paths and focused native/probe controls. Preserve genuine caller,
+registration/cache, instance, phase, generation and lineage authority; retain
+Stop/reload and exceptional once-only settlement. Do not fabricate a parent or
+allow arbitrary caller-less execution or reentry. Distinguish metadata-only
+second-instance probes from intentional same-runtime Buffer owner isolation.
+Coordinate existing Throw, Array, waits, Number, scene-clock and null-getter
+owners before shared edits. No blanket inheritance, SDK API, value domain,
+supplier/pin, timing or new host root-loan expansion. Implementation waits for
+this claim's normal qualified merge; affected clean native own-guest and current
+portable-route qualification remains mandatory, with GUI and whole-case gates
+separate.
+
+## Shared static Image Array source transport: F — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this coordinated contract
+before implementation: [shared Image Array transport](docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md).
+Own a narrow actual-binding, initialization, all-writer and configured-effect
+proof before eager staging, with one private current plan consumed by source
+lowering and current frame resource emission. Coordinate the exact
+`arcade-translate.js`, `lower-pxt-staged-values.js` and necessary
+`export-arcade.js` hooks with their owners; own the optional source transport
+helper, focused controls and capability notes listed in the contract.
+
+Preserve once-per-entry versus repeated fresh construction, shared Image aliases
+and mutations, clone independence, array-observable semantics, current artwork
+and lifecycle. Unknown, exposed, mutated or repeatedly allocated Arrays retain
+ordinary lowering and diagnostics, including generic and partial source routes.
+No generated-name pruning, body or diagnostic deletion, retained-source
+restoration, generic Array/Image grant, runtime/ABI/word, supplier or pin change.
+The earlier observed 204 connected blocks of growth remain an original failure;
+local initialization, startup and callback transport remain separately owned.
+
+Require complete actual Code → Blocks → SB3 → current export → fresh reimport,
+affected native guest identity/mutation/lifecycle and genuine original SDK
+compilation/simulator qualification. Existing static Image and authored animation
+Array proofs supply only their actual producer facts; the empty-Array contract
+does not authorize this nonempty transport. No whole-project stability,
+visible GUI or corpus promotion follows from focused source controls.
+
+## Arcade generated helper recognition maintenance — 2026-10-16
+
+PROPOSED / DOCS ONLY — Arcade integration, coordinated import and export
+maintenance. Product implementation waits for this claim's normal qualified
+merge. Contract: [generated helper recognition](docs/ARCADE-GENERATED-HELPER-RECOGNITION.md).
+
+Own canonical parsing and current declaration/use recognition of existing named
+Array parse/JSON/access helpers and existing stop/run-token machinery in
+`arcade-translate.js`, `named-array-item-helpers.js`, a coordinated source-proof
+helper, focused tests and documentation. Templates and input must share the
+actual admitted parser context without dropping semantic metadata. Require the
+complete canonical bodies and actual lexical bindings, all writers/escapes and
+storage relationships before a call or declaration can be replaced. Preserve
+extra effects, unknown metadata and unmatched source through existing behavior
+or explicit refusal; do not prune by generated spelling.
+
+Preserve default semantics, producer domains, runtime/stop/frame policy, engine
+ABI and pins. Generic optional/default values and nonempty Array staging remain
+outside this scope. Existing exact source, current Blocks/Code, same/fresh save,
+native effects/stop lifecycle, current export/reimport and visible GUI gates
+remain mandatory for their respective claims. Keep original failures; no corpus
+promotion from focused controls.
 
 ## Wide Arcade artwork documents and Pixel authoring — 2026-10-12
 
@@ -5177,65 +5261,3 @@ program field and unrelated icons; no server alias, asset duplication, supplier
 pin, workflow or broad runtime change. A fresh affected visible editor/theme
 qualification remains required; original missing-resource failures stay open
 until that evidence exists. Other lanes retain their owned surfaces.
-
-## Carnival package provenance and selected native APIs — 2026-10-16
-
-PROPOSED / DOCS ONLY — Codex Arcade integration, coordinated extension of the
-existing Carnival host/authoring and dependency-project/native-admission lanes.
-Merge [the selected Carnival source contract](docs/ARCADE-CARNIVAL-NATIVE-SOURCE-ADMISSION.md)
-before implementation. Own narrow current-package/declaration provenance,
-shared native-source admission and namespace handoff for already implemented
-countdown/scoring/dialog APIs; source identity/coverage companion and controls,
-current Code/Blocks/save/reopen/export, actual affected native and GUI journeys.
-Preserve complete module initialization including all five original SpriteKind
-allocations, source bodies/resources/order, effects and explicit unsupported
-APIs. No whole-package skip, prefix/opcode grant, source/diagnostic pruning,
-new runtime capability, pin or workflow change. Coordinate exact shared hunks;
-other adapters/importer/editor owners remain preserved. Dependency-free native
-Code authoring cannot replace authentic asynchronous package-import evidence.
-
-
-## Arcade managed SDK activation ownership — coordinated claim
-
-CLAIM — bounded construction continuation, existing physical Sprite update and
-synchronous nested VM handoff compatibility.
-[Ownership and acceptance contract](docs/ARCADE-MANAGED-SDK-OWNERSHIP.md)
-owns only the listed shared exception/primitive utilities, existing SDK Sprite
-activation paths and focused native/probe controls. Preserve genuine caller,
-registration/cache, instance, phase, generation and lineage authority; retain
-Stop/reload and exceptional once-only settlement. Do not fabricate a parent or
-allow arbitrary caller-less execution or reentry. Distinguish metadata-only
-second-instance probes from intentional same-runtime Buffer owner isolation.
-Coordinate existing Throw, Array, waits, Number, scene-clock and null-getter
-owners before shared edits. No blanket inheritance, SDK API, value domain,
-supplier/pin, timing or new host root-loan expansion. Implementation waits for
-this claim's normal qualified merge; affected clean native own-guest and current
-portable-route qualification remains mandatory, with GUI and whole-case gates
-separate.
-
-## Shared static Image Array source transport: F — 2026-10-16
-
-PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this coordinated contract
-before implementation: [shared Image Array transport](docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md).
-Own a narrow actual-binding, initialization, all-writer and configured-effect
-proof before eager staging, with one private current plan consumed by source
-lowering and current frame resource emission. Coordinate the exact
-`arcade-translate.js`, `lower-pxt-staged-values.js` and necessary
-`export-arcade.js` hooks with their owners; own the optional source transport
-helper, focused controls and capability notes listed in the contract.
-
-Preserve once-per-entry versus repeated fresh construction, shared Image aliases
-and mutations, clone independence, array-observable semantics, current artwork
-and lifecycle. Unknown, exposed, mutated or repeatedly allocated Arrays retain
-ordinary lowering and diagnostics, including generic and partial source routes.
-No generated-name pruning, body or diagnostic deletion, retained-source
-restoration, generic Array/Image grant, runtime/ABI/word, supplier or pin change.
-The earlier observed 204 connected blocks of growth remain an original failure;
-local initialization, startup and callback transport remain separately owned.
-
-Require complete actual Code → Blocks → SB3 → current export → fresh reimport,
-affected native guest identity/mutation/lifecycle and genuine original SDK
-compilation/simulator qualification. Existing static Image and authored animation
-Array proofs supply only their actual producer facts; the empty-Array contract
-does not authorize this nonempty transport. No whole-project stability,
-visible GUI or corpus promotion follows from focused source controls.
