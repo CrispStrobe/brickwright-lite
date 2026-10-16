@@ -74,7 +74,10 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
     await new Promise(done=>server.listen(0,'127.0.0.1',done));
     let browser;
     try {
-        browser=await chromium.launch();
+        // An explicitly retained browser can qualify the reference helper without
+        // installing another executable. An unset path keeps Playwright's default.
+        browser=await chromium.launch(process.env.BW_PXT_CLOCK_BROWSER_EXECUTABLE ?
+            {executablePath:process.env.BW_PXT_CLOCK_BROWSER_EXECUTABLE} : {});
         const clockContext=fakeClock ? await browser.newContext() : null;
         if(clockContext)await preparePxtInitialClock(clockContext);
         const page=clockContext ? await clockContext.newPage() : await browser.newPage();

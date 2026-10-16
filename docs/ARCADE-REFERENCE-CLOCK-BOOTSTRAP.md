@@ -53,3 +53,14 @@ scheduler versions or an unexpected clock observation must refuse this protocol.
 All enabled checks for the actual candidate and affected runtime qualifications
 remain required before adoption. No timing budget, assertion, skip policy or
 compatibility count changes are authorized by this claim.
+
+### Explicit reference browser executable
+
+Both the platform clock controls and the original PXT reference helper accept
+`BW_PXT_CLOCK_BROWSER_EXECUTABLE` as an explicit Playwright executable path.
+When absent, the normal Playwright browser selection is unchanged. An invalid
+explicit path fails normally; there is no executable substitution or fallback.
+This permits qualification using an independently bound retained full Chromium
+without requiring a separate headless-shell download. It does not transfer
+platform-only results to the actual PXT program: the original program's 0, 20
+and 40 ms observations still require their own run.
