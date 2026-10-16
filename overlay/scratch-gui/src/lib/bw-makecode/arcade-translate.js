@@ -3131,9 +3131,21 @@ const liftExporterStops = (program,profile) => {
     const tokens=rootDecl('_tokens'),mark=rootDecl('_stopMark');
     if(!tokens||!mark||tokens.kind!=='let'||mark.kind!=='let'||!proof.unique('_tokens')||!proof.unique('_stopMark'))return program;
     const storage=(n,d)=>n?.type==='Identifier'&&proof.declarationAt(n)===d.decls[0];
-    const tokenDecls=new Map();
+    const path=n=>n?.type==='Identifier'?n.name:n?.type==='Member'?path(n.object)+'.'+n.name:null;
+    const activation=node=>{
+        let owner=node;while(owner&&!['FunctionDeclaration','FunctionExpression'].includes(owner.type))owner=proof.parentOf(owner);
+        if(owner?.type!=='FunctionExpression')return null;
+        const registration=proof.parentOf(owner),api=path(registration?.callee);
+        if(registration?.type!=='Call'||!registration.args.includes(owner)||registration.isNew||
+            !(['game.onUpdate','game.onUpdateInterval','control.runInParallel','info.onCountdownEnd','info.onLifeZero'].includes(api)||
+                /^controller\.(?:A|B|up|down|left|right|menu)\.onEvent$/.test(api||'')))return null;
+        let base=registration.callee;while(base?.type==='Member')base=base.object;
+        return proof.unbound(base)?owner:null;
+    };
+    const tokenDecls=new Map(),tokenOwners=new Map();
     for(const n of proof.nodes)if(n.type==='Declaration'&&n.kind==='const'&&n.decls.length===1&&call(n.decls[0].init,tok,0)){
-        tokenDecls.set(n.decls[0],n);include(n);remove.add(n);
+        const owner=activation(n);if(!owner||owner.body?.[0]!==n)return program;
+        tokenDecls.set(n.decls[0],n);tokenOwners.set(n.decls[0],owner);include(n);remove.add(n);
     }
     const token=n=>n?.type==='Identifier'&&tokenDecls.has(proof.declarationAt(n));
     const marker=name=>({type:'ExpressionStatement',expr:{type:'Call',callee:{type:'Identifier',name},args:[]}});
@@ -3148,6 +3160,7 @@ const liftExporterStops = (program,profile) => {
         const ks=program.body.find(n=>n.type==='Declaration'&&n.decls.length===1&&n.decls[0]===kd&&zero(kd.init));
         if(!ms||!ks||ms.kind!=='let'||ks.kind!=='let'||md===kd||[tokens.decls[0],mark.decls[0]].includes(md)||
             [tokens.decls[0],mark.decls[0]].includes(kd)||!proof.unique(md.name)||!proof.unique(kd.name))return program;
+        if(activation(a)!==tokenOwners.get(proof.declarationAt(y.right)))return program;
         pairs.push({md,kd,token:proof.declarationAt(y.right)});include(a);include(b);include(ms);include(ks);
         remove.add(ms);remove.add(ks);remove.add(b);replacements.set(a,marker('__bwStopOthers'));
     }
@@ -3164,10 +3177,10 @@ const liftExporterStops = (program,profile) => {
     const bareReturn=n=>Array.isArray(n)?n.length===1&&bareReturn(n[0]):n?.type==='Return'&&!n.value||n?.type==='Block'&&bareReturn(n.body);
     const terms=n=>n?.type==='Binary'&&n.op==='||'?[...terms(n.left),...terms(n.right)]:[n];
     const guard=n=>{
-        if(call(n,dead,1)&&token(n.args[0]))return true;
+        if(call(n,dead,1)&&token(n.args[0])&&activation(n)===tokenOwners.get(proof.declarationAt(n.args[0])))return true;
         if(n?.type!=='Binary'||n.op!=='&&')return false;
         const a=n.left,b=n.right;if(a?.type!=='Binary'||a.op!=='<='||b?.type!=='Binary'||b.op!='!=')return false;
-        return token(a.left)&&token(b.left)&&proof.declarationAt(a.left)===proof.declarationAt(b.left)&&
+        return token(a.left)&&token(b.left)&&activation(n)===tokenOwners.get(proof.declarationAt(a.left))&&proof.declarationAt(a.left)===proof.declarationAt(b.left)&&
             pairs.some(p=>p.token===proof.declarationAt(a.left)&&proof.declarationAt(a.right)===p.md&&proof.declarationAt(b.right)===p.kd);
     };
     for(const n of proof.nodes){
@@ -3175,7 +3188,12 @@ const liftExporterStops = (program,profile) => {
             const all=terms(n.test),kept=all.filter(t=>!guard(t));if(kept.length===all.length)continue;
             all.filter(guard).forEach(include);guards.set(n,kept);
         }
-        if(n.type==='ExpressionStatement'&&call(n.expr,stop,0)){include(n);replacements.set(n,marker('__bwStopAll'));}
+        if(n.type==='ExpressionStatement'&&call(n.expr,stop,0)){
+            const owner=activation(n),list=lists.find(rows=>rows.includes(n)),at=list?.indexOf(n);
+            if(!owner||![...tokenOwners.values()].includes(owner)||!list||
+                !(bareReturn(list[at+1])||list===owner.body&&at===list.length-1))return program;
+            include(n);replacements.set(n,marker('__bwStopAll'));
+        }
     }
     include(tokens);include(mark);remove.add(tokens);remove.add(mark);
     // Every actual binding reference is accounted for before deleting any
@@ -3185,7 +3203,7 @@ const liftExporterStops = (program,profile) => {
         if(protectedDeclarations.has(proof.declarationAt(n))&&!allowed.has(n))return program;
         if(n.name==='music'&&(!allowed.has(n)||!proof.unbound(n)))return program;
     }
-    if(!proof.calls(tok,[0],helpers)||!proof.calls(dead,[1],helpers)||!proof.calls(stop,[0],helpers)||!proof.isCurrent())return program;
+    if(!proof.ambient(helpers)||!proof.calls(tok,[0],helpers)||!proof.calls(dead,[1],helpers)||!proof.calls(stop,[0],helpers)||!proof.isCurrent())return program;
     const rewrite=n=>{
         if(!n||typeof n!=='object')return n;
         if(Array.isArray(n)){

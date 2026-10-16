@@ -113,9 +113,10 @@ export function lowerNamedArrayItemHelpers(program,{profile=GENERATED_HELPER_PRO
     for(const fn of functions)for(const parse of parseHelpers)for(const template of passiveTemplates)
         if(symbolCounts.get(fn.name)===1 && exact(fn,template,new Map([[fn.name,template.name],[parse.name,parseTemplate.name]]),proof))passive.add(fn.name);
     const selected=new Set([...getters.values(),...jsonHelpers,...parseHelpers,...[...mutators.values()].map(x=>x.fn),...functions.filter(fn=>passive.has(fn.name))]);
-    if([...selected].some(fn=>!proof.root(fn)||!proof.closed(fn,selected)))return {program,unsupported:['Named Array helper requires an unambiguous actual lexical binding']};
+    if([...selected].some(fn=>!proof.root(fn)))return {program,unsupported:['Named Array helper requires an unambiguous actual lexical binding']};
     if([...jsonHelpers,...parseHelpers].some(fn=>proof.calls(fn,[1],selected)===null)||[...getters.values()].some(fn=>proof.calls(fn,[2],selected)===null))
         return {program,unsupported:['Named Array helper escapes or has an unqualified actual caller']};
+    const effectsClosed=[...selected].every(fn=>proof.closed(fn,selected));
     const globals=new Map(program.body.filter(node=>node.type==='Declaration').flatMap(node=>node.decls.map(decl=>[decl.name,decl])));
     const calls=[],writes=new Map(),unsupported=[],possibleMutators=[],members=[],foreignCalls=[],indexWrites=[],nestedRootDeclarations=[],escapedMutators=new Set(),scopes=new WeakMap();
     const visit=(node,shadow=new Set(),parent=null,key=null,depth=0)=>{
@@ -240,6 +241,7 @@ export function lowerNamedArrayItemHelpers(program,{profile=GENERATED_HELPER_PRO
             unsupported.push(`Named Array registry ${name} has an unproved writer`);
     }
     if (unsupported.length) return {program,unsupported:[...new Set(unsupported)]};
+    if(!effectsClosed)return {program,unsupported:['Named Array helper requires closed current callee and builtin effects']};
     const recognizedCalls=new Map(calls.map(call=>[call.node,call.name]));
     const value=(node,name)=>({type:node.type==='Null'?'NativeNamedArrayDelete':'NativeNamedArrayCreate',
         registry:name,json:node.type==='Array'?JSON.stringify(literal(node).value):null,bwObjectTypes:node.type==='Array'?['array']:['null']});

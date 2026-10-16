@@ -97,3 +97,24 @@ test('extra stop effects, foreign storage access and callee escape survive recog
         const result=arcadeToPseudocode(source);assert.match(result.code,/_stopAll/);assert.doesNotMatch(result.code,/^\s*stop all$/m);
     }
 });
+
+test('tagged helper and ambient call effects never disappear from the actual parser graph',()=>{
+    for(const effect of ['__bwNamedJsonValue`text`','Function`return JSON`()','JSON.parse`7`','external()','let unknown:any=null;unknown["change"]()']){
+        const ast=parse(LEGACY_JSON_SOURCE+'\n'+effect),proof=inspectGeneratedHelperBindings(ast,profiles.ordinary);
+        assert.ok(!proof.isCurrent()||!proof.closed(ast.body[0]),effect);
+        const result=arcadeToPseudocode(LEGACY_JSON_SOURCE+'\n'+effect);
+        assert.match(result.code,/__bwNamedJsonValue/,effect);
+    }
+    const literal=parse(LEGACY_PARSE_SOURCE+'\nlet image=img`1`');
+    assert.equal(inspectGeneratedHelperBindings(literal,profiles.ordinary).isCurrent(),true);
+    const shadow=parse(LEGACY_PARSE_SOURCE+'\nfunction img(){};let image=img`1`');
+    assert.equal(inspectGeneratedHelperBindings(shadow,profiles.ordinary).isCurrent(),false);
+});
+test('stop lifting requires a current activated root and a terminal continuation',()=>{
+    for(const source of [stopSource.replace('_stopAll()})','_stopAll();console.log("observable after")})'),
+        stopSource+'\nfunction ordinary(){_stopAll();return}ordinary();console.log("caller after")',
+        stopSource.replace('const _t=_tok();','const _t=_tok();function nested(){_stopAll();return}nested();'),
+        stopSource+'\nconst foreign=_tok()']){
+        const result=arcadeToPseudocode(source);assert.match(result.code,/_stopAll/);assert.doesNotMatch(result.code,/^\s*stop all$/m);
+    }
+});
