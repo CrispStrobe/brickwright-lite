@@ -76,10 +76,25 @@ async function trigger(run,label){
 async function currentArchive(run,label){
     const project=JSON.parse(run.vm.toJSON()),bytes=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()),zip=await JSZip.loadAsync(bytes),saved=JSON.parse(await zip.file('project.json').async('text'));
     const images=new Map(),inventory=[];
+    // SB3 persists stage/name and ordered inventories, not runtime target IDs.
+    // Require a unique persisted identity on both sides before reading assets.
+    const identity=target=>JSON.stringify([target.isStage,target.name]);
+    const keys=project.targets.map(identity),savedKeys=saved.targets.map(identity);
+    assert.equal(new Set(keys).size,keys.length,'unique current stage/name identities');
+    assert.equal(new Set(savedKeys).size,savedKeys.length,'unique saved stage/name identities');
+    assert.deepEqual(savedKeys,keys,'full ordered target identity inventory');
+    for(const [index,target]of project.targets.entries()){
+        const matches=saved.targets.filter(item=>identity(item)===identity(target));
+        assert.equal(matches.length,1,'one persisted target '+identity(target));
+        const same=matches[0];assert.equal(same,saved.targets[index],'same ordered target');
+        assert.deepEqual(Object.keys(same.blocks),Object.keys(target.blocks),'ordered block IDs');
+        assert.deepEqual(same.blocks,target.blocks,'full current block graph');
+        assert.deepEqual(same.costumes,target.costumes,'full ordered costume inventory');
+        assert.equal(same.currentCostume,target.currentCostume,'current costume selection');
+    }
     for(const target of project.targets)for(const costume of target.costumes||[]){
         assert.equal(costume.dataFormat,'svg','this authored fixture has only actual SVG assets');
         const member=zip.file(costume.md5ext);assert.ok(member,'current saved asset '+costume.md5ext);const svg=await member.async('text');
-        const same=saved.targets.find(item=>item.id===target.id);assert.ok(same?.costumes.some(item=>item.assetId===costume.assetId&&item.md5ext===costume.md5ext),'current graph and saved graph join by target/asset');
         if(images.has(costume.assetId))assert.equal(images.get(costume.assetId),svg,'duplicate asset identity has exact same bytes');
         images.set(costume.assetId,svg);const indexed=svgToPixels(svg);
         inventory.push({target:target.name,assetId:costume.assetId,md5ext:costume.md5ext,name:costume.name,svg,sha256:sha(Buffer.from(svg)),indexed:indexed?{width:indexed.width,height:indexed.height,pixels:Array.from(indexed.pixels)}:{status:'not-indexed-SVG'}});
