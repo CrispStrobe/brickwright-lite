@@ -369,9 +369,23 @@ try {
         const ring = () => page.locator('[data-testid^="bw-cpx-pixel-"]').evaluateAll(elements =>
             elements.map(element => element.getAttribute('fill')));
         const all = (pixels, color) => pixels.length === 10 && pixels.every(p => p === color);
+        const nativeState = () => page.evaluate(() => {
+            const vm = window.__brickwrightStore?.getState().scratchGui.vm;
+            const rt = vm?.runtime;
+            return {device: rt?.bwDeviceId, stcDevice: rt?.stc?.device,
+                dock: localStorage.getItem('bw-debug-dock'),
+                paneCount: document.querySelectorAll('[data-testid="bw-cpx-pane"]').length,
+                ring: Array.from(document.querySelectorAll('[data-testid^="bw-cpx-pixel-"]'), e => e.getAttribute('fill')),
+                board: Boolean(rt?.bwCpx), state: rt?.bwCpxState,
+                threads: rt?.threads?.map(t => ({topBlock: t.topBlock, status: t.status})),
+                stageOps: Object.values(rt?.getTargetForStage()?.blocks?._blocks || {}).map(b => b.opcode)};
+        });
+        console.log('CPX native before Start', JSON.stringify(await nativeState()));
         await page.locator('[class*="green-flag_green-flag"]').first().click();
         const red = await waitFor(ring, pixels => all(pixels, 'rgb(255, 0, 0)'), 30000);
+        console.log('CPX native after Start', JSON.stringify(await nativeState()));
         check('actual native CPX Start renders all ten translated red pixels', all(red, 'rgb(255, 0, 0)'));
+        if (!all(red, 'rgb(255, 0, 0)')) throw new Error('CPX native Start observation failed; original state recorded');
         await page.locator('[data-testid="bw-cpx-button-A"]').click();
         const blue = await waitFor(ring, pixels => all(pixels, 'rgb(0, 0, 255)'), 30000);
         check('actual CPX pane button A runs the translated handler and renders ten blue pixels', all(blue, 'rgb(0, 0, 255)'));

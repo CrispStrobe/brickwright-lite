@@ -87,6 +87,34 @@ These are qualification requirements, not a statement that a pending candidate
 has passed hosted CI. All enabled final-head checks and these affected proofs
 must pass before its source merge.
 
+## First hosted comparison findings
+
+The first hosted candidate is **not qualified**. In
+[run 38897566772](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38897566772),
+seven documentation comparisons pass and five fail their exact frame/tone
+checks: `set-brightness#0`, `show-animation#0`, `tutorials/siren#4`,
+`learnsystem/beep-beep#0` and `set-pixel-color#0`. The failed run remains the
+original evidence; passing individual cases do not qualify its failed shard.
+
+The pinned original PXT scheduler can suspend a continuation for five
+milliseconds after its elapsed-time check. Its simulated NeoPixel state also
+retains a reference to the supplied pixel buffer. Native CPX hats and the
+extension's completed ring state have different scheduling and publication
+boundaries. These source observations are relevant to the differences; they
+do not establish a complete cause or timing equivalence. Button Click maps
+to release in both implementations.
+
+The next candidate corrects the census reader's nested-template handling,
+the export menu control, and two browser control mistakes: waiting for the
+replacement program rather than any CPX header, and selecting the visible
+CPX dock rather than a hidden firmware button. It records complete comparison
+differences before retaining the original strict assertions. The actual native
+Start/button/Shake journey and timing boundary remain unqualified. In the
+[next run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38902268468),
+source import, original simulation and native block loading pass; after Start,
+the expected red ring is absent and the pane button is no longer found. The
+source/control reason remains under investigation.
+
 ## Live-share sample
 
 On 2026-10-16, the three shares linked by the pinned documentation were still
