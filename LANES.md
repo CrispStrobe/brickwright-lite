@@ -5257,8 +5257,8 @@ All unrelated owners and retained failures remain preserved.
 
 ## MakeCode CLI integrated GUI module boundary — 2026-10-16
 
-PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this separate claim
-before implementation: [CLI module boundary](docs/ARCADE-CLI-INTEGRATED-GUI-SCOPE.md).
+Claim merged; Codex Arcade integration owns the source boundary and focused
+qualification:  [CLI module boundary](docs/ARCADE-CLI-INTEGRATED-GUI-SCOPE.md).
 Continue the landed CLI target work and preserve its commands and target
 behavior. Own the `scripts/makecode.mjs` library-loading/prerequisite boundary, an
 optional focused `scripts/lib/` inspection helper, the coordinated exact
@@ -5277,6 +5277,11 @@ No translator/runtime/ABI, pin, workflow or GUI change. Coordinate any narrow
 integration receipt producer before editing it. Current Array and clock failures
 remain independent; this claim does not infer their cause from module identity
 or promote whole-project compatibility from source resolution controls.
+
+CLI boundary source implementation coordinates the three existing
+`scripts/lib/pxt-node.mjs` runtime-library imports with the same installed GUI
+library loader. No worker/compiler behavior or runtime source authority is
+changed. Source and actual CLI qualification remain pending.
 
 ## Arcade animation resource Array producers — 2026-10-16
 

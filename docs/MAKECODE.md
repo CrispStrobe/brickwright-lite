@@ -9,6 +9,27 @@ translate the game model to ordinary Scratch sprites and run that project on a
 real 160x120 console surface. The distinction matters: imported games play,
 but unsupported engine features are reported instead of being emulated badly.
 
+## Headless CLI prerequisites
+
+The MakeCode CLI reads the current integrated GUI libraries from
+`packages/scratch-gui/src/lib`, where normal Node resolution reaches the GUI's
+installed dependencies. Prepare the repository's vendored sources, run source
+integration, install the declared GUI dependencies, and apply the VM overlay.
+A frontend build or browser is not needed for conversion. Firmware compilation
+and board execution retain their separate runtime requirements.
+
+Before importing a library, the CLI checks the owned library files against the
+verbatim source copy made by `scripts/integrate.mjs`, and checks the installed
+VM package's canonical procedure-model export. Generated files outside that
+copy are not required to match unrelated overlay files. Missing, conflicting
+or stale integration reports `CLI_INTEGRATED_GUI_REQUIRED` with prerequisite
+exit code 3; it does not repair the installation during conversion. Run the
+normal source preparation steps again after editing owned libraries.
+
+The explicitly dependency-free library/corpus test route remains separate;
+it is not a fallback for a missing CLI installation. See the
+[CLI module boundary](ARCADE-CLI-INTEGRATED-GUI-SCOPE.md).
+
 ## Why an Arcade .hex cannot run on our micro:bit simulator
 
 Three independent walls. Any one of them is fatal on its own.
