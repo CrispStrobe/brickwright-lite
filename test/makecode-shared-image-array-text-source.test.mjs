@@ -668,12 +668,26 @@ initialize();use();sprites.onOverlap(SpriteKind.Player,SpriteKind.Projectile,fun
 const callbackUse=program=>entryClones(program).find(call=>call.callee.object?.type==='Index'&&call.callee.object.object?.name==='ordinary');
 const callbackRefused=source=>{const p=parse(source),call=callbackUse(p),proof=sourceImageArrayCloneEffects(p);assert.ok(call);assert.ok(!proof?.has(call),source);};
 test('Image callback invariant covers repeated physical entries without changing ordinary Array value facts',()=>{
-    const p=parse(callbackImageSource),proof=sourceImageArrayCloneEffects(p);assert.ok(proof);
+    const p=parse(callbackImageSource),call=callbackUse(p);
+    const options={arrayValues:true,unboundIsOpaque:true,parenthesized:true};
+    const before=analyseSourceValueProducers(p,options).typesAt(call.callee.object);
+    const proof=sourceImageArrayCloneEffects(p);
+    const after=analyseSourceValueProducers(p,options).typesAt(call.callee.object);
+    const syntax=entryNodes(p),describe=types=>[...types].map(type=>typeof type==='object'&&type!==null?
+        {kind:type.kind,site:syntax.indexOf(type.site)}:type);
+    record({stage:'callback-image-invariant-generic-profile',before:describe(before),after:describe(after)});
+    assert.ok(proof);assert.equal(after.size,before.size,'the optional effect query changes no generic value fact');
+    for(const type of before){
+        if(type&&typeof type==='object'){
+            assert.equal(type.kind,'Array');assert.ok(syntax.includes(type.site));
+            assert.ok([...after].some(actual=>actual&&typeof actual==='object'&&actual.kind==='Array'&&actual.site===type.site),'actual Array allocation site stays unchanged');
+        }else assert.ok(after.has(type),'every actual generic scalar fact stays unchanged');
+    }
+    assert.equal(before.has('Image'),false,'ordinary generic analysis does not prove this indexed Image receiver');
+    assert.equal(after.has('Image'),false,'the optional effect proof grants no generic Image value');
     for(const call of entryClones(p))assert.equal(proof.has(call),true);
-    const call=callbackUse(p),index=call.callee.object.index;assert.equal(index.type,'Binary');assert.equal(index.op,'%');
+    const index=call.callee.object.index;assert.equal(index.type,'Binary');assert.equal(index.op,'%');
     assert.equal(index.left.callee.name,'round','the real selection call remains in the AST');
-    const generic=analyseSourceValueProducers(p,{arrayValues:true,unboundIsOpaque:true,parenthesized:true});
-    assert.ok(generic.typesAt(call.callee.object).has('Undefined'),'no optional generic missing-element fact is removed');
     const renamed=parse(callbackImageSource.replaceAll('ordinary','currentView').replaceAll('temporary','storage'));
     const renamedCall=entryClones(renamed).find(call=>call.callee.object?.object?.name==='currentView');assert.equal(sourceImageArrayCloneEffects(renamed)?.has(renamedCall),true);
 });
