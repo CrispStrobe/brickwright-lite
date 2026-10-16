@@ -1,3 +1,29 @@
+## Compose STM32 PR975 after circuit PR965 — 2026-10-16
+
+CLAIMED — Codex root, isolated `/tmp/brickwright-stm32-compose-20261016`,
+branch `lane/stm32-compose-20261016`, base main `5cb83052330b400b48293315260cb4293b4f6bcf`.
+The user explicitly requested completion of these integrations in order. PR965
+is now merged; a read-only merge of PR975 `943d540c7` reports thirteen conflicts.
+This lane owns only their combined integration and qualification. Preserve the
+original PR975 branch and all its authored STM32 runtime/generator changes;
+this is not a takeover of its supplier implementation or other ongoing lanes.
+
+Resolve shared vendor-pins/package specifications/locks, package provenance
+notices, exact-pin adoption readers and the FreeDOS workflow conflict through
+the canonical writers. Retain CUI `1db1bb9ee565338672c7acfefec4cf94b27196e1`
+from PR965, Board `f84ba60ead0a90deb9830f0c1468839c293ecf05` and SB3 creator
+`a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76` from PR975. Keep every other pin,
+mirror, scoped extension and newer main change. The exact Board now passes the
+original complete upstream CI and Lite evidence reader (run38918125391).
+Own this ledger, conflict resolutions and any canonical derived regeneration
+needed by the composed graph; no new runtime semantics, engine, gate relaxation,
+workflow budget or private vendor changes. The original supplier owner's
+branch stays untouched. Recheck its head before landing; incorporate subsequent
+owner work rather than dropping it. Merge this claim to remote main before
+implementation. Require identity/notice/pin reader controls, affected STM32
+and circuit controls and all enabled exact-head CI before merging the combined
+candidate; no installed or physical validation is inferred.
+
 ## A13 — CPX live circuit face adoption — 2026-10-16
 
 CLAIMED — Codex root, isolated `/tmp/brickwright-lite-a13-20261016`, branch
@@ -345,7 +371,7 @@ local production compilation is qualified separately.
 
 ## iOS redundant static archive packaging — 2026-10-15
 
-CLAIMED — Codex, isolated `fix/ios-static-archive-resources-20261015` in
+DONE — Codex, isolated `fix/ios-static-archive-resources-20261015` in
 `/tmp/brickwright-ios-size-fix`, base `86daec14c`. User requested shrinking the
 current iPad app. Measured signed bundle: 371.43 MiB, including 151.98 MiB
 `libapp.a` copied as a resource despite already being linked into the executable.
@@ -356,7 +382,11 @@ build-file and resource-phase references from the generated project; preserve
 its Frameworks/linking entry. Exercise actual preparation on an Xcode fixture,
 including an already-anchored project. Verify the smaller signed app and iPad
 installation/launch. No feature, frontend asset or native code is removed.
-Claim lands before implementation.
+Claim landed as `139c01fe4` before implementation. Four preparation tests pass;
+the new real-script fixture fails on the prior implementation. The 219.45 MiB
+signed app (41% reduction) installed and launched on the paired iPad over Wi-Fi.
+All 41 executable sections remain byte-identical after removing the redundant
+archive; signature verification passes.
 
 ## iOS shared validator compilation blocker — 2026-10-15
 
@@ -394,7 +424,7 @@ landed as `10edc699d` before Lite implementation changes.
 
 ## ASM example admission during pending Code compilation — 2026-10-15
 
-CLAIM — Codex circuit/instrument adoption owner, bounded blocker repair for
+DONE — Codex circuit/instrument adoption owner, bounded blocker repair for
 PR965. Base `dccfd176b0043128b6a723e55f80a5e3b47fed4c`; isolated branch
 `docs/asm-example-serialization-claim-20261015` publishes ownership first.
 Production edits wait for this claim's merge and coordination with the A11
@@ -414,17 +444,26 @@ Do not change `setDevice`, `compile`, MakeCode/export/device-routing blocks,
 engine models, dependency pins, timeouts, compiler interception or other lanes.
 PR965's already qualified CUI adoption bytes remain unchanged.
 
-Require pure actual-method controls for busy rejection, ordinary idle loading,
-confirmation refusal and compilation starting during a pending confirmation;
-isolated entry/post-confirmation guard mutations must fail by name. The actual
-browser proof must hold only the return of a real completed VM load, observe
-the disabled picker and preserved source during the pending compile, release
-and restore the wrapper, then load and assemble through ordinary controls.
-Removing the picker guard must fail that held-state assertion, not merely time
-out later. Retain the complete keyboard/CGA/8255/refusal/reload journey and
-all enabled exact-head checks. No forced click, longer sleep, missing-scenario
-skip, unchanged failed rerun or mocked guest implementation. Move this entry
-to DONE in the final implementation candidate; keep the original red receipt.
+Combined qualification contract (2026-10-16): the original busy-refusal
+candidate passed its exact-head controls, but the newer merged editor-ownership
+fix in PR998 accepts newer editor requests while a previous VM load completes.
+The UI picker stays disabled during compilation. An already accepted direct
+method request instead replaces editor buffers immediately; the unchanged
+compiler ownership fence preserves that buffer and its feedback across old
+load success, refresh and error. No VM-loading method is changed here.
+
+Require actual-method controls for immediate accepted buffer ownership,
+confirmation refusal, ordinary idle loading and confirmation overlapping busy
+work. A buffer-publication mutation must fail; preserve PR998's success/error/
+refresh ownership controls unchanged. The actual browser proof holds only the
+return of a real completed VM load, observes the disabled picker, accepts one
+direct newer editor request, releases/restores the wrapper and proves exact
+buffer identity/source/feedback survive. Then assemble through ordinary controls.
+Removing the picker guard must fail the held-state assertion. Retain the entire
+keyboard/CGA/8255/refusal/reload journey and all exact-head checks. No forced
+click, timeout increase, omitted scenario or invented guest. Original refusal
+results and the first integration conflicts remain separate historical evidence.
+Fresh combined hosted qualification remains required before landing.
 
 ## STM32 faithful model pin adoption (sb3-creator + bw-board) — 2026-10-15
 
@@ -5041,7 +5080,10 @@ follows this claim's normal qualified merge.
 
 ## Circuit instruments: coordinated consumer adoption — 2026-10-15
 
-CLAIM — Codex bwcx, branch lane/circuit-instrument-consumer-20261015.
+DONE in the implementation commit containing this entry — Codex bwcx,
+branch lane/circuit-instrument-consumer-20261015. Canonical claim merged in
+PR961 before implementation. This is a CUI-only package adoption, not an
+engine-model change or a second Board/SB3 pin move.
 Exact base bf0d5cc23fa9321b63b9df3084965026d5054080, after STM32 PR952.
 Preserve its Board b4b4c87f70624dfb570a6d21391c5a2d5a40a0e8 and
 SB3 c9be966fc6cf2f4343ca96c1a4477c91e05854ee pins. Adopt qualified CUI
@@ -5064,6 +5106,17 @@ deployment or physical-accuracy claim. Publish claim before implementation.
 This is task 2 of the ordered circuit campaign in upstream CUI documentation;
 later stratified-regression and realism work needs its own measured envelope.
 
+Acceptance retained in the candidate: six actual installed-CLI signed/phase
+batch and finite-watch captures against an independent nominal follower
+calculation, raw sample clocks/CSV, signed meter means/KCL, cumulative native
+work receipts, named --current refusal and a process-isolated missing-receipt
+negative with restored control. Actual engine and browser execution is hosted;
+the final candidate must pass every enabled exact-head integration check before
+landing. Local metadata: both locks differ only in CUI spec/resolved/integrity;
+six pin-package tests and all seven generator checks pass. The full-tree
+stale-pin scan cannot qualify a sparse checkout and remains a hosted gate.
+No assertion, tolerance, raw sample rate, model default or one-shot workflow
+policy was relaxed. Source-only declarations do not prove deployment or hardware.
 
 ## Qualified 386 consumer and media workflow continuation — 2026-10-15
 
@@ -5386,3 +5439,48 @@ all initializers, unused bodies and diagnostics; no public flag/namespace/tag
 can issue proof. This does not widen ordinary Number/reference producers,
 classes, runtime behavior, dependency fetching, pins or compiler execution.
 Implement only after this ownership amendment qualifies and merges.
+
+
+## 386 GUI HDD and forward-debug hosted acceptance — 2026-10-16
+
+PROPOSED CLAIM — Codex x86, serialized after the existing media/debugger lane.
+Merge this claim before creating the new acceptance files. The existing merged
+claims cover the source in PR986, PR987 and PR989; their normal local composition
+adds no supplier pin, lock, notice or other-owner change. This claim extends only
+the finite hosted acceptance boundary: new
+`scripts/run-i80386-hdd-gui-actual.py`,
+`scripts/read-i80386-hdd-gui-originals.py`,
+`test/i80386-hdd-gui-actual.test.mjs` and
+`.github/workflows/i80386-hdd-gui-actual.yml`, plus the existing
+`scripts/verify-i80386-local-hdd-gui.mjs` for bounded original witnesses and a
+separate forward-debug scenario. Own only this ledger entry and its matching x86-guide subsection.
+Reuse the existing Playwright persistence scenario and established hosted
+build/browser pipeline; do not introduce another provisioning framework or
+change unrelated workflows.
+
+The source-only composition retains main's selected Board until its existing
+adoption owner supplies the reviewed installed dependency. It must refuse the
+actual persistence/debug scenario when the dedicated 386 target API is absent.
+Never inject supplier modules, fake a snapshot or infer installed support from
+a Board-only diagnostic. PR975's existing Board/SB3 owner retains its explicit
+**Not for agent merge** hold and all dependency writers; PR965 retains CUI/shared
+lock/notices ownership. This claim transfers no such surfaces. Record a handoff
+or wait for the existing owner's qualified adoption; any new adoption by this
+lane needs that handoff and a separately merged precise claim.
+
+Before a one-shot actual event, freeze the exact composed source, installed
+supplier/build graph, free inputs, browser/runtime identities, finite resource
+profile, closed original roles and independent reader. Preserve first failures
+and owned cleanup observations. Capture genuine image and metadata downloads,
+reload the exact saved data disk through the real chooser in a fresh machine,
+and verify the guest-written marker and unchanged paused original session.
+Qualify forward debugging separately through real UI pause, code breakpoint,
+instruction step, full-width registers, read-only physical memory, resume and
+pane switching, with source-backed refusals for unsupported operations.
+
+Pure controls must include a complete manufactured packet and fully rehashed
+semantic negatives. They do not establish browser or guest success. Every
+enabled exact-head source check and separately admitted original-only actual
+result remains mandatory; acquire each official original once and never replay
+a guest for the reader. No ISO/ATAPI, generalized DOSBox, new CPU/device, reverse
+execution, mode-aware disassembler, physical timing, whole-OS or release claim.
