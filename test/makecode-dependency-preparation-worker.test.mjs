@@ -40,6 +40,7 @@ test('public browser preparation reaches actual early return without source comp
  await harness(async({calls,workers,revoked})=>{
   const value=await resolveProjectInputsMakeCode({target:'arcade',files,fetchExtensions:false,baseUrl:'https://authored.invalid/'});
   assert.deepEqual(value.packages,{});assert.deepEqual(value.sourceOrder,[]);assert.equal(Object.hasOwn(value,'success'),false);
+  assert.equal(value.target,'arcade');assert.deepEqual(value.inputFiles,files);assert.deepEqual(value.dependencyBindings,{device:'target:*'});
   assert.equal(calls.install.length,1);assert.equal(calls.options.length,1);assert.equal(calls.configure,1);assert.equal(calls.compile,0);
   assert.deepEqual(calls.requests,['https://authored.invalid/static/makecode/arcade/target.json']);
   assert.equal(workers.length,1);assert.equal(workers[0].terminated,1);assert.equal(revoked.length,1);
@@ -70,6 +71,10 @@ test('actual package resolver refuses conflicting aliases and ambiguous exact so
   const entry=(repo,ref,dependencies={})=>({repo,refs:[ref],targets:['arcade'],files:{'pxt.json':JSON.stringify({dependencies,files:['main.ts']}),'main.ts':'namespace authored {}'}});
   sdk.extensions=[entry('example/outer','v1',{shared:'github:example/shared#v2'}),entry('example/shared','v1'),entry('example/shared','v2')];
   assert.throws(()=>sdk.resolveExtensions({shared:'github:example/shared#v1',outer:'github:example/outer#v1'},'arcade',[]),error=>error.code==='DEPENDENCY_CONFLICT');
+  sdk.extensions=[entry('example/outer','v1',{shared:'github:example/shared#v1'}),entry('example/shared','v1')];
+  assert.throws(()=>sdk.resolveExtensions({shared:'*',outer:'github:example/outer#v1'},'arcade',[]),error=>error.code==='DEPENDENCY_CONFLICT');
+  assert.throws(()=>sdk.resolveExtensions({outer:'github:example/outer#v1',shared:'*'},'arcade',[]),error=>error.code==='DEPENDENCY_CONFLICT');
+  assert.equal(sdk.resolveExtensions({device:'*'},'arcade',[]).identities.device,'target:*','normal target default remains valid');
   sdk.extensions=[entry('example/shared/path','v1'),entry('example/shared/path','v1')];
   assert.throws(()=>sdk.resolveExtensions({shared:'github:example/shared/path#v1'},'arcade',[]),error=>error.code==='AMBIGUOUS_EXTENSION');
   sdk.extensions=[entry('example/shared/path','v1')];

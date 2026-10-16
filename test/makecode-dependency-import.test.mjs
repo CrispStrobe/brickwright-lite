@@ -5,7 +5,7 @@ import {importDependencyProjectFiles} from '../overlay/scratch-gui/src/lib/bw-ma
 import {dependencyDiagnosticChannels,makeCodeWorkerErrorEnvelope} from '../overlay/scratch-gui/src/lib/bw-makecode/dependency-diagnostics.js';
 import original from '../overlay/scratch-vm/src/serialization/bw-makecode-original.js';
 const files=()=>({'main.ts':'info.setScore(addon.value())','pxt.json':JSON.stringify({name:'authored',files:['main.ts'],dependencies:{device:'*',addon:'github:example/addon#v1'}})});
-const resolved=()=>({packages:{addon:{files:{'main.ts':'namespace addon { export function value() { return 7 } }'},resourceIds:[]}},sourceOrder:[{id:'addon',file:'main.ts'}],jres:{},runtimeConfig:{},fetchedExtensions:[{id:'addon',repo:'example/addon',ref:'v1',sha256:{'main.ts':'authored-source-hash'}}]});
+const resolved=(input=files())=>({target:'arcade',inputFiles:{...input},dependencyBindings:{device:'target:*',addon:'github:example/addon#v1'},packages:{addon:{identity:'github:example/addon#v1',dependencyConfig:{dependencies:{device:'*'}},files:{'main.ts':'namespace addon { export function value() { return 7 } }'},resourceIds:[]}},sourceOrder:[{id:'addon',file:'main.ts'}],jres:{},runtimeConfig:{},fetchedExtensions:[{id:'addon',repo:'example/addon',ref:'v1',sha256:{'main.ts':'authored-source-hash'}}]});
 const later=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return {promise,resolve,reject};};
 
 test('public async boundary resolves exact current dependencies before translation and retains metadata/order',async()=>{
@@ -53,7 +53,7 @@ test('resolver, preparer and translator exceptions keep their own stage, cause a
   assert.equal(error.stage,'resolution');assert.equal(error.code,'NO_EXTENSION');assert.equal(error.cause,problem);assert.deepEqual(error.details.extensions,problem.extensions);assert.equal(error.dependencyInputs.diagnostics.preparation.status,'unavailable');return true;
  });
  const unsafe=files();unsafe['__bwDependencyInputs/authored.ts']='';
- await assert.rejects(importProjectFilesWithDependencies(unsafe,{target:'arcade',resolveProjectInputs:async()=>resolved()}),error=>error.stage==='preparation'&&/reserved/.test(error.message));
+ await assert.rejects(importProjectFilesWithDependencies(unsafe,{target:'arcade',resolveProjectInputs:async(_target,current)=>resolved(current)}),error=>error.stage==='preparation'&&/reserved/.test(error.message));
  await assert.rejects(importDependencyProjectFiles(files(),{target:'arcade',resolveProjectInputs:async()=>resolved()},()=>{throw problem;}),error=>error.stage==='translation'&&error.cause===problem);
 });
 
@@ -64,14 +64,25 @@ test('explicit offline async calls and other targets use the existing sync reade
  }
 });
 
-test('current changed package identities are passed to the resolver; stale original metadata cannot repair them',async()=>{
- const input=files(),catalog={'github:example/addon#v1':resolved()},stale={files:files(),resolved:resolved()};
+test('actual stale preparation results cannot repair current changed dependency declarations',async()=>{
+ const input=files(),stale=resolved();
  input['pxt.json']=JSON.stringify({...JSON.parse(input['pxt.json']),dependencies:{device:'*',addon:'github:example/addon#v2'}});
- let requested;
- await assert.rejects(importProjectFilesWithDependencies(input,{target:'arcade',originalSnapshot:stale,resolveProjectInputs:async(_target,current)=>{
-  requested=JSON.parse(current['pxt.json']).dependencies.addon;if(!catalog[requested])throw Object.assign(new Error('exact current package unavailable'),{code:'NO_EXTENSION'});return catalog[requested];
- }}),/exact current package unavailable/);
- assert.equal(requested,'github:example/addon#v2');assert.equal(JSON.parse(stale.files['pxt.json']).dependencies.addon,'github:example/addon#v1');
+ await assert.rejects(importProjectFilesWithDependencies(input,{target:'arcade',originalSnapshot:stale,
+  resolveProjectInputs:async()=>stale}),error=>error.stage==='resolution'&&error.code==='DEPENDENCY_IDENTITY_MISMATCH'&&/input files/.test(error.message));
+ const contradictory=resolved(input);
+ await assert.rejects(importProjectFilesWithDependencies(input,{target:'arcade',resolveProjectInputs:async()=>contradictory}),error=>error.code==='DEPENDENCY_IDENTITY_MISMATCH'&&/current package/.test(error.message));
+});
+
+test('target, graph, transitive identity and fetched-source contradictions refuse in the shared helper',async()=>{
+ for(const mutate of [
+  r=>{r.target='microbit';},r=>{delete r.inputFiles;},r=>{r.dependencyBindings.device='target:other';},
+  r=>{r.packages.addon.identity='github:example/addon#v2';},r=>{r.fetchedExtensions[0].ref='v2';},
+  r=>{r.fetchedExtensions[0].repo='example/other/path';},r=>{r.packages.extra={};},
+  r=>{r.packages.addon.dependencyConfig.dependencies.shared='github:example/shared#v1';}
+ ]){
+  const r=resolved();mutate(r);
+  await assert.rejects(importProjectFilesWithDependencies(files(),{target:'arcade',resolveProjectInputs:async()=>r}),error=>error.stage==='resolution'&&error.code==='DEPENDENCY_IDENTITY_MISMATCH');
+ }
 });
 
 test('existing original record save/load retains dependency provenance without granting source restoration',()=>{

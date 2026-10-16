@@ -108,21 +108,19 @@ var bwMakeCode = {
         while (queue.length) {
             var dep = queue.shift(), id = dep[0], spec = dep[1];
             var m = /^github:([^#]+?)(?:#(.+))?$/i.exec(spec);
-            if (!m) {
-                if (/^github:/i.test(spec)) {
-                    var unsupported = new Error('Unsupported MakeCode dependency identity for ' + id + ' (' + spec + ')');
-                    unsupported.code = 'UNSUPPORTED_EXTENSION';unsupported.extensions = [id + ' (' + spec + ')'];throw unsupported;
-                }
-                continue;
+            if (!m && /^github:/i.test(spec)) {
+                var unsupported = new Error('Unsupported MakeCode dependency identity for ' + id + ' (' + spec + ')');
+                unsupported.code = 'UNSUPPORTED_EXTENSION';unsupported.extensions = [id + ' (' + spec + ')'];throw unsupported;
             }
-            var repo = m[1].toLowerCase().replace(/[/]$/, '').replace(/\\.git$/, ''), ref = m[2] || '';
-            var identity = repo + '#' + ref;
+            var repo = m ? m[1].toLowerCase().replace(/[/]$/, '').replace(/\\.git$/, '') : null;
+            var ref = m ? m[2] || '' : null;
+            var identity = m ? 'github:' + repo + '#' + ref : 'target:' + spec;
             if (Object.prototype.hasOwnProperty.call(requested,id) && requested[id] !== identity) {
                 var conflict = new Error('Conflicting MakeCode dependency identity for ' + id + ': ' + requested[id] + ' versus ' + identity);
                 conflict.code = 'DEPENDENCY_CONFLICT';conflict.extensions = [id];throw conflict;
             }
             requested[id] = identity;
-            if (Object.prototype.hasOwnProperty.call(overrides,id)) continue;
+            if (!m || Object.prototype.hasOwnProperty.call(overrides,id)) continue;
             var hit = null;
             for (var i = 0; i < table.length; i++) {
                 var e = table[i];
@@ -138,7 +136,7 @@ var bwMakeCode = {
             overrides[id] = hit.files;
             push(JSON.parse(hit.files['pxt.json']).dependencies);
         }
-        return {overrides: overrides, unresolved: unresolved};
+        return {overrides: overrides, unresolved: unresolved, identities: requested};
     },
     configure: function () {
         if (bwMakeCode.configured) return;
@@ -277,7 +275,7 @@ var bwMakeCode = {
                 }
                 var ownedResources = collectResources(ext.overrides[id], config, namespace);
                 var vendored = bwMakeCode.extensions.some(function (entry) { return entry.files === ext.overrides[id]; });
-                packageInputs[id] = {files: inputs, assetPack: config.assetPack === true, assetNamespace: namespace,
+                packageInputs[id] = {files: inputs, identity: ext.identities[id], dependencyConfig: config, assetPack: config.assetPack === true, assetNamespace: namespace,
                     vendored: vendored, resourceIds: ownedResources,
                     sourceFiles: (copts.sourceFiles || []).filter(function (name) {
                     return name.indexOf(prefix) === 0;
@@ -303,7 +301,8 @@ var bwMakeCode = {
                 paletteHex.match(/.{6}/g).map(function (color) { return '#' + color; }) :
                 runtime && Array.isArray(runtime.palette) ? runtime.palette.slice() : null;
             var runtimeConfig = {palette: palette};
-            return {packages: packageInputs, sourceOrder: sourceOrder, jres: resources, runtimeConfig: runtimeConfig,
+            return {target:pxt.appTarget.id,inputFiles:Object.assign({},authoredFiles),dependencyBindings:ext.identities,
+                packages: packageInputs, sourceOrder: sourceOrder, jres: resources, runtimeConfig: runtimeConfig,
                 rootResourceIds: rootResourceIds, generatedRootFiles: generatedRootFiles,
                 generatedRootProvenance: generatedRootProvenance,
                 netAttempts: bwMakeCode.netAttempts.slice(before)};

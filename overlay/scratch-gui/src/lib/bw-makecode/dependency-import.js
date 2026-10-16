@@ -1,3 +1,4 @@
+import {validateResolvedDependencyIdentity} from './dependency-identity.js';
 import {prepareArcadeDependencyInputs} from './dependency-project.js';
 import {dependencyDiagnosticChannels, makeCodeWorkerErrorEnvelope} from './dependency-diagnostics.js';
 
@@ -41,6 +42,7 @@ export async function importDependencyProjectFiles(files, options, importFiles) 
             Object.entries(snapshot).some(([key,value]) => resolverFiles[key] !== value)) {
             throw Object.assign(new Error('resolver changed the current input files'),{code:'DEPENDENCY_INPUT_CHANGED'});
         }
+        dependencyInputs.currentInputBinding = validateResolvedDependencyIdentity(snapshot,opts.target,resolved);
     } catch(error) {
         dependencyInputs.diagnostics.resolution = {...dependencyInputs.diagnostics.resolution,
             status:'failed',exception:makeCodeWorkerErrorEnvelope(error),channels:dependencyDiagnosticChannels(resolved || error)};

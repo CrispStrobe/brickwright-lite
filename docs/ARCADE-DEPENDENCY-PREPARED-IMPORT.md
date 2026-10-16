@@ -97,6 +97,15 @@ only when explicitly passed `prepareDependencies: true`. Browser file/share
 calls select that route; CLI conversion selects it only with
 `--fetch-extensions`. A resolver receives a separate copy of the captured file
 map; changing that copy refuses instead of changing input authority.
+The actual preparation result also binds its target and original input map,
+normalized identities for every declared alias (including target defaults), and
+each selected package's manifest dependencies. The shared helper reconstructs
+the current declared graph and refuses stale input maps, contradictory package
+or fetched-source identities, extra packages and mismatched transitive bindings.
+A cached adapter cannot return an earlier root's preparation merely because a
+package ID matches. Actual acquisition still owns matching source bytes to the
+requested repository/ref; self-consistent metadata alone is not an independent
+source-authenticity certificate.
 
 `dependencyInputs` records actual declared dependencies, resolved source order,
 preparation provenance, runtime configuration and fetched package facts.
