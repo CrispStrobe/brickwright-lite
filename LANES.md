@@ -202,11 +202,12 @@ Adopt the qualified deterministic LabWired engine release after its source fix
 lands. Remove V2 serial withholding and verify real compiled firmware through
 both CLI modes and the visible Debug console. Preserve A11's landed export fix.
 
-Consumer scope is engine-only. The shipped bw-board client's LabWired adapter,
-bridge, debugger and firmware helpers are byte-identical to the qualified
-producer, and all chip/board catalog payloads are identical (source identity
-only differs). No client API change is needed for the UARTE source fix; actual
-released-engine qualification against this shipped client remains mandatory.
+Consumer scope is engine-only. The affected nRF52833 and micro:bit V2 catalog
+payloads are unchanged. The producer's canonical catalog also carries the
+qualified STM32F103 C8 flash and clock-gate descriptor; do not describe every
+chip payload as identical to this shipped client. No client API change is
+needed for the UARTE source fix; actual released-engine qualification against
+this shipped client remains mandatory.
 The separate STM32 package/compiler adoption belongs to its existing owner.
 This lane leaves board, compiler and circuit-UI package pin fields untouched;
 qualified mainline changes from those owners are preserved when integrated.
@@ -222,15 +223,19 @@ affected engine provenance/notices through canonical writers if required.
 No NPM package/compiler pin bump, copied engine, invented source/hash, SDK
 rebuild, optional motion run, physical-accuracy claim or threshold relaxation.
 
-The core fix is merged in labwired-core PR244 and the producer in bw-board
-PR621. Release `labwired-wasm-6a769a59` is published: two independent builds
-agreed, and the retained-byte qualification passed all 123 tests without skips.
-Original logs, byte lineage and release asset digests were independently checked.
-[Consumer PR988](https://github.com/CrispStrobe/brickwright-lite/pull/988) adopts
-that engine. Final tests require the exact complete greeting, ordered counter,
-unchanged matrix/fault/guest-time bounds, and the fresh nRF52833 V2 emulator ELF.
-Actual released-engine CLI/browser qualification and all enabled final checks
-remain pending before consumer integration.
+The first release, `labwired-wasm-6a769a59`, passed its original 123-test suite,
+but consumer PR988's real compiled CLI and browser programs still produced
+corrupt serial bytes. Preserve those failures. The follow-up interrupt-completion
+fix is merged in labwired-core PR247 as `1ea67f9c`; its reviewed source
+`de14721e4ae1d34a428f91d232e4520d50f1ceba` is the next engine pin.
+Producer PR629's eight enabled final checks and its preceding same-code fast
+tests pass. Fresh engine run 38855838615 must independently build twice, agree
+byte for byte and pass all 125 release tests before publishing a new release.
+[Consumer PR988](https://github.com/CrispStrobe/brickwright-lite/pull/988) still
+requires that release's verified hashes and actual CLI/browser qualification.
+Keep the exact complete greeting, ordered counter, unchanged matrix/fault/guest-time
+bounds, and fresh nRF52833 V2 emulator ELF. All enabled final consumer checks
+remain mandatory before integration.
 
 ## A11: Code-tab MakeCode export uses the project target — 2026-10-15
 
