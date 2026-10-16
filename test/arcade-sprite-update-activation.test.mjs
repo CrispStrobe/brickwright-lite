@@ -24,7 +24,8 @@ test('scene update iterator retains the preceding render sort order',()=>{
 });
 function setup(){
     const runtime=new EventEmitter();runtime.targets=[];runtime.threads=[];
-    const blocks={getProcedureDefinition:name=>name==='update body'?'definition':null};
+    const definition={id:'definition',opcode:'procedures_definition',next:'body'};
+    const blocks={getProcedureDefinition:name=>name==='update body'?'definition':null,getBlock:id=>id==='definition'?definition:null};
     const target={blocks,isOriginal:true};runtime.targets.push(target);
     const scene={flags:0,sprites:{},frameDeltaTime:0.02};
     runtime.bwArcadeDeviceState=scene;
@@ -33,19 +34,22 @@ function setup(){
         getInfo:()=>({blocks:[]}),_sdkObjectClasses:{matches:()=>false},
         _objectHeap:{inspect:()=>({className:'Actor'}),definition:()=>({intrinsic:'ExtendableSprite'}),method:()=>({procedure:'update body'})}};
     const phase=new Phase(runtime,ext);runtime._arcadeFramePhase=phase;
-    ext._sdkSpriteUpdates=Activation.create(ext);ext._sdkSpriteUpdates.register(sprite,{target});ext._sceneFlags.register(scene,sprite);
-    const spawn=()=>{const thread={target,blockContainer:blocks,topBlock:'definition'};runtime.threads.push(thread);phase.linkManagedCall(thread);return thread;};
+    ext._sdkSpriteUpdates=Activation.create(ext);ext._sdkSpriteUpdates.register(sprite,{target},scene);ext._sceneFlags.register(scene,sprite);
+    const spawn=(name,values,util)=>{const args={NAME:name,ARGS:JSON.stringify(values),bwExceptionCaller:null},callUtil={target,sequencer:null};
+        ext._sdkSpriteUpdates.prepareCall(name,values,util,args,callUtil);
+        const thread={target,blockContainer:blocks,topBlock:'definition'};runtime.threads.push(thread);
+        assert.ok(ext._sdkSpriteUpdates.consumeChild(thread,args,callUtil));return thread;};
     ext._objectProcedure=spawn;
     phase.active=true;phase.phaseContext={deadline:100};
     return {runtime,target,scene,sprite,ext,phase,spawn};
 }
 test('managed frame method receives one scoped activation even after base destruction',()=>{
     const r=setup();let thread;
-    r.ext._objectProcedure=(...args)=>{assert.deepEqual(args.slice(0,2),['update body',['arcade:1',20]]);thread=r.spawn();};
-    const steps=r.ext._sdkSpriteUpdates.steps(r.scene,function*(sprite){delete r.scene.sprites[sprite.id];r.ext._sceneFlags.remove(r.scene,sprite);});
+    r.ext._objectProcedure=(...args)=>{assert.deepEqual(args.slice(0,2),['update body',['arcade:1',20]]);thread=r.spawn(...args);};
+    const steps=r.ext._sdkSpriteUpdates.steps(r.scene,function*(sprite){delete r.scene.sprites[sprite.id];r.ext._sceneFlags.remove(r.scene,sprite);r.runtime.bwArcadeDeviceState={sprites:{}};});
     assert.deepEqual(steps.next(),{value:undefined,done:true});
     assert.equal(r.phase.sourceAuthority.get(thread),r.phase.generation);
-    assert.equal(r.phase.spriteUpdateLoan,null);
+    assert.equal(r.phase.spriteUpdateLoan,undefined);
     r.phase.detach();
 });
 test('observer, forged, foreign target, duplicate and stale activation are refused',()=>{
@@ -54,22 +58,25 @@ test('observer, forged, foreign target, duplicate and stale activation are refus
     r.phase.active=false;
     assert.throws(()=>r.ext._sdkSpriteUpdates.steps(r.scene,function*(){}).next(),/owned physical phase/);
     r.phase.active=true;
-    r.ext._objectProcedure=()=>{const thread={target:{blocks:r.target.blocks},blockContainer:r.target.blocks,topBlock:'definition'};r.runtime.threads.push(thread);r.phase.linkManagedCall(thread);};
-    assert.throws(()=>r.ext._sdkSpriteUpdates.steps(r.scene,function*(){}).next(),/foreign or duplicate/);
-    assert.equal(r.phase.spriteUpdateLoan,null);
-    r.ext._objectProcedure=()=>{r.spawn();r.spawn();};
-    assert.throws(()=>r.ext._sdkSpriteUpdates.steps(r.scene,function*(){}).next(),/foreign or duplicate/);
-    assert.equal(r.phase.spriteUpdateLoan,null);
+    r.ext._objectProcedure=(name,values,util)=>{const args={NAME:name,ARGS:JSON.stringify(values),bwExceptionCaller:null},callUtil={target:r.target,sequencer:null};
+        r.ext._sdkSpriteUpdates.prepareCall(name,values,util,args,callUtil);
+        const thread={target:{blocks:r.target.blocks},blockContainer:r.target.blocks,topBlock:'definition'};r.runtime.threads.push(thread);
+        r.ext._sdkSpriteUpdates.consumeChild(thread,args,callUtil);};
+    assert.throws(()=>r.ext._sdkSpriteUpdates.steps(r.scene,function*(){}).next(),/differs from its private invocation/);
+    assert.equal(r.phase.spriteUpdateLoan,undefined);
+    r.ext._objectProcedure=(...args)=>{r.spawn(...args);r.spawn(...args);};
+    assert.throws(()=>r.ext._sdkSpriteUpdates.steps(r.scene,function*(){}).next(),/differs from its private entry/);
+    assert.equal(r.phase.spriteUpdateLoan,undefined);
     r.ext._objectProcedure=r.spawn;
     assert.deepEqual(r.ext._sdkSpriteUpdates.steps(r.scene,function*(){r.phase.cancel();}).next(),{value:undefined,done:true});
     r.phase.detach();
 });
 test('nested managed calls retain the real caller rather than consuming another activation',()=>{
     const r=setup();let nested,parent;
-    r.ext._objectProcedure=()=>{parent=r.spawn();nested={target:r.target};r.phase.linkManagedCall(nested,parent);};
+    r.ext._objectProcedure=(...args)=>{parent=r.spawn(...args);nested={target:r.target};r.phase.linkManagedCall(nested,parent);};
     r.ext._sdkSpriteUpdates.steps(r.scene,function*(){}).next();
     assert.equal(r.phase.managedLinks.get(nested).caller,parent);
-    assert.equal(r.phase.spriteUpdateLoan,null);r.phase.detach();
+    assert.equal(r.phase.spriteUpdateLoan,undefined);r.phase.detach();
 });
 test('only actual registered custom-update slots activate native phase ownership',()=>{
     const r=setup();
