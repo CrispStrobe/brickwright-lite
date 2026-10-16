@@ -17,19 +17,27 @@ complete game compatibility.
 | Original simulator clock | A complete positive profiler-frame bootstrap preserves paused-zero admission and relative timers. Eight platform controls and the exact corrected 0/20/40 program-clock guest through the original helper pass. | Saved-output audit passes with all 337 mapped-file joins; final integration checks remain. Current normal CLI qualification stays separately scoped. |
 | Loop arrows | Static registration supplies the current workspace media path to the exact generated arrow field. Eleven focused controls pass with explicitly modeled theme/Blockly fixtures. | Actual default, contrast and restored-theme workspace/flyout rendering under a deployment prefix. |
 | Malformed animation import | The exact browser error fixture now retains the dependency translation stage shown by the original failure artifact. Product behavior and all identity assertions stay unchanged. | Fresh production run of the complete browser journey. |
-| Per-player score Number proof | Claim [1005](https://github.com/CrispStrobe/brickwright-lite/pull/1005) includes source receiver proof and the existing native score role's exact literal-player binding. | Claim merge, implementation, physical/cache adversarial controls and actual edited Code/Blocks/save/export execution. |
-| Initial bundle budget | Saved production graph identifies the root `react-virtualized` List barrel as a bounded import cut. Claim [1007](https://github.com/CrispStrobe/brickwright-lite/pull/1007) preserves the existing List/Grid behavior. | Claim merge, implementation and the unchanged hosted P17 budget. |
-| Carnival package import | Authentic dependency preparation lowers the real namespace before primitive selection. Claim [1008](https://github.com/CrispStrobe/brickwright-lite/pull/1008) preserves full initialization and unsupported bodies. | Source-bound selected native admission, original/native behavior and the authentic GUI package-import journey. |
+| Per-player score Number proof | The merged ownership contract covers source receiver proof and the existing native score role's exact literal-player binding. A source candidate and adversarial controls are under review. | Close tagged-template census gaps, then qualify the physical/cache controls and actual edited Code/Blocks/save/export execution. |
+| Initial bundle budget | Saved production graph identifies the root `react-virtualized` List barrel as a bounded import cut. The implemented import change requests the existing direct named List entry and preserves the complete widget body. | Production resolution, actual widget save/reopen behavior and the unchanged hosted P17 budget; a source import census is not measured bundle savings. |
+| Carnival package import | Authentic dependency preparation lowers the real namespace before primitive selection. The merged Carnival contract requires full initialization and preservation of unsupported bodies. | Source-bound selected native admission, original/native behavior and the authentic GUI package-import journey. |
 | Managed SDK callbacks | An unchanged actual native control completes its paused constructor but reports a managed-call error at physical update entry, with updates remaining zero. [Ownership contract](https://github.com/CrispStrobe/brickwright-lite/blob/aa99067502ab1d70f59f9172e96b45c510092ba7/docs/ARCADE-MANAGED-SDK-OWNERSHIP.md). | Proper physical-update root entry, cancellation/reentry controls and actual native qualification. Constructor-continuation and nested-step hypotheses need their own affected controls. |
 | Shared frame Array transport | Seven repeated backing arrays account for connected roundtrip growth. [Transport contract](https://github.com/CrispStrobe/brickwright-lite/blob/aa99067502ab1d70f59f9172e96b45c510092ba7/docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md). | Prove current immutable initialization and lexical binding before staging; preserve observable and mutated Arrays as ordinary code. Qualify repeated edited export/reimport. |
 | Generated helper recognition | Actual and template parse profiles differ. Recognition also needs complete bodies and actual lexical bindings. [Recognition contract](https://github.com/CrispStrobe/brickwright-lite/blob/aa99067502ab1d70f59f9172e96b45c510092ba7/docs/ARCADE-GENERATED-HELPER-RECOGNITION.md). | Reject extra effects, shadows, escapes and stale authority while recognizing exact generated helpers; qualify public conversion and native semantics. |
 
-The six remaining implementation contracts are normally composed in
+The six implementation contracts landed through
 [joint claim 1007](https://github.com/CrispStrobe/brickwright-lite/pull/1007),
-including the original claim commits from 1005 and 1008. Its new final head needs
-its own checks and merge before implementation. Managed SDK callback ownership
-and pre-staging shared Image Array transport, plus generated-helper recognition,
-are included in that same claim.
+including the original claim commits from 1005 and 1008. All enabled checks
+passed at the reviewed claim head; its actual merge parents and tree matched
+the review. This authorizes bounded implementation and does not qualify the
+subsequent source candidates.
+
+The first physical-update component run passed ten of eleven controls. The
+remaining control expected a later rejection message, while the actual foreign
+child was correctly rejected by the earlier live-thread check. Preserve that
+failure and qualify a corrected fixture separately. Actual paused-constructor
+updates and lifecycle behavior remain required. Shared-frame transport and
+complete generated-helper recognition also have source candidates awaiting
+focused execution; neither has changed whole-project counts.
 
 The [original failing campaign](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38862860015)
 remains the regression baseline. Current source composition preserves adopted
