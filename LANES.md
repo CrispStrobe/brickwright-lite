@@ -56,14 +56,16 @@ Base `8da2afe2fe64f9301f9045796317e241314a26b5`. Contract: task A12 in
 [the owner-selected queue](docs/OPEN-TASKS-2026-09-29.md), following the delivered
 [A9 device world](docs/A9-CPX-SCOPING.md).
 
-Candidate controls: 44 host checks pass with zero failures; one existing runtime
+Candidate controls: 59 focused host checks pass with zero failures; one existing runtime
 bridge check is unavailable locally and remains required in hosted CI. Thirteen
 independent source/control mutations are detected. All 244 pinned documentation
 fences are accounted for with zero silent call losses; prior census sections and
-135 other importer methods remain byte-identical. Fifteen original-simulator
-comparisons and the actual production CPX browser journey are prepared, NOT yet
-qualified. Final exact-head CI and affected hosted qualification must succeed
-before merge. [Behaviour and limits](docs/A12-CPX-TRANSLATOR.md).
+135 other importer methods remain byte-identical. The original diagnostic has
+ten exact matching comparisons and five retained timing failures; its complete
+production CPX browser journey passes. This combined candidate implements ten
+strict comparisons and five named exact timing-boundary controls, with fresh
+exact-head CI and affected hosted qualification still required before merge.
+[Behaviour and limits](docs/A12-CPX-TRANSLATOR.md).
 
 Own a new `overlay/scratch-gui/src/lib/bw-makecode/adafruit-translate.js`;
 CPX-only target inference/import dispatch in that directory's `index.js`;
@@ -78,7 +80,10 @@ browser controls in the existing MakeCode verifier, and
 Also own only gesture/acceleration input injection in the existing
 `scripts/lib/{makecode-adafruit-sim,cpx-extension-run}.mjs` test helpers, so the
 same scheduled inputs reach each original device implementation. Existing
-clock, snapshots, sound decoding and comparisons remain unchanged. Existing
+clock, snapshots and sound decoding remain unchanged. Ten comparisons require
+exact equality; five named runtime-boundary tests assert both exact recorded
+sides at five exceptional frames and two tone sequences, with equality at all
+other captures. These explicit limits do not claim timing parity. Existing
 CPX event hats are preferred to invented polling when they express the source
 handler exactly; dynamic registration and unsupported event semantics stay
 named refusals.

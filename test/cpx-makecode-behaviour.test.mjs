@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {adafruitToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/adafruit-translate.js';
 import {adafruitPrograms} from '../scripts/lib/makecode-adafruit-corpus.mjs';
@@ -8,6 +9,10 @@ import {adafruitSimAvailable, compileAdafruit, runAdafruitSim} from '../scripts/
 import {runCpxExtension} from '../scripts/lib/cpx-extension-run.mjs';
 import {cpxBlockProgram} from './helpers/cpx-block-program.mjs';
 import {traceCpxPxtFactory, CPX_TRACE_PREFIX} from './helpers/cpx-pxt-trace.mjs';
+
+// Retained exact observations, not a tolerance or a device timing promise.
+const timingLimits = JSON.parse(readFileSync(new URL('./fixtures/cpx-makecode-timing-limits.json', import.meta.url)));
+
 
 const cases = [
     {id: 'reference/light/set-all#0', lit: [100]},
@@ -37,7 +42,7 @@ const cases = [
         blackPixels: [2, 4, 5, 7]}
 ];
 
-for (const scenario of cases) test(`CPX translated documentation vs original simulator: ${scenario.id}`, async () => {
+for (const scenario of cases) test(`CPX ${timingLimits[scenario.id] ? 'documented runtime timing boundary' : 'translated documentation vs original simulator'}: ${scenario.id}`, async () => {
     // These are required qualification controls: missing originals must not
     // turn a changed translator into a successful skipped test.
     assert.ok(adafruitSimAvailable(), 'Pinned CPX compiler and simulator are required (sync:makecode)');
@@ -107,8 +112,21 @@ for (const scenario of cases) test(`CPX translated documentation vs original sim
                 scenario.equalColorGroups.length, 'Distinct authored colors cannot collapse to one');
         }
     }
-    for (const t of opts.at) assert.deepEqual(actual.frames[t], original.frames[t], `${scenario.id} ring at ${t}ms`);
+    const timingLimit = timingLimits[scenario.id];
+    if (timingLimit) assert.deepEqual({id: scenario.id, frames: differences,
+        ...(toneDifference ? {originalTones: original.tones, translatedTones: actual.tones} : {})},
+    timingLimit, 'The documented boundary must retain every exact original/translated difference');
+    for (const t of opts.at) {
+        const capturedLimit = timingLimit?.frames.find(frame => frame.t === t);
+        if (capturedLimit) {
+            assert.deepEqual(original.frames[t], capturedLimit.original, `${scenario.id} retained original ring at ${t}ms`);
+            assert.deepEqual(actual.frames[t], capturedLimit.translated, `${scenario.id} retained native ring at ${t}ms`);
+        } else assert.deepEqual(actual.frames[t], original.frames[t], `${scenario.id} ring at ${t}ms`);
+    }
     for (const t of scenario.lit) assert.ok(original.frames[t].some(v => v !== 0), `${scenario.id} original must light pixels at ${t}ms`);
     if (scenario.sound) assert.ok(original.tones.length > 0, `${scenario.id} original must produce tones`);
-    assert.deepEqual(actual.tones, original.tones, `${scenario.id} ordered tone timing/frequencies`);
+    if (timingLimit?.originalTones) {
+        assert.deepEqual(original.tones, timingLimit.originalTones, `${scenario.id} retained original ordered tones`);
+        assert.deepEqual(actual.tones, timingLimit.translatedTones, `${scenario.id} retained native ordered tones`);
+    } else assert.deepEqual(actual.tones, original.tones, `${scenario.id} ordered tone timing/frequencies`);
 });

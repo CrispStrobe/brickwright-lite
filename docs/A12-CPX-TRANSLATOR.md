@@ -78,6 +78,14 @@ programs in the original PXT simulator and, after translation and parsing,
 through the original CPX extension. The finite block-stack driver consumes the
 parsed project; it does not provide board behaviour. Ring frames and ordered
 tones are compared, with positive light/sound assertions to reject empty runs.
+Ten programs require exact equality at every capture and for every ordered tone.
+Five separately named runtime-boundary tests retain the exact observed
+original and native values: five exceptional ring captures and two differing
+ordered tone sequences. Every other capture remains an equality check. There is
+no timestamp tolerance, capture shift or dropped input; any change to either
+side of a recorded difference fails. These boundaries describe the two existing
+runtimes and the finite headless driver; they do not establish actual Scratch
+VM timing parity or physical device timing.
 The production browser proof separately uses the actual VM and visible CPX
 pane: import, build, Start, button A and Shake must render the expected ten
 red, blue and green pixels. It also checks named export refusal, unchanged
@@ -130,14 +138,16 @@ finds that control visible and enabled after the serial checks pass, but the
 retained LabWired display canvas intercepts its clicks. The next control path closes the actions menu and explicitly
 opens the debugger through its existing button before clearing the firmware.
 Pixel values, input actions and observation bounds stay unchanged. Clean native browser
-qualification and the five exact timing comparisons remain pending.
+qualification remains pending. The five recorded differences do not establish
+timing parity.
 
 Three additional original programs extend the existing twelve comparisons:
 `projects/star-projector/code#1`, `reference/light/show-ring#2` and
 `projects/cartoon-network/enchiridion#1`. They require ten equal lit pixels,
 a three-color repeated ring and six lit pixels with four authored black
-positions respectively. All original cases and capture times remain intact;
-these additional comparisons still require fresh hosted execution.
+positions respectively. All original cases and capture times remain intact.
+These are among the ten exact matching cases in the diagnostic run below;
+the combined follow-up still requires fresh hosted qualification.
 
 A separate diagnostic observer is prepared for the five differing comparisons.
 It wraps the original compiled factory, retains its exact bytes and forwards
@@ -149,8 +159,11 @@ helpers stay unchanged.
 Every derivative must reproduce every uninstrumented captured frame, ordered
 tone and original serial line exactly before its trace is admitted. Individual trace records have an explicit count, digest
 and completion record, so a truncated log cannot supply a complete trace. The
-original native-versus-PXT assertions still run unchanged. This diagnoses a
-boundary; it does not qualify timing parity or change an original failure.
+original native-versus-PXT assertions on earlier candidates produced the five
+retained failures. Their failed runs remain original evidence. The separately
+named boundary tests assert both sides of each exact recorded difference, plus
+strict equality at every other capture. They do not qualify timing parity or
+rewrite an original failed run.
 
 ## Live-share sample
 
@@ -193,7 +206,14 @@ The native tone is recorded at 300 ms.
 
 These observations explain the selected original-runtime boundaries in this
 finite headless comparison. They do not establish actual Scratch VM or physical
-device timing parity. The five equality assertions remain enforced. A proposed
-change to separately named exact timing-boundary tests is unapplied pending
-the owner's decision; successful actual browser qualification and fresh
-final-head CI would still be required.
+device timing parity. Separately named exact timing-boundary tests now enforce
+both recorded results at every exceptional capture and tone sequence; all
+other captures retain strict equality. The original five failures remain in
+the diagnostic run.
+
+That run's complete light-browser job also passes: the real serial fixture
+releases its firmware through the existing UI, source-only CPX import keeps
+its own target, original-source download and simulation, and native Start,
+button A and Shake render ten red, blue and green pixels respectively.
+The follow-up integrates current main, including its circuit-UI pin, and
+requires fresh qualification of that combined head before merge.
