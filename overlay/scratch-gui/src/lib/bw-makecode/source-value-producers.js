@@ -1,3 +1,5 @@
+import {prepareObjectClassStructure} from './object-class-source-structure.js';
+import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
 import {analyseSourceNormalCompletion,sourceNormalCompletionFor} from './source-normal-completion.js';
 import {multiplayerPlayerSourceCalls} from './multiplayer-player-source.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
@@ -20,7 +22,9 @@ export function analyseSourceValueProducers(program,options={}) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,normalCompletion=null}={}) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,normalCompletion=null,physicalUpdateSource=null}={}) {
+    const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
+    if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
     const completion=normalCompletion?sourceNormalCompletionFor(program,normalCompletion):null;
     if(normalCompletion&&!completion)throw new Error('Source completion proof must belong to the actual Program');
     const unreachableCells=new Set();
@@ -157,7 +161,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         // A closure expression is allocated here, after the currently proved
         // initializations. Hoisted declarations retain their entry boundary.
         if(node.type==='FunctionDeclaration'||node.type==='FunctionExpression'){const entryOwner=node.type==='FunctionDeclaration'?functions.get(binding(owner,node.name))?.owner:null;const first=node.body?.[0],methodOwner=entryOwner||owners.get(first);entry(node.body,new Set([...((consoleInspection||arrayValues)&&node.type==='FunctionExpression'?known:[]),...(node.params||[]).map(name=>binding(methodOwner||owner,name))]));return known;}
-        if(node.type==='Class'){for(const field of node.fields||[])entry(field.init,new Set());for(const method of [node.ctor,...(node.methods||[])].filter(Boolean)){const methodOwner=owners.get(method.body?.[0])||owner;entry(method.body,new Set((method.params||[]).map(name=>binding(methodOwner,name))));}return known;}
+        if(node.type==='Class'){for(const field of node.fields||[])entry(field.init,new Set());for(const method of [node.ctor,...(node.methods||[])].filter(Boolean)){const methodOwner=owners.get(method.body?.[0])||owner,globals=physicalEntry?.methods.get(method)?.globals||[];entry(method.body,new Set([...globals.map(decl=>binding(global,decl.name)),...(method.params||[]).map(name=>binding(methodOwner,name))]));}return known;}
         if(node.type==='Declaration'){for(const decl of node.decls){known=entry(decl.init,known);if(decl.init||localUndefinedDeclarations.has(decl))known=new Set([...known,binding(owner,decl.name)]);}return known;}
         if(node.type==='Assignment'){known=entry(node.right,known);if(node.left?.type==='Identifier'&&node.op==='=')known=new Set([...known,binding(owners.get(node.left),node.left.name)]);else known=entry(node.left,known);return known;}
         if(node.type==='Conditional'){known=entry(node.test,known);const left=entry(node.consequent,new Set(known)),right=entry(node.alternate,new Set(known));return new Set([...left].filter(value=>right.has(value)));}
@@ -262,4 +266,106 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         functionResultTypes:node=>new Set(types.get(functionScopes.get(node)?.result)||[]),
         diagnostics:Object.freeze([...unsupported])
     });
+}
+
+// Only this module issues initialized-entry receipts. Public options, names,
+// copied facades and lowerer structural rows do not issue one.
+const physicalUpdateSources=new WeakMap();
+function physicalUpdateSourceRecord(program,receipt){
+    const r=physicalUpdateSources.get(receipt);return r?.program===program&&r.snapshot.current()?r:null;
+}
+export function physicalUpdateSourceFor(program,receipt){
+    const r=physicalUpdateSourceRecord(program,receipt);if(!r)return null;
+    return Object.freeze({hasMethod:method=>r.methods.has(method),
+        methods:()=>[...r.methods].map(([method,row])=>Object.freeze({method,classNode:row.classNode,globals:Object.freeze([...row.globals]),sites:Object.freeze([...row.sites])})),
+        current:()=>!!physicalUpdateSourceRecord(program,receipt)});
+}
+export function preparePhysicalUpdateThrowSource(program){
+    const unsupported=[],fail=message=>{const text='Throw physical update source: '+message;if(!unsupported.includes(text))unsupported.push(text);};
+    const snapshot=physicalUpdateSourceSnapshot(program),receipt=Object.freeze({unsupported});
+    if(!snapshot){fail('actual source requires plain own data without accessors');Object.freeze(unsupported);return receipt;}
+    const nodes=[],parents=new WeakMap(),contexts=new WeakMap(),seen=new WeakSet();
+    const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','bwProcedureConstraintSource']);
+    const collect=(node,parent=null,context=null)=>{
+        if(!node||typeof node!=='object')return;
+        if(seen.has(node)){fail('executable node is shared or cyclic');return;}seen.add(node);
+        if(Array.isArray(node)){for(const child of node)collect(child,parent,context);return;}
+        nodes.push(node);parents.set(node,parent);contexts.set(node,context);
+        if(node.type==='Class'){
+            for(const field of node.fields||[])collect(field.init,field,field);
+            for(const method of [node.ctor,...(node.methods||[])].filter(Boolean))collect(method.body,method,method);
+            return;
+        }
+        const next=['FunctionDeclaration','FunctionExpression'].includes(node.type)?node:context;
+        for(const [key,value]of Object.entries(node))if(!metadata.has(key))collect(value,node,next);
+    };collect(program);
+    if(unsupported.length){Object.freeze(unsupported);return receipt;}
+    const structure=prepareObjectClassStructure(program);
+    if(structure.unsupported.length){structure.unsupported.forEach(fail);Object.freeze(unsupported);return receipt;}
+    if(structure.skip){fail('actual owned ExtendableSprite update declaration is missing');Object.freeze(unsupported);return receipt;}
+    const {admitted,lineage,classOrigins,methodOrigins}=structure;
+    const originalClasses=new Map((program.body||[]).filter(node=>node.type==='Class').map(node=>[node.name,node]));
+    const candidates=[...admitted.values()].filter(cls=>!cls.sdkIntrinsic&&lineage(cls.name)?.some(name=>admitted.get(name).sdkIntrinsic==='ExtendableSprite'));
+    if(!candidates.length){fail('actual selected SDK ancestry is missing');Object.freeze(unsupported);return receipt;}
+    const graph=analyseGraph(program,{unboundIsOpaque:true,opaqueDeclarationValues:true,uninitializedLocalsAreOpaque:true,initializationEntries:true});
+    const classes=new Map(),methods=new Map(),sites=new Map();
+    for(const cls of candidates){
+        const original=classOrigins.get(cls);
+        if(!original||originalClasses.get(cls.name)!==original||graph.declarationCountAt(original,cls.name)!==1){fail('class requires its unique current lexical declaration');continue;}
+        const chain=lineage(cls.name),sdkEdge=chain.map(name=>admitted.get(name)).find(row=>row.base==='__bwSDK_ExtendableSprite'),sourceEdge=classOrigins.get(sdkEdge);
+        if(!sourceEdge||sourceEdge.base!=='sprites.ExtendableSprite'||graph.declarationCountAt(sourceEdge,'sprites')!==0){fail('SDK ancestry is shadowed or not the actual selected base');continue;}
+        const own=cls.methods.filter(method=>method.kind==='method'&&method.name==='update');
+        if(own.length>1){fail('duplicate current update declaration');continue;}
+        const selected=chain.flatMap(name=>admitted.get(name).methods).find(method=>method.kind==='method'&&method.name==='update'),method=methodOrigins.get(selected);
+        if(!method)continue; // A class with only the SDK no-op has no source Throw owner.
+        if(selected.isStatic||selected.params.length!==1||selected.optionalParams?.length||selected.parameterDefaults?.length||selected.restParam||selected.typeParameters?.length||selected.modifiers?.some(mode=>['private','protected'].includes(mode))||
+            (typeof selected.paramTypes?.[selected.params[0]]==='string'?selected.paramTypes[selected.params[0]]:selected.paramTypes?.[selected.params[0]]?.text)!=='number'||selected.returnType!=='void'){
+            fail('update requires the actual public required Number-to-void signature');continue;
+        }
+        classes.set(cls.name,{original,method});sites.set(cls.name,[]);
+    }
+    const rootStatements=new Set(program.body||[]),classBindings=new Map([...classes].map(([name,row])=>[graph.bindingOf(row.original,name),name]));
+    for(const node of nodes){
+        if(node.type==='Unknown'||node.type==='Index'||node.type==='Identifier'&&['globalThis','window','self','eval','Function','Reflect','Object'].includes(node.name)||node.type==='Member'&&['constructor','prototype','__proto__','update'].includes(node.name))fail('ambient, computed, reflected or explicit update access is not proved');
+        if(node.type==='Identifier'&&node.name==='this'){
+            const parent=parents.get(node);if(!contexts.get(node)||parent?.type!=='Member'||parent.object!==node)fail('class receiver escapes its actual field access');
+        }
+        if(node.type==='Template'&&(node.tag!=='img'||node.value.includes('${')||graph.declarationCountAt(node,'img')!==0))fail('tagged effects or shadowed image tag are not proved');
+        if(node.type==='Identifier'&&classBindings.has(graph.bindingOf(node))){
+            const call=parents.get(node),name=classBindings.get(graph.bindingOf(node));
+            if(call?.type!=='Call'||call.callee!==node||call.isNew!==true||call.typeArguments?.length){fail('class constructor is extracted, replaced or not a direct actual allocation');continue;}
+            const decl=parents.get(call),statement=parents.get(decl);
+            if(contexts.get(call)!==null||decl?.init!==call||statement?.type!=='Declaration'||!rootStatements.has(statement)||!['let','const'].includes(statement.kind)){
+                fail('construction requires its direct root lexical declaration before earliest physical entry');continue;
+            }
+            sites.get(name).push({call,decl});
+        }
+        if(node.type==='Identifier'&&node.name==='sprites'&&graph.declarationCountAt(node)===0)fail('selected SDK namespace is used as a value or member outside ancestry');
+        if(node.type==='Identifier'&&node.name==='img'&&graph.declarationCountAt(node)===0)fail('selected image tag binding is accessed outside its literal');
+    }
+    // Private instances may be assigned through the lowerer's lexical transport
+    // cells, but cannot escape through a receiver/callback/call or heap object.
+    const instanceBindings=new Set([...sites.values()].flatMap(rows=>rows.map(row=>graph.bindingOf(row.call,row.decl.name))));
+    if(instanceBindings.has(null)||instanceBindings.has(undefined))fail('constructed receiver requires its actual lexical cell');
+    let added;do{added=false;for(const node of nodes)if(node.type==='Identifier'&&instanceBindings.has(graph.bindingOf(node))){
+        const parent=parents.get(node);let destination=null;
+        if(parent?.init===node)destination=graph.bindingOf(node,parent.name);
+        else if(parent?.type==='Assignment'&&parent.op==='='&&parent.right===node&&parent.left?.type==='Identifier')destination=graph.bindingOf(parent.left);
+        if(destination&&!instanceBindings.has(destination)){instanceBindings.add(destination);added=true;}
+    }}while(added);
+    for(const node of nodes)if(node.type==='Identifier'&&instanceBindings.has(graph.bindingOf(node))){
+        const parent=parents.get(node),alias=parent?.init===node||parent?.type==='Assignment'&&parent.op==='='&&(parent.right===node&&parent.left?.type==='Identifier'||parent.left===node);
+        if(!alias)fail('constructed receiver escapes its closed lexical cells');
+    }
+    const globals=(program.body||[]).filter(node=>node.type==='Declaration').flatMap(node=>node.decls).filter(decl=>graph.declarationCountAt(program,decl.name)===1);
+    for(const [name,row]of classes){
+        const actualSites=sites.get(name);if(!actualSites.length){fail('source update has no proved actual construction site');continue;}
+        const known=globals.filter(decl=>actualSites.every(site=>graph.isBindingInitializedAt(site.call,graph.bindingOf(program,decl.name))));
+        const prior=methods.get(row.method);methods.set(row.method,{classNode:row.original,globals:prior?prior.globals.filter(decl=>known.includes(decl)):known,sites:[...(prior?.sites||[]),...actualSites.map(site=>site.call)]});
+    }
+    if(!methods.size)fail('actual owned source update entry is missing');
+    if(!snapshot.current())fail('actual source changed while preparing its entry');
+    Object.freeze(unsupported);
+    if(!unsupported.length)physicalUpdateSources.set(receipt,{program,snapshot,methods});
+    return receipt;
 }

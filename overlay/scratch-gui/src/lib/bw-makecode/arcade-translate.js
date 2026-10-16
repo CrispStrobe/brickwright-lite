@@ -1,7 +1,7 @@
 import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
 import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 import {createProcedureOwnerEmission} from './procedure-owner-emission.js';
-import {prepareThrowSource} from './throw-source-gate.js';
+import {prepareThrowSource,prepareThrowEmission,hasThrowEmission} from './throw-source-gate.js';
 import {proveArrayMapValues} from './lower-array-map-values.js';
 import {selectNamedFunctionSourceProof} from './named-function-source-selection.js';
 import {lowerNamedFunctionValues} from './lower-named-function-values.js';
@@ -348,7 +348,7 @@ class ArcadeTranslator extends BaseTranslator {
         this.textSpriteReferences=references.textSprites;this.playerReferences=references.players;this.sceneReferences=references.scenes;this.physicsEngineReferences=references.physicsEngines;this.tileReferences = references.tiles;this.legacyTileReferences=references.legacyTiles;this.animationReferences = references.animations;this.sevensegDigitReferences=references.sevensegDigits;this.sevensegCounterReferences=references.sevensegCounters;this.dartReferences=references.darts;this.corgiReferences=references.corgis;this.nullReferences=references.nulls;this.arrayReferences = references.arrays;this.numberReferences=references.numbers;this.stringReferences=references.strings;this.booleanReferences=references.booleans;
         this.referenceArrayProgram=containsAst(node,value=>value.type==='Array' || references.arrays.has(value));
         this.fontValueProgram=containsAst(node,value=>!!value.bwFontIntrinsic);
-        this.throwValueProgram=node.bwProvedThrowProgram===true;
+        this.throwValueProgram=hasThrowEmission(node);this.throwSourceProgram=node;
         this.procedureConstraintSource=node.bwProcedureConstraintSource || null;
         this.provenArrayReferences=references.provenArrays;
         this.inferredSpriteParameters = references.parameters;
@@ -551,7 +551,7 @@ class ArcadeTranslator extends BaseTranslator {
     }
     arcadeStatement(st, indent, out) {
         if(st.type==='ThrowStatement'){
-            if(!this.throwValueProgram){out.push(`${'  '.repeat(indent)}${this.note('Throw source requires qualified source context and canonical protocol')}`);return;}
+            if(!this.throwValueProgram||!hasThrowEmission(this.throwSourceProgram)){out.push(`${'  '.repeat(indent)}${this.note('Throw source requires qualified source context and canonical protocol')}`);return;}
             out.push(`${'  '.repeat(indent)}arcade throw (${this.arrayElementValue(st.argument)})`);return;
         }
         if(st.type==='ExpressionStatement' && st.expr?.bwNativeNamedArray && st.expr.bwNativeNamedArray.kind!=='get') {
@@ -5039,8 +5039,10 @@ export function arcadeToPseudocode (files, opts = {}) {
         return Object.values(node).some(value=>Array.isArray(value)?value.some(containsPaletteCall):containsPaletteCall(value));
     };
     const runtimePaletteRequested=containsPaletteCall(parsed);
+    let admittedThrowProgram=null;
     const withAnimationDiagnostics = result => {
         result = nameArtworkSprites(result);
+        if(admittedThrowProgram&&!hasThrowEmission(admittedThrowProgram))result={...result,unsupported:[...(result.unsupported||[]),'Throw source changed during actual emission']};
         let code = result.code;
         const sourceWarnings=[...(parsed.sourceWarnings || []),...(namespaceBindings.warnings || [])];
         if(sourceWarnings.length)code=code.replace(/^(DEVICE ARCADE.*)$/m, (_,header)=>header+'\n'+sourceWarnings.map(warning=>'# source warning: '+warning).join('\n'));
@@ -5129,7 +5131,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const throwSource=prepareThrowSource(protocolProgram);
     projectInputDiagnostics.push(...throwSource.unsupported);
     if(throwSource.present&&opts.throwPrototype!==true)projectInputDiagnostics.push('Throw source requires its qualified canonical protocol; prototype admission is not enabled');
-    const throwProgram=throwSource.present&&!throwSource.unsupported.length&&opts.throwPrototype===true?{...throwSource.program,bwProvedThrowProgram:true}:throwSource.program;
+    const throwProgram=throwSource.program;
     const inspectionValues=lowerConsoleInspectValues(throwProgram);
     projectInputDiagnostics.push(...inspectionValues.unsupported);
     const fontValues = lowerSdkFontValues(inspectionValues.program);
@@ -5149,7 +5151,12 @@ export function arcadeToPseudocode (files, opts = {}) {
     stagedSource.sourceCallableDeclarations=namedEnabled?stagedSource.sourceCallableDeclarations || []:callableEnabled?sourceCallableDeclarations(stagedSource).declarations:[];
     const callables=namedEnabled?{program:stagedSource,unsupported:namedLowering.unsupported}:classEnabled?lowerCallableValues(stagedSource,{classPrototype:true,sdkImagePrototype:sdkImageEnabled}):callableEnabled?lowerCallableValues(stagedSource):{program:stagedSource,unsupported:[]};
     projectInputDiagnostics.push(...callables.unsupported);
-    const objectClasses = lowerObjectClasses(callables.program,{classCallablePrototype:classEnabled,sdkImagePrototype:sdkImageEnabled});
+    // Re-prove actual staged bindings; original source identity facts are never
+    // transferred onto the staging/callable clones.
+    const stagedThrow=throwSource.physicalUpdateSource?prepareThrowSource(callables.program):throwSource;
+    if(stagedThrow!==throwSource)projectInputDiagnostics.push(...stagedThrow.unsupported);
+    const objectClasses = lowerObjectClasses(callables.program,{classCallablePrototype:classEnabled,sdkImagePrototype:sdkImageEnabled,
+        physicalUpdateSource:stagedThrow.physicalUpdateSource});
     if(classEnabled && !callables.unsupported.length && !objectClasses.unsupported.length) {
         try {objectClasses.program.bwCallableLexicalPlan=callables.finishClassPlan(objectClasses.program.bwClassCallableProcedures || []);}
         catch(error){objectClasses.unsupported.push(String(error.message));}
@@ -5158,6 +5165,10 @@ export function arcadeToPseudocode (files, opts = {}) {
     const callbacks = lowerStaticCallbackHelpers(objectClasses.program, {registrationSpec:sceneRegistrationSpec});
     projectInputDiagnostics.push(...callbacks.unsupported);
     const ast = lowerLazyValues(callbacks.program);
+    if(throwSource.present&&!throwSource.unsupported.length&&!stagedThrow.unsupported.length&&opts.throwPrototype===true){
+        const finalThrow=prepareThrowEmission(ast,stagedThrow,objectClasses.physicalUpdateLowering,throwSource);
+        projectInputDiagnostics.push(...finalThrow);if(!finalThrow.length)admittedThrowProgram=ast;
+    }
     const flattened = namespaceBindings.program ? ast : null;
     const nativeTilemaps = createNativeTilemapRegistry(map,tileImageOf,assetFileOrder?{fileOrder:assetFileOrder}:{});
     const namedEvents = flattened && translateNamedHandleEvents(flattened, assets, nativeTilemaps, !!projectPaletteHex || runtimePaletteRequested || sourceScalarDeclarations(flattened).length > 0, assetKindLookup, scrollerVersion, characterVersion);
