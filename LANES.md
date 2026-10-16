@@ -1,8 +1,20 @@
+## Original Arcade profiler clock bootstrap — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
+implementation. Contract: [reference clock bootstrap](docs/ARCADE-REFERENCE-CLOCK-BOOTSTRAP.md).
+Own the original-simulator clock helper, its Arcade runtime initialization call
+site, focused controls and qualification notes. Preserve paused-zero document
+admission, then prove a deterministic complete-frame bootstrap before actual
+guest construction, positive profiling and unchanged relative timer/frame/input
+phases. No PXT vendor patch, guest-clock replacement, normalized result,
+expectation/budget reduction, dependency pin or workflow change. All unrelated
+source, runtime, editor and device owners retain their lanes.
+
 ## Code conversion: preserve newer editor ownership — 2026-10-16
 
-PROPOSED — SPIKE integration follow-up, branch
-`lane/code-conversion-editor-ownership-claim-20261016`. Merge this claim before
-implementation. Own the narrow conversion-completion and editor-buffer hooks in
+IMPLEMENTED, hosted qualification pending — SPIKE integration follow-up.
+Ownership claim [PR1000](https://github.com/CrispStrobe/brickwright-lite/pull/1000)
+merged before implementation. Own the narrow conversion-completion and editor-buffer hooks in
 both `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
 and its `packages/scratch-gui` mirror, a focused
 `test/code-conversion-editor-ownership.test.mjs`, and this ledger.
@@ -32,10 +44,41 @@ output and Stop controls. No timeout, assertion, baseline, dependency pin,
 compiler/runtime/firmware/model, protocol or workflow change. Coordinate other
 importer owners; preserve their existing hooks and all unrelated lane sections.
 
+The candidate identifies each conversion request and captures its editor buffer,
+language and import-intent revisions. Editor feedback, selection and queued busy
+cleanup retain their corresponding ownership. Applied-project metadata instead
+uses the newest conversion VM-load identity and its observed loaded stage: a
+newer request still preparing does not invalidate the device metadata of an
+already-applied load. A newer VM load or stage change revokes that metadata
+completion. Existing source/project admission remains required; this does not
+undo an applied VM load or establish general project transaction cancellation.
+
+Twenty-seven actual-method host controls pass; the previous source passes
+nineteen and fails eight. Eighteen guard mutations are detected. All 156 affected
+host controls and 24 existing VM-diagnostic/artwork controls pass with an
+explicitly selected prepared dependency registry. Earlier controls exposed a
+masking case where undefined-to-null import cleanup hid a missing request
+fence; an already-reset resource case now detects it. Original assertions and
+failures remain preserved. The existing diagnostic fixture handles React
+functional state updaters without changing its validation assertions.
+
+The previous source passed all 26 actual 8086 journey checks with an identical
+CI checkout tree, but its light job failed the Pico device-registration gate.
+A separate actual-method diagnostic establishes a source regression: an older
+load can apply, lose metadata publication to a newer request, then cause that
+newer preparation to refuse its changed stage. The exact failing browser
+schedule remains unestablished. The follow-up preserves applied metadata while
+retaining editor fences and the stage refusal. Final source qualification still
+requires every enabled exact-head check and fresh actual 8086 and Pico routes,
+including positive Pico execution and the firmware-withheld refusal. Host
+controls and the previous source's 8086 result do not qualify this new source,
+a new installed package or SPIKE G02.
+
 ## Scoped WeDo2 inventory gate repair — 2026-10-15
 
-CLAIMED — SPIKE G02 integration follow-up, isolated branch
-`claim/spike-g02-wedo-inventory-20261015`.
+IMPLEMENTED, hosted qualification pending — SPIKE G02 integration follow-up.
+Ownership claim [PR994](https://github.com/CrispStrobe/brickwright-lite/pull/994)
+merged before implementation. Source branch `fix/scoped-wedo-inventory-20261016`.
 
 The existing `wedo2unified` artifact pin is present in `vendor-pins.json`, but
 the notices census treats it as an unknown vendored repository and the scoped
@@ -53,6 +96,18 @@ No dependency adoption, generated bundle, product runtime, firmware, model,
 workflow or budget change. This repair does not establish broader license or
 release clearance. The claim must land before implementation; then run the
 affected inventory controls and every enabled exact-head CI check.
+
+The repair reads the existing scoped bundle's MPL declaration and separate By
+attribution, requires its notice, and correlates the pin with the source repo,
+path, commit, byte count and SHA-256 in the retained per-file receipt. A By
+header does not grant a copyright-holder or own-code exemption. Seven focused
+host controls pass, including the actual bundled source and negative receipt
+and notice cases; the unchanged baseline fails the two intended inventory
+checks. Initial sparse-input and historical Git-object failures are retained
+separately from those baseline results. Runtime, generated bundles and pins
+remain unchanged. Full hosted checks remain required before merge; this does
+not qualify a new installed package or close SPIKE G02.
+
 
 ## SPIKE G02 composed lifecycle integration — 2026-10-15
 
@@ -4948,3 +5003,27 @@ Existing Array receiver and A/B ownership remain separate. Require meaningful
 source/current Code/Blocks/save/export and affected own native controls; visible
 GUI, stable full projects and compatibility counts need their own evidence.
 All unrelated owners and retained failures remain preserved.
+
+
+## MakeCode CLI integrated GUI module boundary — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this separate claim
+before implementation: [CLI module boundary](docs/ARCADE-CLI-INTEGRATED-GUI-SCOPE.md).
+Continue the landed CLI target work and preserve its commands and target
+behavior. Own the `scripts/makecode.mjs` library-loading/prerequisite boundary, an
+optional focused `scripts/lib/` inspection helper, the coordinated exact
+dependency-free exception in `gui-scope-hooks.mjs`, focused controls and notes.
+
+Use actual current integrated GUI source with normal installed package scope
+and the same physical canonical VM model export. Prove the relevant integration
+prerequisites using the real copy/transform contract; no build or browser is
+required for headless conversion, no blanket raw-hash test for generated files.
+Preserve command-specific runtime requirements, exit codes, diagnostics, source
+bodies and assets. Missing/stale/conflicting installation refuses by name; no
+model aliases, fake root packages, hidden loaders, stale result/source fallback
+or implicit repair. Keep dependency-free pure consumers explicitly bounded.
+
+No translator/runtime/ABI, pin, workflow or GUI change. Coordinate any narrow
+integration receipt producer before editing it. Current Array and clock failures
+remain independent; this claim does not infer their cause from module identity
+or promote whole-project compatibility from source resolution controls.
