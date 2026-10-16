@@ -116,7 +116,7 @@ function create(ext) {
         const entry=active.get(record.scene);
         current(entry,record,record.phase);
         if(!record.used || record.values!==values || record.procedure!==name || record.callArgs ||
-            util.thread || callUtil.thread || callUtil.target!==record.owner.target)
+            util.thread!==undefined || callUtil.thread!==undefined || callUtil.target!==record.owner.target)
             throw new Error('Native Sprite update invocation differs from its private entry');
         record.callArgs=args;record.callUtil=callUtil;
         record.callName=args.NAME;record.callText=args.ARGS;record.priorThreads=new Set(ext._runtime.threads);
@@ -127,7 +127,7 @@ function create(ext) {
         if(!call)return null;
         calls.delete(args);
         const {entry,record}=call,witness=current(entry,record,record.phase);
-        if(record.consumed || record.callUtil!==util || util.thread || args.NAME!==record.callName ||
+        if(record.consumed || record.callUtil!==util || util.thread!==undefined || args.NAME!==record.callName ||
             args.ARGS!==record.callText || args.bwObjectConstruction!==undefined || args.bwExceptionCaller!==null ||
             util.target!==record.owner.target || util.sequencer!==null || child.target!==record.owner.target ||
             child.blockContainer!==record.owner.blocks || child.topBlock!==record.definition ||

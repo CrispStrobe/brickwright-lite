@@ -58,15 +58,19 @@ test('physical root consumes the genuine invocation once; public loan and copied
 });
 
 test('physical activation rejects copied utility, altered arguments and an old matching child',()=>{
-    for(const variant of ['utility','name','arguments','old-child']){
+    for(const variant of ['utility','name','arguments','old-child','false-caller','null-caller','zero-caller']){
         const r=setup();try {
             const old=r.push();
             r.ext._objectProcedure=(name,values,util)=>{
                 const call=r.prepare(name,values,util),child=variant==='old-child'?old:r.push();
                 if(variant==='name')call.args.NAME='other';
                 if(variant==='arguments')call.args.ARGS='[]';
+                if(variant==='false-caller')call.util.thread=false;
+                if(variant==='null-caller')call.util.thread=null;
+                if(variant==='zero-caller')call.util.thread=0;
                 assert.throws(()=>r.owner.linkPhysicalUpdate(child,call.args,
-                    variant==='utility'?{...call.util}:call.util,()=>{}),/differs/);
+                    variant==='utility'?{...call.util}:call.util,()=>{}),
+                    variant.endsWith('caller')?/private current entry/:/differs/);
                 assert.equal(r.phase.sourceAuthority.has(child),false);
                 throw new Error('expected rejection retained');
             };

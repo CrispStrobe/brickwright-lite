@@ -88,7 +88,7 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
         linkPhysicalUpdate(child,args,util,cleanup) {
             // This consumer is captured by the actual extension constructor.
             // Neither a missing caller nor public tags can mint a root edge.
-            if (!live(child) || util?.thread || typeof cleanup!=='function' || edges.has(child) ||
+            if (!live(child) || util?.thread!==undefined || typeof cleanup!=='function' || edges.has(child) ||
                 typeof consumePhysicalUpdate!=='function')
                 throw new Error('Arcade physical update requires its private current entry');
             const witness=consumePhysicalUpdate(child,args,util);
