@@ -26,8 +26,10 @@ replaying an old row cannot register a new owner.
 ## Exceptional completion
 
 The getter privately issues one TypeError and receipt. Only its exact current
-arguments, utility, runtime, thread, property and lifecycle generation can
-consume that receipt. Public properties, a copied receipt or an arbitrary Error
+arguments, utility, runtime, thread, property, lifecycle generation and actual
+primitive invocation loan can consume that receipt. A later invocation reusing
+the same cached argument object cannot consume an earlier receipt.
+Public properties, a copied receipt or an arbitrary Error
 cannot enter the shared exception path.
 
 The existing exception owner records the primitive fault and uses its existing

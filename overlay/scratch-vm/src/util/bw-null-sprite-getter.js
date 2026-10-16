@@ -105,9 +105,11 @@ function create(runtime, owner) {
     });
     return Object.freeze({fault(args, util) {
         const witness = physical(args, util);
+        const call = primitiveOwner.captureActiveCall(util, args);
+        if (!call) throw Error('Null Sprite getter requires its actual invocation');
         const error = new TypeError('Expected type Sprite but received type null. Did you forget to assign a variable?');
         const lease = Object.freeze({});
-        receipts.set(lease, {runtime, args, util, thread: util.thread, generation, error, witness,
+        receipts.set(lease, {runtime, args, util, thread: util.thread, generation, error, witness, call,
             current: () => generation, physical});
         return {error, lease};
     }});
@@ -116,7 +118,8 @@ function create(runtime, owner) {
 function consume(runtime, args, util, error, lease) {
     const saved = receipts.get(lease);
     if (!saved || saved.runtime !== runtime || saved.args !== args || saved.util !== util ||
-        saved.thread !== util?.thread || saved.error !== error || saved.generation !== saved.current()) return null;
+        saved.thread !== util?.thread || saved.error !== error || saved.generation !== saved.current() ||
+        !primitiveOwner.isActiveCall(saved.call, util, args)) return null;
     receipts.delete(lease);
     const witness = saved.physical(args, util);
     return witness.block === saved.witness.block && witness.property === saved.witness.property ? witness : null;

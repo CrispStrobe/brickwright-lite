@@ -117,6 +117,16 @@ test('only the exact Error, private receipt, runtime, args and utility consume a
     });
 });
 
+test('same-generation later invocation cannot consume an old receipt with identical cached args and utility',()=>{
+    const f=fixture();let previous;
+    f.invoke(()=>{previous=f.faults.fault(f.args,f.util);});
+    f.invoke(()=>{
+        assert.equal(getter.consume(f.runtime,f.args,f.util,previous.error,previous.lease),null);
+        const current=f.faults.fault(f.args,f.util);
+        assert.deepEqual(getter.consume(f.runtime,f.args,f.util,current.error,current.lease),{block:'getter',property:'x'});
+    });
+});
+
 test('private fault retires real linked callers exactly once while detached fiber remains live',()=>{
     const f=fixture(),caller={...f.thread,stack:['caller'],stackFrames:[{}]},detached={...f.thread,stack:['independent'],stackFrames:[{}]};
     f.runtime.threads.push(caller,detached);let cleaned=0;const signals=[];f.runtime.on('BLOCKS_ERROR',error=>signals.push(error));
