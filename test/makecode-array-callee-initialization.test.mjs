@@ -27,7 +27,36 @@ test('registration before initialization supplies no callback initialization',()
 test('one early caller invalidates complete later caller obligations',()=>{refused(base.replace('initialize();use();game.','use();initialize();use();game.'));});
 test('a conditional initializer write is not a mandatory linear write',()=>{refused(base.replace('ordinary=temporary;','if(controller.A.isPressed()){ordinary=temporary;}'));});
 test('a later null writer remains in the independent all-writer obligation',()=>{refused(base+'ordinary=null;');});
-test('local Array escape is not a closed initializer operand effect',()=>{refused(base.replace('ordinary=temporary;','game.splash(temporary as any);ordinary=temporary;'));});
+test('local Array escape is not a closed initializer operand effect',()=>{
+    const source='let escaped:number[];function expose(value:number[]){escaped=value;}'+
+        base.replace('ordinary=temporary;','expose(temporary);ordinary=temporary;');
+    const project=current(source),escaped=writer(project,'escaped'),ordinary=writer(project,'ordinary');
+    assert.equal(escaped.target,ordinary.target);const target=escaped.target,blocks=target.blocks;
+    const owner=node=>{const seen=new Set();while(node.opcode!=='procedures_definition'){
+        assert.ok(node.parent&&!seen.has(node));seen.add(node);node=blocks[node.parent];assert.ok(node);
+    }return node;};
+    const escapeRoot=owner(escaped.block),prototype=blocks[escapeRoot.inputs.custom_block[1]];
+    assert.equal(prototype.opcode,'procedures_prototype');
+    const names=JSON.parse(prototype.mutation.argumentnames),ids=JSON.parse(prototype.mutation.argumentids);
+    assert.equal(names.length,1);assert.equal(ids.length,1);assert.equal(prototype.mutation.proccode,'expose %s');
+    const actualCalls=calls(project,prototype.mutation.proccode);assert.equal(actualCalls.length,1);
+    const actual=actualCalls[0];assert.equal(actual.target,target);assert.deepEqual(Object.keys(actual.block.inputs),ids);
+    const argument=blocks[actual.block.inputs[ids[0]][1]],value=blocks[escaped.block.inputs.VALUE[1]];
+    assert.equal(argument.opcode,'arcade_getLocal');assert.equal(value.opcode,'arcade_getLocal');
+    assert.equal(value.inputs.NAME[1][1],names[0],'global escape stores the actual parameter cell');
+    const localName=argument.inputs.NAME[1][1],initRoot=owner(ordinary.block);assert.equal(owner(actual.block),initRoot);
+    const chain=[];let id=initRoot.next,previous=initRoot;
+    while(id){assert.ok(!chain.includes(id));const node=blocks[id];assert.ok(node);assert.equal(blocks[node.parent],previous);chain.push(id);previous=node;id=node.next;}
+    const actualId=Object.keys(blocks).find(id=>blocks[id]===actual.block),ordinaryId=Object.keys(blocks).find(id=>blocks[id]===ordinary.block);
+    assert.ok(chain.indexOf(actualId)>=0&&chain.indexOf(actualId)<chain.indexOf(ordinaryId),'escape call precedes the global ordinary assignment');
+    const allocations=chain.slice(0,chain.indexOf(actualId)).map(id=>blocks[id]).filter(node=>node.opcode==='arcade_setLocal'&&node.inputs.NAME[1][1]===localName&&blocks[node.inputs.VALUE[1]]?.opcode==='arrays_createReference');
+    assert.equal(allocations.length,1,'actual argument refers to the initialized local Array allocation');
+    const ordinaryValue=blocks[ordinary.block.inputs.VALUE[1]];assert.equal(ordinaryValue.opcode,'arcade_getLocal');assert.equal(ordinaryValue.inputs.NAME[1][1],localName,'escaped and ordinary references share the actual local cell');
+    record({stage:'callee-escape-current-bindings',source,project,escapedVariableId:globalId(project,'escaped'),ordinaryVariableId:globalId(project,'ordinary'),procedure:prototype.mutation.proccode,formalName:names[0],argumentId:ids[0],localName,callId:actualId,ordinaryWriterId:ordinaryId,initializerChain:chain});
+    // The first summary slice admits zero-argument closed calls. This genuine
+    // parameterized escape must remain outside it; no dialog coercion is waived.
+    check(project,false);
+});
 test('recursive initializer cannot acquire a provisional summary',()=>{refused(base.replace('ordinary=temporary;','initialize();ordinary=temporary;'));});
 test('yielding initialization cannot lend a closed completion summary',()=>{refused(base.replace('ordinary=temporary;','ordinary=temporary;pause(1);'));});
 test('callback incompatible rebinding remains a real writer',()=>{refused(base.replace('function(){use();}','function(){ordinary=null;use();}'));});

@@ -84,3 +84,17 @@ reimport. Require all provided diagnostics and retain absent channels as absent.
 Then qualify an affected genuine guest with the current source and native
 implementation. Source/model tests alone do not permit a feature, GUI, corpus
 or whole-project claim.
+
+## Current implementation and open dialog boundary
+
+The current source implementation proves mandatory Array initialization for
+closed zero-argument ordinary procedures with supported linear bodies.
+Parameterized calls, control flow and unproved effects retain their refusals.
+Complete qualification, including affected native and GUI behavior, remains
+pending.
+
+Passing an Array through `as any` into `game.splash` remains unsupported for
+the observed source shape, with the diagnostic
+`game.splash() requires proven primitive text; opaque or unknown inspection is not implemented`.
+Dedicated authoring controls for this conversion in Blocks and the GUI remain
+unverified. Full compatibility remains an open goal.
