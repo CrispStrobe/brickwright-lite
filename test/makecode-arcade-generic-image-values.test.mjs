@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {appendFileSync} from 'node:fs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {svgToPixels} from '../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js';
@@ -15,10 +16,44 @@ alias.setPixel(0, 0, 7);
 let after = art.first.getPixel(0, 0);
 function retained() { console.log("keep unused helper"); }
 `;
+// Optional private audit output captures the entire real public return before
+// assertions, including channel presence. It never alters the conversion result.
+let sequence = 0;
+const record = value => {
+    if (process.env.BW_GENERIC_IMAGE_SNAPSHOTS)
+        appendFileSync(process.env.BW_GENERIC_IMAGE_SNAPSHOTS, JSON.stringify(value,
+            (_key,item) => item === undefined ? {$actualScalar:'Undefined'} :
+                typeof item === 'number' && !Number.isFinite(item) ? {$actualScalar:String(item)} :
+                Object.is(item,-0) ? {$actualScalar:'-0'} : item) + '\n');
+};
+const convert = input => {
+    const index = ++sequence;
+    try {
+        const result = arcadeToPseudocode(input);
+        const keys = new Set(['unsupported','warnings','errors','unparsed','diagnostics',
+            ...Object.keys(result).filter(key => /unsupported|warn|error|unparsed|diagnostic/i.test(key))]);
+        const channels = Object.fromEntries([...keys].map(key => {
+            const provided = Object.hasOwn(result,key), value = result[key];
+            return [key,{provided,kind:!provided?'absent':value===undefined?'undefined':value===null?'null':Array.isArray(value)?'array':typeof value,
+                ...(provided?{value}:{})}];
+        }));
+        record({index,input,result,returnedKeys:Object.keys(result),channels});
+        return result;
+    } catch (error) {
+        record({index,input,exception:{name:error.name,message:error.message,stack:error.stack}});
+        throw error;
+    }
+};
+const spriteSection = (code,name) => {
+    const header = `SPRITE ${name}:`, start = code.split('\n').indexOf(header);
+    assert.ok(start >= 0, 'actual sprite section exists: ' + name);
+    const lines = code.split('\n'), next = lines.findIndex((line,index) => index > start && /^SPRITE /.test(line));
+    return lines.slice(start,next < 0 ? undefined : next).join('\n');
+};
 const copies = code => [...code.matchAll(/arcade copy image \(arcade frame image array "([^"]+)" index \(0\) template "([^"]+)" start 0 count 1\)/g)];
 
 test('generic fallback retains exact distinct image resources beside unsupported class and unused helper', () => {
-    const result = arcadeToPseudocode(source);
+    const result = convert(source);
     assert.ok(result.unsupported.some(message => /class Unsupported|Class Unsupported/.test(message)), result.unsupported.join('\n'));
     assert.ok(!result.unsupported.some(message => /image or asset literal not translated here/.test(message)));
     assert.doesNotMatch(result.code, /"\(image\)"/);
@@ -43,19 +78,24 @@ test('generic fallback retains exact distinct image resources beside unsupported
 });
 
 test('namespace aliases read the original allocation and mutation remains ordered', () => {
-    const result = arcadeToPseudocode(source);
-    const alias = /set alias to \(([^\n]+)\)/.exec(result.code);
+    const result = convert(source);
+    const alias = /^\s*set alias to ([^\n]+)$/m.exec(result.code);
     assert.ok(alias);
     assert.doesNotMatch(alias[1], /arcade copy image|arcade frame image/);
-    assert.match(alias[1], /__bwNamespace_art_first/);
+    const receiver = alias[1].replace(/^\(([^()]+)\)$/, '$1').trim();
+    assert.equal(receiver, '__bwNamespace_art_first', 'actual alias RHS is the original declaration binding');
     const write = result.code.indexOf('arcade set image pixel (alias) x 0 y 0 color 7');
     assert.ok(write > result.code.indexOf(alias[0]), result.code);
-    assert.match(result.code.slice(write), /arcade image pixel \(__bwNamespace_art_first\) x 0 y 0/);
+    const read = /set after to arcade image pixel \(__bwNamespace_art_first\) x \(0\) y \(0\)/.exec(result.code);
+    assert.ok(read, result.code);
+    assert.ok(result.code.indexOf(read[0]) > write, 'original binding read occurs after alias mutation');
+    assert.ok(result.code.indexOf('set __bwNamespace_art_first to ') < result.code.indexOf(alias[0]), 'allocation precedes alias read');
+    assert.ok(result.unsupported.every(message => /class Unsupported|Class Unsupported/.test(message)), result.unsupported.join('\n'));
     assert.equal(copies(result.code).length, 2, 'alias reads must not create a third allocation');
 });
 
 test('a repeated function literal remains an allocating expression at its evaluation site', () => {
-    const result = arcadeToPseudocode(`${neighbor}function fresh(): Image { return ${literal}; }\nlet first = fresh();\nlet second = fresh();`);
+    const result = convert(`${neighbor}function fresh(): Image { return ${literal}; }\nlet first = fresh();\nlet second = fresh();`);
     assert.equal(copies(result.code).length, 1, 'one source literal is one template, not one retained runtime Image');
     assert.match(result.code, /DEFINE fresh/);
     assert.match(result.code, /arcade return value \(arcade copy image/);
@@ -68,7 +108,7 @@ test('shadowed img tags cannot acquire resource ownership on the fallback route'
         'namespace img { export const member = 1; }\n',
         'globalThis.img = replacement;\n', 'globalThis["img"] = replacement;\n',
         'for (let img of [1]) { console.log(img); }\n']) {
-        const result = arcadeToPseudocode(neighbor + binding + `let picture = ${literal};`);
+        const result = convert(neighbor + binding + `let picture = ${literal};`);
         assert.ok(result.unsupported.some(message => /unshadowed img binding/.test(message)));
         assert.equal(copies(result.code).length, 0);
         assert.equal(result.costumes.length, 0);
@@ -76,7 +116,7 @@ test('shadowed img tags cannot acquire resource ownership on the fallback route'
 });
 
 test('unreadable literal pixels retain the actual unsupported boundary and allocate no template', () => {
-    const result = arcadeToPseudocode(neighbor + 'let picture = img`z`;');
+    const result = convert(neighbor + 'let picture = img`z`;');
     assert.ok(result.unsupported.some(message => /image or asset literal not translated here/.test(message)));
     assert.equal(copies(result.code).length, 0);
     assert.equal(result.costumes.length, 0);
@@ -84,7 +124,7 @@ test('unreadable literal pixels retain the actual unsupported boundary and alloc
 
 
 test('resource names cannot merge with actual source sprite declarations', () => {
-    const result = arcadeToPseudocode(`${neighbor}let __arcadeBackground1 = sprites.create(img` + '`2`' + `, SpriteKind.Player);
+    const result = convert(`${neighbor}let __arcadeBackground1 = sprites.create(img` + '`2`' + `, SpriteKind.Player);
 let picture = ${literal};`);
     const values = copies(result.code);
     assert.equal(values.length, 1);
@@ -96,13 +136,16 @@ let picture = ${literal};`);
     const actorArt = result.costumes.filter(costume => costume.sprite !== name);
     assert.equal(actorArt.length, 1);
     assert.deepEqual(Array.from(svgToPixels(actorArt[0].svg).pixels), [2]);
-    const actorSection = result.code.slice(result.code.indexOf(`SPRITE ${actorArt[0].sprite}:`)).split('\n\n')[0];
-    assert.match(actorSection, /\n  show(?:\n|$)/, 'resource hiding must not hide the actual actor');
+    const actorSection = spriteSection(result.code,actorArt[0].sprite);
+    // Canonical Creator sprites start visible. A real actor with setup needs
+    // no explicit show; the generated resource alone must contain a hide.
+    assert.doesNotMatch(actorSection, /^\s*hide\s*$/m, 'resource hiding must not hide the actual actor');
+    assert.match(spriteSection(result.code,name), /^\s*hide\s*$/m, 'actual image carrier is hidden');
     assert.deepEqual(Array.from(svgToPixels(result.costumes.find(costume => costume.sprite === name).svg).pixels), [1, 0, 0, 2]);
 });
 
 test('a non-emitted class literal cannot leave orphan artwork that current export turns into an actor', () => {
-    const result = arcadeToPseudocode('class Unemitted { static picture(): Image { return ' + literal + '; } }');
+    const result = convert('class Unemitted { static picture(): Image { return ' + literal + '; } }');
     assert.ok(result.unsupported.some(message => /class Unemitted|Class Unemitted/.test(message)));
     assert.equal(copies(result.code).length, 0);
     assert.equal(result.costumes.length, 0);
@@ -137,7 +180,7 @@ test('ambient escapes and dynamic code remain outside generic literal ownership'
         'let build = (() => 0).constructor; build("img = replacement")();',
         'let escapedTag = img; change(escapedTag);'
     ]) {
-        const result = arcadeToPseudocode(neighbor + configured + `\nlet picture = ${literal};`);
+        const result = convert(neighbor + configured + `\nlet picture = ${literal};`);
         assert.ok(result.unsupported.some(message => /ambient handles, tag escapes, dynamic code/.test(message)), configured);
         assert.ok(result.unsupported.some(message => /class Unsupported|Class Unsupported/.test(message)), 'neighbor diagnostics remain');
         assert.equal(copies(result.code).length, 0, configured);
@@ -156,7 +199,7 @@ test('unresolved computed access and unknown this ownership cannot borrow litera
         'let values = [1]; let index; let item = values[index]; index = 0;',
         'let values = [1]; inspect(values); let item = values[0];'
     ]) {
-        const result = arcadeToPseudocode(neighbor + configured + `\nlet picture = ${literal};`);
+        const result = convert(neighbor + configured + `\nlet picture = ${literal};`);
         assert.ok(result.unsupported.some(message => /unshadowed img binding/.test(message)), configured);
         assert.equal(copies(result.code).length, 0, configured);
         assert.equal(result.costumes.length, 0, configured);
@@ -164,7 +207,7 @@ test('unresolved computed access and unknown this ownership cannot borrow litera
 });
 
 test('an initialized actual Array and actual Number index remain in the bounded source domain', () => {
-    const result = arcadeToPseudocode(neighbor + `let values = [1, 2]; let index = 0; let value = values[index]; let picture = ${literal};`);
+    const result = convert(neighbor + `let values = [1, 2]; let index = 0; let value = values[index]; let picture = ${literal};`);
     assert.ok(!result.unsupported.some(message => /unshadowed img binding|configured Array index proof/.test(message)), result.unsupported.join('\n'));
     assert.equal(copies(result.code).length, 1);
     assert.deepEqual(Array.from(svgToPixels(result.costumes[0].svg).pixels), [1, 0, 0, 2]);
