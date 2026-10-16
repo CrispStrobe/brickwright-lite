@@ -20,9 +20,10 @@ WHEN button A down:
 WHEN button B down:
   set all pixels to green
 `;
-const browser = await chromium.launch();
+let browser;
 let page;
 try {
+    browser = await chromium.launch();
     page = await browser.newPage({viewport: {width: 1600, height: 1100}, locale: 'en-US'});
     page.setDefaultTimeout(30000);
     page.on('pageerror', error => report.pageErrors.push(error.message));
@@ -117,7 +118,21 @@ try {
     }).catch(() => null);
     throw error;
 } finally {
-    await browser.close();
-    await mkdir(resolve(output, '..'), {recursive: true});
-    await writeFile(output, JSON.stringify(report, null, 2) + '\n');
+    try {
+        await mkdir(resolve(output, '..'), {recursive: true});
+        if (page && !page.isClosed()) {
+            const screenshot = output.replace(/\.json$/i, '') + '.png';
+            try {
+                await page.screenshot({path: screenshot, timeout: 10000});
+                report.screenshot = screenshot;
+            } catch (error) {
+                // Keep the original assertion failure and its JSON observations
+                // even when a crashed renderer cannot provide an image.
+                report.screenshotError = String(error);
+            }
+        }
+        await writeFile(output, JSON.stringify(report, null, 2) + '\n');
+    } finally {
+        await browser?.close();
+    }
 }

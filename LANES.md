@@ -5552,3 +5552,12 @@ trigger and CPX host/dock controls pass: 59 tests, zero failures or skips
 (`/tmp/brickwright-a13-ci-registration.log`). Final hosted qualification remains
 with the eventual immutable supplier adoption; this registration alone does not
 claim a passing full application face journey.
+
+CPX gate diagnostic follow-up: persist a screenshot beside the JSON receipt on
+success or failure, and write observations before closing Chromium. A refused
+navigation still exits nonzero and emits both files. The unchanged production
+build `022807d` remains correctly red: its actual native program emits ten red
+pixels with zero page errors, but no CPX circuit board is seated; the JSON and
+viewed screenshot record that exact missing face (`/tmp/brickwright-a13-gate-baseline/`).
+This is a negative baseline, not final adoption acceptance. Fourteen host/dock
+controls and the script syntax check pass after the diagnostic change.
