@@ -116,9 +116,31 @@ test('private source receipt does not excuse Text namespace shadows writers esca
     }
 });
 test('unrelated music Buffer and controller effects remain ordinary with complete unused bodies',()=>{
-    for(const body of ['music.play(1,1);','Buffer.fromHex("00");','controller.A.onEvent(ControllerButtonEvent.Pressed,function(){});']){
+    for(const body of ['music.play(1,1);','Buffer.fromHex(unknown());','controller.A.onEvent(ControllerButtonEvent.Pressed,function(){});']){
         const b=boundary(fixture(main+'function retained(){'+body+'}')),before=structuredClone(b.normalized);assert.equal(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),null,body);assert.deepEqual(b.normalized,before,'refusal keeps the full current unused body');
     }
+    // Literal Buffer construction is now an admitted local codec effect, even
+    // inside a retained unused function. It does not excuse unknown operands.
+    const literal=boundary(fixture(main+'function retained(){Buffer.fromHex("00");}'));
+    const ownData=value=>{
+        const seen=new Map(),visit=value=>{
+            if(!value||typeof value!=='object')return value;
+            if(seen.has(value))return {reference:seen.get(value)};
+            const id=seen.size;seen.set(value,id);
+            return {id,prototype:Object.getPrototypeOf(value),properties:Reflect.ownKeys(value).map(key=>{
+                const d=Object.getOwnPropertyDescriptor(value,key);assert.ok(Object.hasOwn(d,'value'),'parser AST is own data');
+                return [key,d.enumerable,d.writable,d.configurable,visit(d.value)];
+            })};
+        };return visit(value);
+    };
+    const retained=program=>{const rows=program.body.filter(node=>node.type==='FunctionDeclaration'&&node.name==='retained');assert.equal(rows.length,1);return rows[0];};
+    const beforeInput=ownData(literal.normalized),beforeFunction=ownData(retained(literal.normalized)),f=finish(literal);
+    record({stage:'literal-buffer-unused-body',retainedInput:retained(literal.normalized),retainedPlanned:retained(f.prepared.program),frameKeys:[...f.resource.frames.keys()]});
+    assert.deepEqual(ownData(literal.normalized),beforeInput,'planning keeps the complete current input AST unchanged');
+    assert.deepEqual(ownData(retained(literal.normalized)),beforeFunction,'input retains the complete unused function, including hidden metadata');
+    assert.deepEqual(ownData(retained(f.prepared.program)),beforeFunction,'the current planned copy retains the complete unused function');
+    assert.deepEqual([...f.resource.frames.keys()],['pictures']);
+    assert.deepEqual(f.resource.frames.get('pictures').map(frame=>({width:frame.width,height:frame.height,pixels:frame.pixels})),[{width:2,height:2,pixels:[1,0,0,2]}]);
     const b=boundary(fixture('game.onUpdate(function(){});'+main));assert.equal(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),null,'earlier registration still stops backing dominance');
 });
 test('Text annotations and unknown or mixed actual writers never seed private receivers',()=>{
