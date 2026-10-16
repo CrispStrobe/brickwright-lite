@@ -5,6 +5,7 @@ const cachedPrimitiveOwner = require('./bw-cached-primitive-owner');
 // completion. Only the current primitive may issue a signal for this runtime.
 const owners = new WeakMap();
 const signals = new WeakMap();
+const publishedSignals = new WeakSet();
 const failedThreads = new WeakMap();
 const promiseLeases = new WeakMap();
 const callerLeases = new WeakMap();
@@ -46,6 +47,7 @@ function create(runtime, readValue, consumePhysicalUpdate = null) {
             }
             if (cleanupErrors.length) signal.cause = new AggregateError(cleanupErrors, 'Arcade invocation cleanup failed');
             runtime.emit('BLOCKS_ERROR', signal);
+            publishedSignals.add(signal);
         } finally {throw signal;}
     };
     const owner = Object.freeze({
@@ -203,6 +205,11 @@ function diagnostic(runtime,error) {
     const record=signals.get(error);
     return record?.runtime===runtime ? ['constraint','array-constraint','condition-wait','primitive-fault'].includes(record.kind) ? Object.freeze({kind:record.kind,message:record.message,block:record.block,target:record.target.id}) : Object.freeze({value:record.value,block:record.block,target:record.target.id}) : null;
 }
+// A copied message or privately issued but unpublished signal is insufficient.
+// This is a read-only publication fact, never an activation or exception loan.
+function reported(runtime,error) {
+    return signals.get(error)?.runtime===runtime && publishedSignals.has(error);
+}
 function stale(runtime,thread,lease) {
     if (failed(runtime,thread)) return true;
     if (lease===null) return false; // Ordinary Scratch, no active Arcade owner.
@@ -217,4 +224,4 @@ function rejectConditionWait(runtime,thread,error) {
     if(!owner)throw Error('Source condition rejection requires the current Arcade exception owner');
     return owner.rejectConditionWait(thread,error);
 }
-module.exports = Object.freeze({rejectConditionWait,create, consume, failed, capture, stale, diagnostic,arrayCoordinatorReady,rejectArrayOperation});
+module.exports = Object.freeze({rejectConditionWait,create, consume, failed, capture, stale, diagnostic,reported,arrayCoordinatorReady,rejectArrayOperation});
