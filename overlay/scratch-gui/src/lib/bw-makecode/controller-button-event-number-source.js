@@ -45,14 +45,18 @@ export function controllerButtonEventNumberLeaves(program) {
     let unsafe = false;
     for (const node of nodes) {
         const parent = parents.get(node);
-        // The current parser retains unsupported delete syntax as an Identifier
-        // statement. It is an unresolved effect, never a harmless builtin read.
         if (node.type === 'Unknown' || node.type === 'Index' || node.type === 'Identifier' &&
-            ['globalThis','window','self','eval','Function','Reflect','arguments','this','delete'].includes(node.name)) unsafe = true;
+            ['globalThis','window','self','eval','Function','Reflect','arguments','this'].includes(node.name)) unsafe = true;
         if (node.type === 'Identifier' && ['controller','ControllerButtonEvent'].includes(node.name) && sdk.has(node) &&
             !(parent?.type === 'Member' && parent.object === node)) unsafe = true;
         if (node.type === 'Identifier') {
             const binding = lexical.references.get(node);
+            // A closed source slice cannot interpret unresolved identifier reads
+            // or configured syntax retained as identifier statements. Only the
+            // exact builtin roots of the admitted Member paths are exempt.
+            const builtinRoot = ['controller','ControllerButtonEvent'].includes(node.name) &&
+                sdk.has(node) && parent?.type === 'Member' && parent.object === node;
+            if (!binding && !builtinRoot) unsafe = true;
             if (binding?.kind === 'function' && !(parent?.type === 'Call' && parent.callee === node)) unsafe = true;
         }
         if (node.type === 'Member') {

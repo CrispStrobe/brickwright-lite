@@ -125,3 +125,10 @@ test('delete source grammar remains an explicit refusal and a real Unary operand
  ast.body.splice(1,0,{type:'ExpressionStatement',expr:{type:'Unary',op:'delete',argument:target}});
  assert.equal(controllerButtonEventNumberLeaves(ast).has(read),false);
 });
+
+test('unresolved identifier reads anywhere refuse closed effects while real lexical reads remain closed',()=>{
+ refuses(wrap('unresolved;'));
+ refuses(wrap('function unused(){unresolved;}'));
+ refuses(wrap('let value=unresolved;'));
+ assert.deepEqual(argumentTypes(wrap('let unresolved=1;unresolved;function unused(){let local=unresolved;}')),['Number']);
+});
