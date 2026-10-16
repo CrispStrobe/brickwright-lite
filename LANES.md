@@ -5615,3 +5615,17 @@ checks and whole-game promotion remain pending. Preserve all original failures.
 The List, per-player, Carnival, managed SDK and shared Image Array contracts
 are composed in joint documentation claim1007; implementation waits for its
 qualified normal merge. No earlier individual-head check qualifies its new head.
+
+### Arcade ExtendableSprite update Throw source intersection — 2026-10-16
+
+Owner: Codex Arcade integration, coordinated with the existing Throw, owned
+Sprite class callable and managed SDK lanes. Status: claim pending qualified
+normal merge; no implementation under this amendment yet.
+
+Contract: [source admission and initialization](docs/ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md).
+Own the narrow GUI source issuer/currentness/normalization intersection in
+throw-source-gate.js, source-value-producers.js, lower-object-classes.js and the
+exact Arcade translator handoff, a focused helper if needed, affected controls
+and documentation. Preserve the original failing guest and all prior source
+refusals; no generic method admission, all-globals initialization, copied tags,
+scheduler/runtime/pin/worker change, skipped control or corpus promotion.

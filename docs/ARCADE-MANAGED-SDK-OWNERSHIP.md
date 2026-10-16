@@ -149,3 +149,10 @@ their own complete source/resource admission; existing originals are retained
 without replay merely to read them. Hosted visible GUI and full dependency or
 MakeCode compatibility remain separate gates. No hardware, physical timing,
 whole-game or corpus-count promotion follows from this bounded ownership work.
+
+## Coordinated source update Throw boundary
+
+The runtime entry contract alone does not admit class/update Throw source. The
+[bounded source amendment](ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md) coordinates
+actual structural method ownership, earliest entry initialization and fresh
+normalization proof before the existing runtime entry can execute that source.
