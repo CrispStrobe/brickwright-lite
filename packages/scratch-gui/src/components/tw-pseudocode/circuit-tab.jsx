@@ -169,6 +169,7 @@ class CircuitTab extends React.Component {
             debugHintDismissed, hideStage, debugDock, showInStage, rightPaneHidden,
             examples: null, examplesError: null, curriculum: null,
             circuitData: null, loadingExample: null,
+            cpxState: props.vm?.runtime?.bwCpxState || null,
             machineBooted: false, pendingExampleTitle: null,
             // The air every part sits in (lib/bench-temperature.js): the chips'
             // on-die sensors and the temperature-dependent parts read it.
@@ -187,6 +188,8 @@ class CircuitTab extends React.Component {
         this.handleRunnerGone = this.handleRunnerGone.bind(this);
         this.handleProjectStop = this.handleProjectStop.bind(this);
         this.handleProjectChanged = this.handleProjectChanged.bind(this);
+        this.handleCpxState = this.handleCpxState.bind(this);
+        this.handleCpxInput = this.handleCpxInput.bind(this);
         this._circuitFileWake = this._circuitFileWake.bind(this);
         // The File-menu action waiting for the designer to exist, or null. Not
         // state: replaying it must not itself schedule a render.
@@ -218,6 +221,7 @@ class CircuitTab extends React.Component {
     }
 
     componentDidMount () {
+        this.subscribeCpxRuntime(this.props.vm?.runtime);
         this._unregisterUndo = registerUndoSurface('circuit', {
             canUndo: () => !!this._findUndoButton(),
             undo: () => {
@@ -526,6 +530,7 @@ class CircuitTab extends React.Component {
     ).find(button => button.textContent.trim() === '↶')
 
     componentDidUpdate (prevProps, prevState) {
+        if (prevProps.vm?.runtime !== this.props.vm?.runtime) this.subscribeCpxRuntime(this.props.vm?.runtime);
         if (this.props.isVisible && !prevProps.isVisible) activateUndoSurface('circuit');
         // The event that opens this lazily rendered bench can precede the
         // DebugPanel listener in the same React commit. Replay the retained
@@ -634,6 +639,8 @@ class CircuitTab extends React.Component {
     }
 
     componentWillUnmount () {
+        this._cpxRuntime?.removeListener('CPX_STATE', this.handleCpxState);
+        this._cpxRuntime = null;
         if (this._unregisterUndo) this._unregisterUndo();
         cancelAnimationFrame(this._hostResizeFrame);
         if (this._hostRO) { this._hostRO.disconnect(); this._hostRO = null; }
@@ -662,6 +669,41 @@ class CircuitTab extends React.Component {
         if (oldWrap) oldWrap.style.display = '';
         if (this._stageHost && this._stageHost.parentNode) {
             this._stageHost.parentNode.removeChild(this._stageHost);
+        }
+    }
+
+    subscribeCpxRuntime (runtime) {
+        this._cpxRuntime?.removeListener('CPX_STATE', this.handleCpxState);
+        this._cpxRuntime = runtime || null;
+        this._cpxRuntime?.on('CPX_STATE', this.handleCpxState);
+        this.handleCpxState(this._cpxRuntime?.bwCpxState || null);
+    }
+
+    handleCpxState (next) {
+        // Sensor/audio-only publications must not redraw the entire designer.
+        // Retain the original snapshot; the runtime remains its sole owner.
+        this.setState(previous => {
+            const old = previous.cpxState;
+            if (old === next) return null;
+            if (old && next && old.switchRight === next.switchRight && old.redLed === next.redLed &&
+                old.buttons?.A === next.buttons?.A && old.buttons?.B === next.buttons?.B) {
+                let same = true;
+                for (let i = 0; i < 10; i++) {
+                    if (old.shown?.[i] !== next.shown?.[i]) { same = false; break; }
+                }
+                if (same) return null;
+            }
+            return {cpxState: next};
+        });
+    }
+
+    handleCpxInput (input) {
+        const board = this.props.vm?.runtime?.bwCpx;
+        if (!board || !input) return;
+        if ((input.button === 'A' || input.button === 'B') && typeof input.down === 'boolean') {
+            board.setButton(input.button, input.down);
+        } else if (typeof input.switchRight === 'boolean') {
+            board.setSwitch(input.switchRight);
         }
     }
 
@@ -2002,6 +2044,8 @@ class CircuitTab extends React.Component {
                 <div style={this.state.panel === 'designer' ?
                     {flex: '1 1 auto', minHeight: 0, overflow: 'auto'} : {display: 'none'}}>
                     {profileReactSubtree(React, 'CircuitDesigner', (<Designer
+                    cpxState={this.state.cpxState}
+                    onCpxInput={this.handleCpxInput}
                     performanceProbe={this._performanceProbe}
                     stc={stc}
                     examples={this.state.examples || undefined}
