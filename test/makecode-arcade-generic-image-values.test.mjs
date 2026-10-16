@@ -122,3 +122,25 @@ test('a non-emitted class literal cannot leave orphan artwork that current expor
     assert.deepEqual(exported.unsupported, []);
     assert.doesNotMatch(exported.ts, /sprites\.create/);
 });
+
+
+test('ambient escapes and dynamic code remain outside generic literal ownership', () => {
+    for (const configured of [
+        'Reflect.set(globalThis, "img", replacement);',
+        'Object.defineProperty(globalThis, "img", descriptor);',
+        'let g = globalThis; g.img = replacement;',
+        'let g = window; g["img"] = replacement;',
+        'let g = self; g.img = replacement;',
+        'function unused() { let g = globalThis; g.img = replacement; }',
+        'eval("img = replacement");',
+        'let build = Function; build("img = replacement")();',
+        'let build = (() => 0).constructor; build("img = replacement")();',
+        'let escapedTag = img; change(escapedTag);'
+    ]) {
+        const result = arcadeToPseudocode(neighbor + configured + `\nlet picture = ${literal};`);
+        assert.ok(result.unsupported.some(message => /ambient handles, tag escapes, dynamic code/.test(message)), configured);
+        assert.ok(result.unsupported.some(message => /class Unsupported|Class Unsupported/.test(message)), 'neighbor diagnostics remain');
+        assert.equal(copies(result.code).length, 0, configured);
+        assert.equal(result.costumes.length, 0, configured);
+    }
+});

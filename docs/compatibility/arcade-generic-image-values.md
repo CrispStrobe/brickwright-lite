@@ -27,7 +27,12 @@ It conservatively refuses literal ownership if a configured declaration, class,
 enum, namespace, loop variable or formal parameter binds
 `img`, or a configured assignment/update replaces the tag, including ambient
 global tag writes and writers in retained neighboring helpers. Unknown executable
-AST nodes refuse the configured writer census.
+AST nodes refuse the configured writer census. Any configured ambient handle
+(`globalThis`, `window` or `self`), escaped `img` value, dynamic `eval`/`Function`
+access, reflection handle or constructor-based dynamic code access also refuses
+this domain, including uses in unused helpers. This deliberately leaves safe
+programs unadmitted; it does not interpret arbitrary JavaScript effects or prove
+all host-object aliasing. Existing unsupported call/body diagnostics remain.
 Unreadable pixels retain the named diagnostic. More precise lexical admission
 can later accept additional programs without making unknown tags authoritative.
 

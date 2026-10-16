@@ -5151,7 +5151,15 @@ export function arcadeToPseudocode (files, opts = {}) {
     const imgBound = containsAst(parsed, node =>
         node.type === 'Declaration' && node.decls.some(decl => decl.name === 'img') ||
         ['FunctionDeclaration', 'FunctionExpression', 'Class', 'Enum', 'Namespace', 'ForOf'].includes(node.type) && node.name === 'img' ||
-        Array.isArray(node.params) && node.params.includes('img') || tagWriter(node) || node.type === 'Unknown');
+        Array.isArray(node.params) && node.params.includes('img') || tagWriter(node) ||
+        // This bounded source domain does not interpret ambient objects, tag
+        // escapes or dynamic code/reflection. Refuse them even in unused bodies
+        // rather than trying to prove every possible aliased host mutation.
+        node.type === 'Identifier' && ['img', 'globalThis', 'window', 'self', 'eval', 'Function', 'Reflect'].includes(node.name) ||
+        node.type === 'Member' && node.name === 'constructor' ||
+        node.type === 'Index' && node.index?.type === 'String' &&
+            ['constructor', 'eval', 'Function'].includes(node.index.value) ||
+        node.type === 'Unknown');
     const occupiedImageNames = new Set(['Game', 'Stage']);
     containsAst(ast, node => {
         if (typeof node.name === 'string') occupiedImageNames.add(node.name);
@@ -5174,7 +5182,7 @@ export function arcadeToPseudocode (files, opts = {}) {
         eager: false, allocateName: allocateImageName
     });
     if (imgBound && containsAst(ast, node => node.type === 'Template' && node.tag === 'img'))
-        t.unsupported.push('Image literal requires an unshadowed img binding and complete configured tag-writer census');
+        t.unsupported.push('Image literal requires an unshadowed img binding; ambient handles, tag escapes, dynamic code and incomplete configured tag-writer census remain unsupported');
     const costumes = [];
 
     // ── pass 1: find the sprites, because everything else refers to them
