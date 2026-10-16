@@ -34,6 +34,10 @@ export function ordinaryPlayerScoreNumberCalls(program, safeIndex = () => false)
         ['startCountdown',1],['onCountdownEnd',1],['onScore',2],['showScore',1]]);
     const playerArities=new Map([['score',0],['setScore',1],['changeScoreBy',1]]);
     const players=new Set(['player1','player2','player3','player4']);
+    // The parser stores a template tag as a dotted STRING, not its original
+    // Identifier/Member tree. Do not let those erased calls escape the census.
+    const resourceTags=new Set(['img','hex','tilemap','assets.image','assets.tile','assets.tilemap']);
+    const resourceRoots=new Set(['img','hex','tilemap','assets']),resourceBindings=new Set(),tags=[];
     let unsafe=false,hasPlayerAccess=false;
     const classThis=ancestors=>{
         const owner=[...ancestors].reverse().find(node=>node.type==='Class');
@@ -46,6 +50,23 @@ export function ordinaryPlayerScoreNumberCalls(program, safeIndex = () => false)
     const visit=(node,parent=null,grandparent=null,ancestors=[])=>{
         if(!node||typeof node!=='object')return;
         if(Array.isArray(node)){for(const value of node)visit(value,parent,grandparent,ancestors);return;}
+        if(node.type==='Template'){
+            if(typeof node.value!=='string'||node.value.includes('${'))unsafe=true;
+            if(Object.hasOwn(node,'tag')){
+                tags.push(node.tag);
+                // Even an erased/malformed info tag must select the extended
+                // profile, rather than falling through to the legacy API.
+                if(typeof node.tag==='string'&&node.tag.split('.')[0]==='info')hasPlayerAccess=true;
+            }
+        }
+        // Resource literals are the only closed tag effects retained here.
+        // Any source binding/reference to their root makes that literal's
+        // builtin identity uncertain. This is deliberately conservative across
+        // scopes; it supplies no Image/Buffer or SDK result authority.
+        if(node.type==='Identifier'&&resourceRoots.has(node.name))resourceBindings.add(node.name);
+        if(['FunctionDeclaration','FunctionExpression','Class','Enum','Namespace','ForOf'].includes(node.type)&&resourceRoots.has(node.name))resourceBindings.add(node.name);
+        if(node.type==='Declaration')for(const decl of node.decls||[])if(resourceRoots.has(decl.name))resourceBindings.add(decl.name);
+        if(Array.isArray(node.params))for(const name of node.params)if(resourceRoots.has(name))resourceBindings.add(name);
         if(node.type==='Unknown'||node.type==='Identifier'&&
             (['globalThis','global','window','self','eval','Function','Reflect','arguments'].includes(node.name)||
                 node.name==='this'&&!classThis(ancestors))||
@@ -69,5 +90,6 @@ export function ordinaryPlayerScoreNumberCalls(program, safeIndex = () => false)
     // Consumers that do not use the added player surface retain the complete
     // original seven-call policy, including its independently tested limits.
     if(!hasPlayerAccess)return ordinaryPrimitiveSdkNumberCalls(program);
+    if(tags.some(tag=>typeof tag!=='string'||!resourceTags.has(tag)||resourceBindings.has(tag.split('.')[0])))unsafe=true;
     return new WeakSet(unsafe?[]:candidates);
 }

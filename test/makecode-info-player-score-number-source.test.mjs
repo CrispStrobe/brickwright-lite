@@ -85,3 +85,28 @@ test('proved ordinary numeric Array indices coexist with fixed players without a
     const unsafe=wrap('info.player2.score()','let unknown:any;let selected=unknown[0];');
     assert.equal(types(unsafe).includes('Number'),false);
 });
+
+// Tagged receivers are erased to Template.tag strings by the real parser.
+// They must not hide ambient effects or choose the unchanged legacy fallback.
+for(const [argument,neighbor] of [
+    ['info.player2.score()', 'let root=Function`return info`();root.player2.score=()=>"text";'],
+    ['info.player2.score()', 'info.player2.unknown`x`;'],
+    ['info.player2.score()', 'info.player2.score`x`;'],
+    ['info.score()', 'info.player2.unknown`x`;'],
+    ['info.player2.score()', 'img`${unknown()}`;'],
+    ['info.player2.score()', 'let img:any;img`1`;'],
+    ['info.player2.score()', 'let assets:any;assets.image`name`;']
+])test('erased tagged calls cannot bypass the player census: '+neighbor,()=>{
+    const source=wrap(argument,'',neighbor),ast=parse(source),call=actualArgument(ast);
+    assert.equal(ordinaryPlayerScoreNumberCalls(ast).has(call),false);
+    assert.equal(types(source).includes('Number'),false);
+    assert.ok(constraints(source).length);
+});
+
+test('unshadowed noninterpolated resource literals keep their independent literal behavior',()=>{
+    const source=wrap('info.player2.score()','let picture=img`1`;let bytes=hex`0102`;');
+    assert.deepEqual(types(source),['Number']);assert.deepEqual(constraints(source),[]);
+    const legacy=parse(wrap('info.score()','', 'info.player2.unknown`x`;'));
+    assert.equal(ordinaryPrimitiveSdkNumberCalls(legacy).has(actualArgument(legacy)),true,
+        'the independently exposed legacy seven-call function is unchanged');
+});
