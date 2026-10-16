@@ -46,7 +46,10 @@ const SKIP_V2 = 'LabWired engine, MakeCode runtime or micro:bit V2 emulator base
 test.after(() => fs.rmSync(tmp, {recursive: true, force: true}));
 
 // The program: a serial greeting, an X on the matrix, then a counter every 200 ms.
-const PROGRAM = `serial.writeLine("hello bw")
+// Default MakeCode writeLine pads to 32-byte records. These authored proof
+// guests request unpadded lines so the exact byte assertions below stay literal.
+const PROGRAM = `serial.setWriteLinePadding(0)
+serial.writeLine("hello bw")
 basic.showLeds(\`
     # . . . #
     . # . # .

@@ -242,7 +242,7 @@ try {
         // path, with a unique complete line observed in the real UART console.
         const greeting = 'A10 browser serial';
         const serialProject = {meta: {name: 'a10-serial', cloudId: 'pxt/microbit', editor: 'tsprj'},
-            source: JSON.stringify({'main.ts': `serial.writeLine("${greeting}")\n`, 'pxt.json': JSON.stringify({
+            source: JSON.stringify({'main.ts': `serial.setWriteLinePadding(0)\nserial.writeLine("${greeting}")\n`, 'pxt.json': JSON.stringify({
                 name: 'a10-serial', dependencies: {core: '*', radio: '*'}, files: ['main.ts'], preferredEditor: 'tsprj'
             })})};
         await input.setInputFiles({name: 'a10-serial.mkcd', mimeType: 'application/octet-stream',
