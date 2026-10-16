@@ -82,9 +82,14 @@ async function runCompiler (target, files, opts = {}, projectInputs = false) {
             hwVariant: opts.hwVariant || '', getBaseHex, ...(opts.emulator ? {appVariant: 'mbcodal'} : {}),
             extensions: onDemand.extensions.map(({id, repo, refs, targets, files: source}) =>
                 ({id, repo, refs, targets, files: source}))});
-        return {...JSON.parse(JSON.stringify(r)), fetchedExtensions: onDemand.extensions.map(e =>
+        return {...JSON.parse(JSON.stringify(r)),fetchRefusals:onDemand.refused,...(onDemand.disabled ? {fetchDisabled:true} : {}), fetchedExtensions: onDemand.extensions.map(e =>
             ({id: e.id, repo: e.repo, ref: e.refs[0], ...e.fetched}))};
     } catch (error) {
+        if (error && typeof error === 'object') {
+            error.fetchRefusals = onDemand.refused;
+            error.fetchedExtensions = onDemand.extensions.map(e => ({id:e.id,repo:e.repo,ref:e.refs[0],...e.fetched}));
+            if (onDemand.disabled) error.fetchDisabled = true;
+        }
         if (error?.code === 'NO_EXTENSION') {
             error.refused = onDemand.refused;
             error.fetchedExtensions = onDemand.extensions.map(e => ({id: e.id, repo: e.repo, ref: e.refs[0], ...e.fetched}));
