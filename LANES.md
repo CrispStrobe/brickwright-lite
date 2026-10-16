@@ -5337,3 +5337,15 @@ exact Arcade translator handoff, a focused helper if needed, affected controls
 and documentation. Preserve the original failing guest and all prior source
 refusals; no generic method admission, all-globals initialization, copied tags,
 scheduler/runtime/pin/worker change, skipped control or corpus promotion.
+
+### Shared-frame selected source provenance — coordinated amendment
+
+Owner: Codex Arcade integration. Claim pending qualified normal merge.
+Extend only the [shared-frame non-exposure contract](docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md)
+into dependency-project.js for a private actual-source/prepared-map receipt.
+Keep optional effect analysis private to the existing shared-frame helper and
+its exact translator hooks. Preserve actual source comparison, source ordering,
+all initializers, unused bodies and diagnostics; no public flag/namespace/tag
+can issue proof. This does not widen ordinary Number/reference producers,
+classes, runtime behavior, dependency fetching, pins or compiler execution.
+Implement only after this ownership amendment qualifies and merges.
