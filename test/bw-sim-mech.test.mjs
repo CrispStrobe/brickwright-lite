@@ -625,3 +625,59 @@ test('real driving base compiles correctly', async () => {
     // Ground
     assert.ok(mech.bodies.some(b => b.id === 'ground' && b.motion === 'static'));
 });
+
+test('ground height exact: driving base top = -0.032m, rotated box/cylinder hand computed', async () => {
+    const {readFileSync} = await import('node:fs');
+    const partsData = JSON.parse(readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', import.meta.url)));
+    const baseData = JSON.parse(readFileSync(new URL('./fixtures/bw-sim/driving-base.json', import.meta.url)));
+    const catalog = new Map(); for (const p of partsData.parts) catalog.set(p.part, p);
+    const mech = compile(baseData, catalog, {ground: true});
+    const ground = mech.bodies.find(b => b.id === 'ground');
+    const top = ground.position[1] + 0.01;
+    assert.ok(Math.abs(top - (-0.032)) < 1e-6, `ground top ${top} expected -0.032`);
+
+    // Rotated box: halfExtents [1, 2, 3] local, rotation 90deg about X (so Y->Z), position at y=10 world (via body)
+    // For a body at world y=0.1, box at local centre y=0, rotation 90deg X: local Y axis -> world Z, local Z -> world -Y
+    // Extent below centre = heY*|ay_y| + heZ*|az_y| = 2*0 + 3*1 =3 ; plus heX*|ax_y|=1*0=0 => 3
+    // So bottom = worldY - 3
+    // We test via a custom part with that collider rotated.
+    const cat = makeCatalog();
+    // Create part with box collider halfExtents [1000, 2000, 3000] LDU -> in meters [0.4,0.8,1.2] (since LDU_M=0.0004)
+    // But we want halfExtents [1,2,3] meters after conversion => need LDU values [2500,5000,7500]
+    const boxLdu = [2500, 5000, 7500];
+    cat.set('test-box-rot.dat', {
+        part: 'test-box-rot.dat',
+        name: 'Box rot',
+        category: 'other',
+        massGrams: 1,
+        connectors: [],
+        colliders: [{shape: 'box', halfExtents: boxLdu, rotation: [0.7071067811865476, 0, 0, 0.7071067811865476]}],
+    });
+    const modelBox = {version: 1, parts: [{id: 'p', part: 'test-box-rot.dat', position: [0, 0, 0], rotation: I3}]};
+    const mechBox = compile(modelBox, cat, {ground: true});
+    const gBox = mechBox.bodies.find(b => b.id === 'ground');
+    // Body at 0,0,0 world, box centre at 0,0,0 local -> worldY 0, extent = heX*|ax_y|+heY*|ay_y|+heZ*|az_y|
+    // he in meters: [1,2,3], rotation 90deg X: ax=[1,0,0] ay=[0,0,1] az=[0,-1,0] => |ay_y|=0, |az_y|=1, |ax_y|=0 => extent=3
+    // bottom = 0-3 = -3, top = -3, ground centre = -3-0.01=-3.01, top = -3
+    const topBox = gBox.position[1] + 0.01;
+    assert.ok(Math.abs(topBox - (-3)) < 1e-6, `rotated box top ${topBox} expected -3`);
+
+    // Cylinder: radius 2, halfHeight 5, axis rotated 45deg about Z (so a = [sin45, cos45,0])
+    // a_y = cos45 = sqrt(0.5)=0.7071, extent = hh*|a_y| + r*sqrt(1-a_y^2) =5*0.7071 +2*0.7071=4.9497
+    const ang = Math.PI / 4;
+    const q = [0, 0, Math.sin(ang / 2), Math.cos(ang / 2)]; // 45deg about Z
+    cat.set('test-cyl-rot.dat', {
+        part: 'test-cyl-rot.dat',
+        name: 'Cyl rot',
+        category: 'other',
+        massGrams: 1,
+        connectors: [],
+        colliders: [{shape: 'cylinder', radius: 5000, halfHeight: 12500, rotation: q}], // LDU: radius 5000*0.0004=2, halfHeight 12500*0.0004=5
+    });
+    const modelCyl = {version: 1, parts: [{id: 'p2', part: 'test-cyl-rot.dat', position: [0, 0, 0], rotation: I3}]};
+    const mechCyl = compile(modelCyl, cat, {ground: true});
+    const gCyl = mechCyl.bodies.find(b => b.id === 'ground');
+    const topCyl = gCyl.position[1] + 0.01;
+    const expected = -(5 * Math.cos(ang) + 2 * Math.sin(ang));
+    assert.ok(Math.abs(topCyl - expected) < 1e-6, `rot cyl top ${topCyl} expected ${expected}`);
+});

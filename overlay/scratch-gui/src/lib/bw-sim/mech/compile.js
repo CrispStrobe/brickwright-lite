@@ -10,42 +10,47 @@ import {buildGraph} from './graph.js';
 import {buildIslands} from './islands.js';
 import {buildJoints} from './joints.js';
 import {buildGears} from './gears.js';
-import {vecSub, vecLen} from './vec.js';
+import {quatMul, quatConj} from './vec.js';
+
+/** Rotate Vec3 v by unit quat q (xyzw) */
+const quatRotateVec = (q, v) => {
+    // q * v * q_conj, where v as quat [v,0]
+    const qv = [v[0], v[1], v[2], 0];
+    const qConj = quatConj(q);
+    const t = quatMul(q, qv);
+    const r = quatMul(t, qConj);
+    return [r[0], r[1], r[2]];
+};
 
 /**
  * Create ground body (static box 2m x 2m, 0.02m thick) whose TOP is at lowest
- * world-y of any collider in the model (conservative bounding spheres/boxes).
+ * world-y of any collider in the model (exact lowest point of each primitive).
+ * Box: sum halfExtent_i * |y-component of local axis i in world|
+ * Cylinder (axis a = rotated +y): halfHeight*|a_y| + radius*sqrt(1 - a_y^2)
+ * Sphere: radius
  * @param {Array} bodies dynamic bodies already built
  * @returns {object} ground body
  */
 const makeGround = bodies => {
     let lowest = Infinity;
-    // Compute lowest world-y across all colliders (use bounding sphere)
     for (const b of bodies) {
         for (const col of b.colliders) {
-            // Collider position in world = body.position + (col.position ?? [0,0,0]) but col.position is already body-frame position (world - origin)
-            // So worldPos = body.position + (col.position || [0,0,0])
             const colPos = col.position ? col.position : [0, 0, 0];
             const worldY = b.position[1] + colPos[1];
-            // Estimate lowest extent: for box, use halfExtents Y; for cylinder, halfHeight (+ radius conservative?); for sphere radius
             let extent = 0;
+            const rot = col.rotation ? col.rotation : [0, 0, 0, 1];
             if (col.shape === 'box') {
-                // Conservative: halfExtents magnitude or just y extent? Use halfExtents[1] plus radius for rotated case? Use bounding sphere = len(halfExtents)
                 const he = col.halfExtents;
-                // If collider has rotation, the y extent is not simply he[1]; use bounding sphere radius = len(he)
-                // But we can approx as max of half extents or sphere
-                if (col.rotation) {
-                    extent = Math.hypot(he[0], he[1], he[2]);
-                } else {
-                    extent = he[1];
-                }
+                // Local axes X,Y,Z rotated
+                const ax = quatRotateVec(rot, [1, 0, 0]);
+                const ay = quatRotateVec(rot, [0, 1, 0]);
+                const az = quatRotateVec(rot, [0, 0, 1]);
+                extent = he[0] * Math.abs(ax[1]) + he[1] * Math.abs(ay[1]) + he[2] * Math.abs(az[1]);
             } else if (col.shape === 'cylinder') {
-                // Cylinder axis local +y before rotation; bounding sphere = sqrt(r^2 + halfHeight^2)
-                const r = col.radius; const hh = col.halfHeight;
-                if (col.rotation) extent = Math.hypot(r, hh);
-                else extent = hh; // if rotation not identity, y extent could be radius, but conservative use max
-                // For non-rotated cylinder with axis y, lowest is worldY - halfHeight
-                // For rotated, use sphere
+                const a = quatRotateVec(rot, [0, 1, 0]); // cylinder axis
+                const ay = a[1];
+                const hh = col.halfHeight; const r = col.radius;
+                extent = hh * Math.abs(ay) + r * Math.sqrt(Math.max(0, 1 - ay * ay));
             } else if (col.shape === 'sphere') {
                 extent = col.radius;
             }
@@ -53,10 +58,10 @@ const makeGround = bodies => {
             if (bottom < lowest) lowest = bottom;
         }
     }
-    if (!isFinite(lowest)) lowest = 0; // no bodies? fallback
+    if (!isFinite(lowest)) lowest = 0;
 
-    const halfThick = 0.01; // 0.02 thick
-    const centerY = lowest - halfThick; // top = centerY + halfThick = lowest
+    const halfThick = 0.01;
+    const centerY = lowest - halfThick;
     return {
         id: 'ground',
         motion: 'static',
