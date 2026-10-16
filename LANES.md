@@ -1,7 +1,9 @@
 ## Original Arcade profiler clock bootstrap — 2026-10-16
 
-PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
-implementation. Contract: [reference clock bootstrap](docs/ARCADE-REFERENCE-CLOCK-BOOTSTRAP.md).
+CLAIMED — Codex Arcade integration; documentation claim
+[PR1001](https://github.com/CrispStrobe/brickwright-lite/pull/1001) merged after
+all four enabled checks passed. Source candidate and runtime qualification are
+pending. Contract: [reference clock bootstrap](docs/ARCADE-REFERENCE-CLOCK-BOOTSTRAP.md).
 Own the original-simulator clock helper, its Arcade runtime initialization call
 site, focused controls and qualification notes. Preserve paused-zero document
 admission, then prove a deterministic complete-frame bootstrap before actual

@@ -1,6 +1,7 @@
 # Deterministic original Arcade clock bootstrap
 
-**Proposed claim; documentation only.** Merge this claim before implementation.
+**Claim merged in [PR1001](https://github.com/CrispStrobe/brickwright-lite/pull/1001).**
+Implementation and runtime qualification remain pending.
 This continues the deterministic original-clock lane recorded in `LANES.md`.
 
 ## Observed failure

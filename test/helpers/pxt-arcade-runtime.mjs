@@ -5,7 +5,7 @@ import path from 'node:path';
 import {createServer} from 'node:http';
 import {chromium} from 'playwright';
 import {compile,STATIC} from '../../scripts/lib/pxt-node.mjs';
-import {preparePxtInitialClock,assertPxtInitialClock} from './pxt-initial-clock.mjs';
+import {preparePxtInitialClock,assertPxtInitialClock,bootstrapPxtProfilerClock} from './pxt-initial-clock.mjs';
 
 // Self-contained for browser serialization. Observe actual presentation, not
 // requested pixels or main/global completion, which can precede the first frame.
@@ -83,7 +83,10 @@ export async function runPxtArcade(source, {waitForGlobals = null, dependencies 
         // Configure the paused context before creating a page. Installing a
         // flowing clock and later pausing at zero races elapsed host time.
         await page.goto(`http://127.0.0.1:${server.address().port}/simulator.html`);
-        if(fakeClock)await assertPxtInitialClock(page);
+        if(fakeClock){
+            await assertPxtInitialClock(page);
+            await bootstrapPxtProfilerClock(page);
+        }
         if (waitForDisplay) await page.evaluate(observePxtDisplay);
         await page.evaluate(async ({code,recordSound,recordSongSound,initialButtons,observeEntropy})=>{
             const msg={type:'run',id:'bw-oracle',code,options:{},mute:true};
