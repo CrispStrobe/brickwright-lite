@@ -108,8 +108,8 @@ test('Reset while Start awaits earlier firmware teardown prevents even a new con
     f.pane.firmwareSession = {stop: () => new Promise(resolve => {release = resolve;})};
     const run = f.pane.start();
     assert.equal(typeof release, 'function'); assert.equal(f.connections.length, 0);
-    await f.pane.reset(); const mark = f.events.length;
-    release(); await new Promise(resolve => setImmediate(resolve));
+    const reset = f.pane.reset();
+    release(); await reset; const mark = f.events.length; await new Promise(resolve => setImmediate(resolve));
     // Let the broken baseline settle too, so its failure is an assertion,
     // rather than an unresolved asynchronous test.
     f.connections[0]?.resolve(); await run;
@@ -143,8 +143,10 @@ test('disposed firmware cleanup cannot cancel the shared backend or replacement 
 
 test('a newer Reset and native Start survive an earlier firmware Stop return', async () => {
     const f = pendingFirmwareStop();
-    await f.pane.reset();
+    const reset = f.pane.reset();
     const start = f.pane.start(); await Promise.resolve(); await Promise.resolve();
+    assert.equal(f.connections.length, 0, 'New Start must wait for detached native teardown');
+    f.resolve(); await reset; await new Promise(resolve => setImmediate(resolve));
     assert.equal(f.connections.length, 1);
     f.connections[0].resolve(); await start;
     assert.equal(f.pane.state.status, 'running'); assert.equal(f.pane.clock.installed, true);
