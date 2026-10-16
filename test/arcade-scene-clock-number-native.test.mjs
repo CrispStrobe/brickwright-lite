@@ -22,7 +22,7 @@ const observation=(t,label,run)=>{
     retain(label+'-runtime',actual);t.diagnostic(JSON.stringify(actual));return actual;
 };
 const execute=async(label,source,options={})=>{
-    retain(label+'-input',{source,options});
+    retain(label+'-input',{source,options,generatedBootstrapZIP:{provided:false,boundary:'runProgram internally generates and loads its Creator ZIP; exact bootstrap ZIP bytes UNOBSERVED. Actual later VM-saved ZIP bytes are retained separately before every explicit same/fresh load.'}});
     try{return await runProgram(source,{...options,observeCreator:(creator,error)=>captureCreator(label,creator,error)});}
     catch(error){retain(label+'-execution-rejection',{error:errorRecord(error),runtimeReturn:{provided:false,reason:'runProgram rejected before returning its VM handle'}});throw error;}
 };

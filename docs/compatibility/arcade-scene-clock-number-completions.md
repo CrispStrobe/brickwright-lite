@@ -98,8 +98,13 @@ The first pure successor passed its original two-caller export and 65 of 66
 controls; that control failure and its full returned diagnostics are retained.
 
 The authored native controls optionally retain complete diagnostic-presence
-records, partial Creator returns, current graphs, actual ZIP bytes before load
+records, partial Creator returns, current graphs, actual saved ZIP bytes before explicit
+same/fresh loads
 and current export/reimport inputs. Their evidence does not manufacture a
 completion certificate. Only one actual VM runs at a time; setup failure cleanup
 owns the test child and preserves the original error. Those controls remain
 unexecuted until their separately reviewed native packet is admitted.
+
+The helper-internal initial Creator ZIP bytes are explicitly unobserved in this
+fixture. Observed current saved ZIP bytes, later loaded unchanged, remain a
+separate artifact; the initial source activation does not claim that byte audit.
