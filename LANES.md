@@ -1,35 +1,26 @@
-## SPIKE pending Stop teardown implementation — 2026-10-15
+## A13 — CPX live circuit face adoption — 2026-10-16
 
-G02 continuation, branch `lane/spike-g02-pending-stop-20261015`, based on main
-after the Code caller/output follow-up [PR985](https://github.com/CrispStrobe/brickwright-lite/pull/985) merged.
-Its frozen-package qualification below does not
-qualify this new teardown change. A second Stop can see no
-attached session while native teardown still owns the hub clock. Remember the
-pending teardown before invoking the native Stop, and await it before restoring
-topology, cancelling the shared backend or continuing Start. A synchronous Stop
-listener joins that same teardown. Earlier completion cannot clear a later
-pending teardown; joined teardown failures wait for all outstanding stops and
-retain the original error for the current intent. Existing intent, bridge and
-disposal guards still admit shared cleanup.
+CLAIMED — Codex root, isolated `/tmp/brickwright-lite-a13-20261016`, branch
+`lane/a13-cpx-face-adoption-20261016`. User requested this after the iOS and
+existing integrations. Supplier: bw-circuit-ui PR85, published claim 796bd2c.
+Preserve PR965/975's serialized dependency ownership and all newer main pins.
 
-Ownership is limited to canonical `stopProgram`, new
-`test/spike-arena-pending-stop.test.mjs`, this ledger and the SPIKE guide. Extend
-the existing continuation contracts only to timing adaptations in the pane
-composition, lifecycle, Pause, teardown, world-ownership and upload-Stop tests.
-These controls now release native teardown before awaiting a later Stop. Where
-an older reply must arrive after replacement, hold its original promise delivery
-after teardown rather than creating a circular wait. Preserve success/error,
-replacement/disposal, retained-program and fresh-Start assertions.
-
-Twelve authored controls use the real hub clock guard and arena bridge. All
-pass, and six broken pending/intent/error guards are detected. The broader 220
-controls passed before adding the twelfth focused case; the final twelve pass
-separately. A rendered React test is unavailable locally and is not counted.
-No installed package or guest result qualifies this change yet. Require affected
-installed own-guest repeated Stop, cleanup and distinct recovery, plus every
-enabled exact-head check before merge. Firmware, Runtime/models, dependency
-pins, protocol, product budgets and other pane methods are unchanged. This does
-not close G02 or establish reference, physical, licensing or release results.
+Own CPX-only state subscription and cleanup plus input forwarding in
+`overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx` and its exact
+tracked package mirror; focused CPX wiring and actual-browser controls; this
+ledger. Feed runtime.bwCpxState to cpxState; route onCpxInput to the existing
+runtime.bwCpx.setButton/setSwitch. No copied simulation or second driver.
+Own immutable bw-circuit-ui adoption through canonical package/lock/notice
+writers and exact-pin readers only after qualified upstream landing and the
+existing serialized integrations. Acceptance: real CPX native blocks drive
+the same red ring on pane and face; face A triggers the existing hat; circuit
+round-trip identifies DEVICE CPX; swapped-index and removed-callback mutations
+fail. D13 is absent from the current runtime snapshot: trace the existing pin
+bridge before selecting a separately claimed supplier fix; never infer its state.
+No translator/parser, engine, unrelated pin, workflow budget or firmware changes.
+This claim must merge to remote main before Lite implementation. Require all
+enabled final-head checks and affected browser proofs before source merge.
+iPad/hub physical acceptance remains separately pending device availability.
 
 ## A12 — Circuit Playground Express MakeCode translator — 2026-10-16
 
@@ -1151,6 +1142,119 @@ executable digest. This closes only the zForth notice inclusion gap. Exact
 linked newlib/libi86 obligations and whole-package component review remain open.
 No executable, dependency pin, compiler, simulator or peer implementation change.
 
+
+## List monitor dependency import boundary — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge before implementation.
+Contract: [list monitor import boundary](docs/ARCADE-LIST-MONITOR-IMPORT-BOUNDARY.md).
+Own only the list-monitor-scroller owned overlay and tracked mirror, narrow
+normal production-resolution and real-widget controls, and documentation.
+Select the existing direct named List entry from the adopted dependency; keep
+its actual implementation, required initialization effects, props, locale,
+accessibility, layout, activation, scroll, resize and current save/reopen data.
+No dependency/pin/API/lazy behavior, package side-effect declaration, budget,
+workflow or unrelated editor/artwork change. Existing painter-presence startup
+ownership remains separate. Actual production size and widget qualification
+are required; source-byte attribution is no promise that the budget will pass.
+
+## Arcade per-player score Number producers — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
+implementation. Contract: [per-player score Number producers](docs/ARCADE-INFO-PLAYER-NUMBER-PRODUCERS.md).
+Own the narrow ordinary SDK source proof, any necessary existing producer
+consumer integration, and only the existing score Number proof's same-role
+fixed-player physical/cached argument binding in
+`overlay/scratch-vm/src/extensions/crispstrobe/arcade/console-inspect-values.js`.
+Own focused current Code/Blocks/saved/export and native controls and docs; keep
+all genuine registration/cache/source-owner/active-result/lifecycle checks. Prove actual unshadowed fixed-player API bindings,
+complete access/writer census and real score Number completion. Preserve the
+existing direct-info and scene-clock boundaries; no namespace/opcode type grant,
+refusal suppression, runtime semantic change, pin adoption or whole-case credit.
+Other per-player results and EV3 console/motor gaps remain separate.
+
+## Carnival package provenance and selected native APIs — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration, coordinated extension of the
+existing Carnival host/authoring and dependency-project/native-admission lanes.
+Merge [the selected Carnival source contract](docs/ARCADE-CARNIVAL-NATIVE-SOURCE-ADMISSION.md)
+before implementation. Own narrow current-package/declaration provenance,
+shared native-source admission and namespace handoff for already implemented
+countdown/scoring/dialog APIs; source identity/coverage companion and controls,
+current Code/Blocks/save/reopen/export, actual affected native and GUI journeys.
+Preserve complete module initialization including all five original SpriteKind
+allocations, source bodies/resources/order, effects and explicit unsupported
+APIs. No whole-package skip, prefix/opcode grant, source/diagnostic pruning,
+new runtime capability, pin or workflow change. Coordinate exact shared hunks;
+other adapters/importer/editor owners remain preserved. Dependency-free native
+Code authoring cannot replace authentic asynchronous package-import evidence.
+
+## Arcade managed SDK activation ownership — coordinated claim
+
+CLAIM — bounded construction continuation, existing physical Sprite update and
+synchronous nested VM handoff compatibility.
+[Ownership and acceptance contract](docs/ARCADE-MANAGED-SDK-OWNERSHIP.md)
+owns only the listed shared exception/primitive utilities, existing SDK Sprite
+activation paths and focused native/probe controls. Preserve genuine caller,
+registration/cache, instance, phase, generation and lineage authority; retain
+Stop/reload and exceptional once-only settlement. Do not fabricate a parent or
+allow arbitrary caller-less execution or reentry. Distinguish metadata-only
+second-instance probes from intentional same-runtime Buffer owner isolation.
+Coordinate existing Throw, Array, waits, Number, scene-clock and null-getter
+owners before shared edits. No blanket inheritance, SDK API, value domain,
+supplier/pin, timing or new host root-loan expansion. Implementation waits for
+this claim's normal qualified merge; affected clean native own-guest and current
+portable-route qualification remains mandatory, with GUI and whole-case gates
+separate.
+
+## Shared static Image Array source transport: F — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this coordinated contract
+before implementation: [shared Image Array transport](docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md).
+Own a narrow actual-binding, initialization, all-writer and configured-effect
+proof before eager staging, with one private current plan consumed by source
+lowering and current frame resource emission. Coordinate the exact
+`arcade-translate.js`, `lower-pxt-staged-values.js` and necessary
+`export-arcade.js` hooks with their owners; own the optional source transport
+helper, focused controls and capability notes listed in the contract.
+
+Preserve once-per-entry versus repeated fresh construction, shared Image aliases
+and mutations, clone independence, array-observable semantics, current artwork
+and lifecycle. Unknown, exposed, mutated or repeatedly allocated Arrays retain
+ordinary lowering and diagnostics, including generic and partial source routes.
+No generated-name pruning, body or diagnostic deletion, retained-source
+restoration, generic Array/Image grant, runtime/ABI/word, supplier or pin change.
+The earlier observed 204 connected blocks of growth remain an original failure;
+local initialization, startup and callback transport remain separately owned.
+
+Require complete actual Code → Blocks → SB3 → current export → fresh reimport,
+affected native guest identity/mutation/lifecycle and genuine original SDK
+compilation/simulator qualification. Existing static Image and authored animation
+Array proofs supply only their actual producer facts; the empty-Array contract
+does not authorize this nonempty transport. No whole-project stability,
+visible GUI or corpus promotion follows from focused source controls.
+
+## Arcade generated helper recognition maintenance — 2026-10-16
+
+PROPOSED / DOCS ONLY — Arcade integration, coordinated import and export
+maintenance. Product implementation waits for this claim's normal qualified
+merge. Contract: [generated helper recognition](docs/ARCADE-GENERATED-HELPER-RECOGNITION.md).
+
+Own canonical parsing and current declaration/use recognition of existing named
+Array parse/JSON/access helpers and existing stop/run-token machinery in
+`arcade-translate.js`, `named-array-item-helpers.js`, a coordinated source-proof
+helper, focused tests and documentation. Templates and input must share the
+actual admitted parser context without dropping semantic metadata. Require the
+complete canonical bodies and actual lexical bindings, all writers/escapes and
+storage relationships before a call or declaration can be replaced. Preserve
+extra effects, unknown metadata and unmatched source through existing behavior
+or explicit refusal; do not prune by generated spelling.
+
+Preserve default semantics, producer domains, runtime/stop/frame policy, engine
+ABI and pins. Generic optional/default values and nonempty Array staging remain
+outside this scope. Existing exact source, current Blocks/Code, same/fresh save,
+native effects/stop lifecycle, current export/reimport and visible GUI gates
+remain mandatory for their respective claims. Keep original failures; no corpus
+promotion from focused controls.
 
 ## Wide Arcade artwork documents and Pixel authoring — 2026-10-12
 
@@ -5243,3 +5347,62 @@ program field and unrelated icons; no server alias, asset duplication, supplier
 pin, workflow or broad runtime change. A fresh affected visible editor/theme
 qualification remains required; original missing-resource failures stay open
 until that evidence exists. Other lanes retain their owned surfaces.
+
+### Arcade ExtendableSprite update Throw source intersection — 2026-10-16
+
+Owner: Codex Arcade integration, coordinated with the existing Throw, owned
+Sprite class callable and managed SDK lanes. Status: claim pending qualified
+normal merge; no implementation under this amendment yet.
+
+Contract: [source admission and initialization](docs/ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md).
+Own the narrow GUI source issuer/currentness/normalization intersection in
+throw-source-gate.js, source-value-producers.js, lower-object-classes.js and the
+exact Arcade translator handoff, a focused helper if needed, affected controls
+and documentation. Preserve the original failing guest and all prior source
+refusals; no generic method admission, all-globals initialization, copied tags,
+scheduler/runtime/pin/worker change, skipped control or corpus promotion.
+
+### Shared-frame selected source provenance — coordinated amendment
+
+Owner: Codex Arcade integration. Claim pending qualified normal merge.
+Extend only the [shared-frame non-exposure contract](docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md)
+into dependency-project.js for a private actual-source/prepared-map receipt.
+Keep optional effect analysis private to the existing shared-frame helper and
+its exact translator hooks. Preserve actual source comparison, source ordering,
+all initializers, unused bodies and diagnostics; no public flag/namespace/tag
+can issue proof. This does not widen ordinary Number/reference producers,
+classes, runtime behavior, dependency fetching, pins or compiler execution.
+Implement only after this ownership amendment qualifies and merges.
+
+## SPIKE pending Stop teardown implementation — 2026-10-15
+
+G02 continuation, branch `lane/spike-g02-pending-stop-20261015`, based on main
+after the Code caller/output follow-up [PR985](https://github.com/CrispStrobe/brickwright-lite/pull/985) merged.
+Its frozen-package qualification below does not
+qualify this new teardown change. A second Stop can see no
+attached session while native teardown still owns the hub clock. Remember the
+pending teardown before invoking the native Stop, and await it before restoring
+topology, cancelling the shared backend or continuing Start. A synchronous Stop
+listener joins that same teardown. Earlier completion cannot clear a later
+pending teardown; joined teardown failures wait for all outstanding stops and
+retain the original error for the current intent. Existing intent, bridge and
+disposal guards still admit shared cleanup.
+
+Ownership is limited to canonical `stopProgram`, new
+`test/spike-arena-pending-stop.test.mjs`, this ledger and the SPIKE guide. Extend
+the existing continuation contracts only to timing adaptations in the pane
+composition, lifecycle, Pause, teardown, world-ownership and upload-Stop tests.
+These controls now release native teardown before awaiting a later Stop. Where
+an older reply must arrive after replacement, hold its original promise delivery
+after teardown rather than creating a circular wait. Preserve success/error,
+replacement/disposal, retained-program and fresh-Start assertions.
+
+Twelve authored controls use the real hub clock guard and arena bridge. All
+pass, and six broken pending/intent/error guards are detected. The broader 220
+controls passed before adding the twelfth focused case; the final twelve pass
+separately. A rendered React test is unavailable locally and is not counted.
+No installed package or guest result qualifies this change yet. Require affected
+installed own-guest repeated Stop, cleanup and distinct recovery, plus every
+enabled exact-head check before merge. Firmware, Runtime/models, dependency
+pins, protocol, product budgets and other pane methods are unchanged. This does
+not close G02 or establish reference, physical, licensing or release results.
