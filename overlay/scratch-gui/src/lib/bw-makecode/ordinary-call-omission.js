@@ -5,7 +5,10 @@ import {analyseSourceValueProducers} from './source-value-producers.js';
 // that invocation, never a fact about every caller of the formal.
 export function prepareOrdinaryCallOmissions(program) {
     const ordinary = new Set((program.body || []).filter(node => node.type === 'FunctionDeclaration'));
-    const shape = fn => fn.params?.length && new Set(fn.params).size === fn.params.length &&
+    const defaultProvenance = fn => Array.isArray(fn.ordinaryParameterDefaultNames) &&
+        new Set(fn.ordinaryParameterDefaultNames).size === fn.ordinaryParameterDefaultNames.length &&
+        fn.ordinaryParameterDefaultNames.every(name => fn.params?.includes(name) && fn.optionalParams?.includes(name));
+    const shape = fn => defaultProvenance(fn) && !fn.ordinaryParameterDefaultNames.length && fn.params?.length && new Set(fn.params).size === fn.params.length &&
         fn.optionalParams?.length && new Set(fn.optionalParams).size === fn.optionalParams.length &&
         fn.optionalParams.every(name => fn.params.includes(name)) &&
         fn.params.slice(fn.params.findIndex(name => fn.optionalParams.includes(name)))
@@ -13,7 +16,7 @@ export function prepareOrdinaryCallOmissions(program) {
         !fn.parameterDefaults?.length && !Object.keys(fn.defaultParams || {}).length &&
         !fn.restParam && !fn.typeParameters?.length && !fn.bwCallableDefinition && !fn.bwClassCallableMethod;
     const candidates = new Set([...ordinary].filter(shape));
-    if (!candidates.size) return {program, unsupported:[], omissions:[]};
+    if (![...ordinary].some(fn => fn.optionalParams?.length)) return {program, unsupported:[], omissions:[]};
     const graph = analyseSourceValueProducers(program, {arrayValues:true, parenthesized:true,
         unboundIsOpaque:true, opaqueDeclarationValues:true, uninitializedLocalsAreOpaque:true, declaredLocalUndefined:true});
     const selected = new Set([...candidates].filter(fn => graph.unchangedFunctionAt(fn) === fn));
@@ -27,9 +30,18 @@ export function prepareOrdinaryCallOmissions(program) {
         for (const [name, value] of Object.entries(node)) if (value && typeof value === 'object') visit(value,node,name);
     };
     visit(program);
+    const unsupported = [];
+    for (const call of calls) {
+        const fn = graph.unchangedFunctionAt(call);
+        if (!ordinary.has(fn) || !fn.optionalParams?.length || call.args.length >= fn.params.length) continue;
+        if (!defaultProvenance(fn))
+            unsupported.push(`Ordinary call omission: ${fn.name} requires retained original default-signature provenance`);
+        else if (fn.ordinaryParameterDefaultNames.length && !Object.hasOwn(fn,'parameterDefaults'))
+            unsupported.push(`Ordinary call omission: ${fn.name} signature defaults require a separately qualified default protocol`);
+    }
     if (!calls.some(call => candidates.has(graph.unchangedFunctionAt(call)) &&
         call.args.length < graph.unchangedFunctionAt(call).params.length))
-        return {program, unsupported:[], omissions:[]};
+        return {program, unsupported:[...new Set(unsupported)], omissions:[]};
     const safeIndex = node => {
         if (!graph.arrayAllocationsAt(node.object).length || !graph.arrayMapReceiverSafeAt(node.object) ||
             graph.arrayConstraintErrorsAt(node.object).length ||
@@ -52,7 +64,7 @@ export function prepareOrdinaryCallOmissions(program) {
         node.type === 'Identifier' && ['globalThis','window','self','this','eval','Function','Reflect','arguments'].includes(node.name) ||
         node.type === 'Member' && node.name === 'constructor' ||
         node.type === 'Index' && !safeIndex(node));
-    if (dynamic.length) return {program, omissions:[], unsupported:[
+    if (dynamic.length) return {program, omissions:[], unsupported:[...unsupported,
         'Ordinary call omission: configured Unknown, ambient, dynamic code or unresolved computed access cannot establish an unchanged callee'
     ]};
     const plain = call => call?.type === 'Call' && call.callee?.type === 'Identifier' &&
@@ -62,7 +74,7 @@ export function prepareOrdinaryCallOmissions(program) {
         const fn = graph.unchangedFunctionAt(node);
         if (selected.has(fn) && !(key === 'callee' && plain(parent))) selected.delete(fn);
     }
-    const replacements = new WeakMap(), omissions = [], unsupported = [];
+    const replacements = new WeakMap(), omissions = [];
     for (const call of calls) {
         const fn = graph.unchangedFunctionAt(call);
         if (!candidates.has(fn) || !plain(call)) continue;

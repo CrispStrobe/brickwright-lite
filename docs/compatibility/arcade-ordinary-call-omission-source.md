@@ -14,7 +14,7 @@ zero. The planner adds no reference producer domain or declared-type value facts
 Full provided calls and unknown reference consumers remain independently checked.
 Existing signature-default omission bits and initialization remain unchanged.
 
-Eleven focused source controls are authored, not yet executed. They cover exact
+Thirteen focused source controls are authored, not yet executed. They cover exact
 call/formal identity, missing and provided Undefined, mixed unknown provided
 references, unused helpers, escaped/replaced/duplicate declarations, defaults,
 missing required/excess arguments, nested/generic exclusions and the public
@@ -30,3 +30,14 @@ current export and save/reopen remain pending. Unknown reference signature or
 provided-value export must remain a named refusal; source normalization cannot
 supply that authority. A fresh affected app route must retain every diagnostic
 and partial output. Parsing or arity recovery is not whole-app qualification.
+
+
+Original signature default names are retained explicitly by the source parser
+before it creates conditional body prologues. This structural fact contains no
+duplicate initializer expressions and grants no value domain. An explicitly empty
+list is required for no-default admission; absent metadata is unknown. Mixed
+reference defaults remain a named unsupported default-protocol boundary even
+when the existing primitive/callable parser view omits its default metadata.
+Ordinary parameter producer controls inspect actual formal-read binding facts;
+the separate function-expression parameter API does not describe ordinary
+procedure declarations.

@@ -4,7 +4,7 @@ import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-imp
 import {prepareOrdinaryCallOmissions} from '../overlay/scratch-gui/src/lib/bw-makecode/ordinary-call-omission.js';
 import {analyseSourceValueProducers} from '../overlay/scratch-gui/src/lib/bw-makecode/source-value-producers.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
-const parse = source => parseMakeCodeTs(source, {parameterDefaults:true});
+const parse = source => parseMakeCodeTs(source, {parameterDefaults:true,retainOrdinaryDefaultProvenance:true});
 const calls = program => program.body.filter(node => node.type === 'ExpressionStatement').map(node => node.expr).filter(node => node.type === 'Call');
 const neighbor = 'class Unsupported { static read(): number { return 7; } }\n';
 
@@ -41,7 +41,10 @@ test('provided opaque reference remains opaque, never an Effect or Melody from a
     assert.equal(calls(result.program)[1], calls(program)[1]);
     const facts = analyseSourceValueProducers(result.program, {unboundIsOpaque:true, opaqueDeclarationValues:true});
     for (const index of [0,1]) {
-        const types = facts.functionParameterTypes(fn,index);
+        const read = fn.body[index].expr.args[0];
+        assert.equal(read.type,'Identifier');
+        assert.ok(facts.bindingKindsAt(read).has('parameter'));
+        const types = facts.bindingTypesAt(read);
         assert.ok(types.has('Undefined')); assert.ok(types.has('Opaque'));
         assert.ok(!types.has('Image') && !types.has('Effect') && !types.has('Melody'));
     }
@@ -70,7 +73,9 @@ test('signature defaults remain the existing omission-bit protocol and are never
     const result = prepareOrdinaryCallOmissions(program);
     assert.equal(result.program, program); assert.equal(result.omissions.length, 0);
     assert.equal(calls(program)[0].args.length, 0); assert.equal(calls(program)[1].args[0].type, 'Undefined');
-    assert.ok(program.body[0].parameterDefaults.length);
+    assert.deepEqual(program.body[0].ordinaryParameterDefaultNames,['value']);
+    assert.equal(program.body[0].body[0].type,'If');
+    assert.equal(program.body[0].body[0].test.right.type,'Undefined');
 });
 
 test('missing required and excess actual arguments remain named refusals without padding', () => {
@@ -135,4 +140,28 @@ test('an actual Unknown node cannot be treated as evidence that the callee is un
     const result=prepareOrdinaryCallOmissions(program);
     assert.equal(result.program,program);assert.equal(result.omissions.length,0);
     assert.ok(result.unsupported.some(message=>/Unknown/.test(message)));
+});
+
+
+test('mixed reference signature defaults retain original provenance independently of callable metadata', () => {
+    const original='function choose(effect:effects.BackgroundEffect=effects.confetti,sound?:music.Melody){console.log(effect);console.log(sound)} choose(); choose(undefined);';
+    const program=parse(original),fn=program.body[0];
+    assert.equal(Object.hasOwn(fn,'parameterDefaults'),false,'mixed signature is outside existing primitive/callable metadata admission');
+    assert.deepEqual(fn.ordinaryParameterDefaultNames,['effect']);
+    const result=prepareOrdinaryCallOmissions(program);
+    assert.equal(result.program,program);assert.equal(result.omissions.length,0);
+    assert.ok(result.unsupported.some(message=>/separately qualified default protocol/.test(message)));
+    assert.equal(calls(program)[0].args.length,0);assert.equal(calls(program)[1].args[0].type,'Undefined');
+    const imported=arcadeToPseudocode(neighbor+original);
+    assert.ok(imported.unsupported.some(message=>/separately qualified default protocol/.test(message)));
+    assert.ok(imported.code.split('\n').some(line=>/CALL: \(choose\)/.test(line)),imported.code);
+    assert.match(imported.code,/DEFINE choose/);assert.match(imported.code,/confetti/);
+});
+
+test('missing signature provenance is unknown, never proof of no defaults', () => {
+    const program=parseMakeCodeTs('function choose(effect?:effects.BackgroundEffect){console.log(effect)} choose();',{parameterDefaults:true});
+    assert.equal(Object.hasOwn(program.body[0],'ordinaryParameterDefaultNames'),false);
+    const result=prepareOrdinaryCallOmissions(program);
+    assert.equal(result.program,program);assert.equal(result.omissions.length,0);
+    assert.ok(result.unsupported.some(message=>/retained original default-signature provenance/.test(message)));
 });
