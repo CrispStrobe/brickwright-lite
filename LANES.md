@@ -1,7 +1,8 @@
 ## Scoped WeDo2 inventory gate repair — 2026-10-15
 
-CLAIMED — SPIKE G02 integration follow-up, isolated branch
-`claim/spike-g02-wedo-inventory-20261015`.
+IMPLEMENTED, hosted qualification pending — SPIKE G02 integration follow-up.
+Ownership claim [PR994](https://github.com/CrispStrobe/brickwright-lite/pull/994)
+merged before implementation. Source branch `fix/scoped-wedo-inventory-20261016`.
 
 The existing `wedo2unified` artifact pin is present in `vendor-pins.json`, but
 the notices census treats it as an unknown vendored repository and the scoped
@@ -19,6 +20,18 @@ No dependency adoption, generated bundle, product runtime, firmware, model,
 workflow or budget change. This repair does not establish broader license or
 release clearance. The claim must land before implementation; then run the
 affected inventory controls and every enabled exact-head CI check.
+
+The repair reads the existing scoped bundle's MPL declaration and separate By
+attribution, requires its notice, and correlates the pin with the source repo,
+path, commit, byte count and SHA-256 in the retained per-file receipt. A By
+header does not grant a copyright-holder or own-code exemption. Seven focused
+host controls pass, including the actual bundled source and negative receipt
+and notice cases; the unchanged baseline fails the two intended inventory
+checks. Initial sparse-input and historical Git-object failures are retained
+separately from those baseline results. Runtime, generated bundles and pins
+remain unchanged. Full hosted checks remain required before merge; this does
+not qualify a new installed package or close SPIKE G02.
+
 
 ## SPIKE G02 composed lifecycle integration — 2026-10-15
 
