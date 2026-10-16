@@ -2196,6 +2196,21 @@ sprite/image facade. The original generated speech-pxt.js and credited fonts
 remain unchanged for comparisons. This is attributed PXT adaptation and
 integration, not a clean-room implementation.
 
+## wedo2unified — MPL-2.0
+
+The scoped `wedo2unified` pin selects LEGO WeDo 2.0 Universal, authored by
+CrispStrobe from https://github.com/CrispStrobe/extensions. Its source declares
+MPL-2.0. The complete selected JavaScript source, including its original
+author/license header, is retained in
+`overlay/scratch-vm/src/extensions/crispstrobe/wedo2unified/index.js` and
+distributed through the generated extension wrapper.
+
+The exact selected source is
+https://github.com/CrispStrobe/extensions/blob/5fe7033f8b320b2f5819c20860b10c05aeff3c16/extensions/CrispStrobe/lego_wedo2_universal.js.
+`vendor-pins.json` and the per-file bundle receipt record its commit, byte count
+and SHA-256. This notice covers that selected extension source. MPL-2.0 text:
+https://www.mozilla.org/en-US/MPL/2.0/.
+
 ## arrays-values — MPL-2.0
 
 The scoped `arrays-values` pin selects the Arrays & Vectors extension authored
