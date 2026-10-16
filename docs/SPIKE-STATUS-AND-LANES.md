@@ -6,6 +6,85 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Composed G02 qualification target — 2026-10-15
+
+`lane/spike-g02-lifecycle-batch-20261015` integrates the existing fixes from
+[PR966](https://github.com/CrispStrobe/brickwright-lite/pull/966),
+[PR967](https://github.com/CrispStrobe/brickwright-lite/pull/967),
+[PR973](https://github.com/CrispStrobe/brickwright-lite/pull/973) and
+[PR974](https://github.com/CrispStrobe/brickwright-lite/pull/974), in that order.
+The Pause conflict preserves full-session pending-upload cancellation and the
+retained-session ownership guard. All 176 affected host controls pass; a new
+combined sequence rejects both single-fix baselines. Eleven unchanged pane
+methods and the session file match their reviewed inputs.
+
+The frozen consumer `f903a966ea348fd7c3abd0ba693194fc813b4997` now passes
+all fifteen source-bound installed own-NuttX cases: Pause four, world/manual
+drive four, upload/Stop four and Code three. All individual readers and the
+combined reader pass, with cleanup, distinct recovery and thirty successful
+native startups. Official frontend checkout and consumer trees match; package
+payload/input audits pass. All eleven enabled source-head checks pass in
+[run38769805667](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38769805667)
+(two conditional GUI/deployment jobs skip).
+
+Five earlier failed test attempts remain preserved. Corrections address held
+reply ordering, both React component-pointer forms, real editor clearing before
+recovery language selection, native recorder lifetime through retry, and waiting
+the original visible Stop's returned teardown promise. Neither deadlines nor
+the requirement to capture both real retry START replies was weakened. A direct
+second pane Stop before the first teardown completes still has an open clock
+ownership boundary; see the proposed continuation in [LANES.md](../LANES.md).
+
+Current main's separate importer/debug work is retained; SPIKE session/pane/
+native inputs and the NuttX dispatcher method remain unchanged from the tested
+consumer. Final documentation-head checks and merge review are pending. Earlier
+and current installed results remain attributed to their exact packages. The
+new overlapping caller/output changes in
+[PR985](https://github.com/CrispStrobe/brickwright-lite/pull/985) are separate and
+are not installed-qualified by this result. G02, physical/reference behavior,
+rollback, licensing and release qualification remain open.
+
+Qualification receipts must name the final consumer commit, including any
+documentation checkpoint. A checkpoint retains the tested product sources and
+uses a current fully labelled PR event for both enabled CI tiers.
+
+## Pause integration qualification — 2026-10-15
+
+The pane ownership fix on `lane/spike-g02-pause-ownership-20261015` preserves
+current Pause/Reset/Step actions while rejecting obsolete continuations. Its
+first tested consumer `beb518eaba4597afe6ee75fe14a699cc7d9c8ab9` passed four
+installed own-NuttX Pause success/error-delivery cases, including real Reset
+replacement, cleanup and distinct recovery. Eight native startup transactions
+and four standalone readers passed. Generic Step/backend paths remain host-only.
+
+The branch now integrates main's separately qualified compiled MicroPython
+launch work. Three native inputs differ from that first NuttX consumer. The
+composed source therefore still needs a fresh source-bound own-NuttX matrix and
+final exact-head CI; the earlier result does not qualify every evolving package.
+Firmware, Runtime/model and dependency pins are unchanged by this lane. Full G02,
+physical safety, reference boot, release and licensing remain outside this result.
+
+## Pending replacement Code feedback fix — 2026-10-15
+
+On `lane/spike-g02-code-feedback-20261015`, Code receives a starting notification
+before replacement waits for the previous poll and STOP. The session retains
+internal observations while withholding old/preparatory program feedback until
+upload/START succeeds; subsequent completion stays observable. A current upload
+rejection reports its error and clears Code's running state. The live native pane
+continues observing firmware, while that failed Code consumer keeps its error.
+Retried uploads and fresh cold runs invalidate previous upload listeners.
+An already closed session's cancellation keeps Stop feedback.
+
+Twelve authored controls use the real session/client/feedback, the original Code
+dispatcher and shipped pane methods with authored native replies. All twelve and
+99 affected host controls pass; eleven broken guards are detected. The initial
+explicit-cancellation regression remains preserved. Exact-head CI and fresh
+installed own-NuttX Code re-upload/visible Stop/completion/live-error/retry/cold
+recovery remain pending. This is stacked on the pending-upload Arena Stop fix.
+Concurrent caller completion and broader output attribution remain separate
+boundaries. These controls do not qualify every evolving package or close G02,
+G03, physical safety, rollback, distribution or licensing.
+
 ## Proposed G02 Code caller ownership — 2026-10-15
 
 The next narrow lifecycle slice addresses overlapping NuttX Code callers in
@@ -588,6 +667,27 @@ held-return retained state are distinct observations. These finite results cover
 full session Stop through Reset; pending-upload Arena Stop and Code-feedback UX
 remain open. Integration preserves the qualified session/test blobs and requires
 fresh final-head CI. Later whole packages need their own qualification.
+
+A stacked world-action continuation on
+`lane/spike-g02-world-action-ownership-20261015` extends the existing G02 pane
+ownership checks to delayed lesson/world selection, sandbox persistence and
+manual driving. Old teardown or load returns cannot replace a newer world or
+feedback; old render callbacks cannot report readiness. Stop during a manual
+motor notification prevents further motor commands and running feedback.
+All 32 new authored-boundary controls and 44 inherited pane controls pass; the
+baseline fails 18 new cases, and eight ownership/callback mutations are detected.
+Fresh source-bound installed representative cancellation/recovery and final-head
+CI remain pending. This changes lifecycle admission, not sandbox features or
+model behavior, and does not close G02.
+
+A pending-upload Stop continuation on
+`lane/spike-g02-upload-stop-control-20261015` keeps Arena Stop visible while a
+replacement upload is pending and routes that action through full session Stop.
+Ordinary retained program Stop keeps its storage session; current cancellation
+errors remain visible and old delivery errors cannot overwrite a replacement.
+All 14 new predicate/actual-method controls and 14 existing lifecycle controls
+pass, with five detected mutations. Installed visible-control cancellation and
+recovery plus final-head CI remain pending. Code-feedback generation remains open.
 
 ### G03 — Qualify usable sandbox and responsive editor controls
 
