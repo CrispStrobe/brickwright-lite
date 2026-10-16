@@ -3,7 +3,7 @@ import {multiplayerPlayerSourceCalls} from './multiplayer-player-source.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {consoleInspectSourceCalls} from './console-inspect-source.js';
 import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
-import {ordinaryPrimitiveSdkNumberCalls} from './ordinary-primitive-sdk-number-source.js';
+import {ordinaryPlayerScoreNumberCalls} from './ordinary-primitive-sdk-number-source.js';
 import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
 import {controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 
@@ -36,7 +36,6 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     // Only a consumer with an independently validated zero-argument Number body
     // may supply these actual AST allocation sites. Ordinary analysis is unchanged.
     const sdk=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['screen']}),fields=new Map(SDK_FONT_FIELDS.map(field=>[field.name,field.type]));
-    const ordinaryNumbers=ordinaryPrimitiveSdkNumbers?ordinaryPrimitiveSdkNumberCalls(program):null;
     const buttonEventNumbers=ordinaryPrimitiveSdkNumbers?controllerButtonEventNumberLeaves(program):null;
     let clockIndexFacts;
     const safeClockIndex=node=>{
@@ -49,6 +48,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
             !(value.type==='Identifier'&&!graph.isInitializedAt(value))&&Object.values(value).every(initialized));
         return initialized(node.index);
     };
+    const ordinaryNumbers=ordinaryPrimitiveSdkNumbers?ordinaryPlayerScoreNumberCalls(program,safeClockIndex):null;
     const sceneNumbers=sceneClockNumbers?ordinarySceneClockNumberCalls(program,safeClockIndex):null;
     let screenWritten=false;
     const scanScreenWrites=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(scanScreenWrites);return;}const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:null;if(target?.type==='Identifier'&&target.name==='screen'&&sdk.has(target))screenWritten=true;Object.values(node).forEach(scanScreenWrites);};scanScreenWrites(program);
