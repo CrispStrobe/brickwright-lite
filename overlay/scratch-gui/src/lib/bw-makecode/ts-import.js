@@ -825,6 +825,7 @@ class Parser {
             optional.every(name => paramTypes[name]?.text === 'any') &&
             params.slice(firstOptional).every(name => optional.includes(name));
         return {type: 'FunctionDeclaration', name, params, paramTypes, returnType, typeParameters,
+            ...(this.retainOrdinaryDefaultProvenance ? {ordinaryParameterDefaultNames:params.parameterDefaults.map(row => row.name)} : {}),
             ...(this.retainCallableMetadata ? {functionKind: 'declaration', parameterDefaults: params.parameterDefaults,
                 parameterDefaultPrologue: this.parameterDefaults} : primitiveDefaults ? {
                 parameterDefaults: params.parameterDefaults, parameterDefaultPrologue: this.parameterDefaults} : {}),
@@ -1325,5 +1326,6 @@ export function parseMakeCodeTs (source, opts = {}) {
     parser.retainClassHeritage = Boolean(opts.retainClassHeritage);
     parser.retainCallableMetadata = Boolean(opts.retainCallableMetadata);
     parser.retainPrimitiveProcedureDefaults = Boolean(opts.retainPrimitiveProcedureDefaults);
+    parser.retainOrdinaryDefaultProvenance = Boolean(opts.retainOrdinaryDefaultProvenance);
     return parser.parseProgram();
 }
