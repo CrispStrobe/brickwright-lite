@@ -1,7 +1,22 @@
 # brickwright-lite — roadmap
 
-Everything known to be pending, in one place, with the measurements that were expensive to
-obtain. Two rules for this file:
+## Current circuit/instrument sequence — 2026-10-15
+
+Follow the [current plan](PLAN.md#current-circuitinstrument-campaign--2026-10-15)
+and upstream [acceptance contract](https://github.com/CrispStrobe/bw-circuit-ui/blob/master/docs/CIRCUIT-INSTRUMENT-NEXT.md):
+qualified LM741 source → installed-consumer adoption → stratified measurement
+regression → demonstrated causal repairs → bounded instrument-realism proof.
+The upstream six-case precision proof is complete; later steps require their
+own installed identities, raw results and actual GUI qualification. Do not count
+historical corpus totals as a fresh sweep or parameter variants as distinct
+topologies. `LANES.md`, not historical session names below, controls ownership.
+
+The entries below retain dated measurements and rejected approaches. Their
+presence is not proof that a gap remains open; check current source before
+claiming or implementing one.
+
+Engineering backlog and dated measurements, including work that may since have
+landed. Two rules for interpreting this file:
 
 - **Each entry carries its evidence.** Numbers, not impressions. An item that says "feels cramped"
   costs its next reader a day; one that says "the rail pins the editor's min-content at 776px"
@@ -22,13 +37,12 @@ item marked with an agent name is being worked on.
 
 ---
 
-## Next-session shortlist — reconciled 2026-09-08
+## Historical shortlist — reconciled 2026-09-08
 
-[PLAN.md](PLAN.md#next-session-priorities--reconciled-2026-09-08) defines the
-execution order. The exact baseline is `62c7a00c4`; [HISTORY.md](HISTORY.md)
+[The current plan](PLAN.md#current-circuitinstrument-campaign--2026-10-15) defines
+the circuit campaign above. This older shortlist's baseline was `62c7a00c4`; [HISTORY.md](HISTORY.md)
 holds completed and rejected work, and [LANES.md](LANES.md) controls live
-ownership. Do not start a later track while an earlier track is owned or under
-landing audit.
+ownership. This dated order is not a reservation of any current lane.
 
 ### Track 1 — N2f: random-dependent output on the 8086 C route — DONE
 

@@ -15,9 +15,44 @@ This document turns the product review into an ordered implementation plan.
 completed and rejected work. This file defines outcomes, sequencing and release
 gates.
 
-## Next-session priorities — reconciled 2026-09-19
+## Current circuit/instrument campaign — 2026-10-15
 
-This shortlist starts from `main` at `1a48f9212`. Completed and rejected work is
+The ordered acceptance contract is the upstream
+[circuit/instrument campaign](https://github.com/CrispStrobe/bw-circuit-ui/blob/master/docs/CIRCUIT-INSTRUMENT-NEXT.md).
+`LANES.md` controls current ownership; the older priority tables below are dated
+history, not reservations or evidence that their work is still pending.
+
+1. **Upstream LM741 CLI qualification: complete.** Six signed/phase-shifted
+   precision captures passed independent waveform, meter and work-receipt audits.
+   This is a bounded nominal-model result, not vendor-model or hardware accuracy.
+2. **Adopt the qualified CLI through the existing package boundary.** This
+   batch selects CUI `1db1bb9ee565338672c7acfefec4cf94b27196e1`, preserving the
+   reviewed Board and sb3-creator pins. Installed package identity, actual batch
+   and finite-watch CLI numerics, cumulative work limits and the built GUI are
+   qualification gates. No copied engine sources or deployment claim.
+3. **Run a fresh stratified instrument regression on the installed consumer.**
+   Account for at least 300 cases, distinct topology templates and parameter
+   variants separately, meaningful probe locations, exact package/oracle
+   identities, clocks, windows, signs and unchanged numerical bounds. Separate
+   matched-law SPICE comparisons from independent nominal-model references.
+4. **Fix demonstrated causes, not scores.** Preserve every failure and distinguish
+   import loss, unavailable models, engine/instrument defects, exhausted work
+   budgets and oracle/harness mistakes. Require minimal reproductions and
+   load-bearing negative controls; unsupported physics is not a numeric pass.
+5. **Qualify a bounded instrument-realism improvement.** Recheck the actual GUI
+   and CLI; expose acquisition/overrange/aliasing limits without altering raw
+   captures or pretending to implement an ADC or analogue front end. Review the
+   results and remaining limits before starting a further campaign.
+
+Shared engine, importer and instrument changes land upstream first. Lite adopts
+one reviewed full SHA with derived specifications, locks and provenance. A
+package update is not proof that an installed or deployed application was tested;
+report those evidence boundaries separately.
+
+## Historical priorities — reconciled 2026-09-19
+
+This historical shortlist started from `main` at `1a48f9212`; it is not the
+current execution order or ownership table. Completed and rejected work is
 recorded in `HISTORY.md`; `LANES.md` is the live ownership authority. In
 particular, the former 14-file `bw-board` convergence priority is complete by a
 change of architecture: `bw-board` and `bw-circuit-ui` are direct npm

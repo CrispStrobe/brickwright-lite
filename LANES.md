@@ -1,49 +1,114 @@
-## Release 0.1.24 ownership and qualified TestFlight follow-through — 2026-10-16
+## H1–H7 — Code tab crash, layout, badge and language reach — 2026-10-16
 
-CLAIMED — Codex release follow-through, branch
-`docs/release-0.1.24-claim-20261016`, exact base
-`27f473a738ff675db193ea689424f4ee3649910b`. Merge this ownership claim
-before changing release metadata. The earlier `v0.1.23` tag is immutable;
-its cancelled workflows are historical results, not a delivered new build.
+CLAIMED — VPS Claude (opus), branches `lane/code-tab-h*-20261016`, base main
+`fc455ff55`. Tasks H1–H7 of docs/OPEN-TASKS-2026-09-29.md, in that
+order, one PR each. Owns: `containers/lazy-pseudocode-importer.jsx` (H1 error
+naming/reload), the Code tab toolbar, status line, conversion-report and
+Animation rows in `components/tw-pseudocode/pseudocode-importer.jsx` and its
+CSS (H2, H4, H5), `lib/bw-matrix/capabilities.js` with the generated matrix
+(H3), the fe/Tcl/Forth routes in `lib/bw-debug/dos-toolchain-routes.js` and
+new non-DOS routes (H6), their tests and browser gates. Keeps test ids and the
+gates that click them. H7 (STM32 faces) edits bw-circuit-ui only after the
+owner of that repo's face lane agrees, then a CUI pin adoption sequenced after
+other open CUI adoptions. No pin, engine or workflow-budget change otherwise.
 
-Envelope after this claim merges: this ledger;
-`apps/tauri/src-tauri/{tauri.conf.json,Cargo.toml,Cargo.lock}` for the three
-aligned application versions; `docs/app-store-metadata.md` for current English
-and German tester notes; operational creation of a new `v0.1.24` tag only on
-the admitted qualified main merge, using the existing mobile/release workflows.
-No product implementation, dependency pin, workflow, signing policy, transport,
-physical-device mapping or hardware behavior change belongs in this lane.
+## Sim Lab S1 — "it moves" vertical slice — 2026-10-16
 
-Required prerequisites: retain merged WeDo adoption PR980 and its bounded
-brightness/polarity/piezo claims, the merged iOS validator repair PR981 and its
-independent actual native source binding. Review one combined release source
-candidate for actual unsigned mobile qualification before advancing versions
-or publishing; an older component build does not qualify newer frontend source.
+CLAIMED — Claude (master, auditing) with two hermes sub-agents on the VPS.
+Branches: `lane/simlab-20261016` (contracts, part metadata, LDraw sync,
+integration), `lane/simlab-phys-20261016` (physics core),
+`lane/simlab-mech-20261016` (mechanism compiler); sub-agent branches merge
+into `lane/simlab-20261016` only after review, which then lands by PR.
+Base main `664a37b57`. Contract: `docs/SIM-LAB-PLAN.md` §0 (the S1 slice).
 
-Explicit dependency correction: PR982 repairs the separate local generated-
-project helper, invoked by the local device-build npm hook. The existing
-mobile/TestFlight workflows invoke the Tauri CLI directly and do not execute
-that helper. Its actual generated-project qualification remains open in its
-own lane; lack of that uncalled-helper result alone does not block this
-release. Source CI or unsigned workflow success is not helper execution proof.
-This correction changes no workflow, signing policy or qualification threshold.
+Owns new code only: `overlay/scratch-gui/src/lib/bw-sim/**`, `test/bw-sim-*`,
+`test/fixtures/bw-sim/**`, the `jolt-physics` dependency with its notice and
+gui-scope entry, `scripts/sync-ldraw-parts.mjs` with its pins and the vendored
+curated LDraw subset. Reads, never edits, `virtual-hub/` and `spike-arena/`; the
+S1 bridge to the virtual SPIKE hub honours the arena's one-clock contract
+(docs/SPIKE-ARENA.md). No editor UI, no GUI tab, no change to the boot payload
+in S1.
 
-Independently inspect the final source-bound unsigned app AND actual signed
-IPA resource/content inventories, including unintended libapp.a or other
-static archive packaging. Fresh project initialization and source checks do
-not prove such archives absent. Retain actual compile, source/artifact,
-signing, privacy, provisioning and icon checks. Preserve original failures and
-exact identities; no old tag move or successful qualification replay. Broader
-simulator and instrument candidates enter only after their own qualified
-merges, with honest tester boundaries.
+## iOS embedded frontend packaging — 2026-10-16
 
-Release metadata must pass version/notes contracts and required exact-head
-checks. Review actual main composition and predicted/landed tree/parents before
-normal matched-head merges. Only then create the new tag. Completion requires
-original signed build/upload, Internal and External group assignment and Beta
-App Review receipts from the existing workflows. A queued workflow, unsigned
-build or App Store submission is not a delivery or approval claim. Keep the
-ordered five-task circuit campaign contract independent and unchanged.
+DONE candidate — Codex root, isolated `/tmp/brickwright-ios-assets-20261016`, branch
+`lane/ios-embedded-assets-only-20261016`, base main `664a37b57`.
+The user requested a smaller iPad build and continued coding. The signed
+192.21 MiB app contains an 82.45 MiB executable (76.21 MB of __const) plus
+another full uncompressed frontend under `assets`. Tauri 2.11.5 release
+protocol serves `manager.get_asset` from the generated embedded asset provider;
+this application's mobile code does not open the copied frontend via filesystem.
+Own only the generated iOS preparation script, its packaging regression test,
+this ledger and narrowly necessary native packaging documentation. Remove the
+redundant frontend Resources entry while preserving the build inputs, Rust
+embedding, asset catalog, other resources and static linker entries. Refuse to
+change behavior for a different generated project shape. No Rust features,
+frontend/provider pins, runtime logic, desktop/Android packaging or CI budget
+changes. Require repeat-preparation controls, real release archive inspection,
+strict signing and an offline iOS simulator launch if available. Physical iPad
+and WeDo acceptance remain pending hardware availability; no launch is inferred
+from compilation. Merge this claim to remote main before implementation and
+qualify all enabled final-head checks before landing source.
+
+Claim PR1018 merged as 6420faaef before implementation. The preparation writer
+now resolves the generated source-root frontend folder and removes only its
+Resources build-file/phase references. Other identically named folders, asset
+catalogs, static linker inputs and staged frontend files remain. Four packaging
+controls pass on genuine Node22.23.3, including repeat preparation and refusing
+an unknown folder layout without modifying its project. Real native archive,
+signature and offline simulator proof are being run on this candidate; no new
+size or runtime acceptance is claimed until those results exist. Final enabled
+exact-head hosted checks remain required before source merge.
+
+## Compose STM32 PR975 after circuit PR965 — 2026-10-16
+
+CLAIMED — Codex root, isolated `/tmp/brickwright-stm32-compose-20261016`,
+branch `lane/stm32-compose-20261016`, base main `5cb83052330b400b48293315260cb4293b4f6bcf`.
+The user explicitly requested completion of these integrations in order. PR965
+is now merged; a read-only merge of PR975 `943d540c7` reports thirteen conflicts.
+This lane owns only their combined integration and qualification. Preserve the
+original PR975 branch and all its authored STM32 runtime/generator changes;
+this is not a takeover of its supplier implementation or other ongoing lanes.
+
+Resolve shared vendor-pins/package specifications/locks, package provenance
+notices, exact-pin adoption readers and the FreeDOS workflow conflict through
+the canonical writers. Retain CUI `1db1bb9ee565338672c7acfefec4cf94b27196e1`
+from PR965, Board `f84ba60ead0a90deb9830f0c1468839c293ecf05` and SB3 creator
+`a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76` from PR975. Keep every other pin,
+mirror, scoped extension and newer main change. The exact Board now passes the
+original complete upstream CI and Lite evidence reader (run38918125391).
+Own this ledger, conflict resolutions and any canonical derived regeneration
+needed by the composed graph; no new runtime semantics, engine, gate relaxation,
+workflow budget or private vendor changes. The original supplier owner's
+branch stays untouched. Recheck its head before landing; incorporate subsequent
+owner work rather than dropping it. Merge this claim to remote main before
+implementation. Require identity/notice/pin reader controls, affected STM32
+and circuit controls and all enabled exact-head CI before merging the combined
+candidate; no installed or physical validation is inferred.
+
+## A13 — CPX live circuit face adoption — 2026-10-16
+
+CLAIMED — Codex root, isolated `/tmp/brickwright-lite-a13-20261016`, branch
+`lane/a13-cpx-face-adoption-20261016`. User requested this after the iOS and
+existing integrations. Supplier: bw-circuit-ui PR85, published claim 796bd2c.
+Preserve PR965/975's serialized dependency ownership and all newer main pins.
+
+Own CPX-only state subscription and cleanup plus input forwarding in
+`overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx` and its exact
+tracked package mirror; focused CPX wiring and actual-browser controls; this
+ledger. Feed runtime.bwCpxState to cpxState; route onCpxInput to the existing
+runtime.bwCpx.setButton/setSwitch. No copied simulation or second driver.
+Own immutable bw-circuit-ui adoption through canonical package/lock/notice
+writers and exact-pin readers only after qualified upstream landing and the
+existing serialized integrations. Acceptance: real CPX native blocks drive
+the same red ring on pane and face; face A triggers the existing hat; circuit
+round-trip identifies DEVICE CPX; swapped-index and removed-callback mutations
+fail. D13 is absent from the current runtime snapshot: trace the existing pin
+bridge before selecting a separately claimed supplier fix; never infer its state.
+No translator/parser, engine, unrelated pin, workflow budget or firmware changes.
+This claim must merge to remote main before Lite implementation. Require all
+enabled final-head checks and affected browser proofs before source merge.
+iPad/hub physical acceptance remains separately pending device availability.
 
 ## A12 — Circuit Playground Express MakeCode translator — 2026-10-16
 
@@ -281,6 +346,39 @@ remain unchanged. Full hosted checks remain required before merge; this does
 not qualify a new installed package or close SPIKE G02.
 
 
+## SPIKE pending Stop teardown implementation — 2026-10-15
+
+G02 continuation, branch `lane/spike-g02-pending-stop-20261015`, based on main
+after the Code caller/output follow-up [PR985](https://github.com/CrispStrobe/brickwright-lite/pull/985) merged.
+Its frozen-package qualification below does not
+qualify this new teardown change. A second Stop can see no
+attached session while native teardown still owns the hub clock. Remember the
+pending teardown before invoking the native Stop, and await it before restoring
+topology, cancelling the shared backend or continuing Start. A synchronous Stop
+listener joins that same teardown. Earlier completion cannot clear a later
+pending teardown; joined teardown failures wait for all outstanding stops and
+retain the original error for the current intent. Existing intent, bridge and
+disposal guards still admit shared cleanup.
+
+Ownership is limited to canonical `stopProgram`, new
+`test/spike-arena-pending-stop.test.mjs`, this ledger and the SPIKE guide. Extend
+the existing continuation contracts only to timing adaptations in the pane
+composition, lifecycle, Pause, teardown, world-ownership and upload-Stop tests.
+These controls now release native teardown before awaiting a later Stop. Where
+an older reply must arrive after replacement, hold its original promise delivery
+after teardown rather than creating a circular wait. Preserve success/error,
+replacement/disposal, retained-program and fresh-Start assertions.
+
+Twelve authored controls use the real hub clock guard and arena bridge. All
+pass, and six broken pending/intent/error guards are detected. The broader 220
+controls passed before adding the twelfth focused case; the final twelve pass
+separately. A rendered React test is unavailable locally and is not counted.
+No installed package or guest result qualifies this change yet. Require affected
+installed own-guest repeated Stop, cleanup and distinct recovery, plus every
+enabled exact-head check before merge. Firmware, Runtime/models, dependency
+pins, protocol, product budgets and other pane methods are unchanged. This does
+not close G02 or establish reference, physical, licensing or release results.
+
 ## SPIKE G02 composed lifecycle integration — 2026-10-15
 
 Continuation of the merged SPIKE G02 pane/session claims, branch
@@ -355,7 +453,7 @@ local production compilation is qualified separately.
 
 ## iOS redundant static archive packaging — 2026-10-15
 
-CLAIMED — Codex, isolated `fix/ios-static-archive-resources-20261015` in
+DONE — Codex, isolated `fix/ios-static-archive-resources-20261015` in
 `/tmp/brickwright-ios-size-fix`, base `86daec14c`. User requested shrinking the
 current iPad app. Measured signed bundle: 371.43 MiB, including 151.98 MiB
 `libapp.a` copied as a resource despite already being linked into the executable.
@@ -366,7 +464,11 @@ build-file and resource-phase references from the generated project; preserve
 its Frameworks/linking entry. Exercise actual preparation on an Xcode fixture,
 including an already-anchored project. Verify the smaller signed app and iPad
 installation/launch. No feature, frontend asset or native code is removed.
-Claim lands before implementation.
+Claim landed as `139c01fe4` before implementation. Four preparation tests pass;
+the new real-script fixture fails on the prior implementation. The 219.45 MiB
+signed app (41% reduction) installed and launched on the paired iPad over Wi-Fi.
+All 41 executable sections remain byte-identical after removing the redundant
+archive; signature verification passes.
 
 ## iOS shared validator compilation blocker — 2026-10-15
 
@@ -404,7 +506,7 @@ landed as `10edc699d` before Lite implementation changes.
 
 ## ASM example admission during pending Code compilation — 2026-10-15
 
-CLAIM — Codex circuit/instrument adoption owner, bounded blocker repair for
+DONE — Codex circuit/instrument adoption owner, bounded blocker repair for
 PR965. Base `dccfd176b0043128b6a723e55f80a5e3b47fed4c`; isolated branch
 `docs/asm-example-serialization-claim-20261015` publishes ownership first.
 Production edits wait for this claim's merge and coordination with the A11
@@ -424,17 +526,26 @@ Do not change `setDevice`, `compile`, MakeCode/export/device-routing blocks,
 engine models, dependency pins, timeouts, compiler interception or other lanes.
 PR965's already qualified CUI adoption bytes remain unchanged.
 
-Require pure actual-method controls for busy rejection, ordinary idle loading,
-confirmation refusal and compilation starting during a pending confirmation;
-isolated entry/post-confirmation guard mutations must fail by name. The actual
-browser proof must hold only the return of a real completed VM load, observe
-the disabled picker and preserved source during the pending compile, release
-and restore the wrapper, then load and assemble through ordinary controls.
-Removing the picker guard must fail that held-state assertion, not merely time
-out later. Retain the complete keyboard/CGA/8255/refusal/reload journey and
-all enabled exact-head checks. No forced click, longer sleep, missing-scenario
-skip, unchanged failed rerun or mocked guest implementation. Move this entry
-to DONE in the final implementation candidate; keep the original red receipt.
+Combined qualification contract (2026-10-16): the original busy-refusal
+candidate passed its exact-head controls, but the newer merged editor-ownership
+fix in PR998 accepts newer editor requests while a previous VM load completes.
+The UI picker stays disabled during compilation. An already accepted direct
+method request instead replaces editor buffers immediately; the unchanged
+compiler ownership fence preserves that buffer and its feedback across old
+load success, refresh and error. No VM-loading method is changed here.
+
+Require actual-method controls for immediate accepted buffer ownership,
+confirmation refusal, ordinary idle loading and confirmation overlapping busy
+work. A buffer-publication mutation must fail; preserve PR998's success/error/
+refresh ownership controls unchanged. The actual browser proof holds only the
+return of a real completed VM load, observes the disabled picker, accepts one
+direct newer editor request, releases/restores the wrapper and proves exact
+buffer identity/source/feedback survive. Then assemble through ordinary controls.
+Removing the picker guard must fail the held-state assertion. Retain the entire
+keyboard/CGA/8255/refusal/reload journey and all exact-head checks. No forced
+click, timeout increase, omitted scenario or invented guest. Original refusal
+results and the first integration conflicts remain separate historical evidence.
+Fresh combined hosted qualification remains required before landing.
 
 ## STM32 faithful model pin adoption (sb3-creator + bw-board) — 2026-10-15
 
@@ -5051,7 +5162,10 @@ follows this claim's normal qualified merge.
 
 ## Circuit instruments: coordinated consumer adoption — 2026-10-15
 
-CLAIM — Codex bwcx, branch lane/circuit-instrument-consumer-20261015.
+DONE in the implementation commit containing this entry — Codex bwcx,
+branch lane/circuit-instrument-consumer-20261015. Canonical claim merged in
+PR961 before implementation. This is a CUI-only package adoption, not an
+engine-model change or a second Board/SB3 pin move.
 Exact base bf0d5cc23fa9321b63b9df3084965026d5054080, after STM32 PR952.
 Preserve its Board b4b4c87f70624dfb570a6d21391c5a2d5a40a0e8 and
 SB3 c9be966fc6cf2f4343ca96c1a4477c91e05854ee pins. Adopt qualified CUI
@@ -5074,6 +5188,17 @@ deployment or physical-accuracy claim. Publish claim before implementation.
 This is task 2 of the ordered circuit campaign in upstream CUI documentation;
 later stratified-regression and realism work needs its own measured envelope.
 
+Acceptance retained in the candidate: six actual installed-CLI signed/phase
+batch and finite-watch captures against an independent nominal follower
+calculation, raw sample clocks/CSV, signed meter means/KCL, cumulative native
+work receipts, named --current refusal and a process-isolated missing-receipt
+negative with restored control. Actual engine and browser execution is hosted;
+the final candidate must pass every enabled exact-head integration check before
+landing. Local metadata: both locks differ only in CUI spec/resolved/integrity;
+six pin-package tests and all seven generator checks pass. The full-tree
+stale-pin scan cannot qualify a sparse checkout and remains a hosted gate.
+No assertion, tolerance, raw sample rate, model default or one-shot workflow
+policy was relaxed. Source-only declarations do not prove deployment or hardware.
 
 ## Qualified 386 consumer and media workflow continuation — 2026-10-15
 
@@ -5384,3 +5509,241 @@ exact Arcade translator handoff, a focused helper if needed, affected controls
 and documentation. Preserve the original failing guest and all prior source
 refusals; no generic method admission, all-globals initialization, copied tags,
 scheduler/runtime/pin/worker change, skipped control or corpus promotion.
+
+### Shared-frame selected source provenance — coordinated amendment
+
+Owner: Codex Arcade integration. Claim pending qualified normal merge.
+Extend only the [shared-frame non-exposure contract](docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md)
+into dependency-project.js for a private actual-source/prepared-map receipt.
+Keep optional effect analysis private to the existing shared-frame helper and
+its exact translator hooks. Preserve actual source comparison, source ordering,
+all initializers, unused bodies and diagnostics; no public flag/namespace/tag
+can issue proof. This does not widen ordinary Number/reference producers,
+classes, runtime behavior, dependency fetching, pins or compiler execution.
+Implement only after this ownership amendment qualifies and merges.
+
+
+## 386 GUI HDD and forward-debug hosted acceptance — 2026-10-16
+
+PROPOSED CLAIM — Codex x86, serialized after the existing media/debugger lane.
+Merge this claim before creating the new acceptance files. The existing merged
+claims cover the source in PR986, PR987 and PR989; their normal local composition
+adds no supplier pin, lock, notice or other-owner change. This claim extends only
+the finite hosted acceptance boundary: new
+`scripts/run-i80386-hdd-gui-actual.py`,
+`scripts/read-i80386-hdd-gui-originals.py`,
+`test/i80386-hdd-gui-actual.test.mjs` and
+`.github/workflows/i80386-hdd-gui-actual.yml`, plus the existing
+`scripts/verify-i80386-local-hdd-gui.mjs` for bounded original witnesses and a
+separate forward-debug scenario. Own only this ledger entry and its matching x86-guide subsection.
+Reuse the existing Playwright persistence scenario and established hosted
+build/browser pipeline; do not introduce another provisioning framework or
+change unrelated workflows.
+
+The source-only composition retains main's selected Board until its existing
+adoption owner supplies the reviewed installed dependency. It must refuse the
+actual persistence/debug scenario when the dedicated 386 target API is absent.
+Never inject supplier modules, fake a snapshot or infer installed support from
+a Board-only diagnostic. PR975's existing Board/SB3 owner retains its explicit
+**Not for agent merge** hold and all dependency writers; PR965 retains CUI/shared
+lock/notices ownership. This claim transfers no such surfaces. Record a handoff
+or wait for the existing owner's qualified adoption; any new adoption by this
+lane needs that handoff and a separately merged precise claim.
+
+Before a one-shot actual event, freeze the exact composed source, installed
+supplier/build graph, free inputs, browser/runtime identities, finite resource
+profile, closed original roles and independent reader. Preserve first failures
+and owned cleanup observations. Capture genuine image and metadata downloads,
+reload the exact saved data disk through the real chooser in a fresh machine,
+and verify the guest-written marker and unchanged paused original session.
+Qualify forward debugging separately through real UI pause, code breakpoint,
+instruction step, full-width registers, read-only physical memory, resume and
+pane switching, with source-backed refusals for unsupported operations.
+
+Pure controls must include a complete manufactured packet and fully rehashed
+semantic negatives. They do not establish browser or guest success. Every
+enabled exact-head source check and separately admitted original-only actual
+result remains mandatory; acquire each official original once and never replay
+a guest for the reader. No ISO/ATAPI, generalized DOSBox, new CPU/device, reverse
+execution, mode-aware disassembler, physical timing, whole-OS or release claim.
+
+## A13 CPX production browser gate registration — 2026-10-16
+
+CLAIMED — Codex, isolated worktree `/tmp/brickwright-lite-a13-20261016`,
+branch `lane/a13-cpx-face-adoption-20261016`; amendment based on canonical
+`d544efb23`. Merge this claim before implementation. Extend the existing A13
+claim only to `.github/workflows/build.yml` for a standalone light-shard CPX
+production browser gate and its failure/success receipt upload, plus canonical
+`scripts/gen-gate-budgets.mjs --register` output in
+`docs/generated/browser-gate-readings.json` and focused registration controls.
+Reuse the existing browser job, server and immutable artifact action; introduce
+no workflow or job. The new gate uses the existing provisional three-minute
+floor; preserve every existing measured reading, timeout and threshold.
+
+The gate drives the real native CPX program, pane and circuit face through
+`scripts/verify-cpx-circuit-face.mjs`; it must retain actual VM output and input
+assertions and upload its JSON observations. This amendment permits registration
+work now, while preserving the A13 adoption order: qualified upstream CUI and
+the earlier serialized STM32/translator integrations precede the final supplier
+pin and full application qualification. It transfers no other owner's paths,
+changes no runtime semantics, and claims no physical hardware acceptance.
+
+## STM32 composition: original 386 boot register reader — 2026-10-16
+
+CLAIMED — Codex root, branch `lane/stm32-compose-20261016`, isolated
+`/tmp/brickwright-stm32-compose-20261016`, amendment based on main `e1e5bc30b`.
+Merge this claim before changing the existing synthetic boot assertion in
+`scripts/verify-i80386-local-hdd-gui.mjs`: read the selected supplier's `edi`
+instead of absent `di`, retaining equality to42, exact halted/PC/canvas checks
+and the existing timeout. The exact installed f84 supplier and a read-only
+production diagnostic expose `edi=42`, `pc=0x7c1a`, `halted=true`, VGA720×400;
+the original gate is retained as failed evidence. Own only this contract-reader
+hunk, a focused regression control and this ledger. No new engine or pin move.
+
+The x86 lane retains its distinct new persistence/original-witness and
+forward-debug scenarios in this same script, all supporting files, its branches
+and its acceptance requirements. Its published composition currently preserves
+the same stale original synthetic assertion. This narrow dependency-adoption
+reader repair carries no persistence or debugger acceptance and takes over none
+of those scenarios. Preserve any newer owner work during normal composition.
+No relaxed comparison, fallback register name, timeout increase, skipped gate,
+CI bypass or source rewrite is permitted. The corrected actual browser gate
+and all enabled final-head source checks must pass before integration merge.
+
+## CPX translator qualification diagnostic transport — 2026-10-16
+
+RELEASED — completed by the existing CPX owner; verified by Codex root, isolated `/tmp/brickwright-cpx-compose-20261016`,
+branch `lane/cpx-qualification-compose-20261016`, supplier consumer source
+PR1009 at `9fbc8d97e87c6c6c9ee74d71c7ceae96996d5d4a`, base main `8fe41c722`.
+The user requested continued coding through the ordered integrations. Preserve
+the existing translator owner's branch and every assertion, corpus input,
+capture time, trace record, timing-limit fixture and runtime/compiler helper.
+Own only the four diagnostic console writers in
+`test/cpx-makecode-behaviour.test.mjs`: route the identical labels and serialized
+records through that test's `t.diagnostic` instead of raw stdout. Merge claim
+before implementation on a separate composition branch; preserve newer owner
+work during final integration. No translator source, pin or oracle semantics
+are transferred by this narrow qualification repair.
+
+Hosted artifact from run38931471960 contains all15 passed tests under the
+absolute file path, plus a separate relative-path stdout bucket with30125bytes.
+The checker collapses basenames and the latter bucket masks those15 tests;
+the genuine blocker is the prohibited raw stdout. Do not relax or edit the
+checker, merge away the stdout evidence, hide diagnostics, or claim test cases
+never executed. Require all15 existing cases to pass with zero raw stdout in
+the actual two-reporter run, retained full diagnostic records, and unchanged
+assertions. This does not claim timing parity for the five documented boundary
+programs. Final candidate still requires every enabled exact-head CI check.
+
+The existing owner published `16dda603dde74db3a820d88750b43aada25f91b8`
+while this repair was being qualified. Its four framed diagnostic writers match
+the proposed repair, with an explanatory comment. Preserve that implementation
+and original PR1009; no duplicate source PR or full CI was requested. In an
+isolated normal composition with current documentation-only main, the owner's
+unchanged executable tree passes all74 focused CPX/import/export checks under
+genuine Node22.23.3 and the actual TAP plus census reporters. All15 behaviour
+cases are accounted for, zero raw stdout bytes or skips, and all108 diagnostic
+lines are byte-for-byte identical to the proposed repair's passing trace.
+Receipts: `/tmp/brickwright-cpx-owner-diagnostics.tap` and
+`/tmp/brickwright-cpx-owner-diagnostics-census.json`. Hosted final-head CI still
+qualifies PR1009; five documented timing limits remain limits, not parity.
+This narrow diagnostic claim is released; no translator ownership is retained.
+
+## A13 local combined graph preparation — 2026-10-16
+
+CLAIMED — Codex root, existing isolated A13 worktree and branch
+`/tmp/brickwright-lite-a13-20261016`,
+`lane/a13-cpx-face-adoption-20261016`, base canonical main `9052eee43`.
+The user again requested continued implementation. Extend only the timing of
+local candidate preparation: normally compose the unchanged existing STM32
+candidate PR1017 at7a82a14f and CPX translator owner PR1009 at16dda603 into
+the A13 branch, preserving newer owner work; then adopt the already qualified
+and merged CUI PR85 immutable source through canonical pin/lock/notice writers
+and exact-pin readers already owned by A13. This permits meaningful local
+production/browser qualification while the earlier hosted checks queue.
+
+Preserve all original integration branches, selected Boardf84/SBCa13/WeDo pins,
+translator assertions and documented timing limits. This is local composition,
+not permission to merge unqualified predecessors or dispatch duplicate source
+CI. Keep the user-requested main landing order and existing exact-head checks.
+Publish final A13 source PR/full qualification only after the earlier source
+integrations qualify and land; reconcile current main before that final head.
+No new runtime, translator, engine, firmware, physical acceptance or workflow
+budget scope is added. Merge this claim before composing/adopting the graph.
+
+## Circuit File actions with a cached but unmounted designer — 2026-10-16
+
+CLAIMED — Codex root, isolated `/tmp/brickwright-circuit-file-wake-20261016`,
+branch `fix/circuit-file-wake-20261016`, claim base canonical main `7ce90fc38`.
+Prepare the implementation on the already qualified local combined A13 graph
+`6681f1868`, then reconcile current main, including the independent Sim Lab
+addition, before final source qualification. This does not change package pins.
+Actual combined browser evidence retains Save circuit from Code producing no
+download after the designer had already been loaded. The debugger-only right
+portal unmounts the designer, while `_circuitFileWake` mistakes cached
+`state.Designer` for a mounted command receiver. Cold cached-component loading
+and mounted-receiver readiness must remain distinct.
+
+Own only the File-command wake/replay and connected Circuit-tab activation in
+`overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx` and its exact
+package mirror, focused `test/circuit-file-menu-reach.test.mjs` controls, and
+cold/warm Code-tab actual File-menu journeys in existing
+`scripts/verify-circuit-export-completeness.mjs`, plus this ledger. Reveal the
+existing Circuit view on an explicit command that lacks a receiver, queue its
+action, and replay through the existing upstream channel after the receiver
+mounts. Preserve existing mounted single delivery, replay suppression, lazy
+loading, debugger sessions and all four existing actions.
+
+No supplier/pin, runtime, serialized circuit, new file format, editor-shell,
+workflow/budget or other owner's feature change. Preserve original failures
+and require actual menu-driven download/import and focused omitted-wake and
+omitted-replay negatives; no direct VM state injection or invented output.
+Merge this claim before implementation. Source merge requires all enabled
+exact-head CI, with normal composition preserving the pending A13 CPX bridge.
+
+## Release 0.1.24 ownership and qualified TestFlight follow-through — 2026-10-16
+
+CLAIMED — Codex release follow-through, branch
+`docs/release-0.1.24-claim-20261016`, exact base
+`27f473a738ff675db193ea689424f4ee3649910b`. Merge this ownership claim
+before changing release metadata. The earlier `v0.1.23` tag is immutable;
+its cancelled workflows are historical results, not a delivered new build.
+
+Envelope after this claim merges: this ledger;
+`apps/tauri/src-tauri/{tauri.conf.json,Cargo.toml,Cargo.lock}` for the three
+aligned application versions; `docs/app-store-metadata.md` for current English
+and German tester notes; operational creation of a new `v0.1.24` tag only on
+the admitted qualified main merge, using the existing mobile/release workflows.
+No product implementation, dependency pin, workflow, signing policy, transport,
+physical-device mapping or hardware behavior change belongs in this lane.
+
+Required prerequisites: retain merged WeDo adoption PR980 and its bounded
+brightness/polarity/piezo claims, the merged iOS validator repair PR981 and its
+independent actual native source binding. Review one combined release source
+candidate for actual unsigned mobile qualification before advancing versions
+or publishing; an older component build does not qualify newer frontend source.
+
+Explicit dependency correction: PR982 repairs the separate local generated-
+project helper, invoked by the local device-build npm hook. The existing
+mobile/TestFlight workflows invoke the Tauri CLI directly and do not execute
+that helper. Its actual generated-project qualification remains open in its
+own lane; lack of that uncalled-helper result alone does not block this
+release. Source CI or unsigned workflow success is not helper execution proof.
+This correction changes no workflow, signing policy or qualification threshold.
+
+Independently inspect the final source-bound unsigned app AND actual signed
+IPA resource/content inventories, including unintended libapp.a or other
+static archive packaging. Fresh project initialization and source checks do
+not prove such archives absent. Retain actual compile, source/artifact,
+signing, privacy, provisioning and icon checks. Preserve original failures and
+exact identities; no old tag move or successful qualification replay. Broader
+simulator and instrument candidates enter only after their own qualified
+merges, with honest tester boundaries.
+
+Release metadata must pass version/notes contracts and required exact-head
+checks. Review actual main composition and predicted/landed tree/parents before
+normal matched-head merges. Only then create the new tag. Completion requires
+original signed build/upload, Internal and External group assignment and Beta
+App Review receipts from the existing workflows. A queued workflow, unsigned
+build or App Store submission is not a delivery or approval claim. Keep the
+ordered five-task circuit campaign contract independent and unchanged.

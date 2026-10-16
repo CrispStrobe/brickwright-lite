@@ -42,6 +42,8 @@
         "sync:emuwasm:check": "node scripts/sync-emu8051-wasm.mjs --check",
         "check:mirrors": "node scripts/check-mirrors.mjs",
         "package:store-compliance": "node scripts/package-store-compliance.mjs",
+        "sync:ldraw": "node scripts/sync-ldraw-parts.mjs",
+        "sync:ldraw:check": "node scripts/sync-ldraw-parts.mjs --check",
         "sync:examples": "node scripts/sync-examples.mjs",
         "sync:examples:check": "node scripts/sync-examples.mjs --check",
         "sync:flasher": "node scripts/sync-flasher.mjs",
@@ -146,7 +148,7 @@
     },
     "devDependencies": {
         "bw-board": "github:CrispStrobe/bw-board#b4b4c87f70624dfb570a6d21391c5a2d5a40a0e8",
-        "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#9593a12056e72c10686232bb448f97471f98feec",
+        "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#1db1bb9ee565338672c7acfefec4cf94b27196e1",
         "digitaljs": "^0.14.2",
         "jszip": "3.10.1",
         "playwright": "^1.62.1",
