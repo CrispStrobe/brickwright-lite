@@ -1,3 +1,32 @@
+## A12 — Circuit Playground Express MakeCode translator — 2026-10-16
+
+CLAIMED — Codex CPX translator lane, isolated worktree
+`wt-lite-a12-cpx-makecode-20261016`, branch `lane/a12-cpx-makecode-20261016`.
+Base `8da2afe2fe64f9301f9045796317e241314a26b5`. Contract: task A12 in
+[the owner-selected queue](docs/OPEN-TASKS-2026-09-29.md), following the delivered
+[A9 device world](docs/A9-CPX-SCOPING.md).
+
+Own a new `overlay/scratch-gui/src/lib/bw-makecode/adafruit-translate.js`;
+CPX-only target inference/import dispatch in that directory's `index.js`;
+narrow CPX translated-view and named-export-refusal branches of
+`components/tw-pseudocode/pseudocode-importer.jsx`; and exact tracked packages
+mirrors. Existing translators, shared base/parser, conversion ownership,
+Arcade resources and other owners' importer methods remain outside this claim.
+Own focused CPX translator/inference/behaviour tests, the CPX section of
+`scripts/makecode-census.mjs` and its generated census document, affected CPX
+browser controls in the existing MakeCode verifier, and
+`docs/A12-CPX-TRANSLATOR.md`. Preserve CPX MakeCode simulation and the pin bridge.
+
+Acceptance: reproduce the hint-less inference defect first; account for all
+149 pinned pxt-adafruit docs programs without silent call loss; compare at least
+ten translated programs against the actual target simulator; preserve adjacent
+target inference; refuse CPX re-export by name until its emitter is separately
+qualified. Name polling/event and newer-API limits. Reuse existing 45 device
+words; missing supplier words require separate upstream work. No firmware
+execution, engine/package pin, workflow budget or threshold change. Land this
+claim before implementation; require fresh affected browser qualification and
+all enabled final-head checks before source merge. Preserve every other lane.
+
 ## Proposed 386 Board HDD adoption handoff — 2026-10-16
 
 PROPOSED / DOCS ONLY — Codex x86, branch
