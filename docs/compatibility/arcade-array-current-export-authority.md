@@ -39,7 +39,7 @@ The [local reset contract](../ARCADE-ARRAY-LOCAL-RESET-PROOF.md) adds a narrow
 analysis of a Null or Undefined initializer in an ordinary zero-argument
 procedure. The native plain-object prototype setter key `__proto__` is refused: its
 assignment does not establish the own cell assumed by lexical analysis. The
-current unique prototype, direct source-start callers and physical
+current unique prototype, proved source-start caller chains and physical
 connected body identify that invocation's fresh parameter object. The analysis
 starts at procedure entry, rather than immediately after the reset: an earlier
 registration retaining any key could retain the entire parameter object. Such a
@@ -101,3 +101,36 @@ input-cache IDs and the variable dictionary setter ID `__proto__` are refused.
 These are graph identity restrictions, not runtime dictionary repairs. Provided
 monitor metadata must be an actual Array; absence, Undefined and Null are not
 interchangeable, including after an authority has been created.
+
+### Nested ordinary entries
+
+A subsequent real export/reimport exposed the same two Array receiver refusals
+inside an ordinary procedure called by another startup procedure. Its source,
+Creator, Code and saved project were clean; re-export remained partial. The
+earlier direct source-start entry rule did not establish this nested frame.
+
+The source implementation now checks every caller through an acyclic chain of
+direct zero-argument ordinary calls ending at source-start. Each ancestor needs
+the actual unique physical definition and prototype, safe native cache identity,
+matching call schema and connected linear call statement. One valid route cannot
+hide another unknown caller. Recursive chains, branch or loop call sites, dynamic
+entries, nonzero-argument ancestors and malformed source-start schemas remain
+outside this bounded proof. Completed entry proofs are memoized; no source name
+or nesting depth is a certificate.
+
+The native procedure primitive initializes the current call statement's parameter
+object before entering its definition. Reusing a statement frame clears its old
+parameters. Thus an earlier ancestor capture retains a different object from the
+nested invocation's fresh parameters. The complete callee entry-to-overwrite
+effect and capture proof still applies unchanged. This is an export analysis
+extension, with focused controls and the affected current roundtrip pending
+qualification; it does not repair native dictionaries or qualify GUI behavior.
+
+### Repeated private resets
+
+Several canonical Null or Undefined assignments may occur in the same proven
+entry prefix. Each excluded writer still requires its own later definite Array
+overwrite. Earlier resets and palette publication remain in the exported body;
+any intervening read, capture, call, incompatible writer or unknown effect
+refuses the proof. This covers repeated conversion without relying on generated
+local or procedure names. Source growth across conversions is a separate gap.

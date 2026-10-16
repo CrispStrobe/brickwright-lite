@@ -146,3 +146,84 @@ test('physical native entry, storage and unavailable metadata cannot bypass the 
         f.project.monitors=value;assert.equal(proof.validateInput(f.target,f.blocks[f.reads[0]]).ok,false);
     }
 });
+
+// Independently authored ordinary caller chains. Each new call is a physical
+// direct statement in a distinct zero-argument procedure; no retained startup
+// names or case-specific source spelling are admission criteria.
+function wrapEntry(f,name) {
+    const previous=f.blocks[f.hat].next,proto=f.node('procedures_prototype');
+    f.blocks[proto].shadow=true;
+    f.blocks[proto].mutation={proccode:name,argumentids:'[]',argumentnames:'[]',argumentdefaults:'[]',warp:'false'};
+    const definition=f.node('procedures_definition',{custom_block:proto});
+    f.blocks[definition].inputs.custom_block[0]=1;f.blocks[definition].topLevel=true;
+    const call=f.node('procedures_call');f.blocks[call].mutation={proccode:name,argumentids:'[]',warp:'false'};
+    f.blocks[f.hat].next=call;f.blocks[call].parent=f.hat;
+    f.blocks[definition].next=previous;f.blocks[previous].parent=definition;
+    return {proto,definition,call};
+}
+
+test('acyclic ordinary caller chains retain separate fresh construction frames',()=>{
+    for(const depth of [1,2,4]){
+        const f=fixture(7);for(let index=0;index<depth;index++)wrapEntry(f,`entry ${index}`);
+        const before=JSON.stringify(f.project);assert.deepEqual(results(f),Array(7).fill(true));assert.equal(JSON.stringify(f.project),before);
+        const saved=structuredClone(f.project),authority=createArrayReferenceExportAuthority(saved);
+        for(const id of f.reads)assert.equal(authority.validateInput(saved.targets[0],saved.targets[0].blocks[id]).ok,true);
+    }
+});
+test('a nested caller cannot borrow a different actual procedure or inherited cache entry',()=>{
+    for(const name of ['constructor','toString','__proto__']){
+        const f=fixture();wrapEntry(f,name);refuses(f);
+    }
+    const f=fixture(),outer=wrapEntry(f,'ordinary entry');
+    f.blocks[outer.call].mutation.proccode='different entry';refuses(f);
+});
+test('every ancestor must have one actual physical native definition and prototype',()=>{
+    for(const definition of [false,true]){
+        const f=fixture(),outer=wrapEntry(f,'ordinary entry'),proto=f.node('procedures_prototype');
+        f.blocks[proto].shadow=true;f.blocks[proto].mutation=structuredClone(f.blocks[outer.proto].mutation);
+        if(definition)f.node('procedures_definition',{custom_block:proto});refuses(f);
+    }
+});
+test('one valid nested entry cannot conceal another caller with an unknown source boundary',()=>{
+    const f=fixture();wrapEntry(f,'ordinary entry');
+    const hat=f.node('arcade_whenRegisteredButton'),call=f.node('procedures_call');f.blocks[hat].topLevel=true;
+    f.blocks[call].mutation=structuredClone(f.blocks[f.call].mutation);f.blocks[hat].next=call;f.blocks[call].parent=hat;refuses(f);
+});
+test('recursive caller cycles after an otherwise valid overwrite remain refused',()=>{
+    const f=fixture(),outer=wrapEntry(f,'ordinary entry'),call=f.node('procedures_call');
+    f.blocks[call].mutation=structuredClone(f.blocks[outer.call].mutation);f.chain([...f.sequence,call]);refuses(f);
+});
+test('a nested conditional or loop invocation is not a direct ordinary entry',()=>{
+    for(const opcode of ['control_if','control_repeat']){
+        const f=fixture(),outer=wrapEntry(f,'ordinary entry'),call=f.call;
+        const branch=f.node(opcode,{SUBSTACK:call});f.blocks[outer.definition].next=branch;f.blocks[branch].parent=outer.definition;refuses(f);
+    }
+});
+test('all direct and nested caller paths are proved without choosing one preferred entry',()=>{
+    const f=fixture();wrapEntry(f,'ordinary entry');const hat=f.node('arcade_whenSourceStarts'),call=f.node('procedures_call');
+    f.blocks[hat].topLevel=true;f.blocks[call].mutation=structuredClone(f.blocks[f.call].mutation);
+    f.blocks[hat].next=call;f.blocks[call].parent=hat;assert.deepEqual(results(f),[true]);
+});
+test('ancestor source-start schema and later incompatible writers remain obligations',()=>{
+    const hidden=fixture();wrapEntry(hidden,'ordinary entry');hidden.blocks[hidden.hat].inputs.hidden=[1,hidden.number(0)];refuses(hidden);
+    const writer=fixture();wrapEntry(writer,'ordinary entry');writer.insert(writer.sequence.at(-1),writer.set('cell0',writer.number(3)));refuses(writer);
+});
+
+test('repeated canonical resets before the palette preserve each separate dead writer proof',()=>{
+    const f=fixture(7);wrapEntry(f,'ordinary entry');
+    for(let index=0;index<7;index++)f.insert(f.effect,f.set(`cell${index}`,f.special(index%2?'null':'undefined')));
+    assert.deepEqual(results(f),Array(7).fill(true));
+});
+test('repeated canonical resets across palette effects still require a definite Array overwrite',()=>{
+    const f=fixture();wrapEntry(f,'ordinary entry');
+    f.insert(f.overwrites[0],f.set('cell0',f.special('undefined')));f.insert(f.overwrites[0],f.palette());
+    assert.deepEqual(results(f),[true]);
+});
+test('a read between repeated resets cannot be hidden by a later valid Array write',()=>{
+    const f=fixture();wrapEntry(f,'ordinary entry');
+    f.insert(f.overwrites[0],f.global(f.local('cell0')));f.insert(f.overwrites[0],f.set('cell0',f.special('null')));refuses(f);
+});
+test('a noncanonical writer among repeated resets remains an incompatible writer',()=>{
+    const f=fixture();wrapEntry(f,'ordinary entry');
+    f.insert(f.overwrites[0],f.set('cell0',f.number(7)));f.insert(f.overwrites[0],f.set('cell0',f.special('null')));refuses(f);
+});

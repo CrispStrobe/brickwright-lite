@@ -222,34 +222,56 @@ export function createArrayReferenceExportAuthority(project) {
             !closedEffects()||!scope.callers.length)return false;
         // Native lookup scans every physical definition/prototype, including
         // orphans not represented by the connected top-level scope map.
-        const all=Object.values(target.blocks||{}),prototype=child(scope.root,'custom_block',target);
-        if(!shape(scope.root,['custom_block'])||Object.keys(prototype?.inputs||{}).length||Object.keys(prototype?.fields||{}).length)return false;
-        const definitions=all.filter(n=>n.opcode==='procedures_definition'&&child(n,'custom_block',target)?.mutation?.proccode===scope.proc);
-        const prototypes=all.filter(n=>n.opcode==='procedures_prototype'&&n.mutation?.proccode===scope.proc);
-        if(definitions.length!==1||definitions[0]!==scope.root||prototypes.length!==1||prototypes[0]!==prototype)return false;
+        const all=Object.values(target.blocks||{});
+        const ordinaryDefinition=entry=>{
+            if(!entry||entry.target!==target||!entry.proc||Object.hasOwn(Object.prototype,entry.proc)||
+                entry.invalid||entry.unknownEntry||entry.params.length||entry.ids.length)return false;
+            const root=entry.root,prototype=child(root,'custom_block',target);
+            if(root.opcode!=='procedures_definition'||owners.get(root)!==entry||invalid.has(root)||
+                root.mutation!=null||Object.keys(root.inputs||{}).length!==1||!Object.hasOwn(root.inputs||{},'custom_block')||
+                Object.keys(root.fields||{}).length||!prototype||Object.keys(prototype.inputs||{}).length||
+                Object.keys(prototype.fields||{}).length)return false;
+            const definitions=all.filter(n=>n.opcode==='procedures_definition'&&child(n,'custom_block',target)?.mutation?.proccode===entry.proc);
+            const prototypes=all.filter(n=>n.opcode==='procedures_prototype'&&n.mutation?.proccode===entry.proc);
+            return definitions.length===1&&definitions[0]===root&&prototypes.length===1&&prototypes[0]===prototype;
+        };
+        if(!ordinaryDefinition(scope))return false;
         const name=literal(node,'NAME',target),origin=captures.local(captures.scopeOf(node),name);
         // Native params are plain objects, not Maps: this inherited setter
         // changes the prototype instead of establishing an own lexical cell.
         if(name==='__proto__')return false;
         if(!origin||!captures.proof(origin)||localCell(scope,name)!==destination)return false;
-        // Admit only direct ordinary zero-argument entries from source-start.
-        // Other callers, nested entries and dynamic calls remain refusals.
-        for(const call of scope.callers){
-            if(call.target!==target||call.scope.invalid||call.scope.root.opcode!=='arcade_whenSourceStarts'||
-                call.node.opcode!=='procedures_call'||!call.args||call.args.length||call.node.mutation?.warp!=='false')return false;
-            let at=call.scope.root.next;const visited=new Set();
-            while(at&&block(target,at)!==call.node){
-                if(visited.has(at))return false;visited.add(at);
-                const prior=block(target,at);
-                // Only establish that this is a direct entry, not a branch
-                // or loop's nested invocation. Earlier caller effects precede
-                // allocation of this invocation's fresh params object and
-                // therefore cannot have retained that object.
-                if(!prior||invalid.has(prior)||owners.get(prior)!==call.scope)return false;
-                at=prior.next;
-            }
-            if(!at)return false;
-        }
+        // Each ordinary call initializes its own fresh params object. Prove
+        // every actual caller through an acyclic chain of direct zero-argument
+        // ordinary calls ending at source-start; names and nesting depth carry
+        // no authority. Earlier caller effects precede this frame allocation.
+        const entryProof=new Map();
+        const entryFromSource=entry=>{
+            if(entryProof.has(entry))return entryProof.get(entry);
+            if(!ordinaryDefinition(entry)||!entry.callers.length)return false;
+            // Provisional false also refuses recursive caller cycles. Memoize
+            // completed entries so a shared caller DAG is not expanded again.
+            entryProof.set(entry,false);
+            const proved=entry.callers.every(call=>{
+                const caller=call.scope;
+                if(call.target!==target||call.fn!==entry||!caller||caller.invalid||caller.unknownEntry||
+                    call.node.opcode!=='procedures_call'||!call.args||call.args.length||
+                    call.node.mutation?.proccode!==entry.proc||call.node.mutation?.warp!=='false')return false;
+                let at=caller.root.next;const visited=new Set();
+                while(at&&block(target,at)!==call.node){
+                    if(visited.has(at))return false;visited.add(at);
+                    const prior=block(target,at);
+                    if(!prior||invalid.has(prior)||owners.get(prior)!==caller)return false;
+                    at=prior.next;
+                }
+                if(!at)return false;
+                if(caller.root.opcode==='arcade_whenSourceStarts')return owners.get(caller.root)===caller&&
+                    caller.root.mutation==null&&!Object.keys(caller.root.inputs||{}).length&&!Object.keys(caller.root.fields||{}).length;
+                return entryFromSource(caller);
+            });
+            entryProof.set(entry,proved);return proved;
+        };
+        if(!entryFromSource(scope))return false;
         const locals=new Map(),published=new Set(),unproved=Symbol('unknown');
         // Identity tokens denote this invocation's actual independent fresh
         // empty heap bodies. Global publication permanently removes mutation
@@ -293,7 +315,16 @@ export function createArrayReferenceExportAuthority(project) {
                 const key=literal(current,'NAME',target),c=localCell(scope,key);if(key==='__proto__'||!c||c.formal)return false;
                 if(current===node){seenReset=true;locals.set(c,{kind:'scalar'});}
                 else {const v=scalar(input(current,'VALUE',target));if(v===unproved)return false;
-                    if(c===destination){if(seenReset&&v.kind==='array'){extendedResetUsed=true;return true;}return false;}
+                    if(c===destination){
+                        // Repeated canonical resets do not read the cell or
+                        // publish its frame. Keep proving the whole prefix,
+                        // including earlier resets before this writer; only a
+                        // real later Array overwrite completes this proof.
+                        if(!special(input(current,'VALUE',target)?.node)){
+                            if(seenReset&&v.kind==='array'){extendedResetUsed=true;return true;}
+                            return false;
+                        }
+                    }
                     locals.set(c,v);}
             }else if(current.opcode==='arcade_setPalette'&&shape(current,['DATA'])&&/^[0-9a-fA-F]{96}$/.test(literal(current,'DATA',target)||'')){
                 // Qualified render/state event effects preserved; prefix has
