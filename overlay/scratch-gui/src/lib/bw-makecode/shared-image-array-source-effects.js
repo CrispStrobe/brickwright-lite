@@ -1,3 +1,6 @@
+import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
+import {analyseCallableBindings} from './callable-bindings.js';
+import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {parseMakeCodeTs} from './ts-import.js';
 import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
 import {currentPreparedNativeSourceProvenance} from './dependency-project.js';
@@ -121,4 +124,171 @@ export function sharedImageSourceContextCurrent(context){
     const c=contexts.get(context);if(!c||c.expired)return false;
     if(!c.inputCurrent()||!c.p.current()||currentPreparedNativeSourceProvenance(c.p.files)!==c.p.receipt||!c.p.observed.every(row=>row.current()))c.expired=true;
     return !c.expired;
+}
+
+// Entry-only non-interference profiles. They do not add an API to F's global
+// effect domain and expose no Buffer, callback, Image or Number value facts.
+// Every facade is derived here from actual current syntax/private provenance;
+// there is no registration of caller-made nodes, predicates or allow tables.
+// Existing graph helpers use ordinary Array iteration/methods. Constrain only
+// this optional slice before invoking them; preserve the parser's three hidden
+// params channels and reject holes/null prototypes or caller method shadows.
+export function sharedImageEntryArrayDomain(root) {
+    const seen=new Set();let valid=true;
+    const visit=value=>{
+        if(!value||typeof value!=='object'||seen.has(value))return;seen.add(value);
+        const keys=Reflect.ownKeys(value);
+        if(Array.isArray(value)) {
+            if(Object.getPrototypeOf(value)!==Array.prototype){valid=false;return;}
+            const length=descriptor(value,'length');if(!length||!Object.hasOwn(length,'value')){valid=false;return;}
+            let count=0;
+            for(const key of keys) {
+                if(typeof key==='string'&&/^(0|[1-9][0-9]*)$/.test(key)&&Number(key)<length.value){count++;continue;}
+                if(key!=='length'&&!['optionalParams','parameterDefaults','parameterProperties'].includes(key)){valid=false;return;}
+            }
+            if(count!==length.value){valid=false;return;}
+        }
+        for(const key of keys){const d=descriptor(value,key);if(!d||!Object.hasOwn(d,'value')){valid=false;continue;}visit(d.value);}
+    };
+    try{visit(root);}catch{return false;}return valid;
+}
+// These parser metadata roles are read by entry/lexical/value helpers even
+// though they are not executable edges. Their consumed data cannot be opaque.
+const entryMetadataArrays=new Set(['optionalParams','parameterDefaults','typeParameters','originalBody','parameterProperties']);
+const entryMetadataData=new Set([...entryMetadataArrays,'paramTypes','returnType','assertedType']);
+function entryMetadataValue(key,value) {
+    if(value===null||value===undefined)return true;
+    if(entryMetadataArrays.has(key)&&!Array.isArray(value))return false;
+    if(key==='paramTypes'&&(typeof value!=='object'||Array.isArray(value)||![Object.prototype,null].includes(Object.getPrototypeOf(value))))return false;
+    const seen=new Set();
+    const data=node=>{
+        if(typeof node==='function'||typeof node==='bigint')return false;
+        if(!node||typeof node!=='object'||seen.has(node))return true;seen.add(node);
+        return Reflect.ownKeys(node).every(name=>{const d=descriptor(node,name);return d&&Object.hasOwn(d,'value')&&data(d.value);});
+    };
+    return data(value);
+}
+const entryProfiles=new WeakMap();
+export function prepareSharedImageEntryEffects(program,sourceContext=null) {
+    // This optional observer retains opaque identities but derives no facts from
+    // their behavior. The stricter source-origin snapshot above is unchanged.
+    let observed;try{observed=physicalUpdateSourceSnapshot(program);}catch{return null;}
+    if(!observed||!sharedImageEntryArrayDomain(program))return null;
+    // Helpers may serialize default callback bodies. Nothing under the actual
+    // executable body, including its metadata, may hide a live host function.
+    const body=program&&typeof program==='object'?descriptor(program,'body'):null;
+    if(!body||!Object.hasOwn(body,'value')||!Array.isArray(body.value)||!entryMetadataValue('originalBody',body.value))return null;
+    // The graph's throw path serializes the whole Program for completion
+    // currentness, including otherwise ignored metadata. Match its all-object
+    // tag census and refuse opaque functions there before invoking the graph.
+    if(observed.objects.some(node=>descriptor(node,'type')?.value==='ThrowStatement')&&!entryMetadataValue('program',program))return null;
+    const current=observed.current;
+    const nodes=[],parents=new WeakMap(),seen=new Set();let valid=true;
+    const visit=(value,parent=null)=>{
+        if(typeof value==='function'){valid=false;return;}
+        if(!value||typeof value!=='object')return;
+        if(seen.has(value)){valid=false;return;}seen.add(value);
+        if(!Array.isArray(value)){nodes.push(value);parents.set(value,parent);}
+        for(const key of Reflect.ownKeys(value)) {
+            const field=descriptor(value,key).value;
+            if(metadata.has(key)){if(entryMetadataData.has(key)&&!entryMetadataValue(key,field))valid=false;continue;}
+            visit(field,value);
+        }
+    };
+    visit(program);if(!valid||program?.type!=='Program')return null;
+    const text=sourceContext?currentSharedImageSourceEffects(program,sourceContext):null;
+    if(sourceContext&&!text)return null;
+    const sdk=staticSdkNamespaceReceivers(program,{builtinIdentifiers:text?['Math','textsprite']:['Math']});
+    const lexical=analyseCallableBindings(program),writers=new Map();
+    const add=(binding,value)=>{if(binding){if(!writers.has(binding))writers.set(binding,[]);writers.get(binding).push(value);}};
+    const path=node=>node?.type==='Identifier'?node.name:node?.type==='Member'?`${path(node.object)}.${node.name}`:null;
+    for(const node of nodes) {
+        if(node.type==='Declaration')for(const d of node.decls) {
+            if(node.kind==='let'&&Object.hasOwn(d,'init')&&d.init===null)continue;
+            add(lexical.scopes.get(node)?.names.get(d.name),d.init);
+        }
+        if(node.type==='Assignment'&&node.left?.type==='Identifier')add(lexical.references.get(node.left),node.op==='='?node.right:null);
+        if(node.type==='Update'&&node.argument?.type==='Identifier')add(lexical.references.get(node.argument),null);
+        let target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:node.type==='Unary'&&node.op==='delete'?node.argument:null;
+        while(target?.type==='Member'||target?.type==='Index')target=target.object;
+        if(target&&sdk.has(target))return null;
+        if(node.type==='Identifier'&&sdk.has(node)) {
+            const parent=parents.get(node);if(parent?.type!=='Member'||parent.object!==node)return null;
+        }
+    }
+    const textReceiver=(node,active=new Set())=>{
+        if(node?.type==='Null'||node?.type==='Undefined')return 'absent';
+        if(node?.type==='Call'&&text&&sdk.has(node.callee)&&path(node.callee)==='textsprite.create')return 'text';
+        if(node?.type!=='Identifier')return null;
+        const binding=lexical.references.get(node),values=writers.get(binding);if(!values?.length||active.has(binding))return null;
+        const next=new Set(active);next.add(binding);const kinds=new Set(values.map(value=>textReceiver(value,next)));kinds.delete('absent');
+        return kinds.size===1&&kinds.has('text')?'text':null;
+    };
+    const calls=new WeakMap(),leaves=new WeakSet(),writes=new WeakSet();
+    const simple=new Map([['image.setPalette',1],['scene.setBackgroundImage',1],['scene.setBackgroundColor',1],
+        ['info.setScore',1],['info.changeScoreBy',1],['info.score',0]]);
+    const textMethods=new Set(['setFlag','setText','setIcon','setBorder','setMaxFontHeight','update','setPosition']);
+    const registrations=new Map([['info.onCountdownEnd',[1,0]],['sprites.onOverlap',[3,2]],
+        ['controller.A.onEvent',[2,1]]]);
+    const fieldPaths=new Set(['SpriteFlag.RelativeToCamera','SpriteKind.Player','SpriteKind.Projectile',
+        'music.PlaybackMode.UntilDone','music.PlaybackMode.InBackground','music.PlaybackMode.LoopingInBackground']);
+    const readonlyMethods=new Set([...simple.keys(),...registrations.keys(),'info.showScore','Buffer.fromHex','textsprite.create','SpriteKind.create','Math.round','music.play']);
+    for(const node of nodes) {
+        if(node.type==='Member'&&sdk.has(node)&&fieldPaths.has(path(node)))leaves.add(node);
+        if(node.type==='Member'&&sdk.has(node)) {
+            const parent=parents.get(node);
+            if(!(parent?.type==='Member'&&parent.object===node)&&!(parent?.type==='Call'&&parent.callee===node)&&!fieldPaths.has(path(node)))return null;
+        }
+        if(node.type==='Member'&&textMethods.has(node.name)&&textReceiver(node.object)==='text') {
+            const parent=parents.get(node);if(parent?.type!=='Call'||parent.callee!==node)return null;
+        }
+        if(node.type==='Assignment'&&node.op==='='&&node.left?.type==='Member'&&
+            ['left','right','top','bottom'].includes(node.left.name)&&textReceiver(node.left.object)==='text')writes.add(node);
+        if(node.type==='Member'&&sdk.has(node)&&readonlyMethods.has(path(node))) {
+            const parent=parents.get(node);if(parent?.type!=='Call'||parent.callee!==node)return null;
+        }
+        if(node.type!=='Call'||node.isNew||node.constructorCall||Object.hasOwn(node,'typeArguments')||!Array.isArray(node.args)||node.callee?.type!=='Member')continue;
+        const api=path(node.callee);let effect=null;
+        if(sdk.has(node.callee)) {
+            if(simple.get(api)===node.args.length)effect={kind:'disjoint'};
+            if(api==='SpriteKind.create'&&!node.args.length)effect={kind:'kind-allocation'};
+            if(api==='Math.round'&&node.args.length===1)effect={kind:'round'};
+            // Current native bufferFromHex -> fromHex accepts a primitive text,
+            // constructs owned byte storage and registers it; it cannot call
+            // project code or acquire an ordinary Image Array from this literal.
+            // No validity/Buffer producer or global F permission follows.
+            if(api==='Buffer.fromHex'&&node.args.length===1&&node.args[0]?.type==='String'&&
+                typeof node.args[0].value==='string'&&node.args[0].value.length<=2097153&&/^[0-9a-f]*$/i.test(node.args[0].value))effect={kind:'disjoint-literal-buffer'};
+            if(api==='info.showScore'&&node.args.length===1&&node.args[0]?.type==='Boolean')effect={kind:'disjoint'};
+            if(api==='textsprite.create'&&text&&node.args.length>=1&&node.args.length<=3)effect={kind:'private-text'};
+            // music.play may yield and enter a stored callback. Its existing F
+            // command permission does not make a captured entry state stable.
+            const registration=registrations.get(api);
+            if(registration&&node.args.length===registration[0]&&node.args[registration[1]]?.type==='FunctionExpression') {
+                const other=node.args.filter((_arg,index)=>index!==registration[1]);
+                if(api!=='controller.A.onEvent'||other[0]?.type==='Number'&&['string','number'].includes(typeof other[0].value)&&!(typeof other[0].value==='string'&&!other[0].value.trim())&&Number.isInteger(Number(other[0].value)))
+                    effect={kind:'registration',callbackIndex:registration[1]};
+            }
+        } else if(textMethods.has(node.callee.name)&&textReceiver(node.callee.object)==='text')effect={kind:'disjoint-text'};
+        if(effect)calls.set(node,Object.freeze(effect));
+    }
+    const facade=Object.freeze({});entryProfiles.set(facade,{program,sourceContext,current,calls,leaves,writes,expired:false});return facade;
+}
+export function currentSharedImageEntryEffect(program,facade,node,kind='call') {
+    const p=entryProfiles.get(facade);if(!p||p.program!==program||p.expired)return null;
+    if(!p.current()||p.sourceContext&&!sharedImageSourceContextCurrent(p.sourceContext)){p.expired=true;return null;}
+    return kind==='current'?true:kind==='leaf'?p.leaves.has(node):kind==='write'?p.writes.has(node):p.calls.get(node)||null;
+}
+
+// A lookup is valid only while the synchronous internal derivation is running.
+// No callback supplies facts; before/after checks discard an interrupted or
+// mutated derivation. Retained lookups cannot bypass the public sticky fence.
+export function consumeSharedImageEntryEffects(program,sourceContext,consume) {
+    const facade=prepareSharedImageEntryEffects(program,sourceContext);
+    if(!facade||!currentSharedImageEntryEffect(program,facade,program,'current'))return null;
+    const p=entryProfiles.get(facade);let active=true;
+    const lookup=(node,kind='call')=>!active?null:kind==='leaf'?p.leaves.has(node):kind==='write'?p.writes.has(node):p.calls.get(node)||null;
+    const current=()=>!!currentSharedImageEntryEffect(program,facade,program,'current');
+    let result;try{result=consume(lookup,current);}finally{active=false;}
+    return current()?result:null;
 }

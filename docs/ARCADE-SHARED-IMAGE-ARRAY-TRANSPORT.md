@@ -258,3 +258,79 @@ exact admitted command. Extracted, returned, captured, stored or passed method
 values retain ordinary fallback, even if a later direct call is valid. This
 closes the command-only effect profile without restricting other SDK namespaces
 or adding a runtime function-alias feature.
+
+## Optional ordinary Image Array clone entry effect
+
+An exact ordinary `.clone()` call may use a separate, optional entry proof.
+It does not turn its ordinary Array into a resource or issue an Image value
+fact to the generic producer. The generic missing-element `Undefined` domain
+is unchanged.
+
+The entry slice follows actual immutable ordinary calls from the program entry,
+with actual argument binding, literal and empty Image Array allocations, pushes,
+aliases and finite constant selections in original statement order. Internal
+kind-reset statements write their actual binding to Undefined; they are not
+skipped. An exact
+constant Boolean branch may be followed; unknown branches and loops refuse.
+Every possible ordinary entry of a physical clone must be observed with a
+present Image. Callback-owned, recursive or unknown entries cannot borrow a
+later startup. The same graph supplies lexical bindings, declarations, physical
+allocation sites and immutable callees; it does not issue a generic Image fact.
+
+A separate privately built current-source effect profile permits only its
+listed non-interfering native operations during this walk. Literal Buffer
+construction is entry traversal, not Buffer value authority or global F
+permission. Exact stored-handler registrations preserve their complete bodies.
+Tracked Array aliases and writers must be stable before a registration, and
+subsequent binding reads refuse callback-writable or incomplete writer paths.
+Yielding music calls stop this entry walk. No callback execution is simulated.
+The whole F census still rejects unknown effects in any retained body.
+
+A completed earlier exact entry may remain an effect fact after a later unknown
+operation stops the walk; every possible caller must still be accounted for.
+This does not admit that later operation or authorize a whole resource plan.
+Escaped arrays/functions, unknown heap writers, missing/mixed elements and
+unproved entries retain ordinary fallback. Stateful kind results never become
+invented constant indices. Private clone results cannot promote an ordinary
+backing Array to a resource.
+
+Profiles and entry queries share one Program graph and validate currentness
+before/after synchronous derivation. Only ordinary dense Arrays with the
+parser's known parameter metadata may reach existing graph traversal; caller
+method shadows and null prototypes refuse this optional slice. Retained internal
+lookups expire when that
+derivation returns. Public physical-call queries keep sticky AST and private
+source currentness; restoring an edited AST cannot revive a proof. Compiler
+cloning/lowering still requires the existing fresh final resource proof.
+
+These source controls await affected execution. They do not qualify native
+behavior, fresh SDK preparation or a complete library roundtrip.
+
+
+The optional Image-entry profile observes opaque function identities in metadata
+with the existing physical source snapshot. It never invokes those functions or
+uses their properties or closure state as evidence. A host function in executable
+syntax still refuses the profile. Metadata cannot supply a missing entry, index,
+receiver, or effect. Replacing a metadata identity, container, or descriptor
+expires the profile permanently after observation; restoration cannot revive it.
+Unconsumed properties on an opaque function grant no facts. The stricter original
+source-origin snapshot and private source handoff remain unchanged.
+
+Metadata that entry or lexical/value helpers actually consume remains data:
+optional/default parameter and type metadata have checked container roles and
+function-free descriptor subgraphs. Opaque identities cannot substitute for
+those containers or their nested values. Their data edits retain the same
+sticky currentness fence.
+
+The complete executable body, including nested metadata, must also remain
+host-function-free before helpers run. Only unconsumed Program-level metadata
+can retain opaque function identities; callback-body serialization cannot invoke
+an opaque function through a serializer hook.
+
+If the graph selects whole-Program serialization for a throw-tagged object,
+the complete Program must be function-free too. This check covers ignored
+metadata tags as well as executable throw statements before that helper runs.
+
+Consumed metadata and serializer domains also refuse BigInt data before helpers,
+so unsupported source data cannot escape the optional profile as a serialization
+exception. Unconsumed root metadata still supplies no facts.

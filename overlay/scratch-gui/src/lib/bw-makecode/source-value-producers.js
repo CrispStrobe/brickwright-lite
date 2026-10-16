@@ -1,3 +1,5 @@
+import {consumeSharedImageEntryEffects,sharedImageEntryArrayDomain} from './shared-image-array-source-effects.js';
+import {parseExactImgLiteral} from './arcade-assets.js';
 import {proveDenseArrayLoopEntries} from './dense-array-loop-entry.js';
 import {prepareObjectClassStructure} from './object-class-source-structure.js';
 import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
@@ -23,7 +25,7 @@ export function analyseSourceValueProducers(program,options={}) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,normalCompletion=null,physicalUpdateSource=null}={}) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,normalCompletion=null,physicalUpdateSource=null}={}) {
     const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
     if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
     const loopEntry=arrayLoopEntries?proveDenseArrayLoopEntries(program,()=>analyseGraph(program,{parenthesized:true,unboundIsOpaque:true})):null;
@@ -245,6 +247,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     // Copies prevent a consumer from changing another consumer's proof facts.
     // Binding facts do not discharge initialization at an expression occurrence.
     return Object.freeze({
+        ...(arrayEffectSites?{possibleArrayAllocationsAt:node=>Object.freeze([...(types.get(cell(node))||[])].filter(type=>type?.kind==='Array').map(type=>type.site))}:{}),
         typesAt:node=>owners.has(node)?currentTypes(cell(node)):new Set(),
         bindingTypesAt:(node,name=node?.name)=>currentTypes(knownBinding(node,name)),
         bindingOf:knownBinding,
@@ -440,4 +443,240 @@ export function preparePhysicalUpdateThrowSource(program){
     Object.freeze(unsupported);
     if(!unsupported.length)physicalUpdateSources.set(receipt,{program,snapshot,methods});
     return receipt;
+}
+
+// Optional non-exposure query only. The generic graph and its missing-element
+// Undefined domain are unchanged; the private entry profile exposes no types.
+export function sourceImageArrayCloneEffects(program,sourceContext=null) {
+    return proveImageArrayCloneEffectEntries(program,()=>analyseSourceValueProducers(program,{
+        arrayValues:true,arrayEffectSites:true,parenthesized:true,unboundIsOpaque:true,declaredLocalUndefined:true,initializationEntries:true,ordinaryPrimitiveSdkNumbers:true
+    }),sourceContext);
+}
+
+const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','bwProcedureConstraintSource','optionalParams','parameterProperties','sourceReferenceDeclarations','sourceCallableDeclarations','sourceScalarDeclarations']);
+const unknown=Symbol('unknown entry value'),absent=Symbol('absent entry value');
+const path=node=>node?.type==='Identifier'?node.name:node?.type==='Member'?`${path(node.object)}.${node.name}`:null;
+
+// Optional, exact-call non-exposure facts. This is deliberately a straight-line
+// ordinary entry slice, not a replacement for generic Array/value analysis.
+// Every state below belongs to this walk; no public type/annotation seeds it.
+function proveImageArrayCloneEffectEntries(program,createGraph,sourceContext) {
+    let snapshot;
+    try {snapshot=physicalUpdateSourceSnapshot(program);} catch {return null;}
+    if(!snapshot||!sharedImageEntryArrayDomain(program))return null;
+    const nodes=[],parents=new WeakMap(),owners=new WeakMap(),seen=new Set();let valid=true;
+    const visit=(value,parent=null,owner=program)=>{
+        if(!value||typeof value!=='object')return;
+        if(seen.has(value)){valid=false;return;}seen.add(value);
+        parents.set(value,parent);owners.set(value,owner);if(!Array.isArray(value))nodes.push(value);
+        for(const key of Reflect.ownKeys(value)) {
+            if(metadata.has(key))continue;
+            const d=Object.getOwnPropertyDescriptor(value,key);
+            if(typeof key!=='string'||!d||!Object.hasOwn(d,'value')||typeof d.value==='function'){valid=false;continue;}
+            visit(d.value,value,['FunctionDeclaration','FunctionExpression'].includes(value.type)&&key==='body'?value:owner);
+        }
+    };
+    visit(program);
+    if(!valid||program?.type!=='Program'||!Array.isArray(program.body))return null;
+    // No unknown heap writer or callable value can alter a dense entry behind
+    // this slice. Uncalled bodies remain in the census and are never pruned.
+    for(const node of nodes) {
+        if(node.name==='img'||node.params?.includes('img')||node.decls?.some(d=>d.name==='img')||
+            node.type==='Identifier'&&['this','globalThis','window','self','eval','Function','Reflect','arguments','img'].includes(node.name))return null;
+        if(node.type==='Class'||node.type==='Object'||node.type==='Update'||
+            node.type==='Unary'&&node.op==='delete'||node.type==='Assignment'&&node.op!=='=')return null;
+        if(node.type==='If'&&(!Array.isArray(node.consequent)||!Object.hasOwn(node,'alternate')||node.alternate!==null&&!Array.isArray(node.alternate)))return null;
+        if(node.type==='ExpressionStatement'&&(!Object.hasOwn(node,'expr')||!node.expr||typeof node.expr!=='object'||Object.hasOwn(node,'expression')))return null;
+    }
+    return consumeSharedImageEntryEffects(program,sourceContext,(effect,effectsCurrent)=>{
+    const graph=createGraph();
+    for(const node of nodes) {
+        if(node.type==='Assignment'&&graph.isSdkNamespace(node.left))return null;
+        if(node.type==='Member'&&graph.isSdkNamespace(node)&&['image.create','SpriteKind.create','Math.round'].includes(path(node))) {
+            const parent=parents.get(node);if(parent?.type!=='Call'||parent.callee!==node)return null;
+        }
+    }
+    const env=new Map(),votes=new Map(),visits=new Map(),executed=new Map(),active=new Set();let failed=false,steps=0,registered=false;
+    const fail=()=>{failed=true;return unknown;};
+    const tick=()=>{if(++steps>100000)failed=true;return !failed;};
+    const returned=Symbol('entry-return');
+    const image=site=>({kind:'Image',site});
+    const scalar=value=>({kind:'scalar',value});
+    const number=value=>value?.kind==='scalar'&&typeof value.value==='number'&&Number.isFinite(value.value)?value.value:null;
+    const binding=(node,name=node.name)=>graph.bindingOf(node,name);
+    const declared=node=>graph.declarationCountAt(node)===1;
+    // Function declarations may only be reached through their immutable actual
+    // direct callers. Extraction, callbacks and unknown invocation refuse.
+    for(const node of nodes)if(node.type==='Identifier'&&graph.bindingKindsAt(node).has('function')) {
+        const parent=parents.get(node);
+        if(parent?.type!=='Call'||parent.callee!==node||!graph.immutableFunctionAt(node))return null;
+    }
+    const allWriters=new Map(),arrayUses=new Map();
+    const writer=(key,node)=>{if(!allWriters.has(key))allWriters.set(key,[]);allWriters.get(key).push(node);};
+    for(const node of nodes) {
+        if(node.type==='Assignment'&&node.left?.type==='Identifier')writer(binding(node.left),node);
+        if(node.type==='SpriteKindReset')writer(binding(node,node.name),node);
+        if(node.type==='Declaration')for(const d of node.decls)if(d.init)writer(binding(node,d.name),d);
+        if(node.type==='Identifier')for(const site of graph.possibleArrayAllocationsAt(node)) {
+            if(!arrayUses.has(site))arrayUses.set(site,[]);arrayUses.get(site).push(node);
+        }
+    }
+    const callers=new Map(),totals=new Map(),counting=new Set();
+    for(const node of nodes)if(node.type==='Call'&&node.callee?.type==='Identifier') {
+        const fn=graph.immutableFunctionAt(node.callee);if(fn){if(!callers.has(fn))callers.set(fn,[]);callers.get(fn).push(node);}
+    }
+    const entryCount=owner=>{
+        if(owner===program)return 1;
+        if(owner?.type!=='FunctionDeclaration')return Infinity;
+        if(totals.has(owner))return totals.get(owner);
+        if(counting.has(owner))return Infinity;counting.add(owner);let count=0;
+        for(const call of callers.get(owner)||[]) {
+            let parent=parents.get(call),conditional=false;
+            while(parent&&parent!==owners.get(call)){if(['If','While','For','ForOf','Switch','Conditional','Logical'].includes(parent.type))conditional=true;parent=parents.get(parent);}
+            count+=conditional?Infinity:entryCount(owners.get(call));if(count>100000){count=Infinity;break;}
+        }
+        counting.delete(owner);totals.set(owner,count);return count;
+    };
+    const done=node=>(executed.get(node)||0)===entryCount(owners.get(node))&&Number.isFinite(entryCount(owners.get(node)));
+    const mark=node=>executed.set(node,(executed.get(node)||0)+1);
+    // A stored handler is not executed here. Any subsequent read of a binding
+    // writable by a callback/reentrant entry has no captured scalar value.
+    const stableBinding=key=>(allWriters.get(key)||[]).every(done);
+    const stableArray=array=>{
+        for(const node of arrayUses.get(array.site)||[]) {
+            const parent=parents.get(node),grand=parents.get(parent),statement=parents.get(grand);
+            if(parent?.type==='Index'&&parent.object===node) {
+                const use=parents.get(parent);if(use?.type==='Assignment'&&use.left===parent||use?.type==='Update'||use?.type==='Unary'&&use.op==='delete')return false;
+                continue;
+            }
+            if(parent?.type==='Member'&&parent.object===node) {
+                const call=parents.get(parent);if(parent.name!=='push'||call?.type!=='Call'||call.callee!==parent||!done(call))return false;
+                continue;
+            }
+            if(parent?.type==='Assignment'&&parent.op==='='&&parent.right===node&&parent.left?.type==='Identifier')continue;
+            if(parent&&parent.init===node&&statement?.type==='Declaration')continue;
+            if(parent?.type==='Assignment'&&parent.left===node&&parent.op==='=')continue;
+            return false;
+        }
+        for(const [key,value]of env)if(value===array&&!stableBinding(key))return false;
+        return true;
+    };
+    const expr=node=>{
+        if(!tick())return unknown;
+        if(!node)return absent;
+        if(node.type==='Number'){if(!['string','number'].includes(typeof node.value)||typeof node.value==='string'&&!node.value.trim())return fail();const n=Number(node.value);return Number.isFinite(n)?scalar(n):fail();}
+        if(node.type==='String'||node.type==='Boolean')return scalar(node.value);
+        if(node.type==='FunctionExpression')return {kind:'closure',node};
+        if(node.type==='Member'&&effect(node,'leaf'))return {kind:'opaque-enum',site:node};
+        if(node.type==='Null'||node.type==='Undefined')return absent;
+        if(node.type==='Identifier'){if(!declared(node))return fail();const key=binding(node);return registered&&!stableBinding(key)?fail():env.get(key)??absent;}
+        if(node.type==='Template')return node.tag==='img'&&typeof node.value==='string'&&parseExactImgLiteral('img`'+node.value+'`')&&graph.typesAt(node).size===1&&graph.typesAt(node).has('Image')?image(node):fail();
+        if(node.type==='Array') {
+            if(!Array.isArray(node.items)||!graph.arrayAllocationsAt(node).includes(node))return fail();
+            const items=[];for(const item of node.items){const value=expr(item);if(value?.kind!=='Image')return fail();items.push(value);}
+            return {kind:'Array',site:node,items};
+        }
+        if(node.type==='Binary') {
+            const left=expr(node.left),right=expr(node.right),a=number(left),b=number(right);
+            if(a!==null&&b!==null&&['<','<=','>','>=','===','!=='].includes(node.op)) {
+                return scalar(node.op==='<'?a<b:node.op==='<='?a<=b:node.op==='>'?a>b:node.op==='>='?a>=b:node.op==='==='?a===b:a!==b);
+            }
+            if(a===null||b===null||!['+','-','%'].includes(node.op)) {
+                const types=graph.typesAt(node);return types.size&&[...types].every(type=>['Number','String','Boolean','Null','Undefined'].includes(type))?{kind:'opaque-scalar',site:node}:fail();
+            }
+            const value=node.op==='+'?a+b:node.op==='-'?a-b:a%b;return Number.isFinite(value)?scalar(value):fail();
+        }
+        if(node.type==='Unary'&&node.op==='!'){const value=expr(node.argument);return value?.kind==='scalar'&&typeof value.value==='boolean'?scalar(!value.value):fail();}
+        if(node.type==='Unary'&&['+','-'].includes(node.op)){const a=number(expr(node.argument));return a===null?fail():scalar(node.op==='-'?-a:a);}
+        if(node.type==='Index') {
+            const array=expr(node.object),index=number(expr(node.index));
+            return array?.kind==='Array'&&index!==null&&Number.isInteger(index)&&index>=0&&index<array.items.length?array.items[index]:fail();
+        }
+        if(node.type==='Assignment'&&node.op==='='&&node.left?.type==='Identifier') {
+            if(!declared(node.left))return fail();const value=expr(node.right);env.set(binding(node.left),value);mark(node);return value;
+        }
+        if(node.type==='Assignment'&&node.op==='='&&node.left?.type==='Member'&&effect(node,'write')) {
+            const receiver=expr(node.left.object),value=expr(node.right);return receiver?.kind==='private-text'&&value?.kind!=='Array'&&value?.kind!=='closure'?value:fail();
+        }
+        if(node.type==='Call') {
+            if(node.isNew||node.constructorCall||Object.hasOwn(node,'typeArguments')||!Array.isArray(node.args))return fail();
+            if(node.callee?.type==='Identifier') {
+                const fn=graph.immutableFunctionAt(node.callee);
+                if(!fn||node.args.length>fn.params.length||active.has(fn)||fn.parameterDefaults?.length||fn.optionalParams?.length)return fail();
+                const argumentsAtEntry=node.args.map(expr);if(argumentsAtEntry.some(value=>value?.kind==='Array'||value?.kind==='closure'))return fail();
+                active.add(fn);const locals=[];
+                for(const statement of fn.body||[])if(statement.type==='Declaration')for(const d of statement.decls)locals.push(binding(statement,d.name));
+                if(fn.params.length&&!fn.body?.length)return fail();
+                const parameters=fn.params.map(name=>binding(fn.body[0],name));locals.push(...parameters);
+                const saved=locals.map(key=>[key,env.has(key),env.get(key)]);for(const key of locals)env.delete(key);
+                parameters.forEach((key,index)=>env.set(key,argumentsAtEntry[index]??absent));
+                const result=body(fn.body);
+                for(const [key,had,value]of saved)if(had)env.set(key,value);else env.delete(key);
+                active.delete(fn);return result?.[returned]?result.value:result;
+            }
+            if(node.callee?.type!=='Member')return fail();
+            const api=path(node.callee);
+            const allowed=effect(node);
+            if(allowed) {
+                const receiver=allowed.kind==='disjoint-text'?expr(node.callee.object):null,args=node.args.map(expr);
+                if(args.some(value=>value?.kind==='Array'))return fail();
+                if(allowed.kind==='registration') {
+                    if(args.some((value,index)=>index!==allowed.callbackIndex&&value?.kind==='closure')||args[allowed.callbackIndex]?.kind!=='closure'||
+                        [...env.values()].some(value=>value?.kind==='Array'&&!stableArray(value)))return fail();
+                    registered=true;return {kind:'opaque-result',site:node};
+                }
+                if(args.some(value=>value?.kind==='closure'))return fail();
+                if(allowed.kind==='kind-allocation')return {kind:'opaque-kind',site:node};
+                if(allowed.kind==='round'){const n=number(args[0]);return n===null?fail():scalar(Math.round(n));}
+                if(allowed.kind==='private-text')return {kind:'private-text',site:node};
+                if(allowed.kind==='disjoint-text'&&receiver?.kind!=='private-text')return fail();
+                return {kind:'opaque-result',site:node};
+            }
+            const receiver=expr(node.callee.object),args=node.args.map(expr);
+            if(node.callee.name==='push'&&receiver?.kind==='Array'&&args.length&&args.every(value=>value?.kind==='Image')) {
+                receiver.items.push(...args);mark(node);return scalar(receiver.items.length);
+            }
+            if(node.callee.name==='clone'&&!args.length) {
+                const okay=receiver?.kind==='Image';votes.set(node,(votes.get(node)??true)&&okay);visits.set(node,(visits.get(node)||0)+1);
+                return okay?image(node):fail();
+            }
+            return fail();
+        }
+        return fail();
+    };
+    const body=statements=>{
+        if(!Array.isArray(statements))return fail();
+        for(const node of statements) {
+            if(!tick())return unknown;
+            if(node.type==='FunctionDeclaration')continue;
+            if(node.type==='SpriteKindReset') {
+                if(typeof node.name!=='string'||graph.declarationCountAt(node,node.name)!==1)return fail();
+                env.set(binding(node,node.name),absent);mark(node);continue;
+            }
+            if(node.type==='Declaration') {
+                if(node.kind!=='let'&&node.kind!=='const')return fail();
+                for(const d of node.decls){if(graph.declarationCountAt(node,d.name)!==1)return fail();env.set(binding(node,d.name),expr(d.init));if(d.init)mark(d);}
+            } else if(node.type==='ExpressionStatement') {
+                if(!Object.hasOwn(node,'expr')||!node.expr||typeof node.expr!=='object'||Object.hasOwn(node,'expression'))return fail();
+                expr(node.expr);
+            }
+            else if(node.type==='If') {
+                const test=expr(node.test);if(test?.kind!=='scalar'||typeof test.value!=='boolean')return fail();
+                const result=!test.value&&node.alternate===null?absent:body(test.value?node.consequent:node.alternate);if(result?.[returned])return result;
+            }
+            else if(node.type==='Return'){const value=expr(node.value);return value?.kind==='Array'?fail():{[returned]:true,value};}
+            else return fail();
+            if(failed)return unknown;
+        }
+        return absent;
+    };
+    body(program.body);
+    let expired=false;
+    return Object.freeze({has:call=>{
+        if(expired)return false;
+        if(!snapshot.current()||!effectsCurrent()){expired=true;return false;}
+        const expected=entryCount(owners.get(call));
+        return Number.isFinite(expected)&&expected>0&&votes.get(call)===true&&visits.get(call)===expected;
+    }});
+    });
 }

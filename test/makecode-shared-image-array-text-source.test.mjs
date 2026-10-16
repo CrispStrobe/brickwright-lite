@@ -254,3 +254,240 @@ test('fixed music command proof refuses method values returned stored captured o
     const b=boundary(fixture('function unused(value:any){return music.play(value,music.PlaybackMode.InBackground);}'+array+'let selected=pictures[0];'));
     assert.ok(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),'the actual direct callee remains valid inside a complete retained return expression; no playable or return-value fact is issued');
 });
+
+
+import {sourceImageArrayCloneEffects,analyseSourceValueProducers} from '../overlay/scratch-gui/src/lib/bw-makecode/source-value-producers.js';
+const entryNodes=program=>{
+    const out=[],seen=new Set(),visit=node=>{if(!node||typeof node!=='object'||seen.has(node))return;seen.add(node);if(!Array.isArray(node))out.push(node);for(const key of Object.keys(node))if(!['originalBody','parameterDefaults','paramTypes','bwProcedureConstraintSource'].includes(key))visit(node[key]);};visit(program);return out;
+};
+const entryClones=program=>entryNodes(program).filter(node=>node.type==='Call'&&node.callee?.type==='Member'&&node.callee.name==='clone');
+const imageEntrySource=array+`let ordinary: Image[];
+function initialize(){let temp:Image[]=[];temp.push(pictures[0].clone());ordinary=temp;}
+function use(){let result=ordinary[((Math.round(0)%(0+1))+(0+1))%(0+1)].clone();}
+initialize();use();`;
+
+test('Image Array clone entry query proves actual startup push aliases without changing generic missing-element facts',()=>{
+    const program=parse(imageEntrySource),clones=entryClones(program);assert.equal(clones.length,2);
+    const commands=entryNodes(program).filter(node=>node.type==='ExpressionStatement');assert.ok(commands.length>=4);
+    assert.ok(commands.every(node=>Object.hasOwn(node,'expr')&&!Object.hasOwn(node,'expression')),'actual parser command field is expr');
+    const proof=sourceImageArrayCloneEffects(program);assert.ok(proof);assert.ok(clones.every(call=>proof.has(call)));
+    const read=clones[1].callee.object,ordinary=analyseSourceValueProducers(program,{arrayValues:true,parenthesized:true});
+    assert.ok(ordinary.typesAt(read).size!==1||!ordinary.typesAt(read).has('Image'),'the effect query must not mint generic exact Image facts');
+    const generic=parse('let xs=['+image+'];let value=xs[0];'),genericGraph=analyseSourceValueProducers(generic,{arrayValues:true,parenthesized:true});
+    const genericRead=entryNodes(generic).find(node=>node.type==='Index');assert.ok(genericGraph.typesAt(genericRead).has('Undefined'),'ordinary known Array read keeps missing-element Undefined');
+    const renamed=parse(imageEntrySource.replaceAll('pictures','authoredImages').replaceAll('ordinary','view'));
+    const renamedProof=sourceImageArrayCloneEffects(renamed);assert.ok(entryClones(renamed).every(call=>renamedProof.has(call)),'author names confer no permission');
+    assert.equal(proof.has({...clones[1]}),false,'copied call identity has no entry observation');
+});
+test('public shared transport retains ordinary startup Array allocation push reads and clone positions',()=>{
+    const b=boundary(fixture(imageEntrySource)),f=finish(b);assert.deepEqual([...f.resource.frames.keys()],['pictures']);
+    const r=convert(b.prepared.files);clean(r);assert.match(r.code,/new array reference/);assert.match(r.code,/push/);
+    assert.ok(frames(r.code).length>0,'only the actual canonical literal backing has resource authority');
+    const creator=new Creator();creator.parse(r.code);record({stage:'image-entry-public-Creator',project:creator.project,channels:channels(creator)});clean(creator);
+    assert.ok(creator.project.targets.some(target=>Object.values(target.blocks).some(node=>node.opcode==='arrays_mutateReference')));
+});
+test('Image clone entry facts require initialization at every actual immutable caller',()=>{
+    for(const tail of ['initialize();use();use();','function second(){use();}initialize();use();second();']){
+        const p=parse(imageEntrySource.slice(0,imageEntrySource.lastIndexOf('initialize();use();'))+tail),proof=sourceImageArrayCloneEffects(p);
+        assert.ok(proof);assert.ok(entryClones(p).every(call=>proof.has(call)),tail);
+    }
+    for(const tail of ['use();initialize();use();','initialize();use();ordinary=[];use();','function second(){use();}second();initialize();use();']){
+        const p=parse(imageEntrySource.slice(0,imageEntrySource.lastIndexOf('initialize();use();'))+tail),proof=sourceImageArrayCloneEffects(p);
+        assert.ok(!proof||!proof.has(entryClones(p).at(-1)),tail);
+    }
+});
+test('Image clone entry facts refuse missing sparse mixed shrink dynamic and unproved paths',()=>{
+    for(const source of [
+        array+'let ordinary:Image[];function use(){ordinary[0].clone();}use();',
+        array+'let ordinary:Image[]=[];ordinary[0].clone();',
+        array+'let ordinary:Image[]=[];ordinary.push(pictures[0]);ordinary[1].clone();',
+        array+'let ordinary:any[]=[pictures[0],"bad"];ordinary[0].clone();',
+        imageEntrySource.replace('ordinary=temp;','temp.pop();ordinary=temp;'),
+        imageEntrySource.replace('ordinary=temp;','temp.length=0;ordinary=temp;'),
+        imageEntrySource.replace('ordinary=temp;','temp[0]=unknown();ordinary=temp;'),
+        imageEntrySource.replace('Math.round(0)','unknown()'),
+        imageEntrySource.replace('initialize();use();','let escaped=use;initialize();use();'),
+        imageEntrySource.replace('initialize();use();','initialize();unknown();use();'),
+        imageEntrySource.replace('initialize();use();','function recurse(){recurse();use();}initialize();recurse();'),
+        imageEntrySource.replace('initialize();use();','controller.A.onEvent(1,()=>use());initialize();use();'),
+        imageEntrySource.replace('ordinary=temp;','return temp;'),
+        imageEntrySource.replace('ordinary=temp;','temp.push(unknown());ordinary=temp;'),
+        'function img(){return 1;}'+imageEntrySource,
+        imageEntrySource+'function unused(){Math.round=unknown;}',
+        imageEntrySource.replace('initialize();use();','let extracted=image.create;initialize();use();')]){
+        const p=parse(source),proof=sourceImageArrayCloneEffects(p);assert.ok(!proof||!proof.has(entryClones(p).at(-1)),source);
+    }
+});
+test('Image clone entry expiry is sticky for physical edits and restored descriptor shapes',()=>{
+    const p=parse(imageEntrySource),call=entryClones(p)[1],proof=sourceImageArrayCloneEffects(p);assert.ok(proof.has(call));
+    const args=call.args;call.args=[];assert.equal(proof.has(call),false);call.args=args;assert.equal(proof.has(call),false);
+    const q=parse(imageEntrySource),other=entryClones(q)[1];assert.equal(proof.has(other),false);
+    const fresh=sourceImageArrayCloneEffects(q);assert.ok(fresh.has(other),'new current parse requires an independent proof');
+});
+test('Image clone entry admission rejects accessors cycles shared syntax and caller Array methods before graph analysis',()=>{
+    for(const mutate of [p=>Object.defineProperty(p,'extra',{get(){throw Error('not read');}}),p=>{p.extra=p;},p=>{p.body.push(p.body[0]);},p=>{p.body.forEach=()=>{throw Error('not called');};},p=>{Object.setPrototypeOf(p.body,null);},p=>{p.body.forEach=0;},p=>{p.body.find(node=>node.type==='FunctionDeclaration').params.includes=0;},p=>{const command=p.body.find(node=>node.type==='ExpressionStatement');command.expression=command.expr;delete command.expr;}]){
+        const p=parse(imageEntrySource);mutate(p);assert.equal(sourceImageArrayCloneEffects(p),null);
+    }
+    const p=parse('let kind=SpriteKind.create();let ordinary:Image[]=['+image+'];ordinary[kind].clone();'),proof=sourceImageArrayCloneEffects(p);
+    assert.ok(!proof||entryClones(p).every(call=>!proof.has(call)),'stateful kind result must never be invented as constant zero');
+});
+
+import {prepareSharedImageEntryEffects,currentSharedImageEntryEffect,consumeSharedImageEntryEffects} from '../overlay/scratch-gui/src/lib/bw-makecode/shared-image-array-source-effects.js';
+test('Image entry effect profile is current private syntax data and cannot be supplied or retained as a grant',()=>{
+    const p=parse('Buffer.fromHex("0102");'+imageEntrySource),call=entryNodes(p).find(node=>node.type==='Call'&&node.callee?.name==='fromHex');
+    assert.equal(sourceImageArrayCloneEffects(p,{}),null,'forged Text source context is never adopted');
+    for(const prefix of ['let alias=controller.A;', 'let alias=music.PlaybackMode;'])assert.equal(sourceImageArrayCloneEffects(parse(prefix+imageEntrySource)),null,'nested SDK namespace values cannot escape the closed profile');
+    for(const suffix of ['let method=label.setText;', 'function unused(){label.setText=unknown;}']) {
+        const b=boundary(fixture(imageEntrySource+'let label=textsprite.create("x");'+suffix));
+        assert.equal(sourceImageArrayCloneEffects(b.normalized,b.context),null,'proved Text methods cannot be extracted or overwritten');
+    }
+    assert.equal(currentSharedImageEntryEffect(p,{},call),null);
+    const profile=prepareSharedImageEntryEffects(p);assert.ok(profile);
+    assert.equal(currentSharedImageEntryEffect({...p},profile,call),null,'same shape is not same Program');
+    assert.equal(currentSharedImageEntryEffect(p,profile,{...call}),null,'copied call has no effect');
+    let retained;
+    const result=consumeSharedImageEntryEffects(p,null,lookup=>{retained=lookup;assert.equal(lookup(call).kind,'disjoint-literal-buffer');return 7;});
+    assert.equal(result,7);assert.equal(retained(call),null,'lookup has only synchronous derivation lifetime');
+    const old=call.args;call.args=[];assert.equal(currentSharedImageEntryEffect(p,profile,call),null);call.args=old;
+    assert.equal(currentSharedImageEntryEffect(p,profile,call),null,'restoring syntax cannot revive profile');
+    const q=parse(imageEntrySource);assert.equal(consumeSharedImageEntryEffects(q,null,()=>{q.body.push({type:'Return',value:{type:'Undefined'}});return 1;}),null,'end fence refuses a mutated derivation');
+});
+test('Image entry preserves callbacks and rejects their shared scalar writes and yielding paths',()=>{
+    const head=imageEntrySource.slice(0,imageEntrySource.lastIndexOf('initialize();use();'));
+    const harmless=parse(head+'initialize();info.onCountdownEnd(()=>{let unrelated=1;});use();'),okay=sourceImageArrayCloneEffects(harmless);
+    assert.ok(okay?.has(entryClones(harmless).at(-1)),'retaining a stored handler is not executing or deleting its body');
+    for(const tail of [
+        'initialize();let index=0;info.onCountdownEnd(()=>{index=9;});ordinary[index].clone();',
+        'initialize();let index=0;info.onCountdownEnd(()=>{index=9;});music.play(1,music.PlaybackMode.UntilDone);ordinary[index].clone();',
+        'initialize();info.onCountdownEnd(()=>{ordinary=[];});use();',
+        'initialize();info.onCountdownEnd(()=>{unknown(ordinary);});use();',
+        'initialize();controller.A.onEvent(2049,()=>use());use();',
+        'initialize();music.play(1,music.PlaybackMode.InBackground);use();']){
+        const p=parse(head+tail),proof=sourceImageArrayCloneEffects(p);assert.ok(!proof||!proof.has(entryClones(p).at(-1)),tail);
+    }
+    const source=head+'initialize();info.onCountdownEnd(()=>{unknown();});use();',b=boundary(fixture(source));
+    assert.equal(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),null,'an unrelated unknown handler body is retained and still refuses the whole F effect census');
+    const later=parse(head+'initialize();use();unknown();'),prior=sourceImageArrayCloneEffects(later);
+    assert.ok(prior?.has(entryClones(later).at(-1)),'a completed exact earlier entry does not turn a later unknown call into a no-op');
+    const f=boundary(fixture(head+'initialize();use();unknown();'));assert.equal(prepareSharedImageArrayTransport(f.normalized,{sourceContext:f.context}),null);
+});
+test('Image entry follows ordered startup generations and a constant registration guard without callback value facts',()=>{
+    const source=`let authored:Image[]=[${image}];let first:Image[];let second:Image[];let ordinary:Image[];
+function firstStartup(){let temp:Image[]=[];temp.push(authored[0].clone());first=temp;secondStartup();}
+function secondStartup(){let temp:Image[]=[];temp.push(first[0].clone());second=temp;lastStartup();}
+function lastStartup(){let temp:Image[]=[];temp.push(second[0].clone());ordinary=temp;
+image.setPalette(Buffer.fromHex("000000"));info.onCountdownEnd(()=>{let unrelated=1;});registerOverlap();
+controller.A.onEvent(2049,()=>{let unrelated=2;});court();}
+function registerOverlap(){if(!((0+0)<(0+1)))return;sprites.onOverlap(SpriteKind.Projectile,SpriteKind.Player,(a:Sprite,b:Sprite)=>{let unrelated=3;});}
+function court(){scene.setBackgroundImage(ordinary[((Math.round(0)%(0+1))+(0+1))%(0+1)].clone());}
+firstStartup();`;
+    const p=parse(source),proof=sourceImageArrayCloneEffects(p);assert.ok(proof);assert.equal(entryClones(p).length,4);
+    assert.ok(entryClones(p).every(call=>proof.has(call)),'each real allocation/push/alias generation precedes this exact finite entry');
+    const reversed=parse(source.replace('registerOverlap();','court();registerOverlap();').replace('firstStartup();','court();firstStartup();'));
+    assert.ok(!sourceImageArrayCloneEffects(reversed)?.has(entryClones(reversed).at(-1)),'early entry cannot borrow a later startup');
+    const reset=parse(imageEntrySource),last=reset.body.at(-1);assert.equal(last.type,'ExpressionStatement');
+    reset.body.splice(reset.body.length-1,0,{type:'SpriteKindReset',name:'ordinary'});
+    assert.ok(!sourceImageArrayCloneEffects(reset)?.has(entryClones(reset).at(-1)),'actual reset writes Undefined before the receiver read');
+    const kind=boundary(fixture('namespace SpriteKind {export const Goal=SpriteKind.create();}'+imageEntrySource));
+    assert.ok(entryNodes(kind.normalized).some(node=>node.type==='SpriteKindReset'));
+    const kindProof=sourceImageArrayCloneEffects(kind.normalized,kind.context);assert.ok(kindProof?.has(entryClones(kind.normalized).at(-1)),'genuine parser/namespace kind reset stays in its actual binding and order');
+    const callback=parse(source.replace('let unrelated=2;','court();'));
+    assert.ok(!sourceImageArrayCloneEffects(callback)?.has(entryClones(callback).at(-1)),'callback-owned court entry cannot borrow startup observations');
+});
+
+
+import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from '../overlay/scratch-gui/src/lib/bw-makecode/procedure-constraint-source.js';
+test('Image entry observes actual procedure metadata without delegating to its prefix operation',()=>{
+    const p=parse(imageEntrySource),prepared=prepareProcedureConstraintSource(p);
+    p.bwProcedureConstraintSource=procedureConstraintAstMetadata(prepared);
+    assert.equal(typeof p.bwProcedureConstraintSource.prefix,'function');
+    const proof=sourceImageArrayCloneEffects(p);assert.ok(proof);
+    assert.ok(entryClones(p).every(call=>proof.has(call)));
+    let calls=0;
+    const q=parse(imageEntrySource),prefix=()=>{calls++;throw Error('metadata must not execute');};
+    q.bwProcedureConstraintSource={prefix};
+    const qProof=sourceImageArrayCloneEffects(q);assert.ok(qProof?.has(entryClones(q).at(-1)));
+    prefix.unconsumed={arbitrary:1};
+    prefix.toJSON=()=>{calls++;throw Error('opaque identity must not serialize');};
+    assert.ok(qProof.has(entryClones(q).at(-1)),'opaque function own fields cannot affect consumed syntax or effects');
+    assert.equal(calls,0);
+});
+test('Image entry metadata cannot supply missing entries or executable host functions',()=>{
+    let calls=0;const prefix=()=>{calls++;return true;};
+    for(const source of [imageEntrySource.replace('initialize();use();','use();'),
+        imageEntrySource.replace('Math.round(0)','unknown()'),
+        imageEntrySource.replace('ordinary=temp;','ordinary=temp;unknown();')]){
+        const p=parse(source);p.bwProcedureConstraintSource={prefix};
+        assert.ok(!sourceImageArrayCloneEffects(p)?.has(entryClones(p).at(-1)),source);
+    }
+    const p=parse(imageEntrySource);p.bwProcedureConstraintSource={prefix};
+    p.body.at(-1).expr.callee=prefix;
+    assert.equal(prepareSharedImageEntryEffects(p),null,'same metadata identity has no executable authority');
+    assert.equal(sourceImageArrayCloneEffects(p),null);assert.equal(calls,0);
+});
+test('Image entry opaque metadata identity and descriptor changes expire permanently',()=>{
+    for(const mutation of ['function','container','descriptor']){
+        const p=parse(imageEntrySource),prefix=()=>[];
+        p.bwProcedureConstraintSource={prefix};
+        const call=entryClones(p).at(-1),proof=sourceImageArrayCloneEffects(p),profile=prepareSharedImageEntryEffects(p);
+        assert.ok(proof?.has(call));assert.ok(profile);
+        const old=p.bwProcedureConstraintSource,d=Object.getOwnPropertyDescriptor(old,'prefix');
+        if(mutation==='function')old.prefix=()=>[];
+        else if(mutation==='container')p.bwProcedureConstraintSource={prefix};
+        else Object.defineProperty(old,'prefix',{...d,writable:false});
+        assert.equal(currentSharedImageEntryEffect(p,profile,p,'current'),null);assert.equal(proof.has(call),false);
+        p.bwProcedureConstraintSource=old;Object.defineProperty(old,'prefix',d);
+        assert.equal(currentSharedImageEntryEffect(p,profile,p,'current'),null);assert.equal(proof.has(call),false);
+    }
+    const p=parse(imageEntrySource);p.bwProcedureConstraintSource={prefix:()=>[]};
+    const proof=sourceImageArrayCloneEffects(p);assert.equal(proof.has({...entryClones(p).at(-1)}),false);
+});
+test('Image entry opaque observation does not widen the older source-origin snapshot',()=>{
+    let calls=0;const f=fixture(),selected=arcadeProjectSource(f.prepared.files);
+    selected.unconsumed=()=>{calls++;return true;};
+    assert.equal(capturePreparedSharedImageSources(f.prepared.files,selected),null);
+    assert.equal(calls,0);
+});
+
+test('Image entry consumed metadata containers remain observed data rather than opaque functions',()=>{
+    let calls=0;const opaque=function(){calls++;};
+    for(const key of ['optionalParams','parameterDefaults','typeParameters','originalBody','parameterProperties','paramTypes','returnType','assertedType']){
+        const p=parse(imageEntrySource),fn=p.body.find(node=>node.type==='FunctionDeclaration');fn[key]=opaque;
+        assert.equal(prepareSharedImageEntryEffects(p),null,key);
+        assert.equal(sourceImageArrayCloneEffects(p),null,key);
+        Object.defineProperty(opaque,'length',{value:1,configurable:true});
+        assert.equal(prepareSharedImageEntryEffects(p),null,key+' remains rejected after opaque ownfield edit');
+        Object.defineProperty(opaque,'length',{value:0,configurable:true});
+    }
+    for(const annotation of [{text:opaque},{isArray:opaque}]){
+        const p=parse(imageEntrySource),fn=p.body.find(node=>node.type==='FunctionDeclaration');
+        fn.paramTypes={unused:annotation};assert.equal(prepareSharedImageEntryEffects(p),null);
+    }
+    const p=parse(imageEntrySource),fn=p.body.find(node=>node.type==='FunctionDeclaration');
+    fn.optionalParams=[];fn.parameterDefaults=[];fn.paramTypes={unused:{text:'number',isArray:false}};
+    const profile=prepareSharedImageEntryEffects(p);assert.ok(profile);
+    fn.optionalParams.push('unused');assert.equal(currentSharedImageEntryEffect(p,profile,p,'current'),null);
+    fn.optionalParams.pop();assert.equal(currentSharedImageEntryEffect(p,profile,p,'current'),null);
+    const q=parse(imageEntrySource+'info.onCountdownEnd((x=1)=>{let unrelated=1;});');
+    const callback=entryNodes(q).find(node=>node.type==='FunctionExpression');assert.ok(callback);
+    const hidden=()=>{calls++;};hidden.toJSON=()=>{calls++;return true;};
+    callback.body[0].bwProcedureConstraintSource={prefix:hidden};
+    assert.equal(prepareSharedImageEntryEffects(q),null,'all executable-body descendants remain host-function-free, including ignored metadata');
+    assert.equal(sourceImageArrayCloneEffects(q),null);
+    for(const withActualThrow of [false,true]){
+        const r=parse(imageEntrySource+(withActualThrow?'function unused(){throw 1;}':''));
+        r.bwProcedureConstraintSource={prefix:hidden};
+        if(!withActualThrow)r.sourceScalarDeclarations={type:'ThrowStatement'};
+        assert.equal(prepareSharedImageEntryEffects(r),null,'whole-Program serializer path cannot consume opaque root metadata');
+        assert.equal(sourceImageArrayCloneEffects(r),null);
+    }
+    for(const domain of ['consumed','body','whole-program']){
+        const r=parse(imageEntrySource+(domain==='whole-program'?'function unused(){throw 1;}':''));
+        if(domain==='consumed')r.body.find(node=>node.type==='FunctionDeclaration').paramTypes={unused:{text:1n}};
+        else if(domain==='body')r.body[0].bwProcedureConstraintSource={unconsumed:1n};
+        else r.sourceScalarDeclarations=1n;
+        assert.equal(prepareSharedImageEntryEffects(r),null,domain+' must refuse before serializer helpers');
+        assert.equal(sourceImageArrayCloneEffects(r),null);
+    }
+    assert.equal(calls,0);
+});
