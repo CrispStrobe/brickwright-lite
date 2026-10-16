@@ -88,13 +88,49 @@ test('actual shared Image aliases clones equal resources and ordinary Arrays sur
         const roleNames=[...Object.keys(expected),'first','again','copy','independent','ordinary'];
         const roles={};
         for(const name of roleNames){
-            const owners=run.creator.project.targets.flatMap(target=>Object.entries(target.variables||{}).filter(([,v])=>v[0]===name).map(([id])=>({isStage:target.isStage,name:target.name,id,writerBlocks:Object.entries(target.blocks||{}).filter(([,b])=>b.opcode==='data_setvariableto'&&b.fields?.VARIABLE?.[1]===id).map(([blockId,b])=>({blockId,block:b}))})));
+            const owners=run.creator.project.targets.flatMap(target=>Object.entries(target.variables||{}).filter(([,v])=>v[0]===name).map(([id])=>({isStage:target.isStage,name:target.name,id,writerBlocks:run.creator.project.targets.flatMap(writerOwner=>Object.entries(writerOwner.blocks||{}).filter(([,b])=>b.opcode==='data_setvariableto'&&b.fields?.VARIABLE?.[1]===id).map(([blockId,b])=>({blockId,block:b,writerOwner:{isStage:writerOwner.isStage,name:writerOwner.name}})))})));
             out.json('actual-role-candidates-'+name+'.json',owners);
             assert.equal(owners.length,1,'unique actual Creator variable '+name);const owner=owners[0];
             const targets=run.vm.runtime.targets.filter(t=>t.isOriginal!==false&&t.isStage===owner.isStage&&t.getName()===owner.name);
             assert.equal(targets.length,1,'same unique actual stage/name owner '+name);const target=targets[0],variable=target.variables[owner.id];
-            assert.ok(variable&&variable.name===name,'same actual variable id and owner '+name);assert.ok(owner.writerBlocks.length,'actual connected owner writer '+name);
-            for(const writer of owner.writerBlocks)assert.equal(target.blocks.getBlock(writer.blockId)?.fields?.VARIABLE?.id,owner.id,'same actual runtime writer variable id');
+            assert.ok(variable&&variable.name===name,'same actual variable id and owner '+name);assert.ok(owner.writerBlocks.length,'actual connected variable writer '+name);
+            for(const [writerIndex,writer]of owner.writerBlocks.entries()){
+                const creatorOwners=run.creator.project.targets.filter(t=>t.isStage===writer.writerOwner.isStage&&t.name===writer.writerOwner.name);
+                const runtimeOwners=run.vm.runtime.targets.filter(t=>t.isOriginal!==false&&t.isStage===writer.writerOwner.isStage&&t.getName()===writer.writerOwner.name);
+                assert.equal(creatorOwners.length,1);assert.equal(runtimeOwners.length,1);const sourceOwner=creatorOwners[0],actualOwner=runtimeOwners[0];
+                const actualWriter=actualOwner.blocks.getBlock(writer.blockId),stageOwners=run.vm.runtime.targets.filter(t=>t.isStage);assert.equal(stageOwners.length,1);
+                // Guarded Target.lookupVariableById semantics: local table first,
+                // then Stage globals for a non-stage target. No same-name lookup.
+                const local=Object.hasOwn(actualOwner.variables,owner.id),resolved=local?actualOwner.variables[owner.id]:!actualOwner.isStage&&Object.hasOwn(stageOwners[0].variables,owner.id)?stageOwners[0].variables[owner.id]:undefined;
+                const chain=[];let cursor=writer.blockId,issue=null;const seen=new Set();
+                while(cursor){
+                    if(seen.has(cursor)){issue='CYCLIC_PARENT_CHAIN';break;}seen.add(cursor);
+                    const original=sourceOwner.blocks[cursor],actual=actualOwner.blocks.getBlock(cursor);
+                    if(!original||!actual){issue='MISSING_PHYSICAL_CHAIN_BLOCK';break;}
+                    const incoming=[];
+                    for(const [parentId,b]of Object.entries(sourceOwner.blocks)){
+                        if(b.next===cursor)incoming.push({parentId,kind:'next'});
+                        for(const [input,socket]of Object.entries(b.inputs||{}))if(Array.isArray(socket)&&socket.slice(1).some(value=>value===cursor))incoming.push({parentId,kind:'input',input});
+                    }
+                    const runtimeIncoming=[];
+                    for(const [parentId,b]of Object.entries(actualOwner.blocks._blocks)){
+                        if(b.next===cursor)runtimeIncoming.push({parentId,kind:'next'});
+                        for(const [input,socket]of Object.entries(b.inputs||{}))if(socket.block===cursor||socket.shadow===cursor)runtimeIncoming.push({parentId,kind:'input',input});
+                    }
+                    const edgeKey=edge=>JSON.stringify(edge);incoming.sort((a,b)=>edgeKey(a).localeCompare(edgeKey(b)));runtimeIncoming.sort((a,b)=>edgeKey(a).localeCompare(edgeKey(b)));
+                    chain.push({id:cursor,original,actual,incoming,runtimeIncoming});
+                    if(JSON.stringify(incoming)!==JSON.stringify(runtimeIncoming)){issue='CURRENT_RUNTIME_INCOMING_EDGE_MISMATCH';break;}
+                    if(actual.opcode!==original.opcode||actual.parent!==original.parent||actual.next!==original.next){issue='CURRENT_RUNTIME_CHAIN_MISMATCH';break;}
+                    if(original.parent){if(incoming.length!==1||incoming[0].parentId!==original.parent){issue='NONUNIQUE_ACTUAL_PARENT_EDGE';break;}}
+                    else if(incoming.length||!original.topLevel||original.opcode!=='arcade_whenSourceStarts'){issue='NOT_CURRENT_SOURCE_ENTRY_ROOT';break;}
+                    cursor=original.parent;
+                }
+                const proof={variableID:owner.id,cellOwner:{isStage:target.isStage,name:target.getName(),runtimeTargetId:target.id},writerOwner:{...writer.writerOwner,runtimeTargetId:actualOwner.id},actualWriter,scopeResolution:local?'local':'stage',resolvedIsExactRoleCell:resolved===variable,parentChain:chain,issue};
+                out.json('actual-writer-proof-'+name+'-'+writerIndex+'.json',proof);
+                assert.equal(actualWriter?.fields?.VARIABLE?.id,owner.id,'same actual runtime writer variable id');assert.equal(actualWriter.fields.VARIABLE.name,'VARIABLE');assert.equal(actualWriter.fields.VARIABLE.value,name);
+                assert.equal(resolved,variable,'actual writer resolves the exact role variable object');assert.equal(issue,null,'unique physical writer chain reaches actual source entry');
+                writer.runtimeWriterOwnerId=actualOwner.id;writer.scopeResolution=proof.scopeResolution;writer.resolvedIsExactRoleCell=true;writer.parentChain=chain.map(row=>({id:row.id,opcode:row.actual.opcode,incoming:row.incoming}));
+            }
             roles[name]={...owner,runtimeTargetId:target.id,variable};
         }
         out.json('actual-role-bindings.json',Object.fromEntries(Object.entries(roles).map(([name,{variable,...row}])=>[name,row])));
