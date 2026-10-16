@@ -122,3 +122,16 @@ test('the real root constraint protocol is retained separately from executable b
  const prepared=prepareProcedureConstraintSource(parse('let values:number[]=[];'));assert.deepEqual(prepared.diagnostics,[]);const metadata=procedureConstraintAstMetadata(prepared),input={...prepared.program,bwProcedureConstraintSource:metadata};const result=lower(input);assert.equal(temporaryCount(result),0);assert.equal(result.bwProcedureConstraintSource,metadata);assert.equal(result.bwProcedureConstraintSource.prefix,prepared.prefix);assert.equal(result.body[0].decls[0].init.type,'Array');
  const changed=parse('probe();let values:number[]=[];');changed.bwProcedureConstraintSource=metadata;const after=lower(changed,{lowerArrayMap:node=>{if(node.type==='Call'&&node.callee?.name==='probe')changed.bwProcedureConstraintSource=Object.freeze({prefix:prepared.prefix});return null;}});assert.ok(temporaryCount(after)>0,'replaced protocol envelope expires currentness');
 });
+
+
+test('a lowering hook cannot borrow a known statement for a foreign empty literal',()=>{
+ const input=parse('probe();let values=[];'),statement=input.body[1],foreign={type:'Array',items:[]};let observed;
+ const result=lower(input,{lowerArrayMap:(node,{expression})=>{if(node.type==='Call'&&node.callee?.name==='probe')observed=expression(foreign,statement);return null;}});
+ assert.ok(observed);assert.equal(observed.prefix.length,1);assert.equal(observed.prefix[0].decls[0].init.items.length,0);assert.equal(observed.value.type,'Identifier');assert.equal(result.body[1].decls[0].init,statement.decls[0].init);assert.equal(temporaryCount(result),0);
+});
+
+test('the genuine literal stays bound to its own actual statement through the hook helper',()=>{
+ const input=parse('probe();let values=[];'),statement=input.body[1],literal=statement.decls[0].init;let observed;
+ const result=lower(input,{lowerArrayMap:(node,{expression})=>{if(node.type==='Call'&&node.callee?.name==='probe')observed=expression(literal,statement);return null;}});
+ assert.ok(observed);assert.deepEqual(observed.prefix,[]);assert.equal(observed.value,literal);assert.equal(result.body[1].decls[0].init,literal);assert.equal(temporaryCount(result),0);
+});

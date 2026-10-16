@@ -19,7 +19,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
     };
     // Identity/position facts only. These never grant Array element/value types.
     // Keep unsupported scopes and every non-statement expression on the old path.
-    const directEmptyStatements=new WeakSet();let currentEmptyStatementProof=()=>false;
+    const directEmptyStatements=new WeakMap();let currentEmptyStatementProof=()=>false;
     const prepareDirectEmptyStatements=()=>{
         const knownSyntax=new Set(['Program','Declaration','FunctionDeclaration','FunctionExpression','Block','If','While','For','ExpressionStatement','Return','Break','Continue','Array','Object','Identifier','Number','String','Template','Boolean','Null','Undefined','Binary','Logical','Unary','Update','Assignment','Member','Index','Call','Conditional','LegacyParsedValue','LegacyJsonValue','NativeArrayAccess']);
         const occurrences=new Map(),nodes=[],statements=new Set(),bodyLists=new Set(),active=new Set(),physical=[];let closed=true;
@@ -76,11 +76,11 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
             if(!unique(st)||protocol(st))continue;
             if(st.type==='Declaration'&&['let','const'].includes(st.kind)&&st.decls?.length===1){
                 const decl=st.decls[0],proof=bindingAt(st,decl.name);
-                if(unique(decl)&&typeof decl.name==='string'&&!protocol(decl)&&plainEmpty(decl.init)&&proof?.kind==='variable'&&proof.records.length===1&&proof.records[0].st===st&&proof.records[0].decl===decl)directEmptyStatements.add(st);
+                if(unique(decl)&&typeof decl.name==='string'&&!protocol(decl)&&plainEmpty(decl.init)&&proof?.kind==='variable'&&proof.records.length===1&&proof.records[0].st===st&&proof.records[0].decl===decl)directEmptyStatements.set(st,decl.init);
             }
             if(st.type==='ExpressionStatement'&&st.expr?.type==='Assignment'&&st.expr.op==='='&&st.expr.left?.type==='Identifier'){
                 const expr=st.expr,proof=bindingAt(expr.left,expr.left.name);
-                if(unique(expr)&&unique(expr.left)&&!protocol(expr)&&!protocol(expr.left)&&plainEmpty(expr.right)&&proof&&(proof.kind==='parameter'||proof.kind==='variable'&&proof.records.length===1&&proof.records[0].st.kind==='let'))directEmptyStatements.add(st);
+                if(unique(expr)&&unique(expr.left)&&!protocol(expr)&&!protocol(expr.left)&&plainEmpty(expr.right)&&proof&&(proof.kind==='parameter'||proof.kind==='variable'&&proof.records.length===1&&proof.records[0].st.kind==='let'))directEmptyStatements.set(st,expr.right);
             }
         }
         // Lowering callbacks may edit the original tree. A previous binding or
@@ -90,7 +90,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
             return row.keys.every(key=>{const before=row.descriptors[key],after=Object.getOwnPropertyDescriptor(row.value,key);return after&&Object.hasOwn(after,'value')&&Object.is(before.value,after.value)&&before.enumerable===after.enumerable&&before.configurable===after.configurable&&before.writable===after.writable;});
         });
     };
-    const directEmpty=st=>directEmptyStatements.has(st)&&currentEmptyStatementProof();
+    const directEmpty=(st,node)=>directEmptyStatements.get(st)===node&&currentEmptyStatementProof();
     // A failed/malformed lexical census cannot authorize the shortcut. Existing
     // lowering and its diagnostics remain the authority for all refused cases.
     try{prepareDirectEmptyStatements();}catch(_){/* keep existing staging */}
@@ -213,7 +213,9 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
             // Keep every existing value-lowering hook/resource protocol above.
             // Only the allocation transport is omitted, at this exact current
             // statement/literal position after callback currentness is checked.
-            if(directStatement&&directEmpty(directStatement))return {prefix:[],value:node};
+            if(directStatement&&directEmpty(directStatement,node))return {prefix:[],value:node};
+            // Array.map supplies an index as its second argument, never an
+            // actual statement/literal pair; it cannot authorize this shortcut.
             const items=node.items.map(expression);
             changed=true;
             const prefix=[],array=save({...node,items:[]},prefix);
