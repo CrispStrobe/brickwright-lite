@@ -1,3 +1,37 @@
+## Code conversion: preserve newer editor ownership — 2026-10-16
+
+PROPOSED — SPIKE integration follow-up, branch
+`lane/code-conversion-editor-ownership-claim-20261016`. Merge this claim before
+implementation. Own the narrow conversion-completion and editor-buffer hooks in
+both `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
+and its `packages/scratch-gui` mirror, a focused
+`test/code-conversion-editor-ownership.test.mjs`, and this ledger.
+
+The 8086 browser gate observed an empty ASM editor after choosing its 8255
+example during reconstruction following a reload. Separately, a host diagnostic
+executing the actual conversion and example-loading methods reproduces an ASM
+example being cleared when an earlier conversion resumes from an authored
+`loadProject` wait. This establishes a reachable source overwrite; it does not
+establish the exact browser scheduling cause. Preserve the original browser
+failure and all existing assertions and resource bounds.
+
+A finishing conversion may regenerate editors and publish conversion feedback
+only while it still owns the captured editor work. Preserve later edits,
+example loads, language changes and newer conversions, including edit/revert
+and asynchronous project/extension boundaries. Keep ordinary conversion,
+explicit device-retarget compilation, error reporting and current busy cleanup
+working. Existing source/project admission checks remain required. Do not
+pretend the already-applied VM load was rolled back or silently replace a newer
+project. Broader project-transaction cancellation remains separate work.
+
+Before source merge require baseline counterexamples, normal/current-error
+controls, nonvacuous guard mutations, every enabled exact-head CI check and
+affected clean application/own-guest qualification. Exercise the real 8086
+reload, example selection and local execution route; retain SPIKE caller,
+output and Stop controls. No timeout, assertion, baseline, dependency pin,
+compiler/runtime/firmware/model, protocol or workflow change. Coordinate other
+importer owners; preserve their existing hooks and all unrelated lane sections.
+
 ## Scoped WeDo2 inventory gate repair — 2026-10-15
 
 CLAIMED — SPIKE G02 integration follow-up, isolated branch
