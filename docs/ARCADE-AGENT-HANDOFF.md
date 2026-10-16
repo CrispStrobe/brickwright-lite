@@ -32,12 +32,15 @@ passed every hosted check. The immutable corpus remains **147 translated /
   are checked separately from the blank Scratch clone costume; later projectile
   and velocity effects remain blocked. This is bounded native evidence, with
   controller timing and visible-editor limits retained.
-- Free throw now passes its first complete dependency-aware source, Creator,
-  Code, save and current-export route. Preparing that genuinely new exported
-  root with its declared dependency also succeeds. Reimport, Creator and Code
-  then pass, but the next export reports two Array receiver refusals. The
-  [overwritten initializer contract](ARCADE-ARRAY-LOCAL-RESET-PROOF.md)
-  scopes the proper fix; this project is still incomplete.
+- Free throw passes current dependency-aware public import, Creator, Code, save
+  and export after the nested private-reset proof. All 35 focused controls and
+  all 42 current Array receivers pass while retaining every statement. A
+  separate native saved-project controller slice observes a genuine shot,
+  overlap, score and ball destruction with actual runtime artwork. Initial
+  activation, presentation/audio, countdown, other portable gameplay routes and
+  visible editor journeys remain separate gates. Repeated source growth and
+  preparation of the latest distinct exported root remain open.
+
 - Generic Image expressions and exact fixed-instance JRES owners have focused
   controls. Rockscout retains all 48 resource pixel bodies and 43 unique helper
   bodies, but its source still has 79 unsupported diagnostics. Holiday retains

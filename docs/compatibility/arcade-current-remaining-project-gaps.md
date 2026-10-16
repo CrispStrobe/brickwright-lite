@@ -8,15 +8,24 @@ Updated 2026-10-16. Read the [handoff](../ARCADE-AGENT-HANDOFF.md),
 The profile tables below remain historical measurements. Current development
 checks have not rerun or promoted the 29-project profile or immutable corpus.
 
-Free throw's current exported root now receives its actual declared dependency
-context through the public asynchronous import route. The first current export
-is clean. A fresh preparation of that new root then passes reimport, Creator,
-Code and save; its subsequent export fails with two explicit Array receiver
-refusals. Seven private locals have null initializers followed by definite Array
-overwrites across palette/global/independent Array effects. The fix must prove
-those effects cannot expose or read the old private frame; removing null writers
-by name or filtering diagnostics is not permitted. See the
-[bounded initializer contract](../ARCADE-ARRAY-LOCAL-RESET-PROOF.md).
+Free throw's current exported root receives its declared dependency context
+through the public asynchronous import route. Fresh preparation and repeated
+reimport exposed two Array receiver refusals. The bounded initializer proof now
+handles private zero-argument nested entry frames and repeated canonical resets.
+All 35 focused controls and all 42 receivers in the retained repeated-conversion
+project pass. Its current public import, Creator, Code, save and export route
+then passes with empty required diagnostic arrays. Every statement remains in
+the current graph. See the [initializer contract](../ARCADE-ARRAY-LOCAL-RESET-PROOF.md).
+
+A separate native controller run of the earlier saved project observes a genuine
+button press, a moving athlete's projectile, hoop overlap, score increasing to 1
+and destruction of that same ball. Runtime image pixels match the current
+assets. Initial helper activation was unobserved; the measured run begins at an
+explicit restart. Countdown completion, presentation, audio, other portable
+gameplay routes and visible authoring remain unqualified. The latest exported
+root still needs its own preparation before another reimport. Repeated source
+growth remains a separate unresolved conversion issue. These focused results
+do not promote a whole project or change the corpus counts.
 
 The authentic flame project's five native routes now preserve its observed
 null-Sprite x-getter TypeError and suppress the later projectile effects. Actual
@@ -87,7 +96,7 @@ Repeated diagnostics from complete helper dependencies remain in the evidence.
 | Exact public source | First unresolved stage | Proper next capability |
 | --- | --- | --- |
 | [Harlem](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/harlem-globetrotters.md#33) (`102e28d4`) | Source / Creator | Story and Carnival classes, handler collections and genuine Font / SDK producers; unresolved helper calls. |
-| [Free throw](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/free-throw-jr.md#13) (`5840453b`) | Reimport | Prepare the current exported project with its exact declared arcade-text dependency. A prior focused preparation passes; the unprepared direct route remains explicit. |
+| [Free throw](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/free-throw-jr.md#13) (`5840453b`) | Reimport | Current dependency-aware import, Code, save and export pass after the nested private-reset proof. Qualify the latest distinct exported root, source growth, remaining native gameplay routes and visible authoring. |
 | [Arrow](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/arrow.md#20) (`5d0c02f5`) | Source / Creator | Carnival classes and callbacks, Font / SDK producer contracts and unresolved helper calls. |
 | [Football](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/football.md#5) (`7cf6f6fa`) | Source / later stages | Primitive Throw, class / SDK / callback and Font ownership; export and reimport retain additional diagnostics. |
 | [Horse](https://github.com/microsoft/pxt-arcade/blob/8ae4f42df2b2f4a0472b0da04c3cdcd3438dbb02/docs/tutorials/horse.md#6) (`90a0e61d`) | Source / Creator | Carnival classes and callbacks, genuine Font / SDK producer contracts and unresolved helper calls. |
