@@ -32,16 +32,19 @@ source order and observes successive values without assuming a starting ID.
 Authentic library effects, artwork editing and visible authoring remain open.
 
 Owned class-update Throw now passes source admission with the explicit direct
-converter option. The unchanged two-test native module passes paused construction
-but exposes a runtime defect after Throw: duplicate errors and a scene update
-iterator left active prevent subsequent updates. Earlier effects and detached
-controller input survive. Fix actual exceptional cleanup; preserve the original
-one-error and later-update assertions. The public project importer still does
-not forward this option, so these controls do not establish GUI availability.
+converter option. Its original native failure exposed duplicate errors and a
+suspended scene update iterator. The runtime repair now passes 18 controlled
+unwind/publication checks and both unchanged native guests on a fresh normal VM
+installation: one error, preserved earlier effects, later updates, independent
+controller input and paused-constructor/Stop behavior. The public project
+importer still does not forward this option, so these controls do not establish
+GUI availability or generic class exceptions.
 
 The small shared-frame missing-initializer distinction is repaired. Authentic
 seven-backing library transport still needs exact selected-source provenance
-and effect/receiver proofs. Recheck the immutable corpus after composition;
+and effect/receiver proofs. A separate 37-control run qualifies the private
+Text source handoff and actual parser-return/currentness boundaries, with the
+original 24 controls retained. It is not an authentic-project closure. Recheck the immutable corpus after composition;
 its recorded count remains 147 translated / 36 partial / one malformed input.
 
 ## Development results and next gaps — 2026-10-16

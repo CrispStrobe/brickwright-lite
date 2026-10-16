@@ -6,7 +6,7 @@ Bounded source implementation is authorized. This extends the source boundary sh
 [ExtendableSprite updates](compatibility/arcade-owned-sprite-class-callables.md) and
 [managed runtime ownership](ARCADE-MANAGED-SDK-OWNERSHIP.md).
 
-## Observed limit
+## Original observed limit
 
 The current Throw source gate admits main code, unchanged ordinary procedures
 and exact static controller handlers. An affected class update method is
@@ -87,3 +87,19 @@ own bounded admission; no old source context is substituted for a new export.
 All enabled final-head checks and affected clean guest evidence remain required.
 No whole-game, generic class exceptions, caught-handler, GUI or corpus-count
 claim follows from this bounded source extension.
+
+
+## Bounded runtime checkpoint — 2026-10-16
+
+The source intersection passes 64 controls with the explicit direct converter
+option. The complete original native module first exposed a separate runtime
+failure: duplicate reporting and a suspended Sprite-update iterator. Retain
+that original failure. The proper internal-generator unwind and private
+successful-publication proof now pass 18 component controls and both unchanged
+native guests on a fresh normal production VM installation. Earlier effects
+remain, exactly one error is observed, later updates execute and independent
+controller input remains live. Paused construction and Stop assertions pass.
+
+This does not enable the direct option through the public project importer,
+qualify visible authoring, add generic caught exceptions or change corpus counts.
+Final composed-head checks and current edited/persisted/exported routes remain.
