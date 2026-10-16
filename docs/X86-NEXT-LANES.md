@@ -307,3 +307,53 @@ complete only after qualified supplier and affected clean consumer results,
 owner review and every enabled exact-head check, followed by the normal
 matched-head merge and tree/parent verification. This finite handoff grants no
 full-OS, broad DOSBox, physical-timing, RTx or release claim.
+
+
+## Next finite GUI composition and hosted acceptance
+
+The existing runner bridge [PR986](https://github.com/CrispStrobe/brickwright-lite/pull/986),
+download action [PR987](https://github.com/CrispStrobe/brickwright-lite/pull/987)
+and persistence scenario [PR989](https://github.com/CrispStrobe/brickwright-lite/pull/989)
+are composed in [draft PR1013](https://github.com/CrispStrobe/brickwright-lite/pull/1013)
+under their merged ownership, with canonical manifest admission corrected.
+That source checkpoint keeps the selected dependency unchanged and is not an
+installed qualification.
+The [proposed acceptance extension](../LANES.md#386-gui-hdd-and-forward-debug-hosted-acceptance--2026-10-16)
+adds only one hosted entry controller, one standalone original reader, focused
+inert controls and a separate workflow seam around the existing probe. Merge
+that claim before implementing its new files.
+
+The earlier handoff proposal above is a dated snapshot. Read-only source
+observations on 2026-10-16 found PR975 head `e553bb7a` selecting Board `f00f8ff5`,
+then head `943d540c` selecting Board `f84ba60e`. These are historical observations,
+not a supplier selection or qualification for a future actual. The latter
+source contains the snapshot target and factory wiring; the selected 386
+module graph matches the retained CLI source anchor, while an unrelated
+labwired source change means the entire supplier source tree is not identical.
+Source equality does not qualify an installed browser or transfer ownership.
+
+Use the live [Board/SB3 owner PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975)
+and [CUI/shared-writer owner PR965](https://github.com/CrispStrobe/brickwright-lite/pull/965)
+for coordination; preserve the existing merge hold. Immediately before source
+and actual admission, refresh their exact heads and canonical package, lock
+and vendor-pin declarations, then admit the complete selected installed graph
+and its qualification. The root manifest's authoritative Board field is
+`devDependencies`; the GUI manifest's is `dependencies`. Require both exact
+identities and refuse missing, conflicting or duplicate declarations rather
+than accepting an arbitrary fallback. No pin or lock handoff is implied.
+
+After qualified adoption and source/build admission, run the existing genuine
+download/reload scenario with its fixed free floppy and 306×4×17 data image.
+Retain actual canvas/input/download evidence, the exact exported image and JSON,
+fresh-session marker readback, the paused original session's identity/counters,
+and terminal process/resource/cleanup observations. Freeze a standalone reader
+and the attempt-1 official event/job/step/artifact joins before execution.
+Preserve all current predicates and limits; source controls cannot replace an
+original or justify an automatic retry.
+
+A separate bounded forward-debug scenario must demonstrate actual UI pause,
+code breakpoint, instruction step, full-width register and read-only physical
+memory inspection, resume and pane retention. Dedicated supplier support does
+not provide mode-aware disassembly, step-over/out, architectural checkpoint or
+reverse execution. ZIP selection in PR992 remains a separate acceptance task;
+ISO/CD/ATAPI and general DOSBox compatibility are outside this claim.
