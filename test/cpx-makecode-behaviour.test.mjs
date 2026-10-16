@@ -71,10 +71,15 @@ for (const scenario of cases) test(`CPX translated documentation vs original sim
         const trace = observed.serial.filter(row => row.text.startsWith(CPX_TRACE_PREFIX))
             .map(row => ({collectedAt: row.t, ...JSON.parse(row.text.slice(CPX_TRACE_PREFIX.length))}));
         const sha256 = value => createHash('sha256').update(value).digest('hex');
-        console.log('CPX original-boundary trace', JSON.stringify({id: scenario.id,
+        const traceSha256 = sha256(JSON.stringify(trace));
+        console.log('CPX original-boundary trace header', JSON.stringify({id: scenario.id,
             diagnosticDerivative: true, originalSourceSha256: sha256(source.ts),
             originalFactorySha256: sha256(compiled), instrumentedFactorySha256: sha256(instrumented),
-            error: observed.error, trace}));
+            error: observed.error, records: trace.length, traceSha256}));
+        for (const [index, event] of trace.entries()) console.log('CPX original-boundary trace event',
+            JSON.stringify({id: scenario.id, index, event}));
+        console.log('CPX original-boundary trace complete', JSON.stringify({id: scenario.id,
+            records: trace.length, traceSha256}));
         assert.equal(observed.error, null, `Diagnostic derivative failed: ${observed.error}`);
         assert.ok(trace.length > 0, 'The real original boundaries must produce observer records');
         assert.deepEqual(observed.frames, original.frames, 'Observer must preserve every original captured frame');

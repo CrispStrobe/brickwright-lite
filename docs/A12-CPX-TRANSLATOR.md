@@ -133,9 +133,11 @@ It wraps the original compiled factory, retains its exact bytes and forwards
 its original yield, event, fiber, send-buffer and audio calls. These are
 instrumented derivatives, identified by source/factory hashes. Observer records
 use the existing collector only for these programs without serial operations;
-clock, snapshots, compiler, simulator and sound-decoder helpers stay unchanged.
+the pinned compiler/simulator files and existing clock, snapshot and sound-reader
+helpers stay unchanged.
 Every derivative must reproduce every uninstrumented captured frame, ordered
-tone and original serial line exactly before its trace is admitted. The
+tone and original serial line exactly before its trace is admitted. Individual trace records have an explicit count, digest
+and completion record, so a truncated log cannot supply a complete trace. The
 original native-versus-PXT assertions still run unchanged. This diagnoses a
 boundary; it does not qualify timing parity or change an original failure.
 
