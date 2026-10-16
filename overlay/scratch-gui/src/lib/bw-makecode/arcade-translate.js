@@ -17,6 +17,7 @@ import {validateClassCallablePlan} from './class-callable-plan.js';
 import {sourceCallableDeclarations} from './source-callable-declarations.js';
 import {callableDeclarationEnvelope,callableVariableEnvelope} from './callable-export-graph.js';
 import {lowerNamedArrayItemHelpers} from './named-array-item-helpers.js';
+import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 import {lowerLiveFontMetrics} from './live-font-metrics.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {sourceReferenceDeclarations} from './source-reference-declarations.js';
@@ -2916,7 +2917,6 @@ const kindOf = node => {
  * Match the full body and every use before inlining; names alone never grant
  * intrinsic semantics. Evaluating the operands preserves call argument order.
  */
-let legacyArrayHelperTemplates;
 // Arcade destroys the current kind collection, not a live query on each
 // iteration. Lower through the same snapshot-array and handle destruction
 // primitives exposed in Blocks. Newly created callback sprites survive.
@@ -3105,81 +3105,98 @@ const desugarForOf = (program, source) => {
 // the \`stop all\` itself was lost. When that machinery is present VERBATIM, this
 // lifts it back: \`_stopAll()\` is \`stop all\`, a mark of \`_stopOthers\` is \`stop
 // other scripts in sprite\`, and the run-token lines and their guards vanish.
-let exporterTokenTemplates;
-const liftExporterStops = program => {
-    const shape = node => JSON.stringify(node, (key, value) => (key === 'line' ? undefined : value));
-    const templates = exporterTokenTemplates || (exporterTokenTemplates = new Map(
-        parseMakeCodeTs(`${HELPERS.tok.ts}\n${HELPERS.others.ts}`).body
-            .filter(st => st.type === 'FunctionDeclaration').map(fn => [fn.name, shape(fn)])));
-    const declared = new Map(program.body.filter(st => st.type === 'FunctionDeclaration').map(fn => [fn.name, fn]));
-    const stopAll = declared.get('_stopAll');
-    const generated = ['_tok', '_dead'].every(name => declared.has(name) && shape(declared.get(name)) === templates.get(name)) &&
-        (!stopAll || stopAll.body?.[0]?.type === 'ExpressionStatement' && stopAll.body[0].expr?.type === 'Assignment' &&
-            stopAll.body[0].expr.left?.name === '_stopMark' && stopAll.body[0].expr.right?.name === '_tokens');
-    if (!generated) return program;
-    const helpers = new Set(['_tok', '_dead', '_stopAll',
-        ...['_stopOthers', '_othersStopped'].filter(name => declared.has(name) && shape(declared.get(name)) === templates.get(name))]);
-    const isId = (node, name) => node?.type === 'Identifier' && (name instanceof RegExp ? name.test(node.name) : node.name === name);
-    const isCall = (node, name) => node?.type === 'Call' && isId(node.callee, name);
-    const marker = name => ({type: 'ExpressionStatement', expr: {type: 'Call', callee: {type: 'Identifier', name}, args: []}});
-    // A guard term the export adds at each yield; anything else in the test stays.
-    const guardTerm = node => isCall(node, '_dead') && isId(node.args?.[0], '_t') ||
-        isCall(node, '_othersStopped') && isId(node.args?.[1], '_t') ||
-        node?.type === 'Binary' && node.op === '&&' && node.left?.type === 'Binary' && node.left.op === '<=' &&
-            isId(node.left.left, '_t') && isId(node.left.right, /^_som_/);
-    const terms = node => node?.type === 'Binary' && node.op === '||' ? [...terms(node.left), ...terms(node.right)] : [node];
-    const bareReturn = st => st?.type === 'Return' && !st.value ||
-        st?.type === 'Block' && st.body?.length === 1 && bareReturn(st.body[0]) ||
-        Array.isArray(st) && st.length === 1 && bareReturn(st[0]);
-    const statements = list => {
-        const out = [];
-        for (let i = 0; i < list.length; i++) {
-            const st = list[i];
-            if (st?.type === 'FunctionDeclaration' && helpers.has(st.name)) continue;
-            if (st?.type === 'Declaration' && st.decls.every(d => /^(_tokens|_stopMark|_som_\w+|_sok_\w+)$/.test(d.name) && !d.init?.type?.startsWith('Call') ||
-                d.name === '_t' && isCall(d.init, '_tok'))) continue;
-            if (st?.type === 'If' && !st.alternate && bareReturn(st.consequent)) {
-                const all = terms(st.test);
-                const kept = all.filter(term => !guardTerm(term));
-                if (kept.length === 0) continue;
-                if (kept.length < all.length) {
-                    out.push({...st, test: kept.reduce((left, right) => ({type: 'Binary', op: '||', left, right}))});
-                    continue;
-                }
-            }
-            const expr = st?.type === 'ExpressionStatement' && st.expr;
-            if (isCall(expr, '_stopAll') && !expr.args?.length) {
-                out.push(marker('__bwStopAll'));
-                if (bareReturn(list[i + 1])) i++;
-                continue;
-            }
-            if (isCall(expr, '_stopOthers') && isId(expr.args?.[1], '_t')) {
-                out.push(marker('__bwStopOthers'));
-                continue;
-            }
-            // \`_som_X = _tokens\` then \`_sok_X = _t\`: stop other scripts of a sprite that is never cloned.
-            if (expr?.type === 'Assignment' && isId(expr.left, /^_som_/) && isId(expr.right, '_tokens')) {
-                const next = list[i + 1]?.expr;
-                if (next?.type === 'Assignment' && isId(next.left, /^_sok_/) && isId(next.right, '_t')) i++;
-                out.push(marker('__bwStopOthers'));
-                continue;
-            }
-            out.push(visit(st));
-        }
-        return out;
+// This recognizer admits the complete no-clone/no-speech recipe. Other
+// stop recipes remain ordinary source until their full receiver/effect proof
+// is available; a matching first assignment never authorizes deleting a body.
+const liftExporterStops = (program,profile) => {
+    const proof=inspectGeneratedHelperBindings(program,profile);
+    if(!proof.isCurrent())return program;
+    const functions=program.body.filter(n=>n.type==='FunctionDeclaration');
+    const fn=name=>functions.find(n=>n.name===name);
+    const tok=fn('_tok'),dead=fn('_dead'),stop=fn('_stopAll');
+    if(!proof.root(tok)||!proof.root(dead)||!stop||!proof.root(stop))return program;
+    const tokSource=HELPERS.tok.ts;
+    // matches selects the function from a source fragment by its declaration.
+    const tokText=tokSource.slice(tokSource.indexOf('function _tok'),tokSource.indexOf('function _dead'));
+    const deadText=tokSource.slice(tokSource.indexOf('function _dead'));
+    if(!proof.matches(tok,tokText)||!proof.matches(dead,deadText)||
+        !proof.matches(stop,'function _stopAll () {_stopMark = _tokens\n music.stopAllSounds()}'))return program;
+    const helpers=new Set([tok,dead,stop]),allowed=new Set(),remove=new Set(helpers),replacements=new Map(),guards=new Map();
+    const include=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(include);return;}
+        allowed.add(node);for(const v of Object.values(node))include(v);};
+    helpers.forEach(include);
+    const call=(n,target,arity)=>n?.type==='Call'&&n.args?.length===arity&&proof.declarationAt(n.callee)===target;
+    const zero=n=>n?.type==='Number'&&Number(n.value)===0;
+    const rootDecl=name=>program.body.find(n=>n.type==='Declaration'&&n.decls.length===1&&n.decls[0].name===name&&zero(n.decls[0].init));
+    const tokens=rootDecl('_tokens'),mark=rootDecl('_stopMark');
+    if(!tokens||!mark||tokens.kind!=='let'||mark.kind!=='let'||!proof.unique('_tokens')||!proof.unique('_stopMark'))return program;
+    const storage=(n,d)=>n?.type==='Identifier'&&proof.declarationAt(n)===d.decls[0];
+    const tokenDecls=new Map();
+    for(const n of proof.nodes)if(n.type==='Declaration'&&n.kind==='const'&&n.decls.length===1&&call(n.decls[0].init,tok,0)){
+        tokenDecls.set(n.decls[0],n);include(n);remove.add(n);
+    }
+    const token=n=>n?.type==='Identifier'&&tokenDecls.has(proof.declarationAt(n));
+    const marker=name=>({type:'ExpressionStatement',expr:{type:'Call',callee:{type:'Identifier',name},args:[]}});
+    const pairs=[];
+    const lists=[];const collectLists=n=>{if(!n||typeof n!=='object')return;if(Array.isArray(n)){lists.push(n);n.forEach(collectLists);}
+        else for(const v of Object.values(n))collectLists(v);};collectLists(program);
+    for(const list of lists)for(let i=0;i<list.length-1;i++){
+        const a=list[i],b=list[i+1],x=a?.type==='ExpressionStatement'&&a.expr,y=b?.type==='ExpressionStatement'&&b.expr;
+        if(x?.type!=='Assignment'||x.op!=='='||!storage(x.right,tokens)||y?.type!=='Assignment'||y.op!=='='||!token(y.right))continue;
+        const md=proof.declarationAt(x.left),kd=proof.declarationAt(y.left);
+        const ms=program.body.find(n=>n.type==='Declaration'&&n.decls.length===1&&n.decls[0]===md&&zero(md.init));
+        const ks=program.body.find(n=>n.type==='Declaration'&&n.decls.length===1&&n.decls[0]===kd&&zero(kd.init));
+        if(!ms||!ks||ms.kind!=='let'||ks.kind!=='let'||md===kd||[tokens.decls[0],mark.decls[0]].includes(md)||
+            [tokens.decls[0],mark.decls[0]].includes(kd)||!proof.unique(md.name)||!proof.unique(kd.name))return program;
+        pairs.push({md,kd,token:proof.declarationAt(y.right)});include(a);include(b);include(ms);include(ks);
+        remove.add(ms);remove.add(ks);remove.add(b);replacements.set(a,marker('__bwStopOthers'));
+    }
+    if(pairs.length){
+        // The initial mark recipe is limited to ordinary scripts emitted on
+        // Game. A source Sprite/scene/class route needs its own target recipe;
+        // marker spellings do not prove the receiver of stop-other scripts.
+        const roots=new Set(['game','control','controller','music','basic','pause','console','Math','Array','Object','JSON','String','Number','isNaN','undefined','Infinity','NaN']);
+        if(proof.nodes.some(n=>['Class','ClassDeclaration','Method'].includes(n.type)||
+            n.type==='Identifier'&&(['sprites','SpriteKind','scene','mp','self','this'].includes(n.name)||
+                !proof.declarationAt(n)&&!roots.has(n.name))||
+            n.type==='Call'&&(n.isNew||n.constructorCall||n.callee?.type==='Index')))return program;
+    }
+    const bareReturn=n=>Array.isArray(n)?n.length===1&&bareReturn(n[0]):n?.type==='Return'&&!n.value||n?.type==='Block'&&bareReturn(n.body);
+    const terms=n=>n?.type==='Binary'&&n.op==='||'?[...terms(n.left),...terms(n.right)]:[n];
+    const guard=n=>{
+        if(call(n,dead,1)&&token(n.args[0]))return true;
+        if(n?.type!=='Binary'||n.op!=='&&')return false;
+        const a=n.left,b=n.right;if(a?.type!=='Binary'||a.op!=='<='||b?.type!=='Binary'||b.op!='!=')return false;
+        return token(a.left)&&token(b.left)&&proof.declarationAt(a.left)===proof.declarationAt(b.left)&&
+            pairs.some(p=>p.token===proof.declarationAt(a.left)&&proof.declarationAt(a.right)===p.md&&proof.declarationAt(b.right)===p.kd);
     };
-    const visit = node => {
-        if (Array.isArray(node)) return statements(node);
-        if (!node || typeof node !== 'object') return node;
-        const copy = {...node};
-        for (const key of Object.keys(copy)) {
-            if (Array.isArray(copy[key])) copy[key] = copy[key].every(x => x && typeof x === 'object' && 'type' in x) &&
-                ['body', 'consequent', 'alternate', 'cases'].includes(key) ? statements(copy[key]) : copy[key].map(visit);
-            else if (copy[key] && typeof copy[key] === 'object') copy[key] = visit(copy[key]);
+    for(const n of proof.nodes){
+        if(n.type==='If'&&!n.alternate&&bareReturn(n.consequent)){
+            const all=terms(n.test),kept=all.filter(t=>!guard(t));if(kept.length===all.length)continue;
+            all.filter(guard).forEach(include);guards.set(n,kept);
         }
-        return copy;
+        if(n.type==='ExpressionStatement'&&call(n.expr,stop,0)){include(n);replacements.set(n,marker('__bwStopAll'));}
+    }
+    include(tokens);include(mark);remove.add(tokens);remove.add(mark);
+    // Every actual binding reference is accounted for before deleting any
+    // storage, token, guard or helper. Foreign writes/reads/escapes refuse all.
+    const protectedDeclarations=new Set([tok,dead,stop,tokens.decls[0],mark.decls[0],...tokenDecls.keys(),...pairs.flatMap(p=>[p.md,p.kd])]);
+    for(const n of proof.nodes)if(n.type==='Identifier'){
+        if(protectedDeclarations.has(proof.declarationAt(n))&&!allowed.has(n))return program;
+        if(n.name==='music'&&(!allowed.has(n)||!proof.unbound(n)))return program;
+    }
+    if(!proof.calls(tok,[0],helpers)||!proof.calls(dead,[1],helpers)||!proof.calls(stop,[0],helpers)||!proof.isCurrent())return program;
+    const rewrite=n=>{
+        if(!n||typeof n!=='object')return n;
+        if(Array.isArray(n)){
+            const kept=n.filter(x=>!remove.has(x)&&!(guards.has(x)&&!guards.get(x).length));
+            return mapGeneratedSourceArray(kept.length===n.length?n:kept,rewrite);
+        }
+        if(replacements.has(n))return replacements.get(n);
+        if(guards.has(n)){const kept=guards.get(n);return {...n,test:kept.map(rewrite).reduce((left,right)=>({type:'Binary',op:'||',left,right})),consequent:rewrite(n.consequent)};}
+        return Object.fromEntries(Object.entries(n).map(([k,v])=>[k,rewrite(v)]));
     };
-    return {...program, body: statements(program.body)};
+    return rewrite(program);
 };
 
 // PXT library calls that are, by their own definition, expressions the
@@ -3191,36 +3208,28 @@ const liftExporterStops = program => {
 // tree: rewriting calls changed caller order and raw numeric selection.
 const lowerLibraryCalls = program => program;
 
-const inlineLegacyArrayHelpers = program => {
-    if(!program.body.some(fn=>fn.type==='FunctionDeclaration' && /^__bw(?:Named(?:Parse|Json)Value|ArrayAccess)/.test(fn.name)))return program;
-    const templates=legacyArrayHelperTemplates || (legacyArrayHelperTemplates=new Map([
-        ['__bwNamedParseValue',{fn:parseMakeCodeTs(LEGACY_PARSE_SOURCE, {parameterDefaults: true, retainParentheses:true}).body[0],type:'LegacyParsedValue'}],
-        ['__bwNamedJsonValue',{fn:parseMakeCodeTs(LEGACY_JSON_SOURCE, {parameterDefaults: true, retainParentheses:true}).body[0],type:'LegacyJsonValue'}],
-        ['__bwArrayAccess',{fn:parseMakeCodeTs(ARRAY_ACCESS_SOURCE, {parameterDefaults: true, retainParentheses:true}).body[0],type:'NativeArrayAccess'}]
-    ]));
-    const normalize=(fn,base)=>{
-        const rename=node=>Array.isArray(node)?node.map(rename):node && typeof node==='object'?
-            Object.fromEntries(Object.entries(node).map(([key,value])=>[key,(key==='name' && value===fn.name)?base:rename(value)])):node;
-        return JSON.stringify(rename(fn));
-    };
-    const helpers=new Map();
-    for(const fn of program.body)if(fn.type==='FunctionDeclaration')for(const [base,template] of templates)
-        if(new RegExp('^'+base+'_*$').test(fn.name) && normalize(fn,base)===normalize(template.fn,base))helpers.set(fn.name,template);
-    const unsafe=new Set();
-    const inspect=(node,parent,key)=>{
-        if(!node || typeof node!=='object')return;
-        if(node.type==='Identifier' && helpers.has(node.name) && !(parent?.type==='Call' && key==='callee' && parent.args.length===1))unsafe.add(node.name);
-        for(const [key,value] of Object.entries(node))if(Array.isArray(value))value.forEach(child=>inspect(child,node,key));else inspect(value,node,key);
-    };
-    for(const node of program.body)if(!helpers.has(node.name))inspect(node);
-    for(const name of unsafe)helpers.delete(name);
+const inlineLegacyArrayHelpers = (program,profile) => {
+    const proof=inspectGeneratedHelperBindings(program,profile);
+    if(!proof.isCurrent())return program;
+    const recipes=[['__bwNamedParseValue',LEGACY_PARSE_SOURCE,'LegacyParsedValue'],
+        ['__bwNamedJsonValue',LEGACY_JSON_SOURCE,'LegacyJsonValue'],
+        ['__bwArrayAccess',ARRAY_ACCESS_SOURCE,'NativeArrayAccess']];
+    const candidates=new Map();
+    for(const fn of program.body)if(proof.root(fn))for(const [base,source,type]of recipes)
+        if(proof.matches(fn,source,new Map([[fn.name,base]])))candidates.set(fn,{type});
+    // A retained helper body becomes an external consumer of its dependencies.
+    // Recompute until removing one declaration cannot strand a retained caller.
+    const selected=new Set(candidates.keys());let changed;
+    do {changed=false;for(const fn of selected)if(!proof.closed(fn,selected)||proof.calls(fn,[1],selected)===null){selected.delete(fn);changed=true;}}while(changed);
+    const calls=new Map();for(const fn of selected)for(const call of proof.calls(fn,[1],selected))calls.set(call,candidates.get(fn));
+    if(!selected.size||!proof.isCurrent())return program;
     const rewrite=node=>{
-        if(!node || typeof node!=='object')return node;
-        if(Array.isArray(node))return node.map(rewrite);
-        if(node.type==='Call' && node.callee?.type==='Identifier' && helpers.has(node.callee.name))return {type:helpers.get(node.callee.name).type,value:rewrite(node.args[0])};
+        if(!node||typeof node!=='object')return node;
+        if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
+        if(calls.has(node))return {type:calls.get(node).type,value:rewrite(node.args[0])};
         return Object.fromEntries(Object.entries(node).map(([key,value])=>[key,rewrite(value)]));
     };
-    return rewrite({...program,body:program.body.filter(fn=>!(fn.type==='FunctionDeclaration' && helpers.has(fn.name)))});
+    return rewrite({...program,body:program.body.filter(fn=>!selected.has(fn))});
 };
 
 const inlineValueHelpers = (program, requireUnshadowedBindings = false) => {
@@ -3254,7 +3263,7 @@ const inlineValueHelpers = (program, requireUnshadowedBindings = false) => {
     if(!helpers.size)return program;
     const rewrite=node=>{
         if(!node || typeof node!=='object')return node;
-        if(Array.isArray(node))return node.map(rewrite);
+        if(Array.isArray(node))return mapGeneratedSourceArray(node,rewrite);
         if(node.type==='Call' && node.callee?.type==='Identifier' && helpers.has(node.callee.name)) {
             const {value}=helpers.get(node.callee.name),args=node.args.map(rewrite);
             return value.type==='Binary'?{...value,left:args[0],right:args[1]}:{...value,argument:args[0]};
@@ -4997,9 +5006,14 @@ export function arcadeToPseudocode (files, opts = {}) {
     if(!namedEnabled&&!opts.callableLexicalPrototype&&!opts.classCallablePrototype&&!classEligibility.eligible){
         projectInputDiagnostics.push(...callableEligibility.unsupported,...classEligibility.unsupported,...namedEligibility.unsupported);
     }
-    const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput,true));
-    const parsed = lowerSourceLoopControl(inlineValueHelpers(inlineLegacyArrayHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(liftExporterStops(
-        lowerAnimationAssets(namedArrayInputs.program))), source), source), source), source))));
+    const generatedProfile=(namedEnabled||classEnabled||callableEnabled||opts.procedureConstraintsPrototype===true)?
+        GENERATED_HELPER_PROFILES.metadata:GENERATED_HELPER_PROFILES.ordinary;
+    const namedArrayInputs=lowerNamedArrayItemHelpers(inlineValueHelpers(callableSourceInput,true),{profile:generatedProfile});
+    // Recognition consumes the selected parse context before clone-heavy
+    // lowerings erase its parameter descriptors or alter canonical bodies.
+    const generatedSource=inlineLegacyArrayHelpers(liftExporterStops(namedArrayInputs.program,generatedProfile),generatedProfile);
+    const parsed = lowerSourceLoopControl(inlineValueHelpers(desugarForOf(lowerArrayCallbacks(lowerIifes(lowerDestroyAllSprites(lowerLibraryCalls(
+        lowerAnimationAssets(generatedSource)), source), source), source), source)));
     const containsPaletteCall = node => {
         if(!node || typeof node!=='object')return false;
         if(node.type==='Call' && node.callee?.type==='Member' && node.callee.name==='setPalette' &&
