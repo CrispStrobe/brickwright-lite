@@ -161,7 +161,7 @@ export function createArrayReferenceExportAuthority(project) {
     // is outside this closed project boundary (see the compatibility notes).
     // Arrays resolves through the builtin route to the adopted implementation;
     // a saved gallery URL is checked only for consistency, never as authority.
-    const effectMetadata=()=>JSON.stringify([project.extensions,project.extensionURLs,project.monitors]);
+    const effectMetadata=()=>JSON.stringify(['extensions','extensionURLs','monitors'].map(key=>[Object.hasOwn(project,key),project[key]]));
     const originalEffects=effectMetadata();let extendedResetUsed=false;
     const closedEffects=()=>{
         if(!Array.isArray(project.extensions)||new Set(project.extensions).size!==project.extensions.length||
@@ -181,8 +181,21 @@ export function createArrayReferenceExportAuthority(project) {
             if(!['arcade','arrays'].includes(prefix))return false;
             inferred.add(prefix);return true;
         };
-        for(const target of targets)for(const n of Object.values(target.blocks||{}))if(!ownerAllowed(n?.opcode))return false;
-        if(project.monitors!==undefined){
+        for(const target of targets){
+            // Native variable and block dictionaries are ordinary objects;
+            // inherited input-cache IDs cannot identify the intended row.
+            if(Object.hasOwn(target.variables||{},'__proto__'))return false;
+            for(const [id,n]of Object.entries(target.blocks||{})){
+                if(Object.hasOwn(Object.prototype,id)||!ownerAllowed(n?.opcode))return false;
+                if(n.opcode==='procedures_call'){
+                    let ids;try{ids=JSON.parse(n.mutation?.argumentids);}catch{return false;}
+                    if(typeof n.mutation?.proccode!=='string'||!n.mutation.proccode||!Array.isArray(ids)||
+                        ids.some(id=>typeof id!=='string')||new Set(ids).size!==ids.length||
+                        Object.keys(n.inputs||{}).sort().join('|')!==[...ids].sort().join('|')||Object.keys(n.fields||{}).length)return false;
+                }
+            }
+        }
+        if(Object.hasOwn(project,'monitors')){
             if(!Array.isArray(project.monitors)||project.monitors.some(n=>!ownerAllowed(n?.opcode)))return false;
         }
         if(project.extensions.some(id=>!inferred.has(id))||[...inferred].some(id=>!project.extensions.includes(id)))return false;
@@ -206,6 +219,12 @@ export function createArrayReferenceExportAuthority(project) {
         if(!scope.proc||Object.hasOwn(Object.prototype,scope.proc)||scope.invalid||scope.unknownEntry||scope.params.length||destination.formal||
             node.opcode!=='arcade_setLocal'||!special(reset)||!shape(node,['NAME','VALUE'])||
             !closedEffects()||!scope.callers.length)return false;
+        // Native lookup scans every physical definition/prototype, including
+        // orphans not represented by the connected top-level scope map.
+        const all=Object.values(target.blocks||{}),prototype=child(scope.root,'custom_block',target);
+        const definitions=all.filter(n=>n.opcode==='procedures_definition'&&child(n,'custom_block',target)?.mutation?.proccode===scope.proc);
+        const prototypes=all.filter(n=>n.opcode==='procedures_prototype'&&n.mutation?.proccode===scope.proc);
+        if(definitions.length!==1||definitions[0]!==scope.root||prototypes.length!==1||prototypes[0]!==prototype)return false;
         const name=literal(node,'NAME',target),origin=captures.local(captures.scopeOf(node),name);
         // Native params are plain objects, not Maps: this inherited setter
         // changes the prototype instead of establishing an own lexical cell.

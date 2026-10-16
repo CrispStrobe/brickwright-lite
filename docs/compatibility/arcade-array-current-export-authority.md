@@ -94,3 +94,10 @@ property first. Ordinary local names such as `constructor` and `toString` remain
 valid after ordinary own-property writes; the procedure-cache limitation is a
 different boundary. Proper native support for the refused procedure names remains
 a separate runtime gap.
+
+The closed boundary includes malformed stock call metadata and all physical
+matching definitions and prototypes, including orphans. Native inherited block
+input-cache IDs and the variable dictionary setter ID `__proto__` are refused.
+These are graph identity restrictions, not runtime dictionary repairs. Provided
+monitor metadata must be an actual Array; absence, Undefined and Null are not
+interchangeable, including after an authority has been created.

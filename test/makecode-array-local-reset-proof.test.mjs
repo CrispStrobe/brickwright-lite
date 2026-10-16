@@ -121,3 +121,23 @@ test('declared extensions cannot hide owners inferred from physical blocks or mo
     ]){const f=fixture();edit(f);refuses(f);}
     const f=fixture();f.project.monitors=[{opcode:'data_variable'}];assert.deepEqual(results(f),[true]);
 });
+
+test('physical native entry, storage and unavailable metadata cannot bypass the closed proof',()=>{
+    for(const value of [[],{},null,17]){
+        const f=fixture(),call=f.node('procedures_call');f.blocks[call].mutation={proccode:value,argumentids:'[]',warp:'false'};refuses(f);
+    }
+    for(const value of ['{}','[1]','["a","a"]']){
+        const f=fixture(),call=f.node('procedures_call');f.blocks[call].mutation={proccode:'build',argumentids:value,warp:'false'};refuses(f);
+    }
+    const duplicateProto=fixture(),proto=duplicateProto.node('procedures_prototype');duplicateProto.blocks[proto].mutation=structuredClone(duplicateProto.blocks[duplicateProto.proto].mutation);refuses(duplicateProto);
+    const duplicateDef=fixture(),p=duplicateDef.node('procedures_prototype');duplicateDef.blocks[p].mutation=structuredClone(duplicateDef.blocks[duplicateDef.proto].mutation);duplicateDef.node('procedures_definition',{custom_block:p});refuses(duplicateDef);
+    const unsafeVariable=fixture();Object.defineProperty(unsafeVariable.target.variables,'__proto__',{value:['other',0],enumerable:true,writable:true,configurable:true});refuses(unsafeVariable);
+    for(const id of Object.getOwnPropertyNames(Object.prototype)){
+        const f=fixture();Object.defineProperty(f.blocks,id,{value:{opcode:'text',inputs:{},fields:{TEXT:['unused',null]},shadow:true,topLevel:false,parent:null,next:null},enumerable:true});refuses(f);
+    }
+    const unknown=fixture();unknown.project.monitors=undefined;refuses(unknown);
+    for(const value of [undefined,null]){
+        const f=fixture(),proof=createArrayReferenceExportAuthority(f.project);assert.equal(proof.validateInput(f.target,f.blocks[f.reads[0]]).ok,true);
+        f.project.monitors=value;assert.equal(proof.validateInput(f.target,f.blocks[f.reads[0]]).ok,false);
+    }
+});
