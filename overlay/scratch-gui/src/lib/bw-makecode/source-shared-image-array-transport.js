@@ -1,3 +1,4 @@
+import {currentSharedImageSourceEffects,sharedImageSourceContextCurrent} from './shared-image-array-source-effects.js';
 import {analyseCallableBindings} from './callable-bindings.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {parseExactImgLiteral} from './arcade-assets.js';
@@ -57,17 +58,19 @@ function copy(value, seen = new WeakMap()) {
 }
 const equalImages = (a,b) => a.length === b.length && a.every((image,i) => image.width === b[i].width && image.height === b[i].height && image.pixels.length === b[i].pixels.length && image.pixels.every((pixel,j) => pixel === b[i].pixels[j]));
 
-function prove(program) {
+function prove(program, sourceContext = null) {
     const physical = census(program), candidates = [], selections = new Map();
     if (!physical.valid || program?.type !== 'Program' || !Array.isArray(program.body)) return null;
     const {nodes,parents} = physical;
+    const sourceEffects=sourceContext?currentSharedImageSourceEffects(program,sourceContext):null;
+    if(sourceContext&&!sourceEffects)return null;
     if (nodes.some(node => node.type==='Template' && node.tag!=='img' || node.type && !syntax.has(node.type) || node.type === 'Declaration' && node.kind === 'var')) return null;
     // A tag has no executable Identifier leaf. Reject bindings and escapes of
     // either actual builtin, including nested lexical shadows and all writers.
     if (nodes.some(node => node.name === 'img' || node.name === 'Math' && node.type !== 'Identifier' ||
         node.params?.some(name => ['img','Math'].includes(name)) || node.decls?.some(d => ['img','Math'].includes(d.name)) ||
         node.type === 'Identifier' && ['this','globalThis','window','self','eval','Function','Reflect','arguments','img'].includes(node.name))) return null;
-    const lexical = analyseCallableBindings(program), sdk = staticSdkNamespaceReceivers(program,{builtinIdentifiers:['Math']});
+    const lexical = analyseCallableBindings(program), sdk = staticSdkNamespaceReceivers(program,{builtinIdentifiers:sourceEffects?['Math','textsprite']:['Math']});
     const declarations=new Map();
     const declare=binding=>{if(binding)declarations.set(binding,(declarations.get(binding)||0)+1);};
     for(const node of nodes) {
@@ -85,6 +88,10 @@ function prove(program) {
         if(node.type==='Member' && path(node)==='SpriteKind.create' && sdk.has(node)) {
             const call=parents.get(node);
             if(call?.callee!==node || !kindAllocation(call))return null;
+        }
+        if(sourceEffects&&node.type==='Member'&&sdk.has(node)&&path(node)?.startsWith('textsprite.')) {
+            const call=parents.get(node);
+            if(path(node)!=='textsprite.create'||call?.type!=='Call'||call.callee!==node||Object.hasOwn(call,'typeArguments')||!Array.isArray(call.args)||call.args.length<1||call.args.length>3)return null;
         }
         if(node.type === 'Identifier' && !lexical.references.get(node)) {
             const parent=parents.get(node);
@@ -160,9 +167,11 @@ function prove(program) {
         'image.setPalette','image.create','sprites.create','sprites.createProjectileFromSide','sprites.createProjectileFromSprite',
         'sprites.onOverlap','sprites.onCreated','sprites.onDestroyed','game.onUpdate','game.onUpdateInterval',
         'info.setScore','info.changeScoreBy','info.score','info.startCountdown','info.onCountdownEnd','SpriteKind.create']);
+    if(sourceEffects)sdkEffects.add('textsprite.create');
     const methods={Image:new Set(['clone','setPixel','getPixel','fill','replace','drawLine','drawRect','fillRect','drawImage','drawTransparentImage','equals']),
         Array:new Set(['push','pop','shift','unshift']),
         Sprite:new Set(['setImage','setPosition','setVelocity','setBounceOnWall','setStayInScreen','setFlag','setKind','destroy'])};
+    if(sourceEffects)methods.TextSprite=new Set([...methods.Sprite,'setText','setMaxFontHeight','setIcon','setBorder','setOutline','update']);
     const writers=new Map();
     const addWriter=(binding,value)=>{if(binding){if(!writers.has(binding))writers.set(binding,[]);writers.get(binding).push(value);}};
     for(const node of nodes) {
@@ -190,6 +199,7 @@ function prove(program) {
         if(node.type==='Template' && node.tag==='img' && parseExactImgLiteral('img`'+node.value+'`'))return 'Image';
         if(selections.has(node))return 'Image';
         if(node.type==='Call') {
+            if(sourceEffects&&sdk.has(node.callee)&&path(node.callee)==='textsprite.create')return 'TextSprite';
             if(sdk.has(node.callee) && ['sprites.create','sprites.createProjectileFromSide','sprites.createProjectileFromSprite'].includes(path(node.callee)))return 'Sprite';
             if(sdk.has(node.callee) && path(node.callee)==='image.create')return 'Image';
             if(node.callee?.type==='Member' && node.callee.name==='clone' && node.args.length===0 && kind(node.callee.object,active)==='Image')return 'Image';
@@ -207,28 +217,33 @@ function prove(program) {
         if(!['Member','Index'].includes(target?.type))continue;
         const receiver=kind(target.object);
         if(receiver==='Array' && target.type==='Index')continue;
-        if(receiver==='Sprite' && target.type==='Member' && ['x','y','vx','vy','ax','ay','lifespan','z','sx','sy'].includes(target.name))continue;
+        if((receiver==='Sprite'||receiver==='TextSprite') && target.type==='Member' && ['x','y','vx','vy','ax','ay','lifespan','z','sx','sy'].includes(target.name))continue;
         return null;
     }
     for(const node of nodes)if(node.type==='Call' && node.callee.type==='Member') {
         if(sdk.has(node.callee)) {if(!sdkEffects.has(path(node.callee)))return null;}
         else if(!methods[kind(node.callee.object)]?.has(node.callee.name))return null;
     }
-    return {...physical,candidates,selections};
+    return {...physical,current:()=>physical.current()&&(!sourceContext||sharedImageSourceContextCurrent(sourceContext)),candidates,selections};
 }
 
 /** Private plan for one current compiler input. No decoder or predicate option. */
-export function prepareSharedImageArrayTransport(program) {
-    const proof=prove(program);
+export function prepareSharedImageArrayTransport(program,options={}) {
+    const contextDescriptor=Object.getOwnPropertyDescriptor(options,'sourceContext');
+    if(contextDescriptor&&!Object.hasOwn(contextDescriptor,'value'))return null;
+    const sourceContext=contextDescriptor?.value||null;
+    const proof=prove(program,sourceContext);
     if(!proof?.candidates.length)return null;
-    const planned=copy(program), projected=prove(planned);
+    const planned=copy(program), projected=prove(planned,sourceContext);
     if(!projected || projected.candidates.length!==proof.candidates.length)return null;
     const origins=new Map(), literals=new WeakMap();
     for(const record of projected.candidates) {
         const token=Symbol('shared Image Array source origin');
         record.array[originField]=token;origins.set(token,{name:record.decl.name,images:record.images});literals.set(record.array,record.statement);
     }
-    const plan=Object.freeze({});plans.set(plan,{program:planned,origins,literals,inputCurrent:proof.current,current:census(planned).current});
+    const plannedCurrent=census(planned).current;
+    const plan=Object.freeze({});plans.set(plan,{program:planned,origins,literals,sourceContext,inputCurrent:proof.current,
+        current:()=>plannedCurrent()&&(!sourceContext||sharedImageSourceContextCurrent(sourceContext))});
     return {program:planned,plan};
 }
 export function preservesSharedImageArray(plan,program,node,statement) {
@@ -264,7 +279,7 @@ export function projectSharedImageArrayTransport(program,plan) {
     issued.projected=result;return result;
 }
 export function finishSharedImageArrayTransport(program,plan) {
-    const original=plans.get(plan),proof=original&&original.projected===program&&original.inputCurrent()&&prove(program);if(!proof)return false;
+    const original=plans.get(plan),proof=original&&original.projected===program&&original.inputCurrent()&&prove(program,original.sourceContext);if(!proof)return false;
     const found=new Set();
     for(const candidate of proof.candidates) {
         const token=candidate.array[originField],source=original.origins.get(token);
