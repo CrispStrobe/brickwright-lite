@@ -16,9 +16,10 @@ class ArcadeFramePhase {
         this.generation=0;this.disposed=false;this.active=false;this.notes=[];this.pending=null;
         this.waitTimers=new Map();this.tickYields=new WeakMap();
         this.sourceAuthority=new WeakMap();this.managedLinks=new WeakMap();this.phaseContext=null;
+        this.sourceProjectWitness=null;
         this.conditionWaits=conditionWaits.bind(this);
         this.nativeCallbackOpcodes=new Set(ext.getInfo().blocks.filter(b=>b.blockType==='hat').map(b=>'arcade_'+b.opcode));
-        this.cancel=()=>{this.conditionWaits.cancel();this.generation++;this.pending=null;this.queuedDelta=null;
+        this.cancel=()=>{this.conditionWaits.cancel();this.sourceProjectWitness=null;this.generation++;this.pending=null;this.queuedDelta=null;
             for(const wait of this.waitTimers.values())wait.epoch.clearTimeout(wait.handle);this.waitTimers.clear();};
         this.dispose=()=>{this.disposed=true;this.cancel();};
         // Runtime.dispose clears a project during loadProject as well as on
@@ -61,8 +62,32 @@ class ArcadeFramePhase {
     hasSourceProject() {
         if(this.disposed)return false;
         if(this.ext._sdkSpriteUpdates?.hasSceneUpdates())return true;
-        return this.runtime.targets.some(target=>Object.values(target.blocks?._blocks || {}).some(block=>
-            block.opcode==='arcade_sourceWhile'||block.opcode==='arcade_whenSourceStarts'||this.nativeCallbackOpcodes.has(block.opcode)));
+        const qualifies=opcode=>opcode==='arcade_sourceWhile'||opcode==='arcade_whenSourceStarts'||this.nativeCallbackOpcodes.has(opcode);
+        const witness=this.sourceProjectWitness;
+        if(witness && this.runtime.targets.includes(witness.target) &&
+            witness.target.blocks===witness.blocks && witness.blocks._blocks===witness.table) {
+            const entry=Object.getOwnPropertyDescriptor(witness.table,witness.id);
+            const opcode=Object.getOwnPropertyDescriptor(witness.block,'opcode');
+            if(entry?.enumerable && Object.hasOwn(entry,'value') && entry.value===witness.block &&
+                opcode && Object.hasOwn(opcode,'value') && qualifies(opcode.value))return true;
+        }
+        this.sourceProjectWitness=null;
+        for(const target of this.runtime.targets) {
+            const blocks=target.blocks,table=blocks?._blocks || {};
+            for(const [id,block]of Object.entries(table)) {
+                if(block.opcode==='arcade_sourceWhile'||block.opcode==='arcade_whenSourceStarts'||this.nativeCallbackOpcodes.has(block.opcode)) {
+                    const entry=Object.getOwnPropertyDescriptor(table,id),opcode=Object.getOwnPropertyDescriptor(block,'opcode');
+                    // Native Blocks store enumerable own data entries. Retain only
+                    // a current positive witness, never a false graph snapshot or
+                    // an accessor/inherited opcode as a cached certificate.
+                    if(entry?.enumerable && Object.hasOwn(entry,'value') && entry.value===block &&
+                        opcode && Object.hasOwn(opcode,'value') && qualifies(opcode.value))
+                        this.sourceProjectWitness={target,blocks,table,id,block};
+                    return true;
+                }
+            }
+        }
+        return false;
     }
     requestStep(delta) {
         if(this.continuation){const generation=this.generation;return this.continuation.then(()=>

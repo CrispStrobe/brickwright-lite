@@ -140,3 +140,27 @@ phases; a smoke run or roundtrip alone does not establish equivalent behavior.
 Keep prototype results separate from product qualification, preserve all
 failures and report any remaining phase/cadence limits. Corpus classifications
 and whole-game compatibility remain separate acceptance gates.
+
+## Current positive source-presence witness
+
+The phase query can retain one positive source-block witness to avoid repeatedly
+materializing every block in a large current project. Each read still checks
+disposal and real scene-update ownership first. The witness must still belong
+to the actual current runtime target, its same Blocks object and dictionary,
+an enumerable own data entry with the same block object, and an own data opcode
+that satisfies the original current source/callback predicate. Any mismatch
+requires a fresh census. False results are never cached, so a newly added
+source hat is detected immediately. Existing lifecycle cancellation clears the
+witness without changing timer, epoch, continuation or frame behavior.
+
+This is an existential presence query over native Blocks data dictionaries, not
+a general graph validator or a Number/value producer certificate. It does not
+claim preservation of incidental effects from privileged host-created neighboring
+getters, proxies or malformed graph corruption. Accessor/inherited witness fields
+use the ordinary uncached census. No clock adjustment, callback skipping, renderer
+shortcut or new source capability follows from a positive witness.
+
+Focused mutation and repeated-census controls and affected native qualification
+are required before accepting this optimization. Long countdown expiry and
+guest-owned restart remain separate unobserved boundaries until their actual
+strict controller run completes; a short CPU diagnostic does not qualify them.
