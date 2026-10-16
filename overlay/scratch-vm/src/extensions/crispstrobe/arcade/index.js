@@ -2383,10 +2383,25 @@ module.exports = makeExt(`// Name: Arcade
     }
     _runTerrainGenerator(generator) {
       const epoch = this._terrainEpoch;
-      const resume = () => {
-        if (epoch !== this._terrainEpoch) return;
-        const step = generator.next();
-        if (!step.done) return Promise.resolve(step.value).then(resume);
+      const close = () => {
+        // Only return-completion cleanup may run after cancellation. Drive
+        // yielded finally work, never the ordinary body; cap unexpected cleanup.
+        let remaining=64;
+        const finish=(method='return',error)=>{
+          if(remaining--<=0)throw new Error('Arcade cancelled iterator cleanup exceeded its finite step bound');
+          const step=generator[method](error);
+          if(!step.done)return Promise.resolve(step.value).then(()=>finish('next'),error=>finish('throw',error));
+        };
+        return finish();
+      };
+      const resume = (failed=false,error) => {
+        // A cancelled actual turn must close its suspended iterator, not run
+        // its authored continuation or retain a physical update entry.
+        if (epoch !== this._terrainEpoch) return close();
+        // Rejection belongs to this same yielded operation. Throw it through
+        // delegation so every owned iterator finally runs before propagation.
+        const step = failed ? generator.throw(error) : generator.next();
+        if (!step.done) return Promise.resolve(step.value).then(()=>resume(),error=>resume(true,error));
         return step.value;
       };
       return resume();
@@ -5963,7 +5978,7 @@ module.exports = makeExt(`// Name: Arcade
       this._pendingSceneSeconds.delete(owner);
       const epoch=this._terrainEpoch,result=this._runTerrainGenerator(this._advanceFrameSteps(elapsed));
       if(result?.then){
-        const pending=result.catch(error=>this._runtime?.emit?.('BLOCKS_ERROR',error.message)).finally(()=>{if(this._sceneFrames.get(owner)===pending)this._sceneFrames.delete(owner);if(this._terrainFrame===pending && epoch===this._terrainEpoch)this._terrainFrame=null;});
+        const pending=result.catch(error=>{if(epoch===this._terrainEpoch&&!dependencies.arcadeExceptions.reported(this._runtime,error))this._runtime?.emit?.('BLOCKS_ERROR',error?.message ?? String(error));}).finally(()=>{if(this._sceneFrames.get(owner)===pending)this._sceneFrames.delete(owner);if(this._terrainFrame===pending && epoch===this._terrainEpoch)this._terrainFrame=null;});
         this._sceneFrames.set(owner,pending);if(this._state()===owner)this._terrainFrame=pending;return pending;
       }
       return result;
