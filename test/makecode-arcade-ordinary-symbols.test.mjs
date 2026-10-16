@@ -1,10 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import {createOrdinaryExportSymbols} from '../overlay/scratch-gui/src/lib/bw-makecode/ordinary-export-symbols.js';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
+
+const observationDirectory=process.env.BW_ORDINARY_SYMBOL_OBSERVATIONS;let observationSerial=0;
+const retain=(kind,value)=>{if(observationDirectory)fs.writeFileSync(path.join(observationDirectory,String(observationSerial++).padStart(4,'0')+'-'+kind+'.json'),JSON.stringify(value,(_key,v)=>v===undefined?{$undefined:true}:v,2)+'\n',{flag:'wx'});};
+const channelState=value=>Object.fromEntries([...new Set(['warnings','errors','unparsed','unsupported','diagnostics',...Object.keys(value||{}).filter(k=>/warn|error|unparsed|unsupported|diagnostic|refus/i.test(k))])].map(k=>[k,{provided:Object.hasOwn(value||{},k),kind:!Object.hasOwn(value||{},k)?'absent':value[k]===undefined?'undefined':value[k]===null?'null':Array.isArray(value[k])?'array':typeof value[k],...(Object.hasOwn(value||{},k)?{value:value[k]}:{})}]));
+const exportGraph=(project,opts={})=>{retain('export-input',{project});try{const result=projectToArcade(project,opts);retain('export-return',{result,channels:channelState(result),projectAfter:project});return result;}catch(error){retain('export-exception',{name:error.name,message:error.message,stack:error.stack,channels:channelState(error),projectAfter:project});throw error;}};
 
 const target=(name,isStage=false)=>({name,isStage,variables:{},lists:{},blocks:{},costumes:[],sounds:[],currentCostume:0,x:0,y:0,visible:false});
 const project=(...targets)=>({targets:[target('Stage',true),...targets],monitors:[],extensions:['arcade'],meta:{semver:'3.0.0'}});
@@ -88,8 +95,8 @@ test('native inherited procedure-cache keys are refused without banning ordinary
  const t=target('Game');procedure(t,'constructor');procedure(t,'valid %s',['constructor']);const{symbols,notes}=plan(project(t));assert.equal(symbols.name(t,'constructor'),null);assert.ok(symbols.name(t,'valid %s'));assert.ok(notes.length);
 });
 
-const build=source=>{const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);const creator=new Creator();creator.parse(imported.code);for(const upload of imported.costumes||[])creator.applyCustomSVG(upload.sprite,upload.svg);for(const k of ['warnings','errors','unparsed'])assert.deepEqual(creator[k],[]);return{creator,imported};};
-const output=creator=>projectToArcade(creator.project,{costumeSvg:(_target,costume)=>creator.assets.get(costume?.assetId)?.data});
+const build=source=>{const imported=arcadeToPseudocode(source);retain('public-import',{source,imported,channels:channelState(imported)});assert.deepEqual(imported.unsupported,[]);const creator=new Creator();try{creator.parse(imported.code);for(const upload of imported.costumes||[])creator.applyCustomSVG(upload.sprite,upload.svg);}catch(error){retain('Creator-exception',{name:error.name,message:error.message,stack:error.stack,channels:channelState(error),creatorChannels:channelState(creator),project:creator.project});throw error;}retain('Creator-return',{channels:channelState(creator),project:creator.project});for(const k of ['warnings','errors','unparsed'])assert.deepEqual(creator[k],[]);return{creator,imported};};
+const output=creator=>exportGraph(creator.project,{costumeSvg:(_target,costume)=>creator.assets.get(costume?.assetId)?.data});
 
 test('real public import/Creator/current export keeps a nonzero-argument function name across three trips',()=>{
  let source='function sum(a:number,b:number):number{return a+b}let total=sum(1,2);';
@@ -102,7 +109,7 @@ test('recursive and mutual actual function calls retain consistent declaration o
 
 test('a real artwork callback edit after symbol planning keeps a named currentness refusal',()=>{
  const {creator}=build('function keep(n:number):number{return n}let answer=keep(3);let hero=sprites.create(img`1`,SpriteKind.Player);');const t=creator.project.targets.find(t=>!t.isStage),proto=Object.values(t.blocks).find(b=>b.opcode==='procedures_prototype');let calls=0,changed=false;
- const result=projectToArcade(creator.project,{costumeSvg:(_target,costume)=>{if(++calls>creator.project.targets.length&&!changed){proto.mutation.proccode+=' edited';changed=true;}return creator.assets.get(costume?.assetId)?.data;}});
+ const result=exportGraph(creator.project,{costumeSvg:(_target,costume)=>{if(++calls>creator.project.targets.length&&!changed){proto.mutation.proccode+=' edited';changed=true;}return creator.assets.get(costume?.assetId)?.data;}});
  assert.equal(changed,true,'existing callback must actually mutate after initial palette reads');assert.ok(result.unsupported.some(n=>n.includes('current project or owner inventory changed')));
 });
 
@@ -163,9 +170,37 @@ function callbackProject(name,opcode){
 }
 
 test('actual legacy created and overlap callback formals cannot capture ordinary function calls',()=>{
- for(const[name,opcode]of [['sprite','arcade_whenSpriteCreated'],['otherSprite','arcade_whenSpritesOverlap']]){const p=callbackProject(name,opcode),before=JSON.stringify(p),result=projectToArcade(p);assert.deepEqual(result.unsupported,[]);assert.equal(JSON.stringify(p),before);const ast=parseMakeCodeTs(result.files['main.ts']),callbacks=astNodes(ast,n=>n.type==='FunctionExpression'&&n.params?.includes(name));assert.equal(callbacks.length,1);const calls=astNodes(callbacks[0].body,n=>n.type==='Call'&&n.callee?.type==='Identifier');assert.equal(calls.length,1);assert.notEqual(calls[0].callee.name,name);assert.ok(ast.body.some(n=>n.type==='FunctionDeclaration'&&n.name===calls[0].callee.name));assert.match(result.files['main.ts'],/answer\s*=\s*7/);}
+ for(const[name,opcode]of [['sprite','arcade_whenSpriteCreated'],['otherSprite','arcade_whenSpritesOverlap']]){const p=callbackProject(name,opcode),before=JSON.stringify(p),result=exportGraph(p);assert.deepEqual(result.unsupported,[]);assert.equal(JSON.stringify(p),before);const ast=parseMakeCodeTs(result.files['main.ts']),callbacks=astNodes(ast,n=>n.type==='FunctionExpression'&&n.params?.includes(name));assert.equal(callbacks.length,1);const calls=astNodes(callbacks[0].body,n=>n.type==='Call'&&n.callee?.type==='Identifier');assert.equal(calls.length,1);assert.notEqual(calls[0].callee.name,name);assert.ok(ast.body.some(n=>n.type==='FunctionDeclaration'&&n.name===calls[0].callee.name));assert.match(result.files['main.ts'],/answer\s*=\s*7/);}
 });
 
 test('actual restartable broadcast script _g local cannot capture an ordinary _g call',()=>{
- const p=callbackProject('_g','event_whenbroadcastreceived'),before=JSON.stringify(p),result=projectToArcade(p);assert.deepEqual(result.unsupported,[]);assert.equal(JSON.stringify(p),before);const ast=parseMakeCodeTs(result.files['main.ts']),scripts=astNodes(ast,n=>n.type==='FunctionDeclaration'&&astNodes(n.body,b=>b.type==='Declaration'&&b.decls?.some(d=>d.name==='_g')).length>0);assert.equal(scripts.length,1);const calls=astNodes(scripts[0].body,n=>n.type==='Call'&&n.callee?.type==='Identifier');assert.equal(calls.some(n=>n.callee.name==='_g'),false);assert.ok(calls.some(n=>ast.body.some(d=>d.type==='FunctionDeclaration'&&d.name===n.callee.name&&astNodes(d.body,b=>b.type==='Assignment'&&b.left?.name==='answer').length>0)));assert.match(result.files['main.ts'],/answer\s*=\s*7/);
+ const p=callbackProject('_g','event_whenbroadcastreceived'),before=JSON.stringify(p),result=exportGraph(p);assert.deepEqual(result.unsupported,[]);assert.equal(JSON.stringify(p),before);const ast=parseMakeCodeTs(result.files['main.ts']),scripts=astNodes(ast,n=>n.type==='FunctionDeclaration'&&astNodes(n.body,b=>b.type==='Declaration'&&b.decls?.some(d=>d.name==='_g')).length>0);assert.equal(scripts.length,1);const calls=astNodes(scripts[0].body,n=>n.type==='Call'&&n.callee?.type==='Identifier');assert.equal(calls.some(n=>n.callee.name==='_g'),false);assert.ok(calls.some(n=>ast.body.some(d=>d.type==='FunctionDeclaration'&&d.name===n.callee.name&&astNodes(d.body,b=>b.type==='Assignment'&&b.left?.name==='answer').length>0)));assert.match(result.files['main.ts'],/answer\s*=\s*7/);
+});
+
+
+test('managed sockets reject malformed tags, arities, reporter roles and foreign terminators',()=>{
+ const fixture=()=>{const t=target('Game');procedure(t,'f %s',['value']);t.blocks.call={opcode:'arcade_callFunction',parent:null,next:null,topLevel:true,shadow:false,fields:{},inputs:{NAME:[1,[10,'f %s']],ARGS:[2,'arg']}};t.blocks.arg={opcode:'arcade_functionArgument',parent:'call',next:null,topLevel:false,shadow:false,fields:{},inputs:{VALUE:[1,[4,'1']],REST:[1,'end']}};t.blocks.end={opcode:'text',parent:'arg',next:null,topLevel:false,shadow:true,fields:{TEXT:['[]',null]},inputs:{}};return t;};
+ {const t=fixture(),{symbols,notes}=plan(project(t));assert.equal(symbols.call(t,t.blocks.call),'f');assert.deepEqual(notes,[]);}
+ const changes=[
+  t=>t.blocks.call.inputs.NAME[0]=99,t=>t.blocks.call.inputs.NAME.push('extra'),
+  t=>t.blocks.call.inputs.ARGS[0]=99,t=>t.blocks.call.inputs.ARGS.push('extra'),
+  t=>t.blocks.arg.inputs.VALUE[0]=99,t=>t.blocks.arg.inputs.VALUE.push('extra'),
+  t=>t.blocks.arg.inputs.REST[0]=99,t=>t.blocks.arg.inputs.REST.push('extra'),
+  t=>t.blocks.arg.shadow=true,t=>t.blocks.arg.topLevel=true,t=>t.blocks.arg.next='end',
+  t=>t.blocks.end.parent='foreign',t=>t.blocks.end.shadow=false,t=>t.blocks.end.topLevel=true,
+  t=>t.blocks.end.next='call',t=>t.blocks.end.inputs.EXTRA=[1,[10,'unused']],
+  t=>t.blocks.call.fields.NAME=['f %s',null],t=>t.blocks.alias=t.blocks.end
+ ];
+ for(const change of changes){const t=fixture();change(t);const{symbols,notes}=plan(project(t));assert.equal(symbols.call(t,t.blocks.call),null);assert.ok(notes.length);}
+ // Empty chains still require real shadow syntax, including the NAME socket.
+ for(const input of ['NAME','ARGS']){const t=target('Game');procedure(t,'f');t.blocks.call={opcode:'arcade_callFunction',parent:null,next:null,topLevel:true,shadow:false,fields:{},inputs:{NAME:[1,[10,'f']],ARGS:[1,[10,'[]']]}};t.blocks.call.inputs[input][0]=99;assert.equal(plan(project(t)).symbols.call(t,t.blocks.call),null);}
+});
+
+
+test('actual compressed active primitives keep their native input mode without a type grant',()=>{
+ const t=target('Game'),p=procedure(t,'f %s',['value']),call=stock(t,p);t.variables.id=['value',7];
+ for(const mode of [2,3]){call.inputs[p.ids[0]]=mode===2?[2,[12,'value','id']]:[3,[12,'value','id'],[10,'']];const{symbols}=plan(project(t));assert.equal(symbols.call(t,call),'f');}
+ t.blocks.managed={opcode:'arcade_callFunction',parent:null,next:null,topLevel:true,shadow:false,fields:{},inputs:{NAME:[1,[10,'f %s']],ARGS:[3,'arg',[4,'0']]}};
+ t.blocks.arg={opcode:'arcade_functionArgument',parent:'managed',next:null,topLevel:false,shadow:false,fields:{},inputs:{VALUE:[3,[12,'value','id'],[10,'']],REST:[1,[10,'[]']]}};
+ assert.equal(plan(project(t)).symbols.call(t,t.blocks.managed),'f');
 });

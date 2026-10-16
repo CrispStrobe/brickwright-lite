@@ -16,8 +16,8 @@ function inputSocket(target,slot,parent){
  if(!Array.isArray(slot))return false;
  const node=(id,shadow)=>typeof id==='string'&&Object.hasOwn(target.blocks,id)&&target.blocks[id]?.parent===parent&&target.blocks[id]?.shadow===shadow;
  if(slot[0]===1&&slot.length===2)return primitive(slot[1])||node(slot[1],true);
- if(slot[0]===2&&slot.length===2)return node(slot[1],false);
- if(slot[0]===3&&slot.length===3)return node(slot[1],false)&&(primitive(slot[2])||node(slot[2],true));
+ if(slot[0]===2&&slot.length===2)return primitive(slot[1])||node(slot[1],false);
+ if(slot[0]===3&&slot.length===3)return (primitive(slot[1])||node(slot[1],false))&&(primitive(slot[2])||node(slot[2],true));
  return false;
 }
 // A plain current project, including object identity, is the authority. This
@@ -113,7 +113,26 @@ export function createOrdinaryExportSymbols(project,note=()=>{}){
   const code=block?.opcode==='procedures_call'?block.mutation?.proccode:block?.opcode==='arcade_callFunction'?literal(target,block,'NAME'):null,r=typeof code==='string'&&record(target,code);
   if(!r)return null;
   if(block.opcode==='procedures_call'){const ids=list(block.mutation?.argumentids);const callId=Object.keys(target.blocks).find(id=>target.blocks[id]===block);if(!ids||JSON.stringify(ids)!==JSON.stringify(r.ids)||!keys(block.inputs||{},r.ids)||ids.some(id=>!inputSocket(target,block.inputs[id],callId))){report('call ordered formal/input binding differs');return null;}}
-  if(block.opcode==='arcade_callFunction'){const seen=new Set();let parent=block,slot=block.inputs?.ARGS?.[1],child=typeof slot==='string'&&target.blocks[slot];while(child?.opcode==='arcade_functionArgument'){if(seen.has(child)||child.parent!==Object.keys(target.blocks).find(id=>target.blocks[id]===parent)||!keys(child.inputs||{},['VALUE','REST'])){report('managed argument chain ownership differs');return null;}seen.add(child);parent=child;slot=child.inputs.REST?.[1];child=typeof slot==='string'&&target.blocks[slot];}if(!(Array.isArray(slot)&&slot[0]===10&&slot[1]==='[]')&&!(child?.opcode==='text'&&child.shadow===true&&child.fields?.TEXT?.[0]==='[]')){report('managed argument chain requires its actual terminator');return null;}}
+  if(block.opcode==='arcade_callFunction'){
+   const idOf=node=>Object.keys(target.blocks).find(id=>target.blocks[id]===node);
+   const reporterSocket=(slot,parent)=>inputSocket(target,slot,parent)&&slot.slice(1).every(value=>Array.isArray(value)||typeof value==='string'&&target.blocks[value]?.topLevel===false&&target.blocks[value]?.next===null&&Object.values(target.blocks).filter(node=>node===target.blocks[value]).length===1);
+   const text=(slot,parent)=>{
+    if(!reporterSocket(slot,parent)||slot[0]!==1)return null;
+    const value=slot[1];if(Array.isArray(value))return value.length===2&&value[0]===10&&typeof value[1]==='string'?value[1]:null;
+    const node=target.blocks[value],field=node?.fields?.TEXT;
+    return node?.opcode==='text'&&keys(node.inputs||{},[])&&keys(node.fields||{},['TEXT'])&&node.mutation==null&&Array.isArray(field)&&(field.length===1||field.length===2&&field[1]===null)&&typeof field[0]==='string'?field[0]:null;
+   };
+   const callId=idOf(block);
+   if(block.shadow!==false||!keys(block.fields||{},[])||!keys(block.inputs||{},['NAME','ARGS'])||text(block.inputs.NAME,callId)!==code){report('managed call name/socket ownership differs');return null;}
+   const seen=new Set();let parent=callId,slot=block.inputs.ARGS;
+   for(;;){
+    if(!reporterSocket(slot,parent)){report('managed argument chain socket ownership differs');return null;}
+    if(text(slot,parent)==='[]')break;
+    const child=typeof slot[1]==='string'&&target.blocks[slot[1]];
+    if(!child||child.opcode!=='arcade_functionArgument'||child.shadow!==false||seen.has(child)||!keys(child.fields||{},[])||child.mutation!=null||!keys(child.inputs||{},['VALUE','REST'])||!reporterSocket(child.inputs.VALUE,idOf(child))){report('managed argument chain ownership differs');return null;}
+    seen.add(child);parent=idOf(child);slot=child.inputs.REST;
+   }
+  }
   return name(target,code);
  };
  return Object.freeze({current,name,pin,call,values:()=>records.filter(r=>!blocked.has(r)).map(r=>pins.get(r)||r.symbol)});
