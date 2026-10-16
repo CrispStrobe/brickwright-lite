@@ -5426,3 +5426,48 @@ all initializers, unused bodies and diagnostics; no public flag/namespace/tag
 can issue proof. This does not widen ordinary Number/reference producers,
 classes, runtime behavior, dependency fetching, pins or compiler execution.
 Implement only after this ownership amendment qualifies and merges.
+
+
+## 386 GUI HDD and forward-debug hosted acceptance — 2026-10-16
+
+PROPOSED CLAIM — Codex x86, serialized after the existing media/debugger lane.
+Merge this claim before creating the new acceptance files. The existing merged
+claims cover the source in PR986, PR987 and PR989; their normal local composition
+adds no supplier pin, lock, notice or other-owner change. This claim extends only
+the finite hosted acceptance boundary: new
+`scripts/run-i80386-hdd-gui-actual.py`,
+`scripts/read-i80386-hdd-gui-originals.py`,
+`test/i80386-hdd-gui-actual.test.mjs` and
+`.github/workflows/i80386-hdd-gui-actual.yml`, plus the existing
+`scripts/verify-i80386-local-hdd-gui.mjs` for bounded original witnesses and a
+separate forward-debug scenario. Own only this ledger entry and its matching x86-guide subsection.
+Reuse the existing Playwright persistence scenario and established hosted
+build/browser pipeline; do not introduce another provisioning framework or
+change unrelated workflows.
+
+The source-only composition retains main's selected Board until its existing
+adoption owner supplies the reviewed installed dependency. It must refuse the
+actual persistence/debug scenario when the dedicated 386 target API is absent.
+Never inject supplier modules, fake a snapshot or infer installed support from
+a Board-only diagnostic. PR975's existing Board/SB3 owner retains its explicit
+**Not for agent merge** hold and all dependency writers; PR965 retains CUI/shared
+lock/notices ownership. This claim transfers no such surfaces. Record a handoff
+or wait for the existing owner's qualified adoption; any new adoption by this
+lane needs that handoff and a separately merged precise claim.
+
+Before a one-shot actual event, freeze the exact composed source, installed
+supplier/build graph, free inputs, browser/runtime identities, finite resource
+profile, closed original roles and independent reader. Preserve first failures
+and owned cleanup observations. Capture genuine image and metadata downloads,
+reload the exact saved data disk through the real chooser in a fresh machine,
+and verify the guest-written marker and unchanged paused original session.
+Qualify forward debugging separately through real UI pause, code breakpoint,
+instruction step, full-width registers, read-only physical memory, resume and
+pane switching, with source-backed refusals for unsupported operations.
+
+Pure controls must include a complete manufactured packet and fully rehashed
+semantic negatives. They do not establish browser or guest success. Every
+enabled exact-head source check and separately admitted original-only actual
+result remains mandatory; acquire each official original once and never replay
+a guest for the reader. No ISO/ATAPI, generalized DOSBox, new CPU/device, reverse
+execution, mode-aware disassembler, physical timing, whole-OS or release claim.
