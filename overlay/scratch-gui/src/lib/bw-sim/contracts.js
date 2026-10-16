@@ -37,6 +37,7 @@ export const pitchRadiusLdu = teeth => teeth * 1.25;
 export const CONNECTOR_TYPES = Object.freeze(['pinhole', 'axlehole', 'axle', 'pin', 'stud', 'antistud', 'ball', 'ballsocket']);
 export const GEAR_TYPES = Object.freeze(['spur', 'bevel', 'worm', 'rack']);
 export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
+export const SENSOR_KINDS = Object.freeze(['distance', 'color', 'force']);
 
 /** Friction of a part with no `friction` (ABS plastic on a mat) and of the ground (a printed mat). */
 export const PART_FRICTION = 0.4;
@@ -94,6 +95,8 @@ export const GROUND_FRICTION = 0.8;
  *        belong to the output body, every other collider to the housing.
  *        Both bodies must end up with at least one collider.
  *   hub?: {ports: string[]}
+ *   sensor?: {kind: 'distance'|'color'|'force', origin: Vec3, direction: Vec3}
+ *      in the part's LDraw frame (LDU; direction unit, out of the sensing face).
  * }} PartMeta
  */
 
@@ -233,6 +236,14 @@ export const validatePartMeta = meta => {
     }
     if (meta.hub && !(Array.isArray(meta.hub.ports) && meta.hub.ports.every(x => HUB_PORTS.includes(x)))) {
         out.push(`${p}.hub.ports: need a list of ${HUB_PORTS.join('|')}`);
+    }
+    if (meta.sensor !== undefined) {
+        if (!meta.sensor || typeof meta.sensor !== 'object') out.push(`${p}.sensor: not an object`);
+        else {
+            if (!SENSOR_KINDS.includes(meta.sensor.kind)) out.push(`${p}.sensor.kind: '${meta.sensor.kind}' is not one of ${SENSOR_KINDS.join('|')}`);
+            if (!isVec(meta.sensor.origin)) out.push(`${p}.sensor.origin: not a Vec3`);
+            checkUnit(meta.sensor.direction, `${p}.sensor.direction`, out);
+        }
     }
     return out;
 };
