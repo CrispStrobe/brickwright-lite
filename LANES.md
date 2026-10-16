@@ -5617,7 +5617,10 @@ budget scope is added. Merge this claim before composing/adopting the graph.
 ## Circuit File actions with a cached but unmounted designer — 2026-10-16
 
 CLAIMED — Codex root, isolated `/tmp/brickwright-circuit-file-wake-20261016`,
-branch `fix/circuit-file-wake-20261016`, base canonical main `26167e4ae`.
+branch `fix/circuit-file-wake-20261016`, claim base canonical main `7ce90fc38`.
+Prepare the implementation on the already qualified local combined A13 graph
+`6681f1868`, then reconcile current main, including the independent Sim Lab
+addition, before final source qualification. This does not change package pins.
 Actual combined browser evidence retains Save circuit from Code producing no
 download after the designer had already been loaded. The debugger-only right
 portal unmounts the designer, while `_circuitFileWake` mistakes cached
