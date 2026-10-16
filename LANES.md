@@ -5054,3 +5054,17 @@ editor ownership remain separate. Preserve unknown-resource Undefined behavior,
 shared-cache versus fresh-array identity, all writers, mutation and presence
 checks, and current graph/resource binding. No opcode-only type grant, default
 Array, dependency pin or runtime semantic change is authorized by this claim.
+
+## Arcade custom loop block theme media — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge the
+[loop block media contract](docs/ARCADE-LOOP-BLOCK-THEME-MEDIA.md) before source
+implementation. Own only the extension registration media argument in the
+Blocks container and its tracked mirror, the extension theme helper and its
+mirror/optional adjacent pure presentation helper, focused controls and docs.
+Use actual configured workspace media for the current theme/base path and the
+existing VM-generated loop-arrow shape. Preserve VM/headless behavior, every
+program field and unrelated icons; no server alias, asset duplication, supplier
+pin, workflow or broad runtime change. A fresh affected visible editor/theme
+qualification remains required; original missing-resource failures stay open
+until that evidence exists. Other lanes retain their owned surfaces.
