@@ -332,7 +332,7 @@ local production compilation is qualified separately.
 
 ## iOS redundant static archive packaging — 2026-10-15
 
-CLAIMED — Codex, isolated `fix/ios-static-archive-resources-20261015` in
+DONE — Codex, isolated `fix/ios-static-archive-resources-20261015` in
 `/tmp/brickwright-ios-size-fix`, base `86daec14c`. User requested shrinking the
 current iPad app. Measured signed bundle: 371.43 MiB, including 151.98 MiB
 `libapp.a` copied as a resource despite already being linked into the executable.
@@ -343,7 +343,11 @@ build-file and resource-phase references from the generated project; preserve
 its Frameworks/linking entry. Exercise actual preparation on an Xcode fixture,
 including an already-anchored project. Verify the smaller signed app and iPad
 installation/launch. No feature, frontend asset or native code is removed.
-Claim lands before implementation.
+Claim landed as `139c01fe4` before implementation. Four preparation tests pass;
+the new real-script fixture fails on the prior implementation. The 219.45 MiB
+signed app (41% reduction) installed and launched on the paired iPad over Wi-Fi.
+All 41 executable sections remain byte-identical after removing the redundant
+archive; signature verification passes.
 
 ## iOS shared validator compilation blocker — 2026-10-15
 
