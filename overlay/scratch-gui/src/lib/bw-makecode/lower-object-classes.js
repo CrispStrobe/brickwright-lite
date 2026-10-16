@@ -7,6 +7,48 @@ import {physicalUpdateSourceFor,analyseSourceValueProducers} from './source-valu
 import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
 
 const physicalLowerings=new WeakMap();
+// The existing callback and PXT statement normalizers represent an absent
+// If alternative as an empty statement list. This is an IR edge projection,
+// never a runtime Array, a value fact, or permission to omit body/metadata.
+function physicalOutputSnapshot(root){
+    if(!physicalUpdateSourceSnapshot(root))return null;
+    const statementIfs=new WeakSet(),scanned=new WeakSet();
+    const expressionKeys=new Set(['expr','init','test','value','argument','left','right','callee','args','object','index','items','iterable','update']);
+    const scan=(node,statement=false)=>{
+        if(!node||typeof node!=='object'||scanned.has(node))return;scanned.add(node);
+        if(Array.isArray(node)){node.forEach(value=>scan(value,statement));return;}
+        if(node.type==='If'&&statement)statementIfs.add(node);
+        if(['Program','FunctionDeclaration','FunctionExpression','Block','While','For','ForOf','ForIn'].includes(node.type))scan(node.body,true);
+        if(node.type==='If'&&statement){scan(node.consequent,true);scan(node.alternate,true);}
+        if(node.type==='Declaration')for(const decl of node.decls||[])scan(decl.init);
+        if(node.type==='Switch')for(const row of node.cases||[]){scan(row.test);scan(row.body,true);}
+        for(const [key,value]of Object.entries(node))if(expressionKeys.has(key))scan(value);
+        if(node.type==='Object')for(const row of node.properties||[])scan(row.value);
+    };scan(root,true);
+    const seen=new Map();let valid=true;
+    const copy=value=>{
+        if(!value||typeof value!=='object')return value;
+        if(seen.has(value))return seen.get(value);
+        const out=Array.isArray(value)?[]:Object.create(Object.getPrototypeOf(value));seen.set(value,out);
+        const type=Object.getOwnPropertyDescriptor(value,'type');
+        const isIf=type&&Object.hasOwn(type,'value')&&type.value==='If'&&statementIfs.has(value);
+        if(isIf){
+            const test=Object.getOwnPropertyDescriptor(value,'test'),yes=Object.getOwnPropertyDescriptor(value,'consequent'),no=Object.getOwnPropertyDescriptor(value,'alternate');
+            if(!test||!yes||!no||![test,yes,no].every(d=>Object.hasOwn(d,'value'))||!test.value||typeof test.value!=='object'||Array.isArray(test.value)||!Array.isArray(yes.value)||no.value!==null&&!Array.isArray(no.value))valid=false;
+        }
+        for(const key of Reflect.ownKeys(value)){
+            const descriptor=Object.getOwnPropertyDescriptor(value,key);
+            if(!descriptor||!Object.hasOwn(descriptor,'value')){valid=false;continue;}
+            const projected=isIf&&key==='alternate'&&descriptor.value===null?[]:copy(descriptor.value);
+            Object.defineProperty(out,key,{...descriptor,value:projected});
+        }
+        return out;
+    };
+    const projected=copy(root);return valid?physicalUpdateSourceSnapshot(projected):null;
+}
+function matchesPhysicalOutput(snapshot,node){
+    const current=physicalOutputSnapshot(node);return !!current&&snapshot.matches(current.objects[0]);
+}
 
 // Class structure is declarative authoring data. Instances are explicit heap
 // references; no field state, per-class numeric handles or closure snapshots.
@@ -418,8 +460,8 @@ export function lowerObjectClasses(program,{classCallablePrototype=false,sdkImag
         // super and SDK bodies) and every ordered executable root/registration
         // is recorded in this single pass. Names only index private body rows.
         const procedures=body.filter(node=>node.type==='FunctionDeclaration');
-        const roots=physicalUpdateSourceSnapshot(body.filter(node=>node.type!=='FunctionDeclaration'));
-        const snapshots=procedures.map(node=>({name:node.name,snapshot:physicalUpdateSourceSnapshot(node)}));
+        const roots=physicalOutputSnapshot(body.filter(node=>node.type!=='FunctionDeclaration'));
+        const snapshots=procedures.map(node=>({name:node.name,snapshot:physicalOutputSnapshot(node)}));
         const creates=rows.flatMap(row=>row.creates).map(node=>node&&physicalUpdateSourceSnapshot(node));
         if(!physicalEntry.current()||!roots||snapshots.some(row=>!row.snapshot)||rows.some(row=>!row.generated||row.creates.some(node=>!node))||creates.some(value=>!value))
             fail('Throw physical update requires complete current generated methods and construction origins');
@@ -440,11 +482,11 @@ export function validatePhysicalUpdateLowering(program,receipt){
     const fail=message=>unsupported.push('Throw physical update lowering: '+message);
     if(!r||!r.source.current()){fail('actual private source/lowering receipt is unavailable or expired');return unsupported;}
     if(!physicalUpdateSourceSnapshot(program)){fail('final Program is not current plain data');return unsupported;}
-    if(!r.roots.matches(program.body.filter(node=>node.type!=='FunctionDeclaration')))fail('actual root effects, construction or registration changed');
+    if(!matchesPhysicalOutput(r.roots,program.body.filter(node=>node.type!=='FunctionDeclaration')))fail('actual root effects, construction or registration changed');
     const procedures=program.body.filter(node=>node.type==='FunctionDeclaration');
     if(procedures.length!==r.snapshots.length||procedures.some((node,index)=>node.name!==r.snapshots[index]?.name))fail('actual ordered generated procedure inventory changed');
     for(const row of r.snapshots){const found=procedures.filter(node=>node.name===row.name);
-        if(found.length!==1||!row.snapshot.matches(found[0]))fail('actual generated/source procedure changed: '+row.name);}
+        if(found.length!==1||!matchesPhysicalOutput(row.snapshot,found[0]))fail('actual generated/source procedure changed: '+row.name);}
     if(unsupported.length)return unsupported;
     const nodes=[];const visit=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(visit);return;}nodes.push(node);for(const [key,value]of Object.entries(node))if(!['originalBody','parameterDefaults','bwProcedureConstraintSource'].includes(key))visit(value);};visit(program.body.filter(node=>node.type!=='FunctionDeclaration'));
     const rootCalls=nodes.filter(node=>node.type==='Call');

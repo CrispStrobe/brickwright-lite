@@ -10,6 +10,7 @@ import {prepareThrowSource,prepareThrowEmission,reproveThrowEmission,hasThrowEmi
 import {lowerObjectClasses,validatePhysicalUpdateLowering} from '../overlay/scratch-gui/src/lib/bw-makecode/lower-object-classes.js';
 import {lowerStaticCallbackHelpers} from '../overlay/scratch-gui/src/lib/bw-makecode/static-callback-helpers.js';
 import {lowerLazyValues} from '../overlay/scratch-gui/src/lib/bw-makecode/lower-lazy-values.js';
+import {sdkSpriteExportClasses} from '../overlay/scratch-gui/src/lib/bw-makecode/sdk-sprite-class-descriptors.js';
 const guest=`let ticks=0
 let entered=0
 let child=0
@@ -123,11 +124,20 @@ test('final emission also expires when its actual source changes after lowering'
 });
 
 
+const constructionRoles=program=>{
+ const registrations=program.body.filter(node=>node.expr?.callee?.object?.name==='__bwObjects'&&node.expr.callee.name==='declareSubclass'&&node.expr.args[0].value==='Actor');assert.equal(registrations.length,1);
+ const declaration=registrations[0].expr,signature=fn=>fn.name+fn.params.map(()=> ' %s').join(''),procedures=program.body.filter(node=>node.type==='FunctionDeclaration');
+ const find=declared=>{const found=procedures.filter(fn=>signature(fn)===declared);assert.equal(found.length,1,declared);return found[0];};
+ const initializer=find(declaration.args[3].value),constructor=find(declaration.args[4].value);
+ const supers=procedures.filter(fn=>{const calls=fn.body.map(node=>node.expr).filter(node=>node?.callee?.object?.name==='__bwObjects'&&node.callee.name==='procedure');return calls.length===2&&calls[0].args[0].value===signature(initializer)&&calls[1].args[0].value===signature(constructor);});assert.equal(supers.length,1);
+ const builtin=sdkSpriteExportClasses().find(row=>row.name===declaration.args[1].value);assert.ok(builtin?.intrinsic);assert.equal(builtin.name,'__bwSDK_ExtendableSprite');assert.equal(procedures.some(fn=>signature(fn)===builtin.constructor),false,'selected SDK constructor is a runtime intrinsic, not an invented emitted body');
+ return {initializer,constructor,superConstructor:supers[0]};
+};
 test('generated constructor field initializer and super bodies remain bound to the real lowering',()=>{
- for(const name of ['__bwClass_Actor_constructor','__bwClass_Actor_fields','__bwClass_Actor_superConstructor','__bwClass___bwSDK_ExtendableSprite_constructor']){
-  const {sourceProof,lowered}=bridge(guest),final=finalProgram(lowered),procedure=final.body.find(node=>node.type==='FunctionDeclaration'&&node.name===name);
-  assert.ok(procedure,name);procedure.body.push({type:'ExpressionStatement',expr:{type:'Assignment',op:'=',left:{type:'Identifier',name:'entered'},right:{type:'Number',value:'7'}}});
-  assert.ok(prepareThrowEmission(final,sourceProof,lowered.physicalUpdateLowering).length,name);assert.equal(hasThrowEmission(final),false);
+ for(const role of ['constructor','initializer','superConstructor']){
+  const {sourceProof,lowered}=bridge(guest),final=finalProgram(lowered),procedure=constructionRoles(final)[role];
+  procedure.body.push({type:'ExpressionStatement',expr:{type:'Assignment',op:'=',left:{type:'Identifier',name:'entered'},right:{type:'Number',value:'7'}}});
+  assert.ok(prepareThrowEmission(final,sourceProof,lowered.physicalUpdateLowering).length,role);assert.equal(hasThrowEmission(final),false);
  }
 });
 test('new or reordered generated procedures cannot borrow the protected root registrations',()=>{
@@ -172,4 +182,23 @@ test('projection lineage refuses A to B to A without creating recursive currentn
  const b={...a,body:[...a.body]};assert.deepEqual(reproveThrowEmission(b,a),[]);
  assert.ok(reproveThrowEmission(a,b).some(row=>/never-branded/.test(row)));assert.equal(hasThrowEmission(a),true);assert.equal(hasThrowEmission(b),true);
  assert.ok(reproveThrowEmission(b,a).length);assert.equal(hasThrowEmission(a),true);
+});
+
+
+test('actual callback normalization changes only the selected empty If alternative representation',()=>{
+ const {lowered}=bridge(guest),before=lowered.program.body.find(node=>node.name==='__bwClass_Actor_update'),expected=structuredClone(before);
+ assert.equal(expected.body[1].alternate,null);expected.body[1].alternate=[];
+ const callbacks=lowerStaticCallbackHelpers(lowered.program),actual=callbacks.program.body.find(node=>node.name===before.name);retain('actual-normalization-delta',{before,after:actual});
+ assert.deepEqual(callbacks.unsupported,[]);assert.deepEqual(actual,expected,'all other method operations, order and metadata remain exact');
+ assert.deepEqual(validatePhysicalUpdateLowering(callbacks.program,lowered.physicalUpdateLowering),[]);
+});
+test('empty alternative correspondence refuses nonempty removed or descriptor-changed edges',()=>{
+ for(const mutate of [branch=>branch.alternate.push({type:'ExpressionStatement',expr:{type:'Number',value:'7'}}),branch=>{delete branch.alternate;},branch=>Object.defineProperty(branch,'alternate',{value:[],enumerable:false,writable:true,configurable:true})]){
+  const {sourceProof,lowered}=bridge(guest),final=finalProgram(lowered),branch=final.body.find(node=>node.name==='__bwClass_Actor_update').body[1];mutate(branch);
+  assert.ok(prepareThrowEmission(final,sourceProof,lowered.physicalUpdateLowering).length);assert.equal(hasThrowEmission(final),false);
+ }
+});
+test('empty alternative output correspondence does not excuse raw original-source drift',()=>{
+ const {program,sourceProof,lowered}=bridge(guest),method=program.body.find(node=>node.type==='Class').methods.find(node=>node.name==='update');assert.equal(method.body[1].alternate,null);
+ method.body[1].alternate=[];assert.equal(physicalUpdateSourceFor(program,sourceProof.physicalUpdateSource),null);assert.ok(validatePhysicalUpdateLowering(finalProgram(lowered),lowered.physicalUpdateLowering).length);
 });
