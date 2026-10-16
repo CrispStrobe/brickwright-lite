@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
+import {analyseSourceValueProducers} from '../overlay/scratch-gui/src/lib/bw-makecode/source-value-producers.js';
 import {proveArrayMapValues} from '../overlay/scratch-gui/src/lib/bw-makecode/lower-array-map-values.js';
 import {lowerPxtStagedValues} from '../overlay/scratch-gui/src/lib/bw-makecode/lower-pxt-staged-values.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -134,4 +135,50 @@ test('discarded complete value sinks retain unknown operands and unsupported ope
         assert.ok(r.unsupported.length,expression);
         const {staged}=lower(source);assert.ok(nodes(staged).some(n=>n.type==='Identifier'&&['unknownValue','unknownCommand'].includes(n.name)),expression+' retained actual unknown operand');
     }
+});
+
+test('ordinary Number constraints receive only actual stable dense map element and index producers',()=>{
+    for(const source of [
+        'let input=[1,2];function accept(value:number){return value}input.map(value=>accept(value));',
+        'let input=[1];function accept(value:number){return value}input.map(img=>accept(img));',
+        'let input:number[]=[1,2];function accept(value:number){return value}input.map(value=>accept(value));',
+        'let input=[1];let alias=input;function accept(value:number){return value}alias.map((value,index)=>accept(value+index));',
+        'function accept(value:string){return value}let input=["a","b"];input.map(value=>accept(value));',
+        'function accept(value:boolean){return value}let input=[true,false];input.map(value=>accept(value));'
+    ])clean(source);
+});
+test('typed map entry keeps shrink holes aliases method writes foreign and mixed paths refused',()=>{
+    const prefix='function accept(value:number){return value}';
+    for(const source of [
+        'let input:number[];input.map(value=>accept(value));',
+        'let input=foreign();input.map(value=>accept(value));',
+        'let input=[1,"bad"];input.map(value=>accept(value));',
+        'let input=[1];let alias=input;alias.pop();input.map(value=>accept(value));',
+        'let input=[1];input.map(value=>{input.pop();return accept(value)});',
+        'let input=[1];input.length=0;input.map(value=>accept(value));',
+        'let input=[1];input[100]=1;input.map(value=>accept(value));',
+        'let input=[1];input[0]="bad";input.map(value=>accept(value));',
+        'let input=[1];touch(input);input.map(value=>accept(value));',
+        'let input=[1];external();input.map(value=>accept(value));',
+        'let input=[1];input.map=other;input.map(value=>accept(value));',
+        'let input=[1];Array.prototype.map=other;input.map(value=>accept(value));',
+        'let input=[1];Array["prototype"]["map"]=other;input.map(value=>accept(value));',
+        'let input=[1];input.map(value=>{value="bad";return accept(value)});'
+    ])assert.ok(arcadeToPseudocode(prefix+source).unsupported.some(message=>message.startsWith('Procedure parameter constraint:')),source);
+});
+
+
+test('optional callback entry proof is current and cannot revive after observed AST restoration',()=>{
+    const source='let input=[1];function accept(value:number){return value}input.map(value=>accept(value));';
+    const program=parse(source),call=mapCall(program),argument=call.args[0].body[0].value.args[0];
+    const options={unboundIsOpaque:true,opaqueDeclarationValues:true};
+    assert.equal(analyseSourceValueProducers(program,options).typesAt(argument).has('Number'),false,'default producer policy has no callback entry grant');
+    const arrayGraph=analyseSourceValueProducers(program,{...options,arrayValues:true});
+    assert.equal(arrayGraph.typesAt(argument).has('Undefined'),true,'general map graph retains selected shrink semantics');
+    const graph=analyseSourceValueProducers(program,{...options,arrayCallbackParameters:true});
+    assert.deepEqual([...graph.typesAt(argument)],['Number']);
+    const decl=program.body[0].decls[0],old=decl.init;decl.init={type:'Array',items:[{type:'String',value:'"bad"'}]};
+    assert.equal(graph.typesAt(argument).size,0);decl.init=old;assert.equal(graph.typesAt(argument).size,0,'observed expiry never revives');
+    assert.equal(graph.functionParameterTypes(call.args[0],0).size,0);
+    const copied=structuredClone(program);assert.equal(graph.typesAt(mapCall(copied).args[0].body[0].value.args[0]).size,0,'a physical AST copy cannot borrow an old entry');
 });
