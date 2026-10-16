@@ -109,6 +109,9 @@ module.exports = function makeCrispExtension (source, dependencies = null, array
             if (typeof dependencies?.bindScoreAdapterInfo === 'function') {
                 dependencies.bindScoreAdapterInfo(info, this, this._inst);
             }
+            if (typeof dependencies?.bindNullSpriteAdapterInfo === 'function') {
+                dependencies.bindNullSpriteAdapterInfo(info, this, this._inst);
+            }
             return info;
         }
     };

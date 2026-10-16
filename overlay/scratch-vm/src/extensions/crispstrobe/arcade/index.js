@@ -1,5 +1,6 @@
 const makeExt = require('../adapter');
 const createConsoleInspectValues = require('./console-inspect-values');
+const nullSpriteGetter = require('../../../util/bw-null-sprite-getter');
 
 // Shared game-console blocks. The original extension described a micro:bit
 // 5x5 game API but implemented every VM method as a no-op. Keep its opcodes
@@ -24,6 +25,8 @@ module.exports = makeExt(`// Name: Arcade
   const exceptionOwners = new WeakMap();
   const procedureOwners = new WeakMap();
   const scoreNumberOwners = new WeakMap();
+  const nullSpriteOwners = new WeakMap();
+  const nullSpriteFaults = new WeakMap();
   const procedureEntryDisposers = new WeakMap();
   const speechPalette = ['#000000', '#ffffff', '#ff2121', '#ff93c4', '#ff8135', '#fff609',
     '#249ca3', '#78dc52', '#003fad', '#87f2ff', '#8e2ec4', '#a4839f', '#5c406c', '#e5cdc4', '#91463d', '#000000'];
@@ -54,6 +57,14 @@ module.exports = makeExt(`// Name: Arcade
           typeof method==='function' && !Object.prototype.hasOwnProperty.call(this,name) &&
           Object.getOwnPropertyDescriptor(scorePrototype,name)?.value===method)});
       scoreNumberOwners.set(this,scoreNumberOwner);
+      const getterPrototype=Object.getPrototypeOf(this),getterMethods=new Map(
+        ['getInfo','spriteProperty'].map(name=>[name,Object.getOwnPropertyDescriptor(getterPrototype,name)?.value]));
+      const getterOwner=Object.freeze({isInstance:value=>value===this,isCurrent:()=>Object.getPrototypeOf(this)===getterPrototype &&
+        Object.getOwnPropertyDescriptor(this,'_runtime')?.value===runtime && [...getterMethods].every(([name,method])=>
+          typeof method==='function' && !Object.prototype.hasOwnProperty.call(this,name) &&
+          Object.getOwnPropertyDescriptor(getterPrototype,name)?.value===method)});
+      nullSpriteOwners.set(this,getterOwner);
+      nullSpriteFaults.set(this,dependencies.nullSpriteGetter.create(runtime,getterOwner));
       this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner);
       const installProcedureOwner=()=>{
         procedureEntryDisposers.get(this)?.();procedureOwners.get(this)?.dispose();
@@ -286,7 +297,7 @@ module.exports = makeExt(`// Name: Arcade
     getInfo() {
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def == null ? 0 : def } });
-      return dependencies.createConsoleInspectValues.scoreInfo({
+      return dependencies.nullSpriteGetter.declaration(dependencies.createConsoleInspectValues.scoreInfo({
         id: 'arcade',
         name: 'Arcade',
         color1: '#E64980',
@@ -1068,7 +1079,7 @@ module.exports = makeExt(`// Name: Arcade
           spriteFlags: {acceptReporters: false, items: Object.keys(spriteFlags)}
           ,speechModes: {acceptReporters: false, items: ['text', 'legacy']}
         }
-      },scoreNumberOwners.get(this));
+      },scoreNumberOwners.get(this)),nullSpriteOwners.get(this));
     }
 
     // An owned runtime may inject {now:()=>milliseconds} for deterministic
@@ -5459,9 +5470,16 @@ module.exports = makeExt(`// Name: Arcade
       return sprite.pxtId + '(' + sprite.x + ',' + sprite.y + ')->(' + sprite.vx + ',' + sprite.vy + ')';
     }
     spriteProperty(args, util) {
+      // The VM already evaluated this receiver. Actual null is distinct from
+      // missing IDs, tagged objects, Undefined and the ordinary text "null".
+      const receiver=args.ID;
+      if(receiver===null && util && ['x','y','width','height'].includes(args.PROPERTY)) {
+        const fault=nullSpriteFaults.get(this).fault(args,util);
+        return exceptionOwners.get(this).rejectPrimitiveFault(args,util,fault.error,fault.lease);
+      }
       const event = util?.thread?.bwArcadeEvent;
-      const sprite = this._spriteValues.get(String(args.ID)) || this._sprite(args.ID) ||
-        (event?.first === String(args.ID) ? event.destroyedSprite : null);
+      const sprite = this._spriteValues.get(String(receiver)) || this._sprite(receiver) ||
+        (event?.first === String(receiver) ? event.destroyedSprite : null);
       if (!sprite) return 0;
       const property = String(args.PROPERTY);
       if(property==='id')return Scratch.BWValues.encode(sprite.pxtId);
@@ -6048,6 +6066,8 @@ module.exports = makeExt(`// Name: Arcade
   createSourceTypeOfValues: require('./source-typeof-values'),
   createConsoleInspectValues,
   bindScoreAdapterInfo: createConsoleInspectValues.bindScoreAdapterInfo,
+  nullSpriteGetter,
+  bindNullSpriteAdapterInfo: nullSpriteGetter.bindAdapterInfo,
   createProcedureConstraints: require('./procedure-parameter-constraints'),
   procedureEntry: require('../../../util/bw-procedure-entry'),
   createManagedReturnValues: require('./managed-return-values'),
