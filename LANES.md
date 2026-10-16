@@ -5552,3 +5552,28 @@ of those scenarios. Preserve any newer owner work during normal composition.
 No relaxed comparison, fallback register name, timeout increase, skipped gate,
 CI bypass or source rewrite is permitted. The corrected actual browser gate
 and all enabled final-head source checks must pass before integration merge.
+
+## CPX translator qualification diagnostic transport — 2026-10-16
+
+CLAIMED — Codex root, isolated `/tmp/brickwright-cpx-compose-20261016`,
+branch `lane/cpx-qualification-compose-20261016`, supplier consumer source
+PR1009 at `9fbc8d97e87c6c6c9ee74d71c7ceae96996d5d4a`, base main `8fe41c722`.
+The user requested continued coding through the ordered integrations. Preserve
+the existing translator owner's branch and every assertion, corpus input,
+capture time, trace record, timing-limit fixture and runtime/compiler helper.
+Own only the four diagnostic console writers in
+`test/cpx-makecode-behaviour.test.mjs`: route the identical labels and serialized
+records through that test's `t.diagnostic` instead of raw stdout. Merge claim
+before implementation on a separate composition branch; preserve newer owner
+work during final integration. No translator source, pin or oracle semantics
+are transferred by this narrow qualification repair.
+
+Hosted artifact from run38931471960 contains all15 passed tests under the
+absolute file path, plus a separate relative-path stdout bucket with30125bytes.
+The checker collapses basenames and the latter bucket masks those15 tests;
+the genuine blocker is the prohibited raw stdout. Do not relax or edit the
+checker, merge away the stdout evidence, hide diagnostics, or claim test cases
+never executed. Require all15 existing cases to pass with zero raw stdout in
+the actual two-reporter run, retained full diagnostic records, and unchanged
+assertions. This does not claim timing parity for the five documented boundary
+programs. Final candidate still requires every enabled exact-head CI check.
