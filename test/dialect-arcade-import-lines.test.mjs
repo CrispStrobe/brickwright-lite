@@ -118,9 +118,14 @@ test('the corpus is what the importer was given by its tests', () => {
     }
 });
 
-test('the pinned parser has the qualified Arcade word table (399 opcodes)', () => {
-    assert.equal(ARCADE_DIALECT_OPS.length, 399);
+test('the pinned parser has the qualified Arcade word table (402 opcodes)', () => {
+    // Canonical compiler adoption 0a63e8db7 adds exactly these three operations
+    // to the previously qualified 399; retain exact spelling checks as well.
+    assert.equal(ARCADE_DIALECT_OPS.length, 402);
     const qualifiedWords = [
+        {op: 'arcade_declareParameterConstraint', kind: 'command', words: 'declare arcade procedure {PROCEDURE:literal-field} parameter {PARAMETER:literal-field} as {TYPE:Number|Boolean|String|Any}'},
+        {op: 'arcade_throwValue', kind: 'command', words: 'arcade throw {VALUE}'},
+        {op: 'arcade_createOwnedImageSprite', kind: 'reporter', words: 'arcade create owned image {IMAGE} template {TEMPLATE} kind {KIND}'},
         {op: 'arcade_inspectValue', kind: 'reporter', words: 'arcade inspect value {VALUE} limit {LIMIT}'},
         {op: 'arcade_sourceTypeOf', kind: 'reporter', words: 'arcade source type of {VALUE}'},
         {op: 'arcade_fontValue', kind: 'reporter', words: 'arcade font value {FONT:font5|font8|font12}'},
