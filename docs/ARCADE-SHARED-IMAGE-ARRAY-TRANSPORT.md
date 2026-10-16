@@ -360,3 +360,29 @@ This initial call-entry proof accepts only zero-formal ordinary helper procedure
 and exact zero-argument calls, without optional/default/rest/generic metadata.
 It does not hide unused argument or default-initializer effects behind a call
 entry. Callback parameters remain the exact two incoming overlap parameters.
+
+### Private callback Image-entry invariant
+
+A separate optional invariant can cover an exact indexed Image clone reached
+through an actual overlap callback and immutable ordinary procedure calls.
+The callback remains arbitrarily repeatable; its ordinary entry count is never
+made finite. The proof uses the same current lexical/all-writer/allocation graph
+and the actual startup visit to the exact SDK registration. A single completed
+registration must follow every concrete Array initializer, alias writer and
+push needed by the selected present Image. Other or early entries refuse.
+
+Only complete cells at that boundary are retained. Every possible use and writer
+of the protected allocation is checked across the complete retained Program:
+later rebinding, length/index writes, pushes, unknown calls receiving the Array
+and escaped aliases refuse. A scalar index dependency with a callback writer
+also refuses. The original index expression and all declarations, calls and
+clone operations retain their order; no kind counter or missing value becomes
+zero. All ordinary root entries still need their actual finite visit evidence.
+
+Destroy and yielding calls do not restore the ordinary entry environment. Only
+this distinct globally closed allocation invariant may survive reentry; any
+callback able to mutate or acquire it prevents that proof. No callback runs in
+the analysis. Unknown bodies retain the ordinary full-source F refusal. The
+result is only a same-Program exact-call non-exposure Boolean: no generic Image,
+Number, Sprite, missing-element narrowing, handler value or Array resource
+promotion follows. Mutation permanently expires the private query.
