@@ -5,6 +5,32 @@ separates the eleven remaining conversion routes from native and authoring gates
 The fresh 29-project profile keeps the same eighteen complete pure passes; a
 pure pass does not establish runtime or visible editor compatibility.
 
+## Scene-clock Number inputs — 2026-10-16
+
+Direct unshadowed zero-argument `game.runtime()` now supplies supported ordinary
+Number parameters and Number-to-text expressions through the existing
+`(arcade scene runtime milliseconds)` pseudocode reporter and **Arcade scene
+runtime milliseconds** Blocks reporter. Actual cached completion, current
+registration, scene and caller ownership are required; metadata or a declared
+Number type alone grants nothing. The info census and clock policy are unchanged.
+
+| Surface | Observed boundary | Still needed |
+| --- | --- | --- |
+| Source and pseudocode | 66 pure source/model controls; exact source and existing reporter conversion | Visible Code editor authoring and roundtrip interaction |
+| Blocks | Existing `arcade_sceneMillis` reporter; current graph/socket and ordinary Number inference checks | Palette discovery, visible block authoring and error navigation |
+| Runtime | One actual native control across source, same/fresh SB3, current Code and edited current export/reimport; two ordinary calls and three clock reads per route | Visible controller/editor execution; no timing parity claim |
+| Mutation and refresh | 11 actual native rejection controls plus one real registration-refresh control | Visible refresh/reconnect and stale-editor diagnostics |
+| Save and export | Current graph/Code, saved ZIP bytes and edited exported argument exercised in the five routes | Actual editor save-reopen on same/fresh sessions |
+| Graphics | Minimal native ZIP contains only project.json; four referenced default asset members are absent | Asset completeness, rendering and graphics editor evidence |
+
+Actual empty runtime error arrays are checked through cleanup; expected negative
+frame exceptions remain separate. The initial helper activation and generated
+bootstrap ZIP are unobserved. These results do not qualify whole games or reduce
+project gap counts. Timer writers/cycles and independent Sparks gaps remain held.
+Details and retained failure boundaries are in
+[scene-clock Number completions](compatibility/arcade-scene-clock-number-completions.md).
+Older hosted GUI journeys retain their original source boundaries.
+
 ## Animation resource actor boundary — 2026-10-15
 
 An internally issued animation resource factory now stays one resource during

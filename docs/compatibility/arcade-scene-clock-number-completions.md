@@ -1,10 +1,19 @@
 # Scene-clock Number completion boundary
 
-Development candidate. The final bounded source and modeled execution suite
-passes 66 controls after retaining the earlier export and diagnostic-expectation
-failures. The shared serialized reporter proof covers emission and formal/caller
-static inference. Actual native and visible GUI qualification remain pending.
-Read the [claim and acceptance](../ARCADE-CLOCK-NUMBER-PRODUCER.md).
+The bounded source and modeled execution suite passes 66 controls. Actual native
+qualification passes one five-route positive control and a separate suite of
+11 mutation controls plus one registration-refresh control. Visible editor
+qualification remains pending. Read the [claim and acceptance](../ARCADE-CLOCK-NUMBER-PRODUCER.md).
+
+## Using the reporter
+
+The supported source expression is direct, unshadowed `game.runtime()` with no
+arguments. Its existing pseudocode reporter is
+`(arcade scene runtime milliseconds)`; the Blocks reporter is **Arcade scene
+runtime milliseconds** (`arcade_sceneMillis`). It can supply supported ordinary
+Number parameters and Number-to-text expressions when the current graph and
+actual completion satisfy the proof below. No new block or clock policy is
+introduced.
 
 ## Source and current export
 
@@ -59,96 +68,69 @@ reads and thrown or substituted returns cannot certify cached Number inputs.
 The finite negative-zero result retains the original positive-zero fallback.
 Neither validation nor a downstream consumer repeats the producer read.
 
-## Controls and remaining work
+## Observed qualification
 
-Source controls exercise lexical roots, the closed call census, readonly enum
-use, independent info proof, two ordinary callers, Number text and malformed
-current export. Authored boundary-model controls exercise actual read/completion
-ordering, argument/utility identity, finite values, once-only reads, parent slots,
-cache/registration changes, segment expiry and scene/project lifetimes. They are
-explicit modeled engine boundaries, not Scratch execution.
-
-Authored native controls use the real VM and two sequential constrained callers;
-current Code, same/fresh SB3 and a genuinely edited current exported argument
-must preserve behavior. Malformed native inputs retain runtime diagnostics and any rejected frame as
-separate actual channels; they cannot be recorded as successful execution.
-A fresh scene-aware provider, independent source review
-and root-reviewed finite qualification are still required. No native or GUI
-success is asserted here.
-
-Visible palette/Code authoring, readable current-block diagnostics, controller
-interaction, same/fresh editor reopening and actual rendered output remain GUI
-acceptance work. The stopwatch's external Timer.start writer and start/millis
-cycle, plus Sparks' independent class/callback/Font gaps, remain held. This
-single clock candidate does not close them.
+- **66 pure controls:** lexical roots, the closed game census, readonly enum
+  use, independent info proof, two ordinary callers, Number text, malformed
+  current export and modeled completion/lifetime boundaries. The boundary
+  models are not actual Scratch execution.
+- **One actual native positive control, five current routes:** source, same-VM
+  saved SB3, current Code, fresh-VM saved SB3 and a genuinely edited current
+  export/reimport. Each route executes two sequential ordinary Number calls,
+  enters the receiver twice, completes the main body once and reads the clock
+  exactly three times. The edited argument affects the actual received value.
+  Current graphs, variable owners, Code and export/reimport inputs are observed;
+  only one VM is live at a time.
+- **11 actual native mutation controls:** registered function, source method,
+  adapter delegate, metadata function, extra metadata argument, accessor
+  metadata arguments, opcode lookup, text clock state, nonfinite clock state,
+  extra current field and extra current input. Each begins with genuine
+  successful calls and then refuses the changed producer before receiver or
+  subsequent main effects. Actual frame exceptions and runtime error arrays
+  remain separate channels.
+- **One actual native refresh control:** genuine calls work before and after
+  refreshing the real registration. Metadata descriptors and inherited-method
+  ownership are restored. Transition and cleanup observations retain errors;
+  the positive routes require actual empty runtime error arrays after cleanup.
 
 The original empty argument schema is checked as own data at declaration,
 adapter issuance, registration and every current-proof boundary. Reusing the
 same object after adding a key or replacing its descriptor is refused. The
-certified source read also refuses inherited clock descriptors before calling
-the existing initializer; the direct historical service path stays unchanged.
-The source and modeled controls are included in the 66 checks; native schema
-mutation controls still require their own actual qualification.
+certified read refuses inherited clock descriptors before the existing
+initializer; direct historical service behavior is unchanged. Malformed caller
+sockets retain their actual structural diagnostics; a separate valid-caller
+control exercises duplicate-edge Number inference refusal.
 
-Malformed caller sockets are refused by the existing exact structural owner
-check before typed obligations exist. Clock-sharing controls also retain a
-separate valid caller with a duplicate reporter edge from a preceding main
-writer, so the current Number inference refusal is exercised independently.
-The first pure successor passed its original two-caller export and 65 of 66
-controls; that control failure and its full returned diagnostics are retained.
+## Save and rendering limits
 
-The authored native controls optionally retain complete diagnostic-presence
-records, partial Creator returns, current graphs, actual saved ZIP bytes before explicit
-same/fresh loads
-and current export/reimport inputs. Their evidence does not manufacture a
-completion certificate. Only one actual VM runs at a time; setup failure cleanup
-owns the test child and preserves the original error. Those controls remain
-unexecuted until their separately reviewed native packet is admitted.
+The actual saved ZIP bytes are retained before explicit same/fresh loads and
+match the current project graph. This minimal renderer-free fixture contains
+only `project.json`; four referenced default costume/sound members are absent.
+It qualifies this clock graph's save/load behavior, not asset completeness,
+pixels or graphics editing. The helper's initial generated Creator ZIP bytes
+and initial activation are unobserved. They are not represented by the later
+saved ZIP audit.
 
-The helper-internal initial Creator ZIP bytes are explicitly unobserved in this
-fixture. Observed current saved ZIP bytes, later loaded unchanged, remain a
-separate artifact; the initial source activation does not claim that byte audit.
+The actual finite scene value in the immediate-step fixture is zero. No elapsed
+time accuracy, reference timing parity, installed application, hardware or
+whole-game compatibility follows from these controls. No whole-project count
+is promoted by this feature.
 
-Each positive route also retains and checks the actual runtime error array
-after Stop, clear, quit and owned child cleanup. Cleanup actions run
-independently; secondary cleanup failures remain separate from a retained
-primary failure. Expected negative runtime errors cannot gain new cleanup errors.
+## Retained failures and remaining editor work
 
-The native fixture binds observed roles to the actual current connected writer
-graph, VARIABLE IDs and unique variable owners. It does not assume that export
-preserves original variable names. Stop/load/refresh transitions retain their
-actual calls and error arrays before resetting call counters; runtime errors
-accumulate and must stay empty throughout each positive route. The earlier
-name-based fixture and error-clearing packet remain unexecuted source holds.
+Earlier export-inference and diagnostic-expectation failures remain retained.
+The native qualification also preserves its original module-admission failures
+and fixture failures involving variable names, typed scalar increment shape,
+command-parent traversal and exported text concatenation. Corrections bind the
+actual current writer graph, variable IDs and expression input edges; they do
+not relax Number, once-only read or effect assertions. Transition error arrays
+are retained rather than cleared. The successful positive and separate negative
+suites do not replace those originals.
 
-The first actual native source route executed its two constrained calls and
-three clock expressions with no VM errors, then failed a test oracle that
-expected a stock change-variable block. Its typed scalar increment is instead
-an actual self-read binary-value assignment. The fixture now identifies that
-exact connected writer by its variable ID, plus operator and literal operand;
-the original execution and failed assertion remain retained. Five-route native
-qualification is still pending.
-
-A subsequent native run accepted the first four current routes, then exposed a
-second fixture selector error: following parent pointers crossed a command
-chain from the separate text writer into a preceding ordinary call. The current
-edit selector reuses the connected main call inventory and visits only active
-expression input edges. The failed run remains retained; five-route acceptance
-requires a separately reviewed successor.
-
-The following actual run reached the fifth route with correct observed values
-and no VM errors, then failed another fixture shape assumption. The current
-exporter writes a join as `("" + clock + "")`, whose reimport is a nested typed
-binary concat. The oracle now accepts only the original clock/empty-text join
-or that exact nested empty-text concat. Deliberately malformed clock negatives
-identify their physical writer roles separately, without granting a Number
-certificate. All original numeric and effect assertions remain required.
-
-The separate native mutation/refresh fixture retains actual import returns and
-partial exceptions before diagnostic assertions. Metadata argument mutations
-first retain the actual descriptor and extensibility; accessor replacement
-requires actual configurable data. An instance method mutation restores its
-original own descriptor or inherited absence. Extra-field/input controls select
-the actual first connected ordinary caller's clock operand, not a clock in the
-separate text writer. These controls require their own finite native gate; the
-successful positive source and its original evidence remain unchanged.
+Visible palette/Blocks and Code authoring, readable current-block diagnostics,
+controller interaction, editor refresh/reconnect, same/fresh editor save-reopen
+and actual rendered output still need GUI evidence. See the
+[capability and GUI ledger](../CONVERSION-CAPABILITIES-AND-GUI-GAPS.md).
+The stopwatch's external Timer.start writer and start/millis cycle, plus Sparks'
+independent class/callback/Font gaps, remain held. This clock boundary does not
+close those gaps or qualify a complete game.
