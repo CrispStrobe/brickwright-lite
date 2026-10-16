@@ -45,8 +45,8 @@ test('physical update preserves the complete existing imagePause partial-constru
         fact.initialErrors=errors(run.errors);fact.creatorProject=run.creator.project;
         fact.creatorChannels={warnings:run.creator.warnings,errors:run.creator.errors,unparsed:run.creator.unparsed};
         try {clock=await restartTimedArcadeRun(run,100);}catch(error){primary=error;primaryPresent=true;}
-        fact.stages.push({name:'deadline100',values:values(run),errors:errors(run.errors),primary:{present:primaryPresent,value:primaryPresent?errors([primary]):null}});
-        if(clock){run.vm.stopAll();await clock.advanceTo(120);fact.stages.push({name:'afterStop120',values:values(run),errors:errors(run.errors)});}
+        fact.stages.push({name:'deadline100',values:values(run),counts:Object.fromEntries(run.calls),errors:errors(run.errors),primary:{present:primaryPresent,value:primaryPresent?errors([primary]):null}});
+        if(clock){run.vm.stopAll();await clock.advanceTo(120);fact.stages.push({name:'afterStop120',values:values(run),counts:Object.fromEntries(run.calls),errors:errors(run.errors)});}
         retain('imagePause',fact);
         if(primaryPresent)throw primary;
         assert.deepEqual(run.errors,[]);
@@ -54,6 +54,10 @@ test('physical update preserves the complete existing imagePause partial-constru
         assert.equal(fact.stages[0].values.completed,7);
         assert.equal(fact.stages[0].values.before,2,'real updates occur before marker initialization');
         assert.equal(fact.stages[0].values.total,4);
+        assert.equal(fact.stages.length,2);
+        assert.deepEqual(fact.stages[1].values,fact.stages[0].values,'Stop prevents every later observed variable effect');
+        assert.deepEqual(fact.stages[1].counts,fact.stages[0].counts,'Stop prevents later primitive calls through deadline120');
+        assert.deepEqual(fact.stages[1].errors,[]);
     } finally {const cleanup=await close(run);fact.cleanupErrors=errors(cleanup);if(run){fact.finalErrors=errors(run.errors);fact.finalValues=values(run);}retain('imagePause-final',fact);assert.deepEqual(cleanup,[]);if(run)assert.deepEqual(run.errors,[]);}
 });
 
@@ -88,7 +92,10 @@ let actor=new Actor()`;
         assert.equal(fact.stages[0].values.after,0);
         assert.equal(fact.stages[1].values.detached,1,'unrelated event handler must not be retired with the failed update');
         assert.ok(fact.stages[1].values.ticks>=2);
-        assert.ok(fact.events.some(e=>String(e?.message||e).includes('physical-update')));
-        assert.ok(!run.errors.some(e=>String(e?.message||e).includes('actual managed call')));
-    } finally {const cleanup=await close(run);fact.cleanupErrors=errors(cleanup);if(run){fact.finalErrors=errors(run.errors);fact.finalValues=values(run);}retain('throwingPhysicalUpdate-final',fact);assert.deepEqual(cleanup,[]);}
+        const message='Arcade uncaught thrown value: physical-update';
+        assert.deepEqual(fact.initialErrors,[]);
+        assert.equal(fact.events.length,1);assert.equal(fact.events[0].message,message);
+        assert.deepEqual(fact.stages[0].errors,['Error: '+message]);
+        assert.deepEqual(fact.stages[1].errors,['Error: '+message]);
+    } finally {const cleanup=await close(run);fact.cleanupErrors=errors(cleanup);if(run){fact.finalErrors=errors(run.errors);fact.finalValues=values(run);}retain('throwingPhysicalUpdate-final',fact);assert.deepEqual(cleanup,[]);if(run)assert.deepEqual(run.errors,['Error: Arcade uncaught thrown value: physical-update']);}
 });
