@@ -124,8 +124,12 @@ the Widgets dock without updating that local-storage key. This source path is
 consistent with the disappearance; it is not a captured full attribution.
 The next browser candidate clears only that scenario's firmware through the
 existing “back to blocks” control, requiring the firmware chip to disappear
-and the debugger to become idle before later device scenarios. Pixel values,
-input actions and observation bounds stay unchanged. Clean native browser
+and the debugger to become idle before later device scenarios. The
+[first cleanup run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38907684694)
+finds that control visible and enabled after the serial checks pass, but the
+retained LabWired display canvas intercepts its clicks. The next control path closes the actions menu and explicitly
+opens the debugger through its existing button before clearing the firmware.
+Pixel values, input actions and observation bounds stay unchanged. Clean native browser
 qualification and the five exact timing comparisons remain pending.
 
 A separate diagnostic observer is prepared for the five differing comparisons.

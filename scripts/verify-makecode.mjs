@@ -263,6 +263,10 @@ try {
         // This scenario owns a firmware override. The real global green flag
         // intentionally restarts retained firmware as well as VM blocks; clear
         // our image through the product control before later native scenarios.
+        // Its display can own the dock now, so reach the debugger explicitly.
+        const serialActions = page.locator('[data-testid="bw-code-actions"]');
+        if (await serialActions.evaluate(menu => menu.open)) await serialActions.locator('summary').click();
+        await page.locator('[data-testid="bw-open-circuit-debugger"]').click();
         await page.locator('[data-debug-panel]:visible [data-firmware-back]').click();
         await page.locator('[data-debug-panel]:visible [data-firmware-chip]').waitFor({state: 'detached', timeout: 30000});
         check('the serial scenario releases its own firmware override before another device starts',
