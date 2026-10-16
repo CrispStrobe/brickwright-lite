@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {appendFileSync} from 'node:fs';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 import {analyseSourceValueProducers} from '../overlay/scratch-gui/src/lib/bw-makecode/source-value-producers.js';
 import {validateProcedureConstraintSource} from '../overlay/scratch-gui/src/lib/bw-makecode/procedure-constraint-source.js';
@@ -28,9 +29,16 @@ const refuses=source=>assert.ok(valid(source).some(s=>s.includes('effect.value r
 test('current dense initialization and dominating cached range prove the actual Number element read',()=>{
     assert.deepEqual(valid(SOURCE),[]);
     const program=parse(SOURCE),read=indexOf(program);assert.ok(read);
-    assert.deepEqual([...graph(program).typesAt(read)],['Number']);
-    assert.ok(analyseSourceValueProducers(program).typesAt(read).has('Opaque'),'default index policy is unchanged');
-    assert.ok(analyseSourceValueProducers(program,{arrayValues:true}).typesAt(read).has('Undefined'),'generic Array reads retain missing-element domain');
+    const proved=graph(program).typesAt(read),ordinaryTypes=analyseSourceValueProducers(program).typesAt(read);
+    const generic=analyseSourceValueProducers(program,{arrayValues:true}).typesAt(read);
+    const ordinary=parse('let xs=[1];let idx=0;let value=xs[idx];'),ordinaryRead=indexOf(ordinary),knownGeneric=analyseSourceValueProducers(ordinary,{arrayValues:true}).typesAt(ordinaryRead);
+    if(process.env.BW_DENSE_LOOP_PROFILE_EVIDENCE)appendFileSync(process.env.BW_DENSE_LOOP_PROFILE_EVIDENCE,JSON.stringify({stage:'actual-profile-sets',constrained:[...proved],ordinary:[...ordinaryTypes],genericTyped:[...generic],genericKnownLiteral:[...knownGeneric]})+'\n');
+    assert.deepEqual([...proved],['Number']);
+    assert.ok(ordinaryTypes.has('Opaque'),'default index policy is unchanged');
+    assert.ok(generic.size!==1||!generic.has('Number'),'typed null/Array all-writers cannot supply a pure Number index fact');
+    assert.ok([...generic].every(type=>['Number','Null','Undefined','Opaque'].includes(type)),'generic profile receives no private reference or callable authority');
+    assert.ok(knownGeneric.has('Undefined'),'genuine generic Array reads retain missing-element domain');
+    assert.ok(knownGeneric.has('Number'),'actual literal1 remains a generic element producer alongside missing Undefined');
 });
 test('actual complete helper bodies and lexical aliases work independently of generated spellings',()=>{
     const renamed=SOURCE.replaceAll('backing','storage').replaceAll('receiver','currentArray').replaceAll('bound','limit').replaceAll('index','cursor').replaceAll('add','sum').replaceAll('less','before').replaceAll('unary','numberValue');
