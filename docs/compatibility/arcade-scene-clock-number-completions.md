@@ -143,3 +143,12 @@ binary concat. The oracle now accepts only the original clock/empty-text join
 or that exact nested empty-text concat. Deliberately malformed clock negatives
 identify their physical writer roles separately, without granting a Number
 certificate. All original numeric and effect assertions remain required.
+
+The separate native mutation/refresh fixture retains actual import returns and
+partial exceptions before diagnostic assertions. Metadata argument mutations
+first retain the actual descriptor and extensibility; accessor replacement
+requires actual configurable data. An instance method mutation restores its
+original own descriptor or inherited absence. Extra-field/input controls select
+the actual first connected ordinary caller's clock operand, not a clock in the
+separate text writer. These controls require their own finite native gate; the
+successful positive source and its original evidence remain unchanged.

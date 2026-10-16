@@ -127,32 +127,44 @@ test('scene clock two sequential ordinary Number callers survive current Code, s
     }catch(error){primaryError=error;retain('positive-route-failure',errorRecord(error));throw error;}finally{finish(run,[],primaryError);}
 });
 
+// Negative/refresh return capture precedes diagnostic assertions, including a
+// converter's actual thrown/partial channels; no unavailable state becomes [].
+const negativeImport=(label,input)=>{
+    let result;try{result=imported(input);}catch(error){retain(label+'-import-exception',{input,error:errorRecord(error),actualError:actualData(error)});throw error;}
+    retain(label+'-import-return',{input,result,channels:channels(result)});clean(result,['unsupported','warnings']);return result;
+};
+const descriptorData=(object,key)=>{
+    const descriptor=Object.getOwnPropertyDescriptor(object,key);
+    return descriptor?{provided:true,configurable:descriptor.configurable,enumerable:descriptor.enumerable,kind:Object.hasOwn(descriptor,'value')?'data':'accessor',...(Object.hasOwn(descriptor,'value')?{writable:descriptor.writable,value:actualData(descriptor.value)}:{get:typeof descriptor.get,set:typeof descriptor.set})}:{provided:false};
+};
 for(const mode of ['registered function','source method','adapter delegate','metadata function','metadata extra argument','metadata accessor arguments','opcode lookup','text clock state','nonfinite clock state','current extra field','current extra input'])test('scene clock native Number argument refuses '+mode+' before constrained effects',async t=>{
-    const result=imported(source);retain('negative-'+mode+'-import',{result,channels:channels(result)});clean(result,['unsupported','warnings']);let run,restore=()=>{};
+    const result=negativeImport('negative-'+mode,source);let run,restore=()=>{},expectedNegativeErrors=null,primaryError=null;
     try{
         run=await execute('negative-'+mode,result.code,{frames:20});accepted(t,'genuine before '+mode,run);run.vm.stopAll();run.vm.greenFlag();const runtime=run.vm.runtime,{adapter,ext}=instance(run);
         if(mode==='registered function'){const original=runtime._primitives.arcade_sceneMillis;runtime._primitives.arcade_sceneMillis=()=>42;restore=()=>{runtime._primitives.arcade_sceneMillis=original;};}
-        if(mode==='source method'){ext.sceneMillis=()=>42;restore=()=>{delete ext.sceneMillis;};}
+        if(mode==='source method'){const original=Object.getOwnPropertyDescriptor(ext,'sceneMillis'),prototype=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(ext),'sceneMillis'),replacement=()=>42;retain('negative-source-method-descriptors-before',{own:descriptorData(ext,'sceneMillis'),prototype:descriptorData(Object.getPrototypeOf(ext),'sceneMillis')});assert.equal(original,undefined,'actual source method is inherited on this instance');assert.equal(typeof prototype?.value,'function');Object.defineProperty(ext,'sceneMillis',{value:replacement,writable:true,configurable:true});restore=()=>{assert.equal(Object.getOwnPropertyDescriptor(ext,'sceneMillis')?.value,replacement,'restore only own source-method replacement');if(original)Object.defineProperty(ext,'sceneMillis',original);else delete ext.sceneMillis;retain('negative-source-method-descriptors-restored',{own:descriptorData(ext,'sceneMillis'),prototype:descriptorData(Object.getPrototypeOf(ext),'sceneMillis')});assert.equal(Object.getOwnPropertyDescriptor(ext,'sceneMillis'),undefined);assert.equal(Object.getOwnPropertyDescriptor(Object.getPrototypeOf(ext),'sceneMillis').value,prototype.value);};}
         if(mode==='adapter delegate'){const original=adapter.sceneMillis;adapter.sceneMillis=()=>42;restore=()=>{adapter.sceneMillis=original;};}
         if(mode==='metadata function'){const category=runtime._blockInfo.find(category=>category.id==='arcade'),entry=category.blocks.find(entry=>entry.json?.type==='arcade_sceneMillis'),original=entry.info.func;entry.info.func=()=>42;restore=()=>{entry.info.func=original;};}
-        if(mode==='metadata extra argument'){const entry=runtime._blockInfo.find(category=>category.id==='arcade').blocks.find(entry=>entry.json?.type==='arcade_sceneMillis');entry.info.arguments.EXTRA={type:'number'};restore=()=>{delete entry.info.arguments.EXTRA;};}
-        if(mode==='metadata accessor arguments'){const info=runtime._blockInfo.find(category=>category.id==='arcade').blocks.find(entry=>entry.json?.type==='arcade_sceneMillis').info,descriptor=Object.getOwnPropertyDescriptor(info,'arguments');Object.defineProperty(info,'arguments',{get(){throw Error('must not read schema accessor');},configurable:true});restore=()=>Object.defineProperty(info,'arguments',descriptor);}
+        if(mode==='metadata extra argument'){const entry=runtime._blockInfo.find(category=>category.id==='arcade').blocks.find(entry=>entry.json?.type==='arcade_sceneMillis'),descriptor=Object.getOwnPropertyDescriptor(entry.info,'arguments');retain('negative-metadata-extra-argument-before',{descriptor:descriptorData(entry.info,'arguments'),extensible:Object.hasOwn(descriptor||{},'value')?Object.isExtensible(descriptor.value):null});assert.ok(descriptor&&Object.hasOwn(descriptor,'value'));const args=descriptor.value;assert.equal(typeof args,'object');assert.equal(Object.isExtensible(args),true);assert.deepEqual(Reflect.ownKeys(args),[]);args.EXTRA={type:'number'};restore=()=>{delete args.EXTRA;retain('negative-metadata-extra-argument-restored',{descriptor:descriptorData(entry.info,'arguments')});};}
+        if(mode==='metadata accessor arguments'){const info=runtime._blockInfo.find(category=>category.id==='arcade').blocks.find(entry=>entry.json?.type==='arcade_sceneMillis').info,descriptor=Object.getOwnPropertyDescriptor(info,'arguments');retain('negative-metadata-accessor-arguments-before',{descriptor:descriptorData(info,'arguments')});assert.ok(descriptor&&Object.hasOwn(descriptor,'value'));assert.equal(descriptor.configurable,true);Object.defineProperty(info,'arguments',{get(){throw Error('must not read schema accessor');},configurable:true});restore=()=>{Object.defineProperty(info,'arguments',descriptor);retain('negative-metadata-accessor-arguments-restored',{descriptor:descriptorData(info,'arguments')});};}
         if(mode==='opcode lookup'){const original=runtime.getOpcodeFunction;runtime.getOpcodeFunction=function(name){return original.call(this,name);};restore=()=>{runtime.getOpcodeFunction=original;};}
         if(mode==='text clock state')runtime.bwArcadeDeviceState.elapsedMs='42';
         if(mode==='nonfinite clock state')runtime.bwArcadeDeviceState.elapsedMs=Infinity;
         if(mode==='current extra field'||mode==='current extra input'){
-            const current=JSON.parse(run.vm.toJSON()),target=current.targets.find(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_sceneMillis')),clock=Object.values(target.blocks).find(block=>block.opcode==='arcade_sceneMillis');
+            const current=JSON.parse(run.vm.toJSON());retain('negative-'+mode+'-actual-current-before-selection',{current});const {target,clockOperands}=roleBindings(current),selected=clockOperands[0],clock=selected.node;
+            assert.equal(selected.call.opcode,'procedures_call');
             if(mode==='current extra field')clock.fields.EXTRA=['bad',null];else clock.inputs.EXTRA=[1,[4,'1']];
+            retain('negative-'+mode+'-actual-mutated-input',{current,selectedClock:selected.id,selectedCall:Object.keys(target.blocks).find(id=>target.blocks[id]===selected.call)});
             run.vm.stopAll();await run.vm.loadProject(current);run.vm.greenFlag();
         }
         let rejectedFrame=null;try{await stepFrames(run.vm,20);}catch(error){rejectedFrame={name:error.name,message:error.message,stack:error.stack};}
-        const actual=observation(t,'refused '+mode,run);actual.values=checkedValues(actual,{refusalObservation:true});retain('negative-'+mode+'-rejected-frame',{rejectedFrame});t.diagnostic(JSON.stringify({stage:'actual frame rejection channel',mode,rejectedFrame}));assert.equal(actual.values.entered,0);assert.equal(actual.values.after,0);
+        retain('negative-'+mode+'-rejected-frame',{rejectedFrame});retain('negative-'+mode+'-actual-error-channel',{provided:!!run&&Object.hasOwn(run,'errors'),kind:Array.isArray(run?.errors)?'array':typeof run?.errors,value:actualData(run?.errors)});assert.ok(Array.isArray(run.errors),'actual negative runtime error array');expectedNegativeErrors=run.errors.slice();const actual=observation(t,'refused '+mode,run);actual.values=checkedValues(actual,{refusalObservation:true});t.diagnostic(JSON.stringify({stage:'actual frame rejection channel',mode,rejectedFrame}));assert.equal(actual.values.entered,0);assert.equal(actual.values.after,0);
         assert.ok([...actual.errors,...(rejectedFrame?[rejectedFrame.message]:[])].some(error=>/Scene clock Number:|primitive producer|actual producer|current graph/i.test(error)),'named actual producer refusal; a rejected frame stays a separate channel');
-    }finally{try{restore();}finally{finish(run,Array.isArray(run?.errors)?[...run.errors]:[]);}}
+    }catch(error){primaryError=error;retain('negative-'+mode+'-primary-failure',errorRecord(error));throw error;}finally{let restoreError=null;try{restore();}catch(error){restoreError=error;retain('negative-'+mode+'-restore-failure',errorRecord(error));}try{finish(run,expectedNegativeErrors,primaryError||restoreError);}finally{if(restoreError&&!primaryError)throw restoreError;}}
 });
 
 test('scene clock genuine metadata refresh and restart renew current completion, never an old receipt',async t=>{
-    const result=imported(source);let run;try{
+    const result=negativeImport('refresh',source);let run,primaryError=null;try{
         run=await execute('refresh',result.code,{frames:20});accepted(t,'before actual refresh',run);await transition(t,'refresh stop',run,()=>run.vm.stopAll());await transition(t,'refresh metadata',run,()=>run.vm.extensionManager.refreshBlocks({throwOnError:true}));run.calls.clear();run.vm.greenFlag();await stepFrames(run.vm,20);accepted(t,'after actual refresh',run);
-    }finally{finish(run);}
+    }catch(error){primaryError=error;retain('refresh-primary-failure',errorRecord(error));throw error;}finally{finish(run,[],primaryError);}
 });
