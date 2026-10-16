@@ -7,6 +7,7 @@ import {lowerPxtStagedValues} from '../overlay/scratch-gui/src/lib/bw-makecode/l
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from '../overlay/scratch-gui/src/lib/bw-makecode/procedure-constraint-source.js';
+import {lowerNamespaceBindings} from '../overlay/scratch-gui/src/lib/bw-makecode/namespace-bindings.js';
 import {lowerLiveFontMetrics} from '../overlay/scratch-gui/src/lib/bw-makecode/live-font-metrics.js';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 
@@ -149,4 +150,30 @@ test('actual hidden parser parameter channels stay bound to their function witho
 
 test('the actual live-font lowering clone preserves non-executable root constraint metadata',()=>{
  const prepared=prepareProcedureConstraintSource(parse('let values:number[]=[];values=[];')),original=procedureConstraintAstMetadata(prepared),input=lowerLiveFontMetrics({...prepared.program,bwProcedureConstraintSource:original});retain('actual-font-prefix-envelope',{originalFrozen:Object.isFrozen(original),cloneFrozen:Object.isFrozen(input.bwProcedureConstraintSource),sameEnvelope:input.bwProcedureConstraintSource===original,samePrefix:input.bwProcedureConstraintSource.prefix===original.prefix,originalDescriptor:Object.fromEntries(Object.entries(Object.getOwnPropertyDescriptor(original,'prefix')).map(([k,v])=>[k,k==='value'?{kind:typeof v}:v])),cloneDescriptor:Object.fromEntries(Object.entries(Object.getOwnPropertyDescriptor(input.bwProcedureConstraintSource,'prefix')).map(([k,v])=>[k,k==='value'?{kind:typeof v}:v]))});assert.notEqual(input.bwProcedureConstraintSource,original);assert.equal(Object.isFrozen(input.bwProcedureConstraintSource),false);assert.equal(input.bwProcedureConstraintSource.prefix,original.prefix);const result=lower(input);assert.equal(temporaryCount(result),0);assert.equal(result.bwProcedureConstraintSource,input.bwProcedureConstraintSource);assert.equal(result.body[1].expr.right.type,'Array');
+});
+
+
+const kindSource='namespace SpriteKind{export let Goal:number;}let values:number[]=[];values=[];';
+const kindInput=source=>{const result=lowerNamespaceBindings(parse(source||kindSource),{spriteKinds:true});retain('actual-kind-namespace-lowering',{source:source||kindSource,result});assert.deepEqual(result.unsupported,[]);return result.program;};
+
+test('actual root kind resets keep their Undefined write and declaration order beside direct empty Arrays',()=>{
+ const input=kindInput(),before=structuredClone(input),reset=input.body[0],result=lower(input);assert.equal(reset.type,'SpriteKindReset');assert.equal(temporaryCount(result),0);assert.equal(result.body[0],reset);assert.deepEqual(input,before);assert.deepEqual(result.body.map(st=>st.type),input.body.map(st=>st.type));assert.deepEqual(result.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls).filter(d=>d.spriteKindName),input.body.filter(st=>st.type==='Declaration').flatMap(st=>st.decls).filter(d=>d.spriteKindName));
+});
+
+test('the real namespace-kind public Code and graph path omits only empty allocation transport',()=>{
+ const {creator,imported}=build('namespace SpriteKind{export let Goal:number;}SpriteKind.Goal=42;let values:number[]=[];values=[];');assert.doesNotMatch(imported.code,/arcade set local __bwPxtValue/);assert.match(imported.code,/set __bwNamespace_SpriteKind_Goal to \(undefined value\)/);const code=creator.decompile();retain('kind-current-Code',{code});const next=reparse(code);assert.equal(next.project.targets.flatMap(t=>Object.values(t.blocks||{})).filter(b=>b.opcode==='arrays_createReference').length,2);const result=exported(next);assert.ok(result.files['main.ts'].includes('42'));assert.ok(result.files['main.ts'].includes('[]'));
+});
+
+test('malformed and foreign kind reset leaves cannot open a closed syntax census',()=>{
+ const changes=[input=>{input.body[0].extra={type:'Identifier',name:'values'};},input=>{input.body[0].name='foreign';},input=>{delete input.body.find(st=>st.type==='Declaration'&&st.decls.some(d=>d.spriteKindName)).decls.find(d=>d.spriteKindName).spriteKindName;},input=>{input.body.find(st=>st.type==='Declaration'&&st.decls.some(d=>d.spriteKindName)).decls.find(d=>d.spriteKindName).typeName='any';},input=>{input.body.push(structuredClone(input.body.find(st=>st.type==='Declaration'&&st.decls.some(d=>d.spriteKindName))));}];
+ for(let index=0;index<changes.length;index++){const input=kindInput();changes[index](input);retain('invalid-kind-reset-case',{index,input});assert.ok(temporaryCount(lower(input))>0,'malformed/foreign reset '+index);}
+});
+
+test('nested shared and displaced kind reset occurrences retain prior Array staging',()=>{
+ const changes=[input=>{input.body.push(input.body[0]);},input=>{input.body.push({type:'Block',body:[input.body.shift()]});},input=>{input.body.unshift({type:'ExpressionStatement',expr:{type:'Number',value:'1'}});}];
+ for(let index=0;index<changes.length;index++){const input=kindInput();changes[index](input);retain('invalid-kind-reset-owner',{index,input});assert.ok(temporaryCount(lower(input))>0,'non-root/ambiguous reset '+index);}
+});
+
+test('a callback cannot reuse reset or flattened-declaration identity after current mutation',()=>{
+ for(const role of['reset','declaration']){const input=kindInput('probe();'+kindSource);let changed=false;const result=lower(input,{lowerArrayMap:node=>{if(!changed&&node.type==='Call'&&node.callee?.name==='probe'){changed=true;if(role==='reset')input.body[0].name='changed';else input.body.find(st=>st.type==='Declaration'&&st.decls.some(d=>d.spriteKindName)).decls.find(d=>d.spriteKindName).spriteKindName='changed';}return null;}});assert.equal(changed,true);assert.ok(temporaryCount(result)>0,'current '+role+' mutation expires shortcut');}
 });

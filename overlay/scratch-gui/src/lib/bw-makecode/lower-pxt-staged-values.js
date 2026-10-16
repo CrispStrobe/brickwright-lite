@@ -21,7 +21,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
     // Keep unsupported scopes and every non-statement expression on the old path.
     const directEmptyStatements=new WeakMap();let currentEmptyStatementProof=()=>false;
     const prepareDirectEmptyStatements=()=>{
-        const knownSyntax=new Set(['Program','Declaration','FunctionDeclaration','FunctionExpression','Block','If','While','For','ExpressionStatement','Return','Break','Continue','Array','Object','Identifier','Number','String','Template','Boolean','Null','Undefined','Binary','Logical','Unary','Update','Assignment','Member','Index','Call','Conditional','LegacyParsedValue','LegacyJsonValue','NativeArrayAccess']);
+        const knownSyntax=new Set(['Program','Declaration','FunctionDeclaration','FunctionExpression','Block','If','While','For','ExpressionStatement','Return','Break','Continue','Array','Object','Identifier','Number','String','Template','Boolean','Null','Undefined','Binary','Logical','Unary','Update','Assignment','Member','Index','Call','Conditional','LegacyParsedValue','LegacyJsonValue','NativeArrayAccess','SpriteKindReset']);
         const stringItems=array=>{if(!Array.isArray(array)||Object.getPrototypeOf(array)!==Array.prototype)return null;const names=[];for(let i=0;i<array.length;i++){const d=Object.getOwnPropertyDescriptor(array,String(i));if(!d||!Object.hasOwn(d,'value')||typeof d.value!=='string')return null;names.push(d.value);}return names;};
         const occurrences=new Map(),nodes=[],statements=new Set(),bodyLists=new Set(),parserParameterLists=new Set(),active=new Set(),physical=[];let closed=true;
         const visit=(value,parent=null,key=null)=>{
@@ -86,6 +86,22 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
             if(!binding||graph.declarationCountAt(node,name)!==1||kinds.size!==1)return null;
             return {binding,kind:[...kinds][0],records:declarations.get(binding)||[]};
         };
+        // namespace-bindings emits these real Undefined writes at the root,
+        // one per flattened kind Declaration, in that declaration order. Admit
+        // only that exact closed leaf/owner shape; never treat it as a value
+        // producer or remove/reorder it when omitting unrelated Array transport.
+        const resets=nodes.filter(node=>node.type==='SpriteKindReset');
+        if(resets.length){
+            const kinds=[];
+            for(const st of program.body)if(st.type==='Declaration')for(const decl of st.decls||[])if(Object.hasOwn(decl,'spriteKindName'))kinds.push({st,decl});
+            if(kinds.length!==resets.length)return;
+            for(let index=0;index<resets.length;index++){
+                const reset=resets[index],record=kinds[index],{st,decl}=record;
+                if(program.body[index]!==reset||!unique(reset)||Reflect.ownKeys(reset).length!==2||!Object.hasOwn(reset,'type')||!Object.hasOwn(reset,'name')||typeof reset.name!=='string'||!reset.name||typeof decl.spriteKindName!=='string'||!decl.spriteKindName||decl.typeName!=='number'||decl.name!==reset.name||!unique(st)||!unique(decl))return;
+                const proof=bindingAt(st,decl.name);
+                if(proof?.kind!=='variable'||proof.records.length!==1||proof.records[0].st!==st||proof.records[0].decl!==decl)return;
+            }
+        }
         for(const st of statements){
             if(!unique(st)||protocol(st))continue;
             if(st.type==='Declaration'&&['let','const'].includes(st.kind)&&st.decls?.length===1){
