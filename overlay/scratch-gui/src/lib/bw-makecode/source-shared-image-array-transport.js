@@ -1,5 +1,5 @@
 import {sourceImageArrayCloneEffects} from './source-value-producers.js';
-import {currentSharedImageSourceEffects,sharedImageSourceContextCurrent} from './shared-image-array-source-effects.js';
+import {currentSharedImageSourceEffects,sharedImageSourceContextCurrent,sourceOverlapDestroyNonExposure} from './shared-image-array-source-effects.js';
 import {analyseCallableBindings} from './callable-bindings.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {parseExactImgLiteral} from './arcade-assets.js';
@@ -243,10 +243,11 @@ function prove(program, sourceContext = null) {
             ['left','right','top','bottom'].includes(target.name))continue;
         return null;
     }
-    let imageArrayCloneEffects;
+    let overlapDestroyEffects,imageArrayCloneEffects;
     for(const node of nodes)if(node.type==='Call' && node.callee.type==='Member') {
         if(sdk.has(node.callee)) {if(!sdkEffects.has(path(node.callee)) && !musicPlaybackEffect(node))return null;}
         else if(!methods[kind(node.callee.object)]?.has(node.callee.name)) {
+            if(node.callee.name==='destroy'&&(overlapDestroyEffects ||= sourceOverlapDestroyNonExposure(program,sourceContext))?.has(node))continue;
             // A successful exact ordinary entry may prove this call's receiver
             // without promoting its backing Array or issuing an Image value.
             if(node.callee.name!=='clone'||node.args.length||

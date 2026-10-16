@@ -491,3 +491,111 @@ test('Image entry consumed metadata containers remain observed data rather than 
     }
     assert.equal(calls,0);
 });
+
+
+import {sourceOverlapDestroyNonExposure} from '../overlay/scratch-gui/src/lib/bw-makecode/shared-image-array-source-effects.js';
+const overlapDestroySource=array+`let recent:Sprite;
+function destroyRecent(){recent.destroy();}
+function initialize(){recent=null;sprites.onOverlap(SpriteKind.Player,SpriteKind.Projectile,function(first:Sprite,second:Sprite){
+let one:Sprite=null;let two:Sprite=null;let three:Sprite=null;let four:Sprite=null;
+one=first;two=one;three=two;four=three;recent=four;destroyRecent();});}
+initialize();let selected=pictures[0];console.log(selected.getPixel(0,0));`;
+const destroys=p=>entryNodes(p).filter(node=>node.type==='Call'&&node.callee?.type==='Member'&&node.callee.name==='destroy');
+test('F overlap destroy nonexposure follows actual incoming parameters and dominating complete aliases only',()=>{
+    const p=parse(overlapDestroySource),proof=sourceOverlapDestroyNonExposure(p);assert.ok(proof);
+    assert.equal(destroys(p).length,1);assert.equal(proof.has(destroys(p)[0]),true);
+    const second=parse(overlapDestroySource.replace('one=first;','one=second;'));
+    assert.ok(sourceOverlapDestroyNonExposure(second)?.has(destroys(second)[0]));
+    const normalized=boundary(fixture(overlapDestroySource)),transport=finish(normalized);
+    assert.deepEqual([...transport.resource.frames.keys()],['pictures']);
+    assert.equal(typeof proof.has(destroys(p)[0]),'boolean','no Sprite kind/value token is exposed');
+});
+test('F overlap destroy public pipeline preserves actual registration and destroy through SB3 export and reimport',async()=>{
+    const imported=convert(fixture(overlapDestroySource).prepared.files);clean(imported);
+    assert.ok(frames(imported.code).some(row=>row[1]==='pictures'));assert.match(imported.code,/arcade destroy/);
+    const creator=new Creator();creator.parse(imported.code);
+    for(const item of imported.costumes)assert.equal(item.mode==='add'?creator.addCustomSVGCostume(item.sprite,item.svg,item.name):creator.applyCustomSVG(item.sprite,item.svg),true);
+    record({stage:'overlap-destroy-public-Creator',project:creator.project,channels:channels(creator)});clean(creator);
+    const blocks=creator.project.targets.flatMap(target=>Object.values(target.blocks));
+    assert.equal(blocks.filter(block=>block.opcode==='arcade_destroySprite').length,1);
+    assert.equal(blocks.filter(block=>block.opcode==='arcade_whenSpritesOverlap').length,1);
+    const bytes=Buffer.from(await(await creator.generateSB3()).arrayBuffer()),zip=await JSZip.loadAsync(bytes),members={};
+    for(const [name,item]of Object.entries(zip.files))if(!item.dir)members[name]=await item.async('base64');
+    record({stage:'overlap-destroy-public-SB3',bytes:bytes.toString('base64'),members,project:creator.project});
+    const exported=projectToArcade(creator.project,{costumeSvg:(_target,costume)=>creator.assets.get(costume.assetId)?.data});record({stage:'overlap-destroy-public-export',result:exported,channels:channels(exported)});clean(exported);
+    const refreshed=prepareArcadeDependencyInputs(exported.files,fixture().resolved),reimported=convert(refreshed.files);clean(reimported);assert.match(reimported.code,/arcade destroy/);
+    assert.equal((reimported.code.match(/arcade destroy/g)||[]).length,1);
+    assert.equal((reimported.code.match(/new array reference/g)||[]).length,(imported.code.match(/new array reference/g)||[]).length);
+});
+test('F overlap destroy refuses forged or escaped registrations and parameter provenance',()=>{
+    for(const source of [
+        overlapDestroySource.replace('sprites.onOverlap(', 'fake.onOverlap('),
+        'let sprites=unknown;'+overlapDestroySource,
+        overlapDestroySource+'sprites.onOverlap=unknown;',
+        overlapDestroySource.replace('function initialize(){','let extracted=sprites.onOverlap;function initialize(){'),
+        overlapDestroySource.replace('function(first:Sprite,second:Sprite)','function(first:Sprite,first:Sprite)'),
+        overlapDestroySource.replace('function(first:Sprite,second:Sprite)','function(first:Sprite)'),
+        overlapDestroySource.replace('one=first;','first=unknown;one=first;'),
+        overlapDestroySource.replace('one=first;','one=foreign;'),
+        overlapDestroySource.replace('one=first;','let first:Sprite=null;one=first;'),
+        overlapDestroySource.replace('one=first;','function first(){}one=first;'),
+        overlapDestroySource.replace('one=first;','class first{}one=first;'),
+        overlapDestroySource.replace('one=first;','one=second;second=unknown;')]){
+        const p=parse(source),proof=sourceOverlapDestroyNonExposure(p);assert.ok(!proof||!proof.has(destroys(p)[0]),source);
+    }
+});
+test('F overlap destroy refuses mixed writers, early ordinary entries and unknown alias mutations',()=>{
+    for(const source of [
+        overlapDestroySource+'recent=pictures[0];',
+        overlapDestroySource+'recent=[];',
+        overlapDestroySource+'recent=unknown;',
+        overlapDestroySource+'recent+=unknown;',
+        overlapDestroySource+'recent++;',
+        overlapDestroySource.replace('four=three;','four=three;four.data=unknown;'),
+        overlapDestroySource.replace('recent=four;destroyRecent();','destroyRecent();recent=four;'),
+        overlapDestroySource.replace('recent=four;','if(true){recent=four;}'),
+        overlapDestroySource.replace('initialize();let selected','initialize();destroyRecent();let selected'),
+        overlapDestroySource.replace('initialize();let selected','initialize();initialize();let selected'),
+        overlapDestroySource.replace('recent=null;sprites.onOverlap(', 'sprites.onOverlap(').replace('});}\ninitialize();','});recent=null;}\ninitialize();'),
+        overlapDestroySource.replace('recent.destroy();','recent.destroy(1);'),
+        overlapDestroySource.replace('recent.destroy();','recent.destroy<number>();'),
+        overlapDestroySource+'let method=recent.destroy;',
+        overlapDestroySource+'function method(){return recent.destroy;}',
+        overlapDestroySource.replace('recent.destroy();','recent["destroy"]();'),
+        overlapDestroySource.replace('recent.destroy();','new recent.destroy();'),
+        overlapDestroySource.replace('recent.destroy();','destroyRecent();recent.destroy();'),
+        overlapDestroySource+'let escaped=destroyRecent;',
+        overlapDestroySource+'function destroyRecent(){}',
+        overlapDestroySource.replace('let one:Sprite=null;','let one:Sprite=null;let one:Sprite=null;'),
+        overlapDestroySource.replace('function destroyRecent(){','function destroyRecent(arg=unknown(pictures)){'),
+        overlapDestroySource.replace('function initialize(){','function initialize(arg=unknown(pictures)){'),
+        overlapDestroySource.replace('function destroyRecent(){','function destroyRecent(unused:Sprite){'),
+        overlapDestroySource.replace('function destroyRecent(){','function destroyRecent(...values:Sprite[]){'),
+        overlapDestroySource.replace('function destroyRecent(){','function destroyRecent<T>(){'),
+        overlapDestroySource.replace('recent=four;destroyRecent();','recent=four;destroyRecent(1);'),
+        overlapDestroySource.replace('initialize();let selected','initialize(1);let selected')]){
+        const p=parse(source),proof=sourceOverlapDestroyNonExposure(p),fn=p.body.find(node=>node.type==='FunctionDeclaration'&&node.name==='destroyRecent');
+        const sites=entryNodes(fn).filter(node=>node.type==='Call');assert.ok(sites.length);assert.ok(!proof||sites.every(call=>!proof.has(call)),source);
+    }
+});
+test('F overlap destroy preserves destroyed callback and unknown effect barriers',()=>{
+    const withHandler=parse(overlapDestroySource+'sprites.onDestroyed(SpriteKind.Player,function(sprite:Sprite){console.log(1);});');
+    assert.equal(sourceOverlapDestroyNonExposure(withHandler),null,'the full destroyed-handler graph is refused, never treated as harmless');
+    const unknown=boundary(fixture(overlapDestroySource+'function unused(){unknown();}'));
+    assert.equal(prepareSharedImageArrayTransport(unknown.normalized,{sourceContext:unknown.context}),null,'whole F retains all unused unknown bodies');
+    const escaped=boundary(fixture(overlapDestroySource.replace('recent=four;','recent=four;unknown(pictures);')));
+    assert.equal(prepareSharedImageArrayTransport(escaped.normalized,{sourceContext:escaped.context}),null,'private backing exposure remains forbidden');
+    const reset=parse(overlapDestroySource),fn=entryNodes(reset).find(node=>node.type==='FunctionExpression');
+    fn.body.splice(fn.body.length-1,0,{type:'SpriteKindReset',name:'recent'});
+    assert.ok(!sourceOverlapDestroyNonExposure(reset)?.has(destroys(reset)[0]),'reset of the current binding is a real writer, not an incoming producer');
+    const entry=parse(imageEntrySource.replace('initialize();use();','initialize();let sprite:Sprite=null;sprite.destroy();use();'));
+    assert.ok(!sourceImageArrayCloneEffects(entry)?.has(entryClones(entry).at(-1)),'destroy is not a disjoint entry effect and never preserves scalar/Array votes across reentry');
+});
+test('F overlap destroy facts bind actual current calls and permanently expire after mutation',()=>{
+    const p=parse(overlapDestroySource),call=destroys(p)[0],proof=sourceOverlapDestroyNonExposure(p);assert.ok(proof?.has(call));
+    assert.equal(proof.has({...call}),false);const copy=parse(overlapDestroySource);assert.equal(proof.has(destroys(copy)[0]),false);
+    const old=call.args;call.args=[{type:'Number',value:1}];assert.equal(proof.has(call),false);call.args=old;assert.equal(proof.has(call),false);
+    const q=parse(overlapDestroySource),query=sourceOverlapDestroyNonExposure(q),registration=entryNodes(q).find(node=>node.type==='Call'&&node.callee?.name==='onOverlap');
+    const prior=registration.args[2];registration.args[2]={...prior};assert.equal(query.has(destroys(q)[0]),false);registration.args[2]=prior;assert.equal(query.has(destroys(q)[0]),false);
+    assert.equal(sourceOverlapDestroyNonExposure(parse(overlapDestroySource),{}),null,'caller-made context does not mint provenance');
+});

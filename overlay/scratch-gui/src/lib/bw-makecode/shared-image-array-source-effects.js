@@ -292,3 +292,159 @@ export function consumeSharedImageEntryEffects(program,sourceContext,consume) {
     let result;try{result=consume(lookup,current);}finally{active=false;}
     return current()?result:null;
 }
+
+
+// F-only exact-call non-exposure. This issues no Sprite value/kind or callback
+// signature. The incoming event identity is usable only inside its actual
+// registration activation, after a physically dominating alias assignment.
+export function sourceOverlapDestroyNonExposure(program,sourceContext=null) {
+    const profile=prepareSharedImageEntryEffects(program,sourceContext);
+    if(!profile||!currentSharedImageEntryEffect(program,profile,program,'current'))return null;
+    const nodes=[],parents=new WeakMap(),owners=new WeakMap();
+    const visit=(value,parent=null,owner=program)=>{
+        if(!value||typeof value!=='object')return;
+        parents.set(value,parent);owners.set(value,owner);if(!Array.isArray(value))nodes.push(value);
+        for(const key of Reflect.ownKeys(value))if(!metadata.has(key))
+            visit(descriptor(value,key).value,value,['FunctionDeclaration','FunctionExpression'].includes(value.type)&&key==='body'?value:owner);
+    };
+    visit(program);
+    const lexical=analyseCallableBindings(program),sdk=staticSdkNamespaceReceivers(program);
+    const path=node=>node?.type==='Identifier'?node.name:node?.type==='Member'?`${path(node.object)}.${node.name}`:null;
+    const plainCall=node=>node?.type==='Call'&&!node.isNew&&!node.constructorCall&&!Object.hasOwn(node,'typeArguments')&&Array.isArray(node.args);
+    // No destroyed callback graph is interpreted as harmless. Destroy remains
+    // a reentry barrier for the separate Image entry walk, even in this slice.
+    if(nodes.some(node=>node.type==='Class'||node.type==='Member'&&node.name==='onDestroyed'))return null;
+    const callbacks=new Set(),registrations=new Map(),parameters=new Map(),writers=new Map(),callers=new Map(),escaped=new Set(),mutated=new Set(),declarations=new Map(),functionBindings=new WeakMap();
+    const add=(binding,row)=>{if(binding){if(!writers.has(binding))writers.set(binding,[]);writers.get(binding).push(row);}};
+    const declare=(binding,node)=>{if(binding){if(!declarations.has(binding))declarations.set(binding,new Set());declarations.get(binding).add(node);}};
+    for(const node of nodes) {
+        if(node.type==='Call'&&sdk.has(node.callee)&&path(node.callee)==='sprites.onOverlap'&&plainCall(node)&&node.args.length===3) {
+            const fn=node.args[2];
+            if(fn?.type!=='FunctionExpression'||!Array.isArray(fn.params)||fn.params.length!==2||new Set(fn.params).size!==2||fn.params.some(name=>typeof name!=='string')||fn.optionalParams?.length||fn.parameterDefaults?.length||fn.typeParameters?.length||fn.genericParams?.length||fn.restParam||fn.params.optionalParams?.length||fn.params.parameterDefaults?.length||fn.params.parameterProperties?.length||Object.keys(fn.paramDefaults||{}).length)continue;
+            const scope=lexical.scopes.get(fn);if(!scope)continue;
+            callbacks.add(fn);registrations.set(fn,node);for(const name of fn.params){const binding=scope.names.get(name);if(binding&&!binding.written)parameters.set(binding,fn);}
+        }
+        if(node.type==='Declaration')for(const decl of node.decls) {
+            const binding=lexical.scopes.get(node)?.names.get(decl.name);declare(binding,decl);
+            // Preserve absence as absence; neither this nor Null creates an event.
+            if(node.kind==='let'&&Object.hasOwn(decl,'init')&&decl.init===null)continue;
+            add(binding,{node,value:decl.init,owner:owners.get(node)});
+        }
+        if(node.type==='FunctionDeclaration') {
+            const binding=lexical.scopes.get(node)?.parent?.names.get(node.name);declare(binding,node);functionBindings.set(node,binding);
+        }
+        if(node.type==='ForOf')declare(lexical.scopes.get(node)?.names.get(node.name),node);
+        if(node.type==='SpriteKindReset') {
+            let scope=lexical.scopes.get(node);while(scope&&!scope.names.has(node.name))scope=scope.parent;
+            // A reset is a real write, never an event-origin producer.
+            add(scope?.names.get(node.name),{node,value:null,owner:owners.get(node)});
+        }
+        if(node.type==='Assignment'&&node.left?.type==='Identifier')add(lexical.references.get(node.left),{node,value:node.op==='='?node.right:null,owner:owners.get(node)});
+        if(node.type==='Update'&&node.argument?.type==='Identifier')add(lexical.references.get(node.argument),{node,value:null,owner:owners.get(node)});
+        if(node.type==='Assignment'||node.type==='Update'||node.type==='Unary'&&node.op==='delete') {
+            let target=node.type==='Assignment'?node.left:node.argument;
+            if(target?.type==='Member'||target?.type==='Index') {
+                while(target?.type==='Member'||target?.type==='Index')target=target.object;
+                if(target?.type==='Identifier')mutated.add(lexical.references.get(target));
+            }
+        }
+        if(node.type==='Identifier') {
+            const binding=lexical.references.get(node);
+            if(binding?.kind==='function') {
+                const call=parents.get(node);
+                if(!plainCall(call)||call.callee!==node||binding.written)escaped.add(binding.node);
+                else {if(!callers.has(binding.node))callers.set(binding.node,[]);callers.get(binding.node).push(call);}
+            }
+        }
+    }
+    // The same exact SDK registration must not be extracted as a value.
+    for(const node of nodes)if(node.type==='Member'&&sdk.has(node)&&path(node)==='sprites.onOverlap') {
+        const call=parents.get(node);if(!plainCall(call)||call.callee!==node||call.args.length!==3||!callbacks.has(call.args[2]))return null;
+    }
+    const position=(node,fn)=>{
+        const body=fn===program?program.body:fn.body;let child=node;
+        while(child&&parents.get(child)!==body)child=parents.get(child);
+        return child&&Array.isArray(body)?body.indexOf(child):-1;
+    };
+    const directPosition=(node,fn)=>{
+        let statement=node;
+        if(node.type!=='Declaration'){statement=parents.get(node);if(statement?.type!=='ExpressionStatement'||statement.expr!==node)return -1;}
+        const body=fn===program?program.body:fn.body;
+        return parents.get(statement)===body?body.indexOf(statement):-1;
+    };
+    // Enumerate every immutable direct call entry; cycles, ordinary root uses,
+    // escaped procedures and unknown callback roots cannot borrow an event.
+    const uniqueFunction=fn=>{const binding=functionBindings.get(fn);return binding?.kind==='function'&&binding.node===fn&&declarations.get(binding)?.size===1;};
+    const closedProcedure=fn=>fn?.type==='FunctionDeclaration'&&Array.isArray(fn.params)&&fn.params.length===0&&
+        !fn.optionalParams?.length&&!fn.parameterDefaults?.length&&!fn.typeParameters?.length&&!fn.genericParams?.length&&!fn.restParam&&
+        !fn.params.optionalParams?.length&&!fn.params.parameterDefaults?.length&&!fn.params.parameterProperties?.length&&
+        !Object.keys(fn.paramDefaults||{}).length;
+
+    const entries=(fn,active=new Set())=>{
+        if(fn===program)return [{root:program,first:null}];
+        if(callbacks.has(fn))return [{root:fn,first:null}];
+        if(!closedProcedure(fn)||!uniqueFunction(fn)||escaped.has(fn)||active.has(fn)||!callers.get(fn)?.length)return null;
+        const next=new Set(active);next.add(fn);const out=[];
+        for(const call of callers.get(fn)) {
+            if(call.args.length!==0)return null;
+            const parent=owners.get(call),roots=entries(parent,next);if(!roots)return null;
+            for(const root of roots)out.push({root:root.root,first:root.first||call});
+        }
+        return out.length<=10000?out:null;
+    };
+    const singleStartup=(fn,active=new Set())=>{
+        if(fn===program)return true;
+        if(!closedProcedure(fn)||!uniqueFunction(fn)||escaped.has(fn)||active.has(fn)||callers.get(fn)?.length!==1)return false;
+        const call=callers.get(fn)[0],owner=owners.get(call),next=new Set(active);next.add(fn);
+        return call.args.length===0&&directPosition(call,owner)>=0&&singleStartup(owner,next);
+    };
+    const beforeRegistration=(write,callback)=>{
+        if(!singleStartup(write.owner)||directPosition(write.node,write.owner)<0)return false;
+        const seen=new Set();let node=registrations.get(callback),owner=owners.get(node);
+        while(owner!==write.owner){
+            if(!owner||owner===program||!closedProcedure(owner)||!uniqueFunction(owner)||escaped.has(owner)||seen.has(owner)||callers.get(owner)?.length!==1)return false;
+            seen.add(owner);node=callers.get(owner)[0];owner=owners.get(node);
+            if(node.args.length!==0||directPosition(node,owner)<0)return false;
+        }
+        return directPosition(write.node,owner)<position(node,owner);
+    };
+    const origin=(node,use=node,active=new Set())=>{
+        if(node?.type!=='Identifier')return null;
+        const binding=lexical.references.get(node);if(!binding||mutated.has(binding)||active.has(binding))return null;
+        if(parameters.has(binding))return !declarations.get(binding)?.size&&!writers.get(binding)?.length?[{callback:parameters.get(binding),write:null}]:null;
+        if(declarations.get(binding)?.size!==1)return null;
+        const values=writers.get(binding);if(!values?.length)return null;
+        const next=new Set(active);next.add(binding);const live=values.filter(row=>!['Null','Undefined'].includes(row.value?.type));
+        if(!live.length)return null;
+        const result=[];
+        for(const row of live) {
+            if(!row.value||row.value.type!=='Identifier')return null;
+            const prior=origin(row.value,row.node,next);if(!prior)return null;
+            for(const token of prior) {
+                const callback=token.callback,index=directPosition(row.node,callback);
+                if(index<0)return null;
+                if(binding.functionOwner===lexical.scopes.get(callback)) {
+                    const read=position(use,callback);if(read<0||index>=read)return null;
+                    if(values.some(other=>other!==row&&directPosition(other.node,callback)>=index))return null;
+                    result.push(token);
+                }else if(binding.scope.kind==='global') {
+                    if(values.some(other=>other!==row&&['Null','Undefined'].includes(other.value?.type)&&!beforeRegistration(other,callback)))return null;
+                    result.push({callback,write:row.node});
+                }else return null;
+            }
+        }
+        return result;
+    };
+    for(const member of nodes)if(member.type==='Member'&&member.name==='destroy'&&origin(member.object)) {
+        const call=parents.get(member);if(!plainCall(call)||call.callee!==member)return null;
+    }
+    const accepted=new WeakSet();
+    for(const call of nodes) {
+        if(!plainCall(call)||call.args.length||call.callee?.type!=='Member'||call.callee.name!=='destroy')continue;
+        const tokens=origin(call.callee.object);if(!tokens?.length)continue;
+        const roots=entries(owners.get(call));if(!roots?.length||roots.some(row=>!callbacks.has(row.root)))continue;
+        if(roots.every(row=>tokens.some(token=>token.callback===row.root&&(!token.write||directPosition(token.write,row.root)>=0&&directPosition(token.write,row.root)<position(row.first||call,row.root)))))accepted.add(call);
+    }
+    if(!currentSharedImageEntryEffect(program,profile,program,'current'))return null;
+    return Object.freeze({has(node){return !!currentSharedImageEntryEffect(program,profile,program,'current')&&accepted.has(node);}});
+}
