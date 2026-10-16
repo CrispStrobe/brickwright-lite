@@ -242,6 +242,25 @@ export function lowerNamedArrayItemHelpers(program,{profile=GENERATED_HELPER_PRO
     }
     if (unsupported.length) return {program,unsupported:[...new Set(unsupported)]};
     if(!effectsClosed)return {program,unsupported:['Named Array helper requires closed current callee and builtin effects']};
+    // Complete legacy helper recognition while the original literal Arrays,
+    // bindings and defaults still belong to this same current source proof.
+    const removedMutators=new Set([...mutators.keys()].filter(name=>!escapedMutators.has(name) &&
+        possibleMutators.filter(use=>use.node.callee.name===name).every(use=>recognizedMutators.has(use.node))));
+    const removedNamed=new Set([...getters.values(),...[...removedMutators].map(name=>mutators.get(name).fn)]);
+    const legacyCandidates=new Map([...jsonHelpers.map(fn=>[fn,'LegacyJsonValue']),
+        ...parseHelpers.map(fn=>[fn,'LegacyParsedValue'])]);
+    for(const fn of functions)if(proof.root(fn) && exact(fn,arrayAccessTemplate,new Map([[fn.name,arrayAccessTemplate.name]]),proof))
+        legacyCandidates.set(fn,'NativeArrayAccess');
+    const removedLegacy=new Set(legacyCandidates.keys());let changed;
+    do {
+        changed=false;
+        const internal=new Set([...removedNamed,...removedLegacy]);
+        for(const fn of removedLegacy)if(!proof.closed(fn,internal)||proof.calls(fn,[1],internal)===null){
+            removedLegacy.delete(fn);changed=true;
+        }
+    }while(changed);
+    const legacyCalls=new Map(),internal=new Set([...removedNamed,...removedLegacy]);
+    for(const fn of removedLegacy)for(const call of proof.calls(fn,[1],internal))legacyCalls.set(call,legacyCandidates.get(fn));
     const recognizedCalls=new Map(calls.map(call=>[call.node,call.name]));
     const value=(node,name)=>({type:node.type==='Null'?'NativeNamedArrayDelete':'NativeNamedArrayCreate',
         registry:name,json:node.type==='Array'?JSON.stringify(literal(node).value):null,bwObjectTypes:node.type==='Array'?['array']:['null']});
@@ -250,6 +269,7 @@ export function lowerNamedArrayItemHelpers(program,{profile=GENERATED_HELPER_PRO
         if (Array.isArray(node)) return mapGeneratedSourceArray(node,child=>rewrite(child,shadow));
         if (recognizedCalls.has(node)) return {...node,bwNativeNamedArray:{kind:'get',registry:recognizedCalls.get(node)},args:node.args.map(arg=>rewrite(arg,shadow))};
         if(recognizedMutators.has(node))return {...node,bwNativeNamedArray:recognizedMutators.get(node),args:node.args.map(arg=>rewrite(arg,shadow))};
+        if(legacyCalls.has(node))return {type:legacyCalls.get(node),value:rewrite(node.args[0],shadow)};
         if (node.type==='Block') shadow=new Set([...shadow,...bindings(node.body || [])]);
         shadow=new Set([...shadow,...loopBindings(node)]);
         if (Array.isArray(node.params)) shadow=new Set([...shadow,...node.params,...functionBindings(node.body || [])]);
@@ -261,8 +281,6 @@ export function lowerNamedArrayItemHelpers(program,{profile=GENERATED_HELPER_PRO
     };
     // Replaced direct calls already use native words. Keep a validated helper
     // body only when a remaining actual use still needs its procedure semantics.
-    const removedMutators=new Set([...mutators.keys()].filter(name=>!escapedMutators.has(name) &&
-        possibleMutators.filter(use=>use.node.callee.name===name).every(use=>recognizedMutators.has(use.node))));
     if(!proof.isCurrent())return {program,unsupported:['Named Array helper source changed before publication']};
-    return {program:rewrite({...program,body:program.body.filter(node=>!(node.type==='FunctionDeclaration' && (getters.has(node.name) || removedMutators.has(node.name))))}),unsupported:[]};
+    return {program:rewrite({...program,body:program.body.filter(node=>!removedNamed.has(node) && !removedLegacy.has(node))}),unsupported:[]};
 }

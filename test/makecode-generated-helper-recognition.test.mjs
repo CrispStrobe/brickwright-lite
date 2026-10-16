@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
 import {GENERATED_HELPER_PROFILES as profiles,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from '../overlay/scratch-gui/src/lib/bw-makecode/generated-helper-recognition.js';
-import {LEGACY_JSON_SOURCE,LEGACY_PARSE_SOURCE} from '../overlay/scratch-gui/src/lib/bw-makecode/legacy-array-values.js';
+import {LEGACY_JSON_SOURCE,LEGACY_PARSE_SOURCE,ARRAY_ACCESS_SOURCE} from '../overlay/scratch-gui/src/lib/bw-makecode/legacy-array-values.js';
 import {NAMED_ARRAY_GET_SOURCE,lowerNamedArrayItemHelpers} from '../overlay/scratch-gui/src/lib/bw-makecode/named-array-item-helpers.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {HELPERS} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-runtime.js';
@@ -140,4 +140,20 @@ test('retained default metadata agrees with executable prologues and preserves p
     const ast=parse(LEGACY_JSON_SOURCE+'\nfunction external(x:any=0){return x}external()');
     const fn=ast.body.at(-2);fn.params.parameterDefaults[0].value={type:'Call',callee:{type:'Identifier',name:'unknown'},args:[]};
     assert.equal(inspectGeneratedHelperBindings(ast,profiles.ordinary).isCurrent(),false,'metadata-only effect edit cannot borrow prologue coverage');
+});
+
+test('named reconstruction normalizes legacy consumers under the same original Array proof',()=>{
+    const source=LEGACY_JSON_SOURCE+'\n'+NAMED_ARRAY_GET_SOURCE+'\n'+ARRAY_ACCESS_SOURCE+
+        '\nlet actual:any[]=[[1]];let row=actual[0];__bwArrayAccess(row).push(4);let out=__bwNamedArrayGet(actual,0)';
+    const ast=parse(source),result=lowerNamedArrayItemHelpers(ast,{profile:profiles.ordinary});
+    assert.deepEqual(result.unsupported,[]);
+    assert.equal(namedNodes(result.program).filter(node=>node.type==='NativeArrayAccess').length,1);
+    assert.equal(namedNodes(result.program).filter(node=>node.type==='NativeNamedArrayCreate').length,1);
+    assert.equal(result.program.body.filter(node=>node.type==='FunctionDeclaration').length,0);
+    const converted=arcadeToPseudocode(source);
+    assert.deepEqual(converted.unsupported,[]);
+    const escaped=parse(source+';let escaped=__bwArrayAccess');
+    const retained=lowerNamedArrayItemHelpers(escaped,{profile:profiles.ordinary});
+    assert.ok(retained.program.body.some(node=>node.type==='FunctionDeclaration'&&node.name==='__bwArrayAccess'));
+    assert.equal(namedNodes(retained.program).filter(node=>node.type==='NativeArrayAccess').length,0);
 });
