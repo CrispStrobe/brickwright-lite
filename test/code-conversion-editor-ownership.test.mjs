@@ -15,12 +15,15 @@ const extract = (start, end) => {
 };
 const methods = extract('    async compile ({strict = false, pseudocode = null} = {}) {',
     '    // Read the running project into all languages at once.') +
-    extract('    async loadAsmExample (id) {', '    openArtefactFile (file) {');
+    extract('    async loadAsmExample (id) {', '    openArtefactFile (file) {') +
+    extract('    publishAppliedDevice (stc) {',
+        '    // Real hardware, two minutes: generate MicroPython and push it to a');
 const Editor = new Function('TWO_WAY', 'DOS_LANG', 'codeArtworkMatches', 'captureCodeArtwork',
-    'classifyConversionWarnings', 'conversionFailure', 'LANG_LABEL', 'pickLocale', 'confirmAsync',
+    'classifyConversionWarnings', 'conversionFailure', 'LANG_LABEL', 'pickLocale', 'confirmAsync', 'DEVICE_BY_ID',
     `return class {${methods}}`)(new Set(['pseudocode']), {}, () => false, () => null,
     () => ({changed: [], unsupported: []}), error => ({message: error.message, issues: []}),
-    {pseudocode: 'Pseudo'}, () => 'en', async () => true);
+    {pseudocode: 'Pseudo'}, () => 'en', async () => true,
+    {pico: {core: 'rp2040', label: 'Pico'}, i8086: {core: 'i8086', label: '8086'}});
 const deferred = () => {
     let resolve;
     const promise = new Promise(done => { resolve = done; });
@@ -33,16 +36,28 @@ function fixture (hold = null, failure = null) {
     const release = deferred();
     const calls = [];
     const selectionCalls = [];
-    let stage = {isStage: true, id: 'initial'};
+    const commentCalls = [];
+    const makeStage = id => ({isStage: true, id, createComment (...args) { commentCalls.push({id, args}); }});
+    let stage = makeStage('initial');
     let loads = 0;
     let refreshes = 0;
     class Builder {
+        static RETARGET_POOLS = {pico: {}};
+        static retargetPseudocode (source) { return {ok: true, pseudocode: source, warnings: []}; }
+        static STC_COMMENT_ID = 'test-stc';
+        static writeStcComment (project) {
+            project.targets[0].comments = {'test-stc': {text: JSON.stringify(project.stc)}};
+        }
         constructor () {
-            this.project = {targets: [], stc: hold === 'comment' ? {device: 'i8086', pins: []} : null};
+            this.project = {targets: [], stc: hold === 'load-commit' ? {device: 'pico', pins: []} :
+                hold === 'comment' || editor.withStc ? {device: 'i8086', pins: []} : null};
             this.warnings = [];
         }
         parse () { if (failure === 'parse') throw new Error('current parse failed'); }
-        async generateSB3 () { return {arrayBuffer: async () => new ArrayBuffer(0)}; }
+        async generateSB3 () {
+            await editor.onGenerateSB3?.();
+            return {arrayBuffer: async () => new ArrayBuffer(0)};
+        }
         generatePython () { editor.onGenerate?.(); return 'generated Python'; }
         generateJavaScript () { return 'generated JS'; }
         generateC () { return 'generated C'; }
@@ -54,8 +69,11 @@ function fixture (hold = null, failure = null) {
         runtime: {getTargetForStage: () => stage, targets: [stage]},
         async loadProject () {
             calls.push('load');
-            stage = {isStage: true, id: `loaded-${++loads}`};
-            vm.runtime.targets = [stage];
+            const load = ++loads;
+            if (hold === 'load-commit' && load === 1) { entered.resolve(); await release.promise; }
+            stage = makeStage(`loaded-${load}`);
+            vm.runtime.targets = editor.withActor ?
+                [stage, {isStage: false, id: 'actor', blocks: {getScripts: () => ['body']}}] : [stage];
             if (hold === 'load' && loads === 1) { entered.resolve(); await release.promise; }
             if (failure === 'load') throw new Error('current load failed');
         },
@@ -63,6 +81,7 @@ function fixture (hold = null, failure = null) {
             calls.push('refresh');
             if (hold === 'refresh' && ++refreshes === 1) { entered.resolve(); await release.promise; }
         }},
+        toJSON () { return JSON.stringify({targets: [{isStage: true, comments: {}}]}); },
         setEditingTarget (id) { selectionCalls.push(id); }
     };
     Object.assign(editor, {
@@ -79,14 +98,18 @@ function fixture (hold = null, failure = null) {
         },
         activeCode () { return this.state.buffers[this.state.lang] || ''; },
         genOpts: () => ({}),
-        canLiftAsm: () => false, publishAppliedDevice () {}, _asmExamples: () => [example]
+        canLiftAsm: () => false, loadCatalog () {}, _asmExamples: () => [example]
     });
     let libraries = 0;
     editor.lib = async () => {
         if (hold === 'comment' && ++libraries === 2) { entered.resolve(); await release.promise; }
         return {default: Builder};
     };
-    return {editor, entered, release, calls, selectionCalls};
+    return {editor, entered, release, calls, selectionCalls, commentCalls,
+        get libraryCalls () { return libraries; }, replaceStage () {
+        stage = makeStage('external');
+        vm.runtime.targets = [stage];
+    }};
 }
 
 test('ordinary conversion still regenerates buffers, clears old ASM and finishes busy', async () => {
@@ -222,8 +245,10 @@ for (const boundary of ['refresh', 'comment']) {
         const f = fixture(boundary); const old = f.editor.compile(); await f.entered.promise;
         await f.editor.compile();
         const selections = [...f.selectionCalls];
+        const comments = [...f.commentCalls];
         f.release.resolve(); await old;
         assert.deepEqual(f.selectionCalls, selections);
+        assert.deepEqual(f.commentCalls, comments, 'An older completion cannot write metadata onto the newer stage');
         assert.equal(f.editor.state.status, 'Blocks loaded.');
     });
 }
@@ -261,6 +286,9 @@ test('queued busy cleanup rechecks ownership when React applies its updater', as
 
 test('superseded strict preparation cancels without invoking the old VM load', async () => {
     const f = fixture(); const entered = deferred(); const release = deferred(); const lib = f.editor.lib;
+    // After a previous project/import completed, both resources are already
+    // null. Their unchanged values cannot stand in for conversion ownership.
+    f.editor._animationImport = null; f.editor._makeCodeRequest = null;
     let libraries = 0;
     f.editor.lib = async () => {
         if (++libraries === 1) { entered.resolve(); await release.promise; }
@@ -271,3 +299,95 @@ test('superseded strict preparation cancels without invoking the old VM load', a
     release.resolve(); await assert.doesNotReject(old);
     assert.deepEqual(f.calls, ['load', 'refresh']);
 });
+
+test('overlapping To blocks and Pico retarget retain the applied project device metadata', async () => {
+    const f = fixture('load-commit');
+    f.editor.withActor = true;
+    f.editor.state.buffers.pseudocode = 'DEVICE PICO\nPIN led = GP25 OUTPUT\n\nWHEN flag clicked:\n  turn on led\n';
+    const preparing = deferred(); const continuePreparation = deferred(); let builds = 0;
+    f.editor.onGenerateSB3 = async () => {
+        if (++builds === 2) { preparing.resolve(); await continuePreparation.promise; }
+    };
+    const compile = f.editor.compile; const pending = [];
+    f.editor.compile = function (...args) { const result = compile.apply(this, args); pending.push(result); return result; };
+    const old = f.editor.compile(); await f.entered.promise;
+    await f.editor.setDevice('pico'); await preparing.promise;
+    const currentBuffers = f.editor.state.buffers;
+    f.release.resolve(); await old;
+    const appliedDevice = f.editor.props.vm.runtime.bwDeviceId;
+    const busyWhilePreparing = f.editor.state.busy;
+    continuePreparation.resolve(); await Promise.all(pending);
+    assert.equal(appliedDevice, 'pico', 'The applied load still owns its project metadata');
+    assert.equal(f.editor.props.vm.runtime.bwDeviceId, 'pico');
+    assert.equal(f.editor.state.buffers, currentBuffers);
+    assert.deepEqual(f.selectionCalls, [], 'Applied-project metadata does not authorize stale editor selection');
+    assert.equal(busyWhilePreparing, true);
+    assert.match(f.editor.state.status, /code or loaded project changed/, 'The newer preparation still enforces stage admission');
+    assert.deepEqual(f.calls, ['load', 'refresh'], 'A rejected preparation must not invoke another VM load');
+    assert.equal(f.editor.state.busy, false);
+});
+
+test('a loaded conversion does not clear newer animation or imported-project requests', async () => {
+    const f = fixture('load'); const old = f.editor.compile(); await f.entered.promise;
+    const animation = f.editor._animationImport = {newer: true};
+    const imported = f.editor._makeCodeRequest = {newer: true};
+    f.editor.state.buffers = {...f.editor.state.buffers, asm: 'new editor work'};
+    f.release.resolve(); await old;
+    assert.equal(f.editor._animationImport, animation);
+    assert.equal(f.editor._makeCodeRequest, imported);
+    assert.equal(f.editor.state.buffers.asm, 'new editor work');
+});
+
+test('an external stage change during refresh revokes applied-project completion ownership', async () => {
+    const f = fixture('refresh'); const old = f.editor.compile(); await f.entered.promise;
+    f.replaceStage(); f.editor.props.vm.runtime.bwDeviceId = 'external';
+    const buffers = f.editor.state.buffers; f.editor.state.status = 'external project owns feedback';
+    const selected = [...f.selectionCalls];
+    f.release.resolve(); await old;
+    assert.deepEqual(f.selectionCalls, selected);
+    assert.equal(f.editor.props.vm.runtime.bwDeviceId, 'external');
+    assert.equal(f.editor.state.buffers, buffers);
+    assert.equal(f.editor.state.status, 'external project owns feedback');
+});
+
+test('current conversion still selects the loaded actor with scripts', async () => {
+    const f = fixture(); f.editor.withActor = true;
+    await f.editor.compile();
+    assert.deepEqual(f.selectionCalls, ['actor', 'actor']);
+    assert.equal(f.editor.state.status, 'Blocks loaded.');
+});
+
+test('a revoked loaded stage does not start another comment-library operation', async () => {
+    const f = fixture('refresh'); f.editor.withStc = true;
+    const old = f.editor.compile(); await f.entered.promise;
+    f.replaceStage(); const libraries = f.libraryCalls; const comments = [...f.commentCalls];
+    f.release.resolve(); await old;
+    assert.equal(f.libraryCalls, libraries);
+    assert.deepEqual(f.commentCalls, comments);
+});
+
+for (const field of ['_animationImport', '_makeCodeRequest']) {
+    test(`a new ${field} intent survives even before editor text changes`, async () => {
+        const f = fixture('load'); const old = f.editor.compile(); await f.entered.promise;
+        const current = f.editor[field] = {newer: true}; const buffers = f.editor.state.buffers;
+        f.editor.state.status = 'new import reading';
+        f.release.resolve(); await old;
+        assert.equal(f.editor[field], current);
+        assert.equal(f.editor.state.buffers, buffers);
+        assert.equal(f.editor.state.status, 'new import reading');
+        assert.equal(f.editor.state.importedPython, true);
+    });
+
+    test(`a new ${field} intent during preparation prevents the older VM load`, async () => {
+        const f = fixture(); const entered = deferred(); const release = deferred(); const lib = f.editor.lib;
+        f.editor.lib = async () => { entered.resolve(); await release.promise; return lib(); };
+        const old = f.editor.compile(); await entered.promise;
+        const current = f.editor[field] = {newer: true};
+        f.editor.state.status = 'new import reading';
+        release.resolve(); await old;
+        assert.deepEqual(f.calls, []);
+        assert.equal(f.editor[field], current);
+        assert.equal(f.editor.state.status, 'new import reading');
+        assert.equal(f.editor.state.busy, false);
+    });
+}

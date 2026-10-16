@@ -32,24 +32,35 @@ output and Stop controls. No timeout, assertion, baseline, dependency pin,
 compiler/runtime/firmware/model, protocol or workflow change. Coordinate other
 importer owners; preserve their existing hooks and all unrelated lane sections.
 
-The candidate identifies each conversion request and captures its editor buffer
-revision and language. Completion, errors and queued busy cleanup retain that
-ownership across VM loading, extension refresh and comment-library waits. A
-changed editor keeps its buffers and feedback; an older request cannot finish a
-newer conversion. Normal conversion, explicit retargeting, current errors and
-strict rejection remain covered. This does not undo an already-applied VM load
-or establish general project transaction cancellation.
+The candidate identifies each conversion request and captures its editor buffer,
+language and import-intent revisions. Editor feedback, selection and queued busy
+cleanup retain their corresponding ownership. Applied-project metadata instead
+uses the newest conversion VM-load identity and its observed loaded stage: a
+newer request still preparing does not invalidate the device metadata of an
+already-applied load. A newer VM load or stage change revokes that metadata
+completion. Existing source/project admission remains required; this does not
+undo an applied VM load or establish general project transaction cancellation.
 
-Eighteen actual-method host controls pass; the unchanged baseline passes five
-and fails thirteen. Nine guard mutations are detected. All 147 affected host
-controls pass, plus 24 existing VM-diagnostic/artwork controls using an explicitly
-selected prepared dependency registry. The existing diagnostic fixture now
-honors React functional state updaters; its assertions are unchanged. Initial
-sparse-input and authored-scheduler failures are preserved separately. None of
-these host results establishes the exact original browser schedule, a new
-installed package or affected browser/guest qualification. Every enabled final
-source-head check and the actual 8086 reload/example/local-execution route
-remain required before merge.
+Twenty-seven actual-method host controls pass; the previous source passes
+nineteen and fails eight. Eighteen guard mutations are detected. All 156 affected
+host controls and 24 existing VM-diagnostic/artwork controls pass with an
+explicitly selected prepared dependency registry. Earlier controls exposed a
+masking case where undefined-to-null import cleanup hid a missing request
+fence; an already-reset resource case now detects it. Original assertions and
+failures remain preserved. The existing diagnostic fixture handles React
+functional state updaters without changing its validation assertions.
+
+The previous source passed all 26 actual 8086 journey checks with an identical
+CI checkout tree, but its light job failed the Pico device-registration gate.
+A separate actual-method diagnostic establishes a source regression: an older
+load can apply, lose metadata publication to a newer request, then cause that
+newer preparation to refuse its changed stage. The exact failing browser
+schedule remains unestablished. The follow-up preserves applied metadata while
+retaining editor fences and the stage refusal. Final source qualification still
+requires every enabled exact-head check and fresh actual 8086 and Pico routes,
+including positive Pico execution and the firmware-withheld refusal. Host
+controls and the previous source's 8086 result do not qualify this new source,
+a new installed package or SPIKE G02.
 
 ## Scoped WeDo2 inventory gate repair — 2026-10-15
 

@@ -4993,11 +4993,14 @@ class PseudocodeImporter extends React.Component {
         this._conversionRequest = conversionRequest;
         const buffersAtStart = this.state.buffers;
         const languageAtStart = this.state.lang;
+        let ownedAnimation = this._animationImport;
+        let ownedMakeCodeRequest = this._makeCodeRequest;
         const ownsConversion = () => this._conversionRequest === conversionRequest;
         // Buffers are immutable editor revisions. Equality of the source text
         // alone would allow an edit/revert to revive an older conversion.
         const ownsEditor = state => ownsConversion() &&
-            state.buffers === buffersAtStart && state.lang === languageAtStart;
+            state.buffers === buffersAtStart && state.lang === languageAtStart &&
+            this._animationImport === ownedAnimation && this._makeCodeRequest === ownedMakeCodeRequest;
         const publishEditor = patch => this.setState(state => ownsEditor(state) ?
             (typeof patch === 'function' ? patch(state) : patch) : null);
         // A device retarget compiles the rewritten canonical program even when
@@ -5103,13 +5106,22 @@ class PseudocodeImporter extends React.Component {
                     throw new Error(artwork.reason || 'Artwork or the loaded project changed while preparing this conversion. Read From blocks again.');
                 }
             }
-            if (!ownsConversion()) return;
+            if (!ownsConversion() || this._makeCodeRequest !== ownedMakeCodeRequest) return;
             if (this.props.vm.runtime.getTargetForStage() !== stage || this._animationImport !== pending || this.state.uploads !== uploads ||
                 this.activeCode() !== activeAtStart) throw new Error('The code or loaded project changed while preparing this conversion. Try again.');
+            // A request still preparing a new conversion does not revoke the
+            // metadata of the project this load actually applies. A newer VM
+            // load or a changed loaded stage does revoke that authority.
+            this._conversionProjectLoad = conversionRequest;
             await this.props.vm.loadProject(projectBytes);
-            if (!ownsConversion()) return;
-            this._animationImport = null;
-            this._makeCodeRequest = null;
+            const loadedStage = this.props.vm.runtime.getTargetForStage();
+            const ownsLoadedProject = () => this._conversionProjectLoad === conversionRequest &&
+                this.props.vm.runtime.getTargetForStage() === loadedStage;
+            if (!ownsLoadedProject()) return;
+            if (ownsEditor(this.state)) {
+                this._animationImport = ownedAnimation = null;
+                this._makeCodeRequest = ownedMakeCodeRequest = null;
+            }
             if (artwork) applyArtwork(artwork, this.props.vm);
             // The loaded project owns applied uploads, including ordinary SVG
             // imports with no animation bundle. Later conversions read its live
@@ -5122,7 +5134,7 @@ class PseudocodeImporter extends React.Component {
                 const best = vm.runtime.targets.find(
                     t => !t.isStage && t.blocks.getScripts().length > 0
                 ) || vm.runtime.targets.find(t => !t.isStage);
-                if (best) {
+                if (best && ownsEditor(this.state)) {
                     vm.setEditingTarget(best.id);
                 }
             }
@@ -5151,11 +5163,11 @@ class PseudocodeImporter extends React.Component {
             if (this.props.vm.extensionManager && this.props.vm.extensionManager.refreshBlocks) {
                 await this.props.vm.extensionManager.refreshBlocks({throwOnError: true});
             }
-            if (!ownsConversion()) return;
+            if (!ownsLoadedProject()) return;
             // Write the persistence comment on the stage target
             if (stc) {
                 const SB3Creator = (await this.lib()).default || (await this.lib());
-                if (!ownsConversion()) return;
+                if (!ownsLoadedProject()) return;
                 if (SB3Creator.writeStcComment) {
                     const proj = JSON.parse(this.props.vm.toJSON());
                     proj.stc = stc;
@@ -5183,7 +5195,7 @@ class PseudocodeImporter extends React.Component {
             // That is what "to blocks does not draw the blocks" was.
             const first = this.props.vm.runtime.targets.find(target => !target.isStage) ||
                 this.props.vm.runtime.getTargetForStage();
-            if (first) this.props.vm.setEditingTarget(first.id);
+            if (first && ownsEditor(this.state)) this.props.vm.setEditingTarget(first.id);
             // regenerate the other tabs from the compiled project
             if (!ownsEditor(this.state)) return;
             const proj = creator.project;
