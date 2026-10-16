@@ -22,9 +22,10 @@ export function analyseSourceValueProducers(program,options={}) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,normalCompletion=null,physicalUpdateSource=null}={}) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayCallbackParameters=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,normalCompletion=null,physicalUpdateSource=null}={}) {
     const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
     if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
+    const callbackEntry=arrayCallbackParameters?proveArrayCallbackPrimitiveEntries(program,normalCompletion):null;
     const completion=normalCompletion?sourceNormalCompletionFor(program,normalCompletion):null;
     if(normalCompletion&&!completion)throw new Error('Source completion proof must belong to the actual Program');
     const unreachableCells=new Set();
@@ -86,7 +87,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
             if(functions.has(functionBinding)){functions.set(functionBinding,null);fail('SDK Font procedure flow requires a unique lexical declaration');}else functions.set(functionBinding,entry);
             entry.owner=body(node.body,owner,{params:node.params,paramTypes:node.paramTypes,result});if(arrayValues&&new Set(node.params).size!==node.params.length)for(const param of node.params)add(entry.owner.bindings.get(param),'Opaque');if(completion?completion.functionFallsThrough(node):!complete(node.body))add(result,'Undefined');return;
         }
-        if(node.type==='FunctionExpression'){add(current,numericArrows.has(node)&&node.functionKind==='arrow'&&!node.params.length?'NumericCallable':'Opaque');functionScopes.set(node,body(node.body,owner,{params:node.params,paramTypes:node.paramTypes,result:key()}));if((arrayValues||completion)&&(completion?completion.functionFallsThrough(node):!complete(node.body)))add(functionScopes.get(node).result,'Undefined');return;}
+        if(node.type==='FunctionExpression'){add(current,numericArrows.has(node)&&node.functionKind==='arrow'&&!node.params.length?'NumericCallable':'Opaque');functionScopes.set(node,body(node.body,owner,{params:node.params,paramTypes:node.paramTypes,result:key()}));const entry=callbackEntry?.entries.get(node);if(entry)for(let index=0;index<Math.min(2,node.params.length);index++)for(const type of entry[index])add(functionScopes.get(node).bindings.get(node.params[index]),type);if((arrayValues||completion)&&(completion?completion.functionFallsThrough(node):!complete(node.body)))add(functionScopes.get(node).result,'Undefined');return;}
         if(node.type==='Class'){
             const name=binding(owner,node.name);classes.set(name,(classes.get(name)||0)+1);add(current,'Opaque');for(const field of node.fields||[])visit(field.init,owner);
             for(const method of [node.ctor,...(node.methods||[])].filter(Boolean))body(method.body,owner,{params:method.params,paramTypes:method.paramTypes,result:key()});return;
@@ -237,11 +238,12 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         return fn&&declarations.get(id)?.size===1&&!classWrites.has(id)?fn.node:null;
     };
     const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
+    const currentTypes=value=>new Set(!callbackEntry||callbackEntry.current()?types.get(value)||[]:[]);
     // Copies prevent a consumer from changing another consumer's proof facts.
     // Binding facts do not discharge initialization at an expression occurrence.
     return Object.freeze({
-        typesAt:node=>new Set(owners.has(node)?types.get(cell(node))||[]:[]),
-        bindingTypesAt:(node,name=node?.name)=>new Set(types.get(knownBinding(node,name))||[]),
+        typesAt:node=>owners.has(node)?currentTypes(cell(node)):new Set(),
+        bindingTypesAt:(node,name=node?.name)=>currentTypes(knownBinding(node,name)),
         bindingOf:knownBinding,
         bindingKindsAt:(node,name=node?.name)=>new Set([...(declarations.get(knownBinding(node,name))||[])].map(declaration=>
             typeof declaration==='symbol'?'parameter':({FunctionDeclaration:'function',Class:'class',Enum:'enum'}[declaration.type]||'variable'))),
@@ -262,10 +264,77 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         arrayElementTypesAt:node=>new Set((arrayTypes(cell(node))||[]).flatMap(token=>[...(types.get(token.element)||[])])),
         arrayMapCalls:Object.freeze(arrayMaps.map(operation=>operation.node)),
         functionParameterBinding:(node,index)=>functionScopes.get(node)?.bindings.get(node.params[index])||null,
-        functionParameterTypes:(node,index)=>new Set(types.get(functionScopes.get(node)?.bindings.get(node.params[index]))||[]),
-        functionResultTypes:node=>new Set(types.get(functionScopes.get(node)?.result)||[]),
+        functionParameterTypes:(node,index)=>currentTypes(functionScopes.get(node)?.bindings.get(node.params[index])),
+        functionResultTypes:node=>currentTypes(functionScopes.get(node)?.result),
         diagnostics:Object.freeze([...unsupported])
     });
+}
+
+// Optional entry facts for ordinary constrained calls inside actual map callbacks.
+// This private proof uses the SAME Program and literal/all-writer graph. It does
+// not expose general Array index/length/mutation producers to default consumers.
+function proveArrayCallbackPrimitiveEntries(program,normalCompletion){
+    let snapshot;try{snapshot=physicalUpdateSourceSnapshot(program);}catch{return null;}
+    if(!snapshot||snapshot.objects.some(value=>Array.isArray(value)&&Reflect.ownKeys(value).some(key=>typeof Object.getOwnPropertyDescriptor(value,key).value==='function')))return null;
+    const metadata=new Set(['originalBody','parameterDefaults','paramTypes','typeParameters','returnType','assertedType','bwProcedureConstraintSource','optionalParams','parameterProperties','sourceReferenceDeclarations','sourceCallableDeclarations','sourceScalarDeclarations']);
+    const nodes=[],parents=new WeakMap(),seen=new Set();let closed=true;
+    const visit=(value,parent=null)=>{
+        if(!value||typeof value!=='object')return;
+        if(seen.has(value)){closed=false;return;}seen.add(value);parents.set(value,parent);
+        if(!Array.isArray(value))nodes.push(value);
+        for(const key of Reflect.ownKeys(value))if(!metadata.has(key))visit(Object.getOwnPropertyDescriptor(value,key).value,value);
+    };
+    visit(program);if(!closed||!nodes.some(node=>node.type==='Call'&&node.callee?.type==='Member'&&node.callee.name==='map'))return null;
+    const graph=analyseGraph(program,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
+        uninitializedLocalsAreOpaque:true,declaredLocalUndefined:true,initializationEntries:true,normalCompletion});
+    const primitive=new Set(['Number','String','Boolean','Null','Undefined']),maps=new Set(graph.arrayMapCalls),safeMaps=new Set();
+    const initialized=value=>{
+        if(!value||typeof value!=='object')return true;
+        if(value.type==='Identifier'&&!graph.isInitializedAt(value)&&!graph.immutableFunctionAt(value))return false;
+        return Reflect.ownKeys(value).filter(key=>!metadata.has(key)).every(key=>initialized(Object.getOwnPropertyDescriptor(value,key).value));
+    };
+    for(const call of maps){
+        const fn=call.args[0],receiver=call.callee.object;
+        if(call.isNew||call.constructorCall||call.typeArguments?.length||call.args.length!==1||fn?.type!=='FunctionExpression'||
+            fn.params.length>2||new Set(fn.params).size!==fn.params.length||fn.optionalParams?.length||fn.parameterDefaults?.length||
+            Object.keys(fn.paramDefaults||{}).length||fn.genericParams?.length||fn.typeParameters?.length||
+            !graph.arrayAllocationsAt(receiver).length||!graph.arrayMapReceiverSafeAt(receiver)||graph.arrayConstraintErrorsAt(receiver).length||!initialized(receiver))return null;
+        safeMaps.add(call);
+    }
+    if(!safeMaps.size)return null;
+    // The initial slice preserves dense original indices: no property/index
+    // writes, mutable Array methods, foreign getters, reflection or unknown
+    // callees can alter a visited element/presence behind this entry fact.
+    // Actual whole bodies remain visible; failure issues no callback facts.
+    const tagsUsed=new Set(nodes.filter(node=>node.type==='Template').map(node=>node.tag));
+    for(const node of nodes){
+        if(node.type==='Template'&&(!['img','hex'].includes(node.tag)||typeof node.value!=='string'||node.value.includes('${')))return null;
+        if(node.params?.some(name=>tagsUsed.has(name))||node.decls?.some(decl=>tagsUsed.has(decl.name)))return null;
+        if(node.type==='Identifier'&&!graph.bindingKindsAt(node).size&&!graph.isSdkNamespace(node))return null;
+        if(node.type==='Call'&&!safeMaps.has(node)&&!graph.immutableFunctionAt(node))return null;
+        const target=node.type==='Assignment'?node.left:node.type==='Update'?node.argument:node.type==='Unary'&&node.op==='delete'?node.argument:null;
+        if(target&&target.type!=='Identifier')return null;
+        if(node.type==='Member'){
+            const parent=parents.get(node);
+            if(parent?.type==='Call'&&parent.callee===node&&safeMaps.has(parent))continue;
+            if(node.name==='length'&&graph.arrayMapReceiverSafeAt(node.object)&&graph.arrayAllocationsAt(node.object).length)continue;
+            return null;
+        }
+        if(node.type==='Index'&&(!graph.arrayMapReceiverSafeAt(node.object)||!graph.arrayAllocationsAt(node.object).length||
+            graph.typesAt(node.index).size!==1||!graph.typesAt(node.index).has('Number')))return null;
+    }
+    const entries=new Map();
+    for(const call of safeMaps){
+        const receiver=call.callee.object,allocations=graph.arrayAllocationsAt(receiver),types=graph.arrayElementTypesAt(receiver);
+        if(!types.size||[...types].some(type=>!primitive.has(type)))continue;
+        if(allocations.some(site=>site.type!=='Array'||!Array.isArray(site.items)||!site.items.length||
+            Array.from({length:site.items.length},(_,i)=>Object.getOwnPropertyDescriptor(site.items,String(i))).some(d=>!d||!Object.hasOwn(d,'value')||!d.value||
+                !graph.typesAt(d.value).size||[...graph.typesAt(d.value)].some(type=>!primitive.has(type))||!initialized(d.value))))continue;
+        entries.set(call.args[0],[new Set(types),new Set(['Number'])]);
+    }
+    if(!entries.size||!snapshot.current())return null;
+    let expired=false;
+    return {entries,current(){if(!snapshot.current())expired=true;return !expired;}};
 }
 
 // Only this module issues initialized-entry receipts. Public options, names,
