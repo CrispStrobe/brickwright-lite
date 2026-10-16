@@ -286,7 +286,7 @@ claim first; implementation lands only after full CI and owner review.
 
 ## A10: micro:bit V2 serial consumer adoption — 2026-10-15
 
-CLAIMED — Codex, branch `lane/a10-v2-serial-consumer-20261015`, base `015e1bdc7`.
+DONE 2026-10-16 — Codex, branch `lane/a10-v2-serial-consumer-20261015`, base `015e1bdc7`.
 Adopt the qualified deterministic LabWired engine release after its source fix
 lands. Remove V2 serial withholding and verify real compiled firmware through
 both CLI modes and the visible Debug console. Preserve A11's landed export fix.
@@ -316,7 +316,7 @@ The first release, `labwired-wasm-6a769a59`, passed its original 123-test suite,
 but consumer PR988's real compiled CLI and browser programs still produced
 corrupt serial bytes. Preserve those failures. The follow-up interrupt-completion
 fix is merged in labwired-core PR247 as `1ea67f9c`; its reviewed source
-`de14721e4ae1d34a428f91d232e4520d50f1ceba` is the next engine pin.
+`de14721e4ae1d34a428f91d232e4520d50f1ceba` is the adopted engine pin.
 Producer PR629 is merged as `a72acc06`: all 13 enabled final checks pass,
 including the five release jobs; four skips are declared. Fresh engine run
 38855838615 passed two independent matching builds and all 125 release tests
@@ -326,12 +326,27 @@ callers supply their CommonJS marker explicitly.
 [Consumer PR988](https://github.com/CrispStrobe/brickwright-lite/pull/988) now
 pins that source/tag and the two admitted web hashes. Its matching performance
 workflow verifies both downloaded Node executable hashes before benchmarking;
-methods, sample counts and thresholds are unchanged. The pin push automatically
-starts that benchmark; do not dispatch a duplicate. Fresh actual CLI/browser
-qualification and every enabled final consumer check remain pending.
-Keep the exact complete greeting, ordered counter, unchanged matrix/fault/guest-time
-bounds, and fresh nRF52833 V2 emulator ELF. All enabled final consumer checks
-remain mandatory before integration.
+methods, sample counts and thresholds are unchanged. The automatic pin-push benchmark
+(run 38861990788) passed all five targets with three samples each; its input
+blobs are byte-identical in the final candidate. Retain the original run identity
+and its finite CPU-loop/AVR-adapter scope.
+
+Consumer PR988 merged as `3753d3b48014d50574a417970dfd75b940129f16`, retaining
+tested head `18484cfeb1a124f2352f100c1a5d9744275ba879`. All 12 enabled exact-head
+checks passed across Build, vendor freshness and Rust notices; deploy/verify-gui
+were declared conditional skips. Both actual compiled JSON/text CLI proofs
+passed the complete greeting, ordered counters and unchanged matrix/fault/
+one-second bounds. The browser's own fresh nRF52833 V2 emulator ELF reached
+Running and printed its complete unique greeting in the visible Debug console.
+The full tracked-file inventory and notices passed in the clean hosted checkout.
+Reviewed, predicted and landed merge parents/tree match; peer notes and A11's
+export implementation are preserved.
+
+The authored proof guests explicitly set `serial.setWriteLinePadding(0)` because
+MakeCode otherwise pads `writeLine` records to 32 bytes including CRLF. Existing
+exact output assertions, waits and budgets are unchanged. Original first-engine
+corruption and the later padding-expectation failures remain retained. No
+physical re-capture, hardware or broader performance claim is added.
 
 ## A11: Code-tab MakeCode export uses the project target — 2026-10-15
 
