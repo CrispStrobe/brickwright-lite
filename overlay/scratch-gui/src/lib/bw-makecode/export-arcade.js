@@ -94,7 +94,7 @@ function currentSceneClockNumber(blocks,block) {
  * @module
  */
 import {LEGACY_PARSE_SOURCE, LEGACY_JSON_SOURCE, ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
-import {animationResourceFromDocument} from '../bw-animation-resources.js';
+import {createAnimationFrameArrayProducers} from './animation-frame-array-producers.js';
 import {encodeAnimationJres, nativeAnimationNameBase, isNativeAnimationName} from './animation-jres.js';
 import {ANIMATION_COMPANION_PATH, encodeAnimationCompanion} from './animation-companion.js';
 import {validateDocument} from '../bw-artwork-bundle.js';
@@ -186,6 +186,10 @@ class ArcadeEmitter {
     constructor (project, opts) {
         this.project = project;this.sdkFontInputs=sdkFontInputAuthority(project);
         this.opts = opts;
+        // Capture once before any artwork callback. Resource emission and Array
+        // proof consume the same privately branded normalized resource objects.
+        this.animationFrameProducers = createAnimationFrameArrayProducers(opts);
+        this.arrayReceiverAuthority = createArrayReferenceExportAuthority(project, opts, this.animationFrameProducers);
         this.unsupported = [];
         // Freeze actual owners before any host artwork callback can edit the project.
         this.functionSymbols=createOrdinaryExportSymbols(project,message=>this.note(message));
@@ -311,7 +315,8 @@ class ArcadeEmitter {
             const indexed = svg && svgToPixels(svg, isPalette(palette) ? palette : ARCADE_PALETTE);
             return indexed?.palette || (isPalette(palette) ? palette : ARCADE_PALETTE);
         });
-        palettes.push(...(opts.animationDocuments || []).map(document => document.palette).filter(isPalette));
+        palettes.push(...this.animationFrameProducers.entries.filter(entry => entry.resource)
+            .map(entry => entry.resource.palette).filter(isPalette));
         this.palette = palettes.find(palette => !samePalette(palette, ARCADE_PALETTE)) || ARCADE_PALETTE;
     }
 
@@ -348,15 +353,15 @@ class ArcadeEmitter {
         }
         // Reserve projections before suffix allocation, so a duplicate cannot
         // take another resource's existing display name or generated ID alias.
-        const assetNames = new Set((this.opts.animationDocuments || [])
-            .map(document => document?.animation?.resource?.name)
-            .filter(name => typeof name === 'string').map(nativeAnimationNameBase));
+        const entries = this.animationFrameProducers.entries;
+        const assetNames = new Set(entries.filter(entry => entry.resource)
+            .map(entry => nativeAnimationNameBase(entry.resource.name)));
         const usedNames = new Set();
         if (!this.authoredAnimationArrays.size) {
-            for (const document of this.opts.animationDocuments || []) {
-                if (!document?.animation?.resource) continue;
+            for (const entry of entries) {
+                if (entry.error) { this.note(entry.error); continue; }
+                const {snapshotDocument: document, resource} = entry;
                 try {
-                    const resource = animationResourceFromDocument(document);
                     if (this.authoredAnimationArrays.has(resource.id)) {
                         this.note(`Duplicate animation resource ID: ${resource.id}`);
                         continue;
@@ -914,7 +919,7 @@ class ArcadeEmitter {
     }
 
     referenceArrayValue (b, name='ARRAY') {
-        this.arrayReceiverAuthority ||= createArrayReferenceExportAuthority(this.project);
+        // The constructor owns this snapshot; callbacks cannot renew its authority.
         const authority=this.arrayReceiverAuthority.validateInput(this.target,b,name);
         if(!authority.ok)this.note(`Array reference ${b.opcode} ${name}: ${authority.reason}`);
         const value=this.value(b,name);
@@ -4185,6 +4190,9 @@ export function projectToArcade (project, opts = {}) {
         assetFiles['songs.g.ts'] = songSource;
     }
     const sourceEntries = [];
+    // Companion data comes from the original admitted serialized document,
+    // consistent with the normalized native resource even if a callback edited
+    // the live input. Final currentness still refuses that stale export.
     for (const resource of resources) {
         try { validateDocument(resource.document); }
         catch (error) {
@@ -4232,6 +4240,9 @@ export function projectToArcade (project, opts = {}) {
     // Host artwork callbacks can edit current project objects during rendering.
     // Stale owner/global/local inventories must never become a clean export.
     if(!e.functionSymbols?.current())e.note('Arcade ordinary symbol: current project or owner inventory changed during export');
+    // Host artwork callbacks can run after the last Array operand. Never
+    // publish a clean export against a later document revision.
+    if (!e.animationFrameProducers.isCurrent()) e.note('Animation resource documents changed during current export');
     return {ts, files, unsupported: e.unsupported, warnings: e.warnings};
 }
 

@@ -1,8 +1,11 @@
 import {analyseConsoleCaptures} from './console-capture-provenance.js';
+import {createAnimationFrameArrayProducers, isAnimationFrameArrayProducer} from './animation-frame-array-producers.js';
 
 // Producer facts are deliberately separate from the exporter's annotation graph.
 // Merely being plugged into an ARRAY input never creates an Array fact.
-export function createArrayReferenceExportAuthority(project) {
+export function createArrayReferenceExportAuthority(project, options = {}, animationProducer = null) {
+    const animationProducers = animationProducer === null ? createAnimationFrameArrayProducers(options) :
+        isAnimationFrameArrayProducer(animationProducer, options) ? animationProducer : createAnimationFrameArrayProducers({});
     const bad=Symbol('unproved value'),targets=project.targets||[],nodes=new Map(),records=[],owners=new WeakMap(),invalid=new WeakSet(),snapshots=[];
     const cells=new Map(),values=new WeakMap(),tokens=new WeakMap(),scopes=[],procedures=new Map(),calls=[],mutations=[];
     let invalidGlobalBinding=false;
@@ -453,6 +456,11 @@ export function createArrayReferenceExportAuthority(project) {
         const c=binding(target,node);if(c)return new Set(c.types);
         const allocated=factories(target,node);if(allocated)return allocated;const named=namedBinding(target,node);if(named)return named;
         if(node.opcode==='arcade_spritesOfKind')return exactKeys(node,['KIND'])&&numericKind(input(node,'KIND',target))?new Set([token(node,target,[{raw:[10,'SDK Sprite element not an Array']}],0)]):new Set([bad]);
+        if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode)){
+            const producer=animationProducers.resolve(target,node);
+            return producer?new Set([token(producer.allocation,producer.shared?null:target,
+                Array.from({length:producer.length},()=>({raw:[10,'SDK Image element not an Array']})),producer.length)]):new Set([bad]);
+        }
         if(['arrays_referenceSlice','arrays_referenceConcat'].includes(node.opcode)){
             const left=readInput(input(node,'ARRAY',target)),right=node.opcode==='arrays_referenceConcat'?readInput(input(node,'OTHER',target)):new Set();
             if(!operationShape(node))return new Set([bad]);if(!left.size||node.opcode==='arrays_referenceConcat'&&!right.size)return new Set();
@@ -628,6 +636,7 @@ export function createArrayReferenceExportAuthority(project) {
         if(!value.node)return false;const {target,node}=value;if(path.has(node))return false;const next=new Set([...path,node]),c=binding(target,node);
         if(c)return initializedCell(c,owners.get(node),node);
         if(node.opcode==='arrays_createReference')return true;
+        if(['arcade_animationAssetFrames','arcade_animationAssetFreshFrames'].includes(node.opcode))return !!animationProducers.resolve(target,node);
         if(node.opcode==='arrays_namedReference')return singleArray(namedBinding(target,node)||new Set());
         if(node.opcode==='arcade_callFunction'){
             const call=calls.find(c=>c.node===node);return !!call?.fn&&!call.fn.invalid&&!!call.args&&call.args.every(arg=>singleArray(readInput(arg))?initialized(arg,next):true)&&call.fn.returns.every(result=>initialized(result,next));
@@ -646,7 +655,7 @@ export function createArrayReferenceExportAuthority(project) {
         if(node.opcode==='arcade_spritesOfKind'&&exactKeys(node,['KIND']))return numericKindInitialized(input(node,'KIND',target));
         return false;
     };
-    const live=()=>project.targets===targets&&snapshot()===original&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
+    const live=()=>project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
     return Object.freeze({validateInput(target,node,name='ARRAY'){
         if(invalidGlobalBinding)return {ok:false,reason:'current variable name, ID, owner or writer schema does not agree'};
         if(!live()||!nodes.get(target)||!owners.has(node)||invalid.has(node)||nodes.get(target).get(Object.keys(target.blocks||{}).find(id=>target.blocks[id]===node))!==node)return {ok:false,reason:'current target, input or connected graph changed'};
