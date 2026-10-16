@@ -5513,8 +5513,8 @@ execution, mode-aware disassembler, physical timing, whole-OS or release claim.
 ## Owned Sprite callback fields and handler-record transport — 2026-10-16
 
 PROPOSED COORDINATED EXTENSION — Codex, source ownership for the existing
-[owned Sprite callback contract](docs/compatibility/arcade-owned-sprite-class-callables.md#proposed-coordinated-sprite-handler-record-extension)
-and [handler-record Array contract](docs/compatibility/arcade-handler-record-arrays.md#proposed-coordinated-sprite-record-subset).
+[owned Sprite callback contract](docs/ARCADE-SPRITE-HANDLER-RECORD-EXTENSION.md#proposed-coordinated-sprite-handler-record-extension)
+and [handler-record Array contract](docs/ARCADE-SPRITE-HANDLER-RECORD-EXTENSION.md#proposed-coordinated-sprite-record-subset).
 Implementation waits for this amendment's normal qualified merge. Coordinate
 Sprite/class-callable, managed lifetime, handler-Array, current-export and
 translator owners; preserve their existing complete bodies and diagnostics.
