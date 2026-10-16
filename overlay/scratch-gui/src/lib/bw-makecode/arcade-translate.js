@@ -1,4 +1,5 @@
 import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
+import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 import {createProcedureOwnerEmission} from './procedure-owner-emission.js';
 import {prepareThrowSource} from './throw-source-gate.js';
 import {proveArrayMapValues} from './lower-array-map-values.js';
@@ -182,7 +183,7 @@ const COLLISION_DIRECTIONS = Object.freeze({Left:0, Top:1, Right:2, Bottom:3});
 // Retained Arcade game/sprite.ts TileDirection; Center also covers default.
 const TILE_DIRECTIONS = Object.freeze({...COLLISION_DIRECTIONS, Center:4});
 const CAMERA_PROPERTIES = Object.freeze({X:0, Y:1, Left:2, Right:3, Top:4, Bottom:5});
-const BUTTON_EVENTS = Object.freeze({Pressed:2049, Released:2048, Repeated:2054});
+
 
 /**
  * Velocity divisor: Arcade's vx is pixels per second and a Scratch
@@ -1192,6 +1193,9 @@ class ArcadeTranslator extends BaseTranslator {
             const values={Connected:1,Disconnected:2};if(Object.prototype.hasOwnProperty.call(values,node.name))return String(values[node.name]);
             this.unsupported.push(`${this.path(node)} is not a declared Arcade ControllerEvent member`);return 'undefined value';
         }
+        // Generic emission accepts the same actual readonly leaves as the
+        // caller producer proof; spelling or parameter types are insufficient.
+        if(this.buttonEventNumberLeaves?.has(node))return String(BUTTON_EVENTS[node.name]);
         if(this.handleTemplates && node?.type==='Member' && node.object?.type==='Identifier' && node.object.name==='ControllerButtonEvent') {
             if(this.boundSourceGlobals?.has('ControllerButtonEvent') || this.localVars?.has('ControllerButtonEvent') || this.currentParameters?.has('ControllerButtonEvent') || this.capturedBindings.has('ControllerButtonEvent')) {
                 this.unsupported.push(`${this.path(node)} refers to a shadowed ControllerButtonEvent binding`);return 'undefined value';
@@ -5137,6 +5141,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     // Before anything is emitted: a variable this program has to be
     // renamed must not land on a name the program already uses.
     t.claimNames(ast);
+    t.buttonEventNumberLeaves = controllerButtonEventNumberLeaves(ast);
     // A retained unsupported class/helper must not discard neighboring Image
     // values. Claim only actual literals here: a variable or namespace alias
     // reads the single value allocated by its initializer, not a new copy.
