@@ -110,3 +110,29 @@ test('unshadowed noninterpolated resource literals keep their independent litera
     assert.equal(ordinaryPrimitiveSdkNumberCalls(legacy).has(actualArgument(legacy)),true,
         'the independently exposed legacy seven-call function is unchanged');
 });
+
+for(const before of [
+    'function mutate(x=Function`return info`()){x.player2.score=()=>"text"}mutate();',
+    'let mutate=(x=Function`return info`())=>{x.player2.score=()=>"text"};mutate();',
+    'function mutate(x=(info.player2.score=()=>1)){}mutate();',
+    'function mutate(x=info.player2.score){}mutate();'
+])test('actual executable default prologue retains the player census: '+before,()=>{
+    const ast=parseMakeCodeTs(wrap('info.player2.score()',before),
+        {parameterDefaults:true,retainParentheses:true,retainCallableMetadata:false});
+    const declaration=ast.body.find(node=>node.type==='FunctionDeclaration'&&node.name==='mutate') ||
+        ast.body.find(node=>node.type==='Declaration'&&node.decls.some(row=>row.name==='mutate'));
+    const fn=declaration.type==='FunctionDeclaration'?declaration:declaration.decls[0].init;
+    const defaults=Object.getOwnPropertyDescriptor(fn.params,'parameterDefaults');
+    assert.equal(defaults.enumerable,false);assert.equal(defaults.value.length,1);
+    assert.equal(Object.hasOwn(fn,'parameterDefaults'),false,'this mode really hides metadata on the params array');
+    assert.equal(fn.body[0].type,'If');
+    assert.equal(fn.body[0].consequent[0].expr.right,defaults.value[0].value,
+        'the exact actual initializer is already in the executable body, not an invented metadata traversal');
+    assert.equal(ordinaryPlayerScoreNumberCalls(ast).has(actualArgument(ast)),false);
+});
+
+test('a harmless actual literal default does not invalidate an independent player candidate',()=>{
+    const ast=parseMakeCodeTs(wrap('info.player2.score()','function unused(x=1){}'),
+        {parameterDefaults:true,retainParentheses:true,retainCallableMetadata:false});
+    assert.equal(ordinaryPlayerScoreNumberCalls(ast).has(actualArgument(ast)),true);
+});
