@@ -98,3 +98,23 @@ test('bounded worker errors retain actual declared diagnostics and name unavaila
  const huge=makeCodeWorkerErrorEnvelope(Object.assign(new Error('huge'),{diagnostics:Array.from({length:257},()=>'?')}));
  assert.equal(huge.detailsUnavailable.code,'DEPENDENCY_ERROR_DETAILS_UNAVAILABLE');assert.equal(Object.hasOwn(huge,'diagnostics'),false);
 });
+
+
+test('refusal channels preserve absent, undefined, null, empty and partial observations',async()=>{
+ for(const name of ['fetchRefusals','refused']){
+  assert.deepEqual(dependencyDiagnosticChannels({})[name],{provided:false,kind:'absent'});
+  for(const item of [undefined,null,[],[{id:'addon',reason:'offline'}]]){
+   const r=resolved();r[name]=item;
+   const result=await importDependencyProjectFiles(files(),{target:'arcade',resolveProjectInputs:async()=>r},()=>({code:'retained',unsupported:[]}));
+   const channel=result.dependencyInputs.diagnostics.resolution.channels[name];
+   assert.equal(channel.provided,true);assert.equal(channel.kind,item===undefined?'undefined':item===null?'null':'array');assert.deepEqual(channel.value,item);
+  }
+ }
+ const future=[{id:'other',reason:'retained partial refusal'}];
+ assert.deepEqual(dependencyDiagnosticChannels({packageRefusals:future}).packageRefusals,{provided:true,kind:'array',value:future});
+ const problem=Object.assign(new Error('disabled'),{fetchRefusals:future,refused:undefined});
+ await assert.rejects(importProjectFilesWithDependencies(files(),{target:'arcade',resolveProjectInputs:async()=>{throw problem;}}),error=>{
+  const channels=error.dependencyInputs.diagnostics.resolution.channels;
+  assert.deepEqual(channels.fetchRefusals,{provided:true,kind:'array',value:future});assert.deepEqual(channels.refused,{provided:true,kind:'undefined',value:undefined});return true;
+ });
+});

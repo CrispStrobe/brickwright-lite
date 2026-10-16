@@ -1,7 +1,7 @@
 /** Presence is part of a diagnostic: an absent channel is never an empty one. */
 export function dependencyDiagnosticChannels(value) {
-    const keys = new Set(['diagnostics','unsupported','warnings','errors','unparsed','fetchDisabled','fetchedExtensions',
-        ...Object.keys(value || {}).filter(key => /diagnostic|unsupported|warn|error|unparsed|refused|netAttempts/i.test(key))]);
+    const keys = new Set(['diagnostics','unsupported','warnings','errors','unparsed','fetchDisabled','fetchedExtensions','fetchRefusals','refused',
+        ...Object.keys(value || {}).filter(key => /diagnostic|unsupported|warn|error|unparsed|refus(?:ed|als?)|netAttempts/i.test(key))]);
     return Object.fromEntries([...keys].map(key => {
         const provided = Object.prototype.hasOwnProperty.call(value || {}, key), item = provided ? value[key] : null;
         return [key, {provided, kind: !provided ? 'absent' : item === undefined ? 'undefined' :
