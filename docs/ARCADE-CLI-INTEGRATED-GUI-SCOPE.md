@@ -109,3 +109,8 @@ now applies only when the GUI dependency directory is absent.
 
 Focused controls and actual CLI conversion qualification are pending. These
 source changes alone do not close the acceptance gates above.
+
+Source admission is private to each library-loader instance and is checked
+again after module evaluation completes. Diagnostic inspection records are
+detached copies. This boundary does not claim process-wide cache invalidation
+or replacement of modules already evaluated elsewhere in the Node process.
