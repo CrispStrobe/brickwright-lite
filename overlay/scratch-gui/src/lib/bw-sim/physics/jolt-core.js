@@ -20,6 +20,10 @@ import initJolt from 'jolt-physics/wasm-compat';
 
 let joltPromise = null;
 
+/** Contact tolerances at LEGO scale, metres (see the PhysicsSettings block below). */
+export const LEGO_SPECULATIVE_CONTACT_M = 0.002;
+export const LEGO_PENETRATION_SLOP_M = 0.0002;
+
 export const loadJolt = async () => {
     if (!joltPromise) joltPromise = initJolt();
     return joltPromise;
@@ -91,6 +95,13 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
         ps.mDeterministicSimulation = true;
         ps.mAllowSleeping = false;
         if (typeof ps.mUseBodyPairContactCache !== 'undefined') ps.mUseBodyPairContactCache = false;
+        // Jolt's defaults are tuned for metre-scale game worlds (2 cm speculative contacts,
+        // 2 cm penetration slop). LEGO parts are millimetres: a motor hub turning 16 mm above
+        // the floor sat inside the default speculative distance and dragged the driving base
+        // 15 % slower than its wheels. Scale the tolerances to the parts.
+        ps.mSpeculativeContactDistance = LEGO_SPECULATIVE_CONTACT_M;
+        ps.mPenetrationSlop = LEGO_PENETRATION_SLOP_M;
+        ps.mLinearCastThreshold = 0.25;
         physicsSystem.SetPhysicsSettings(ps);
         J.destroy(ps);
     }

@@ -38,6 +38,10 @@ export const CONNECTOR_TYPES = Object.freeze(['pinhole', 'axlehole', 'axle', 'pi
 export const GEAR_TYPES = Object.freeze(['spur', 'bevel', 'worm', 'rack']);
 export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
 
+/** Friction of a part with no `friction` (ABS plastic on a mat) and of the ground (a printed mat). */
+export const PART_FRICTION = 0.4;
+export const GROUND_FRICTION = 0.8;
+
 /**
  * @typedef {[number, number, number]} Vec3
  * @typedef {[number, number, number, number]} Quat   x, y, z, w (unit)
@@ -78,6 +82,8 @@ export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
  *   name: string,
  *   category: string,             'beam' | 'axle' | 'pin' | 'gear' | 'wheel' | 'motor' | 'hub' | 'sensor' | 'other'
  *   massGrams: number,
+ *   friction?: number,            Coulomb friction coefficient of the part surface, 0..2;
+ *                                 default PART_FRICTION (hard plastic). A tyred wheel is ~1.
  *   connectors: Connector[],
  *   colliders: Collider[],
  *   gear?: {type: string, teeth: number, axis: Vec3, center: Vec3},
@@ -189,6 +195,9 @@ export const validatePartMeta = meta => {
     if (typeof meta.name !== 'string' || !meta.name) out.push(`${p}.name: missing`);
     if (typeof meta.category !== 'string' || !meta.category) out.push(`${p}.category: missing`);
     if (!(isNum(meta.massGrams) && meta.massGrams > 0)) out.push(`${p}.massGrams: need a positive number`);
+    if (meta.friction !== undefined && !(isNum(meta.friction) && meta.friction >= 0 && meta.friction <= 2)) {
+        out.push(`${p}.friction: need a number in 0..2`);
+    }
     if (!Array.isArray(meta.connectors)) out.push(`${p}.connectors: not an array`);
     else {
         const ids = uniqueIds(meta.connectors, `${p}.connectors`, out);

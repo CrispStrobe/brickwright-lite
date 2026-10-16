@@ -338,12 +338,17 @@ test('ball joint rolls freely with chassis', async () => {
     const chassisMove = distXZ(chassisStart, chassisEnd);
     const ballMove = distXZ(ballStart, ballEnd);
     assert.ok(chassisMove > 0.1, `chassis should move ${chassisMove}`);
-    // ball offset from chassis should stay near joint point (approx)
-    // compute vector from chassis to ball
-    const chassisToBallStart = [ballStart[0] - chassisStart[0], ballStart[1] - chassisStart[1], ballStart[2] - chassisStart[2]];
-    const chassisToBallEnd = [ballEnd[0] - chassisEnd[0], ballEnd[1] - chassisEnd[1], ballEnd[2] - chassisEnd[2]];
-    const distChange = dist2(chassisToBallStart, chassisToBallEnd);
-    assert.ok(distChange < 0.03, `ball should stay attached, drift ${distChange}`);
+    // The socket point rides with the chassis: carry its start offset (chassis frame at t=0 is
+    // world-aligned) through the chassis end pose and compare with the ball centre. A world-frame
+    // offset comparison would count any chassis yaw as drift.
+    const rotate = ([x, y, z, w], v) => {
+        const t = [2 * (y * v[2] - z * v[1]), 2 * (z * v[0] - x * v[2]), 2 * (x * v[1] - y * v[0])];
+        return [v[0] + w * t[0] + (y * t[2] - z * t[1]), v[1] + w * t[1] + (z * t[0] - x * t[2]), v[2] + w * t[2] + (x * t[1] - y * t[0])];
+    };
+    const socketOffset = [ballStart[0] - chassisStart[0], ballStart[1] - chassisStart[1], ballStart[2] - chassisStart[2]];
+    const socketEnd = rotate(core.bodyPose('chassis').rotation, socketOffset).map((v, i) => v + chassisEnd[i]);
+    const drift = dist2(socketEnd, ballEnd);
+    assert.ok(drift < 0.002, `ball should stay in its socket, drift ${drift}`);
     // ball should have rotated (pose changed) - check that its rotation is not identity
     const ballRot = core.bodyPose('ball').rotation;
     const isIdentity = Math.abs(ballRot[0]) < 1e-6 && Math.abs(ballRot[1]) < 1e-6 && Math.abs(ballRot[2]) < 1e-6 && Math.abs(ballRot[3] - 1) < 1e-6;

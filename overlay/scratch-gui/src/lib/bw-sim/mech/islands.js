@@ -7,7 +7,7 @@
 // Ground added unless opts.ground===false.
 
 import {vecAdd, vecSub, mat3MulVec3, quatMul, quatFromLDrawMat, quatNormalize} from './vec.js';
-import {LDU_M, lduToWorld} from '../contracts.js';
+import {LDU_M, PART_FRICTION, lduToWorld} from '../contracts.js';
 
 /** Fraction of a motor's mass that belongs to the output (turning) body. */
 export const MOTOR_OUTPUT_MASS_FRACTION = 0.15; // housing gets 85%
@@ -232,6 +232,9 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
             colliders.push({shape: 'sphere', radius: 0.002});
         }
 
+        // A rigid island touches the ground with whichever of its parts does; v1 takes
+        // the grippiest (a tyred wheel makes its whole island grip like rubber).
+        const friction = Math.max(...nodeIdsInGroup.map(nid => nodes.get(nid).meta.friction ?? PART_FRICTION));
         const body = {
             id: bodyId,
             motion: 'dynamic',
@@ -240,6 +243,7 @@ export const buildIslands = (nodes, edges, catalogMap, diagnostics = [], opts = 
             massKg,
             colliders,
             parts,
+            friction,
         };
         bodies.push(body);
         bodyMap.set(bodyId, body);

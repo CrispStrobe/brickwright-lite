@@ -5,7 +5,7 @@
 // PlacedModel + catalog into a CompiledMechanism (pure data in, pure data
 // out). Runs validateCompiledMechanism on output and throws on bug.
 
-import {validatePlacedModel, validateCompiledMechanism, LDU_M, lduToWorld} from '../contracts.js';
+import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, LDU_M, lduToWorld} from '../contracts.js';
 import {buildGraph} from './graph.js';
 import {buildIslands} from './islands.js';
 import {buildJoints} from './joints.js';
@@ -70,6 +70,7 @@ const makeGround = bodies => {
         massKg: 0,
         colliders: [{shape: 'box', halfExtents: [1, halfThick, 1]}],
         parts: [],
+        friction: GROUND_FRICTION,
     };
 };
 
