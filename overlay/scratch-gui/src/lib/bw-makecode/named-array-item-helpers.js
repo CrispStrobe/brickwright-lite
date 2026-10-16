@@ -1,5 +1,6 @@
 import {tsText} from './translate-base.js';
 import {parseMakeCodeTs} from './ts-import.js';
+import {GENERATED_HELPER_PROFILES,inspectGeneratedHelperBindings,mapGeneratedSourceArray} from './generated-helper-recognition.js';
 import {LEGACY_JSON_SOURCE,LEGACY_PARSE_SOURCE,ARRAY_ACCESS_SOURCE} from './legacy-array-values.js';
 
 // The aggregate branch is intentionally distinct from scalar results. Native
@@ -11,8 +12,7 @@ export const NAMED_ARRAY_GET_SOURCE = `function __bwNamedArrayGet(array: any[], 
     return value
 }`;
 
-const parsed = source => parseMakeCodeTs(source, {parameterDefaults:true,retainParentheses:true}).body[0];
-const templates = {get:parsed(NAMED_ARRAY_GET_SOURCE),json:parsed(LEGACY_JSON_SOURCE)};
+const templateSources=new WeakMap(),profileTemplates=new Map();
 const mutatorSources = {
     push:'function __bwNamedArrayPush(array:any[],value:any):void {if(array)array.push(__bwNamedParseValue(value))}',
     set:'function __bwNamedArraySet(array:any[],index:any,value:any):void {if(array)array[+index]=__bwNamedParseValue(value)}',
@@ -23,8 +23,7 @@ const mutatorSources = {
         array.insertAt(position,__bwNamedParseValue(value))}
     }`
 };
-const mutatorTemplates=new Map(Object.entries(mutatorSources).map(([kind,source])=>[kind,parsed(source)]));
-const parseTemplate=parsed(LEGACY_PARSE_SOURCE);
+
 const passiveSources={
     pop:'function __bwNamedArrayPop(array:any[]):any {if(array){if(array.length)return array.pop()}return ""}',
     indexOf:'function __bwNamedArrayIndexOf(array:any[],value:any):number {return array?array.indexOf(__bwNamedParseValue(value)):-1}',
@@ -41,11 +40,17 @@ const passiveSources={
         if(position<array.length)array.removeAt(position)}
     }`
 };
-const passiveTemplates=Object.values(passiveSources).map(parsed);
-const normalize = (node, names) => Array.isArray(node) ? node.map(value=>normalize(value,names)) :
-    node && typeof node==='object' ? Object.fromEntries(Object.entries(node).map(([key,value])=>
-        [key,key==='name' && names.has(value) ? names.get(value) : normalize(value,names)])) : node;
-const exact = (actual, expected, names) => JSON.stringify(normalize(actual,names))===JSON.stringify(expected);
+const templatesFor=profile=>{
+    if(!profileTemplates.has(profile)){
+        const parsed=source=>{const fn=parseMakeCodeTs(source,profile).body[0];templateSources.set(fn,source);return fn;};
+        profileTemplates.set(profile,{templates:{get:parsed(NAMED_ARRAY_GET_SOURCE),json:parsed(LEGACY_JSON_SOURCE)},
+            mutatorTemplates:new Map(Object.entries(mutatorSources).map(([kind,source])=>[kind,parsed(source)])),
+            parseTemplate:parsed(LEGACY_PARSE_SOURCE),passiveTemplates:Object.values(passiveSources).map(parsed),
+            arrayAccessTemplate:parsed(ARRAY_ACCESS_SOURCE)});
+    }
+    return profileTemplates.get(profile);
+};
+const exact=(actual,expected,names,proof)=>proof.matches(actual,templateSources.get(expected),names);
 const bindings = body => new Set(body.flatMap(node=>node.type==='Declaration' ? node.decls.map(decl=>decl.name) :
     ['FunctionDeclaration','Class'].includes(node.type) ? [node.name] : []));
 // Conservatively refuse a receiver matching any local declaration in its
@@ -79,14 +84,17 @@ const literal = node => {
 };
 
 /** Reconstruct only exact getter helpers and actual owned registry bindings. */
-export function lowerNamedArrayItemHelpers(program) {
+export function lowerNamedArrayItemHelpers(program,{profile=GENERATED_HELPER_PROFILES.direct}={}) {
+    const proof=inspectGeneratedHelperBindings(program,profile);
+    if(!proof.isCurrent())return {program,unsupported:[]};
+    const {templates,mutatorTemplates,parseTemplate,passiveTemplates,arrayAccessTemplate}=templatesFor(profile);
     const functions=program.body.filter(node=>node.type==='FunctionDeclaration');
-    const jsonHelpers=functions.filter(fn=>exact(fn,templates.json,new Map([[fn.name,templates.json.name]])));
-    const parseHelpers=functions.filter(fn=>exact(fn,parseTemplate,new Map([[fn.name,parseTemplate.name]])));
+    const jsonHelpers=functions.filter(fn=>exact(fn,templates.json,new Map([[fn.name,templates.json.name]]),proof));
+    const parseHelpers=functions.filter(fn=>exact(fn,parseTemplate,new Map([[fn.name,parseTemplate.name]]),proof));
     const getters=new Map();
     for (const fn of functions) for (const json of jsonHelpers) {
         if (fn===json) continue;
-        if (exact(fn,templates.get,new Map([[fn.name,templates.get.name],[json.name,templates.json.name]])))
+        if (exact(fn,templates.get,new Map([[fn.name,templates.get.name],[json.name,templates.json.name]]),proof))
             getters.set(fn.name,fn);
     }
     if (!getters.size) return {program,unsupported:[]};
@@ -96,15 +104,19 @@ export function lowerNamedArrayItemHelpers(program) {
         return {program,unsupported:['Named Array helper requires an unambiguous actual lexical binding']};
     const mutators=new Map();
     for(const fn of functions)for(const parse of parseHelpers)for(const [kind,template]of mutatorTemplates)
-        if(exact(fn,template,new Map([[fn.name,template.name],[parse.name,parseTemplate.name]])))mutators.set(fn.name,{fn,kind});
+        if(exact(fn,template,new Map([[fn.name,template.name],[parse.name,parseTemplate.name]]),proof))mutators.set(fn.name,{fn,kind});
     if([...mutators.keys()].some(name=>symbolCounts.get(name)!==1))
         return {program,unsupported:['Named Array mutator requires an unambiguous actual lexical binding']};
     const passive=new Set(jsonHelpers.map(fn=>fn.name));
-    const arrayAccessTemplate=parsed(ARRAY_ACCESS_SOURCE);
     for(const fn of functions)if(symbolCounts.get(fn.name)===1 &&
-        exact(fn,arrayAccessTemplate,new Map([[fn.name,arrayAccessTemplate.name]])))passive.add(fn.name);
+        exact(fn,arrayAccessTemplate,new Map([[fn.name,arrayAccessTemplate.name]]),proof))passive.add(fn.name);
     for(const fn of functions)for(const parse of parseHelpers)for(const template of passiveTemplates)
-        if(symbolCounts.get(fn.name)===1 && exact(fn,template,new Map([[fn.name,template.name],[parse.name,parseTemplate.name]])))passive.add(fn.name);
+        if(symbolCounts.get(fn.name)===1 && exact(fn,template,new Map([[fn.name,template.name],[parse.name,parseTemplate.name]]),proof))passive.add(fn.name);
+    const selected=new Set([...getters.values(),...jsonHelpers,...parseHelpers,...[...mutators.values()].map(x=>x.fn),...functions.filter(fn=>passive.has(fn.name))]);
+    if([...selected].some(fn=>!proof.root(fn)))return {program,unsupported:['Named Array helper requires an unambiguous actual lexical binding']};
+    if([...jsonHelpers,...parseHelpers].some(fn=>proof.calls(fn,[1],selected)===null)||[...getters.values()].some(fn=>proof.calls(fn,[2],selected)===null))
+        return {program,unsupported:['Named Array helper escapes or has an unqualified actual caller']};
+    const effectsClosed=[...selected].every(fn=>proof.closed(fn,selected));
     const globals=new Map(program.body.filter(node=>node.type==='Declaration').flatMap(node=>node.decls.map(decl=>[decl.name,decl])));
     const calls=[],writes=new Map(),unsupported=[],possibleMutators=[],members=[],foreignCalls=[],indexWrites=[],nestedRootDeclarations=[],escapedMutators=new Set(),scopes=new WeakMap();
     const visit=(node,shadow=new Set(),parent=null,key=null,depth=0)=>{
@@ -229,14 +241,35 @@ export function lowerNamedArrayItemHelpers(program) {
             unsupported.push(`Named Array registry ${name} has an unproved writer`);
     }
     if (unsupported.length) return {program,unsupported:[...new Set(unsupported)]};
+    if(!effectsClosed)return {program,unsupported:['Named Array helper requires closed current callee and builtin effects']};
+    // Complete legacy helper recognition while the original literal Arrays,
+    // bindings and defaults still belong to this same current source proof.
+    const removedMutators=new Set([...mutators.keys()].filter(name=>!escapedMutators.has(name) &&
+        possibleMutators.filter(use=>use.node.callee.name===name).every(use=>recognizedMutators.has(use.node))));
+    const removedNamed=new Set([...getters.values(),...[...removedMutators].map(name=>mutators.get(name).fn)]);
+    const legacyCandidates=new Map([...jsonHelpers.map(fn=>[fn,'LegacyJsonValue']),
+        ...parseHelpers.map(fn=>[fn,'LegacyParsedValue'])]);
+    for(const fn of functions)if(proof.root(fn) && exact(fn,arrayAccessTemplate,new Map([[fn.name,arrayAccessTemplate.name]]),proof))
+        legacyCandidates.set(fn,'NativeArrayAccess');
+    const removedLegacy=new Set(legacyCandidates.keys());let changed;
+    do {
+        changed=false;
+        const internal=new Set([...removedNamed,...removedLegacy]);
+        for(const fn of removedLegacy)if(!proof.closed(fn,internal)||proof.calls(fn,[1],internal)===null){
+            removedLegacy.delete(fn);changed=true;
+        }
+    }while(changed);
+    const legacyCalls=new Map(),internal=new Set([...removedNamed,...removedLegacy]);
+    for(const fn of removedLegacy)for(const call of proof.calls(fn,[1],internal))legacyCalls.set(call,legacyCandidates.get(fn));
     const recognizedCalls=new Map(calls.map(call=>[call.node,call.name]));
     const value=(node,name)=>({type:node.type==='Null'?'NativeNamedArrayDelete':'NativeNamedArrayCreate',
         registry:name,json:node.type==='Array'?JSON.stringify(literal(node).value):null,bwObjectTypes:node.type==='Array'?['array']:['null']});
     const rewrite=(node,shadow=new Set())=>{
         if (!node || typeof node!=='object') return node;
-        if (Array.isArray(node)) return node.map(child=>rewrite(child,shadow));
+        if (Array.isArray(node)) return mapGeneratedSourceArray(node,child=>rewrite(child,shadow));
         if (recognizedCalls.has(node)) return {...node,bwNativeNamedArray:{kind:'get',registry:recognizedCalls.get(node)},args:node.args.map(arg=>rewrite(arg,shadow))};
         if(recognizedMutators.has(node))return {...node,bwNativeNamedArray:recognizedMutators.get(node),args:node.args.map(arg=>rewrite(arg,shadow))};
+        if(legacyCalls.has(node))return {type:legacyCalls.get(node),value:rewrite(node.args[0],shadow)};
         if (node.type==='Block') shadow=new Set([...shadow,...bindings(node.body || [])]);
         shadow=new Set([...shadow,...loopBindings(node)]);
         if (Array.isArray(node.params)) shadow=new Set([...shadow,...node.params,...functionBindings(node.body || [])]);
@@ -248,7 +281,6 @@ export function lowerNamedArrayItemHelpers(program) {
     };
     // Replaced direct calls already use native words. Keep a validated helper
     // body only when a remaining actual use still needs its procedure semantics.
-    const removedMutators=new Set([...mutators.keys()].filter(name=>!escapedMutators.has(name) &&
-        possibleMutators.filter(use=>use.node.callee.name===name).every(use=>recognizedMutators.has(use.node))));
-    return {program:rewrite({...program,body:program.body.filter(node=>!(node.type==='FunctionDeclaration' && (getters.has(node.name) || removedMutators.has(node.name))))}),unsupported:[]};
+    if(!proof.isCurrent())return {program,unsupported:['Named Array helper source changed before publication']};
+    return {program:rewrite({...program,body:program.body.filter(node=>!removedNamed.has(node) && !removedLegacy.has(node))}),unsupported:[]};
 }
