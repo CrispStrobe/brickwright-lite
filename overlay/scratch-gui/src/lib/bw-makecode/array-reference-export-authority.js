@@ -191,7 +191,7 @@ export function createArrayReferenceExportAuthority(project) {
                     let ids;try{ids=JSON.parse(n.mutation?.argumentids);}catch{return false;}
                     if(typeof n.mutation?.proccode!=='string'||!n.mutation.proccode||!Array.isArray(ids)||
                         ids.some(id=>typeof id!=='string')||new Set(ids).size!==ids.length||
-                        Object.keys(n.inputs||{}).sort().join('|')!==[...ids].sort().join('|')||Object.keys(n.fields||{}).length)return false;
+                        Object.keys(n.inputs||{}).length!==ids.length||ids.some(id=>!Object.hasOwn(n.inputs||{},id))||Object.keys(n.fields||{}).length)return false;
                 }
             }
         }
@@ -210,7 +210,8 @@ export function createArrayReferenceExportAuthority(project) {
     const overwrittenPrivateReset=(destination,writer)=>{
         const {target,node,scope}=writer,reset=writer.value?.node;
         const shape=(n,inputs,fields=[])=>!!n&&!invalid.has(n)&&owners.get(n)===scope&&n.mutation==null&&
-            exactKeys(n,inputs,fields)&&Object.keys(n.fields||{}).length===fields.length;
+            Object.keys(n.inputs||{}).length===inputs.length&&inputs.every(key=>Object.hasOwn(n.inputs||{},key))&&
+            Object.keys(n.fields||{}).length===fields.length&&fields.every(key=>Object.hasOwn(n.fields||{},key));
         const special=n=>shape(n,[],['KIND'])&&Array.isArray(n.fields.KIND)&&n.fields.KIND.length===2&&
             n.fields.KIND[1]===null&&['null','undefined'].includes(n.fields.KIND[0]);
         // Native procedure-definition/parameter caches are plain objects and
@@ -222,6 +223,7 @@ export function createArrayReferenceExportAuthority(project) {
         // Native lookup scans every physical definition/prototype, including
         // orphans not represented by the connected top-level scope map.
         const all=Object.values(target.blocks||{}),prototype=child(scope.root,'custom_block',target);
+        if(!shape(scope.root,['custom_block'])||Object.keys(prototype?.inputs||{}).length||Object.keys(prototype?.fields||{}).length)return false;
         const definitions=all.filter(n=>n.opcode==='procedures_definition'&&child(n,'custom_block',target)?.mutation?.proccode===scope.proc);
         const prototypes=all.filter(n=>n.opcode==='procedures_prototype'&&n.mutation?.proccode===scope.proc);
         if(definitions.length!==1||definitions[0]!==scope.root||prototypes.length!==1||prototypes[0]!==prototype)return false;

@@ -129,6 +129,11 @@ test('physical native entry, storage and unavailable metadata cannot bypass the 
     for(const value of ['{}','[1]','["a","a"]']){
         const f=fixture(),call=f.node('procedures_call');f.blocks[call].mutation={proccode:'build',argumentids:value,warp:'false'};refuses(f);
     }
+    const emptyCall=fixture();emptyCall.blocks[emptyCall.call].inputs['']=[1,emptyCall.number(0)];refuses(emptyCall);
+    const joined=fixture(),extra=joined.node('procedures_call');joined.blocks[extra].mutation={proccode:'unknown',argumentids:'["a|b"]',warp:'false'};
+    joined.blocks[extra].inputs={a:[1,joined.number(0)],b:[1,joined.number(0)]};refuses(joined);
+    const hidden=fixture(),read=hidden.local('cell0');hidden.blocks[hidden.effect].inputs['']=[2,read];hidden.blocks[read].parent=hidden.effect;refuses(hidden);
+    const protoInput=fixture(),protoRead=protoInput.local('cell0');protoInput.blocks[protoInput.proto].inputs['']=[2,protoRead];protoInput.blocks[protoRead].parent=protoInput.proto;refuses(protoInput);
     const duplicateProto=fixture(),proto=duplicateProto.node('procedures_prototype');duplicateProto.blocks[proto].mutation=structuredClone(duplicateProto.blocks[duplicateProto.proto].mutation);refuses(duplicateProto);
     const duplicateDef=fixture(),p=duplicateDef.node('procedures_prototype');duplicateDef.blocks[p].mutation=structuredClone(duplicateDef.blocks[duplicateDef.proto].mutation);duplicateDef.node('procedures_definition',{custom_block:p});refuses(duplicateDef);
     const unsafeVariable=fixture();Object.defineProperty(unsafeVariable.target.variables,'__proto__',{value:['other',0],enumerable:true,writable:true,configurable:true});refuses(unsafeVariable);
