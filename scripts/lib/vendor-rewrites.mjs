@@ -104,6 +104,7 @@ import { join } from 'node:path';
  */
 export const SB3_CREATOR_FILES = Object.freeze([
     ['sb3-creator.js', 'src/utils/sb3Creator.js'],
+    ['procedureParameterConstraints.js', 'src/utils/procedureParameterConstraints.js'],
     ['trace-oracle.js', 'src/utils/traceOracle.js'],
     ['sb3-creator-examples.js', 'src/utils/examples.js'],
     ['sb3-creator-python.js', 'src/utils/pythonToPseudocode.js'],
