@@ -1,3 +1,4 @@
+import {admitArcadeNativeSource} from './native-source-admission.js';
 /** Bridge original PXT package inputs to the native Arcade translator.
  * This is an internal translation view, never an exported MakeCode project.
  * PXT owns dependency order, conditional files and asset-pack generation.
@@ -5,6 +6,7 @@
 import {decodeMkcdImage, parseJres} from './arcade-assets.js';
 import {SONG_MIME} from './song-jres.js';
 import {toImgLiteral} from './pixel-image.js';
+import {createFixedImageResourceMaterializer} from './fixed-jres-images.js';
 
 const ROOT = '__bwDependencyInputs/';
 const safePath = name => typeof name === 'string' && name && !name.startsWith('/') &&
@@ -12,6 +14,7 @@ const safePath = name => typeof name === 'string' && name && !name.startsWith('/
 
 export function prepareArcadeDependencyInputs (originalFiles, resolved) {
     const cfg = JSON.parse(originalFiles['pxt.json']);
+    const nativeLibraryVersions={};
     if (!Array.isArray(cfg.files)) throw new Error('Native dependency preparation requires pxt.json.files');
     if (Object.keys(originalFiles).some(name => name.startsWith(ROOT))) {
         throw new Error('Project uses the reserved dependency input directory');
@@ -57,17 +60,39 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
         // here (and overwrite the root project's actual factory).
     }
     files[`${ROOT}resources.jres`] = JSON.stringify(resources);
+    const materializeFixedImages = createFixedImageResourceMaterializer(originalFiles,resolved);
     for (const {id, file} of resolved.sourceOrder) {
         if (typeof id !== 'string' || !id || !safePath(file)) throw new Error('Unsafe dependency source identity');
         const pkg = resolved.packages[id];
         if (pkg?.vendored) continue;
         if (!pkg || typeof pkg.files[file] !== 'string') throw new Error(`Missing resolved dependency source: ${id}/${file}`);
+        const nativeAdapter = admitArcadeNativeSource({packageId: id, filename: file, source: pkg.files[file]});
+        if (nativeAdapter) {
+            if(nativeAdapter.libraryNamespace) {
+                const name=nativeAdapter.libraryNamespace, version=nativeAdapter.libraryVersion;
+                if(nativeLibraryVersions[name] && nativeLibraryVersions[name]!==version)throw new Error(`Conflicting native library versions: ${name}`);
+                nativeLibraryVersions[name]=version;
+            }
+            let path;
+            if (nativeAdapter.replacementSource !== undefined) {
+                if (typeof nativeAdapter.replacementSource !== 'string') throw new Error('Native adapter replacement must be reviewed source text');
+                path = `${ROOT}${encodeURIComponent(id)}/${file}`;
+                if (Object.prototype.hasOwnProperty.call(files, path)) throw new Error(`Duplicate dependency input: ${path}`);
+                // Exact-source adapters may retain reviewed initialization at
+                // the original file position; replacing implementations must
+                // not silently drop kind allocations or other initializers.
+                files[path] = nativeAdapter.replacementSource;
+                names.push(path);
+            }
+            provenance.push({id, file, ...(path ? {path} : {}), nativeAdapter});
+            continue;
+        }
         // Original PXT replaces an asset pack's executable files with generated
         // declarations. Native resource readers consume those declarations.
         const generated = pkg.assetPack && file === 'gallery.ts';
         const path = `${ROOT}${encodeURIComponent(id)}/${file}`;
         if (Object.prototype.hasOwnProperty.call(files, path)) throw new Error(`Duplicate dependency input: ${path}`);
-        let source = pkg.files[file];
+        let source = pkg.files[file], fixedImageResources = [];
         if (generated) source = source.replace(/export const ([\w$]+) = image\.ofBuffer\(hex``\);/g, (declaration, name) => {
             const key = `${pkg.assetNamespace}.${name}`;
             const image = decodeMkcdImage(resolved.jres[key]?.data);
@@ -76,11 +101,34 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
             // with JRES buffers. Materialize the same pixels for native parsing.
             return `export const ${name} = ${toImgLiteral(image)};`;
         });
+        if (!generated) {
+            const materialized = materializeFixedImages(id,file,source);
+            source = materialized.source;fixedImageResources = materialized.resources;
+        }
         files[path] = source;
         names.push(path);
-        provenance.push({id, file, path, generated});
+        provenance.push({id, file, path, generated, ...(fixedImageResources.length ? {fixedImageResources} : {})});
     }
-    files['pxt.json'] = JSON.stringify({...cfg, files: [...names, ...cfg.files,
+    for (const [name, content] of Object.entries(resolved.generatedRootFiles || {})) {
+        if (!safePath(name) || !/\.g\.ts$/.test(name) || typeof content !== 'string') {
+            throw new Error('Unsafe original generated root companion');
+        }
+        if (Object.prototype.hasOwnProperty.call(originalFiles, name)) {
+            throw new Error(`Original generated companion would overwrite project file: ${name}`);
+        }
+        files[name] = content;
+        names.push(name);
+        const origin = (resolved.generatedRootProvenance || []).find(entry => entry.file === name);
+        if (!origin || !safePath(origin.input) || typeof originalFiles[origin.input] !== 'string' ||
+            !['pxt.emitTilemapsFromJRes','pxt.emitProjectImages'].includes(origin.emitter)) throw new Error(`Missing original root generation provenance: ${name}`);
+        provenance.push({id: 'root', file: origin.input, path: name, generated: true, emitter: origin.emitter,
+            versions: origin.versions || null, workerSha256: origin.workerSha256 || null});
+    }
+    const effectivePalette = resolved.runtimeConfig?.palette;
+    files['pxt.json'] = JSON.stringify({...cfg,
+        ...(Object.keys(nativeLibraryVersions).length?{bwArcadeNativeLibraries:nativeLibraryVersions}:{}),
+        ...(effectivePalette ? {palette: [...effectivePalette]} : {}), files: [...names, ...cfg.files,
         `${ROOT}resources.jres`]});
-    return {files, originalFiles, provenance, skippedPackages, fetchedExtensions: resolved.fetchedExtensions || []};
+    return {files, originalFiles, provenance, skippedPackages, runtimeConfig: resolved.runtimeConfig || null,
+        fetchedExtensions: resolved.fetchedExtensions || []};
 }

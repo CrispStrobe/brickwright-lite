@@ -1,12 +1,13 @@
 # Arcade primitive Number to text
 
-## Proposed scope
+## Bounded scope
 
 This lane adds the zero-argument `value.toString()` source operation when the
 actual receiver is proven to be a primitive Number. It carries the operation
 through native execution, Code, Blocks, saved projects, original export and
 reimport. A Number annotation, a method name or a saved variable value does not
-provide that authority. Implementation starts after the ownership claim merges.
+provide that authority. The ownership claim is merged. The bounded implementation uses an editable
+primitive String join, with no new canonical word.
 
 The selected PXT 13.2.1 simulator implementation is
 [`Number_.toString`](https://github.com/microsoft/pxt/blob/c40f412dc5bebb915a5891cd62fe956e198fb194/pxtsim/libgeneric.ts#L275):
@@ -58,3 +59,38 @@ method support, boxed Number objects, arbitrary `toString` callbacks, optional
 radix formatting, full Carnival or StatusBar support, or hosted GUI completion.
 Class fields, SDK timer producers and live screen snapshot routing retain their
 separate ownership and qualification.
+
+## Qualified implementation
+
+The source operation now follows the actual lexical producer graph. A unique
+ordinary function can supply a Number result only when that same binding has
+no assignments and its arguments and complete return paths prove the domain.
+A same-name local shadow is a different binding. Unresolved function aliases,
+recursive results, missing arguments and mixed writers retain refusals. The
+source annotations remain constraints rather than producer evidence.
+
+The current Code and Blocks carry a primitive join with an empty String. Export
+uses the current connected operands; it does not restore the original method
+expression. Native source, Code, export/reimport and restart controls preserve
+one formatter evaluation and a local parameter named `String`. An independent
+edited join with a numeric operand and a new suffix also preserves those current
+operands through export and reimport.
+
+A selected-original source and an actual block-edited export independently
+compiled and executed. The real frame callback consumed the formatting results
+and published readiness. The observations covered zero, negative zero, signed
+and fractional values, a large Number alias, a small Number and a subnormal.
+Changing the actual argument block from `-1.25` to `12.5` changed the corresponding
+exported observation; both executions retained exactly one formatter call.
+
+The accompanying literal correction recognizes signed decimal exponents in the
+source tokenizer and emits finite Number literals as exact decimal carriers.
+It preserves member-dot and existing base-literal boundaries and rejects
+malformed exponents. Literal overflow to a non-finite Number has an explicit
+refusal until its source/Code/portable carrier is qualified. Underflow to zero
+has a bounded carrier. Existing separately qualified NaN and Infinity constant
+and numeric-fold behavior remains unchanged.
+
+Full non-finite source literals, more SDK numeric producers, class/member Number
+results and unresolved callee aliases remain follow-up work. This evidence does
+not establish full Carnival or StatusBar support or a hosted GUI journey.

@@ -5,11 +5,19 @@ import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {TERRAIN_MAP} from './fixtures/arcade-terrain.mjs';
 const vars=run=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
-async function execute(source,names){
+async function execute(source,names,{ordinaryCadence=false}={}){
     const expected=await runPxtArcade(source);
     const imported=arcadeToPseudocode(source);
     for(const reason of imported.unsupported)assert.match(reason,/terrain event callbacks require verified/);
-    const run=await runProgram(imported.code,{frames:160,uploads:imported.costumes,storage:true}),actual=vars(run);
+    const run=await runProgram(imported.code,{frames:ordinaryCadence?0:160,frameAuthority:ordinaryCadence?'timed':'manual',uploads:imported.costumes,storage:true});
+    if(ordinaryCadence){
+        // The original uses its real wait clock and ordinary physical cadence.
+        // Compressing 160 manual physical frames into that 30ms wait can start
+        // a second wall callback before the explicit caller resumes.
+        run.vm.start();
+        try{await new Promise(resolve=>setTimeout(resolve,700));}finally{run.vm.quit();}
+    }
+    const actual=vars(run);
     for(const name of names)assert.equal(actual[name],expected[name],name);
     assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);return run;
 }
@@ -64,7 +72,7 @@ hero.x=32
 order+="C"
 let orderAtReturn=order
 let callerSawCompletion=completed
-let finalVelocity=hero.vx`,['orderAtReturn','callerSawCompletion','finalVelocity']);
+let finalVelocity=hero.vx`,['orderAtReturn','callerSawCompletion','finalVelocity'],{ordinaryCadence:true});
 });
 test('stopping a project cancels a suspended physics frame before its callback can resume',async()=>{
     const source=`${TERRAIN_MAP}

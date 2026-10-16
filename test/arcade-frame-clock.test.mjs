@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {VM,SB3Creator,runProgram,stepFrames} from './helpers/bw-vm.mjs';
+import {VM,SB3Creator,runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
+import {createArcadeDiscreteTimers} from './helpers/arcade-discrete-timers.mjs';
 const Arcade=loadExtensionClass('arcade');
 const schedules={hz30:Array.from({length:30},(_,i)=>Math.round((i+1)*1000/30)),hz60:Array.from({length:60},(_,i)=>Math.round((i+1)*1000/60)),irregular:[10,35,100,150,225,250,300,350,400,475,500,600,650,700,800,850,900,1000]};
 const make=async()=>{
@@ -46,18 +47,30 @@ test('frame clock clamps backward timestamps, supports explicit offline deltas a
  }finally{vm.quit();}
 });
 
-test('scene-frame waits and physics share the controlled VM clock without dropping pending elapsed time',async()=>{
- const imported=arcadeToPseudocode('game.pushScene()\nlet phase=0\nfunction install(){let captured=0;game.onUpdate(function(){captured+=1;if(phase===0){phase=1;pause(70);phase=2;}})}\ninstall()');assert.deepEqual(imported.unsupported,[]);
- const run=await runProgram(imported.code,{frames:0});let now=0;run.vm.runtime.updateCurrentMSecs=()=>{run.vm.runtime.currentMSecs=now;};
- const phase=()=>Number(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name.replace(/^Game_/,'')==='phase')?.value);
+test('scene-frame waits and physics share actual owned timer authority and callback deltas',async()=>{
+ const source=`game.pushScene()
+let phase=0
+let startedAt=-1
+let resumedAt=-1
+let sceneAfterWait=-1
+function install(){let captured=0;game.onUpdate(function(){captured+=1;if(phase===0){phase=1;startedAt=control.millis();pause(70);resumedAt=control.millis();sceneAfterWait=game.runtime();phase=2;}})}
+install()
+pause(120)
+let sampledScene=game.runtime()
+let done=phase
+done+=0`;
+ const original=await runPxtArcade(source,{fakeClock:true});
+ const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);
+ const run=await runProgram(imported.code,{frames:0,frameAuthority:'timed'}),clock=createArcadeDiscreteTimers();
+ const values=()=>Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name.replace(/^Game_/,''),v.value]));
  try{
-  await stepFrames(run.vm,1,0);
-  now=20;await stepFrames(run.vm,1,20);assert.equal(phase(),1);
-  for(now of [40,60,80])await stepFrames(run.vm,1,20);
-  assert.equal(phase(),1,'70ms wait has not elapsed before90ms');
-  now=100;await stepFrames(run.vm,1,20);assert.equal(phase(),2,'wait observes same VM clock');
-  now=120;await stepFrames(run.vm,1,20);
-  assert.equal(run.vm.runtime.bwArcadeDeviceState.elapsedMs,120,'pending frame time is carried into the next scene frame');
+  run.vm.stopAll();run.vm.runtime.bwArcadeProgramClock=clock;run.vm.runtime.updateCurrentMSecs=()=>{run.vm.runtime.currentMSecs=clock.now();};run.vm.greenFlag();
+  await stepFrames(run.vm,1,0);await clock.advanceTo(0);
+  await clock.advanceTo(original.resumedAt-1);assert.equal(Number(values().phase),1,'the actual source wait is still blocked before its deadline');
+  await clock.advanceTo(original.resumedAt);assert.equal(Number(values().phase),2,'actual continuation resumes without a synthetic physics frame');
+  await clock.advanceTo(120);
+  for(const name of ['startedAt','resumedAt','sceneAfterWait','sampledScene','done'])assert.equal(values()[name],original[name],name);
+  assert.equal(run.vm.runtime.bwArcadeDeviceState.elapsedMs,original.sampledScene,'frame callback duration determines the next real scene worker delta');
   assert.deepEqual(run.errors,[]);
- }finally{run.vm.quit();}
+ }finally{run.vm.stopAll();run.vm.quit();clearStrayTimers();}
 });

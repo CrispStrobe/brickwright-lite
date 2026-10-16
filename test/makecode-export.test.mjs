@@ -386,7 +386,7 @@ const BATCH_1_WAY_BACK = [
     ['set v to map v from low 0 high 1023 to low 0 high 4', 'v = pins.map(v, 0, 1023, 0, 4)'],
     ['set v to min of v and 3', 'v = Math.min(v, 3)'],
     ['set v to max of v and 3', 'v = Math.max(v, 3)'],
-    ['set v to ((v / 4) bitor 0)', 'v = Math.idiv(v, 4)'],
+    ['set v to ((v / 4) bitor 0)', 'v = ((v / 4) | 0)'],
     ['IF (pick random 0 to 1) = 1 THEN:\n    clear display', 'if (Math.randomBoolean()) {']
 ];
 

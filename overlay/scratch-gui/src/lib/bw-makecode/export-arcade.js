@@ -1,3 +1,58 @@
+import {createOrdinaryExportSymbols} from './ordinary-export-symbols.js';
+import {createArrayReferenceExportAuthority} from './array-reference-export-authority.js';
+import {throwExportOwners} from './throw-export-owners.js';
+import {prepareProcedureConstraintExport} from './procedure-constraint-export.js';
+import {validateProcedureConstraintSource} from './procedure-constraint-source.js';
+import {createSdkImageLiteralResources} from './sdk-image-literal-resources.js';
+import {proveNamedFunctionSource} from './named-function-source.js';
+import {analyseConsoleCaptures} from './console-capture-provenance.js';
+import {proveClassCallableSource} from './class-callable-source-flow.js';
+import {classCallableSourceGate} from './class-callable-source-gate.js';
+import {classCallableDefaultProjectGate} from './class-callable-default-project-gate.js';
+import {sdkFontInputAuthority} from './sdk-font-input-authority.js';
+import {parseMakeCodeTs} from './ts-import.js';
+import {callableSourceGate} from './callable-source-gate.js';
+import {inspectCallableExportGraph,createCallableLexicalEmitter,renderCallableSignature,validateCallableCurrentBodyTypes,callableReflectionOperand,callableReflectionVariable} from './callable-export-graph.js';
+import {namedArrayItemExportAuthority} from './named-array-item-export-authority.js';
+import {NAMED_ARRAY_GET_SOURCE} from './named-array-item-helpers.js';
+import {sourceReferenceProject} from './source-reference-project.js';
+import {scalarExportFlow} from './scalar-export-flow.js';
+import {sourceScalarProject} from './source-scalar-project.js';
+import {prepareObjectClassExport} from './object-class-export.js';
+import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
+import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
+const LEGACY_CHARACTER_REVISION=LEGACY_CHARACTER_NATIVE_IDENTITY.revision;
+// Serialized current-graph eligibility only, never a runtime completion receipt.
+// Expression emission and formal/caller inference must use the same exact proof.
+function currentSceneClockNumber(blocks,block) {
+    if(!block||block.opcode!=='arcade_sceneMillis')return false;
+    const ids=Object.keys(blocks||{}).filter(id=>blocks[id]===block),id=ids[0],parent=id&&blocks[block.parent],uses=[];
+    for(const node of Object.values(blocks||{}))for(const slot of Object.values(node.inputs||{}))
+        if(Array.isArray(slot))for(let index=1;index<slot.length;index++)if(slot[index]===id)uses.push({node,index,slot});
+    if(ids.length!==1||block.shadow!==false||block.topLevel!==false||block.next!=null||block.mutation!=null||
+        Object.keys(block.fields||{}).length||Object.keys(block.inputs||{}).length||!parent||uses.length!==1||uses[0].node!==parent||uses[0].index!==1)return false;
+    if(Object.keys(blocks).filter(key=>blocks[key]===parent).length!==1)return false;
+    const slot=uses[0].slot;
+    // A non-shadow reporter cannot occupy the SAME_BLOCK_SHADOW (1) role.
+    if(slot[0]===2)return slot.length===2;
+    if(slot[0]!==3||slot.length!==3)return false;
+    const fallback=slot[2];
+    const primitive=value=>Array.isArray(value)&&value.length===2&&Number.isInteger(value[0])&&value[0]>=4&&value[0]<=10&&
+        (typeof value[1]==='string'||value[0]<=8&&typeof value[1]==='number'&&Number.isFinite(value[1]));
+    if(primitive(fallback))return true;
+    if(typeof fallback!=='string'||fallback===id)return false;
+    const shadow=blocks[fallback],names=Object.keys(blocks).filter(key=>blocks[key]===shadow);
+    if(!shadow||names.length!==1||names[0]!==fallback||shadow.shadow!==true||shadow.topLevel!==false||shadow.parent!==block.parent||
+        shadow.next!=null||shadow.mutation!=null||Object.keys(shadow.inputs||{}).length)return false;
+    const primitiveFields={math_number:'NUM',math_positive_number:'NUM',math_whole_number:'NUM',math_integer:'NUM',math_angle:'NUM',colour_picker:'COLOUR',text:'TEXT'};
+    const field=Object.hasOwn(primitiveFields,shadow.opcode)&&primitiveFields[shadow.opcode],value=shadow.fields?.[field];
+    if(!field||Object.keys(shadow.fields||{}).length!==1||!Array.isArray(value)||![1,2].includes(value.length)||value.length===2&&value[1]!==null||
+        !(typeof value[0]==='string'||field==='NUM'&&typeof value[0]==='number'&&Number.isFinite(value[0])))return false;
+    const fallbackUses=[];for(const node of Object.values(blocks))for(const input of Object.values(node.inputs||{}))
+        if(Array.isArray(input))for(let index=1;index<input.length;index++)if(input[index]===fallback)fallbackUses.push({node,index,input});
+    return fallbackUses.length===1&&fallbackUses[0].node===parent&&fallbackUses[0].index===2&&fallbackUses[0].input===slot;
+}
+
 /**
  * A Scratch project -> MakeCode Arcade TypeScript: the way back from
  * arcade-translate.js, and the way OUT for a game made here.
@@ -47,6 +102,12 @@ import {TileAssetExporter} from './tile-assets.js';
 import {SONG_MIME} from './song-jres.js';
 import {tilemapSource} from './tilemap-values.js';
 import {ValueTypeGraph} from './value-type-graph.js';
+import {legacyDirectMenuValue} from '../arcadeDialect.js';
+
+// Fixed native fields take precedence; only genuine old literal menu shadows
+// can supply a missing type. Never evaluate a type reporter.
+const directMenuValue = (block, slot, blocks) => block.fields?.[slot]?.[0] ?? legacyDirectMenuValue(block, slot, blocks);
+const settingType = (block, blocks) => directMenuValue(block, 'TYPE', blocks);
 import {svgToPixels, quantizeRgba, toImgLiteral, remapPalette, nearestIndex} from './pixel-image.js';
 // arcade-character-animations Predicate members.
 const CHARACTER_PREDICATE_NAMES = ['NotMoving', 'Moving', 'FacingUp', 'FacingRight', 'FacingDown', 'FacingLeft', 'MovingUp', 'MovingRight',
@@ -71,6 +132,8 @@ const samePalette = (left, right) => left.every((colour, index) =>
     String(colour).toLowerCase() === String(right[index]).toLowerCase());
 
 const REGISTERED_HAT_KINDS = {
+    arcade_whenRegisteredMultiplayerConnection:'multiplayerConnection',
+    arcade_whenRegisteredControlEvent:'controlEvent',
     arcade_whenParallelHandler:'parallel',
     arcade_whenRegisteredInstanceDestroyed:'instanceDestroyed',
     arcade_whenRegisteredLegacyWall:'legacyWall',
@@ -82,7 +145,7 @@ const REGISTERED_HAT_KINDS = {
     arcade_whenRegisteredScenePush:'scenePush', arcade_whenRegisteredScenePop:'scenePop',
     arcade_whenRegisteredForever:'forever', arcade_whenRegisteredLifeZero:'lifeZero', arcade_whenRegisteredCountdown:'countdown'
 };
-const REGISTERED_COMMANDS = new Set(['arcade_startParallelHandler','arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
+const REGISTERED_COMMANDS = new Set(['arcade_registerMultiplayerConnection','arcade_registerControlEvent','arcade_startParallelHandler','arcade_registerLegacyWallHandler','arcade_registerMultiplayerButtonHandler','arcade_registerSpriteCreated','arcade_registerWallHandler','arcade_registerTileHandler',
     'arcade_registerUpdateHandler','arcade_registerIntervalHandler','arcade_registerButtonHandler','arcade_registerPaintHandler','arcade_registerShadeHandler',
     'arcade_registerInstanceDestroyedHandler','arcade_registerDestroyedHandler','arcade_registerOverlapHandler','arcade_registerScenePushHandler','arcade_registerScenePopHandler',
     'arcade_registerForeverHandler','arcade_registerLifeZeroHandler','arcade_registerCountdownHandler']);
@@ -98,23 +161,73 @@ const ident = name => {
     return /^[0-9]/.test(s) ? `_${s}` : s;
 };
 
+const LEGACY_SCROLLER_REVISION='43651f88b917a98ad886fdd4c1c2ad8001ce9b9c';
 const RESERVED = new Set(['score', 'life', 'info', 'game', 'scene', 'sprites', 'controller', 'Math', 'function', 'let', 'var',
     'if', 'else', 'while', 'for', 'return', 'true', 'false', 'null', 'new', 'this', 'pause', 'forever',
-    'SpriteKind', 'SpriteFlag', 'ControllerButtonEvent', 'DialogLayout', 'Image', 'Buffer', 'NumberFormat', 'console', 'control', 'assets', 'images', 'image', 'hex', 'img', 'undefined']);
+    '__bwSdkCharCode','__bwSdkConcat','__bwScratchTimerStart','__bwScratchTimer','__bwResetScratchTimer', 'SpriteKind', 'SpriteFlag', 'ControllerButtonEvent', 'DialogLayout', 'Image', 'Buffer', 'NumberFormat', 'console', 'control', 'assets', 'images', 'image', 'hex', 'img', 'undefined', 'bwStringArraySettings']);
 
 class ArcadeEmitter {
+    sdkFontOperand(block,input='FONT') {
+        const types=this.sdkFontInputs.inputTypes(this.target,block,input);
+        if(!this.sdkFontInputs.accepts(this.target,block,input,'Font')){this.note('SDK Font operand requires an actual typed Font factory or binding: '+block.opcode+' '+[...(types||[])].join('|'));return false;}
+        return true;
+    }
+    sdkFontPrimitiveOperand(block,input,kind) {
+        const types=this.sdkFontInputs.inputTypes(this.target,block,input);
+        if(!this.sdkFontInputs.accepts(this.target,block,input,kind==='string'?'String':'Number')){this.note('SDK Font '+input+' requires a proven '+kind+' operand');return false;}return true;
+    }
+    controllerRepeatReceiver(b) {
+        const player=String(b.fields.PLAYER?.[0]),button=b.fields.BUTTON?.[0],property=b.fields.PROPERTY?.[0];
+        if(!['1','2','3','4'].includes(player)||!['A','B','up','down','left','right'].includes(button)||!['repeatDelay','repeatInterval'].includes(property)){
+            this.note('Controller repeat requires fixed player/button/property fields');return null;
+        }
+        return `controller.player${player}.${button}`;
+    }
     constructor (project, opts) {
-        this.project = project;
+        this.project = project;this.sdkFontInputs=sdkFontInputAuthority(project);
         this.opts = opts;
         this.unsupported = [];
+        // Freeze actual owners before any host artwork callback can edit the project.
+        this.functionSymbols=createOrdinaryExportSymbols(project,message=>this.note(message));
+        this.sourceScalarCells=new Map();this.sourceReferenceCells=new Map();this.validScalarPrelude=true;
+        try {this.sourceScalarCells=sourceScalarProject(this.project);this.sourceReferenceCells=sourceReferenceProject(this.project);for(const id of this.sourceReferenceCells.keys())if(this.sourceScalarCells.has(id))throw Error('Duplicate source scalar/reference declaration');} catch(error) {this.validScalarPrelude=false;this.note(error.message);}
         this.requiresAnimationPackage = false;
         this.requiresSevensegPackage = false;
+        this.requiresTextSpritePackage = false;
         this.requiresDartsPackage = false;
         this.requiresCorgioPackage = false;
         this.requiresScrollerPackage = false;
+        this.scrollerVersion='v0.1.2';
+        const selectors=project.targets.flatMap(target=>Object.values(target.blocks || {}).filter(block=>block.opcode==='arcade_setBackgroundScrollVersion').map(block=>({target,block})));
+        if(selectors.length>1)this.note('Arcade export requires one background scroll version selection');
+        for(const {target,block} of selectors) {
+            const version=directMenuValue(block,'VERSION',target.blocks);
+            let parent=target.blocks[block.parent];
+            while(parent && (['looks_hide','arcade_setPalette','arcade_setCharacterAnimationVersion'].includes(parent.opcode) || this.validScalarPrelude && ['arcade_declareSourceScalar','arcade_declareSourceReference'].includes(parent.opcode)))parent=target.blocks[parent.parent];
+            if(!['v0.1.2',LEGACY_SCROLLER_REVISION].includes(version) || !['event_whenflagclicked', 'arcade_whenSourceStarts'].includes(parent?.opcode))this.note('Arcade background scroll version must be a fixed selection at the start of a green-flag script');
+            else this.scrollerVersion=version;
+        }
+        this.characterVersion='v0.1.0';
+        const characterSelectors=project.targets.flatMap(target=>Object.values(target.blocks || {}).filter(block=>block.opcode==='arcade_setCharacterAnimationVersion').map(block=>({target,block})));
+        if(characterSelectors.length>1)this.note('Arcade export requires one character animation version selection');
+        for(const {target,block} of characterSelectors) {
+            const version=directMenuValue(block,'VERSION',target.blocks);
+            let parent=target.blocks[block.parent];
+            while(parent && (['looks_hide','arcade_setPalette','arcade_setBackgroundScrollVersion'].includes(parent.opcode) || this.validScalarPrelude && ['arcade_declareSourceScalar','arcade_declareSourceReference'].includes(parent.opcode)))parent=target.blocks[parent.parent];
+            if(!['v0.1.0',LEGACY_CHARACTER_REVISION].includes(version) || !['event_whenflagclicked', 'arcade_whenSourceStarts'].includes(parent?.opcode))this.note('Arcade character animation version must be a fixed selection at the start of a green-flag script');
+            else this.characterVersion=version;
+        }
         this.requiresCharacterAnimationsPackage = false;
         this.warnings = [];
         this.tileAssets = new TileAssetExporter(this.warnings);
+        // Reserve actual named resources across all fixed maps before anonymous
+        // fallback IDs (or a conflicting edit's suffix) can take their names.
+        for (const target of project.targets) for (const block of Object.values(target.blocks || {})) {
+            if (block.opcode !== 'arcade_setTilemap') continue;
+            let data;
+            try { data = JSON.parse(this.literalInput(block, 'DATA')); } catch (_) { continue; }
+            if (tilemapSource(data)) this.tileAssets.reserve(data.images);
+        }
         this.sprites = project.targets.filter(t => !t.isStage);
         // Each sprite is a global `<name>Sprite`, kept clear of the program's variable names.
         this.spriteVar = new Map();
@@ -139,8 +252,8 @@ class ArcadeEmitter {
         this.arcadeValues = project.targets.some(t => Object.values(t.blocks || {})
             .some(b => b && /^(arcade|arrays)_/.test(b.opcode || '')));
         this.initialGlobals = new Map();
+        this.editedSavedReferenceIds = new Map();
         this.globals = new Map();       // Scratch variable id|name -> TS name
-        this.fnNames = new Map();       // `${target}:${proccode}` -> TS name
         this.target = null;
         this.blocks = null;
         this.kinds = new Map();         // TS variable -> Set('number'|'string')
@@ -172,6 +285,8 @@ class ArcadeEmitter {
         this.imageVars = new Set();
         this.handleVars = new Set();
         this.customSpriteKinds = new Set();
+        this.boundSpriteKinds = new Set();
+        this.hasTextKindLibrary = false;
         this.eventLocationName = null;
         this.eventHandles = null;
         this.eventKind = null;
@@ -183,6 +298,8 @@ class ArcadeEmitter {
         this.usedRegisteredCallbacks = new Set();
         this.usedDestroyedCallbacks = new Set();
         this.currentLocalNames = null;
+        this.implicitLoopYield=true;
+        this.managedValueProcedures=new Set();
         this.emittedSprites = new Set();    // the targets that became an Arcade sprite
         this.hasProjectPalette = this.project.targets.some(target =>
             Object.values(target.blocks || {}).some(block => block.opcode === 'arcade_setPalette'));
@@ -216,7 +333,7 @@ class ArcadeEmitter {
                 if (RESERVED.has(name)) name += '_';
                 return name;
             }));
-            const occupied = new Set([...declaredVariables, ...this.globals.values(), ...this.fnNames.values(), ...this.spriteVar.values(),
+            const occupied = new Set([...declaredVariables, ...this.globals.values(), ...this.functionNames(), ...this.spriteVar.values(),
                 ...[...this.sharedImageArrays.values(), ...this.frameArrays.values()].map(array => array.name)]);
             this.animationSymbol = base => {
                 let name = base;
@@ -537,6 +654,8 @@ class ArcadeEmitter {
     }
 
     // ── names ────────────────────────────────────────────────────────────
+    functionNames () { return this.functionSymbols?.values() || []; }
+    functionName (target,code) { return this.functionSymbols?.name(target,code) || null; }
     varName (target, name) {
         const key = `${target.isStage ? '' : target.name}:${name}`;
         if (this.globals.has(key)) return this.globals.get(key);
@@ -558,6 +677,14 @@ class ArcadeEmitter {
             initial === `[${reference.kind} reference ${reference.id}]`) {
             this.initialGlobals.set(ts, null);
             return ts;
+        }
+        if (['image','buffer'].includes(reference?.kind) && typeof reference.id === 'string' &&
+            initial !== `[${reference.kind} reference ${reference.id}]` && this.sourceReferenceCells.has(entry[0])) {
+            // An explicit edit to the standard SB3 field invalidates its saved
+            // resource tag. Keep the edited value; the source declaration must
+            // not silently restore authority from that stale tag.
+            this.editedSavedReferenceIds.set(entry[0], initial);
+            this.note(`Source reference ${name}: saved resource tag differs from its standard variable value`);
         }
         if (['string', 'number', 'boolean'].includes(typeof initial) &&
             (typeof initial !== 'number' || Number.isFinite(initial))) {
@@ -594,17 +721,87 @@ class ArcadeEmitter {
 
     /**
      * E1's import keeps an Arcade program's own code on a sprite named Game.
-     * When nothing of it is a sprite (no artwork, no motion or looks), it is
-     * no Arcade sprite: its scripts run with no `self`.
+     * Dormant artwork on a hidden program host does not create an Arcade
+     * actor. Current self behavior and references still need sprite identity.
      */
     isScriptHost (target) {
         if (!this.arcadeValues || target.name !== 'Game') return false;
         if (this.hasHandles) return true;
+        const usesSelf = Object.values(target.blocks || {}).some(b => b && b.opcode !== 'looks_hide' &&
+            /^(motion_|looks_|pen_|sensing_touchingobject|sensing_distanceto|sensing_touchingcolor|sensing_coloristouchingcolor|control_create_clone_of|control_start_as_clone|control_delete_this_clone)/.test(b.opcode));
+        if (usesSelf) return false;
+        // A hidden program host can retain the editor's dormant costume. Merely
+        // making that costume readable through the GUI rasterizer must not
+        // allocate an extra gameplay actor. Current references still need one.
+        if (this.referencedSpriteIdentity(target)) return false;
+        if (target.visible === false || this.startsHidden(target)) return true;
         if (target.costumes?.some(c =>
             (this.opts.costumeSvg && svgToPixels(this.opts.costumeSvg(target, c) || '')) ||
             (this.opts.costumeRgba && this.opts.costumeRgba(target, c)))) return false;
-        return !Object.values(target.blocks || {}).some(b => b && b.opcode !== 'looks_hide' &&
-            /^(motion_|looks_|pen_|sensing_touchingobject|sensing_distanceto)/.test(b.opcode));
+        return true;
+    }
+
+    startsHidden (target) {
+        const starts = Object.entries(target.blocks || {}).filter(([, block]) => block?.topLevel &&
+            ['event_whenflagclicked', 'arcade_whenSourceStarts'].includes(block.opcode));
+        return starts.length > 0 && starts.every(([id, start]) => {
+            let parent = id, next = start.next;
+            const seen = new Set([id]);
+            while (['arcade_declareSourceScalar', 'arcade_declareSourceReference'].includes(target.blocks[next]?.opcode)) {
+                const declaration = target.blocks[next];
+                if (seen.has(next) || start.opcode !== 'arcade_whenSourceStarts' || !this.validScalarPrelude ||
+                    declaration.parent !== parent || declaration.shadow !== false || declaration.topLevel !== false ||
+                    declaration.mutation != null || Object.keys(declaration.inputs || {}).join(',') !== 'VARIABLE' ||
+                    Object.keys(declaration.fields || {}).join(',') !== 'TYPE') return false;
+                const slot = declaration.inputs.VARIABLE;
+                if (!Array.isArray(slot) || ![1, 2, 3].includes(slot[0])) return false;
+                let variable;
+                if (Array.isArray(slot[1]) && slot[1][0] === 12) variable = slot[1];
+                else {
+                    const reporter = typeof slot[1] === 'string' && target.blocks[slot[1]];
+                    if (reporter?.opcode !== 'data_variable' || reporter.parent !== next || reporter.next != null ||
+                        reporter.shadow !== false || reporter.topLevel !== false ||
+                        reporter.mutation != null || Object.keys(reporter.inputs || {}).length ||
+                        Object.keys(reporter.fields || {}).join(',') !== 'VARIABLE') return false;
+                    variable = [12, ...reporter.fields.VARIABLE];
+                }
+                if (variable.length !== 3 || typeof variable[1] !== 'string' || typeof variable[2] !== 'string') return false;
+                const inventory = declaration.opcode === 'arcade_declareSourceScalar' ? this.sourceScalarCells : this.sourceReferenceCells;
+                const entry = inventory.get(variable[2]);
+                if (!entry || entry.name !== variable[1] || entry.type !== declaration.fields.TYPE[0]) return false;
+                seen.add(next); parent = next; next = declaration.next;
+            }
+            const hide = target.blocks[next];
+            return start.shadow === false && start.parent == null &&
+                !seen.has(next) && hide?.opcode === 'looks_hide' && hide.parent === parent && hide.shadow === false &&
+                hide.topLevel === false && Object.keys(hide.inputs || {}).length === 0 &&
+                Object.keys(hide.fields || {}).length === 0 && hide.mutation == null;
+        });
+    }
+
+    referencedSpriteIdentity (target) {
+        if (this.clonable.has(target.name) || this.sprites.filter(t => t.name === target.name).length !== 1) return true;
+        const selectors = {motion_goto: 'TO', motion_glideto: 'TO', motion_pointtowards: 'TOWARDS',
+            sensing_touchingobject: 'TOUCHINGOBJECTMENU', sensing_distanceto: 'DISTANCETOMENU',
+            sensing_of: 'OBJECT', control_create_clone_of: 'CLONE_OPTION'};
+        for (const owner of this.project.targets) for (const block of Object.values(owner.blocks || {})) {
+            const field = selectors[block?.opcode];
+            if (!field) continue;
+            const slot = block.inputs?.[field];
+            // Unknown and dynamic selectors can name this target. Read only the
+            // actual input in its own target; a fallback shadow proves nothing.
+            if (!Array.isArray(slot) || slot[0] !== 1) return true;
+            let name;
+            if (Array.isArray(slot[1]) && slot[1][0] === 10 && typeof slot[1][1] === 'string') name = slot[1][1];
+            else {
+                const menu = typeof slot[1] === 'string' && owner.blocks[slot[1]];
+                if (!menu?.shadow || Object.keys(menu.inputs || {}).length ||
+                    Object.keys(menu.fields || {}).length !== 1 || typeof menu.fields?.[field]?.[0] !== 'string') return true;
+                name = menu.fields[field][0];
+            }
+            if (name === target.name || (name === '_myself_' && owner === target)) return true;
+        }
+        return false;
     }
 
     self () {
@@ -619,6 +816,14 @@ class ArcadeEmitter {
         return Array.isArray(slot) && [10, 11].includes(slot[0]) ? String(slot[1]) : null;
     }
 
+    scrollerLayerSuffix(b) {
+        if(this.scrollerVersion===LEGACY_SCROLLER_REVISION) {
+            if(this.literalNumber(b,'LAYER')!==0)this.note('Legacy Arcade background scroll requires layer zero');
+            return '';
+        }
+        return `, ${this.value(b,'LAYER')}`;
+    }
+
     literalNumber (b, name) {
         const slot = b.inputs?.[name]?.[1];
         return Array.isArray(slot) && [4, 5, 6, 7, 8, 10].includes(slot[0]) &&
@@ -630,7 +835,7 @@ class ArcadeEmitter {
         if (name===null) {this.note('Named array export requires a fixed name');return 'null';}
         if(!this.namedArrays.has(name)) {
             let variable='__bwNamedArray_'+ident(name);
-            const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.namedArrays.values(),...this.spriteVar.values()]);
+            const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.namedArrays.values(),...this.spriteVar.values()]);
             while(occupied.has(variable))variable+='_';
             this.namedArrays.set(name,variable);
         }
@@ -640,7 +845,7 @@ class ArcadeEmitter {
         if(!this.legacyValueHelpers.has(kind)) {
             const base=kind==='parse'?'__bwNamedParseValue':'__bwNamedJsonValue';
             let name=base;
-            const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
+            const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
             while(occupied.has(name))name+='_';
             const source=(kind==='parse'?LEGACY_PARSE_SOURCE:LEGACY_JSON_SOURCE).replaceAll(base,name);
             this.legacyValueHelpers.set(kind,{name,source});
@@ -651,11 +856,15 @@ class ArcadeEmitter {
         const key='named:'+op;
         if(!this.legacyValueHelpers.has(key)) {
             let name='__bwNamedArray'+op[0].toUpperCase()+op.slice(1);
-            const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
+            const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
             while(occupied.has(name))name+='_';
             const parse=()=>this.legacyValueHelper('parse'),json=()=>this.legacyValueHelper('json');
             let params='array: any[]',body='';
-            if(op==='get'){params+=', index: any';body=`return array ? ${json()}(array[+index]) : ""`;}
+            if(op==='get') {
+                const source=NAMED_ARRAY_GET_SOURCE.replaceAll('__bwNamedArrayGet',name).replaceAll('__bwNamedJsonValue',json());
+                this.legacyValueHelpers.set(key,{name,source});
+                return name;
+            }
             if(op==='pop')body='if (array) {\n        if (array.length) return array.pop()\n    }\n    return ""';
             if(op==='indexOf'){params+=', value: any';body=`return array ? array.indexOf(${parse()}(value)) : -1`;}
             if(op==='contains') {
@@ -691,7 +900,7 @@ class ArcadeEmitter {
         const key='scratch:'+operation;
         if(!this.legacyValueHelpers.has(key)) {
             let name=operation==='min'?'__bwScratchMin':'__bwScratchMax';
-            const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
+            const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
             while(occupied.has(name))name+='_';
             this.legacyValueHelpers.set(key,{name,source:`function ${name}(left: any, right: any): number {
     let a = +left
@@ -705,17 +914,33 @@ class ArcadeEmitter {
     }
 
     referenceArrayValue (b, name='ARRAY') {
+        this.arrayReceiverAuthority ||= createArrayReferenceExportAuthority(this.project);
+        const authority=this.arrayReceiverAuthority.validateInput(this.target,b,name);
+        if(!authority.ok)this.note(`Array reference ${b.opcode} ${name}: ${authority.reason}`);
         const value=this.value(b,name);
-        const slot=b.inputs?.[name]?.[1];
-        let id=Array.isArray(slot) && [12,13].includes(slot[0]) ? slot[2] : null;
-        const reporter=typeof slot==='string' && this.block(slot);
-        if(reporter?.opcode==='data_variable')id=reporter.fields?.VARIABLE?.[1];
-        const dynamic=id && this.mixedValueVariableIds.has(id);
-        if(!dynamic)return value;
+        const needsArrayAccess = (block, input, seen = new Set()) => {
+            if (seen.has(block)) return false;
+            seen.add(block);
+            const slot=block.inputs?.[input]?.[1];
+            let id=Array.isArray(slot) && [12,13].includes(slot[0]) ? slot[2] : null;
+            const reporter=typeof slot==='string' && this.block(slot);
+            if(reporter?.opcode==='data_variable')id=reporter.fields?.VARIABLE?.[1];
+            if(id)return this.mixedValueVariableIds.has(id) || this.arrayVariableTypes.get(id)==='any';
+            if(reporter?.opcode==='arcade_getLocal')return this.mixedValueArrayLocalBlocks.has(reporter);
+            // A cast receiver is any[]. Its indexed/pop/random element is any,
+            // so an outer array operation needs its own explicit array access.
+            // Typed array receivers retain their element types (Sprite/Image/
+            // nested arrays); casting those indiscriminately changes PXT dispatch.
+            if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(reporter?.opcode) ||
+                reporter?.opcode==='arrays_mutateReference' && ['pop','shift','removeAt'].includes(this.literalInput(reporter,'OP')))
+                return needsArrayAccess(reporter,'ARRAY',seen);
+            return false;
+        };
+        if(!needsArrayAccess(b,name))return value;
         const key='arrayAccess';
         if(!this.legacyValueHelpers.has(key)) {
             let fn='__bwArrayAccess';
-            const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
+            const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
             while(occupied.has(fn))fn+='_';
             this.legacyValueHelpers.set(key,{name:fn,source:ARRAY_ACCESS_SOURCE.replaceAll('__bwArrayAccess',fn)});
         }
@@ -736,6 +961,10 @@ class ArcadeEmitter {
     /** An input as a JavaScript value (Arcade programs); a Scratch-only project reads it as `value` does. */
     arrayValue (b, name) {
         if (!this.arcadeValues) return this.value(b, name);
+        if(this.procedureConstraints?.obligations(b).some(obligation=>obligation.input===name)||b.opcode==='arcade_throwValue'&&name==='VALUE') {
+            const reporter=this.block(b.inputs?.[name]?.[1]);
+            if(reporter?.opcode==='text'&&reporter.shadow&&!Object.keys(reporter.inputs||{}).length&&typeof reporter.fields?.TEXT?.[0]==='string')return JSON.stringify(reporter.fields.TEXT[0]);
+        }
         const slot=b.inputs?.[name]?.[1];
         if(Array.isArray(slot) && slot[0]===10)return JSON.stringify(String(slot[1]));
         if(Array.isArray(slot) && [12,13].includes(slot[0]))return this.lookupVar(slot[1]);
@@ -743,16 +972,86 @@ class ArcadeEmitter {
         return reporter && (this.isBoolean(reporter) || reporter.opcode==='data_variable') ? this.expr(reporter) : this.value(b,name);
     }
 
+    mathValue(b,name) {
+        const slot=b.inputs?.[name]?.[1];
+        let text=null;
+        if(Array.isArray(slot) && slot[0]>=4 && slot[0]<=8)text=String(slot[1]);
+        const shadow=typeof slot==='string' && this.block(slot);
+        if(shadow?.shadow && ['math_number','math_integer','math_whole_number','math_positive_number','math_angle'].includes(shadow.opcode))text=String(Object.values(shadow.fields || {})[0]?.[0]);
+        if(text!==null && Object.is(Number(text),-0)){
+            const key='LiteralNegativeZero';
+            if(!this.valueOperationHelpers.has(key)){
+                const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.valueOperationHelpers.values()].map(x=>typeof x==='string'?x:x.name));
+                let helper='__bwLiteralNegativeZero';while(occupied.has(helper))helper+='_';
+                this.valueOperationHelpers.set(key,{name:helper,source:`function ${helper}(divisor: number): number { return -1 / divisor }`});
+            }
+            return `${this.valueOperationHelpers.get(key).name}(Infinity)`;
+        }
+        return this.arrayValue(b,name);
+    }
+
+    namedKind (name) {
+        if (['Player','Projectile','Food','Enemy'].includes(name)) return `SpriteKind.${name}`;
+        if (name==='Text' && this.hasTextKindLibrary) {this.requiresTextSpritePackage=true;return 'SpriteKind.Text';}
+        if (this.boundSpriteKinds.has(name)) return `SpriteKind.${name}`;
+        this.note(`Arcade sprite kind name ${JSON.stringify(name)} needs an explicit numeric binding`);
+        return this.na();
+    }
+
     kindExpr (b, name) {
         const kind = this.literalInput(b, name);
-        // Negative PXT kinds are uncollected numeric identities, not custom names.
-        if (kind !== null && Number.isFinite(Number(kind)) && Number(kind) < 0) return String(Number(kind));
-        if (!kind || !/^[A-Za-z_]\w*$/.test(kind)) {
-            this.note(`Arcade kind in ${name} must be a fixed name`);
-            return 'SpriteKind.Player';
+        if (kind!==null) {
+            const text=kind.trim();
+            if (/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) return String(Number(text));
+            return this.namedKind(kind);
         }
-        if (!['Player', 'Enemy', 'Food', 'Projectile'].includes(kind)) this.customSpriteKinds.add(kind);
-        return `SpriteKind.${kind}`;
+        // Connected numeric/nullable reporters are evaluated once by the SDK.
+        // They must never allocate a new kind or become a string label.
+        return this.arrayValue(b,name);
+    }
+
+    collectKindBindings () {
+        const previous=this.blocks;
+        this.hasTextKindLibrary=this.project.targets.some(target=>Object.values(target.blocks || {}).some(block=>/^arcade_textSprite/.test(block.opcode) || block.opcode==='arcade_initializeSpriteKindLibrary' && Array.isArray(block.inputs?.LIBRARY?.[1]) && block.inputs.LIBRARY[1][1]==='textsprite'));
+        for(const target of this.project.targets) {
+            this.blocks=target.blocks || {};
+            for(const block of Object.values(this.blocks)) {
+                if(/^arcade_textSprite/.test(block.opcode))this.hasTextKindLibrary=true;
+                if(block.opcode==='arcade_initializeSpriteKindLibrary') {
+                    const library=this.literalInput(block,'LIBRARY'),version=this.literalInput(block,'VERSION');
+                    if(library==='textsprite' && version==='v1.3.0')this.hasTextKindLibrary=true;
+                    else this.note('Arcade kind library export requires exact Text Sprite v1.3.0');
+                }
+                if(block.opcode==='arcade_bindSpriteKind') {
+                    const name=this.literalInput(block,'NAME');
+                    if(name===null || !/^[A-Za-z_]\w*$/.test(name))this.note('Arcade kind binding export requires a fixed MakeCode identifier');
+                    else if(['Player','Projectile','Food','Enemy'].includes(name) || name==='Text' && this.hasTextKindLibrary)this.note('Arcade builtin/library kind bindings are readonly on MakeCode export');
+                    else this.boundSpriteKinds.add(name);
+                }
+            }
+        }
+        this.validateKindLibraryPlacement();
+        this.blocks=previous;
+    }
+
+    validateKindLibraryPlacement () {
+        for(const target of this.project.targets) {
+            const blocks=target.blocks || {};
+            for(const [id,initializer] of Object.entries(blocks)) {
+                if(initializer.opcode!=='arcade_initializeSpriteKindLibrary')continue;
+                let ancestor=initializer,seen=new Set([id]);
+                while(ancestor.parent && blocks[ancestor.parent] && !seen.has(ancestor.parent)){seen.add(ancestor.parent);ancestor=blocks[ancestor.parent];}
+                if(!['event_whenflagclicked', 'arcade_whenSourceStarts'].includes(ancestor.opcode)){this.note('Arcade sprite kind library initialization must be on startup before kind allocation');continue;}
+                const hasAllocation=(block,visited=new Set())=>{
+                    if(!block || visited.has(block))return false;visited.add(block);
+                    if(block.opcode==='arcade_createSpriteKind' || /^arcade_textSprite/.test(block.opcode) || ['procedures_call','arcade_callFunction','arcade_sourceWhile','control_if','control_if_else','control_repeat','control_repeat_until','control_forever'].includes(block.opcode))return true;
+                    return Object.values(block.inputs || {}).some(input=>typeof input?.[1]==='string' && hasAllocation(blocks[input[1]],visited));
+                };
+                let current=ancestor.next,walk=new Set();
+                while(current && current!==id && !walk.has(current)){walk.add(current);const block=blocks[current];if(hasAllocation(block)){this.note('Arcade sprite kind library export cannot move initialization across kind allocation or conditional/procedure execution');break;}current=block?.next;}
+                if(current!==id && !walk.has(current))this.note('Arcade sprite kind library initializer is not a direct startup command');
+            }
+        }
     }
 
     // ── inputs ───────────────────────────────────────────────────────────
@@ -764,7 +1063,7 @@ class ArcadeEmitter {
         const input = b.inputs && b.inputs[name];
         if (!input) return fallback;
         const slot = input[1];
-        const numeric = ['operator_equals','operator_gt','operator_lt','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','arcade_truncateNumber','arcade_signNumber','operator_mathop','operator_random','planetemaths_min','planetemaths_max'].includes(b.opcode);
+        const numeric = ['operator_equals','operator_gt','operator_lt','operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','arcade_truncateNumber','arcade_signNumber','arcade_randomNumber','arcade_mathBinary','operator_mathop','operator_random','planetemaths_min','planetemaths_max'].includes(b.opcode);
         if (Array.isArray(slot)) {
             const [type, text] = slot;
             if (type === 12 || type === 13) {
@@ -861,10 +1160,23 @@ class ArcadeEmitter {
         return this.condition(b, name);
     }
 
+    objectArgumentValues(b) {
+        const args=[];let current=this.block(b.inputs?.ARGS?.[1]),tail=b.inputs?.ARGS;
+        const seen=new Set();
+        while(current?.opcode==='arcade_functionArgument' && !seen.has(current)){seen.add(current);args.push(this.arrayValue(current,'VALUE'));tail=current.inputs?.REST;current=this.block(tail?.[1]);}
+        const shadow=tail?.[1],empty=Array.isArray(shadow)?String(shadow[1])==='[]':current?.shadow && current?.fields?.TEXT?.[0]==='[]';
+        if(!empty)this.note('Class arguments require a fixed ordered argument chain');
+        return args;
+    }
+    objectFieldName(b,slot='FIELD') {
+        const name=this.literalInput(b,slot);
+        if(!name || !/^[A-Za-z_]\w*$/.test(name)){this.note('Class export requires a fixed declared field or method name');return '_unsupportedField';}
+        return name;
+    }
     isBoolean (b) {
         return !!b && ['arrays_valueTruthy','arrays_valueCompare','arrays_referenceRemove','arrays_referenceTruthy', 'arrays_contains', 'operator_and', 'operator_or', 'operator_not', 'operator_gt', 'operator_lt', 'operator_equals',
             'sensing_touchingobject', 'sensing_keypressed', 'sensing_mousedown', 'data_listcontainsitem',
-            'arcade_bufferIsReadOnly', 'arcade_bufferEquals', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
+            'arcade_percentChance','arcade_settingsExists', 'arcade_spriteDataReadBoolean', 'arcade_bufferIsReadOnly', 'arcade_bufferEquals', 'arcade_spriteOverlaps', 'arcade_imagesOverlap', 'arcade_tileIs', 'arcade_spriteTileKindAt', 'arcade_imageEquals', 'arcade_tileIsWall', 'arcade_isHittingTile', 'arcade_hasLife', 'arcade_hasPlayerScore', 'arcade_characterMatchesRule'].includes(b.opcode);
     }
 
     menuField (b, input, field) {
@@ -887,7 +1199,9 @@ class ArcadeEmitter {
                 this.lookupVar(name);
         }
         case 'argument_reporter_string_number':
-        case 'argument_reporter_boolean': return ident(this.field(b, 'VALUE'));
+        case 'argument_reporter_boolean':
+            if(this.currentCallableContext){try{return this.currentCallableContext.local(this.field(b,'VALUE'));}catch(error){this.note(error.message);return this.na();}}
+            return ident(this.field(b, 'VALUE'));
         case 'operator_add': return `(${v('NUM1')} + ${v('NUM2')})`;
         case 'operator_subtract': return `(${v('NUM1')} - ${v('NUM2')})`;
         case 'operator_multiply': return `(${v('NUM1')} * ${v('NUM2')})`;
@@ -895,6 +1209,10 @@ class ArcadeEmitter {
         case 'operator_mod': return `(${v('NUM1')} % ${v('NUM2')})`;
         case 'operator_round': return `Math.round(${v('NUM')})`;
         case 'operator_random': return `randint(${v('FROM')}, ${v('TO')})`;
+        case 'arcade_randomNumber': return 'Math.random()';
+        case 'arcade_mathBinary': {const operation=String(directMenuValue(b,'OP',this.blocks));if(!['min','max','randomRange'].includes(operation)){this.note('Arcade math requires a fixed supported operation');return 'undefined';}return `Math.${operation}(<any>${this.mathValue(b,'A')}, <any>${this.mathValue(b,'B')})`;}
+        case 'arcade_percentChance': return `Math.percentChance(<any>${this.mathValue(b,'PERCENTAGE')})`;
+        case 'arcade_clampNumber': return `Math.clamp(<any>${this.mathValue(b,'MIN')}, <any>${this.mathValue(b,'MAX')}, <any>${this.mathValue(b,'VALUE')})`;
         // Planète Maths: the importer's spelling of Math.min/max/pow (they
         // kept only their first argument before, on the way in).
         // In an Arcade program the blocks run with Scratch's casts (text -> 0),
@@ -951,12 +1269,40 @@ class ArcadeEmitter {
             return `sprites.createProjectile(${image}, ${vx}, ${vy}, ${this.kindExpr(b, 'KIND')})`;
         }
         case 'arcade_imagesOverlap': return `${v('IMAGE')}.overlapsWith(${v('SOURCE')}, ${v('X')}, ${v('Y')})`;
+        case 'arcade_createObject': {
+            const name=this.literalInput(b,'CLASS');
+            if(name==='__bwSDK_Font'){this.note('SDK Font is an interface record without constructor or inheritance');return 'undefined';}
+            if(!this.objectClassExport?.classes.has(name)){this.note('Object export requires a fixed declared class');return this.na();}
+            return `new ${this.objectClassExport.publicName(name)}(${this.objectArgumentValues(b).join(', ')})`;
+        }
+        case 'arcade_objectField':return `${this.objectClassExport.receiver(b)}.${this.objectFieldName(b)}`;
+        case 'arcade_callObjectMethod': {
+            const entry=this.callableExports?.get(this.target);
+            if(entry?.graph.plan.version===2)try {
+                if(!this.objectClassExport.classCallableProvider(this.target).expressionType(b))throw Error('Class callback method call lacks actual current typed arguments');
+            }catch(error){this.note(error.message);return this.na();}
+            return `${this.objectClassExport.receiver(b,false,true)}.${this.objectFieldName(b,'METHOD')}(${this.objectArgumentValues(b).join(', ')})`;
+        }
+        case 'arcade_createCallable': {
+            const entry=this.callableExports?.get(this.target);
+            if(!entry){this.note('Callable creation needs qualified lexical declaration/current body export');return this.na();}
+            const id=Object.entries(this.blocks).find(([,block])=>block===b)?.[0];
+            try{return this.currentCallableContext?this.currentCallableContext.create(id):entry.emitter.moduleCreate(id);}catch(error){this.note(error.message);return this.na();}
+        }
+        case 'arcade_callCallable': {
+            if(!this.callableExports?.has(this.target)){this.note('Callable invocation needs qualified lexical current-body export');return this.na();}
+            try{
+                if(this.callableExports.get(this.target).graph.plan.version===2&&!this.objectClassExport.classCallableProvider(this.target).expressionType(b))throw Error('Class callback invocation lacks actual current typed receiver and arguments');
+                return `(${this.arrayValue(b,'CALLABLE')})(${this.callableArgumentValues(b).join(', ')})`;
+            }catch(error){this.note(error.message);return this.na();}
+        }
         case 'arcade_callFunction': {
             const code = this.literalInput(b, 'NAME');
-            const fn = code && (this.fnNames.get(`${this.target.isStage ? '' : this.target.name}:${code}`) || this.fnNames.get(`:${code}`));
-            if (!fn) {this.note('Arcade function reporter needs a known procedure name');return this.na();}
-            const args=[];let block=this.block(b.inputs?.ARGS?.[1]);
+            const fn = code && this.functionSymbols.call(this.target,b);
+
+            const args=[],seenArguments=new Set();let block=this.block(b.inputs?.ARGS?.[1]);
             while (block?.opcode==='arcade_functionArgument') {
+                if(seenArguments.has(block)){this.note('Arcade function argument chain is cyclic');return this.na();}seenArguments.add(block);
                 args.push(this.arrayValue(block,'VALUE'));block=this.block(block.inputs?.REST?.[1]);
             }
             // Arguments are authored as a linked chain, ending in the literal [].
@@ -966,15 +1312,33 @@ class ArcadeEmitter {
             const empty=Array.isArray(shadow)?String(shadow[1])==='[]':current?.fields?.TEXT?.[0]==='[]';
             if(!empty)this.note('Arcade function arguments need a fixed argument chain');
             // A value-returning procedure runs in its caller's thread too (see procedures_call).
+            const superCall=this.objectClassExport?.superCall?.(code,args);if(superCall!==null&&superCall!==undefined)return superCall;
+            if (!fn) {this.note('Arcade function reporter needs a known procedure name');return this.na();}
             if (this.tokened()) args.unshift('_t');
             if (this.isClonable()) args.unshift('self');
             return `${fn}(${args.join(', ')})`;
         }
+        case 'arcade_createSpriteKind':return 'SpriteKind.create()';
+        case 'arcade_spriteKindValue': {
+            const name=this.literalInput(b,'NAME');
+            if(name===null){this.note('Arcade kind lookup export requires a fixed registered name');return this.na();}
+            return this.namedKind(name);
+        }
+        case 'arrays_stringFromCharCode':return `${this.use('sdkStrings','__bwSdkCharCode')}(${this.arrayValue(b,'CODE')})`;
+        case 'arrays_stringConcat':return `${this.use('sdkStrings','__bwSdkConcat')}(<any>${this.arrayValue(b,'TEXT')}, ${this.arrayValue(b,'OTHER')})`;
+        case 'arrays_stringCharCodeAt':return `(<string>${this.arrayValue(b,'TEXT')}).charCodeAt(<any>${this.arrayValue(b,'INDEX')})`;
         case 'arrays_namedReference': return this.namedArray(b);
         case 'arrays_parseLegacyValue': return this.legacyArrayInput(b);
         case 'arrays_jsonValue': return `${this.legacyValueHelper('json')}(${this.arrayValue(b,'VALUE')})`;
         case 'arrays_length': {const array=this.namedArray(b);return `(${array} ? ${array}.length : 0)`;}
-        case 'arrays_get': return `${this.namedOperationHelper('get')}(${this.namedArray(b)}, ${this.arrayValue(b,'INDEX')})`;
+        case 'arrays_get': {
+            const name=this.literalInput(b,'NAME');
+            if(name!==null){
+                const authority=namedArrayItemExportAuthority(this.project,name,block=>this.isBoolean(block),this.sourceReferenceCells);
+                if(!authority.ok){this.note(authority.reason);return this.na();}
+            }
+            return `${this.namedOperationHelper('get')}(${this.namedArray(b)}, ${this.arrayValue(b,'INDEX')})`;
+        }
         case 'arrays_pop': return `${this.namedOperationHelper('pop')}(${this.namedArray(b)})`;
         case 'arrays_indexOf': return `${this.namedOperationHelper('indexOf')}(${this.namedArray(b)}, ${this.arrayValue(b,'VALUE')})`;
         case 'arrays_contains': return `${this.namedOperationHelper('contains')}(${this.namedArray(b)}, ${this.arrayValue(b,'VALUE')})`;
@@ -1000,14 +1364,14 @@ class ArcadeEmitter {
         case 'arrays_valueBinary':
         case 'arrays_valueUnary': {
             const op=this.field(b,'OP') || this.literalInput(b,'OP'),unary=b.opcode==='arrays_valueUnary',compare=b.opcode==='arrays_valueCompare';
-            const names={'+':'Add','-':'Subtract','*':'Multiply','/':'Divide','%':'Remainder','==':'Equal','!=':'NotEqual','===':'StrictEqual','!==':'StrictNotEqual','<':'Less','>':'Greater','<=':'LessEqual','>=':'GreaterEqual'};
-            if(!names[op] || unary && !['+','-'].includes(op)){this.note(`unsupported value operation ${op}`);return this.na();}
+            const names={'+':'Add','-':'Subtract','*':'Multiply','/':'Divide','%':'Remainder','**':'Power','&':'BitAnd','|':'BitOr','^':'BitXor','<<':'ShiftLeft','>>':'ShiftRight','>>>':'UnsignedShiftRight','~':'BitNot','==':'Equal','!=':'NotEqual','===':'StrictEqual','!==':'StrictNotEqual','<':'Less','>':'Greater','<=':'LessEqual','>=':'GreaterEqual'};
+            if(!names[op] || unary && !['+','-','~'].includes(op)){this.note(`unsupported value operation ${op}`);return this.na();}
             const key=(unary?'Unary':compare?'Compare':'Binary')+names[op];
             if(!this.valueOperationHelpers.has(key)){
                 let name='__bw'+key;
-                const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.spriteVar.values(),...this.artVar.values(),...this.valueOperationHelpers.values()].map(x=>typeof x==='string'?x:x.name));
+                const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.spriteVar.values(),...this.artVar.values(),...this.valueOperationHelpers.values()].map(x=>typeof x==='string'?x:x.name));
                 while(occupied.has(name))name+='_';
-                this.valueOperationHelpers.set(key,{name,source:unary?`function ${name}(value: any): number { return ${op}value }`:`function ${name}(left: any, right: any): ${compare?'boolean':op==='+'?'any':'number'} { return left ${op} right }`});
+                this.valueOperationHelpers.set(key,{name,source:unary?`function ${name}(value: any): number { return ${op==='-'?'-1 * value':op==='~'?'~value':'+value'} }`:`function ${name}(left: any, right: any): ${compare?'boolean':op==='+'?'any':'number'} { return left ${op} right }`});
             }
             const helper=this.valueOperationHelpers.get(key).name;
             return unary?`${helper}(${this.arrayValue(b,'VALUE')})`:`${helper}(${this.arrayValue(b,'LEFT')}, ${this.arrayValue(b,'RIGHT')})`;
@@ -1016,10 +1380,15 @@ class ArcadeEmitter {
 
         case 'arrays_referenceTruthy':return `!!${this.referenceArrayValue(b)}[${v('INDEX')}]`;
         case 'arrays_referenceItem':return `${this.referenceArrayValue(b)}[${v('INDEX')}]`;
-        case 'arrays_referenceRemove':return `${this.referenceArrayValue(b)}.removeElement(${this.arrayValue(b,'VALUE')})`;
+        // A BW query can search for a value outside the array's element type.
+        // Erase only the needle's static view; keep the array, its aliases and
+        // the SDK's strict lookup/removal semantics unchanged.
+        case 'arrays_referenceRemove':return `${this.referenceArrayValue(b)}.removeElement(<any>(${this.arrayValue(b,'VALUE')}))`;
         case 'arrays_referenceRandom':return `Math.pickRandom(${this.referenceArrayValue(b)})`;
         case 'arrays_referenceLength':return `${this.referenceArrayValue(b)}.length`;
-        case 'arrays_referenceIndexOf':return `${this.referenceArrayValue(b)}.indexOf(${this.arrayValue(b,'VALUE')}, ${v('INDEX')})`;
+        case 'arrays_referenceSlice':return `${this.referenceArrayValue(b)}.slice(<any>${this.arrayValue(b,'START')}, <any>${this.arrayValue(b,'END')})`;
+        case 'arrays_referenceConcat':return `${this.referenceArrayValue(b)}.concat(${this.referenceArrayValue(b,'OTHER')})`;
+        case 'arrays_referenceIndexOf':return `${this.referenceArrayValue(b)}.indexOf(<any>(${this.arrayValue(b,'VALUE')}), ${v('INDEX')})`;
         case 'arrays_referenceTake': {
             const op=this.literalInput(b,'OP');
             if(op==='pop'||op==='shift')return `${this.referenceArrayValue(b)}.${op}()`;
@@ -1092,8 +1461,53 @@ class ArcadeEmitter {
         case 'arcade_bufferToHex': return `${v('BUFFER')}.toHex()`;
         case 'arcade_bufferToText': return `${v('BUFFER')}.toString()`;
         case 'arcade_songFromBuffer': return `music.createSong(${v('BUFFER')})`;
-        case 'arcade_cloneImage': return `${v('IMAGE')}.clone()`;
+        case 'arcade_cloneImage': {
+            if(this.callableExports?.get(this.target)?.sdkImageEnabled){const image=this.sdkImageLiteralResources?.allocation(this.target,b);if(image)return toImgLiteral(image);}
+            return `${v('IMAGE')}.clone()`;
+        }
+        case 'arcade_settingsRead': {
+            const type=settingType(b, this.blocks);
+            if(type==='List')return `settings.list(${v('KEY')})`;
+            if(!['Number','String','NumberArray','StringArray','Buffer'].includes(type)){this.note('Settings requires a fixed supported read type');return 'undefined';}
+            if(type==='StringArray'){this.requiresStringArraySettings=true;return `bwStringArraySettings.read(${v('KEY')})`;}
+            return `settings.read${type}(${v('KEY')})`;
+        }
+        case 'arcade_settingsExists': return `settings.exists(${v('KEY')})`;
+        case 'arcade_spriteDataRead': {
+            this.requiresSpriteDataPackage=true;
+            const type=directMenuValue(b,'TYPE',this.blocks);
+            if(!['Number','String','Sprite'].includes(type)){this.note('Sprite Data requires a fixed supported read type');return 'undefined';}
+            return `sprites.readData${type}(${v('ID')}, ${v('KEY')})`;
+        }
+        case 'arcade_spriteDataReadBoolean': this.requiresSpriteDataPackage=true;return `sprites.readDataBoolean(${v('ID')}, ${v('KEY')})`;
+        case 'arcade_imageEquals': return `${v('IMAGE')}.equals(${v('OTHER')})`;
         case 'arcade_screenImage': return 'screen';
+        case 'arcade_inspectValue': {
+            if(!this.inspectionExportOperands?.has(b)){this.note('Arcade inspection export requires actual primitive VALUE and Number or Undefined LIMIT producers');return 'undefined';}
+            return `console.inspect(${this.arrayValue(b,'VALUE')}, ${this.arrayValue(b,'LIMIT')})`;
+        }
+        case 'arcade_sourceTypeOf': {
+            const graph=this.callableExports?.get(this.target)?.graph,callable=callableReflectionOperand(graph,b,this.project);
+            if(callableReflectionVariable(graph,b)?!callable:!this.sourceTypeOfExportOperands?.has(b)&&!callable)this.note('Arcade source typeof export requires a proven primitive or current owned resource; Sprite and opaque ownership is not qualified');
+            return `(typeof (${this.arrayValue(b,'VALUE')}))`;
+        }
+        case 'arcade_fontValue': {
+            const font=this.field(b,'FONT');if(!['font5','font8','font12'].includes(font)||b.inputs?.FONT){this.note('SDK Font value requires a fixed builtin selection');return 'undefined';}
+            return `image.${font}`;
+        }
+        case 'arcade_fontForText':
+            this.sdkFontPrimitiveOperand(b,'TEXT','string');return `image.getFontForText(${this.arrayValue(b,'TEXT')})`;
+        case 'arcade_scaleFont':
+            this.sdkFontOperand(b);this.sdkFontPrimitiveOperand(b,'SIZE','number');return `image.scaledFont(${this.arrayValue(b,'FONT')}, ${this.arrayValue(b,'SIZE')})`;
+        case 'arcade_fontMetric': {
+            const font=this.field(b,'FONT'),property=this.field(b,'PROPERTY');
+            if (!['font5','font8','font12'].includes(font) || !['charWidth','charHeight'].includes(property) ||
+                b.inputs?.FONT || b.inputs?.PROPERTY) {
+                this.note('Arcade font metric requires fixed builtin FONT and PROPERTY fields');
+                return 'undefined';
+            }
+            return `image.${font}.${property}`;
+        }
         case 'arcade_melodyPlayable': return `music.melodyPlayable(${v('MELODY')})`;
         case 'arcade_stringPlayable': return `music.stringPlayable(${v('MELODY')}, ${v('TEMPO')})`;
         case 'arcade_tonePlayable': return `music.tonePlayable(${v('FREQUENCY')}, ${v('DURATION')})`;
@@ -1163,10 +1577,21 @@ class ArcadeEmitter {
             this.requiresCharacterAnimationsPackage = true;
             return `characterAnimations.rule(${names.map(name => `Predicate.${name}`).join(', ')})`;
         }
+        case 'arcade_characterRuleToString': this.requiresCharacterAnimationsPackage = true; return `characterAnimations.ruleToString(${v('RULE')})`;
         case 'arcade_characterMatchesRule': this.requiresCharacterAnimationsPackage = true; return `characterAnimations.matchesRule(${v('SPRITE')}, ${v('RULE')})`;
         case 'arcade_backgroundScrollOffset':
             this.requiresScrollerPackage = true;
-            return `scroller.getBackground${this.field(b, 'AXIS') === 'y' ? 'Y' : 'X'}Offset(${v('LAYER')})`;
+            const suffix=this.scrollerLayerSuffix(b);
+            return `scroller.getBackground${this.field(b, 'AXIS') === 'y' ? 'Y' : 'X'}Offset(${suffix ? suffix.slice(2) : ''})`;
+        case 'arcade_textSpriteCreate':
+            this.requiresTextSpritePackage=true;
+            return `textsprite.create(${v('TEXT')}, ${v('BACKGROUND')}, ${v('FOREGROUND')})`;
+        case 'arcade_textSpriteProperty': {
+            this.requiresTextSpritePackage=true;
+            const property=directMenuValue(b,'PROPERTY',this.blocks);
+            if(!['text','bg','fg','maxFontHeight','borderWidth','borderColor','padding','outlineWidth','outlineColor','icon'].includes(property)){this.note(`Unsupported TextSprite property ${property}`);return this.na();}
+            return `${v('ID')}.${property}`;
+        }
         case 'arcade_createDart':
             this.requiresDartsPackage = true;
             return `darts.create(${v('IMAGE')}, ${this.kindExpr(b, 'KIND')}, ${v('X')}, ${v('Y')})`;
@@ -1227,7 +1652,8 @@ class ArcadeEmitter {
         case 'arcade_spriteToString': return `${v('ID')}.toString()`;
         case 'arcade_spriteProperty': {
             const property = this.field(b, 'PROPERTY');
-            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data'].includes(property)){this.note(`Arcade sprite property ${property} is unsupported`);return this.na();}
+            if(property==='kind')return `${v('ID')}.kind()`;
+            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data','flags'].includes(property)){this.note(`Arcade sprite property ${property} is unsupported`);return this.na();}
             return `${v('ID')}.${property}`;
         }
         case 'arcade_menu_bufferFormats': {
@@ -1253,17 +1679,23 @@ class ArcadeEmitter {
         case 'arcade_playerBySprite': this.requiresMultiplayerPackage=true;return `mp.getPlayerBySprite(${v('ID')})`;
         case 'arcade_playerProperty': {
             this.requiresMultiplayerPackage=true;const read=this.field(b,'READ'),property=this.literalNumber(b,'PROPERTY');
-            if(read==='safe')return `mp.getPlayerProperty(${v('PLAYER')}, ${v('PROPERTY')})`;
+            if(read==='safe')return `mp.getPlayerProperty(${v('PLAYER')}, ${property===2?'mp.PlayerProperty.Number':v('PROPERTY')})`;
             if(read==='member' && [1,2].includes(property))return `(${v('PLAYER')}).${property===1?'index':'number'}`;
             this.note('Arcade player member reads require fixed index/number properties; safe reads permit dynamic selectors');return this.na();
         }
         case 'arcade_currentScene': return 'game.currentScene()';
+        case 'arcade_sceneFlags': return `${v('SCENE')}.flags`;
         case 'arcade_scenePhysicsEngine': return `(${v('SCENE')}.physicsEngine as ArcadePhysicsEngine)`;
         case 'arcade_createPhysicsEngine': return `new ArcadePhysicsEngine(${this.arrayValue(b,'MAX_SPEED')}, ${this.arrayValue(b,'MIN_STEP')}, ${this.arrayValue(b,'MAX_STEP')})`;
         case 'arcade_physicsEngineProperty': {
             const property=b.fields?.PROPERTY?.[0];
             if(!['maxSpeed','minStep','maxStep'].includes(property)){this.note(`Arcade PhysicsEngine property ${property} is unsupported`);return 'undefined';}
             return `(${v('ENGINE')}).${property}`;
+        }
+        case 'arcade_cameraDrawOffset': {
+            const axis=this.field(b,'AXIS');
+            if(!['x','y'].includes(axis)){this.note('Arcade camera draw offset requires x or y');return this.na();}
+            return axis==='x'?'scene.cameraLeft()':'scene.cameraTop()';
         }
         case 'arcade_cameraProperty': return `scene.cameraProperty(${this.arrayValue(b,'PROPERTY')})`;
         case 'arcade_backgroundImage': return 'scene.backgroundImage()';
@@ -1288,6 +1720,7 @@ class ArcadeEmitter {
         case 'arcade_tilesOfType': return `tiles.getTilesByType(${v('IMAGE')})`;
         case 'arcade_tileLocationProperty': return `${v('LOCATION')}.${this.field(b,'PROPERTY')}`;
         case 'arcade_tileIs': return `tiles.tileAtLocationEquals(${v('LOCATION')}, ${v('IMAGE')})`;
+        case 'arcade_spriteTileKindAt': return `${v('ID')}.tileKindAt(${this.arrayValue(b,'DIRECTION')}, ${v('IMAGE')})`;
         case 'arcade_isHittingTile': return `${v('ID')}.isHittingTile(${this.arrayValue(b,'DIRECTION')})`;
         case 'arcade_tileIsWall': return `tiles.tileAtLocationIsWall(${v('LOCATION')})`;
         case 'arcade_spritesOfKind': return `sprites.allOfKind(${this.kindExpr(b, 'KIND')})`;
@@ -1300,7 +1733,7 @@ class ArcadeEmitter {
             const key='controllerAxisStep';
             if(!this.legacyValueHelpers.has(key)) {
                 let name='__bwControllerAxisStep';
-                const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.legacyValueHelpers.values()].map(value=>typeof value==='string'?value:value.name));
+                const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.legacyValueHelpers.values()].map(value=>typeof value==='string'?value:value.name));
                 while(occupied.has(name))name+='_';
                 this.legacyValueHelpers.set(key,{name,source:`function ${name}(axis: any, step: number): number {
     const direction = "" + axis
@@ -1311,11 +1744,13 @@ class ArcadeEmitter {
         }
         case 'arcade_getCaptured': {
             const name = this.literalInput(b,'NAME');
+            if(this.currentCallableContext){try{return this.currentCallableContext.capture(name);}catch(error){this.note(error.message);return this.na();}}
             if (!name || !this.compilingRegisteredCallbacks.size) { this.note('Arcade captured value needs a registered callback and fixed name');return this.na(); }
             return ident(name);
         }
         case 'arcade_getLocal': {
             const name = this.literalInput(b, 'NAME');
+            if(this.currentCallableContext){try{return this.currentCallableContext.local(name);}catch(error){this.note(error.message);return this.na();}}
             if (!name || !/^[A-Za-z_]\w*$/.test(name) || !this.currentLocalNames) {
                 this.note('Arcade local reporter needs a fixed name inside a procedure');
                 return this.na();
@@ -1324,9 +1759,15 @@ class ArcadeEmitter {
             return name;
         }
         case 'arcade_askForString': return `game.askForString(${v('QUESTION')})`;
+        case 'arcade_allocateControlEventSource': return 'control.allocateNotifyEvent()';
+        case 'arcade_buttonRepeatProperty': {
+            const receiver=this.controllerRepeatReceiver(b);return receiver?receiver+'.'+b.fields.PROPERTY[0]:'undefined';
+        }
+        case 'arcade_controllerEventSource': {const player=b.fields.PLAYER?.[0];if(!['1','2','3','4'].includes(String(player))){this.note('Controller event source requires a fixed player 1 through 4');return 'undefined';}return `controller.player${player}.id`;}
         case 'arcade_eventPlayer':
             if(this.eventPlayerName)return this.eventPlayerName;
             this.note('Arcade event player outside a multiplayer callback');return this.na();
+        case 'arcade_playerConnected':this.requiresMultiplayerPackage=true;return `mp.isConnected(${v('PLAYER')})`;
         case 'arcade_playerButtonPressed':this.requiresMultiplayerPackage=true;return `mp.isButtonPressed(${v('PLAYER')}, ${v('BUTTON')})`;
         case 'arcade_eventSprite': {
             const which = this.field(b, 'WHICH') === 'second' ? 1 : 0;
@@ -1454,7 +1895,14 @@ class ArcadeEmitter {
             this.note(`key "${key}" pressed (Arcade has arrows, A and B)`);
             return 'false';
         }
-        case 'sensing_timer': return '(game.runtime() / 1000)';
+        case 'arcade_sceneMillis': {
+            if(!currentSceneClockNumber(this.blocks,b)) {
+                this.note('Scene clock Number: current zero-input reporter or unique parent differs');return 'undefined';
+            }
+            return 'game.runtime()';
+        }
+        case 'arcade_programMillis': return 'control.millis()';
+        case 'sensing_timer': return `${this.use('scratchTimer','__bwScratchTimer')}()`;
         default:
             this.note(`${b.opcode} as a value`);
             return this.na();
@@ -1464,7 +1912,10 @@ class ArcadeEmitter {
     // ── statements ───────────────────────────────────────────────────────
     stmts (id, depth, out) {
         let b = this.block(id);
+        const seen = new Set();
         while (b) {
+            if (seen.has(b)) { this.note('Cyclic statement chain cannot be exported'); return; }
+            seen.add(b);
             this.stmt(b, depth, out);
             // `stop all` and `stop this script` are caps: nothing after them runs.
             if (b.opcode === 'control_stop' && /^(all|this script)$/.test(this.field(b, 'STOP_OPTION'))) return;
@@ -1480,12 +1931,30 @@ class ArcadeEmitter {
     stmt (b, depth, out) {
         const pad = '    '.repeat(depth);
         const push = line => out.push(pad + line);
+        if(['arcade_bufferSetByte','arcade_bufferSetNumber','arcade_bufferWrite','arcade_bufferFill','arcade_bufferShift','arcade_bufferRotate','arcade_bufferPackAt'].includes(b.opcode) && this.sdkFontInputs.glyphInput(this.target,b,'BUFFER'))
+            this.note('SDK Font glyph Buffer mutation is not qualified by the read slice');
         const v = n => this.value(b, n);
         const me = this.self();
         const pen = !!me && this.penUsers.has(this.target.name);
         if (/^data_(addtolist|deletealloflist|deleteoflist|insertatlist|replaceitemoflist)$/.test(b.opcode) && this.listStmt(b, push)) return;
         if (this.newStmt(b, push, me, depth, out)) return;
         switch (b.opcode) {
+        case 'arcade_throwValue': {
+            if(!this.throwExportOperands?.has(b)){this.note('Arcade Throw export requires a proved primitive operand and qualified main/button/ordinary procedure owner');return;}
+            push(`throw ${this.arrayValue(b,'VALUE')}`);return;
+        }
+        case 'arcade_bindSpriteKind': {
+            const name=this.literalInput(b,'NAME');
+            if(!this.boundSpriteKinds.has(name)){push(`// ${this.note('Arcade kind binding needs an exported mutable named kind')}`);return;}
+            push(`SpriteKind.${name} = ${this.arrayValue(b,'KIND')}`);return;
+        }
+        case 'arcade_initializeSpriteKindLibrary': {
+            if(this.literalInput(b,'LIBRARY')!=='textsprite' || this.literalInput(b,'VERSION')!=='v1.3.0') {push(`// ${this.note('Unsupported Arcade sprite kind library version')}`);return;}
+            this.requiresTextSpritePackage=true;
+            // The dependency initializer executes before main. Its placement is
+            // checked separately; emitting another create() would double-allocate.
+            return;
+        }
         case 'arcade_addAnimationFrame':this.requiresAnimationPackage=true;push(`${v('ANIMATION')}.addAnimationFrame(${v('IMAGE')})`);return;
         case 'arcade_attachAnimation':this.requiresAnimationPackage=true;push(`animation.attachAnimation(${v('ID')}, ${v('ANIMATION')})`);return;
         case 'arcade_setAnimationAction':this.requiresAnimationPackage=true;push(`animation.setAction(${v('ID')}, ${this.arrayValue(b,'ACTION')})`);return;
@@ -1494,6 +1963,8 @@ class ArcadeEmitter {
         case 'arcade_movePlayerWithButtons': this.requiresMultiplayerPackage=true;push(`mp.moveWithButtons(${v('PLAYER')}, ${v('VX')}, ${v('VY')})`);return;
         case 'arcade_setPlayerSprite': this.requiresMultiplayerPackage=true;push(`mp.setPlayerSprite(${v('PLAYER')}, ${v('ID')})`);return;
         case 'arcade_setScenePhysicsEngine': push(`${v('SCENE')}.physicsEngine = ${v('ENGINE')}`);return;
+        case 'arcade_setSceneFlags': push(`${v('SCENE')}.flags = ${v('VALUE')}`);return;
+        case 'arcade_setUserEventsEnabled': push(`controller._setUserEventsEnabled(${this.boolValue(b,'ENABLED')})`);return;
         case 'arcade_setPhysicsEngineProperty': {
             const property=b.fields?.PROPERTY?.[0];
             if(!['maxSpeed','minStep','maxStep'].includes(property)){this.note(`Arcade PhysicsEngine property ${property} is unsupported`);return;}
@@ -1521,6 +1992,15 @@ class ArcadeEmitter {
         case 'arcade_placeOnRandomTile': push(`tiles.placeOnRandomTile(${v('ID')}, ${v('IMAGE')})`);return;
         case 'arcade_setscore':push(`info.setScore(${v('N')})`);return;
         case 'arcade_changescore':push(`info.changeScoreBy(${v('N')})`);return;
+        case 'arcade_declareCallable':
+        case 'arcade_declareSourceCallable':
+            if(!this.callableExports?.has(this.target))this.note('Callable declaration requires qualified current lexical graph export');
+            return;
+        case 'arcade_declareClass':case 'arcade_declareSubclass':return;
+        case 'arcade_declareSourceScalar':case 'arcade_declareSourceReference':return;
+        case 'arcade_setObjectField':{
+            if(this.objectClassExport.inputTypes(this.target,b,'OBJECT').has('__bwSDK_Font'))this.note('SDK Font field mutation is not qualified by the read slice');
+        }if(this.currentClassConstructor&&this.objectClassExport?.parameterPropertyBlocks.has(b))return;push(`;${this.objectClassExport.receiver(b,true)}.${this.objectFieldName(b)} = ${this.arrayValue(b,'VALUE')}`);return;
         case 'data_setvariableto': {
             const scratchName = this.field(b, 'VARIABLE');
             const info = this.infoVariable(scratchName);
@@ -1567,6 +2047,7 @@ class ArcadeEmitter {
             else push(`${this.lookupVar(scratchName)} += ${v('VALUE')}`);
             return;
         }
+        case 'sensing_resettimer':push(`${this.use('scratchTimer','__bwResetScratchTimer')}()`);return;
         case 'control_wait':
             push(`pause(${v('DURATION')} * 1000)`);
             this.guardLine().forEach(push);
@@ -1589,10 +2070,16 @@ class ArcadeEmitter {
             this.guardLine().forEach(line => push(`    ${line}`));
             push('}');
             return;
+        case 'arcade_sourceWhile':
+            push(`while (${this.condition(b, 'CONDITION')}) {`);
+            this.substack(b, 'SUBSTACK', depth + 1, out);
+            this.guardLine().forEach(line => push(`    ${line}`));
+            push('}');
+            return;
         case 'control_repeat_until':
             push(`while (!${this.condition(b, 'CONDITION')}) {`);
             this.substack(b, 'SUBSTACK', depth + 1, out);
-            push('    pause(20)');
+            if(this.implicitLoopYield)push('    pause(20)');
             this.guardLine().forEach(line => push(`    ${line}`));
             push('}');
             return;
@@ -1604,7 +2091,7 @@ class ArcadeEmitter {
             // One frame per pass (Scratch redraws once per loop iteration too).
             push('while (true) {');
             this.substack(b, 'SUBSTACK', depth + 1, out);
-            push('    pause(20)');
+            if(this.implicitLoopYield)push('    pause(20)');
             this.guardLine().forEach(line => push(`    ${line}`));
             push('}');
             return;
@@ -1765,16 +2252,17 @@ class ArcadeEmitter {
         case 'arcade_setTempo': push(`music.setTempo(${v('TEMPO')})`); return;
         case 'arcade_changeTempo': push(`music.changeTempoBy(${v('TEMPO')})`); return;
         case 'arcade_stopAllSounds': push('music.stopAllSounds()'); return;
+        case 'arcade_setBackgroundScrollVersion':this.requiresScrollerPackage=true;return;
         case 'arcade_scrollBackgroundWithCamera': {
             const mode = this.field(b, 'MODE');
             if (!['OnlyHorizontal', 'OnlyVertical', 'BothDirections'].includes(mode)) { push(`// ${this.note(`Unsupported camera scroll mode ${mode}`)}`); return; }
             this.requiresScrollerPackage = true;
-            push(`scroller.scrollBackgroundWithCamera(scroller.CameraScrollMode.${mode}, ${v('LAYER')})`); return;
+            push(`scroller.scrollBackgroundWithCamera(scroller.CameraScrollMode.${mode}${this.scrollerLayerSuffix(b)})`); return;
         }
-        case 'arcade_scrollBackgroundWithSpeed': this.requiresScrollerPackage = true; push(`scroller.scrollBackgroundWithSpeed(${v('VX')}, ${v('VY')}, ${v('LAYER')})`); return;
-        case 'arcade_setBackgroundScrollMultipliers': this.requiresScrollerPackage = true; push(`scroller.setCameraScrollingMultipliers(${v('X')}, ${v('Y')}, ${v('LAYER')})`); return;
-        case 'arcade_setBackgroundScrollOffset': this.requiresScrollerPackage = true; push(`scroller.setBackgroundScrollOffset(${v('X')}, ${v('Y')}, ${v('LAYER')})`); return;
-        case 'arcade_setBackgroundLayerImage': this.requiresScrollerPackage = true; push(`scroller.setLayerImage(${v('LAYER')}, ${v('IMAGE')})`); return;
+        case 'arcade_scrollBackgroundWithSpeed': this.requiresScrollerPackage = true; push(`scroller.scrollBackgroundWithSpeed(${v('VX')}, ${v('VY')}${this.scrollerLayerSuffix(b)})`); return;
+        case 'arcade_setBackgroundScrollMultipliers': this.requiresScrollerPackage = true; push(`scroller.setCameraScrollingMultipliers(${v('X')}, ${v('Y')}${this.scrollerLayerSuffix(b)})`); return;
+        case 'arcade_setBackgroundScrollOffset': this.requiresScrollerPackage = true; push(`scroller.setBackgroundScrollOffset(${v('X')}, ${v('Y')}${this.scrollerLayerSuffix(b)})`); return;
+        case 'arcade_setBackgroundLayerImage': if(this.scrollerVersion===LEGACY_SCROLLER_REVISION){push(`// ${this.note('Legacy Arcade background scroll does not support layer images')}`);return;} this.requiresScrollerPackage = true; push(`scroller.setLayerImage(${v('LAYER')}, ${v('IMAGE')})`); return;
         case 'arcade_characterFrames': {
             const mode = this.field(b, 'MODE');
             if (!['loop', 'run'].includes(mode)) { push(`// ${this.note(`Unsupported character frames mode ${mode}`)}`); return; }
@@ -1784,15 +2272,30 @@ class ArcadeEmitter {
         case 'arcade_setCharacterAnimationsEnabled': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setCharacterAnimationsEnabled(${v('SPRITE')}, ${this.boolValue(b, 'ENABLED')})`); return;
         case 'arcade_setCharacterState': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setCharacterState(${v('SPRITE')}, ${v('RULE')})`); return;
         case 'arcade_clearCharacterState': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.clearCharacterState(${v('SPRITE')})`); return;
-        case 'arcade_setCharacterController': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setController(${v('SPRITE')}, ${this.boolValue(b, 'ENABLED')})`); return;
-        case 'arcade_lockCharacterFacing': {
+        case 'arcade_setCharacterAnimationVersion':this.requiresCharacterAnimationsPackage=true;return;
+        case 'arcade_setCharacterController': if(this.characterVersion===LEGACY_CHARACTER_REVISION){push(`// ${this.note('Legacy character animations do not implement arcade_setCharacterController')}`);return;} this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.setController(${v('SPRITE')}, ${this.boolValue(b, 'ENABLED')})`); return;
+        case 'arcade_lockCharacterFacing': { if(this.characterVersion===LEGACY_CHARACTER_REVISION){push(`// ${this.note('Legacy character animations do not implement arcade_lockCharacterFacing')}`);return;}
             const direction = this.field(b, 'DIRECTION');
             if (!['Up', 'Right', 'Down', 'Left'].includes(direction)) { push(`// ${this.note(`Unsupported character facing ${direction}`)}`); return; }
             this.requiresCharacterAnimationsPackage = true;
             push(`characterAnimations.lockFacingDirection(${v('SPRITE')}, characterAnimations.FacingDirection.${direction})`); return;
         }
-        case 'arcade_unlockCharacterFacing': this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.unlockFacingDirection(${v('SPRITE')})`); return;
-        case 'arcade_setBackgroundLayerZ': this.requiresScrollerPackage = true; push(`scroller.setLayerZIndex(${v('LAYER')}, ${v('Z')})`); return;
+        case 'arcade_unlockCharacterFacing': if(this.characterVersion===LEGACY_CHARACTER_REVISION){push(`// ${this.note('Legacy character animations do not implement arcade_unlockCharacterFacing')}`);return;} this.requiresCharacterAnimationsPackage = true; push(`characterAnimations.unlockFacingDirection(${v('SPRITE')})`); return;
+        case 'arcade_setBackgroundLayerZ': if(this.scrollerVersion===LEGACY_SCROLLER_REVISION){push(`// ${this.note('Legacy Arcade background scroll does not support layer z-index')}`);return;} this.requiresScrollerPackage = true; push(`scroller.setLayerZIndex(${v('LAYER')}, ${v('Z')})`); return;
+        case 'arcade_textSpriteSetText': case 'arcade_textSpriteSetMaxFontHeight': case 'arcade_textSpriteSetIcon':
+        case 'arcade_textSpriteSetBorder': case 'arcade_textSpriteSetOutline': case 'arcade_textSpriteUpdate': {
+            this.requiresTextSpritePackage=true;
+            const [method,args]={arcade_textSpriteSetText:['setText',['TEXT']],arcade_textSpriteSetMaxFontHeight:['setMaxFontHeight',['HEIGHT']],
+                arcade_textSpriteSetIcon:['setIcon',['IMAGE']],arcade_textSpriteSetBorder:['setBorder',['WIDTH','COLOR','PADDING']],
+                arcade_textSpriteSetOutline:['setOutline',['WIDTH','COLOR']],arcade_textSpriteUpdate:['update',[]]}[b.opcode];
+            push(`${v('ID')}.${method}(${args.map(name=>v(name)).join(', ')})`);return;
+        }
+        case 'arcade_textSpriteSetProperty': {
+            this.requiresTextSpritePackage=true;
+            const property=directMenuValue(b,'PROPERTY',this.blocks);
+            if(!['text','bg','fg','maxFontHeight','borderWidth','borderColor','padding','outlineWidth','outlineColor','icon'].includes(property)){push(`// ${this.note(`Unsupported TextSprite property ${property}`)}`);return;}
+            push(`${v('ID')}.${property} = ${v('VALUE')}`);return;
+        }
         case 'arcade_dartAction': {
             const action = this.field(b, 'ACTION');
             if (!['throwDart', 'stopDart'].includes(action)) { push(`// ${this.note(`Unsupported dart action ${action}`)}`); return; }
@@ -1826,6 +2329,15 @@ class ArcadeEmitter {
             const property = this.field(b, 'PROPERTY');
             if (!['x', 'y', 'value', 'count'].includes(property)) { push(`// ${this.note(`Unsupported seven segment property ${property}`)}`); return; }
             push(`${v('DISPLAY')}.${property} = ${v('VALUE')}`); return;
+        }
+        case 'arcade_printImageFont':
+        case 'arcade_printImageFontCenter': {
+            this.sdkFontOperand(b);this.sdkFontPrimitiveOperand(b,'TEXT','string');
+            if(!this.sdkFontInputs.accepts(this.target,b,'IMAGE','Image'))this.note('SDK Font printing requires a proven Image operand');
+            for(const input of b.opcode==='arcade_printImageFont'?['X','Y','COLOR']:['Y','COLOR'])this.sdkFontPrimitiveOperand(b,input,'number');
+            const args=[this.arrayValue(b,'TEXT')];if(b.opcode==='arcade_printImageFont')args.push(this.arrayValue(b,'X'));
+            args.push(this.arrayValue(b,'Y'),this.arrayValue(b,'COLOR'),this.arrayValue(b,'FONT'));
+            push(`${this.arrayValue(b,'IMAGE')}.${b.opcode==='arcade_printImageFont'?'print':'printCenter'}(${args.join(', ')})`);return;
         }
         case 'arcade_printImageText': {
             const font = {small: 'image.font5', normal: 'image.font8', large: 'image.font12', auto: null}[this.field(b, 'FONT')];
@@ -1879,7 +2391,8 @@ class ArcadeEmitter {
             const op=this.literalInput(b,'OP'),array=this.referenceArrayValue(b);
             if(op==='set')push(`${array}[${v('INDEX')}] = ${this.arrayValue(b,'VALUE')}`);
             else if(op==='length')push(`${array}.length = ${this.arrayValue(b,'VALUE')}`);
-            else if(['push','unshift','removeElement'].includes(op))push(`${array}.${op}(${this.arrayValue(b,'VALUE')})`);
+            else if(op==='removeElement')push(`${array}.removeElement(<any>(${this.arrayValue(b,'VALUE')}))`);
+            else if(['push','unshift'].includes(op))push(`${array}.${op}(${this.arrayValue(b,'VALUE')})`);
             else if(op==='insertAt')push(`${array}.insertAt(${v('INDEX')}, ${this.arrayValue(b,'VALUE')})`);
             else if(op==='removeAt')push(`${array}.removeAt(${v('INDEX')})`);
             else if(['pop','shift','reverse'].includes(op))push(`${array}.${op}()`);
@@ -1887,6 +2400,16 @@ class ArcadeEmitter {
             return;
         }
         case 'arcade_setLocal': {
+            if(this.currentCallableContext){
+                try {
+                    const id=Object.entries(this.blocks).find(([,block])=>block===b)?.[0];
+                    const generated=this.currentCallableContext.generatedLocal?.(id);
+                    if(generated)push(`${generated.first?'let ':''}${generated.name}${generated.first?': '+renderCallableSignature(generated.type):''} = ${this.arrayValue(b,'VALUE')}`);
+                    else if(this.currentCallableContext.discardLocal?.(id))push((this.currentCallableContext.statementTerminator?';':'')+this.arrayValue(b,'VALUE')+(this.currentCallableContext.statementTerminator?';':''));
+                    else push(`${this.currentCallableContext.local(this.literalInput(b,'NAME'),true)} = ${this.arrayValue(b,'VALUE')}`);
+                }catch(error){this.note(error.message);}return;
+            }
+            if(this.currentClassConstructor){const computed=this.arrayValue(b,'VALUE');if(/^super\(/.test(computed)){push(computed);return;}}
             const name = this.literalInput(b, 'NAME');
             if (!name || !/^[A-Za-z_]\w*$/.test(name) || !this.currentLocalNames) {
                 push(`// ${this.note('Arcade local assignment needs a fixed name inside a procedure')}`);
@@ -1909,6 +2432,13 @@ class ArcadeEmitter {
         case 'arcade_changeLife': {const api=this.infoPlayerApi(b);if(api)push(`${api}.${b.opcode==='arcade_setLife'?'setLife':'changeLifeBy'}(${this.arrayValue(b,'VALUE')})`);return;}
         case 'arcade_pushScene': push('game.pushScene()');return;
         case 'arcade_popScene': push('game.popScene()');return;
+        case 'arcade_setButtonRepeatProperty': {const receiver=this.controllerRepeatReceiver(b);if(receiver)push(`${receiver}.${b.fields.PROPERTY[0]} = (${this.arrayValue(b,'VALUE')} as any)`);return;}
+        case 'arcade_setButtonRepeatDefaults':push(`controller.setRepeatDefault((${this.arrayValue(b,'DELAY')} as any), (${this.arrayValue(b,'INTERVAL')} as any))`);return;
+        case 'arcade_setControllerConnected': {const player=b.fields.PLAYER?.[0];if(!['1','2','3','4'].includes(String(player))){push(`// ${this.note('Controller connection requires a fixed player 1 through 4')}`);return;}push(`controller.player${player}.connected = (${this.arrayValue(b,'CONNECTED')} as any)`);return;}
+        case 'arcade_raiseControlEvent':push(`control.raiseEvent(${this.arrayValue(b,'SOURCE')}, ${this.arrayValue(b,'VALUE')})`);return;
+        case 'arcade_waitControlEvent':push(`control.waitForEvent(${this.arrayValue(b,'SOURCE')}, ${this.arrayValue(b,'VALUE')})`);return;
+        case 'arcade_registerMultiplayerConnection':
+        case 'arcade_registerControlEvent':
         case 'arcade_registerMultiplayerButtonHandler':
         case 'arcade_registerUpdateHandler':
         case 'arcade_registerPaintHandler':
@@ -1924,13 +2454,13 @@ class ArcadeEmitter {
         case 'arcade_registerForeverHandler':
         case 'arcade_registerLifeZeroHandler':
         case 'arcade_registerCountdownHandler': {
-            const kinds={arcade_startParallelHandler:'parallel',arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerPaintHandler:'paint',arcade_registerShadeHandler:'shade',arcade_registerIntervalHandler:'interval',
+            const kinds={arcade_registerMultiplayerConnection:'multiplayerConnection',arcade_registerControlEvent:'controlEvent',arcade_startParallelHandler:'parallel',arcade_registerMultiplayerButtonHandler:'multiplayerButton',arcade_registerUpdateHandler:'update',arcade_registerPaintHandler:'paint',arcade_registerShadeHandler:'shade',arcade_registerIntervalHandler:'interval',
                 arcade_registerInstanceDestroyedHandler:'instanceDestroyed',arcade_registerButtonHandler:'button',arcade_registerDestroyedHandler:'destroyed',arcade_registerOverlapHandler:'overlap',
                 arcade_registerScenePushHandler:'scenePush',arcade_registerScenePopHandler:'scenePop',
                 arcade_registerForeverHandler:'forever',arcade_registerLifeZeroHandler:'lifeZero',arcade_registerCountdownHandler:'countdown'};
             const kind=kinds[b.opcode],token=this.literalInput(b,'TOKEN'),callback=token && this.registeredCallback(token);
             if(!callback || callback.kind!==kind){push(`// ${this.note('Arcade registration has no matching callback')}`);return;}
-            const signatures={multiplayerButton:`${callback.parameter}: mp.Player`,destroyed:`${callback.parameter}: Sprite`,overlap:`${callback.parameter}: Sprite, ${callback.second}: Sprite`};
+            const signatures={multiplayerConnection:`${callback.parameter}: mp.Player`,multiplayerButton:`${callback.parameter}: mp.Player`,destroyed:`${callback.parameter}: Sprite`,overlap:`${callback.parameter}: Sprite, ${callback.second}: Sprite`};
             const body=`function (${signatures[kind]||''}) {\n${callback.script.join('\n')}\n}`;
             const apis={parallel:'control.runInParallel',update:'game.onUpdate',paint:'game.onPaint',shade:'game.onShade',interval:'game.onUpdateInterval',destroyed:'sprites.onDestroyed',overlap:'sprites.onOverlap',
                 scenePush:'game.addScenePushHandler',scenePop:'game.addScenePopHandler',forever:'game.forever',
@@ -1941,13 +2471,16 @@ class ArcadeEmitter {
             if(kind==='interval')args.push(this.arrayValue(b,'INTERVAL'));
             if(kind==='destroyed' || kind==='overlap')args.push(this.kindExpr(b,'KIND'));
             if(kind==='overlap')args.push(this.kindExpr(b,'OTHER_KIND'));
+            if(kind==='multiplayerConnection'){this.requiresMultiplayerPackage=true;api='mp.onControllerEvent';const event=this.literalNumber(b,'EVENT');args.push(event===1?'ControllerEvent.Connected':event===2?'ControllerEvent.Disconnected':this.arrayValue(b,'EVENT'));}
             if(kind==='multiplayerButton'){this.requiresMultiplayerPackage=true;api='mp.onButtonEvent';args.push(this.arrayValue(b,'BUTTON'),this.arrayValue(b,'EVENT'));}
             if(kind==='button'){
                 const button=this.literalInput(b,'BUTTON');
                 if(!['A','B','up','down','left','right'].includes(button)){push(`// ${this.note('Arcade button registration requires a fixed supported button')}`);return;}
                 api=`controller.${button}.onEvent`;args.push(this.arrayValue(b,'EVENT'));
             }
-            this.usedRegisteredCallbacks.add(token);push(`${api}(${[...args,body].join(', ')})`);return;
+            if(kind==='controlEvent'){api='control.onEvent';args.push(this.arrayValue(b,'SOURCE'),this.arrayValue(b,'VALUE'),body,this.arrayValue(b,'FLAGS'));}
+            else args.push(body);
+            this.usedRegisteredCallbacks.add(token);push(`${api}(${args.join(', ')})`);return;
         }
         case 'arcade_cameraShake': push(`scene.cameraShake(${this.arrayValue(b,'AMPLITUDE')}, ${this.arrayValue(b,'DURATION')})`);return;
         case 'arcade_centerCameraAt': push(`scene.centerCameraAt(${this.arrayValue(b,'X')}, ${this.arrayValue(b,'Y')})`);return;
@@ -1982,6 +2515,7 @@ class ArcadeEmitter {
         }
         case 'arcade_setCaptured': {
             const name = this.literalInput(b,'NAME');
+            if(this.currentCallableContext){try{push(`${this.currentCallableContext.capture(name,true)} = ${this.arrayValue(b,'VALUE')}`);}catch(error){this.note(error.message);}return;}
             if (!name || !this.compilingRegisteredCallbacks.size) push(`// ${this.note('Arcade captured assignment needs a registered callback and fixed name')}`);
             // Captured cells retain their Arcade value type, including boolean.
             else push(`${ident(name)} = ${this.arrayValue(b,'VALUE')}`);
@@ -2029,6 +2563,13 @@ class ArcadeEmitter {
         }
         case 'arcade_returnValue': push(`return ${this.arrayValue(b,'VALUE')}`);return;
         case 'arcade_setImagePixel': push(`${v('IMAGE')}.setPixel(${v('X')}, ${v('Y')}, ${v('COLOR')})`);return;
+        case 'arcade_drawImageCircle':
+        case 'arcade_drawSpriteCircle': {
+            const operation=this.field(b,'OP');
+            if(!['drawCircle','fillCircle'].includes(operation)){this.note(`Unsupported Arcade circle operation ${operation}`);return;}
+            const image=b.opcode==='arcade_drawImageCircle'?v('IMAGE'):`${v('ID')}.image`;
+            push(`${image}.${operation}(${v('X')}, ${v('Y')}, ${v('RADIUS')}, ${v('COLOR')})`);return;
+        }
         case 'arcade_drawImage': {
             const op=this.field(b,'OP');if(!['fillRect','drawLine'].includes(op)){this.note(`Unsupported Arcade drawing operation ${op}`);return;}
             push(`${v('IMAGE')}.${op}(${v('X')}, ${v('Y')}, ${v('W')}, ${v('H')}, ${v('COLOR')})`);return;
@@ -2124,16 +2665,16 @@ class ArcadeEmitter {
         case 'arcade_setSpritePosition': push(`${v('ID')}.setPosition(${v('X')}, ${v('Y')})`); return;
         case 'arcade_setSpriteProperty': {
             const property = this.field(b, 'PROPERTY');
-            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data'].includes(property)){push(`// ${this.note(`Arcade sprite property ${property} is unsupported`)}`);return;}
+            if(!['x','y','left','right','top','bottom','vx','vy','ax','ay','fx','fy','sx','sy','scale','width','height','z','lifespan','rotation','rotationDegrees','data','flags'].includes(property)){push(`// ${this.note(`Arcade sprite property ${property} is unsupported`)}`);return;}
             if (['width', 'height'].includes(property)) push(`// ${this.note(`Arcade sprite ${property} needs image resizing`)}`);
-            else push(`${v('ID')}.${property} = ${v('VALUE')}`);
+            else push(`${v('ID')}.${property} = ${property==='flags'?this.mathValue(b,'VALUE'):v('VALUE')}${property==='flags'?' as any':''}`);
             return;
         }
         case 'arcade_setSpriteKind': push(`${v('ID')}.setKind(${this.kindExpr(b, 'KIND')})`); return;
         case 'arcade_setSpriteFlag': {
             const flag = this.field(b, 'FLAG');
             if (!['AutoDestroy', 'StayInScreen', 'BounceOnWall', 'DestroyOnWall', 'Invisible', 'Ghost',
-                'GhostThroughSprites', 'GhostThroughWalls', 'GhostThroughTiles', 'RelativeToCamera'].includes(flag)) {
+                'GhostThroughSprites', 'GhostThroughWalls', 'GhostThroughTiles', 'RelativeToCamera', 'ShowPhysics'].includes(flag)) {
                 push(`// ${this.note(`Unsupported Arcade sprite flag ${flag}`)}`);
                 return;
             }
@@ -2144,11 +2685,17 @@ class ArcadeEmitter {
         case 'arcade_setSpriteAutoDestroy': push(`${v('ID')}.setFlag(SpriteFlag.AutoDestroy, ${this.spriteFlagCondition(b)})`); return;
         case 'arcade_setSpriteBounceOnWall': push(`${v('ID')}.setBounceOnWall(${this.spriteFlagCondition(b)})`); return;
         case 'arcade_setSpriteGhostThroughSprites': push(`${v('ID')}.setFlag(SpriteFlag.GhostThroughSprites, ${this.spriteFlagCondition(b)})`); return;
+        case 'arcade_setHudVisibility': {
+            const element=this.field(b,'ELEMENT');
+            const method={score:'showScore',life:'showLife',countdown:'showCountdown'}[element];
+            if(!method){push(`// ${this.note(`Unsupported HUD visibility element ${element}`)}`);return;}
+            push(`info.${method}(${this.boolValue(b,'VISIBLE')})`);return;
+        }
         case 'arcade_startCountdown': push(`info.startCountdown(${v('N')})`); return;
         case 'arcade_stopCountdown': push('info.stopCountdown()'); return;
         case 'arcade_splash': {
-            const title = v('TITLE', '""');
-            const subtitle = v('SUBTITLE', '""');
+            const title = this.arrayValue(b,'TITLE');
+            const subtitle = this.arrayValue(b,'SUBTITLE');
             push(subtitle === '""' ? `game.splash(${title})` : `game.splash(${title}, ${subtitle})`);
             return;
         }
@@ -2158,14 +2705,35 @@ class ArcadeEmitter {
                 push(`// ${this.note('Arcade long text layout must be fixed')}`);
                 return;
             }
-            push(`game.showLongText(${v('TEXT', '""')}, DialogLayout.${layout})`);
+            push(`game.showLongText(${this.arrayValue(b,'TEXT')}, DialogLayout.${layout})`);
             return;
         }
         case 'arcade_log': push(`console.log(${this.arrayValue(b, 'TEXT')})`); return;
+        case 'arcade_settingsWrite': {
+            const type=settingType(b, this.blocks);
+            if(!['Number','String','NumberArray','StringArray','Buffer'].includes(type)){push(this.note('Settings requires a fixed supported write type'));return;}
+            if(type==='StringArray'){this.requiresStringArraySettings=true;push(`bwStringArraySettings.write(${v('KEY')}, ${v('VALUE')})`);return;}
+            push(`settings.write${type}(${v('KEY')}, ${v('VALUE')})`);return;
+        }
+        case 'arcade_settingsRemove': push(`settings.remove(${v('KEY')})`);return;
+        case 'arcade_settingsClear': push('settings.clear()');return;
+        case 'arcade_spriteDataSet': {
+            this.requiresSpriteDataPackage=true;
+            const type=directMenuValue(b,'TYPE',this.blocks);
+            if(!['Number','String','Boolean','Sprite'].includes(type)){push(this.note('Sprite Data requires a fixed supported set type'));return;}
+            push(`sprites.setData${type}(${v('ID')}, ${v('KEY')}, ${type==='Boolean'?this.arrayValue(b,'VALUE'):v('VALUE')})`);return;
+        }
+        case 'arcade_spriteDataChange': this.requiresSpriteDataPackage=true;push(`sprites.changeDataNumberBy(${v('ID')}, ${v('KEY')}, ${v('VALUE')})`);return;
+        case 'arcade_waitAnyButton': push('controller.pauseUntilAnyButtonIsPressed()'); return;
         case 'arcade_gameover': push('game.over(false)'); return;
+        case 'arcade_declareParameterConstraint': {
+            if(!this.procedureConstraints?.declaration(b)||!this.procedureConstraints.current())this.note('Procedure parameter constraint: declaration has no current owner');
+            return;
+        }
         case 'procedures_call': {
             const code = b.mutation && b.mutation.proccode;
-            const fn = this.fnNames.get(`${this.target.name}:${code}`) || this.fnNames.get(`:${code}`);
+            const fn = this.functionSymbols.call(this.target,b);
+            if(!fn){push(`// ${this.note(`call ${code}: needs its unique current target procedure and formal binding`)}`);return;}
             const ids = b.mutation ? JSON.parse(b.mutation.argumentids || '[]') : [];
             const args = ids.map(a => this.arrayValue(b, a));
             // A custom block runs in its caller's thread: it gets the caller's run token.
@@ -2445,7 +3013,7 @@ class ArcadeEmitter {
 
     localDeclaration (name, key) {
         const type=this.localValueTypes.get(key)?.get(name) || 'any';
-        const initial=type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='Dart' || type==='Corgio' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
+        const initial=type==='mp.Player' || type==='Image' || type==='Sprite' || type==='tiles.Location' || type==='tiles.Tile' || type==='animation.Animation' || type==='SevenSegDigit' || type==='DigitCounter' || type==='Dart' || type==='Corgio' || type==='TextSprite' || type==='scene.Scene' || type==='ArcadePhysicsEngine' || type.endsWith('[]') ? 'null' : type==='string' ? '""' : type==='boolean' ? 'false' : '0';
         return `    let ${name}: ${type} = ${initial}`;
     }
 
@@ -2459,7 +3027,7 @@ class ArcadeEmitter {
         if (this.registeredCallbacks.has(token)) return this.registeredCallbacks.get(token);
         const entry = this.registeredCallbackBlocks.get(token);
         if (!entry || this.compilingRegisteredCallbacks.has(token)) return null;
-        const saved = {target:this.target,blocks:this.blocks,eventHandles:this.eventHandles,eventLocationName:this.eventLocationName,eventKind:this.eventKind,eventPlayerName:this.eventPlayerName,currentLocalNames:this.currentLocalNames};
+        const saved = {target:this.target,blocks:this.blocks,eventHandles:this.eventHandles,eventLocationName:this.eventLocationName,eventKind:this.eventKind,eventPlayerName:this.eventPlayerName,currentLocalNames:this.currentLocalNames,implicitLoopYield:this.implicitLoopYield};
         this.compilingRegisteredCallbacks.add(token);
         this.target = entry.target;this.blocks = entry.target.blocks;
         let parameter = `${entry.kind==='created'?'__bwCreatedSprite':['wall','tile'].includes(entry.kind)?'__bwTerrainSprite':'__bwEventSprite'}_${ident(token)}`;
@@ -2467,10 +3035,11 @@ class ArcadeEmitter {
         while (text.includes(parameter)) parameter += '_';
         let location=`__bwEventLocation_${ident(token)}`;while(text.includes(location))location+='_';
         let second=`__bwOtherSprite_${ident(token)}`;while(text.includes(second))second+='_';
-        this.eventPlayerName=entry.kind==='multiplayerButton'?parameter:null;
+        this.eventPlayerName=['multiplayerButton','multiplayerConnection'].includes(entry.kind)?parameter:null;
         this.eventLocationName=['wall','tile'].includes(entry.kind)?location:null;
         this.eventHandles = entry.kind==='overlap'?[parameter,second]:['created','wall','tile','legacyWall','destroyed'].includes(entry.kind)?[parameter]:[];this.eventKind = this.registeredCallbackKinds.get(token);
         this.currentLocalNames = new Set();
+        this.implicitLoopYield=true;
         const script = [];this.stmts(entry.block.next,1,script);
         const scope=`${entry.target.name}:script:${Object.keys(this.blocks).find(id=>this.blocks[id]===entry.block)}`;
         script.unshift(...[...this.currentLocalNames].filter(name=>name!==parameter && name!==location && name!==second).map(name=>this.localDeclaration(name,scope)));
@@ -2482,9 +3051,11 @@ class ArcadeEmitter {
     /** Infer Image argument annotations from native image operations and
      * resource aliases. Constraint edges carry types through forwarded calls. */
     imageProcedureParameters () {
-        const graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
-        const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],lookupTypes=[];
+        const graphTextSpriteValues=new Set(),graphBufferValues=new Set(),graphPlayerValues=new Set(),graphAnimationValues=new Set(),graphSevensegDigitValues=new Set(),graphSevensegCounterValues=new Set(),graphDartValues=new Set(),graphCorgiValues=new Set(),graphSceneValues=new Set(),graphPhysicsEngineValues=new Set();
+        const dataProperties=[], parameters = new Map(), edges = [], images = new Set(), sprites = new Set(), tiles = new Set(), legacyTiles = new Set(), arrays = new Set(), numbers = new Set(), booleans=new Set(), strings=new Set(), anys=new Set(), specialTypes=[],valueOperations=[], elements=[],arrayCopies=[];
         const definitions = [],captureLinks=[],callbackScopes=new Map(),callbackCaptureNames=new Map();
+        const inspectionOperatorProofs=new Map(),inspectionLeaves=new Map(),inspectionProducers=new Map(),inspectionOpaqueCells=new Set(),inspectionOperators=[],inspectionGlobalReaders=new Map(),inspectionVisited=new Set();
+        const throwInputs=new Map(),procedureInputs=[],inspectionInputs=new Map(),sourceTypeOfInputs=new Map(),sourceTypeOfClasses=new Map(),opaqueCells=new Set(),arrayLocalReaders=new Map();
         const inputBlock = (blocks, b, name) => {
             const input=b.inputs?.[name]?.[1];
             if(Array.isArray(input) && input[0]===12) return {opcode:'data_variable',fields:{VARIABLE:[input[1],input[2]]}};
@@ -2497,6 +3068,16 @@ class ArcadeEmitter {
             const input = b.inputs?.[name]?.[1];
             return Array.isArray(input) ? String(input[1]) : String(blocks[input]?.fields?.TEXT?.[0] || '');
         };
+        const inspectionCaptures=analyseConsoleCaptures({targets:this.project.targets,blocks:target=>target.blocks||{},
+            input:(node,name,target)=>inputBlock(target.blocks||{},node,name),
+            literal:(node,name,target)=>{
+                if(node?.fields?.[name])return String(node.fields[name][0]);
+                const slot=node?.inputs?.[name]?.[1];
+                return Array.isArray(slot)&&slot[0]===10?String(slot[1]):target.blocks?.[slot]?.opcode==='text'?target.blocks[slot].fields?.TEXT?.[0]:null;
+            }});
+        const inspectionCellKey=cell=>cell.scope.procedure?
+            `${cell.scope.target.isStage?'':cell.scope.target.name}:${cell.scope.procedure}:${cell.scope.params.includes(cell.name)?'param':'local'}:${cell.name}`:
+            `${cell.scope.target.name}:script:${cell.scope.id}:local:${cell.name}`;
         for (const target of this.project.targets) {
             const blocks = target.blocks || {};
             for (const b of Object.values(blocks)) {
@@ -2506,6 +3087,7 @@ class ArcadeEmitter {
                 const key = `${target.isStage ? '' : target.name}:${proto.mutation.proccode}`;
                 const names = JSON.parse(proto.mutation.argumentnames || '[]');
                 const keys = names.map(name => `${key}:param:${name}`);
+                if(parameters.has(key)||new Set(names).size!==names.length){for(const name of [...keys,...(parameters.get(key)||[])])inspectionOpaqueCells.add(name);inspectionOpaqueCells.add(`${key}:result`);}
                 parameters.set(key, keys);
                 definitions.push({target,blocks,b,key});
             }
@@ -2538,34 +3120,77 @@ class ArcadeEmitter {
             };
             collectScope(b.next);
             const scopeValues = [...scopeBlocks].map(id => blocks[id]);
+            const fixedName=value=>{const input=value.inputs?.NAME?.[1];return value.fields?.NAME?.[0]??(Array.isArray(input)&&input[0]===10?String(input[1]):blocks[input]?.opcode==='text'?blocks[input].fields?.TEXT?.[0]:null);};
+            const unsafeInspectionLocals=scopeValues.some(value=>value.opcode==='arcade_setLocal'&&typeof fixedName(value)!=='string'||value.opcode==='arcade_createCallable');
+            const physicalNumber=value=>value?.opcode==='bw_numberLiteral'?value.value:value?.opcode==='math_number'?Number(value.fields?.NUM?.[0]):null;
+            const ownsEventPlayer=value=>{
+                if(b.opcode!=='arcade_whenRegisteredMultiplayerConnection')return false;
+                const token=literal(blocks,b,'TOKEN');if(!token)return false;
+                const hats=Object.values(blocks).filter(node=>node.opcode===b.opcode&&literal(blocks,node,'TOKEN')===token);
+                const registrations=Object.values(blocks).filter(node=>node.opcode==='arcade_registerMultiplayerConnection'&&literal(blocks,node,'TOKEN')===token);
+                if(hats.length!==1||registrations.length!==1||![1,2].includes(physicalNumber(inputBlock(blocks,registrations[0],'EVENT'))))return false;
+                const parents=new Set();let current=value;
+                while(current&&current!==b){
+                    if(parents.has(current))return false;parents.add(current);
+                    const parent=blocks[current.parent],id=Object.keys(blocks).find(id=>blocks[id]===current);
+                    if(!parent||parent.next!==id&&!Object.values(parent.inputs||{}).some(slot=>slot[1]===id))return false;
+                    current=parent;
+                }
+                return current===b;
+            };
             const ref = value => {
                 if (!value) return null;
                 if(value.opcode==='arrays_namedReference'){const id='named-array:'+literal(blocks,value,'NAME');arrays.add(id);return id;}
-                if(['arrays_parseLegacyValue','arrays_jsonValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
-                if(value.opcode==='arcade_spriteToString') {const id=Symbol('sprite text');strings.add(id);return id;}
+                if(value.opcode==='arrays_jsonValue'){const id=Symbol('JSON aggregate text');strings.add(id);return id;}
+                if(['arrays_parseLegacyValue','arrays_pop'].includes(value.opcode)){const id=Symbol('legacy value');anys.add(id);return id;}
+                if(value.opcode==='arcade_settingsExists'){const id=Symbol('setting exists');booleans.add(id);return id;}
+                if(value.opcode==='arcade_settingsRead'){
+                    const type=settingType(value, blocks),id=Symbol('setting value');
+                    if(type==='Number')numbers.add(id);else if(type==='String')strings.add(id);else if(type==='Buffer')graphBufferValues.add(id);
+                    else if(type==='NumberArray' || type==='StringArray' || type==='List'){arrays.add(id);const item=Symbol('setting array item');(type==='NumberArray'?numbers:strings).add(item);elements.push([id,item]);}
+                    else anys.add(id);return id;
+                }
+                if(value.opcode==='arcade_spriteDataRead') {
+                    const type=directMenuValue(value,'TYPE',blocks);
+                    const id=Symbol('sprite data value');
+                    if(type==='Number')numbers.add(id);else if(type==='String')strings.add(id);else if(type==='Sprite')sprites.add(id);else anys.add(id);
+                    return id;
+                }
+                if(value.opcode==='arcade_spriteDataReadBoolean'){const id=Symbol('sprite data boolean');booleans.add(id);return id;}
+                if(['arcade_createSpriteKind','arcade_spriteKindValue'].includes(value.opcode)){const id=Symbol('sprite kind number');numbers.add(id);return id;}
+                if(['arrays_stringFromCharCode','arrays_stringConcat'].includes(value.opcode)){const id=Symbol('string primitive');strings.add(id);return id;}
+                if(value.opcode==='arrays_stringCharCodeAt'){const id=Symbol('character code number');numbers.add(id);return id;}
+                if(['arcade_spriteToString','arcade_characterRuleToString'].includes(value.opcode)) {const id=Symbol('sprite text');strings.add(id);return id;}
                 if(['arcade_createBuffer','arcade_bufferFromHex','arcade_bufferFromUTF8','arcade_bufferFromBase64','arcade_bufferLiteral','arcade_bufferSlice','arcade_bufferConcat','arcade_bufferFromArray','arcade_bufferConcatArray','arcade_bufferPack'].includes(value.opcode)){const id=Symbol('byte buffer');graphBufferValues.add(id);return id;}
                 if(['arcade_bufferToArray','arcade_bufferChunked','arcade_bufferChunkedFromUTF8','arcade_bufferUnpack'].includes(value.opcode)){const id=`${key}:buffer-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
                 if(['arcade_bufferLength','arcade_bufferHash','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf','arcade_bufferFormatSize','arcade_bufferPackedSize'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
                 if(['arcade_bufferToHex','arcade_bufferToText','arcade_bufferToBase64'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
                 if(['arcade_bufferIsReadOnly','arcade_bufferEquals'].includes(value.opcode)){const id=Symbol('buffer readonly');booleans.add(id);return id;}
-                if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);return id;}
-                if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);return id;}
+                if(currentSceneClockNumber(blocks,value)) {const id=Symbol('current scene clock Number');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
+                if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
+                if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);inspectionLeaves.set(id,'string');return id;}
                 if(['arrays_valueBinary','arrays_valueUnary'].includes(value.opcode)) {
                     const id=`${key}:value-operation:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
-                    if(value.opcode==='arrays_valueBinary' && literal(blocks,value,'OP')==='+')valueOperations.push([id,ref(inputBlock(blocks,value,'LEFT')),ref(inputBlock(blocks,value,'RIGHT'))]);
+                    const operands=(value.opcode==='arrays_valueUnary'?['VALUE']:['LEFT','RIGHT']).map(name=>ref(inputBlock(blocks,value,name)));
+                    if(value.opcode==='arrays_valueBinary' && literal(blocks,value,'OP')==='+')valueOperations.push([id,...operands]);
                     else numbers.add(id);
+                    inspectionOperatorProofs.set(id,{type:literal(blocks,value,'OP')==='+'&&value.opcode==='arrays_valueBinary'?null:'number',operands,numeric:literal(blocks,value,'OP')!=='+'||value.opcode==='arrays_valueUnary'});
                     return id;
                 }
-                if(value.opcode==='arrays_specialValue'){const id=Symbol('special value');specialTypes.push([id,literal(blocks,value,'KIND')]);return id;}
+                if(value.opcode==='arrays_specialValue'){const id=Symbol('special value');specialTypes.push([id,literal(blocks,value,'KIND')]);inspectionLeaves.set(id,literal(blocks,value,'KIND'));return id;}
                 if(this.isBoolean(value) || ['operator_add','operator_subtract','operator_multiply','operator_divide','operator_mod','operator_round','operator_random','operator_join','operator_letter_of','operator_length','planetemaths_min','planetemaths_max'].includes(value.opcode)) {
                     const id=`${key}:primitive:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
-                    (this.isBoolean(value)?booleans:['operator_join','operator_letter_of'].includes(value.opcode)?strings:numbers).add(id);return id;
+                    (this.isBoolean(value)?booleans:['operator_join','operator_letter_of'].includes(value.opcode)?strings:numbers).add(id);const operands=Object.keys(value.inputs||{}).map(name=>ref(inputBlock(blocks,value,name)));inspectionOperators.push([id,operands]);inspectionOperatorProofs.set(id,{type:this.isBoolean(value)?'boolean':['operator_join','operator_letter_of'].includes(value.opcode)?'string':'number',operands});return id;
                 }
-                if (/^argument_reporter_/.test(value.opcode)) return `${key}:param:${value.fields.VALUE[0]}`;
-                if (value.opcode === 'arcade_getCaptured')return `${key}:capture:${literal(blocks,value,'NAME')}`;
-                if (value.opcode === 'arcade_getLocal') return localKey(literal(blocks,value,'NAME'));
-                if (value.opcode === 'arcade_callFunction') return `${target.isStage ? '' : target.name}:${literal(blocks,value,'NAME')}:result`;
-                if (value.opcode === 'data_variable') return `variable:${value.fields.VARIABLE[1] || value.fields.VARIABLE[0]}`;
+                if (/^argument_reporter_/.test(value.opcode)){const id=`${key}:param:${value.fields.VALUE[0]}`;if(unsafeInspectionLocals||!inspectionCaptures.proof(inspectionCaptures.local(inspectionCaptures.scopeOf(value),value.fields.VALUE[0])))inspectionOpaqueCells.add(id);return id;}
+                if (value.opcode === 'arcade_getCaptured'){const id=`${key}:capture:${literal(blocks,value,'NAME')}`,cell=inspectionCaptures.captured(inspectionCaptures.scopeOf(value),fixedName(value));if(!inspectionCaptures.proof(cell))inspectionOpaqueCells.add(id);else connect(id,inspectionCellKey(cell));return id;}
+                if (value.opcode === 'arcade_getLocal') {const cell=localKey(literal(blocks,value,'NAME'));if(unsafeInspectionLocals||typeof fixedName(value)!=='string'||!inspectionCaptures.proof(inspectionCaptures.local(inspectionCaptures.scopeOf(value),fixedName(value))))inspectionOpaqueCells.add(cell);arrayLocalReaders.set(value,cell);return cell;}
+                if (value.opcode === 'arcade_callFunction') {
+                    const code=`${target.isStage ? '' : target.name}:${literal(blocks,value,'NAME')}`,id=`${code}:result`;
+                    if(this.objectClassExport.procedures.has(code))opaqueCells.add(id);
+                    return id;
+                }
+                if (value.opcode === 'data_variable'){const id=`variable:${value.fields.VARIABLE[1] || value.fields.VARIABLE[0]}`;if(!inspectionGlobalReaders.has(id))inspectionGlobalReaders.set(id,new Set());inspectionGlobalReaders.get(id).add(target);return id;}
                 if(value.opcode==='arcade_eventLocation'){const id=Symbol('event tile location');tiles.add(id);return id;}
                 if(value.opcode==='arcade_legacyTileLocation'){const id=Symbol('legacy tile');legacyTiles.add(id);return id;}
                 if(value.opcode==='arcade_legacyTilesOfType'){const id=Symbol('legacy tiles');arrays.add(id);return id;}
@@ -2577,20 +3202,27 @@ class ArcadeEmitter {
                 }
                 if(value.opcode==='arcade_spriteProperty' && ['fx','fy','sx','sy','scale','rotation','rotationDegrees'].includes(value.fields?.PROPERTY?.[0])){const id=Symbol('sprite numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_tileHitFrom'){const id=Symbol('hit tile index');numbers.add(id);return id;}
-                if(value.opcode==='arcade_cameraProperty'){const id=Symbol('camera numeric property');numbers.add(id);return id;}
+                if(['arcade_cameraProperty','arcade_cameraDrawOffset'].includes(value.opcode)){const id=Symbol('camera numeric property');numbers.add(id);return id;}
                 if(['arcade_tileLocationProperty','arcade_legacyTileProperty'].includes(value.opcode)){const id=Symbol('tile numeric property');numbers.add(id);return id;}
-                if(['arcade_playerLookup','arcade_playerBySprite','arcade_eventPlayer'].includes(value.opcode)){const id=Symbol('player value');graphPlayerValues.add(id);return id;}
+                if(['arcade_playerLookup','arcade_playerBySprite','arcade_eventPlayer'].includes(value.opcode)){const id=Symbol('player value');graphPlayerValues.add(id);if(value.opcode==='arcade_eventPlayer'&&ownsEventPlayer(value))inspectionLeaves.set(id,'Player');return id;}
                 if(value.opcode==='arcade_allPlayers'){const id=Symbol('player array');arrays.add(id);return id;}
-                if(['arcade_playerButtonPressed','arcade_ask'].includes(value.opcode)){const id=Symbol('player button pressed');booleans.add(id);return id;}
+                if(['arcade_playerConnected','arcade_playerButtonPressed','arcade_ask'].includes(value.opcode)){const id=Symbol('player button pressed');booleans.add(id);return id;}
                 if(['arcade_createPlayerState','arcade_getPlayerState'].includes(value.opcode)){const id=Symbol('player state number');numbers.add(id);return id;}
-                if(value.opcode==='arcade_playerProperty'){const id=Symbol('player property');numbers.add(id);return id;}
+                if(value.opcode==='arcade_playerProperty'){
+                    const id=Symbol('player property');numbers.add(id);
+                    const valid=literal(blocks,value,'READ')==='safe'&&physicalNumber(inputBlock(blocks,value,'PROPERTY'))===2;
+                    inspectionOperatorProofs.set(id,{type:'number',operands:[ref(inputBlock(blocks,value,'PLAYER'))],domain:valid?['Player','null','undefined']:[],requirePlayer:true});return id;
+                }
                 if(value.opcode==='arcade_currentScene'){const id=Symbol('scene value');graphSceneValues.add(id);return id;}
                 if(['arcade_scenePhysicsEngine','arcade_createPhysicsEngine'].includes(value.opcode)){const id=Symbol('physics engine value');graphPhysicsEngineValues.add(id);return id;}
-                if(value.opcode==='arcade_physicsEngineProperty'){const id=Symbol('physics engine numeric property');numbers.add(id);return id;}
+                if(['arcade_sourceTypeOf','arcade_inspectValue'].includes(value.opcode)){const id=Symbol('owned String reporter result');strings.add(id);return id;}
+                if(['arcade_physicsEngineProperty','arcade_sceneFlags','arcade_fontMetric'].includes(value.opcode)){const id=Symbol('physics engine numeric property');numbers.add(id);return id;}
                 if(value.opcode==='arcade_createAnimation'){const id=Symbol('animation value');graphAnimationValues.add(id);return id;}
                 if(value.opcode==='arcade_sevensegDigit'){const id=Symbol('seven segment digit');graphSevensegDigitValues.add(id);return id;}
                 if(value.opcode==='arcade_sevensegCounter'){const id=Symbol('seven segment counter');graphSevensegCounterValues.add(id);return id;}
                 if(value.opcode==='arcade_sevensegProperty'){const id=Symbol('seven segment property');numbers.add(id);return id;}
+                if(value.opcode==='arcade_textSpriteCreate'){const id=Symbol('text sprite');graphTextSpriteValues.add(id);sprites.add(id);return id;}
+                if(value.opcode==='arcade_textSpriteProperty'){const id=Symbol('text sprite property');const property=directMenuValue(value,'PROPERTY',blocks);(property==='text'?strings:property==='icon'?images:numbers).add(id);return id;}
                 if(value.opcode==='arcade_createDart'){const id=Symbol('dart');graphDartValues.add(id);sprites.add(id);return id;}
                 if(value.opcode==='arcade_createCorgi'){const id=Symbol('corgi');graphCorgiValues.add(id);sprites.add(id);return id;}
                 if(['arcade_dartProperty','arcade_corgiProperty','arcade_backgroundScrollOffset','arcade_characterRule'].includes(value.opcode)){const id=Symbol('extension property');numbers.add(id);return id;}
@@ -2601,9 +3233,9 @@ class ArcadeEmitter {
                 }
                 if(value.opcode==='arcade_animationAssetInterval'){const id=Symbol('animation interval');numbers.add(id);return id;}
                 if(value.opcode==='arcade_spritesOfKind'){const id=`${key}:sprite-array:${Object.keys(blocks).find(id=>blocks[id]===value)}`;arrays.add(id);return id;}
-                if (['arrays_createReference','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(value.opcode)) {
+                if (['arrays_createReference','arrays_referenceSlice','arrays_referenceConcat','arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(value.opcode)) {
                     const id=`${key}:array-value:${Object.keys(blocks).find(id=>blocks[id]===value)}`;
-                    if(value.opcode==='arrays_createReference')arrays.add(id);return id;
+                    if(['arrays_createReference','arrays_referenceSlice','arrays_referenceConcat'].includes(value.opcode))arrays.add(id);return id;
                 }
                 if (['arcade_playerSprite','arcade_spawnSprite','arcade_spawnProjectile','arcade_spawnImageSprite','arcade_spawnImageProjectile','arcade_eventSprite', 'arcade_createSprite', 'arcade_createImageSprite'].includes(value.opcode)) {
                     const id = `${key}:sprite:${Object.keys(blocks).find(id => blocks[id] === value)}`;
@@ -2613,13 +3245,33 @@ class ArcadeEmitter {
                     const id = `${key}:image:${Object.keys(blocks).find(id => blocks[id] === value)}`;
                     images.add(id);return id;
                 }
+                const ownedTypes=this.objectClassExport.valueTypes(target,value);
+                if(ownedTypes.size){
+                    const id=Symbol('declared class value');
+                    if(['arcade_objectField','arcade_callObjectMethod'].includes(value.opcode))opaqueCells.add(id);
+                    sourceTypeOfClasses.set(id,ownedTypes);return id;
+                }
                 return null;
             };
-            const connect = (a,c) => { if (a && c) edges.push([a,c]); };
+            const connect = (a,c) => {if(a){if(!inspectionProducers.has(a))inspectionProducers.set(a,new Set());inspectionProducers.get(a).add(c);}if (a && c) edges.push([a,c]);else if(a)opaqueCells.add(a); };
             const seen = new Set();
             const visit = id => {
                 if (typeof id !== 'string' || seen.has(id) || !blocks[id]) return;
-                seen.add(id);const block = blocks[id];
+                seen.add(id);const block = blocks[id];inspectionVisited.add(block);
+                if(block.opcode==='arcade_throwValue'){
+                    const operand=inputBlock(blocks,block,'VALUE');
+                    throwInputs.set(block,ref(operand?.opcode==='text'&&operand.shadow&&!Object.keys(operand.inputs||{}).length&&typeof operand.fields?.TEXT?.[0]==='string'?{opcode:'bw_stringLiteral',value:operand.fields.TEXT[0]}:operand));
+                }
+                for(const obligation of this.procedureConstraints?.obligations(block)||[]){
+                    const actual=inputBlock(blocks,block,obligation.input);
+                    const operand=actual?.opcode==='text'&&actual.shadow&&!Object.keys(actual.inputs||{}).length&&typeof actual.fields?.TEXT?.[0]==='string'?{opcode:'bw_stringLiteral',value:actual.fields.TEXT[0]}:actual;
+                    procedureInputs.push({block,obligation,value:ref(operand)});
+                }
+                if(block.opcode==='arcade_inspectValue')inspectionInputs.set(block,{value:ref(inputBlock(blocks,block,'VALUE')),limit:ref(inputBlock(blocks,block,'LIMIT'))});
+                if(block.opcode==='arcade_sourceTypeOf'){
+                    const operand=inputBlock(blocks,block,'VALUE');
+                    sourceTypeOfInputs.set(block,operand?ref(operand):null);
+                }
                 for (const input of ['arcade_blitImage','arcade_imagesOverlap','arcade_copyImageFrom'].includes(block.opcode) ? ['IMAGE', 'SOURCE'] : ['IMAGE']) {
                     const image = ref(inputBlock(blocks,block,input));if(image)images.add(image);
                 }
@@ -2631,8 +3283,13 @@ class ArcadeEmitter {
                 }
                 if(block.opcode==='arcade_bufferWrite'){const buffer=ref(inputBlock(blocks,block,'SOURCE'));if(buffer)graphBufferValues.add(buffer);}
                 if(['arcade_bufferConcat','arcade_bufferEquals','arcade_bufferIndexOf'].includes(block.opcode)){const buffer=ref(inputBlock(blocks,block,'OTHER'));if(buffer)graphBufferValues.add(buffer);}
+                if(/^arcade_textSprite/.test(block.opcode)){
+                    const id=ref(inputBlock(blocks,block,'ID'));if(id){graphTextSpriteValues.add(id);sprites.add(id);}
+                    if(block.opcode==='arcade_textSpriteSetIcon'){const image=ref(inputBlock(blocks,block,'IMAGE'));if(image)images.add(image);}
+                    if(block.opcode==='arcade_textSpriteSetProperty'){const property=directMenuValue(block,'PROPERTY',blocks),value=ref(inputBlock(blocks,block,'VALUE'));if(value)(property==='text'?strings:property==='icon'?images:numbers).add(value);}
+                }
                 if(block.opcode==='arcade_eventPlayer'){const player=ref(block);if(player)graphPlayerValues.add(player);}
-                if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons','arcade_playerButtonPressed','arcade_getPlayerState','arcade_setPlayerState','arcade_changePlayerState'].includes(block.opcode)){
+                if(['arcade_playerSprite','arcade_setPlayerSprite','arcade_playerProperty','arcade_movePlayerWithButtons','arcade_playerConnected','arcade_playerButtonPressed','arcade_getPlayerState','arcade_setPlayerState','arcade_changePlayerState'].includes(block.opcode)){
                     const player=ref(inputBlock(blocks,block,'PLAYER'));if(player)graphPlayerValues.add(player);
                 }
                 if(block.opcode==='arcade_allPlayers'){const array=ref(block),item=Symbol('player collection element');graphPlayerValues.add(item);elements.push([array,item]);}
@@ -2654,13 +3311,15 @@ class ArcadeEmitter {
                     const array=ref(block);let current=inputBlock(blocks,block,'VALUES');
                     while(current?.opcode==='arrays_referenceValues'){elements.push([array,ref(inputBlock(blocks,current,'VALUE'))]);current=inputBlock(blocks,current,'REST');}
                 }
+                if(['arrays_referenceSlice','arrays_referenceConcat'].includes(block.opcode)){
+                    arrayCopies.push([ref(inputBlock(blocks,block,'ARRAY')),ref(block)]);
+                    if(block.opcode==='arrays_referenceConcat')arrayCopies.push([ref(inputBlock(blocks,block,'OTHER')),ref(block)]);
+                }
                 if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom','arrays_referenceRemove','arrays_mutateReference','arrays_referenceLength','arrays_referenceIndexOf','arrays_referenceTruthy'].includes(block.opcode)){
                     const array=ref(inputBlock(blocks,block,'ARRAY'));if(array)arrays.add(array);
                     const index=ref(inputBlock(blocks,block,'INDEX'));if(index)numbers.add(index);
                     if(['arrays_referenceItem','arrays_referenceTake','arrays_referenceRandom'].includes(block.opcode))elements.push([array,ref(block)]);
-                    if(block.opcode==='arrays_referenceRemove')elements.push([array,ref(inputBlock(blocks,block,'VALUE'))]);
-                    if(block.opcode==='arrays_referenceIndexOf')lookupTypes.push([array,ref(inputBlock(blocks,block,'VALUE'))]);
-                    if(block.opcode==='arrays_mutateReference' && ['push','unshift','insertAt','set','removeElement'].includes(literal(blocks,block,'OP')))elements.push([array,ref(inputBlock(blocks,block,'VALUE'))]);
+                    if(block.opcode==='arrays_mutateReference' && ['push','unshift','insertAt','set'].includes(literal(blocks,block,'OP')))elements.push([array,ref(inputBlock(blocks,block,'VALUE'))]);
                 }
                 if(REGISTERED_COMMANDS.has(block.opcode)){
                     const scope=callbackScopes.get(literal(blocks,block,'TOKEN'));
@@ -2673,11 +3332,16 @@ class ArcadeEmitter {
                         captureLinks.push([`${scope}:capture:${name}`,!explicit.has(name) || captured && !local?`${key}:capture:${name}`:localKey(name)]);
                     }
                 }
+                if(block.opcode==='arcade_settingsWrite'){
+                    const type=settingType(block, blocks),value=ref(inputBlock(blocks,block,'VALUE'));
+                    if((type==='NumberArray' || type==='StringArray') && value){arrays.add(value);const item=Symbol('setting write item');(type==='NumberArray'?numbers:strings).add(item);elements.push([value,item]);}
+                    if(type==='Buffer' && value)graphBufferValues.add(value);
+                }
                 if(block.opcode==='arcade_setSpriteProperty' && literal(blocks,block,'PROPERTY')==='data') {
                     const id=Symbol('sprite data assignment');dataProperties.push([ref(inputBlock(blocks,block,'ID')),id]);
                     connect(id,ref(inputBlock(blocks,block,'VALUE')));
                 }
-                if(block.opcode==='arcade_setCaptured')connect(`${key}:capture:${literal(blocks,block,'NAME')}`,ref(inputBlock(blocks,block,'VALUE')));
+                if(block.opcode==='arcade_setCaptured'){const cell=inspectionCaptures.captured(inspectionCaptures.scopeOf(block),fixedName(block));connect(cell?inspectionCellKey(cell):`${key}:capture:${literal(blocks,block,'NAME')}`,ref(inputBlock(blocks,block,'VALUE')));}
                 if (block.opcode === 'arcade_setLocal') connect(localKey(literal(blocks,block,'NAME')),ref(inputBlock(blocks,block,'VALUE')));
                 if (block.opcode === 'data_setvariableto') connect(`variable:${block.fields.VARIABLE[1] || block.fields.VARIABLE[0]}`,ref(inputBlock(blocks,block,'VALUE')));
                 if (block.opcode === 'arcade_returnValue') connect(`${key}:result`,ref(inputBlock(blocks,block,'VALUE')));
@@ -2700,11 +3364,20 @@ class ArcadeEmitter {
         }
         edges.push(...captureLinks);
         const graph=new ValueTypeGraph();
-        for(const [values,type] of [[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
+        for(const [values,type] of [[graphTextSpriteValues,'TextSprite'],[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']])for(const value of values)graph.add(value,type);
+        for(const [value,types] of sourceTypeOfClasses)for(const type of types)graph.add(value,this.objectClassExport.classes.has(type)?`class:${type}`:type);
+        for(const cell of this.sourceScalarCells.values())graph.add(`variable:${cell.id}`,cell.type.toLowerCase());
+        for(const cell of this.sourceReferenceCells.values()){
+            const type=cell.type;
+            graph.add(`variable:${cell.id}`,type.endsWith('[]')?'array':this.objectClassExport.classes.has(type)?`class:${type}`:type);
+        }
         for(const [a,b] of edges)graph.merge(a,b);
         for(const [receiver,value] of dataProperties)if(receiver)graph.merge(graph.property(receiver,'data'),value);
         for(const [,value] of dataProperties)if(!graph.node(value).types.size)graph.add(value,'any');
         for(const [array,value] of elements)if(array && value){graph.add(array,'array');graph.merge(graph.element(array),value);}
+        for(const [source,copy] of arrayCopies)if(source && copy){
+            graph.add(source,'array');graph.add(copy,'array');graph.merge(graph.element(source),graph.element(copy));
+        }
         for(const [id,type] of specialTypes)graph.add(id,type);
         const inferValueOperations=()=>{
             let revision;
@@ -2720,31 +3393,88 @@ class ArcadeEmitter {
             } while(revision!==graph.revision);
         };
         inferValueOperations();
+        const opaqueNodes=new Set([...opaqueCells].map(value=>graph.node(value)));
+        const objectClassOwned=name=>{
+            const seen=new Set();let cls=this.objectClassExport.classes.get(name);
+            if(!cls)return false;
+            while(cls){
+                if(seen.has(cls.name))return false;seen.add(cls.name);
+                if(cls.intrinsic && ['__bwSDK_BaseSprite','Sprite','__bwSDK_ExtendableSprite'].includes(cls.name))return false;
+                if(!cls.parent)return true;
+                cls=this.objectClassExport.classes.get(cls.parent);if(!cls)return false;
+            }
+            return false;
+        };
+        const admittedType=type=>['number','boolean','string','null','undefined','array','Image','Buffer'].includes(type) || type.startsWith('class:') && objectClassOwned(type.slice(6));
+        this.sourceTypeOfExportOperands=new Set();
+        for(const [block,value] of sourceTypeOfInputs){
+            if(!value){if(!block.inputs?.VALUE?.[1])this.sourceTypeOfExportOperands.add(block);continue;}
+            const node=graph.node(value);
+            if(!opaqueNodes.has(node) && node.types.size && [...node.types].every(admittedType))this.sourceTypeOfExportOperands.add(block);
+        }
+        for(const target of this.project.targets)for(const writer of Object.values(target.blocks||{}))if(['data_setvariableto','data_changevariableby'].includes(writer.opcode)){
+            const id=`variable:${writer.fields?.VARIABLE?.[1]||writer.fields?.VARIABLE?.[0]}`;
+            const readers=inspectionGlobalReaders.get(id);
+            if(readers&&(!inspectionVisited.has(writer)||[...readers].some(reader=>reader!==target)))inspectionOpaqueCells.add(id);
+        }
+        const inspectionOpaqueNodes=new Set([...inspectionOpaqueCells,...opaqueCells].map(value=>graph.node(value)));
+        let inspectionChanged;do{inspectionChanged=false;for(const [result,inputs]of inspectionOperators)if(inputs.some(value=>!value||inspectionOpaqueNodes.has(graph.node(value))||!graph.node(value).types.size||[...graph.node(value).types].some(type=>!['number','boolean','string','null','undefined'].includes(type)))){const node=graph.node(result);if(!inspectionOpaqueNodes.has(node)){inspectionOpaqueNodes.add(node);inspectionChanged=true;}}}while(inspectionChanged);
+        this.inspectionExportOperands=new Set();
+        const inspectionUndefinedCells=new Set([...this.sourceScalarCells.values()].filter(cell=>cell.type==='Any').map(cell=>`variable:${cell.id}`));
+        const inspectionTypes=(value,allowed,seen=new Set(),origins=null)=>{
+            if(!value)return false;if(inspectionLeaves.has(value)){const type=inspectionLeaves.get(value);if(type==='Player'&&allowed.includes(type))origins?.add(value);return allowed.includes(type);}
+            const operation=inspectionOperatorProofs.get(value);if(operation){
+                const output=operation.type?[operation.type]:[...graph.node(value).types];
+                if(!output.length||!output.every(type=>allowed.includes(type)))return false;
+                if(seen.has(value))return true;const next=new Set([...seen,value]);
+                const evidence=operation.requirePlayer?new Set():origins;
+                return operation.operands.every(operand=>inspectionTypes(operand,operation.domain||(operation.numeric?['number','undefined']:['number','boolean','string','null','undefined']),next,evidence))&&(!operation.requirePlayer||evidence.size>0);
+            }
+            const node=graph.node(value);
+            if(allowed.includes('Player')){
+                const producers=inspectionProducers.get(value);
+                if(inspectionOpaqueNodes.has(node)||seen.has(value)||!producers?.size)return false;
+                const next=new Set([...seen,value]);return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins));
+            }
+            if(inspectionOpaqueNodes.has(node)||!node.types.size||[...node.types].some(type=>type!=='any'&&!allowed.includes(type)))return false;
+            if(!node.types.has('any'))return true;
+            // An Any declaration resets a real scalar cell to Undefined. It
+            // does not prove its later values. Follow every actual directed
+            // writer; a dynamic operation's Any producer remains opaque.
+            if(anys.has(value))return false;
+            const producers=inspectionProducers.get(value);
+            if(!producers?.size)return inspectionUndefinedCells.has(value)&&allowed.includes('undefined');
+            if(seen.has(value))return true;const next=new Set([...seen,value]);
+            return [...producers].every(producer=>inspectionTypes(producer,allowed,next,origins));
+        };
+        for(const expected of this.procedureConstraints?.allObligations||[]){
+            const actual=procedureInputs.find(item=>item.block===expected.block&&item.obligation===expected.obligation);
+            if(!actual||actual.obligation.type!=='Any'&&!inspectionTypes(actual.value,[actual.obligation.type.toLowerCase()]))this.note('Procedure parameter constraint: actual current caller or writer requires '+expected.obligation.type);
+        }
+        this.throwExportOperands=new Set();
+        const throwOwners=throwExportOwners(this.project,this.objectClassExport.procedures);
+        for(const [block,value]of throwInputs)if(throwOwners.has(block)&&inspectionTypes(value,['number','boolean','string','null','undefined']))this.throwExportOperands.add(block);
+        for(const target of this.project.targets)for(const block of Object.values(target.blocks||{}))if(block.opcode==='arcade_throwValue'&&!this.throwExportOperands.has(block))this.note('Arcade Throw export requires a proved primitive operand and qualified main/button/ordinary procedure owner');
+        for(const [block,input]of inspectionInputs)if(inspectionTypes(input.value,['number','boolean','string','null','undefined'])&&inspectionTypes(input.limit,['number','undefined']))this.inspectionExportOperands.add(block);
         // Unknown operations remain dynamic. Propagate that fact through the
         // same result/alias graph rather than prematurely widening known sums.
         for(const [result] of valueOperations)if(!graph.node(result).types.size)graph.add(result,'any');
         inferValueOperations();
-        // Searching for a value outside a collection's inferred element type
-        // is valid in Blocks and still returns -1 using strict equality. Widen
-        // the exported collection type without aliasing the search argument
-        // to its elements (which would incorrectly change the argument type).
-        for(const [array,value] of lookupTypes)if(array && value){
-            const element=graph.element(array),types=graph.node(element).types;
-            const searched=[...graph.node(value).types].filter(type=>['Buffer','Image','Sprite','TileLocation','LegacyTile','Animation','SevenSegDigit','DigitCounter','Dart','Corgio','Scene','PhysicsEngine','Player','array','number','string','boolean'].includes(type));
-            if(types.size && searched.some(type=>!types.has(type)))graph.add(element,'any');
-        }
+        // Queries do not insert their needles into a collection. Its element
+        // type is determined by declarations, writes, copies and aliases.
         // Element and alias joins can make a nested array visible to reads or
         // procedure results that had no annotation of their own.
-        const inferred=new Map([[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
+        const inferred=new Map([[graphTextSpriteValues,'TextSprite'],[graphBufferValues,'Buffer'],[graphPlayerValues,'Player'],[graphSceneValues,'Scene'],[graphPhysicsEngineValues,'PhysicsEngine'],[graphAnimationValues,'Animation'],[graphSevensegDigitValues,'SevenSegDigit'],[graphSevensegCounterValues,'DigitCounter'],[graphDartValues,'Dart'],[graphCorgiValues,'Corgio'],[images,'Image'],[sprites,'Sprite'],[tiles,'TileLocation'],[legacyTiles,'LegacyTile'],[arrays,'array'],[numbers,'number'],[booleans,'boolean'],[strings,'string'],[anys,'any']]);
         for(const [key] of graph.nodes)for(const [values,type] of inferred)if(graph.has(key,type))values.add(key);
         this.spriteReturnFunctions = new Set([...parameters.keys()].filter(key=>graph.arrayType(`${key}:result`)==='Sprite'));
         this.spriteVariableIds = new Set([...sprites].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='Sprite').map(key=>key.slice(9)));
         this.imageReturnFunctions = new Set([...parameters.keys()].filter(key=>graph.arrayType(`${key}:result`)==='Image'));
         this.imageVariableIds = new Set([...images].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='Image').map(key=>key.slice(9)));
         const arrayType=value=>graph.arrayType(value);
+        this.mixedValueArrayLocalBlocks=new Set([...arrayLocalReaders].filter(([,cell])=>graph.has(cell,'array') && graph.arrayType(cell)==='any').map(([block])=>block));
         this.mixedValueVariableIds=new Set([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && (graph.node(key).types.size>1 || graph.has(key,'any')) && graph.arrayType(key)==='any').map(key=>key.slice(9)));
         this.booleanVariableIds=new Set([...booleans].filter(key=>typeof key==='string' && key.startsWith('variable:') && graph.arrayType(key)==='boolean').map(key=>key.slice(9)));
-        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['Buffer','mp.Player','string','tiles.Location','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
+        this.primitiveVariableTypes=new Map([...graph.nodes.keys()].filter(key=>typeof key==='string' && key.startsWith('variable:') && ['Buffer','mp.Player','string','tiles.Location','tiles.Tile','animation.Animation','SevenSegDigit','DigitCounter','Dart','Corgio','TextSprite','scene.Scene','ArcadePhysicsEngine'].includes(graph.arrayType(key))).map(key=>[key.slice(9),graph.arrayType(key)]));
         this.valueReturnTypes=new Map([...parameters.keys()].map(key=>[key,graph.arrayType(`${key}:result`)]));
         this.localValueTypes=new Map();
         for(const key of graph.nodes.keys()){
@@ -2807,12 +3537,13 @@ class ArcadeEmitter {
 
     // ── scripts ──────────────────────────────────────────────────────────
     /** Emit one script body with the guards a yield must check. */
-    body (firstId, guards, preamble = []) {
-        const saved = this.guards;
+    body (firstId, guards, preamble = [], implicitLoopYield=true) {
+        const saved = {guards:this.guards,implicitLoopYield:this.implicitLoopYield};
         this.guards = guards;
+        this.implicitLoopYield=implicitLoopYield;
         const script = [...preamble];
         this.stmts(firstId, 1, script);
-        this.guards = saved;
+        Object.assign(this,saved);
         return script;
     }
 
@@ -2860,9 +3591,61 @@ class ArcadeEmitter {
         return lines.join('\n');
     }
 
+    prepareCallableExport() {
+        this.callableExports=new Map();this.callableGlobals=new Map();this.classCallableDefaultTargets=new Set();
+        this.sdkImageLiteralResources=createSdkImageLiteralResources(this.project,this.opts.costumeSvg,this.palette);
+        for(const target of this.project.targets) {
+            const blocks=target.blocks || {},literal=(block,name)=>{
+                const slot=block.inputs?.[name]?.[1];
+                if(Array.isArray(slot)&&slot[0]===10)return String(slot[1]);
+                const child=typeof slot==='string'&&blocks[slot];
+                return child?.opcode==='text'&&child.shadow?String(child.fields.TEXT?.[0]):null;
+            };
+            const declarations=Object.values(blocks).filter(block=>block.opcode==='arcade_declareCallable');
+            if(!declarations.length)continue;
+            let envelope;try {envelope=JSON.parse(literal(declarations[0],'METADATA'));} catch(_){this.note('Callable export requires fixed lexical declaration metadata');continue;}
+            try {
+                let graph,sdkImageEnabled=false;
+                if(envelope.version===2&&!this.opts.classCallablePrototype){
+                    const proof=classCallableDefaultProjectGate(target,this.project,this.objectClassExport,literal);
+                    if(!proof.eligible)throw Error(proof.unsupported.join('; ')||'Class callable default project is unproved');
+                    graph=proof.graph;sdkImageEnabled=proof.sdkImageEnabled;this.classCallableDefaultTargets.add(target);
+                }else graph=inspectCallableExportGraph(target,envelope.plan,literal,envelope.version===2&&this.opts.classCallablePrototype?{classProvider:this.objectClassExport.classCallableProvider(target),project:this.project}:{project:this.project});
+                validateCallableCurrentBodyTypes(graph,literal);
+                if(this.clonable.has(target.name))throw Error('Callable lexical export on clone targets is not qualified');
+                for(const [bindingId,row] of graph.globalBindings) {
+                    const owner=this.project.targets.find(candidate=>Object.hasOwn(candidate.variables || {},row.variableId));
+                    if(!owner || owner!==target&&!owner.isStage || (owner.variables[row.variableId]?.[2] || ''))throw Error('Callable global has a foreign or nonscalar variable ID');
+                    const name=this.varName(owner,owner.variables[row.variableId][0]);
+                    const binding=graph.plan.bindings.find(binding=>binding.id===bindingId);
+                    this.callableGlobals.set(name,binding.type);
+                }
+                const emitter=createCallableLexicalEmitter(graph,(first,context)=>{
+                    const previous={target:this.target,blocks:this.blocks,locals:this.currentLocalNames,context:this.currentCallableContext};
+                    this.target=target;this.blocks=blocks;this.currentLocalNames=new Set();this.currentCallableContext=context;
+                    try{return this.body(first,[],[],false);}finally {this.target=previous.target;this.blocks=previous.blocks;this.currentLocalNames=previous.locals;this.currentCallableContext=previous.context;}
+                });
+                this.callableExports.set(target,{graph,emitter,sdkImageEnabled:sdkImageEnabled||envelope.version===2&&this.opts.sdkImagePrototype===true});
+                for(const owner of graph.plan.owners)if(owner.kind==='declaration')this.functionSymbols.pin(target,owner.procedure,owner.sourceName);
+            } catch(error) {this.note(error.message);}
+        }
+    }
+    callableArgumentValues(block) {
+        const args=[];let input=block.inputs?.ARGS,child=this.block(input?.[1]),seen=new Set();
+        while(child?.opcode==='arcade_functionArgument') {
+            if(seen.has(child))throw Error('Callable argument chain is cyclic');seen.add(child);
+            args.push(this.arrayValue(child,'VALUE'));input=child.inputs?.REST;child=this.block(input?.[1]);
+        }
+        const slot=input?.[1];
+        if(!(Array.isArray(slot)&&slot[0]===10&&slot[1]==='[]') && !(child?.opcode==='text'&&child.shadow&&child.fields?.TEXT?.[0]==='[]'))
+            throw Error('Callable invocation requires its explicit current argument chain');
+        return args;
+    }
+
     // ── the program ──────────────────────────────────────────────────────
     emit () {
         const out = [];
+        this.collectKindBindings();
         // Scratch's Stage composites transparent backdrop pixels over white.
         // Native Arcade primitives own their scene defaults instead; do not
         // change those programs merely because they also have a Scratch Stage.
@@ -2883,9 +3666,9 @@ class ArcadeEmitter {
         const background = this.sprites.find(t => {
             if (t.name !== 'background' || t.costumes?.length !== 1) return false;
             const opcodes = Object.values(t.blocks || {}).map(b => b.opcode);
-            return ['event_whenflagclicked', 'motion_gotoxy', 'looks_gotofrontback', 'looks_show']
-                .every(opcode => opcodes.includes(opcode)) &&
-                opcodes.every(opcode => ['event_whenflagclicked', 'motion_gotoxy',
+            return opcodes.some(opcode => ['event_whenflagclicked','arcade_whenSourceStarts'].includes(opcode)) &&
+                ['motion_gotoxy', 'looks_gotofrontback', 'looks_show'].every(opcode => opcodes.includes(opcode)) &&
+                opcodes.every(opcode => ['event_whenflagclicked', 'arcade_whenSourceStarts', 'motion_gotoxy',
                     'looks_gotofrontback', 'looks_show'].includes(opcode));
         });
         const backgroundSvg = background && this.opts.costumeSvg?.(background, background.costumes[0]);
@@ -2925,15 +3708,11 @@ class ArcadeEmitter {
                 } else if (!this.handleTemplateVars.has(handle)) this.handleTemplateVars.set(handle, template);
             }
         }
-        // Custom blocks first, so calls can find their names.
-        for (const t of this.project.targets) {
-            for (const [, b] of Object.entries(t.blocks || {})) {
-                if (b && b.opcode === 'procedures_prototype' && b.mutation) {
-                    const code = b.mutation.proccode;
-                    const base = ident(code.replace(/%[sbn]/g, '').trim()) || 'fn';
-                    this.fnNames.set(`${t.isStage ? '' : t.name}:${code}`, `${t.isStage ? '' : `${ident(t.name)}_`}${base}`);
-                }
-            }
+        // Only native managed value invocations identify synchronous source
+        // functions. Scratch hats and ordinary command procedures keep yields.
+        for(const t of this.project.targets)for(const b of Object.values(t.blocks || {}))if(b?.opcode==='arcade_callFunction'){
+            const code=this.literalInput(b,'NAME');
+            if(code!==null)this.managedValueProcedures.add(`${t.isStage?'':t.name}:${code}`);
         }
         const register = (table, key, entry) => {
             if (!table.has(key)) table.set(key, []);
@@ -2953,7 +3732,32 @@ class ArcadeEmitter {
                 }
             }
         }
+
+        for(const cell of this.sourceReferenceCells.values())cell.ts=this.varName(cell.target,cell.name);
+        try{this.procedureConstraints=prepareProcedureConstraintExport(this.project);}catch(error){this.note(error.message);this.procedureConstraints=null;}
+        this.objectClassExport=prepareObjectClassExport(this);
+        this.prepareCallableExport();
         const imageParameterTypes = this.imageProcedureParameters();
+        const scalarFlow=scalarExportFlow(this.project,block=>this.isBoolean(block),this.sourceScalarCells);
+        for(const [key,parameters] of scalarFlow.definitions) {
+            const old=imageParameterTypes.get(key)||[];
+            imageParameterTypes.set(key,parameters.map((name,index)=>scalarFlow.primitive(`${key}:local:${name}`)?scalarFlow.type(`${key}:local:${name}`):old[index]||'any'));
+            if(scalarFlow.primitive(`${key}:result`))this.valueReturnTypes.set(key,scalarFlow.type(`${key}:result`));
+        }
+        for(const key of scalarFlow.types.keys()) {
+            if(typeof key!=='string' || !key.includes(':local:') || !scalarFlow.primitive(key))continue;
+            const at=key.lastIndexOf(':local:'),owner=key.slice(0,at),name=ident(key.slice(at+7));
+            if(!this.localValueTypes.has(owner))this.localValueTypes.set(owner,new Map());
+            this.localValueTypes.get(owner).set(name,scalarFlow.type(key));
+        }
+
+        for (const cell of this.sourceScalarCells.values()) {
+            const {id,type}=cell;cell.ts=this.varName(cell.target,cell.name);
+            this.mixedValueVariableIds.delete(id);
+            if (type === 'Boolean') this.booleanVariableIds.add(id); else this.booleanVariableIds.delete(id);
+            this.primitiveVariableTypes.set(id,type.toLowerCase());
+        }
+
         // Instance destruction callbacks are registered by a command in the
         // startup script. Compile their bodies first, then insert each body at
         // its registration site so PXT captures the handle at that moment.
@@ -2984,7 +3788,7 @@ class ArcadeEmitter {
                 if (this.templateNames.has(t.name)) {
                     // An Arcade sprite template (E1) is artwork for sprites.create:
                     // its own scripts have no MakeCode instance to run on.
-                    if (b.opcode === 'event_whenflagclicked') {
+                    if (['event_whenflagclicked','arcade_whenSourceStarts'].includes(b.opcode)) {
                         const commands = [];
                         for (let item = this.block(b.next); item; item = this.block(item.next)) commands.push(item.opcode);
                         if (commands.some(opcode => opcode !== 'looks_hide')) {
@@ -2998,11 +3802,17 @@ class ArcadeEmitter {
                 let script = [];
                 // An Arcade hat's locals (arcade_setLocal) are declared in that run, not as file globals.
                 const scoped = (emitBody, parameters = []) => {
-                    const saved = this.currentLocalNames;
+                    const saved = this.currentLocalNames,savedContext=this.currentCallableContext;
                     this.currentLocalNames = new Set();
+                    const entry=this.callableExports?.get(t);
+                    if(entry?.graph.plan.version===2){
+                        const creates=new Set(entry.graph.plan.sites.filter(site=>site.createdIn===entry.graph.plan.module).map(site=>entry.graph.creates.get(site.id)));
+                        this.currentCallableContext=this.objectClassExport.classCallableProvider(t).contextForModuleRoot(b,entry.emitter,creates);
+                    }
+                    if(entry?.graph.plan.version===3&&b.opcode==='arcade_whenSourceStarts')this.currentCallableContext=entry.emitter.moduleContext(b);
                     const lines = emitBody();
                     const locals = [...this.currentLocalNames].filter(name => !parameters.includes(name));
-                    this.currentLocalNames = saved;
+                    this.currentLocalNames = saved;this.currentCallableContext=savedContext;
                     const scope = `${t.name}:script:${Object.keys(this.blocks).find(id => this.blocks[id] === b)}`;
                     return [...locals.map(name => this.localDeclaration(name, scope)), ...lines];
                 };
@@ -3016,7 +3826,7 @@ class ArcadeEmitter {
                     this.eventKind = null;
                     return lines;
                 };
-                if (b.opcode === 'event_whenflagclicked') {
+                if (['event_whenflagclicked','arcade_whenSourceStarts'].includes(b.opcode)) {
                     // The green flag starts the ORIGINAL sprite's scripts; clones do not exist yet.
                     if (clonable) this.use('gone');
                     script = scoped(() => this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])]));
@@ -3083,25 +3893,37 @@ class ArcadeEmitter {
                     handlers.push(`sprites.onOverlap(${first}, ${second}, function (sprite: Sprite, otherSprite: Sprite) {\n${script.join('\n')}\n})`);
                 } else if (b.opcode === 'arcade_whenCountdownEnds') {
                     handlers.push(`info.onCountdownEnd(function () {\n${plainBody().join('\n')}\n})`);
+                } else if(b.opcode==='arcade_whenCallableDispatched' && this.callableExports?.has(t)) {
+                    continue;
                 } else if (b.opcode === 'procedures_definition') {
                     const proto = this.block(b.inputs && b.inputs.custom_block && b.inputs.custom_block[1]);
                     if (!proto || !proto.mutation) continue;
                     const names = JSON.parse(proto.mutation.argumentnames || '[]').map(ident);
                     const key = `${t.isStage ? '' : t.name}:${proto.mutation.proccode}`;
+                    const callableEntry=this.callableExports?.get(t);
+                    if(callableEntry && [...callableEntry.graph.plan.owners].some(owner=>owner.procedure===proto.mutation.proccode)) {
+                        if(!callableEntry.emitted){try{functions.push(...callableEntry.emitter.declarations());}catch(error){this.note(error.message);}callableEntry.emitted=true;}
+                        continue;
+                    }
+                    if(this.objectClassExport.procedures.has(key))continue;
                     const types = imageParameterTypes.get(key) || [];
-                    const params = names.map((n, i) => `${n}: ${types[i] || 'any'}`);
+                    const params = names.map((n, i) => `${n}: ${this.procedureConstraints?.annotation(t,proto.mutation.proccode,i) || types[i] || 'any'}`);
                     // It runs in its caller's thread, so it checks the caller's run token.
                     if (this.tokened()) params.unshift('_t: number');
                     if (clonable) {
                         this.use('gone');
                         params.unshift('self: Sprite');
                     }
-                    const saved = this.currentLocalNames;
+                    const saved = this.currentLocalNames,savedContext=this.currentCallableContext;
                     this.currentLocalNames = new Set();
-                    script = this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])]);
+                    if(callableEntry?.graph.plan.version===2){
+                        const creates=new Set(callableEntry.graph.plan.sites.filter(site=>site.createdIn===callableEntry.graph.plan.module).map(site=>callableEntry.graph.creates.get(site.id)));
+                        this.currentCallableContext=this.objectClassExport.classCallableProvider(this.target).contextForModuleRoot(b,callableEntry.emitter,creates);
+                    }
+                    script = this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])], [], !this.managedValueProcedures.has(key));
                     const locals = [...this.currentLocalNames].filter(name => !names.includes(name));
-                    this.currentLocalNames = saved;
-                    const fn = this.fnNames.get(key);
+                    this.currentLocalNames = saved;this.currentCallableContext=savedContext;
+                    const fn = this.functionName(t,proto.mutation.proccode);
                     // A procedure that returns a value (arcade_returnValue) is typed by
                     // what flows out of it; one that falls off its end returns undefined, as in PXT.
                     const returning = line => /^\s*return [^\s/]/.test(line);
@@ -3134,13 +3956,30 @@ class ArcadeEmitter {
             if (!this.usedDestroyedCallbacks.has(token)) this.note(`Arcade sprite destruction callback ${token} has no registration`);
         }
         // Declarations: every variable the program touched, then the sprites.
+        const objectClasses=this.objectClassExport.render();
         const decls = [...new Set(this.globals.values())];
-        if (this.customSpriteKinds.size) {
+        if(this.requiresTextSpritePackage)this.customSpriteKinds.delete('Text');
+        if (this.boundSpriteKinds.size) {
             out.push('namespace SpriteKind {');
-            for (const kind of this.customSpriteKinds) out.push(`    export const ${kind} = SpriteKind.create()`);
+            for (const kind of this.boundSpriteKinds) out.push(`    export let ${kind}: number`);
             out.push('}');
         }
+        out.push(...objectClasses);
         for (const n of decls) {
+            if(this.callableGlobals?.has(n)){out.push(`let ${n}: ${renderCallableSignature(this.callableGlobals.get(n))}`);continue;}
+            const referenceCell=[...this.sourceReferenceCells.values()].find(cell=>cell.ts===n);
+            if(referenceCell && this.editedSavedReferenceIds.has(referenceCell.id)) {
+                const edited=this.editedSavedReferenceIds.get(referenceCell.id);
+                out.push(`let ${n}: any = ${edited === undefined ? 'undefined' : JSON.stringify(edited)}`);
+                continue;
+            }
+            if(referenceCell){out.push(`let ${n}: ${referenceCell.type}`);continue;}
+            const sourceCell=[...this.sourceScalarCells.values()].find(cell=>cell.ts===n);
+            if (sourceCell) {out.push(`let ${n}: ${sourceCell.type.toLowerCase()}`);continue;}
+            if(this.objectClassExport?.sdkVariable?.(n)){out.push(`let ${n}: Image`);continue;}
+            const objectType=this.objectClassExport?.variableTypes.get(n);
+            if(objectType && this.objectClassExport.hasType?.(objectType)){out.push(`let ${n}: ${objectType} = null`);continue;}
+            if(['number','boolean','string'].includes(objectType)){out.push(`let ${n}: ${objectType} = ${objectType==='string'?'\"\"':objectType==='boolean'?'false':'0'}`);continue;}
             const kinds = this.kinds.get(n) || new Set(['number']);
             // A variable given both text and numbers is `any` — Scratch's own
             // variables are untyped, and that is the honest translation.
@@ -3152,7 +3991,7 @@ class ArcadeEmitter {
             const mixedInitialScalar = this.initialGlobals.has(n) &&
                 ['string', 'boolean', 'number'].some(kind => kinds.has(kind) && kind !== initialScalarType);
             out.push(arrayKind?`let ${n}: ${arrayKind} = null`:this.handleVars.has(n) ? `let ${n}: Sprite = null` :
-                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
+                kinds.size > 1 || kinds.has('any') || mixedInitialScalar ? `let ${n}: any = ${initial}` : kinds.has('string') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : '""'}` : kinds.has('boolean') ? `let ${n} = ${this.initialGlobals.has(n) ? initial : 'false'}` : kinds.has('Buffer') ? `let ${n}: Buffer = null` : kinds.has('mp.Player') ? `let ${n}: mp.Player = null` : kinds.has('scene.Scene') ? `let ${n}: scene.Scene = null` : kinds.has('ArcadePhysicsEngine') ? `let ${n}: ArcadePhysicsEngine = null` : kinds.has('animation.Animation') ? `let ${n}: animation.Animation = null` : kinds.has('SevenSegDigit') ? `let ${n}: SevenSegDigit = null` : kinds.has('DigitCounter') ? `let ${n}: DigitCounter = null` : kinds.has('TextSprite') ? `let ${n}: TextSprite = null` : kinds.has('Dart') ? `let ${n}: Dart = null` : kinds.has('Corgio') ? `let ${n}: Corgio = null` : kinds.has('tiles.Tile') ? `let ${n}: tiles.Tile = null` : kinds.has('tiles.Location') ? `let ${n}: tiles.Location = null` : kinds.has('image') ? `let ${n}: Image = null` : `let ${n} = ${initial}`);
         }
         if (this.usesAnimationResources) {
             const resources = [...this.authoredAnimationArrays.values()];
@@ -3286,7 +4125,7 @@ class ArcadeEmitter {
             const lines = flagScripts[0].script;
             if (lines.some(line => /^\s*(let |const |return\b)|\breturn$/.test(line))) {
                 let name = '__bwStartup';
-                const occupied = new Set([...this.globals.values(), ...this.fnNames.values(), ...this.spriteVar.values(), ...this.artVar.values()]);
+                const occupied = new Set([...this.globals.values(), ...this.functionNames(), ...this.spriteVar.values(), ...this.artVar.values()]);
                 while (occupied.has(name)) name += '_';
                 functions.push(`function ${name} () {\n${lines.join('\n')}\n}`);
                 startup = [`${name}()`];
@@ -3327,7 +4166,7 @@ export function projectToArcade (project, opts = {}) {
     const songFactory = [...e.songAssets.values()].map(resource =>
         `            case ${JSON.stringify(resource.name)}: case ${JSON.stringify(resource.id)}: return hex\`${resource.hex}\``).join('\n');
     const songSource = songFactory ? `namespace ${songNamespace} {\n    helpers._registerFactory("song", function (name: string) {\n        switch (helpers.stringTrim(name)) {\n${songFactory}\n        }\n        return null\n    })\n}\n` : '';
-    const ts = e.tileAssets.inlineSource() + songSource + projectTs;
+    const ts = (e.requiresStringArraySettings ? STRING_ARRAY_SETTINGS_SOURCE+'\n' : '') + e.tileAssets.inlineSource() + songSource + projectTs;
     // Publish unused assets as well, without introducing unused main-code helpers.
     e.prepareAuthoredAnimations();
     const resources = [...e.authoredAnimationArrays.values()];
@@ -3339,6 +4178,7 @@ export function projectToArcade (project, opts = {}) {
             `\n                return [${resource.literals.join(',\n')}]`).join('\n')}\n        }\n        return null\n    })\n}\n`
     } : {};
     Object.assign(assetFiles, e.tileAssets.files());
+    if(e.requiresStringArraySettings)assetFiles[STRING_ARRAY_SETTINGS_PATH]=STRING_ARRAY_SETTINGS_SOURCE;
     if (e.songAssets.size) {
         assetFiles['songs.g.jres'] = JSON.stringify(Object.fromEntries([...e.songAssets.values()].map(resource =>
             [resource.id, {mimeType: SONG_MIME, namespace: 'mySongs.', displayName: resource.name, data: resource.hex}])), null, 4) + '\n';
@@ -3363,11 +4203,35 @@ export function projectToArcade (project, opts = {}) {
         'main.ts': projectTs,
         ...assetFiles,
         'pxt.json': `${JSON.stringify({
-            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresCarnivalPackage ? {'arcade-carnival':'github:microsoft/arcade-carnival#v0.0.7'} : {}), ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': 'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': 'github:microsoft/arcade-character-animations#v0.1.0'} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
+            name, description: 'Exported from BrickWright', dependencies: {device: '*', ...(e.requiresTextSpritePackage ? {'arcade-text':'github:microsoft/arcade-text#fa2439314c6633943666a763fdae32a5c67a9ae8'} : {}), ...(e.requiresSpriteDataPackage ? {'arcade-sprite-data':'github:microsoft/arcade-sprite-data#332026d12c46286c7afe59bc4829ccf08471d5b1'} : {}), ...(e.requiresCarnivalPackage ? {'arcade-carnival':'github:microsoft/arcade-carnival#v0.0.7'} : {}), ...(e.requiresLegacyTilemapPackage ? {'color-coded-tilemap': '*'} : {}), ...(e.requiresAnimationPackage ? {animation: '*'} : {}), ...(e.requiresSevensegPackage ? {sevenseg: '*'} : {}), ...(e.requiresDartsPackage ? {darts: '*'} : {}), ...(e.requiresCorgioPackage ? {corgio: '*'} : {}), ...(e.requiresScrollerPackage ? {'arcade-background-scroll': e.scrollerVersion===LEGACY_SCROLLER_REVISION?`github:riknoll/arcade-background-scroll#${LEGACY_SCROLLER_REVISION}`:'github:microsoft/arcade-background-scroll#v0.1.2'} : {}), ...(e.requiresCharacterAnimationsPackage ? {'arcade-character-animations': `github:microsoft/arcade-character-animations#${e.characterVersion}`} : {}), ...(e.requiresMultiplayerPackage ? {multiplayer: '*'} : {})},
             files: [...Object.keys(assetFiles), 'main.ts'], preferredEditor: 'tsprj',
             ...(!samePalette(e.palette, ARCADE_PALETTE) ? {palette: ['#000000', ...e.palette.slice(1)]} : {})
         }, null, 4)}\n`
     };
+    if((opts.sdkImagePrototype||[...e.callableExports.values()].some(entry=>entry.sdkImageEnabled))&&e.callableExports.size){
+        const reconstructed=parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true,
+            retainWhenUsed:true,retainClassHeritage:true,retainCallableMetadata:true});
+        const proof=proveClassCallableSource(reconstructed,{sdkImagePrototype:true});
+        if(!proof.eligible)e.note('SDK Image export requires actual producers throughout the complete reconstructed current program');
+        for(const diagnostic of proof.unsupported)e.note(diagnostic);
+    }
+    if(e.callableExports.size && !opts.callableLexicalPrototype && !opts.classCallablePrototype) {
+        // Approval covers the complete reconstructed current program, including
+        // adjacent functions; lexical metadata cannot grant a broader surface.
+        const reconstructed=parseMakeCodeTs(projectTs,{parameterDefaults:true,
+            retainParentheses:true,retainWhenUsed:true,retainClassHeritage:true,retainCallableMetadata:true});
+        const named=proveNamedFunctionSource(reconstructed);
+        const gate=named.eligible?named:e.classCallableDefaultTargets.size?classCallableSourceGate(reconstructed):callableSourceGate(reconstructed);
+        if(!gate.eligible)e.note(e.classCallableDefaultTargets.size?'Class callable default export requires the proved complete ordinary-class source surface':'Callable default export requires the bounded numeric factory surface');
+        for(const diagnostic of gate.unsupported)e.note(diagnostic);
+    }
+    if(e.procedureConstraints?.procedures().length){
+        const selected=new Set(e.procedureConstraints.procedures().map(({target,code})=>e.functionName(target,code)));
+        try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
+    }
+    // Host artwork callbacks can edit current project objects during rendering.
+    // Stale owner/global/local inventories must never become a clean export.
+    if(!e.functionSymbols?.current())e.note('Arcade ordinary symbol: current project or owner inventory changed during export');
     return {ts, files, unsupported: e.unsupported, warnings: e.warnings};
 }
 

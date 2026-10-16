@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
 import util from 'node:util';
+import {createHash} from 'node:crypto';
 import {fileURLToPath, pathToFileURL} from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -19,8 +20,8 @@ const sandboxes = new Map();
 /** Is this target's runtime synced? */
 export const hasRuntime = target => fs.existsSync(path.join(STATIC, target, 'pxtworker.js'));
 
-async function sandbox (target) {
-    if (sandboxes.has(target)) return sandboxes.get(target);
+async function sandbox (target, fresh = false) {
+    if (!fresh && sandboxes.has(target)) return sandboxes.get(target);
     if (!hasRuntime(target)) {
         throw Object.assign(new Error(`MakeCode ${target} runtime not synced — run \`npm run sync:makecode\``), {code: 'NO_RUNTIME'});
     }
@@ -38,9 +39,11 @@ async function sandbox (target) {
     sb.self = sb;
     sb.eval = src => vm.runInContext(src, sb, {filename: 'eval'});
     vm.createContext(sb, {codeGeneration: {strings: false, wasm: false}});
-    vm.runInContext(fs.readFileSync(path.join(dir, 'pxtworker.js'), 'utf8'), sb, {filename: 'pxtworker.js'});
+    const workerBytes = fs.readFileSync(path.join(dir, 'pxtworker.js'));
+    sb.__bwOriginalWorkerSha256 = createHash('sha256').update(workerBytes).digest('hex');
+    vm.runInContext(workerBytes.toString('utf8'), sb, {filename: 'pxtworker.js'});
     vm.runInContext(PXT_GLUE_JS, sb, {filename: 'pxt-glue.js'});
-    sandboxes.set(target, sb);
+    if (!fresh) sandboxes.set(target, sb);
     return sb;
 }
 
@@ -53,7 +56,11 @@ async function sandbox (target) {
  *     image on the Bluetooth-free emulator bases (a refused base throws code BASE_REFUSED)
  */
 async function runCompiler (target, files, opts = {}, projectInputs = false) {
-    const sb = await sandbox(target);
+    // PXT retains compiler/package state across projects, including failed
+    // dependency installations. A corpus sequence reproduced assertions that
+    // disappear on the same input in a fresh worker. Keep each compile and
+    // preparation isolated; the read-only tutorial emitter can still be reused.
+    const sb = await sandbox(target, true);
     const {onDemandExtensions} = await import(pathToFileURL(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-makecode/pxt-runtime.js')).href);
     // CLI audits are offline by default. Fetch only when explicitly requested.
     const onDemand = await onDemandExtensions(target, files, opts.fetchExtensions === true, opts.fetch);
@@ -75,9 +82,14 @@ async function runCompiler (target, files, opts = {}, projectInputs = false) {
             hwVariant: opts.hwVariant || '', getBaseHex, ...(opts.emulator ? {appVariant: 'mbcodal'} : {}),
             extensions: onDemand.extensions.map(({id, repo, refs, targets, files: source}) =>
                 ({id, repo, refs, targets, files: source}))});
-        return {...JSON.parse(JSON.stringify(r)), fetchedExtensions: onDemand.extensions.map(e =>
+        return {...JSON.parse(JSON.stringify(r)),fetchRefusals:onDemand.refused,...(onDemand.disabled ? {fetchDisabled:true} : {}), fetchedExtensions: onDemand.extensions.map(e =>
             ({id: e.id, repo: e.repo, ref: e.refs[0], ...e.fetched}))};
     } catch (error) {
+        if (error && typeof error === 'object') {
+            error.fetchRefusals = onDemand.refused;
+            error.fetchedExtensions = onDemand.extensions.map(e => ({id:e.id,repo:e.repo,ref:e.refs[0],...e.fetched}));
+            if (onDemand.disabled) error.fetchDisabled = true;
+        }
         if (error?.code === 'NO_EXTENSION') {
             error.refused = onDemand.refused;
             error.fetchedExtensions = onDemand.extensions.map(e => ({id: e.id, repo: e.repo, ref: e.refs[0], ...e.fetched}));
@@ -93,3 +105,14 @@ export const compile = (target, files, opts = {}) => runCompiler(target, files, 
  * target libraries. Remote fetching remains explicitly opt-in.
  */
 export const resolveProjectInputs = (target, files, opts = {}) => runCompiler(target, files, opts, true);
+
+/** PXT's own tutorial JRES emitter, from this target's pinned original worker.
+ * No compilation, package fetching or execution of the tutorial's source.
+ */
+export async function getTutorialTilemapGenerator (target) {
+    const sb = await sandbox(target);
+    const generate = text => sb.pxt.emitTilemapsFromJRes(JSON.parse(text));
+    generate.provenance = {emitter: 'pxt.emitTilemapsFromJRes', target,
+        workerSha256: sb.__bwOriginalWorkerSha256, versions: {...sb.pxtTargetBundle.versions}};
+    return generate;
+}

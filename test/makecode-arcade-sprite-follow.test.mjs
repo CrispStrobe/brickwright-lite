@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createRequire} from 'node:module';
 import {runInNewContext} from 'node:vm';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock, startArcadeProject} from './helpers/arcade-runtime-mock.mjs';
 import {STATIC} from '../scripts/lib/pxt-node.mjs';
 import {loadExtensionClass} from './helpers/bw-extensions.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
@@ -13,7 +13,7 @@ import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 import {cameraMap} from './fixtures/arcade-camera.mjs';
 const Arcade=loadExtensionClass('arcade');
 function actors(){
- const runtime=new EventEmitter(),ext=new Arcade(runtime),image=ext.createImage({WIDTH:2,HEIGHT:2});
+ const runtime=createArcadeRuntimeMock(),ext=new Arcade(runtime),image=ext.createImage({WIDTH:2,HEIGHT:2});
  const ids=[0,1,2].map(()=>ext.createImageSprite({IMAGE:image,TEMPLATE:'',KIND:'Player'}));
  return {runtime,ext,ids,sprites:ids.map(id=>ext._sprite(id))};
 }
@@ -55,7 +55,7 @@ test('steering and follow lifecycle match the actual original PXT method at cont
  follow(1,-25,-100);check(700);follow(1,NaN);check(750);
  position(1,41,31);follow(1);check(800);assert.equal(self.x,goal.x);assert.equal(self.y,goal.y);
  position(1,100,100);follow(1);check(850);goal._destroyed=true;refGoal.flags|=2;check(900);assert.equal(self.vx,0);
- runtime.emit('PROJECT_START');assert.equal(ext._state().followingSprites,undefined);
+ startArcadeProject(runtime);assert.equal(ext._state().followingSprites,undefined);
 });
 
 const source=`let hero=sprites.create(img\`1\`,SpriteKind.Player)

@@ -1,0 +1,31 @@
+{
+    "name": "arcade-character-animations",
+    "version": "0.0.2",
+    "description": "",
+    "dependencies": {
+        "device": "*"
+    },
+    "files": [
+        "main.ts",
+        "README.md",
+        "docs/clear-character-state.md",
+        "docs/loop-character-animation.md",
+        "docs/matches-rule.md",
+        "docs/predicate.md",
+        "docs/run-character-animation.md",
+        "docs/set-character-animations-enabled.md",
+        "docs/set-character-state.md",
+        "docs/rule.md"
+    ],
+    "testFiles": [
+        "test.ts"
+    ],
+    "targetVersions": {
+        "target": "1.4.44",
+        "targetId": "arcade"
+    },
+    "supportedTargets": [
+        "arcade"
+    ],
+    "preferredEditor": "tsprj"
+}

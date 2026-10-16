@@ -1,10 +1,16 @@
 # Arcade classes and mutable objects
 
-Status: proposed implementation lane; no runtime class completion claim.
+Status: lane claim merged. The initial reference heap, constructors and methods
+are implemented with original/native and authoring controls. Read the
+[qualified scope](compatibility/arcade-class-references.md) and
+[GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) for current support.
+Ordinary inheritance and virtual/super dispatch have focused controls. Accessors,
+statics, instanceof, captured callables and installed editor closure remain
+separate steps; this contract does not claim full class compatibility.
 
 ## Why a separate reference model is needed
 
-Arcade currently refuses ordinary source classes. The shared translator has a
+Before this lane, Arcade refused ordinary source classes. The shared translator has a
 bounded record lowering used by other targets: per-class numeric slots index
 field arrays. Same-class aliases can share those arrays, but this does not
 establish globally unique object identity or runtime class dispatch.

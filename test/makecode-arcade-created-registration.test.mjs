@@ -4,6 +4,7 @@ import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arc
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames} from './helpers/bw-vm.mjs';
 import {compile} from '../scripts/lib/pxt-node.mjs';
+import {runPxtArcade} from './helpers/pxt-arcade-runtime.mjs';
 const value=(run,name)=>run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).find(v=>v.name===name)?.value;
 const sprites=run=>Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);
 const imagePixels=run=>sprites(run).map(s=>{run.vm.runtime._primitives.arcade_spriteImage({ID:s.id},{});return [...s.image.pixels];});
@@ -76,7 +77,14 @@ let sampled=enemy.x`);
     const again=await roundtrip(run);assert.equal(value(again,'sampled'),35);
 });
 
-test('runtime kind expressions remain an explicit import gap',()=>{
-    const imported=arcadeToPseudocode('let kind=SpriteKind.Player\nsprites.onCreated(kind,function(sprite){sprite.x=10})\nlet hero=sprites.create(img`1`,SpriteKind.Player)');
-    assert.ok(imported.unsupported.some(reason=>reason.includes('runtime kind expressions')),JSON.stringify(imported));
+test('runtime kind registration captures the numeric value when registered through native and original roundtrips',async()=>{
+    const source='let kind=SpriteKind.Player\nsprites.onCreated(kind,function(sprite){sprite.x=10})\nkind=SpriteKind.Enemy\nlet hero=sprites.create(img`1`,SpriteKind.Player)\nlet sampled=hero.x';
+    const original=await runPxtArcade(source);
+    assert.equal(original.sampled,10);
+    const run=await execute(source);assert.equal(value(run,'sampled'),original.sampled);
+    const again=await roundtrip(run);assert.equal(value(again,'sampled'),10);
+    const fromCode=await runProgram(run.creator.decompile(),{frames:40,storage:true,uploads:run.imported.costumes});
+    assert.deepEqual(fromCode.errors,[]);assert.equal(value(fromCode,'sampled'),10);
+    await run.vm.loadProject(Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer()));
+    run.vm.greenFlag();await stepFrames(run.vm,40);assert.equal(value(run,'sampled'),10);
 });

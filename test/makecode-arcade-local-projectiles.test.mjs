@@ -17,7 +17,8 @@ launch()`;
     const imported = arcadeToPseudocode(source);
     assert.deepEqual(imported.unsupported, []);
     assert.match(imported.code, /arcade set local p to \(?arcade projectile template/);
-    assert.match(imported.code, /kind "Projectile" vx/);
+    assert.match(imported.code, /kind \(0\) vx/);
+    assert.match(imported.code, /mode kind/);
     assert.match(imported.code, /arcade register instance destruction of \(arcade local p\) as "__bwInstanceDestroyed1" capturing "p"/);
     const creator = new SB3Creator();
     creator.parse(imported.code);
@@ -50,4 +51,13 @@ test('a stationary projectile starts at the Arcade scene origin', async () => {
     assert.equal(projectile?.x, 0);
     assert.equal(projectile?.y, 0);
     assert.equal(projectile?.autoDestroy, true);
+});
+
+
+test('native explicit numeric projectile kind preserves per-call destruction callbacks',async()=>{
+ const source='let projectileKind=-1;let speed=40;function launch(){let p=sprites.createProjectile(img`fff\nfff`,-1*speed,0,0);projectileKind=p.kind();p.onDestroyed(function(){info.changeScoreBy(1)});p.destroy()}launch();launch()';
+ const imported=arcadeToPseudocode(source);assert.deepEqual(imported.unsupported,[]);assert.match(imported.code,/kind \(0\) vx/);assert.match(imported.code,/mode kind/);
+ const run=await runProgram(imported.code,{frames:10,uploads:imported.costumes,storage:true});
+ try {assert.deepEqual(run.errors,[]);assert.deepEqual(run.creator.warnings,[]);assert.equal(run.vm.runtime.bwArcadeDeviceState.score,2);const observed=run.vm.runtime.targets.flatMap(target=>Object.values(target.variables)).find(value=>value.name==='projectileKind');assert.equal(observed.value,run.vm.runtime._arcadeFramePhase.ext._kindRegistry.builtin('Projectile'));assert.ok(projectOpcodes(run.creator.project).has('arcade_spawnProjectile'));}
+ finally {run.vm.stopAll();run.vm.quit();}
 });

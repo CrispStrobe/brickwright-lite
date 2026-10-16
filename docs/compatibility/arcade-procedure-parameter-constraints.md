@@ -1,8 +1,9 @@
 # Ordinary procedure parameter constraints
 
-Status: proposed ownership and acceptance contract. Implementation requires this
-claim to land normally first. Compiler adoption, selected original execution,
-and hosted graphical authoring remain separate gates.
+Status: the claim is merged and the bounded development prototype has source,
+native and portable-project controls. Canonical compiler qualification and
+consumer adoption, selected original execution and visible authoring remain
+separate gates. The production compiler pin does not yet expose the new word.
 
 ## Concrete gap
 
@@ -46,12 +47,37 @@ not regain them from retained source, hidden original text, a fixture, or a
 consumer's desired type. The user may author an explicit constraint in Code or
 Blocks, subject to the same complete current-graph checks.
 
-The first source scope is ordinary module/namespace function declarations with
-required, simple primitive parameters. Unsupported optional/default/rest,
-generic, overload, destructured, reference, or callable parameter forms must be
-explicitly refused by this protocol. This does not introduce function values,
-new callback signatures, inheritance, physical Sprite/Font admission, or a
-broader callable default gate.
+The bounded source scope covers ordinary module/namespace declarations with
+required simple primitive parameters and supported trailing optional `Any`
+parameters. Omitted arguments become actual Undefined. Supported `Any` defaults
+retain the parser's actual metadata and one matching editable initialization body.
+Each default has a hygienic visible Number flag: 1 for actual omission, 0 for every
+supplied argument, including explicit Undefined. The body tests strict equality
+to 1. Actual call operands discharge the generated Number obligations; a declared
+type is never used as a producer. Original argument effects run once, in order.
+Current Code, Blocks, SB3 and export carry these ordinary formals and operands,
+without a runtime sentinel or original-source restoration.
+
+**Selected MakeCode evidence:** the first real comparison exposed an incorrect
+lowering that applied defaults to explicit Undefined. That failure is retained.
+The corrected native source matches the retained original 50/NumberNaN/15 values.
+One genuinely new export with a current default edit from 20 to 30 compiles and
+runs in the selected runtime, matching all six native observations: 60,
+NumberNaN, 15, trace CCC, three callee calls and one argument call. The unchanged
+original was reused, not rerun. This is a bounded numeric-default comparison,
+not qualification of every default signature or visible authoring control.
+
+The selected compiler rejects function-call default initializers even when their
+result would be primitive. Native development handling of primitive default
+expressions does not establish selected-source support for those signatures.
+
+Optional/default Number, String or Boolean parameters remain excluded: a strict
+entry check before initialization would reject a legal omitted value. Generic,
+rest, overload, destructured, reference and callable forms remain explicit
+refusals. Self/later-formal default references and unsupported default producers
+also refuse in this bounded slice. No annotation becomes a value producer.
+This does not introduce function values, new callback signatures, inheritance,
+physical Sprite/Font admission or a broader callable default gate.
 
 ## Constraints and actual values
 

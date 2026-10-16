@@ -7,6 +7,7 @@ import enterIcon from './icon--enter.svg';
 const QuestionComponent = props => {
     const {
         answer,
+        arcadePrompt,
         className,
         question,
         onChange,
@@ -21,7 +22,9 @@ const QuestionComponent = props => {
                 ) : null}
                 <div className={styles.questionInput}>
                     <Input
-                        autoFocus
+                    maxLength={arcadePrompt ? arcadePrompt.answerLength : undefined}
+                    inputMode={arcadePrompt && arcadePrompt.numbersOnly ? 'decimal' : undefined}
+                    autoFocus
                         value={answer}
                         onChange={onChange}
                         onKeyPress={onKeyPress}
@@ -44,6 +47,10 @@ const QuestionComponent = props => {
 
 QuestionComponent.propTypes = {
     answer: PropTypes.string,
+    arcadePrompt: PropTypes.shape({
+        answerLength: PropTypes.number.isRequired,
+        numbersOnly: PropTypes.bool.isRequired
+    }),
     className: PropTypes.string,
     onChange: PropTypes.func.isRequired,
     onClick: PropTypes.func.isRequired,

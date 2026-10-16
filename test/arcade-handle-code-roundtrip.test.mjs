@@ -11,8 +11,11 @@ import {SB3Creator, projectOpcodes, runProgram} from './helpers/bw-vm.mjs';
 const program = `DEVICE ARCADE
 GLOBAL hero
 GLOBAL foe
+GLOBAL friendKind
 SPRITE Game:
 WHEN flag clicked:
+  set friendKind to (arcade create sprite kind)
+  arcade bind sprite kind name "Friend" to friendKind
   set hero to arcade spawn template "Game" kind "Player" x 80 y 60 width 16 height 16
   set foe to arcade spawn template "Game" kind "Enemy" x 84 y 60 width 16 height 16
   arcade set vx of hero to 30

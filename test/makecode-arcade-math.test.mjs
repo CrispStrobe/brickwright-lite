@@ -16,9 +16,9 @@ let power = Math.pow(2, 3)`;
     creator.parse(translated.code);
     assert.deepEqual(creator.warnings, []);
     const opcodes = projectOpcodes(creator.project);
-    for (const opcode of ['planetemaths_min', 'planetemaths_max', 'planetemaths_pow']) {
-        assert.ok(opcodes.has(opcode), `${opcode} missing`);
-    }
+    assert.ok(opcodes.has('arcade_mathBinary'), 'native math reporter missing');
+    const mathBlocks=creator.project.targets.flatMap(t=>Object.values(t.blocks)).filter(b=>b.opcode==='arcade_mathBinary');
+    assert.deepEqual(mathBlocks.map(b=>b.fields.OP[0]).sort(),['max','min']);
     assert.ok(!opcodes.has('microbitplus_map'), 'no micro:bit block in an Arcade project');
     const run = await runProgram(translated.code, {frames: 4});
     assert.deepEqual(run.errors, []);

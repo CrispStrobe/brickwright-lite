@@ -18,3 +18,20 @@ production editor, observe the selected device and use the visible Game Console
 A/B controls. Verify Code and Blocks, ordinary Scratch loading and multi-board
 selection; repeat save/reopen and export/reimport. Preserve initial failures.
 Headless VM loading alone does not establish this editor contract.
+
+
+## Implementation checkpoint
+
+The whole-project deserializer now clears prior hardware metadata before reading
+new metadata. Importing a sprite preserves its host project's declarations.
+An installed GUI publisher observes the completed project-load event, publishes
+the saved device and resolves its canonical core without allowing a late result
+to mutate a replaced project. Explicit board-choice events for the current
+project remain authoritative; choices from an older Stage are discarded.
+
+The Stage header reads committed device flags again after subscribing, closing
+the mount/load race, and preserves an explicit empty device selection. Twelve
+focused controls pass, including real SB3 save/reload, hardware-free loading
+with an Arcade extension still present, sprite import, late metadata resolution
+and the existing multi-board controls. Production fresh-session GUI acceptance
+remains pending on the exact new official build; headless loading is insufficient.

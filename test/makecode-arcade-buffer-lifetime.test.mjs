@@ -1,13 +1,13 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
 import path from 'node:path';
 import {createRequire} from 'node:module';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
 import {loadExtensionClass,VM_SRC} from './helpers/bw-extensions.mjs';
 const require=createRequire(import.meta.url),BWValues=require(path.join(VM_SRC,'util/bw-values.js'));
 const Arcade=loadExtensionClass('arcade');
-const setup=()=>{const runtime=new EventEmitter(),errors=[];runtime.startHats=()=>[];runtime.on('BLOCKS_ERROR',e=>errors.push(e));return {runtime,errors,native:new Arcade(runtime)};};
+const setup=()=>{const runtime=createArcadeRuntimeMock(),errors=[];runtime.on('BLOCKS_ERROR',e=>errors.push(e));return {runtime,errors,native:new Arcade(runtime)};};
 
 test('disposed Buffer owner refuses late allocations until successful project replacement',()=>{
     const {runtime,native,errors}=setup(),old=native.createBuffer({SIZE:8});

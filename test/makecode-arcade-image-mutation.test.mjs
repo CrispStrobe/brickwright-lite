@@ -1,11 +1,11 @@
+import {createArcadeRuntimeMock} from './helpers/arcade-runtime-mock.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-import {EventEmitter} from 'node:events';
 import {runInNewContext} from 'node:vm';
 import {readFileSync} from 'node:fs';
 import {loadExtensionClass, probeExtension} from './helpers/bw-extensions.mjs';
-import {runProgram, SB3Creator} from './helpers/bw-vm.mjs';
+import {runProgram, SB3Creator, stepFrames} from './helpers/bw-vm.mjs';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {compile} from '../scripts/lib/pxt-node.mjs';
@@ -28,7 +28,7 @@ test('pixel operations handle odd dimensions, transparency, and replacement with
 });
 
 test('VM mutations isolate clones, update transparent collisions, and release renderer skins', () => {
-    const rt = new EventEmitter(); rt.startHats = () => []; rt.requestRedraw = () => {};
+    const rt = createArcadeRuntimeMock(); rt.startHats = () => []; rt.requestRedraw = () => {};
     const calls = []; let nextSkin = 100;
     rt.renderer = {createSVGSkin(svg, center) {calls.push(['create', svg, center]); return nextSkin++;},
         updateSVGSkin(...args) {calls.push(['update', ...args]);},
@@ -79,17 +79,17 @@ controller.A.onEvent(ControllerButtonEvent.Pressed, function () { foe.image.fill
     const run = await runProgram(imported.code, {frames:8, uploads:imported.costumes, storage:true});
     assert.deepEqual(run.errors, []); assert.deepEqual(run.creator.warnings, []);
     const state = Object.values(run.vm.runtime.bwArcadeDeviceState.sprites);
-    assert.deepEqual([...state.find(s => s.kind === 'Player').image.pixels], [0,3,5,1]);
+    assert.deepEqual([...state.find(s => s.kind === run.vm.runtime._primitives.arcade_spriteKindValue({NAME:'Player'},{})).image.pixels], [0,3,5,1]);
     // Spawn owns its decoded artwork before the first mutation.
-    assert.deepEqual([...state.find(s => s.kind === 'Enemy').image.pixels], [1,2,3,0]);
-    assert.notEqual(state.find(s => s.kind === 'Player').image, state.find(s => s.kind === 'Enemy').image);
+    assert.deepEqual([...state.find(s => s.kind === run.vm.runtime._primitives.arcade_spriteKindValue({NAME:'Enemy'},{})).image.pixels], [1,2,3,0]);
+    assert.notEqual(state.find(s => s.kind === run.vm.runtime._primitives.arcade_spriteKindValue({NAME:'Player'},{})).image, state.find(s => s.kind === run.vm.runtime._primitives.arcade_spriteKindValue({NAME:'Enemy'},{})).image);
     run.vm.postIOData('keyboard', {key:' ', isDown:true});
-    for (let i=0;i<5;i++) run.vm.runtime._step(1000 / 30);
-    assert.deepEqual([...state.find(s => s.kind === 'Enemy').image.pixels], [7,7,7,7]);
+    await stepFrames(run.vm,5);
+    assert.deepEqual([...state.find(s => s.kind === run.vm.runtime._primitives.arcade_spriteKindValue({NAME:'Enemy'},{})).image.pixels], [7,7,7,7]);
     const saved = await run.vm.saveProjectSb3();
     await run.vm.loadProject(Buffer.from(await saved.arrayBuffer()));
-    run.vm.greenFlag(); for (let i = 0; i < 8; i++) run.vm.runtime._step(1000 / 30);
-    assert.deepEqual([...Object.values(run.vm.runtime.bwArcadeDeviceState.sprites).find(s => s.kind === 'Player').image.pixels], [0,3,5,1]);
+    run.vm.greenFlag(); await stepFrames(run.vm,8);
+    assert.deepEqual([...Object.values(run.vm.runtime.bwArcadeDeviceState.sprites).find(s => s.kind === run.vm.runtime._primitives.arcade_spriteKindValue({NAME:'Player'},{})).image.pixels], [0,3,5,1]);
     const code = run.creator.decompile(); const recreated = new SB3Creator(); recreated.parse(code);
     assert.deepEqual(recreated.warnings, []);
     assert.equal(Object.values(recreated.project.targets.find(t => t.name === 'Game').blocks).filter(b => b.opcode === 'arcade_mutateSpriteImage').length, 4);
@@ -97,13 +97,16 @@ controller.A.onEvent(ControllerButtonEvent.Pressed, function () { foe.image.fill
     const built = await compile('arcade', exported.files); assert.equal(built.success, true, JSON.stringify(built.diagnostics));
     const reimport = arcadeToPseudocode(exported.ts); assert.deepEqual(reimport.unsupported, []);
     const again = await runProgram(reimport.code, {frames:8, uploads:reimport.costumes, storage:true});
-    assert.deepEqual([...Object.values(again.vm.runtime.bwArcadeDeviceState.sprites).find(s => s.kind === 'Player').image.pixels], [0,3,5,1]);
+    assert.deepEqual([...Object.values(again.vm.runtime.bwArcadeDeviceState.sprites).find(s => s.kind === again.vm.runtime._primitives.arcade_spriteKindValue({NAME:'Player'},{})).image.pixels], [0,3,5,1]);
 });
 
-test('real flip game imports without gaps, while unsupported pixel drawing remains explicit', () => {
+test('real flip game and implemented circle drawing import, while invalid circle arguments remain explicit', () => {
     const source = readFileSync(new URL('./fixtures/makecode/arcade-flip-image.ts', import.meta.url), 'utf8');
     assert.deepEqual(arcadeToPseudocode(source).unsupported, []);
-    const unsupported = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nhero.image.drawCircle(0,0,1,2)');
+    const circle = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nhero.image.drawCircle(0,0,1,2)');
+    assert.deepEqual(circle.unsupported, []);
+    assert.match(circle.code, /arcade draw circle drawCircle of/);
+    const unsupported = arcadeToPseudocode('let hero = sprites.create(img`1`, SpriteKind.Player)\nhero.image.drawCircle(0,0,1)');
     assert.ok(unsupported.unsupported.some(gap => gap.includes('drawCircle')));
 });
 
@@ -119,7 +122,7 @@ hero.image.fill(3)`);
 
 
 test('unreadable artwork produces a runtime diagnostic instead of invented blank pixels', () => {
-    const rt = new EventEmitter(); rt.startHats = () => []; rt.addTarget = () => {};
+    const rt = createArcadeRuntimeMock(); rt.startHats = () => []; rt.addTarget = () => {};
     rt.getSpriteTargetByName = () => ({makeClone: () => ({getCostumes: () => [], currentCostume: 0})});
     const errors = []; rt.on('BLOCKS_ERROR', error => errors.push(error));
     const ext = new Arcade(rt);

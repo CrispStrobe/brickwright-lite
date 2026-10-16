@@ -27,7 +27,8 @@ const block = marker => {
 };
 const pieces = ['export enum Visibility', 'class ScoreReachedHandler', 'export class PlayerState', 'class InfoState',
     'function initMultiHUD', 'function defaultHeartImage', 'function defaultMultiplayerHeartImage', 'function drawTimer',
-    'export class PlayerInfoImpl', 'export class PlayerInfo ', 'function formatDecimal'].map(block);
+    'export class PlayerInfoImpl', 'export class PlayerInfo ', 'function formatDecimal',
+    'export function showScore', 'export function showLife', 'export function showCountdown', 'function updateFlag'].map(block);
 const source = `namespace info {
     let infoState: InfoState = undefined;
     let players: PlayerInfo[];

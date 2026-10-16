@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import {withVmPackageExports} from './lib/vm-package-exports.mjs';
+import {patchPrimitiveOwner} from './lib/primitive-owner-hooks.mjs';
+import {patchProcedureConstraints} from './lib/procedure-constraint-hooks.mjs';
+import {patchArcadeExceptions} from './lib/arcade-exception-hooks.mjs';
 // Lay our owned scratch-vm delta (built-in extensions + their registration in the builtinExtensions
 // map) over the installed node_modules/scratch-vm. Run AFTER `npm install`, BEFORE `npm run build`.
 //
@@ -11,10 +15,15 @@ import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import {patchArcadeSettingsSB3} from './lib/arcade-settings-sb3-hooks.mjs';
+import {patchArcadeManagedThread} from './lib/arcade-managed-thread-hooks.mjs';
+import {patchSavedProjectDeviceReset} from './lib/saved-project-device-vm-hooks.mjs';
+import {patchExtensionPrimitiveCaches} from './lib/extension-primitive-cache-hooks.mjs';
+import {patchNestedExecuteContext} from './lib/nested-execute-context-hooks.mjs';
 
 const ROOT = process.cwd();
 const SRC = path.join(ROOT, 'overlay', 'scratch-vm');
 const DEST = path.join(ROOT, 'packages', 'scratch-gui', 'node_modules', 'scratch-vm');
+const vmOnly = process.argv.includes('--vm-only');
 
 if (!existsSync(DEST)) {
     console.error(`node_modules/scratch-vm missing at ${DEST} — run npm install first.`);
@@ -23,6 +32,14 @@ if (!existsSync(DEST)) {
 cpSync(SRC, DEST, { recursive: true });
 console.log('  applied scratch-vm overlay onto node_modules/scratch-vm (built-in extensions)');
 
+// GUI and native constraints must resolve the SAME installed source module.
+// Upstream exports only its conditional root. Preserve that root verbatim and
+// expose this one owned utility through the package's normal exports map.
+const vmPackagePath=path.join(DEST,'package.json');
+writeFileSync(vmPackagePath,JSON.stringify(withVmPackageExports(
+    JSON.parse(readFileSync(vmPackagePath,'utf8'))),null,2)+'\n');
+console.log('  exposed the canonical shared procedure model in scratch-vm package exports');
+
 // Upstream one-line bugfix (too small to justify carrying the whole 3000-line runtime.js as an
 // overlay): the base VM builds the extension palette category as `<category name="${name}" ...>`
 // with the RAW extension name. Any extension whose name contains & < > " (e.g. "Arrays & Tensors")
@@ -30,6 +47,8 @@ console.log('  applied scratch-vm overlay onto node_modules/scratch-vm (built-in
 // extension's blocks never appear. `xmlEscape` is already imported in runtime.js — wrap the name.
 const runtimePath = path.join(DEST, 'src', 'engine', 'runtime.js');
 let rt = readFileSync(runtimePath, 'utf8');
+rt = patchExtensionPrimitiveCaches(rt);
+writeFileSync(runtimePath, rt);
 // Arcade sprites need one deterministic physics tick per Scratch VM frame.
 // Extensions subscribe to this event; the project stores ordinary extension
 // blocks in .sb3 and the event only supplies their runtime clock.
@@ -43,13 +62,41 @@ const arcadeFramePatched = `    _step (arcadeDeltaMs) {
         this._arcadeFrameTime = arcadeNow;
         this.emit('ARCADE_FRAME', arcadeElapsed);
 `;
-if (!rt.includes(arcadeFramePatched)) {
+const arcadePhaseKernel = arcadeFramePatched.replace('    _step (arcadeDeltaMs)',
+    '    _stepArcadeKernel (arcadeDeltaMs)');
+if (!rt.includes(arcadeFramePatched) && !rt.includes(arcadePhaseKernel)) {
     const anchor = rt.includes(arcadeFrameLegacy) ? arcadeFrameLegacy : arcadeFrameAnchor;
     if (!rt.includes(anchor)) throw new Error('runtime.js Arcade frame anchor not found');
     rt = rt.replace(anchor, arcadeFramePatched);
     writeFileSync(runtimePath, rt);
     console.log('  patched runtime.js (elapsed Arcade frame clock)');
 }
+// Delegate only projects with explicit source entry/loops or native callback
+// hats. Other projects retain the original synchronous sequencer entry.
+const arcadePhaseImport = "const ArcadeFramePhase = require('../extensions/crispstrobe/arcade/frame-phase');\n";
+if (!rt.includes(arcadePhaseImport)) {
+    const importAnchor = "const Thread = require('./thread');\n";
+    if (!rt.includes(importAnchor)) throw new Error('runtime.js Arcade phase import anchor not found');
+    rt = rt.replace(importAnchor, importAnchor + arcadePhaseImport);
+}
+const arcadePhaseEntry = `    _attachArcadeFramePhase (extension) {
+        if (this._arcadeFramePhase?.ext === extension) return;
+        this._arcadeFramePhase?.detach();
+        this._arcadeFramePhase = new ArcadeFramePhase(this, extension);
+    }
+
+    _step (arcadeDeltaMs) {
+        const phase = this._arcadeFramePhase;
+        if (phase?.hasSourceProject()) return phase.requestStep(arcadeDeltaMs);
+        return this._stepArcadeKernel(arcadeDeltaMs);
+    }
+
+`;
+if (!rt.includes(arcadePhaseKernel)) {
+    if (!rt.includes(arcadeFramePatched)) throw new Error('runtime.js Arcade phase entry anchor not found');
+    rt = rt.replace(arcadeFramePatched, arcadePhaseEntry + arcadePhaseKernel);
+}
+writeFileSync(runtimePath, rt);
 for (const anchor of ['        this.emit(Runtime.PROJECT_START);', '        this.currentStepTime = interval;']) {
     const patched = '        this._arcadeFrameTime = undefined;\n' + anchor;
     if (!rt.includes(patched)) {
@@ -103,6 +150,10 @@ writeFileSync(keyboardPath, keyboardSource);
 // Track promise completion separately from its payload on the owning frame.
 const executePath = path.join(DEST, 'src', 'engine', 'execute.js');
 let executeSource = readFileSync(executePath, 'utf8');
+executeSource = patchNestedExecuteContext(executeSource);
+writeFileSync(executePath, executeSource);
+executeSource = patchPrimitiveOwner(executeSource);
+writeFileSync(executePath, executeSource);
 if (!executeSource.includes('bwPromiseReported')) {
     const patches = [
         ['    primitiveReportedValue.then(resolvedValue => {',
@@ -119,6 +170,19 @@ if (!executeSource.includes('bwPromiseReported')) {
     writeFileSync(executePath, executeSource);
     console.log('  patched execute.js (null promise reporter results)');
 }
+
+executeSource = patchArcadeExceptions(executeSource);
+writeFileSync(executePath, executeSource);
+
+// Validate the actual ordinary-procedure call before installing its body frame.
+const procedurePath = path.join(DEST, 'src', 'blocks', 'scratch3_procedures.js');
+writeFileSync(procedurePath, patchProcedureConstraints(readFileSync(procedurePath, 'utf8')));
+
+// Managed Arcade functions retain argument cells in a non-executable root.
+// Ordinary Scratch procedures can be called from those functions; recursion
+// checks must retain both managed ancestry and real Scratch call frames.
+const managedThreadPath = path.join(DEST, 'src', 'engine', 'thread.js');
+writeFileSync(managedThreadPath, patchArcadeManagedThread(readFileSync(managedThreadPath, 'utf8')));
 
 // Per-device palettes: _refreshExtensionPrimitives must propagate color changes.
 // Upstream only updates `name` on refresh; our stc12 extension changes color1/color2
@@ -433,6 +497,7 @@ if (vm2.includes(deserPatch)) {
     console.error('  ! virtual-machine.js deserializeProject anchor not found');
     process.exit(1);
 }
+writeFileSync(vmPath2, patchSavedProjectDeviceReset(readFileSync(vmPath2, 'utf8')));
 vm2 = readFileSync(vmPath2, 'utf8');
 const vmSetStcAnchor = '    installTargets (targets, extensions, wholeProject) {';
 const vmSetStcPatch = `    /**
@@ -616,6 +681,12 @@ if (vm2.includes('Brickwright E3b: only a Scratch 1 signature')) {
 // Trim locale data: editor-msgs.js is 3.9 MiB with 80 locales; brickwright-lite ships only
 // en + de. Extract those two at build-prep time so webpack aliases to a 81 KiB file instead.
 // This runs here (post-install) because node_modules/scratch-l10n is needed.
+// Focused source qualification may use an owned VM projection with other
+// dependencies linked read-only. Stop before worker builds or GUI/locale writes.
+if (vmOnly) {
+    console.log('  VM-only overlay complete; GUI and linked locale dependencies untouched');
+    process.exit(0);
+}
 const GUI = path.join(ROOT, 'packages', 'scratch-gui');
 
 // scratch-gui's webpack config copies extension-worker.js from scratch-vm's prebuilt dist tree.

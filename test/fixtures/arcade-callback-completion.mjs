@@ -15,3 +15,10 @@ let finalX=s.x
 let completed=1
 let done=true
 controller.A.onEvent(ControllerButtonEvent.Pressed,function(){s.setPosition(12,4);s.vx=50;s.x=16;finalX=s.x;completed+=1})`;
+
+// Browser host stalls can outlast a wallclock pause before the scene's first
+// positive-delta frame. This separately authored profile waits for actual motion
+// while retaining the yielding callback and its inline successor ordering.
+// The original fixed-deadline source above remains the timed regression input.
+export const CALLBACK_COMPLETION_FRAME_SOURCE = CALLBACK_COMPLETION_SOURCE.replace(
+    'pause(70);after=a.x', 'pause(70);while(a.x>=before){pause(10)};after=a.x');

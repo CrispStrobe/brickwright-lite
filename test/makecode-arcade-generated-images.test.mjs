@@ -1,6 +1,7 @@
+import {ORIGINAL_SPRITE_KINDS as Kinds} from './helpers/arcade-original-kind-values.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {EventEmitter} from 'node:events';
+import {createArcadeRuntimeMock, startArcadeProject} from './helpers/arcade-runtime-mock.mjs';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import {loadExtensionClass,probeExtension} from './helpers/bw-extensions.mjs';
@@ -25,7 +26,7 @@ test('image.create follows pinned PXT bounds and integer conversion; clones copy
     const start=source.indexOf('function create(w, h)');
     const finish=source.indexOf('image.create = create;',start);
     runInNewContext(source.slice(start,finish+'image.create = create;'.length),context);
-    const rt=new EventEmitter();const ext=new Arcade(rt);
+    const rt=createArcadeRuntimeMock();const ext=new Arcade(rt);
     for(const [w,h] of [[3,2],[0,2],[2,0],[-1,2],[2001,1],[1.9,2.9]]){
         const reference=context.image.create(w,h),id=ext.createImage({WIDTH:String(w),HEIGHT:String(h)});
         assert.equal(!!id,!!reference);
@@ -34,7 +35,7 @@ test('image.create follows pinned PXT bounds and integer conversion; clones copy
     const id=ext.createImage({WIDTH:2,HEIGHT:1});ext.mutateImage({IMAGE:id,OP:'fill',COLOR:7});
     const copy=ext.cloneImage({IMAGE:id});assert.notEqual(copy,id);
     ext.setImagePixel({IMAGE:copy,X:0,Y:0,COLOR:2});assert.equal(ext.imagePixel({IMAGE:id,X:0,Y:0}),7);assert.equal(ext.imagePixel({IMAGE:copy,X:0,Y:0}),2);
-    rt.emit('PROJECT_START');assert.equal(ext.cloneImage({IMAGE:id}),'');assert.notEqual(ext.createImage({WIDTH:2,HEIGHT:1}),id);
+    startArcadeProject(rt);assert.equal(ext.cloneImage({IMAGE:id}),'');assert.notEqual(ext.createImage({WIDTH:2,HEIGHT:1}),id);
     for(const opcode of ['createImage','cloneImage','imageProperty','mutateImage','imagePixel','setImagePixel','drawImage','spawnImageSprite'])assert.ok(probeExtension(Arcade).opcodes.has(opcode));
 });
 
@@ -116,7 +117,7 @@ let sourcedX=sourced.x
 picture.setPixel(0,0,2)`;
     const verify=run=>{
         const state=sprites(run), projectiles=state.slice(1);
-        assert.equal(state.length,5);assert.deepEqual(projectiles.map(s=>s.kind),['Projectile','Projectile','Enemy','Food']);
+        assert.equal(state.length,5);assert.deepEqual(projectiles.map(s=>s.kind),[Kinds.Projectile,Kinds.Projectile,Kinds.Enemy,Kinds.Food]);
         for(const sprite of projectiles){assert.equal(sprite.width,4);assert.equal(sprite.height,2);assert.equal(sprite.image,projectiles[0].image);assert.equal(sprite.image.pixels[0],2);}
         assert.deepEqual(projectiles.map(s=>[s.vx,s.vy]),[[50,0],[0,-20],[-10,0],[0,10]]);
         const vars=Object.fromEntries(run.vm.runtime.targets.flatMap(t=>Object.values(t.variables)).map(v=>[v.name,v.value]));
