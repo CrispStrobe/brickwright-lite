@@ -2056,6 +2056,18 @@ runtime, and carries no GCC-runtime copyleft.
   bw-board 8086 DOS bench, which mounts the user's program as `PROG.TCL` and
   the library as `JIMLIB.TCL`.
 
+### Jim Tcl source for board targets
+
+`static/roms/jimsh0.c` (overlay and packages copies) is Jim Tcl's
+single-file build `autosetup/jimsh0.c` from the same commit, unmodified
+(SHA-256 as recorded in `jim.provenance.json`). When asked to run Tcl on
+RISC-V, `overlay/scratch-gui/src/lib/bw-lang/tcl-target-c.js` fetches it,
+checks that hash, applies asserted edits (no exec/readdir/glob; a
+channel-aware core `puts`; a renamed jimsh `main`), adds our `main` and
+stubs for POSIX calls the target lacks, and sends the one C file to the
+hosted RISC-V compiler. Jim Tcl is BSD-2-Clause; its full text ships as
+`static/roms/jim.LICENSE.txt`.
+
 ## zForth (DOS-native Forth) — MIT
 
 The code tab's "Forth (zForth on DOS)" language runs a real 16-bit MS-DOS

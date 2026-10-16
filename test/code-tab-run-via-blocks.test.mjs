@@ -24,3 +24,9 @@ test('the Forth tab runs zForth on RISC-V through the hosted C route', () => {
     assert.match(source, /data-testid="bw-forth-run-riscv"/);
     assert.match(source, /return this\.runCOnRiscv\('server', forthProgramToC\(this\.activeCode\(\)\)\);/);
 });
+
+test('the Tcl tab runs Jim Tcl on RISC-V with the pinned source fetched on demand', () => {
+    assert.match(source, /data-testid="bw-tcl-run-riscv"/);
+    assert.match(source, /source = await fetchTclProgramC\(this\.activeCode\(\)\);/);
+    assert.match(source, /return this\.runCOnRiscv\('server', source\);/);
+});

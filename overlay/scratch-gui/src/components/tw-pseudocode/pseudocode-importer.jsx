@@ -23,6 +23,7 @@ import {
 } from '../../lib/bw-matrix/capabilities.js';
 import {feProgramToC} from '../../lib/bw-lang/fe-target-c.js';
 import {forthProgramToC} from '../../lib/bw-lang/forth-target-c.js';
+import {fetchTclProgramC} from '../../lib/bw-lang/tcl-target-c.js';
 import {showCircuitDebugger} from '../../lib/bw-debug/debug-view.js';
 import downloadBlob from '../../lib/download-blob.js';
 import animationResourceMenuItems from 'scratch-vm/src/util/bw-animation-resource-menu.js';
@@ -188,7 +189,8 @@ const L10N = {
         fromBlocks: 'From blocks ⇨', fromBlocksTitle: 'Read the current blocks back into all languages',
         compactToBlocks: '⇦ Blocks', compactFromBlocks: 'Blocks ⇨',
         run: 'Run', runBasic: '▶ Run BASIC', runFe: '▶ Run fe', runTcl: '▶ Run Tcl', runForth: '▶ Run Forth', animationLabel: 'Animation', runViaBlocks: d => `▶ ${d} via blocks`,
-        runFeRiscv: '▶ fe on RISC-V', runForthRiscv: '▶ Forth on RISC-V',
+        runFeRiscv: '▶ fe on RISC-V', runTclRiscv: '▶ Tcl on RISC-V',
+        runTclRiscvTitle: 'Build Jim Tcl with this program as C and run it on the RISC-V board', runForthRiscv: '▶ Forth on RISC-V',
         runForthRiscvTitle: 'Build zForth with this program as C and run it on the RISC-V board', runFeRiscvTitle: 'Build the fe interpreter with this program as C and run it on the RISC-V board',
         runViaBlocksTitle: 'Convert to blocks, then build them as C for the selected board in the debugger',
         nqcCompile: '⚙ Compile .rcx', nqcSend: '🧱 Send to RCX',
@@ -522,7 +524,8 @@ const L10N = {
         fromBlocks: 'Von Blöcken ⇨', fromBlocksTitle: 'Das aktuelle Projekt in alle Sprachen einlesen',
         compactToBlocks: '⇦ Blöcke', compactFromBlocks: 'Blöcke ⇨',
         run: 'Ausführen', runBasic: '▶ BASIC ausführen', runFe: '▶ fe ausführen', runTcl: '▶ Tcl ausführen', runForth: '▶ Forth ausführen', animationLabel: 'Animation', runViaBlocks: d => `▶ ${d} über Blöcke`,
-        runFeRiscv: '▶ fe auf RISC-V', runForthRiscv: '▶ Forth auf RISC-V',
+        runFeRiscv: '▶ fe auf RISC-V', runTclRiscv: '▶ Tcl auf RISC-V',
+        runTclRiscvTitle: 'Jim Tcl mit diesem Programm als C bauen und auf dem RISC-V-Board ausführen', runForthRiscv: '▶ Forth auf RISC-V',
         runForthRiscvTitle: 'zForth mit diesem Programm als C bauen und auf dem RISC-V-Board ausführen', runFeRiscvTitle: 'Den fe-Interpreter mit diesem Programm als C bauen und auf dem RISC-V-Board ausführen',
         runViaBlocksTitle: 'In Blöcke umwandeln und sie im Debugger als C für das gewählte Board bauen',
         nqcCompile: '⚙ .rcx kompilieren', nqcSend: '🧱 An RCX senden',
@@ -3156,6 +3159,20 @@ class PseudocodeImporter extends React.Component {
     runFeOnRiscv () {
         if (!this.activeCode().trim()) return;
         return this.runCOnRiscv('server', feProgramToC(this.activeCode()));
+    }
+
+    // Jim Tcl the same way (bw-lang/tcl-target-c.js); its 650 KB source is
+    // fetched on demand and checked against the pinned hash, never bundled.
+    async runTclOnRiscv () {
+        if (!this.activeCode().trim()) return;
+        let source;
+        try {
+            source = await fetchTclProgramC(this.activeCode());
+        } catch (e) {
+            this.setState({status: this.L.runCRiscvUnavailable(e.message)});
+            return;
+        }
+        return this.runCOnRiscv('server', source);
     }
 
     // zForth the same way (bw-lang/forth-target-c.js).
@@ -6182,6 +6199,14 @@ class PseudocodeImporter extends React.Component {
                                 style={{...actionBtn, background: 'linear-gradient(135deg,#4c97ff,#4280d7)'}}
                                 data-testid="bw-run-via-blocks">
                                 {this.L.runViaBlocks(this.currentDevice())}
+                            </button>
+                        ) : null}
+                        {this.state.lang === 'tcl' && this.activeCode().trim() ? (
+                            <button onClick={() => this.runTclOnRiscv()} disabled={this.state.running || this.state.busy}
+                                title={this.L.runTclRiscvTitle}
+                                style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}
+                                data-testid="bw-tcl-run-riscv">
+                                {this.L.runTclRiscv}
                             </button>
                         ) : null}
                         {this.state.lang === 'c' ? (
