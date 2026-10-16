@@ -6,6 +6,7 @@ import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-imp
 import {lowerPxtStagedValues} from '../overlay/scratch-gui/src/lib/bw-makecode/lower-pxt-staged-values.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
+import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from '../overlay/scratch-gui/src/lib/bw-makecode/procedure-constraint-source.js';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 
 const directory=process.env.BW_EMPTY_ARRAY_OBSERVATIONS;let serial=0;
@@ -114,4 +115,10 @@ test('empty direct statements still invoke their existing value-lowering hooks o
 
 test('another actual value-lowering protocol wins before empty-array transport omission',()=>{
  for(const owner of['lowerIntegerDivision','lowerArrayMap']){const input=parse('let values=[];');let calls=0;const result=lower(input,{[owner]:node=>{if(node.type!=='Array')return null;calls++;return{prefix:[],value:{type:'Number',value:'7'}};}});assert.equal(calls,1);assert.equal(result.body[0].decls[0].init.type,'Number');assert.equal(Number(result.body[0].decls[0].init.value),7);}
+});
+
+
+test('the real root constraint protocol is retained separately from executable binding facts',()=>{
+ const prepared=prepareProcedureConstraintSource(parse('let values:number[]=[];'));assert.deepEqual(prepared.diagnostics,[]);const metadata=procedureConstraintAstMetadata(prepared),input={...prepared.program,bwProcedureConstraintSource:metadata};const result=lower(input);assert.equal(temporaryCount(result),0);assert.equal(result.bwProcedureConstraintSource,metadata);assert.equal(result.bwProcedureConstraintSource.prefix,prepared.prefix);assert.equal(result.body[0].decls[0].init.type,'Array');
+ const changed=parse('probe();let values:number[]=[];');changed.bwProcedureConstraintSource=metadata;const after=lower(changed,{lowerArrayMap:node=>{if(node.type==='Call'&&node.callee?.name==='probe')changed.bwProcedureConstraintSource=Object.freeze({prefix:prepared.prefix});return null;}});assert.ok(temporaryCount(after)>0,'replaced protocol envelope expires currentness');
 });

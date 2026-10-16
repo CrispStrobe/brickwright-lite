@@ -40,6 +40,15 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
                 const descriptor=Object.getOwnPropertyDescriptor(value,own);
                 if(typeof own!=='string'||!descriptor||!Object.hasOwn(descriptor,'value')||!descriptor.enumerable&&!(Array.isArray(value)&&own==='length')){closed=false;continue;}
                 const child=descriptor.value;
+                // This exact root field is an existing non-executable protocol
+                // envelope (procedure-constraint-source.js). Bind its immutable
+                // container/prefix identity, never call it or infer AST facts
+                // from it. Other unknown function-bearing metadata still holds.
+                if(value===program&&own==='bwProcedureConstraintSource'){
+                    const entries=child&&typeof child==='object'&&Object.getOwnPropertyDescriptors(child),prefix=entries?.prefix;
+                    if(!entries||Object.getPrototypeOf(child)!==Object.prototype||!Object.isFrozen(child)||Reflect.ownKeys(child).length!==1||!prefix||!Object.hasOwn(prefix,'value')||typeof prefix.value!=='function'||!prefix.enumerable){closed=false;continue;}
+                    physical.push({value:child,proto:Object.getPrototypeOf(child),keys:Reflect.ownKeys(child),descriptors:entries});continue;
+                }
                 // Only actual body statement lists qualify, never for.init,
                 // originalBody metadata, conditions, expressions or class fields.
                 const bodyList=!Array.isArray(value)&&(['Program','FunctionDeclaration','FunctionExpression','Block','While','For'].includes(Object.getOwnPropertyDescriptor(value,'type')?.value)&&own==='body'||Object.getOwnPropertyDescriptor(value,'type')?.value==='If'&&['consequent','alternate'].includes(own));

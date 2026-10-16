@@ -185,3 +185,10 @@ expression also retain existing staging. These conservative limits preserve the
 previous behavior; they are not newly supported source features. The source
 candidate has no runtime, supplier, GUI or primitive-domain changes. Focused
 controls and actual affected current-program qualification remain required.
+
+The existing root procedure-constraint prefix envelope is not executable syntax.
+Its immutable container and prefix function identity remain bound separately;
+this shortcut neither calls that function nor obtains a lexical/value fact from
+it. Unknown metadata and changed current syntax keep their previous lowering.
+Existing value-lowering hooks and resource protocols still run before deciding
+whether only the empty allocation transport can be omitted.
