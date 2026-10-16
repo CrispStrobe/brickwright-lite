@@ -305,8 +305,10 @@ test('vendored SPIKE compiler emits a canonical executable round-trip artifact',
     // -> f2d4f879 (2026-10-15): qualified condition topology and named-label rename
     // repairs (#153/#154), retaining main STM32/i8086 work; re-run all artifact
     // and round-trip assertions with this exact combined producer.
+    // -> 7d3f8be7 (2026-10-16): the reviewed shared producer pin. Keep the
+    // complete executable artifact and round-trip assertions below required.
     assert.equal(JSON.parse(readFileSync(new URL('../vendor-pins.json', import.meta.url)))['sb3-creator'],
-        'f2d4f879ba40dd9025070ed51af11ebe1ef14808');
+        '7d3f8be7c13091a635d919c1af5c456230eed8fd');
 
     const creator = new SB3Creator();
     creator.parse(PROGRAM);

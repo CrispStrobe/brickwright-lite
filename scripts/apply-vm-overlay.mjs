@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import {withVmPackageExports} from './lib/vm-package-exports.mjs';
 import {patchPrimitiveOwner} from './lib/primitive-owner-hooks.mjs';
 import {patchProcedureConstraints} from './lib/procedure-constraint-hooks.mjs';
 import {patchArcadeExceptions} from './lib/arcade-exception-hooks.mjs';
@@ -30,6 +31,14 @@ if (!existsSync(DEST)) {
 }
 cpSync(SRC, DEST, { recursive: true });
 console.log('  applied scratch-vm overlay onto node_modules/scratch-vm (built-in extensions)');
+
+// GUI and native constraints must resolve the SAME installed source module.
+// Upstream exports only its conditional root. Preserve that root verbatim and
+// expose this one owned utility through the package's normal exports map.
+const vmPackagePath=path.join(DEST,'package.json');
+writeFileSync(vmPackagePath,JSON.stringify(withVmPackageExports(
+    JSON.parse(readFileSync(vmPackagePath,'utf8'))),null,2)+'\n');
+console.log('  exposed the canonical shared procedure model in scratch-vm package exports');
 
 // Upstream one-line bugfix (too small to justify carrying the whole 3000-line runtime.js as an
 // overlay): the base VM builds the extension palette category as `<category name="${name}" ...>`
