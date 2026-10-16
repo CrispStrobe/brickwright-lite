@@ -169,3 +169,33 @@ getters; ordinary Array length is the schema exception. Generated legacy
 callback `sprite`/`otherSprite` formals and restart-script `_g` declarations
 also reserve lexical hygiene. Authored source controls cover these actual
 callback/restart bodies as well as malformed and post-plan hidden edits.
+
+## B source implementation boundary
+
+The first source candidate keeps a literal empty Array directly only in an
+actual single `let`/`const` initializer or a complete plain Identifier assignment
+statement to a unique existing `let`/parameter binding. Lexical binding identity
+is read from the current pure source graph; no result type is inferred from it.
+Only current unique syntax nodes with the ordinary empty-Array shape qualify.
+
+Programs containing `var`, unsupported scope syntax, unknown nodes or exceptional
+lowering retain existing staging. Multiple declarators, for-init positions,
+class/resource metadata, shared syntax and every consumed/member/index/nonempty
+expression also retain existing staging. These conservative limits preserve the
+previous behavior; they are not newly supported source features. The source
+candidate has no runtime, supplier, GUI or primitive-domain changes. Focused
+controls and actual affected current-program qualification remain required.
+
+The existing root procedure-constraint prefix envelope is not executable syntax.
+Its actual frozen or current lowering-clone container and prefix function identity remain bound separately;
+this shortcut neither calls that function nor obtains a lexical/value fact from
+it. Unknown metadata and changed current syntax keep their previous lowering.
+Existing value-lowering hooks and resource protocols still run before deciding
+whether only the empty allocation transport can be omitted.
+
+Actual parser parameter arrays carry three nonenumerable data channels. Only
+those exact parser descriptor roles, with their current function optional-name
+identity and empty default/property protocols, participate in the lexical census.
+Unrecognized hidden fields, substituted metadata and unproved default protocols
+keep previous staging. JSON snapshots do not preserve these descriptors; source
+controls must inspect the actual parser objects.
