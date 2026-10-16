@@ -34,7 +34,7 @@ export const LDU_M = 0.0004;
  *  and 8T + 24T mesh at 40 LDU = 2 holes apart. */
 export const pitchRadiusLdu = teeth => teeth * 1.25;
 
-export const CONNECTOR_TYPES = Object.freeze(['pinhole', 'axlehole', 'axle', 'pin', 'stud', 'antistud']);
+export const CONNECTOR_TYPES = Object.freeze(['pinhole', 'axlehole', 'axle', 'pin', 'stud', 'antistud', 'ball', 'ballsocket']);
 export const GEAR_TYPES = Object.freeze(['spur', 'bevel', 'worm', 'rack']);
 export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
 
@@ -63,6 +63,9 @@ export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
  * `length` (LDU, along `axis`, centred on `position`) is the extent of a hole,
  * pin or axle: a 1-hole-wide beam hole is 20 long, a 3L axle is 60 long.
  * A connector of the rotating output of a motor is listed in `motor.output`.
+ * `ball`/`ballsocket` (a towball, the SPIKE castor ball in its socket): the
+ * position is the ball centre; `axis` is the socket's opening direction and is
+ * not used for matching. A ball in a socket is a free 3-axis pivot.
  * `friction: false` marks a frictionless pin (it makes a hinge, not a rigid joint).
  * @typedef {{id: string, type: string, position: Vec3, axis: Vec3, length?: number, friction?: boolean}} Connector
  */
@@ -109,7 +112,9 @@ export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
  * joints: `body2` may be the string 'world'. `point` and `axis` are world
  *   frame at t=0. A hinge's angle is measured about `axis` by the right-hand
  *   rule, as body2's rotation relative to body1, zero at t=0.
- *   `motor.port` binds the hinge to a hub port.
+ *   `motor.port` binds the hinge to a hub port. A `ball` joint is a point
+ *   constraint (free rotation about all axes, e.g. a castor ball): it has a
+ *   `point` and no `axis`.
  * gears: `ratio` is SIGNED and engine-neutral:
  *       ω(joint2) = ratio · ω(joint1)
  *   where each ω is that hinge's relative angular velocity about its OWN
@@ -126,7 +131,8 @@ export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
  *            friction?: number, restitution?: number}[],
  *   joints: ({id: string, type: 'hinge', body1: string, body2: string, point: Vec3, axis: Vec3,
  *             motor?: {port: string, maxTorqueNm: number, maxSpeedRadPerSec: number}} |
- *            {id: string, type: 'slider', body1: string, body2: string, point: Vec3, axis: Vec3})[],
+ *            {id: string, type: 'slider', body1: string, body2: string, point: Vec3, axis: Vec3} |
+ *            {id: string, type: 'ball', body1: string, body2: string, point: Vec3})[],
  *   gears: ({id: string, type: 'gear', joint1: string, joint2: string, ratio: number} |
  *           {id: string, type: 'rackAndPinion', hingeJoint: string, sliderJoint: string, ratio: number})[],
  *   diagnostics: {severity: 'error'|'warning', code: string, message: string, parts?: string[]}[]
@@ -266,12 +272,12 @@ export const validateCompiledMechanism = m => {
     m.joints.forEach(j => {
         const w = `joints[${j?.id}]`;
         joints.set(j?.id, j);
-        if (j?.type !== 'hinge' && j?.type !== 'slider') out.push(`${w}.type: need 'hinge' or 'slider'`);
+        if (!['hinge', 'slider', 'ball'].includes(j?.type)) out.push(`${w}.type: need 'hinge', 'slider' or 'ball'`);
         if (!bodies.has(j?.body1)) out.push(`${w}.body1: unknown body '${j?.body1}'`);
         if (j?.body2 !== 'world' && !bodies.has(j?.body2)) out.push(`${w}.body2: unknown body '${j?.body2}'`);
         if (j?.body1 === j?.body2) out.push(`${w}: joins a body to itself`);
         if (!isVec(j?.point)) out.push(`${w}.point: not a Vec3`);
-        checkUnit(j?.axis, `${w}.axis`, out);
+        if (j?.type !== 'ball') checkUnit(j?.axis, `${w}.axis`, out);
         if (j?.motor) {
             if (j.type !== 'hinge') out.push(`${w}.motor: only hinges are motorised in v1`);
             if (!HUB_PORTS.includes(j.motor.port)) out.push(`${w}.motor.port: '${j.motor.port}' is not ${HUB_PORTS.join('|')}`);

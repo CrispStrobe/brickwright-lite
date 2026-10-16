@@ -65,6 +65,7 @@ test('PartMeta: each malformation is named', () => {
         [m => { m.part = '32523'; }, /\.part: need an LDraw file name/],
         [m => { m.massGrams = 0; }, /massGrams/],
         [m => { m.connectors[0].type = 'hole'; }, /\.type: 'hole' is not one of/],
+        [m => { m.connectors[0].type = 'ballsocket'; }, null],
         [m => { m.connectors[0].axis = [0, 0, 2]; }, /axis: not a unit vector/],
         [m => { m.connectors[1].id = 'h0'; }, /duplicate id 'h0'/],
         [m => { m.colliders = []; }, /need at least one collider/],
@@ -76,7 +77,8 @@ test('PartMeta: each malformation is named', () => {
         const m = beam3();
         mutate(m);
         const problems = validatePartMeta(m);
-        assert.ok(problems.some(p => re.test(p)), `${re} not in ${JSON.stringify(problems)}`);
+        if (re === null) assert.deepEqual(problems, []);
+        else assert.ok(problems.some(p => re.test(p)), `${re} not in ${JSON.stringify(problems)}`);
     }
 });
 
@@ -105,7 +107,10 @@ test('CompiledMechanism: valid passes, references are checked', () => {
         [m => { m.bodies[1].rotation = [0, 0, 0, 2]; }, /not a unit quaternion/],
         [m => { m.joints[0].motor.port = 'Z'; }, /motor.port: 'Z'/],
         [m => { m.joints.push({id: 's', type: 'slider', body1: 'frame', body2: 'g8', point: [0, 0, 0], axis: [1, 0, 0]}); m.gears[0].joint2 = 's'; }, /is a slider, need a hinge/],
-        [m => { delete m.diagnostics; }, /diagnostics: not an array/]
+        [m => { delete m.diagnostics; }, /diagnostics: not an array/],
+        [m => { m.joints.push({id: 'c', type: 'ball', body1: 'frame', body2: 'g24', point: [0, 0, 0]}); }, null],
+        [m => { m.joints.push({id: 'c', type: 'ball', body1: 'frame', body2: 'g24', point: [0, 0, 0]}); m.gears[0].joint2 = 'c'; }, /is a ball, need a hinge/],
+        [m => { m.joints[1].type = 'weld'; }, /need 'hinge', 'slider' or 'ball'/]
     ];
     for (const [mutate, re] of cases) {
         const m = mechanism();
