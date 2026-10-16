@@ -27,10 +27,31 @@ function currentSceneClockNumber(blocks,block) {
     if(!block||block.opcode!=='arcade_sceneMillis')return false;
     const ids=Object.keys(blocks||{}).filter(id=>blocks[id]===block),id=ids[0],parent=id&&blocks[block.parent],uses=[];
     for(const node of Object.values(blocks||{}))for(const slot of Object.values(node.inputs||{}))
-        if(Array.isArray(slot))for(let index=1;index<slot.length;index++)if(slot[index]===id)uses.push({node,index});
-    return ids.length===1&&block.shadow===false&&block.topLevel===false&&block.next==null&&block.mutation==null&&
-        !Object.keys(block.fields||{}).length&&!Object.keys(block.inputs||{}).length&&!!parent&&uses.length===1&&uses[0].node===parent&&uses[0].index===1;
+        if(Array.isArray(slot))for(let index=1;index<slot.length;index++)if(slot[index]===id)uses.push({node,index,slot});
+    if(ids.length!==1||block.shadow!==false||block.topLevel!==false||block.next!=null||block.mutation!=null||
+        Object.keys(block.fields||{}).length||Object.keys(block.inputs||{}).length||!parent||uses.length!==1||uses[0].node!==parent||uses[0].index!==1)return false;
+    if(Object.keys(blocks).filter(key=>blocks[key]===parent).length!==1)return false;
+    const slot=uses[0].slot;
+    // A non-shadow reporter cannot occupy the SAME_BLOCK_SHADOW (1) role.
+    if(slot[0]===2)return slot.length===2;
+    if(slot[0]!==3||slot.length!==3)return false;
+    const fallback=slot[2];
+    const primitive=value=>Array.isArray(value)&&value.length===2&&Number.isInteger(value[0])&&value[0]>=4&&value[0]<=10&&
+        (typeof value[1]==='string'||value[0]<=8&&typeof value[1]==='number'&&Number.isFinite(value[1]));
+    if(primitive(fallback))return true;
+    if(typeof fallback!=='string'||fallback===id)return false;
+    const shadow=blocks[fallback],names=Object.keys(blocks).filter(key=>blocks[key]===shadow);
+    if(!shadow||names.length!==1||names[0]!==fallback||shadow.shadow!==true||shadow.topLevel!==false||shadow.parent!==block.parent||
+        shadow.next!=null||shadow.mutation!=null||Object.keys(shadow.inputs||{}).length)return false;
+    const primitiveFields={math_number:'NUM',math_positive_number:'NUM',math_whole_number:'NUM',math_integer:'NUM',math_angle:'NUM',colour_picker:'COLOUR',text:'TEXT'};
+    const field=Object.hasOwn(primitiveFields,shadow.opcode)&&primitiveFields[shadow.opcode],value=shadow.fields?.[field];
+    if(!field||Object.keys(shadow.fields||{}).length!==1||!Array.isArray(value)||![1,2].includes(value.length)||value.length===2&&value[1]!==null||
+        !(typeof value[0]==='string'||field==='NUM'&&typeof value[0]==='number'&&Number.isFinite(value[0])))return false;
+    const fallbackUses=[];for(const node of Object.values(blocks))for(const input of Object.values(node.inputs||{}))
+        if(Array.isArray(input))for(let index=1;index<input.length;index++)if(input[index]===fallback)fallbackUses.push({node,index,input});
+    return fallbackUses.length===1&&fallbackUses[0].node===parent&&fallbackUses[0].index===2&&fallbackUses[0].input===slot;
 }
+
 /**
  * A Scratch project -> MakeCode Arcade TypeScript: the way back from
  * arcade-translate.js, and the way OUT for a game made here.

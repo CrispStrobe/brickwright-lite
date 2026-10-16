@@ -22,7 +22,10 @@ bounded source proof. Computed access has only the existing initialized actual
 Array/Number-index/all-writer/no-escape exception. No arbitrary JavaScript effect
 interpreter or broad SDK return table is provided. The existing info census is
 unchanged. Actual current export checks the scene reporter's zero-input/field
-shape and unique connected parent. That same current-graph eligibility seeds
+shape and unique connected parent, including the actual serialized socket tag,
+arity and non-shadow reporter role. Tag 2 has no fallback; tag 3 has a well-formed
+inline primitive or uniquely owned numeric/text/color shadow fallback. A copied
+parent socket or foreign/shared fallback cannot seed the static proof. That same current-graph eligibility seeds
 formal/caller static inference; it creates no runtime completion receipt.
 Reimport independently proves emitted current source.
 

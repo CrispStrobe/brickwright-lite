@@ -72,7 +72,7 @@ test('class instance this is bounded separately from ambient or nested-function 
 test('current typed caller clock facts require the same exact connected reporter as emission',t=>{
     const result=arcadeToPseudocode('let seen=0;function receive(value:number){seen=value}receive(game.runtime());receive(game.runtime());');
     const creator=new Creator();creator.parse(result.code);assert.deepEqual(result.unsupported,[]);assert.deepEqual(creator.errors,[]);assert.deepEqual(creator.warnings,[]);assert.deepEqual(creator.unparsed,[]);
-    for(const mode of ['extra input','extra field','shadow','top level','next','mutation','wrong parent','duplicate dictionary identity','shared block edge','shared shadow edge','other clock opcode']){
+    for(const mode of ['extra input','extra field','shadow','top level','next','mutation','wrong parent','duplicate dictionary identity','shared block edge','shared shadow edge','socket unknown tag','socket same-shadow role','socket missing tag','socket no-shadow extra tail','socket shadow missing fallback','socket extra fallback tail','socket malformed inline fallback','socket missing fallback block','socket foreign fallback owner','socket shared fallback','other clock opcode']){
         const project=JSON.parse(JSON.stringify(creator.project)),target=project.targets.find(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_sceneMillis'));
         const [id,node]=Object.entries(target.blocks).find(([,block])=>block.opcode==='arcade_sceneMillis'),parent=target.blocks[node.parent];
         if(mode==='extra input')node.inputs.EXTRA=[1,[4,'1']];
@@ -85,10 +85,38 @@ test('current typed caller clock facts require the same exact connected reporter
         if(mode==='duplicate dictionary identity')target.blocks.authoredDuplicateClock=node;
         if(mode==='shared block edge')parent.inputs.EXTRA=[2,id];
         if(mode==='shared shadow edge')parent.inputs.EXTRA=[3,[4,'0'],id];
+        const socket=Object.entries(parent.inputs).find(([,slot])=>slot[1]===id)?.[0];assert.ok(socket);
+        if(mode==='socket unknown tag')parent.inputs[socket]=[99,id];
+        if(mode==='socket same-shadow role')parent.inputs[socket]=[1,id];
+        if(mode==='socket missing tag')parent.inputs[socket]=[id];
+        if(mode==='socket no-shadow extra tail')parent.inputs[socket]=[2,id,'extra'];
+        if(mode==='socket shadow missing fallback')parent.inputs[socket]=[3,id];
+        if(mode==='socket extra fallback tail')parent.inputs[socket]=[3,id,[4,'0'],'extra'];
+        if(mode==='socket malformed inline fallback')parent.inputs[socket]=[3,id,[4,'0','extra']];
+        if(mode==='socket missing fallback block')parent.inputs[socket]=[3,id,'missing-shadow'];
+        if(mode==='socket foreign fallback owner'||mode==='socket shared fallback'){
+            const fallback='authored-clock-fallback';assert.equal(Object.hasOwn(target.blocks,fallback),false);
+            target.blocks[fallback]={opcode:'math_number',next:null,parent:mode==='socket foreign fallback owner'?id:node.parent,inputs:{},fields:{NUM:['0',null]},shadow:true,topLevel:false};parent.inputs[socket]=[3,id,fallback];
+            if(mode==='socket shared fallback')parent.inputs.EXTRA=[1,fallback];
+        }
         if(mode==='other clock opcode')node.opcode='arcade_programMillis';
         const out=projectToArcade(project);t.diagnostic(JSON.stringify({stage:'malformed current typed clock caller',mode,current:project,out}));
         assert.ok(out.unsupported.some(message=>message.includes('Procedure parameter constraint: actual current caller or writer requires Number')),mode+' cannot seed the formal Number graph');
-        if(mode!=='other clock opcode')assert.ok(out.unsupported.some(message=>message.includes('Scene clock Number:')),mode+' has the same emission refusal');
+        if(!['other clock opcode','socket missing tag'].includes(mode))assert.ok(out.unsupported.some(message=>message.includes('Scene clock Number:')),mode+' has the same emission refusal');
         assert.deepEqual(out.warnings,[]);
+    }
+});
+
+
+test('current typed clock accepts canonical nonshadow sockets and uniquely owned primitive fallback',t=>{
+    const result=arcadeToPseudocode('let seen=0;function receive(value:number){seen=value}receive(game.runtime());');
+    const creator=new Creator();creator.parse(result.code);assert.deepEqual(result.unsupported,[]);assert.deepEqual(creator.errors,[]);
+    for(const mode of ['no shadow','inline numeric shadow','inline text shadow','owned numeric shadow']){
+        const project=JSON.parse(JSON.stringify(creator.project)),target=project.targets.find(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_sceneMillis')),[id,node]=Object.entries(target.blocks).find(([,block])=>block.opcode==='arcade_sceneMillis'),parent=target.blocks[node.parent],socket=Object.entries(parent.inputs).find(([,slot])=>slot[1]===id)[0];
+        if(mode==='no shadow')parent.inputs[socket]=[2,id];
+        if(mode==='inline numeric shadow')parent.inputs[socket]=[3,id,[4,'0']];
+        if(mode==='inline text shadow')parent.inputs[socket]=[3,id,[10,'']];
+        if(mode==='owned numeric shadow'){target.blocks.authoredClockShadow={opcode:'math_number',next:null,parent:node.parent,inputs:{},fields:{NUM:['0',null]},shadow:true,topLevel:false};parent.inputs[socket]=[3,id,'authoredClockShadow'];}
+        const out=projectToArcade(project);t.diagnostic(JSON.stringify({stage:'canonical current typed clock socket',mode,current:project,out}));assert.deepEqual(out.unsupported,[],mode);assert.deepEqual(out.warnings,[]);
     }
 });
