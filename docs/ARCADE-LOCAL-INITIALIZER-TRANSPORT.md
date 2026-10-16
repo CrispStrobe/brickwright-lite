@@ -13,6 +13,16 @@ only the current-graph first-write transformation below, retain the original
 failures, and qualify source, current save/export and affected native behavior
 separately. Visible editor and whole-project compatibility need their own evidence.
 
+## Implementation prerequisite
+
+Begin implementation only from a reviewed source composition containing the A
+current-owner snapshot/exporter and the existing local producer constraints,
+with that entire foundation qualified for public adoption. These prerequisites
+are not yet all on public main. The references to current owner validation and
+export fences below describe required foundations, not capabilities supplied
+by merging this documentation claim alone. Recheck the actual composition and
+its qualification before claiming or changing shared exporter hooks.
+
 ## Problem and actual semantics
 
 `overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js` currently prepends
