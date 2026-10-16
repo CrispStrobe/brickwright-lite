@@ -42,6 +42,8 @@
         "sync:emuwasm:check": "node scripts/sync-emu8051-wasm.mjs --check",
         "check:mirrors": "node scripts/check-mirrors.mjs",
         "package:store-compliance": "node scripts/package-store-compliance.mjs",
+        "sync:ldraw": "node scripts/sync-ldraw-parts.mjs",
+        "sync:ldraw:check": "node scripts/sync-ldraw-parts.mjs --check",
         "sync:examples": "node scripts/sync-examples.mjs",
         "sync:examples:check": "node scripts/sync-examples.mjs --check",
         "sync:flasher": "node scripts/sync-flasher.mjs",
