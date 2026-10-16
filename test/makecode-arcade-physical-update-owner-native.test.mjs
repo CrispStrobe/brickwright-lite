@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {runProgram,stepFrames,clearStrayTimers,quitStrandedVMs} from './helpers/bw-vm.mjs';
 import {restartTimedArcadeRun} from './helpers/arcade-timed-native.mjs';
@@ -28,6 +29,28 @@ function errors(rows){
 }
 function retain(name,record){const root=process.env.BW_PHYSICAL_UPDATE_EVIDENCE_DIR;
     if(root){fs.mkdirSync(root,{recursive:true});fs.writeFileSync(path.join(root,name+'.json'),JSON.stringify(record));}}
+// Passive qualification evidence: existing helper output only, no generation/save.
+const retainedRuns=new WeakSet();
+function channels(value){
+    return Object.fromEntries(Object.getOwnPropertyNames(value).filter(key=>/warn|error|unparsed|unsupported|diagnostic|refus|netAttempts/i.test(key)).map(key=>{
+        const descriptor=Object.getOwnPropertyDescriptor(value,key);
+        return [key,Object.hasOwn(descriptor,'value')?{present:true,descriptor:{enumerable:descriptor.enumerable,configurable:descriptor.configurable,writable:descriptor.writable},actual:errors([descriptor.value])[0]}:{present:true,unobserved:'accessor-not-invoked'}];
+    }));
+}
+function observeCreator(name,fact){return (creator,error)=>{
+    const row={project:creator.project,channels:channels(creator),parseException:{present:error!==null,actual:error===null?null:errors([error])[0]}};
+    fact.creatorObservations??=[];fact.creatorObservations.push(row);retain(name+'-creator-before-helper-load',row);
+};}
+function runtimeSnapshot(run){
+    return {targets:run.vm.runtime.targets.map(target=>({id:target.id,isStage:target.isStage,isOriginal:target.isOriginal,name:target.getName(),blocks:target.blocks._blocks,variables:errors([target.variables])[0]})),threads:errors(run.vm.runtime.threads),errors:errors(run.errors),calls:[...run.calls.entries()]};
+}
+function captureReturnedRun(name,run,fact){
+    if(retainedRuns.has(run))throw Error('NATIVE_THROW_HELPER_BUFFER_ALREADY_CAPTURED');retainedRuns.add(run);
+    const root=process.env.BW_PHYSICAL_UPDATE_EVIDENCE_DIR;
+    const bytes=Buffer.from(run.buffer);fact.helperBuffer={bytes:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex'),source:'actual returned run.buffer; no extra serialization',file:name+'-actual-helper.sb3'};
+    if(root){fs.mkdirSync(root,{recursive:true});fs.writeFileSync(path.join(root,fact.helperBuffer.file),bytes,{flag:'wx'});}
+    fact.importedChannels=channels(fact.imported);fact.creatorProvidedChannels=channels(run.creator);fact.runtimeAfterHelper=runtimeSnapshot(run);retain(name+'-after-helper',fact);
+}
 async function close(run){
     const failures=[];
     for(const action of [()=>run?.vm.stopAll(),()=>run?.vm.quit(),()=>quitStrandedVMs(),()=>clearStrayTimers()]){
@@ -38,16 +61,18 @@ async function close(run){
 
 test('physical update preserves the complete existing imagePause partial-construction guest',async()=>{
     const source=extendableControls.imagePause,imported=arcadeToPseudocode(source);let run,clock,primary,primaryPresent=false;
-    const fact={source,imported,initialHelperFlag:'UNOBSERVED',stages:[]};
+    const fact={source,imported,importedChannels:channels(imported),initialHelperFlag:'UNOBSERVED',stages:[]};
+    retain('imagePause-before-assertions',fact);
     try {
         assert.deepEqual(imported.unsupported,[]);
-        run=await runProgram(imported.code,{frames:0,frameAuthority:'timed',storage:true,uploads:imported.costumes});
+        run=await runProgram(imported.code,{frames:0,frameAuthority:'timed',storage:true,uploads:imported.costumes,observeCreator:observeCreator('imagePause',fact)});
+        captureReturnedRun('imagePause',run,fact);
         fact.initialErrors=errors(run.errors);fact.creatorProject=run.creator.project;
         fact.creatorChannels={warnings:run.creator.warnings,errors:run.creator.errors,unparsed:run.creator.unparsed};
         try {clock=await restartTimedArcadeRun(run,100);}catch(error){primary=error;primaryPresent=true;}
         fact.stages.push({name:'deadline100',values:values(run),counts:Object.fromEntries(run.calls),errors:errors(run.errors),primary:{present:primaryPresent,value:primaryPresent?errors([primary]):null}});
         if(clock){run.vm.stopAll();await clock.advanceTo(120);fact.stages.push({name:'afterStop120',values:values(run),counts:Object.fromEntries(run.calls),errors:errors(run.errors)});}
-        retain('imagePause',fact);
+        fact.runtimeBeforeAssertions=runtimeSnapshot(run);retain('imagePause',fact);
         if(primaryPresent)throw primary;
         assert.deepEqual(run.errors,[]);
         assert.deepEqual(run.creator.warnings,[]);assert.deepEqual(run.creator.errors,[]);assert.deepEqual(run.creator.unparsed,[]);
@@ -58,7 +83,7 @@ test('physical update preserves the complete existing imagePause partial-constru
         assert.deepEqual(fact.stages[1].values,fact.stages[0].values,'Stop prevents every later observed variable effect');
         assert.deepEqual(fact.stages[1].counts,fact.stages[0].counts,'Stop prevents later primitive calls through deadline120');
         assert.deepEqual(fact.stages[1].errors,[]);
-    } finally {const cleanup=await close(run);fact.cleanupErrors=errors(cleanup);if(run){fact.finalErrors=errors(run.errors);fact.finalValues=values(run);}retain('imagePause-final',fact);assert.deepEqual(cleanup,[]);if(run)assert.deepEqual(run.errors,[]);}
+    } finally {const cleanup=await close(run);fact.cleanupErrors=errors(cleanup);if(run){fact.finalErrors=errors(run.errors);fact.finalValues=values(run);fact.runtimeAfterCleanup=runtimeSnapshot(run);}retain('imagePause-final',fact);assert.deepEqual(cleanup,[]);if(run)assert.deepEqual(run.errors,[]);}
 });
 
 test('a throwing physical root preserves earlier effects and leaves the detached input handler live',async()=>{
@@ -75,10 +100,12 @@ class Actor extends sprites.ExtendableSprite {
 }
 let actor=new Actor()`;
     const imported=arcadeToPseudocode(source,{throwPrototype:true});let run,primary,primaryPresent=false;
-    const fact={source,imported,initialHelperFlag:'UNOBSERVED',events:[],stages:[]};
+    const fact={source,imported,importedChannels:channels(imported),initialHelperFlag:'UNOBSERVED',events:[],stages:[]};
+    retain('throwingPhysicalUpdate-before-assertions',fact);
     try {
         assert.deepEqual(imported.unsupported,[]);
-        run=await runProgram(imported.code,{frames:0,frameAuthority:'timed',storage:true,uploads:imported.costumes});
+        run=await runProgram(imported.code,{frames:0,frameAuthority:'timed',storage:true,uploads:imported.costumes,observeCreator:observeCreator('throwingPhysicalUpdate',fact)});
+        captureReturnedRun('throwingPhysicalUpdate',run,fact);
         fact.initialErrors=errors(run.errors);fact.creatorProject=run.creator.project;
         run.vm.runtime.on('BLOCKS_ERROR',error=>fact.events.push(errors([error])[0]));
         try {await restartTimedArcadeRun(run,40);}catch(error){primary=error;primaryPresent=true;}
@@ -86,7 +113,7 @@ let actor=new Actor()`;
         run.vm.postIOData('keyboard',{key:' ',isDown:true});
         try {await stepFrames(run.vm,8,20);}finally{run.vm.postIOData('keyboard',{key:' ',isDown:false});}
         fact.stages.push({name:'afterActualInput',values:values(run),errors:errors(run.errors)});
-        retain('throwingPhysicalUpdate',fact);
+        fact.runtimeBeforeAssertions=runtimeSnapshot(run);retain('throwingPhysicalUpdate',fact);
         if(primaryPresent)throw primary;
         assert.equal(fact.stages[0].values.entered,1);assert.equal(fact.stages[0].values.child,1);
         assert.equal(fact.stages[0].values.after,0);
@@ -97,5 +124,5 @@ let actor=new Actor()`;
         assert.equal(fact.events.length,1);assert.equal(fact.events[0].message,message);
         assert.deepEqual(fact.stages[0].errors,['Error: '+message]);
         assert.deepEqual(fact.stages[1].errors,['Error: '+message]);
-    } finally {const cleanup=await close(run);fact.cleanupErrors=errors(cleanup);if(run){fact.finalErrors=errors(run.errors);fact.finalValues=values(run);}retain('throwingPhysicalUpdate-final',fact);assert.deepEqual(cleanup,[]);if(run)assert.deepEqual(run.errors,['Error: Arcade uncaught thrown value: physical-update']);}
+    } finally {const cleanup=await close(run);fact.cleanupErrors=errors(cleanup);if(run){fact.finalErrors=errors(run.errors);fact.finalValues=values(run);fact.runtimeAfterCleanup=runtimeSnapshot(run);}retain('throwingPhysicalUpdate-final',fact);assert.deepEqual(cleanup,[]);if(run)assert.deepEqual(run.errors,['Error: Arcade uncaught thrown value: physical-update']);}
 });
