@@ -17,7 +17,7 @@ controls pass, six broken guards are caught, and 220 affected controls passed
 before the final focused case was added. Older timing controls preserve late
 reply delivery after actual teardown instead of waiting circularly.
 
-This source is stacked on the Code caller/output follow-up; its three frozen
+The Code caller/output follow-up [PR985](https://github.com/CrispStrobe/brickwright-lite/pull/985) is merged. Its three frozen
 package cases do not qualify repeated Stop. Fresh installed own-guest repeated-Stop cleanup/recovery and final-head CI are still
 required; the earlier lifecycle package does not qualify this implementation.
 Full G02, physical/reference, licensing and release qualification remain open.

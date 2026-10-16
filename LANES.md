@@ -1,7 +1,8 @@
 ## SPIKE pending Stop teardown implementation — 2026-10-15
 
-G02 continuation, branch `lane/spike-g02-pending-stop-20261015`, stacked on the
-Code caller/output follow-up. Its frozen-package qualification below does not
+G02 continuation, branch `lane/spike-g02-pending-stop-20261015`, based on main
+after the Code caller/output follow-up [PR985](https://github.com/CrispStrobe/brickwright-lite/pull/985) merged.
+Its frozen-package qualification below does not
 qualify this new teardown change. A second Stop can see no
 attached session while native teardown still owns the hub clock. Remember the
 pending teardown before invoking the native Stop, and await it before restoring
@@ -92,6 +93,116 @@ These host API controls are complemented by the named frozen installed capture
 above. Final documentation-head CI and exact-head merge review remain required. Do not infer physical UART attribution, new reference
 mapping, whole G02, rollback, licensing or release qualification. Keep this
 follow-up out of the already frozen composed-package qualification target.
+## Original Arcade profiler clock bootstrap — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
+implementation. Contract: [reference clock bootstrap](docs/ARCADE-REFERENCE-CLOCK-BOOTSTRAP.md).
+Own the original-simulator clock helper, its Arcade runtime initialization call
+site, focused controls and qualification notes. Preserve paused-zero document
+admission, then prove a deterministic complete-frame bootstrap before actual
+guest construction, positive profiling and unchanged relative timer/frame/input
+phases. No PXT vendor patch, guest-clock replacement, normalized result,
+expectation/budget reduction, dependency pin or workflow change. All unrelated
+source, runtime, editor and device owners retain their lanes.
+
+## Code conversion: preserve newer editor ownership — 2026-10-16
+
+IMPLEMENTED, hosted qualification pending — SPIKE integration follow-up.
+Ownership claim [PR1000](https://github.com/CrispStrobe/brickwright-lite/pull/1000)
+merged before implementation. Own the narrow conversion-completion and editor-buffer hooks in
+both `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
+and its `packages/scratch-gui` mirror, a focused
+`test/code-conversion-editor-ownership.test.mjs`, and this ledger.
+
+The 8086 browser gate observed an empty ASM editor after choosing its 8255
+example during reconstruction following a reload. Separately, a host diagnostic
+executing the actual conversion and example-loading methods reproduces an ASM
+example being cleared when an earlier conversion resumes from an authored
+`loadProject` wait. This establishes a reachable source overwrite; it does not
+establish the exact browser scheduling cause. Preserve the original browser
+failure and all existing assertions and resource bounds.
+
+A finishing conversion may regenerate editors and publish conversion feedback
+only while it still owns the captured editor work. Preserve later edits,
+example loads, language changes and newer conversions, including edit/revert
+and asynchronous project/extension boundaries. Keep ordinary conversion,
+explicit device-retarget compilation, error reporting and current busy cleanup
+working. Existing source/project admission checks remain required. Do not
+pretend the already-applied VM load was rolled back or silently replace a newer
+project. Broader project-transaction cancellation remains separate work.
+
+Before source merge require baseline counterexamples, normal/current-error
+controls, nonvacuous guard mutations, every enabled exact-head CI check and
+affected clean application/own-guest qualification. Exercise the real 8086
+reload, example selection and local execution route; retain SPIKE caller,
+output and Stop controls. No timeout, assertion, baseline, dependency pin,
+compiler/runtime/firmware/model, protocol or workflow change. Coordinate other
+importer owners; preserve their existing hooks and all unrelated lane sections.
+
+The candidate identifies each conversion request and captures its editor buffer,
+language and import-intent revisions. Editor feedback, selection and queued busy
+cleanup retain their corresponding ownership. Applied-project metadata instead
+uses the newest conversion VM-load identity and its observed loaded stage: a
+newer request still preparing does not invalidate the device metadata of an
+already-applied load. A newer VM load or stage change revokes that metadata
+completion. Existing source/project admission remains required; this does not
+undo an applied VM load or establish general project transaction cancellation.
+
+Twenty-seven actual-method host controls pass; the previous source passes
+nineteen and fails eight. Eighteen guard mutations are detected. All 156 affected
+host controls and 24 existing VM-diagnostic/artwork controls pass with an
+explicitly selected prepared dependency registry. Earlier controls exposed a
+masking case where undefined-to-null import cleanup hid a missing request
+fence; an already-reset resource case now detects it. Original assertions and
+failures remain preserved. The existing diagnostic fixture handles React
+functional state updaters without changing its validation assertions.
+
+The previous source passed all 26 actual 8086 journey checks with an identical
+CI checkout tree, but its light job failed the Pico device-registration gate.
+A separate actual-method diagnostic establishes a source regression: an older
+load can apply, lose metadata publication to a newer request, then cause that
+newer preparation to refuse its changed stage. The exact failing browser
+schedule remains unestablished. The follow-up preserves applied metadata while
+retaining editor fences and the stage refusal. Final source qualification still
+requires every enabled exact-head check and fresh actual 8086 and Pico routes,
+including positive Pico execution and the firmware-withheld refusal. Host
+controls and the previous source's 8086 result do not qualify this new source,
+a new installed package or SPIKE G02.
+
+## Scoped WeDo2 inventory gate repair — 2026-10-15
+
+IMPLEMENTED, hosted qualification pending — SPIKE G02 integration follow-up.
+Ownership claim [PR994](https://github.com/CrispStrobe/brickwright-lite/pull/994)
+merged before implementation. Source branch `fix/scoped-wedo-inventory-20261016`.
+
+The existing `wedo2unified` artifact pin is present in `vendor-pins.json`, but
+the notices census treats it as an unknown vendored repository and the scoped
+pin inventory omits it. Both checks fail on the unchanged integration source.
+The retained generated bundle declares MPL-2.0 and records its source commit
+and SHA-256; those inputs must remain unchanged.
+
+Envelope: this ledger, `scripts/lib/notices-census.mjs`,
+`THIRD-PARTY-NOTICES.md`, `test/notices-drift.test.mjs`, and
+`test/pin-move-chain.test.mjs`. Register the already shipped scoped bundle,
+retain its declared author and license in the notices, and correlate the
+existing pin with its exact per-file bundle receipt. Missing, malformed,
+unlicensed, wrongly attributed or mismatched bundles must still fail.
+No dependency adoption, generated bundle, product runtime, firmware, model,
+workflow or budget change. This repair does not establish broader license or
+release clearance. The claim must land before implementation; then run the
+affected inventory controls and every enabled exact-head CI check.
+
+The repair reads the existing scoped bundle's MPL declaration and separate By
+attribution, requires its notice, and correlates the pin with the source repo,
+path, commit, byte count and SHA-256 in the retained per-file receipt. A By
+header does not grant a copyright-holder or own-code exemption. Seven focused
+host controls pass, including the actual bundled source and negative receipt
+and notice cases; the unchanged baseline fails the two intended inventory
+checks. Initial sparse-input and historical Git-object failures are retained
+separately from those baseline results. Runtime, generated bundles and pins
+remain unchanged. Full hosted checks remain required before merge; this does
+not qualify a new installed package or close SPIKE G02.
+
 
 ## SPIKE G02 composed lifecycle integration — 2026-10-15
 
@@ -270,16 +381,17 @@ claim first; implementation lands only after full CI and owner review.
 
 ## A10: micro:bit V2 serial consumer adoption — 2026-10-15
 
-CLAIMED — Codex, branch `lane/a10-v2-serial-consumer-20261015`, base `015e1bdc7`.
+DONE 2026-10-16 — Codex, branch `lane/a10-v2-serial-consumer-20261015`, base `015e1bdc7`.
 Adopt the qualified deterministic LabWired engine release after its source fix
 lands. Remove V2 serial withholding and verify real compiled firmware through
 both CLI modes and the visible Debug console. Preserve A11's landed export fix.
 
-Consumer scope is engine-only. The shipped bw-board client's LabWired adapter,
-bridge, debugger and firmware helpers are byte-identical to the qualified
-producer, and all chip/board catalog payloads are identical (source identity
-only differs). No client API change is needed for the UARTE source fix; actual
-released-engine qualification against this shipped client remains mandatory.
+Consumer scope is engine-only. The affected nRF52833 and micro:bit V2 catalog
+payloads are unchanged. The producer's canonical catalog also carries the
+qualified STM32F103 C8 flash and clock-gate descriptor; do not describe every
+chip payload as identical to this shipped client. No client API change is
+needed for the UARTE source fix; actual released-engine qualification against
+this shipped client remains mandatory.
 The separate STM32 package/compiler adoption belongs to its existing owner.
 This lane leaves board, compiler and circuit-UI package pin fields untouched;
 qualified mainline changes from those owners are preserved when integrated.
@@ -295,11 +407,41 @@ affected engine provenance/notices through canonical writers if required.
 No NPM package/compiler pin bump, copied engine, invented source/hash, SDK
 rebuild, optional motion run, physical-accuracy claim or threshold relaxation.
 
-The core fix is merged. Consumer JSON/text serial and visible-console checks
-are prepared; final tests require the exact complete greeting, ordered counter,
-unchanged matrix/fault/guest-time bounds, and the fresh nRF52833 V2 emulator ELF.
-Engine publication/original admission, all enabled final checks and actual
-released-engine CLI/browser qualification remain pending before integration.
+The first release, `labwired-wasm-6a769a59`, passed its original 123-test suite,
+but consumer PR988's real compiled CLI and browser programs still produced
+corrupt serial bytes. Preserve those failures. The follow-up interrupt-completion
+fix is merged in labwired-core PR247 as `1ea67f9c`; its reviewed source
+`de14721e4ae1d34a428f91d232e4520d50f1ceba` is the adopted engine pin.
+Producer PR629 is merged as `a72acc06`: all 13 enabled final checks pass,
+including the five release jobs; four skips are declared. Fresh engine run
+38855838615 passed two independent matching builds and all 125 release tests
+with zero failures or skips. Release `labwired-wasm-de14721e` has five assets
+whose digests and sizes match the original build bytes. Node test and benchmark
+callers supply their CommonJS marker explicitly.
+[Consumer PR988](https://github.com/CrispStrobe/brickwright-lite/pull/988) now
+pins that source/tag and the two admitted web hashes. Its matching performance
+workflow verifies both downloaded Node executable hashes before benchmarking;
+methods, sample counts and thresholds are unchanged. The automatic pin-push benchmark
+(run 38861990788) passed all five targets with three samples each; its input
+blobs are byte-identical in the final candidate. Retain the original run identity
+and its finite CPU-loop/AVR-adapter scope.
+
+Consumer PR988 merged as `3753d3b48014d50574a417970dfd75b940129f16`, retaining
+tested head `18484cfeb1a124f2352f100c1a5d9744275ba879`. All 12 enabled exact-head
+checks passed across Build, vendor freshness and Rust notices; deploy/verify-gui
+were declared conditional skips. Both actual compiled JSON/text CLI proofs
+passed the complete greeting, ordered counters and unchanged matrix/fault/
+one-second bounds. The browser's own fresh nRF52833 V2 emulator ELF reached
+Running and printed its complete unique greeting in the visible Debug console.
+The full tracked-file inventory and notices passed in the clean hosted checkout.
+Reviewed, predicted and landed merge parents/tree match; peer notes and A11's
+export implementation are preserved.
+
+The authored proof guests explicitly set `serial.setWriteLinePadding(0)` because
+MakeCode otherwise pads `writeLine` records to 32 bytes including CRLF. Existing
+exact output assertions, waits and budgets are unchanged. Original first-engine
+corruption and the later padding-expectation failures remain retained. No
+physical re-capture, hardware or broader performance claim is added.
 
 ## A11: Code-tab MakeCode export uses the project target — 2026-10-15
 
@@ -4832,3 +4974,209 @@ Actual installed browser download and fresh chooser reload remain mandatory
 before a user-facing qualification claim. No supplier pin or chooser geometry
 limit changes belong to this extension. See the
 [handoff](docs/X86-NEXT-LANES.md#master-disk-export-continuation).
+
+## Arcade nested ordinary declarations with captures — proposed
+
+PROPOSED — Codex generic nested declaration/capture lane. Merge this separate
+contract before product changes: [nested declarations with captures](docs/ARCADE-NESTED-DECLARATION-CAPTURES.md).
+Own actual nested declaration initialization, source/caller/all-writer primitive
+proof, versioned lexical declaration-allocation schema, managed capture/label
+bridge, current-body export and focused source/native/Code/SB3 tests. Coordinate
+shared translator/source graph/export/native hooks with their existing owners.
+Preserve original helper bodies; no Arrow wrappers, expression substitution,
+annotation authority or generated-name grants. Existing module/namespace named
+labels and version 1 numeric factory admission remain unchanged. Visible GUI
+editing and precise diagnostics require their own actual authoring evidence.
+No SDK reference captures/results, callable arrays, generic/default/recursive
+nested functions or new supplier word/pin follows from this claim.
+
+## Arcade physical null Sprite getter failure — 2026-10-15
+
+CLAIM — root-owned bounded null Sprite getter fault and actual native failure
+handoff, coordinated with the existing Throw and physical Sprite owners.
+[Contract](docs/ARCADE-NULL-SPRITE-GETTER.md) covers x/y/width/height individually (only x has an original runtime observation),
+and requires an actual current
+primitive null receiver, private fault provenance, real managed-lineage unwind,
+exceptional exactly-once continuation settlement, preserved earlier effects and
+no later success effects. Existing non-null/missing-ID service behavior stays
+intact; strings, annotations, copied arguments and arbitrary Errors grant no
+fault or Sprite authority. Retain the selected original without replay; qualify
+authentic portable native routes and unrelated-fiber/restart/Load controls.
+Implementation waits for this clarification's normal qualified merge. No broad
+Sprite admission, caught exceptions, supplier/pin change or whole-case promotion.
+
+
+## Dependency-prepared Arcade import — 2026-10-15
+
+PROPOSED EXTENSION — Codex Arcade integration, extending the merged extension-
+project qualification lane. Merge this claim before product changes. Contract:
+[dependency-prepared Arcade import](docs/ARCADE-DEPENDENCY-PREPARED-IMPORT.md).
+Own one shared asynchronous dependency preparation/import boundary, coordinated
+public browser resolver and file/share entrypoints, existing CLI/Node resolver
+integration, focused controls and Arcade handoff. Resolve the actual current
+input or exported project's declared package/version/ref identities; retain
+original files, source provenance, resource order and every diagnostic channel.
+Preserve the synchronous offline path and existing fetch policy; missing,
+disabled, mismatched and ambiguous dependencies remain named failures. No
+original-source restoration, fixture-specific preparation, compile, guest run,
+pin adoption or whole-case promotion. Actual SDK package preparation requires
+its separately reviewed bounded execution and is not inferred from source tests.
+
+
+## Exact Arcade scene-clock Number producer — 2026-10-15
+
+PROPOSED CLARIFICATION — Codex Arcade integration, coordinated with the existing
+distinct scene/program clock and primitive producer owners. Merge before product
+changes. [Contract](docs/ARCADE-CLOCK-NUMBER-PRODUCER.md) owns only unchanged
+unshadowed zero-argument game.runtime source proof, actual current scene-clock
+primitive Number completion and current Code/Blocks/SB3/export controls. Bind
+all SDK accesses/writes and the real cached operation/registration/active loan;
+execution ownership alone is not a Number certificate. Preserve current graph,
+Stop/load and private proof lifetimes, direct-service compatibility and all other
+primitive roles. No control.millis, broad SDK result seed, class/callback widening,
+new word or pin. The stopwatch Timer external writer and cyclic field/result
+invariant remain HELD pending complete separate proof. Native, selected-original
+and visible authoring gates remain independent; no whole-case promotion.
+
+## Ordinary procedure optional argument transport — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Product implementation waits
+for this claim's normal qualified merge. Contract:
+[ordinary call omission](docs/ARCADE-ORDINARY-CALL-OMISSION.md).
+Own a narrow reusable per-call/per-formal missing-slot proof for uniquely bound,
+unchanged ordinary module or flattened namespace procedures. First admission has
+an actual optional trailing suffix and no signature defaults, rest/generic or
+constructor route. Emit canonical actual Undefined operands under that proof,
+independently of the selected translation route; do not pad by names or counts.
+Preserve full provided/forwarding calls, helper bodies, actual argument evaluation,
+caller/completion identity, all diagnostic channels and partial-stage boundaries.
+Optional type metadata describes a signature, never an actual reference producer.
+Unknown provided Effects/Melody or other reference inputs remain refused.
+
+After merge, own the new omission planner and coordinated narrow source-call,
+current prototype/formal/argument validation and export hooks, focused controls
+and docs. Reuse existing actual callee analysis, primitive constraints, Undefined
+reporters and default omission bits. Coordinate shared hooks with their owners.
+Current Blocks/Code, rename/reorder/reconnect/writers, save/reopen, native argument
+and exceptional completion, current export/reimport and hosted GUI each need their
+own evidence. Parsing or arity recovery is not whole-app success.
+
+No new SDK reference producer/service domain, annotation value grant, arbitrary
+reference default, generic/captured/nested callable expansion, new word, dependency
+pin or supplier adoption. Existing default-bearing protocols must preserve absent
+versus explicitly supplied Undefined behavior. All unrelated lane claims remain.
+
+
+## Current Array export: overwritten local initializers — 2026-10-16
+
+PROPOSED — Codex current Array authority continuation. Merge this documentation
+claim before implementation. Contract:
+[local initializer proof](docs/ARCADE-ARRAY-LOCAL-RESET-PROOF.md).
+Own narrow current Array receiver authority helper changes, focused authored
+controls and compatibility documentation. Prove the actual current lexical local,
+target/procedure/frame identity and definite overwrite without an intervening
+read, capture, escape, call, branch, yield, reentry or lifecycle exposure.
+Intervening palette/unrelated effects require an actual bounded implementation
+and operand effect proof; names, purity annotations and opcode whitelists grant
+nothing. Preserve every command/body and all other writer/initialization facts;
+retain the Null writer and named refusal whenever uncertain. No generic Null
+removal, new producer/domain, source lowering, runtime, supplier, pin or workflow
+change. Qualify all observed local sequences, adversarial current graph edits,
+Code/saved-project/current export/reimport and the affected actual application
+route without promoting native, GUI or whole-case results from source controls.
+
+
+## Arcade roundtrip shape: ordinary symbols and empty Arrays — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this separate contract
+before implementation: [roundtrip shape](docs/ARCADE-ROUNDTRIP-SHAPE.md).
+Own **A**, actual-owner ordinary exported function symbol inventory/allocation
+and matching resolved calls, and **B**, direct preservation of actual empty Array
+allocations only as complete declaration initializers or complete plain-Identifier
+assignment statements when scope/evaluation order is proved. Coordinate narrow
+export-arcade/staged-value hunks with their owners; own the optional pure symbol
+helper, focused controls and compatibility notes listed in the contract.
+
+Preserve every actual body, allocation, alias, effect, current binding, diagnostic
+and partial result. No prefix stripping, generated-name authority, operation
+deletion, original-source fallback or stale dependency preparation. Qualify
+collisions/recursion/current edits, identity/order/exceptions, Code/Blocks/save,
+actual current export/reimport and affected guest routes separately. Existing
+initializer receiver proof excludes lowering and does not absorb this scope.
+
+Local initialization transport (**C**), startup wrapper composition (**D**) and
+callback alias/formal allocation (**E**) remain tracked open work, not permission
+for source changes here. No runtime/ABI/domain, supplier/pin, GUI or workflow
+change; no stable whole-project or compatibility-count claim from source shape.
+
+
+## Ordinary local initializer transport: C1 — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this separate claim
+before implementation: [local initializer transport](docs/ARCADE-LOCAL-INITIALIZER-TRANSPORT.md).
+Own a narrow current-graph ordinary-procedure first primitive-write planner,
+coordinated local/header emission in `export-arcade.js`, focused controls and
+capability notes. At the actual proved first write, emit its initialized
+local declaration instead of adding a synthetic header plus that same write.
+Prove actual owner/cell/node identity, literal-prefix order, no earlier read or
+capture/exposure, and currentness across callbacks. Preserve every later explicit
+write, including identical null/zero resets; uncertain cases keep the old path.
+
+No generated-name authority, source restoration, default/Undefined/null policy
+change or generic declaration-only transport. Exclude callbacks/hats/startup,
+managed/class/captured locals, allocation/effectful initializers and C2/D/E.
+No runtime ABI, producer/domain, engine, supplier/pin or workflow changes.
+Existing Array receiver and A/B ownership remain separate. Require meaningful
+source/current Code/Blocks/save/export and affected own native controls; visible
+GUI, stable full projects and compatibility counts need their own evidence.
+All unrelated owners and retained failures remain preserved.
+
+
+## MakeCode CLI integrated GUI module boundary — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this separate claim
+before implementation: [CLI module boundary](docs/ARCADE-CLI-INTEGRATED-GUI-SCOPE.md).
+Continue the landed CLI target work and preserve its commands and target
+behavior. Own the `scripts/makecode.mjs` library-loading/prerequisite boundary, an
+optional focused `scripts/lib/` inspection helper, the coordinated exact
+dependency-free exception in `gui-scope-hooks.mjs`, focused controls and notes.
+
+Use actual current integrated GUI source with normal installed package scope
+and the same physical canonical VM model export. Prove the relevant integration
+prerequisites using the real copy/transform contract; no build or browser is
+required for headless conversion, no blanket raw-hash test for generated files.
+Preserve command-specific runtime requirements, exit codes, diagnostics, source
+bodies and assets. Missing/stale/conflicting installation refuses by name; no
+model aliases, fake root packages, hidden loaders, stale result/source fallback
+or implicit repair. Keep dependency-free pure consumers explicitly bounded.
+
+No translator/runtime/ABI, pin, workflow or GUI change. Coordinate any narrow
+integration receipt producer before editing it. Current Array and clock failures
+remain independent; this claim does not infer their cause from module identity
+or promote whole-project compatibility from source resolution controls.
+
+## Arcade animation resource Array producers — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
+implementation. Contract: [animation Array producers](docs/ARCADE-ANIMATION-ARRAY-PRODUCERS.md).
+Own the narrow resource-backed Array producer addition in the current Array
+export authority, its coordinated exporter resource admission, and focused
+source/export/native controls. Existing Array reset, ordinary parameter and
+editor ownership remain separate. Preserve unknown-resource Undefined behavior,
+shared-cache versus fresh-array identity, all writers, mutation and presence
+checks, and current graph/resource binding. No opcode-only type grant, default
+Array, dependency pin or runtime semantic change is authorized by this claim.
+
+## Arcade custom loop block theme media — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge the
+[loop block media contract](docs/ARCADE-LOOP-BLOCK-THEME-MEDIA.md) before source
+implementation. Own only the extension registration media argument in the
+Blocks container and its tracked mirror, the extension theme helper and its
+mirror/optional adjacent pure presentation helper, focused controls and docs.
+Use actual configured workspace media for the current theme/base path and the
+existing VM-generated loop-arrow shape. Preserve VM/headless behavior, every
+program field and unrelated icons; no server alias, asset duplication, supplier
+pin, workflow or broad runtime change. A fresh affected visible editor/theme
+qualification remains required; original missing-resource failures stay open
+until that evidence exists. Other lanes retain their owned surfaces.
