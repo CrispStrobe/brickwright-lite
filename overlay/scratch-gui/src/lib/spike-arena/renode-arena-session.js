@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
 import {RenodeArenaBridge} from './renode-arena-bridge.js';
-import {NuttXProgramClient, encodePython, encodeInstructions} from '../spike-nuttx/upload-protocol.js';
+import {NuttXProgramClient, encodePython, encodeInstructions, decodeReply} from '../spike-nuttx/upload-protocol.js';
 import {validateTopology, requireSixMotorFrame, prepareSixMotorHub, requireDualUltrasonicFrame, requireDualUltrasonicRobot} from '../spike-nuttx/motor-topology.js';
 import {exchangeStorage, DEFERRED_STORAGE_CAPABILITY} from '../spike-nuttx/storage-exchange.js';
 import {MicroPythonProgramClient, encodeSource} from '../spike-micropython/raw-repl.js';
@@ -136,6 +136,11 @@ export class RenodeArenaSession {
                         if (this.closed) return reply;
                         this.observeProgram(frame.lifecycle?.nuttxProgram);
                         if (this.closed) return reply;
+                        if (this.replacingProgram && bytes[2] === 3) {
+                            const id = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(4, true);
+                            const started = decodeReply(reply, {op: 3, id});
+                            this.replacementOutputReady = started.result === 0 && [2, 3, 5].includes(started.state);
+                        }
                         this.observeOutput(frame);
                         if (this.closed) return reply;
                         this.latestFrame = frame;
@@ -279,6 +284,9 @@ export class RenodeArenaSession {
         if (!Number.isSafeInteger(output.sequence) || output.sequence < 0 || typeof output.text !== 'string' ||
             output.text.length > 1024 || typeof output.truncated !== 'boolean') throw new Error('Invalid firmware output');
         this.outputSequence = output.sequence;
+        // Drain preceding polls and upload preparation without assigning their
+        // output to the replacement. New START output remains observable.
+        if (this.source === null || (this.replacingProgram && !this.replacementOutputReady)) return;
         this.onOutput(output);
     }
     schedule () {
@@ -307,6 +315,7 @@ export class RenodeArenaSession {
         // Observers can Stop synchronously; their cancellation wins over the
         // completion status from the frame that invoked them.
         if (this.closed) return;
+        if (this.replacingProgram) return;
         if (this.nuttx && (this.program || this.source !== null)) {
             const status = frame.lifecycle?.nuttxProgram;
             if (!status || ![0, 1, 2, 3, 4, 5].includes(status.state)) throw new Error('Missing full firmware program status');
@@ -333,12 +342,16 @@ export class RenodeArenaSession {
         }
         this.schedule();
     }
-    observeProgram (status) {
+    observeProgram (status, publishReplacement = false) {
         if (!status || ![0, 1, 2, 3, 4, 5].includes(status.state)) return;
         this.programState = status.state;
         if (status.state === 0) this.retainedProgram = false;
         if (status.state !== 1) this.loaded = false;
-        this.onProgramState(status.state, this.storageSupported, status.error ?? status.runtimeError);
+        // Old poll/STOP and upload READY frames do not belong to the new Code run.
+        // Publish the replacement only after its upload (including START) succeeds.
+        if (!this.replacingProgram || publishReplacement) {
+            this.onProgramState(status.state, this.storageSupported, status.error ?? status.runtimeError);
+        }
     }
     async storage (operation) {
         if (!this.storageSupported || !this.programClient || this.closed) throw new Error('Program storage requires a supported live NuttX session');
@@ -367,6 +380,8 @@ export class RenodeArenaSession {
         if (source !== null) encodePython(source);
         else encodeInstructions(program, {topology: this.topology});
         if (this.closed || this.storageUncertain || !this.storageSupported || !this.programClient || this.storageBusy || this.uploading) throw new Error('NuttX program is unavailable or busy');
+        this.replacingProgram = true;
+        this.replacementOutputReady = false;
         this.uploading = true; clearTimeout(this.timer);
         try {
             await this.tail;
@@ -386,8 +401,8 @@ export class RenodeArenaSession {
             const reply = await this.programClient.upload(source === null ? program : source, {python: source !== null});
             if (this.closed) throw new Error('NuttX session is closed');
             this.retainedProgram = true;
-            this.observeProgram(reply); return reply;
-        } finally { this.uploading = false; this.schedule(); }
+            this.observeProgram(reply, true); return reply;
+        } finally { this.replacementOutputReady = false; this.replacingProgram = false; this.uploading = false; this.schedule(); }
     }
     async startProgram () {
         if (this.closed || this.storageUncertain || !this.storageSupported || !this.programClient || this.uploading || this.storageBusy) throw new Error('NuttX program is unavailable or busy');

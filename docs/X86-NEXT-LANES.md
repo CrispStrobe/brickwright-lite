@@ -1,6 +1,6 @@
 # x86 GUI checkpoint and task handoff
 
-Updated 2026-10-07. Shared CPU/device work belongs in bw-board; UI behavior belongs here. Start with the [board checkpoint and seven implementation lanes](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-NEXT-LANES.md), [GUI guide](I80386-GUI.md), [loading scope](X86-LOADING-SCOPE.md), and [generated language/device matrix](generated/LANGUAGE-DEVICE-MATRIX.md). Refresh both default branches and inspect completed receipts before repeating a task.
+Updated 2026-10-15. Shared CPU/device work belongs in bw-board; UI behavior belongs here. Start with the [board checkpoint and seven implementation lanes](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-NEXT-LANES.md), [GUI guide](I80386-GUI.md), [loading scope](X86-LOADING-SCOPE.md), and [generated language/device matrix](generated/LANGUAGE-DEVICE-MATRIX.md). Refresh both default branches and inspect completed receipts before repeating a task.
 
 ## Current boundary
 
@@ -10,7 +10,7 @@ The board's native page-fault recovery result remains a finite diagnostic fixtur
 
 This fixed-A20, ROM-execution-only coherence fixture does not introduce a general native GUI backend or qualify a complete OS. The GUI's **Native blocks** checkbox selects the JS native-block dispatcher, not a Bochs Node addon. There is no wired 386 target. The next native step is a pure model for explicit clock authority in the board repository, followed by its own guest and paired timing gates; this handoff changes no consumer pin or frontend behavior.
 
-The refreshed source pins bw-board to `a1126312288867127343c2f9bbdfcd2856a18508`. Earlier checkpoint documentation described an older pin. Board diagnostic results remain distinct from actual consumer qualification; read the current pin and lockfile before another adoption.
+Read [vendor-pins.json](../vendor-pins.json), the package manifests and lockfile for the selected board revision. Board diagnostics and merged supplier APIs do not qualify a newer installed consumer. Coordinate the existing supplier-adoption owner before changing pins.
 
 ## Task A: real free-media GUI acceptance
 
@@ -27,6 +27,18 @@ The [optional real FreeDOS interaction probe](I80386-FREEDOS-INTERACTION.md) ext
 **Start:** `test/local-dosbox.test.mjs`, `scripts/machine-manager.mjs`, and the [board loading guide](https://github.com/CrispStrobe/bw-board/blob/master/docs/X86-LOADING-GUIDE.md). Shared parsing changes land in bw-board first.
 
 **Work:** align config-relative media resolution, explicit CHS validation, unsupported-command reporting and CLI/GUI selection. Add bounded ZIP admission with traversal/count/size protections, deterministic config choice and no host-shell execution. A DOSBox package is an input format, not a promise of DOSBox compatibility. ISO support needs a real upstream CD-ROM/ATAPI path; do not enable a file picker that implies an absent device. Disk writeback/export is a separate explicit workflow.
+
+The first connected GUI slice is proposed in
+[PR992](https://github.com/CrispStrobe/brickwright-lite/pull/992). It admits only a
+STORED ZIP of at most 16 MiB and 32 regular ASCII-named files: one `dosbox.conf`,
+one matching config-relative `.img` HDD and optional `LICENSE.txt` notices.
+Raw local/central records, extents, CRCs and paths are checked before extraction;
+commands are checked against a closed subset around the canonical board AST.
+Only explicit HDD CHS plus `boot -l c` selects the existing ordinary 386 route.
+DEFLATE, COM/MZ virtual files, host mounts and ISO devices remain unsupported.
+Source controls and an activation sink do not qualify a browser or guest boot.
+Same-archive CLI loading, installed GUI input and tab retention remain next
+acceptance work; claim the CLI entry/test changes before implementing them.
 
 **Deliverable:** shared parser tests and one freely licensed package loaded in both CLI and GUI. **Done when:** the same bytes reach the intended functional target, malformed inputs produce useful persistent errors, and actual guest input/output passes. Document unsupported formats and disk persistence accurately.
 
@@ -53,16 +65,20 @@ A frontend worker can take A while a shared-media worker takes B; coordinate Mac
 
 ## Qualified 386 debugging and media workflows
 
-Staged proposed continuation, not completed functionality. Refresh board PR599,
+Source checkpoints and remaining acceptance work are recorded below. Refresh board PR599,
 its subscribed free-guest qualification, performance decisions and this app's
 actual selected supplier. The shared adoption owner in PR961 must hand off
 package/lock/vendor work explicitly before x86 changes those surfaces. Adopt
 only qualified source and preserve unrelated supplier changes; a successful
 board diagnostic does not qualify the installed app.
 
-First qualify forward debugging in the actual installed package. The generic
-memory pane currently covers only 64 KiB and offers byte editing; that is not
-sufficient for a read-only 386 target with physical addresses above 1 MiB.
+First qualify forward debugging in the actual installed package. Source support
+for target-declared physical bounds and read-only memory is merged in
+[PR970](https://github.com/CrispStrobe/brickwright-lite/pull/970) and
+[PR972](https://github.com/CrispStrobe/brickwright-lite/pull/972). The drawer uses
+those descriptors for address jumps, bounded pages, refusals and editing controls.
+Legacy targets retain their 64 KiB behavior. A newer drawer does not supply
+missing metadata to an older installed board package.
 Use explicit validated target memory bounds and read/write capabilities, not
 linear code-address limits as a substitute for physical memory metadata.
 This reviewed extension owns canonical
@@ -70,7 +86,7 @@ This reviewed extension owns canonical
 `test/debug-capabilities.test.mjs`. Preserve schema-1 legacy spaces and normalize
 the board's optional `spaces.mem` fields: `addressSpace: 'physical'`, inclusive
 `addressMin`/`addressMax`, `maxReadBytes`, and existing `read`/`write`/`passiveRead`.
-The proposed 386 values are 0 through `0xffffffff`, at most 1048576 bytes per
+The 386 target contract uses 0 through `0xffffffff`, at most 1048576 bytes per
 read, and `write: false`. This is a physical bus domain, not mapped RAM; passive
 read claims require board observation controls. Absent optional metadata keeps
 legacy behavior; presence of any new metadata field selects complete strict
@@ -79,8 +95,9 @@ validation. Partial or malformed descriptors fail closed without an editable
 empty read at `addressMax + 1`, but never treat that endpoint as an addressable
 byte or valid UI jump/page start; nonempty reads stay within inclusive bounds.
 Test zero-length reads, the top byte and one-past empty endpoint explicitly. Use `write: false` as the read-only authority, not a duplicate
-contradictory flag. Freeze normalized nested descriptors. Board implementation
-waits for PR599 merge and explicit handoff under its separate metadata claim.
+contradictory flag. Freeze normalized nested descriptors. Board metadata is
+merged in [PR615](https://github.com/CrispStrobe/bw-board/pull/615); verify the
+selected installed supplier before claiming those capabilities in the app.
 Preserve other targets' declared address spaces.
 Display full-width registers and physical addresses without truncation. Offer a
 bounded address jump/page view, report read refusals, and disable editing when
@@ -124,3 +141,169 @@ engine/assets build with visible frames, live input and a repeatable workload.
 Public examples and new notes use free/authored media with exact notices; private
 licensed-media records remain in the private repository. No calibrated RTx,
 physical 386 timing, whole-OS, broad DOSBox or release claim follows from this lane.
+
+
+## Master-disk export continuation
+
+Updated 2026-10-15. The board's master-copy API is merged in
+[PR623](https://github.com/CrispStrobe/bw-board/pull/623); explicit CLI raw output
+is merged in [PR618](https://github.com/CrispStrobe/bw-board/pull/618).
+The two-session FreeDOS persistence fixture is merged in
+[PR625](https://github.com/CrispStrobe/bw-board/pull/625). Its first actual run
+[38790214003](https://github.com/CrispStrobe/bw-board/actions/runs/38790214003)
+failed before command completion and left the disk unchanged. Accepted controller
+scan bytes did not prove that the guest consumed the complete command. The live
+console pacing correction is merged in
+[PR627](https://github.com/CrispStrobe/bw-board/pull/627). The corrected
+[actual run 38806122785](https://github.com/CrispStrobe/bw-board/actions/runs/38806122785)
+passed at source `b8f95cfdb8ee654407b63e626e46eb8859ce7b41`. Root and independent
+original-artifact audits reproduce the 19-byte `BWKEEP.TXT`, 43 permitted changed
+bytes, and byte-identical first/fresh-readback exports. Both sessions boot the
+same floppy; this is master-data persistence, not HDD boot, GUI acceptance,
+crash durability or a full-OS result. Preserve the original failure; the passing
+finite run does not establish a general BIOS failure cause.
+
+GUI memory descriptor normalization and the memory drawer are merged in
+[PR970](https://github.com/CrispStrobe/brickwright-lite/pull/970) and
+[PR972](https://github.com/CrispStrobe/brickwright-lite/pull/972). These source
+checkpoints do not adopt a newer board package or qualify the installed app.
+The runner bridge is in
+[PR986](https://github.com/CrispStrobe/brickwright-lite/pull/986); the complete
+download helper and panel consumer are in
+[PR987](https://github.com/CrispStrobe/brickwright-lite/pull/987). PR987 supersedes
+the standalone helper PR984. Source checks, supplier adoption and installed
+browser acceptance remain distinct gates.
+
+The bounded CLI write/export/fresh-process reload is now qualified at the source
+and run above. Continue with the pending runner bridge, complete helper/panel
+feature, supplier handoff and actual installed-browser download/reload; do not
+repeat the cleared CLI subset merely because main advances. The bridge calls
+only the current target's
+`snapshotAtaMaster()` and rejects stale session ownership after stop,
+replacement, or destroy. Do not expose the target object or infer support merely
+because a bridge method exists on every runner. Preserve the board's copy-time
+boundary and refusals; no continuous pause or guest flush is implied.
+
+Before installed acceptance, coordinate the supplier handoff and verify the
+actual package includes the qualified API. Capture genuine browser image and
+metadata downloads, compare the downloaded image hash, then use the real
+**Boot FreeDOS VGA** chooser with the same free boot floppy and the exported
+306×4×17 master data image. Start a fresh machine and read the guest-written
+marker without rewriting it. Preserve the original input and session separately.
+The **Boot disk** shortcut boots an HDD and is not the data-disk reload route.
+Keep the existing authored boot-sector acceptance intact when extending its
+harness. Exercise browser download permission behavior: two mocked anchor clicks
+do not prove two files were saved.
+
+The optional real download/reload scenario is proposed in
+[PR989](https://github.com/CrispStrobe/brickwright-lite/pull/989), extending
+`scripts/verify-i80386-local-hdd-gui.mjs`. Its default authored boot-sector
+scenario stays unchanged. After qualified supplier/consumer adoption and an
+externally reviewed source/build/input manifest, run from the repository root:
+
+```sh
+PROOF_SCENARIO=freedos-hdd-persistence \
+PROOF_ADMISSION=reviewed-admission.json \
+PROOF_OUTPUT=new-owned-output \
+node scripts/verify-i80386-local-hdd-gui.mjs
+```
+
+The optional scenario refuses missing required APIs or mismatched identities
+before browser execution. It captures both genuine browser downloads, reloads
+the exact image through the chooser in a fresh session, and retains the original
+paused session. Its finite source/build profile does not establish complete
+package or compiled-source authenticity. Mock controls are not a browser result;
+the harness observes deadlines, while a hosted external controller must enforce
+hard resource limits. Nonlocal page HTTP blocking and disabled service workers
+do not establish OS network isolation. No actual GUI persistence pass is recorded
+by this source-preparation checkpoint.
+
+Board export geometry is broader than the current GUI BIOS loader's accepted
+geometry. Do not promise arbitrary exports can be reloaded: the named FreeDOS
+route accepts the fixture's 306×4×17 image, while the generic DOSBox-config route
+has its own CHS limits. Geometry metadata is a sidecar, not a config import
+format. A wider chooser or ISO/CD-ROM path needs its own claim and qualification.
+
+
+## Proposed 386 Board HDD adoption handoff
+
+Proposed 2026-10-16; documentation only. This is a serialized next task for a
+fresh agent, not a transfer of package or pin ownership. The
+[ledger proposal](../LANES.md#proposed-386-board-hdd-adoption-handoff--2026-10-16)
+owns only these two documents. Refresh both repositories and the existing
+adopters before implementation; do not treat this dated checkpoint as a current
+merge decision.
+
+The STM32 owner holds [PR975](https://github.com/CrispStrobe/brickwright-lite/pull/975),
+branch `chore/stm32-faithful-pins-20261015`, at
+`fb9961382287f5981d70ea6a15f504ee45101d39`. Its merged claim PR969 covers
+Board/SB3 pins, package specifications and locks, notices and generated outputs,
+and the STM32 runner changes. The PR says **Not for agent merge**. The CUI
+adopter holds [PR965](https://github.com/CrispStrobe/brickwright-lite/pull/965),
+at `fcf39b5cdfa1d4422ec4da685730baef429b43c1`, under merged claim PR961,
+including shared lock surfaces. Preserve both owners and their recorded
+coordination; this proposal changes neither their order nor their merge authority.
+Obtain an explicit recorded handoff, agree one dependency writer and merge a
+precise implementation claim before touching those shared surfaces.
+
+At Lite main `9226b7522f69a287a9de77330d8d129ab043bdd7`, Board is pinned to
+`b4b4c87f70624dfb570a6d21391c5a2d5a40a0e8`. PR975 instead proposes Board
+`04f19952cea008b7498c701c16be5cc7ea1bdf63` and SB3
+`a13f92b8bc4b06f0cb9ffec22bab71f06db7ac76`. Neither of those Board revisions
+contains the 386 target's `snapshotAtaMaster()` implementation. A successful
+STM32 adoption alone therefore cannot qualify the HDD export workflow. PR965
+moves CUI separately while preserving its base Board/SB3 pins; the HDD feature
+does not require its new CUI API.
+
+The required Board source anchor is
+[PR623](https://github.com/CrispStrobe/bw-board/pull/623), merged as
+`48635add0807dc37c8c26551949fb58dcc9858e7`: inspect
+[`src/i80386-debug.js`](https://github.com/CrispStrobe/bw-board/blob/48635add0807dc37c8c26551949fb58dcc9858e7/src/i80386-debug.js)
+and its factory connection in
+[`src/debug-target-factory.js`](https://github.com/CrispStrobe/bw-board/blob/48635add0807dc37c8c26551949fb58dcc9858e7/src/debug-target-factory.js).
+Preserve the helper and metadata prerequisites rather than copying only a
+method name. The related CLI persistence qualification is PR625, merged as
+`cb5058e5f8865110aa099ff3fbc84092668563c0`, tested with PR627's pacing correction
+at `b8f95cfdb8ee654407b63e626e46eb8859ce7b41` in
+[run 38806122785](https://github.com/CrispStrobe/bw-board/actions/runs/38806122785).
+The [master-disk continuation](#master-disk-export-continuation) records the
+original failed run and the finite two-session data-disk result. Preserve both;
+neither result proves installed GUI persistence or HDD boot.
+
+The pending Lite consumers are PR986 (runner bridge, `a28ac3546cf5feb1541bc636ec626faf8cd24b74`),
+PR987 (download helper/panel, `bb19267c36cda7648cdfd013344185bdeaf18716`),
+PR989 (download/reload scenario, `f1c6bcf745d99c7ea96844bb67d27962d50b5eb6`),
+and PR992 (bounded package chooser, `5b593cba63ec42896f0567b1a05fc653861e4468`).
+These are source checkpoints, not a composed installed qualification. The
+package chooser's existing canonical DOSBox parser is a separate boundary from
+the snapshot API. Keep both boundaries explicit in the composed candidate.
+
+After the owner handoff and merged claim, the fresh agent should:
+
+1. Freeze the exact supplier revision, its qualification and ancestry, and the
+   installed package's complete selected blob graph. Verify the snapshot API,
+   factory wiring, metadata and persistence prerequisites. A later Board main
+   revision is not automatically qualified by the historical tested source.
+2. Review the component diff against each current adopter. Preserve STM32 and
+   SB3 behavior and the agreed CUI revision; record unchanged component and
+   unrelated pin identities. Use the canonical dependency/notices writers and
+   inspect specifications, both locks, generated twins, notices and existing
+   provenance, pin, matrix and integration gates. Claim any extra change first.
+3. Compose one owned GUI candidate with the reviewed x86 consumers and exact
+   installed supplier identities. Retain ordinary targets, source ownership,
+   mirror equality, snapshot refusals and stale-session controls. Require every
+   enabled final-head CI check; host controls alone do not qualify the app.
+4. Admit a finite hosted source/build/free-input/resource manifest, then capture
+   genuine image and metadata downloads and reload those exact bytes through
+   the real chooser into a fresh machine. Verify the guest-written marker and
+   original input/session independently, using the documented free boot floppy
+   and 306×4×17 data image route. Qualify PR992's own package selection,
+   rejection, input/output and tab-retention route separately. Retain original
+   failures and acquire each official original once for independent audit.
+
+No implementation is authorized by this proposal. No new dependency, lock,
+notice, workflow, package or source change is made here. A future adoption is
+complete only after qualified supplier and affected clean consumer results,
+owner review and every enabled exact-head check, followed by the normal
+matched-head merge and tree/parent verification. This finite handoff grants no
+full-OS, broad DOSBox, physical-timing, RTx or release claim.
