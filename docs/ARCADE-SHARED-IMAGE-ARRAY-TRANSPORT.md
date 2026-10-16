@@ -235,3 +235,26 @@ Computed, compound, update and delete forms, mixed or unknown receivers, other
 properties and unknown effects continue through ordinary fallback. Geometry
 effect admission does not admit later music, Buffer, controller or callback
 effects, and does not qualify an entire game or a new runtime execution.
+
+
+## Fixed music playback non-exposure
+
+An exact current, unshadowed SDK `music.play` call with two arguments and a
+fixed `music.PlaybackMode` member may preserve shared-frame non-exposure. The
+existing native command accepts only a current-runtime music reference from
+its private registry, or preserves its existing error before playback. It
+does not acquire the backing Array through an ordinary Image or Array value.
+
+This effect rule does not prove a valid playable, issue a Number or reference
+producer, silence errors, move calls or remove retained bodies. A whole backing
+Array argument still refuses transport. Dynamic modes, other music APIs,
+changed or escaped SDK roots, unknown effects and calls before initialization
+retain ordinary fallback. Native playback and later authentic effects remain
+separate qualifications.
+
+
+Every actual SDK `music.play` member occurrence must be the callee of that
+exact admitted command. Extracted, returned, captured, stored or passed method
+values retain ordinary fallback, even if a later direct call is valid. This
+closes the command-only effect profile without restricting other SDK namespaces
+or adding a runtime function-alias feature.
