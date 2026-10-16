@@ -1,3 +1,41 @@
+## Sim Lab S1 — "it moves" vertical slice — 2026-10-16
+
+CLAIMED — Claude (master, auditing) with two hermes sub-agents on the VPS.
+Branches: `lane/simlab-20261016` (contracts, part metadata, LDraw sync,
+integration), `lane/simlab-phys-20261016` (physics core),
+`lane/simlab-mech-20261016` (mechanism compiler); sub-agent branches merge
+into `lane/simlab-20261016` only after review, which then lands by PR.
+Base main `664a37b57`. Contract: `docs/SIM-LAB-PLAN.md` §0 (the S1 slice).
+
+Owns new code only: `overlay/scratch-gui/src/lib/bw-sim/**`, `test/bw-sim-*`,
+`test/fixtures/bw-sim/**`, the `jolt-physics` dependency with its notice and
+gui-scope entry, `scripts/sync-ldraw-parts.mjs` with its pins and the vendored
+curated LDraw subset. Reads, never edits, `virtual-hub/` and `spike-arena/`; the
+S1 bridge to the virtual SPIKE hub honours the arena's one-clock contract
+(docs/SPIKE-ARENA.md). No editor UI, no GUI tab, no change to the boot payload
+in S1.
+
+## iOS embedded frontend packaging — 2026-10-16
+
+CLAIMED — Codex root, isolated `/tmp/brickwright-ios-assets-20261016`, branch
+`lane/ios-embedded-assets-only-20261016`, base main `664a37b57`.
+The user requested a smaller iPad build and continued coding. The signed
+192.21 MiB app contains an 82.45 MiB executable (76.21 MB of __const) plus
+another full uncompressed frontend under `assets`. Tauri 2.11.5 release
+protocol serves `manager.get_asset` from the generated embedded asset provider;
+this application's mobile code does not open the copied frontend via filesystem.
+Own only the generated iOS preparation script, its packaging regression test,
+this ledger and narrowly necessary native packaging documentation. Remove the
+redundant frontend Resources entry while preserving the build inputs, Rust
+embedding, asset catalog, other resources and static linker entries. Refuse to
+change behavior for a different generated project shape. No Rust features,
+frontend/provider pins, runtime logic, desktop/Android packaging or CI budget
+changes. Require repeat-preparation controls, real release archive inspection,
+strict signing and an offline iOS simulator launch if available. Physical iPad
+and WeDo acceptance remain pending hardware availability; no launch is inferred
+from compilation. Merge this claim to remote main before implementation and
+qualify all enabled final-head checks before landing source.
+
 ## Compose STM32 PR975 after circuit PR965 — 2026-10-16
 
 IMPLEMENTED / QUALIFICATION PENDING — Codex root, isolated `/tmp/brickwright-stm32-compose-20261016`,
@@ -5441,3 +5479,91 @@ all initializers, unused bodies and diagnostics; no public flag/namespace/tag
 can issue proof. This does not widen ordinary Number/reference producers,
 classes, runtime behavior, dependency fetching, pins or compiler execution.
 Implement only after this ownership amendment qualifies and merges.
+
+
+## 386 GUI HDD and forward-debug hosted acceptance — 2026-10-16
+
+PROPOSED CLAIM — Codex x86, serialized after the existing media/debugger lane.
+Merge this claim before creating the new acceptance files. The existing merged
+claims cover the source in PR986, PR987 and PR989; their normal local composition
+adds no supplier pin, lock, notice or other-owner change. This claim extends only
+the finite hosted acceptance boundary: new
+`scripts/run-i80386-hdd-gui-actual.py`,
+`scripts/read-i80386-hdd-gui-originals.py`,
+`test/i80386-hdd-gui-actual.test.mjs` and
+`.github/workflows/i80386-hdd-gui-actual.yml`, plus the existing
+`scripts/verify-i80386-local-hdd-gui.mjs` for bounded original witnesses and a
+separate forward-debug scenario. Own only this ledger entry and its matching x86-guide subsection.
+Reuse the existing Playwright persistence scenario and established hosted
+build/browser pipeline; do not introduce another provisioning framework or
+change unrelated workflows.
+
+The source-only composition retains main's selected Board until its existing
+adoption owner supplies the reviewed installed dependency. It must refuse the
+actual persistence/debug scenario when the dedicated 386 target API is absent.
+Never inject supplier modules, fake a snapshot or infer installed support from
+a Board-only diagnostic. PR975's existing Board/SB3 owner retains its explicit
+**Not for agent merge** hold and all dependency writers; PR965 retains CUI/shared
+lock/notices ownership. This claim transfers no such surfaces. Record a handoff
+or wait for the existing owner's qualified adoption; any new adoption by this
+lane needs that handoff and a separately merged precise claim.
+
+Before a one-shot actual event, freeze the exact composed source, installed
+supplier/build graph, free inputs, browser/runtime identities, finite resource
+profile, closed original roles and independent reader. Preserve first failures
+and owned cleanup observations. Capture genuine image and metadata downloads,
+reload the exact saved data disk through the real chooser in a fresh machine,
+and verify the guest-written marker and unchanged paused original session.
+Qualify forward debugging separately through real UI pause, code breakpoint,
+instruction step, full-width registers, read-only physical memory, resume and
+pane switching, with source-backed refusals for unsupported operations.
+
+Pure controls must include a complete manufactured packet and fully rehashed
+semantic negatives. They do not establish browser or guest success. Every
+enabled exact-head source check and separately admitted original-only actual
+result remains mandatory; acquire each official original once and never replay
+a guest for the reader. No ISO/ATAPI, generalized DOSBox, new CPU/device, reverse
+execution, mode-aware disassembler, physical timing, whole-OS or release claim.
+
+## A13 CPX production browser gate registration — 2026-10-16
+
+CLAIMED — Codex, isolated worktree `/tmp/brickwright-lite-a13-20261016`,
+branch `lane/a13-cpx-face-adoption-20261016`; amendment based on canonical
+`d544efb23`. Merge this claim before implementation. Extend the existing A13
+claim only to `.github/workflows/build.yml` for a standalone light-shard CPX
+production browser gate and its failure/success receipt upload, plus canonical
+`scripts/gen-gate-budgets.mjs --register` output in
+`docs/generated/browser-gate-readings.json` and focused registration controls.
+Reuse the existing browser job, server and immutable artifact action; introduce
+no workflow or job. The new gate uses the existing provisional three-minute
+floor; preserve every existing measured reading, timeout and threshold.
+
+The gate drives the real native CPX program, pane and circuit face through
+`scripts/verify-cpx-circuit-face.mjs`; it must retain actual VM output and input
+assertions and upload its JSON observations. This amendment permits registration
+work now, while preserving the A13 adoption order: qualified upstream CUI and
+the earlier serialized STM32/translator integrations precede the final supplier
+pin and full application qualification. It transfers no other owner's paths,
+changes no runtime semantics, and claims no physical hardware acceptance.
+
+## STM32 composition: original 386 boot register reader — 2026-10-16
+
+CLAIMED — Codex root, branch `lane/stm32-compose-20261016`, isolated
+`/tmp/brickwright-stm32-compose-20261016`, amendment based on main `e1e5bc30b`.
+Merge this claim before changing the existing synthetic boot assertion in
+`scripts/verify-i80386-local-hdd-gui.mjs`: read the selected supplier's `edi`
+instead of absent `di`, retaining equality to42, exact halted/PC/canvas checks
+and the existing timeout. The exact installed f84 supplier and a read-only
+production diagnostic expose `edi=42`, `pc=0x7c1a`, `halted=true`, VGA720×400;
+the original gate is retained as failed evidence. Own only this contract-reader
+hunk, a focused regression control and this ledger. No new engine or pin move.
+
+The x86 lane retains its distinct new persistence/original-witness and
+forward-debug scenarios in this same script, all supporting files, its branches
+and its acceptance requirements. Its published composition currently preserves
+the same stale original synthetic assertion. This narrow dependency-adoption
+reader repair carries no persistence or debugger acceptance and takes over none
+of those scenarios. Preserve any newer owner work during normal composition.
+No relaxed comparison, fallback register name, timeout increase, skipped gate,
+CI bypass or source rewrite is permitted. The corrected actual browser gate
+and all enabled final-head source checks must pass before integration merge.
