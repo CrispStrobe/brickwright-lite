@@ -249,7 +249,7 @@ function prove(program, sourceContext = null) {
     for(const node of nodes)if(node.type==='Call' && node.callee.type==='Member') {
         if(sdk.has(node.callee)) {
             if(!sdkEffects.has(path(node.callee))&&!musicPlaybackEffect(node)) {
-                if(!['info.showScore','Buffer.fromHex','controller.A.onEvent'].includes(path(node.callee)))return null;
+                if(!['info.showScore','Buffer.fromHex','controller.A.onEvent','game.gameOver'].includes(path(node.callee)))return null;
                 sdkRequests.push(node);
             }
         }

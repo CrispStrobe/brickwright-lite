@@ -225,7 +225,10 @@ export function prepareSharedImageEntryEffects(program,sourceContext=null) {
         const next=new Set(active);next.add(binding);const kinds=new Set(values.map(value=>textReceiver(value,next)));kinds.delete('absent');
         return kinds.size===1&&kinds.has('text')?'text':null;
     };
-    const calls=new WeakMap(),leaves=new WeakSet(),writes=new WeakSet();
+    const calls=new WeakMap(),lifecycleCalls=new WeakMap(),leaves=new WeakSet(),writes=new WeakSet();
+    const gameOverCall=node=>node?.type==='Call'&&!node.isNew&&!node.constructorCall&&!Object.hasOwn(node,'typeArguments')&&
+        Array.isArray(node.args)&&node.args.length===1&&node.args[0]?.type==='Boolean'&&
+        typeof descriptor(node.args[0],'value')?.value==='boolean';
     const simple=new Map([['image.setPalette',1],['scene.setBackgroundImage',1],['scene.setBackgroundColor',1],
         ['info.setScore',1],['info.changeScoreBy',1],['info.score',0]]);
     const textMethods=new Set(['setFlag','setText','setIcon','setBorder','setMaxFontHeight','update','setPosition']);
@@ -233,7 +236,7 @@ export function prepareSharedImageEntryEffects(program,sourceContext=null) {
         ['controller.A.onEvent',[2,1]]]);
     const fieldPaths=new Set(['SpriteFlag.RelativeToCamera','SpriteKind.Player','SpriteKind.Projectile',
         'music.PlaybackMode.UntilDone','music.PlaybackMode.InBackground','music.PlaybackMode.LoopingInBackground']);
-    const readonlyMethods=new Set([...simple.keys(),...registrations.keys(),'info.showScore','Buffer.fromHex','textsprite.create','SpriteKind.create','Math.round','music.play']);
+    const readonlyMethods=new Set([...simple.keys(),...registrations.keys(),'info.showScore','Buffer.fromHex','textsprite.create','SpriteKind.create','Math.round','music.play','game.gameOver']);
     for(const node of nodes) {
         if(node.type==='Member'&&sdk.has(node)&&fieldPaths.has(path(node)))leaves.add(node);
         if(node.type==='Member'&&sdk.has(node)) {
@@ -247,10 +250,16 @@ export function prepareSharedImageEntryEffects(program,sourceContext=null) {
             ['left','right','top','bottom'].includes(node.left.name)&&textReceiver(node.left.object)==='text')writes.add(node);
         if(node.type==='Member'&&sdk.has(node)&&readonlyMethods.has(path(node))) {
             const parent=parents.get(node);if(parent?.type!=='Call'||parent.callee!==node)return null;
+            if(path(node)==='game.gameOver'&&!gameOverCall(parent))return null;
         }
         if(node.type!=='Call'||node.isNew||node.constructorCall||Object.hasOwn(node,'typeArguments')||!Array.isArray(node.args)||node.callee?.type!=='Member')continue;
         const api=path(node.callee);let effect=null;
         if(sdk.has(node.callee)) {
+            // This lifecycle command may return, yield, enter scene callbacks
+            // and restart. Only F can consume its local canonical codec fact.
+            // Never put it in calls: ordinary Image-entry traversal must stop.
+            if(api==='game.gameOver'&&gameOverCall(node))
+                lifecycleCalls.set(node,Object.freeze({sharedSdkCallEffect:'game-over-lifecycle'}));
             if(simple.get(api)===node.args.length)effect={kind:'disjoint'};
             if(api==='SpriteKind.create'&&!node.args.length)effect={kind:'kind-allocation'};
             if(api==='Math.round'&&node.args.length===1)effect={kind:'round'};
@@ -301,7 +310,7 @@ export function prepareSharedImageEntryEffects(program,sourceContext=null) {
         } else if(textMethods.has(node.callee.name)&&textReceiver(node.callee.object)==='text')effect={kind:'disjoint-text'};
         if(effect)calls.set(node,Object.freeze(effect));
     }
-    const facade=Object.freeze({});entryProfiles.set(facade,{program,sourceContext,current,calls,leaves,writes,expired:false});return facade;
+    const facade=Object.freeze({});entryProfiles.set(facade,{program,sourceContext,current,calls,lifecycleCalls,leaves,writes,expired:false});return facade;
 }
 export function currentSharedImageEntryEffect(program,facade,node,kind='call') {
     const p=entryProfiles.get(facade);if(!p||p.program!==program||p.expired)return null;
@@ -316,7 +325,7 @@ export function consumeSharedImageEntryEffects(program,sourceContext,consume) {
     const facade=prepareSharedImageEntryEffects(program,sourceContext);
     if(!facade||!currentSharedImageEntryEffect(program,facade,program,'current'))return null;
     const p=entryProfiles.get(facade);let active=true;
-    const lookup=(node,kind='call')=>!active?null:kind==='leaf'?p.leaves.has(node):kind==='write'?p.writes.has(node):p.calls.get(node)||null;
+    const lookup=(node,kind='call')=>!active?null:kind==='leaf'?p.leaves.has(node):kind==='write'?p.writes.has(node):kind==='f-lifecycle'?p.lifecycleCalls.get(node)||null:p.calls.get(node)||null;
     const current=()=>!!currentSharedImageEntryEffect(program,facade,program,'current');
     let result;try{result=consume(lookup,current);}finally{active=false;}
     return current()?result:null;
@@ -350,8 +359,8 @@ function sharedSdkCallEffect(program,sourceContext,requests,scoreOnly=false) {
             const length=descriptor(requests,'length');if(!length||!Object.hasOwn(length,'value'))return null;
             for(let i=0;i<length.value;i++) {
                 const request=descriptor(requests,String(i));if(!request||!Object.hasOwn(request,'value'))return null;
-                const node=request.value,tag=lookup(node)?.sharedSdkCallEffect;
-                if(!['score-hud','literal-buffer','button-A-registration'].includes(tag))return null;
+                const node=request.value,tag=(lookup(node)||lookup(node,'f-lifecycle'))?.sharedSdkCallEffect;
+                if(!['score-hud','literal-buffer','button-A-registration','game-over-lifecycle'].includes(tag))return null;
                 calls.add(node);
             }
         }
@@ -360,7 +369,8 @@ function sharedSdkCallEffect(program,sourceContext,requests,scoreOnly=false) {
     });}catch{return null;} // No certificate escapes an unsupported derivation.
 }
 // HUD/state/timers/redraw, Buffer allocation/errors, and deferred button
-// registration/dispatch remain actual ordered operations. The local profile
+// registration/dispatch and game-over scene/yield/restart remain ordered.
+// The lifecycle-only map grants no entry traversal. The local profile
 // cannot waive unknown callback bodies, capture/escape checks or entry barriers,
 // and grants neither callback/value domains nor Array/resource authority.
 export function sourceSharedImageSdkCallEffects(program,sourceContext,requests) {

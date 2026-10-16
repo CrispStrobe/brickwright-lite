@@ -386,3 +386,27 @@ the analysis. Unknown bodies retain the ordinary full-source F refusal. The
 result is only a same-Program exact-call non-exposure Boolean: no generic Image,
 Number, Sprite, missing-element narrowing, handler value or Array resource
 promotion follows. Mutation permanently expires the private query.
+
+### Exact game-over lifecycle profile for F
+
+An exact current direct `game.gameOver` call with one primitive Boolean literal
+may supply a private lifecycle profile to the complete shared-frame F proof.
+The profile validates the canonical callee and codec only. Full retained-body,
+backing-reference, writer, initialization and entry checks remain the sole
+resource authority. Unknown scene hooks and backing captures retain ordinary
+fallback; no new callback or value domain follows.
+
+Game over may yield, invoke scene handlers, return ordinarily or restart the
+program. Keep its actual call, all following statements, callbacks and errors.
+It is neither a disjoint operation nor a terminal-control-flow assumption.
+The private lifecycle map is separate from ordinary Image-entry call facts:
+entry traversal still stops there and cannot borrow a later initialization or
+invent an Image invariant. No runtime, epoch or cache lifetime changes follow.
+The existing program-start reset and fresh initializer must preserve resource
+identity; Stop alone is not a cache-reset proof. Changed nodes or source and
+failed currentness observations permanently expire the consumed profile.
+
+This intentionally revises the earlier unsupported game-over source control.
+Source and public resource roundtrip controls do not establish native restart,
+pending-callback cleanup, genuine SDK, visible GUI or whole-game compatibility.
+Those affected lifecycle and artifact qualifications remain separate gates.
