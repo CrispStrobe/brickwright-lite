@@ -235,8 +235,29 @@ try {
         check('on the micro:bit V2 board, from the emulator image (not the official base)',
             /microbit-v2 board \(nrf52833/i.test(body) && /microbit-v2-emu\.elf/.test(body),
             (body.match(/[^\n]*microbit-v2[^\n]*/i) || [''])[0].slice(0, 160));
-        check('the status names what the V2 model does not do faithfully yet (serial)',
-            /serial output is not faithful|serielle Ausgabe ist auf diesem Board-Modell noch nicht/.test(await paneText()), '');
+        check('the V2 status no longer withholds serial output',
+            !/serial output is not faithful|serielle Ausgabe ist auf diesem Board-Modell noch nicht/.test(await paneText()));
+
+        // A10: an authored program through the actual import/compiler/emulator
+        // path, with a unique complete line observed in the real UART console.
+        const greeting = 'A10 browser serial';
+        const serialProject = {meta: {name: 'a10-serial', cloudId: 'pxt/microbit', editor: 'tsprj'},
+            source: JSON.stringify({'main.ts': `serial.setWriteLinePadding(0)\nserial.writeLine("${greeting}")\n`, 'pxt.json': JSON.stringify({
+                name: 'a10-serial', dependencies: {core: '*', radio: '*'}, files: ['main.ts'], preferredEditor: 'tsprj'
+            })})};
+        await input.setInputFiles({name: 'a10-serial.mkcd', mimeType: 'application/octet-stream',
+            buffer: Buffer.from(JSON.stringify(serialProject))});
+        await waitFor(paneText, t => /a10-serial/.test(t), 30000);
+        await clickAction('bw-makecode-emulate');
+        const serial = await waitFor(() => page.locator('[data-debug-panel]:visible [data-testid="bw-serial-console"]')
+            .innerText().catch(() => ''), t => t.replace(/\r/g, '').split('\n').includes(greeting), 60000);
+        check('the compiled V2 guest prints the complete ordered line in the Debug console',
+            serial.replace(/\r/g, '').split('\n').includes(greeting), serial.slice(0, 160));
+        const serialIdentity = await page.evaluate(() => document.body.innerText);
+        check('the serial proof uses its own micro:bit V2 board and emulator ELF',
+            /microbit-v2 board \(nrf52833/i.test(serialIdentity) &&
+            /a10-serial-microbit-v2-emu\.elf/i.test(serialIdentity), serialIdentity.slice(-600));
+        check('the serial guest remains on a running V2 emulator session', await statusText() === 'running');
     }
 
     // A11: the actual Code-tab download must compile in its own target.
