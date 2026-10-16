@@ -9,9 +9,9 @@ the current connected graph and its actual local binding. A generated variable
 name, declaration annotation, allocation label or retained source cannot establish
 that the initializer is dead.
 
-The existing authority remains the entry point:
-[array receiver proof](../overlay/scratch-gui/src/lib/bw-makecode/array-reference-export-authority.js).
-Preserve its [current receiver contract](compatibility/arcade-array-current-export-authority.md),
+The implementation extends the current receiver analysis at
+`overlay/scratch-gui/src/lib/bw-makecode/array-reference-export-authority.js`.
+Its foundation must be integrated before this proof is implemented. Preserve
 physical input checks, initialization checks and complete writer obligations.
 This lane does not introduce another Array producer or remove a Null writer merely
 because a later writer supplies an Array.
