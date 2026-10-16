@@ -82,8 +82,11 @@ export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
  *   colliders: Collider[],
  *   gear?: {type: string, teeth: number, axis: Vec3, center: Vec3},
  *        gear axis/center are in the part frame; the pitch radius is pitchRadiusLdu(teeth)
- *   motor?: {output: string[], maxTorqueNm: number, maxSpeedDegPerSec: number},
- *        output: ids of connectors that turn with the shaft
+ *   motor?: {output: string[], outputColliders: number[], maxTorqueNm: number, maxSpeedDegPerSec: number},
+ *        output: ids of connectors that turn with the shaft; outputColliders:
+ *        indices into `colliders` of the turning part (the drive hub) — they
+ *        belong to the output body, every other collider to the housing.
+ *        Both bodies must end up with at least one collider.
  *   hub?: {ports: string[]}
  * }} PartMeta
  */
@@ -200,6 +203,13 @@ export const validatePartMeta = meta => {
         if (meta.motor) {
             for (const o of meta.motor.output || []) if (!ids.has(o)) out.push(`${p}.motor.output: unknown connector '${o}'`);
             if (!Array.isArray(meta.motor.output) || meta.motor.output.length === 0) out.push(`${p}.motor.output: need at least one connector id`);
+            const oc = meta.motor.outputColliders;
+            const nCol = Array.isArray(meta.colliders) ? meta.colliders.length : 0;
+            if (!Array.isArray(oc) || oc.length === 0 || !oc.every(i => Number.isInteger(i) && i >= 0 && i < nCol)) {
+                out.push(`${p}.motor.outputColliders: need at least one index into colliders`);
+            } else if (oc.length >= nCol) {
+                out.push(`${p}.motor.outputColliders: the housing needs at least one collider of its own`);
+            }
             if (!(isNum(meta.motor.maxTorqueNm) && meta.motor.maxTorqueNm > 0)) out.push(`${p}.motor.maxTorqueNm: need a positive number`);
             if (!(isNum(meta.motor.maxSpeedDegPerSec) && meta.motor.maxSpeedDegPerSec > 0)) out.push(`${p}.motor.maxSpeedDegPerSec: need a positive number`);
         }

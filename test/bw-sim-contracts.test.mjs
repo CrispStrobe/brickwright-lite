@@ -70,7 +70,10 @@ test('PartMeta: each malformation is named', () => {
         [m => { m.connectors[1].id = 'h0'; }, /duplicate id 'h0'/],
         [m => { m.colliders = []; }, /need at least one collider/],
         [m => { m.colliders[0] = {shape: 'cone', radius: 1}; }, /'cone' is not box\|cylinder\|sphere/],
-        [m => { m.motor = {output: ['nope'], maxTorqueNm: 0.1, maxSpeedDegPerSec: 600}; }, /unknown connector 'nope'/],
+        [m => { m.motor = {output: ['nope'], outputColliders: [0], maxTorqueNm: 0.1, maxSpeedDegPerSec: 600}; }, /unknown connector 'nope'/],
+        [m => { m.colliders.push({shape: 'sphere', radius: 5}); m.motor = {output: ['h0'], outputColliders: [1], maxTorqueNm: 0.1, maxSpeedDegPerSec: 600}; }, null],
+        [m => { m.motor = {output: ['h0'], outputColliders: [0], maxTorqueNm: 0.1, maxSpeedDegPerSec: 600}; }, /housing needs at least one collider/],
+        [m => { m.motor = {output: ['h0'], outputColliders: [], maxTorqueNm: 0.1, maxSpeedDegPerSec: 600}; }, /outputColliders: need at least one index/],
         [m => { m.gear = {type: 'spur', teeth: 7.5, axis: [0, 0, 1], center: [0, 0, 0]}; }, /teeth: need a positive integer/]
     ];
     for (const [mutate, re] of cases) {
