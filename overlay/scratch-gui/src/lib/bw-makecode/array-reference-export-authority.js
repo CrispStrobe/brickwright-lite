@@ -64,7 +64,7 @@ export function createArrayReferenceExportAuthority(project) {
         const name=actual.variables[id]?.[0];if(typeof name!=='string'||Object.values(actual.variables).filter(row=>row?.[0]===name).length!==1||actual!==target&&Object.values(target.variables||{}).some(row=>row?.[0]===name))return null;
         if(!nodes.has(actual))return null;let map=globalCell.maps.get(actual);if(!map)globalCell.maps.set(actual,map=new Map());if(!map.has(id))map.set(id,{});const value=cell(map.get(id));value.global=true;return value;
     };globalCell.maps=new Map();
-    const localCell=(scope,name)=>{if(!scope||scope.invalid||typeof name!=='string')return null;let map=localCell.maps.get(scope);if(!map)localCell.maps.set(scope,map=new Map());if(!map.has(name))map.set(name,{});return cell(map.get(name));};localCell.maps=new Map();
+    const localCell=(scope,name)=>{if(!scope||scope.invalid||typeof name!=='string'||name==='__proto__')return null;let map=localCell.maps.get(scope);if(!map)localCell.maps.set(scope,map=new Map());if(!map.has(name))map.set(name,{});return cell(map.get(name));};localCell.maps=new Map();
     const capturedCell=(scope,name)=>{const origin=captures.captured(captures.scopeOf(scope.root.next?block(scope.target,scope.root.next):scope.root),name);const value=origin?localCell(scopes.find(s=>s.root===origin.scope.root),name):null;if(value&&!captures.proof(origin))value.types.add(bad);return value;};
     const binding=(target,node)=>{
         const scope=owners.get(node);if(node.opcode==='data_variable'){const id=node.fields?.VARIABLE?.[1],declaration=targets.find(t=>Object.hasOwn(t.variables||{},id))?.variables[id];return declaration?.[0]===node.fields?.VARIABLE?.[0]?globalCell(target,id):null;}
@@ -138,6 +138,12 @@ export function createArrayReferenceExportAuthority(project) {
     // proved from the current linear body, never a declaration/type exemption.
     const deadReset=(destination,writer)=>{
         if(writer.node.opcode!=='arcade_setLocal'||writer.value?.node?.opcode!=='arrays_specialValue'||!['null','undefined'].includes(literal(writer.value.node,'KIND',writer.target)))return false;
+        // Plain-object frames can acquire an inherited setter/nonwritable
+        // property through a prototype write. The old adjacent-reset proof
+        // has no pointwise prototype-state model, so retain its reset when
+        // such a writer could affect this frame.
+        if(records.some(r=>literal(r.node,'NAME',r.target)==='__proto__'&&
+            (r.scope===writer.scope&&r.node.opcode==='arcade_setLocal'||r.target===writer.target&&r.node.opcode==='arcade_setCaptured')))return false;
         const pure=new Set(['arcade_getLocal','data_variable','math_number','text','arrays_specialValue','arrays_referenceValues','arrays_createReference']);
         const safe=(node,path=new Set())=>{if(!node)return true;if(path.has(node)||!pure.has(node.opcode)||binding(writer.target,node)===destination)return false;const next=new Set([...path,node]);return Object.values(node.inputs||{}).every(slot=>typeof slot[1]!=='string'||safe(block(writer.target,slot[1]),next));};
         let id=writer.node.next;const seen=new Set();
@@ -145,7 +151,170 @@ export function createArrayReferenceExportAuthority(project) {
             if(localCell(writer.scope,literal(node,'NAME',writer.target))===destination)return true;id=node.next;}
         return false;
     };
-    for(const destination of cells.values())destination.writers=destination.writers.filter(writer=>!deadReset(destination,writer));
+    // This is a closed-project effect proof, not another value/type producer.
+    // The bundled procedure primitive creates a fresh params object even for
+    // zero arguments. A prefix with no call/registration/capture cannot have
+    // published that object into a handler's {values,key} capture storage.
+    // In that prefix palette redraw publishes device state, never params;
+    // requestRedraw only sets a flag. The builtin device-pane listener only
+    // updates its revision. Privileged external JS inspecting runtime threads
+    // is outside this closed project boundary (see the compatibility notes).
+    // Arrays resolves through the builtin route to the adopted implementation;
+    // a saved gallery URL is checked only for consistency, never as authority.
+    const effectMetadata=()=>JSON.stringify(['extensions','extensionURLs','monitors'].map(key=>[Object.hasOwn(project,key),project[key]]));
+    const originalEffects=effectMetadata();let extendedResetUsed=false;
+    const closedEffects=()=>{
+        if(!Array.isArray(project.extensions)||new Set(project.extensions).size!==project.extensions.length||
+            !project.extensions.includes('arcade')||!project.extensions.includes('arrays')||
+            project.extensions.some(id=>!['arcade','arrays'].includes(id)))return false;
+        // SB3 infers owners from every physical opcode, including orphans and
+        // monitor blocks; its declared extensions list is not an inventory.
+        // Match getExtensionIdForOpcode's prefix/core rules as a refusal check,
+        // never as a producer or effect certificate for an individual block.
+        const core=new Set(['argument','colour','control','data','event','looks','math','motion','operator','procedures','sensing','sound']);
+        const inferred=new Set();
+        const ownerAllowed=opcode=>{
+            if(typeof opcode!=='string')return false;
+            const index=opcode.indexOf('_');if(index<0)return opcode==='text';
+            const prefix=opcode.substring(0,index).replace(/[^\w-]/g,'-');
+            if(core.has(prefix))return true;
+            if(!['arcade','arrays'].includes(prefix))return false;
+            inferred.add(prefix);return true;
+        };
+        for(const target of targets){
+            // Native variable and block dictionaries are ordinary objects;
+            // inherited input-cache IDs cannot identify the intended row.
+            if(Object.hasOwn(target.variables||{},'__proto__'))return false;
+            for(const [id,n]of Object.entries(target.blocks||{})){
+                if(Object.hasOwn(Object.prototype,id)||!ownerAllowed(n?.opcode))return false;
+                if(n.opcode==='procedures_call'){
+                    let ids;try{ids=JSON.parse(n.mutation?.argumentids);}catch{return false;}
+                    if(typeof n.mutation?.proccode!=='string'||!n.mutation.proccode||!Array.isArray(ids)||
+                        ids.some(id=>typeof id!=='string')||new Set(ids).size!==ids.length||
+                        Object.keys(n.inputs||{}).length!==ids.length||ids.some(id=>!Object.hasOwn(n.inputs||{},id))||Object.keys(n.fields||{}).length)return false;
+                }
+            }
+        }
+        if(Object.hasOwn(project,'monitors')){
+            if(!Array.isArray(project.monitors)||project.monitors.some(n=>!ownerAllowed(n?.opcode)))return false;
+        }
+        if(project.extensions.some(id=>!inferred.has(id))||[...inferred].some(id=>!project.extensions.includes(id)))return false;
+        const urls=project.extensionURLs;
+        if(urls!=null&&(typeof urls!=='object'||Array.isArray(urls)||Object.entries(urls).some(([id,url])=>
+            id!=='arrays'||url!=='https://crispstrobe.github.io/extensions/CrispStrobe/arrays.js')))return false;
+        // These routes can carry an independently supplied owner/entry. They
+        // are not in the first-order builtin frame boundary proved here.
+        return !records.some(({node,scope})=>scope.invalid||invalid.has(node)||
+            /^(arcade_(?:.*Callable|.*Captured|.*Object|.*Class|startParallel|pushScene|popScene)|procedures_callreturn)/.test(node.opcode));
+    };
+    const overwrittenPrivateReset=(destination,writer)=>{
+        const {target,node,scope}=writer,reset=writer.value?.node;
+        const shape=(n,inputs,fields=[])=>!!n&&!invalid.has(n)&&owners.get(n)===scope&&n.mutation==null&&
+            Object.keys(n.inputs||{}).length===inputs.length&&inputs.every(key=>Object.hasOwn(n.inputs||{},key))&&
+            Object.keys(n.fields||{}).length===fields.length&&fields.every(key=>Object.hasOwn(n.fields||{},key));
+        const special=n=>shape(n,[],['KIND'])&&Array.isArray(n.fields.KIND)&&n.fields.KIND.length===2&&
+            n.fields.KIND[1]===null&&['null','undefined'].includes(n.fields.KIND[0]);
+        // Native procedure-definition/parameter caches are plain objects and
+        // consult inherited entries before scanning declarations. Those names
+        // cannot establish this graph's actual invocation/frame identity.
+        if(!scope.proc||Object.hasOwn(Object.prototype,scope.proc)||scope.invalid||scope.unknownEntry||scope.params.length||destination.formal||
+            node.opcode!=='arcade_setLocal'||!special(reset)||!shape(node,['NAME','VALUE'])||
+            !closedEffects()||!scope.callers.length)return false;
+        // Native lookup scans every physical definition/prototype, including
+        // orphans not represented by the connected top-level scope map.
+        const all=Object.values(target.blocks||{}),prototype=child(scope.root,'custom_block',target);
+        if(!shape(scope.root,['custom_block'])||Object.keys(prototype?.inputs||{}).length||Object.keys(prototype?.fields||{}).length)return false;
+        const definitions=all.filter(n=>n.opcode==='procedures_definition'&&child(n,'custom_block',target)?.mutation?.proccode===scope.proc);
+        const prototypes=all.filter(n=>n.opcode==='procedures_prototype'&&n.mutation?.proccode===scope.proc);
+        if(definitions.length!==1||definitions[0]!==scope.root||prototypes.length!==1||prototypes[0]!==prototype)return false;
+        const name=literal(node,'NAME',target),origin=captures.local(captures.scopeOf(node),name);
+        // Native params are plain objects, not Maps: this inherited setter
+        // changes the prototype instead of establishing an own lexical cell.
+        if(name==='__proto__')return false;
+        if(!origin||!captures.proof(origin)||localCell(scope,name)!==destination)return false;
+        // Admit only direct ordinary zero-argument entries from source-start.
+        // Other callers, nested entries and dynamic calls remain refusals.
+        for(const call of scope.callers){
+            if(call.target!==target||call.scope.invalid||call.scope.root.opcode!=='arcade_whenSourceStarts'||
+                call.node.opcode!=='procedures_call'||!call.args||call.args.length||call.node.mutation?.warp!=='false')return false;
+            let at=call.scope.root.next;const visited=new Set();
+            while(at&&block(target,at)!==call.node){
+                if(visited.has(at))return false;visited.add(at);
+                const prior=block(target,at);
+                // Only establish that this is a direct entry, not a branch
+                // or loop's nested invocation. Earlier caller effects precede
+                // allocation of this invocation's fresh params object and
+                // therefore cannot have retained that object.
+                if(!prior||invalid.has(prior)||owners.get(prior)!==call.scope)return false;
+                at=prior.next;
+            }
+            if(!at)return false;
+        }
+        const locals=new Map(),published=new Set(),unproved=Symbol('unknown');
+        // Identity tokens denote this invocation's actual independent fresh
+        // empty heap bodies. Global publication permanently removes mutation
+        // credit even if the current name later points somewhere else.
+        const scalar=(value,path=new Set())=>{
+            if(!value)return unproved;
+            if(value.raw){const r=value.raw;if(r.length!==2)return unproved;
+                if(r[0]===10&&typeof r[1]==='string')return {kind:'scalar',value:r[1]};
+                if([4,5,6,7,8].includes(r[0])&&typeof r[1]==='string'&&Number.isFinite(Number(r[1])))return {kind:'number',value:Number(r[1])};
+                return unproved;}
+            if(value.cell)return value.cell===destination?unproved:{kind:'stored'};
+            const n=value.node;if(!n||path.has(n)||invalid.has(n)||owners.get(n)!==scope)return unproved;
+            const next=new Set([...path,n]),operand=k=>scalar(input(n,k,target),next);
+            if(n.opcode==='arcade_getLocal'&&shape(n,['NAME'])){
+                const key=literal(n,'NAME',target),c=localCell(scope,key);return key==='__proto__'||c===destination?unproved:locals.get(c)||unproved;
+            }
+            if(n.opcode==='data_variable'&&shape(n,[],['VARIABLE']))return binding(target,n)===destination?unproved:{kind:'stored'};
+            if(special(n))return {kind:'scalar'};
+            if(n.opcode==='arrays_createReference'&&shape(n,['VALUES'])&&literal(n,'VALUES',target)==='[]')return {kind:'array',site:n};
+            if(n.opcode==='operator_add'&&shape(n,['NUM1','NUM2'])||n.opcode==='arrays_valueBinary'&&shape(n,['LEFT','RIGHT'],['OP'])&&['+','%'].includes(literal(n,'OP',target))){
+                const a=operand(n.opcode==='operator_add'?'NUM1':'LEFT'),b=operand(n.opcode==='operator_add'?'NUM2':'RIGHT');
+                if(a===unproved||b===unproved||a.kind!=='number'||b.kind!=='number')return unproved;
+                const v=literal(n,'OP',target)==='%'?a.value%b.value:a.value+b.value;return Number.isFinite(v)?{kind:'number',value:v}:unproved;
+            }
+            if(n.opcode==='operator_round'&&shape(n,['NUM'])){const v=operand('NUM');return v!==unproved&&v.kind==='number'?{kind:'number',value:Math.round(v.value)}:unproved;}
+            // No String/Number coercion of an arbitrary receiver or index. The
+            // adopted heap lookup/read and private image clone do not invoke
+            // managed callbacks; malformed receivers can fault but cannot
+            // expose this private frame. No Array/Image fact escapes here.
+            if(n.opcode==='arrays_referenceItem'&&shape(n,['ARRAY','INDEX'])){
+                const a=operand('ARRAY'),i=operand('INDEX');return a!==unproved&&i!==unproved&&i.kind==='number'?{kind:'stored'}:unproved;
+            }
+            if(n.opcode==='arcade_cloneImage'&&shape(n,['IMAGE']))return operand('IMAGE')!==unproved?{kind:'stored'}:unproved;
+            return unproved;
+        };
+        let at=scope.root.next,seenReset=false;const seen=new Set();
+        while(at&&!seen.has(at)){
+            seen.add(at);const current=block(target,at);
+            if(!current||invalid.has(current)||owners.get(current)!==scope)return false;
+            if(current.opcode==='arcade_setLocal'&&shape(current,['NAME','VALUE'])){
+                const key=literal(current,'NAME',target),c=localCell(scope,key);if(key==='__proto__'||!c||c.formal)return false;
+                if(current===node){seenReset=true;locals.set(c,{kind:'scalar'});}
+                else {const v=scalar(input(current,'VALUE',target));if(v===unproved)return false;
+                    if(c===destination){if(seenReset&&v.kind==='array'){extendedResetUsed=true;return true;}return false;}
+                    locals.set(c,v);}
+            }else if(current.opcode==='arcade_setPalette'&&shape(current,['DATA'])&&/^[0-9a-fA-F]{96}$/.test(literal(current,'DATA',target)||'')){
+                // Qualified render/state event effects preserved; prefix has
+                // not retained params in ANY callback owner (not just this key).
+            }else if(current.opcode==='data_setvariableto'&&shape(current,['VALUE'],['VARIABLE'])){
+                const field=current.fields.VARIABLE,owner=targets.find(t=>Object.hasOwn(t.variables||{},field?.[1])),row=owner?.variables?.[field?.[1]];
+                if(!Array.isArray(row)||row.length!==2||row[0]!==field?.[0]||!globalCell(target,field?.[1]))return false;
+                const v=scalar(input(current,'VALUE',target));if(v===unproved)return false;if(v.kind==='array')published.add(v);
+            }else if(current.opcode==='arrays_mutateReference'&&shape(current,['ARRAY','OP','INDEX','VALUE'])&&literal(current,'OP',target)==='push'){
+                const receiver=scalar(input(current,'ARRAY',target)),index=scalar(input(current,'INDEX',target)),value=scalar(input(current,'VALUE',target));
+                if(receiver===unproved||receiver.kind!=='array'||published.has(receiver)||index===unproved||index.kind!=='number'||index.value!==0||value===unproved)return false;
+                // A value may not publish another independent body whose later
+                // mutation could be observed through this Array's aliases.
+                if(value.kind==='array')published.add(value);
+            }else return false;
+            at=current.next;
+        }
+        return false;
+    };
+    for(const destination of cells.values())destination.writers=destination.writers.filter(writer=>
+        !deadReset(destination,writer)&&!overwrittenPrivateReset(destination,writer));
     // Orphan writes and dynamic local names cannot disappear from all-writer proof.
     for(const target of targets)for(const node of Object.values(target.blocks||{})){
         if(!owners.has(node)&&['data_setvariableto','data_changevariableby'].includes(node.opcode)){const c=globalCell(target,node.fields?.VARIABLE?.[1]);if(c)c.types.add(bad);}
@@ -446,7 +615,7 @@ export function createArrayReferenceExportAuthority(project) {
         if(node.opcode==='arcade_spritesOfKind'&&exactKeys(node,['KIND']))return numericKindInitialized(input(node,'KIND',target));
         return false;
     };
-    const live=()=>project.targets===targets&&snapshot()===original&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
+    const live=()=>project.targets===targets&&snapshot()===original&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
     return Object.freeze({validateInput(target,node,name='ARRAY'){
         if(invalidGlobalBinding)return {ok:false,reason:'current variable name, ID, owner or writer schema does not agree'};
         if(!live()||!nodes.get(target)||!owners.has(node)||invalid.has(node)||nodes.get(target).get(Object.keys(target.blocks||{}).find(id=>target.blocks[id]===node))!==node)return {ok:false,reason:'current target, input or connected graph changed'};
