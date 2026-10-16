@@ -9,7 +9,7 @@ const failedThreads = new WeakMap();
 const promiseLeases = new WeakMap();
 const callerLeases = new WeakMap();
 
-function create(runtime, readValue) {
+function create(runtime, readValue, consumePhysicalUpdate = null) {
     if (!runtime || typeof runtime.on !== 'function' || !Array.isArray(runtime.targets)) {
         return Object.freeze({raise() {throw new Error('Arcade Throw requires a bound runtime');},
             rejectConstraint() {throw new Error('Arcade constraint rejection requires a bound runtime');},
@@ -84,6 +84,19 @@ function create(runtime, readValue) {
             const edge = {caller, cleanup, generation};
             edges.set(child, edge);
             return () => {if (edges.get(child) === edge) edges.delete(child);};
+        },
+        linkPhysicalUpdate(child,args,util,cleanup) {
+            // This consumer is captured by the actual extension constructor.
+            // Neither a missing caller nor public tags can mint a root edge.
+            if (!live(child) || util?.thread || typeof cleanup!=='function' || edges.has(child) ||
+                typeof consumePhysicalUpdate!=='function')
+                throw new Error('Arcade physical update requires its private current entry');
+            const witness=consumePhysicalUpdate(child,args,util);
+            if (!witness || witness.target!==child.target || !live(child))
+                throw new Error('Arcade physical update requires its private current entry');
+            const edge={caller:null,cleanup,generation};
+            edges.set(child,edge);
+            return ()=>{if(edges.get(child)===edge)edges.delete(child);};
         },
         raise(args, util) {
             const thread = util?.thread;

@@ -10,6 +10,7 @@ function browserTurn() {
         channel.port2.postMessage(null);
     });
 }
+const spriteUpdateLoans=new WeakMap();
 class ArcadeFramePhase {
     constructor(runtime,ext,{workNow=()=>performance.now(),budgetMs}={}) {
         this.runtime=runtime;this.ext=ext;this.workNow=workNow;this.budgetMs=budgetMs;
@@ -39,25 +40,26 @@ class ArcadeFramePhase {
     }
     linkManagedCall(thread,caller) {
         if(caller)this.managedLinks.set(thread,{caller,generation:this.generation});
-        else if(this.spriteUpdateLoan) {
-            const loan=this.spriteUpdateLoan;
-            if(loan.used || loan.generation!==this.generation || this.disposed ||
-                !this.active || !this.phaseContext || thread.target!==loan.target ||
-                thread.blockContainer!==loan.target.blocks || thread.topBlock!==loan.definition ||
-                !this.runtime.threads.includes(thread))
-                throw new Error('Native Sprite update spawned a foreign or duplicate method');
-            loan.used=true;this.sourceAuthority.set(thread,this.generation);
-        }
+    }
+    linkSpriteUpdateChild(entry,thread) {
+        const loan=spriteUpdateLoans.get(this);
+        if(!loan || loan.entry!==entry || loan.used || loan.generation!==this.generation ||
+            loan.context!==this.phaseContext || this.disposed || !this.active || !this.phaseContext ||
+            thread.target!==loan.target || thread.blockContainer!==loan.target.blocks ||
+            thread.topBlock!==loan.definition || !this.runtime.threads.includes(thread))
+            throw new Error('Native Sprite update spawned a foreign or duplicate method');
+        loan.used=true;this.sourceAuthority.set(thread,this.generation);
     }
     withSpriteUpdate(entry,invoke) {
-        if(this.spriteUpdateLoan)throw new Error('Native Sprite update activation cannot reenter');
-        const loan=this.ext._sdkSpriteUpdates.claim(entry,this);
-        this.spriteUpdateLoan={...loan,used:false};
+        if(spriteUpdateLoans.has(this))throw new Error('Native Sprite update activation cannot reenter');
+        const witness=this.ext._sdkSpriteUpdates.claim(entry,this);
+        const loan={...witness,entry,context:this.phaseContext,used:false};
+        spriteUpdateLoans.set(this,loan);
         try {
             const result=invoke();
-            if(!this.spriteUpdateLoan.used)throw new Error('Native Sprite update did not spawn its managed method');
+            if(!loan.used)throw new Error('Native Sprite update did not spawn its managed method');
             return result;
-        } finally {this.spriteUpdateLoan=null;}
+        } finally {spriteUpdateLoans.delete(this);}
     }
     hasSourceProject() {
         if(this.disposed)return false;
