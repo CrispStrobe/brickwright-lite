@@ -6,7 +6,7 @@
 // view (lib/spike-arena/arena-view3d.js) and reached the same way, only through
 // the pane's dynamic import of bw-sim/sim-lab.js (chunk "bw-sim-lab").
 
-import {AmbientLight, Box3, DirectionalLight, PerspectiveCamera, Vector2, Vector3, WebGLRenderer} from 'three';
+import {AmbientLight, Box3, Color, DirectionalLight, GridHelper, PerspectiveCamera, Vector2, Vector3, WebGLRenderer} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {parseLDConfig} from './ldraw-colors.js';
 import {buildSimScene, applySnapshot} from './sim-scene3d.js';
@@ -73,6 +73,16 @@ export const createSimView3D = ({container, model, mechanism, read, onContextLos
         sun.position.set(0.5, 1, 0.8);
         built.scene.add(sun);
     }
+    // A light sky and a 1 cm grid on the floor (10 cm major lines): without them a
+    // driving robot on a plain floor shows no motion at all.
+    built.scene.background = new Color(0xe8eef5);
+    let grid = null;
+    if (built.ground) {
+        const floorY = new Box3().setFromObject(built.ground).max.y;
+        grid = new GridHelper(4, 40, 0x64748b, 0xcbd5e1);
+        grid.position.y = floorY + 0.001; // above the floor mesh, so depth testing shows it
+        built.scene.add(grid);
+    }
     const camera = new PerspectiveCamera(40, 1, 0.005, 50);
     const controls = new OrbitControls(camera, canvas);
     controls.maxPolarAngle = Math.PI / 2 - 0.02; // never under the floor
@@ -110,13 +120,29 @@ export const createSimView3D = ({container, model, mechanism, read, onContextLos
         }
     };
 
+    // Follow: the camera and its orbit target move with the model's centre, so
+    // the robot stays in view while the learner can still orbit around it.
+    let followed = null;
     const render = snapshot => {
         resize();
         if (snapshot) applySnapshot(built, snapshot);
+        const centre = modelBox().getCenter(new Vector3());
+        if (followed) {
+            const delta = centre.clone().sub(followed);
+            delta.y = 0;
+            camera.position.add(delta);
+            controls.target.add(delta);
+            controls.update();
+        }
+        followed = centre;
         renderer.render(built.scene, camera);
     };
 
     const dispose = () => {
+        if (grid) {
+            grid.geometry.dispose();
+            grid.material.dispose();
+        }
         canvas.removeEventListener('webglcontextlost', onLost);
         controls.dispose();
         built.dispose();
@@ -126,5 +152,9 @@ export const createSimView3D = ({container, model, mechanism, read, onContextLos
 
     resize();
     resetCamera();
-    return {canvas, render, resize, resetCamera, dispose};
+    const recentre = () => {
+        followed = null;
+        resetCamera();
+    };
+    return {canvas, render, resize, resetCamera: recentre, dispose};
 };

@@ -53,7 +53,7 @@ class SpikeSimulatorPane extends React.Component {
                 <div style={{flex: '1 0 400px', minHeight: 300, background: '#fff'}}>
                     {this.state.tab === 'arena' ?
                         <SpikeArenaPane ref={this.arena} vm={this.props.vm} locale={this.props.locale} hubState={this.hubState} /> :
-                        <SimLabPane locale={this.props.locale} hubState={this.hubState} />}
+                        <SimLabPane vm={this.props.vm} locale={this.props.locale} hubState={this.hubState} />}
                 </div>
             </div>
         );

@@ -101,8 +101,17 @@ try {
     console.log('PASS the Sim Lab tab loads the reference driving base with a WebGL view');
 
     const before = await reading(page);
+    // Run starts the program on the green flag, as the arena's Start does.
     await page.getByTestId('bw-sim-lab-run').click();
-    await page.locator('[class*="green-flag_green-flag"]').first().click();
+    if (process.env.SIM_DEBUG) {
+        await page.waitForTimeout(3000);
+        console.log('DEBUG', JSON.stringify(await page.evaluate(() => {
+            const h = window.__bwSimLab._pane.props.hubState;
+            return {connected: h.data.connected, sim: h.data.simulationEnabled, motors: h.data.motors.slice(0, 2), last: h.data.lastCommand,
+                pair: h.movementPair, owner: h.clockOwner, sameHub: h === window.__brickwrightVirtualSpike?.hubState, time: window.__bwSimLab._pane.session.time,
+                status: window.__bwSimLab.status, code: document.querySelector('[data-testid="bw-code-status"]')?.textContent};
+        })));
+    }
     await page.waitForFunction(start => {
         const s = window.__bwSimLab._pane.session;
         const hub = s.bridge.hubBody;

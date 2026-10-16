@@ -17,18 +17,20 @@ import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
 const TEXT = {
     en: {
         title: 'Sim Lab (beta)',
-        intro: 'A model from real LEGO® Technic parts with physics. Start a program that uses the virtual SPIKE Prime (ports A and B drive the wheels), then press Run.',
+        intro: 'A model from real LEGO® Technic parts with physics. Write a SPIKE Prime program (ports A and B drive the wheels) and press Run: it starts on the green flag.',
         model: 'Model', importModel: 'Open .ldr…', run: 'Run', pause: 'Pause', reset: 'Reset',
         loading: 'Loading the model and the physics engine…', ready: 'Ready', running: 'Running', paused: 'Paused',
         failed: 'Could not load the model: {error}', noWebgl: 'This browser cannot show the 3D view ({error}). The simulation still runs.',
+        connectFailed: 'Could not connect the program to the virtual hub: {error}',
         issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model'
     },
     de: {
         title: 'Sim-Labor (Beta)',
-        intro: 'Ein Modell aus echten LEGO®-Technic-Teilen mit Physik. Starte ein Programm für den virtuellen SPIKE Prime (Ports A und B treiben die Räder an) und drücke dann Start.',
+        intro: 'Ein Modell aus echten LEGO®-Technic-Teilen mit Physik. Schreibe ein SPIKE-Prime-Programm (Ports A und B treiben die Räder an) und drücke Start: es beginnt mit der grünen Flagge.',
         model: 'Modell', importModel: '.ldr öffnen…', run: 'Start', pause: 'Pause', reset: 'Zurücksetzen',
         loading: 'Modell und Physik-Engine werden geladen…', ready: 'Bereit', running: 'Läuft', paused: 'Pausiert',
         failed: 'Das Modell konnte nicht geladen werden: {error}', noWebgl: 'Dieser Browser kann die 3D-Ansicht nicht zeigen ({error}). Die Simulation läuft trotzdem.',
+        connectFailed: 'Das Programm konnte nicht mit dem virtuellen Hub verbunden werden: {error}',
         issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells'
     }
 };
@@ -153,8 +155,41 @@ class SimLabPane extends React.Component {
         if (this.view) this.view.render(this.session.snapshot());
     }
 
-    run () { if (this.session) this.setState({status: 'running'}); }
-    pause () { if (this.session) this.setState({status: 'paused'}); }
+    spikeLoaded () {
+        const vm = this.props.vm;
+        return Boolean(vm && vm.extensionManager && vm.extensionManager.isExtensionLoaded('spikeprime'));
+    }
+
+    /** As the arena's Start: connect the spikeprime blocks to the shared virtual hub, then green flag. */
+    async run () {
+        if (!this.session) return;
+        const hubState = this.props.hubState;
+        hubState.setSimulationEnabled(true);
+        this.setState({status: 'running'});
+        const vm = this.props.vm;
+        if (!this.spikeLoaded()) return;
+        const peripheral = vm.runtime.peripheralExtensions && vm.runtime.peripheralExtensions.spikeprime;
+        try {
+            const {connectVirtualSpike} = this.lib;
+            await connectVirtualSpike({host: window, hubState,
+                connected: () => vm.getPeripheralIsConnected('spikeprime'),
+                disconnect: () => vm.disconnectPeripheral('spikeprime'),
+                connect: async () => {
+                    if (typeof peripheral.setMode === 'function') peripheral.setMode('web-ble');
+                    await peripheral.scan();
+                }});
+        } catch (error) {
+            this.setState({message: this.t('connectFailed', {error: error.message})});
+            return;
+        }
+        if (this.state.status === 'running') vm.greenFlag();
+    }
+    pause () {
+        if (!this.session) return;
+        if (this.spikeLoaded()) { try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ } }
+        this.props.hubState.backend.cancel();
+        this.setState({status: 'paused'});
+    }
 
     async reset () {
         if (!this.session) return;
