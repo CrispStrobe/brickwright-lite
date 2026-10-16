@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createHash, webcrypto} from 'node:crypto';
+import {githubIdentityMatches} from '../scripts/package-provenance.mjs';
 
 // Execute the exact browser helper as ESM without installing a browser/build tool.
 const source = fs.readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-machines/raw-hdd-download.js', import.meta.url), 'utf8');
@@ -419,4 +420,61 @@ test('panel lifecycle source mounts the guard and mirrors only the existing trac
     assert.match(panelSource, /componentDidMount \(\) \{\s*this\._hddDownloadMounted = true;/);
     assert.match(panelSource, /componentWillUnmount \(\) \{\s*this\._hddDownloadMounted = false;/);
     assert.equal(fs.readFileSync(new URL('../packages/scratch-gui/src/components/tw-pseudocode/debug-panel.jsx', import.meta.url), 'utf8'), panelSource);
+});
+
+// Execute the admission helper without importing Playwright or starting a guest.
+const persistenceSource = fs.readFileSync(new URL('../scripts/verify-i80386-local-hdd-gui.mjs', import.meta.url), 'utf8');
+const pinStart = persistenceSource.indexOf('function persistencePackagePins (');
+const pinEnd = persistenceSource.indexOf('\nfunction persistenceSnapshotSources (', pinStart);
+assert.ok(pinStart >= 0 && pinEnd > pinStart, 'actual persistence package admission helper');
+const admitPackagePins = new Function('assert', `${persistenceSource.slice(pinStart, pinEnd)}\nreturn persistencePackagePins;`)(assert);
+const packageFiles = ['package.json', 'packages/scratch-gui/package.json'];
+function packagePinFixture () {
+    const packages = Object.fromEntries(packageFiles.map(name => [name,
+        JSON.parse(fs.readFileSync(new URL(`../${name}`, import.meta.url), 'utf8'))]));
+    const boardPin = packages['package.json'].devDependencies['bw-board'].split('#')[1];
+    assert.match(boardPin, /^[0-9a-f]{40}$/);
+    const critical = () => Object.fromEntries(packageFiles.map(name => [name, Buffer.from(JSON.stringify(packages[name]))]));
+    return {packages, admission: {boardPin}, critical};
+}
+
+test('persistence admission accepts the real root devDependency and GUI dependency manifests', () => {
+    const f = packagePinFixture();
+    assert.equal(f.packages['package.json'].dependencies?.['bw-board'], undefined);
+    assert.equal(f.packages['packages/scratch-gui/package.json'].devDependencies?.['bw-board'], undefined);
+    assert.doesNotThrow(() => admitPackagePins(f.admission, f.critical(), githubIdentityMatches));
+    assert.match(persistenceSource, /persistencePackagePins\(admission, critical, githubIdentityMatches\);/);
+});
+
+test('persistence admission rejects a missing or different canonical supplier in either manifest', () => {
+    for (const [name, field] of [['package.json', 'devDependencies'], ['packages/scratch-gui/package.json', 'dependencies']]) {
+        for (const value of [undefined, 'github:CrispStrobe/bw-board#' + '0'.repeat(40), 'github:Other/bw-board#' + '1'.repeat(40)]) {
+            const f = packagePinFixture();
+            if (value === undefined) delete f.packages[name][field]['bw-board'];
+            else f.packages[name][field]['bw-board'] = value;
+            assert.throws(() => admitPackagePins(f.admission, f.critical(), githubIdentityMatches), /declared supplier pin mismatch/);
+        }
+    }
+});
+
+test('persistence admission rejects second supplier declarations even when they repeat the expected pin', () => {
+    for (const [name, canonical] of [['package.json', 'devDependencies'], ['packages/scratch-gui/package.json', 'dependencies']]) {
+        for (const field of ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'].filter(value => value !== canonical)) {
+            for (const pin of ['github:CrispStrobe/bw-board#' + '0'.repeat(40), `github:CrispStrobe/bw-board#${packagePinFixture().admission.boardPin}`]) {
+                const f = packagePinFixture();
+                f.packages[name][field] = {...f.packages[name][field], 'bw-board': pin};
+                assert.throws(() => admitPackagePins(f.admission, f.critical(), githubIdentityMatches), /ambiguous supplier declaration/);
+            }
+        }
+    }
+});
+
+test('persistence admission never substitutes a supplier from a noncanonical field', () => {
+    for (const [name, canonical, other] of [['package.json', 'devDependencies', 'dependencies'],
+        ['packages/scratch-gui/package.json', 'dependencies', 'devDependencies']]) {
+        const f = packagePinFixture(), pin = f.packages[name][canonical]['bw-board'];
+        delete f.packages[name][canonical]['bw-board'];
+        f.packages[name][other] = {...f.packages[name][other], 'bw-board': pin};
+        assert.throws(() => admitPackagePins(f.admission, f.critical(), githubIdentityMatches), /declared supplier pin mismatch/);
+    }
 });

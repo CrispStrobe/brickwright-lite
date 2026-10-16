@@ -67,6 +67,18 @@ function persistenceSupplierResolution (expectedManifest, fromGui, realpath) {
     assert.equal(realpath(fromGui.resolve('bw-board/package.json')), realpath(expectedManifest),
         'GUI resolves a shadow supplier instead of the admitted installed board');
 }
+function persistencePackagePins (admission, critical, githubIdentityMatches) {
+    const canonicalFields = {'package.json': 'devDependencies', 'packages/scratch-gui/package.json': 'dependencies'};
+    for (const [name, field] of Object.entries(canonicalFields)) {
+        const pkg = JSON.parse(critical[name]);
+        assert.ok(githubIdentityMatches(pkg[field]?.['bw-board'], 'CrispStrobe', 'bw-board', admission.boardPin),
+            'declared supplier pin mismatch');
+        for (const other of ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies']) {
+            if (other === field) continue;
+            assert.ok(!Object.hasOwn(pkg[other] || {}, 'bw-board'), 'ambiguous supplier declaration');
+        }
+    }
+}
 function persistenceSnapshotSources (critical) {
     // Presence checks only; exact selected bytes are admitted separately above.
     assert.match(critical['node_modules/bw-board/src/i80386-debug.js'].toString('utf8'),
@@ -219,10 +231,7 @@ async function persistencePreflight (manifestPath) {
         {timeout:10000,maxBuffer:32*1024*1024,env:{PATH:'/usr/bin:/bin',LANG:'C',GIT_CONFIG_NOSYSTEM:'1',
             GIT_CONFIG_GLOBAL:'/dev/null',GIT_NO_LAZY_FETCH:'1',GIT_TERMINAL_PROMPT:'0'}}));
     assert.equal(JSON.parse(critical['vendor-pins.json'])['bw-board'], admission.boardPin);
-    for (const name of ['package.json', 'packages/scratch-gui/package.json']) {
-        const pkg = JSON.parse(critical[name]);
-        assert.ok(githubIdentityMatches(pkg.dependencies?.['bw-board'], 'CrispStrobe', 'bw-board', admission.boardPin), 'declared supplier pin mismatch');
-    }
+    persistencePackagePins(admission, critical, githubIdentityMatches);
     assert.equal(JSON.parse(critical['node_modules/bw-board/package.json']).name, 'bw-board');
     const {createRequire} = await import('node:module');
     persistenceSupplierResolution(new URL('node_modules/bw-board/package.json',root).pathname,
