@@ -689,7 +689,10 @@ class CircuitTab extends React.Component {
                 old.buttons?.A === next.buttons?.A && old.buttons?.B === next.buttons?.B) {
                 let same = true;
                 for (let i = 0; i < 10; i++) {
-                    if (old.shown?.[i] !== next.shown?.[i]) { same = false; break; }
+                    if (old.shown?.[i] !== next.shown?.[i]) {
+                        same = false;
+                        break;
+                    }
                 }
                 if (same) return null;
             }
@@ -2044,8 +2047,8 @@ class CircuitTab extends React.Component {
                 <div style={this.state.panel === 'designer' ?
                     {flex: '1 1 auto', minHeight: 0, overflow: 'auto'} : {display: 'none'}}>
                     {profileReactSubtree(React, 'CircuitDesigner', (<Designer
-                    cpxState={this.state.cpxState}
-                    onCpxInput={this.handleCpxInput}
+                        cpxState={this.state.cpxState}
+                        onCpxInput={this.handleCpxInput}
                     performanceProbe={this._performanceProbe}
                     stc={stc}
                     examples={this.state.examples || undefined}
@@ -2385,7 +2388,7 @@ CircuitTab.propTypes = {
     isProjectCreating: PropTypes.bool,
     isVisible: PropTypes.bool,
     onSetProjectTitle: PropTypes.func,
-    vm: PropTypes.shape({toJSON: PropTypes.func}).isRequired
+    vm: PropTypes.shape({runtime: PropTypes.object, toJSON: PropTypes.func}).isRequired
 };
 
 export default connect(state => ({
