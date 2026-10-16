@@ -20,17 +20,29 @@ compiler used by that hosted editor evidence.
 ## Latest development repair frontier — 2026-10-16
 
 Read [the current repair table](ARCADE-CI-REPAIR-STATUS.md) first. The latest
-composition has 36 passing generated-helper controls and 78 passing source,
-Creator and export controls. Real VM checks qualify physical updates during
-paused construction, Stop stability, four player scores, altered-cache refusal,
-and a connected score-writer edit through current export and reimport. These
-results do not establish visible editor behavior or complete-game compatibility.
-Class-update Throw still fails source admission; its [merged contract](ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md)
-requires actual method ownership and earliest-entry initialization. Shared-frame
-reimport still increases backing arrays; preserve the failing graph and fix the
-missing-initializer distinction. Recheck the immutable corpus after composing
-these fixes; its recorded count remains 147 translated / 36 partial / one
-malformed input until a fresh census is retained.
+composition passes 202 focused controls: 36 generated-helper controls, 24 shared
+frame controls, 78 Number/ordinary/clock controls and 64 Throw/source controls.
+A separate private prepared-source provenance issuer passes nine controls;
+that receipt grants no value type or effect permission.
+
+Actual native shared-frame guests preserve aliases, independent clones,
+separate equal-pixel resources, ordinary Array mutations and Stop/restart
+reconstruction. A second guest also executes two stateful kind allocations in
+source order and observes successive values without assuming a starting ID.
+Authentic library effects, artwork editing and visible authoring remain open.
+
+Owned class-update Throw now passes source admission with the explicit direct
+converter option. The unchanged two-test native module passes paused construction
+but exposes a runtime defect after Throw: duplicate errors and a scene update
+iterator left active prevent subsequent updates. Earlier effects and detached
+controller input survive. Fix actual exceptional cleanup; preserve the original
+one-error and later-update assertions. The public project importer still does
+not forward this option, so these controls do not establish GUI availability.
+
+The small shared-frame missing-initializer distinction is repaired. Authentic
+seven-backing library transport still needs exact selected-source provenance
+and effect/receiver proofs. Recheck the immutable corpus after composition;
+its recorded count remains 147 translated / 36 partial / one malformed input.
 
 ## Development results and next gaps — 2026-10-16
 

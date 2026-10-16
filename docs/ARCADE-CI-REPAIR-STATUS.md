@@ -20,8 +20,8 @@ complete game compatibility.
 | Per-player score Number proof | All 41 new source controls and four ordinary constraints pass. Actual native controls preserve four independent player scores and reject seven altered cache bindings before ordinary body effects. An affected connected-writer edit, current export and reimport pass in the real VM, with both original helper archives retained. | Visible Code/Blocks editing, fresh save/reopen and final integration checks. |
 | Initial bundle budget | Saved production graph identifies the root `react-virtualized` List barrel as a bounded import cut. The implemented import change requests the existing direct named List entry and preserves the complete widget body. | Production resolution, actual widget save/reopen behavior and the unchanged hosted P17 budget; a source import census is not measured bundle savings. |
 | Carnival package import | A source-derived two-file editor-control fixture resolves its actual pinned dependencies through the normal resolver and public async importer. All 138 conversion diagnostics are retained. No compile, VM or browser run is claimed. | Source-bound initialization, defaults, primitive/callback/class flow and complete bodies; meaningful native behavior and the visible editor import journey. |
-| Managed SDK callbacks | The private physical update entry has eleven passing component controls. The unchanged actual paused-constructor guest reaches `completed = 7`, observes two updates during construction and four total, and preserves values and call counts after Stop. | Throw in the actual class update still fails source admission before VM execution. Implement the [merged source intersection](ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md); constructor-continuation and nested-step mechanisms retain separate qualification. |
-| Shared frame Array transport | Twenty-four source/public artifact controls pass, including exact stateful kind allocation order. A real native guest qualifies repeated Image aliases, clone independence, separate equal-pixel resources, ordinary Array mutations and resource reconstruction after Stop/restart. [Transport contract](ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md). | Authentic seven-backing library effects, actual kind counter execution, edited artwork, fresh save/reopen and repeated current export/reimport remain separate. |
+| Managed SDK callbacks | The private physical update entry has eleven passing component controls. The unchanged actual paused-constructor guest reaches `completed = 7`, observes two updates during construction and four total, and preserves values and call counts after Stop. | The explicit Throw source route passes 64 controls. The original native module now reaches Throw but exposes duplicate errors and a retained scene iterator. Fix actual exceptional cleanup while preserving one error and later updates; constructor-continuation and nested-step mechanisms retain separate qualification. |
+| Shared frame Array transport | Twenty-four source/public artifact controls pass, including exact stateful kind allocation order. A real native guest qualifies repeated Image aliases, clone independence, separate equal-pixel resources, ordinary Array mutations and resource reconstruction after Stop/restart. [Transport contract](ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md). | A second native guest executes two stateful kind allocations in order, with successive actual values and unchanged alias/lifecycle checks. Authentic seven-backing library effects, edited artwork, fresh save/reopen and repeated current export/reimport remain separate. |
 | Generated helper recognition | Thirty-six focused controls pass. Recognition proves actual lexical bindings, complete bodies, parse profiles, defaults and continuation effects; legacy nested Array helpers rewrite against the same original proof before staging. | Complete affected native and authored-project journeys, source census and final integration checks. |
 
 The six implementation contracts landed through
@@ -36,13 +36,14 @@ its corrected fixture passes all eleven controls without changing product
 refusal. The later native run passes nine of eleven: one export fixture used
 the wrong exported cell name, and one genuine class-Throw source case fails
 before the VM. The cell fixture now binds the actual unique Creator and runtime
-cell and passes its separate affected real-VM run. The class-Throw failure is
-still open; the original positive guest and its assertions remain intact.
+cell and passes its separate affected real-VM run. Source admission is now repaired, but the unchanged native Throw guest exposes
+a runtime cleanup failure: three errors instead of one and no later update.
+Earlier effects and detached input survive; preserve all original assertions.
 
 The source/Creator/export campaign passes all 78 controls, including the
-unchanged clock controls. A subsequent combined run on the normal composition
-passes all 134 controls: those 78, all 36 helper controls and all 20 shared-frame
-controls; none are skipped. Independent validation now reports malformed physical
+unchanged clock controls. The latest combined run on the normal composition
+passes all 202 controls: those 78, all 36 helper controls, all 24 shared-frame
+controls and all 64 Throw/source controls; none are skipped. Independent validation now reports malformed physical
 clock reporters even when another malformed caller prevents argument emission.
 It grants no Number authority or emission permission.
 
@@ -55,7 +56,9 @@ variable writers on the Stage; the corrected fixture joins actual Game writers
 to the same Stage cells by IDs and connected source-entry chains. The authentic
 seven-backing project, edited artwork and visible authoring remain open. The
 [source provenance scope](https://github.com/CrispStrobe/brickwright-lite/pull/1012)
-is merged; this authorizes its private receipt implementation, not a game result.
+is merged. Its private prepared-source issuer passes nine focused controls,
+binding the actual prepared map, exact admitted source and currentness. That
+receipt alone authorizes neither Text effects nor any value type or game result.
 
 The [original failing campaign](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38862860015)
 remains the regression baseline. Current source composition preserves adopted
