@@ -14,17 +14,47 @@ export function prepareOrdinaryCallOmissions(program) {
         !fn.restParam && !fn.typeParameters?.length && !fn.bwCallableDefinition && !fn.bwClassCallableMethod;
     const candidates = new Set([...ordinary].filter(shape));
     if (!candidates.size) return {program, unsupported:[], omissions:[]};
-    const graph = analyseSourceValueProducers(program, {unboundIsOpaque:true, opaqueDeclarationValues:true});
+    const graph = analyseSourceValueProducers(program, {arrayValues:true, parenthesized:true,
+        unboundIsOpaque:true, opaqueDeclarationValues:true, uninitializedLocalsAreOpaque:true, declaredLocalUndefined:true});
     const selected = new Set([...candidates].filter(fn => graph.unchangedFunctionAt(fn) === fn));
-    const calls = [], uses = [];
+    const calls = [], uses = [], nodes = [];
     const visit = (node, parent = null, key = null) => {
         if (!node || typeof node !== 'object') return;
         if (Array.isArray(node)) { node.forEach(child => visit(child, parent, key)); return; }
+        nodes.push(node);
         if (node.type === 'Call') calls.push(node);
         if (node.type === 'Identifier') uses.push({node,parent,key});
         for (const [name, value] of Object.entries(node)) if (value && typeof value === 'object') visit(value,node,name);
     };
     visit(program);
+    if (!calls.some(call => candidates.has(graph.unchangedFunctionAt(call)) &&
+        call.args.length < graph.unchangedFunctionAt(call).params.length))
+        return {program, unsupported:[], omissions:[]};
+    const safeIndex = node => {
+        if (!graph.arrayAllocationsAt(node.object).length || !graph.arrayMapReceiverSafeAt(node.object) ||
+            graph.arrayConstraintErrorsAt(node.object).length ||
+            node.object?.type === 'Identifier' && !graph.isInitializedAt(node.object)) return false;
+        const types = graph.typesAt(node.index);
+        if (types.size !== 1 || !types.has('Number')) return false;
+        const initialized = value => {
+            if (!value || typeof value !== 'object') return true;
+            if (Array.isArray(value)) return value.every(initialized);
+            if (value.type === 'Identifier' && !graph.isInitializedAt(value)) return false;
+            return Object.values(value).every(initialized);
+        };
+        return initialized(node.index);
+    };
+    // A directed callee graph cannot inspect runtime source strings or aliased
+    // host objects. Refuse that source domain, even in unused neighboring bodies.
+    // Computed access has only the existing actual numeric Array proof exception;
+    // constructor strings are neither folded nor interpreted.
+    const dynamic = nodes.filter(node => node.type === 'Unknown' ||
+        node.type === 'Identifier' && ['globalThis','window','self','this','eval','Function','Reflect','arguments'].includes(node.name) ||
+        node.type === 'Member' && node.name === 'constructor' ||
+        node.type === 'Index' && !safeIndex(node));
+    if (dynamic.length) return {program, omissions:[], unsupported:[
+        'Ordinary call omission: configured Unknown, ambient, dynamic code or unresolved computed access cannot establish an unchanged callee'
+    ]};
     const plain = call => call?.type === 'Call' && call.callee?.type === 'Identifier' &&
         !call.isNew && !call.constructorCall && !call.typeArguments?.length &&
         !call.args?.some(arg => arg?.type === 'Spread');

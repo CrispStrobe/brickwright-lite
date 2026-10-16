@@ -14,11 +14,16 @@ zero. The planner adds no reference producer domain or declared-type value facts
 Full provided calls and unknown reference consumers remain independently checked.
 Existing signature-default omission bits and initialization remain unchanged.
 
-Eight focused source controls are authored, not yet executed. They cover exact
+Eleven focused source controls are authored, not yet executed. They cover exact
 call/formal identity, missing and provided Undefined, mixed unknown provided
 references, unused helpers, escaped/replaced/duplicate declarations, defaults,
 missing required/excess arguments, nested/generic exclusions and the public
-generic translation route. Source controls alone establish no native behavior.
+generic translation route. A configured source census refuses Unknown nodes,
+ambient handles, unknown `this`, dynamic code/reflection and unresolved computed
+access even in unused neighbors. Only the existing initialized actual Array and
+Number-index/all-writer/no-escape proof admits computed indexing. This leaves
+safe inputs unadmitted; no arbitrary JavaScript effect interpreter or constructor
+string folding is claimed. Source controls alone establish no native behavior.
 
 Current optional signature catalogue/Blocks controls, edited call validation,
 current export and save/reopen remain pending. Unknown reference signature or

@@ -89,3 +89,50 @@ test('nested declarations and generic signatures remain outside this ordinary mo
         assert.equal(result.program, program); assert.equal(result.omissions.length, 0);
     }
 });
+
+
+test('configured dynamic or ambient callee replacement invalidates missing-slot proof', () => {
+    for (const neighboring of [
+        'eval("target = replacement");',
+        'function unused(){eval("target = replacement")}',
+        'Function("target = replacement")();',
+        'let build = (() => 0)["con" + "structor"]; build("target = replacement")();',
+        'let key = "constructor"; let f:any=()=>0; let build=f[key]; build("target = replacement")();',
+        'Reflect.set(globalThis,"target",replacement);',
+        'Object.defineProperty(window,"target",descriptor);',
+        'let g=self;g.target=replacement;',
+        'let g=this;g.target=replacement;'
+    ]) {
+        const program = parse('function target(value?:any){console.log(value)} '+neighboring+' target();');
+        const result = prepareOrdinaryCallOmissions(program);
+        assert.equal(result.program,program,neighboring);
+        assert.equal(result.omissions.length,0,neighboring);
+        assert.ok(result.unsupported.some(message=>/cannot establish an unchanged callee/.test(message)),neighboring);
+        assert.equal(calls(result.program).at(-1).args.length,0,neighboring);
+    }
+});
+
+test('only actual initialized numeric Array access discharges the computed source census', () => {
+    const program = parse('function target(value?:any){console.log(value)} let values=[1];let index=0;let n=values[index];target();');
+    const result = prepareOrdinaryCallOmissions(program);
+    assert.deepEqual(result.unsupported,[]);assert.equal(result.omissions.length,1);
+    for (const unknown of [
+        'let values:any[];let n=values[0];',
+        'let values=[1];let index;let n=values[index];index=0;',
+        'let values=[1];inspect(values);let n=values[0];'
+    ]) {
+        const original=parse('function target(value?:any){console.log(value)} '+unknown+' target();');
+        const refused=prepareOrdinaryCallOmissions(original);
+        assert.equal(refused.program,original);assert.equal(refused.omissions.length,0);
+        assert.ok(refused.unsupported.length);
+    }
+});
+
+test('an actual Unknown node cannot be treated as evidence that the callee is unchanged', () => {
+    const program=parse('function target(value?:any){console.log(value)} target();');
+    // Explicit parser-boundary negative, not a runtime fixture or a forged grant.
+    program.body.splice(1,0,{type:'ExpressionStatement',expr:{type:'Unknown',token:'unparsed'}});
+    const result=prepareOrdinaryCallOmissions(program);
+    assert.equal(result.program,program);assert.equal(result.omissions.length,0);
+    assert.ok(result.unsupported.some(message=>/Unknown/.test(message)));
+});
