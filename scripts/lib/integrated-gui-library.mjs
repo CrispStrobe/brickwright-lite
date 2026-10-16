@@ -20,7 +20,7 @@ function ownedFiles (root) {
     for (const name of fs.readdirSync(root).sort()) {
         const file = path.join(root, name), stat = fs.lstatSync(file);
         if (stat.isSymbolicLink()) throw new Error(`owned library source is a symlink: ${file}`);
-        if (stat.isDirectory()) for (const rel of ownedFiles(file)) out.push(path.join(name, rel));
+        if (stat.isDirectory()) for (const rel of ownedFiles(file)) out.push(`${name}/${rel}`);
         else if (stat.isFile()) out.push(name);
         else throw new Error(`owned library source is not a regular file: ${file}`);
     }

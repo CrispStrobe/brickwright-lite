@@ -91,3 +91,13 @@ test('exact overlay model exception is reserved for genuine no-dependencies mode
         } finally {f.close();}
     }
 });
+
+test('nested owned library names use portable forward slashes for CLI imports', async () => {
+    const f = fixture(); try {
+        const source = 'export const nested = 17;\n';
+        f.put('overlay/scratch-gui/src/lib/deep/nested.js', source);
+        f.put('packages/scratch-gui/src/lib/deep/nested.js', source);
+        assert.ok(f.boundary.inspect().libraryHashes.some(([rel]) => rel === 'deep/nested.js'));
+        assert.equal((await f.boundary.import('deep/nested.js')).nested, 17);
+    } finally {f.close();}
+});
