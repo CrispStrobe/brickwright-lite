@@ -124,6 +124,7 @@ import {lowerStaticCallbackHelpers} from './static-callback-helpers.js';
 import {arcadeProjectSource} from './project-source.js';
 import {parseMakeCodeTs} from './ts-import.js';
 import {BaseTranslator, bodyOf, num, tsText} from './translate-base.js';
+import {analyseSourceValueProducers} from './source-value-producers.js';
 import {
     parseImageLiteral,
     parseJres,
@@ -5148,6 +5149,25 @@ export function arcadeToPseudocode (files, opts = {}) {
         return value.type === 'Member' ? value.name === 'img' : value.type === 'Index' &&
             (value.index?.type !== 'String' || value.index.value === 'img');
     };
+    let imageIndexFacts = null;
+    if (containsAst(parsed, node => node.type === 'Index')) {
+        try {
+            imageIndexFacts = analyseSourceValueProducers(parsed, {arrayValues:true, parenthesized:true,
+                unboundIsOpaque:true, opaqueDeclarationValues:true, uninitializedLocalsAreOpaque:true,
+                declaredLocalUndefined:true});
+        } catch (error) {
+            t.unsupported.push(`Image literal configured Array index proof refused: ${error.message}`);
+        }
+    }
+    const safeImageIndex = node => {
+        const facts = imageIndexFacts;
+        if (!facts || !facts.arrayAllocationsAt(node.object).length ||
+            !facts.arrayMapReceiverSafeAt(node.object) || facts.arrayConstraintErrorsAt(node.object).length ||
+            node.object?.type === 'Identifier' && !facts.isInitializedAt(node.object)) return false;
+        const types = facts.typesAt(node.index);
+        if (types.size !== 1 || !types.has('Number')) return false;
+        return !containsAst(node.index, value => value.type === 'Identifier' && !facts.isInitializedAt(value));
+    };
     const imgBound = containsAst(parsed, node =>
         node.type === 'Declaration' && node.decls.some(decl => decl.name === 'img') ||
         ['FunctionDeclaration', 'FunctionExpression', 'Class', 'Enum', 'Namespace', 'ForOf'].includes(node.type) && node.name === 'img' ||
@@ -5155,10 +5175,9 @@ export function arcadeToPseudocode (files, opts = {}) {
         // This bounded source domain does not interpret ambient objects, tag
         // escapes or dynamic code/reflection. Refuse them even in unused bodies
         // rather than trying to prove every possible aliased host mutation.
-        node.type === 'Identifier' && ['img', 'globalThis', 'window', 'self', 'eval', 'Function', 'Reflect'].includes(node.name) ||
+        node.type === 'Identifier' && ['img', 'this', 'globalThis', 'window', 'self', 'eval', 'Function', 'Reflect'].includes(node.name) ||
         node.type === 'Member' && node.name === 'constructor' ||
-        node.type === 'Index' && node.index?.type === 'String' &&
-            ['constructor', 'eval', 'Function'].includes(node.index.value) ||
+        node.type === 'Index' && !safeImageIndex(node) ||
         node.type === 'Unknown');
     const occupiedImageNames = new Set(['Game', 'Stage']);
     containsAst(ast, node => {

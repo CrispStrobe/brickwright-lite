@@ -144,3 +144,28 @@ test('ambient escapes and dynamic code remain outside generic literal ownership'
         assert.equal(result.costumes.length, 0, configured);
     }
 });
+
+
+test('unresolved computed access and unknown this ownership cannot borrow literal authority', () => {
+    for (const configured of [
+        'let f: any = () => 0; let build = f["con" + "structor"]; build("img = replacement")();',
+        'let f: any = () => 0; let key = "constructor"; let build = f[key]; build("img = replacement")();',
+        'let host = this; host.img = replacement;',
+        'this.img = replacement;',
+        'let values: any[]; let item = values[0];',
+        'let values = [1]; let index; let item = values[index]; index = 0;',
+        'let values = [1]; inspect(values); let item = values[0];'
+    ]) {
+        const result = arcadeToPseudocode(neighbor + configured + `\nlet picture = ${literal};`);
+        assert.ok(result.unsupported.some(message => /unshadowed img binding/.test(message)), configured);
+        assert.equal(copies(result.code).length, 0, configured);
+        assert.equal(result.costumes.length, 0, configured);
+    }
+});
+
+test('an initialized actual Array and actual Number index remain in the bounded source domain', () => {
+    const result = arcadeToPseudocode(neighbor + `let values = [1, 2]; let index = 0; let value = values[index]; let picture = ${literal};`);
+    assert.ok(!result.unsupported.some(message => /unshadowed img binding|configured Array index proof/.test(message)), result.unsupported.join('\n'));
+    assert.equal(copies(result.code).length, 1);
+    assert.deepEqual(Array.from(svgToPixels(result.costumes[0].svg).pixels), [1, 0, 0, 2]);
+});

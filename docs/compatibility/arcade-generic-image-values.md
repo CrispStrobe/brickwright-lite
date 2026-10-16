@@ -32,7 +32,14 @@ AST nodes refuse the configured writer census. Any configured ambient handle
 access, reflection handle or constructor-based dynamic code access also refuses
 this domain, including uses in unused helpers. This deliberately leaves safe
 programs unadmitted; it does not interpret arbitrary JavaScript effects or prove
-all host-object aliasing. Existing unsupported call/body diagnostics remain.
+all host-object aliasing. Unknown `this` ownership is conservatively refused,
+including class uses that have not been proved for this source domain. Computed
+access is admitted only when the existing actual-value graph proves initialized
+Array allocations, compatible all writers without escape, and an initialized
+actual Number index. An Array annotation, a string key or a computed constructor
+spelling supplies none of that proof. Other computed access remains unadmitted;
+there is no constructor-name constant folding or dynamic effect interpreter.
+Existing unsupported call/body diagnostics remain.
 Unreadable pixels retain the named diagnostic. More precise lexical admission
 can later accept additional programs without making unknown tags authoritative.
 
