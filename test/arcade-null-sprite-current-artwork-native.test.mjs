@@ -81,7 +81,8 @@ async function currentArchive(run,label){
         const member=zip.file(costume.md5ext);assert.ok(member,'current saved asset '+costume.md5ext);const svg=await member.async('text');
         const same=saved.targets.find(item=>item.id===target.id);assert.ok(same?.costumes.some(item=>item.assetId===costume.assetId&&item.md5ext===costume.md5ext),'current graph and saved graph join by target/asset');
         if(images.has(costume.assetId))assert.equal(images.get(costume.assetId),svg,'duplicate asset identity has exact same bytes');
-        images.set(costume.assetId,svg);inventory.push({target:target.name,assetId:costume.assetId,md5ext:costume.md5ext,name:costume.name,svg,...artwork(svg)});
+        images.set(costume.assetId,svg);const indexed=svgToPixels(svg);
+        inventory.push({target:target.name,assetId:costume.assetId,md5ext:costume.md5ext,name:costume.name,svg,sha256:sha(Buffer.from(svg)),indexed:indexed?{width:indexed.width,height:indexed.height,pixels:Array.from(indexed.pixels)}:{status:'not-indexed-SVG'}});
     }
     record(label+'-archive',{project,saved,sb3SHA256:sha(bytes),inventory});
     return{project,bytes,images,inventory};
