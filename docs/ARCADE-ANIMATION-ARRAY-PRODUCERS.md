@@ -79,3 +79,12 @@ The rich companion uses an immutable copy of the original admitted serialized
 document. A later callback edit therefore preserves the earlier consistent
 source and native artwork in partial output while the final currentness check
 reports the edit. Partial output never counts as a clean current export.
+
+Array facts additionally require the same full document validator used by the
+editor's resource publisher. Behavior-only normalized inputs may still retain
+their existing export and diagnostic path; they cannot acquire Array authority
+when the publisher would reject them. Normalized behavior-only resource identifiers retain their existing rules.
+Published version 4 and 5 documents use the existing UUID identity schema.
+The authored positive controls use complete valid artwork documents. Typed
+pixel data controls exercise snapshot currentness while retaining the full
+publisher's refusal to admit that unpublished document representation.

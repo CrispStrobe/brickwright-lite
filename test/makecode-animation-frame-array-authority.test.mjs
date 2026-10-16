@@ -5,7 +5,7 @@ import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export
 import {createArrayReferenceExportAuthority} from '../overlay/scratch-gui/src/lib/bw-makecode/array-reference-export-authority.js';
 import {createAnimationFrameArrayProducers} from '../overlay/scratch-gui/src/lib/bw-makecode/animation-frame-array-producers.js';
 
-const id = 'authored-walk';
+const id = '12345678-1234-4234-8234-123456789abc';
 const document = (typed = false) => {
     const frames = [2, 8].map((colour, index) => ({id: `f${index}`, durationMs: 100, activeLayerId: 'pixels',
         layers: [{id: 'pixels', name: 'Pixels', locked: false, type: 'pixel', visible: true, opacity: 1,
@@ -119,6 +119,21 @@ test('missing duplicate invalid and dynamic resource selections never supply Arr
     }
     const dynamic = parsed(program().replace(`resource "${id}"`, 'resource (key)'));
     check(dynamic.project, {animationDocuments: [document()]}, false);
+    for (const mutate of [
+        d => {d.animation.resource.id = 'normalized-external-name';},
+        d => {d.animation.activeFrameId = 'missing';},
+        d => {d.animation.frames[0].activeLayerId = 'missing';},
+        d => {d.version = 99;},
+        d => {delete d.layers;}
+    ]) {
+        const d = document(); mutate(d);
+        const actualID = d.animation.resource.id;
+        const c = parsed(program().replaceAll(id, actualID)), options = {animationDocuments: [d]};
+        const plan = createAnimationFrameArrayProducers(options);
+        assert.ok(plan.entries[0].resource, 'normalization alone accepts this data');
+        assert.equal(typeof plan.entries[0].publicationError, 'string');
+        check(c.project, options, false);
+    }
 });
 
 test('resource pixels duration frame order and palette mutations expire an issued proof', () => {
@@ -135,16 +150,22 @@ test('resource pixels duration frame order and palette mutations expire an issue
     }
 });
 
-test('typed pixel bytes and view replacement expire proofs without retaining descriptor objects per pixel', () => {
+test('typed unpublished pixel data stays unproved while its compact plan detects bytes and view replacement', () => {
     for (const mutate of [
         image => {image.pixels[0] = 7;},
         image => {image.pixels = new Uint8Array(image.pixels);},
         image => {image.pixels = new Uint8Array(image.pixels.buffer, 1, 1);}
     ]) {
         const c = parsed(program()), d = document(true), options = {animationDocuments: [d]};
-        const {target, node, proof} = check(c.project, options);
+        // Typed pixels normalize, but the current editor publisher requires
+        // actual JSON pixel Arrays. They must not establish a runtime producer.
+        check(c.project, options, false);
+        const plan = createAnimationFrameArrayProducers(options);
+        assert.ok(plan.entries[0].resource);
+        assert.equal(typeof plan.entries[0].publicationError, 'string');
+        assert.equal(plan.isCurrent(), true);
         mutate(d.animation.frames[0].layers[0].content.value);
-        assert.equal(proof.validateInput(target, node).ok, false);
+        assert.equal(plan.isCurrent(), false);
     }
 });
 

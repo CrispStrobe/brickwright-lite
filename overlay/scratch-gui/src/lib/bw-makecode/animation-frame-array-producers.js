@@ -1,4 +1,5 @@
 import {animationResourceFromDocument} from '../bw-animation-resources.js';
+import {validateDocument} from '../bw-artwork-bundle.js';
 
 // Documents are inputs to this export, not type annotations. Retain actual
 // nested identities and data so a replacement or in-place edit cannot reuse a
@@ -104,9 +105,14 @@ export const createAnimationFrameArrayProducers = options => {
             for (const document of documents) {
                 try {
                     const resource = normalized(animationResourceFromDocument(document));
-                    const entry = Object.freeze({document, snapshotDocument: immutableSource(document), resource});
+                    // Normalized behavior export accepts a broader input form
+                    // than the editor's resource publisher. Only a document the
+                    // actual publisher can admit establishes an Array producer.
+                    let publicationError = null;
+                    try { validateDocument(document); } catch (error) { publicationError = error.message; }
+                    const entry = Object.freeze({document, snapshotDocument: immutableSource(document), resource, publicationError});
                     entries.push(entry);
-                    if (counts.get(resource.id) === 1) resources.set(resource.id,
+                    if (publicationError === null && counts.get(resource.id) === 1) resources.set(resource.id,
                         {resource, sharedAllocation: Object.freeze({})});
                 } catch (error) { entries.push(Object.freeze({document, error: error.message})); }
             }
