@@ -43,11 +43,11 @@ test('info7 source census stays independently bounded',()=>{
     assert.equal(ordinaryPrimitiveSdkNumberCalls(unsafe).has(call),false,'clock does not widen deep info use');
 });
 
-test('two ordinary Number call sites and Number text keep existing editable scene reporter',()=>{
+test('two ordinary Number call sites and Number text keep existing editable scene reporter',t=>{
     const result=arcadeToPseudocode('let seen=0;function receive(value:number){seen=value}receive(game.runtime());receive(game.runtime());let text=game.runtime().toString();');
     assert.deepEqual(result.unsupported,[]);assert.deepEqual(result.warnings,[]);assert.match(result.code,/arcade scene runtime milliseconds/);
     const creator=new Creator();creator.parse(result.code);assert.deepEqual(creator.errors,[]);assert.deepEqual(creator.warnings,[]);assert.deepEqual(creator.unparsed,[]);
-    const out=projectToArcade(creator.project);assert.deepEqual(out.unsupported,[]);assert.deepEqual(out.warnings,[]);assert.match(out.ts,/game\.runtime\(\)/);
+    const out=projectToArcade(creator.project);t.diagnostic(JSON.stringify({stage:'actual source and current formal/caller export',result,creator:{warnings:creator.warnings,errors:creator.errors,unparsed:creator.unparsed},current:creator.project,out}));assert.deepEqual(out.unsupported,[]);assert.deepEqual(out.warnings,[]);assert.match(out.ts,/game\.runtime\(\)/);
 });
 
 test('current export refuses a malformed scene reporter and a borrowed parent edge',()=>{
@@ -66,4 +66,29 @@ test('class instance this is bounded separately from ambient or nested-function 
     const proof=ordinarySceneClockNumberCalls(safe);for(const call of runtimeCalls(safe))assert.equal(proof.has(call),true);
     const unsafe=ast('class Timer {start:number;constructor(){this.start=game.runtime();function unused(){let root=this;root.game.runtime=()=>1}}}');
     assert.equal(ordinarySceneClockNumberCalls(unsafe).has(runtimeCalls(unsafe)[0]),false);
+});
+
+
+test('current typed caller clock facts require the same exact connected reporter as emission',t=>{
+    const result=arcadeToPseudocode('let seen=0;function receive(value:number){seen=value}receive(game.runtime());receive(game.runtime());');
+    const creator=new Creator();creator.parse(result.code);assert.deepEqual(result.unsupported,[]);assert.deepEqual(creator.errors,[]);assert.deepEqual(creator.warnings,[]);assert.deepEqual(creator.unparsed,[]);
+    for(const mode of ['extra input','extra field','shadow','top level','next','mutation','wrong parent','duplicate dictionary identity','shared block edge','shared shadow edge','other clock opcode']){
+        const project=JSON.parse(JSON.stringify(creator.project)),target=project.targets.find(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_sceneMillis'));
+        const [id,node]=Object.entries(target.blocks).find(([,block])=>block.opcode==='arcade_sceneMillis'),parent=target.blocks[node.parent];
+        if(mode==='extra input')node.inputs.EXTRA=[1,[4,'1']];
+        if(mode==='extra field')node.fields.EXTRA=['bad',null];
+        if(mode==='shadow')node.shadow=true;
+        if(mode==='top level')node.topLevel=true;
+        if(mode==='next')node.next=Object.keys(target.blocks).find(other=>other!==id);
+        if(mode==='mutation')node.mutation={tagName:'mutation',children:[]};
+        if(mode==='wrong parent')node.parent=Object.keys(target.blocks).find(other=>other!==id&&target.blocks[other]!==parent);
+        if(mode==='duplicate dictionary identity')target.blocks.authoredDuplicateClock=node;
+        if(mode==='shared block edge')parent.inputs.EXTRA=[2,id];
+        if(mode==='shared shadow edge')parent.inputs.EXTRA=[3,[4,'0'],id];
+        if(mode==='other clock opcode')node.opcode='arcade_programMillis';
+        const out=projectToArcade(project);t.diagnostic(JSON.stringify({stage:'malformed current typed clock caller',mode,current:project,out}));
+        assert.ok(out.unsupported.some(message=>message.includes('Procedure parameter constraint: actual current caller or writer requires Number')),mode+' cannot seed the formal Number graph');
+        if(mode!=='other clock opcode')assert.ok(out.unsupported.some(message=>message.includes('Scene clock Number:')),mode+' has the same emission refusal');
+        assert.deepEqual(out.warnings,[]);
+    }
 });

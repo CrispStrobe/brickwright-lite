@@ -21,6 +21,16 @@ import {prepareObjectClassExport} from './object-class-export.js';
 import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
 import {LEGACY_CHARACTER_NATIVE_IDENTITY} from './legacy-character-source-admission.generated.js';
 const LEGACY_CHARACTER_REVISION=LEGACY_CHARACTER_NATIVE_IDENTITY.revision;
+// Serialized current-graph eligibility only, never a runtime completion receipt.
+// Expression emission and formal/caller inference must use the same exact proof.
+function currentSceneClockNumber(blocks,block) {
+    if(!block||block.opcode!=='arcade_sceneMillis')return false;
+    const ids=Object.keys(blocks||{}).filter(id=>blocks[id]===block),id=ids[0],parent=id&&blocks[block.parent],uses=[];
+    for(const node of Object.values(blocks||{}))for(const slot of Object.values(node.inputs||{}))
+        if(Array.isArray(slot))for(let index=1;index<slot.length;index++)if(slot[index]===id)uses.push({node,index});
+    return ids.length===1&&block.shadow===false&&block.topLevel===false&&block.next==null&&block.mutation==null&&
+        !Object.keys(block.fields||{}).length&&!Object.keys(block.inputs||{}).length&&!!parent&&uses.length===1&&uses[0].node===parent&&uses[0].index===1;
+}
 /**
  * A Scratch project -> MakeCode Arcade TypeScript: the way back from
  * arcade-translate.js, and the way OUT for a game made here.
@@ -1860,11 +1870,7 @@ class ArcadeEmitter {
             return 'false';
         }
         case 'arcade_sceneMillis': {
-            const ids=Object.keys(this.blocks||{}).filter(id=>this.blocks[id]===b),id=ids[0],parent=id&&this.blocks[b.parent];
-            const uses=[];for(const node of Object.values(this.blocks||{}))for(const slot of Object.values(node.inputs||{}))
-                if(Array.isArray(slot))for(let index=1;index<slot.length;index++)if(slot[index]===id)uses.push({node,index});
-            if(ids.length!==1||b.shadow!==false||b.topLevel!==false||b.next!=null||b.mutation!=null||
-                Object.keys(b.fields||{}).length||Object.keys(b.inputs||{}).length||!parent||uses.length!==1||uses[0].node!==parent||uses[0].index!==1) {
+            if(!currentSceneClockNumber(this.blocks,b)) {
                 this.note('Scene clock Number: current zero-input reporter or unique parent differs');return 'undefined';
             }
             return 'game.runtime()';
@@ -3133,6 +3139,7 @@ class ArcadeEmitter {
                 if(['arcade_bufferLength','arcade_bufferHash','arcade_bufferGetByte','arcade_bufferGetNumber','arcade_bufferIndexOf','arcade_bufferFormatSize','arcade_bufferPackedSize'].includes(value.opcode)){const id=Symbol('buffer number');numbers.add(id);return id;}
                 if(['arcade_bufferToHex','arcade_bufferToText','arcade_bufferToBase64'].includes(value.opcode)){const id=Symbol('buffer text');strings.add(id);return id;}
                 if(['arcade_bufferIsReadOnly','arcade_bufferEquals'].includes(value.opcode)){const id=Symbol('buffer readonly');booleans.add(id);return id;}
+                if(currentSceneClockNumber(blocks,value)) {const id=Symbol('current scene clock Number');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                 if(value.opcode==='bw_numberLiteral' || value.opcode==='math_number') {const id=Symbol('number value');numbers.add(id);inspectionLeaves.set(id,'number');return id;}
                 if(value.opcode==='bw_stringLiteral') {const id=Symbol('string value');strings.add(id);inspectionLeaves.set(id,'string');return id;}
                 if(['arrays_valueBinary','arrays_valueUnary'].includes(value.opcode)) {

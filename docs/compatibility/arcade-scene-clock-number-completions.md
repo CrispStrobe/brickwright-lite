@@ -1,6 +1,9 @@
 # Scene-clock Number completion boundary
 
-Development candidate; controls are authored but unexecuted on this source.
+Development candidate; actual pure controls passed 63 of 64 before exposing a
+current-export formal/caller inference gap. The source successor shares the exact
+serialized reporter eligibility proof between emission and type inference; its
+new controls and all native controls still need qualification.
 Read the [claim and acceptance](../ARCADE-CLOCK-NUMBER-PRODUCER.md).
 
 ## Source and current export
@@ -19,7 +22,9 @@ bounded source proof. Computed access has only the existing initialized actual
 Array/Number-index/all-writer/no-escape exception. No arbitrary JavaScript effect
 interpreter or broad SDK return table is provided. The existing info census is
 unchanged. Actual current export checks the scene reporter's zero-input/field
-shape and unique connected parent; reimport proves emitted current source.
+shape and unique connected parent. That same current-graph eligibility seeds
+formal/caller static inference; it creates no runtime completion receipt.
+Reimport independently proves emitted current source.
 
 ## Physical completion
 
