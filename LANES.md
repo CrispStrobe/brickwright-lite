@@ -112,22 +112,16 @@ iPad/hub physical acceptance remains separately pending device availability.
 
 ## A12 — Circuit Playground Express MakeCode translator — 2026-10-16
 
-IMPLEMENTED CANDIDATE — Codex CPX translator lane, isolated worktree
-`wt-lite-a12-cpx-makecode-20261016`, branch `lane/a12-cpx-makecode-20261016`.
-Base `8da2afe2fe64f9301f9045796317e241314a26b5`. Contract: task A12 in
-[the owner-selected queue](docs/OPEN-TASKS-2026-09-29.md), following the delivered
-[A9 device world](docs/A9-CPX-SCOPING.md).
-
-Candidate controls: 59 focused host checks pass with zero failures; one existing runtime
-bridge check is unavailable locally and remains required in hosted CI. Thirteen
-independent source/control mutations are detected. All 244 pinned documentation
-fences are accounted for with zero silent call losses; prior census sections and
-135 other importer methods remain byte-identical. The original diagnostic has
-ten exact matching comparisons and five retained timing failures; its complete
-production CPX browser journey passes. This combined candidate implements ten
-strict comparisons and five named exact timing-boundary controls, with fresh
-exact-head CI and affected hosted qualification still required before merge.
-[Behaviour and limits](docs/A12-CPX-TRANSLATOR.md).
+DONE — Codex CPX translator lane. [PR1009](https://github.com/CrispStrobe/brickwright-lite/pull/1009)
+merged as `e0b89072` on 2026-10-16, with reviewed source `16dda603`.
+All 11 enabled exact-head checks passed; deploy and verify-gui were declared
+conditional skips. Both complete unit shards passed, including all fifteen
+CPX comparisons and the zero-raw-stdout census. Ten programs match exactly;
+five separately named controls enforce both exact documented timing boundaries.
+The complete actual CPX browser journey passed import, original-source export
+and simulation, native Start, button A and Shake. The reviewed merge preserves
+newer peer work, with landed parents and tree matching the prediction.
+[Behaviour, evidence and limits](docs/A12-CPX-TRANSLATOR.md).
 
 Own a new `overlay/scratch-gui/src/lib/bw-makecode/adafruit-translate.js`;
 CPX-only target inference/import dispatch in that directory's `index.js`;
