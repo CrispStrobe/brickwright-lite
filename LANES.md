@@ -1,3 +1,37 @@
+## Code conversion: preserve newer editor ownership — 2026-10-16
+
+PROPOSED — SPIKE integration follow-up, branch
+`lane/code-conversion-editor-ownership-claim-20261016`. Merge this claim before
+implementation. Own the narrow conversion-completion and editor-buffer hooks in
+both `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
+and its `packages/scratch-gui` mirror, a focused
+`test/code-conversion-editor-ownership.test.mjs`, and this ledger.
+
+The 8086 browser gate observed an empty ASM editor after choosing its 8255
+example during reconstruction following a reload. Separately, a host diagnostic
+executing the actual conversion and example-loading methods reproduces an ASM
+example being cleared when an earlier conversion resumes from an authored
+`loadProject` wait. This establishes a reachable source overwrite; it does not
+establish the exact browser scheduling cause. Preserve the original browser
+failure and all existing assertions and resource bounds.
+
+A finishing conversion may regenerate editors and publish conversion feedback
+only while it still owns the captured editor work. Preserve later edits,
+example loads, language changes and newer conversions, including edit/revert
+and asynchronous project/extension boundaries. Keep ordinary conversion,
+explicit device-retarget compilation, error reporting and current busy cleanup
+working. Existing source/project admission checks remain required. Do not
+pretend the already-applied VM load was rolled back or silently replace a newer
+project. Broader project-transaction cancellation remains separate work.
+
+Before source merge require baseline counterexamples, normal/current-error
+controls, nonvacuous guard mutations, every enabled exact-head CI check and
+affected clean application/own-guest qualification. Exercise the real 8086
+reload, example selection and local execution route; retain SPIKE caller,
+output and Stop controls. No timeout, assertion, baseline, dependency pin,
+compiler/runtime/firmware/model, protocol or workflow change. Coordinate other
+importer owners; preserve their existing hooks and all unrelated lane sections.
+
 ## Scoped WeDo2 inventory gate repair — 2026-10-15
 
 IMPLEMENTED, hosted qualification pending — SPIKE G02 integration follow-up.
@@ -4889,3 +4923,25 @@ Local initialization transport (**C**), startup wrapper composition (**D**) and
 callback alias/formal allocation (**E**) remain tracked open work, not permission
 for source changes here. No runtime/ABI/domain, supplier/pin, GUI or workflow
 change; no stable whole-project or compatibility-count claim from source shape.
+
+
+## Ordinary local initializer transport: C1 — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this separate claim
+before implementation: [local initializer transport](docs/ARCADE-LOCAL-INITIALIZER-TRANSPORT.md).
+Own a narrow current-graph ordinary-procedure first primitive-write planner,
+coordinated local/header emission in `export-arcade.js`, focused controls and
+capability notes. At the actual proved first write, emit its initialized
+local declaration instead of adding a synthetic header plus that same write.
+Prove actual owner/cell/node identity, literal-prefix order, no earlier read or
+capture/exposure, and currentness across callbacks. Preserve every later explicit
+write, including identical null/zero resets; uncertain cases keep the old path.
+
+No generated-name authority, source restoration, default/Undefined/null policy
+change or generic declaration-only transport. Exclude callbacks/hats/startup,
+managed/class/captured locals, allocation/effectful initializers and C2/D/E.
+No runtime ABI, producer/domain, engine, supplier/pin or workflow changes.
+Existing Array receiver and A/B ownership remain separate. Require meaningful
+source/current Code/Blocks/save/export and affected own native controls; visible
+GUI, stable full projects and compatibility counts need their own evidence.
+All unrelated owners and retained failures remain preserved.
