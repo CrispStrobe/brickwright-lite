@@ -6,6 +6,7 @@ import {admitArcadeNativeSource} from './native-source-admission.js';
 import {decodeMkcdImage, parseJres} from './arcade-assets.js';
 import {SONG_MIME} from './song-jres.js';
 import {toImgLiteral} from './pixel-image.js';
+import {createFixedImageResourceMaterializer} from './fixed-jres-images.js';
 
 const ROOT = '__bwDependencyInputs/';
 const safePath = name => typeof name === 'string' && name && !name.startsWith('/') &&
@@ -59,6 +60,7 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
         // here (and overwrite the root project's actual factory).
     }
     files[`${ROOT}resources.jres`] = JSON.stringify(resources);
+    const materializeFixedImages = createFixedImageResourceMaterializer(originalFiles,resolved);
     for (const {id, file} of resolved.sourceOrder) {
         if (typeof id !== 'string' || !id || !safePath(file)) throw new Error('Unsafe dependency source identity');
         const pkg = resolved.packages[id];
@@ -90,7 +92,7 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
         const generated = pkg.assetPack && file === 'gallery.ts';
         const path = `${ROOT}${encodeURIComponent(id)}/${file}`;
         if (Object.prototype.hasOwnProperty.call(files, path)) throw new Error(`Duplicate dependency input: ${path}`);
-        let source = pkg.files[file];
+        let source = pkg.files[file], fixedImageResources = [];
         if (generated) source = source.replace(/export const ([\w$]+) = image\.ofBuffer\(hex``\);/g, (declaration, name) => {
             const key = `${pkg.assetNamespace}.${name}`;
             const image = decodeMkcdImage(resolved.jres[key]?.data);
@@ -99,9 +101,13 @@ export function prepareArcadeDependencyInputs (originalFiles, resolved) {
             // with JRES buffers. Materialize the same pixels for native parsing.
             return `export const ${name} = ${toImgLiteral(image)};`;
         });
+        if (!generated) {
+            const materialized = materializeFixedImages(id,file,source);
+            source = materialized.source;fixedImageResources = materialized.resources;
+        }
         files[path] = source;
         names.push(path);
-        provenance.push({id, file, path, generated});
+        provenance.push({id, file, path, generated, ...(fixedImageResources.length ? {fixedImageResources} : {})});
     }
     for (const [name, content] of Object.entries(resolved.generatedRootFiles || {})) {
         if (!safePath(name) || !/\.g\.ts$/.test(name) || typeof content !== 'string') {
