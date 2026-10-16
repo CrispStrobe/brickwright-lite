@@ -38,7 +38,7 @@ qualify all enabled final-head checks before landing source.
 
 ## Compose STM32 PR975 after circuit PR965 — 2026-10-16
 
-CLAIMED — Codex root, isolated `/tmp/brickwright-stm32-compose-20261016`,
+IMPLEMENTED / QUALIFICATION PENDING — Codex root, isolated `/tmp/brickwright-stm32-compose-20261016`,
 branch `lane/stm32-compose-20261016`, base main `5cb83052330b400b48293315260cb4293b4f6bcf`.
 The user explicitly requested completion of these integrations in order. PR965
 is now merged; a read-only merge of PR975 `943d540c7` reports thirteen conflicts.
@@ -61,6 +61,21 @@ owner work rather than dropping it. Merge this claim to remote main before
 implementation. Require identity/notice/pin reader controls, affected STM32
 and circuit controls and all enabled exact-head CI before merging the combined
 candidate; no installed or physical validation is inferred.
+
+Composition receipts: claim PR1016 merged before implementation. All thirteen
+conflicts resolved without changing original assertions or supplier runtime;
+canonical package/lock/notice writers retain CUI1db, Boardf84 and SBCa13.
+Installed root and GUI provenance, metadata, notices and mirrored facts pass.
+Focused affected controls: 78 passed; the one source-identity skip was separately
+rerun against an isolated SBC checkout at a13 and passed all four controls with
+zero skips. Thirteen x86 reach/compiler/mutation controls also pass. The exact
+Board census, language matrix, 8086 report and part-profile readers pass; the
+matrix writer corrected a stale abbreviated Board label. The generic SBC sync
+check refuses an intentionally pinned checkout behind current supplier main;
+the exact-pin 19-file vendor-identity gate passes instead, with no bypass or pin
+expansion. The standard GUI build passes; explicit production build and browser
+qualification are in progress. All enabled final-head CI remains a landing gate.
+Original PR975 head rechecked unchanged at 943d540c7 before this candidate commit.
 
 ## A13 — CPX live circuit face adoption — 2026-10-16
 
@@ -5563,7 +5578,7 @@ This is a negative baseline, not final adoption acceptance. Fourteen host/dock
 controls and the script syntax check pass after the diagnostic change.
 ## STM32 composition: original 386 boot register reader — 2026-10-16
 
-CLAIMED — Codex root, branch `lane/stm32-compose-20261016`, isolated
+DONE candidate — Codex root, branch `lane/stm32-compose-20261016`, isolated
 `/tmp/brickwright-stm32-compose-20261016`, amendment based on main `e1e5bc30b`.
 Merge this claim before changing the existing synthetic boot assertion in
 `scripts/verify-i80386-local-hdd-gui.mjs`: read the selected supplier's `edi`
@@ -5582,6 +5597,18 @@ of those scenarios. Preserve any newer owner work during normal composition.
 No relaxed comparison, fallback register name, timeout increase, skipped gate,
 CI bypass or source rewrite is permitted. The corrected actual browser gate
 and all enabled final-head source checks must pass before integration merge.
+
+The original synthetic check now reads `edi` with all other comparisons and
+timeouts unchanged. The unchanged original failed locally at45000ms and in both
+hosted light jobs; those logs remain retained. The corrected production journey
+passes using the same selected Boardf84, owned disk SHA256
+`f9e63c15c20fc87058d053c3badbc0d146206543af0dc2af7a7e05537184474a`
+and unchanged config: halted PC31770, VGA720×400, actual guest pixels equal the
+video frame, nonblack marker and zero browser errors. Receipt and screenshot:
+`/tmp/brickwright-stm32-hdd-fixed.log`, `/tmp/brickwright-stm32-hdd-fixed.png`.
+The failed original is the regression negative; no duplicate source-spelling
+test is added for this one-line reader fix. One automatic fresh final-head CI
+set remains required before PR1017 merges; original PR975 remains untouched.
 
 ## CPX translator qualification diagnostic transport — 2026-10-16
 
