@@ -5951,6 +5951,7 @@ class PseudocodeImporter extends React.Component {
                                 {this.L.asmExampleLabel}
                                 <select
                                     data-testid="bw-asm-examples"
+                                    disabled={this.state.busy}
                                     onChange={e => this.loadAsmExample(e.target.value)}
                                     style={{padding: '2px 6px', borderRadius: 4, border: '1px solid #cbd5e1'}}
                                     value=""

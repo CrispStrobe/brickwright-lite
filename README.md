@@ -27,10 +27,11 @@ Android (see the repository's **Actions** and **Releases**).
 ### Design and measure circuits
 
 Drag parts onto a breadboard, wire them together, and press the green flag.
-A real analog circuit engine — modified nodal analysis, the same technique
-SPICE uses — solves the whole board every frame, so you see node voltages, how
-brightly each LED lights, the pitch of a buzzer, and live meter readings as you
-change things.
+An analog circuit engine uses modified nodal analysis to solve supported
+electrical models. State and measurements follow simulation time, independently
+of display frames, so you can see node voltages, LED brightness and meter
+readings as you change things. Model coverage and accuracy vary by component;
+a successful numerical solve is not physical-device certification.
 
 - A full parts bin: power, resistors, capacitors and other passives, LEDs,
   transistors and MOSFETs, logic ICs, sensors, displays, motors, servos,
@@ -41,6 +42,14 @@ change things.
 - A realistic board view plus an automatically generated schematic.
 - Open and save circuits in the common formats: **KiCad, EasyEDA, EAGLE and
   LTspice**.
+
+For repeatable headless measurements, the pinned `bw-circuit-ui` package also
+provides the `bwc` CLI: voltage traces, signed meter readings, finite streaming
+captures, saved receipts and explicit reference comparisons. Invoke it with
+`node node_modules/bw-circuit-ui/bin/bwc.mjs`. See the
+[CLI instrument guide](https://github.com/CrispStrobe/bw-circuit-ui/blob/master/docs/CLI-INSTRUMENTS.md)
+for supported models, sample rates and bounded precision captures. CLI and GUI
+acquisition limits differ; neither implies an unmodelled oscilloscope front end.
 
 ### Program with blocks — or with code, and switch freely
 
