@@ -1,5 +1,5 @@
 import {sourceImageArrayCloneEffects} from './source-value-producers.js';
-import {currentSharedImageSourceEffects,sharedImageSourceContextCurrent,sourceOverlapDestroyNonExposure,sourceScoreHudVisibilityNonExposure} from './shared-image-array-source-effects.js';
+import {currentSharedImageSourceEffects,sharedImageSourceContextCurrent,sourceOverlapDestroyNonExposure,sourceSharedImageSdkCallEffects} from './shared-image-array-source-effects.js';
 import {analyseCallableBindings} from './callable-bindings.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {parseExactImgLiteral} from './arcade-assets.js';
@@ -243,12 +243,14 @@ function prove(program, sourceContext = null) {
             ['left','right','top','bottom'].includes(target.name))continue;
         return null;
     }
-    let overlapDestroyEffects,imageArrayCloneEffects,scoreHudEffects;
+    // These local SDK profiles are conditional inputs only. The complete
+    // retained body/ref/writer/entry proof above and below remains mandatory.
+    let overlapDestroyEffects,imageArrayCloneEffects;const sdkRequests=[];
     for(const node of nodes)if(node.type==='Call' && node.callee.type==='Member') {
         if(sdk.has(node.callee)) {
             if(!sdkEffects.has(path(node.callee))&&!musicPlaybackEffect(node)) {
-                if(path(node.callee)!=='info.showScore'||
-                    !(scoreHudEffects ||= sourceScoreHudVisibilityNonExposure(program,sourceContext))?.has(node))return null;
+                if(!['info.showScore','Buffer.fromHex','controller.A.onEvent'].includes(path(node.callee)))return null;
+                sdkRequests.push(node);
             }
         }
         else if(!methods[kind(node.callee.object)]?.has(node.callee.name)) {
@@ -259,7 +261,9 @@ function prove(program, sourceContext = null) {
                 !(imageArrayCloneEffects ||= sourceImageArrayCloneEffects(program,sourceContext))?.has(node))return null;
         }
     }
-    return {...physical,current:()=> (!scoreHudEffects||scoreHudEffects.current())&&physical.current()&&(!sourceContext||sharedImageSourceContextCurrent(sourceContext)),candidates,selections};
+    const sdkCallEffects=sdkRequests.length?sourceSharedImageSdkCallEffects(program,sourceContext,sdkRequests):null;
+    if(sdkRequests.length&&!sdkCallEffects)return null;
+    return {...physical,current:()=> (!sdkCallEffects||sdkCallEffects.current())&&physical.current()&&(!sourceContext||sharedImageSourceContextCurrent(sourceContext)),candidates,selections};
 }
 
 /** Private plan for one current compiler input. No decoder or predicate option. */

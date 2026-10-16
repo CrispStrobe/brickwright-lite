@@ -888,3 +888,93 @@ test('score HUD private certificate and finished transport retain sticky same Pr
     const final=finish(b).final;assert.ok(currentSharedImageArrayTransport(final));const currentCall=scoreHudCalls(final)[0],old=currentCall.args[0].value;
     currentCall.args[0].value=!old;assert.equal(currentSharedImageArrayTransport(final),null);currentCall.args[0].value=old;assert.equal(currentSharedImageArrayTransport(final),null,'restored actual AST cannot reactivate consumed HUD proof');
 });
+
+import {sourceSharedImageSdkCallEffects} from '../overlay/scratch-gui/src/lib/bw-makecode/shared-image-array-source-effects.js';
+const sharedSdkPath=node=>node?.type==='Identifier'?node.name:node?.type==='Member'?`${sharedSdkPath(node.object)}.${node.name}`:null;
+const sharedSdkRequests=program=>entryNodes(program).filter(node=>node.type==='Call'&&['info.showScore','Buffer.fromHex','controller.A.onEvent'].includes(sharedSdkPath(node.callee)));
+const literalPalette='000000ffffffff2121ff93c4ff8135fff609249ca378dc52003fad87f2ff8e2ec4a4839f5c406ce5cdc491463d000000';
+const bufferEffectSource=array+`let selected=pictures[0];info.showScore(false);let bytes=Buffer.fromHex("0011");image.setPalette(Buffer.fromHex("${literalPalette}"));info.showScore(true);console.log(selected.getPixel(0,0));`;
+const buttonEffectSource=array+'let selected=pictures[0];console.log(selected.getPixel(0,0));info.showScore(false);controller.A.onEvent(2049,function(){console.log(pictures[0].getPixel(0,0));});info.showScore(true);';
+const sharedSdkPublic=async(source,label,resolved=null)=>{
+    const f=typeof source==='string'?fixture(source):{original:source,resolved,prepared:prepareArcadeDependencyInputs(source,resolved)},imported=convert(f.prepared.files);clean(imported);
+    const creator=new Creator();creator.parse(imported.code);record({stage:label+'-Creator',project:creator.project,channels:channels(creator)});clean(creator);
+    for(const item of imported.costumes)assert.equal(item.mode==='add'?creator.addCustomSVGCostume(item.sprite,item.svg,item.name):creator.applyCustomSVG(item.sprite,item.svg),true);
+    const code=creator.decompile();record({stage:label+'-Code',code});
+    const bytes=Buffer.from(await(await creator.generateSB3()).arrayBuffer()),zip=await JSZip.loadAsync(bytes),members={};
+    for(const [name,item]of Object.entries(zip.files))if(!item.dir)members[name]=await item.async('base64');
+    record({stage:label+'-SB3',bytes:bytes.toString('base64'),members,project:creator.project});
+    const exported=projectToArcade(creator.project,{costumeSvg:(_target,costume)=>creator.assets.get(costume.assetId)?.data});record({stage:label+'-export',result:exported,channels:channels(exported)});clean(exported);
+    return {f,imported,creator,code,bytes,zip,members,exported};
+};
+const assertSharedSdkArtwork=async(first,second)=>{
+    assert.deepEqual(second.imported.costumes,first.imported.costumes,'full current SVG upload roles remain identical');
+    for(const run of [first,second])for(const upload of run.imported.costumes){
+        const targets=run.creator.project.targets.filter(target=>target.name===upload.sprite);assert.equal(targets.length,1);const costumes=targets[0].costumes;assert.equal(costumes.length,1);
+        const costume=costumes[0],asset=run.creator.assets.get(costume.assetId);assert.ok(asset);assert.equal(asset.type,costume.dataFormat);assert.equal(asset.filename,costume.md5ext);
+        assert.equal(asset.data,upload.svg);const member=run.zip.file(costume.md5ext);assert.ok(member);assert.deepEqual(await member.async('nodebuffer'),Buffer.from(upload.svg));
+        const project=JSON.parse(await run.zip.file('project.json').async('string')),saved=project.targets.filter(target=>target.name===upload.sprite);assert.equal(saved.length,1);assert.deepEqual(saved[0].costumes,costumes);
+    }
+};
+test('one exact SDK certificate retains HUD literal Buffer constructor and palette specialization through public archives',async()=>{
+    const b=boundary(fixture(bufferEffectSource)),calls=sharedSdkRequests(b.normalized),proof=sourceSharedImageSdkCallEffects(b.normalized,b.context,calls);assert.equal(calls.length,4);assert.ok(calls.every(call=>proof?.has(call)));assert.deepEqual([...finish(b).resource.frames.keys()],['pictures']);
+    const first=await sharedSdkPublic(bufferEffectSource,'sdk-buffer'),second=await sharedSdkPublic(first.exported.files,'sdk-buffer-reimport',first.f.resolved);
+    assert.ok(frames(first.imported.code).some(row=>row[1]==='pictures'));assert.equal(frames(second.imported.code).length,frames(first.imported.code).length);
+    for(const run of [first,second]){
+        const blocks=run.creator.project.targets.flatMap(target=>Object.values(target.blocks)),buffers=blocks.filter(block=>block.opcode==='arcade_bufferFromHex'),palettes=blocks.filter(block=>block.opcode==='arcade_setPalette');
+        assert.equal(buffers.length,1,'palette lowering must not duplicate the nested Buffer allocation');assert.deepEqual(buffers[0].inputs.HEX,[1,[10,'0011']]);
+        assert.equal(palettes.length,1);assert.deepEqual(palettes[0].inputs.DATA,[1,[10,literalPalette]]);assert.equal(blocks.filter(block=>block.opcode==='arcade_setHudVisibility').length,2);
+        const actual=parse(arcadeProjectSource(run.exported.files).source),calls=entryNodes(actual).filter(node=>node.type==='Call'&&sharedSdkPath(node.callee)==='Buffer.fromHex');assert.equal(calls.length,2);assert.deepEqual(calls.map(call=>call.args[0].value).sort(),['0011',literalPalette].sort());
+    }
+    await assertSharedSdkArtwork(first,second);
+});
+test('exact A button registration preserves real token handler body frame selections and ordered public transport',async()=>{
+    const b=boundary(fixture(buttonEffectSource)),requests=sharedSdkRequests(b.normalized),certificate=sourceSharedImageSdkCallEffects(b.normalized,b.context,requests);assert.equal(requests.length,3);assert.ok(requests.every(call=>certificate?.has(call)));assert.deepEqual([...finish(b).resource.frames.keys()],['pictures']);
+    const first=await sharedSdkPublic(buttonEffectSource,'sdk-button'),second=await sharedSdkPublic(first.exported.files,'sdk-button-reimport',first.f.resolved);
+    for(const run of [first,second]){
+        const rows=run.creator.project.targets.flatMap(target=>Object.entries(target.blocks).map(([id,block])=>({target,id,block}))),one=opcode=>{const found=rows.filter(row=>row.block.opcode===opcode);assert.equal(found.length,1,opcode);return found[0];};
+        const registration=one('arcade_registerButtonHandler'),handler=one('arcade_whenRegisteredButton');assert.equal(registration.target,handler.target);const blocks=handler.target.blocks;
+        const literal=(row,slot)=>{const input=row.block.inputs[slot];assert.equal(input[0],1);assert.ok(Array.isArray(input[1]));return input[1];};
+        assert.deepEqual(literal(registration,'TOKEN'),literal(handler,'TOKEN'));assert.equal(literal(handler,'TOKEN')[0],10);assert.ok(literal(handler,'TOKEN')[1]);assert.deepEqual(literal(registration,'BUTTON'),[10,'A']);assert.deepEqual(literal(registration,'EVENT'),[4,'2049']);assert.deepEqual(literal(registration,'CAPTURES'),[10,'']);
+        const definitions=new Map();for(const [id,block]of Object.entries(blocks))if(block.opcode==='procedures_definition'){const prototype=blocks[block.inputs.custom_block[1]];assert.equal(prototype.opcode,'procedures_prototype');assert.equal(prototype.parent,id);assert.ok(!definitions.has(prototype.mutation.proccode));definitions.set(prototype.mutation.proccode,id);}
+        const trace=root=>{const result=[],active=new Set();const walk=id=>{assert.ok(!active.has(id));active.add(id);let prior=id,next=blocks[id].next;while(next){const block=blocks[next];assert.ok(block);assert.equal(block.parent,prior);result.push(next);assert.ok(result.length<10000);if(block.opcode==='procedures_call'){const definition=definitions.get(block.mutation.proccode);assert.ok(definition);walk(definition);}prior=next;next=block.next;}active.delete(id);};walk(root);return result;};
+        const startup=rows.filter(row=>row.target===handler.target&&row.block.opcode==='arcade_whenSourceStarts');assert.equal(startup.length,1);const startupTrace=trace(startup[0].id),handlerTrace=trace(handler.id);assert.ok(startupTrace.includes(registration.id));
+        const visibility=startupTrace.filter(id=>blocks[id].opcode==='arcade_setHudVisibility');assert.equal(visibility.length,2);assert.ok(startupTrace.indexOf(visibility[0])<startupTrace.indexOf(registration.id));assert.ok(startupTrace.indexOf(registration.id)<startupTrace.indexOf(visibility[1]));
+        const logs=handlerTrace.filter(id=>blocks[id].opcode==='arcade_log');assert.equal(logs.length,1);const pixel=blocks[blocks[logs[0]].inputs.TEXT[1]];assert.equal(pixel.opcode,'arcade_imagePixel');assert.equal(pixel.parent,logs[0]);const frame=blocks[pixel.inputs.IMAGE[1]];assert.equal(frame.opcode,'arcade_frameImage');assert.equal(frame.parent,blocks[logs[0]].inputs.TEXT[1]);assert.deepEqual(frame.inputs.INDEX,[1,[4,'0']]);
+        record({stage:'sdk-button-connected-roles',registration,handler,startupTrace,handlerTrace,pixel,frame});
+    }
+    assert.equal(frames(second.imported.code).length,frames(first.imported.code).length);await assertSharedSdkArtwork(first,second);
+});
+test('batched SDK profiles enforce codecs while full F rejects unknown callbacks and backing captures',()=>{
+    const base=array+'let selected=pictures[0];';
+    for(const effect of ['Buffer.fromHex();','Buffer.fromHex("00","11");','Buffer.fromHex(unknown());','Buffer.fromHex("zz");','Buffer.fromUTF8("00");','let Buffer=unknown;Buffer.fromHex("00");','let escaped=Buffer.fromHex;Buffer.fromHex("00");','Buffer.fromHex("00");Buffer.fromHex=unknown;',
+        'controller.A.onEvent(999,function(){});','controller.A.onEvent(unknown(),function(){});','controller.B.onEvent(2049,function(){});','controller.A.onEvent(2049,function(value:number){});','controller.A.onEvent(2049,function(value=unknown()){});','let controller=unknown;controller.A.onEvent(2049,function(){});','let escaped=controller.A.onEvent;controller.A.onEvent(2049,function(){});','controller.A.onEvent(2049,function(){});controller.A.onEvent=unknown;']){
+        const p=parse(base+effect),requests=sharedSdkRequests(p);assert.equal(prepareSharedImageArrayTransport(p),null,effect);if(requests.length)assert.equal(sourceSharedImageSdkCallEffects(p,null,requests),null,effect);
+    }
+    // A local registration profile does not certify the future callback body.
+    // The complete F proof must still reject both unknown callees and a whole
+    // backing capture even through an otherwise admitted SDK logger.
+    for(const body of ['unknown(pictures);','console.log(pictures);']){
+        const p=parse(base+'controller.A.onEvent(2049,function(){'+body+'});'),requests=sharedSdkRequests(p),profile=sourceSharedImageSdkCallEffects(p,null,requests),registration=requests.find(call=>sharedSdkPath(call.callee)==='controller.A.onEvent');
+        assert.equal(profile?.has(registration),true,'the current local registration codec is valid');
+        const captures=entryNodes(registration.args[1]).filter(node=>node.type==='Call'&&node.args?.some(arg=>arg.type==='Identifier'&&arg.name==='pictures'));assert.equal(captures.length,1);assert.equal(captures[0].args[0].name,'pictures');
+        record({stage:'sdk-button-conditional-profile',body,registration,capture:captures[0],localProfile:true});
+        assert.equal(prepareSharedImageArrayTransport(p),null,'whole F refuses unknown effects or an actual backing capture');
+    }
+    const indexed=parse(base+'controller.A.onEvent(2049,function(){console.log(pictures[0].getPixel(0,0));});'),indexedRequests=sharedSdkRequests(indexed),indexedProfile=sourceSharedImageSdkCallEffects(indexed,null,indexedRequests);
+    assert.ok(indexedRequests.every(call=>indexedProfile?.has(call)));assert.ok(prepareSharedImageArrayTransport(indexed),'the valid indexed callback retains full F resource authority');
+    for(const mutate of [fn=>{fn.optionalParams=['x'];},fn=>{fn.parameterDefaults=[{name:'x',value:{type:'Call',callee:{type:'Identifier',name:'unknown'},args:[]}}];},fn=>{fn.parameterProperties=[{name:'x'}];},fn=>{fn.typeParameters=['T'];},fn=>{fn.genericParams=['T'];},fn=>{fn.restParam='x';},fn=>{fn.params.optionalParams.push('x');},fn=>{fn.params.parameterDefaults.push({name:'x',value:{type:'Number',value:'0'}});},fn=>{fn.params.parameterProperties.push({name:'x'});},fn=>{fn.paramTypes={x:{text:'number'}};}]){
+        const p=parse(buttonEffectSource),requests=sharedSdkRequests(p),proof=sourceSharedImageSdkCallEffects(p,null,requests),fn=requests.find(call=>sharedSdkPath(call.callee)==='controller.A.onEvent').args[1];assert.ok(proof);mutate(fn);assert.equal(proof.current(),false);assert.equal(sourceSharedImageSdkCallEffects(p,null,requests),null);
+    }
+    for(const value of [0,{},'not hex','0'.repeat(2097154)]){const p=parse(base+'Buffer.fromHex("00");'),request=sharedSdkRequests(p)[0];request.args[0].value=value;assert.equal(sourceSharedImageSdkCallEffects(p,null,[request]),null);}
+    const getter=parse(base+'Buffer.fromHex("00");'),request=sharedSdkRequests(getter)[0];let invoked=0;Object.defineProperty(request.args[0],'value',{get(){invoked++;throw Error('never coerce');}});assert.equal(sourceSharedImageSdkCallEffects(getter,null,[request]),null);assert.equal(invoked,0);
+    const early=parse('controller.A.onEvent(2049,function(){});'+base);assert.equal(prepareSharedImageArrayTransport(early),null,'registration remains a prefix barrier');
+});
+test('one private SDK batch retains sticky final currentness without issuing callback or value facts',()=>{
+    const p=parse(bufferEffectSource+'controller.A.onEvent(2049,function(){console.log(pictures[0].getPixel(0,0));});'),requests=sharedSdkRequests(p),certificate=sourceSharedImageSdkCallEffects(p,null,requests);assert.ok(certificate);assert.ok(requests.every(call=>certificate.has(call)));assert.equal(sourceSharedImageSdkCallEffects(p,null,[{sharedSdkCallEffect:'literal-buffer'}]),null);
+    assert.equal(sourceSharedImageSdkCallEffects(p,null,[{...requests[0]}]),null);const saved=requests[0].args[0];requests[0].args[0]={type:'Boolean',value:false};assert.equal(certificate.current(),false);requests[0].args[0]=saved;assert.equal(certificate.current(),false);
+    for(const text of ['','0','00']){const current=parse(array+'let selected=pictures[0];let bytes=Buffer.fromHex('+JSON.stringify(text)+');');assert.ok(sourceSharedImageSdkCallEffects(current,null,sharedSdkRequests(current)),'existing empty/odd/even literal semantics remain actual');}
+    const b=boundary(fixture(buttonEffectSource)),final=finish(b).final;assert.ok(currentSharedImageArrayTransport(final));const call=sharedSdkRequests(final).find(node=>sharedSdkPath(node.callee)==='controller.A.onEvent'),fn=call.args[1],old=fn.body;fn.body=[...old];assert.equal(currentSharedImageArrayTransport(final),null);fn.body=old;assert.equal(currentSharedImageArrayTransport(final),null);
+    const unknown=boundary(fixture(buttonEffectSource+'function unused(){unknown();}'));assert.equal(prepareSharedImageArrayTransport(unknown.normalized,{sourceContext:unknown.context}),null,'no unknown body becomes a no-op');
+    const mutated=boundary(fixture(buttonEffectSource.replace('console.log(pictures[0].getPixel(0,0));','pictures=[];console.log(1);')));assert.equal(prepareSharedImageArrayTransport(mutated.normalized,{sourceContext:mutated.context}),null,'registration grants no backing write or callback invariant');
+    const terminal=parse(array+'let selected=pictures[0];game.gameOver(true);'),gameOver=entryNodes(terminal).find(node=>node.type==='Call'&&sharedSdkPath(node.callee)==='game.gameOver');assert.equal(sourceSharedImageSdkCallEffects(terminal,null,[gameOver]),null);assert.equal(prepareSharedImageArrayTransport(terminal),null);
+});

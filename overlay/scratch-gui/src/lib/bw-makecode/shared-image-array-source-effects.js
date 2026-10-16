@@ -1,6 +1,7 @@
 import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
 import {analyseCallableBindings} from './callable-bindings.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
+import {BUTTON_EVENTS} from './controller-button-event-number-source.js';
 import {parseMakeCodeTs} from './ts-import.js';
 import {STRING_ARRAY_SETTINGS_PATH,STRING_ARRAY_SETTINGS_SOURCE} from './string-array-settings.generated.js';
 import {currentPreparedNativeSourceProvenance} from './dependency-project.js';
@@ -257,12 +258,15 @@ export function prepareSharedImageEntryEffects(program,sourceContext=null) {
             // constructs owned byte storage and registers it; it cannot call
             // project code or acquire an ordinary Image Array from this literal.
             // No validity/Buffer producer or global F permission follows.
-            if(api==='Buffer.fromHex'&&node.args.length===1&&node.args[0]?.type==='String'&&
-                typeof node.args[0].value==='string'&&node.args[0].value.length<=2097153&&/^[0-9a-f]*$/i.test(node.args[0].value))effect={kind:'disjoint-literal-buffer'};
+            if(api==='Buffer.fromHex'&&node.args.length===1&&node.args[0]?.type==='String') {
+                const value=descriptor(node.args[0],'value');
+                if(value&&Object.hasOwn(value,'value')&&typeof value.value==='string'&&value.value.length<=2097153&&/^[0-9a-f]*$/i.test(value.value))
+                    effect={kind:'disjoint-literal-buffer',sharedSdkCallEffect:'literal-buffer'};
+            }
             if(api==='info.showScore'&&node.args.length===1&&node.args[0]?.type==='Boolean') {
                 const value=descriptor(node.args[0],'value');
                 if(value&&Object.hasOwn(value,'value')&&typeof value.value==='boolean')
-                    effect={kind:'disjoint',scoreHudVisibility:true};
+                    effect={kind:'disjoint',scoreHudVisibility:true,sharedSdkCallEffect:'score-hud'};
             }
             if(api==='textsprite.create'&&text&&node.args.length>=1&&node.args.length<=3)effect={kind:'private-text'};
             // music.play may yield and enter a stored callback. Its existing F
@@ -276,6 +280,18 @@ export function prepareSharedImageEntryEffects(program,sourceContext=null) {
                 // handler value fact. The consumer still proves every writer,
                 // alias and all possible entries of its exact clone call.
                 const fn=node.args[registration[1]];
+                if(effect&&api==='controller.A.onEvent') {
+                    const event=descriptor(node.args[0],'value');
+                    const emptyArray=(owner,key)=>{const d=descriptor(owner,key);return !d||Object.hasOwn(d,'value')&&Array.isArray(d.value)&&d.value.length===0;};
+                    const emptyObject=(owner,key)=>{const d=descriptor(owner,key);return !d||Object.hasOwn(d,'value')&&d.value&&typeof d.value==='object'&&!Array.isArray(d.value)&&Reflect.ownKeys(d.value).length===0;};
+                    const primitive=event&&Object.hasOwn(event,'value')&&['number','string'].includes(typeof event.value)&&!(typeof event.value==='string'&&!event.value.trim());
+                    const code=primitive?Number(event.value):NaN;
+                    if(Number.isInteger(code)&&Object.values(BUTTON_EVENTS).includes(code)&&Array.isArray(fn.params)&&fn.params.length===0&&Array.isArray(fn.body)&&
+                        ['optionalParams','parameterDefaults','parameterProperties','typeParameters','genericParams'].every(key=>emptyArray(fn,key))&&
+                        ['optionalParams','parameterDefaults','parameterProperties'].every(key=>emptyArray(fn.params,key))&&
+                        emptyObject(fn,'paramTypes')&&emptyObject(fn,'paramDefaults')&&!Object.hasOwn(fn,'restParam'))
+                        effect={...effect,sharedSdkCallEffect:'button-A-registration'};
+                }
                 if(effect&&api==='sprites.onOverlap'&&Array.isArray(fn.params)&&fn.params.length===2&&new Set(fn.params).size===2&&
                     fn.params.every(name=>typeof name==='string')&&!fn.optionalParams?.length&&!fn.parameterDefaults?.length&&!fn.parameterProperties?.length&&
                     !fn.typeParameters?.length&&!fn.genericParams?.length&&!fn.restParam&&
@@ -307,33 +323,51 @@ export function consumeSharedImageEntryEffects(program,sourceContext,consume) {
 }
 
 
-// Exact physical score command only. The private entry facade already proves
-// SDK binding, all writers and method/namespace nonescape. HUD allocation,
-// scene-frame scheduling and device/redraw publication remain actual ordered
-// operations; this certificate is neither a value fact nor a reentry waiver.
+// Local canonical-callee/codec/registration profiles, not standalone callback
+// body or backing-Array nonexposure proofs. Only the complete F body/reference/
+// writer/entry census can authorize a resource. Requests identify physical calls,
+// never supplied facts; one private consume window serves the whole SDK batch.
+function sharedSdkCallEffect(program,sourceContext,requests,scoreOnly=false) {
+    try {return consumeSharedImageEntryEffects(program,sourceContext,(lookup,observedCurrent)=>{
+        let expired=false;
+        const current=()=>{
+            if(expired)return false;
+            try {if(!observedCurrent())expired=true;}catch(error){expired=true;throw error;}
+            return !expired;
+        };
+        if(!current())return null;
+        const calls=new WeakSet();
+        if(scoreOnly) {
+            // Legacy HUD query retains its narrow surface and physical identity.
+            const visit=value=>{
+                if(!value||typeof value!=='object')return;
+                if(lookup(value)?.sharedSdkCallEffect==='score-hud')calls.add(value);
+                for(const key of Reflect.ownKeys(value))if(!metadata.has(key))visit(descriptor(value,key).value);
+            };
+            visit(program);
+        } else {
+            if(!Array.isArray(requests))return null;
+            const length=descriptor(requests,'length');if(!length||!Object.hasOwn(length,'value'))return null;
+            for(let i=0;i<length.value;i++) {
+                const request=descriptor(requests,String(i));if(!request||!Object.hasOwn(request,'value'))return null;
+                const node=request.value,tag=lookup(node)?.sharedSdkCallEffect;
+                if(!['score-hud','literal-buffer','button-A-registration'].includes(tag))return null;
+                calls.add(node);
+            }
+        }
+        if(!current())return null;
+        return Object.freeze({current,has:call=>current()&&calls.has(call)});
+    });}catch{return null;} // No certificate escapes an unsupported derivation.
+}
+// HUD/state/timers/redraw, Buffer allocation/errors, and deferred button
+// registration/dispatch remain actual ordered operations. The local profile
+// cannot waive unknown callback bodies, capture/escape checks or entry barriers,
+// and grants neither callback/value domains nor Array/resource authority.
+export function sourceSharedImageSdkCallEffects(program,sourceContext,requests) {
+    return sharedSdkCallEffect(program,sourceContext,requests);
+}
 export function sourceScoreHudVisibilityNonExposure(program,sourceContext=null) {
-    const profile=prepareSharedImageEntryEffects(program,sourceContext);
-    if(!profile)return null;
-    let expired=false;
-    const current=()=>{
-        if(expired)return false;
-        try {
-            if(!currentSharedImageEntryEffect(program,profile,program,'current'))expired=true;
-        } catch(error) {expired=true;throw error;}
-        return !expired;
-    };
-    if(!current())return null;
-    const calls=new WeakSet(),p=entryProfiles.get(profile);
-    // The profile admitted this entire own-data traversal domain. No parser,
-    // producer or user method is called while collecting its exact call facts.
-    const visit=value=>{
-        if(!value||typeof value!=='object')return;
-        if(p.calls.get(value)?.scoreHudVisibility===true)calls.add(value);
-        for(const key of Reflect.ownKeys(value))if(!metadata.has(key))visit(descriptor(value,key).value);
-    };
-    visit(program);
-    if(!current())return null;
-    return Object.freeze({current,has:call=>current()&&calls.has(call)});
+    return sharedSdkCallEffect(program,sourceContext,null,true);
 }
 
 
