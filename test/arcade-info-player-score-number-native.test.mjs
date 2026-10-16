@@ -79,6 +79,11 @@ test('editing the actual connected score writer preserves a default score Number
         first.vm.stopAll();const current=JSON.parse(first.vm.toJSON());retain('actual-current-graph',current);
         const target=current.targets.find(owner=>Object.values(owner.blocks).some(block=>block.opcode==='arcade_setPlayerScore'));
         const writers=Object.values(target.blocks).filter(block=>block.opcode==='arcade_setPlayerScore');assert.equal(writers.length,1);
+        // This fixture's original cell is sprite-local. Current export's
+        // varName(target,name) therefore emits its exact Game_seen identifier.
+        assert.equal(target.name,'Game');assert.equal(target.isStage,false);
+        const originalCells=current.targets.flatMap(owner=>Object.entries(owner.variables||{}).filter(([,row])=>row[0]==='seen').map(([id,row])=>({owner,id,row})));
+        assert.equal(originalCells.length,1);assert.equal(originalCells[0].owner,target);
         const slot=writers[0].inputs.PLAYER;assert.ok(slot);
         if(typeof slot[1]==='string'){
             const shadow=target.blocks[slot[1]];assert.equal(shadow.opcode,'math_number');assert.equal(String(shadow.fields.NUM[0]),'1');shadow.fields.NUM[0]='2';
@@ -86,9 +91,16 @@ test('editing the actual connected score writer preserves a default score Number
         retain('actual-edited-graph',current);
         let out;try{out=projectToArcade(current);}catch(error){retain('export-throw',{error,channels:channels(error)});throw error;}
         retain('actual-export-return',{out,channels:channels(out)});assert.deepEqual(out.unsupported,[]);assert.deepEqual(out.warnings,[]);
-        assert.match(out.ts,/info\.player2\.setScore\(11\)/);assert.match(out.ts,/info\.score\(\)/);
+        assert.match(out.ts,/info\.player2\.setScore\(11\)/);assert.match(out.ts,/info\.score\(\)/);assert.match(out.ts,/let Game_seen = 11/);
         const returned=imported(out.ts);second=await runProgram(returned.code,{frames:10,storage:true});
-        const facts=observed(t,second);assert.deepEqual(facts.errors,[]);assert.equal(facts.values.seen,0);
+        const facts=observed(t,second);
+        const cells=second.creator.project.targets.flatMap(owner=>Object.entries(owner.variables||{}).filter(([,row])=>row[0]==='Game_seen').map(([id,row])=>({owner,id,row})));
+        const runtimeOwners=cells.length===1?second.vm.runtime.targets.filter(owner=>owner.isStage===cells[0].owner.isStage&&owner.sprite.name===cells[0].owner.name):[];
+        const cell=cells.length===1&&runtimeOwners.length===1?runtimeOwners[0].variables[cells[0].id]:undefined;
+        retain('actual-reimport-cell-binding',{cells:cells.map(({owner,id,row})=>({targetName:owner.name,isStage:owner.isStage,id,row})),runtimeOwnerCount:runtimeOwners.length,cell});
+        assert.deepEqual(facts.errors,[]);assert.equal(cells.length,1);assert.equal(runtimeOwners.length,1);
+        assert.ok(Object.hasOwn(runtimeOwners[0].variables,cells[0].id));assert.equal(cell.id,cells[0].id);assert.equal(cell.name,'Game_seen');
+        assert.equal(BW.decode(cell.value),0);
         assert.equal(second.vm.runtime.bwArcadeDeviceState.players[1].score,11);
     }finally{if(second)finish(second);if(first)finish(first);}
 });
