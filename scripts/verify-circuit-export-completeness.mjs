@@ -13,6 +13,8 @@ await mkdir(outDir, {recursive: true});
 const browser = await chromium.launch();
 const page = await browser.newPage({viewport: {width: 1440, height: 900}, acceptDownloads: true});
 const pageErrors = [];
+const downloadNames = [];
+page.on('download', download => downloadNames.push(download.suggestedFilename()));
 page.on('pageerror', error => pageErrors.push(String(error)));
 
 const readDownload = async download => {
@@ -77,6 +79,8 @@ try {
     const warmCircuit = await saveCircuit();
     assert.deepEqual(warmCircuit, canonical, 'warm Code-menu Save must preserve the authored circuit');
     assert.ok(warmCircuit.parts.some(part => part.kind === 'resistor' && part.params?.ohms === 1234));
+    assert.deepEqual(downloadNames, ['circuit.json', 'circuit.json', 'circuit.json'],
+        'each File-menu Save must download exactly once');
     const fileMenu = {coldSave: true, warmOpen: true, warmSave: true, authoredOhms: 1234};
     await page.getByRole('tab', {name: /Circuit/}).click();
     const designer = page.locator('.bw-circuit-designer:visible').last();
@@ -166,7 +170,8 @@ try {
     const assets = await page.locator('script[src],link[rel="stylesheet"][href]').evaluateAll(nodes =>
         nodes.map(node => node.getAttribute('src') || node.getAttribute('href'))
             .filter(value => /\.[a-f0-9]{8,32}\.(?:js|css)/.test(value)));
-    result = {url: proofUrl, fileMenu, example: '50-rc-scope', views: 3, downloads: 4, bytes: artifacts[0].length,
+    assert.equal(downloadNames.length, 7, 'three File saves plus three TeX exports and scope CSV');
+    result = {url: proofUrl, fileMenu, example: '50-rc-scope', views: 3, downloads: downloadNames.length, downloadNames, bytes: artifacts[0].length,
         sha256: hashes[0], scopeRows: numericRows.length, pageErrors, assets};
     await page.screenshot({path: path.join(outDir, 'circuit-export-board-view.png'), fullPage: true});
     await writeFile(path.join(outDir, 'result.json'), `${JSON.stringify(result, null, 2)}\n`);

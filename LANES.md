@@ -5778,3 +5778,17 @@ activation. Source mirror is exact. A first diagnostic production build passes
 with two existing size warnings; the updated production browser check and final
 source build remain pending after the preservation fix. Final main composition
 and all exact-head hosted checks remain required before source merge.
+
+File receiver final local qualification: production19a7879 builds successfully
+with the two existing webpack size warnings. Actual browser passes cold Save
+from Code, Open from Code, exact authored1234ohm preservation on warm Save,
+and exactly one download per command. The same journey still exports identical
+Circuitikz from all three views and a truthful1120-row scope CSV: seven actual
+downloads total, zero page errors. The complete eight-step CPX native/face/fresh
+circuit round trip also passes on this build, zero page errors. Final receipts:
+`/tmp/brickwright-file-wake-actual-final/result.json` and
+`/tmp/brickwright-file-wake-cpx-regression/current.json`. Original failed
+receipts remain retained. Persistent copies are in
+`build-artifacts/file-menu-20261016-19a7879/`. The final proof-only update adds
+download counting, not product behavior. Keep final main reconciliation and
+exact-head hosted qualification pending; no physical acceptance is inferred.
