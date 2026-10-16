@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {VM_SRC} from './helpers/bw-extensions.mjs';
+const BW=createRequire(import.meta.url)(VM_SRC+'/util/bw-values.js');
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {runProgram,stepFrames,clearStrayTimers} from './helpers/bw-vm.mjs';
@@ -103,7 +106,7 @@ info.onLifeZero(function(){hits+=1;info.setLife(1)})`,async run=>{
     });
 });
 
-test('omitted optional parameters are undefined and defaults run only for undefined',async()=>{
+test('selected Arcade defaults distinguish omission from supplied Undefined and preserve operand order',async()=>{
     await roundtrip(`let calls=0
 function count(times?:number){if(!times){times=3};calls+=times}
 function choose(value:any=7){return value}
@@ -113,8 +116,18 @@ let omitted=choose()
 let explicit=choose(undefined)
 let nothing=choose(null)
 let zero=choose(0)
-let text=choose("0")`,run=>{
-        const v=vars(run);assert.equal(Number(v.calls),8);assert.equal(v.omitted,7);assert.equal(v.explicit,7);assert.equal(v.nothing,null);assert.equal(v.zero,0);assert.equal(v.text,'0');
+let text=choose("0")
+let suppliedCalls=0
+let suppliedOrder=""
+function suppliedMissing(){suppliedCalls+=1;suppliedOrder+="U";return undefined}
+function chooseAfter(value:any=7){suppliedOrder+="C";return value}
+let dynamic=chooseAfter(suppliedMissing())
+let dynamicOrder=suppliedOrder
+let omittedAfter=chooseAfter()`,run=>{
+        // The selected original compiler substitutes defaults at omitted calls;
+        // supplied Undefined stays a value, including a real expression result.
+        const v=vars(run);assert.equal(Number(v.calls),8);assert.equal(v.omitted,7);assert.equal(BW.decode(v.explicit),undefined);assert.equal(v.nothing,null);assert.equal(v.zero,0);assert.equal(v.text,'0');
+        assert.equal(BW.decode(v.dynamic),undefined);assert.equal(v.suppliedCalls,1);assert.equal(v.dynamicOrder,'UC');assert.equal(v.suppliedOrder,'UCC');assert.equal(v.omittedAfter,7);
     });
 });
 
