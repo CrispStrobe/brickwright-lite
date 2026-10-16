@@ -101,3 +101,15 @@ test('a genuine parsed leaf reused as an earlier writer cannot borrow its later 
  assert.ok(validateProcedureConstraintSource(ast,{ordinaryPrimitiveSdkNumbers:true}).some(message=>message.includes('accept.event requires Number')));
  assert.notDeepEqual([...analyseSourceValueProducers(ast,options).typesAt(leaf)],['Number']);
 });
+
+// The surrounding graph has its own pre-existing AST domain; this control
+// checks this helper's refusal before its recursive proof dependencies run.
+test('the enum helper refuses cyclic or shared executable containers before lexical traversal',async()=>{
+ const {controllerButtonEventNumberLeaves}=await module('overlay/scratch-gui/src/lib/bw-makecode/controller-button-event-number-source.js');
+ const ast=parse(wrap()),leaf=call(ast).args[0];ast.body.push(ast);
+ assert.equal(controllerButtonEventNumberLeaves(ast).has(leaf),false);
+ const container=parse(wrap()),other=call(container).args[0];container.body.push(container.body);
+ assert.equal(controllerButtonEventNumberLeaves(container).has(other),false);
+ const shared=parse(wrap()),actual=call(shared).args[0];shared.body.push(shared.body[0]);
+ assert.equal(controllerButtonEventNumberLeaves(shared).has(actual),false);
+});

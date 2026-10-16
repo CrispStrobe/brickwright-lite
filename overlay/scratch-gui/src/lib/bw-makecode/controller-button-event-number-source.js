@@ -15,7 +15,6 @@ const path = node => node?.type === 'Identifier' ? node.name :
  * even safe programs using those forms are outside this first bounded proof.
  */
 export function controllerButtonEventNumberLeaves(program) {
-    const sdk = staticSdkNamespaceReceivers(program), lexical = analyseCallableBindings(program);
     const nodes = [], parents = new WeakMap(), declarations = new Map(), candidates = [], seen = new WeakSet();
     let sharedExecutableNode = false;
     const collect = (node, parent = null) => {
@@ -29,6 +28,9 @@ export function controllerButtonEventNumberLeaves(program) {
         for (const [key, value] of Object.entries(node)) if (!metadata.has(key)) collect(value, node);
     };
     collect(program);
+    // Reject aliases/cycles before either recursive lexical proof sees the AST.
+    if (sharedExecutableNode) return new WeakSet();
+    const sdk = staticSdkNamespaceReceivers(program), lexical = analyseCallableBindings(program);
     const count = binding => {if (binding) declarations.set(binding, (declarations.get(binding) || 0) + 1);};
     for (const node of nodes) {
         const scope = lexical.scopes.get(node);
@@ -40,7 +42,7 @@ export function controllerButtonEventNumberLeaves(program) {
         !node.typeArguments?.length && node.args.length === 2 && !node.args.some(value => value?.type === 'Spread') &&
         sdk.has(node.callee) && /^controller\.(?:A|B|up|down|left|right)\.onEvent$/.test(path(node.callee) || '') &&
         node.args[1]?.type === 'FunctionExpression' && node.args[1].params.length === 0;
-    let unsafe = sharedExecutableNode;
+    let unsafe = false;
     for (const node of nodes) {
         const parent = parents.get(node);
         if (node.type === 'Unknown' || node.type === 'Index' || node.type === 'Identifier' &&
