@@ -124,6 +124,7 @@ import {lowerStaticCallbackHelpers} from './static-callback-helpers.js';
 import {arcadeProjectSource} from './project-source.js';
 import {parseMakeCodeTs} from './ts-import.js';
 import {BaseTranslator, bodyOf, num, tsText} from './translate-base.js';
+import {prepareOrdinaryCallOmissions} from './ordinary-call-omission.js';
 import {
     parseImageLiteral,
     parseJres,
@@ -1265,7 +1266,7 @@ class ArcadeTranslator extends BaseTranslator {
         if(this.handleTemplates && node?.type==='Member' && this.path(node.object)==='SpriteKind' && !this.bindsName('SpriteKind'))return `arcade sprite kind value ${JSON.stringify(node.name)}`;
         if(this.nativeValues && node?.type==='String')return arcadeTextLiteral(tsText(node.value));
         if(this.nativeValues && ['Update','Assignment'].includes(node?.type)){this.unsupported.push(`${node.type.toLowerCase()} expression used as a value`);return '0';}
-        if (this.nativeValues && ['Null','Undefined'].includes(node?.type)) {
+        if (node?.type === 'Undefined' || this.nativeValues && node?.type === 'Null') {
             this.usesArrays=true;return `${node.type.toLowerCase()} value`;
         }
         if(this.nativeValues && node?.type==='Binary' && ['==','!=','===','!==','<','>','<=','>='].includes(node.op)) {
@@ -5065,7 +5066,9 @@ export function arcadeToPseudocode (files, opts = {}) {
     const ordinaryProgram=namespaceBindings.program || parsed;
     const integerDivisions=lowerMathIdivValues(ordinaryProgram);
     projectInputDiagnostics.push(...integerDivisions.unsupported);
-    const procedureConstraints=prepareProcedureConstraintSource(integerDivisions.program,{mode:opts.procedureConstraintsPrototype===true?'prototype':'supported-default'});
+    const ordinaryOmissions = prepareOrdinaryCallOmissions(integerDivisions.program);
+    projectInputDiagnostics.push(...ordinaryOmissions.unsupported);
+    const procedureConstraints=prepareProcedureConstraintSource(ordinaryOmissions.program,{mode:opts.procedureConstraintsPrototype===true?'prototype':'supported-default'});
     if(procedureConstraints)projectInputDiagnostics.push(...procedureConstraints.diagnostics);
     // Never attach the preparation's Program inside the executable AST: general
     // walkers would otherwise see a second copy of all declarations and effects.
