@@ -1992,6 +1992,16 @@ permissive newlib + libi86 runtime, and carries no GCC-runtime copyleft.
   Loaded at run time and driven by `runDosToolchain('fe', …)` over the
   bw-board 8086 DOS bench, which mounts the user's program as `PROG.FE`.
 
+### fe source for board targets
+
+`overlay/scratch-gui/src/lib/bw-lang/fe-target-c.js` (mirrored under
+`packages/scratch-gui`) embeds fe's `fe.h` and `fe.c` from the same commit,
+unmodified except that the `#include "fe.h"` line and the `FE_STANDALONE`
+`main` are left out, together with fe's MIT licence text. The Code tab joins
+them with the user's program and a small `main` into one C file, which the
+hosted RISC-V compiler builds; the resulting image runs in the browser
+RISC-V simulator.
+
 ## partcl (DOS-native Tcl) — MIT
 
 The code tab's "Tcl (partcl on DOS)" language runs a real 16-bit MS-DOS

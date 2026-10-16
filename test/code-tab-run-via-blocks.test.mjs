@@ -13,3 +13,9 @@ test('fe, Tcl and Forth offer a board run through their blocks, not only DOS', (
     assert.doesNotMatch(source, /'(?:Lisp \(fe|Tcl \(partcl|Forth \(zForth) on DOS\)'/);
     assert.match(source, /'Tcl \(Jim: DOS, or any board via blocks\)'/);
 });
+
+test('the fe tab runs fe\'s own interpreter on RISC-V through the hosted C route', () => {
+    assert.match(source, /data-testid="bw-fe-run-riscv"/);
+    assert.match(source, /return this\.runCOnRiscv\('server', feProgramToC\(this\.activeCode\(\)\)\);/);
+    assert.match(source, /async runCOnRiscv \(forceRoute, sourceOverride\)/);
+});
