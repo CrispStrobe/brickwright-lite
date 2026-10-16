@@ -262,11 +262,18 @@ but consumer PR988's real compiled CLI and browser programs still produced
 corrupt serial bytes. Preserve those failures. The follow-up interrupt-completion
 fix is merged in labwired-core PR247 as `1ea67f9c`; its reviewed source
 `de14721e4ae1d34a428f91d232e4520d50f1ceba` is the next engine pin.
-Producer PR629's eight enabled final checks and its preceding same-code fast
-tests pass. Fresh engine run 38855838615 must independently build twice, agree
-byte for byte and pass all 125 release tests before publishing a new release.
-[Consumer PR988](https://github.com/CrispStrobe/brickwright-lite/pull/988) still
-requires that release's verified hashes and actual CLI/browser qualification.
+Producer PR629 is merged as `a72acc06`: all 13 enabled final checks pass,
+including the five release jobs; four skips are declared. Fresh engine run
+38855838615 passed two independent matching builds and all 125 release tests
+with zero failures or skips. Release `labwired-wasm-de14721e` has five assets
+whose digests and sizes match the original build bytes. Node test and benchmark
+callers supply their CommonJS marker explicitly.
+[Consumer PR988](https://github.com/CrispStrobe/brickwright-lite/pull/988) now
+pins that source/tag and the two admitted web hashes. Its matching performance
+workflow verifies both downloaded Node executable hashes before benchmarking;
+methods, sample counts and thresholds are unchanged. The pin push automatically
+starts that benchmark; do not dispatch a duplicate. Fresh actual CLI/browser
+qualification and every enabled final consumer check remain pending.
 Keep the exact complete greeting, ordered counter, unchanged matrix/fault/guest-time
 bounds, and fresh nRF52833 V2 emulator ELF. All enabled final consumer checks
 remain mandatory before integration.
