@@ -72,6 +72,13 @@ export function inferTarget (files = {}, hint = '') {
     if (/calliope/.test(hint)) return 'calliopemini';
     if (/ev3/.test(hint)) return 'ev3';
     if (/adafruit/.test(hint)) return 'adafruit';
+    // The target VERSION in this manifest is not a target name, but its
+    // board package identifies CPX even when the source uses shared input APIs.
+    try {
+        const config = JSON.parse(files['pxt.json'] || '{}');
+        const boardPackage = config?.dependencies?.['circuit-playground'];
+        if (typeof boardPackage === 'string' && boardPackage.trim()) return 'adafruit';
+    } catch { /* Malformed metadata supplies no target evidence. */ }
     const source = files['main.ts'] || '';
     const cpxSource = source.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`[^`]*`|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
         text => text.startsWith('`') ? [...text.matchAll(/\$\{([\s\S]*?)\}/g)].map(m => m[1]).join(' ') : ' ');

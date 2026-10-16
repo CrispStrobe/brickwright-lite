@@ -68,3 +68,22 @@ test('a source-only CPX project file traverses the actual artefact importer', as
     assert.match(r.code, /^DEVICE CPX/);
     assert.deepEqual(r.unsupported, []);
 });
+
+test('the project dependency identifies CPX when its input/sound vocabulary is shared', async () => {
+    const source = 'input.onLoudSound(function(){ music.playTone(440,100) })';
+    const files = {'main.ts': source, 'pxt.json': JSON.stringify({
+        dependencies: {'circuit-playground': '*'}, targetVersions: {target: '1.6.8'}})};
+    assert.equal(inferTarget(files), 'adafruit');
+    assert.equal(importProjectFiles(files).project.target, 'adafruit');
+    const file = makeCodeProjectFile(files, {name: 'CPX input only', target: 'unknown'});
+    const recovered = await importArtefact(Buffer.from(file), {name: 'input-only.mkcd'});
+    assert.equal(recovered.project.target, 'adafruit');
+    assert.match(recovered.code, /^DEVICE CPX/);
+    assert.equal(inferTarget(files, 'https://makecode.calliope.cc/'), 'calliopemini');
+    assert.equal(inferTarget(files, 'https://arcade.makecode.com/'), 'arcade');
+    assert.equal(inferTarget({'main.ts': source, 'pxt.json': '{broken'}), 'microbit');
+    assert.equal(inferTarget({'main.ts': source, 'pxt.json': JSON.stringify({
+        dependencies: {'circuit-playground': 1}})}), 'microbit');
+    assert.equal(inferTarget({'main.ts': source, 'pxt.json': JSON.stringify({
+        dependencies: {'circuit-playground': ''}})}), 'microbit');
+});

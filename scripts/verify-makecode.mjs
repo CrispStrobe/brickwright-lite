@@ -301,6 +301,15 @@ try {
 
     // ── A12. Source-only CPX import -> real native blocks/device inputs. ──
     {
+        const inputOnly = {'main.ts': 'input.onLoudSound(function () { music.playTone(440,100) })',
+            'pxt.json': JSON.stringify({name: 'CPX package identity',
+                dependencies: {'circuit-playground': '*'}, files: ['main.ts']})};
+        await input.setInputFiles({name: 'cpx-input-only.mkcd', mimeType: 'application/octet-stream',
+            buffer: Buffer.from(makeCodeProjectFile(inputOnly, {name: 'CPX package identity', target: 'unknown'}))});
+        const inputCode = await waitFor(() => page.locator('.cm-content').first().innerText().catch(() => ''),
+            value => /when loud sound:/.test(value), 30000);
+        check('shared CPX input APIs use the project board package rather than micro:bit inference',
+            /^DEVICE CPX\b/.test(inputCode) && /when loud sound:/.test(inputCode) && /play tone 440 Hz for 100 ms/.test(inputCode));
         const source = 'light.setBrightness(255)\nlight.setAll(0xff0000)\n' +
             'input.buttonA.onEvent(ButtonEvent.Click, function () { light.setAll(0x0000ff) })\n' +
             'input.onGesture(Gesture.Shake, () => light.setAll(0x00ff00))\n';

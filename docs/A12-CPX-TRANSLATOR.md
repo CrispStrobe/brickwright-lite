@@ -11,7 +11,10 @@ extension implementation or dependency pin.
 
 ## Target and source identity
 
-An Adafruit editor URL selects `adafruit`. Without a positive target hint,
+An Adafruit editor URL selects `adafruit`. The project's non-empty
+`circuit-playground` dependency also identifies CPX, including programs using
+input/sound names shared by other target bundles. A target version number is
+not a target name. Without a positive hint or that board-package identity,
 CPX-specific vocabulary is checked before the shared micro:bit `input.on`
 spelling. Comments and literal text cannot supply that CPX evidence. A known
 micro:bit, Calliope, EV3 or Arcade hint retains priority. Shared vocabulary
