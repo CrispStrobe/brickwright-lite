@@ -2,7 +2,7 @@
 // Drives the real Code/Blocks/flag/face/pane controls of a production build.
 // VM access below observes state and loaded blocks; it never supplies output.
 import assert from 'node:assert/strict';
-import {mkdir, writeFile} from 'node:fs/promises';
+import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {chromium} from 'playwright';
 
@@ -97,13 +97,57 @@ try {
             buttons: runtime.bwCpxState?.buttons};
     });
     assert.equal(declarations.device, 'cpx');
-    assert.equal(declarations.source, 'derived', 'The CPX circuit must publish its device declaration');
+    report.programDeclarations = declarations;
     assert.equal(declarations.buttons.A, false);
     assert.equal(declarations.buttons.B, false);
+    await mkdir(resolve(output, '..'), {recursive: true});
+    report.liveScreenshot = output.replace(/\.json$/i, '') + '.live.png';
+    await page.screenshot({path: report.liveScreenshot});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
     await page.getByRole('button', {name: /From blocks/}).first().click();
-    await page.waitForFunction(() => /^DEVICE CPX\b/m.test(document.querySelector('[data-testid="bw-code-editor"] .cm-content')?.textContent || ''));
-    report.steps.push('circuit-derived CPX identity survives the real From Blocks round trip');
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-editor"] .cm-content .cm-line')?.textContent.trim() === 'DEVICE CPX');
+    report.steps.push('native CPX identity survives the real From Blocks round trip');
+    // Export the actual inferred circuit, then load it in an independent blank
+    // project. This proves reverse declarations without using the program's
+    // existing DEVICE CPX as the answer or changing any VM state directly.
+    await page.getByRole('tab', {name: /Circuit/i}).first().click();
+    await face.waitFor();
+    await page.getByText('File', {exact: true}).first().click();
+    const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        page.getByText('Save circuit', {exact: true}).click()
+    ]);
+    assert.equal(download.suggestedFilename(), 'circuit.json');
+    const circuitBytes = await readFile(await download.path());
+    const savedCircuit = JSON.parse(circuitBytes);
+    assert.ok(savedCircuit.parts.some(part => part.kind === 'circuit_playground_express'));
+    await page.close();
+    page = await browser.newPage({viewport: {width: 1600, height: 1100}, locale: 'en-US'});
+    page.setDefaultTimeout(30000);
+    page.on('pageerror', error => report.pageErrors.push(error.message));
+    await page.addInitScript(() => {
+        localStorage.clear(); sessionStorage.clear();
+        localStorage.setItem('bw-starter-v1-complete', '1');
+        localStorage.setItem('bw-right-pane-hidden', '0');
+    });
+    await page.goto(url, {waitUntil: 'networkidle', timeout: 90000});
+    await page.getByRole('tab', {name: /Circuit/i}).first().click();
+    await page.locator('.bw-circuit-designer:visible').first().waitFor();
+    await page.getByText('File', {exact: true}).first().click();
+    const [chooser] = await Promise.all([
+        page.waitForEvent('filechooser'),
+        page.getByText('Open circuit…', {exact: true}).click()
+    ]);
+    await chooser.setFiles({name: 'circuit.json', mimeType: 'application/json', buffer: circuitBytes});
+    await page.waitForFunction(() => {
+        const stc = window.__brickwrightStore?.getState()?.scratchGui?.vm?.runtime?.stc;
+        return stc?.device === 'cpx' && stc.pinsSource === 'derived';
+    });
+    report.steps.push('actual saved CPX circuit imports into a fresh project and derives DEVICE CPX');
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    await page.getByRole('button', {name: /From blocks/}).first().click();
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-editor"] .cm-content .cm-line')?.textContent.trim() === 'DEVICE CPX');
+    report.steps.push('circuit-derived DEVICE CPX survives the fresh project From Blocks round trip');
     assert.deepEqual(report.pageErrors, []);
     report.status = 'passed';
     console.log(JSON.stringify(report));

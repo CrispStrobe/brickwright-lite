@@ -5665,7 +5665,7 @@ This narrow diagnostic claim is released; no translator ownership is retained.
 
 ## A13 local combined graph preparation — 2026-10-16
 
-CLAIMED — Codex root, existing isolated A13 worktree and branch
+DONE candidate / main landing pending — Codex root, existing isolated A13 worktree and branch
 `/tmp/brickwright-lite-a13-20261016`,
 `lane/a13-cpx-face-adoption-20261016`, base canonical main `9052eee43`.
 The user again requested continued implementation. Extend only the timing of
@@ -5706,3 +5706,25 @@ pin-chain and FreeDOS source controls now pass22/22 without skips. Matrix,
 `/tmp/brickwright-a13-{provenance,combined-focused,combined-contracts,pin-readers-fixed}.log`.
 Production build and actual native-program/face browser qualification are next.
 No final sourcePR/full CI, predecessor merge or physical acceptance is inferred.
+
+A13 actual combined-production qualification passes on build47b91dc: eight
+real browser steps cover native red pixels, pane/face agreement, pointer A blue,
+keyboard B green, released buttons, native From Blocks, actual circuit download
+and file-chooser import into an independent blank project, and circuit-derived
+DEVICE CPX through fresh From Blocks. Zero page errors. Both screenshots were
+retained and the round-trip screenshot inspected. Standard production build
+passes with its two existing webpack size warnings.
+
+Retain initial negative receipts: the imported-program session kept its valid
+`program` provenance; require `derived` only in the separate blank-project
+import scenario. CodeMirror renders regenerated source as separate line nodes,
+so the proof reads its actual first line. Save through the real File menu with
+the Circuit tab active; the attempted Save while Code was active produced no
+download and is retained as a separate menu-routing observation, not fixed or
+claimed here. No product assertion or runtime was changed to make this pass.
+Final focused host/dock/coverage/budget/timeout/wait controls pass45/45 without
+skips. Browser receipt: `/tmp/brickwright-a13-combined-browser-v4/current.json`;
+earlier v1/v2/v3 failures remain retained. Persistent copy under
+`build-artifacts/cpx-20261016-47b91dc/` contains JSON and live/round-trip images.
+Final source PR/full CI still waits for the ordered earlier hosted integrations.
+D13 and iPad/WeDo physical acceptance remain explicitly open.
