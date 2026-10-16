@@ -103,3 +103,10 @@ test('native plain-object prototype setters are not actual own local cells',()=>
     // assignment; they are not the inherited __proto__ setter.
     for(const name of ['constructor','toString','hasOwnProperty'])assert.deepEqual(results(renamed(name)),[true],name);
 });
+
+test('inherited native procedure-cache entries cannot establish a fresh invocation frame',()=>{
+    for(const name of Object.getOwnPropertyNames(Object.prototype)){
+        const f=fixture();f.blocks[f.proto].mutation.proccode=name;f.blocks[f.call].mutation.proccode=name;refuses(f);
+    }
+    const f=fixture();f.blocks[f.proto].mutation.proccode='constructor ordinary';f.blocks[f.call].mutation.proccode='constructor ordinary';assert.deepEqual(results(f),[true]);
+});

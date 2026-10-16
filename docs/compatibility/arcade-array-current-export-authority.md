@@ -83,3 +83,11 @@ refuses that key, and the older adjacent-reset proof refuses prototype-changing
 writers that could affect its frame. This is a safety refusal, not support for
 that native local name. A proper storage fix across parameters, captures and
 managed frames needs a separate runtime contract and qualification.
+
+The extended proof also refuses procedure names inherited by the native plain
+procedure-definition and parameter caches. A matching declaration in the current
+graph does not establish that native entry when the cache returns an inherited
+property first. Ordinary local names such as `constructor` and `toString` remain
+valid after ordinary own-property writes; the procedure-cache limitation is a
+different boundary. Proper native support for the refused procedure names remains
+a separate runtime gap.

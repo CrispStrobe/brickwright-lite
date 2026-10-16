@@ -181,7 +181,10 @@ export function createArrayReferenceExportAuthority(project) {
             exactKeys(n,inputs,fields)&&Object.keys(n.fields||{}).length===fields.length;
         const special=n=>shape(n,[],['KIND'])&&Array.isArray(n.fields.KIND)&&n.fields.KIND.length===2&&
             n.fields.KIND[1]===null&&['null','undefined'].includes(n.fields.KIND[0]);
-        if(!scope.proc||scope.invalid||scope.unknownEntry||scope.params.length||destination.formal||
+        // Native procedure-definition/parameter caches are plain objects and
+        // consult inherited entries before scanning declarations. Those names
+        // cannot establish this graph's actual invocation/frame identity.
+        if(!scope.proc||Object.hasOwn(Object.prototype,scope.proc)||scope.invalid||scope.unknownEntry||scope.params.length||destination.formal||
             node.opcode!=='arcade_setLocal'||!special(reset)||!shape(node,['NAME','VALUE'])||
             !closedEffects()||!scope.callers.length)return false;
         const name=literal(node,'NAME',target),origin=captures.local(captures.scopeOf(node),name);
