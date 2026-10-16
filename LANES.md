@@ -79,7 +79,7 @@ Original PR975 head rechecked unchanged at 943d540c7 before this candidate commi
 
 ## A13 — CPX live circuit face adoption — 2026-10-16
 
-CLAIMED — Codex root, isolated `/tmp/brickwright-lite-a13-20261016`, branch
+DONE candidate / final qualification pending — Codex root, isolated `/tmp/brickwright-lite-a13-20261016`, branch
 `lane/a13-cpx-face-adoption-20261016`. User requested this after the iOS and
 existing integrations. Supplier: bw-circuit-ui PR85, published claim 796bd2c.
 Preserve PR965/975's serialized dependency ownership and all newer main pins.
@@ -5684,3 +5684,25 @@ Publish final A13 source PR/full qualification only after the earlier source
 integrations qualify and land; reconcile current main before that final head.
 No new runtime, translator, engine, firmware, physical acceptance or workflow
 budget scope is added. Merge this claim before composing/adopting the graph.
+
+A13 combined candidate: after merged claim PR1027, normally composed unchanged
+STM327a82a14f and CPX owner16dda603 with current main, preserving original
+branches and assertions. CUI625a374e is adopted through the canonical explicit
+pin writer; it is the exact four-check-qualified source merged in supplierPR85
+(f9afb40a has an identical tree). Boardf84/SBCa13/WeDo pins remain selected.
+Root/GUI lockfiles, upstream notices, eight exact-pin controls and three exact
+CUI checkout/admission readers in the FreeDOS actual workflow follow that pin.
+No comparison or timeout changed.
+
+Genuine Node22 shared-deps key57d86cb29700caa749d24ad0 is verified. Actual
+installed provenance compares12881 Board files and1313 CUI files in each tree
+to their pinned npm payloads and confirms single-engine resolution. Notices
+match. Combined focused behavior:128/129 pass; the remaining macOS temp-path
+alias control passes separately (all3 provenance controls) with canonical
+TMPDIR=/private/tmp. No product assertion was edited for that platform alias.
+Contract set46/47 passed before the named stale workflow reader repair; affected
+pin-chain and FreeDOS source controls now pass22/22 without skips. Matrix,
+8086 report and part profiles remain current. Logs are
+`/tmp/brickwright-a13-{provenance,combined-focused,combined-contracts,pin-readers-fixed}.log`.
+Production build and actual native-program/face browser qualification are next.
+No final sourcePR/full CI, predecessor merge or physical acceptance is inferred.
