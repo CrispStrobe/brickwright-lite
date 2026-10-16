@@ -217,3 +217,20 @@ its own target, original-source download and simulation, and native Start,
 button A and Shake render ten red, blue and green pixels respectively.
 The follow-up integrates current main, including its circuit-UI pin, and
 requires fresh qualification of that combined head before merge.
+
+## Diagnostic transport follow-up
+
+The [combined-head run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38931471960)
+passes the complete CPX browser journey and the first unit shard. The second
+shard remains failed: its census reports zero tests for the comparison file
+and rejects 30,125 raw stdout bytes from its observer diagnostics. Those
+records retain the same five exact differences, but they cannot qualify a
+file whose test results were not reported.
+
+The follow-up sends the four observer message types through `t.diagnostic()`.
+All record content, assertions, programs, inputs and capture times stay fixed.
+A synthetic transport control reports all fifteen tests with zero raw stdout
+bytes; changing those same calls back to `console.log()` reproduces 30,125 raw
+bytes. The standalone reader still recovers all five difference records and
+93 ordered trace records. This is a transport control, not guest qualification;
+the changed head still requires fresh hosted unit and browser results.

@@ -42,7 +42,7 @@ const cases = [
         blackPixels: [2, 4, 5, 7]}
 ];
 
-for (const scenario of cases) test(`CPX ${timingLimits[scenario.id] ? 'documented runtime timing boundary' : 'translated documentation vs original simulator'}: ${scenario.id}`, async () => {
+for (const scenario of cases) test(`CPX ${timingLimits[scenario.id] ? 'documented runtime timing boundary' : 'translated documentation vs original simulator'}: ${scenario.id}`, async t => {
     // These are required qualification controls: missing originals must not
     // turn a changed translator into a successful skipped test.
     assert.ok(adafruitSimAvailable(), 'Pinned CPX compiler and simulator are required (sync:makecode)');
@@ -66,7 +66,9 @@ for (const scenario of cases) test(`CPX ${timingLimits[scenario.id] ? 'documente
     const differences = opts.at.filter(t => JSON.stringify(actual.frames[t]) !== JSON.stringify(original.frames[t]))
         .map(t => ({t, original: original.frames[t], translated: actual.frames[t]}));
     const toneDifference = JSON.stringify(actual.tones) !== JSON.stringify(original.tones);
-    if (differences.length || toneDifference) console.log('CPX comparison diagnostic', JSON.stringify({
+    // Frame observer output as test diagnostics; raw stdout shares the
+    // runner's serialized transport and can hide the file's test results.
+    if (differences.length || toneDifference) t.diagnostic('CPX comparison diagnostic ' + JSON.stringify({
         id: scenario.id, frames: differences,
         ...(toneDifference ? {originalTones: original.tones, translatedTones: actual.tones} : {})
     }));
@@ -83,13 +85,13 @@ for (const scenario of cases) test(`CPX ${timingLimits[scenario.id] ? 'documente
             .map(row => ({collectedAt: row.t, ...JSON.parse(row.text.slice(CPX_TRACE_PREFIX.length))}));
         const sha256 = value => createHash('sha256').update(value).digest('hex');
         const traceSha256 = sha256(JSON.stringify(trace));
-        console.log('CPX original-boundary trace header', JSON.stringify({id: scenario.id,
+        t.diagnostic('CPX original-boundary trace header ' + JSON.stringify({id: scenario.id,
             diagnosticDerivative: true, originalSourceSha256: sha256(source.ts),
             originalFactorySha256: sha256(compiled), instrumentedFactorySha256: sha256(instrumented),
             error: observed.error, records: trace.length, traceSha256}));
-        for (const [index, event] of trace.entries()) console.log('CPX original-boundary trace event',
+        for (const [index, event] of trace.entries()) t.diagnostic('CPX original-boundary trace event ' +
             JSON.stringify({id: scenario.id, index, event}));
-        console.log('CPX original-boundary trace complete', JSON.stringify({id: scenario.id,
+        t.diagnostic('CPX original-boundary trace complete ' + JSON.stringify({id: scenario.id,
             records: trace.length, traceSha256}));
         assert.equal(observed.error, null, `Diagnostic derivative failed: ${observed.error}`);
         assert.ok(trace.length > 0, 'The real original boundaries must produce observer records');
