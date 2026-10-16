@@ -168,6 +168,14 @@ function prove(program, sourceContext = null) {
         'sprites.onOverlap','sprites.onCreated','sprites.onDestroyed','game.onUpdate','game.onUpdateInterval',
         'info.setScore','info.changeScoreBy','info.score','info.startCountdown','info.onCountdownEnd','SpriteKind.create']);
     if(sourceEffects)sdkEffects.add('textsprite.create');
+    // This exact native command accepts only current-runtime music registry
+    // references (or preserves its existing error before PXT playback). It
+    // cannot obtain the private frame Array. This is not a Playable/value fact
+    // and does not allow other music APIs, dynamic modes or prefix effects.
+    const musicPlaybackEffect=node=>!node.isNew && !node.constructorCall && !Object.hasOwn(node,'typeArguments') &&
+        node.args.length===2 && sdk.has(node.callee) && path(node.callee)==='music.play' &&
+        sdk.has(node.args[1]) && ['music.PlaybackMode.UntilDone','music.PlaybackMode.InBackground',
+            'music.PlaybackMode.LoopingInBackground'].includes(path(node.args[1]));
     const methods={Image:new Set(['clone','setPixel','getPixel','fill','replace','drawLine','drawRect','fillRect','drawImage','drawTransparentImage','equals']),
         Array:new Set(['push','pop','shift','unshift']),
         Sprite:new Set(['setImage','setPosition','setVelocity','setBounceOnWall','setStayInScreen','setFlag','setKind','destroy'])};
@@ -228,7 +236,7 @@ function prove(program, sourceContext = null) {
         return null;
     }
     for(const node of nodes)if(node.type==='Call' && node.callee.type==='Member') {
-        if(sdk.has(node.callee)) {if(!sdkEffects.has(path(node.callee)))return null;}
+        if(sdk.has(node.callee)) {if(!sdkEffects.has(path(node.callee)) && !musicPlaybackEffect(node))return null;}
         else if(!methods[kind(node.callee.object)]?.has(node.callee.name))return null;
     }
     return {...physical,current:()=>physical.current()&&(!sourceContext||sharedImageSourceContextCurrent(sourceContext)),candidates,selections};

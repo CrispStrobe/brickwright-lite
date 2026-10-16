@@ -201,3 +201,44 @@ test('inherited Text edge writes retain unknown effects and do not widen ordinar
         const b=boundary(fixture(source));assert.equal(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),null);
     }
 });
+
+
+test('exact current music playback modes preserve the original retained command without a playable producer',()=>{
+    for(const mode of ['UntilDone','InBackground','LoopingInBackground']){
+        const source='function audio(thisSong:any){music.play(thisSong,music.PlaybackMode.'+mode+');}'+array+'let selected=pictures[0];';
+        const b=boundary(fixture(source)),f=finish(b);assert.ok(f.resource);
+        const fn=b.normalized.body.find(node=>node.type==='FunctionDeclaration'&&node.name==='audio');assert.ok(fn);
+        assert.equal(fn.body.length,1);assert.equal(fn.body[0].expr.callee.name,'play');assert.equal(fn.body[0].expr.args[0].name,'thisSong');assert.equal(fn.body[0].expr.args[1].name,mode);
+        const r=convert(b.prepared.files);clean(r);assert.doesNotMatch(r.code,/new array reference/);assert.equal(frames(r.code).length,1);
+        assert.equal(r.code.split('arcade play music ').length-1,1);assert.ok(r.code.includes('mode '+mode));
+        assert.equal((r.sourceReferences||[]).some(row=>row.name==='thisSong'&&row.type==='Playable'),false,'no playable result is issued by the effect rule');
+    }
+});
+test('music effect requires exact callee arity fixed enum and unmodified SDK roots',()=>{
+    for(const statement of ['music.play();','music.play(value);','music.play(value,music.PlaybackMode.InBackground,3);','music.play(value,1);','music.play(value,mode);',
+        'music.play(value,music.PlaybackMode.Unknown);','music.play(value,music.PlaybackMode["InBackground"]);','music["play"](value,music.PlaybackMode.InBackground);',
+        'new music.play(value,music.PlaybackMode.InBackground);','music.play<number>(value,music.PlaybackMode.InBackground);',
+        'music.play=other;music.play(value,music.PlaybackMode.InBackground);','music.PlaybackMode.InBackground=3;music.play(value,music.PlaybackMode.InBackground);',
+        'let escaped=music.play;music.play(value,music.PlaybackMode.InBackground);','music.playTone(440,20);']){
+        const b=boundary(fixture(array+'let value=1;let mode=1;'+statement+'let selected=pictures[0];'));
+        assert.equal(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),null,statement);
+    }
+    const shadow=boundary(fixture(array+'function retained(music:any){music.play(1,music.PlaybackMode.InBackground);}let selected=pictures[0];'));
+    assert.equal(prepareSharedImageArrayTransport(shadow.normalized,{sourceContext:shadow.context}),null);
+});
+test('music non-exposure retains invalid value commands but refuses the whole private frame Array',()=>{
+    for(const value of ['1','null','pictures[0]']){
+        const b=boundary(fixture(array+'music.play('+value+',music.PlaybackMode.InBackground);let selected=pictures[0];'));
+        const f=finish(b);assert.ok(f.resource);const r=convert(b.prepared.files);clean(r);assert.match(r.code,/arcade play music /);
+        assert.doesNotMatch(r.code,/new array reference/,'effect proof does not manufacture a playable or expose private backing');
+    }
+    const b=boundary(fixture(array+'music.play(pictures,music.PlaybackMode.InBackground);let selected=pictures[0];'));
+    assert.equal(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),null,'whole backing Array argument remains an escape');
+});
+test('music effects never permit prefix movement or erase unknown effects in retained bodies',()=>{
+    for(const source of ['music.play(1,music.PlaybackMode.InBackground);'+array+'let selected=pictures[0];',
+        array+'music.play(unknown(),music.PlaybackMode.InBackground);let selected=pictures[0];',
+        array+'function unused(){music.play(1,music.PlaybackMode.InBackground);unknown();}let selected=pictures[0];']){
+        const b=boundary(fixture(source));assert.equal(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),null);
+    }
+});
