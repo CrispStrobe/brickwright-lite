@@ -1,3 +1,36 @@
+## Release 0.1.24 ownership and qualified TestFlight follow-through — 2026-10-16
+
+CLAIMED — Codex release follow-through, branch
+`docs/release-0.1.24-claim-20261016`, exact base
+`27f473a738ff675db193ea689424f4ee3649910b`. Merge this ownership claim
+before changing release metadata. The earlier `v0.1.23` tag is immutable;
+its cancelled workflows are historical results, not a delivered new build.
+
+Envelope after this claim merges: this ledger;
+`apps/tauri/src-tauri/{tauri.conf.json,Cargo.toml,Cargo.lock}` for the three
+aligned application versions; `docs/app-store-metadata.md` for current English
+and German tester notes; operational creation of a new `v0.1.24` tag only on
+the admitted qualified main merge, using the existing mobile/release workflows.
+No product implementation, dependency pin, workflow, signing policy, transport,
+physical-device mapping or hardware behavior change belongs in this lane.
+
+Required prerequisites: retain merged WeDo adoption PR980 and its bounded
+brightness/polarity/piezo claims; qualify and land the iOS validator and archive
+resource repairs PR981/982 with every enabled final-head check and independent
+native source binding. Review a single combined source candidate for unsigned
+mobile qualification before advancing versions or publishing. Preserve original
+failures and exact artifact/source identities; no old tag move or successful
+qualification replay. Broader simulator and instrument candidates enter the
+release only after their own qualified merges, with honest tester boundaries.
+
+Release metadata must pass version/notes contracts and required exact-head
+checks. Review actual main composition and predicted/landed tree/parents before
+normal matched-head merges. Only then create the new tag. Completion requires
+original signed build/upload, Internal and External group assignment and Beta
+App Review receipts from the existing workflows. A queued workflow, unsigned
+build or App Store submission is not a delivery or approval claim. Keep the
+ordered five-task circuit campaign contract independent and unchanged.
+
 ## A12 — Circuit Playground Express MakeCode translator — 2026-10-16
 
 CLAIMED — Codex CPX translator lane, isolated worktree
