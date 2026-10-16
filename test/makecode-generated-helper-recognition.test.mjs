@@ -99,12 +99,14 @@ test('extra stop effects, foreign storage access and callee escape survive recog
 });
 
 test('tagged helper and ambient call effects never disappear from the actual parser graph',()=>{
-    for(const effect of ['__bwNamedJsonValue`text`','Function`return JSON`()','JSON.parse`7`','external()','let unknown:any=null;unknown["change"]()']){
+    for(const effect of ['__bwNamedJsonValue`text`','Function`return JSON`()','JSON.parse`7`','img`${Function("return JSON")()}`','hex`${__bwNamedJsonValue("7")}`','external()','let unknown:any=null;unknown["change"]()']){
         const ast=parse(LEGACY_JSON_SOURCE+'\n'+effect),proof=inspectGeneratedHelperBindings(ast,profiles.ordinary);
         assert.ok(!proof.isCurrent()||!proof.closed(ast.body[0]),effect);
         const result=arcadeToPseudocode(LEGACY_JSON_SOURCE+'\n'+effect);
         assert.match(result.code,/__bwNamedJsonValue/,effect);
     }
+    const malformed=parse(LEGACY_JSON_SOURCE+'\nlet image=img`1`');malformed.body.at(-1).decls[0].init.value=7;
+    assert.equal(inspectGeneratedHelperBindings(malformed,profiles.ordinary).isCurrent(),false);
     const literal=parse(LEGACY_PARSE_SOURCE+'\nlet image=img`1`');
     assert.equal(inspectGeneratedHelperBindings(literal,profiles.ordinary).isCurrent(),true);
     const shadow=parse(LEGACY_PARSE_SOURCE+'\nfunction img(){};let image=img`1`');
@@ -117,4 +119,17 @@ test('stop lifting requires a current activated root and a terminal continuation
         stopSource+'\nconst foreign=_tok()']){
         const result=arcadeToPseudocode(source);assert.match(result.code,/_stopAll/);assert.doesNotMatch(result.code,/^\s*stop all$/m);
     }
+});
+
+test('retained external default effects cannot hide behind signature metadata',()=>{
+    for(const effect of ['function mutate(x:any=Function("return JSON")()){return x}mutate()',
+        'function mutate(x:any=__bwNamedJsonValue`text`){return x}mutate()',
+        'function mutate(x:any=JSON.parse`7`){return x}mutate()']){
+        const ast=parse(LEGACY_JSON_SOURCE+'\n'+effect),proof=inspectGeneratedHelperBindings(ast,profiles.ordinary);
+        assert.equal(proof.isCurrent(),false,effect);
+        const result=arcadeToPseudocode(LEGACY_JSON_SOURCE+'\n'+effect);assert.match(result.code,/__bwNamedJsonValue/);
+    }
+    const ast=parse(LEGACY_JSON_SOURCE+'\nfunction external(x:any=0){return x}external()');
+    const fn=ast.body.at(-2);fn.params.parameterDefaults[0].value={type:'Call',callee:{type:'Identifier',name:'unknown'},args:[]};
+    assert.equal(inspectGeneratedHelperBindings(ast,profiles.ordinary).isCurrent(),false,'metadata-only effect edit cannot borrow prologue coverage');
 });

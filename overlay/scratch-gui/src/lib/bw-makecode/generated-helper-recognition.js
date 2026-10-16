@@ -79,7 +79,7 @@ export function inspectGeneratedHelperBindings(program,profile){
         if(executable.has(node)){valid=false;return;}executable.add(node);
         if(Array.isArray(node)){node.forEach(n=>walk(n,parent));return;}
         nodes.push(node);parents.set(node,parent);
-        if(['Unknown','Try','TryCatch','CatchClause','With'].includes(node.type))valid=false;
+        if(['Unknown','Try','TryCatch','CatchClause','With','Class','ClassDeclaration'].includes(node.type))valid=false;
         if(node.type==='Identifier'&&['eval','Function','Reflect','globalThis','window','self','arguments'].includes(node.name)||
             node.type==='Member'&&node.name==='constructor')valid=false;
         for(const [key,value]of Object.entries(node))if(!metadata.has(key))walk(value,node);
@@ -100,8 +100,24 @@ export function inspectGeneratedHelperBindings(program,profile){
     }
     // Tagged callees are scalar AST spellings, not Identifier references.
     // Only the actual unshadowed literal tags have a closed effect here.
-    for(const n of nodes)if(n.type==='Template'&&(!['img','hex'].includes(n.tag)||counts.has(n.tag)||
+    for(const n of nodes)if(n.type==='Template'&&(typeof n.value!=='string'||n.value.includes('${')||!['img','hex'].includes(n.tag)||counts.has(n.tag)||
         nodes.some(other=>other.type==='Identifier'&&other.name===n.tag)))valid=false;
+    // All admitted parser profiles emit actual default prologues. Also refuse
+    // nonliteral retained defaults before lexical normalization can omit them;
+    // generic default evaluation is outside this helper protocol.
+    const literalDefault=n=>{
+        if(!n||typeof n!=='object')return false;
+        const keys=Reflect.ownKeys(n);
+        if(n.type==='Null'||n.type==='Undefined')return keys.length===1&&keys[0]==='type';
+        if(n.type==='Boolean')return keys.length===2&&keys.includes('value')&&typeof n.value==='boolean';
+        if(n.type==='String')return keys.length===2&&keys.includes('value')&&typeof n.value==='string';
+        if(n.type==='Number')return keys.length===2&&keys.includes('value')&&['string','number'].includes(typeof n.value)&&Number.isFinite(Number(n.value));
+        if(n.type==='Unary'&&['+','-'].includes(n.op))return keys.length===3&&keys.includes('argument')&&n.argument?.type==='Number'&&literalDefault(n.argument);
+        return false;
+    };
+    if(valid)for(const {rows}of snapshots)for(const [key,d]of rows)if(key==='parameterDefaults'){
+        if(!Array.isArray(d.value)||d.value.some(row=>!row||!literalDefault(row.value)))valid=false;
+    }
     const lexical=valid?analyseCallableBindings(program):null;
     const root=fn=>current()&&fn?.type==='FunctionDeclaration'&&program.body.includes(fn)&&counts.get(fn.name)===1&&
         lexical.global.names.get(fn.name)?.node===fn&&!lexical.global.names.get(fn.name).written;
