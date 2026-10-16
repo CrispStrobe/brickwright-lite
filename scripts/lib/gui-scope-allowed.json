@@ -32,5 +32,11 @@
       "test/spike-arena-3d-pane.test.mjs"
     ],
     "why": "the pane test loads the real 3D view module (arena-view3d.js), which imports three's orbit control, and asserts its no-WebGL fallback"
+  },
+  "jolt-physics/wasm-compat": {
+    "tests": [
+      "test/bw-sim-physics-core.test.mjs"
+    ],
+    "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt; the test exercises it headless via the wasm-compat build"
   }
 }
