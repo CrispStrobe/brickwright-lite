@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 import SB3Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {adafruitToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/adafruit-translate.js';
 import {adafruitPrograms} from '../scripts/lib/makecode-adafruit-corpus.mjs';
 import {adafruitSimAvailable, compileAdafruit, runAdafruitSim} from '../scripts/lib/makecode-adafruit-sim.mjs';
 import {runCpxExtension} from '../scripts/lib/cpx-extension-run.mjs';
 import {cpxBlockProgram} from './helpers/cpx-block-program.mjs';
+import {traceCpxPxtFactory, CPX_TRACE_PREFIX} from './helpers/cpx-pxt-trace.mjs';
 
 const cases = [
     {id: 'reference/light/set-all#0', lit: [100]},
@@ -43,7 +45,8 @@ for (const scenario of cases) test(`CPX translated documentation vs original sim
     const driver = cpxBlockProgram(project);
     const opts = {ms: 3000, at: [50, 100, 300, 400, 500, 600, 700, 800, 900, 1100, 1500, 2500],
         inputs: scenario.inputs || []};
-    const original = await runAdafruitSim(await compileAdafruit(source.ts), opts);
+    const compiled = await compileAdafruit(source.ts);
+    const original = await runAdafruitSim(compiled, opts);
     const actual = await runCpxExtension(driver.drive, {...opts, onHat: driver.onHat});
     assert.equal(original.error, null, `Original simulator failed: ${original.error}`);
     assert.equal(actual.error, null, `Translated block/extension driver failed: ${actual.error}`);
@@ -56,6 +59,29 @@ for (const scenario of cases) test(`CPX translated documentation vs original sim
         id: scenario.id, frames: differences,
         ...(toneDifference ? {originalTones: original.tones, translatedTones: actual.tones} : {})
     }));
+    if (differences.length || toneDifference) {
+        // This separately named instrumented derivative is diagnostic only.
+        // Existing helpers, original source, snapshots and assertions stay put.
+        // It forwards the real factory/callbacks and emits observer records via
+        // the existing collector; the selected original has no serial calls.
+        assert.doesNotMatch(source.ts, /\b(?:serial|console)\./);
+        const instrumented = traceCpxPxtFactory(compiled);
+        assert.equal(instrumented.split(compiled).length, 2, 'Original compiler factory bytes appear exactly once');
+        const observed = await runAdafruitSim(instrumented, opts);
+        const trace = observed.serial.filter(row => row.text.startsWith(CPX_TRACE_PREFIX))
+            .map(row => ({collectedAt: row.t, ...JSON.parse(row.text.slice(CPX_TRACE_PREFIX.length))}));
+        const sha256 = value => createHash('sha256').update(value).digest('hex');
+        console.log('CPX original-boundary trace', JSON.stringify({id: scenario.id,
+            diagnosticDerivative: true, originalSourceSha256: sha256(source.ts),
+            originalFactorySha256: sha256(compiled), instrumentedFactorySha256: sha256(instrumented),
+            error: observed.error, trace}));
+        assert.equal(observed.error, null, `Diagnostic derivative failed: ${observed.error}`);
+        assert.ok(trace.length > 0, 'The real original boundaries must produce observer records');
+        assert.deepEqual(observed.frames, original.frames, 'Observer must preserve every original captured frame');
+        assert.deepEqual(observed.tones, original.tones, 'Observer must preserve every original queued tone');
+        assert.deepEqual(observed.serial.filter(row => !row.text.startsWith(CPX_TRACE_PREFIX)), original.serial,
+            'Observer lines cannot replace original program serial output');
+    }
     for (const t of opts.at) assert.deepEqual(actual.frames[t], original.frames[t], `${scenario.id} ring at ${t}ms`);
     for (const t of scenario.lit) assert.ok(original.frames[t].some(v => v !== 0), `${scenario.id} original must light pixels at ${t}ms`);
     if (scenario.sound) assert.ok(original.tones.length > 0, `${scenario.id} original must produce tones`);

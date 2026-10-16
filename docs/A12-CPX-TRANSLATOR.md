@@ -128,6 +128,17 @@ and the debugger to become idle before later device scenarios. Pixel values,
 input actions and observation bounds stay unchanged. Clean native browser
 qualification and the five exact timing comparisons remain pending.
 
+A separate diagnostic observer is prepared for the five differing comparisons.
+It wraps the original compiled factory, retains its exact bytes and forwards
+its original yield, event, fiber, send-buffer and audio calls. These are
+instrumented derivatives, identified by source/factory hashes. Observer records
+use the existing collector only for these programs without serial operations;
+clock, snapshots, compiler, simulator and sound-decoder helpers stay unchanged.
+Every derivative must reproduce every uninstrumented captured frame, ordered
+tone and original serial line exactly before its trace is admitted. The
+original native-versus-PXT assertions still run unchanged. This diagnoses a
+boundary; it does not qualify timing parity or change an original failure.
+
 ## Live-share sample
 
 On 2026-10-16, the three shares linked by the pinned documentation were still
