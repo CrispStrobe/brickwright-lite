@@ -10,10 +10,51 @@ const require=createRequire(import.meta.url),BW=require(VM_SRC+'/util/bw-values'
 const source='let entered=0;let seen=0;let after=0;function receive(value:number){entered+=1;seen=value}receive(game.runtime());receive(game.runtime());let rendered=game.runtime().toString();after=1;';
 const imported=source=>{try{return arcadeToPseudocode(source);}catch(error){retain('actual-source-import-error',{input:source,error:errorRecord(error)});throw error;}};
 const actualCells=run=>run.vm.runtime.targets.flatMap(target=>Object.entries(target.variables).map(([id,variable])=>{
-    const row={target:target.id,targetName:target.sprite?.name,isOriginal:target.isOriginal,id,name:variable.name,raw:actualData(variable.value)};
+    const row={target:target.id,targetName:target.sprite?.name,isStage:target.isStage,isOriginal:target.isOriginal,id,name:variable.name,raw:actualData(variable.value)};
     try{row.value=BW.decode(variable.value);}catch(error){row.decodeError=errorRecord(error);}return row;
 }));
-const checkedValues=actual=>Object.fromEntries(['entered','seen','after','rendered'].map(name=>{const matches=actual.cells.filter(cell=>cell.name===name);assert.equal(matches.length,1,'actual unique cell '+name);assert.equal(Object.hasOwn(matches[0],'decodeError'),false);return[name,matches[0].value];}));
+// Bind observations to the actual current writer graph and VARIABLE IDs. Export
+// may rename sprite variables; neither original names nor expected values select
+// a cell. This is an authored test oracle, never a product Number certificate.
+const roleBindings=project=>{
+    const owners=project.targets.filter(target=>Object.values(target.blocks||{}).some(block=>block.opcode==='procedures_definition'));
+    assert.equal(owners.length,1,'one actual procedure target');
+    const target=owners[0],blocks=target.blocks,all=Object.values(blocks);
+    const one=(items,label)=>{assert.equal(items.length,1,label);return items[0];};
+    const child=(block,input)=>{const slot=block.inputs?.[input];assert.ok(Array.isArray(slot));assert.ok([1,2,3].includes(slot[0]));return typeof slot[1]==='string'?blocks[slot[1]]:slot[1];};
+    const literal=node=>{
+        if(Array.isArray(node))return [4,5,6,7,8,10].includes(node[0])?node[1]:undefined;
+        if(node?.opcode==='math_number')return node.fields.NUM[0];
+        if(node?.opcode==='text')return node.fields.TEXT[0];
+        if(node?.opcode==='operator_add'&&Number(literal(child(node,'NUM1')))===0)return literal(child(node,'NUM2'));
+        return undefined;
+    };
+    const chain=start=>{const result=[],seen=new Set();let node=start;while(node){assert.equal(seen.has(node),false,'acyclic actual command chain');seen.add(node);result.push(node);node=node.next?blocks[node.next]:null;}return result;};
+    const descendants=start=>{const result=[],seen=new Set();const visit=node=>{if(!node||Array.isArray(node))return;assert.equal(seen.has(node),false,'unique actual expression edge');seen.add(node);result.push(node);for(const name of Object.keys(node.inputs||{}))visit(child(node,name));};visit(start);return result;};
+    const definition=one(all.filter(block=>block.opcode==='procedures_definition'),'one actual definition'),body=chain(blocks[definition.next]);
+    const constraint=one(body.filter(block=>block.opcode==='arcade_declareParameterConstraint'),'one connected Number formal');assert.equal(constraint.fields.TYPE[0],'Number');
+    const increment=one(body.filter(block=>block.opcode==='data_changevariableby'),'one connected entered increment');assert.equal(Number(literal(child(increment,'VALUE'))),1);
+    const assignment=one(body.filter(block=>block.opcode==='data_setvariableto'),'one connected formal assignment'),formal=child(assignment,'VALUE');assert.equal(formal?.opcode,'arcade_getLocal');assert.equal(literal(child(formal,'NAME')),constraint.fields.PARAMETER[0]);
+    assert.ok(body.indexOf(constraint)<body.indexOf(increment)&&body.indexOf(increment)<body.indexOf(assignment),'constraint, increment, formal assignment retain order');
+    const hat=one(all.filter(block=>block.opcode==='arcade_whenSourceStarts'),'one current main hat'),main=chain(blocks[hat.next]);
+    const calls=main.filter(block=>block.opcode==='procedures_call');assert.equal(calls.length,2,'two connected ordinary callers');
+    const prototype=child(definition,'custom_block');assert.equal(prototype?.opcode,'procedures_prototype');assert.equal(prototype.mutation.proccode,constraint.fields.PROCEDURE[0]);
+    for(const call of calls){assert.equal(call.mutation.proccode,prototype.mutation.proccode);assert.equal(descendants(call).filter(node=>node.opcode==='arcade_sceneMillis').length,1,'each current caller owns one clock expression');}
+    const rendered=one(main.filter(block=>block.opcode==='data_setvariableto'&&descendants(child(block,'VALUE')).some(node=>node.opcode==='arcade_sceneMillis')),'one connected clock text writer');
+    const text=child(rendered,'VALUE');assert.ok(['operator_join','arcade_inspectValue'].includes(text?.opcode),'actual Number text lowering');assert.equal(descendants(text).filter(node=>node.opcode==='arcade_sceneMillis').length,1);
+    const after=main.at(-1);assert.equal(after.opcode,'data_setvariableto');assert.equal(Number(literal(child(after,'VALUE'))),1);assert.ok(main.indexOf(calls[1])<main.indexOf(rendered)&&main.indexOf(rendered)<main.indexOf(after),'call, text, completion order');
+    const roles={entered:increment,seen:assignment,rendered,after},bindings={};
+    for(const [role,writer]of Object.entries(roles)){
+        const field=writer.fields.VARIABLE;assert.ok(Array.isArray(field)&&typeof field[1]==='string');
+        const owner=one(project.targets.filter(candidate=>Object.hasOwn(candidate.variables||{},field[1])),'unique current variable owner '+role),variable=owner.variables[field[1]];assert.equal(variable[0],field[0]);
+        bindings[role]={id:field[1],name:variable[0],ownerName:owner.name,isStage:owner.isStage,writer:Object.keys(blocks).find(id=>blocks[id]===writer)};
+    }
+    assert.equal(new Set(Object.values(bindings).map(binding=>binding.id)).size,4,'four distinct actual variable IDs');return bindings;
+};
+const checkedValues=actual=>{
+    const bindings=roleBindings(actual.project);retain(actual.label+'-actual-role-bindings',bindings);
+    return Object.fromEntries(Object.entries(bindings).map(([role,binding])=>{const matches=actual.cells.filter(cell=>cell.id===binding.id);assert.equal(matches.length,1,'actual unique cell ID '+role);const cell=matches[0];assert.equal(cell.name,binding.name);assert.equal(cell.targetName,binding.ownerName);assert.equal(cell.isStage,binding.isStage);assert.equal(Object.hasOwn(cell,'decodeError'),false);return[role,cell.value];}));
+};
 const observation=(t,label,run)=>{
     const runtime=run.vm.runtime,cells=actualCells(run),service=run.vm.extensionManager._loadedExtensions.get('arcade'),adapter=dispatch.services[service],ext=adapter?._inst;
     const references=new Map([[runtime,{$runtime:true}],...runtime.targets.map(target=>[target,{$target:target.id}])]),data=value=>actualData(value,new Map(),references);
@@ -38,13 +79,18 @@ const finish=(run,expectedErrors=[],primaryError=null)=>{
 const instance=run=>{const service=run.vm.extensionManager._loadedExtensions.get('arcade'),adapter=dispatch.services[service];assert.equal(adapter._inst._runtime,run.vm.runtime);return {adapter,ext:adapter._inst};};
 const accepted=(t,label,run,edited=false)=>{const actual=observation(t,label,run);actual.values=checkedValues(actual);clean(run.creator,['warnings','errors','unparsed']);assert.equal(actual.binding.instanceRuntimeMatches,true);assert.equal(actual.binding.registeredFunctionMatches,true);assert.deepEqual(actual.errors,[]);assert.equal(actual.values.entered,2);assert.equal(actual.values.after,1);assert.equal(typeof actual.values.seen,'number');assert.equal(Number.isFinite(actual.values.seen),true);assert.ok(actual.values.seen>=0);assert.equal(typeof actual.values.rendered,'string');assert.equal(Number.isFinite(Number(actual.values.rendered)),true);if(edited){assert.ok(actual.values.seen>=1000000,'actual edited second argument changes the observed value');assert.ok(Number(actual.values.rendered)<actual.values.seen,'unmodified third clock remains independent of the edited argument');}else assert.ok(Number(actual.values.rendered)>=actual.values.seen);assert.equal(run.calls.get('arcade_sceneMillis'),3,'each actual clock expression executes once');};
 
+const transition=async(t,label,run,operation)=>{
+    observation(t,label+' before',run);assert.ok(Array.isArray(run.errors));assert.deepEqual(run.errors,[]);
+    try{await operation();}catch(error){retain(label+'-transition-rejection',errorRecord(error));observation(t,label+' rejected',run);throw error;}
+    const actual=observation(t,label+' after',run);assert.ok(Array.isArray(run.errors));assert.deepEqual(actual.errors,[],'stop/load/refresh cannot silently append errors');
+};
 test('scene clock two sequential ordinary Number callers survive current Code, same/fresh SB3 and edited export/reimport',async t=>{
     const result=imported(source);retain('source-import-return',{result,channels:channels(result)});t.diagnostic(JSON.stringify({stage:'import',result}));clean(result,['unsupported','warnings']);let run,primaryError=null;
     try{
         run=await execute('source',result.code,{frames:20});accepted(t,'source',run);const project=JSON.parse(run.vm.toJSON()),code=run.creator.decompile(project),bytes=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());retain('actual-current-Code',{code,project});retain('actual-current-saved-ZIP',bytes,true);t.diagnostic(JSON.stringify({stage:'current Code',code}));
-        run.vm.stopAll();retain('same-load-actual-ZIP',bytes,true);await run.vm.loadProject(bytes);run.calls.clear();run.errors.length=0;run.vm.greenFlag();await stepFrames(run.vm,20);accepted(t,'same SB3',run);finish(run);run=null;
+        await transition(t,'same stop',run,()=>run.vm.stopAll());retain('same-load-actual-ZIP',bytes,true);await transition(t,'same load',run,()=>run.vm.loadProject(bytes));run.calls.clear();run.vm.greenFlag();await stepFrames(run.vm,20);accepted(t,'same SB3',run);finish(run);run=null;
         run=await execute('current-Code',code,{frames:20});accepted(t,'current Code',run);finish(run);run=null;
-        run=await execute('fresh-SB3-bootstrap','DEVICE ARCADE\nSPRITE Game:\nWHEN arcade source starts:\n  hide',{frames:0});retain('fresh-bootstrap-unobserved',{initialHelperGreenFlag:'UNOBSERVED/no input/zero requested frames',calls:[...run.calls],errors:[...run.errors]});run.vm.stopAll();retain('fresh-load-actual-ZIP',bytes,true);await run.vm.loadProject(bytes);run.calls.clear();run.errors.length=0;run.vm.greenFlag();await stepFrames(run.vm,20);accepted(t,'fresh SB3',run);
+        run=await execute('fresh-SB3-bootstrap','DEVICE ARCADE\nSPRITE Game:\nWHEN arcade source starts:\n  hide',{frames:0});retain('fresh-bootstrap-unobserved',{initialHelperGreenFlag:'UNOBSERVED/no input/zero requested frames',calls:[...run.calls],errors:[...run.errors]});await transition(t,'fresh stop',run,()=>run.vm.stopAll());retain('fresh-load-actual-ZIP',bytes,true);await transition(t,'fresh load',run,()=>run.vm.loadProject(bytes));run.calls.clear();run.vm.greenFlag();await stepFrames(run.vm,20);accepted(t,'fresh SB3',run);
         // Genuine current graph edit: append a connected Number addition to the
         // second call's clock operand, with the source clock itself preserved.
         const current=JSON.parse(run.vm.toJSON()),target=current.targets.find(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_sceneMillis'));
@@ -88,6 +134,6 @@ for(const mode of ['registered function','source method','adapter delegate','met
 
 test('scene clock genuine metadata refresh and restart renew current completion, never an old receipt',async t=>{
     const result=imported(source);let run;try{
-        run=await execute('refresh',result.code,{frames:20});accepted(t,'before actual refresh',run);run.vm.stopAll();await run.vm.extensionManager.refreshBlocks({throwOnError:true});run.calls.clear();run.errors.length=0;run.vm.greenFlag();await stepFrames(run.vm,20);accepted(t,'after actual refresh',run);
+        run=await execute('refresh',result.code,{frames:20});accepted(t,'before actual refresh',run);await transition(t,'refresh stop',run,()=>run.vm.stopAll());await transition(t,'refresh metadata',run,()=>run.vm.extensionManager.refreshBlocks({throwOnError:true}));run.calls.clear();run.vm.greenFlag();await stepFrames(run.vm,20);accepted(t,'after actual refresh',run);
     }finally{finish(run);}
 });

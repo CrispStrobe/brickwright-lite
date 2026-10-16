@@ -113,3 +113,10 @@ Each positive route also retains and checks the actual runtime error array
 after Stop, clear, quit and owned child cleanup. Cleanup actions run
 independently; secondary cleanup failures remain separate from a retained
 primary failure. Expected negative runtime errors cannot gain new cleanup errors.
+
+The native fixture binds observed roles to the actual current connected writer
+graph, VARIABLE IDs and unique variable owners. It does not assume that export
+preserves original variable names. Stop/load/refresh transitions retain their
+actual calls and error arrays before resetting call counters; runtime errors
+accumulate and must stay empty throughout each positive route. The earlier
+name-based fixture and error-clearing packet remain unexecuted source holds.
