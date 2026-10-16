@@ -3,7 +3,7 @@ import {lowerNumberTextValue} from './lower-number-text-values.js';
 import {analyseSourceValueProducers} from './source-value-producers.js';
 
 export function lowerSdkFontValues(program) {
-    const analysis=analyseSourceValueProducers(program),unsupported=[...analysis.diagnostics];
+    const analysis=analyseSourceValueProducers(program,{sceneClockNumbers:true}),unsupported=[...analysis.diagnostics];
     const fields=new Map(SDK_FONT_FIELDS.map(field=>[field.name,field.type]));
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const intrinsic=(name,args,type)=>({type:'Call',callee:{type:'Identifier',name:'__bwSdkFont_'+name},args,bwFontIntrinsic:name,...(type?{bwFontType:type}:{} )});

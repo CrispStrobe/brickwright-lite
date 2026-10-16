@@ -1859,7 +1859,16 @@ class ArcadeEmitter {
             this.note(`key "${key}" pressed (Arcade has arrows, A and B)`);
             return 'false';
         }
-        case 'arcade_sceneMillis': return 'game.runtime()';
+        case 'arcade_sceneMillis': {
+            const ids=Object.keys(this.blocks||{}).filter(id=>this.blocks[id]===b),id=ids[0],parent=id&&this.blocks[b.parent];
+            const uses=[];for(const node of Object.values(this.blocks||{}))for(const slot of Object.values(node.inputs||{}))
+                if(Array.isArray(slot))for(let index=1;index<slot.length;index++)if(slot[index]===id)uses.push({node,index});
+            if(ids.length!==1||b.shadow!==false||b.topLevel!==false||b.next!=null||b.mutation!=null||
+                Object.keys(b.fields||{}).length||Object.keys(b.inputs||{}).length||!parent||uses.length!==1||uses[0].node!==parent||uses[0].index!==1) {
+                this.note('Scene clock Number: current zero-input reporter or unique parent differs');return 'undefined';
+            }
+            return 'game.runtime()';
+        }
         case 'arcade_programMillis': return 'control.millis()';
         case 'sensing_timer': return `${this.use('scratchTimer','__bwScratchTimer')}()`;
         default:
@@ -4194,7 +4203,7 @@ export function projectToArcade (project, opts = {}) {
     }
     if(e.procedureConstraints?.procedures().length){
         const selected=new Set(e.procedureConstraints.procedures().map(({target,code})=>e.fnNames.get(`${target.isStage?'':target.name}:${code}`)));
-        try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
+        try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true,sceneClockNumbers:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
     }
     return {ts, files, unsupported: e.unsupported, warnings: e.warnings};
 }

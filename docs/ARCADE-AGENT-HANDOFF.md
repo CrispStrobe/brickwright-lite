@@ -3728,3 +3728,14 @@ allocation with the native route, preserving literal evaluation position,
 alias identity, distinct allocations and editable artwork. Do not force whole
 program admission or hide unsupported classes. See the
 [measured boundary](compatibility/arcade-authentic-project-qualification.md#dependency-helpers-and-image-values-next-measured-boundary--2026-10-16).
+
+
+### Scene-clock Number completion candidate — 2026-10-16
+
+The [exact scene-clock contract](ARCADE-CLOCK-NUMBER-PRODUCER.md) now has an
+unqualified source candidate with [private finite-completion and current-input
+boundaries](compatibility/arcade-scene-clock-number-completions.md). It reuses
+existing execution hooks, preserves the info census and adds no word, engine
+ABI, pin or clock policy. Source/boundary-model/native controls are authored,
+not yet run on this candidate. Do not promote Sparks, its external Timer writer
+or its cyclic fields, nor visible editor acceptance, from this source change.

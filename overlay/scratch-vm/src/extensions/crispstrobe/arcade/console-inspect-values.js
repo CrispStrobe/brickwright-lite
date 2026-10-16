@@ -112,7 +112,7 @@ function primitive(value) {
     throw new Error('reference or opaque inspection value');
 }
 
-function create(runtime, cells, scoreOwner=null) {
+function create(runtime, cells, scoreOwner=null, sceneClock=null) {
     let snapshots = new Map(), disposed = false, active = false;
     const bound = !!runtime && typeof runtime.on === 'function' && Array.isArray(runtime.targets);
     const score=scoreRegistration(runtime,scoreOwner);
@@ -135,7 +135,8 @@ function create(runtime, cells, scoreOwner=null) {
             snapshots.set(target,{container:target.blocks,variables:new Map(Object.entries(target.variables||{}).map(([id,variable])=>[id,{variable,signature:JSON.stringify([variable.id,variable.name,variable.type])}])),blocks:new Map(Object.entries(target.blocks._blocks).map(([id,block]) =>
                 [id,{block,semantic:semantic(block)}]))});
     };
-    const prove = (target, block, requested=null, possible=null, util=null) => {
+    const prove = (target, block, requested=null, possible=null, util=null, args=null) => {
+        let structural=false;
         const all = target.blocks._blocks, read = id => target.blocks.getBlock(id);
         const input = (node,name) => read(node?.inputs?.[name]?.block);
         const text = node => node?.opcode === 'text' ? node.fields?.TEXT?.value : null;
@@ -265,6 +266,12 @@ function create(runtime, cells, scoreOwner=null) {
             visited.add(node);
             try {
                 const op=node.opcode;
+                if(!player&&op==='arcade_sceneMillis'){
+                    // A dormant call is only a structural obligation of another
+                    // ordinary caller. It is never a completed supplied value.
+                    if(!(structural?sceneClock?.eligible(target,node):sceneClock?.prove(target,node,args,util)))return false;
+                    origins?.add(node);domains?.add('number');return true;
+                }
                 if(!player&&op==='arcade_getPlayerScore'){
                     if(!scoreNumber(node))return false;
                     origins?.add(node);domains?.add('number');return true;
@@ -331,7 +338,7 @@ function create(runtime, cells, scoreOwner=null) {
                 return false;
             } finally {visited.delete(node);}
         };
-        if(requested){for(const [index,request]of requested.entries()){const domains=new Set();if(request.procedure){const scopes=captureProof.scopes.filter(scope=>scope.target===target&&scope.procedure===request.procedure);if(scopes.length!==1||!scopes[0].params.includes(request.formal))fail('actual formal binding differs');request.cell=captureProof.local(scopes[0],request.formal);}if(!(request.cell?safeCell(request.cell,false,null,domains):safe(input(request.node,request.name),false,null,domains))||!domains.size||domains.has('unknown'))fail('connected input lacks complete primitive domain evidence'+scoreDetail());possible.set(index,domains);}return;}
+        if(requested){for(const [index,request]of requested.entries()){const domains=new Set();structural=!!request.procedure;if(request.procedure){const scopes=captureProof.scopes.filter(scope=>scope.target===target&&scope.procedure===request.procedure);if(scopes.length!==1||!scopes[0].params.includes(request.formal))fail('actual formal binding differs');request.cell=captureProof.local(scopes[0],request.formal);}if(!(request.cell?safeCell(request.cell,false,null,domains):safe(input(request.node,request.name),false,null,domains))||!domains.size||domains.has('unknown'))fail('connected input lacks complete primitive domain evidence'+scoreDetail());possible.set(index,domains);}return;}
         if (!safe(input(block,'VALUE')) || !safe(input(block,'LIMIT'))) fail('connected input lacks primitive producer authority'+scoreDetail());
         return {value:input(block,'VALUE'),limit:input(block,'LIMIT')};
     };
@@ -345,7 +352,7 @@ function create(runtime, cells, scoreOwner=null) {
             reporterOwner(runtime,util,args,'arcade_inspectValue',[]);
             const target=util.thread.target;
             if (!snapshots.has(target)) fail('foreign or cloned target');
-            const source=prove(target,block,null,null,util);
+            const source=prove(target,block,null,null,util,args);
             const actual = (node,value) => {
                 const decoded=primitive(value);
                 if (node.opcode!=='math_number') return decoded;
@@ -385,7 +392,7 @@ function create(runtime, cells, scoreOwner=null) {
                 const name=path[path.length-1],child=target.blocks.getBlock(node.inputs?.[name]?.block);if(!child||child.parent!==node.id)fail('actual primitive input slot is missing or disconnected');
                 return {node,name};
             });
-            const possible=new Map();prove(target,block,requests,possible,util);
+            const possible=new Map();prove(target,block,requests,possible,util,args);
             return Object.freeze(requests.map((_,index)=>Object.freeze([...possible.get(index)])));
         }finally{active=false;}
     };

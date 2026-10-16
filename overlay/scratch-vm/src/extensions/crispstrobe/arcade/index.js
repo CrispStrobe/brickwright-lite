@@ -1,6 +1,7 @@
 const makeExt = require('../adapter');
 const createConsoleInspectValues = require('./console-inspect-values');
 const nullSpriteGetter = require('../../../util/bw-null-sprite-getter');
+const sceneClockNumber = require('./scene-clock-number');
 
 // Shared game-console blocks. The original extension described a micro:bit
 // 5x5 game API but implemented every VM method as a no-op. Keep its opcodes
@@ -25,6 +26,7 @@ module.exports = makeExt(`// Name: Arcade
   const exceptionOwners = new WeakMap();
   const procedureOwners = new WeakMap();
   const scoreNumberOwners = new WeakMap();
+  const sceneClockOwners = new WeakMap(), sceneClockValues = new WeakMap();
   const nullSpriteOwners = new WeakMap();
   const nullSpriteFaults = new WeakMap();
   const procedureEntryDisposers = new WeakMap();
@@ -65,7 +67,18 @@ module.exports = makeExt(`// Name: Arcade
           Object.getOwnPropertyDescriptor(getterPrototype,name)?.value===method)});
       nullSpriteOwners.set(this,getterOwner);
       nullSpriteFaults.set(this,dependencies.nullSpriteGetter.create(runtime,getterOwner));
-      this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner);
+      let clockScenes;
+      const clockPrototype=Object.getPrototypeOf(this),clockMethods=new Map(
+        ['getInfo','sceneMillis','_state','_ensureSceneEngine','_activateScene','pushScene','popScene'].map(name=>
+          [name,Object.getOwnPropertyDescriptor(clockPrototype,name)?.value]));
+      const clockData=(object,name)=>{const d=object&&Object.getOwnPropertyDescriptor(object,name);return d&&Object.prototype.hasOwnProperty.call(d,'value')?d.value:undefined;};
+      const clockOwner=Object.freeze({isInstance:value=>value===this,isCurrent:()=>Object.getPrototypeOf(this)===clockPrototype&&
+        clockData(this,'_runtime')===runtime&&clockScenes instanceof Map&&clockData(this,'_sceneValues')===clockScenes&&[...clockMethods].every(([name,method])=>typeof method==='function'&&
+          !Object.prototype.hasOwnProperty.call(this,name)&&clockData(clockPrototype,name)===method),
+        context:()=>({state:clockData(runtime,'bwArcadeDeviceState'),serial:clockData(this,'_ownedSpriteSceneSerial'),
+          epoch:clockData(this,'_terrainEpoch'),scenes:clockData(this,'_sceneValues')})});
+      sceneClockOwners.set(this,clockOwner);sceneClockValues.set(this,dependencies.sceneClockNumber.create(runtime,clockOwner));
+      this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner,sceneClockValues.get(this));
       const installProcedureOwner=()=>{
         procedureEntryDisposers.get(this)?.();procedureOwners.get(this)?.dispose();
         const owner=dependencies.createProcedureConstraints(runtime,this._consoleInspectValues);
@@ -154,7 +167,7 @@ module.exports = makeExt(`// Name: Arcade
       });
       this._spriteValues = new Map();
       this._playerValues = new Map();this._nextPlayerValue=0;
-      this._sceneValues=new Map();this._physicsEngines=new Map();this._nextSceneValue=0;this._nextPhysicsEngine=0;
+      this._sceneValues=new Map();this._physicsEngines=new Map();this._nextSceneValue=0;this._nextPhysicsEngine=0;clockScenes=this._sceneValues;
       this._kindRegistry=dependencies.createKindRegistry();
       this._kindInsertion = 0;
       this._animations = new Map();
@@ -276,7 +289,7 @@ module.exports = makeExt(`// Name: Arcade
           imageOwner.dispose();imageOwner=newImageOwner();sdkImageOwners.set(this,imageOwner);
           spriteOwner.dispose();spriteOwner=newSpriteOwner();ownedSpriteOwners.set(this,spriteOwner);
           this._sourceScalarCells.invalidate();this._sourceTypeOf.invalidateInputs();this._consoleInspectValues.dispose();managedReturnHosts.get(this).dispose();
-          this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner);
+          this._consoleInspectValues=dependencies.createConsoleInspectValues(runtime,this._sourceScalarCells,scoreNumberOwner,sceneClockValues.get(this));
           installProcedureOwner();
           managedReturnHosts.set(this,dependencies.createManagedReturnValues(runtime));
           // Registry publications belong to the loaded project. GUI artwork
@@ -297,7 +310,7 @@ module.exports = makeExt(`// Name: Arcade
     getInfo() {
       const str = (name, def) => ({ [name]: { type: Scratch.ArgumentType.STRING, defaultValue: def || '' } });
       const n = (name, def) => ({ [name]: { type: Scratch.ArgumentType.NUMBER, defaultValue: def == null ? 0 : def } });
-      return dependencies.nullSpriteGetter.declaration(dependencies.createConsoleInspectValues.scoreInfo({
+      return dependencies.sceneClockNumber.declaration(dependencies.nullSpriteGetter.declaration(dependencies.createConsoleInspectValues.scoreInfo({
         id: 'arcade',
         name: 'Arcade',
         color1: '#E64980',
@@ -309,7 +322,7 @@ module.exports = makeExt(`// Name: Arcade
           {opcode:'declareParameterConstraint',blockType:Scratch.BlockType.COMMAND,text:'declare Arcade procedure [PROCEDURE] parameter [PARAMETER] as [TYPE]',arguments:{PROCEDURE:{type:Scratch.ArgumentType.STRING,menu:'constraintProcedures'},PARAMETER:{type:Scratch.ArgumentType.STRING,menu:'constraintParameters'},TYPE:{type:Scratch.ArgumentType.STRING,menu:'sourceScalarTypes',defaultValue:'Any'}}},
           {opcode:'declareSourceScalar',blockType:Scratch.BlockType.COMMAND,text:'declare Arcade source scalar [VARIABLE] as [TYPE]',arguments:{VARIABLE:{type:Scratch.ArgumentType.STRING},TYPE:{type:Scratch.ArgumentType.STRING,menu:'sourceScalarTypes',defaultValue:'Any'}}},
           {opcode:'sourceWhile',blockType:Scratch.BlockType.LOOP,text:'Arcade repeat while [CONDITION]',arguments:{CONDITION:{type:Scratch.ArgumentType.BOOLEAN}}},
-          {opcode:'sceneMillis',blockType:Scratch.BlockType.REPORTER,text:'Arcade scene runtime milliseconds'},
+          {opcode:'sceneMillis',blockType:Scratch.BlockType.REPORTER,text:'Arcade scene runtime milliseconds',arguments:{}},
           {opcode:'programMillis',blockType:Scratch.BlockType.REPORTER,text:'Arcade program runtime milliseconds'},
           {opcode:'textSpriteCreate',blockType:Scratch.BlockType.REPORTER,text:'Arcade create text sprite [TEXT] background [BACKGROUND] foreground [FOREGROUND]',arguments:{...str('TEXT','Hello'),...n('BACKGROUND',0),...n('FOREGROUND',1)}},
           {opcode:'textSpriteSetText',blockType:Scratch.BlockType.COMMAND,text:'Arcade text sprite [ID] set text [TEXT]',arguments:{...str('ID',''),...str('TEXT','Hello')}},
@@ -1079,7 +1092,7 @@ module.exports = makeExt(`// Name: Arcade
           spriteFlags: {acceptReporters: false, items: Object.keys(spriteFlags)}
           ,speechModes: {acceptReporters: false, items: ['text', 'legacy']}
         }
-      },scoreNumberOwners.get(this)),nullSpriteOwners.get(this));
+      },scoreNumberOwners.get(this)),nullSpriteOwners.get(this)),sceneClockOwners.get(this));
     }
 
     // An owned runtime may inject {now:()=>milliseconds} for deterministic
@@ -1112,7 +1125,22 @@ module.exports = makeExt(`// Name: Arcade
       if(this._programClockEpoch===epoch)epoch.active=false;
     }
     programMillis() {try{return this._programMillis();}catch(error){this._runtime?.emit?.('BLOCKS_ERROR',error.message);return Scratch.BWValues.encode(undefined);}}
-    sceneMillis() {return this._state().elapsedMs || 0;}
+    sceneMillis(args,util) {
+      return sceneClockValues.get(this).read(args,util,()=>{
+        // Refuse effectful clock access before _state's existing initialization
+        // check. Genuine own data keeps that initializer and scene policy.
+        const current=Object.getOwnPropertyDescriptor(this._runtime,'bwArcadeDeviceState');
+        if(current&&!Object.prototype.hasOwnProperty.call(current,'value'))throw Error('Scene clock Number: scene accessor is not owned data');
+        const existing=current?.value;
+        if(existing&&typeof existing==='object'){
+          const prototype=Object.getPrototypeOf(existing),elapsed=Object.getOwnPropertyDescriptor(existing,'elapsedMs');
+          if(prototype!==Object.prototype&&prototype!==null||elapsed&&!Object.prototype.hasOwnProperty.call(elapsed,'value'))throw Error('Scene clock Number: clock accessor is not owned data');
+        }
+        const state=this._state(),elapsed=Object.getOwnPropertyDescriptor(state,'elapsedMs');
+        if(!elapsed||!Object.prototype.hasOwnProperty.call(elapsed,'value'))throw Error('Scene clock Number: clock value is not owned data');
+        return {state,value:elapsed.value};
+      },()=>this._state().elapsedMs || 0);
+    }
 
     _state() {
       if (this._runtime) {
@@ -6066,6 +6094,8 @@ module.exports = makeExt(`// Name: Arcade
   createSourceTypeOfValues: require('./source-typeof-values'),
   createConsoleInspectValues,
   bindScoreAdapterInfo: createConsoleInspectValues.bindScoreAdapterInfo,
+  sceneClockNumber,
+  bindSceneClockAdapterInfo: sceneClockNumber.bindAdapterInfo,
   nullSpriteGetter,
   bindNullSpriteAdapterInfo: nullSpriteGetter.bindAdapterInfo,
   createProcedureConstraints: require('./procedure-parameter-constraints'),
