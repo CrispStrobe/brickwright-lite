@@ -1,9 +1,9 @@
 # Scene-clock Number completion boundary
 
-Development candidate; actual pure controls passed 63 of 64 before exposing a
-current-export formal/caller inference gap. The source successor shares the exact
-serialized reporter eligibility proof between emission and type inference; its
-new controls and all native controls still need qualification.
+Development candidate. The final bounded source and modeled execution suite
+passes 66 controls after retaining the earlier export and diagnostic-expectation
+failures. The shared serialized reporter proof covers emission and formal/caller
+static inference. Actual native and visible GUI qualification remain pending.
 Read the [claim and acceptance](../ARCADE-CLOCK-NUMBER-PRODUCER.md).
 
 ## Source and current export
@@ -87,7 +87,8 @@ adapter issuance, registration and every current-proof boundary. Reusing the
 same object after adding a key or replacing its descriptor is refused. The
 certified source read also refuses inherited clock descriptors before calling
 the existing initializer; the direct historical service path stays unchanged.
-These authored successor controls remain unexecuted until finite qualification.
+The source and modeled controls are included in the 66 checks; native schema
+mutation controls still require their own actual qualification.
 
 Malformed caller sockets are refused by the existing exact structural owner
 check before typed obligations exist. Clock-sharing controls also retain a
@@ -95,3 +96,10 @@ separate valid caller with a duplicate reporter edge from a preceding main
 writer, so the current Number inference refusal is exercised independently.
 The first pure successor passed its original two-caller export and 65 of 66
 controls; that control failure and its full returned diagnostics are retained.
+
+The authored native controls optionally retain complete diagnostic-presence
+records, partial Creator returns, current graphs, actual ZIP bytes before load
+and current export/reimport inputs. Their evidence does not manufacture a
+completion certificate. Only one actual VM runs at a time; setup failure cleanup
+owns the test child and preserves the original error. Those controls remain
+unexecuted until their separately reviewed native packet is admitted.
