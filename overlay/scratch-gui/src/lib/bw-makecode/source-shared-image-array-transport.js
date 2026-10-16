@@ -75,7 +75,17 @@ function prove(program) {
         if(node.type==='FunctionDeclaration')declare(lexical.scopes.get(node)?.parent?.names.get(node.name));
     }
 
+    // Stateful builtin kind allocation may precede resource declarations, but
+    // remains an actual call in place. Neither a copied name nor an extracted
+    // member grants this closed no-guest-callback effect contract.
+    const kindAllocation = node => node?.type==='Call' && !node.isNew && !node.constructorCall &&
+        !Object.hasOwn(node,'typeArguments') && Array.isArray(node.args) && node.args.length===0 &&
+        node.callee?.type==='Member' && path(node.callee)==='SpriteKind.create' && sdk.has(node.callee);
     for (const node of nodes) {
+        if(node.type==='Member' && path(node)==='SpriteKind.create' && sdk.has(node)) {
+            const call=parents.get(node);
+            if(call?.callee!==node || !kindAllocation(call))return null;
+        }
         if(node.type === 'Identifier' && !lexical.references.get(node)) {
             const parent=parents.get(node);
             if(!sdk.has(node) || parent?.type!=='Member' || parent.object!==node)return null;
@@ -116,7 +126,9 @@ function prove(program) {
         return Object.freeze(images);
     };
     // Only a prefix with no guest calls/registrations/branching can dominate all
-    // uses in every function/callback. Local constructors remain ordinary fresh.
+    // uses in every function/callback. Exact builtin kind allocations have no
+    // guest callback and stay in their original declaration/order. Local Image
+    // constructors remain ordinary fresh.
     let prefix=true;
     for(const statement of program.body) {
         if(statement.type==='FunctionDeclaration')continue;
@@ -137,7 +149,7 @@ function prove(program) {
                 }
                 if(safe){const candidate={statement,decl,array:decl.init,images,uses:usesFor};candidates.push(candidate);for(const [node,index]of usesFor)selections.set(node,{candidate,index});}
             }
-            if(decl.init && !images && !['Number','String','Boolean','Null','Undefined'].includes(decl.init.type))prefix=false;
+            if(decl.init && !images && !kindAllocation(decl.init) && !['Number','String','Boolean','Null','Undefined'].includes(decl.init.type))prefix=false;
         }
     }
     // These existing native operations cannot obtain the private backing Array

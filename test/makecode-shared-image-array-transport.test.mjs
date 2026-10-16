@@ -194,3 +194,82 @@ test('actual no-initializer declarations preserve effect order without producing
     assert.equal(alias.program.body[3].expr.callee.object.name,'alias');
     assert.equal(alias.program.body[4].expr.left.name,'selected','early alias/read order stays ordinary too');
 });
+
+test('exact builtin kind allocations remain once and in declaration order around shared selections',()=>{
+    const source='let firstKind=SpriteKind.create();'+declaration('pictures')+'let before=pictures[0];let secondKind=SpriteKind.create();let seen=pictures[0].getPixel(0,0);console.log(firstKind);console.log(secondKind);console.log(seen);';
+    const {input,prepared,staged,final,resource}=stage(source);
+    const allocations=program=>{const result=[];walk(program,node=>{if(node.type==='Call'&&node.callee?.type==='Member'&&node.callee.object?.name==='SpriteKind'&&node.callee.name==='create')result.push(node);});return result;};
+    for(const program of [input,prepared.program,staged,final]){
+        assert.equal(allocations(program).length,2,'no allocation is folded duplicated or removed');
+        const declarations=program.body.filter(n=>n.type==='Declaration').map(n=>n.decls[0].name);
+        assert.ok(declarations.indexOf('firstKind')<declarations.indexOf('pictures'));
+        assert.ok(declarations.indexOf('pictures')<declarations.indexOf('before'));
+        assert.ok(declarations.indexOf('before')<declarations.indexOf('secondKind'));
+        assert.ok(declarations.indexOf('secondKind')<declarations.indexOf('seen'));
+    }
+    assert.deepEqual([...resource.frames.keys()],['pictures']);
+    const first=input.body[0].decls[0].init;assert.equal(first.type,'Call');assert.deepEqual(first.args,[]);
+    const multi=stage('let one=SpriteKind.create(),two=SpriteKind.create();'+declaration('pictures')+'let selected=pictures[0];console.log(one);console.log(two);console.log(selected.getPixel(0,0));');
+    for(const program of [multi.input,multi.prepared.program,multi.staged,multi.final]){
+        assert.deepEqual(program.body[0].decls.map(row=>row.name),['one','two']);
+        assert.equal(allocations(program).length,2,'multi-declaration evaluation retains both original calls');
+        assert.ok(program.body[0].decls.every(row=>row.init.type==='Call'&&row.init.args.length===0));
+    }
+});
+
+test('kind prefix rejects namespace shadows writers escape and unsupported allocation shapes',()=>{
+    const use=declaration('pictures')+'let selected=pictures[0];console.log(selected.getPixel(0,0));';
+    for(const before of [
+        'let SpriteKind={create:function(){return 0}};let kind=SpriteKind.create();',
+        'function foreign(SpriteKind:any){SpriteKind.create()}let kind=SpriteKind.create();',
+        'let kind=SpriteKind.create();SpriteKind.create=function(){return 0};',
+        'let kind=SpriteKind.create();SpriteKind=other;',
+        'let kind=SpriteKind.create();let extracted=SpriteKind.create;',
+        'let kind=SpriteKind.create();let escaped=SpriteKind;',
+        'let kind=SpriteKind.create(1);',
+        'let kind=new SpriteKind.create();',
+        'let kind=SpriteKind.create<number>();',
+        'let kind=SpriteKind["create"]();',
+        'let kind=SpriteKind.create.call(null);',
+        'let kind=SpriteKind.create();game.onUpdate(function(){});',
+        'function earlier(){}let kind=SpriteKind.create();earlier();'
+    ])assert.equal(prepareSharedImageArrayTransport(parse(before+use)),null,before);
+    const after=prepareSharedImageArrayTransport(parse('let kind=SpriteKind.create();'+use+'SpriteKind.create=function(){return 0};'));
+    assert.equal(after,null,'later actual builtin writers also refuse the original prefix');
+});
+
+test('a changed physical builtin kind call invalidates final shared resource facts',()=>{
+    const {final}=stage('let kind=SpriteKind.create();'+declaration('pictures')+'let selected=pictures[0];console.log(selected.getPixel(0,0));');
+    assert.ok(currentSharedImageArrayTransport(final));
+    const allocation=final.body.find(n=>n.type==='Declaration'&&n.decls[0].name==='kind').decls[0].init;
+    allocation.args.push({type:'Number',value:'1'});
+    assert.equal(currentSharedImageArrayTransport(final),null,'no renewed proof after an actual call edit');
+});
+
+test('public roundtrip retains actual kind allocation counters and shared frame operation order',async()=>{
+    const source='let firstKind=SpriteKind.create();'+declaration('pictures')+'let before=pictures[0];let secondKind=SpriteKind.create();let seen=pictures[0].getPixel(0,0);console.log(firstKind);console.log(secondKind);console.log(seen);';
+    const imported=convert(source);clean(imported);assert.equal(frameReads(imported.code).length,2);assert.doesNotMatch(imported.code,/new array reference/);
+    const creator=new Creator();creator.parse(imported.code);record({stage:'kind-Creator',project:creator.project,channels:channels(creator)});clean(creator);
+    for(const costume of imported.costumes||[])creator.applyCustomSVG(costume.sprite,costume.svg);
+    const allocationWriters=[];
+    for(const target of creator.project.targets)for(const [id,block]of Object.entries(target.blocks||{}))if(block.opcode==='arcade_createSpriteKind'){
+        const parent=target.blocks[block.parent];assert.equal(parent?.opcode,'data_setvariableto');
+        allocationWriters.push({target,id,writer:block.parent,name:parent.fields.VARIABLE[0],variableId:parent.fields.VARIABLE[1]});
+    }
+    assert.equal(allocationWriters.length,2,'actual native kind allocation reporters survive exactly once each');
+    assert.deepEqual(new Set(allocationWriters.map(r=>r.name)),new Set(['firstKind','secondKind']));
+    const first=allocationWriters.find(r=>r.name==='firstKind'),second=allocationWriters.find(r=>r.name==='secondKind');assert.equal(first.target,second.target);
+    const hats=Object.entries(first.target.blocks).filter(([,block])=>block.opcode==='arcade_whenSourceStarts');assert.equal(hats.length,1);
+    const sequence=[],visited=new Set();let cursor=first.target.blocks[hats[0][0]].next;
+    while(cursor){assert.ok(!visited.has(cursor),'actual entry chain acyclic');visited.add(cursor);sequence.push(cursor);cursor=first.target.blocks[cursor].next;}
+    const variableWriter=name=>sequence.find(id=>first.target.blocks[id].opcode==='data_setvariableto'&&first.target.blocks[id].fields.VARIABLE[0]===name);
+    const before=variableWriter('before');assert.ok(before);assert.ok(sequence.indexOf(first.writer)<sequence.indexOf(before));assert.ok(sequence.indexOf(before)<sequence.indexOf(second.writer));
+    const code=creator.decompile();record({stage:'kind-Code',code});assert.ok(code);
+    const bytes=Buffer.from(await(await creator.generateSB3()).arrayBuffer()),zip=await JSZip.loadAsync(bytes),members={};
+    for(const [name,item]of Object.entries(zip.files))if(!item.dir)members[name]=await item.async('base64');
+    record({stage:'kind-SB3',bytes:bytes.toString('base64'),members,project:creator.project});
+    const exported=projectToArcade(creator.project,{costumeSvg:(_target,costume)=>creator.assets.get(costume.assetId)?.data});record({stage:'kind-export',result:exported,channels:channels(exported)});clean(exported);
+    let calls=0;walk(parse(exported.files['main.ts']),node=>{if(node.type==='Call'&&node.callee?.type==='Member'&&node.callee.object?.name==='SpriteKind'&&node.callee.name==='create'){assert.equal(node.args.length,0);calls++;}});
+    assert.equal(calls,2,'actual exported source retains both stateful allocations');
+    const again=convert(exported.files);clean(again);assert.equal(frameReads(again.code).length,2);assert.doesNotMatch(again.code,/new array reference/,'no new backing constructor after genuine current export/reimport');
+});
