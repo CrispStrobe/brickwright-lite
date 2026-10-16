@@ -1,6 +1,6 @@
 # Arcade compatibility: fresh-agent handoff and methodology
 
-Updated 2026-10-15. The current-state refresh below supersedes the older
+Updated 2026-10-16. The current-state refresh below supersedes the older
 2026-10-10 checkpoints retained later in this guide. This is the public
 entry point for continuing MakeCode compatibility work without chat history.
 Read the optional, gitignored `docs/ARCADE-AGENT-HANDOFF.local.md` for the
@@ -16,6 +16,45 @@ The same workflow retains three failed unit shards; this is not an all-checks
 passing integration. The corrected canonical compiler is separately under
 [PR158](https://github.com/CrispStrobe/sb3-creator/pull/158); it is not the
 compiler used by that hosted editor evidence.
+
+## Development results and next gaps — 2026-10-16
+
+These results concern the reviewed development composition. They do not establish
+that its source has landed on public main or that the latest editor build has
+passed every hosted check. The immutable corpus remains **147 translated /
+36 partial / one malformed input**; no whole-project totals changed.
+
+- The maintained null-Sprite regression suite passes all eight tests. The six
+  unaffected test bodies remain unchanged. The other two use the qualified
+  sequential VM lifecycle and current artwork callbacks, avoiding overlapping
+  VM dispatch owners. Five routes of the authentic flame project also match
+  its observed original x-getter fault boundary. Actual runtime image pixels
+  are checked separately from the blank Scratch clone costume; later projectile
+  and velocity effects remain blocked. This is bounded native evidence, with
+  controller timing and visible-editor limits retained.
+- Free throw now passes its first complete dependency-aware source, Creator,
+  Code, save and current-export route. Preparing that genuinely new exported
+  root with its declared dependency also succeeds. Reimport, Creator and Code
+  then pass, but the next export reports two Array receiver refusals. The
+  [overwritten initializer contract](ARCADE-ARRAY-LOCAL-RESET-PROOF.md)
+  scopes the proper fix; this project is still incomplete.
+- Generic Image expressions and exact fixed-instance JRES owners have focused
+  controls. Rockscout retains all 48 resource pixel bodies and 43 unique helper
+  bodies, but its source still has 79 unsupported diagnostics. Holiday retains
+  all 58 helper bodies and 150 call records, but has 143 unsupported source
+  diagnostics and two Creator unparsed entries. Class ownership, callback
+  result flow and remaining default protocols need implementation.
+- Omitted ordinary arguments preserve original formal/default provenance and
+  pass 13 focused controls. This does not establish class or ambient receiver
+  proofs, or the remaining mixed Carnival default protocol.
+
+Next, close the actual Free throw Array refusal, then qualify the exact
+[scene-clock Number producer](ARCADE-CLOCK-NUMBER-PRODUCER.md). Preserve all
+current bodies, assets and diagnostic channels when repeating affected routes.
+The [GUI capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) tracks
+Code, Blocks, graphics, runtime/controller, persistence and export acceptance
+separately. The five older hosted editor journeys remain the latest hosted
+GUI evidence; these new native results do not extend their coverage.
 
 ## Current method and qualification frontier — 2026-10-15
 

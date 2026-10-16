@@ -1,7 +1,35 @@
 # Current complete-project conversion gaps
 
-Updated 2026-10-15. Read the [handoff](../ARCADE-AGENT-HANDOFF.md),
+Updated 2026-10-16. Read the [handoff](../ARCADE-AGENT-HANDOFF.md),
 [closure plan](../ARCADE-PARTIAL-CLOSURE-PLAN.md) and [authoring ledger](../CONVERSION-CAPABILITIES-AND-GUI-GAPS.md).
+
+## Focused successor results — 2026-10-16
+
+The profile tables below remain historical measurements. Current development
+checks have not rerun or promoted the 29-project profile or immutable corpus.
+
+Free throw's current exported root now receives its actual declared dependency
+context through the public asynchronous import route. The first current export
+is clean. A fresh preparation of that new root then passes reimport, Creator,
+Code and save; its subsequent export fails with two explicit Array receiver
+refusals. Seven private locals have null initializers followed by definite Array
+overwrites across palette/global/independent Array effects. The fix must prove
+those effects cannot expose or read the old private frame; removing null writers
+by name or filtering diagnostics is not permitted. See the
+[bounded initializer contract](../ARCADE-ARRAY-LOCAL-RESET-PROOF.md).
+
+The authentic flame project's five native routes now preserve its observed
+null-Sprite x-getter TypeError and suppress the later projectile effects. Actual
+runtime image ownership and all 64 pixels are checked separately from the clone's
+blank Scratch costume. The maintained native suite passes eight tests without
+skips. This closes that finite native fault mismatch; initial activation timing,
+full gameplay and visible authoring still have their own gates.
+
+Focused resource/owner checks preserve Rockscout's 48 image bodies and 43 unique
+helper bodies, and Holiday's 58 helper bodies plus 150 call records. Those projects
+still report 79 and 143 unsupported source diagnostics respectively; Holiday
+also retains two Creator unparsed entries. Conservative source-census refusals
+are retained pending actual receiver/ownership proofs. No helper body was pruned.
 
 ## What was actually refreshed
 
@@ -90,7 +118,7 @@ Of the nineteen pure-complete identities, fifteen belong to the immutable
 behavior and authoring qualification of those fifteen would leave 21 partials;
 reaching fewer than twenty needs at least two further genuine case closures.
 
-## Runtime and authoring remain separate
+## Historical runtime and authoring observations
 
 The [authentic project ledger](arcade-authentic-project-qualification.md) records
 twelve projects with five bounded native routes each. It does not promote all
