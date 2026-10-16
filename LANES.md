@@ -322,6 +322,39 @@ remain unchanged. Full hosted checks remain required before merge; this does
 not qualify a new installed package or close SPIKE G02.
 
 
+## SPIKE pending Stop teardown implementation — 2026-10-15
+
+G02 continuation, branch `lane/spike-g02-pending-stop-20261015`, based on main
+after the Code caller/output follow-up [PR985](https://github.com/CrispStrobe/brickwright-lite/pull/985) merged.
+Its frozen-package qualification below does not
+qualify this new teardown change. A second Stop can see no
+attached session while native teardown still owns the hub clock. Remember the
+pending teardown before invoking the native Stop, and await it before restoring
+topology, cancelling the shared backend or continuing Start. A synchronous Stop
+listener joins that same teardown. Earlier completion cannot clear a later
+pending teardown; joined teardown failures wait for all outstanding stops and
+retain the original error for the current intent. Existing intent, bridge and
+disposal guards still admit shared cleanup.
+
+Ownership is limited to canonical `stopProgram`, new
+`test/spike-arena-pending-stop.test.mjs`, this ledger and the SPIKE guide. Extend
+the existing continuation contracts only to timing adaptations in the pane
+composition, lifecycle, Pause, teardown, world-ownership and upload-Stop tests.
+These controls now release native teardown before awaiting a later Stop. Where
+an older reply must arrive after replacement, hold its original promise delivery
+after teardown rather than creating a circular wait. Preserve success/error,
+replacement/disposal, retained-program and fresh-Start assertions.
+
+Twelve authored controls use the real hub clock guard and arena bridge. All
+pass, and six broken pending/intent/error guards are detected. The broader 220
+controls passed before adding the twelfth focused case; the final twelve pass
+separately. A rendered React test is unavailable locally and is not counted.
+No installed package or guest result qualifies this change yet. Require affected
+installed own-guest repeated Stop, cleanup and distinct recovery, plus every
+enabled exact-head check before merge. Firmware, Runtime/models, dependency
+pins, protocol, product budgets and other pane methods are unchanged. This does
+not close G02 or establish reference, physical, licensing or release results.
+
 ## SPIKE G02 composed lifecycle integration — 2026-10-15
 
 Continuation of the merged SPIKE G02 pane/session claims, branch
@@ -5510,35 +5543,23 @@ result remains mandatory; acquire each official original once and never replay
 a guest for the reader. No ISO/ATAPI, generalized DOSBox, new CPU/device, reverse
 execution, mode-aware disassembler, physical timing, whole-OS or release claim.
 
-## SPIKE pending Stop teardown implementation — 2026-10-15
+## A13 CPX production browser gate registration — 2026-10-16
 
-G02 continuation, branch `lane/spike-g02-pending-stop-20261015`, based on main
-after the Code caller/output follow-up [PR985](https://github.com/CrispStrobe/brickwright-lite/pull/985) merged.
-Its frozen-package qualification below does not
-qualify this new teardown change. A second Stop can see no
-attached session while native teardown still owns the hub clock. Remember the
-pending teardown before invoking the native Stop, and await it before restoring
-topology, cancelling the shared backend or continuing Start. A synchronous Stop
-listener joins that same teardown. Earlier completion cannot clear a later
-pending teardown; joined teardown failures wait for all outstanding stops and
-retain the original error for the current intent. Existing intent, bridge and
-disposal guards still admit shared cleanup.
+CLAIMED — Codex, isolated worktree `/tmp/brickwright-lite-a13-20261016`,
+branch `lane/a13-cpx-face-adoption-20261016`; amendment based on canonical
+`d544efb23`. Merge this claim before implementation. Extend the existing A13
+claim only to `.github/workflows/build.yml` for a standalone light-shard CPX
+production browser gate and its failure/success receipt upload, plus canonical
+`scripts/gen-gate-budgets.mjs --register` output in
+`docs/generated/browser-gate-readings.json` and focused registration controls.
+Reuse the existing browser job, server and immutable artifact action; introduce
+no workflow or job. The new gate uses the existing provisional three-minute
+floor; preserve every existing measured reading, timeout and threshold.
 
-Ownership is limited to canonical `stopProgram`, new
-`test/spike-arena-pending-stop.test.mjs`, this ledger and the SPIKE guide. Extend
-the existing continuation contracts only to timing adaptations in the pane
-composition, lifecycle, Pause, teardown, world-ownership and upload-Stop tests.
-These controls now release native teardown before awaiting a later Stop. Where
-an older reply must arrive after replacement, hold its original promise delivery
-after teardown rather than creating a circular wait. Preserve success/error,
-replacement/disposal, retained-program and fresh-Start assertions.
-
-Twelve authored controls use the real hub clock guard and arena bridge. All
-pass, and six broken pending/intent/error guards are detected. The broader 220
-controls passed before adding the twelfth focused case; the final twelve pass
-separately. A rendered React test is unavailable locally and is not counted.
-No installed package or guest result qualifies this change yet. Require affected
-installed own-guest repeated Stop, cleanup and distinct recovery, plus every
-enabled exact-head check before merge. Firmware, Runtime/models, dependency
-pins, protocol, product budgets and other pane methods are unchanged. This does
-not close G02 or establish reference, physical, licensing or release results.
+The gate drives the real native CPX program, pane and circuit face through
+`scripts/verify-cpx-circuit-face.mjs`; it must retain actual VM output and input
+assertions and upload its JSON observations. This amendment permits registration
+work now, while preserving the A13 adoption order: qualified upstream CUI and
+the earlier serialized STM32/translator integrations precede the final supplier
+pin and full application qualification. It transfers no other owner's paths,
+changes no runtime semantics, and claims no physical hardware acceptance.
