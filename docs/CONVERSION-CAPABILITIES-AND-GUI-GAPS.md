@@ -6,6 +6,29 @@ below are dated checkpoints with their own source and evidence boundaries; a
 pure or headless native pass does not establish visible editor compatibility.
 
 
+## Animation roundtrip audit and remaining editor work — 2026-10-16
+
+Use [the integration repair status](ARCADE-CI-REPAIR-STATUS.md) for the current
+qualification order and six coordinated contracts. These are development
+boundaries, not a new whole-project compatibility census.
+
+| Surface | Current measured capability | Work an editor agent must qualify |
+| --- | --- | --- |
+| Animation libraries and Arrays | Validated current resources supply Array export authority. The complete original five-test suite passes: real VM/storage, three plain CLI conversions and original Arcade compile/run. A separate audit covers both complete archives, every costume/sound role, rich used and unused documents and source identity. Default asset IDs may regenerate; role metadata, references and exact content are checked independently. | Build and edit frame Arrays through actual Blocks and Code; edit frames and names in the graphics editor; verify shared references versus fresh clones, used and unused assets, same/fresh save/reopen and actual current export/reimport. An internal backing Array must not appear as an extra user asset on every conversion. |
+| Normal CLI and project loading | The CLI resolves the installed GUI library and canonical VM normally; the full five-test path passes without child module aliases or injected loader flags. | Open the CLI-produced current project in the real editor and steer it through controller widgets. Preserve diagnostics and current dependency context. Player-specific Number and EV3 gaps remain separate. |
+| Loop arrows | Current static fields use the actual workspace media path. Eleven modeled controls pass. | Check real workspace and flyout arrows under default, contrast and restored themes, including a deployment prefix and save/reopen. No missing-asset masking. |
+| Per-player numeric values | Existing fixed-player score APIs still need the coordinated source and physical Number proof extension. This is pending implementation, not an added capability. | Edit the actual connected player selector through all four players; verify the selected receiver, current Code, ordinary Number consumers, score isolation and saved/exported project. Show unsupported or stale input at its actual location. |
+| Class construction and updates | An unchanged real native control completes its paused constructor, but its physical update entry reports a managed-call error and leaves updates at zero. Reference source and existing controls require updates during construction. | Preserve authorable constructor and update bodies, timing and failure behavior. Add usable class/base/field/method controls and typed sockets where still absent. Qualify edits, Stop/restart and save/reopen with the repaired actual runtime; constructor completion alone cannot qualify updates. |
+| Repeated frame transport and generated helpers | Pre-staging frame-array recognition and parser-profile/helper binding repairs are coordinated, but unimplemented. Current roundtrips can grow connected code. | Keep full current bodies and diagnostics visible. Verify edited Code/Blocks remains stable across repeated export/reimport, including shared frame identity, renamed helpers and user shadows. Do not hide backing blocks or erase extra helper effects to make the editor appear clean. |
+
+The saved-output audit required two corrections to its own assumptions: remove
+redundant source reads within a verification stage, and compare randomized
+asset identities through complete actual roles rather than unchanged filenames.
+Both original failed audits remain preserved. Successful application and
+compiler executions were not repeated to inspect those files. None of these
+headless results establishes visible GUI acceptance or changes the historical
+184-input census.
+
 ## Current conversion and editor acceptance checkpoint — 2026-10-16
 
 This records the current development capabilities and the remaining user-facing
