@@ -26,13 +26,20 @@ const execute=async(label,source,options={})=>{
     try{return await runProgram(source,{...options,observeCreator:(creator,error)=>captureCreator(label,creator,error)});}
     catch(error){retain(label+'-execution-rejection',{error:errorRecord(error),runtimeReturn:{provided:false,reason:'runProgram rejected before returning its VM handle'}});throw error;}
 };
-const finish=run=>{run.vm.stopAll();run.vm.clear();run.vm.quit();clearStrayTimers();};
-const cleanup=()=>{quitStrandedVMs();clearStrayTimers();};
+const finish=(run,expectedErrors=[],primaryError=null)=>{
+    const failures=[];
+    const actions=[...(run?[['stopAll',()=>run.vm.stopAll()],['clear',()=>run.vm.clear()],['quit',()=>run.vm.quit()]]:[]),['quitStrandedVMs',quitStrandedVMs],['clearStrayTimers',clearStrayTimers]];
+    for(const [label,action]of actions)try{action();}catch(error){failures.push({label,error:errorRecord(error)});}
+    const errors=run?{provided:Object.hasOwn(run,'errors'),kind:Array.isArray(run.errors)?'array':typeof run.errors,value:run.errors}:{provided:false,reason:'no returned VM handle'};
+    retain('actual-post-cleanup',{errors,failures,expectedErrors,primaryError:primaryError?errorRecord(primaryError):null});
+    try{assert.deepEqual(failures,[]);if(run){assert.ok(Array.isArray(run.errors),'actual post-cleanup runtime error array');assert.deepEqual(run.errors,expectedErrors,'cleanup cannot silently append runtime errors');}}
+    catch(error){if(!primaryError)throw error;retain('secondary-cleanup-failure',errorRecord(error));}
+};
 const instance=run=>{const service=run.vm.extensionManager._loadedExtensions.get('arcade'),adapter=dispatch.services[service];assert.equal(adapter._inst._runtime,run.vm.runtime);return {adapter,ext:adapter._inst};};
 const accepted=(t,label,run,edited=false)=>{const actual=observation(t,label,run);actual.values=checkedValues(actual);clean(run.creator,['warnings','errors','unparsed']);assert.deepEqual(actual.errors,[]);assert.equal(actual.values.entered,2);assert.equal(actual.values.after,1);assert.equal(typeof actual.values.seen,'number');assert.equal(Number.isFinite(actual.values.seen),true);assert.ok(actual.values.seen>=0);assert.equal(typeof actual.values.rendered,'string');assert.equal(Number.isFinite(Number(actual.values.rendered)),true);if(edited){assert.ok(actual.values.seen>=1000000,'actual edited second argument changes the observed value');assert.ok(Number(actual.values.rendered)<actual.values.seen,'unmodified third clock remains independent of the edited argument');}else assert.ok(Number(actual.values.rendered)>=actual.values.seen);assert.equal(run.calls.get('arcade_sceneMillis'),3,'each actual clock expression executes once');};
 
 test('scene clock two sequential ordinary Number callers survive current Code, same/fresh SB3 and edited export/reimport',async t=>{
-    const result=imported(source);retain('source-import-return',{result,channels:channels(result)});t.diagnostic(JSON.stringify({stage:'import',result}));clean(result,['unsupported','warnings']);let run;
+    const result=imported(source);retain('source-import-return',{result,channels:channels(result)});t.diagnostic(JSON.stringify({stage:'import',result}));clean(result,['unsupported','warnings']);let run,primaryError=null;
     try{
         run=await execute('source',result.code,{frames:20});accepted(t,'source',run);const project=JSON.parse(run.vm.toJSON()),code=run.creator.decompile(project),bytes=Buffer.from(await(await run.vm.saveProjectSb3()).arrayBuffer());retain('actual-current-Code',{code,project});retain('actual-current-saved-ZIP',bytes,true);t.diagnostic(JSON.stringify({stage:'current Code',code}));
         run.vm.stopAll();retain('same-load-actual-ZIP',bytes,true);await run.vm.loadProject(bytes);run.calls.clear();run.errors.length=0;run.vm.greenFlag();await stepFrames(run.vm,20);accepted(t,'same SB3',run);finish(run);run=null;
@@ -52,7 +59,7 @@ test('scene clock two sequential ordinary Number callers survive current Code, s
         const exported=projectToArcade(current);retain('edited-current-export-return',{current,exported,channels:channels(exported)});t.diagnostic(JSON.stringify({stage:'edited current export',current,exported}));clean(exported,['unsupported','warnings']);assert.match(exported.ts,/game\.runtime\(\)/);assert.match(exported.ts,/1000000/);finish(run);run=null;
         const again=imported(exported.files);retain('edited-current-reimport-return',{inputFiles:exported.files,again,channels:channels(again)});t.diagnostic(JSON.stringify({stage:'edited current reimport',again}));clean(again,['unsupported','warnings']);
         run=await execute('edited-current-reimport',again.code,{frames:20});accepted(t,'edited export reimport',run,true);
-    }catch(error){retain('positive-route-failure',errorRecord(error));throw error;}finally{try{if(run)finish(run);}finally{cleanup();}}
+    }catch(error){primaryError=error;retain('positive-route-failure',errorRecord(error));throw error;}finally{finish(run,[],primaryError);}
 });
 
 for(const mode of ['registered function','source method','adapter delegate','metadata function','metadata extra argument','metadata accessor arguments','opcode lookup','text clock state','nonfinite clock state','current extra field','current extra input'])test('scene clock native Number argument refuses '+mode+' before constrained effects',async t=>{
@@ -76,11 +83,11 @@ for(const mode of ['registered function','source method','adapter delegate','met
         let rejectedFrame=null;try{await stepFrames(run.vm,20);}catch(error){rejectedFrame={name:error.name,message:error.message,stack:error.stack};}
         const actual=observation(t,'refused '+mode,run);actual.values=checkedValues(actual);retain('negative-'+mode+'-rejected-frame',{rejectedFrame});t.diagnostic(JSON.stringify({stage:'actual frame rejection channel',mode,rejectedFrame}));assert.equal(actual.values.entered,0);assert.equal(actual.values.after,0);
         assert.ok([...actual.errors,...(rejectedFrame?[rejectedFrame.message]:[])].some(error=>/Scene clock Number:|primitive producer|actual producer|current graph/i.test(error)),'named actual producer refusal; a rejected frame stays a separate channel');
-    }finally{try{restore();if(run)finish(run);}finally{cleanup();}}
+    }finally{try{restore();}finally{finish(run,Array.isArray(run?.errors)?[...run.errors]:[]);}}
 });
 
 test('scene clock genuine metadata refresh and restart renew current completion, never an old receipt',async t=>{
     const result=imported(source);let run;try{
         run=await execute('refresh',result.code,{frames:20});accepted(t,'before actual refresh',run);run.vm.stopAll();await run.vm.extensionManager.refreshBlocks({throwOnError:true});run.calls.clear();run.errors.length=0;run.vm.greenFlag();await stepFrames(run.vm,20);accepted(t,'after actual refresh',run);
-    }finally{try{if(run)finish(run);}finally{cleanup();}}
+    }finally{finish(run);}
 });

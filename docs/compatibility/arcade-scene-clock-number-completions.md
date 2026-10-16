@@ -108,3 +108,8 @@ unexecuted until their separately reviewed native packet is admitted.
 The helper-internal initial Creator ZIP bytes are explicitly unobserved in this
 fixture. Observed current saved ZIP bytes, later loaded unchanged, remain a
 separate artifact; the initial source activation does not claim that byte audit.
+
+Each positive route also retains and checks the actual runtime error array
+after Stop, clear, quit and owned child cleanup. Cleanup actions run
+independently; secondary cleanup failures remain separate from a retained
+primary failure. Expected negative runtime errors cannot gain new cleanup errors.
