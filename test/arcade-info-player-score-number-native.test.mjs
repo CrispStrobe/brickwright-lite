@@ -11,7 +11,8 @@ import {VM_SRC} from './helpers/bw-extensions.mjs';
 const require=createRequire(import.meta.url),BW=require(VM_SRC+'/util/bw-values.js');
 // Passive evidence only: no extra save, export, decode, or VM lifecycle calls.
 const evidenceRoot=process.env.BW_INFO_PLAYER_NUMBER_EVIDENCE_DIR;
-let evidenceSequence=0;
+let evidenceSequence=0,helperBufferSequence=0;
+const retainedHelperBuffers=new WeakSet();
 const raw=(value,seen=new Map())=>{
     if(value===undefined)return {$kind:'undefined'};
     if(typeof value==='number'&&!Number.isFinite(value))return {$kind:'number',value:String(value)};
@@ -37,10 +38,21 @@ const channels=value=>Object.fromEntries([...new Set([...channelNames,...(value!
     const d=value!==null&&(typeof value==='object'||typeof value==='function')?Object.getOwnPropertyDescriptor(value,name):undefined;
     return [name,!d?{present:false}:'value'in d?{present:true,value:d.value}:{present:true,accessor:true}];
 }));
-const retainRun=(label,run)=>retain(label,{creatorChannels:channels(run.creator),project:run.creator.project,
+const retainRun=(label,run)=>{
+    if(evidenceRoot&&!retainedHelperBuffers.has(run)){
+        // Exactly the existing helper return: no second generation or save.
+        const bytes=run.buffer,name='actual-helper-'+(++helperBufferSequence)+'.sb3';
+        if(Buffer.isBuffer(bytes)){
+            retain('actual-helper-buffer',{name,bytes:bytes.length,sha256:createHash('sha256').update(bytes).digest('hex')});
+            fs.writeFileSync(path.join(evidenceRoot,name),bytes,{flag:'wx'});
+        }else retain('actual-helper-buffer-unavailable',{actualValue:bytes});
+        retainedHelperBuffers.add(run);
+    }
+    return retain(label,{creatorChannels:channels(run.creator),project:run.creator.project,
     errors:run.errors,targets:run.vm.runtime.targets.map(target=>({id:target.id,isOriginal:target.isOriginal,
         isStage:target.isStage,blocks:target.blocks._blocks,variables:target.variables,
         name:target.sprite.name,costumes:target.sprite.costumes,sounds:target.sprite.sounds}))});
+};
 const imported=source=>{
     let result;
     try{result=importProjectFiles({'main.ts':source},{target:'arcade'});}
