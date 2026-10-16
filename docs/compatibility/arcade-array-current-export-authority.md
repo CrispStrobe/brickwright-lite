@@ -75,3 +75,11 @@ The focused source controls and retained current-project route require fresh
 qualification before this extension is reported as closing a compatibility gap.
 They do not qualify visible Blocks edits, browser save/reopen, native execution,
 or a whole game by themselves.
+
+Native support for arbitrary local names remains incomplete. In particular,
+plain parameter-object assignment treats `__proto__` as an inherited setter,
+while local reads require an own property. The common local binding guard now
+refuses that key, and the older adjacent-reset proof refuses prototype-changing
+writers that could affect its frame. This is a safety refusal, not support for
+that native local name. A proper storage fix across parameters, captures and
+managed frames needs a separate runtime contract and qualification.

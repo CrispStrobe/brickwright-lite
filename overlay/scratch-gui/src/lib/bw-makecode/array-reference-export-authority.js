@@ -64,7 +64,7 @@ export function createArrayReferenceExportAuthority(project) {
         const name=actual.variables[id]?.[0];if(typeof name!=='string'||Object.values(actual.variables).filter(row=>row?.[0]===name).length!==1||actual!==target&&Object.values(target.variables||{}).some(row=>row?.[0]===name))return null;
         if(!nodes.has(actual))return null;let map=globalCell.maps.get(actual);if(!map)globalCell.maps.set(actual,map=new Map());if(!map.has(id))map.set(id,{});const value=cell(map.get(id));value.global=true;return value;
     };globalCell.maps=new Map();
-    const localCell=(scope,name)=>{if(!scope||scope.invalid||typeof name!=='string')return null;let map=localCell.maps.get(scope);if(!map)localCell.maps.set(scope,map=new Map());if(!map.has(name))map.set(name,{});return cell(map.get(name));};localCell.maps=new Map();
+    const localCell=(scope,name)=>{if(!scope||scope.invalid||typeof name!=='string'||name==='__proto__')return null;let map=localCell.maps.get(scope);if(!map)localCell.maps.set(scope,map=new Map());if(!map.has(name))map.set(name,{});return cell(map.get(name));};localCell.maps=new Map();
     const capturedCell=(scope,name)=>{const origin=captures.captured(captures.scopeOf(scope.root.next?block(scope.target,scope.root.next):scope.root),name);const value=origin?localCell(scopes.find(s=>s.root===origin.scope.root),name):null;if(value&&!captures.proof(origin))value.types.add(bad);return value;};
     const binding=(target,node)=>{
         const scope=owners.get(node);if(node.opcode==='data_variable'){const id=node.fields?.VARIABLE?.[1],declaration=targets.find(t=>Object.hasOwn(t.variables||{},id))?.variables[id];return declaration?.[0]===node.fields?.VARIABLE?.[0]?globalCell(target,id):null;}
@@ -138,6 +138,12 @@ export function createArrayReferenceExportAuthority(project) {
     // proved from the current linear body, never a declaration/type exemption.
     const deadReset=(destination,writer)=>{
         if(writer.node.opcode!=='arcade_setLocal'||writer.value?.node?.opcode!=='arrays_specialValue'||!['null','undefined'].includes(literal(writer.value.node,'KIND',writer.target)))return false;
+        // Plain-object frames can acquire an inherited setter/nonwritable
+        // property through a prototype write. The old adjacent-reset proof
+        // has no pointwise prototype-state model, so retain its reset when
+        // such a writer could affect this frame.
+        if(records.some(r=>literal(r.node,'NAME',r.target)==='__proto__'&&
+            (r.scope===writer.scope&&r.node.opcode==='arcade_setLocal'||r.target===writer.target&&r.node.opcode==='arcade_setCaptured')))return false;
         const pure=new Set(['arcade_getLocal','data_variable','math_number','text','arrays_specialValue','arrays_referenceValues','arrays_createReference']);
         const safe=(node,path=new Set())=>{if(!node)return true;if(path.has(node)||!pure.has(node.opcode)||binding(writer.target,node)===destination)return false;const next=new Set([...path,node]);return Object.values(node.inputs||{}).every(slot=>typeof slot[1]!=='string'||safe(block(writer.target,slot[1]),next));};
         let id=writer.node.next;const seen=new Set();

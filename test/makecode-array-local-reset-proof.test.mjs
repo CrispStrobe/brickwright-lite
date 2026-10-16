@@ -91,6 +91,14 @@ test('metadata mutation invalidates an already-issued extended graph proof',()=>
 test('native plain-object prototype setters are not actual own local cells',()=>{
     const renamed=name=>{const f=fixture();for(const n of Object.values(f.blocks))if(n.inputs?.NAME?.[1]?.[0]===10&&n.inputs.NAME[1][1]==='cell0')n.inputs.NAME[1][1]=name;return f;};
     const unsafe=renamed('__proto__');unsafe.blocks[unsafe.blocks[unsafe.resets[0]].inputs.VALUE[1]].fields.KIND[0]='undefined';refuses(unsafe);
+    const adjacent=renamed('__proto__');adjacent.chain(adjacent.sequence.filter(id=>id!==adjacent.effect));delete adjacent.blocks[adjacent.effect];refuses(adjacent);
+    for(const name of ['constructor','toString']){
+        const poisoned=renamed(name);poisoned.insert(poisoned.resets[0],poisoned.set('__proto__',poisoned.special('undefined')));refuses(poisoned);
+        // The original adjacent-reset path must not cross the same storage
+        // hazard merely because there is no palette command in this version.
+        const legacy=renamed(name);legacy.chain(legacy.sequence.filter(id=>id!==legacy.effect));delete legacy.blocks[legacy.effect];
+        legacy.insert(legacy.resets[0],legacy.set('__proto__',legacy.special('undefined')));refuses(legacy);
+    }
     // These inherited writable data properties become ordinary own cells on
     // assignment; they are not the inherited __proto__ setter.
     for(const name of ['constructor','toString','hasOwnProperty'])assert.deepEqual(results(renamed(name)),[true],name);
