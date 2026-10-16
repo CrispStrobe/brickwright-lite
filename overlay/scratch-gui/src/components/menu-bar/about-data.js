@@ -464,6 +464,20 @@ const ABOUT_GROUPS = [
                 role: 'Terminal emulator for the Linux-on-RISC-V lesson console'
             },
             {
+                name: 'LDraw Parts Library',
+                url: 'https://library.ldraw.org',
+                license: 'CC BY 4.0 (some files CC BY 2.0 and CC BY 4.0)',
+                licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+                role: 'Part geometry for the Sim Lab (unmodified official parts; credit: The LDraw Parts Library)'
+            },
+            {
+                name: 'Jolt Physics (JoltPhysics.js)',
+                url: 'https://github.com/jrouwe/JoltPhysics.js',
+                license: 'MIT',
+                licenseUrl: 'https://github.com/jrouwe/JoltPhysics.js/blob/main/LICENSE',
+                role: 'The Sim Lab physics engine (rigid bodies, hinges, motors, gears)'
+            },
+            {
                 name: 'three.js',
                 url: 'https://github.com/mrdoob/three.js',
                 license: 'MIT',
