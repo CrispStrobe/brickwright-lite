@@ -41,9 +41,9 @@ scheduler versions or an unexpected clock observation must refuse this protocol.
   scheduler paths. Compare actual relative frames, timeouts, intervals and input
   ordering, including the first frame. Keep timers paused between explicit
   advances and exercise delayed host execution.
-- In unmodified PXT, observe initial guest elapsed time zero, profiling without
-  the sentinel failure, and exact requested elapsed increments. Observe the
-  baseline; do not normalize a wrong result afterward.
+- In unmodified PXT, use `control.millis()` to observe initial program time
+  zero, profiling without the sentinel failure, and exact requested elapsed
+  increments. Observe the baseline; do not normalize a wrong result afterward.
 - Retain countdown, frame ordering, motion, button, dialog and rendering
   expectations. Run affected original/native/authoring comparisons; preserve
   phase-dependent mismatches as failures requiring investigation.
@@ -62,5 +62,27 @@ When absent, the normal Playwright browser selection is unchanged. An invalid
 explicit path fails normally; there is no executable substitution or fallback.
 This permits qualification using an independently bound retained full Chromium
 without requiring a separate headless-shell download. It does not transfer
-platform-only results to the actual PXT program: the original program's 0, 20
-and 40 ms observations still require their own run.
+platform-only results to the actual PXT program: the corrected program-clock
+control's 0, 20 and 40 ms observations still require their own run.
+
+### Program time and scene-frame time
+
+The bootstrap elapsed-wait control uses `control.millis()`, the program clock.
+It keeps the exact zero, 20 and 40 ms assertions. Its newly authored predecessor
+used `game.runtime()` for those wall-clock expectations; that API choice was
+incorrect. Preserve the predecessor failure and qualify the corrected guest
+separately. No simulator, helper scheduling or clock value is rewritten.
+
+`game.runtime()` reads the current scene's frame clock. The original simulator
+accumulates that clock from its event context's frame deltas. A resumed ordinary
+fiber and a frame callback can read at different phases of the same absolute
+time. An ordinary `pause(20)` therefore does not establish that a particular
+scene-frame callback has completed. Keep that distinction in original/native
+comparisons rather than forcing the scene clock to equal the program clock.
+
+A separate scene-phase control remains a design task. Before giving an exact
+scene value authority, bind the scene owner, original frame-delta update and
+callback priority ordering, including the initial zero delta. Read actual
+program time and actual scene time separately; do not infer callback equality
+from a timer delay or normalize either value. This change authorizes no native
+scene-clock policy, simulator vendor change, timing tolerance or skip.
