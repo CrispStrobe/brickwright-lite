@@ -35,6 +35,12 @@ export function integratedGuiLibrary (root) {
     let admitted = null;
     function inspect () {
         try {
+            const physicalRoot = fs.realpathSync(root);
+            for (const [actual, expected] of [[gui, 'packages/scratch-gui'],
+                [installed, 'packages/scratch-gui/src/lib'], [owned, 'overlay/scratch-gui/src/lib']]) {
+                if (fs.realpathSync(actual) !== path.join(physicalRoot, expected))
+                    throw new Error(`integrated or owned source directory is redirected: ${actual}`);
+            }
             const pkg = json(path.join(gui, 'package.json'));
             if (pkg.name !== 'scratch-gui' || pkg.dependencies?.['scratch-vm'] !== '4.8.115')
                 throw new Error('integrated GUI package/declaration differs from the pinned installation');
@@ -66,7 +72,8 @@ export function integratedGuiLibrary (root) {
             if (admitted && JSON.stringify(current) !== JSON.stringify(admitted))
                 throw new Error('integrated library source identity changed during this conversion');
             admitted = current;
-            return current;
+            // The private admission must not escape through the diagnostic record.
+            return structuredClone(current);
         } catch (cause) {
             throw failure(cause.message, cause);
         }
@@ -79,7 +86,18 @@ export function integratedGuiLibrary (root) {
                 throw failure('invalid owned library path');
             const state = inspect();
             if (!state.libraryHashes.some(([name]) => name === rel)) throw failure(`not an owned GUI library: ${rel}`);
-            return import(pathToFileURL(path.join(state.libraries, rel)).href);
+            let result, importError, rejected = false;
+            try {result = await import(pathToFileURL(path.join(state.libraries, rel)).href);}
+            catch (error) {rejected = true; importError = error;}
+            // Evaluation (including top-level await) can outlive the precheck.
+            // inspect compares the same admission, never grants a replacement.
+            try {inspect();}
+            catch (error) {
+                if (rejected) {error.importRejected = true; error.importError = importError;}
+                throw error;
+            }
+            if (rejected) throw importError;
+            return result;
         }
     };
 }

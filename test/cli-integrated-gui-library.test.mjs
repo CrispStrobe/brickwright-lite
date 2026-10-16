@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import {integratedGuiLibrary} from '../scripts/lib/integrated-gui-library.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -99,5 +100,63 @@ test('nested owned library names use portable forward slashes for CLI imports', 
         f.put('packages/scratch-gui/src/lib/deep/nested.js', source);
         assert.ok(f.boundary.inspect().libraryHashes.some(([rel]) => rel === 'deep/nested.js'));
         assert.equal((await f.boundary.import('deep/nested.js')).nested, 17);
+    } finally {f.close();}
+});
+
+test('redirecting the entire integrated library directory is refused', () => {
+    const f = fixture(); try {
+        const lib = path.join(f.gui, 'src/lib');
+        fs.rmSync(lib, {recursive: true});
+        fs.symlinkSync(path.join(f.root, 'overlay/scratch-gui/src/lib'), lib, 'dir');
+        refuses(() => f.boundary.inspect(), /source directory is redirected/);
+    } finally {f.close();}
+});
+test('module evaluation cannot return after replacing both admitted source copies', async () => {
+    const f = fixture(); try {
+        const paths = ['overlay/scratch-gui/src/lib/mutate.js', 'packages/scratch-gui/src/lib/mutate.js'].map(p => path.join(f.root, p));
+        const code = `import fs from 'node:fs'; await Promise.resolve(); for(const p of ${JSON.stringify(paths)}) fs.appendFileSync(p, '// changed'); export const value=19;`;
+        for (const p of paths) fs.writeFileSync(p, code);
+        await assert.rejects(f.boundary.import('mutate.js'), e => e.code === 'NO_RUNTIME' && /changed during/.test(e.cause.message));
+    } finally {f.close();}
+});
+test('an expired source admission retains a simultaneous original evaluation exception', async () => {
+    const f = fixture(); try {
+        const paths = ['overlay/scratch-gui/src/lib/mutate.js', 'packages/scratch-gui/src/lib/mutate.js'].map(p => path.join(f.root, p));
+        const code = `import fs from 'node:fs'; await Promise.resolve(); for(const p of ${JSON.stringify(paths)}) fs.appendFileSync(p, '// changed'); throw new Error('ORIGINAL_EVALUATION_FAILURE');`;
+        for (const p of paths) fs.writeFileSync(p, code);
+        await assert.rejects(f.boundary.import('mutate.js'), e => e.code === 'NO_RUNTIME' && /changed during/.test(e.cause.message) && e.importError?.message === 'ORIGINAL_EVALUATION_FAILURE');
+    } finally {f.close();}
+});
+
+test('mutating a returned inspection record cannot renew the private source admission', () => {
+    const f = fixture(); try {
+        const returned = f.boundary.inspect();
+        const code = fs.readFileSync(path.join(f.root, 'overlay/scratch-gui/src/lib/consumer.js'), 'utf8') + '// replacement';
+        for (const rel of ['overlay/scratch-gui/src/lib/consumer.js', 'packages/scratch-gui/src/lib/consumer.js']) fs.writeFileSync(path.join(f.root, rel), code);
+        returned.libraryHashes.find(([rel]) => rel === 'consumer.js')[1] = createHash('sha256').update(code).digest('hex');
+        returned.guiVersion = 'forged';
+        refuses(() => f.boundary.inspect(), /changed during/);
+    } finally {f.close();}
+});
+
+test('falsy module evaluation rejections retain their actual value', async () => {
+    for (const value of ['undefined', 'null', '0', 'false', "''"]) {
+        const f = fixture(); try {
+            const code = `await Promise.resolve(); throw ${value};`;
+            for (const rel of ['overlay/scratch-gui/src/lib/reject.js', 'packages/scratch-gui/src/lib/reject.js']) f.put(rel, code);
+            let rejected = false, actual;
+            try {await f.boundary.import('reject.js');} catch (error) {rejected = true; actual = error;}
+            assert.equal(rejected, true);
+            const expected = value === 'undefined' ? undefined : value === 'null' ? null : value === '0' ? 0 : value === 'false' ? false : '';
+            assert.equal(actual, expected);
+        } finally {f.close();}
+    }
+});
+test('source expiration also retains a present undefined module rejection', async () => {
+    const f = fixture(); try {
+        const paths = ['overlay/scratch-gui/src/lib/reject.js', 'packages/scratch-gui/src/lib/reject.js'].map(p => path.join(f.root, p));
+        const code = `import fs from 'node:fs'; await Promise.resolve(); for(const p of ${JSON.stringify(paths)}) fs.appendFileSync(p, '// changed'); throw undefined;`;
+        for (const p of paths) fs.writeFileSync(p, code);
+        await assert.rejects(f.boundary.import('reject.js'), e => e.code === 'NO_RUNTIME' && /changed during/.test(e.cause.message) && e.importRejected === true && Object.hasOwn(e, 'importError') && e.importError === undefined);
     } finally {f.close();}
 });
