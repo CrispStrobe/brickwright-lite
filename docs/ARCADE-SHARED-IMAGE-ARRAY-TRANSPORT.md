@@ -155,3 +155,13 @@ receives an occurrence projection and complete resource reproof before that
 route issues its own node facts. Failed reproof leaves the outer current AST
 available to the existing generic route. The original failed run is retained;
 its ordinary Array output does not qualify shared transport.
+
+### Declarations without initializers
+
+The transport effect census distinguishes an actual declaration without an
+initializer from an unknown writer. It still requires concrete supported writers
+and refuses unknown compound or update writes. An annotation cannot create an
+Image, Array or Sprite producer. The declaration and every early read, method
+call, alias and later assignment remain in their original order; transport does
+not initialize the cell or turn an ordinary failing access into success. Native
+error behavior and the authentic application remain separate qualification gates.

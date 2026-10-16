@@ -167,3 +167,30 @@ test('real ordered sprite creation reissues resource proof before named-route in
     assert.equal(actors.length,1);const placeholder=svgToPixels(actors[0].svg);
     assert.equal(placeholder.width,1);assert.equal(placeholder.height,1);assert.deepEqual(Array.from(placeholder.pixels),[0]);
 });
+
+
+test('actual no-initializer declarations preserve effect order without producing receiver facts',()=>{
+    const source=declaration('pictures')+'let selected:Image;let ordinary:number[];selected=pictures[0];ordinary=[1,2];selected.setPixel(0,0,7);console.log(selected.getPixel(0,0));ordinary.push(3);';
+    const input=parse(source),selected=input.body.find(node=>node.type==='Declaration'&&node.decls[0].name==='selected').decls[0];
+    assert.ok(Object.hasOwn(selected,'init'));assert.equal(selected.init,null);
+    const explicit=parse('let selected:Image=null').body[0].decls[0];assert.deepEqual(explicit.init,{type:'Null'});
+    const {prepared,resource}=stage(source);assert.deepEqual([...resource.frames.keys()],['pictures']);
+    const preparedSelected=prepared.program.body.find(node=>node.type==='Declaration'&&node.decls[0].name==='selected').decls[0];
+    assert.equal(preparedSelected.init,null,'no source initialization is synthesized');
+    assert.equal(resource.selection(preparedSelected),null,'the plan grants only actual frame selections');
+    for(const operation of ['selected.setPixel(0,0,7);','console.log(selected.getPixel(0,0));','ordinary.push(3);']){
+        const name=operation.startsWith('ordinary')?'ordinary':'selected';
+        assert.equal(prepareSharedImageArrayTransport(parse(declaration('pictures')+`let ${name}:${name==='ordinary'?'number[]':'Image'};`+operation+'let keep=pictures[0];')),null,'no actual writer cannot produce a receiver kind');
+    }
+    for(const write of ['selected+=pictures[0];','selected++;'])assert.equal(prepareSharedImageArrayTransport(parse(declaration('pictures')+'let selected:Image;selected=pictures[0];'+write+'selected.setPixel(0,0,7);')),null,'unknown compound/update writer remains unknown');
+    const early=declaration('pictures')+'let selected:Image;selected.setPixel(0,0,7);selected=pictures[0];';
+    const earlyPrepared=prepareSharedImageArrayTransport(parse(early));assert.ok(earlyPrepared);
+    const body=earlyPrepared.program.body;assert.equal(body[1].decls[0].init,null);
+    assert.equal(body[2].expr.callee.object.name,'selected');assert.equal(body[2].expr.callee.name,'setPixel');
+    assert.equal(body[3].expr.type,'Assignment');assert.equal(body[3].expr.left.name,'selected');
+    assert.equal(body[3].expr.right.type,'Index','the ordinary pre-assignment access is not moved behind its writer');
+    const alias=prepareSharedImageArrayTransport(parse(declaration('pictures')+'let selected:Image;let alias=selected;alias.setPixel(0,0,7);selected=pictures[0];'));
+    assert.ok(alias);assert.equal(alias.program.body[2].decls[0].init.name,'selected');
+    assert.equal(alias.program.body[3].expr.callee.object.name,'alias');
+    assert.equal(alias.program.body[4].expr.left.name,'selected','early alias/read order stays ordinary too');
+});

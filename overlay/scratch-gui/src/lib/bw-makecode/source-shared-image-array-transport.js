@@ -154,7 +154,15 @@ function prove(program) {
     const writers=new Map();
     const addWriter=(binding,value)=>{if(binding){if(!writers.has(binding))writers.set(binding,[]);writers.get(binding).push(value);}};
     for(const node of nodes) {
-        if(node.type==='Declaration')for(const decl of node.decls)addWriter(lexical.scopes.get(node)?.names.get(decl.name),decl.init);
+        if(node.type==='Declaration')for(const decl of node.decls) {
+            // The actual parser's own init:null denotes no initializer, not a
+            // value-producing writer. Preserve that declaration and all reads
+            // unchanged; this effect census issues no initialization/type fact.
+            // A binding still needs a concrete writer below. Unknown compound
+            // and update writers retain their separate null refusal sentinel.
+            if(node.kind==='let' && Object.hasOwn(decl,'init') && decl.init===null)continue;
+            addWriter(lexical.scopes.get(node)?.names.get(decl.name),decl.init);
+        }
         if(node.type==='Assignment' && node.left?.type==='Identifier')addWriter(lexical.references.get(node.left),node.op==='='?node.right:null);
         if(node.type==='Update' && node.argument?.type==='Identifier')addWriter(lexical.references.get(node.argument),null);
         if(node.type==='Assignment' || node.type==='Update' || node.type==='Unary'&&node.op==='delete') {
