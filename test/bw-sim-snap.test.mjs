@@ -199,7 +199,7 @@ test('8. round trip motor-wheel-axle chain compiles like driving base left side'
     ];
     const wheelRotPerturbed = mat3MulMat3(rotPerturb, wheelRot);
     const wheelPosePerturbed = {
-        position: [wheelPos[0] + perturb[0], wheelPos[1] + perturb[1], wheelPos[2] + perturb[2]],
+        position: [wheelPos[0] + 2, wheelPos[1] - 1, wheelPos[2] + 1],
         rotation: wheelRotPerturbed
     };
     const wheelCands = snapCandidates({model, catalog: CATALOG, part: '39367p01.dat', pose: wheelPosePerturbed});
