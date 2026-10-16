@@ -1,3 +1,24 @@
+## iOS embedded frontend packaging — 2026-10-16
+
+CLAIMED — Codex root, isolated `/tmp/brickwright-ios-assets-20261016`, branch
+`lane/ios-embedded-assets-only-20261016`, base main `664a37b57`.
+The user requested a smaller iPad build and continued coding. The signed
+192.21 MiB app contains an 82.45 MiB executable (76.21 MB of __const) plus
+another full uncompressed frontend under `assets`. Tauri 2.11.5 release
+protocol serves `manager.get_asset` from the generated embedded asset provider;
+this application's mobile code does not open the copied frontend via filesystem.
+Own only the generated iOS preparation script, its packaging regression test,
+this ledger and narrowly necessary native packaging documentation. Remove the
+redundant frontend Resources entry while preserving the build inputs, Rust
+embedding, asset catalog, other resources and static linker entries. Refuse to
+change behavior for a different generated project shape. No Rust features,
+frontend/provider pins, runtime logic, desktop/Android packaging or CI budget
+changes. Require repeat-preparation controls, real release archive inspection,
+strict signing and an offline iOS simulator launch if available. Physical iPad
+and WeDo acceptance remain pending hardware availability; no launch is inferred
+from compilation. Merge this claim to remote main before implementation and
+qualify all enabled final-head checks before landing source.
+
 ## Compose STM32 PR975 after circuit PR965 — 2026-10-16
 
 CLAIMED — Codex root, isolated `/tmp/brickwright-stm32-compose-20261016`,
