@@ -210,3 +210,31 @@ syntax. Malformed, foreign, nested, shared or mutated reset/declaration contexts
 keep existing staging. Focused source and public Code/graph controls qualify
 this bounded syntax model; affected complete-project and native evidence remain
 separate requirements.
+
+
+## Observed authoring and conversion capabilities
+
+These observations describe the reviewed source composition; they do not mean
+that the full composition is already adopted on public main.
+
+| Capability | Observed boundary | Still required |
+| --- | --- | --- |
+| Ordinary function names | Current owner-based allocation preserves legal names, resolves collisions and keeps declaration/call bindings through authored conversion cycles, including parameterized functions. | Full-project roundtrip stability and affected native/editor qualification. |
+| Direct empty Arrays | Eligible declarations and complete assignments retain their actual allocation sites. Code conversion controls preserve aliases, repeated allocation positions and a current edit from `[]` to `[5]` in blocks and export. | Native behavior of affected complete projects and visible editor journeys. |
+| Namespace kinds beside Arrays | Actual root kind-reset statements and their order survive alongside eligible direct Arrays; unknown or changed syntax keeps prior staging. | Broader syntax and project coverage. |
+| Complete project conversion | Import, both Creator passes and export reported no diagnostics for one affected project; its actual asset-bearing SB3 was retained and audited. | Fresh preparation/compile/reimport of that new export, and native execution of its new saved graph. |
+
+The retained saved outputs were audited for the bounded Array transport changes,
+owner-scoped internal local names, unused automatic capture entries and derived
+script layout. All remaining graph metadata, variable monitors and ordered
+costume/sound bytes were preserved. An initial comparison failure remains
+retained; the later audit is a saved-graph comparison, not emitted-source AST
+equality, native or export equivalence, visible GUI qualification or a
+compatibility-corpus promotion.
+
+A separate [ordinary local initializer transport contract](https://github.com/CrispStrobe/brickwright-lite/blob/main/docs/ARCADE-LOCAL-INITIALIZER-TRANSPORT.md)
+now defines **C1**: represent a proved first literal write at the same position
+without adding a duplicate declaration initializer. Its reviewed foundation must
+qualify before implementation. A no-value declaration protocol (**C2**), startup
+wrappers (**D**) and callback formal/alias allocation (**E**) remain separate work;
+A/B observations do not close those gaps.
