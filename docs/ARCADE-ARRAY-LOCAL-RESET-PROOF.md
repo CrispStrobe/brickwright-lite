@@ -11,8 +11,10 @@ that the initializer is dead.
 
 The implementation extends the current receiver analysis at
 `overlay/scratch-gui/src/lib/bw-makecode/array-reference-export-authority.js`.
-Its foundation must be integrated before this proof is implemented. Preserve
-physical input checks, initialization checks and complete writer obligations.
+Implementation must start from a reviewed source composition that contains this
+receiver-authority foundation; public adoption must include and qualify that
+foundation together with this extension. Preserve physical input checks,
+initialization checks and complete writer obligations.
 This lane does not introduce another Array producer or remove a Null writer merely
 because a later writer supplies an Array.
 
