@@ -59,6 +59,21 @@ if (!project) die('no .xcodeproj in gen/apple');
 const pbxPath = join(genApple, project, 'project.pbxproj');
 let pbx = readFileSync(pbxPath, 'utf8');
 
+// Re-running `tauri ios init` after a build lets XcodeGen discover the
+// existing Externals/.../libapp.a as a resource as well as a linker input.
+// The executable already contains its code; packaging the archive added
+// 152 MiB to the measured iPad app. Preserve the Frameworks entry and remove
+// only the duplicate resource build-file/phase entries, even on repeat runs.
+const withoutArchiveResource = pbx.replace(
+    /^[ \t]*[A-Fa-f0-9]{24}[ \t]+\/\* libapp\.a in Resources \*\/[^\r\n]*(?:\r?\n|$)/gm,
+    ''
+);
+if (withoutArchiveResource !== pbx) {
+    pbx = withoutArchiveResource;
+    writeFileSync(pbxPath, pbx);
+    console.log('prepare-ios-device-build: excluded linked libapp.a from packaged resources');
+}
+
 const command = 'npm run -- tauri ios xcode-script';
 const escapedRoot = root.replaceAll('\\', '\\\\').replaceAll('"', '\\"');
 const anchored = `cd \\"${escapedRoot}\\" && ${command}`;
