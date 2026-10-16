@@ -12,7 +12,7 @@ const terminals = ['offset_1', 'inn', 'inp', 'vneg', 'offset_5', 'out', 'vpos', 
 
 test('the exact installed packages expose and solve the physical LT1001', async () => {
     const pins = JSON.parse(readFileSync(path.join(root, 'vendor-pins.json'), 'utf8'));
-    assert.equal(pins['bw-board'], 'f00f8ff51e705e3524bee38d3c6d8f077a870be1');
+    assert.equal(pins['bw-board'], 'f84ba60ead0a90deb9830f0c1468839c293ecf05');
     assert.equal(pins['bw-circuit-ui'], '9593a12056e72c10686232bb448f97471f98feec');
 
     const sidecar = JSON.parse(readFileSync(
