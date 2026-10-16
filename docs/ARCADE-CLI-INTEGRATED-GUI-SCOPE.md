@@ -2,8 +2,8 @@
 
 ## Claim and purpose
 
-Proposed ownership contract. Merge this documentation claim before implementing
-its source changes. The existing CLI target work remains complete; this claim
+Merged ownership contract; source implementation and qualification are tracked
+separately. The existing CLI target work remains complete; this claim
 repairs how the CLI reaches those libraries in an ordinary installed checkout.
 
 A plain Node CLI subprocess currently imports GUI libraries from `overlay/`.
@@ -97,3 +97,15 @@ Use the repository's existing source and affected qualification gates. This
 claim authorizes no manual CI dispatch, dependency update or compatibility-count
 promotion. See [MakeCode commands](MAKECODE.md) and the
 [Arcade handoff](ARCADE-AGENT-HANDOFF.md) for the existing consumer requirements.
+
+## Source implementation status
+
+The CLI boundary now selects the integrated library directory and verifies the
+owned verbatim library copy, pinned installed VM package, canonical model
+export and physical file. The CLI worker adapter uses the same boundary for
+its three runtime-library imports. Worker glue, compilation and runtime
+requirements are unchanged. The exact overlay exception in the test resolver
+now applies only when the GUI dependency directory is absent.
+
+Focused controls and actual CLI conversion qualification are pending. These
+source changes alone do not close the acceptance gates above.

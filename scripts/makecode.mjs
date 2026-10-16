@@ -45,13 +45,15 @@
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';
 import path from 'node:path';
-import {fileURLToPath, pathToFileURL} from 'node:url';
+import {fileURLToPath} from 'node:url';
 import JSZip from 'jszip';
 import {createRequire} from 'node:module';
 import {compile, hasRuntime} from './lib/pxt-node.mjs';
+import {integratedGuiLibrary} from './lib/integrated-gui-library.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const lib = rel => import(pathToFileURL(path.join(ROOT, 'overlay/scratch-gui/src/lib', rel)).href);
+const guiLibraries = integratedGuiLibrary(ROOT);
+const lib = rel => guiLibraries.import(rel);
 // F10: an imported MakeCode project's own files, kept in the .sb3 (the VM overlay module).
 const makeCodeOriginal = createRequire(import.meta.url)(
     path.join(ROOT, 'overlay/scratch-vm/src/serialization/bw-makecode-original.js'));
@@ -208,7 +210,7 @@ async function main () {
             return 2;
         }
         if (!a.mainSource) { console.error(`tutorial-to-project requires --main <main.ts>\n${USAGE}`); return 2; }
-        const {tutorialProjectFiles, hasTutorialJres} = await import('../overlay/scratch-gui/src/lib/bw-makecode/tutorial-project.js');
+        const {tutorialProjectFiles, hasTutorialJres} = await lib('bw-makecode/tutorial-project.js');
         const {makeCodeProjectFile} = await lib('bw-makecode/project-file.js');
         const markdown = fs.readFileSync(a.input, 'utf8');
         const {getTutorialTilemapGenerator} = await import('./lib/pxt-node.mjs');
