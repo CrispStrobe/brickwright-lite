@@ -70,3 +70,38 @@ test('unmount while share prompt is pending cannot publish loading state',async(
  const prompt=later(),f=fixture();const open=new Function('promptAsync','return ({'+method('openMakeCodeShare')+'}).openMakeCodeShare;')(()=>prompt.promise);
  const pending=open.call(f.receiver);f.receiver.componentWillUnmount();const before=structuredClone(f.receiver.state);prompt.resolve('share');await pending;assert.deepEqual(f.receiver.state,before);
 });
+
+// Keep the actual prompt boundary pending while a real competing method or
+// stage replacement changes authority. All outcomes must leave it untouched.
+for(const change of ['stage','newer file','newer share'])for(const outcome of ['answer','cancel','error'])test('pending share prompt '+outcome+' refuses '+change,async()=>{
+ const prompt=later(),f=fixture();
+ const open=new Function('promptAsync','return ({'+method('openMakeCodeShare')+'}).openMakeCodeShare;')(()=>prompt.promise);
+ const old=open.call(f.receiver);const oldRequest=f.receiver._makeCodeRequest;
+ if(change==='stage')f.setStage({});
+ if(change==='newer file'){
+  f.waits.set('new',later());f.receiver.openArtefactFile({name:'new'});const current=f.readers[0].onload();await Promise.resolve();
+  f.waits.get('new').resolve(f.result('new'));await current;
+ }
+ let newer;
+ if(change==='newer share'){
+  newer=later();const next=new Function('promptAsync','return ({'+method('openMakeCodeShare')+'}).openMakeCodeShare;')(()=>newer.promise);
+  // Even a newer prompt that has not answered owns the new intent.
+  newer.pending=next.call(f.receiver);assert.notEqual(f.receiver._makeCodeRequest,oldRequest);
+ }
+ const before=structuredClone(f.receiver.state),effects=f.effects.length,requests=f.requests.length,authority=f.receiver._makeCodeRequest;
+ if(outcome==='error')prompt.reject(Error('old prompt failure'));else prompt.resolve(outcome==='cancel'?null:'old-share');await old;
+ assert.deepEqual(f.receiver.state,before);assert.equal(f.effects.length,effects);assert.equal(f.requests.length,requests);assert.equal(f.receiver._makeCodeRequest,authority);
+ if(newer){newer.resolve(null);await newer.pending;assert.equal(f.receiver._makeCodeRequest,null);}
+});
+
+test('current share prompt cancellation changes no buffers or status',async()=>{
+ const prompt=later(),f=fixture();const open=new Function('promptAsync','return ({'+method('openMakeCodeShare')+'}).openMakeCodeShare;')(()=>prompt.promise);
+ const before=structuredClone(f.receiver.state);const pending=open.call(f.receiver);assert.ok(f.receiver._makeCodeRequest);prompt.resolve('  ');await pending;
+ assert.deepEqual(f.receiver.state,before);assert.equal(f.effects.length,0);assert.equal(f.requests.length,0);assert.equal(f.receiver._makeCodeRequest,null);
+});
+
+test('current share prompt rejection remains visible without starting preparation',async()=>{
+ const prompt=later(),f=fixture();const open=new Function('promptAsync','return ({'+method('openMakeCodeShare')+'}).openMakeCodeShare;')(()=>prompt.promise);
+ const pending=open.call(f.receiver);prompt.reject(Error('current prompt failure'));await pending;
+ assert.equal(f.receiver.state.status,'failed share?: current prompt failure');assert.equal(f.receiver.state.buffers.pseudocode,'before');assert.equal(f.requests.length,0);
+});
