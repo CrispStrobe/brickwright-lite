@@ -56,10 +56,12 @@ const roleBindings=project=>{
         const owner=one(project.targets.filter(candidate=>Object.hasOwn(candidate.variables||{},field[1])),'unique current variable owner '+role),variable=owner.variables[field[1]];assert.equal(variable[0],field[0]);
         bindings[role]={id:field[1],name:variable[0],ownerName:owner.name,isStage:owner.isStage,writer:Object.keys(blocks).find(id=>blocks[id]===writer)};
     }
-    assert.equal(new Set(Object.values(bindings).map(binding=>binding.id)).size,4,'four distinct actual variable IDs');return bindings;
+    assert.equal(new Set(Object.values(bindings).map(binding=>binding.id)).size,4,'four distinct actual variable IDs');
+    const clockOperands=calls.map(call=>{const node=one(descendants(call).filter(node=>node.opcode==='arcade_sceneMillis'),'one actual clock operand per connected call');return{id:Object.keys(blocks).find(id=>blocks[id]===node),node,call};});
+    return {bindings,target,clockOperands};
 };
 const checkedValues=actual=>{
-    const bindings=roleBindings(actual.project);retain(actual.label+'-actual-role-bindings',bindings);
+    const {bindings}=roleBindings(actual.project);retain(actual.label+'-actual-role-bindings',bindings);
     return Object.fromEntries(Object.entries(bindings).map(([role,binding])=>{const matches=actual.cells.filter(cell=>cell.id===binding.id);assert.equal(matches.length,1,'actual unique cell ID '+role);const cell=matches[0];assert.equal(cell.name,binding.name);assert.equal(cell.targetName,binding.ownerName);assert.equal(cell.isStage,binding.isStage);assert.equal(Object.hasOwn(cell,'decodeError'),false);return[role,cell.value];}));
 };
 const observation=(t,label,run)=>{
@@ -100,10 +102,7 @@ test('scene clock two sequential ordinary Number callers survive current Code, s
         run=await execute('fresh-SB3-bootstrap','DEVICE ARCADE\nSPRITE Game:\nWHEN arcade source starts:\n  hide',{frames:0});retain('fresh-bootstrap-unobserved',{initialHelperGreenFlag:'UNOBSERVED/no input/zero requested frames',calls:[...run.calls],errors:[...run.errors]});await transition(t,'fresh stop',run,()=>run.vm.stopAll());retain('fresh-load-actual-ZIP',bytes,true);await transition(t,'fresh load',run,()=>run.vm.loadProject(bytes));run.calls.clear();run.vm.greenFlag();await stepFrames(run.vm,20);accepted(t,'fresh SB3',run);
         // Genuine current graph edit: append a connected Number addition to the
         // second call's clock operand, with the source clock itself preserved.
-        const current=JSON.parse(run.vm.toJSON()),target=current.targets.find(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_sceneMillis'));
-        const candidates=Object.entries(target.blocks).filter(([,block])=>block.opcode==='arcade_sceneMillis').map(([id,node])=>{
-            let parent=target.blocks[node.parent];const seen=new Set();while(parent&&!['arcade_callFunction','procedures_call'].includes(parent.opcode)){assert.equal(seen.has(parent),false);seen.add(parent);parent=target.blocks[parent.parent];}return {id,node,call:parent};
-        }).filter(candidate=>candidate.call);assert.equal(candidates.length,2,'the two actual ordinary callers');
+        const current=JSON.parse(run.vm.toJSON()),{target,clockOperands:candidates}=roleBindings(current);assert.equal(candidates.length,2,'the two actual ordinary caller operands, using expression input edges only');
         const precedes=(left,right)=>{let node=target.blocks[left.next];const seen=new Set();while(node&&!seen.has(node)){if(node===right)return true;seen.add(node);node=target.blocks[node.next];}return false;};
         const seconds=candidates.filter(candidate=>candidates.some(other=>other!==candidate&&precedes(other.call,candidate.call)));assert.equal(seconds.length,1,'actual second caller in the current command chain');
         const {id:clockId,node:clock}=seconds[0],parent=target.blocks[clock.parent],slot=Object.entries(parent.inputs).find(([,slot])=>slot[1]===clockId);assert.ok(slot);

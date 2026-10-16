@@ -128,3 +128,10 @@ an actual self-read binary-value assignment. The fixture now identifies that
 exact connected writer by its variable ID, plus operator and literal operand;
 the original execution and failed assertion remain retained. Five-route native
 qualification is still pending.
+
+A subsequent native run accepted the first four current routes, then exposed a
+second fixture selector error: following parent pointers crossed a command
+chain from the separate text writer into a preceding ordinary call. The current
+edit selector reuses the connected main call inventory and visits only active
+expression input edges. The failed run remains retained; five-route acceptance
+requires a separately reviewed successor.
