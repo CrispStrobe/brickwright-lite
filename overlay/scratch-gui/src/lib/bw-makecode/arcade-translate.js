@@ -1,4 +1,4 @@
-import {prepareSharedImageArrayTransport,projectSharedImageArrayTransport,finishSharedImageArrayTransport,currentSharedImageArrayTransport} from './source-shared-image-array-transport.js';
+import {prepareSharedImageArrayTransport,projectSharedImageArrayTransport,finishSharedImageArrayTransport,currentSharedImageArrayTransport,reproveSharedImageArrayTransport} from './source-shared-image-array-transport.js';
 import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
 import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 import {createProcedureOwnerEmission} from './procedure-owner-emission.js';
@@ -4194,16 +4194,27 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     // A declaration with a sprite-valued initializer creates a handle at that
     // exact point, just like a later assignment to the same variable. Lower
     // only this form so the existing ordered setup path owns both forms.
-    ast = {...ast, body: ast.body.flatMap(st => {
+    let changedCreation=false;
+    const orderedBody = ast.body.flatMap(st => {
         if (st.type !== 'Declaration' || !st.decls.some(d => !d.temporary && d.init?.type === 'Call' &&
             creationApis.has(t.path(d.init.callee)))) return [st];
+        changedCreation=true;
         return st.decls.flatMap(d => !d.temporary && d.init?.type === 'Call' &&
             creationApis.has(t.path(d.init.callee)) ? [
                 {...st, decls: [{...d, init: {type: 'Null',spritePlaceholder:true}}]},
                 {type: 'ExpressionStatement', expr: {type: 'Assignment', op: '=',
                     left: {type: 'Identifier', name: d.name}, right: d.init}}
             ] : [{...st, decls: [d]}]);
-    })};
+    });
+    if(changedCreation) {
+        const next={...ast,body:orderedBody};
+        if(currentSharedImageArrayTransport(ast)) {
+            const projected=reproveSharedImageArrayTransport(ast,next);
+            // The outer current AST remains untouched for the generic route.
+            if(!projected)return null;
+            ast=projected;
+        } else ast=next;
+    }
     const callOf = st => st.type === 'ExpressionStatement' && st.expr?.type === 'Call' ? st.expr : null;
     const nameOf = call => call && t.path(call.callee);
     const calls = ast.body.map(callOf);

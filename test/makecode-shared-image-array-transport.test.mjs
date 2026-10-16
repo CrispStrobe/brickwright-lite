@@ -135,3 +135,18 @@ test('public Creator Code SB3 and export preserve resource art alongside ordinar
     assert.ok(exported.files['main.ts']);assert.match(exported.ts,/\.setPixel\(/);assert.match(exported.ts,/\.push\(3\)/);
     const again=convert(exported.files);clean(again);assert.equal((again.code.match(/new array reference/g)||[]).length,(r.code.match(/new array reference/g)||[]).length,'no new backing construction; ordinary Array remains');
 });
+
+test('real ordered sprite creation reissues resource proof before named-route inference',async()=>{
+    const r=convert(declaration('pictures')+'let hero=sprites.create(pictures[0],SpriteKind.Player);hero.setPosition(80,60);let seen=pictures[0].getPixel(0,0);console.log(seen);');
+    clean(r);assert.equal(frameReads(r.code).filter(x=>x[1]==='pictures').length,2);
+    assert.doesNotMatch(r.code,/GLOBAL pictures|new array reference/);
+    assert.match(r.code,/arcade create image/);
+    const {svgToPixels}=await import('../overlay/scratch-gui/src/lib/bw-makecode/pixel-image.js');
+    const templates=new Set(frameReads(r.code).filter(x=>x[1]==='pictures').map(x=>x[3]));assert.equal(templates.size,1);
+    const resources=r.costumes.filter(c=>templates.has(c.sprite)),actors=r.costumes.filter(c=>!templates.has(c.sprite));
+    assert.equal(resources.length,1);assert.deepEqual(Array.from(svgToPixels(resources[0].svg).pixels),[1,0,0,2]);
+    // Dynamic native actors intentionally retain a separate blank template.
+    // Its clone costume is not the actor's runtime Image resource.
+    assert.equal(actors.length,1);const placeholder=svgToPixels(actors[0].svg);
+    assert.equal(placeholder.width,1);assert.equal(placeholder.height,1);assert.deepEqual(Array.from(placeholder.pixels),[0]);
+});

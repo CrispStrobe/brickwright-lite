@@ -253,10 +253,20 @@ export function finishSharedImageArrayTransport(program,plan) {
     }
     const carriers=proof.nodes.filter(node=>Object.hasOwn(node,originField));
     if(found.size!==original.origins.size || carriers.length!==found.size || carriers.some(node=>!proof.candidates.some(c=>c.array===node)))return false;
-    finished.set(program,proof);return true;
+    finished.set(program,{proof,plan});return true;
 }
 export function currentSharedImageArrayTransport(program) {
-    const p=finished.get(program);if(!p || !p.current())return null;
+    const p=finished.get(program)?.proof;if(!p || !p.current())return null;
     return {declarations:new Set(p.candidates.map(c=>c.statement)),frames:new Map(p.candidates.map(c=>[c.decl.name,c.images])),
         selection:node=>{const value=p.selections.get(node);return value?{key:value.candidate.decl.name,images:value.candidate.images,index:value.index}:null;}};
+}
+
+// Named-handle setup normalizes sprite creation before its own node facts.
+// Reissue this same origin protocol on that actual current Program; never move
+// the old WeakMap fact to a cloned root by assignment or trust the token alone.
+export function reproveSharedImageArrayTransport(previous,next) {
+    const issued=finished.get(previous);
+    if(!issued || !issued.proof.current())return null;
+    const projected=projectSharedImageArrayTransport(next,issued.plan);
+    return projected && finishSharedImageArrayTransport(projected,issued.plan)?projected:null;
 }

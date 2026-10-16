@@ -147,3 +147,11 @@ lifecycle, original SDK execution or the authentic conversion-growth witness.
 In particular, this bounded domain is not a claim that all seven backings of
 that project already qualify. The original connected growth and all other
 conversion growth remain open until the actual current input is measured.
+
+The first public controls exposed a separate named-handle setup rewrite that
+cloned the Program root and lost its private resource fact. The successor
+keeps the original root for a no-op rewrite. Actual ordered sprite creation
+receives an occurrence projection and complete resource reproof before that
+route issues its own node facts. Failed reproof leaves the outer current AST
+available to the existing generic route. The original failed run is retained;
+its ordinary Array output does not qualify shared transport.
