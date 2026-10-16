@@ -21,7 +21,7 @@ complete game compatibility.
 | Initial bundle budget | Saved production graph identifies the root `react-virtualized` List barrel as a bounded import cut. The implemented import change requests the existing direct named List entry and preserves the complete widget body. | Production resolution, actual widget save/reopen behavior and the unchanged hosted P17 budget; a source import census is not measured bundle savings. |
 | Carnival package import | A source-derived two-file editor-control fixture resolves its actual pinned dependencies through the normal resolver and public async importer. All 138 conversion diagnostics are retained. No compile, VM or browser run is claimed. | Source-bound initialization, defaults, primitive/callback/class flow and complete bodies; meaningful native behavior and the visible editor import journey. |
 | Managed SDK callbacks | The private physical update entry has eleven passing component controls. The unchanged actual paused-constructor guest reaches `completed = 7`, observes two updates during construction and four total, and preserves values and call counts after Stop. | Throw in the actual class update still fails source admission before VM execution. Implement the [merged source intersection](ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md); constructor-continuation and nested-step mechanisms retain separate qualification. |
-| Shared frame Array transport | Seven repeated backing arrays account for connected roundtrip growth. [Transport contract](https://github.com/CrispStrobe/brickwright-lite/blob/aa99067502ab1d70f59f9172e96b45c510092ba7/docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md). | Prove current immutable initialization and lexical binding before staging; preserve observable and mutated Arrays as ordinary code. Qualify repeated edited export/reimport. |
+| Shared frame Array transport | Twenty-four source/public artifact controls pass, including exact stateful kind allocation order. A real native guest qualifies repeated Image aliases, clone independence, separate equal-pixel resources, ordinary Array mutations and resource reconstruction after Stop/restart. [Transport contract](ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md). | Authentic seven-backing library effects, actual kind counter execution, edited artwork, fresh save/reopen and repeated current export/reimport remain separate. |
 | Generated helper recognition | Thirty-six focused controls pass. Recognition proves actual lexical bindings, complete bodies, parse profiles, defaults and continuation effects; legacy nested Array helpers rewrite against the same original proof before staging. | Complete affected native and authored-project journeys, source census and final integration checks. |
 
 The six implementation contracts landed through
@@ -46,10 +46,16 @@ controls; none are skipped. Independent validation now reports malformed physica
 clock reporters even when another malformed caller prevents argument emission.
 It grants no Number authority or emission permission.
 
-Shared-frame controls still expose a genuine two-versus-one backing-array
-increase on reimport. A separate saved-graph diagnostic identifies declarations
-with no initializer being treated as unknown assignments. A narrow repair is
-in progress; no shared-frame or whole-project success is claimed.
+The small shared-frame backing-array increase is repaired: a declaration with
+no initializer no longer counts as an unknown assignment. Unknown compound and
+update writers remain refused. The native alias/clone/equal-resource/Array and
+Stop/restart guest now passes with its original project archive and all runtime
+observations retained. Its earlier test failure incorrectly looked for global
+variable writers on the Stage; the corrected fixture joins actual Game writers
+to the same Stage cells by IDs and connected source-entry chains. The authentic
+seven-backing project, edited artwork and visible authoring remain open. The
+[source provenance scope](https://github.com/CrispStrobe/brickwright-lite/pull/1012)
+is merged; this authorizes its private receipt implementation, not a game result.
 
 The [original failing campaign](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38862860015)
 remains the regression baseline. Current source composition preserves adopted
