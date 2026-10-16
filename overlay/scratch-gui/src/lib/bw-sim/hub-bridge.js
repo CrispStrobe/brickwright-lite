@@ -37,6 +37,7 @@
 // physical tracking error (the controller's stall timer still works from its
 // own load input), a coasting stop (a stopped motor brakes), multi-hub scenes.
 
+import {readSensors, SENSOR_DEVICE} from './sensors.js';
 const PORTS = 'ABCDEF';
 const DEG = 180 / Math.PI;
 
@@ -57,6 +58,8 @@ export class SimHubBridge {
         this.core = core;
         this.stepMs = stepMs;
         this.hubBody = hubBody;
+        this.mechanism = mechanism;
+        this.robotBodies = mechanism.bodies.filter(b => b.motion === 'dynamic').map(b => b.id);
         this.accumulator = 0;
         /** port index -> {joint, angle (rad, last measured)} */
         this.motors = new Map();
@@ -117,6 +120,12 @@ export class SimHubBridge {
         const rate = delta / (this.stepMs / 1000);
         this.heading += delta;
         this.hubState.setHeading(this.heading, {rate});
+        const readings = readSensors(this.core, this.mechanism, this.robotBodies);
+        for (const [port, reading] of Object.entries(readings)) {
+            const {kind, ...values} = reading;
+            const deviceId = SENSOR_DEVICE[kind];
+            this.hubState.updateSensor(port, kind, {deviceId, ...values});
+        }
     }
 
     /** Advance by ms of simulated time in fixed steps; publish once. */
