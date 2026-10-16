@@ -107,3 +107,31 @@ test('unsafe direct proof AST accessors and cycles refuse before source graph tr
     const cyclic=parse(commandSource);cyclic.extra=cyclic;
     const cycleProof=proveArrayMapValues(cyclic);assert.ok(cycleProof.unsupported.length);assert.equal(cycleProof.lower(null,{}),null);
 });
+
+
+test('discarded returned unary conditional literal and bound reads use ordinary value staging',()=>{
+    for(const expression of ['-value','!value','value?value+1:value+2','"retained"','7','value']){
+        const source='let input=[1,2];input.map(value=>'+expression+');',r=clean(source);assert.ok(r.code);
+        const {staged}=lower(source),loop=nodes(staged).find(n=>n.type==='For'&&n.bwMapOrdered);assert.ok(loop);
+        assert.ok(nodes(loop.body).some(n=>n.type==='Declaration'&&n.decls.some(d=>d.temporary&&d.valuePreserving)));
+    }
+    const source='let input=[1];let calls=0;let __bwMapValue1=99;function left(){calls+=1;return 2}function right(){calls+=10;return 3}input.map(value=>value?left():right());';
+    clean(source);const {staged}=lower(source),loop=nodes(staged).find(n=>n.type==='For'&&n.bwMapOrdered);
+    const branch=nodes(loop.body).find(n=>n.type==='If');assert.ok(branch);
+    assert.equal(nodes(branch.consequent).filter(n=>n.type==='Call'&&n.callee?.name==='left').length,1);
+    assert.equal(nodes(branch.alternate).filter(n=>n.type==='Call'&&n.callee?.name==='right').length,1);
+    assert.equal(nodes(loop.body).filter(n=>n.type==='Declaration').flatMap(n=>n.decls).filter(d=>d.temporary&&d.name==='__bwMapValue1').length,0,'fresh ephemeral sink does not collide with user binding');
+});
+test('discarded returned procedure call retains one genuine call and surrounding effects',()=>{
+    const source='let input=[1];let calls=0;function effect(value:number){calls++;return value}calls+=10;input.map(value=>effect(value));calls+=100;';
+    clean(source);const {staged}=lower(source),loop=nodes(staged).find(n=>n.type==='For'&&n.bwMapOrdered);assert.ok(loop);
+    assert.equal(nodes(loop.body).filter(n=>n.type==='Call'&&n.callee?.name==='effect').length,1);
+    assert.equal(nodes(loop.body).filter(n=>n.type==='ExpressionStatement'&&n.expr?.type==='Call'&&n.expr.callee?.name==='effect').length,1,'actual call command remains, no fabricated void result');
+});
+test('discarded complete value sinks retain unknown operands and unsupported operator diagnostics',()=>{
+    for(const expression of ['unknownValue+value','-unknownValue','value?unknownValue:value','value+unknownCommand(value)','unknownValue.constructor']){
+        const source='let input=[1];input.map(value=>'+expression+');',r=arcadeToPseudocode(source);
+        assert.ok(r.unsupported.length,expression);
+        const {staged}=lower(source);assert.ok(nodes(staged).some(n=>n.type==='Identifier'&&['unknownValue','unknownCommand'].includes(n.name)),expression+' retained actual unknown operand');
+    }
+});

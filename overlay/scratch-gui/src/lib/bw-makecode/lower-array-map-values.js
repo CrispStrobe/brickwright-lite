@@ -45,7 +45,8 @@ export function proveArrayMapValues(program,source='') {
         const inspect=value=>{if(!value||typeof value!=='object')return;if(Array.isArray(value)){value.forEach(inspect);return;}if(value.type==='FunctionExpression'&&inlineCallbacks.has(value))return;if(['FunctionDeclaration','FunctionExpression','Class','While','For','ForOf','ForIn','DoWhile','Switch','Break','Continue','Throw','ThrowStatement','Try','TryStatement'].includes(value.type)){bad=true;return;}if(value.type==='Return'){returns++;if(value!==fn.body.at(-1))bad=true;}Object.values(value).forEach(inspect);};fn.body.forEach(inspect);
         const discarded=statementSites.has(node),result=facts.functionResultTypes(fn);
         if(bad||(!(returns===0&&statementSites.has(node))&&(fn.body.at(-1)?.type!=='Return'||!fn.body.at(-1).value))){fail('callback requires a complete body with one final value return and no escaped callback');continue;}
-        if(!discarded&&(!result.size||[...result].some(type=>!primitive.has(type)))){fail('callback result requires actual primitive producers; reference, opaque or missing results are not admitted');continue;}
+        const discardedValue=discarded&&returns>0&&!['Call','Assignment','Update'].includes(fn.body.at(-1)?.value?.type);
+        if((!discarded||discardedValue)&&(!result.size||[...result].some(type=>!primitive.has(type)))){fail('callback result requires actual primitive producers; reference, opaque or missing results are not admitted');continue;}
         const domain={number:'Number',string:'String',boolean:'Boolean'};
         const constraint=(types,name)=>!name||name==='any'||domain[name]&&[...types].every(type=>type===domain[name]||['Null','Undefined'].includes(type));
         if((!discarded||fn.returnType)&&!constraint(result,fn.returnType)||fn.params.some((name,index)=>{const annotation=fn.paramTypes?.[name];const types=facts.functionParameterTypes(fn,index);return annotation?.isArray||!constraint(types,annotation?.text||'');})) {fail('callback declared primitive constraints contradict actual argument/result producers');continue;}
@@ -67,7 +68,15 @@ export function proveArrayMapValues(program,source='') {
             // complete returned expression as an executable statement: its
             // commands/reads still pass through ordinary staging/translation.
             // This grants no primitive or reference result producer fact.
-            if(!proof.implicitUndefined)callback.push({type:'ExpressionStatement',expr:returned.value});
+            if(!proof.implicitUndefined){
+                const value=returned.value;
+                // Calls/assignments/updates retain their existing command
+                // semantics (notably Image.replace has no invented value).
+                // Other complete expressions use the ordinary ephemeral local
+                // staging sink, with all existing operand/type/effect checks.
+                callback.push(['Call','Assignment','Update'].includes(value.type)?
+                    {type:'ExpressionStatement',expr:value}:declaration(fresh(),value));
+            }
             const prefix=[...receiver.prefix,declaration(array,receiver.value,true),declaration(length,{type:'Member',object:id(array),name:'length'}),
                 {type:'For',bwMapOrdered:true,init:declaration(index,{type:'Number',value:'0'}),test:{type:'Binary',op:'<',left:id(index),right:id(length)},update:{type:'Update',op:'++',argument:id(index),prefix:false},body:body([...params,...callback])}];
             // The statement staging consumer uses only prefix. Keeping the
