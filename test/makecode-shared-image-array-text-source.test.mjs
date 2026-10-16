@@ -394,3 +394,100 @@ firstStartup();`;
     const callback=parse(source.replace('let unrelated=2;','court();'));
     assert.ok(!sourceImageArrayCloneEffects(callback)?.has(entryClones(callback).at(-1)),'callback-owned court entry cannot borrow startup observations');
 });
+
+
+import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from '../overlay/scratch-gui/src/lib/bw-makecode/procedure-constraint-source.js';
+test('Image entry observes actual procedure metadata without delegating to its prefix operation',()=>{
+    const p=parse(imageEntrySource),prepared=prepareProcedureConstraintSource(p);
+    p.bwProcedureConstraintSource=procedureConstraintAstMetadata(prepared);
+    assert.equal(typeof p.bwProcedureConstraintSource.prefix,'function');
+    const proof=sourceImageArrayCloneEffects(p);assert.ok(proof);
+    assert.ok(entryClones(p).every(call=>proof.has(call)));
+    let calls=0;
+    const q=parse(imageEntrySource),prefix=()=>{calls++;throw Error('metadata must not execute');};
+    q.bwProcedureConstraintSource={prefix};
+    const qProof=sourceImageArrayCloneEffects(q);assert.ok(qProof?.has(entryClones(q).at(-1)));
+    prefix.unconsumed={arbitrary:1};
+    prefix.toJSON=()=>{calls++;throw Error('opaque identity must not serialize');};
+    assert.ok(qProof.has(entryClones(q).at(-1)),'opaque function own fields cannot affect consumed syntax or effects');
+    assert.equal(calls,0);
+});
+test('Image entry metadata cannot supply missing entries or executable host functions',()=>{
+    let calls=0;const prefix=()=>{calls++;return true;};
+    for(const source of [imageEntrySource.replace('initialize();use();','use();'),
+        imageEntrySource.replace('Math.round(0)','unknown()'),
+        imageEntrySource.replace('ordinary=temp;','ordinary=temp;unknown();')]){
+        const p=parse(source);p.bwProcedureConstraintSource={prefix};
+        assert.ok(!sourceImageArrayCloneEffects(p)?.has(entryClones(p).at(-1)),source);
+    }
+    const p=parse(imageEntrySource);p.bwProcedureConstraintSource={prefix};
+    p.body.at(-1).expr.callee=prefix;
+    assert.equal(prepareSharedImageEntryEffects(p),null,'same metadata identity has no executable authority');
+    assert.equal(sourceImageArrayCloneEffects(p),null);assert.equal(calls,0);
+});
+test('Image entry opaque metadata identity and descriptor changes expire permanently',()=>{
+    for(const mutation of ['function','container','descriptor']){
+        const p=parse(imageEntrySource),prefix=()=>[];
+        p.bwProcedureConstraintSource={prefix};
+        const call=entryClones(p).at(-1),proof=sourceImageArrayCloneEffects(p),profile=prepareSharedImageEntryEffects(p);
+        assert.ok(proof?.has(call));assert.ok(profile);
+        const old=p.bwProcedureConstraintSource,d=Object.getOwnPropertyDescriptor(old,'prefix');
+        if(mutation==='function')old.prefix=()=>[];
+        else if(mutation==='container')p.bwProcedureConstraintSource={prefix};
+        else Object.defineProperty(old,'prefix',{...d,writable:false});
+        assert.equal(currentSharedImageEntryEffect(p,profile,p,'current'),null);assert.equal(proof.has(call),false);
+        p.bwProcedureConstraintSource=old;Object.defineProperty(old,'prefix',d);
+        assert.equal(currentSharedImageEntryEffect(p,profile,p,'current'),null);assert.equal(proof.has(call),false);
+    }
+    const p=parse(imageEntrySource);p.bwProcedureConstraintSource={prefix:()=>[]};
+    const proof=sourceImageArrayCloneEffects(p);assert.equal(proof.has({...entryClones(p).at(-1)}),false);
+});
+test('Image entry opaque observation does not widen the older source-origin snapshot',()=>{
+    let calls=0;const f=fixture(),selected=arcadeProjectSource(f.prepared.files);
+    selected.unconsumed=()=>{calls++;return true;};
+    assert.equal(capturePreparedSharedImageSources(f.prepared.files,selected),null);
+    assert.equal(calls,0);
+});
+
+test('Image entry consumed metadata containers remain observed data rather than opaque functions',()=>{
+    let calls=0;const opaque=function(){calls++;};
+    for(const key of ['optionalParams','parameterDefaults','typeParameters','originalBody','parameterProperties','paramTypes','returnType','assertedType']){
+        const p=parse(imageEntrySource),fn=p.body.find(node=>node.type==='FunctionDeclaration');fn[key]=opaque;
+        assert.equal(prepareSharedImageEntryEffects(p),null,key);
+        assert.equal(sourceImageArrayCloneEffects(p),null,key);
+        Object.defineProperty(opaque,'length',{value:1,configurable:true});
+        assert.equal(prepareSharedImageEntryEffects(p),null,key+' remains rejected after opaque ownfield edit');
+        Object.defineProperty(opaque,'length',{value:0,configurable:true});
+    }
+    for(const annotation of [{text:opaque},{isArray:opaque}]){
+        const p=parse(imageEntrySource),fn=p.body.find(node=>node.type==='FunctionDeclaration');
+        fn.paramTypes={unused:annotation};assert.equal(prepareSharedImageEntryEffects(p),null);
+    }
+    const p=parse(imageEntrySource),fn=p.body.find(node=>node.type==='FunctionDeclaration');
+    fn.optionalParams=[];fn.parameterDefaults=[];fn.paramTypes={unused:{text:'number',isArray:false}};
+    const profile=prepareSharedImageEntryEffects(p);assert.ok(profile);
+    fn.optionalParams.push('unused');assert.equal(currentSharedImageEntryEffect(p,profile,p,'current'),null);
+    fn.optionalParams.pop();assert.equal(currentSharedImageEntryEffect(p,profile,p,'current'),null);
+    const q=parse(imageEntrySource+'info.onCountdownEnd((x=1)=>{let unrelated=1;});');
+    const callback=entryNodes(q).find(node=>node.type==='FunctionExpression');assert.ok(callback);
+    const hidden=()=>{calls++;};hidden.toJSON=()=>{calls++;return true;};
+    callback.body[0].bwProcedureConstraintSource={prefix:hidden};
+    assert.equal(prepareSharedImageEntryEffects(q),null,'all executable-body descendants remain host-function-free, including ignored metadata');
+    assert.equal(sourceImageArrayCloneEffects(q),null);
+    for(const withActualThrow of [false,true]){
+        const r=parse(imageEntrySource+(withActualThrow?'function unused(){throw 1;}':''));
+        r.bwProcedureConstraintSource={prefix:hidden};
+        if(!withActualThrow)r.sourceScalarDeclarations={type:'ThrowStatement'};
+        assert.equal(prepareSharedImageEntryEffects(r),null,'whole-Program serializer path cannot consume opaque root metadata');
+        assert.equal(sourceImageArrayCloneEffects(r),null);
+    }
+    for(const domain of ['consumed','body','whole-program']){
+        const r=parse(imageEntrySource+(domain==='whole-program'?'function unused(){throw 1;}':''));
+        if(domain==='consumed')r.body.find(node=>node.type==='FunctionDeclaration').paramTypes={unused:{text:1n}};
+        else if(domain==='body')r.body[0].bwProcedureConstraintSource={unconsumed:1n};
+        else r.sourceScalarDeclarations=1n;
+        assert.equal(prepareSharedImageEntryEffects(r),null,domain+' must refuse before serializer helpers');
+        assert.equal(sourceImageArrayCloneEffects(r),null);
+    }
+    assert.equal(calls,0);
+});

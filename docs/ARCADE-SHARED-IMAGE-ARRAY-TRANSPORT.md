@@ -305,3 +305,32 @@ cloning/lowering still requires the existing fresh final resource proof.
 
 These source controls await affected execution. They do not qualify native
 behavior, fresh SDK preparation or a complete library roundtrip.
+
+
+The optional Image-entry profile observes opaque function identities in metadata
+with the existing physical source snapshot. It never invokes those functions or
+uses their properties or closure state as evidence. A host function in executable
+syntax still refuses the profile. Metadata cannot supply a missing entry, index,
+receiver, or effect. Replacing a metadata identity, container, or descriptor
+expires the profile permanently after observation; restoration cannot revive it.
+Unconsumed properties on an opaque function grant no facts. The stricter original
+source-origin snapshot and private source handoff remain unchanged.
+
+Metadata that entry or lexical/value helpers actually consume remains data:
+optional/default parameter and type metadata have checked container roles and
+function-free descriptor subgraphs. Opaque identities cannot substitute for
+those containers or their nested values. Their data edits retain the same
+sticky currentness fence.
+
+The complete executable body, including nested metadata, must also remain
+host-function-free before helpers run. Only unconsumed Program-level metadata
+can retain opaque function identities; callback-body serialization cannot invoke
+an opaque function through a serializer hook.
+
+If the graph selects whole-Program serialization for a throw-tagged object,
+the complete Program must be function-free too. This check covers ignored
+metadata tags as well as executable throw statements before that helper runs.
+
+Consumed metadata and serializer domains also refuse BigInt data before helpers,
+so unsupported source data cannot escape the optional profile as a serialization
+exception. Unconsumed root metadata still supplies no facts.

@@ -1,3 +1,4 @@
+import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
 import {analyseCallableBindings} from './callable-bindings.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 import {parseMakeCodeTs} from './ts-import.js';
@@ -151,15 +152,48 @@ export function sharedImageEntryArrayDomain(root) {
     };
     try{visit(root);}catch{return false;}return valid;
 }
+// These parser metadata roles are read by entry/lexical/value helpers even
+// though they are not executable edges. Their consumed data cannot be opaque.
+const entryMetadataArrays=new Set(['optionalParams','parameterDefaults','typeParameters','originalBody','parameterProperties']);
+const entryMetadataData=new Set([...entryMetadataArrays,'paramTypes','returnType','assertedType']);
+function entryMetadataValue(key,value) {
+    if(value===null||value===undefined)return true;
+    if(entryMetadataArrays.has(key)&&!Array.isArray(value))return false;
+    if(key==='paramTypes'&&(typeof value!=='object'||Array.isArray(value)||![Object.prototype,null].includes(Object.getPrototypeOf(value))))return false;
+    const seen=new Set();
+    const data=node=>{
+        if(typeof node==='function'||typeof node==='bigint')return false;
+        if(!node||typeof node!=='object'||seen.has(node))return true;seen.add(node);
+        return Reflect.ownKeys(node).every(name=>{const d=descriptor(node,name);return d&&Object.hasOwn(d,'value')&&data(d.value);});
+    };
+    return data(value);
+}
 const entryProfiles=new WeakMap();
 export function prepareSharedImageEntryEffects(program,sourceContext=null) {
-    const current=snapshot(program);if(!current||!sharedImageEntryArrayDomain(program))return null;
+    // This optional observer retains opaque identities but derives no facts from
+    // their behavior. The stricter source-origin snapshot above is unchanged.
+    let observed;try{observed=physicalUpdateSourceSnapshot(program);}catch{return null;}
+    if(!observed||!sharedImageEntryArrayDomain(program))return null;
+    // Helpers may serialize default callback bodies. Nothing under the actual
+    // executable body, including its metadata, may hide a live host function.
+    const body=program&&typeof program==='object'?descriptor(program,'body'):null;
+    if(!body||!Object.hasOwn(body,'value')||!Array.isArray(body.value)||!entryMetadataValue('originalBody',body.value))return null;
+    // The graph's throw path serializes the whole Program for completion
+    // currentness, including otherwise ignored metadata. Match its all-object
+    // tag census and refuse opaque functions there before invoking the graph.
+    if(observed.objects.some(node=>descriptor(node,'type')?.value==='ThrowStatement')&&!entryMetadataValue('program',program))return null;
+    const current=observed.current;
     const nodes=[],parents=new WeakMap(),seen=new Set();let valid=true;
     const visit=(value,parent=null)=>{
+        if(typeof value==='function'){valid=false;return;}
         if(!value||typeof value!=='object')return;
         if(seen.has(value)){valid=false;return;}seen.add(value);
         if(!Array.isArray(value)){nodes.push(value);parents.set(value,parent);}
-        for(const key of Reflect.ownKeys(value))if(!metadata.has(key))visit(descriptor(value,key).value,value);
+        for(const key of Reflect.ownKeys(value)) {
+            const field=descriptor(value,key).value;
+            if(metadata.has(key)){if(entryMetadataData.has(key)&&!entryMetadataValue(key,field))valid=false;continue;}
+            visit(field,value);
+        }
     };
     visit(program);if(!valid||program?.type!=='Program')return null;
     const text=sourceContext?currentSharedImageSourceEffects(program,sourceContext):null;
