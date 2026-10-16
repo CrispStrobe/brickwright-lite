@@ -1994,18 +1994,26 @@ class PseudocodeImporter extends React.Component {
      * laptop with no internet still have the .hex.
      */
     async openMakeCodeShare () {
-        const url = await promptAsync(this.L.mcSharePrompt,'');
-        if (this._unmounted || !url || !url.trim()) return;
+        if (this._unmounted) return;
+        // The prompt is asynchronous too: reserve this intent against the
+        // current stage before another file/share action can supersede it.
         const request = this._makeCodeRequest = {stage:this.props.vm.runtime.getTargetForStage()};
-        this.setState({status:this.L.mcShareLoading});
+        let url = '';
         try {
+            url = await promptAsync(this.L.mcSharePrompt,'');
+            if (!this.currentMakeCodeRequest(request)) return;
+            if (!url || !url.trim()) {
+                this._makeCodeRequest = null;
+                return;
+            }
+            this.setState({status:this.L.mcShareLoading});
             const module = await this.makeCodeImportModule();
             if (!this.currentMakeCodeRequest(request)) return;
             const res = await module.importShareLink(url.trim(),{animationResources:true,prepareDependencies:true});
             if (!this.currentMakeCodeRequest(request)) return;
             this.applyMakeCodeImport(res,res.project.name || url.trim());
         } catch (err) {
-            if (this.currentMakeCodeRequest(request)) this.setState({status:this.L.mcFailed(url.trim(),(err && err.message) || String(err))});
+            if (this.currentMakeCodeRequest(request)) this.setState({status:this.L.mcFailed(url ? url.trim() : this.L.mcSharePrompt,(err && err.message) || String(err))});
         }
     }
 

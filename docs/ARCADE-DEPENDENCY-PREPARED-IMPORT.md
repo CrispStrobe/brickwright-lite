@@ -126,7 +126,10 @@ and multiple matching source candidates. Distinct aliases remain distinct.
 
 File/share completion checks the current request, current Stage and mounted
 editor before publishing buffers, artwork or status, including failed reads and
-preparation errors. A stale lazy module load cannot start preparation. Unmount
+preparation errors. Share intent and Stage are captured before opening the
+asynchronous URL prompt. A superseded prompt answer, cancellation or error
+cannot start preparation or change a newer request. Current prompt failures
+remain visible. A stale lazy module load cannot start preparation. Unmount
 invalidates the request. Dependency provenance is attached to the existing
 `bwMakeCode` record for the unedited imported translation; its existing save/load
 path preserves extra record fields. The CLI also retains its dependency ZIP
