@@ -5075,3 +5075,10 @@ Local initialization transport (**C**), startup wrapper composition (**D**) and
 callback alias/formal allocation (**E**) remain tracked open work, not permission
 for source changes here. No runtime/ABI/domain, supplier/pin, GUI or workflow
 change; no stable whole-project or compatibility-count claim from source shape.
+
+A allocator implementation coordination: the owner-aware lookup also covers the
+single ordinary field-initializer call emission in
+`overlay/scratch-gui/src/lib/bw-makecode/object-class-export.js`. Coordinated
+under the merged roundtrip contract's matching resolved-call scope; all other
+class bodies, field/default/type semantics and class admission stay unchanged.
+B empty-Array lowering remains a separate implementation.

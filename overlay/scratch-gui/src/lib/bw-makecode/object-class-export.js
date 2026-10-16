@@ -242,7 +242,7 @@ export function prepareObjectClassExport(emitter) {
                     continue;
                 }
                 let initializer='';
-                if(field.initializer){const code=field.initializer,k=key(cls.target,code),def=definitions.get(k),fn=emitter.fnNames.get(k);
+                if(field.initializer){const code=field.initializer,k=key(cls.target,code),def=definitions.get(k),fn=emitter.functionName(cls.target,code);
                     if(!def||def.parameters.length||!fn)emitter.note('Class field initializer export requires its fixed zero-argument procedure');
                     else initializer=` = ${fn}()`;
                 }

@@ -141,3 +141,23 @@ Those mechanisms can still grow source after A and B pass. They require their
 own reviewed ownership and qualification before product changes. Runtime
 prototype-sensitive dictionaries, graphics/editor authoring, missing assets and
 all unrelated compatibility gaps remain separately tracked.
+
+## A implementation coordination
+
+The matching resolved-call scope includes the existing class field-initializer
+ordinary-call lookup in
+`overlay/scratch-gui/src/lib/bw-makecode/object-class-export.js`. Its narrow
+lookup adapter is coordinated with the ordinary symbol owner. It does not
+change class bodies, defaults, field types or class admission. Wider class
+changes require separate coordination.
+
+The A candidate reserves the closed current runtime/helper/resource/generated
+identifier families and all actual current lexical binders for name hygiene.
+Those reservations never establish an owner or runtime value. Ordinary names
+come from unique actual target/definition/prototype and ordered formal records;
+validated signature placeholders are removed once before sanitization. Actual
+current project semantics and object identity are rechecked after rendering,
+including artwork callbacks. Unresolved foreign calls remain diagnostics.
+Prototype-sensitive native procedure dictionaries remain an unresolved runtime
+name-support gap; a conservative owner refusal does not implement that support.
+Source and authored controls alone do not qualify the candidate.

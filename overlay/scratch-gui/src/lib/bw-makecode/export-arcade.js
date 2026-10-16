@@ -1,3 +1,4 @@
+import {createOrdinaryExportSymbols} from './ordinary-export-symbols.js';
 import {createArrayReferenceExportAuthority} from './array-reference-export-authority.js';
 import {throwExportOwners} from './throw-export-owners.js';
 import {prepareProcedureConstraintExport} from './procedure-constraint-export.js';
@@ -220,7 +221,7 @@ class ArcadeEmitter {
         this.initialGlobals = new Map();
         this.editedSavedReferenceIds = new Map();
         this.globals = new Map();       // Scratch variable id|name -> TS name
-        this.fnNames = new Map();       // `${target}:${proccode}` -> TS name
+        this.functionSymbols = null;    // actual target/declaration owner -> TS symbol
         this.target = null;
         this.blocks = null;
         this.kinds = new Map();         // TS variable -> Set('number'|'string')
@@ -300,7 +301,7 @@ class ArcadeEmitter {
                 if (RESERVED.has(name)) name += '_';
                 return name;
             }));
-            const occupied = new Set([...declaredVariables, ...this.globals.values(), ...this.fnNames.values(), ...this.spriteVar.values(),
+            const occupied = new Set([...declaredVariables, ...this.globals.values(), ...this.functionNames(), ...this.spriteVar.values(),
                 ...[...this.sharedImageArrays.values(), ...this.frameArrays.values()].map(array => array.name)]);
             this.animationSymbol = base => {
                 let name = base;
@@ -621,6 +622,8 @@ class ArcadeEmitter {
     }
 
     // ── names ────────────────────────────────────────────────────────────
+    functionNames () { return this.functionSymbols?.values() || []; }
+    functionName (target,code) { return this.functionSymbols?.name(target,code) || null; }
     varName (target, name) {
         const key = `${target.isStage ? '' : target.name}:${name}`;
         if (this.globals.has(key)) return this.globals.get(key);
@@ -800,7 +803,7 @@ class ArcadeEmitter {
         if (name===null) {this.note('Named array export requires a fixed name');return 'null';}
         if(!this.namedArrays.has(name)) {
             let variable='__bwNamedArray_'+ident(name);
-            const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.namedArrays.values(),...this.spriteVar.values()]);
+            const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.namedArrays.values(),...this.spriteVar.values()]);
             while(occupied.has(variable))variable+='_';
             this.namedArrays.set(name,variable);
         }
@@ -810,7 +813,7 @@ class ArcadeEmitter {
         if(!this.legacyValueHelpers.has(kind)) {
             const base=kind==='parse'?'__bwNamedParseValue':'__bwNamedJsonValue';
             let name=base;
-            const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
+            const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
             while(occupied.has(name))name+='_';
             const source=(kind==='parse'?LEGACY_PARSE_SOURCE:LEGACY_JSON_SOURCE).replaceAll(base,name);
             this.legacyValueHelpers.set(kind,{name,source});
@@ -821,7 +824,7 @@ class ArcadeEmitter {
         const key='named:'+op;
         if(!this.legacyValueHelpers.has(key)) {
             let name='__bwNamedArray'+op[0].toUpperCase()+op.slice(1);
-            const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
+            const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
             while(occupied.has(name))name+='_';
             const parse=()=>this.legacyValueHelper('parse'),json=()=>this.legacyValueHelper('json');
             let params='array: any[]',body='';
@@ -865,7 +868,7 @@ class ArcadeEmitter {
         const key='scratch:'+operation;
         if(!this.legacyValueHelpers.has(key)) {
             let name=operation==='min'?'__bwScratchMin':'__bwScratchMax';
-            const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
+            const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
             while(occupied.has(name))name+='_';
             this.legacyValueHelpers.set(key,{name,source:`function ${name}(left: any, right: any): number {
     let a = +left
@@ -905,7 +908,7 @@ class ArcadeEmitter {
         const key='arrayAccess';
         if(!this.legacyValueHelpers.has(key)) {
             let fn='__bwArrayAccess';
-            const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
+            const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.legacyValueHelpers.values()].map(x=>typeof x==='string'?x:x.name));
             while(occupied.has(fn))fn+='_';
             this.legacyValueHelpers.set(key,{name:fn,source:ARRAY_ACCESS_SOURCE.replaceAll('__bwArrayAccess',fn)});
         }
@@ -946,7 +949,7 @@ class ArcadeEmitter {
         if(text!==null && Object.is(Number(text),-0)){
             const key='LiteralNegativeZero';
             if(!this.valueOperationHelpers.has(key)){
-                const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.valueOperationHelpers.values()].map(x=>typeof x==='string'?x:x.name));
+                const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.valueOperationHelpers.values()].map(x=>typeof x==='string'?x:x.name));
                 let helper='__bwLiteralNegativeZero';while(occupied.has(helper))helper+='_';
                 this.valueOperationHelpers.set(key,{name:helper,source:`function ${helper}(divisor: number): number { return -1 / divisor }`});
             }
@@ -1263,10 +1266,11 @@ class ArcadeEmitter {
         }
         case 'arcade_callFunction': {
             const code = this.literalInput(b, 'NAME');
-            const fn = code && (this.fnNames.get(`${this.target.isStage ? '' : this.target.name}:${code}`) || this.fnNames.get(`:${code}`));
+            const fn = code && this.functionSymbols.call(this.target,b);
 
-            const args=[];let block=this.block(b.inputs?.ARGS?.[1]);
+            const args=[],seenArguments=new Set();let block=this.block(b.inputs?.ARGS?.[1]);
             while (block?.opcode==='arcade_functionArgument') {
+                if(seenArguments.has(block)){this.note('Arcade function argument chain is cyclic');return this.na();}seenArguments.add(block);
                 args.push(this.arrayValue(block,'VALUE'));block=this.block(block.inputs?.REST?.[1]);
             }
             // Arguments are authored as a linked chain, ending in the literal [].
@@ -1333,7 +1337,7 @@ class ArcadeEmitter {
             const key=(unary?'Unary':compare?'Compare':'Binary')+names[op];
             if(!this.valueOperationHelpers.has(key)){
                 let name='__bw'+key;
-                const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.spriteVar.values(),...this.artVar.values(),...this.valueOperationHelpers.values()].map(x=>typeof x==='string'?x:x.name));
+                const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.spriteVar.values(),...this.artVar.values(),...this.valueOperationHelpers.values()].map(x=>typeof x==='string'?x:x.name));
                 while(occupied.has(name))name+='_';
                 this.valueOperationHelpers.set(key,{name,source:unary?`function ${name}(value: any): number { return ${op==='-'?'-1 * value':op==='~'?'~value':'+value'} }`:`function ${name}(left: any, right: any): ${compare?'boolean':op==='+'?'any':'number'} { return left ${op} right }`});
             }
@@ -1697,7 +1701,7 @@ class ArcadeEmitter {
             const key='controllerAxisStep';
             if(!this.legacyValueHelpers.has(key)) {
                 let name='__bwControllerAxisStep';
-                const occupied=new Set([...this.globals.values(),...this.fnNames.values(),...this.legacyValueHelpers.values()].map(value=>typeof value==='string'?value:value.name));
+                const occupied=new Set([...this.globals.values(),...this.functionNames(),...this.legacyValueHelpers.values()].map(value=>typeof value==='string'?value:value.name));
                 while(occupied.has(name))name+='_';
                 this.legacyValueHelpers.set(key,{name,source:`function ${name}(axis: any, step: number): number {
     const direction = "" + axis
@@ -2691,7 +2695,8 @@ class ArcadeEmitter {
         }
         case 'procedures_call': {
             const code = b.mutation && b.mutation.proccode;
-            const fn = this.fnNames.get(`${this.target.name}:${code}`) || this.fnNames.get(`:${code}`);
+            const fn = this.functionSymbols.call(this.target,b);
+            if(!fn){push(`// ${this.note(`call ${code}: needs its unique current target procedure and formal binding`)}`);return;}
             const ids = b.mutation ? JSON.parse(b.mutation.argumentids || '[]') : [];
             const args = ids.map(a => this.arrayValue(b, a));
             // A custom block runs in its caller's thread: it gets the caller's run token.
@@ -3583,7 +3588,7 @@ class ArcadeEmitter {
                     try{return this.body(first,[],[],false);}finally {this.target=previous.target;this.blocks=previous.blocks;this.currentLocalNames=previous.locals;this.currentCallableContext=previous.context;}
                 });
                 this.callableExports.set(target,{graph,emitter,sdkImageEnabled:sdkImageEnabled||envelope.version===2&&this.opts.sdkImagePrototype===true});
-                for(const owner of graph.plan.owners)if(owner.kind==='declaration')this.fnNames.set(`${target.isStage?'':target.name}:${owner.procedure}`,owner.sourceName);
+                for(const owner of graph.plan.owners)if(owner.kind==='declaration')this.functionSymbols.pin(target,owner.procedure,owner.sourceName);
             } catch(error) {this.note(error.message);}
         }
     }
@@ -3671,16 +3676,9 @@ class ArcadeEmitter {
             const code=this.literalInput(b,'NAME');
             if(code!==null)this.managedValueProcedures.add(`${t.isStage?'':t.name}:${code}`);
         }
-        // Custom blocks first, so calls can find their names.
-        for (const t of this.project.targets) {
-            for (const [, b] of Object.entries(t.blocks || {})) {
-                if (b && b.opcode === 'procedures_prototype' && b.mutation) {
-                    const code = b.mutation.proccode;
-                    const base = ident(code.replace(/%[sbn]/g, '').trim()) || 'fn';
-                    this.fnNames.set(`${t.isStage ? '' : t.name}:${code}`, `${t.isStage ? '' : `${ident(t.name)}_`}${base}`);
-                }
-            }
-        }
+        // Allocate from actual current declarations and the closed emitted-name
+        // inventory. No target-prefix stripping or retained-source name grants.
+        this.functionSymbols=createOrdinaryExportSymbols(this.project,message=>this.note(message));
         const register = (table, key, entry) => {
             if (!table.has(key)) table.set(key, []);
             table.get(key).push(entry);
@@ -3890,7 +3888,7 @@ class ArcadeEmitter {
                     script = this.body(b.next, [...this.stopGuards(), ...(clonable ? ['_gone(self)'] : [])], [], !this.managedValueProcedures.has(key));
                     const locals = [...this.currentLocalNames].filter(name => !names.includes(name));
                     this.currentLocalNames = saved;this.currentCallableContext=savedContext;
-                    const fn = this.fnNames.get(key);
+                    const fn = this.functionName(t,proto.mutation.proccode);
                     // A procedure that returns a value (arcade_returnValue) is typed by
                     // what flows out of it; one that falls off its end returns undefined, as in PXT.
                     const returning = line => /^\s*return [^\s/]/.test(line);
@@ -4092,7 +4090,7 @@ class ArcadeEmitter {
             const lines = flagScripts[0].script;
             if (lines.some(line => /^\s*(let |const |return\b)|\breturn$/.test(line))) {
                 let name = '__bwStartup';
-                const occupied = new Set([...this.globals.values(), ...this.fnNames.values(), ...this.spriteVar.values(), ...this.artVar.values()]);
+                const occupied = new Set([...this.globals.values(), ...this.functionNames(), ...this.spriteVar.values(), ...this.artVar.values()]);
                 while (occupied.has(name)) name += '_';
                 functions.push(`function ${name} () {\n${lines.join('\n')}\n}`);
                 startup = [`${name}()`];
@@ -4193,9 +4191,12 @@ export function projectToArcade (project, opts = {}) {
         for(const diagnostic of gate.unsupported)e.note(diagnostic);
     }
     if(e.procedureConstraints?.procedures().length){
-        const selected=new Set(e.procedureConstraints.procedures().map(({target,code})=>e.fnNames.get(`${target.isStage?'':target.name}:${code}`)));
+        const selected=new Set(e.procedureConstraints.procedures().map(({target,code})=>e.functionName(target,code)));
         try{for(const diagnostic of validateProcedureConstraintSource(parseMakeCodeTs(projectTs,{parameterDefaults:true,retainParentheses:true}),{onlyFunctions:selected,ordinaryPrimitiveSdkNumbers:true}))e.note(diagnostic);}catch(error){e.note(error.message);}
     }
+    // Host artwork callbacks can edit current project objects during rendering.
+    // Stale owner/global/local inventories must never become a clean export.
+    if(!e.functionSymbols?.current())e.note('Arcade ordinary symbol: current project or owner inventory changed during export');
     return {ts, files, unsupported: e.unsupported, warnings: e.warnings};
 }
 
