@@ -106,3 +106,12 @@ test('an empty declaration at an actual loop body site remains a fresh per-entry
 test('an unknown neighboring syntax domain cannot lend a lexical statement proof',()=>{
  const input=parse('let values=[];');input.body.push({type:'UnexpectedScope',body:[]});assert.ok(temporaryCount(lower(input))>0);
 });
+
+
+test('empty direct statements still invoke their existing value-lowering hooks once in order',()=>{
+ const input=parse('let values=[];'),calls=[];const result=lower(input,{lowerIntegerDivision:node=>{if(node.type==='Array')calls.push('division');return null;},lowerArrayMap:node=>{if(node.type==='Array')calls.push('map');return null;}});assert.deepEqual(calls,['division','map']);assert.equal(temporaryCount(result),0);assert.equal(result.body[0].decls[0].init.type,'Array');
+});
+
+test('another actual value-lowering protocol wins before empty-array transport omission',()=>{
+ for(const owner of['lowerIntegerDivision','lowerArrayMap']){const input=parse('let values=[];');let calls=0;const result=lower(input,{[owner]:node=>{if(node.type!=='Array')return null;calls++;return{prefix:[],value:{type:'Number',value:'7'}};}});assert.equal(calls,1);assert.equal(result.body[0].decls[0].init.type,'Number');assert.equal(Number(result.body[0].decls[0].init.value),7);}
+});

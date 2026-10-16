@@ -147,7 +147,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
         }
         return {prefix:[],value:node};
     };
-    function expression(node) {
+    function expression(node, directStatement = null) {
         if(!node || onlySelected&&!containsSelected(node))return {prefix:[],value:node};
         const divided=lowerIntegerDivision(node,{expression,save});if(divided){changed=true;return divided;}
         const mapped=lowerArrayMap(node,{expression,body});if(mapped){changed=true;return mapped;}
@@ -201,6 +201,10 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
                 const prefix=[];
                 return {prefix,value:save({...node},prefix)};
             }
+            // Keep every existing value-lowering hook/resource protocol above.
+            // Only the allocation transport is omitted, at this exact current
+            // statement/literal position after callback currentness is checked.
+            if(directStatement&&directEmpty(directStatement))return {prefix:[],value:node};
             const items=node.items.map(expression);
             changed=true;
             const prefix=[],array=save({...node,items:[]},prefix);
@@ -257,7 +261,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
         if(st.type==='FunctionDeclaration')return [{...st,body:body(st.body),...(st.originalBody?{originalBody:body(st.originalBody)}:{})}];
         if(st.type==='Block' || st.type==='Namespace')return [{...st,body:body(st.body),...(st.originalBody?{originalBody:body(st.originalBody)}:{})}];
         if(st.type==='Declaration')return st.decls.flatMap(decl=>{
-            const result=directEmpty(st)?{prefix:[],value:decl.init}:expression(decl.init);
+            const result=expression(decl.init,st);
             if(globalWhenUsed.has(decl) && result.prefix.length){
                 const group=fresh();
                 return [...result.prefix.map(node=>({...node,bwPxtWhenUsedGroup:group})),
@@ -297,7 +301,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
         }
         if(st.type==='ExpressionStatement'){
             if(st.expr?.type==='Assignment'){
-                const left=expression(st.expr.left),result=directEmpty(st)?{prefix:[],value:st.expr.right}:expression(st.expr.right);
+                const left=expression(st.expr.left),result=expression(st.expr.right,st);
                 const referenceTarget=['Member','Index'].includes(st.expr.left?.type);
                 const snapshot=referenceTarget && (hasEffects(st.expr.left) || hasEffects(st.expr.right));
                 if(!left.prefix.length && !result.prefix.length && !snapshot)return [{...st,expr:{...st.expr,left:left.value,right:result.value}}];
