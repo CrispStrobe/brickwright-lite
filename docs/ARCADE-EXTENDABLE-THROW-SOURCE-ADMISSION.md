@@ -3,7 +3,7 @@
 Status: coordinated ownership amendment; implementation requires this claim's
 qualified normal merge. This extends the source boundary shared by
 [Throw](compatibility/arcade-throw-statements.md),
-[ExtendableSprite updates](ARCADE-EXTENDABLE-SPRITE-UPDATE.md) and
+[ExtendableSprite updates](compatibility/arcade-owned-sprite-class-callables.md) and
 [managed runtime ownership](ARCADE-MANAGED-SDK-OWNERSHIP.md).
 
 ## Observed limit
