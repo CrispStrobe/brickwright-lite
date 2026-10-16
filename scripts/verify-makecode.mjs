@@ -318,7 +318,8 @@ try {
         await input.setInputFiles({name: 'a12-cpx.mkcd', mimeType: 'application/octet-stream',
             buffer: Buffer.from(makeCodeProjectFile(files, {name: 'A12 CPX', target: 'adafruit'}))});
         const code = await waitFor(() => page.locator('.cm-content').first().innerText().catch(() => ''),
-            value => /^DEVICE CPX\b/.test(value), 30000);
+            value => /^DEVICE CPX\b/.test(value) && /when button A click:/.test(value) &&
+                /when gesture shake:/.test(value), 30000);
         check('CPX source-only import produces DEVICE CPX and native event words',
             /^DEVICE CPX\b/.test(code) && /when button A click:/.test(code) && /when gesture shake:/.test(code));
         check('CPX import names Circuit Playground rather than micro:bit',
@@ -363,7 +364,7 @@ try {
         check('CPX translated source loads the actual native CPX command and handler blocks',
             loaded.device === 'cpx' && ['circuitplayground_setall', 'circuitplayground_whenbutton',
                 'circuitplayground_whengesture'].every(op => loaded.ops.includes(op)));
-        await page.locator('[title*="Circuit Playground"]').first().click();
+        await page.locator('[title="Circuit Playground"]:visible').click();
         await page.locator('[data-testid="bw-cpx-pane"]').waitFor({state: 'visible', timeout: 30000});
         const ring = () => page.locator('[data-testid^="bw-cpx-pixel-"]').evaluateAll(elements =>
             elements.map(element => element.getAttribute('fill')));

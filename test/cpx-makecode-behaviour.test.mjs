@@ -47,6 +47,15 @@ for (const scenario of cases) test(`CPX translated documentation vs original sim
     const actual = await runCpxExtension(driver.drive, {...opts, onHat: driver.onHat});
     assert.equal(original.error, null, `Original simulator failed: ${original.error}`);
     assert.equal(actual.error, null, `Translated block/extension driver failed: ${actual.error}`);
+    // Retain all differences before the first assertion stops this case. The
+    // original strict comparisons below remain intact during diagnosis.
+    const differences = opts.at.filter(t => JSON.stringify(actual.frames[t]) !== JSON.stringify(original.frames[t]))
+        .map(t => ({t, original: original.frames[t], translated: actual.frames[t]}));
+    const toneDifference = JSON.stringify(actual.tones) !== JSON.stringify(original.tones);
+    if (differences.length || toneDifference) console.log('CPX comparison diagnostic', JSON.stringify({
+        id: scenario.id, frames: differences,
+        ...(toneDifference ? {originalTones: original.tones, translatedTones: actual.tones} : {})
+    }));
     for (const t of opts.at) assert.deepEqual(actual.frames[t], original.frames[t], `${scenario.id} ring at ${t}ms`);
     for (const t of scenario.lit) assert.ok(original.frames[t].some(v => v !== 0), `${scenario.id} original must light pixels at ${t}ms`);
     if (scenario.sound) assert.ok(original.tones.length > 0, `${scenario.id} original must produce tones`);

@@ -16,6 +16,11 @@ test('CPX source-call reader distinguishes executable calls from comments and te
         + '/* input.onLoudSound() */\ninput.buttonA.onEvent(ButtonEvent.Click,()=>light.clear())'),
     ['input.buttonA.onEvent', 'light.clear', 'light.showRing']);
     assert.deepEqual(adafruitCalls('light.showRing(`${input.lightLevel()}`)'), ['input.lightLevel', 'light.showRing']);
+    assert.deepEqual(adafruitCalls('light.showRing("😀"); input.lightLevel()'), ['input.lightLevel', 'light.showRing']);
+    assert.deepEqual(adafruitCalls('light.showRing(`${({fake: "music.playTone()", value: input.lightLevel()})}, ${`text ${input.temperature()}`} ${light.rgb(1, 2, 3)}`)'),
+        ['input.lightLevel', 'input.temperature', 'light.rgb', 'light.showRing']);
+    assert.deepEqual(adafruitCalls('light.showRing(`${(() => { /* } music.playTone() */ return input.lightLevel(); })()}`)'),
+        ['input.lightLevel', 'light.showRing']);
 });
 
 test('CPX census checks the actual blocks and retains every named refusal', () => {

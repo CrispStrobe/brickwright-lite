@@ -25,8 +25,55 @@ export function adafruitPrograms (archive = path.join(CACHE_DIR, 'pxt-adafruit-1
 // This reader checks source calls against the actual parsed blocks, rather
 // than trusting a translator's own claim that a call was visited.
 export function adafruitCalls (source) {
-    const text = source.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`[^`]*`|\/\/[^\n]*|\/\*[\s\S]*?\*\//g,
-        s => s.startsWith('`') ? [...s.matchAll(/\$\{([\s\S]*?)\}/g)].map(m => m[1]).join(' ') : s.replace(/[^\n]/g, ' '));
+    // Walk nested template expressions structurally. A first-closing-brace
+    // regex can lose calls after an object literal or nested template.
+    const chars = source.split('').map(c => c === '\n' ? '\n' : ' ');
+    let i = 0;
+    const quoted = quote => {
+        i++;
+        while (i < source.length) {
+            if (source[i] === '\\') { i += 2; continue; }
+            if (source[i++] === quote) return;
+        }
+    };
+    const template = () => {
+        i++;
+        while (i < source.length) {
+            if (source[i] === '\\') { i += 2; continue; }
+            if (source[i] === '`') { i++; return; }
+            if (source[i] === '$' && source[i + 1] === '{') {
+                i += 2;
+                executable(true);
+            } else i++;
+        }
+    };
+    const executable = expression => {
+        let depth = 0;
+        while (i < source.length) {
+            const c = source[i];
+            if (c === '"' || c === "'") { quoted(c); continue; }
+            if (c === '`') { template(); continue; }
+            if (source.startsWith('//', i)) {
+                while (i < source.length && source[i] !== '\n') i++;
+                continue;
+            }
+            if (source.startsWith('/*', i)) {
+                i += 2;
+                while (i < source.length && !source.startsWith('*/', i)) i++;
+                i += 2;
+                continue;
+            }
+            if (c === '{') depth++;
+            if (c === '}') {
+                if (expression && depth === 0) { i++; return; }
+                depth--;
+            }
+            chars[i] = c;
+            i++;
+        }
+    };
+    executable(false);
+    const text = chars.join('');
     const namespaces = new Set(['light', 'input', 'music', 'pins', 'network', 'keyboard', 'mouse', 'gamepad',
         'storage', 'datalogger', 'settings', 'servos', 'control', 'loops', 'Math']);
     const calls = new Set();
