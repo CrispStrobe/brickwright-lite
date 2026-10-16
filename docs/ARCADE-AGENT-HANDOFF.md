@@ -34,12 +34,19 @@ passed every hosted check. The immutable corpus remains **147 translated /
   controller timing and visible-editor limits retained.
 - Free throw passes current dependency-aware public import, Creator, Code, save
   and export after the nested private-reset proof. All 35 focused controls and
-  all 42 current Array receivers pass while retaining every statement. A
-  separate native saved-project controller slice observes a genuine shot,
-  overlap, score and ball destruction with actual runtime artwork. Initial
-  activation, presentation/audio, countdown, other portable gameplay routes and
-  visible editor journeys remain separate gates. Repeated source growth and
-  preparation of the latest distinct exported root remain open.
+  all 42 current Array receivers pass while retaining every statement. An
+  earlier headless native controller observes a genuine shot, overlap, score
+  and ball destruction across public Code, current Code and same/fresh saved
+  projects, with actual runtime artwork. The current runtime composition has
+  separate saved-project qualification: it preserves the shot and reaches
+  the 30-second countdown, completes the game's original 400 ms and 500 ms
+  pauses, receives a real Right input at its pending button waiter, and lets
+  the game restart itself. New owned actors, score zero, retained high score
+  one, one handler per registration and the displayed score text/icon are
+  checked after restart. This does not qualify initial activation, rendered
+  editor output, terminal graphics/audio parity, or other terminal routes.
+  Repeated source growth and preparation of the latest distinct exported root
+  remain separate work.
 
 - Generic Image expressions and exact fixed-instance JRES owners have focused
   controls. Rockscout retains all 48 resource pixel bodies and 43 unique helper
@@ -51,9 +58,11 @@ passed every hosted check. The immutable corpus remains **147 translated /
   pass 13 focused controls. This does not establish class or ambient receiver
   proofs, or the remaining mixed Carnival default protocol.
 
-Next, close the actual Free throw Array refusal, then qualify the exact
-[scene-clock Number producer](ARCADE-CLOCK-NUMBER-PRODUCER.md). Preserve all
-current bodies, assets and diagnostic channels when repeating affected routes.
+Next, close the remaining source-stability and complete-project gaps, and
+carry the newly qualified native behavior through visible editor/controller
+journeys. Keep the [scene-clock Number producer](ARCADE-CLOCK-NUMBER-PRODUCER.md)
+and [frame scheduler](ARCADE-FRAME-SCHEDULER.md) boundaries explicit. Preserve
+all current bodies, assets and diagnostic channels on each affected route.
 The [GUI capability ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) tracks
 Code, Blocks, graphics, runtime/controller, persistence and export acceptance
 separately. The five older hosted editor journeys remain the latest hosted
