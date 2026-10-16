@@ -1,6 +1,6 @@
 # Technic Sim Lab — implementation plan
 
-Status: **planned, not started**. Created 2026-09-02.
+Status: **S1 in progress** (§0). Created 2026-09-02.
 Owner of record: unclaimed — claim individual tasks in `LANES.md` per its protocol.
 
 A Tinkercad-Sim-Lab-style mode for LEGO Technic: build a model from parts in the
@@ -12,6 +12,64 @@ drive on a mat, the color sensor reads the line it is actually over.
 Everything shipped is BSD-3/MIT/Apache-2.0/zlib code plus CC-BY-2.0 part
 geometry (content, attribution-only — same treatment as a font). No GPL, no NC,
 no "check with legal" licenses. See §7 for the full ledger.
+
+---
+
+## 0. Status and revisions — 2026-10-16
+
+Status: **S1 in progress** (see `LANES.md`, "Sim Lab S1"). This section
+overrides the sections below where they disagree.
+
+**What landed since the plan was written (2026-09-02).**
+- Lane A for SPIKE is largely done, by other lanes: `virtual-hub/` ships the
+  Web Bluetooth shim, the SPIKE peripheral, `spike-hub-state.js` and the
+  dashboard panel. **A4 is superseded**: the Sim Lab drives the existing
+  `VirtualSpikeHubState` (docs/SPIKE-ARENA.md, "The hub contract") instead of
+  a new `HubState`. A2 (LWP3: Boost/Powered Up/WeDo) remains open.
+- The SPIKE arena (docs/SPIKE-ARENA.md) ships a 2D world, simulated sensors, a
+  checker, units, and a lazily loaded three.js 3D view. `three` 0.186.1 is a
+  GUI dependency, so **C1's dependency step and the three.js half of F2 are
+  done**.
+
+**One clock.** The arena contract says motors advance only inside
+`hubState.stepMotors(dt)`, owned by whoever runs the world. In the Sim Lab
+the physics core is that owner: motor targets flow from the hub state into
+the hinge motors, and joint angles flow back as encoder positions. The hub's
+own kinematic motor model is not stepped while a physics scene runs.
+
+**Order changed: S1, a vertical slice, comes first.** M2's editor is the
+largest UX job; the riskiest *technical* path is compile → physics → hub. S1
+proves that path headless, before any editor exists:
+1. `bw-sim/contracts.js` — the PartMeta / PlacedModel / CompiledMechanism
+   contracts and validators (the D5 "engine-agnostic seam", made concrete).
+2. D5 core — `bw-sim/physics/` runs a CompiledMechanism in Jolt under
+   `node --test` (worker wrapper later).
+3. D1–D4 — `bw-sim/mech/` compiles a PlacedModel + PartMeta catalog to a
+   CompiledMechanism (connection graph, islands, hinges, inferred gears).
+4. B1 + B3a — the pinned, curated LDraw subset and hand-authored metadata for
+   the ~10 parts of a driving base.
+5. A6 (S1 form) — a hand-written driving-base fixture driven by the existing
+   virtual SPIKE hub: `start motor A` turns the simulated wheel and the
+   encoder reads it back.
+Then M2 (editor) as planned, rendering through the arena's three.js stack.
+
+**Verified 2026-10-16.** `jolt-physics` 1.1.0 (MIT) in Node: a velocity-
+motorised hinge driving an 8T gear into a 24T via `GearConstraint` holds the
+angle ratio at −0.3333 after 2 s simulated and tracks its 555°/s target.
+
+**License ledger corrections (§7).** The LDraw parts library is **not**
+uniformly CC-BY-2.0: parts are CC BY 4.0, dual CC BY 2.0 / 4.0, or (older,
+unreachable authors) CC BY 2.0 only (`CAreadme.txt`; Contributor Agreement
+rev. 2024-06-06, which also allows CC0). All are attribution-only and
+compatible. Obligations for our curated, packed subset: credit "The LDraw
+Parts Library" (accepted by LDraw.org in place of per-author lists), state
+that the files were modified (packed), link the licence(s), ship
+`CAreadme.txt`, and keep every part's `!LICENSE` and `Author` header lines
+(or record them in the manifest). Official library parts only — unofficial
+parts are excluded. Trademark: "LEGO®" appears only as an adjective, never in
+a product name or logo, with the standard not-endorsed disclaimer; no
+official instructions, box art or catalogue images. Rapier (fallback) is
+Apache-2.0: ship its licence and NOTICE if it is ever adopted.
 
 ---
 
