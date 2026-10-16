@@ -174,3 +174,62 @@ collection domain. Image, Font, Player, Sprite inheritance, scene event contexts
 generic class containers, direct callable Arrays and broad SDK APIs remain
 excluded. No full StatusBar, SpriteUtils, State Transitions or game promotion
 follows from the ordinary primitive handler registry alone.
+
+## Proposed coordinated Sprite record subset
+
+Implementation waits for this amendment's normal merge and for the physical
+issued-value foundation in the
+[owned Sprite contract](arcade-owned-sprite-class-callables.md#proposed-coordinated-sprite-handler-record-extension).
+The original primitive-only subset and its no-SDK-values exclusion remain
+unchanged until that foundation qualifies. This extension adds only one
+concrete ordinary handler class per actual Array and one exact callback
+signature whose Sprite input carries that private authority. Start with Void
+callbacks and independently proved primitive fields; Number results need their
+own complete result proof. No direct callable Arrays, mixed record classes,
+Sprite inheritance or arbitrary SDK collection inputs follow.
+
+Every insertion, replacement, removal, index/read-presence and callback read
+must retain the existing Array, ordinary object and callable owners plus the
+actual Sprite owner. A live record or Array cannot revive a revoked Sprite or
+callback. Validate original raw ingress before any codec/heap normalization;
+an inert element signature, saved field or equal Sprite ID text issues no
+value. Constructor parameter-property metadata must satisfy the linked exact
+parameter/field/ordered-writer proof, not a name or annotation shortcut.
+
+Extend the existing handler-record producer/current-project proof and native
+class/callback owners through coordinated hooks in the linked source envelope.
+Reuse the existing owned Sprite values and bridge; create no second Sprite or
+callback owner. Preserve
+the existing canonical Array operations and allocation/alias behavior. A new
+canonical element schema, reference kind or supplier word is separately claimed
+and qualified before adoption; there is no implicit pin or codec change.
+
+Exercise two real records, a shared Array alias, saved record/action reads,
+callback replacement and removal, then genuine invocation with an issued
+Sprite. Preserve the full callback and class bodies, captured effects,
+argument order, pause/exception completion and current edits. Retain all
+primitive registry adversaries and add forged/stale/foreign physical values,
+replaced bodies, scene changes and lifecycle cancellation. Same/fresh saved
+projects, actual current export/reimport, selected originals and visible
+editing remain mandatory independent gates.
+
+### Bounded Scene registry protocol
+
+For the selected handler records, prove the actual Scene object and its owned
+registry Array, the exact registration call, inserted record identity and the
+actual callback entry that reads that same current record. Bind the actual
+native Sprite constructor and constructor parameter-property schema to ordered
+writes. The presently supported Image-only callback schema must be explicitly
+extended through the same producer, field and current-project proof; neither a
+Sprite annotation nor a parameter-property modifier supplies a value. Do not
+assume that unrelated fields have initialized, suppress partial-construction
+updates or filter records merely because construction is incomplete.
+
+Retain complete Scene, handler and callback bodies and all module initialization
+effects. Prove each actual entry's Scene eligibility, registration lifetime,
+Array alias/writer/read presence and Stop/load/dispose revocation with the
+existing managed owners. Qualify real SpriteUpdateHandler,
+SpriteKindUpdateHandler and StatusHandler constructor and callback flows, not
+isolated replacement bodies. Unsupported Scene effects, `sprites.allOfKind`,
+destroyed/flag filtering and other loops/control flow keep named refusals;
+their presence cannot be erased to make an authentic package pass.
