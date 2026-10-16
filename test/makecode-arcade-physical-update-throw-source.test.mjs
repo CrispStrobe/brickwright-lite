@@ -6,7 +6,7 @@ import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-imp
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {physicalUpdateSourceSnapshot} from '../overlay/scratch-gui/src/lib/bw-makecode/physical-update-source-snapshot.js';
 import {preparePhysicalUpdateThrowSource,physicalUpdateSourceFor} from '../overlay/scratch-gui/src/lib/bw-makecode/source-value-producers.js';
-import {prepareThrowSource,prepareThrowEmission,hasThrowEmission} from '../overlay/scratch-gui/src/lib/bw-makecode/throw-source-gate.js';
+import {prepareThrowSource,prepareThrowEmission,reproveThrowEmission,hasThrowEmission} from '../overlay/scratch-gui/src/lib/bw-makecode/throw-source-gate.js';
 import {lowerObjectClasses,validatePhysicalUpdateLowering} from '../overlay/scratch-gui/src/lib/bw-makecode/lower-object-classes.js';
 import {lowerStaticCallbackHelpers} from '../overlay/scratch-gui/src/lib/bw-makecode/static-callback-helpers.js';
 import {lowerLazyValues} from '../overlay/scratch-gui/src/lib/bw-makecode/lower-lazy-values.js';
@@ -31,7 +31,7 @@ const finalProgram=lowered=>lowerLazyValues(lowerStaticCallbackHelpers(lowered.p
 
 test('complete original physical Throw guest stays byte exact and reaches the opt-in converter',()=>{
  const native=fs.readFileSync(new URL('./makecode-arcade-physical-update-owner-native.test.mjs',import.meta.url),'utf8');
- assert.ok(native.includes('const source=`'+guest+'`;'),'exact complete original guest, not a surrogate');
+ assert.ok(native.includes('const source=`'+guest.replaceAll('`','\\`')+'`;'),'exact complete original guest, not a surrogate');
  const result=arcadeToPseudocode(guest,{throwPrototype:true});retain('original-public-converter',{source:guest,result});
  assert.deepEqual(result.unsupported,[]);assert.match(result.code,/arcade throw \("physical-update"\)/);assert.match(result.code,/arcade declare subclass/);assert.match(result.code,/WHEN (?:arcade button handler|space key pressed)/);
 });
@@ -142,4 +142,34 @@ test('shared structural extraction preserves ordinary class defaults and origina
  const declaration=result.program.body.find(node=>node.expr?.callee?.name==='declare'&&node.expr.args[0].value==='Plain').expr;
  assert.equal(JSON.parse(declaration.args[4].value)[0].default,7);assert.equal(JSON.parse(declaration.args[5].value).find(row=>row.name==='read').parameters[0].default,2);
  assert.ok(result.program.body.find(node=>node.name==='__bwClass_Plain_constructor').params.includes('value'));
+});
+
+
+test('actual unchanged emitter Program projection gets fresh proof without copying its brand',()=>{
+ const {sourceProof,lowered}=bridge(guest),previous=finalProgram(lowered);assert.deepEqual(prepareThrowEmission(previous,sourceProof,lowered.physicalUpdateLowering),[]);
+ const projected={...previous,body:previous.body.flatMap(node=>[node])};assert.equal(hasThrowEmission(projected),false);
+ assert.deepEqual(reproveThrowEmission(projected,previous),[]);assert.equal(hasThrowEmission(projected),true);
+ assert.ok(reproveThrowEmission({...projected},{}).length);
+});
+test('emitter projection cannot hide a changed generated constructor behind its private predecessor',()=>{
+ const {sourceProof,lowered}=bridge(guest),previous=finalProgram(lowered);assert.deepEqual(prepareThrowEmission(previous,sourceProof,lowered.physicalUpdateLowering),[]);
+ const projected=structuredClone(previous),ctor=projected.body.find(node=>node.name==='__bwClass_Actor_constructor');ctor.body.push({type:'ThrowStatement',argument:{type:'Number',value:'7'}});
+ assert.ok(reproveThrowEmission(projected,previous).length);assert.equal(hasThrowEmission(projected),false);assert.equal(hasThrowEmission(previous),true);
+});
+
+
+test('outer publication expires after a projected-only body change without changing predecessor data',()=>{
+ const {sourceProof,lowered}=bridge(guest),previous=finalProgram(lowered);assert.deepEqual(prepareThrowEmission(previous,sourceProof,lowered.physicalUpdateLowering),[]);
+ const predecessor=physicalUpdateSourceSnapshot(previous),projected={...previous,body:previous.body.flatMap(node=>[node])};assert.deepEqual(reproveThrowEmission(projected,previous),[]);
+ projected.body.push({type:'ExpressionStatement',expr:{type:'Number',value:'7'}});
+ assert.ok(predecessor.current(),'actual predecessor objects and values unchanged');assert.equal(hasThrowEmission(projected),false);assert.equal(hasThrowEmission(previous),false,'publication includes actual consumed projection currentness');
+ assert.ok(prepareThrowEmission(previous,sourceProof,lowered.physicalUpdateLowering).length);assert.equal(hasThrowEmission(previous),false,'remint cannot discard prior actual projection dependency');
+});
+
+
+test('projection lineage refuses A to B to A without creating recursive currentness',()=>{
+ const {sourceProof,lowered}=bridge(guest),a=finalProgram(lowered);assert.deepEqual(prepareThrowEmission(a,sourceProof,lowered.physicalUpdateLowering),[]);
+ const b={...a,body:[...a.body]};assert.deepEqual(reproveThrowEmission(b,a),[]);
+ assert.ok(reproveThrowEmission(a,b).some(row=>/never-branded/.test(row)));assert.equal(hasThrowEmission(a),true);assert.equal(hasThrowEmission(b),true);
+ assert.ok(reproveThrowEmission(b,a).length);assert.equal(hasThrowEmission(a),true);
 });

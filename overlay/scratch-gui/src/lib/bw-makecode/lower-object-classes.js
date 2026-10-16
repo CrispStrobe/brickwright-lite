@@ -16,7 +16,7 @@ export function lowerObjectClasses(program,{classCallablePrototype=false,sdkImag
     const physicalMethods=new Map(),physicalCreates=new WeakMap();
     const structure=prepareObjectClassStructure(program,{classCallablePrototype,sdkImagePrototype});
     if(structure.skip||structure.unsupported.length)return {program,unsupported:structure.unsupported};
-    const {callableModel,liftedCallables,callableClass,callableField,callableMethod,sdkField,sdkParameter,contains,sourceClasses,sdkClasses,classes,admitted,lineage}=structure;
+    const {callableModel,liftedCallables,callableClass,callableField,callableMethod,sdkField,sdkParameter,contains,dialogName,sourceClasses,sdkClasses,classes,admitted,lineage}=structure;
     const unsupported=structure.unsupported;
     const fail=message=>{if(!unsupported.includes(message))unsupported.push(message);};
     const fieldOwners=new WeakMap(),methodClasses=new WeakMap();

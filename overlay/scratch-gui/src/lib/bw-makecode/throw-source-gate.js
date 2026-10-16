@@ -8,13 +8,32 @@ const sourceProofs=new WeakMap(),emissionProofs=new WeakMap();
 export function hasThrowEmission(program){return emissionProofs.get(program)?.current()===true;}
 export function prepareThrowEmission(program,sourceProof,lowering=null,originalProof=sourceProof){
     const source=sourceProofs.get(sourceProof),original=sourceProofs.get(originalProof),unsupported=[];
+    const projections=emissionProofs.get(program)?.projections||new Set();
+    if([...projections].some(proof=>!proof.current()))unsupported.push('Throw actual consumed emitter projection changed before publication');
     if(!original||!original.snapshot.current()||!source||!source.snapshot.current())unsupported.push('Throw source changed before final emission');
     else if(sourceProof.physicalUpdateSource)unsupported.push(...validatePhysicalUpdateLowering(program,lowering));
     else {const final=prepareThrowSource(program);if(!final.present||final.unsupported.length)unsupported.push('Throw final ordinary/controller source failed fresh reproof',...final.unsupported);}
     const snapshot=physicalUpdateSourceSnapshot(program);
     if(!snapshot)unsupported.push('Throw final emission requires current plain data');
-    if(!unsupported.length)emissionProofs.set(program,Object.freeze({current:()=>snapshot.current()&&source.snapshot.current()&&original.snapshot.current()}));
+    if(!unsupported.length){
+        // Publication of the outer route must also observe every actually
+        // consumed projection. Reproof cannot erase an existing dependency.
+        emissionProofs.set(program,Object.freeze({sourceProof,lowering,originalProof,projections,
+            current:()=>snapshot.current()&&source.snapshot.current()&&original.snapshot.current()&&[...projections].every(proof=>proof.current())}));
+    }
     return Object.freeze(unsupported);
+}
+
+// A real emitter may project an actual Program. Recompute the current source
+// and generated correspondence on that output; never transplant the old brand
+// or its binding symbols onto new identities.
+export function reproveThrowEmission(program,previous){
+    const prior=emissionProofs.get(previous);
+    if(!prior?.current())return Object.freeze(['Throw emission projection requires its actual current private predecessor']);
+    if(emissionProofs.has(program))return Object.freeze(['Throw emission projection requires its fresh never-branded actual output Program']);
+    const unsupported=prepareThrowEmission(program,prior.sourceProof,prior.lowering,prior.originalProof);
+    if(!unsupported.length)prior.projections.add(emissionProofs.get(program));
+    return unsupported;
 }
 
 // This gate proves source contexts and operand domains. It issues no runtime

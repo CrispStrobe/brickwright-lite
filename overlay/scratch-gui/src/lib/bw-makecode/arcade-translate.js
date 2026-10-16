@@ -1,7 +1,7 @@
 import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
 import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 import {createProcedureOwnerEmission} from './procedure-owner-emission.js';
-import {prepareThrowSource,prepareThrowEmission,hasThrowEmission} from './throw-source-gate.js';
+import {prepareThrowSource,prepareThrowEmission,reproveThrowEmission,hasThrowEmission} from './throw-source-gate.js';
 import {proveArrayMapValues} from './lower-array-map-values.js';
 import {selectNamedFunctionSourceProof} from './named-function-source-selection.js';
 import {lowerNamedFunctionValues} from './lower-named-function-values.js';
@@ -4194,6 +4194,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
     // A declaration with a sprite-valued initializer creates a handle at that
     // exact point, just like a later assignment to the same variable. Lower
     // only this form so the existing ordered setup path owns both forms.
+    const beforeHandleProjection=ast;
     ast = {...ast, body: ast.body.flatMap(st => {
         if (st.type !== 'Declaration' || !st.decls.some(d => !d.temporary && d.init?.type === 'Call' &&
             creationApis.has(t.path(d.init.callee)))) return [st];
@@ -4204,6 +4205,7 @@ const translateNamedHandleEvents = (ast, assets, tilemaps = {}, forceSpriteRunti
                     left: {type: 'Identifier', name: d.name}, right: d.init}}
             ] : [{...st, decls: [d]}]);
     })};
+    if(hasThrowEmission(beforeHandleProjection))t.unsupported.push(...reproveThrowEmission(ast,beforeHandleProjection));
     const callOf = st => st.type === 'ExpressionStatement' && st.expr?.type === 'Call' ? st.expr : null;
     const nameOf = call => call && t.path(call.callee);
     const calls = ast.body.map(callOf);
