@@ -135,3 +135,11 @@ chain from the separate text writer into a preceding ordinary call. The current
 edit selector reuses the connected main call inventory and visits only active
 expression input edges. The failed run remains retained; five-route acceptance
 requires a separately reviewed successor.
+
+The following actual run reached the fifth route with correct observed values
+and no VM errors, then failed another fixture shape assumption. The current
+exporter writes a join as `("" + clock + "")`, whose reimport is a nested typed
+binary concat. The oracle now accepts only the original clock/empty-text join
+or that exact nested empty-text concat. Deliberately malformed clock negatives
+identify their physical writer roles separately, without granting a Number
+certificate. All original numeric and effect assertions remain required.

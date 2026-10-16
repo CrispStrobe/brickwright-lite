@@ -16,7 +16,7 @@ const actualCells=run=>run.vm.runtime.targets.flatMap(target=>Object.entries(tar
 // Bind observations to the actual current writer graph and VARIABLE IDs. Export
 // may rename sprite variables; neither original names nor expected values select
 // a cell. This is an authored test oracle, never a product Number certificate.
-const roleBindings=project=>{
+const roleBindings=(project,{refusalObservation=false}={})=>{
     const owners=project.targets.filter(target=>Object.values(target.blocks||{}).some(block=>block.opcode==='procedures_definition'));
     assert.equal(owners.length,1,'one actual procedure target');
     const target=owners[0],blocks=target.blocks,all=Object.values(blocks);
@@ -48,7 +48,20 @@ const roleBindings=project=>{
     const prototype=child(definition,'custom_block');assert.equal(prototype?.opcode,'procedures_prototype');assert.equal(prototype.mutation.proccode,constraint.fields.PROCEDURE[0]);
     for(const call of calls){assert.equal(call.mutation.proccode,prototype.mutation.proccode);assert.equal(descendants(call).filter(node=>node.opcode==='arcade_sceneMillis').length,1,'each current caller owns one clock expression');}
     const rendered=one(main.filter(block=>block.opcode==='data_setvariableto'&&descendants(child(block,'VALUE')).some(node=>node.opcode==='arcade_sceneMillis')),'one connected clock text writer');
-    const text=child(rendered,'VALUE');assert.ok(['operator_join','arcade_inspectValue'].includes(text?.opcode),'actual Number text lowering');assert.equal(descendants(text).filter(node=>node.opcode==='arcade_sceneMillis').length,1);
+    const text=child(rendered,'VALUE');
+    const emptyText=node=>Array.isArray(node)?node.length===2&&node[0]===10&&node[1]==='':node?.opcode==='text'&&node.shadow===true&&node.topLevel===false&&node.next===null&&node.fields?.TEXT?.[0]===''&&Object.keys(node.fields||{}).length===1&&Object.keys(node.inputs||{}).length===0;
+    // Refusal observations still need to identify deliberately malformed clock
+    // nodes without granting them a Number certificate. Positive leaves remain
+    // the actual empty-input/empty-field physical zero-argument clock shape.
+    const clockTextLeaf=node=>node?.opcode==='arcade_sceneMillis'&&(refusalObservation||Object.keys(node.inputs||{}).length===0&&Object.keys(node.fields||{}).length===0);
+    const binary=node=>node?.opcode==='arrays_valueBinary'&&node.shadow===false&&node.topLevel===false&&node.next===null&&node.fields?.OP?.[0]==='+'&&Object.keys(node.fields).length===1&&Object.keys(node.inputs||{}).sort().join(',')==='LEFT,RIGHT';
+    const originalJoin=text?.opcode==='operator_join'&&text.shadow===false&&text.topLevel===false&&text.next===null&&Object.keys(text.fields||{}).length===0&&Object.keys(text.inputs||{}).sort().join(',')==='STRING1,STRING2'&&clockTextLeaf(child(text,'STRING1'))&&emptyText(child(text,'STRING2'));
+    // Export's actual join source is ("" + clock + ""). Reimport retains
+    // exactly that nested typed concat; the edited Number argument is a
+    // different binary expression and cannot satisfy these empty text leaves.
+    const inner=binary(text)?child(text,'LEFT'):null;
+    const currentConcat=binary(text)&&emptyText(child(text,'RIGHT'))&&binary(inner)&&emptyText(child(inner,'LEFT'))&&clockTextLeaf(child(inner,'RIGHT'));
+    assert.ok(originalJoin||currentConcat,'actual source join or current exported typed empty-text concat');assert.equal(descendants(text).filter(node=>node.opcode==='arcade_sceneMillis').length,1);
     const after=main.at(-1);assert.equal(after.opcode,'data_setvariableto');assert.equal(Number(literal(child(after,'VALUE'))),1);assert.ok(main.indexOf(calls[1])<main.indexOf(rendered)&&main.indexOf(rendered)<main.indexOf(after),'call, text, completion order');
     const roles={entered:increment,seen:assignment,rendered,after},bindings={};
     for(const [role,writer]of Object.entries(roles)){
@@ -60,8 +73,8 @@ const roleBindings=project=>{
     const clockOperands=calls.map(call=>{const node=one(descendants(call).filter(node=>node.opcode==='arcade_sceneMillis'),'one actual clock operand per connected call');return{id:Object.keys(blocks).find(id=>blocks[id]===node),node,call};});
     return {bindings,target,clockOperands};
 };
-const checkedValues=actual=>{
-    const {bindings}=roleBindings(actual.project);retain(actual.label+'-actual-role-bindings',bindings);
+const checkedValues=(actual,options={})=>{
+    const {bindings}=roleBindings(actual.project,options);retain(actual.label+'-actual-role-bindings',bindings);
     return Object.fromEntries(Object.entries(bindings).map(([role,binding])=>{const matches=actual.cells.filter(cell=>cell.id===binding.id);assert.equal(matches.length,1,'actual unique cell ID '+role);const cell=matches[0];assert.equal(cell.name,binding.name);assert.equal(cell.targetName,binding.ownerName);assert.equal(cell.isStage,binding.isStage);assert.equal(Object.hasOwn(cell,'decodeError'),false);return[role,cell.value];}));
 };
 const observation=(t,label,run)=>{
@@ -133,7 +146,7 @@ for(const mode of ['registered function','source method','adapter delegate','met
             run.vm.stopAll();await run.vm.loadProject(current);run.vm.greenFlag();
         }
         let rejectedFrame=null;try{await stepFrames(run.vm,20);}catch(error){rejectedFrame={name:error.name,message:error.message,stack:error.stack};}
-        const actual=observation(t,'refused '+mode,run);actual.values=checkedValues(actual);retain('negative-'+mode+'-rejected-frame',{rejectedFrame});t.diagnostic(JSON.stringify({stage:'actual frame rejection channel',mode,rejectedFrame}));assert.equal(actual.values.entered,0);assert.equal(actual.values.after,0);
+        const actual=observation(t,'refused '+mode,run);actual.values=checkedValues(actual,{refusalObservation:true});retain('negative-'+mode+'-rejected-frame',{rejectedFrame});t.diagnostic(JSON.stringify({stage:'actual frame rejection channel',mode,rejectedFrame}));assert.equal(actual.values.entered,0);assert.equal(actual.values.after,0);
         assert.ok([...actual.errors,...(rejectedFrame?[rejectedFrame.message]:[])].some(error=>/Scene clock Number:|primitive producer|actual producer|current graph/i.test(error)),'named actual producer refusal; a rejected frame stays a separate channel');
     }finally{try{restore();}finally{finish(run,Array.isArray(run?.errors)?[...run.errors]:[]);}}
 });
