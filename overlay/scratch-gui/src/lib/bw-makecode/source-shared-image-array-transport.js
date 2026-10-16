@@ -218,6 +218,13 @@ function prove(program, sourceContext = null) {
         const receiver=kind(target.object);
         if(receiver==='Array' && target.type==='Index')continue;
         if((receiver==='Sprite'||receiver==='TextSprite') && target.type==='Member' && ['x','y','vx','vy','ax','ay','lifespan','z','sx','sy'].includes(target.name))continue;
+        // The privately admitted Text factory inherits the native Sprite edge
+        // setters. Each plain assignment writes only the receiver's fixed-point
+        // position (and existing movement/render effects); it cannot expose the
+        // private frame Array. This is an effect proof, not a value/type grant.
+        // Keep compound/update/delete/computed and unrelated receivers closed.
+        if(receiver==='TextSprite' && node.type==='Assignment' && node.op==='=' && target.type==='Member' &&
+            ['left','right','top','bottom'].includes(target.name))continue;
         return null;
     }
     for(const node of nodes)if(node.type==='Call' && node.callee.type==='Member') {

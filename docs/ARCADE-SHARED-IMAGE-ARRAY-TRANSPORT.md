@@ -218,3 +218,20 @@ callback parameters, mixed receiver writers and currentness after lowering.
 Retain the complete authentic seven-backing failure and all art/body channels;
 focused controls alone do not close it. Existing native alias/clone/restart,
 current-edit, fresh export/reimport and visible-editor gates remain required.
+
+
+## Selected Text geometry effects
+
+The private selected-source receipt may establish an actual Text Sprite receiver
+through the complete admitted library and every current receiver writer. For
+that receiver only, plain assignments to the inherited `left`, `right`, `top`
+and `bottom` setters can retain the shared-frame non-exposure proof. These
+existing setters update Sprite position and the existing movement/render path;
+they do not obtain the private backing Array. Preserve each original write,
+its value, ordering and ordinary diagnostics. This issues no primitive value
+fact and adds no runtime feature.
+
+Computed, compound, update and delete forms, mixed or unknown receivers, other
+properties and unknown effects continue through ordinary fallback. Geometry
+effect admission does not admit later music, Buffer, controller or callback
+effects, and does not qualify an entire game or a new runtime execution.
