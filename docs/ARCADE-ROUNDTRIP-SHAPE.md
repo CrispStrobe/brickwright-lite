@@ -199,3 +199,14 @@ identity and empty default/property protocols, participate in the lexical census
 Unrecognized hidden fields, substituted metadata and unproved default protocols
 keep previous staging. JSON snapshots do not preserve these descriptors; source
 controls must inspect the actual parser objects.
+
+
+The existing namespace lowering can prepend real `SpriteKindReset` statements.
+The empty-Array census admits only their exact data-only root leaves, in the
+producer's order and linked one-to-one to unique current flattened kind
+Declarations. These remain actual Undefined writes in place; the shortcut does
+not remove them, treat them as Array/value producers or admit arbitrary unknown
+syntax. Malformed, foreign, nested, shared or mutated reset/declaration contexts
+keep existing staging. Focused source and public Code/graph controls qualify
+this bounded syntax model; affected complete-project and native evidence remain
+separate requirements.
