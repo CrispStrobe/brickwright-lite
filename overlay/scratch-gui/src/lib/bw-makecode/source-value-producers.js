@@ -5,6 +5,7 @@ import {consoleInspectSourceCalls} from './console-inspect-source.js';
 import {SDK_FONT_FIELDS} from './sdk-font-value-descriptors.js';
 import {ordinaryPrimitiveSdkNumberCalls} from './ordinary-primitive-sdk-number-source.js';
 import {ordinarySceneClockNumberCalls} from './ordinary-scene-clock-number-source.js';
+import {controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 
 export function analyseSourceValueProducers(program,options={}) {
     if(options.normalCompletion&&!sourceNormalCompletionFor(program,options.normalCompletion))throw new Error('Source completion proof must belong to the actual Program');
@@ -36,6 +37,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     // may supply these actual AST allocation sites. Ordinary analysis is unchanged.
     const sdk=staticSdkNamespaceReceivers(program,{builtinIdentifiers:['screen']}),fields=new Map(SDK_FONT_FIELDS.map(field=>[field.name,field.type]));
     const ordinaryNumbers=ordinaryPrimitiveSdkNumbers?ordinaryPrimitiveSdkNumberCalls(program):null;
+    const buttonEventNumbers=ordinaryPrimitiveSdkNumbers?controllerButtonEventNumberLeaves(program):null;
     let clockIndexFacts;
     const safeClockIndex=node=>{
         const graph=clockIndexFacts ||= analyseGraph(program,{arrayValues:true,parenthesized:true,unboundIsOpaque:true,
@@ -133,7 +135,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         else if(node.type==='Member'&&['width','height'].includes(node.name))edges.push([cell(node.object),current,'imageDimension',node.name]);
         else if(node.type==='Member'&&fields.has(node.name))edges.push([cell(node.object),current,'field',node.name]);
         else if(['Undefined','Null','String','Number','Boolean'].includes(node.type))add(current,node.type);
-        else if(ordinaryNumbers?.has(node)||sceneNumbers?.has(node))add(current,'Number');
+        else if(ordinaryNumbers?.has(node)||sceneNumbers?.has(node)||buttonEventNumbers?.has(node))add(current,'Number');
         else if(node.type==='Call'&&sdk.has(node.callee)&&path(node.callee)==='game.askForString')add(current,'String');
         else {add(current,'Opaque');if(arrayValues&&node.type==='Call'&&node.callee?.type==='Member')for(const value of [node.callee.object,...node.args])arrayOperations.push({kind:'escape',receiver:cell(value)});}
     };

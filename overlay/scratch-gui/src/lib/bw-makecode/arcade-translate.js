@@ -1,4 +1,5 @@
 import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
+import {BUTTON_EVENTS} from './controller-button-event-number-source.js';
 import {createProcedureOwnerEmission} from './procedure-owner-emission.js';
 import {prepareThrowSource} from './throw-source-gate.js';
 import {proveArrayMapValues} from './lower-array-map-values.js';
@@ -182,7 +183,7 @@ const COLLISION_DIRECTIONS = Object.freeze({Left:0, Top:1, Right:2, Bottom:3});
 // Retained Arcade game/sprite.ts TileDirection; Center also covers default.
 const TILE_DIRECTIONS = Object.freeze({...COLLISION_DIRECTIONS, Center:4});
 const CAMERA_PROPERTIES = Object.freeze({X:0, Y:1, Left:2, Right:3, Top:4, Bottom:5});
-const BUTTON_EVENTS = Object.freeze({Pressed:2049, Released:2048, Repeated:2054});
+
 
 /**
  * Velocity divisor: Arcade's vx is pixels per second and a Scratch

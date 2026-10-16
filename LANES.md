@@ -5167,3 +5167,16 @@ Existing Array receiver and A/B ownership remain separate. Require meaningful
 source/current Code/Blocks/save/export and affected own native controls; visible
 GUI, stable full projects and compatibility counts need their own evidence.
 All unrelated owners and retained failures remain preserved.
+
+### Controller event literals and ordinary primitive callers — maintenance
+
+Coordinate the existing unified controller registration and ordinary procedure
+parameter constraint lanes. The three existing `ControllerButtonEvent` scalar
+payloads share one immutable source map between emission and the selected
+ordinary producer proof. Only actual unshadowed readonly builtin leaves in a
+closed source/callee/effect domain qualify; annotations, fake objects, unknown
+members, writers, escaping roots and dynamic effects remain refused. Other SDK
+enums and Number results, native certificates, words and pins are unchanged.
+Focused controls and fresh affected native/browser qualification are required;
+source authoring alone does not close the original hosted regression or promote
+a whole game.

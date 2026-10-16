@@ -166,3 +166,25 @@ move unrelated pins or waive gates to publish this protocol.
 Keep raw corpus counts and authenticated complete-context results separate.
 No promotion follows merely from a new word, retained annotation, or passing
 self-authored fixture.
+
+## Existing controller event literal integration
+
+The required Number caller check also applies when an ordinary helper receives
+an existing controller event value. Its three supported builtin leaves are
+`ControllerButtonEvent.Pressed` (2049), `Released` (2048) and `Repeated` (2054).
+The source emitter and selected producer analysis share that exact finite map.
+An annotation or a member with the same spelling supplies no authority.
+
+The candidate source proof requires the actual lexical builtin leaf and a
+readonly configured root. It rejects writes, object aliases, extraction,
+unknown receivers/callees and ambient or dynamic effects. Its first closed call
+slice includes unique unchanged ordinary declarations and the existing direct
+zero-argument controller registrations; unrelated calls and computed access can
+conservatively refuse otherwise safe source. Every configured function body
+remains present and participates in the census. This does not enable other SDK
+enums or classify arbitrary scalar SDK results.
+
+The canonical numeric operand remains editable in Code and Blocks and is still
+checked as a real physical producer by the existing native constraint protocol.
+The source controls are authored; affected native and visible browser results
+must qualify the change before the original controller regression is closed.
