@@ -5164,3 +5164,27 @@ and diagnostics which locate an invalid capture or call. Verify two outer
 invocations keep separate storage, same/fresh reopen, changed exported bodies
 and native failure/Stop/disposal handling. No nested-helper or visible GUI
 support is claimed by this tracking entry.
+
+### Current score, helper, frame and update authoring frontier — 2026-10-16
+
+These development results do not qualify the visible production editor or
+change the immutable whole-project census. Follow the [current repair table](ARCADE-CI-REPAIR-STATUS.md)
+and the precise ownership contracts before extending a surface.
+
+| Capability | Qualified boundary | Remaining visible acceptance |
+| --- | --- | --- |
+| Fixed player score Number inputs | Source and current graph proof for players 1–4; native four-player isolation, altered-cache rejection and connected-writer export/reimport | Create and edit each real player dropdown/reporter in Blocks, connect it to a Number formal, inspect equivalent Code, save/reopen and run via the controller pane. Invalid current bindings need a visible location and diagnostic. |
+| Current scene-clock diagnostics | Source/Creator/export controls retain independent malformed clock diagnostics even when another malformed caller prevents argument emission | Show all affected connected blocks and errors without losing the program; repair each socket visibly and rerun. |
+| Generated helper recovery | Exact current bodies, lexical bindings, defaults and continuation effects; 36 focused controls | Retain user-edited or unmatched helper bodies and diagnostics through Code and Blocks. Qualify real imported/exported projects rather than exposing generated temporaries as learner variables. |
+| Shared frame Image arrays | Twenty focused controls, including current art/resources, ordinary Array effects and repeated export/reimport; real complete-project and native alias lifecycle gates remain open | Edit one actual shared frame and verify all its aliases, preserve explicit clones and independent equal-pixel initializers, save/reopen, export and run. Graphics needs clear resource ownership and readable asset names. |
+| Physical SDK Sprite updates | Real paused-constructor guest observes updates during construction; Stop preserves values and call counts | Author an override in Code/Blocks, edit its body and image, steer the real running stage, Stop/restart and reload without duplicate registrations. No general class or constructor-continuation qualification follows. |
+| Throw inside owned update methods | Source admission remains open under the merged narrow class/update contract | Once implemented, locate the actual thrown value and failed invocation visibly, preserve preceding effects and unrelated input handlers, then edit/replay/save/reopen/export. Keep the current positive failing guest. |
+
+Do not grant Number or class authority from a displayed type annotation, a
+public metadata tag, an expected socket shape or a same-spelled SDK name.
+GUI evidence must use the actual connected program and current resources.
+
+The current public project importer does not forward the direct converter's
+Throw prototype option. An opt-in converter or native control therefore does
+not establish public import or GUI availability. Product route/default support
+needs separate qualified implementation; never silently infer it from tests.

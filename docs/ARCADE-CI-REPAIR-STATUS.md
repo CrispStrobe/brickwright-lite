@@ -19,7 +19,7 @@ complete game compatibility.
 | Malformed animation import | The exact browser error fixture now retains the dependency translation stage shown by the original failure artifact. Product behavior and all identity assertions stay unchanged. | Fresh production run of the complete browser journey. |
 | Per-player score Number proof | All 41 new source controls and four ordinary constraints pass. Actual native controls preserve four independent player scores and reject seven altered cache bindings before ordinary body effects. An affected connected-writer edit, current export and reimport pass in the real VM, with both original helper archives retained. | Visible Code/Blocks editing, fresh save/reopen and final integration checks. |
 | Initial bundle budget | Saved production graph identifies the root `react-virtualized` List barrel as a bounded import cut. The implemented import change requests the existing direct named List entry and preserves the complete widget body. | Production resolution, actual widget save/reopen behavior and the unchanged hosted P17 budget; a source import census is not measured bundle savings. |
-| Carnival package import | Authentic dependency preparation lowers the real namespace before primitive selection. The merged Carnival contract requires full initialization and preservation of unsupported bodies. | Source-bound selected native admission, original/native behavior and the authentic GUI package-import journey. |
+| Carnival package import | A source-derived two-file editor-control fixture resolves its actual pinned dependencies through the normal resolver and public async importer. All 138 conversion diagnostics are retained. No compile, VM or browser run is claimed. | Source-bound initialization, defaults, primitive/callback/class flow and complete bodies; meaningful native behavior and the visible editor import journey. |
 | Managed SDK callbacks | The private physical update entry has eleven passing component controls. The unchanged actual paused-constructor guest reaches `completed = 7`, observes two updates during construction and four total, and preserves values and call counts after Stop. | Throw in the actual class update still fails source admission before VM execution. Implement the [merged source intersection](ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md); constructor-continuation and nested-step mechanisms retain separate qualification. |
 | Shared frame Array transport | Seven repeated backing arrays account for connected roundtrip growth. [Transport contract](https://github.com/CrispStrobe/brickwright-lite/blob/aa99067502ab1d70f59f9172e96b45c510092ba7/docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md). | Prove current immutable initialization and lexical binding before staging; preserve observable and mutated Arrays as ordinary code. Qualify repeated edited export/reimport. |
 | Generated helper recognition | Thirty-six focused controls pass. Recognition proves actual lexical bindings, complete bodies, parse profiles, defaults and continuation effects; legacy nested Array helpers rewrite against the same original proof before staging. | Complete affected native and authored-project journeys, source census and final integration checks. |
@@ -40,7 +40,9 @@ cell and passes its separate affected real-VM run. The class-Throw failure is
 still open; the original positive guest and its assertions remain intact.
 
 The source/Creator/export campaign passes all 78 controls, including the
-unchanged clock controls. Independent validation now reports malformed physical
+unchanged clock controls. A subsequent combined run on the normal composition
+passes all 134 controls: those 78, all 36 helper controls and all 20 shared-frame
+controls; none are skipped. Independent validation now reports malformed physical
 clock reporters even when another malformed caller prevents argument emission.
 It grants no Number authority or emission permission.
 
