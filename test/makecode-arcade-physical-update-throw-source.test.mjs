@@ -135,3 +135,11 @@ test('new or reordered generated procedures cannot borrow the protected root reg
   const {sourceProof,lowered}=bridge(guest),final=finalProgram(lowered);mutate(final);assert.ok(prepareThrowEmission(final,sourceProof,lowered.physicalUpdateLowering).length);
  }
 });
+
+test('shared structural extraction preserves ordinary class defaults and original method bodies',()=>{
+ const source='class Plain{value:number;constructor(value:number=7){this.value=value}read(step:number=2):number{return this.value+step}}let plain=new Plain()',program=parse(source),snapshot=physicalUpdateSourceSnapshot(program),result=lowerObjectClasses(program);
+ retain('ordinary-default-lowering',{source,program:result.program,unsupported:result.unsupported});assert.deepEqual(result.unsupported,[]);assert.ok(snapshot.current());
+ const declaration=result.program.body.find(node=>node.expr?.callee?.name==='declare'&&node.expr.args[0].value==='Plain').expr;
+ assert.equal(JSON.parse(declaration.args[4].value)[0].default,7);assert.equal(JSON.parse(declaration.args[5].value).find(row=>row.name==='read').parameters[0].default,2);
+ assert.ok(result.program.body.find(node=>node.name==='__bwClass_Plain_constructor').params.includes('value'));
+});
