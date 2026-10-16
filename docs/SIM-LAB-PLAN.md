@@ -1,6 +1,6 @@
 # Technic Sim Lab — implementation plan
 
-Status: **S1 in progress** (§0). Created 2026-09-02.
+Status: **S1 done** (§0). Created 2026-09-02.
 Owner of record: unclaimed — claim individual tasks in `LANES.md` per its protocol.
 
 A Tinkercad-Sim-Lab-style mode for LEGO Technic: build a model from parts in the
@@ -17,8 +17,33 @@ no "check with legal" licenses. See §7 for the full ledger.
 
 ## 0. Status and revisions — 2026-10-16
 
-Status: **S1 in progress** (see `LANES.md`, "Sim Lab S1"). This section
-overrides the sections below where they disagree.
+Status: **S1 done** (branch `lane/simlab-20261016`; see `LANES.md`, "Sim Lab S1").
+This section overrides the sections below where they disagree.
+
+**S1 as built.**
+- `bw-sim/contracts.js`: PartMeta / PlacedModel / CompiledMechanism, frames,
+  units, the signed gear-ratio convention, validators. Extensions over the
+  plan: `ball`/`ballsocket` connectors and a `ball` joint (the SPIKE castor
+  ball is its own rolling body), `motor.outputColliders` (the drive hub's
+  shapes), optional part `friction`.
+- B1, changed: the curated LDraw subset is **vendored unmodified** under
+  `static/ldraw/` with a per-file lock (hash, release, author, licence line),
+  not fetched at build time: `complete.zip` lives at one mutable URL, so a
+  hash pin would break at every LDraw release. `npm run sync:ldraw:check`
+  verifies it offline. Packing for the browser is a build step for M2.
+- B3a + B3b: `part-meta/parts.json`, 34 parts (SPIKE hub, both angular
+  motors, the three sensors, wheel, castor, beams, axles, pins, bushes,
+  8/16/24/40T spur and 12/20T bevel gears), each connector checked against
+  the mesh by `test/bw-sim-part-meta.test.mjs` (`ldraw/ldraw-geometry.js`).
+- D1-D4: `bw-sim/mech/` compiler; C8 data half: `bw-sim/model/ldraw-model.js`.
+- D5 core: `bw-sim/physics/jolt-core.js` (worker wrapper still to do). Jolt
+  contact tolerances are set for millimetre parts: the defaults (2 cm) made
+  the driving base drive 15 % slower than its wheels.
+- A6 (S1 form): `bw-sim/hub-bridge.js` - the unchanged virtual SPIKE hub
+  drives the real-parts driving base (`test/bw-sim-s1-driving-base.test.mjs`).
+
+**Next:** the physics worker (D5), packing and rendering the vendored parts in
+the arena three.js view (C2), then the M2 editor (C3-C7).
 
 **What landed since the plan was written (2026-09-02).**
 - Lane A for SPIKE is largely done, by other lanes: `virtual-hub/` ships the
