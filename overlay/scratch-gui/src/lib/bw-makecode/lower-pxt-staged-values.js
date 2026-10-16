@@ -1,3 +1,4 @@
+import {analyseSourceValueProducers} from './source-value-producers.js';
 import {fixedControllerRepeatReceiver} from './controller-repeat-source.js';
 import {staticSdkNamespaceReceivers} from './static-sdk-namespaces.js';
 
@@ -16,6 +17,74 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
         if(node.params)for(const name of node.params)names.add(name);
         for(const value of Object.values(node))if(Array.isArray(value))value.forEach(scan);else scan(value);
     };
+    // Identity/position facts only. These never grant Array element/value types.
+    // Keep unsupported scopes and every non-statement expression on the old path.
+    const directEmptyStatements=new WeakSet();let currentEmptyStatementProof=()=>false;
+    const prepareDirectEmptyStatements=()=>{
+        const knownSyntax=new Set(['Program','Declaration','FunctionDeclaration','FunctionExpression','Block','If','While','For','ExpressionStatement','Return','Break','Continue','Array','Object','Identifier','Number','String','Template','Boolean','Null','Undefined','Binary','Logical','Unary','Update','Assignment','Member','Index','Call','Conditional','LegacyParsedValue','LegacyJsonValue','NativeArrayAccess']);
+        const occurrences=new Map(),nodes=[],statements=new Set(),bodyLists=new Set(),active=new Set(),physical=[];let closed=true;
+        const visit=(value,parent=null,key=null)=>{
+            if(!value||typeof value!=='object')return;
+            occurrences.set(value,(occurrences.get(value)||0)+1);if(active.has(value)){closed=false;return;}
+            const proto=Object.getPrototypeOf(value);if(proto!==Object.prototype&&proto!==Array.prototype){closed=false;return;}
+            physical.push({value,proto,keys:Reflect.ownKeys(value),descriptors:Object.getOwnPropertyDescriptors(value)});
+            active.add(value);
+            if(!Array.isArray(value)){
+                nodes.push(value);
+                const type=Object.getOwnPropertyDescriptor(value,'type')?.value;
+                if(Object.hasOwn(value,'type')&&!knownSyntax.has(type))closed=false;
+                if(['Unknown','Class','Namespace','Enum','ForOf','Switch','Try','Catch','ThrowStatement'].includes(type)||type==='Declaration'&&Object.getOwnPropertyDescriptor(value,'kind')?.value==='var')closed=false;
+                if(parent&&bodyLists.has(parent))statements.add(value);
+            }
+            for(const own of Reflect.ownKeys(value)){
+                const descriptor=Object.getOwnPropertyDescriptor(value,own);
+                if(typeof own!=='string'||!descriptor||!Object.hasOwn(descriptor,'value')||!descriptor.enumerable&&!(Array.isArray(value)&&own==='length')){closed=false;continue;}
+                const child=descriptor.value;
+                // Only actual body statement lists qualify, never for.init,
+                // originalBody metadata, conditions, expressions or class fields.
+                const bodyList=!Array.isArray(value)&&(['Program','FunctionDeclaration','FunctionExpression','Block','While','For'].includes(Object.getOwnPropertyDescriptor(value,'type')?.value)&&own==='body'||Object.getOwnPropertyDescriptor(value,'type')?.value==='If'&&['consequent','alternate'].includes(own));
+                if(Array.isArray(child)&&bodyList)bodyLists.add(child);
+                if(typeof child==='function'||typeof child==='symbol')closed=false;
+                visit(child,value,own);
+            }
+            active.delete(value);
+        };
+        visit(program);if(!closed)return;
+        const unique=node=>!!node&&occurrences.get(node)===1;
+        const plainEmpty=node=>{
+            if(!unique(node)||node.type!=='Array'||!Array.isArray(node.items)||!unique(node.items)||node.items.length!==0||Reflect.ownKeys(node.items).length!==1)return false;
+            return Reflect.ownKeys(node).every(key=>['type','items','parenthesized'].includes(key))&&(!Object.hasOwn(node,'parenthesized')||typeof node.parenthesized==='boolean');
+        };
+        const protocol=node=>Object.keys(node||{}).some(key=>key.startsWith('bw')||['temporary','valuePreserving','whenUsed'].includes(key));
+        const graph=analyseSourceValueProducers(program,{arrayValues:true,parenthesized:true,unboundIsOpaque:true}),declarations=new Map();
+        for(const st of nodes)if(st.type==='Declaration')for(const decl of st.decls||[]){const binding=graph.bindingOf(st,decl.name);if(binding){if(!declarations.has(binding))declarations.set(binding,[]);declarations.get(binding).push({st,decl});}}
+        const bindingAt=(node,name)=>{
+            const binding=graph.bindingOf(node,name),kinds=graph.bindingKindsAt(node,name);
+            if(!binding||graph.declarationCountAt(node,name)!==1||kinds.size!==1)return null;
+            return {binding,kind:[...kinds][0],records:declarations.get(binding)||[]};
+        };
+        for(const st of statements){
+            if(!unique(st)||protocol(st))continue;
+            if(st.type==='Declaration'&&['let','const'].includes(st.kind)&&st.decls?.length===1){
+                const decl=st.decls[0],proof=bindingAt(st,decl.name);
+                if(unique(decl)&&typeof decl.name==='string'&&!protocol(decl)&&plainEmpty(decl.init)&&proof?.kind==='variable'&&proof.records.length===1&&proof.records[0].st===st&&proof.records[0].decl===decl)directEmptyStatements.add(st);
+            }
+            if(st.type==='ExpressionStatement'&&st.expr?.type==='Assignment'&&st.expr.op==='='&&st.expr.left?.type==='Identifier'){
+                const expr=st.expr,proof=bindingAt(expr.left,expr.left.name);
+                if(unique(expr)&&unique(expr.left)&&!protocol(expr)&&!protocol(expr.left)&&plainEmpty(expr.right)&&proof&&(proof.kind==='parameter'||proof.kind==='variable'&&proof.records.length===1&&proof.records[0].st.kind==='let'))directEmptyStatements.add(st);
+            }
+        }
+        // Lowering callbacks may edit the original tree. A previous binding or
+        // literal census cannot authorize a different current AST occurrence.
+        currentEmptyStatementProof=()=>physical.every(row=>{
+            const now=Reflect.ownKeys(row.value);if(Object.getPrototypeOf(row.value)!==row.proto||now.length!==row.keys.length||now.some((key,i)=>key!==row.keys[i]))return false;
+            return row.keys.every(key=>{const before=row.descriptors[key],after=Object.getOwnPropertyDescriptor(row.value,key);return after&&Object.hasOwn(after,'value')&&Object.is(before.value,after.value)&&before.enumerable===after.enumerable&&before.configurable===after.configurable&&before.writable===after.writable;});
+        });
+    };
+    const directEmpty=st=>directEmptyStatements.has(st)&&currentEmptyStatementProof();
+    // A failed/malformed lexical census cannot authorize the shortcut. Existing
+    // lowering and its diagnostics remain the authority for all refused cases.
+    try{prepareDirectEmptyStatements();}catch(_){/* keep existing staging */}
     // Only source-global whenUsed declarations participate in the selected
     // compiler's reachability. Keep their emitted effects in the same group.
     const globalWhenUsed=new Set(program.body.filter(node=>node.type==='Declaration')
@@ -188,7 +257,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
         if(st.type==='FunctionDeclaration')return [{...st,body:body(st.body),...(st.originalBody?{originalBody:body(st.originalBody)}:{})}];
         if(st.type==='Block' || st.type==='Namespace')return [{...st,body:body(st.body),...(st.originalBody?{originalBody:body(st.originalBody)}:{})}];
         if(st.type==='Declaration')return st.decls.flatMap(decl=>{
-            const result=expression(decl.init);
+            const result=directEmpty(st)?{prefix:[],value:decl.init}:expression(decl.init);
             if(globalWhenUsed.has(decl) && result.prefix.length){
                 const group=fresh();
                 return [...result.prefix.map(node=>({...node,bwPxtWhenUsedGroup:group})),
@@ -228,7 +297,7 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
         }
         if(st.type==='ExpressionStatement'){
             if(st.expr?.type==='Assignment'){
-                const left=expression(st.expr.left),result=expression(st.expr.right);
+                const left=expression(st.expr.left),result=directEmpty(st)?{prefix:[],value:st.expr.right}:expression(st.expr.right);
                 const referenceTarget=['Member','Index'].includes(st.expr.left?.type);
                 const snapshot=referenceTarget && (hasEffects(st.expr.left) || hasEffects(st.expr.right));
                 if(!left.prefix.length && !result.prefix.length && !snapshot)return [{...st,expr:{...st.expr,left:left.value,right:result.value}}];

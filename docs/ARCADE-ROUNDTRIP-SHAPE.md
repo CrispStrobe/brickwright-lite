@@ -169,3 +169,19 @@ getters; ordinary Array length is the schema exception. Generated legacy
 callback `sprite`/`otherSprite` formals and restart-script `_g` declarations
 also reserve lexical hygiene. Authored source controls cover these actual
 callback/restart bodies as well as malformed and post-plan hidden edits.
+
+## B source implementation boundary
+
+The first source candidate keeps a literal empty Array directly only in an
+actual single `let`/`const` initializer or a complete plain Identifier assignment
+statement to a unique existing `let`/parameter binding. Lexical binding identity
+is read from the current pure source graph; no result type is inferred from it.
+Only current unique syntax nodes with the ordinary empty-Array shape qualify.
+
+Programs containing `var`, unsupported scope syntax, unknown nodes or exceptional
+lowering retain existing staging. Multiple declarators, for-init positions,
+class/resource metadata, shared syntax and every consumed/member/index/nonempty
+expression also retain existing staging. These conservative limits preserve the
+previous behavior; they are not newly supported source features. The source
+candidate has no runtime, supplier, GUI or primitive-domain changes. Focused
+controls and actual affected current-program qualification remain required.
