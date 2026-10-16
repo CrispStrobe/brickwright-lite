@@ -5530,3 +5530,25 @@ work now, while preserving the A13 adoption order: qualified upstream CUI and
 the earlier serialized STM32/translator integrations precede the final supplier
 pin and full application qualification. It transfers no other owner's paths,
 changes no runtime semantics, and claims no physical hardware acceptance.
+
+## STM32 composition: original 386 boot register reader — 2026-10-16
+
+CLAIMED — Codex root, branch `lane/stm32-compose-20261016`, isolated
+`/tmp/brickwright-stm32-compose-20261016`, amendment based on main `e1e5bc30b`.
+Merge this claim before changing the existing synthetic boot assertion in
+`scripts/verify-i80386-local-hdd-gui.mjs`: read the selected supplier's `edi`
+instead of absent `di`, retaining equality to42, exact halted/PC/canvas checks
+and the existing timeout. The exact installed f84 supplier and a read-only
+production diagnostic expose `edi=42`, `pc=0x7c1a`, `halted=true`, VGA720×400;
+the original gate is retained as failed evidence. Own only this contract-reader
+hunk, a focused regression control and this ledger. No new engine or pin move.
+
+The x86 lane retains its distinct new persistence/original-witness and
+forward-debug scenarios in this same script, all supporting files, its branches
+and its acceptance requirements. Its published composition currently preserves
+the same stale original synthetic assertion. This narrow dependency-adoption
+reader repair carries no persistence or debugger acceptance and takes over none
+of those scenarios. Preserve any newer owner work during normal composition.
+No relaxed comparison, fallback register name, timeout increase, skipped gate,
+CI bypass or source rewrite is permitted. The corrected actual browser gate
+and all enabled final-head source checks must pass before integration merge.
