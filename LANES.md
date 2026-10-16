@@ -1,3 +1,17 @@
+## H1–H7 — Code tab crash, layout, badge and language reach — 2026-10-16
+
+CLAIMED — VPS Claude (opus), branches `lane/code-tab-h*-20261016`, base main
+`fc455ff55`. Tasks H1–H7 of docs/OPEN-TASKS-2026-09-29.md, in that
+order, one PR each. Owns: `containers/lazy-pseudocode-importer.jsx` (H1 error
+naming/reload), the Code tab toolbar, status line, conversion-report and
+Animation rows in `components/tw-pseudocode/pseudocode-importer.jsx` and its
+CSS (H2, H4, H5), `lib/bw-matrix/capabilities.js` with the generated matrix
+(H3), the fe/Tcl/Forth routes in `lib/bw-debug/dos-toolchain-routes.js` and
+new non-DOS routes (H6), their tests and browser gates. Keeps test ids and the
+gates that click them. H7 (STM32 faces) edits bw-circuit-ui only after the
+owner of that repo's face lane agrees, then a CUI pin adoption sequenced after
+other open CUI adoptions. No pin, engine or workflow-budget change otherwise.
+
 ## Sim Lab S1 — "it moves" vertical slice — 2026-10-16
 
 CLAIMED — Claude (master, auditing) with two hermes sub-agents on the VPS.
@@ -17,7 +31,7 @@ in S1.
 
 ## iOS embedded frontend packaging — 2026-10-16
 
-CLAIMED — Codex root, isolated `/tmp/brickwright-ios-assets-20261016`, branch
+DONE candidate — Codex root, isolated `/tmp/brickwright-ios-assets-20261016`, branch
 `lane/ios-embedded-assets-only-20261016`, base main `664a37b57`.
 The user requested a smaller iPad build and continued coding. The signed
 192.21 MiB app contains an 82.45 MiB executable (76.21 MB of __const) plus
@@ -35,6 +49,16 @@ strict signing and an offline iOS simulator launch if available. Physical iPad
 and WeDo acceptance remain pending hardware availability; no launch is inferred
 from compilation. Merge this claim to remote main before implementation and
 qualify all enabled final-head checks before landing source.
+
+Claim PR1018 merged as 6420faaef before implementation. The preparation writer
+now resolves the generated source-root frontend folder and removes only its
+Resources build-file/phase references. Other identically named folders, asset
+catalogs, static linker inputs and staged frontend files remain. Four packaging
+controls pass on genuine Node22.23.3, including repeat preparation and refusing
+an unknown folder layout without modifying its project. Real native archive,
+signature and offline simulator proof are being run on this candidate; no new
+size or runtime acceptance is claimed until those results exist. Final enabled
+exact-head hosted checks remain required before source merge.
 
 ## Compose STM32 PR975 after circuit PR965 — 2026-10-16
 
@@ -5635,3 +5659,56 @@ no-SDK-values collection boundary remains until the corresponding foundation
 qualifies. Source/current Blocks, native lifecycle, saved/current-export,
 selected-original and visible GUI qualification are separate required gates;
 no library/game or corpus promotion follows from a foundational holder control.
+
+## Circuit File actions with a cached but unmounted designer — 2026-10-16
+
+CLAIMED — Codex root, isolated `/tmp/brickwright-circuit-file-wake-20261016`,
+branch `fix/circuit-file-wake-20261016`, claim base canonical main `7ce90fc38`.
+Prepare the implementation on the already qualified local combined A13 graph
+`6681f1868`, then reconcile current main, including the independent Sim Lab
+addition, before final source qualification. This does not change package pins.
+Actual combined browser evidence retains Save circuit from Code producing no
+download after the designer had already been loaded. The debugger-only right
+portal unmounts the designer, while `_circuitFileWake` mistakes cached
+`state.Designer` for a mounted command receiver. Cold cached-component loading
+and mounted-receiver readiness must remain distinct.
+
+Own only the File-command wake/replay and connected Circuit-tab activation in
+`overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx` and its exact
+package mirror, focused `test/circuit-file-menu-reach.test.mjs` controls, and
+cold/warm Code-tab actual File-menu journeys in existing
+`scripts/verify-circuit-export-completeness.mjs`, plus this ledger. Reveal the
+existing Circuit view on an explicit command that lacks a receiver, queue its
+action, and replay through the existing upstream channel after the receiver
+mounts. Preserve existing mounted single delivery, replay suppression, lazy
+loading, debugger sessions and all four existing actions.
+
+No supplier/pin, runtime, serialized circuit, new file format, editor-shell,
+workflow/budget or other owner's feature change. Preserve original failures
+and require actual menu-driven download/import and focused omitted-wake and
+omitted-replay negatives; no direct VM state injection or invented output.
+Merge this claim before implementation. Source merge requires all enabled
+exact-head CI, with normal composition preserving the pending A13 CPX bridge.
+
+### Current Array mandatory ordinary callee initialization — extension
+
+PROPOSED / DOCUMENTATION ONLY — Codex Arcade integration, coordinated with the
+current Array receiver authority and shared-frame owners. Merge this extension
+before product implementation. Contract:
+[current Array callee initialization](docs/ARCADE-ARRAY-CALLEE-INITIALIZATION.md).
+
+Own narrow `array-reference-export-authority.js` proofs for mandatory ordinary
+callee global Array writes and exact later caller/registration availability.
+Own focused controls and the contract; coordinate matching existing helpers
+explicitly. Prove the actual allocation and complete all-writer, call-target,
+frame, operand, completion, branch, recursion, alias, yield/reentry and currentness
+obligations. Uncertain paths retain named diagnostics and ordinary source.
+Preserve every allocation, body, effect and current Code/Blocks/SB3/export/reimport
+result. Existing index, nested-Array and element-presence proofs stay unchanged.
+
+No shared-frame effect boolean grants generic values, resources or presence.
+No annotation/default change, synthetic length/index, new numeric evaluator,
+source replacement, callback simulation, new domain/ABI, runtime, supplier/pin or
+workflow changes. Require affected clean genuine guest qualification in addition
+to current public roundtrip and adversarial graph controls. Pending unrelated
+handler/value claims confer no authority here.
