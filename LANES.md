@@ -5613,14 +5613,14 @@ The corrected program-clock guest separately passes exact0/20/40 through the
 original helper on its reviewed source context. Visible GUI, final-head hosted
 checks and whole-game promotion remain pending. Preserve all original failures.
 The List, per-player, Carnival, managed SDK and shared Image Array contracts
-are composed in joint documentation claim1007; implementation waits for its
-qualified normal merge. No earlier individual-head check qualifies its new head.
+landed in joint documentation claim1007; bounded implementation is authorized.
+Its claim checks do not qualify subsequent source implementation.
 
 ### Arcade ExtendableSprite update Throw source intersection — 2026-10-16
 
 Owner: Codex Arcade integration, coordinated with the existing Throw, owned
-Sprite class callable and managed SDK lanes. Status: claim pending qualified
-normal merge; no implementation under this amendment yet.
+Sprite class callable and managed SDK lanes. Claim1010 has merged after all
+enabled checks; bounded source implementation is authorized.
 
 Contract: [source admission and initialization](docs/ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md).
 Own the narrow GUI source issuer/currentness/normalization intersection in

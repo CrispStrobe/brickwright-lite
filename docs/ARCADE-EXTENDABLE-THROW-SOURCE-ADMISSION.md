@@ -1,7 +1,7 @@
 # Throw source admission for owned ExtendableSprite updates
 
-Status: coordinated ownership amendment; implementation requires this claim's
-qualified normal merge. This extends the source boundary shared by
+Status: coordinated ownership amendment merged through [claim 1010](https://github.com/CrispStrobe/brickwright-lite/pull/1010).
+Bounded source implementation is authorized. This extends the source boundary shared by
 [Throw](compatibility/arcade-throw-statements.md),
 [ExtendableSprite updates](compatibility/arcade-owned-sprite-class-callables.md) and
 [managed runtime ownership](ARCADE-MANAGED-SDK-OWNERSHIP.md).

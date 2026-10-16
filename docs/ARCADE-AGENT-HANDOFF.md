@@ -17,6 +17,21 @@ passing integration. The corrected canonical compiler is separately under
 [PR158](https://github.com/CrispStrobe/sb3-creator/pull/158); it is not the
 compiler used by that hosted editor evidence.
 
+## Latest development repair frontier — 2026-10-16
+
+Read [the current repair table](ARCADE-CI-REPAIR-STATUS.md) first. The latest
+composition has 36 passing generated-helper controls and 78 passing source,
+Creator and export controls. Real VM checks qualify physical updates during
+paused construction, Stop stability, four player scores, altered-cache refusal,
+and a connected score-writer edit through current export and reimport. These
+results do not establish visible editor behavior or complete-game compatibility.
+Class-update Throw still fails source admission; its [merged contract](ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md)
+requires actual method ownership and earliest-entry initialization. Shared-frame
+reimport still increases backing arrays; preserve the failing graph and fix the
+missing-initializer distinction. Recheck the immutable corpus after composing
+these fixes; its recorded count remains 147 translated / 36 partial / one
+malformed input until a fresh census is retained.
+
 ## Development results and next gaps — 2026-10-16
 
 These results concern the reviewed development composition. They do not establish

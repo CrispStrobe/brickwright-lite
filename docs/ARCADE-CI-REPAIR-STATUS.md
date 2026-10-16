@@ -17,12 +17,12 @@ complete game compatibility.
 | Original simulator clock | A complete positive profiler-frame bootstrap preserves paused-zero admission and relative timers. Eight platform controls and the exact corrected 0/20/40 program-clock guest through the original helper pass. | Saved-output audit passes with all 337 mapped-file joins; final integration checks remain. Current normal CLI qualification stays separately scoped. |
 | Loop arrows | Static registration supplies the current workspace media path to the exact generated arrow field. Eleven focused controls pass with explicitly modeled theme/Blockly fixtures. | Actual default, contrast and restored-theme workspace/flyout rendering under a deployment prefix. |
 | Malformed animation import | The exact browser error fixture now retains the dependency translation stage shown by the original failure artifact. Product behavior and all identity assertions stay unchanged. | Fresh production run of the complete browser journey. |
-| Per-player score Number proof | The merged ownership contract covers source receiver proof and the existing native score role's exact literal-player binding. A source candidate and adversarial controls are under review. | Close tagged-template census gaps, then qualify the physical/cache controls and actual edited Code/Blocks/save/export execution. |
+| Per-player score Number proof | All 41 new source controls and four ordinary constraints pass. Actual native controls preserve four independent player scores and reject seven altered cache bindings before ordinary body effects. An affected connected-writer edit, current export and reimport pass in the real VM, with both original helper archives retained. | Visible Code/Blocks editing, fresh save/reopen and final integration checks. |
 | Initial bundle budget | Saved production graph identifies the root `react-virtualized` List barrel as a bounded import cut. The implemented import change requests the existing direct named List entry and preserves the complete widget body. | Production resolution, actual widget save/reopen behavior and the unchanged hosted P17 budget; a source import census is not measured bundle savings. |
 | Carnival package import | Authentic dependency preparation lowers the real namespace before primitive selection. The merged Carnival contract requires full initialization and preservation of unsupported bodies. | Source-bound selected native admission, original/native behavior and the authentic GUI package-import journey. |
-| Managed SDK callbacks | An unchanged actual native control completes its paused constructor but reports a managed-call error at physical update entry, with updates remaining zero. [Ownership contract](https://github.com/CrispStrobe/brickwright-lite/blob/aa99067502ab1d70f59f9172e96b45c510092ba7/docs/ARCADE-MANAGED-SDK-OWNERSHIP.md). | Proper physical-update root entry, cancellation/reentry controls and actual native qualification. Constructor-continuation and nested-step hypotheses need their own affected controls. |
+| Managed SDK callbacks | The private physical update entry has eleven passing component controls. The unchanged actual paused-constructor guest reaches `completed = 7`, observes two updates during construction and four total, and preserves values and call counts after Stop. | Throw in the actual class update still fails source admission before VM execution. Implement the [merged source intersection](ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md); constructor-continuation and nested-step mechanisms retain separate qualification. |
 | Shared frame Array transport | Seven repeated backing arrays account for connected roundtrip growth. [Transport contract](https://github.com/CrispStrobe/brickwright-lite/blob/aa99067502ab1d70f59f9172e96b45c510092ba7/docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md). | Prove current immutable initialization and lexical binding before staging; preserve observable and mutated Arrays as ordinary code. Qualify repeated edited export/reimport. |
-| Generated helper recognition | Actual and template parse profiles differ. Recognition also needs complete bodies and actual lexical bindings. [Recognition contract](https://github.com/CrispStrobe/brickwright-lite/blob/aa99067502ab1d70f59f9172e96b45c510092ba7/docs/ARCADE-GENERATED-HELPER-RECOGNITION.md). | Reject extra effects, shadows, escapes and stale authority while recognizing exact generated helpers; qualify public conversion and native semantics. |
+| Generated helper recognition | Thirty-six focused controls pass. Recognition proves actual lexical bindings, complete bodies, parse profiles, defaults and continuation effects; legacy nested Array helpers rewrite against the same original proof before staging. | Complete affected native and authored-project journeys, source census and final integration checks. |
 
 The six implementation contracts landed through
 [joint claim 1007](https://github.com/CrispStrobe/brickwright-lite/pull/1007),
@@ -31,13 +31,23 @@ passed at the reviewed claim head; its actual merge parents and tree matched
 the review. This authorizes bounded implementation and does not qualify the
 subsequent source candidates.
 
-The first physical-update component run passed ten of eleven controls. The
-remaining control expected a later rejection message, while the actual foreign
-child was correctly rejected by the earlier live-thread check. Preserve that
-failure and qualify a corrected fixture separately. Actual paused-constructor
-updates and lifecycle behavior remain required. Shared-frame transport and
-complete generated-helper recognition also have source candidates awaiting
-focused execution; neither has changed whole-project counts.
+The original component run's foreign-child message mismatch remains recorded;
+its corrected fixture passes all eleven controls without changing product
+refusal. The later native run passes nine of eleven: one export fixture used
+the wrong exported cell name, and one genuine class-Throw source case fails
+before the VM. The cell fixture now binds the actual unique Creator and runtime
+cell and passes its separate affected real-VM run. The class-Throw failure is
+still open; the original positive guest and its assertions remain intact.
+
+The source/Creator/export campaign passes all 78 controls, including the
+unchanged clock controls. Independent validation now reports malformed physical
+clock reporters even when another malformed caller prevents argument emission.
+It grants no Number authority or emission permission.
+
+Shared-frame controls still expose a genuine two-versus-one backing-array
+increase on reimport. A separate saved-graph diagnostic identifies declarations
+with no initializer being treated as unknown assignments. A narrow repair is
+in progress; no shared-frame or whole-project success is claimed.
 
 The [original failing campaign](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38862860015)
 remains the regression baseline. Current source composition preserves adopted
