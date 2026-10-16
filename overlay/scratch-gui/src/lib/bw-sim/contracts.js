@@ -147,7 +147,9 @@ export const GROUND_FRICTION = 0.8;
  *            {id: string, type: 'ball', body1: string, body2: string, point: Vec3})[],
  *   gears: ({id: string, type: 'gear', joint1: string, joint2: string, ratio: number} |
  *           {id: string, type: 'rackAndPinion', hingeJoint: string, sliderJoint: string, ratio: number})[],
- *   diagnostics: {severity: 'error'|'warning', code: string, message: string, parts?: string[]}[]
+ *   diagnostics: {severity: 'error'|'warning', code: string, message: string, parts?: string[]}[],
+ *   sensors?: {port: string, kind: 'distance'|'color'|'force', body: string, origin: Vec3, direction: Vec3}[],
+ *      world frame at t=0, metres; body is the island holding the sensor part.
  * }} CompiledMechanism
  */
 
@@ -335,6 +337,21 @@ export const validateCompiledMechanism = m => {
             out.push(`${w}.type: need 'gear' or 'rackAndPinion'`);
         }
     });
+    if (m.sensors !== undefined) {
+        if (!Array.isArray(m.sensors)) out.push('mechanism.sensors: not an array');
+        else {
+            for (let i = 0; i < m.sensors.length; i++) {
+                const s = m.sensors[i];
+                const w = `sensors[${i}]`;
+                if (!HUB_PORTS.includes(s?.port)) out.push(`${w}.port: '${s?.port}' is not ${HUB_PORTS.join('|')}`);
+                if (!SENSOR_KINDS.includes(s?.kind)) out.push(`${w}.kind: '${s?.kind}' is not one of ${SENSOR_KINDS.join('|')}`);
+                if (!bodies.has(s?.body)) out.push(`${w}.body: unknown body '${s?.body}'`);
+                if (!isVec(s?.origin)) out.push(`${w}.origin: not a Vec3`);
+                if (!isVec(s?.direction)) out.push(`${w}.direction: not a Vec3`);
+                else checkUnit(s.direction, `${w}.direction`, out);
+            }
+        }
+    }
     m.diagnostics.forEach((d, i) => {
         if (d?.severity !== 'error' && d?.severity !== 'warning') out.push(`diagnostics[${i}].severity: need 'error' or 'warning'`);
         if (typeof d?.code !== 'string' || typeof d?.message !== 'string') out.push(`diagnostics[${i}]: need string code and message`);

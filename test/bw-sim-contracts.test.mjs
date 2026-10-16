@@ -117,7 +117,13 @@ test('CompiledMechanism: valid passes, references are checked', () => {
         [m => { delete m.diagnostics; }, /diagnostics: not an array/],
         [m => { m.joints.push({id: 'c', type: 'ball', body1: 'frame', body2: 'g24', point: [0, 0, 0]}); }, null],
         [m => { m.joints.push({id: 'c', type: 'ball', body1: 'frame', body2: 'g24', point: [0, 0, 0]}); m.gears[0].joint2 = 'c'; }, /is a ball, need a hinge/],
-        [m => { m.joints[1].type = 'weld'; }, /need 'hinge', 'slider' or 'ball'/]
+        [m => { m.joints[1].type = 'weld'; }, /need 'hinge', 'slider' or 'ball'/],
+        [m => { m.sensors = [{port: 'A', kind: 'color', body: 'frame', origin: [0, 0, 0], direction: [0, 0, 1]}]; }, null],
+        [m => { m.sensors = [{port: 'Z', kind: 'color', body: 'frame', origin: [0, 0, 0], direction: [0, 0, 1]}]; }, /port:/],
+        [m => { m.sensors = [{port: 'A', kind: 'ultrasonic', body: 'frame', origin: [0, 0, 0], direction: [0, 0, 1]}]; }, /kind:/],
+        [m => { m.sensors = [{port: 'A', kind: 'color', body: 'nope', origin: [0, 0, 0], direction: [0, 0, 1]}]; }, /body:/],
+        [m => { m.sensors = [{port: 'A', kind: 'color', body: 'frame', origin: [0, 0], direction: [0, 0, 1]}]; }, /origin:/],
+        [m => { m.sensors = [{port: 'A', kind: 'color', body: 'frame', origin: [0, 0, 0], direction: [0, 0, 2]}]; }, /direction.*not a unit vector/]
     ];
     for (const [mutate, re] of cases) {
         const m = mechanism();
