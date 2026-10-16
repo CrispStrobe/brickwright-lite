@@ -1,3 +1,41 @@
+## Sim Lab S1 — "it moves" vertical slice — 2026-10-16
+
+CLAIMED — Claude (master, auditing) with two hermes sub-agents on the VPS.
+Branches: `lane/simlab-20261016` (contracts, part metadata, LDraw sync,
+integration), `lane/simlab-phys-20261016` (physics core),
+`lane/simlab-mech-20261016` (mechanism compiler); sub-agent branches merge
+into `lane/simlab-20261016` only after review, which then lands by PR.
+Base main `664a37b57`. Contract: `docs/SIM-LAB-PLAN.md` §0 (the S1 slice).
+
+Owns new code only: `overlay/scratch-gui/src/lib/bw-sim/**`, `test/bw-sim-*`,
+`test/fixtures/bw-sim/**`, the `jolt-physics` dependency with its notice and
+gui-scope entry, `scripts/sync-ldraw-parts.mjs` with its pins and the vendored
+curated LDraw subset. Reads, never edits, `virtual-hub/` and `spike-arena/`; the
+S1 bridge to the virtual SPIKE hub honours the arena's one-clock contract
+(docs/SPIKE-ARENA.md). No editor UI, no GUI tab, no change to the boot payload
+in S1.
+
+## iOS embedded frontend packaging — 2026-10-16
+
+CLAIMED — Codex root, isolated `/tmp/brickwright-ios-assets-20261016`, branch
+`lane/ios-embedded-assets-only-20261016`, base main `664a37b57`.
+The user requested a smaller iPad build and continued coding. The signed
+192.21 MiB app contains an 82.45 MiB executable (76.21 MB of __const) plus
+another full uncompressed frontend under `assets`. Tauri 2.11.5 release
+protocol serves `manager.get_asset` from the generated embedded asset provider;
+this application's mobile code does not open the copied frontend via filesystem.
+Own only the generated iOS preparation script, its packaging regression test,
+this ledger and narrowly necessary native packaging documentation. Remove the
+redundant frontend Resources entry while preserving the build inputs, Rust
+embedding, asset catalog, other resources and static linker entries. Refuse to
+change behavior for a different generated project shape. No Rust features,
+frontend/provider pins, runtime logic, desktop/Android packaging or CI budget
+changes. Require repeat-preparation controls, real release archive inspection,
+strict signing and an offline iOS simulator launch if available. Physical iPad
+and WeDo acceptance remain pending hardware availability; no launch is inferred
+from compilation. Merge this claim to remote main before implementation and
+qualify all enabled final-head checks before landing source.
+
 ## Compose STM32 PR975 after circuit PR965 — 2026-10-16
 
 CLAIMED — Codex root, isolated `/tmp/brickwright-stm32-compose-20261016`,
@@ -5484,3 +5522,24 @@ enabled exact-head source check and separately admitted original-only actual
 result remains mandatory; acquire each official original once and never replay
 a guest for the reader. No ISO/ATAPI, generalized DOSBox, new CPU/device, reverse
 execution, mode-aware disassembler, physical timing, whole-OS or release claim.
+
+## A13 CPX production browser gate registration — 2026-10-16
+
+CLAIMED — Codex, isolated worktree `/tmp/brickwright-lite-a13-20261016`,
+branch `lane/a13-cpx-face-adoption-20261016`; amendment based on canonical
+`d544efb23`. Merge this claim before implementation. Extend the existing A13
+claim only to `.github/workflows/build.yml` for a standalone light-shard CPX
+production browser gate and its failure/success receipt upload, plus canonical
+`scripts/gen-gate-budgets.mjs --register` output in
+`docs/generated/browser-gate-readings.json` and focused registration controls.
+Reuse the existing browser job, server and immutable artifact action; introduce
+no workflow or job. The new gate uses the existing provisional three-minute
+floor; preserve every existing measured reading, timeout and threshold.
+
+The gate drives the real native CPX program, pane and circuit face through
+`scripts/verify-cpx-circuit-face.mjs`; it must retain actual VM output and input
+assertions and upload its JSON observations. This amendment permits registration
+work now, while preserving the A13 adoption order: qualified upstream CUI and
+the earlier serialized STM32/translator integrations precede the final supplier
+pin and full application qualification. It transfers no other owner's paths,
+changes no runtime semantics, and claims no physical hardware acceptance.
