@@ -202,3 +202,19 @@ test('empty alternative output correspondence does not excuse raw original-sourc
  const {program,sourceProof,lowered}=bridge(guest),method=program.body.find(node=>node.type==='Class').methods.find(node=>node.name==='update');assert.equal(method.body[1].alternate,null);
  method.body[1].alternate=[];assert.equal(physicalUpdateSourceFor(program,sourceProof.physicalUpdateSource),null);assert.ok(validatePhysicalUpdateLowering(finalProgram(lowered),lowered.physicalUpdateLowering).length);
 });
+
+
+test('generated parameter default-metadata and body Array prototype edits are never normalized away',()=>{
+ for(const key of ['params','parameterDefaults','body']){
+  const {sourceProof,lowered}=bridge(guest),final=finalProgram(lowered),procedure=final.body.find(node=>node.name==='fail');assert.ok(Array.isArray(procedure[key]),key);
+  Object.setPrototypeOf(procedure[key],null);assert.ok(prepareThrowEmission(final,sourceProof,lowered.physicalUpdateLowering).length,key);assert.equal(hasThrowEmission(final),false);
+ }
+});
+
+test('output correspondence never invokes caller-supplied Array traversal methods',()=>{
+ for(const key of ['forEach',Symbol.iterator]){
+  const {sourceProof,lowered}=bridge(guest),final=finalProgram(lowered),procedure=final.body.find(node=>node.name==='fail');let calls=0;
+  Object.defineProperty(procedure.body,key,{value(){calls++;throw new Error('caller method must remain unexecuted');},enumerable:true,writable:true,configurable:true});
+  assert.ok(prepareThrowEmission(final,sourceProof,lowered.physicalUpdateLowering).length);assert.equal(calls,0);assert.equal(hasThrowEmission(final),false);
+ }
+});

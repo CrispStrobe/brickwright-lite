@@ -12,24 +12,38 @@ const physicalLowerings=new WeakMap();
 // never a runtime Array, a value fact, or permission to omit body/metadata.
 function physicalOutputSnapshot(root){
     if(!physicalUpdateSourceSnapshot(root))return null;
-    const statementIfs=new WeakSet(),scanned=new WeakSet();
-    const expressionKeys=new Set(['expr','init','test','value','argument','left','right','callee','args','object','index','items','iterable','update']);
+    const statementIfs=new WeakSet(),scanned=new WeakSet();let scanValid=true;
+    const ownDescriptor=Object.getOwnPropertyDescriptor,isArray=Array.isArray;
+    const data=(node,key)=>{if(!node||typeof node!=='object')return undefined;const d=ownDescriptor(node,key);return d&&Object.hasOwn(d,'value')?d.value:undefined;};
+    const each=(array,visit)=>{
+        if(!isArray(array)){scanValid=false;return;}
+        const length=data(array,'length');
+        for(let index=0;index<length;index++){
+            const d=ownDescriptor(array,String(index));
+            if(!d||!Object.hasOwn(d,'value')){scanValid=false;continue;}
+            visit(d.value);
+        }
+    };
+    const expressionKeys=['expr','init','test','value','argument','left','right','callee','args','object','index','items','iterable','update'];
     const scan=(node,statement=false)=>{
         if(!node||typeof node!=='object'||scanned.has(node))return;scanned.add(node);
-        if(Array.isArray(node)){node.forEach(value=>scan(value,statement));return;}
-        if(node.type==='If'&&statement)statementIfs.add(node);
-        if(['Program','FunctionDeclaration','FunctionExpression','Block','While','For','ForOf','ForIn'].includes(node.type))scan(node.body,true);
-        if(node.type==='If'&&statement){scan(node.consequent,true);scan(node.alternate,true);}
-        if(node.type==='Declaration')for(const decl of node.decls||[])scan(decl.init);
-        if(node.type==='Switch')for(const row of node.cases||[]){scan(row.test);scan(row.body,true);}
-        for(const [key,value]of Object.entries(node))if(expressionKeys.has(key))scan(value);
-        if(node.type==='Object')for(const row of node.properties||[])scan(row.value);
-    };scan(root,true);
+        if(isArray(node)){each(node,value=>scan(value,statement));return;}
+        const type=data(node,'type');
+        if(type==='If'&&statement)statementIfs.add(node);
+        if(['Program','FunctionDeclaration','FunctionExpression','Block','While','For','ForOf','ForIn'].includes(type))scan(data(node,'body'),true);
+        if(type==='If'&&statement){scan(data(node,'consequent'),true);scan(data(node,'alternate'),true);}
+        if(type==='Declaration')each(data(node,'decls'),decl=>scan(data(decl,'init')));
+        if(type==='Switch')each(data(node,'cases'),row=>{scan(data(row,'test'));scan(data(row,'body'),true);});
+        for(let index=0;index<expressionKeys.length;index++)scan(data(node,expressionKeys[index]));
+        if(type==='Object'&&data(node,'props')!==undefined)each(data(node,'props'),row=>scan(data(row,'value')));
+    };try{scan(root,true);}catch{return null;}
+    if(!scanValid)return null;
     const seen=new Map();let valid=true;
     const copy=value=>{
         if(!value||typeof value!=='object')return value;
         if(seen.has(value))return seen.get(value);
-        const out=Array.isArray(value)?[]:Object.create(Object.getPrototypeOf(value));seen.set(value,out);
+        const prototype=Object.getPrototypeOf(value),out=Array.isArray(value)?[]:Object.create(prototype);
+        if(Array.isArray(value)&&prototype!==Array.prototype)Object.setPrototypeOf(out,prototype);seen.set(value,out);
         const type=Object.getOwnPropertyDescriptor(value,'type');
         const isIf=type&&Object.hasOwn(type,'value')&&type.value==='If'&&statementIfs.has(value);
         if(isIf){
