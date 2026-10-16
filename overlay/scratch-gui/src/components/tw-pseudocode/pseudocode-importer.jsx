@@ -4989,11 +4989,22 @@ class PseudocodeImporter extends React.Component {
     }
 
     async compile ({strict = false, pseudocode = null} = {}) {
+        const conversionRequest = {};
+        this._conversionRequest = conversionRequest;
+        const buffersAtStart = this.state.buffers;
+        const languageAtStart = this.state.lang;
+        const ownsConversion = () => this._conversionRequest === conversionRequest;
+        // Buffers are immutable editor revisions. Equality of the source text
+        // alone would allow an edit/revert to revive an older conversion.
+        const ownsEditor = state => ownsConversion() &&
+            state.buffers === buffersAtStart && state.lang === languageAtStart;
+        const publishEditor = patch => this.setState(state => ownsEditor(state) ?
+            (typeof patch === 'function' ? patch(state) : patch) : null);
         // A device retarget compiles the rewritten canonical program even when
         // a generated, one-way language tab is visible. Ordinary To blocks still
         // compiles the active editable language and keeps its existing checks.
         const lang = typeof pseudocode === 'string' ? 'pseudocode' : this.state.lang;
-        if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({status: this.L.stCOneWay}); return; }
+        if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({busy: false, status: this.L.stCOneWay}); return; }
         this.setState({busy: true, status: this.L.stCompiling});
         const pending = this._animationImport;
         const uploads = this.state.uploads;
@@ -5007,7 +5018,7 @@ class PseudocodeImporter extends React.Component {
                 const lift = (await import(/* webpackChunkName: "bw-asm-reader" */ '../../lib/bw-asm/asm-8086-to-pseudocode.js')).default;
                 const res = lift(source);
                 if (!res.ok) {
-                    this.setState({busy: false, status: this.L.asmLiftRefused(res.error.message, res.stats.lifted)});
+                    publishEditor({status: this.L.asmLiftRefused(res.error.message, res.stats.lifted)});
                     return;
                 }
                 source = res.pseudocode;
@@ -5092,9 +5103,11 @@ class PseudocodeImporter extends React.Component {
                     throw new Error(artwork.reason || 'Artwork or the loaded project changed while preparing this conversion. Read From blocks again.');
                 }
             }
+            if (!ownsConversion()) return;
             if (this.props.vm.runtime.getTargetForStage() !== stage || this._animationImport !== pending || this.state.uploads !== uploads ||
                 this.activeCode() !== activeAtStart) throw new Error('The code or loaded project changed while preparing this conversion. Try again.');
             await this.props.vm.loadProject(projectBytes);
+            if (!ownsConversion()) return;
             this._animationImport = null;
             this._makeCodeRequest = null;
             if (artwork) applyArtwork(artwork, this.props.vm);
@@ -5138,9 +5151,11 @@ class PseudocodeImporter extends React.Component {
             if (this.props.vm.extensionManager && this.props.vm.extensionManager.refreshBlocks) {
                 await this.props.vm.extensionManager.refreshBlocks({throwOnError: true});
             }
+            if (!ownsConversion()) return;
             // Write the persistence comment on the stage target
             if (stc) {
                 const SB3Creator = (await this.lib()).default || (await this.lib());
+                if (!ownsConversion()) return;
                 if (SB3Creator.writeStcComment) {
                     const proj = JSON.parse(this.props.vm.toJSON());
                     proj.stc = stc;
@@ -5170,6 +5185,7 @@ class PseudocodeImporter extends React.Component {
                 this.props.vm.runtime.getTargetForStage();
             if (first) this.props.vm.setEditingTarget(first.id);
             // regenerate the other tabs from the compiled project
+            if (!ownsEditor(this.state)) return;
             const proj = creator.project;
             const nb = {...this.state.buffers};
             if (lang !== 'pseudocode') nb.pseudocode = new SB3Creator().decompile(proj);
@@ -5190,14 +5206,14 @@ class PseudocodeImporter extends React.Component {
             {
                 const mp = new SB3Creator().generateMicroPython(proj);
                 nb.micropython = mp.ok ? mp.py : `# === Cannot generate MicroPython ===\n${mp.reasons.map(s => '# ' + s).join('\n')}`;
-                // Regenerated from blocks: whatever was imported is gone.
-                this.setState({importedPython: false});
             }
             const warns = [...parseWarnings, ...creator.warnings];
             if (missing.length) warns.push(`no sprite named: ${missing.join(', ')}`);
             const classified = classifyConversionWarnings(warns);
-            this.setState(state => ({
+            publishEditor(state => ({
                 buffers: nb,
+                // This flag belongs to the admitted buffer regeneration too.
+                importedPython: false,
                 uploads: state.uploads.filter(upload => !appliedUploads.has(upload)),
                 status: warns.length ? this.L.stWarn(warns.slice(0, 4).join(' · ')) : this.L.stLoaded,
                 conversionReport: {direction: `${LANG_LABEL[lang] || lang} → Blocks`, preserved: true,
@@ -5205,13 +5221,15 @@ class PseudocodeImporter extends React.Component {
             }));
         } catch (e) {
             const failure = conversionFailure(e);
-            this.setState({status: this.L.stError(failure.message), conversionReport: {
+            publishEditor({status: this.L.stError(failure.message), conversionReport: {
                 direction: `${LANG_LABEL[lang] || lang} → Blocks`, preserved: false,
                 changed: [], unsupported: failure.issues
             }});
-            if (strict) { this.setState({busy: false}); throw e; }
+            if (strict) throw e;
+        } finally {
+            // React may apply this updater after a newer conversion starts.
+            this.setState(() => ownsConversion() ? {busy: false} : null);
         }
-        this.setState({busy: false});
     }
     // Read the running project into all languages at once.
     async fromBlocks () {

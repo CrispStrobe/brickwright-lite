@@ -1,8 +1,8 @@
 ## Code conversion: preserve newer editor ownership — 2026-10-16
 
-PROPOSED — SPIKE integration follow-up, branch
-`lane/code-conversion-editor-ownership-claim-20261016`. Merge this claim before
-implementation. Own the narrow conversion-completion and editor-buffer hooks in
+IMPLEMENTED, hosted qualification pending — SPIKE integration follow-up.
+Ownership claim [PR1000](https://github.com/CrispStrobe/brickwright-lite/pull/1000)
+merged before implementation. Own the narrow conversion-completion and editor-buffer hooks in
 both `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
 and its `packages/scratch-gui` mirror, a focused
 `test/code-conversion-editor-ownership.test.mjs`, and this ledger.
@@ -31,6 +31,25 @@ reload, example selection and local execution route; retain SPIKE caller,
 output and Stop controls. No timeout, assertion, baseline, dependency pin,
 compiler/runtime/firmware/model, protocol or workflow change. Coordinate other
 importer owners; preserve their existing hooks and all unrelated lane sections.
+
+The candidate identifies each conversion request and captures its editor buffer
+revision and language. Completion, errors and queued busy cleanup retain that
+ownership across VM loading, extension refresh and comment-library waits. A
+changed editor keeps its buffers and feedback; an older request cannot finish a
+newer conversion. Normal conversion, explicit retargeting, current errors and
+strict rejection remain covered. This does not undo an already-applied VM load
+or establish general project transaction cancellation.
+
+Eighteen actual-method host controls pass; the unchanged baseline passes five
+and fails thirteen. Nine guard mutations are detected. All 147 affected host
+controls pass, plus 24 existing VM-diagnostic/artwork controls using an explicitly
+selected prepared dependency registry. The existing diagnostic fixture now
+honors React functional state updaters; its assertions are unchanged. Initial
+sparse-input and authored-scheduler failures are preserved separately. None of
+these host results establishes the exact original browser schedule, a new
+installed package or affected browser/guest qualification. Every enabled final
+source-head check and the actual 8086 reload/example/local-execution route
+remain required before merge.
 
 ## Scoped WeDo2 inventory gate repair — 2026-10-15
 
