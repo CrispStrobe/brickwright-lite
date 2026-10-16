@@ -120,6 +120,19 @@ function create(runtime, readValue) {
             signals.set(signal,Object.freeze({owner,runtime,generation,kind:'array-constraint',message:message.value,target:thread.target,block:witness.block,stack:Object.freeze([...thread.stack])}));
             retireLineage(thread,signal);
         },
+        rejectPrimitiveFault(args,util,error,lease) {
+            const thread=util?.thread;
+            if(signals.has(error))throw error;
+            const prior=failure(thread);if(prior)throw prior;
+            if(!live(thread)||util.runtime!==runtime)throw Error('Primitive fault requires its live actual caller');
+            const witness=require('./bw-null-sprite-getter').consume(runtime,args,util,error,lease);
+            if(!witness)throw Error('Primitive fault requires its private current receipt');
+            // Preserve the actual privately issued TypeError, never a public
+            // Error tag or copied message. Shared lineage cleanup is unchanged.
+            signals.set(error,Object.freeze({owner,runtime,generation,kind:'primitive-fault',message:error.message,
+                property:witness.property,target:thread.target,block:witness.block,stack:Object.freeze([...thread.stack])}));
+            retireLineage(thread,error);
+        },
         rejectConditionWait(thread,error) {
             const witness=require('./bw-source-condition-waits').consumeFailure(runtime,thread,error);
             if(!witness || !live(thread))throw Error('Source condition rejection requires its private current wait');
@@ -175,7 +188,7 @@ function failed(runtime, thread) {return failedThreads.get(thread)?.runtime === 
 function capture(runtime,thread) {return owners.get(runtime)?.capture(thread) || null;}
 function diagnostic(runtime,error) {
     const record=signals.get(error);
-    return record?.runtime===runtime ? ['constraint','array-constraint','condition-wait'].includes(record.kind) ? Object.freeze({kind:record.kind,message:record.message,block:record.block,target:record.target.id}) : Object.freeze({value:record.value,block:record.block,target:record.target.id}) : null;
+    return record?.runtime===runtime ? ['constraint','array-constraint','condition-wait','primitive-fault'].includes(record.kind) ? Object.freeze({kind:record.kind,message:record.message,block:record.block,target:record.target.id}) : Object.freeze({value:record.value,block:record.block,target:record.target.id}) : null;
 }
 function stale(runtime,thread,lease) {
     if (failed(runtime,thread)) return true;
