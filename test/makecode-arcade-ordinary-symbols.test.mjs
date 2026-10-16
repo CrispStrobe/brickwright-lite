@@ -100,7 +100,7 @@ const output=creator=>exportGraph(creator.project,{costumeSvg:(_target,costume)=
 
 test('real public import/Creator/current export keeps a nonzero-argument function name across three trips',()=>{
  let source='function sum(a:number,b:number):number{return a+b}let total=sum(1,2);';
- for(let i=0;i<3;i++){const{creator}=build(source),before=JSON.stringify(creator.project),result=output(creator);assert.deepEqual(result.unsupported,[]);assert.deepEqual(result.warnings,[]);assert.equal(JSON.stringify(creator.project),before);assert.match(result.files['main.ts'],/function sum\s*\(/);const calls=[];const visit=node=>{if(!node||typeof node!=='object')return;if(node.type==='Call'&&node.callee?.type==='Identifier'&&node.callee.name==='sum')calls.push(node);for(const value of Object.values(node))if(typeof value==='object')Array.isArray(value)?value.forEach(visit):visit(value);};visit(parseMakeCodeTs(result.files['main.ts']));const number=node=>node?.type==='Number'?node.value:node?.type==='Binary'&&node.op==='+'&&number(node.left)===0?number(node.right):NaN;assert.equal(calls.length,1);assert.deepEqual(calls[0].args.map(number),[1,2]);assert.doesNotMatch(result.files['main.ts'],/function (?:Game_)+sum/);source=result.files['main.ts'];}
+ for(let i=0;i<3;i++){const{creator}=build(source),before=JSON.stringify(creator.project),result=output(creator);assert.deepEqual(result.unsupported,[]);assert.deepEqual(result.warnings,[]);assert.equal(JSON.stringify(creator.project),before);assert.match(result.files['main.ts'],/function sum\s*\(/);const calls=[];const visit=node=>{if(!node||typeof node!=='object')return;if(node.type==='Call'&&node.callee?.type==='Identifier'&&node.callee.name==='sum')calls.push(node);for(const value of Object.values(node))if(typeof value==='object')Array.isArray(value)?value.forEach(visit):visit(value);};visit(parseMakeCodeTs(result.files['main.ts']));const number=node=>node?.type==='Number'?Number(node.value):node?.type==='Binary'&&node.op==='+'&&number(node.left)===0?number(node.right):NaN;assert.equal(calls.length,1);assert.deepEqual(calls[0].args.map(number),[1,2]);assert.doesNotMatch(result.files['main.ts'],/function (?:Game_)+sum/);source=result.files['main.ts'];}
 });
 
 test('recursive and mutual actual function calls retain consistent declaration owners',()=>{
@@ -114,13 +114,20 @@ test('a real artwork callback edit after symbol planning keeps a named currentne
 });
 
 
+test('the first real constructor artwork callback cannot replace the original owner inventory',()=>{
+ const{creator}=build('function keep(n:number):number{return n}let answer=keep(3);let hero=sprites.create(img`1`,SpriteKind.Player);');
+ const t=creator.project.targets.find(t=>!t.isStage),proto=Object.values(t.blocks).find(b=>b.opcode==='procedures_prototype');let calls=0;
+ const result=exportGraph(creator.project,{costumeSvg:(_target,costume)=>{if(++calls===1)proto.mutation.proccode+=' constructor-edited';return creator.assets.get(costume?.assetId)?.data;}});
+ assert.ok(calls>0,'real constructor palette callback must be observed');assert.ok(result.unsupported.some(n=>n.includes('current project or owner inventory changed')));
+});
+
 test('real zero-argument procedure name also survives repeated current public conversion',()=>{
  let source='function begin(){console.log(7)}begin();';
  for(let i=0;i<3;i++){const{creator}=build(source),result=output(creator);assert.deepEqual(result.unsupported,[]);assert.match(result.files['main.ts'],/function begin\s*\(/);assert.doesNotMatch(result.files['main.ts'],/function (?:Game_)+begin/);source=result.files['main.ts'];}
 });
 
 test('class field initializers keep their genuine ordinary helper call and body',()=>{
- const{creator}=build('class Box{value:number=7}let box=new Box();let answer=box.value;');const before=JSON.stringify(creator.project),result=output(creator);assert.deepEqual(result.unsupported,[]);assert.equal(JSON.stringify(creator.project),before);assert.match(result.files['main.ts'],/class Box/);assert.match(result.files['main.ts'],/value:\s*number\s*=\s*[A-Za-z_$][\w$]*\(\)/);assert.match(result.files['main.ts'],/return (?:\(0 \+ )?7\)?/);
+ const{creator}=build('class Box{value:number=7;constructor(){}}let box=new Box();let answer=box.value;');const before=JSON.stringify(creator.project),result=output(creator);assert.deepEqual(result.unsupported,[]);assert.equal(JSON.stringify(creator.project),before);assert.match(result.files['main.ts'],/class Box/);assert.match(result.files['main.ts'],/value:\s*number\s*=\s*[A-Za-z_$][\w$]*\(\)/);assert.match(result.files['main.ts'],/return (?:\(0 \+ )?7\)?/);
 });
 
 

@@ -156,6 +156,8 @@ class ArcadeEmitter {
         this.project = project;this.sdkFontInputs=sdkFontInputAuthority(project);
         this.opts = opts;
         this.unsupported = [];
+        // Freeze actual owners before any host artwork callback can edit the project.
+        this.functionSymbols=createOrdinaryExportSymbols(project,message=>this.note(message));
         this.sourceScalarCells=new Map();this.sourceReferenceCells=new Map();this.validScalarPrelude=true;
         try {this.sourceScalarCells=sourceScalarProject(this.project);this.sourceReferenceCells=sourceReferenceProject(this.project);for(const id of this.sourceReferenceCells.keys())if(this.sourceScalarCells.has(id))throw Error('Duplicate source scalar/reference declaration');} catch(error) {this.validScalarPrelude=false;this.note(error.message);}
         this.requiresAnimationPackage = false;
@@ -221,7 +223,6 @@ class ArcadeEmitter {
         this.initialGlobals = new Map();
         this.editedSavedReferenceIds = new Map();
         this.globals = new Map();       // Scratch variable id|name -> TS name
-        this.functionSymbols = null;    // actual target/declaration owner -> TS symbol
         this.target = null;
         this.blocks = null;
         this.kinds = new Map();         // TS variable -> Set('number'|'string')
@@ -3676,9 +3677,6 @@ class ArcadeEmitter {
             const code=this.literalInput(b,'NAME');
             if(code!==null)this.managedValueProcedures.add(`${t.isStage?'':t.name}:${code}`);
         }
-        // Allocate from actual current declarations and the closed emitted-name
-        // inventory. No target-prefix stripping or retained-source name grants.
-        this.functionSymbols=createOrdinaryExportSymbols(this.project,message=>this.note(message));
         const register = (table, key, entry) => {
             if (!table.has(key)) table.set(key, []);
             table.get(key).push(entry);
