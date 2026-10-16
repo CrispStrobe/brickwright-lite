@@ -28,10 +28,13 @@ const transformConnector = (conn, pos, rot) => {
 const isShaftType = t => t === 'axle' || t === 'pin' || t === 'stud';
 const isHoleType = t => t === 'pinhole' || t === 'axlehole' || t === 'antistud';
 
+export const isShaftTypeExport = isShaftType;
+export const isHoleTypeExport = isHoleType;
+
 /**
  * Determine the edge kind for a shaft/hole pair. Returns 'rigid'|'hinge'|'ball'|null.
  */
-const edgeKind = (shaft, hole) => {
+export const edgeKind = (shaft, hole) => {
     if (shaft.type === 'pin' && hole.type === 'pinhole') {
         return shaft.friction === false ? 'hinge' : 'rigid';
     }
