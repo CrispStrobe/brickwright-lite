@@ -15,13 +15,27 @@ No product implementation, dependency pin, workflow, signing policy, transport,
 physical-device mapping or hardware behavior change belongs in this lane.
 
 Required prerequisites: retain merged WeDo adoption PR980 and its bounded
-brightness/polarity/piezo claims; qualify and land the iOS validator and archive
-resource repairs PR981/982 with every enabled final-head check and independent
-native source binding. Review a single combined source candidate for unsigned
-mobile qualification before advancing versions or publishing. Preserve original
-failures and exact artifact/source identities; no old tag move or successful
-qualification replay. Broader simulator and instrument candidates enter the
-release only after their own qualified merges, with honest tester boundaries.
+brightness/polarity/piezo claims, the merged iOS validator repair PR981 and its
+independent actual native source binding. Review one combined release source
+candidate for actual unsigned mobile qualification before advancing versions
+or publishing; an older component build does not qualify newer frontend source.
+
+Explicit dependency correction: PR982 repairs the separate local generated-
+project helper, invoked by the local device-build npm hook. The existing
+mobile/TestFlight workflows invoke the Tauri CLI directly and do not execute
+that helper. Its actual generated-project qualification remains open in its
+own lane; lack of that uncalled-helper result alone does not block this
+release. Source CI or unsigned workflow success is not helper execution proof.
+This correction changes no workflow, signing policy or qualification threshold.
+
+Independently inspect the final source-bound unsigned app AND actual signed
+IPA resource/content inventories, including unintended libapp.a or other
+static archive packaging. Fresh project initialization and source checks do
+not prove such archives absent. Retain actual compile, source/artifact,
+signing, privacy, provisioning and icon checks. Preserve original failures and
+exact identities; no old tag move or successful qualification replay. Broader
+simulator and instrument candidates enter only after their own qualified
+merges, with honest tester boundaries.
 
 Release metadata must pass version/notes contracts and required exact-head
 checks. Review actual main composition and predicted/landed tree/parents before
