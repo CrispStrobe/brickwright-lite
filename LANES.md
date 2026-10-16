@@ -5321,3 +5321,9 @@ program field and unrelated icons; no server alias, asset duplication, supplier
 pin, workflow or broad runtime change. A fresh affected visible editor/theme
 qualification remains required; original missing-resource failures stay open
 until that evidence exists. Other lanes retain their owned surfaces.
+
+Loop media development source now binds the current workspace media at actual
+static registration and adapts only the final generated legacy arrow field.
+The merged contract's focused source controls are authored, not yet run; actual
+visible theme/base-path and fresh official artifact gates remain open. Headless
+VM JSON, unrelated icons, default colors and dynamic factories remain unchanged.
