@@ -165,3 +165,15 @@ Image, Array or Sprite producer. The declaration and every early read, method
 call, alias and later assignment remain in their original order; transport does
 not initialize the cell or turn an ordinary failing access into success. Native
 error behavior and the authentic application remain separate qualification gates.
+
+### Builtin kind allocation prefix
+
+An exact unshadowed, unwritten zero-argument `SpriteKind.create()` initializer
+may precede the selected literal Array. The call stays in its actual declaration
+and original evaluation order, including left-to-right initializers in a
+multiple-declaration statement. Transport neither computes nor replaces the
+allocated kind value. Extracted methods, namespace escapes, computed or generic
+calls, constructor syntax and arguments refuse this prefix. An earlier callback
+registration or other effect still prevents the literal backing from qualifying.
+The focused source and public roundtrip controls preserve both allocations;
+native kind allocation and the authentic application require their own evidence.
