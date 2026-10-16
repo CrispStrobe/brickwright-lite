@@ -1,3 +1,27 @@
+## A13 — CPX live circuit face adoption — 2026-10-16
+
+CLAIMED — Codex root, isolated `/tmp/brickwright-lite-a13-20261016`, branch
+`lane/a13-cpx-face-adoption-20261016`. User requested this after the iOS and
+existing integrations. Supplier: bw-circuit-ui PR85, published claim 796bd2c.
+Preserve PR965/975's serialized dependency ownership and all newer main pins.
+
+Own CPX-only state subscription and cleanup plus input forwarding in
+`overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx` and its exact
+tracked package mirror; focused CPX wiring and actual-browser controls; this
+ledger. Feed runtime.bwCpxState to cpxState; route onCpxInput to the existing
+runtime.bwCpx.setButton/setSwitch. No copied simulation or second driver.
+Own immutable bw-circuit-ui adoption through canonical package/lock/notice
+writers and exact-pin readers only after qualified upstream landing and the
+existing serialized integrations. Acceptance: real CPX native blocks drive
+the same red ring on pane and face; face A triggers the existing hat; circuit
+round-trip identifies DEVICE CPX; swapped-index and removed-callback mutations
+fail. D13 is absent from the current runtime snapshot: trace the existing pin
+bridge before selecting a separately claimed supplier fix; never infer its state.
+No translator/parser, engine, unrelated pin, workflow budget or firmware changes.
+This claim must merge to remote main before Lite implementation. Require all
+enabled final-head checks and affected browser proofs before source merge.
+iPad/hub physical acceptance remains separately pending device availability.
+
 ## A12 — Circuit Playground Express MakeCode translator — 2026-10-16
 
 CLAIMED — Codex CPX translator lane, isolated worktree
@@ -5337,6 +5361,18 @@ exact Arcade translator handoff, a focused helper if needed, affected controls
 and documentation. Preserve the original failing guest and all prior source
 refusals; no generic method admission, all-globals initialization, copied tags,
 scheduler/runtime/pin/worker change, skipped control or corpus promotion.
+
+### Shared-frame selected source provenance — coordinated amendment
+
+Owner: Codex Arcade integration. Claim pending qualified normal merge.
+Extend only the [shared-frame non-exposure contract](docs/ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md)
+into dependency-project.js for a private actual-source/prepared-map receipt.
+Keep optional effect analysis private to the existing shared-frame helper and
+its exact translator hooks. Preserve actual source comparison, source ordering,
+all initializers, unused bodies and diagnostics; no public flag/namespace/tag
+can issue proof. This does not widen ordinary Number/reference producers,
+classes, runtime behavior, dependency fetching, pins or compiler execution.
+Implement only after this ownership amendment qualifies and merges.
 
 
 ## 386 GUI HDD and forward-debug hosted acceptance — 2026-10-16
