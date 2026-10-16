@@ -1507,6 +1507,34 @@ solver.
 - **Usage:** imported only by the Sim Lab's physics core (`lib/bw-sim/physics/`),
   never by the first-load bundle. No source is modified.
 
+## LDraw Parts Library — CC BY 4.0 (some files dual CC BY 2.0 / CC BY 4.0)
+
+The Sim Lab's part geometry is a curated subset of the official **LDraw Parts
+Library** (https://library.ldraw.org), copied unmodified into
+`overlay/scratch-gui/static/ldraw/` by `scripts/sync-ldraw-parts.mjs`: the
+parts listed in `overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json`, every
+sub-file and primitive they reference, and `LDConfig.ldr`.
+
+- **Holder / credit:** The LDraw Parts Library, © LDraw.org and the individual
+  part authors named in each file's `0 Author:` line (LDraw.org accepts this
+  collective credit in place of a list of every author).
+- **Licence:** each file states its own in its `0 !LICENSE` line — CC BY 4.0
+  (https://creativecommons.org/licenses/by/4.0/), or dual CC BY 2.0
+  (https://creativecommons.org/licenses/by/2.0/) and CC BY 4.0. Both are
+  attribution-only. `static/ldraw/ldraw-lock.json` records every file's
+  licence line, author, release and sha256; the sync refuses any other
+  licence line and any unofficial part. `CAreadme.txt`, `CAlicense.txt` and
+  `CAlicense4.txt` ship beside the parts.
+- **Modifications:** none — the files are byte-identical to the release named
+  in the lock (`complete.zip` of 2026-09-30).
+- **Not affiliated:** LDraw is an independent community project. LEGO® is a
+  trademark of the LEGO Group, which does not sponsor, authorize or endorse
+  this project.
+- **Our own data is not LDraw's:** the connector, collider and gear metadata
+  in `parts.json` is this project's, authored by measuring the LDraw geometry
+  (never copied from BrickLink Studio, LDCad or another connectivity
+  database), and is BSD-3-Clause like the rest of the repository.
+
 ## rp2040js — MIT
 
 **rp2040js** (MIT License, https://github.com/wokwi/rp2040js) provides the

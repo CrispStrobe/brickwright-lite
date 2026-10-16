@@ -1,0 +1,1718 @@
+{
+ "$comment": "Sim Lab part metadata v1 (docs/SIM-LAB-PLAN.md B3a). Authored by hand for this project from the official LDraw geometry, measured with bw-sim/ldraw/ldraw-geometry.js; never copied from BrickLink Studio, LDCad or any other connectivity database (plan D4). LDraw frame and units (LDU, -y up). test/bw-sim-part-meta.test.mjs checks every connector against the part mesh. Masses are estimates to +-20% (no published per-part masses); motor torque is LEGO's published stall torque for the medium angular motor (18 Ncm) and speed is the SPIKE 3 velocity limit used by docs/SPIKE-ARENA.md.",
+ "version": 1,
+ "references": [
+  "39370c01.dat"
+ ],
+ "$references": "LDraw assemblies vendored only so the metadata test can check a connector against LDraw's own placement (39370c01: where the castor ball sits in its socket).",
+ "parts": [
+  {
+   "part": "32523.dat",
+   "name": "Technic beam 3",
+   "category": "beam",
+   "massGrams": 1.0,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -20.0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0.0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      20.0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      10,
+      29
+     ]
+    }
+   ]
+  },
+  {
+   "part": "32524.dat",
+   "name": "Technic beam 7",
+   "category": "beam",
+   "massGrams": 2.3,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -60.0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -40.0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -20.0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0.0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      20.0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      40.0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      60.0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      10,
+      69
+     ]
+    }
+   ]
+  },
+  {
+   "part": "2780.dat",
+   "name": "Technic pin with friction",
+   "category": "pin",
+   "massGrams": 0.25,
+   "connectors": [
+    {
+     "id": "p",
+     "type": "pin",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 40,
+     "friction": true
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      7.8,
+      8
+     ]
+    }
+   ]
+  },
+  {
+   "part": "3673.dat",
+   "name": "Technic pin without friction",
+   "category": "pin",
+   "massGrams": 0.25,
+   "connectors": [
+    {
+     "id": "p",
+     "type": "pin",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 40,
+     "friction": false
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      7.8,
+      8
+     ]
+    }
+   ]
+  },
+  {
+   "part": "3705.dat",
+   "name": "Technic axle 4",
+   "category": "axle",
+   "massGrams": 0.6,
+   "connectors": [
+    {
+     "id": "a",
+     "type": "axle",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 80
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      6,
+      6
+     ]
+    }
+   ]
+  },
+  {
+   "part": "3647.dat",
+   "name": "Technic gear 8 tooth",
+   "category": "gear",
+   "massGrams": 0.4,
+   "connectors": [
+    {
+     "id": "c",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 12,
+     "halfHeight": 10,
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "gear": {
+    "type": "spur",
+    "teeth": 8,
+    "axis": [
+     0,
+     0,
+     1
+    ],
+    "center": [
+     0,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "part": "3648.dat",
+   "name": "Technic gear 24 tooth",
+   "category": "gear",
+   "massGrams": 1.4,
+   "connectors": [
+    {
+     "id": "c",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 32,
+     "halfHeight": 9.6,
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "gear": {
+    "type": "spur",
+    "teeth": 24,
+    "axis": [
+     0,
+     0,
+     1
+    ],
+    "center": [
+     0,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "part": "39367p01.dat",
+   "name": "Wheel 56 x 14 with medium azure tyre (SPIKE Prime)",
+   "category": "wheel",
+   "massGrams": 12,
+   "connectors": [
+    {
+     "id": "c",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 18
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 70,
+     "halfHeight": 17.5,
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    }
+   ]
+  },
+  {
+   "part": "39370.dat",
+   "name": "Technic beam 5 x 3 H-shaped with ball socket",
+   "category": "beam",
+   "massGrams": 4.0,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      -20,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      0,
+      20,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      0,
+      -20,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      0,
+      20,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "v0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "v1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "socket",
+     "type": "ballsocket",
+     "position": [
+      0,
+      46,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      28,
+      29.5,
+      49
+     ],
+     "position": [
+      0,
+      0.5,
+      0
+     ]
+    }
+   ]
+  },
+  {
+   "part": "52629.dat",
+   "name": "Technic ball 19 mm for ball castor",
+   "category": "other",
+   "massGrams": 3.0,
+   "connectors": [
+    {
+     "id": "ball",
+     "type": "ball",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      -1,
+      0
+     ]
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "sphere",
+     "radius": 24
+    }
+   ]
+  },
+  {
+   "part": "54696p01.dat",
+   "name": "SPIKE medium angular motor",
+   "category": "motor",
+   "massGrams": 40,
+   "connectors": [
+    {
+     "id": "s0",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s1",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s2",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s3",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s4",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s5",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      -20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s6",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s7",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      20
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s8",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -20,
+      140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s9",
+     "type": "pinhole",
+     "position": [
+      20,
+      -20,
+      140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s10",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s11",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      140
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "b0",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      140
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "b1",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      140
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "u0",
+     "type": "pinhole",
+     "position": [
+      20,
+      20,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "u1",
+     "type": "pinhole",
+     "position": [
+      -20,
+      20,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "u2",
+     "type": "pinhole",
+     "position": [
+      0,
+      20,
+      -20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "u3",
+     "type": "pinhole",
+     "position": [
+      0,
+      20,
+      140
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "out",
+     "type": "axlehole",
+     "position": [
+      0,
+      -40,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "out0",
+     "type": "pinhole",
+     "position": [
+      20,
+      -40,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "out1",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -40,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "out2",
+     "type": "pinhole",
+     "position": [
+      0,
+      -40,
+      20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "out3",
+     "type": "pinhole",
+     "position": [
+      0,
+      -40,
+      -20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      30,
+      32.75,
+      89.5
+     ],
+     "position": [
+      0,
+      -2.75,
+      60.5
+     ]
+    },
+    {
+     "shape": "cylinder",
+     "radius": 29,
+     "halfHeight": 7.25,
+     "position": [
+      0,
+      -42.75,
+      0
+     ]
+    }
+   ],
+   "motor": {
+    "output": [
+     "out",
+     "out0",
+     "out1",
+     "out2",
+     "out3"
+    ],
+    "outputColliders": [
+     1
+    ],
+    "maxTorqueNm": 0.18,
+    "maxSpeedDegPerSec": 1110
+   }
+  },
+  {
+   "part": "45601.dat",
+   "name": "SPIKE Prime hub",
+   "category": "hub",
+   "massGrams": 120,
+   "connectors": [
+    {
+     "id": "x0",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x1",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x2",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x3",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x4",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -30,
+      80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x5",
+     "type": "pinhole",
+     "position": [
+      60,
+      -30,
+      80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x6",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -50,
+      80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x7",
+     "type": "pinhole",
+     "position": [
+      60,
+      -50,
+      80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x8",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x9",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      -40
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x10",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x11",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x12",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -30,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x13",
+     "type": "pinhole",
+     "position": [
+      60,
+      -30,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x14",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -50,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "x15",
+     "type": "pinhole",
+     "position": [
+      60,
+      -50,
+      -80
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "z16",
+     "type": "pinhole",
+     "position": [
+      40,
+      -10,
+      -100
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "z17",
+     "type": "pinhole",
+     "position": [
+      40,
+      -10,
+      100
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "z18",
+     "type": "pinhole",
+     "position": [
+      40,
+      -30,
+      -100
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "z19",
+     "type": "pinhole",
+     "position": [
+      40,
+      -30,
+      100
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "z20",
+     "type": "pinhole",
+     "position": [
+      40,
+      -50,
+      -100
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "z21",
+     "type": "pinhole",
+     "position": [
+      40,
+      -50,
+      100
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "z22",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -10,
+      -100
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "z23",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -10,
+      100
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "z24",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -30,
+      -100
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "z25",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -30,
+      100
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "z26",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -50,
+      -100
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "z27",
+     "type": "pinhole",
+     "position": [
+      -40,
+      -50,
+      100
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "y28",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y29",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      -100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y30",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y31",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      -100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y32",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y33",
+     "type": "pinhole",
+     "position": [
+      60,
+      -10,
+      -60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y34",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y35",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -10,
+      -60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y36",
+     "type": "pinhole",
+     "position": [
+      20,
+      -10,
+      100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y37",
+     "type": "pinhole",
+     "position": [
+      20,
+      -10,
+      -100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y38",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -10,
+      100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y39",
+     "type": "pinhole",
+     "position": [
+      -20,
+      -10,
+      -100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y40",
+     "type": "pinhole",
+     "position": [
+      60,
+      -70,
+      100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y41",
+     "type": "pinhole",
+     "position": [
+      60,
+      -70,
+      -100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y42",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -70,
+      100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "y43",
+     "type": "pinhole",
+     "position": [
+      -60,
+      -70,
+      -100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      70,
+      40,
+      110
+     ],
+     "position": [
+      0,
+      -40,
+      0
+     ]
+    }
+   ],
+   "hub": {
+    "ports": [
+     "A",
+     "B",
+     "C",
+     "D",
+     "E",
+     "F"
+    ]
+   }
+  }
+ ]
+}
