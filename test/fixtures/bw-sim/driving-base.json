@@ -1,0 +1,281 @@
+{
+ "$comment": "S1 reference driving base built from the pilot parts (docs/SIM-LAB-PLAN.md section 0). LDraw frame (-y up). Wheel and castor-ball bottoms both rest at LDraw y = 80. Ports as the arena driving base: left motor A (mounted mirrored), right motor B. Each motor hangs on ONE friction pin: rigid in the v1 compiler, flimsy on a real table.",
+ "version": 1,
+ "parts": [
+  {
+   "id": "hub",
+   "part": "45601.dat",
+   "color": 71,
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "rotation": [
+    1,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "motorR",
+   "part": "54696p01.dat",
+   "color": 71,
+   "position": [
+    100,
+    10,
+    80
+   ],
+   "rotation": [
+    0,
+    -1,
+    0,
+    -1,
+    0,
+    0,
+    0,
+    0,
+    -1
+   ],
+   "port": "B"
+  },
+  {
+   "id": "pinR",
+   "part": "2780.dat",
+   "color": 0,
+   "position": [
+    70,
+    -10,
+    80
+   ],
+   "rotation": [
+    1,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "axleR",
+   "part": "3705.dat",
+   "color": 0,
+   "position": [
+    170,
+    10,
+    80
+   ],
+   "rotation": [
+    1,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "wheelR",
+   "part": "39367p01.dat",
+   "color": 15,
+   "position": [
+    170,
+    10,
+    80
+   ],
+   "rotation": [
+    0,
+    0,
+    1,
+    0,
+    -1,
+    0,
+    1,
+    0,
+    0
+   ]
+  },
+  {
+   "id": "motorL",
+   "part": "54696p01.dat",
+   "color": 71,
+   "position": [
+    -100,
+    10,
+    80
+   ],
+   "rotation": [
+    0,
+    1,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    -1
+   ],
+   "port": "A"
+  },
+  {
+   "id": "pinL",
+   "part": "2780.dat",
+   "color": 0,
+   "position": [
+    -70,
+    -10,
+    80
+   ],
+   "rotation": [
+    1,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "axleL",
+   "part": "3705.dat",
+   "color": 0,
+   "position": [
+    -170,
+    10,
+    80
+   ],
+   "rotation": [
+    1,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "wheelL",
+   "part": "39367p01.dat",
+   "color": 15,
+   "position": [
+    -170,
+    10,
+    80
+   ],
+   "rotation": [
+    0,
+    0,
+    1,
+    0,
+    -1,
+    0,
+    1,
+    0,
+    0
+   ]
+  },
+  {
+   "id": "castor",
+   "part": "39370.dat",
+   "color": 71,
+   "position": [
+    0,
+    10,
+    -100
+   ],
+   "rotation": [
+    0,
+    0,
+    -1,
+    0,
+    1,
+    0,
+    1,
+    0,
+    0
+   ]
+  },
+  {
+   "id": "castorPin1",
+   "part": "2780.dat",
+   "color": 0,
+   "position": [
+    20,
+    0,
+    -100
+   ],
+   "rotation": [
+    0,
+    -1,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "castorPin2",
+   "part": "2780.dat",
+   "color": 0,
+   "position": [
+    -20,
+    0,
+    -100
+   ],
+   "rotation": [
+    0,
+    -1,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "ball",
+   "part": "52629.dat",
+   "color": 15,
+   "position": [
+    0,
+    56,
+    -100
+   ],
+   "rotation": [
+    1,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1
+   ]
+  }
+ ]
+}
