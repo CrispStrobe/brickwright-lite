@@ -167,3 +167,37 @@ test('observed AST expiry is sticky for source context and already issued resour
         assert.equal(currentSharedImageArrayTransport(f.final),null,'restoration cannot revive the old final resource proof');
     }
 });
+
+
+test('private Text inherited edge setters preserve each actual write and shared Image selection',()=>{
+    const source=array+'let label=textsprite.create("a");label.left=2;label.right=160;label.top=1;label.bottom=90;let selected=pictures[0];label.setIcon(pictures[0]);';
+    const b=boundary(fixture(source)),result=finish(b);assert.ok(result.resource);
+    const writes=b.normalized.body.filter(node=>node.type==='ExpressionStatement').map(node=>node.expr).filter(node=>node.type==='Assignment'&&node.left?.type==='Member');
+    assert.deepEqual(writes.map(node=>node.left.name),['left','right','top','bottom']);
+    assert.deepEqual(writes.map(node=>node.right.value),['2','160','1','90']);
+    const converted=convert(b.prepared.files);clean(converted);assert.equal(frames(converted.code).length,2);assert.doesNotMatch(converted.code,/new array reference/);
+    const setterOffsets=['left','right','top','bottom'].map(property=>{const matches=[...converted.code.matchAll(new RegExp('arcade set '+property+' of ','g'))];assert.equal(matches.length,1,property+' actual emitted setter');return matches[0].index;});
+    assert.deepEqual([...setterOffsets].sort((a,b)=>a-b),setterOffsets,'actual setters retain source evaluation order');
+});
+test('Text edge non-exposure does not admit unrelated unknown computed or nonplain writes',()=>{
+    for(const statement of ['label.width=4;','label.height=4;','label.image=pictures[0];','label.unknown=1;','label["right"]=2;','label.right+=2;','label.right++;','delete label.right;']){
+        const b=boundary(fixture(array+'let label=textsprite.create("a");'+statement+'let selected=pictures[0];'));
+        assert.equal(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),null,statement);
+    }
+});
+test('Text geometry permission requires every actual receiver writer and the private source receipt',()=>{
+    for(const producer of ['{}','3','external()','sprites.create(img`1`,SpriteKind.Player)']){
+        const b=boundary(fixture(array+'let label=textsprite.create("a");label='+producer+';label.right=4;let selected=pictures[0];'));
+        assert.equal(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),null,producer);
+    }
+    const f=fixture(array+'let label=textsprite.create("a");label.right=4;let selected=pictures[0];');
+    const copied={...f.prepared.files},ordinary=lowerNamespaceBindings(parse(arcadeProjectSource(copied).source),{spriteKinds:true,textSpriteInitializer:true});
+    assert.equal(prepareSharedImageArrayTransport(ordinary.program),null);
+});
+test('inherited Text edge writes retain unknown effects and do not widen ordinary Sprite effects',()=>{
+    for(const source of [array+'let label=sprites.create(img`1`,SpriteKind.Player);label.right=4;let selected=pictures[0];',
+        array+'let label=textsprite.create("a");label.right=4;unknown();let selected=pictures[0];',
+        array+'let label=textsprite.create("a");label.top=1;function unused(){label.foreign=3;}let selected=pictures[0];']){
+        const b=boundary(fixture(source));assert.equal(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),null);
+    }
+});
