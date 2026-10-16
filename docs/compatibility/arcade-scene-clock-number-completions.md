@@ -120,3 +120,11 @@ preserves original variable names. Stop/load/refresh transitions retain their
 actual calls and error arrays before resetting call counters; runtime errors
 accumulate and must stay empty throughout each positive route. The earlier
 name-based fixture and error-clearing packet remain unexecuted source holds.
+
+The first actual native source route executed its two constrained calls and
+three clock expressions with no VM errors, then failed a test oracle that
+expected a stock change-variable block. Its typed scalar increment is instead
+an actual self-read binary-value assignment. The fixture now identifies that
+exact connected writer by its variable ID, plus operator and literal operand;
+the original execution and failed assertion remain retained. Five-route native
+qualification is still pending.

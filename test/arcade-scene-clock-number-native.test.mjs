@@ -33,9 +33,16 @@ const roleBindings=project=>{
     const descendants=start=>{const result=[],seen=new Set();const visit=node=>{if(!node||Array.isArray(node))return;assert.equal(seen.has(node),false,'unique actual expression edge');seen.add(node);result.push(node);for(const name of Object.keys(node.inputs||{}))visit(child(node,name));};visit(start);return result;};
     const definition=one(all.filter(block=>block.opcode==='procedures_definition'),'one actual definition'),body=chain(blocks[definition.next]);
     const constraint=one(body.filter(block=>block.opcode==='arcade_declareParameterConstraint'),'one connected Number formal');assert.equal(constraint.fields.TYPE[0],'Number');
-    const increment=one(body.filter(block=>block.opcode==='data_changevariableby'),'one connected entered increment');assert.equal(Number(literal(child(increment,'VALUE'))),1);
-    const assignment=one(body.filter(block=>block.opcode==='data_setvariableto'),'one connected formal assignment'),formal=child(assignment,'VALUE');assert.equal(formal?.opcode,'arcade_getLocal');assert.equal(literal(child(formal,'NAME')),constraint.fields.PARAMETER[0]);
-    assert.ok(body.indexOf(constraint)<body.indexOf(increment)&&body.indexOf(increment)<body.indexOf(assignment),'constraint, increment, formal assignment retain order');
+    const assignment=one(body.filter(block=>block.opcode==='data_setvariableto'&&child(block,'VALUE')?.opcode==='arcade_getLocal'),'one connected formal assignment'),formal=child(assignment,'VALUE');assert.equal(literal(child(formal,'NAME')),constraint.fields.PARAMETER[0]);
+    // The actual typed scalar lowerer represents entered += 1 as a native
+    // binary-value assignment. Select it by its owned self-read and literal
+    // operand, never by its current cell value or source variable spelling.
+    const increment=one(body.filter(block=>{
+        if(block.opcode!=='data_setvariableto'||block===assignment)return false;
+        const value=child(block,'VALUE'),left=value?.opcode==='arrays_valueBinary'?child(value,'LEFT'):null,right=value?.opcode==='arrays_valueBinary'?child(value,'RIGHT'):null,field=block.fields.VARIABLE;
+        return value?.fields?.OP?.[0]==='+'&&Array.isArray(left)&&left.length===3&&left[0]===12&&left[1]===field[0]&&left[2]===field[1]&&Number(literal(right))===1;
+    }),'one connected typed owned self-read plus one writer');
+    assert.deepEqual(body,[constraint,increment,assignment],'exact connected constraint, self increment, formal assignment body');
     const hat=one(all.filter(block=>block.opcode==='arcade_whenSourceStarts'),'one current main hat'),main=chain(blocks[hat.next]);
     const calls=main.filter(block=>block.opcode==='procedures_call');assert.equal(calls.length,2,'two connected ordinary callers');
     const prototype=child(definition,'custom_block');assert.equal(prototype?.opcode,'procedures_prototype');assert.equal(prototype.mutation.proccode,constraint.fields.PROCEDURE[0]);
