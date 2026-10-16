@@ -35,8 +35,9 @@
   },
   "jolt-physics/wasm-compat": {
     "tests": [
-      "test/bw-sim-physics-core.test.mjs"
+      "test/bw-sim-physics-core.test.mjs",
+      "test/bw-sim-s1-driving-base.test.mjs"
     ],
-    "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt; the test exercises it headless via the wasm-compat build"
+    "why": "the Sim Lab physics core (overlay/scratch-gui/src/lib/bw-sim/physics/jolt-core.js) runs a CompiledMechanism in Jolt, a GUI-package dependency; its own test and the S1 end-to-end driving-base test run it headless via the wasm-compat build"
   }
 }

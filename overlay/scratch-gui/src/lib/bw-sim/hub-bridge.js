@@ -1,0 +1,139 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026 Brickwright contributors
+//
+// Couples a running physics scene (bw-sim/physics/jolt-core.js) to the
+// virtual SPIKE hub (lib/virtual-hub/spike-hub-state.js) — plan task A6 in
+// its S1 form (docs/SIM-LAB-PLAN.md §0). Like the arena's bridge
+// (lib/spike-arena/arena-hub-bridge.js) it goes through the hub state only,
+// so every programming route (Scratch blocks, SPIKE 3 Python, the
+// independent motor controller's waits and promises) drives the model
+// without knowing it is simulated.
+//
+// ONE CLOCK (docs/SPIKE-ARENA.md, "The hub contract"). While a scene runs,
+// this bridge is the clock owner: tick(ms) advances in fixed steps, and each
+// step is
+//
+//   1. read each motor port's position (it may have been reset by a program
+//      since the last step: that becomes the new base);
+//   2. hubState.stepMotors(step) — the hub's own motor CONTROLLER runs
+//      unchanged and decides the commanded velocity (ramps, holds,
+//      run-to-position, stop actions) into data.motors[i].degPerSec;
+//   3. that velocity becomes the motorised hinge's target (torque limited by
+//      the motor's metadata, so a blocked wheel really does not turn);
+//   4. physics steps;
+//   5. the hinge's MEASURED rotation replaces the controller's kinematic
+//      integration: position = base + Δangle. So the encoder reads what the
+//      wheel did, and run-to-position finishes on the real angle;
+//   6. the hub body's heading becomes the IMU yaw (setHeading), and one
+//      hubState.changed() publishes a consistent frame.
+//
+// Signs. A hinge's angle is body2 relative to body1 about the joint axis
+// (contracts.js); the compiler takes a motor's axis from its output
+// connector, which the part metadata points INTO the motor from its face —
+// so a positive hinge angle is clockwise seen from the motor's face, SPIKE's
+// own sign. Degrees = radians · 180/π, nothing else.
+//
+// Not in S1: sensors other than the IMU yaw (E2), stall detection from the
+// physical tracking error (the controller's stall timer still works from its
+// own load input), a coasting stop (a stopped motor brakes), multi-hub scenes.
+
+const PORTS = 'ABCDEF';
+const DEG = 180 / Math.PI;
+
+/** Fixed step, ms: the arena's STEP_MS, so the motor controller sees the same cadence in both worlds. */
+export const STEP_MS = 5;
+
+export class SimHubBridge {
+    /**
+     * @param {object} options
+     * @param {object} options.hubState a VirtualSpikeHubState
+     * @param {object} options.core a physics core from createPhysicsCore (stepHz must be 1000 / STEP_MS)
+     * @param {object} options.mechanism the CompiledMechanism the core runs
+     * @param {string} options.hubBody id of the body that carries the hub (its pose is the IMU)
+     * @param {number} [options.stepMs]
+     */
+    constructor ({hubState, core, mechanism, hubBody, stepMs = STEP_MS}) {
+        this.hubState = hubState;
+        this.core = core;
+        this.stepMs = stepMs;
+        this.hubBody = hubBody;
+        this.accumulator = 0;
+        /** port index -> {joint, angle (rad, last measured)} */
+        this.motors = new Map();
+        for (const j of mechanism.joints) {
+            if (j.type !== 'hinge' || !j.motor) continue;
+            const index = PORTS.indexOf(j.motor.port);
+            if (this.motors.has(index)) throw new Error(`two motorised hinges on port ${j.motor.port}`);
+            this.motors.set(index, {joint: j.id, angle: core.jointState(j.id).angle});
+        }
+        if (!mechanism.bodies.some(b => b.id === hubBody)) throw new Error(`unknown hub body '${hubBody}'`);
+        // Heading reference: the hub's forward direction at t = 0, flattened onto the ground.
+        this.forward0 = this._forward();
+        this.heading = 0;
+        this.previousOwner = hubState.clockOwner;
+        hubState.clockOwner = 'native';
+        hubState.resetHeading(0);
+    }
+
+    /** The hub body's local -z axis (LDraw +z, the robot's forward) in world, on the ground plane. */
+    _forward () {
+        const [x, y, z, w] = this.core.bodyPose(this.hubBody).rotation;
+        // Rotate (0, 0, -1) by the quaternion.
+        const fx = -(2 * (x * z + w * y));
+        const fz = -(1 - 2 * (x * x + y * y));
+        const n = Math.hypot(fx, fz) || 1;
+        return [fx / n, fz / n];
+    }
+
+    /** One fixed step (see the header). */
+    step () {
+        const data = this.hubState.data.motors;
+        const base = new Map();
+        for (const [index] of this.motors) base.set(index, Number(data[index].position) || 0);
+        this.hubState.stepMotors(this.stepMs);
+        for (const [index, m] of this.motors) {
+            // Zero commanded velocity holds the shaft (brake); coast is not modelled in S1.
+            const degPerSec = Number(data[index].degPerSec) || 0;
+            this.core.setMotor(m.joint, {mode: 'velocity', radPerSec: degPerSec / DEG});
+        }
+        this.core.step(this.stepMs / 1000);
+        for (const [index, m] of this.motors) {
+            const {angle, velocity} = this.core.jointState(m.joint);
+            data[index].position = base.get(index) + (angle - m.angle) * DEG;
+            data[index].measuredDegPerSec = velocity * DEG;
+            m.angle = angle;
+        }
+        // Heading: clockwise positive seen from above (y up), continuous.
+        const [fx, fz] = this._forward();
+        const [gx, gz] = this.forward0;
+        // Angle from forward0 to forward, counter-clockwise seen from above, is atan2(cross_y, dot)
+        // with cross_y = g_z f_x − g_x f_z; clockwise is its negative.
+        const ccw = Math.atan2(gz * fx - gx * fz, gx * fx + gz * fz) * DEG;
+        const clockwise = -ccw;
+        // Unwrap so a robot spinning in place does not jump at ±180.
+        let delta = clockwise - (((this.heading % 360) + 540) % 360 - 180);
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        const rate = delta / (this.stepMs / 1000);
+        this.heading += delta;
+        this.hubState.setHeading(this.heading, {rate});
+    }
+
+    /** Advance by ms of simulated time in fixed steps; publish once. */
+    tick (ms) {
+        this.accumulator += Math.max(0, Number(ms) || 0);
+        let stepped = false;
+        while (this.accumulator >= this.stepMs - 1e-9) {
+            this.accumulator -= this.stepMs;
+            this.step();
+            stepped = true;
+        }
+        if (stepped) this.hubState.changed();
+        return stepped;
+    }
+
+    /** Hand the clock back (sensor/motor authority returns to whoever had it). */
+    dispose () {
+        this.hubState.clockOwner = this.previousOwner;
+    }
+}
