@@ -1,3 +1,15 @@
+## Original Arcade profiler clock bootstrap — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
+implementation. Contract: [reference clock bootstrap](docs/ARCADE-REFERENCE-CLOCK-BOOTSTRAP.md).
+Own the original-simulator clock helper, its Arcade runtime initialization call
+site, focused controls and qualification notes. Preserve paused-zero document
+admission, then prove a deterministic complete-frame bootstrap before actual
+guest construction, positive profiling and unchanged relative timer/frame/input
+phases. No PXT vendor patch, guest-clock replacement, normalized result,
+expectation/budget reduction, dependency pin or workflow change. All unrelated
+source, runtime, editor and device owners retain their lanes.
+
 ## Code conversion: preserve newer editor ownership — 2026-10-16
 
 PROPOSED — SPIKE integration follow-up, branch
