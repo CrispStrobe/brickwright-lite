@@ -28,7 +28,13 @@ const cases = [
         {t: 100, button: 'A', down: true}, {t: 150, button: 'A', down: false},
         {t: 300, gesture: 'shake'}], lit: [600, 800], sound: true},
     {id: 'reference/light/set-pixel-color#0', inputs: [
-        {t: 200, button: 'B', down: true}, {t: 300, button: 'B', down: false}], lit: [500]}
+        {t: 200, button: 'B', down: true}, {t: 300, button: 'B', down: false}], lit: [500]},
+    {id: 'projects/star-projector/code#1', lit: [100, 2500], expectedLit: 10,
+        equalColorGroups: [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]]},
+    {id: 'reference/light/show-ring#2', lit: [100, 2500], expectedLit: 10,
+        equalColorGroups: [[0, 4, 5, 9], [1, 3, 6, 8], [2, 7]]},
+    {id: 'projects/cartoon-network/enchiridion#1', lit: [100, 2500], expectedLit: 6,
+        blackPixels: [2, 4, 5, 7]}
 ];
 
 for (const scenario of cases) test(`CPX translated documentation vs original simulator: ${scenario.id}`, async () => {
@@ -86,6 +92,20 @@ for (const scenario of cases) test(`CPX translated documentation vs original sim
         assert.deepEqual(observed.tones, original.tones, 'Observer must preserve every original queued tone');
         assert.deepEqual(observed.serial.filter(row => !row.text.startsWith(CPX_TRACE_PREFIX)), original.serial,
             'Observer lines cannot replace original program serial output');
+    }
+    if (scenario.expectedLit !== undefined) for (const t of scenario.lit) {
+        const pixels = original.frames[t];
+        assert.equal(pixels.length, 10, 'Original CPX ring must have ten pixels');
+        assert.equal(pixels.filter(color => color !== 0).length, scenario.expectedLit,
+            `${scenario.id} must illuminate the authored number of pixels at ${t}ms`);
+        if (scenario.blackPixels) assert.deepEqual(pixels.flatMap((color, index) => color === 0 ? [index] : []),
+            scenario.blackPixels, 'Original black pixel positions must retain the authored pattern');
+        if (scenario.equalColorGroups) {
+            for (const group of scenario.equalColorGroups) assert.equal(new Set(group.map(index => pixels[index])).size, 1,
+                'Repeated original pattern colors must agree');
+            assert.equal(new Set(scenario.equalColorGroups.map(group => pixels[group[0]])).size,
+                scenario.equalColorGroups.length, 'Distinct authored colors cannot collapse to one');
+        }
     }
     for (const t of opts.at) assert.deepEqual(actual.frames[t], original.frames[t], `${scenario.id} ring at ${t}ms`);
     for (const t of scenario.lit) assert.ok(original.frames[t].some(v => v !== 0), `${scenario.id} original must light pixels at ${t}ms`);

@@ -10,7 +10,7 @@ Candidate controls: 44 host checks pass with zero failures; one existing runtime
 bridge check is unavailable locally and remains required in hosted CI. Thirteen
 independent source/control mutations are detected. All 244 pinned documentation
 fences are accounted for with zero silent call losses; prior census sections and
-135 other importer methods remain byte-identical. Twelve original-simulator
+135 other importer methods remain byte-identical. Fifteen original-simulator
 comparisons and the actual production CPX browser journey are prepared, NOT yet
 qualified. Final exact-head CI and affected hosted qualification must succeed
 before merge. [Behaviour and limits](docs/A12-CPX-TRANSLATOR.md).

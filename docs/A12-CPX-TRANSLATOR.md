@@ -73,7 +73,7 @@ it does not mean every program has a behavioural or re-export proof. Original
 compiler failures include stale animation APIs and an incomplete `Anim`
 example. Empty-body parser warnings remain visible.
 
-Required behavioural qualification compares twelve unchanged documentation
+Required behavioural qualification compares fifteen unchanged documentation
 programs in the original PXT simulator and, after translation and parsing,
 through the original CPX extension. The finite block-stack driver consumes the
 parsed project; it does not provide board behaviour. Ring frames and ordered
@@ -131,6 +131,13 @@ retained LabWired display canvas intercepts its clicks. The next control path cl
 opens the debugger through its existing button before clearing the firmware.
 Pixel values, input actions and observation bounds stay unchanged. Clean native browser
 qualification and the five exact timing comparisons remain pending.
+
+Three additional original programs extend the existing twelve comparisons:
+`projects/star-projector/code#1`, `reference/light/show-ring#2` and
+`projects/cartoon-network/enchiridion#1`. They require ten equal lit pixels,
+a three-color repeated ring and six lit pixels with four authored black
+positions respectively. All original cases and capture times remain intact;
+these additional comparisons still require fresh hosted execution.
 
 A separate diagnostic observer is prepared for the five differing comparisons.
 It wraps the original compiled factory, retains its exact bytes and forwards
