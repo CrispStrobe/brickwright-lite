@@ -9,7 +9,7 @@ import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-imp
 const SOURCE='let input=[1];let calls=0;function effect(value:number){calls++;return value}calls+=10;input.map(value=>effect(value));calls+=100;';
 const record=row=>{if(process.env.BW_DISCARDED_MAP_EXPORT_EVIDENCE)appendFileSync(process.env.BW_DISCARDED_MAP_EXPORT_EVIDENCE,JSON.stringify(row,(_k,v)=>v===undefined?{$scalar:'Undefined'}:v)+'\n');};
 const channels=value=>Object.fromEntries([...new Set(['unsupported','warnings','errors','unparsed','diagnostics','refused','fetchRefusals','netAttempts',...Object.keys(value).filter(k=>/unsupported|warn|error|unparsed|diagnostic|refus|netAttempts/i.test(k))])].map(key=>[key,{provided:Object.hasOwn(value,key),...(Object.hasOwn(value,key)?{value:value[key]}:{})}]));
-const clean=value=>{for(const [key,row]of Object.entries(channels(value)))if(row.provided)assert.ok(Array.isArray(row.value)&&row.value.length===0,key+': '+JSON.stringify(row.value));};
+const clean=(value,required=['unsupported'])=>{for(const key of required)assert.ok(Object.hasOwn(value,key),'promised channel absent: '+key);for(const [key,row]of Object.entries(channels(value)))if(row.provided)assert.ok(Array.isArray(row.value)&&row.value.length===0,key+': '+JSON.stringify(row.value));};
 const nodes=root=>{const out=[];const visit=value=>{if(!value||typeof value!=='object')return;if(!Array.isArray(value))out.push(value);for(const child of Object.values(value))visit(child);};visit(root);return out;};
 const convert=(label,source)=>{const result=arcadeToPseudocode(source);record({stage:label,source,result,channels:channels(result)});return result;};
 const exported=(label,creator)=>{const result=projectToArcade(creator.project,{costumeSvg:(_target,costume)=>creator.assets.get(costume.assetId)?.data});record({stage:label,result,channels:channels(result)});return result;};
@@ -23,7 +23,7 @@ const inspectExport=(label,result)=>{
 
 test('typed discarded map survives actual Creator export and a current numeric input edit without annotation-derived ingress',()=>{
     const imported=convert('original-import',SOURCE);clean(imported);
-    const creator=new Creator();creator.parse(imported.code);record({stage:'actual-Creator',project:creator.project,channels:channels(creator)});clean(creator);
+    const creator=new Creator();creator.parse(imported.code);record({stage:'actual-Creator',project:creator.project,channels:channels(creator)});clean(creator,['warnings','errors','unparsed']);
     const firstExport=exported('original-export',creator),firstAgain=inspectExport('original-export',firstExport);
     // Join the actual reference constructor; edit its real literal input, not exported text.
     const candidates=[];
