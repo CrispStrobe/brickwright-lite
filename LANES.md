@@ -5728,3 +5728,53 @@ earlier v1/v2/v3 failures remain retained. Persistent copy under
 `build-artifacts/cpx-20261016-47b91dc/` contains JSON and live/round-trip images.
 Final source PR/full CI still waits for the ordered earlier hosted integrations.
 D13 and iPad/WeDo physical acceptance remain explicitly open.
+
+## Circuit File actions with a cached but unmounted designer — 2026-10-16
+
+DONE candidate / actual qualification pending — Codex root, isolated `/tmp/brickwright-circuit-file-wake-20261016`,
+branch `fix/circuit-file-wake-20261016`, claim base canonical main `7ce90fc38`.
+Prepare the implementation on the already qualified local combined A13 graph
+`6681f1868`, then reconcile current main, including the independent Sim Lab
+addition, before final source qualification. This does not change package pins.
+Actual combined browser evidence retains Save circuit from Code producing no
+download after the designer had already been loaded. The debugger-only right
+portal unmounts the designer, while `_circuitFileWake` mistakes cached
+`state.Designer` for a mounted command receiver. Cold cached-component loading
+and mounted-receiver readiness must remain distinct.
+
+Own only the File-command wake/replay and connected Circuit-tab activation in
+`overlay/scratch-gui/src/components/tw-pseudocode/circuit-tab.jsx` and its exact
+package mirror, focused `test/circuit-file-menu-reach.test.mjs` controls, and
+cold/warm Code-tab actual File-menu journeys in existing
+`scripts/verify-circuit-export-completeness.mjs`, plus this ledger. Reveal the
+existing Circuit view on an explicit command that lacks a receiver, queue its
+action, and replay through the existing upstream channel after the receiver
+mounts. Preserve existing mounted single delivery, replay suppression, lazy
+loading, debugger sessions and all four existing actions.
+
+No supplier/pin, runtime, serialized circuit, new file format, editor-shell,
+workflow/budget or other owner's feature change. Preserve original failures
+and require actual menu-driven download/import and focused omitted-wake and
+omitted-replay negatives; no direct VM state injection or invented output.
+Merge this claim before implementation. Source merge requires all enabled
+exact-head CI, with normal composition preserving the pending A13 CPX bridge.
+
+Implementation after canonical claim PR1028 merged: the host distinguishes
+its cached module from its mounted receiver, activates the existing Circuit tab
+on an explicit File action and replays only after the actual host mount.
+One scheduled frame owns delivery and is cancelled on unmount. A mounted
+receiver retains direct ownership. Preserve the host's last real circuit via
+its existing toJSON/circuitData boundary before remounting: the first production
+probe now reached Save/Open, but retained an honest failure where an immediate
+tab change cancelled upstream debounced autosave and restored1000ohm instead
+of the authored1234ohm. Keep `/tmp/brickwright-file-wake-actual/` and its log.
+This narrow File-operation repair changes no serialization format and does not
+claim a general tab autosave repair.
+
+Original focused control fails the cached-receiver journey before repair. Now
+25 File/CPX controls pass, zero skips, including omitted-replay and omitted-wake
+negatives, direct single delivery and preserving the actual circuit before tab
+activation. Source mirror is exact. A first diagnostic production build passes
+with two existing size warnings; the updated production browser check and final
+source build remain pending after the preservation fix. Final main composition
+and all exact-head hosted checks remain required before source merge.

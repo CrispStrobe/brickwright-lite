@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Deployed proof: one circuit document downloads identically from every view. */
 import {chromium} from 'playwright';
+import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {mkdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
@@ -46,6 +47,37 @@ try {
         sessionStorage.clear();
     });
     await page.goto(proofUrl, {waitUntil: 'domcontentloaded', timeout: 60000});
+    const saveCircuit = async () => {
+        await page.getByText('File', {exact: true}).first().click();
+        const [download] = await Promise.all([
+            page.waitForEvent('download', {timeout: 10000}),
+            page.getByText('Save circuit', {exact: true}).click()
+        ]);
+        assert.equal(download.suggestedFilename(), 'circuit.json');
+        return JSON.parse((await readDownload(download)).toString('utf8'));
+    };
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const coldCircuit = await saveCircuit();
+    assert.ok(coldCircuit.parts.length > 0, 'cold Code-menu Save must reach an actual designer');
+    const resistor = coldCircuit.parts.find(part => part.kind === 'resistor');
+    assert.ok(resistor, 'the original starter supplies the authored resistor control');
+    resistor.params = {...resistor.params, ohms: 1234};
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    await page.getByText('File', {exact: true}).first().click();
+    const [chooser] = await Promise.all([
+        page.waitForEvent('filechooser', {timeout: 10000}),
+        page.getByText('Open circuit…', {exact: true}).click()
+    ]);
+    await chooser.setFiles({name: 'owned-file-menu.json', mimeType: 'application/json',
+        buffer: Buffer.from(JSON.stringify(coldCircuit))});
+    await page.waitForFunction(() => window.__circuit?.parts.some(part =>
+        part.kind === 'resistor' && part.params?.ohms === 1234));
+    const canonical = await saveCircuit();
+    await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    const warmCircuit = await saveCircuit();
+    assert.deepEqual(warmCircuit, canonical, 'warm Code-menu Save must preserve the authored circuit');
+    assert.ok(warmCircuit.parts.some(part => part.kind === 'resistor' && part.params?.ohms === 1234));
+    const fileMenu = {coldSave: true, warmOpen: true, warmSave: true, authoredOhms: 1234};
     await page.getByRole('tab', {name: /Circuit/}).click();
     const designer = page.locator('.bw-circuit-designer:visible').last();
     await designer.waitFor({state: 'visible', timeout: 60000});
@@ -134,11 +166,16 @@ try {
     const assets = await page.locator('script[src],link[rel="stylesheet"][href]').evaluateAll(nodes =>
         nodes.map(node => node.getAttribute('src') || node.getAttribute('href'))
             .filter(value => /\.[a-f0-9]{8,32}\.(?:js|css)/.test(value)));
-    result = {url: proofUrl, example: '50-rc-scope', views: 3, downloads: 4, bytes: artifacts[0].length,
+    result = {url: proofUrl, fileMenu, example: '50-rc-scope', views: 3, downloads: 4, bytes: artifacts[0].length,
         sha256: hashes[0], scopeRows: numericRows.length, pageErrors, assets};
     await page.screenshot({path: path.join(outDir, 'circuit-export-board-view.png'), fullPage: true});
     await writeFile(path.join(outDir, 'result.json'), `${JSON.stringify(result, null, 2)}\n`);
     console.log(JSON.stringify(result));
+} catch (error) {
+    await writeFile(path.join(outDir, 'failure.json'), JSON.stringify({url: proofUrl,
+        error: String(error), pageErrors}, null, 2) + '\n');
+    await page.screenshot({path: path.join(outDir, 'failure.png')}).catch(() => {});
+    throw error;
 } finally {
     await browser.close();
 }
