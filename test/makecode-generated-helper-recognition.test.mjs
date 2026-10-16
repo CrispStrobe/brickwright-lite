@@ -121,7 +121,7 @@ test('stop lifting requires a current activated root and a terminal continuation
     }
 });
 
-test('retained external default effects cannot hide behind signature metadata',()=>{
+test('retained default metadata agrees with executable prologues and preserves pure initializers',()=>{
     for(const effect of ['function mutate(x:any=Function("return JSON")()){return x}mutate()',
         'function mutate(x:any=__bwNamedJsonValue`text`){return x}mutate()',
         'function mutate(x:any=JSON.parse`7`){return x}mutate()']){
@@ -129,6 +129,14 @@ test('retained external default effects cannot hide behind signature metadata',(
         assert.equal(proof.isCurrent(),false,effect);
         const result=arcadeToPseudocode(LEGACY_JSON_SOURCE+'\n'+effect);assert.match(result.code,/__bwNamedJsonValue/);
     }
+    const pure=parse(LEGACY_PARSE_SOURCE+'\nfunction seven(){return 7}function ordinary(x:any=seven()){return x}ordinary()');
+    const pureProof=inspectGeneratedHelperBindings(pure,profiles.ordinary);
+    assert.equal(pureProof.isCurrent(),true);assert.equal(pureProof.closed(pure.body[0]),true,'actual pure nonliteral default remains eligible');
+    const callback=parse(LEGACY_PARSE_SOURCE+'\ngame.onUpdate(function(x:any=7){console.log(x)})',profiles.metadata);
+    const callbackProof=inspectGeneratedHelperBindings(callback,profiles.metadata);
+    assert.equal(callbackProof.isCurrent(),true);assert.equal(callbackProof.closed(callback.body[0]),true,'actual literal callback default keeps its own parameter binding');
+    const allocated=parse(LEGACY_PARSE_SOURCE+'\nfunction ordinary(x:any=[]){return x}ordinary()');
+    assert.equal(inspectGeneratedHelperBindings(allocated,profiles.ordinary).isCurrent(),true,'actual Array default prologue remains visible');
     const ast=parse(LEGACY_JSON_SOURCE+'\nfunction external(x:any=0){return x}external()');
     const fn=ast.body.at(-2);fn.params.parameterDefaults[0].value={type:'Call',callee:{type:'Identifier',name:'unknown'},args:[]};
     assert.equal(inspectGeneratedHelperBindings(ast,profiles.ordinary).isCurrent(),false,'metadata-only effect edit cannot borrow prologue coverage');

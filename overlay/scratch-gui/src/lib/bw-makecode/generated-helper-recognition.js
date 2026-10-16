@@ -33,21 +33,20 @@ function canonical(source,profile){
 }
 // Only declaration/Identifier roles may change a helper name. Member names,
 // record keys, strings, types and every default/body field remain exact.
+function sameGeneratedData(a,b,names=new Map()){
+    if(!a||!b||typeof a!=='object'||typeof b!=='object')return Object.is(a,b);
+    if(Array.isArray(a)!==Array.isArray(b))return false;
+    const ak=Reflect.ownKeys(a),bk=Reflect.ownKeys(b);
+    if(ak.length!==bk.length||ak.some(k=>!bk.includes(k)))return false;
+    return ak.every(key=>{const x=Object.getOwnPropertyDescriptor(a,key),y=Object.getOwnPropertyDescriptor(b,key);
+        if(!x||!y||!Object.hasOwn(x,'value')||!Object.hasOwn(y,'value')||x.enumerable!==y.enumerable||
+            x.configurable!==y.configurable||x.writable!==y.writable)return false;
+        const value=key==='name'&&['FunctionDeclaration','Identifier'].includes(a.type)&&names.has(x.value)?names.get(x.value):x.value;
+        return sameGeneratedData(value,y.value,names);
+    });
+}
 function matchesGeneratedFunction(fn,source,profile,names=new Map()){
-    const expected=canonical(source,profile);if(!expected)return false;
-    const equal=(a,b)=>{
-        if(!a||!b||typeof a!=='object'||typeof b!=='object')return Object.is(a,b);
-        if(Array.isArray(a)!==Array.isArray(b))return false;
-        const ak=Reflect.ownKeys(a),bk=Reflect.ownKeys(b);
-        if(ak.length!==bk.length||ak.some(k=>!bk.includes(k)))return false;
-        return ak.every(key=>{const x=Object.getOwnPropertyDescriptor(a,key),y=Object.getOwnPropertyDescriptor(b,key);
-            if(!x||!y||!Object.hasOwn(x,'value')||!Object.hasOwn(y,'value')||x.enumerable!==y.enumerable||
-                x.configurable!==y.configurable||x.writable!==y.writable)return false;
-            const value=key==='name'&&['FunctionDeclaration','Identifier'].includes(a.type)&&names.has(x.value)?names.get(x.value):x.value;
-            return equal(value,y.value);
-        });
-    };
-    return equal(fn,expected);
+    const expected=canonical(source,profile);return !!expected&&sameGeneratedData(fn,expected,names);
 }
 
 /** Binding/currentness only: this proof creates no value or type facts. */
@@ -79,7 +78,7 @@ export function inspectGeneratedHelperBindings(program,profile){
         if(executable.has(node)){valid=false;return;}executable.add(node);
         if(Array.isArray(node)){node.forEach(n=>walk(n,parent));return;}
         nodes.push(node);parents.set(node,parent);
-        if(['Unknown','Try','TryCatch','CatchClause','With','Class','ClassDeclaration'].includes(node.type))valid=false;
+        if(['Unknown','Try','TryCatch','CatchClause','With'].includes(node.type))valid=false;
         if(node.type==='Identifier'&&['eval','Function','Reflect','globalThis','window','self','arguments'].includes(node.name)||
             node.type==='Member'&&node.name==='constructor')valid=false;
         for(const [key,value]of Object.entries(node))if(!metadata.has(key))walk(value,node);
@@ -102,26 +101,38 @@ export function inspectGeneratedHelperBindings(program,profile){
     // Only the actual unshadowed literal tags have a closed effect here.
     for(const n of nodes)if(n.type==='Template'&&(typeof n.value!=='string'||n.value.includes('${')||!['img','hex'].includes(n.tag)||counts.has(n.tag)||
         nodes.some(other=>other.type==='Identifier'&&other.name===n.tag)))valid=false;
-    // All admitted parser profiles emit actual default prologues. Also refuse
-    // nonliteral retained defaults before lexical normalization can omit them;
-    // generic default evaluation is outside this helper protocol.
-    const literalDefault=n=>{
-        if(!n||typeof n!=='object')return false;
-        const keys=Reflect.ownKeys(n);
-        if(n.type==='Null'||n.type==='Undefined')return keys.length===1&&keys[0]==='type';
-        if(n.type==='Boolean')return keys.length===2&&keys.includes('value')&&typeof n.value==='boolean';
-        if(n.type==='String')return keys.length===2&&keys.includes('value')&&typeof n.value==='string';
-        if(n.type==='Number')return keys.length===2&&keys.includes('value')&&['string','number'].includes(typeof n.value)&&Number.isFinite(Number(n.value));
-        if(n.type==='Unary'&&['+','-'].includes(n.op))return keys.length===3&&keys.includes('argument')&&n.argument?.type==='Number'&&literalDefault(n.argument);
-        return false;
-    };
-    if(valid)for(const {rows}of snapshots)for(const [key,d]of rows)if(key==='parameterDefaults'){
-        if(!Array.isArray(d.value)||d.value.some(row=>!row||!literalDefault(row.value)))valid=false;
+    // Default initializers are executable in these actual parser profiles.
+    // Join retained metadata to the complete actual body prologue before a
+    // lexical normalizer can hide it. Pure/nonliteral defaults remain valid;
+    // their actual calls and effects are included in the ordinary body census.
+    if(valid)for(const n of nodes)if(Array.isArray(n.params)){
+        const defaults=Object.getOwnPropertyDescriptor(n.params,'parameterDefaults')?.value||[];
+        if(!Array.isArray(defaults)||Object.hasOwn(n,'parameterDefaults')&&!sameGeneratedData(n.parameterDefaults,defaults)){
+            valid=false;break;
+        }
+        if(!defaults.length)continue;
+        if(!Array.isArray(n.body)||Object.hasOwn(n,'parameterDefaultPrologue')&&n.parameterDefaultPrologue!==true){valid=false;break;}
+        const expected=defaults.map(({name,value})=>({type:'If',test:{type:'Binary',op:'===',left:{type:'Identifier',name},right:{type:'Undefined'}},
+            consequent:[{type:'ExpressionStatement',expr:{type:'Assignment',op:'=',left:{type:'Identifier',name},right:value}}],alternate:[]}));
+        if(!sameGeneratedData(n.body.slice(0,expected.length),expected)){valid=false;break;}
     }
     const lexical=valid?analyseCallableBindings(program):null;
     const root=fn=>current()&&fn?.type==='FunctionDeclaration'&&program.body.includes(fn)&&counts.get(fn.name)===1&&
         lexical.global.names.get(fn.name)?.node===fn&&!lexical.global.names.get(fn.name).written;
-    const binding=node=>lexical?.references.get(node);
+    // The callable analyser intentionally omits proved literal default
+    // prologues. Their two actual parameter references still participate in
+    // this complete executable census, bound to that exact function scope.
+    const defaultReferences=new WeakMap();
+    if(valid)for(const fn of nodes)if(fn.type==='FunctionExpression'&&fn.parameterDefaultPrologue===true){
+        const defaults=fn.parameterDefaults||[],scope=lexical.scopes.get(fn);
+        for(let i=0;i<defaults.length;i++){
+            const own=scope?.names.get(defaults[i].name),st=fn.body[i];
+            if(own?.node===fn&&own.kind==='parameter'){
+                defaultReferences.set(st.test.left,own);defaultReferences.set(st.consequent[0].expr.left,own);
+            }
+        }
+    }
+    const binding=node=>lexical?.references.get(node)||defaultReferences.get(node);
     const within=(node,set)=>{for(let p=parents.get(node);p;p=parents.get(p))if(set.has(p))return true;return false;};
     const calls=(fn,arity,internal=new Set())=>{
         if(!root(fn))return null;const found=[];
