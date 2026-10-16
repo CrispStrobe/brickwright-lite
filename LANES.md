@@ -5561,3 +5561,85 @@ pixels with zero page errors, but no CPX circuit board is seated; the JSON and
 viewed screenshot record that exact missing face (`/tmp/brickwright-a13-gate-baseline/`).
 This is a negative baseline, not final adoption acceptance. Fourteen host/dock
 controls and the script syntax check pass after the diagnostic change.
+## STM32 composition: original 386 boot register reader — 2026-10-16
+
+CLAIMED — Codex root, branch `lane/stm32-compose-20261016`, isolated
+`/tmp/brickwright-stm32-compose-20261016`, amendment based on main `e1e5bc30b`.
+Merge this claim before changing the existing synthetic boot assertion in
+`scripts/verify-i80386-local-hdd-gui.mjs`: read the selected supplier's `edi`
+instead of absent `di`, retaining equality to42, exact halted/PC/canvas checks
+and the existing timeout. The exact installed f84 supplier and a read-only
+production diagnostic expose `edi=42`, `pc=0x7c1a`, `halted=true`, VGA720×400;
+the original gate is retained as failed evidence. Own only this contract-reader
+hunk, a focused regression control and this ledger. No new engine or pin move.
+
+The x86 lane retains its distinct new persistence/original-witness and
+forward-debug scenarios in this same script, all supporting files, its branches
+and its acceptance requirements. Its published composition currently preserves
+the same stale original synthetic assertion. This narrow dependency-adoption
+reader repair carries no persistence or debugger acceptance and takes over none
+of those scenarios. Preserve any newer owner work during normal composition.
+No relaxed comparison, fallback register name, timeout increase, skipped gate,
+CI bypass or source rewrite is permitted. The corrected actual browser gate
+and all enabled final-head source checks must pass before integration merge.
+
+## CPX translator qualification diagnostic transport — 2026-10-16
+
+RELEASED — completed by the existing CPX owner; verified by Codex root, isolated `/tmp/brickwright-cpx-compose-20261016`,
+branch `lane/cpx-qualification-compose-20261016`, supplier consumer source
+PR1009 at `9fbc8d97e87c6c6c9ee74d71c7ceae96996d5d4a`, base main `8fe41c722`.
+The user requested continued coding through the ordered integrations. Preserve
+the existing translator owner's branch and every assertion, corpus input,
+capture time, trace record, timing-limit fixture and runtime/compiler helper.
+Own only the four diagnostic console writers in
+`test/cpx-makecode-behaviour.test.mjs`: route the identical labels and serialized
+records through that test's `t.diagnostic` instead of raw stdout. Merge claim
+before implementation on a separate composition branch; preserve newer owner
+work during final integration. No translator source, pin or oracle semantics
+are transferred by this narrow qualification repair.
+
+Hosted artifact from run38931471960 contains all15 passed tests under the
+absolute file path, plus a separate relative-path stdout bucket with30125bytes.
+The checker collapses basenames and the latter bucket masks those15 tests;
+the genuine blocker is the prohibited raw stdout. Do not relax or edit the
+checker, merge away the stdout evidence, hide diagnostics, or claim test cases
+never executed. Require all15 existing cases to pass with zero raw stdout in
+the actual two-reporter run, retained full diagnostic records, and unchanged
+assertions. This does not claim timing parity for the five documented boundary
+programs. Final candidate still requires every enabled exact-head CI check.
+
+The existing owner published `16dda603dde74db3a820d88750b43aada25f91b8`
+while this repair was being qualified. Its four framed diagnostic writers match
+the proposed repair, with an explanatory comment. Preserve that implementation
+and original PR1009; no duplicate source PR or full CI was requested. In an
+isolated normal composition with current documentation-only main, the owner's
+unchanged executable tree passes all74 focused CPX/import/export checks under
+genuine Node22.23.3 and the actual TAP plus census reporters. All15 behaviour
+cases are accounted for, zero raw stdout bytes or skips, and all108 diagnostic
+lines are byte-for-byte identical to the proposed repair's passing trace.
+Receipts: `/tmp/brickwright-cpx-owner-diagnostics.tap` and
+`/tmp/brickwright-cpx-owner-diagnostics-census.json`. Hosted final-head CI still
+qualifies PR1009; five documented timing limits remain limits, not parity.
+This narrow diagnostic claim is released; no translator ownership is retained.
+
+## A13 local combined graph preparation — 2026-10-16
+
+CLAIMED — Codex root, existing isolated A13 worktree and branch
+`/tmp/brickwright-lite-a13-20261016`,
+`lane/a13-cpx-face-adoption-20261016`, base canonical main `9052eee43`.
+The user again requested continued implementation. Extend only the timing of
+local candidate preparation: normally compose the unchanged existing STM32
+candidate PR1017 at7a82a14f and CPX translator owner PR1009 at16dda603 into
+the A13 branch, preserving newer owner work; then adopt the already qualified
+and merged CUI PR85 immutable source through canonical pin/lock/notice writers
+and exact-pin readers already owned by A13. This permits meaningful local
+production/browser qualification while the earlier hosted checks queue.
+
+Preserve all original integration branches, selected Boardf84/SBCa13/WeDo pins,
+translator assertions and documented timing limits. This is local composition,
+not permission to merge unqualified predecessors or dispatch duplicate source
+CI. Keep the user-requested main landing order and existing exact-head checks.
+Publish final A13 source PR/full qualification only after the earlier source
+integrations qualify and land; reconcile current main before that final head.
+No new runtime, translator, engine, firmware, physical acceptance or workflow
+budget scope is added. Merge this claim before composing/adopting the graph.
