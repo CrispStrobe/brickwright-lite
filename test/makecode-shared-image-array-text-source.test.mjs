@@ -826,10 +826,27 @@ test('exact score HUD visibility retains connected Boolean commands resources an
         const targets=project.targets.filter(target=>target.name===template[1]);assert.equal(targets.length,1);assert.equal(targets[0].costumes.length,1);
         const key=literal('KEY');assert.equal(key[0],10);return {owner:{isStage:row.target.isStage,name:row.target.name},id:row.id,writerId:row.block.parent,variableId:writer.fields.VARIABLE[1],key:key[1],template:template[1],index:literal('INDEX'),start:literal('START'),count:literal('COUNT'),costume:targets[0].costumes[0]};
     };
-    const initialFrame=selectedFrame(creator.project),freshFrame=selectedFrame(second.project);assert.equal(initialFrame.key,'pictures');assert.equal(freshFrame.key,backing.decl.name);
-    for(const field of ['owner','template','index','start','count','costume'])assert.deepEqual(freshFrame[field],initialFrame[field],field);
-    for(const [connected,frame]of [[roles,initialFrame],[againRoles,freshFrame]]){assert.ok(connected.trace.includes(frame.writerId));assert.ok(connected.trace.indexOf(frame.writerId)<connected.trace.indexOf(connected.evidence[0].id));}
+    const initialFrame=selectedFrame(creator.project),freshFrame=selectedFrame(second.project);
     record({stage:'score-hud-roundtrip-frame-binding',exportedBacking:backing,selectedWrite:selectedWrites[0],initialFrame,freshFrame,initialPixels,sourceRows,initialKeys,freshKeys,fullSvgEqual:true});
+    // Each real SVG upload assigns a fresh local asset id. Retain a second
+    // actual archive, then join each id to its own bytes before comparing art.
+    const secondBytes=Buffer.from(await(await second.generateSB3()).arrayBuffer()),secondZip=await JSZip.loadAsync(secondBytes),secondMembers={};
+    for(const [name,item]of Object.entries(secondZip.files))if(!item.dir)secondMembers[name]=await item.async('base64');
+    record({stage:'score-hud-reimport-SB3',bytes:secondBytes.toString('base64'),members:secondMembers,project:second.project});
+    const bindAsset=async(label,owner,frame,archive)=>{
+        const costume=frame.costume,asset=owner.assets.get(costume.assetId),member=archive.file(costume.md5ext),base64=member?await member.async('base64'):null;
+        const project=JSON.parse(await archive.file('project.json').async('string'));
+        record({stage:'score-hud-actual-asset-binding',label,costume,asset,memberName:member?.name,base64});
+        assert.ok(asset);assert.equal(typeof asset.data,'string');assert.equal(asset.type,costume.dataFormat);assert.equal(costume.dataFormat,'svg');
+        assert.equal(asset.filename,costume.md5ext);assert.equal(costume.md5ext,costume.assetId+'.'+costume.dataFormat);assert.ok(member);assert.equal(member.dir,false);
+        const targets=project.targets.filter(target=>target.name===frame.template);assert.equal(targets.length,1);assert.equal(targets[0].costumes.length,1);assert.deepEqual(targets[0].costumes[0],costume);
+        const bytes=Buffer.from(base64,'base64');assert.deepEqual(bytes,Buffer.from(asset.data));return bytes;
+    };
+    const initialAssetBytes=await bindAsset('initial',creator,initialFrame,zip),freshAssetBytes=await bindAsset('reimport',second,freshFrame,secondZip);assert.deepEqual(freshAssetBytes,initialAssetBytes,'actual selected costume ZIP bytes are identical');
+    const semanticCostume=({assetId,md5ext,...fields})=>fields;assert.deepEqual(semanticCostume(freshFrame.costume),semanticCostume(initialFrame.costume),'all nonidentity costume fields agree');
+    assert.equal(initialFrame.key,'pictures');assert.equal(freshFrame.key,backing.decl.name);
+    for(const field of ['owner','template','index','start','count'])assert.deepEqual(freshFrame[field],initialFrame[field],field);
+    for(const [connected,frame]of [[roles,initialFrame],[againRoles,freshFrame]]){assert.ok(connected.trace.includes(frame.writerId));assert.ok(connected.trace.indexOf(frame.writerId)<connected.trace.indexOf(connected.evidence[0].id));}
 });
 test('score HUD effect requires exact literal Boolean own data and closed direct call schema',()=>{
     for(const text of ['info.showScore();','info.showScore(false,true);','info.showScore(pictures);','info.showScore(pictures[0]);','info.showScore(unknown());','let visible:boolean;info.showScore(visible);','info["showScore"](false);','new info.showScore(false);','info.showScore<boolean>(false);']){
