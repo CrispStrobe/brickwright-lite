@@ -372,18 +372,6 @@ const RUN_TARGETS = ['microbit', 'calliopemini'];
  */
 const RUN_BOARDS = {v1: {board: 'microbit-v1', name: 'micro:bit V1'}, v2: {board: 'microbit-v2', name: 'micro:bit V2'}};
 
-/**
- * Serial on the V2 board model is NOT reported: CODAL's NRF52Serial::putc points
- * the UARTE's EasyDMA at a stack byte and returns at once, and LabWired's UARTE
- * reads that buffer when the transfer COMPLETES, a frame later, by which time the
- * stack slot holds other data (silicon fetches it at STARTTX). The bytes it
- * captures are not what the program wrote, so they are withheld, by name, until
- * the engine fix lands (task A10 of docs/OPEN-TASKS-2026-09-29.md).
- */
-const V2_SERIAL_WITHHELD = 'serial is not reported on the V2 board model yet: LabWired\'s nRF52 UARTE reads the ' +
-    'transmit buffer when the transfer completes, not when it starts, and CODAL\'s serial sends from a stack ' +
-    'byte that is gone by then (task A10)';
-
 /** The files of a program to compile for `run`, from a .ts, an .sb3/.bw, or a project-only .hex. */
 async function programFiles (a) {
     if (/\.ts$/i.test(a.input)) {
@@ -536,9 +524,8 @@ async function runCommand (a) {
     const live = !a.json;
     let result;
     try {
-        if (v2) console.error(`  note: ${V2_SERIAL_WITHHELD}`);
         result = await run.runNrf51({hex, seconds: a.seconds, board: rb.board,
-            onSerial: live && !v2 ? c => { if (c !== '\0') process.stdout.write(c); } : null,
+            onSerial: live ? c => { if (c !== '\0') process.stdout.write(c); } : null,
             onMatrix: live ? f => process.stdout.write(`\n[${f.t.toFixed(2)} s] LED matrix\n${f.rows.map(r => `  ${r}`).join('\n')}\n`) : null});
     } catch (e) {
         if (e.code === 'NO_ENGINE') { console.error(e.message); return 3; }
@@ -547,8 +534,8 @@ async function runCommand (a) {
     }
     if (a.json) {
         process.stdout.write(`${JSON.stringify({target, board: rb.board, universal: result.universal,
-            guestSeconds: result.guestSeconds, serial: v2 ? null : result.serial.replace(/\0/g, ''),
-            ...(v2 ? {serialWithheld: V2_SERIAL_WITHHELD} : {}), frames: result.frames, fault: result.fault})}\n`);
+            guestSeconds: result.guestSeconds, serial: result.serial.replace(/\0/g, ''),
+            frames: result.frames, fault: result.fault})}\n`);
     } else {
         process.stdout.write(`\n— ran ${result.guestSeconds.toFixed(2)} s of guest time on the ${rb.name} board model\n`);
     }

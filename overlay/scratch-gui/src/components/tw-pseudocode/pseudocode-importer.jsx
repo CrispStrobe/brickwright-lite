@@ -135,7 +135,7 @@ const L10N = {
         mcEmulate: '▶ Run on the emulated micro:bit V2',
         mcEmulateTitle: 'Compile this micro:bit project with MakeCode\'s own compiler onto the Bluetooth-free firmware bases and run the real image on LabWired\'s micro:bit V2 (nRF52833) in the Debug pane — the official base carries Nordic\'s SoftDevice, which the emulator never runs',
         mcEmulateBuilding: n => `Building ${n} for the emulated micro:bit V2…`,
-        mcEmulateStarted: n => `${n} is running on the emulated micro:bit V2 in the Debug pane (LED matrix in Widgets). Its serial output is not faithful on this board model yet: the engine reads a transmit buffer after CODAL has reused it.`,
+        mcEmulateStarted: n => `${n} is running on the emulated micro:bit V2. See the LED matrix in Widgets and serial output in the Debug pane.`,
         mcEmulateNoBases: 'This build does not serve the micro:bit V2 emulator bases (npm run sync:makecode fetches them), or this project needs a package set they do not cover; the emulator never falls back to the official base.',
         mcEmulateRefused: m => `The emulator refused this firmware base: ${m}`,
         mcFirmware: '⤓ Firmware for the board',
@@ -466,7 +466,7 @@ const L10N = {
         mcEmulate: '▶ Auf dem emulierten micro:bit V2 ausführen',
         mcEmulateTitle: 'Dieses micro:bit-Projekt mit dem MakeCode-eigenen Compiler auf die Bluetooth-freien Firmware-Basen übersetzen und das echte Image auf LabWireds micro:bit V2 (nRF52833) im Debug-Bereich ausführen — die offizielle Basis enthält Nordics SoftDevice, die der Emulator nie ausführt',
         mcEmulateBuilding: n => `${n} wird für den emulierten micro:bit V2 gebaut…`,
-        mcEmulateStarted: n => `${n} läuft auf dem emulierten micro:bit V2 im Debug-Bereich (LED-Matrix in Widgets). Die serielle Ausgabe ist auf diesem Board-Modell noch nicht originalgetreu: die Engine liest einen Sendepuffer, nachdem CODAL ihn wiederverwendet hat.`,
+        mcEmulateStarted: n => `${n} läuft auf dem emulierten micro:bit V2. Die LED-Matrix ist in Widgets, die serielle Ausgabe im Debug-Bereich.`,
         mcEmulateNoBases: 'Dieser Build stellt die micro:bit-V2-Emulator-Basen nicht bereit (npm run sync:makecode lädt sie), oder das Projekt braucht einen Paketsatz, den sie nicht abdecken; der Emulator weicht nie auf die offizielle Basis aus.',
         mcEmulateRefused: m => `Der Emulator hat diese Firmware-Basis abgelehnt: ${m}`,
         mcFirmware: '⤓ Firmware für das Board',
@@ -5009,11 +5009,25 @@ class PseudocodeImporter extends React.Component {
     }
 
     async compile ({strict = false, pseudocode = null} = {}) {
+        const conversionRequest = {};
+        this._conversionRequest = conversionRequest;
+        const buffersAtStart = this.state.buffers;
+        const languageAtStart = this.state.lang;
+        let ownedAnimation = this._animationImport;
+        let ownedMakeCodeRequest = this._makeCodeRequest;
+        const ownsConversion = () => this._conversionRequest === conversionRequest;
+        // Buffers are immutable editor revisions. Equality of the source text
+        // alone would allow an edit/revert to revive an older conversion.
+        const ownsEditor = state => ownsConversion() &&
+            state.buffers === buffersAtStart && state.lang === languageAtStart &&
+            this._animationImport === ownedAnimation && this._makeCodeRequest === ownedMakeCodeRequest;
+        const publishEditor = patch => this.setState(state => ownsEditor(state) ?
+            (typeof patch === 'function' ? patch(state) : patch) : null);
         // A device retarget compiles the rewritten canonical program even when
         // a generated, one-way language tab is visible. Ordinary To blocks still
         // compiles the active editable language and keeps its existing checks.
         const lang = typeof pseudocode === 'string' ? 'pseudocode' : this.state.lang;
-        if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({status: this.L.stCOneWay}); return; }
+        if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({busy: false, status: this.L.stCOneWay}); return; }
         this.setState({busy: true, status: this.L.stCompiling});
         const pending = this._animationImport;
         const uploads = this.state.uploads;
@@ -5027,7 +5041,7 @@ class PseudocodeImporter extends React.Component {
                 const lift = (await import(/* webpackChunkName: "bw-asm-reader" */ '../../lib/bw-asm/asm-8086-to-pseudocode.js')).default;
                 const res = lift(source);
                 if (!res.ok) {
-                    this.setState({busy: false, status: this.L.asmLiftRefused(res.error.message, res.stats.lifted)});
+                    publishEditor({status: this.L.asmLiftRefused(res.error.message, res.stats.lifted)});
                     return;
                 }
                 source = res.pseudocode;
@@ -5113,11 +5127,22 @@ class PseudocodeImporter extends React.Component {
                     throw new Error(artwork.reason || 'Artwork or the loaded project changed while preparing this conversion. Read From blocks again.');
                 }
             }
+            if (!ownsConversion() || this._makeCodeRequest !== ownedMakeCodeRequest) return;
             if (this.props.vm.runtime.getTargetForStage() !== stage || this._animationImport !== pending || this.state.uploads !== uploads ||
                 this.activeCode() !== activeAtStart) throw new Error('The code or loaded project changed while preparing this conversion. Try again.');
+            // A request still preparing a new conversion does not revoke the
+            // metadata of the project this load actually applies. A newer VM
+            // load or a changed loaded stage does revoke that authority.
+            this._conversionProjectLoad = conversionRequest;
             await this.props.vm.loadProject(projectBytes);
-            this._animationImport = null;
-            this._makeCodeRequest = null;
+            const loadedStage = this.props.vm.runtime.getTargetForStage();
+            const ownsLoadedProject = () => this._conversionProjectLoad === conversionRequest &&
+                this.props.vm.runtime.getTargetForStage() === loadedStage;
+            if (!ownsLoadedProject()) return;
+            if (ownsEditor(this.state)) {
+                this._animationImport = ownedAnimation = null;
+                this._makeCodeRequest = ownedMakeCodeRequest = null;
+            }
             if (artwork) applyArtwork(artwork, this.props.vm);
             // The loaded project owns applied uploads, including ordinary SVG
             // imports with no animation bundle. Later conversions read its live
@@ -5130,7 +5155,7 @@ class PseudocodeImporter extends React.Component {
                 const best = vm.runtime.targets.find(
                     t => !t.isStage && t.blocks.getScripts().length > 0
                 ) || vm.runtime.targets.find(t => !t.isStage);
-                if (best) {
+                if (best && ownsEditor(this.state)) {
                     vm.setEditingTarget(best.id);
                 }
             }
@@ -5159,9 +5184,11 @@ class PseudocodeImporter extends React.Component {
             if (this.props.vm.extensionManager && this.props.vm.extensionManager.refreshBlocks) {
                 await this.props.vm.extensionManager.refreshBlocks({throwOnError: true});
             }
+            if (!ownsLoadedProject()) return;
             // Write the persistence comment on the stage target
             if (stc) {
                 const SB3Creator = (await this.lib()).default || (await this.lib());
+                if (!ownsLoadedProject()) return;
                 if (SB3Creator.writeStcComment) {
                     const proj = JSON.parse(this.props.vm.toJSON());
                     proj.stc = stc;
@@ -5189,8 +5216,9 @@ class PseudocodeImporter extends React.Component {
             // That is what "to blocks does not draw the blocks" was.
             const first = this.props.vm.runtime.targets.find(target => !target.isStage) ||
                 this.props.vm.runtime.getTargetForStage();
-            if (first) this.props.vm.setEditingTarget(first.id);
+            if (first && ownsEditor(this.state)) this.props.vm.setEditingTarget(first.id);
             // regenerate the other tabs from the compiled project
+            if (!ownsEditor(this.state)) return;
             const proj = creator.project;
             const nb = {...this.state.buffers};
             if (lang !== 'pseudocode') nb.pseudocode = new SB3Creator().decompile(proj);
@@ -5211,14 +5239,14 @@ class PseudocodeImporter extends React.Component {
             {
                 const mp = new SB3Creator().generateMicroPython(proj);
                 nb.micropython = mp.ok ? mp.py : `# === Cannot generate MicroPython ===\n${mp.reasons.map(s => '# ' + s).join('\n')}`;
-                // Regenerated from blocks: whatever was imported is gone.
-                this.setState({importedPython: false});
             }
             const warns = [...parseWarnings, ...creator.warnings];
             if (missing.length) warns.push(`no sprite named: ${missing.join(', ')}`);
             const classified = classifyConversionWarnings(warns);
-            this.setState(state => ({
+            publishEditor(state => ({
                 buffers: nb,
+                // This flag belongs to the admitted buffer regeneration too.
+                importedPython: false,
                 uploads: state.uploads.filter(upload => !appliedUploads.has(upload)),
                 status: warns.length ? this.L.stWarn(warns.slice(0, 4).join(' · ')) : this.L.stLoaded,
                 conversionReport: {direction: `${LANG_LABEL[lang] || lang} → Blocks`, preserved: true,
@@ -5226,13 +5254,15 @@ class PseudocodeImporter extends React.Component {
             }));
         } catch (e) {
             const failure = conversionFailure(e);
-            this.setState({status: this.L.stError(failure.message), conversionReport: {
+            publishEditor({status: this.L.stError(failure.message), conversionReport: {
                 direction: `${LANG_LABEL[lang] || lang} → Blocks`, preserved: false,
                 changed: [], unsupported: failure.issues
             }});
-            if (strict) { this.setState({busy: false}); throw e; }
+            if (strict) throw e;
+        } finally {
+            // React may apply this updater after a newer conversion starts.
+            this.setState(() => ownsConversion() ? {busy: false} : null);
         }
-        this.setState({busy: false});
     }
     // Read the running project into all languages at once.
     async fromBlocks () {

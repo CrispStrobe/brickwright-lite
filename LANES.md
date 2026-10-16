@@ -1,8 +1,20 @@
+## Original Arcade profiler clock bootstrap — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
+implementation. Contract: [reference clock bootstrap](docs/ARCADE-REFERENCE-CLOCK-BOOTSTRAP.md).
+Own the original-simulator clock helper, its Arcade runtime initialization call
+site, focused controls and qualification notes. Preserve paused-zero document
+admission, then prove a deterministic complete-frame bootstrap before actual
+guest construction, positive profiling and unchanged relative timer/frame/input
+phases. No PXT vendor patch, guest-clock replacement, normalized result,
+expectation/budget reduction, dependency pin or workflow change. All unrelated
+source, runtime, editor and device owners retain their lanes.
+
 ## Code conversion: preserve newer editor ownership — 2026-10-16
 
-PROPOSED — SPIKE integration follow-up, branch
-`lane/code-conversion-editor-ownership-claim-20261016`. Merge this claim before
-implementation. Own the narrow conversion-completion and editor-buffer hooks in
+IMPLEMENTED, hosted qualification pending — SPIKE integration follow-up.
+Ownership claim [PR1000](https://github.com/CrispStrobe/brickwright-lite/pull/1000)
+merged before implementation. Own the narrow conversion-completion and editor-buffer hooks in
 both `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx`
 and its `packages/scratch-gui` mirror, a focused
 `test/code-conversion-editor-ownership.test.mjs`, and this ledger.
@@ -32,10 +44,41 @@ output and Stop controls. No timeout, assertion, baseline, dependency pin,
 compiler/runtime/firmware/model, protocol or workflow change. Coordinate other
 importer owners; preserve their existing hooks and all unrelated lane sections.
 
+The candidate identifies each conversion request and captures its editor buffer,
+language and import-intent revisions. Editor feedback, selection and queued busy
+cleanup retain their corresponding ownership. Applied-project metadata instead
+uses the newest conversion VM-load identity and its observed loaded stage: a
+newer request still preparing does not invalidate the device metadata of an
+already-applied load. A newer VM load or stage change revokes that metadata
+completion. Existing source/project admission remains required; this does not
+undo an applied VM load or establish general project transaction cancellation.
+
+Twenty-seven actual-method host controls pass; the previous source passes
+nineteen and fails eight. Eighteen guard mutations are detected. All 156 affected
+host controls and 24 existing VM-diagnostic/artwork controls pass with an
+explicitly selected prepared dependency registry. Earlier controls exposed a
+masking case where undefined-to-null import cleanup hid a missing request
+fence; an already-reset resource case now detects it. Original assertions and
+failures remain preserved. The existing diagnostic fixture handles React
+functional state updaters without changing its validation assertions.
+
+The previous source passed all 26 actual 8086 journey checks with an identical
+CI checkout tree, but its light job failed the Pico device-registration gate.
+A separate actual-method diagnostic establishes a source regression: an older
+load can apply, lose metadata publication to a newer request, then cause that
+newer preparation to refuse its changed stage. The exact failing browser
+schedule remains unestablished. The follow-up preserves applied metadata while
+retaining editor fences and the stage refusal. Final source qualification still
+requires every enabled exact-head check and fresh actual 8086 and Pico routes,
+including positive Pico execution and the firmware-withheld refusal. Host
+controls and the previous source's 8086 result do not qualify this new source,
+a new installed package or SPIKE G02.
+
 ## Scoped WeDo2 inventory gate repair — 2026-10-15
 
-CLAIMED — SPIKE G02 integration follow-up, isolated branch
-`claim/spike-g02-wedo-inventory-20261015`.
+IMPLEMENTED, hosted qualification pending — SPIKE G02 integration follow-up.
+Ownership claim [PR994](https://github.com/CrispStrobe/brickwright-lite/pull/994)
+merged before implementation. Source branch `fix/scoped-wedo-inventory-20261016`.
 
 The existing `wedo2unified` artifact pin is present in `vendor-pins.json`, but
 the notices census treats it as an unknown vendored repository and the scoped
@@ -53,6 +96,18 @@ No dependency adoption, generated bundle, product runtime, firmware, model,
 workflow or budget change. This repair does not establish broader license or
 release clearance. The claim must land before implementation; then run the
 affected inventory controls and every enabled exact-head CI check.
+
+The repair reads the existing scoped bundle's MPL declaration and separate By
+attribution, requires its notice, and correlates the pin with the source repo,
+path, commit, byte count and SHA-256 in the retained per-file receipt. A By
+header does not grant a copyright-holder or own-code exemption. Seven focused
+host controls pass, including the actual bundled source and negative receipt
+and notice cases; the unchanged baseline fails the two intended inventory
+checks. Initial sparse-input and historical Git-object failures are retained
+separately from those baseline results. Runtime, generated bundles and pins
+remain unchanged. Full hosted checks remain required before merge; this does
+not qualify a new installed package or close SPIKE G02.
+
 
 ## SPIKE G02 composed lifecycle integration — 2026-10-15
 
@@ -231,16 +286,17 @@ claim first; implementation lands only after full CI and owner review.
 
 ## A10: micro:bit V2 serial consumer adoption — 2026-10-15
 
-CLAIMED — Codex, branch `lane/a10-v2-serial-consumer-20261015`, base `015e1bdc7`.
+DONE 2026-10-16 — Codex, branch `lane/a10-v2-serial-consumer-20261015`, base `015e1bdc7`.
 Adopt the qualified deterministic LabWired engine release after its source fix
 lands. Remove V2 serial withholding and verify real compiled firmware through
 both CLI modes and the visible Debug console. Preserve A11's landed export fix.
 
-Consumer scope is engine-only. The shipped bw-board client's LabWired adapter,
-bridge, debugger and firmware helpers are byte-identical to the qualified
-producer, and all chip/board catalog payloads are identical (source identity
-only differs). No client API change is needed for the UARTE source fix; actual
-released-engine qualification against this shipped client remains mandatory.
+Consumer scope is engine-only. The affected nRF52833 and micro:bit V2 catalog
+payloads are unchanged. The producer's canonical catalog also carries the
+qualified STM32F103 C8 flash and clock-gate descriptor; do not describe every
+chip payload as identical to this shipped client. No client API change is
+needed for the UARTE source fix; actual released-engine qualification against
+this shipped client remains mandatory.
 The separate STM32 package/compiler adoption belongs to its existing owner.
 This lane leaves board, compiler and circuit-UI package pin fields untouched;
 qualified mainline changes from those owners are preserved when integrated.
@@ -256,11 +312,41 @@ affected engine provenance/notices through canonical writers if required.
 No NPM package/compiler pin bump, copied engine, invented source/hash, SDK
 rebuild, optional motion run, physical-accuracy claim or threshold relaxation.
 
-The core fix is merged. Consumer JSON/text serial and visible-console checks
-are prepared; final tests require the exact complete greeting, ordered counter,
-unchanged matrix/fault/guest-time bounds, and the fresh nRF52833 V2 emulator ELF.
-Engine publication/original admission, all enabled final checks and actual
-released-engine CLI/browser qualification remain pending before integration.
+The first release, `labwired-wasm-6a769a59`, passed its original 123-test suite,
+but consumer PR988's real compiled CLI and browser programs still produced
+corrupt serial bytes. Preserve those failures. The follow-up interrupt-completion
+fix is merged in labwired-core PR247 as `1ea67f9c`; its reviewed source
+`de14721e4ae1d34a428f91d232e4520d50f1ceba` is the adopted engine pin.
+Producer PR629 is merged as `a72acc06`: all 13 enabled final checks pass,
+including the five release jobs; four skips are declared. Fresh engine run
+38855838615 passed two independent matching builds and all 125 release tests
+with zero failures or skips. Release `labwired-wasm-de14721e` has five assets
+whose digests and sizes match the original build bytes. Node test and benchmark
+callers supply their CommonJS marker explicitly.
+[Consumer PR988](https://github.com/CrispStrobe/brickwright-lite/pull/988) now
+pins that source/tag and the two admitted web hashes. Its matching performance
+workflow verifies both downloaded Node executable hashes before benchmarking;
+methods, sample counts and thresholds are unchanged. The automatic pin-push benchmark
+(run 38861990788) passed all five targets with three samples each; its input
+blobs are byte-identical in the final candidate. Retain the original run identity
+and its finite CPU-loop/AVR-adapter scope.
+
+Consumer PR988 merged as `3753d3b48014d50574a417970dfd75b940129f16`, retaining
+tested head `18484cfeb1a124f2352f100c1a5d9744275ba879`. All 12 enabled exact-head
+checks passed across Build, vendor freshness and Rust notices; deploy/verify-gui
+were declared conditional skips. Both actual compiled JSON/text CLI proofs
+passed the complete greeting, ordered counters and unchanged matrix/fault/
+one-second bounds. The browser's own fresh nRF52833 V2 emulator ELF reached
+Running and printed its complete unique greeting in the visible Debug console.
+The full tracked-file inventory and notices passed in the clean hosted checkout.
+Reviewed, predicted and landed merge parents/tree match; peer notes and A11's
+export implementation are preserved.
+
+The authored proof guests explicitly set `serial.setWriteLinePadding(0)` because
+MakeCode otherwise pads `writeLine` records to 32 bytes including CRLF. Existing
+exact output assertions, waits and budgets are unchanged. Original first-engine
+corruption and the later padding-expectation failures remain retained. No
+physical re-capture, hardware or broader performance claim is added.
 
 ## A11: Code-tab MakeCode export uses the project target — 2026-10-15
 
@@ -5167,3 +5253,39 @@ Existing Array receiver and A/B ownership remain separate. Require meaningful
 source/current Code/Blocks/save/export and affected own native controls; visible
 GUI, stable full projects and compatibility counts need their own evidence.
 All unrelated owners and retained failures remain preserved.
+
+
+## MakeCode CLI integrated GUI module boundary — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this separate claim
+before implementation: [CLI module boundary](docs/ARCADE-CLI-INTEGRATED-GUI-SCOPE.md).
+Continue the landed CLI target work and preserve its commands and target
+behavior. Own the `scripts/makecode.mjs` library-loading/prerequisite boundary, an
+optional focused `scripts/lib/` inspection helper, the coordinated exact
+dependency-free exception in `gui-scope-hooks.mjs`, focused controls and notes.
+
+Use actual current integrated GUI source with normal installed package scope
+and the same physical canonical VM model export. Prove the relevant integration
+prerequisites using the real copy/transform contract; no build or browser is
+required for headless conversion, no blanket raw-hash test for generated files.
+Preserve command-specific runtime requirements, exit codes, diagnostics, source
+bodies and assets. Missing/stale/conflicting installation refuses by name; no
+model aliases, fake root packages, hidden loaders, stale result/source fallback
+or implicit repair. Keep dependency-free pure consumers explicitly bounded.
+
+No translator/runtime/ABI, pin, workflow or GUI change. Coordinate any narrow
+integration receipt producer before editing it. Current Array and clock failures
+remain independent; this claim does not infer their cause from module identity
+or promote whole-project compatibility from source resolution controls.
+
+## Arcade animation resource Array producers — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
+implementation. Contract: [animation Array producers](docs/ARCADE-ANIMATION-ARRAY-PRODUCERS.md).
+Own the narrow resource-backed Array producer addition in the current Array
+export authority, its coordinated exporter resource admission, and focused
+source/export/native controls. Existing Array reset, ordinary parameter and
+editor ownership remain separate. Preserve unknown-resource Undefined behavior,
+shared-cache versus fresh-array identity, all writers, mutation and presence
+checks, and current graph/resource binding. No opcode-only type grant, default
+Array, dependency pin or runtime semantic change is authorized by this claim.
