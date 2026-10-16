@@ -1,9 +1,89 @@
 # Conversion capabilities and GUI closure ledger
 
 The [current project gap list](compatibility/arcade-current-remaining-project-gaps.md)
-separates the eleven remaining conversion routes from native and authoring gates.
-The fresh 29-project profile keeps the same eighteen complete pure passes; a
-pure pass does not establish runtime or visible editor compatibility.
+separates measured conversion routes from native and authoring gates. Results
+below are dated checkpoints with their own source and evidence boundaries; a
+pure or headless native pass does not establish visible editor compatibility.
+
+
+## Current conversion and editor acceptance checkpoint — 2026-10-16
+
+This records the current development capabilities and the remaining user-facing
+work. It does not promote raw corpus counts, a partial project, or a native
+control to full MakeCode or GUI compatibility. The five hosted owned-game
+journeys recorded under **Scalar, evaluation order and official numeric GUI
+acceptance — 2026-10-14** keep their original artifact/source boundary. Their
+success is not qualification of the additions below.
+
+| Capability | Current source and measured boundary | Remaining acceptance |
+| --- | --- | --- |
+| Dependency-prepared import | Shared async file-map importer snapshots the actual current files, binds declared root/transitive package identities and retains diagnostic presence and provenance. Browser file/share methods have current request/Stage/unmount fences, including the URL prompt; CLI uses explicit `--fetch-extensions`. Thirty-eight focused controls pass. Two different current Free Throw exports each received their own actual cached-package SDK preparation, without source compilation or simulator execution. | Exercise both real browser file/share worker preparation and the CLI on current declared dependencies. Show disabled/missing/conflicting/stale package errors, preserve source and metadata through save/reopen, and retain every later translation/export refusal. A new current file map needs a new matching preparation; original imports cannot repair it. |
+| Generic Image expressions and fixed-instance JRES | The shared literal planner emits resources only for actual emitted expressions; aliases retain identity and evaluating a literal again creates a copy. Exact annotated, uniquely owned JRES initializers materialize from resolved pixels, palette and tile flags at the original initializer position; helper bodies and original files remain. Focused source controls pass. Rockscout preserves all 48 proved initializers, but its measured source still has **79 unsupported items**, two costumes and a partial Creator result. | Do not present the 48 prepared declarations as 48 qualified editable GUI assets or a working game. Current resource editing, rename/remap, palette/tile flags, current export and same/fresh reopen need end-to-end evidence for this path. Full retained WorldMap/class/callback support remains separate. |
+| Ordinary optional-call omission | Actual unchanged ordinary call/formal identity supplies canonical Undefined only for the missing optional suffix of a no-default declaration. Thirteen focused source controls pass. Provided operands and helper bodies remain; defaults keep their existing omission protocol. | Expose intentional omission separately from explicit Undefined in Code/Blocks call editing. Preserve defaults, required/excess-argument errors and provided unknown-reference refusals. Nested/captured/generic/rest declarations and reference/default protocol admission are not supplied by this change; qualify current export and native edited calls separately. |
+| Procedure-owner emission | One actual helper record emits once per actual owner across called and retained uncalled roots. Focused source controls and the retained Holiday context confirm duplicate prototypes are removed while bodies, calls and dependency order remain. Distinct owners/declarations stay distinct. | Show the right procedure/formal after Code/Blocks conversion, rename and save/reopen. Locate each remaining helper diagnostic; duplicate suppression supplies neither a value type nor captured/nested-call runtime support. |
+| Physical null Sprite getter faults | Authored controls cover `x`, `y`, `width` and `height`; the selected original reference qualifies **x only**. The authentic x-fault project passes source, current Code, same/fresh SB3 and current export/reimport in headless native execution. Every route retains the real created actor, actual runtime Image pixels, current variable cells, one getter TypeError and no later position/velocity/flag effects. All provided diagnostics remain actual empty arrays; absent channels stay absent. | Qualify visible Code/Blocks getter authoring, current fault location/navigation, earlier effects and unrelated-script behavior through the actual editor/controller. Native routes do not prove on-screen pixels, first startup activation, input-duration equivalence or an original reference for the other getters. |
+
+### Resource artwork, runtime Images and clone costumes are different objects
+
+The authentic null-getter run observes an actual **8×8 runtime Sprite Image**
+with the retained indexed pixels, current extension Map/WeakMap ownership and
+unchanged actor state at `(80, 60)`, zero velocity and flags. Its live Scratch
+clone still carries a separate blank **1×1 costume template**. The authored
+one-pixel fixture instead has the genuine `(79.5, 59.5)` constructor center;
+these are different inputs, not interchangeable position expectations.
+
+A source resource is editable stored artwork. Evaluating its Image expression
+may allocate or clone a runtime Image; ordinary aliases can share that runtime
+object, and a later evaluation can produce a distinct copy. The resource SVG,
+current runtime Image and Scratch clone costume must be inspected separately.
+Do not overwrite a template to make the inspector look correct or claim a live
+asset edit updates existing copies. The authentic five-route result retains
+actual saved ZIP bytes and current resource SVGs separately from runtime pixels;
+its blank clone is not evidence that the runtime Image is blank, or that the
+renderer has been qualified.
+
+**Design pending:** an owned runtime Image inspector must expose dimensions,
+palette, pixels, actual owner/lifetime and alias-versus-copy relationships.
+Define whether an edit changes stored source artwork, one live owned object or
+future evaluations; refuse stale/foreign ownership and show that choice clearly.
+A resource preview, live-image preview and actual Game Console screen each need
+their own observations. No live-image editing or inspector implementation is
+claimed here.
+
+### Surface-by-surface next work
+
+| Surface | Acceptance still needed for the additions above |
+| --- | --- |
+| Blocks editor | Discoverable Image creation/copy/reference and getter operations; actual typed constraints and current procedure/formal menus; explicit optional omission versus Undefined. Author, connect, rename and edit inputs through real controls, keeping invalid provided values visibly refused. |
+| Code and pseudocode | Preserve current declarations, complete helper bodies, source order, typed/default metadata and Image allocation position through both directions. Code completion/help must describe supported boundaries; diagnostics must locate the actual current occurrence rather than an old imported snapshot. |
+| Graphics and tile-map editors | Edit the actual named resource pixels/palette/tile flags; prove which subsequent evaluations and live objects change. Exercise rename/remap, undo, same/fresh reopen and current exported art. Existing graphics controls and source-side pixel proofs do not qualify this new resource path. |
+| Runtime and controller pane | Use actual controller inputs and current Stage/Game Console; inspect live actors and owned Images separately from templates. Verify null faults stop only the affected invocation/callers, preserve earlier effects and unrelated work, and remain correct after Stop/restart and Load. Headless fault/pixel evidence is already bounded separately. |
+| Save/load and project sharing | Reopen same/fresh sessions with current code, resources, package declarations, constraints and extra dependency metadata intact. Exercise browser file/share races, request replacement, Stage replacement and disposal; stale success, failure or prompt cancellation must not mutate the new project. |
+| MakeCode export/reimport | Export current graphs and current stored assets, retain all diagnostic channels and explicit partial/unavailable stages. Resolve the new export's own declared packages, not a retained original project. Recheck current edited artwork, optional calls and references in MakeCode and on reimport. |
+| Actual GUI qualification | Run these interactions against a matching hosted full-app artifact. Retain visible controls, current values/art, error navigation, actual rendered output where claimed and saved/exported results. Existing five hosted journeys remain dated evidence for their own fixtures only. |
+
+Implementation and contracts:
+
+- Dependency import: [contract](ARCADE-DEPENDENCY-PREPARED-IMPORT.md),
+  [shared importer](../overlay/scratch-gui/src/lib/bw-makecode/dependency-import.js),
+  [diagnostic channels](../overlay/scratch-gui/src/lib/bw-makecode/dependency-diagnostics.js),
+  [editor entrypoints](../overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx)
+  and [current-input controls](../test/makecode-dependency-import.test.mjs).
+- Images: [generic expressions](compatibility/arcade-generic-image-values.md),
+  [fixed JRES preparation](compatibility/arcade-fixed-jres-image-factories.md),
+  [literal planner](../overlay/scratch-gui/src/lib/bw-makecode/sdk-image-literal-resources.js),
+  [JRES helper](../overlay/scratch-gui/src/lib/bw-makecode/fixed-jres-images.js),
+  [generic controls](../test/makecode-arcade-generic-image-values.test.mjs)
+  and [JRES controls](../test/makecode-fixed-jres-images.test.mjs).
+- Procedures: [omission contract](ARCADE-ORDINARY-CALL-OMISSION.md),
+  [source boundary](compatibility/arcade-ordinary-call-omission-source.md),
+  [owner emission](compatibility/arcade-procedure-owner-emission.md),
+  [omission controls](../test/makecode-ordinary-call-omission.test.mjs)
+  and [owner controls](../test/arcade-procedure-owner-emission.test.mjs).
+- Null getters: [contract](ARCADE-NULL-SPRITE-GETTER.md),
+  [maintained native controls](../test/arcade-null-sprite-getter-native.test.mjs)
+  and [current-artwork helper](../test/helpers/null-sprite-current-artwork.mjs).
+  These are test/source entrypoints, not a claim of completed visible GUI work.
 
 ## Animation resource actor boundary — 2026-10-15
 
