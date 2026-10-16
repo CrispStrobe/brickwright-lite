@@ -204,3 +204,27 @@ test('scoped Arrays artifact reads its shipped MPL declaration and detects missi
         'overlay/scratch-vm/src/extensions/crispstrobe/arrays/index.js':'module.exports = broken;'});
     assert.throws(() => vendoredTrees(malformed, 'Owner'), /unreadable bundle/);
 });
+
+test('scoped WeDo2 reads the shipped licence and author without exempting its attribution', () => {
+    const source = '// Name: WeDo2\n// By: ExampleAuthor <https://example.test/author>\n// License: MPL-2.0\n(function () {})();';
+    const pin = {'wedo2unified': 'a'.repeat(40)};
+    const bundle = 'overlay/scratch-vm/src/extensions/crispstrobe/wedo2unified/index.js';
+    const fixture = text => synth({
+        'vendor-pins.json': JSON.stringify(pin),
+        [bundle]: `module.exports = makeExt(${JSON.stringify(text)});\n`
+    });
+    const items = vendoredTrees(fixture(source), 'ExampleAuthor');
+    assert.equal(items.length, 1);
+    assert.equal(items[0].licence, 'MPL-2.0');
+    assert.equal(items[0].author, 'ExampleAuthor');
+    assert.equal(items[0].own, false, 'a By header must not waive the shipped attribution check');
+    assert.equal(items[0].evidence, bundle);
+    assert.equal(judge({notices: '', owner: 'ExampleAuthor', items}).length, 1);
+    assert.equal(judge({notices: '## wedo2unified — MIT\nExampleAuthor\n', items}).length, 1);
+    assert.equal(judge({notices: '## wedo2unified — MPL-2.0\nSomeoneElse\n', items}).length, 1);
+    assert.deepEqual(judge({notices: '## wedo2unified — MPL-2.0\nExampleAuthor\n', items}), []);
+    assert.throws(() => vendoredTrees(synth({'vendor-pins.json': JSON.stringify(pin)}), 'Owner'), /no shipped bundle/);
+    assert.throws(() => vendoredTrees(synth({'vendor-pins.json': JSON.stringify(pin), [bundle]: 'module.exports = broken;'}), 'Owner'), /unreadable bundle/);
+    assert.throws(() => vendoredTrees(fixture(source.replace('// License: MPL-2.0\n', '')), 'Owner'), /no readable source licence/);
+    assert.throws(() => vendoredTrees(fixture(source.replace('// By: ExampleAuthor <https://example.test/author>\n', '')), 'Owner'), /no readable source author/);
+});
