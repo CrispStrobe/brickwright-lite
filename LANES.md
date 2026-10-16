@@ -24,6 +24,69 @@ supplier. Supplier checks, source controls and historical CLI results do not
 qualify an installed consumer. No source, pin, lock, notice, workflow or package
 change belongs to this docs-only proposal; all other owners retain their lanes.
 
+## Installed G02 Code caller and output qualification — 2026-10-15
+
+Frozen consumer `59ddd74174f644f330f06ce567fac6b8c5f7dde3` passes three
+installed own-NuttX cases and their standalone readers, with six successful
+native startup transactions, full cleanup and distinct recovery in every case.
+Official frontend checkout and consumer trees match; independent package/input
+audits pass. Its eleven enabled source-head checks pass in
+[run38790549120](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38790549120)
+and the separate vendor check; two conditional GUI/deployment jobs skip.
+
+- An older Code call's original successful return cannot clear a newer pending
+  caller's busy flag, completed status or exact `42\n` output.
+- An authored error delivered from the older call likewise leaves the newer
+  caller's feedback unchanged. Both cases begin through the real Code control,
+  preserve the original pane/native calls for two Python uploads, and explicitly
+  author concurrent mounted-handler entry while the ordinary toolbar is busy.
+  They do not establish two clickable busy toolbar runs or arbitrary scheduling.
+- A fresh original old-Python output frame is held across actual replacement,
+  STOP and upload preparation. No old/preparatory output reaches the new Code
+  consumer before the original START reply is accepted. Current output first
+  arrives in a later `state.read`; immediate START output remains host-covered.
+
+Three failed test attempts remain preserved: a missing expected print newline,
+a snapshot of a not-yet-created log, and a guest-time delay that did not fit the
+unchanged observation window. Corrected controls require exact print bytes,
+record absent logs explicitly and use a shorter authored guest delay. They
+retain fresh native frame/sequence/reply provenance, original calls, cleanup,
+recovery and the same observation/resource bounds. Successful cases were not
+replayed to read evidence. Product sources and the installed package did not
+change during these corrections.
+
+This result belongs to the named frozen package. Integration preserves its
+SPIKE/native inputs and both importer copies while retaining newer main work.
+Final documentation-head CI, the lifecycle integration in
+[PR979](https://github.com/CrispStrobe/brickwright-lite/pull/979), and exact-head
+merge review remain required. The repeated-Stop follow-up in
+[PR990](https://github.com/CrispStrobe/brickwright-lite/pull/990) is separate and
+not installed-qualified here. Whole G02, reference/physical behavior, rollback,
+licensing, distribution and release qualification remain open.
+
+## SPIKE replacement output phase continuation — 2026-10-15
+
+Continuation of the merged G02 session/feedback envelope, branch
+`lane/spike-g02-output-phase-20261015`, following the frozen composed batch.
+While replacement awaits its previous poll and STOP, then BEGIN/CHUNK/COMMIT,
+admit the observed output sequence without publishing its text to the new Code
+consumer. Admit execution output only after the original request's START reply
+passes the existing operation/id decoder, succeeds and reports RUNNING, COMPLETE
+or FAULT. Preserve immediate or terminal START output, later fresh output, retry
+and Stop reentry. The Code caller token change is separately scoped below.
+
+Thirteen authored controls execute the real session/client and shipped pane
+consumers; the baseline passes five and fails eight. All thirteen and 112
+affected host controls pass; ten broken output/sequence/reply guards are detected.
+An earlier candidate admitted preparation and rejected/foreign START output;
+those original failures remain preserved. A now-redundant source-null guard
+change was removed after admission moved to START. Shared protocol helpers,
+frame formats, native/firmware/Runtime/model sources and pins are unchanged.
+
+These host API controls are complemented by the named frozen installed capture
+above. Final documentation-head CI and exact-head merge review remain required. Do not infer physical UART attribution, new reference
+mapping, whole G02, rollback, licensing or release qualification. Keep this
+follow-up out of the already frozen composed-package qualification target.
 ## Original Arcade profiler clock bootstrap — 2026-10-16
 
 PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
@@ -4686,9 +4749,9 @@ before exact-head merge. No implementation or new guest result is claimed here.
 
 ## SPIKE NuttX Code caller ownership — 2026-10-15
 
-PROPOSED — Codex SPIKE G02 continuation, branch
-`lane/spike-g02-code-caller-20261015`. Merge this documentation claim before
-product changes. Extend the existing SPIKE session/pane/feedback envelope only
+IN PROGRESS — Codex SPIKE G02 continuation, branch
+`lane/spike-g02-code-caller-20261015`. Scope claim [PR978](https://github.com/CrispStrobe/brickwright-lite/pull/978)
+merged before product changes. Extend the existing SPIKE session/pane/feedback envelope only
 to `runOnNuttxPython` in
 `overlay/scratch-gui/src/components/tw-pseudocode/pseudocode-importer.jsx` and
 focused `test/spike-code-caller-ownership.test.mjs` controls, this ledger and the
@@ -4711,6 +4774,23 @@ All enabled final-head CI checks must pass before normal exact-head merge.
 Do not claim host scheduling controls qualify installed concurrency, native UART
 output attribution, whole G02, physical behavior or a release. No native,
 firmware, Runtime, model, dependency pin, workflow or deadline change is included.
+
+Implementation now binds a NuttX caller token before opening the arena, installs
+Stop cancellation before either wait, checks ownership after each wait, and
+scopes feedback, captured callbacks/output, queued Stop and asynchronous Stop
+errors to that caller. Its existing tracked generated importer twin receives
+the same method projection; bytes outside this method remain unchanged in both
+files. No removed arena source mirror is recreated.
+
+All 20 focused authored scheduling controls pass; the unchanged dispatcher
+passes six and fails fourteen of those controls. Ten deliberate ownership,
+resume, cancellation, callback/output and error-publication mutations each fail
+a behavioral control with canonical and generated twin mutated together. These
+are host controls, including calls through the existing shared Stop handler;
+they do not establish that a Stop button is rendered during every cold phase.
+Installed overlapping-Code qualification, output attribution and final-head CI
+are pending. The independently frozen lifecycle-batch package does not contain
+this dispatcher change.
 
 ## SPIKE G02 compiled-model MicroPython desktop profile — 2026-10-15
 
@@ -5080,3 +5160,17 @@ editor ownership remain separate. Preserve unknown-resource Undefined behavior,
 shared-cache versus fresh-array identity, all writers, mutation and presence
 checks, and current graph/resource binding. No opcode-only type grant, default
 Array, dependency pin or runtime semantic change is authorized by this claim.
+
+## Arcade custom loop block theme media — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge the
+[loop block media contract](docs/ARCADE-LOOP-BLOCK-THEME-MEDIA.md) before source
+implementation. Own only the extension registration media argument in the
+Blocks container and its tracked mirror, the extension theme helper and its
+mirror/optional adjacent pure presentation helper, focused controls and docs.
+Use actual configured workspace media for the current theme/base path and the
+existing VM-generated loop-arrow shape. Preserve VM/headless behavior, every
+program field and unrelated icons; no server alias, asset duplication, supplier
+pin, workflow or broad runtime change. A fresh affected visible editor/theme
+qualification remains required; original missing-resource failures stay open
+until that evidence exists. Other lanes retain their owned surfaces.
