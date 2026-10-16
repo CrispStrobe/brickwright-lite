@@ -496,6 +496,7 @@ function proveImageArrayCloneEffectEntries(program,createGraph,sourceContext) {
             const parent=parents.get(node);if(parent?.type!=='Call'||parent.callee!==node)return null;
         }
     }
+    const invariantBoundaries=new Map();
     const env=new Map(),votes=new Map(),visits=new Map(),executed=new Map(),active=new Set();let failed=false,steps=0,registered=false;
     const fail=()=>{failed=true;return unknown;};
     const tick=()=>{if(++steps>100000)failed=true;return !failed;};
@@ -623,6 +624,16 @@ function proveImageArrayCloneEffectEntries(program,createGraph,sourceContext) {
                 if(allowed.kind==='registration') {
                     if(args.some((value,index)=>index!==allowed.callbackIndex&&value?.kind==='closure')||args[allowed.callbackIndex]?.kind!=='closure'||
                         [...env.values()].some(value=>value?.kind==='Array'&&!stableArray(value)))return fail();
+                    if(allowed.imageInvariantBoundary) {
+                        const fn=args[allowed.callbackIndex].node;
+                        // Copy only already complete cells. Later traversal
+                        // never renews or backfills this registration boundary.
+                        const captured=new Map();
+                        for(const [key,value]of env)if(stableBinding(key))captured.set(key,value?.kind==='Array'?
+                            {kind:'Array',site:value.site,items:value.items.slice()}:value);
+                        if(!invariantBoundaries.has(fn))invariantBoundaries.set(fn,[]);
+                        invariantBoundaries.get(fn).push({registration:node,env:captured});
+                    }
                     registered=true;return {kind:'opaque-result',site:node};
                 }
                 if(args.some(value=>value?.kind==='closure'))return fail();
@@ -671,12 +682,77 @@ function proveImageArrayCloneEffectEntries(program,createGraph,sourceContext) {
         return absent;
     };
     body(program.body);
+    // A separate arbitrary-repeat invariant. Nothing here executes a callback,
+    // makes its entry count finite or restores the ordinary walk across a
+    // destroy/yield barrier. Complete allocation/use closure was checked at
+    // each actual boundary, across the whole retained Program.
+    const invariantVotes=new WeakSet(),rootCache=new Map(),rootActive=new Set();
+    const closedSignature=fn=>Array.isArray(fn.params)&&new Set(fn.params).size===fn.params.length&&
+        fn.params.every(name=>typeof name==='string')&&!fn.optionalParams?.length&&!fn.parameterDefaults?.length&&!fn.parameterProperties?.length&&
+        !fn.typeParameters?.length&&!fn.genericParams?.length&&!fn.restParam&&!Object.keys(fn.paramDefaults||{}).length&&
+        !fn.params.optionalParams?.length&&!fn.params.parameterDefaults?.length&&!fn.params.parameterProperties?.length;
+    const roots=owner=>{
+        if(owner===program)return {ordinary:1,callbacks:new Set()};
+        if(owner?.type==='FunctionExpression')return invariantBoundaries.get(owner)?.length===1?
+            {ordinary:0,callbacks:new Set([owner])}:null;
+        if(owner?.type!=='FunctionDeclaration'||!closedSignature(owner)||rootActive.has(owner))return null;
+        if(rootCache.has(owner))return rootCache.get(owner);
+        rootActive.add(owner);let result={ordinary:0,callbacks:new Set()};
+        const incoming=callers.get(owner)||[];
+        if(!incoming.length)result=null;
+        for(const call of incoming) {
+            if(!result)break;
+            if(call.isNew||call.constructorCall||Object.hasOwn(call,'typeArguments')||call.args.length!==owner.params.length){result=null;break;}
+            const from=roots(owners.get(call));if(!from){result=null;break;}
+            let parent=parents.get(call),conditional=false;
+            while(parent&&parent!==owners.get(call)){if(['If','While','For','ForOf','Switch','Conditional','Logical'].includes(parent.type))conditional=true;parent=parents.get(parent);}
+            // Ordinary paths retain the original exact finite-count rule.
+            if(from.ordinary&&conditional){result=null;break;}
+            result.ordinary+=from.ordinary;if(result.ordinary>100000){result=null;break;}
+            for(const callback of from.callbacks)result.callbacks.add(callback);
+        }
+        rootActive.delete(owner);rootCache.set(owner,result);return result;
+    };
+    const invariantValue=(node,state)=>{
+        if(!node)return unknown;
+        if(node.type==='Identifier')return declared(node)?state.get(binding(node))??unknown:unknown;
+        if(node.type==='Number'){
+            if(!['string','number'].includes(typeof node.value)||typeof node.value==='string'&&!node.value.trim())return unknown;
+            const n=Number(node.value);return Number.isFinite(n)?scalar(n):unknown;
+        }
+        if(node.type==='Binary'&&['+','-','%'].includes(node.op)){
+            const a=number(invariantValue(node.left,state)),b=number(invariantValue(node.right,state));if(a===null||b===null)return unknown;
+            const n=node.op==='+'?a+b:node.op==='-'?a-b:a%b;return Number.isFinite(n)?scalar(n):unknown;
+        }
+        if(node.type==='Unary'&&['+','-'].includes(node.op)){
+            const n=number(invariantValue(node.argument,state));return n===null?unknown:scalar(node.op==='-'?-n:n);
+        }
+        if(node.type==='Call'&&!node.isNew&&!node.constructorCall&&!Object.hasOwn(node,'typeArguments')&&
+            node.args?.length===1&&effect(node)?.kind==='round'){
+            const n=number(invariantValue(node.args[0],state));return n===null?unknown:scalar(Math.round(n));
+        }
+        return unknown;
+    };
+    for(const call of nodes) {
+        if(call.type!=='Call'||call.isNew||call.constructorCall||Object.hasOwn(call,'typeArguments')||call.args?.length!==0||
+            call.callee?.type!=='Member'||call.callee.name!=='clone'||call.callee.object?.type!=='Index')continue;
+        const entries=roots(owners.get(call));
+        if(!entries?.callbacks.size||visits.get(call)!==entries.ordinary&&!(entries.ordinary===0&&!visits.has(call))||votes.get(call)===false)continue;
+        let okay=true;
+        for(const callback of entries.callbacks) {
+            const boundary=invariantBoundaries.get(callback)[0];
+            if(entryCount(owners.get(boundary.registration))!==1){okay=false;break;}
+            const index=call.callee.object,array=invariantValue(index.object,boundary.env),n=number(invariantValue(index.index,boundary.env));
+            if(array?.kind!=='Array'||n===null||!Number.isInteger(n)||n<0||n>=array.items.length||array.items[n]?.kind!=='Image'){okay=false;break;}
+        }
+        if(okay)invariantVotes.add(call);
+    }
     let expired=false;
     return Object.freeze({has:call=>{
         if(expired)return false;
         if(!snapshot.current()||!effectsCurrent()){expired=true;return false;}
         const expected=entryCount(owners.get(call));
-        return Number.isFinite(expected)&&expected>0&&votes.get(call)===true&&visits.get(call)===expected;
+        return Number.isFinite(expected)&&expected>0&&votes.get(call)===true&&visits.get(call)===expected||invariantVotes.has(call);
     }});
     });
 }

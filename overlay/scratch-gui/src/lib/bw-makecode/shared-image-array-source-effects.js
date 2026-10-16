@@ -268,6 +268,15 @@ export function prepareSharedImageEntryEffects(program,sourceContext=null) {
                 const other=node.args.filter((_arg,index)=>index!==registration[1]);
                 if(api!=='controller.A.onEvent'||other[0]?.type==='Number'&&['string','number'].includes(typeof other[0].value)&&!(typeof other[0].value==='string'&&!other[0].value.trim())&&Number.isInteger(Number(other[0].value)))
                     effect={kind:'registration',callbackIndex:registration[1]};
+                // An internal entry boundary only: never an incoming Sprite or
+                // handler value fact. The consumer still proves every writer,
+                // alias and all possible entries of its exact clone call.
+                const fn=node.args[registration[1]];
+                if(effect&&api==='sprites.onOverlap'&&Array.isArray(fn.params)&&fn.params.length===2&&new Set(fn.params).size===2&&
+                    fn.params.every(name=>typeof name==='string')&&!fn.optionalParams?.length&&!fn.parameterDefaults?.length&&!fn.parameterProperties?.length&&
+                    !fn.typeParameters?.length&&!fn.genericParams?.length&&!fn.restParam&&
+                    !fn.params.optionalParams?.length&&!fn.params.parameterDefaults?.length&&!fn.params.parameterProperties?.length&&
+                    !Object.keys(fn.paramDefaults||{}).length)effect={...effect,imageInvariantBoundary:true};
             }
         } else if(textMethods.has(node.callee.name)&&textReceiver(node.callee.object)==='text')effect={kind:'disjoint-text'};
         if(effect)calls.set(node,Object.freeze(effect));

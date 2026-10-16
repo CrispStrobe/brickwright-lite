@@ -656,3 +656,100 @@ test('F overlap destroy facts bind actual current calls and permanently expire a
     const prior=registration.args[2];registration.args[2]={...prior};assert.equal(query.has(destroys(q)[0]),false);registration.args[2]=prior;assert.equal(query.has(destroys(q)[0]),false);
     assert.equal(sourceOverlapDestroyNonExposure(parse(overlapDestroySource),{}),null,'caller-made context does not mint provenance');
 });
+
+// Arbitrarily repeatable callback entries do not receive a finite visit count.
+// The optional effect query instead needs the same private allocation and
+// selection to remain present at every actual registration boundary.
+const callbackImageSource=array+`let ordinary:Image[];let selected:Image;
+function initialize(){let temporary:Image[]=[];temporary.push(pictures[0].clone());ordinary=temporary;}
+function use(){selected=ordinary[Math.round(0)%(0+1)].clone();}
+function bridge(){use();}
+initialize();use();sprites.onOverlap(SpriteKind.Player,SpriteKind.Projectile,function(first:Sprite,second:Sprite){bridge();});`;
+const callbackUse=program=>entryClones(program).find(call=>call.callee.object?.type==='Index'&&call.callee.object.object?.name==='ordinary');
+const callbackRefused=source=>{const p=parse(source),call=callbackUse(p),proof=sourceImageArrayCloneEffects(p);assert.ok(call);assert.ok(!proof?.has(call),source);};
+test('Image callback invariant covers repeated physical entries without changing ordinary Array value facts',()=>{
+    const p=parse(callbackImageSource),proof=sourceImageArrayCloneEffects(p);assert.ok(proof);
+    for(const call of entryClones(p))assert.equal(proof.has(call),true);
+    const call=callbackUse(p),index=call.callee.object.index;assert.equal(index.type,'Binary');assert.equal(index.op,'%');
+    assert.equal(index.left.callee.name,'round','the real selection call remains in the AST');
+    const generic=analyseSourceValueProducers(p,{arrayValues:true,unboundIsOpaque:true,parenthesized:true});
+    assert.ok(generic.typesAt(call.callee.object).has('Undefined'),'no optional generic missing-element fact is removed');
+    const renamed=parse(callbackImageSource.replaceAll('ordinary','currentView').replaceAll('temporary','storage'));
+    const renamedCall=entryClones(renamed).find(call=>call.callee.object?.object?.name==='currentView');assert.equal(sourceImageArrayCloneEffects(renamed)?.has(renamedCall),true);
+});
+test('Image callback invariant preserves public source and connected ordinary backing through export',async()=>{
+    const b=boundary(fixture(callbackImageSource)),f=finish(b);assert.deepEqual([...f.resource.frames.keys()],['pictures']);
+    const imported=convert(b.prepared.files);clean(imported);
+    assert.ok(frames(imported.code).some(row=>row[1]==='pictures'),'actual public source admits the authored backing, not only a direct private plan');
+    const creator=new Creator();creator.parse(imported.code);
+    for(const item of imported.costumes)assert.equal(item.mode==='add'?creator.addCustomSVGCostume(item.sprite,item.svg,item.name):creator.applyCustomSVG(item.sprite,item.svg),true);
+    record({stage:'callback-image-invariant-Creator',project:creator.project,channels:channels(creator)});clean(creator);
+    const blocks=creator.project.targets.flatMap(target=>Object.values(target.blocks));
+    assert.equal(blocks.filter(block=>block.opcode==='arcade_registerOverlapHandler').length,1);
+    assert.equal(blocks.filter(block=>block.opcode==='arcade_whenRegisteredOverlap').length,1);
+    assert.ok(blocks.some(block=>block.opcode==='arrays_mutateReference'),'ordinary allocation/mutation remains actual source behavior');
+    const bytes=Buffer.from(await(await creator.generateSB3()).arrayBuffer()),zip=await JSZip.loadAsync(bytes),members={};
+    for(const [name,item]of Object.entries(zip.files))if(!item.dir)members[name]=await item.async('base64');
+    record({stage:'callback-image-invariant-SB3',bytes:bytes.toString('base64'),members,project:creator.project});
+    const exported=projectToArcade(creator.project,{costumeSvg:(_target,costume)=>creator.assets.get(costume.assetId)?.data});record({stage:'callback-image-invariant-export',result:exported,channels:channels(exported)});clean(exported);
+    const refreshed=prepareArcadeDependencyInputs(exported.files,fixture().resolved),again=convert(refreshed.files);clean(again);
+    assert.equal((again.code.match(/new array reference/g)||[]).length,(imported.code.match(/new array reference/g)||[]).length,'no new ordinary backings on actual current reimport');
+    assert.equal((again.code.match(/arcade register overlap/g)||[]).length,1);
+});
+test('Image callback invariant requires actual initialization before each registration and all writers',()=>{
+    for(const source of [
+        callbackImageSource.replace('initialize();use();sprites.onOverlap','sprites.onOverlap').replace('{bridge();});','{bridge();});initialize();use();'),
+        callbackImageSource.replace('temporary.push(pictures[0].clone());',''),
+        callbackImageSource+'ordinary=[];',
+        callbackImageSource.replace('{bridge();});','{ordinary=[];bridge();});'),
+        callbackImageSource.replace('{bridge();});','{ordinary.push(pictures[0]);bridge();});'),
+        callbackImageSource.replace('{bridge();});','{ordinary[0]=unknown;bridge();});'),
+        callbackImageSource+'ordinary.length=0;',
+        callbackImageSource.replace('ordinary=temporary;','ordinary=temporary;unknown(temporary);'),
+        callbackImageSource+'initialize();',
+        callbackImageSource.replace('{bridge();});','{initialize();bridge();});')])callbackRefused(source);
+});
+test('Image callback invariant rejects callback-writable or unproved scalar selections without defaulting zero',()=>{
+    for(const source of [
+        callbackImageSource.replace('let selected:Image;','let selected:Image;let position=0;').replace('Math.round(0)%(0+1)','position').replace('{bridge();});','{position=9;bridge();});'),
+        callbackImageSource.replace('Math.round(0)%(0+1)','unknown()'),
+        callbackImageSource.replace('Math.round(0)%(0+1)','1'),
+        callbackImageSource.replace('function use(){','function use(position:number){').replace('Math.round(0)%(0+1)','position').replaceAll('use();','use(0);'),
+        callbackImageSource.replace('Math.round(0)%(0+1)','SpriteKind.create()')])callbackRefused(source);
+});
+test('Image callback invariant requires complete immutable caller and actual SDK registration ancestry',()=>{
+    for(const source of [
+        callbackImageSource.replace('sprites.onOverlap','fake.onOverlap'),
+        'let sprites=unknown;'+callbackImageSource,
+        callbackImageSource+'sprites.onOverlap=unknown;',
+        callbackImageSource+'let escaped=bridge;',
+        callbackImageSource.replace('function bridge(){use();}','function bridge(){bridge();use();}'),
+        callbackImageSource.replace('function bridge(){','function bridge(value=unknown()){'),
+        callbackImageSource.replace('function bridge(){','function bridge(value:number){'),
+        callbackImageSource.replace('function bridge(){','function bridge<T>(){'),
+        callbackImageSource.replace('function(first:Sprite,second:Sprite)','function(first:Sprite,first:Sprite)'),
+        callbackImageSource.replace('function(first:Sprite,second:Sprite)','function(first:Sprite,second:Sprite=unknown())'),
+        callbackImageSource.replace('sprites.onOverlap(SpriteKind.Player,SpriteKind.Projectile,','unknown(')])callbackRefused(source);
+});
+test('Image callback invariant handles destroy as a barrier rather than restoring ordinary captured state',()=>{
+    const source=callbackImageSource.replace('{bridge();});','{first.destroy();bridge();});'),p=parse(source);
+    assert.equal(sourceImageArrayCloneEffects(p)?.has(callbackUse(p)),true,'globally closed allocation cannot be acquired by unrelated reentry');
+    callbackRefused(source+'sprites.onDestroyed(SpriteKind.Player,function(sprite:Sprite){ordinary=[];});');
+    callbackRefused(source.replace('let selected:Image;','let selected:Image;let position=0;').replace('Math.round(0)%(0+1)','position')+'sprites.onDestroyed(SpriteKind.Player,function(sprite:Sprite){position=9;});');
+    const b=boundary(fixture(source+'function unused(){unknown();}'));assert.equal(prepareSharedImageArrayTransport(b.normalized,{sourceContext:b.context}),null,'no unknown body acquires an F effect grant from this query');
+});
+test('Image callback invariant facts permanently expire and cannot be transplanted or forged',()=>{
+    const p=parse(callbackImageSource),proof=sourceImageArrayCloneEffects(p),call=callbackUse(p);assert.equal(proof?.has(call),true);
+    assert.equal(proof.has({...call}),false);assert.equal(proof.has(callbackUse(parse(callbackImageSource))),false);
+    const registration=entryNodes(p).find(node=>node.type==='Call'&&node.callee?.name==='onOverlap'),prior=registration.args[2];
+    registration.args[2]={...prior};assert.equal(proof.has(call),false);registration.args[2]=prior;assert.equal(proof.has(call),false);
+    const q=parse(callbackImageSource);assert.equal(sourceImageArrayCloneEffects(q,{})?.has(callbackUse(q))??false,false);
+    for(const select of [program=>entryNodes(program).find(node=>node.type==='FunctionExpression'),program=>program.body.find(node=>node.type==='FunctionDeclaration'&&node.name==='bridge')]){
+        const current=parse(callbackImageSource),prior=sourceImageArrayCloneEffects(current),call=callbackUse(current),fn=select(current);assert.equal(prior?.has(call),true);
+        fn.parameterProperties=[{name:'closedRoleMutation'}];
+        assert.equal(prior.has(call),false,'actual current metadata mutation expires the existing proof');
+        assert.ok(!sourceImageArrayCloneEffects(current)?.has(call),'fresh invariant refuses top-level parameter properties');
+    }
+    const r=parse(callbackImageSource),query=sourceImageArrayCloneEffects(r),index=callbackUse(r).callee.object.index,old=index.right;
+    index.right={type:'Number',value:'0'};assert.equal(query.has(callbackUse(r)),false);index.right=old;assert.equal(query.has(callbackUse(r)),false);
+});
