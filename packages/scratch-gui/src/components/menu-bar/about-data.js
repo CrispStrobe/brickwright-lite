@@ -464,6 +464,13 @@ const ABOUT_GROUPS = [
                 role: 'Terminal emulator for the Linux-on-RISC-V lesson console'
             },
             {
+                name: 'Jolt Physics (JoltPhysics.js)',
+                url: 'https://github.com/jrouwe/JoltPhysics.js',
+                license: 'MIT',
+                licenseUrl: 'https://github.com/jrouwe/JoltPhysics.js/blob/main/LICENSE',
+                role: 'The Sim Lab physics engine (rigid bodies, hinges, motors, gears)'
+            },
+            {
                 name: 'three.js',
                 url: 'https://github.com/mrdoob/three.js',
                 license: 'MIT',
