@@ -16,6 +16,13 @@ Own focused CPX translator/inference/behaviour tests, the CPX section of
 `scripts/makecode-census.mjs` and its generated census document, affected CPX
 browser controls in the existing MakeCode verifier, and
 `docs/A12-CPX-TRANSLATOR.md`. Preserve CPX MakeCode simulation and the pin bridge.
+Also own only gesture/acceleration input injection in the existing
+`scripts/lib/{makecode-adafruit-sim,cpx-extension-run}.mjs` test helpers, so the
+same scheduled inputs reach each original device implementation. Existing
+clock, snapshots, sound decoding and comparisons remain unchanged. Existing
+CPX event hats are preferred to invented polling when they express the source
+handler exactly; dynamic registration and unsupported event semantics stay
+named refusals.
 
 Acceptance: reproduce the hint-less inference defect first; account for all
 149 pinned pxt-adafruit docs programs without silent call loss; compare at least
