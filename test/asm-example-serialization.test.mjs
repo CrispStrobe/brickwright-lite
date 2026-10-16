@@ -26,9 +26,12 @@ const busyEntry = async method => {
     const {component, prompts} = setup({method, busy: true});
     const before = structuredClone(component.state);
     await component.load('pins');
-    // Without this assertion, the later guard would mask the missing entry guard.
-    assert.equal(prompts(), 0, 'busy entry must not ask replacement confirmation');
-    assert.deepEqual(component.state, before);
+    assert.equal(prompts(), 1, 'accepted replacement still asks confirmation');
+    assert.notEqual(component.state.buffers, before.buffers);
+    assert.equal(component.state.buffers.asm, 'exact example', 'accepted request must reserve newer editor buffers');
+    assert.equal(component.state.buffers.pseudocode, before.buffers.pseudocode);
+    assert.equal(component.state.busy, true);
+    assert.equal(component.state.status, 'loaded Pins');
 };
 const confirmationRace = async method => {
     let release;
@@ -40,11 +43,14 @@ const confirmationRace = async method => {
     const before = structuredClone(component.state);
     release(true);
     await loading;
-    assert.deepEqual(component.state, before, 'compilation starting during confirmation must prevent example write');
+    assert.equal(component.state.buffers.asm, 'exact example', 'confirmed request must own the newer editor buffer');
+    assert.equal(component.state.buffers.pseudocode, before.buffers.pseudocode);
+    assert.equal(component.state.busy, true);
+    assert.equal(component.state.status, 'loaded Pins');
 };
 
-test('busy ASM example admission preserves owned source without asking', () => busyEntry(body));
-test('compilation starting during ASM replacement confirmation prevents the write', () => confirmationRace(body));
+test('accepted method request reserves newer editor source during compilation', () => busyEntry(body));
+test('compilation starting during confirmation preserves the accepted newer editor request', () => confirmationRace(body));
 test('idle ASM example loading preserves other buffers and localized status', async () => {
     for (const locale of ['en', 'de']) {
         for (const current of ['', 'owned source']) {
@@ -69,16 +75,14 @@ test('declined ASM replacement and unknown examples preserve all state', async (
 test('ASM examples become available again after compilation finishes', async () => {
     const {component} = setup({busy: true, current: ''});
     await component.load('pins');
-    assert.equal(component.state.buffers.asm, '');
+    assert.equal(component.state.buffers.asm, 'exact example');
     component.state.busy = false;
     await component.load('pins');
     assert.equal(component.state.buffers.asm, 'exact example');
 });
-test('entry and post-confirmation guard mutations fail their own behavioural controls', async () => {
-    await assert.rejects(() => busyEntry(once(body, 'if (!id || this.state.busy) return;', 'if (!id) return;')),
-        /busy entry must not ask/);
-    await assert.rejects(() => confirmationRace(once(body, 'if (this.state.busy) return;', '')),
-        /compilation starting during confirmation/);
+test('dropping accepted buffer publication fails the ownership control', async () => {
+    await assert.rejects(() => busyEntry(once(body, 'asm: example.source', 'asm: state.buffers.asm')),
+        /accepted request must reserve/);
 });
 test('the ASM picker busy expression disables pending work, with omission negative', () => {
     const picker = source.slice(source.indexOf('data-testid="bw-asm-examples"'));

@@ -377,27 +377,26 @@ Do not change `setDevice`, `compile`, MakeCode/export/device-routing blocks,
 engine models, dependency pins, timeouts, compiler interception or other lanes.
 PR965's already qualified CUI adoption bytes remain unchanged.
 
-Require pure actual-method controls for busy rejection, ordinary idle loading,
-confirmation refusal and compilation starting during a pending confirmation;
-isolated entry/post-confirmation guard mutations must fail by name. The actual
-browser proof must hold only the return of a real completed VM load, observe
-the disabled picker and preserved source during the pending compile, release
-and restore the wrapper, then load and assemble through ordinary controls.
-Removing the picker guard must fail that held-state assertion, not merely time
-out later. Retain the complete keyboard/CGA/8255/refusal/reload journey and
-all enabled exact-head checks. No forced click, longer sleep, missing-scenario
-skip, unchanged failed rerun or mocked guest implementation. Move this entry
-to DONE in the final implementation candidate; keep the original red receipt.
+Combined qualification contract (2026-10-16): the original busy-refusal
+candidate passed its exact-head controls, but the newer merged editor-ownership
+fix in PR998 accepts newer editor requests while a previous VM load completes.
+The UI picker stays disabled during compilation. An already accepted direct
+method request instead replaces editor buffers immediately; the unchanged
+compiler ownership fence preserves that buffer and its feedback across old
+load success, refresh and error. No VM-loading method is changed here.
 
-Implementation: early and post-confirmation busy guards plus a disabled picker,
-with byte-identical tracked twin. Pure UI protocol checks: 20/20 passed,
-including seven new controls and isolated entry/post-confirmation/picker
-omission negatives; the broader protocol/browser-policy/gate-shape selection
-passed 55/55. The browser journey now holds only the return of an actual
-completed VM load, checks disabled admission and preserved source, then releases
-and restores the wrapper before ordinary example selection and assembly.
-Canonical claim merged in PR977; fresh combined qualification remains on PR965.
-The original Build38726686250 failure is preserved, not rerun unchanged.
+Require actual-method controls for immediate accepted buffer ownership,
+confirmation refusal, ordinary idle loading and confirmation overlapping busy
+work. A buffer-publication mutation must fail; preserve PR998's success/error/
+refresh ownership controls unchanged. The actual browser proof holds only the
+return of a real completed VM load, observes the disabled picker, accepts one
+direct newer editor request, releases/restores the wrapper and proves exact
+buffer identity/source/feedback survive. Then assemble through ordinary controls.
+Removing the picker guard must fail the held-state assertion. Retain the entire
+keyboard/CGA/8255/refusal/reload journey and all exact-head checks. No forced
+click, timeout increase, omitted scenario or invented guest. Original refusal
+results and the first integration conflicts remain separate historical evidence.
+Fresh combined hosted qualification remains required before landing.
 
 ## STM32 faithful model pin adoption (sb3-creator + bw-board) — 2026-10-15
 

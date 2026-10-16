@@ -1852,12 +1852,11 @@ class PseudocodeImporter extends React.Component {
      * typed is worse than no example.
      */
     async loadAsmExample (id) {
-        if (!id || this.state.busy) return;
+        if (!id) return;
         const example = this._asmExamples().find(e => e.id === id);
         if (!example) return;
         const current = (this.state.buffers.asm || '').trim();
         if (current && !(await confirmAsync(this.L.asmExampleReplace))) return;
-        if (this.state.busy) return;
         this.setState(state => ({
             buffers: {...state.buffers, asm: example.source},
             asmMode: 'source',

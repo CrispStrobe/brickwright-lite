@@ -381,17 +381,37 @@ try {
             window.__bwAsmCompileProof.importer.state.busy, null, {timeout: 15000});
         record('ASM example picker is disabled while a real completed VM load awaits publication',
             await examples.isDisabled());
-        record('direct ASM example admission preserves source during pending compilation', await page.evaluate(async () => {
+        await page.evaluate(async () => {
             const proof = window.__bwAsmCompileProof;
-            if (!proof.before || !/A Program That Waits For You/.test(proof.before)) return false;
+            if (!proof.before || !/A Program That Waits For You/.test(proof.before)) {
+                throw new Error('original authored ASM source missing');
+            }
+            proof.chosen = proof.importer._asmExamples().find(example => example.id === 'pins').source;
             await proof.importer.loadAsmExample('pins');
-            return proof.importer.state.busy && proof.importer.state.buffers.asm === proof.before;
-        }));
+        });
+        await page.waitForFunction(() => {
+            const proof = window.__bwAsmCompileProof;
+            return proof.importer.state.busy && proof.importer.state.buffers.asm === proof.chosen;
+        }, null, {timeout: 15000});
+        record('accepted method request owns newer ASM source while VM publication is pending',
+            await page.evaluate(() => {
+                const proof = window.__bwAsmCompileProof;
+                proof.acceptedBuffers = proof.importer.state.buffers;
+                proof.acceptedStatus = proof.importer.state.status;
+                return proof.chosen !== proof.before && proof.importer.state.busy;
+            }));
     } finally {
         await page.evaluate(() => window.__bwAsmCompileProof?.cleanup());
     }
     await page.waitForFunction(() => !window.__bwAsmCompileProof.importer.state.busy,
         null, {timeout: 15000});
+    record('old VM completion preserves accepted ASM buffer identity, source and feedback',
+        await page.evaluate(() => {
+            const proof = window.__bwAsmCompileProof;
+            return proof.importer.state.buffers === proof.acceptedBuffers &&
+                proof.importer.state.buffers.asm === proof.chosen &&
+                proof.importer.state.status === proof.acceptedStatus;
+        }));
     await page.evaluate(() => { delete window.__bwAsmCompileProof; });
     await examples.selectOption('pins');
     await page.waitForFunction(() => /An LED and a Switch on the 8255/.test(
