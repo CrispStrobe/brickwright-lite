@@ -5323,3 +5323,17 @@ program field and unrelated icons; no server alias, asset duplication, supplier
 pin, workflow or broad runtime change. A fresh affected visible editor/theme
 qualification remains required; original missing-resource failures stay open
 until that evidence exists. Other lanes retain their owned surfaces.
+
+### Arcade ExtendableSprite update Throw source intersection — 2026-10-16
+
+Owner: Codex Arcade integration, coordinated with the existing Throw, owned
+Sprite class callable and managed SDK lanes. Status: claim pending qualified
+normal merge; no implementation under this amendment yet.
+
+Contract: [source admission and initialization](docs/ARCADE-EXTENDABLE-THROW-SOURCE-ADMISSION.md).
+Own the narrow GUI source issuer/currentness/normalization intersection in
+throw-source-gate.js, source-value-producers.js, lower-object-classes.js and the
+exact Arcade translator handoff, a focused helper if needed, affected controls
+and documentation. Preserve the original failing guest and all prior source
+refusals; no generic method admission, all-globals initialization, copied tags,
+scheduler/runtime/pin/worker change, skipped control or corpus promotion.
