@@ -5054,3 +5054,15 @@ editor ownership remain separate. Preserve unknown-resource Undefined behavior,
 shared-cache versus fresh-array identity, all writers, mutation and presence
 checks, and current graph/resource binding. No opcode-only type grant, default
 Array, dependency pin or runtime semantic change is authorized by this claim.
+
+## Arcade per-player score Number producers — 2026-10-16
+
+PROPOSED / DOCS ONLY — Codex Arcade integration. Merge this claim before
+implementation. Contract: [per-player score Number producers](docs/ARCADE-INFO-PLAYER-NUMBER-PRODUCERS.md).
+Own the narrow ordinary SDK source proof, any necessary existing producer
+consumer integration, focused current Code/Blocks/saved/export and native
+controls, and documentation. Prove actual unshadowed fixed-player API bindings,
+complete access/writer census and real score Number completion. Preserve the
+existing direct-info and scene-clock boundaries; no namespace/opcode type grant,
+refusal suppression, runtime semantic change, pin adoption or whole-case credit.
+Other per-player results and EV3 console/motor gaps remain separate.
