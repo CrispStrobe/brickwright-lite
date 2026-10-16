@@ -132,7 +132,24 @@ test('public Creator Code SB3 and export preserve resource art alongside ordinar
     for(const [name,item]of Object.entries(zip.files))if(!item.dir)members[name]=await item.async('base64');
     record({stage:'SB3',bytes:actualBytes.toString('base64'),members,project:creator.project});
     const exported=projectToArcade(creator.project,{costumeSvg:(_target,costume)=>creator.assets.get(costume.assetId)?.data});record({stage:'export',result:exported,channels:channels(exported)});clean(exported);
-    assert.ok(exported.files['main.ts']);assert.match(exported.ts,/\.setPixel\(/);assert.match(exported.ts,/\.push\(3\)/);
+    assert.ok(exported.files['main.ts']);assert.match(exported.ts,/\.setPixel\(/);
+    // The genuine exporter preserves a connected numeric reporter as (0 + 3).
+    // Prove the actual emitted call and closed numeric argument, rather than
+    // requiring the exporter to fold its source spelling into one literal.
+    const pushes=[];walk(parse(exported.ts),node=>{
+        if(node.type==='Call'&&node.callee?.type==='Member'&&node.callee.name==='push'&&
+            node.callee.object?.type==='Identifier'&&node.callee.object.name==='ordinary')pushes.push(node);
+    });
+    assert.equal(pushes.length,1);assert.equal(pushes[0].args.length,1);
+    const numeric=node=>{
+        if(node?.type==='Number'&&typeof node.value==='string'&&/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(node.value))return Number(node.value);
+        if(node?.type==='Binary'&&node.op==='+'){
+            const left=numeric(node.left),right=numeric(node.right);
+            return Number.isFinite(left)&&Number.isFinite(right)?left+right:NaN;
+        }
+        return NaN;
+    };
+    assert.equal(numeric(pushes[0].args[0]),3,'the actual ordinary Array receives numeric three exactly once');
     const again=convert(exported.files);clean(again);assert.equal((again.code.match(/new array reference/g)||[]).length,(r.code.match(/new array reference/g)||[]).length,'no new backing construction; ordinary Array remains');
 });
 
