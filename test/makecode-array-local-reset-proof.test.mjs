@@ -208,3 +208,22 @@ test('ancestor source-start schema and later incompatible writers remain obligat
     const hidden=fixture();wrapEntry(hidden,'ordinary entry');hidden.blocks[hidden.hat].inputs.hidden=[1,hidden.number(0)];refuses(hidden);
     const writer=fixture();wrapEntry(writer,'ordinary entry');writer.insert(writer.sequence.at(-1),writer.set('cell0',writer.number(3)));refuses(writer);
 });
+
+test('repeated canonical resets before the palette preserve each separate dead writer proof',()=>{
+    const f=fixture(7);wrapEntry(f,'ordinary entry');
+    for(let index=0;index<7;index++)f.insert(f.effect,f.set(`cell${index}`,f.special(index%2?'null':'undefined')));
+    assert.deepEqual(results(f),Array(7).fill(true));
+});
+test('repeated canonical resets across palette effects still require a definite Array overwrite',()=>{
+    const f=fixture();wrapEntry(f,'ordinary entry');
+    f.insert(f.overwrites[0],f.set('cell0',f.special('undefined')));f.insert(f.overwrites[0],f.palette());
+    assert.deepEqual(results(f),[true]);
+});
+test('a read between repeated resets cannot be hidden by a later valid Array write',()=>{
+    const f=fixture();wrapEntry(f,'ordinary entry');
+    f.insert(f.overwrites[0],f.global(f.local('cell0')));f.insert(f.overwrites[0],f.set('cell0',f.special('null')));refuses(f);
+});
+test('a noncanonical writer among repeated resets remains an incompatible writer',()=>{
+    const f=fixture();wrapEntry(f,'ordinary entry');
+    f.insert(f.overwrites[0],f.set('cell0',f.number(7)));f.insert(f.overwrites[0],f.set('cell0',f.special('null')));refuses(f);
+});

@@ -125,3 +125,12 @@ nested invocation's fresh parameters. The complete callee entry-to-overwrite
 effect and capture proof still applies unchanged. This is an export analysis
 extension, with focused controls and the affected current roundtrip pending
 qualification; it does not repair native dictionaries or qualify GUI behavior.
+
+### Repeated private resets
+
+Several canonical Null or Undefined assignments may occur in the same proven
+entry prefix. Each excluded writer still requires its own later definite Array
+overwrite. Earlier resets and palette publication remain in the exported body;
+any intervening read, capture, call, incompatible writer or unknown effect
+refuses the proof. This covers repeated conversion without relying on generated
+local or procedure names. Source growth across conversions is a separate gap.

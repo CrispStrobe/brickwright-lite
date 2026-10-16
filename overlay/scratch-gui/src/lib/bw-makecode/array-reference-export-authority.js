@@ -315,7 +315,16 @@ export function createArrayReferenceExportAuthority(project) {
                 const key=literal(current,'NAME',target),c=localCell(scope,key);if(key==='__proto__'||!c||c.formal)return false;
                 if(current===node){seenReset=true;locals.set(c,{kind:'scalar'});}
                 else {const v=scalar(input(current,'VALUE',target));if(v===unproved)return false;
-                    if(c===destination){if(seenReset&&v.kind==='array'){extendedResetUsed=true;return true;}return false;}
+                    if(c===destination){
+                        // Repeated canonical resets do not read the cell or
+                        // publish its frame. Keep proving the whole prefix,
+                        // including earlier resets before this writer; only a
+                        // real later Array overwrite completes this proof.
+                        if(!special(input(current,'VALUE',target)?.node)){
+                            if(seenReset&&v.kind==='array'){extendedResetUsed=true;return true;}
+                            return false;
+                        }
+                    }
                     locals.set(c,v);}
             }else if(current.opcode==='arcade_setPalette'&&shape(current,['DATA'])&&/^[0-9a-fA-F]{96}$/.test(literal(current,'DATA',target)||'')){
                 // Qualified render/state event effects preserved; prefix has
