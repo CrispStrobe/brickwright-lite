@@ -3525,7 +3525,20 @@
      ]
     }
    ],
-   "nameDe": "SPIKE colour Sensor"
+   "nameDe": "SPIKE colour Sensor",
+   "sensor": {
+    "kind": "color",
+    "origin": [
+     0,
+     0,
+     -49
+    ],
+    "direction": [
+     0,
+     0,
+     -1
+    ]
+   }
   },
   {
    "part": "37316.dat",
@@ -3609,7 +3622,20 @@
      ]
     }
    ],
-   "nameDe": "SPIKE distance Sensor"
+   "nameDe": "SPIKE distance Sensor",
+   "sensor": {
+    "kind": "distance",
+    "origin": [
+     0,
+     0,
+     -69
+    ],
+    "direction": [
+     0,
+     0,
+     -1
+    ]
+   }
   },
   {
    "part": "37312.dat",
@@ -3693,7 +3719,20 @@
      ]
     }
    ],
-   "nameDe": "SPIKE force Sensor"
+   "nameDe": "SPIKE force Sensor",
+   "sensor": {
+    "kind": "force",
+    "origin": [
+     0,
+     0,
+     -70
+    ],
+    "direction": [
+     0,
+     0,
+     -1
+    ]
+   }
   }
  ]
 }

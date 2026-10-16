@@ -5,7 +5,8 @@
 // PlacedModel + catalog into a CompiledMechanism (pure data in, pure data
 // out). Runs validateCompiledMechanism on output and throws on bug.
 
-import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, LDU_M, lduToWorld} from '../contracts.js';
+import {validatePlacedModel, validateCompiledMechanism, GROUND_FRICTION, LDU_M, lduToWorld, dirToWorld} from '../contracts.js';
+import {mat3MulVec3, vecAdd} from './vec.js';
 import {buildGraph} from './graph.js';
 import {buildIslands} from './islands.js';
 import {buildJoints} from './joints.js';
@@ -31,7 +32,7 @@ const quatRotateVec = (q, v) => {
  * @param {Array} bodies dynamic bodies already built
  * @returns {object} ground body
  */
-const makeGround = bodies => {
+const makeGround = (bodies, opts = {}) => {
     let lowest = Infinity;
     for (const b of bodies) {
         for (const col of b.colliders) {
@@ -71,6 +72,7 @@ const makeGround = bodies => {
         colliders: [{shape: 'box', halfExtents: [1, halfThick, 1]}],
         parts: [],
         friction: GROUND_FRICTION,
+        color: opts.groundColor !== undefined ? opts.groundColor : 10,
     };
 };
 
@@ -166,7 +168,7 @@ export const compile = (model, catalog, opts = {}) => {
     // Bodies final list: islands.bodies plus ground
     const bodies = [...islands.bodies];
     if (opts.ground !== false) {
-        const ground = makeGround(bodies);
+        const ground = makeGround(bodies, opts);
         // Insert ground first to match example ordering (ground first)
         bodies.unshift(ground);
     }
@@ -175,6 +177,26 @@ export const compile = (model, catalog, opts = {}) => {
     // Our islands bodies are already b0... sorted. We'll keep ground at front.
 
     // Sort joints already deterministic from buildJoints (j0..), gears deterministic.
+
+    // Sensors: from placed parts whose catalog entry has a sensor.
+    const sensors = [];
+    for (const pl of knownParts) {
+        const meta = catalogMap.get(pl.part);
+        if (!meta || !meta.sensor) continue;
+        if (!pl.port) {
+            diagnostics.push({severity: 'warning', code: 'sensor-without-port', message: 'Sensor ' + pl.id + ' has no port', parts: [pl.id]});
+            continue;
+        }
+        let bodyId = islands.nodeToBody.get(pl.id);
+        if (!bodyId) bodyId = islands.nodeToBody.get(pl.id + '#out');
+        if (!bodyId) continue;
+        const lduOrigin = vecAdd(mat3MulVec3(pl.rotation, meta.sensor.origin), pl.position);
+        const worldOrigin = lduToWorld(lduOrigin);
+        const lduDir = mat3MulVec3(pl.rotation, meta.sensor.direction);
+        const worldDir = dirToWorld(lduDir);
+        sensors.push({port: pl.port, kind: meta.sensor.kind, body: bodyId, origin: worldOrigin, direction: worldDir});
+    }
+    sensors.sort((a, b) => a.port.localeCompare(b.port));
 
     // Diagnostics: ensure deterministic order? Sort by code then message
     diagnostics.sort((a, b) => {
@@ -195,6 +217,7 @@ export const compile = (model, catalog, opts = {}) => {
         gears,
         diagnostics,
     };
+    if (sensors.length > 0) mechanism.sensors = sensors;
 
     const problemsOut = validateCompiledMechanism(mechanism);
     if (problemsOut.length > 0) {
