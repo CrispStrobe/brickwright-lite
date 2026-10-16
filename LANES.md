@@ -385,7 +385,7 @@ landed as `10edc699d` before Lite implementation changes.
 
 ## ASM example admission during pending Code compilation — 2026-10-15
 
-CLAIM — Codex circuit/instrument adoption owner, bounded blocker repair for
+DONE — Codex circuit/instrument adoption owner, bounded blocker repair for
 PR965. Base `dccfd176b0043128b6a723e55f80a5e3b47fed4c`; isolated branch
 `docs/asm-example-serialization-claim-20261015` publishes ownership first.
 Production edits wait for this claim's merge and coordination with the A11
@@ -405,17 +405,26 @@ Do not change `setDevice`, `compile`, MakeCode/export/device-routing blocks,
 engine models, dependency pins, timeouts, compiler interception or other lanes.
 PR965's already qualified CUI adoption bytes remain unchanged.
 
-Require pure actual-method controls for busy rejection, ordinary idle loading,
-confirmation refusal and compilation starting during a pending confirmation;
-isolated entry/post-confirmation guard mutations must fail by name. The actual
-browser proof must hold only the return of a real completed VM load, observe
-the disabled picker and preserved source during the pending compile, release
-and restore the wrapper, then load and assemble through ordinary controls.
-Removing the picker guard must fail that held-state assertion, not merely time
-out later. Retain the complete keyboard/CGA/8255/refusal/reload journey and
-all enabled exact-head checks. No forced click, longer sleep, missing-scenario
-skip, unchanged failed rerun or mocked guest implementation. Move this entry
-to DONE in the final implementation candidate; keep the original red receipt.
+Combined qualification contract (2026-10-16): the original busy-refusal
+candidate passed its exact-head controls, but the newer merged editor-ownership
+fix in PR998 accepts newer editor requests while a previous VM load completes.
+The UI picker stays disabled during compilation. An already accepted direct
+method request instead replaces editor buffers immediately; the unchanged
+compiler ownership fence preserves that buffer and its feedback across old
+load success, refresh and error. No VM-loading method is changed here.
+
+Require actual-method controls for immediate accepted buffer ownership,
+confirmation refusal, ordinary idle loading and confirmation overlapping busy
+work. A buffer-publication mutation must fail; preserve PR998's success/error/
+refresh ownership controls unchanged. The actual browser proof holds only the
+return of a real completed VM load, observes the disabled picker, accepts one
+direct newer editor request, releases/restores the wrapper and proves exact
+buffer identity/source/feedback survive. Then assemble through ordinary controls.
+Removing the picker guard must fail the held-state assertion. Retain the entire
+keyboard/CGA/8255/refusal/reload journey and all exact-head checks. No forced
+click, timeout increase, omitted scenario or invented guest. Original refusal
+results and the first integration conflicts remain separate historical evidence.
+Fresh combined hosted qualification remains required before landing.
 
 ## STM32 faithful model pin adoption (sb3-creator + bw-board) — 2026-10-15
 
@@ -5032,7 +5041,10 @@ follows this claim's normal qualified merge.
 
 ## Circuit instruments: coordinated consumer adoption — 2026-10-15
 
-CLAIM — Codex bwcx, branch lane/circuit-instrument-consumer-20261015.
+DONE in the implementation commit containing this entry — Codex bwcx,
+branch lane/circuit-instrument-consumer-20261015. Canonical claim merged in
+PR961 before implementation. This is a CUI-only package adoption, not an
+engine-model change or a second Board/SB3 pin move.
 Exact base bf0d5cc23fa9321b63b9df3084965026d5054080, after STM32 PR952.
 Preserve its Board b4b4c87f70624dfb570a6d21391c5a2d5a40a0e8 and
 SB3 c9be966fc6cf2f4343ca96c1a4477c91e05854ee pins. Adopt qualified CUI
@@ -5055,6 +5067,17 @@ deployment or physical-accuracy claim. Publish claim before implementation.
 This is task 2 of the ordered circuit campaign in upstream CUI documentation;
 later stratified-regression and realism work needs its own measured envelope.
 
+Acceptance retained in the candidate: six actual installed-CLI signed/phase
+batch and finite-watch captures against an independent nominal follower
+calculation, raw sample clocks/CSV, signed meter means/KCL, cumulative native
+work receipts, named --current refusal and a process-isolated missing-receipt
+negative with restored control. Actual engine and browser execution is hosted;
+the final candidate must pass every enabled exact-head integration check before
+landing. Local metadata: both locks differ only in CUI spec/resolved/integrity;
+six pin-package tests and all seven generator checks pass. The full-tree
+stale-pin scan cannot qualify a sparse checkout and remains a hosted gate.
+No assertion, tolerance, raw sample rate, model default or one-shot workflow
+policy was relaxed. Source-only declarations do not prove deployment or hardware.
 
 ## Qualified 386 consumer and media workflow continuation — 2026-10-15
 
