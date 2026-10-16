@@ -698,3 +698,15 @@ invocation, and edits actual AST ranges. Six focused migration/CLI controls
 and both original counterexamples verify the correction; unchanged native
 ownership controls retain their earlier qualification. The full consumer
 composition remains subject to a new final-head hosted verdict.
+
+### Canonical compiler vocabulary fixture alignment — 2026-10-16
+
+The integration campaign found the older 399-operation assertion alongside the
+already adopted canonical compiler vocabulary. Adoption commit `0a63e8db7` adds
+exactly three operations: parameter constraint declarations, throwing a value,
+and constructing an owned-image sprite. The fixture now requires 402 operations
+and checks each added operation's exact opcode, kind and spelling, alongside
+all existing qualified words. No supplier pin, parser, count tolerance or
+production behavior changes. Original failed campaign evidence is retained.
+This fixture correction still needs focused execution and final integration CI;
+it establishes no project compatibility or runtime claim.
