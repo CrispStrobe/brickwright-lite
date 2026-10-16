@@ -88,3 +88,10 @@ same object after adding a key or replacing its descriptor is refused. The
 certified source read also refuses inherited clock descriptors before calling
 the existing initializer; the direct historical service path stays unchanged.
 These authored successor controls remain unexecuted until finite qualification.
+
+Malformed caller sockets are refused by the existing exact structural owner
+check before typed obligations exist. Clock-sharing controls also retain a
+separate valid caller with a duplicate reporter edge from a preceding main
+writer, so the current Number inference refusal is exercised independently.
+The first pure successor passed its original two-caller export and 65 of 66
+controls; that control failure and its full returned diagnostics are retained.

@@ -72,7 +72,7 @@ test('class instance this is bounded separately from ambient or nested-function 
 test('current typed caller clock facts require the same exact connected reporter as emission',t=>{
     const result=arcadeToPseudocode('let seen=0;function receive(value:number){seen=value}receive(game.runtime());receive(game.runtime());');
     const creator=new Creator();creator.parse(result.code);assert.deepEqual(result.unsupported,[]);assert.deepEqual(creator.errors,[]);assert.deepEqual(creator.warnings,[]);assert.deepEqual(creator.unparsed,[]);
-    for(const mode of ['extra input','extra field','shadow','top level','next','mutation','wrong parent','duplicate dictionary identity','shared block edge','shared shadow edge','socket unknown tag','socket same-shadow role','socket missing tag','socket no-shadow extra tail','socket shadow missing fallback','socket extra fallback tail','socket malformed inline fallback','socket missing fallback block','socket foreign fallback owner','socket shared fallback','other clock opcode']){
+    for(const mode of ['extra input','extra field','shadow','top level','next','mutation','wrong parent','duplicate dictionary identity','shared edge with valid caller','shared block edge','shared shadow edge','socket unknown tag','socket same-shadow role','socket missing tag','socket no-shadow extra tail','socket shadow missing fallback','socket extra fallback tail','socket malformed inline fallback','socket missing fallback block','socket foreign fallback owner','socket shared fallback','other clock opcode']){
         const project=JSON.parse(JSON.stringify(creator.project)),target=project.targets.find(target=>Object.values(target.blocks).some(block=>block.opcode==='arcade_sceneMillis'));
         const [id,node]=Object.entries(target.blocks).find(([,block])=>block.opcode==='arcade_sceneMillis'),parent=target.blocks[node.parent];
         if(mode==='extra input')node.inputs.EXTRA=[1,[4,'1']];
@@ -83,6 +83,7 @@ test('current typed caller clock facts require the same exact connected reporter
         if(mode==='mutation')node.mutation={tagName:'mutation',children:[]};
         if(mode==='wrong parent')node.parent=Object.keys(target.blocks).find(other=>other!==id&&target.blocks[other]!==parent);
         if(mode==='duplicate dictionary identity')target.blocks.authoredDuplicateClock=node;
+        if(mode==='shared edge with valid caller'){const prior=target.blocks[parent.parent];assert.equal(prior?.opcode,'data_setvariableto','actual main writer preceding the first current caller');assert.equal(prior.next,node.parent);prior.inputs.VALUE=[2,id];}
         if(mode==='shared block edge')parent.inputs.EXTRA=[2,id];
         if(mode==='shared shadow edge')parent.inputs.EXTRA=[3,[4,'0'],id];
         const socket=Object.entries(parent.inputs).find(([,slot])=>slot[1]===id)?.[0];assert.ok(socket);
@@ -100,8 +101,13 @@ test('current typed caller clock facts require the same exact connected reporter
             if(mode==='socket shared fallback')parent.inputs.EXTRA=[1,fallback];
         }
         if(mode==='other clock opcode')node.opcode='arcade_programMillis';
-        const out=projectToArcade(project);t.diagnostic(JSON.stringify({stage:'malformed current typed clock caller',mode,current:project,out}));
-        assert.ok(out.unsupported.some(message=>message.includes('Procedure parameter constraint: actual current caller or writer requires Number')),mode+' cannot seed the formal Number graph');
+        // Extra/missing call sockets invalidate the structural owner before any
+        // typed obligations exist. Require that exact earlier refusal, rather
+        // than inventing a Number obligation for a rejected call declaration.
+        const structural=['shared block edge','shared shadow edge','socket missing tag','socket shared fallback'].includes(mode);
+        const expectedDiagnostic=structural?'Procedure parameter constraint: stock call requires exactly its actual input sockets':'Procedure parameter constraint: actual current caller or writer requires Number';
+        const out=projectToArcade(project);t.diagnostic(JSON.stringify({stage:'malformed current typed clock caller',mode,expectedDiagnostic,current:project,out}));
+        assert.ok(out.unsupported.includes(expectedDiagnostic),mode+' cannot seed the formal Number graph or bypass its earlier exact owner refusal');
         if(!['other clock opcode','socket missing tag'].includes(mode))assert.ok(out.unsupported.some(message=>message.includes('Scene clock Number:')),mode+' has the same emission refusal');
         assert.deepEqual(out.warnings,[]);
     }
