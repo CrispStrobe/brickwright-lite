@@ -1,3 +1,4 @@
+import {proveDenseArrayLoopEntries} from './dense-array-loop-entry.js';
 import {prepareObjectClassStructure} from './object-class-source-structure.js';
 import {physicalUpdateSourceSnapshot} from './physical-update-source-snapshot.js';
 import {analyseSourceNormalCompletion,sourceNormalCompletionFor} from './source-normal-completion.js';
@@ -22,9 +23,10 @@ export function analyseSourceValueProducers(program,options={}) {
 
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayCallbackParameters=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,normalCompletion=null,physicalUpdateSource=null}={}) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,normalCompletion=null,physicalUpdateSource=null}={}) {
     const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
     if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
+    const loopEntry=arrayLoopEntries?proveDenseArrayLoopEntries(program,()=>analyseGraph(program,{parenthesized:true,unboundIsOpaque:true})):null;
     const callbackEntry=arrayCallbackParameters?proveArrayCallbackPrimitiveEntries(program,normalCompletion):null;
     const completion=normalCompletion?sourceNormalCompletionFor(program,normalCompletion):null;
     if(normalCompletion&&!completion)throw new Error('Source completion proof must belong to the actual Program');
@@ -113,6 +115,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(node.type==='Update'&&node.argument?.type==='Identifier'){classWrites.add(binding(owners.get(node.argument),node.argument.name));derived.push({result:binding(owners.get(node.argument),node.argument.name),type:'Number',operands:[cell(node.argument)],signature:['++','--'].includes(node.op),domain:'Number'});edge(cell(node.argument),current);return;}
         if(node.type==='Call'&&node.isNew&&node.callee?.type==='Identifier'){classCalls.push({value:current,name:binding(owner,node.callee.name)});return;}
         if(arrayValues&&node.type==='Array'){const token=arrayToken(node);add(current,token);for(const item of node.items)edge(cell(item),token.element);return;}
+        if(node.type==='Index'&&loopEntry?.entries.has(node)){for(const type of loopEntry.entries.get(node))add(current,type);return;}
         if(arrayValues&&node.type==='Index'){arrayOperations.push({kind:'read',receiver:cell(node.object),result:current});return;}
         if(arrayValues&&node.type==='Member'&&node.name==='length'){arrayOperations.push({kind:'length',receiver:cell(node.object),result:current});return;}
         if(arrayValues&&node.type==='Call'&&!node.isNew&&node.callee?.type==='Member'&&['map','push','pop','shift','unshift'].includes(node.callee.name)){
@@ -238,7 +241,7 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         return fn&&declarations.get(id)?.size===1&&!classWrites.has(id)?fn.node:null;
     };
     const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
-    const currentTypes=value=>new Set(!callbackEntry||callbackEntry.current()?types.get(value)||[]:[]);
+    const currentTypes=value=>new Set((!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())?types.get(value)||[]:[]);
     // Copies prevent a consumer from changing another consumer's proof facts.
     // Binding facts do not discharge initialization at an expression occurrence.
     return Object.freeze({
