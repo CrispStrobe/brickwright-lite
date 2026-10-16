@@ -110,6 +110,7 @@ on:
       - 'docs/PEERS-SECURITY-REVIEW.md'
       - 'docs/RCX-FIRMWARE.md'
       - 'docs/SPIKE-CONSOLIDATION.md'
+      - 'docs/SIM-LAB-PLAN.md'
       - 'docs/SPIKE-ARENA.md'
       - 'docs/SPIKE-FIRMWARE-PROGRAMS.md'
       - 'docs/TARGET-EMULATOR-PERFORMANCE.md'
