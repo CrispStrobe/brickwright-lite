@@ -152,3 +152,12 @@ proof for the three regenerated default asset identities. The application,
 CLI children and successful compiler were not rerun to inspect these outputs.
 This remains a bounded animation roundtrip result, with GUI and whole-project
 qualification tracked separately.
+
+## Further component qualification
+
+- Image entry analysis: the complete 60-test source suite passes without skips. Opaque root procedure metadata is observed by identity; consumed metadata and serializer data retain explicit schemas and currentness.
+- Authentic import: the original first clone now receives a successful entry proof. The next refusal is the overlap-callback sprite alias `destroy()` call. Full F resource admission, original/current-export execution and whole-game promotion remain open.
+- Editor contracts: all 22 request-fence and 13 editor-contract tests pass. This is source-method and parser evidence; native-prompt, production browser and installed-dialog evidence remain pending.
+- Notice inventory: five hyphenated notice filenames were absent from the earlier inventory. Their current primary bytes and scopes are retained separately; they do not retroactively extend the earlier guarded inputs.
+
+Keep the original failures and immutable census. A successful component suite does not replace the outstanding selected-project, edited-export, native lifecycle or visible-editor gates.

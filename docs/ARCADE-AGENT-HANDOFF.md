@@ -3834,3 +3834,11 @@ existing execution hooks, preserves the info census and adds no word, engine
 ABI, pin or clock policy. Source/boundary-model/native controls are authored,
 not yet run on this candidate. Do not promote Sparks, its external Timer writer
 or its cyclic fields, nor visible editor acceptance, from this source change.
+
+## Image entry metadata and editor contract qualification
+
+The optional Image Array clone entry analysis now separates opaque root metadata from consumed executable data. It tracks the current Program and descriptors, rejects host functions and BigInt in serializer domains before helper calls, and preserves the original strict source-origin protocol. All 60 focused tests pass, including the original 55 unchanged controls.
+
+An authentic FreeThrow conversion now issues the entry query and accepts the same first clone that previously failed before the query. Its next named refusal is a zero-argument `destroy()` on a sprite alias from an actual overlap callback. Proving that callback origin, every receiver writer and destruction reentry remains necessary; a `Sprite` annotation supplies no authority. Whole-game acceptance and the raw census remain unchanged.
+
+The complete 22 import-request and 13 editor-contract tests pass with their existing mutation controls. The 24-test native-prompt module, actual browser editing and installed native dialogs remain separate pending qualifications. The original notice inventory missed five hyphenated license filenames; preserve the original coverage gap and use the complete inventory for the next qualification.

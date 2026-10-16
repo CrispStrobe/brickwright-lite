@@ -5201,3 +5201,9 @@ The current public project importer does not forward the direct converter's
 Throw prototype option. An opt-in converter or native control therefore does
 not establish public import or GUI availability. Product route/default support
 needs separate qualified implementation; never silently infer it from tests.
+
+### Image-entry and asynchronous editor follow-up
+
+The optional Image Array entry proof now handles the parser's opaque root procedure metadata while keeping consumed defaults, annotations and serializer domains as observed data. All 60 source controls pass. An authentic project advances past the original clone and stops at an incoming overlap-sprite alias `destroy()` call; callback provenance, complete writer closure and destruction reentry still need implementation and qualification.
+
+The complete 22 request-fence and 13 editor-contract tests pass. Browser work must still exercise pending file/share imports, replacement imports, stage changes and disposal visibly, including answer/cancel/error outcomes. Verify Code, connected Blocks, artwork, save/reopen and edited export together. The remaining native-prompt suite and installed dialogs have no new qualification from these source tests.
