@@ -58,7 +58,8 @@ test('normal Node package resolution rejects before integration and shares the i
 });
 test('production webpack resolver reaches the same installed model without aliases',()=>{
     const guiRequire=createRequire(new URL('../packages/scratch-gui/package.json',import.meta.url));
-    const {create}=guiRequire('enhanced-resolve');
+    const webpackRequire=createRequire(guiRequire.resolve('webpack/package.json'));
+    const {create}=webpackRequire('enhanced-resolve');
     const resolve=create.sync({conditionNames:['webpack','browser','import','default'],extensions:['.js']});
     const before=fixture(),after=fixture(true);try{
         assert.throws(()=>resolve(before.consumer,request),/not exported|not exported from/i);
