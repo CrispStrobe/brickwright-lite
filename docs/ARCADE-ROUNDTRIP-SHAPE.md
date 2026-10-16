@@ -187,8 +187,15 @@ candidate has no runtime, supplier, GUI or primitive-domain changes. Focused
 controls and actual affected current-program qualification remain required.
 
 The existing root procedure-constraint prefix envelope is not executable syntax.
-Its immutable container and prefix function identity remain bound separately;
+Its actual frozen or current lowering-clone container and prefix function identity remain bound separately;
 this shortcut neither calls that function nor obtains a lexical/value fact from
 it. Unknown metadata and changed current syntax keep their previous lowering.
 Existing value-lowering hooks and resource protocols still run before deciding
 whether only the empty allocation transport can be omitted.
+
+Actual parser parameter arrays carry three nonenumerable data channels. Only
+those exact parser descriptor roles, with their current function optional-name
+identity and empty default/property protocols, participate in the lexical census.
+Unrecognized hidden fields, substituted metadata and unproved default protocols
+keep previous staging. JSON snapshots do not preserve these descriptors; source
+controls must inspect the actual parser objects.

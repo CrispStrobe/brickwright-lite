@@ -22,7 +22,8 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
     const directEmptyStatements=new WeakMap();let currentEmptyStatementProof=()=>false;
     const prepareDirectEmptyStatements=()=>{
         const knownSyntax=new Set(['Program','Declaration','FunctionDeclaration','FunctionExpression','Block','If','While','For','ExpressionStatement','Return','Break','Continue','Array','Object','Identifier','Number','String','Template','Boolean','Null','Undefined','Binary','Logical','Unary','Update','Assignment','Member','Index','Call','Conditional','LegacyParsedValue','LegacyJsonValue','NativeArrayAccess']);
-        const occurrences=new Map(),nodes=[],statements=new Set(),bodyLists=new Set(),active=new Set(),physical=[];let closed=true;
+        const stringItems=array=>{if(!Array.isArray(array)||Object.getPrototypeOf(array)!==Array.prototype)return null;const names=[];for(let i=0;i<array.length;i++){const d=Object.getOwnPropertyDescriptor(array,String(i));if(!d||!Object.hasOwn(d,'value')||typeof d.value!=='string')return null;names.push(d.value);}return names;};
+        const occurrences=new Map(),nodes=[],statements=new Set(),bodyLists=new Set(),parserParameterLists=new Set(),active=new Set(),physical=[];let closed=true;
         const visit=(value,parent=null,key=null)=>{
             if(!value||typeof value!=='object')return;
             occurrences.set(value,(occurrences.get(value)||0)+1);if(active.has(value)){closed=false;return;}
@@ -32,21 +33,34 @@ export function lowerPxtStagedValues(program, {isStaticResource = () => false, i
             if(!Array.isArray(value)){
                 nodes.push(value);
                 const type=Object.getOwnPropertyDescriptor(value,'type')?.value;
+                if(['FunctionDeclaration','FunctionExpression'].includes(type)){
+                    const own=Object.getOwnPropertyDescriptors(value),params=own.params?.value,parameterNames=stringItems(params),defaults=own.parameterDefaults?.value;
+                    if(!parameterNames||!Array.isArray(own.body?.value)||new Set(parameterNames).size!==parameterNames.length||Array.isArray(defaults)&&defaults.length)closed=false;
+                    else{
+                        const hidden=Reflect.ownKeys(params).filter(key=>key!=='length'&&!Object.getOwnPropertyDescriptor(params,key)?.enumerable),names=['optionalParams','parameterDefaults','parameterProperties'];
+                        if(hidden.length){
+                            const descriptors=Object.getOwnPropertyDescriptors(params),optional=descriptors.optionalParams?.value,optionalNames=stringItems(optional);
+                            if(hidden.length!==names.length||names.some(name=>!hidden.includes(name)||!Object.hasOwn(descriptors[name]||{},'value')||!Array.isArray(descriptors[name].value)||descriptors[name].enumerable||descriptors[name].writable||descriptors[name].configurable)||optional!==own.optionalParams?.value||!optionalNames||optionalNames.some(name=>!parameterNames.includes(name))||new Set(optionalNames).size!==optionalNames.length||descriptors.parameterDefaults.value.length||descriptors.parameterProperties.value.length)closed=false;
+                            else parserParameterLists.add(params);
+                        }
+                        if(Reflect.ownKeys(params).some(key=>key!=='length'&&!names.includes(key)&&!(typeof key==='string'&&/^(0|[1-9][0-9]*)$/.test(key)&&Number(key)<params.length)))closed=false;
+                    }
+                }
                 if(Object.hasOwn(value,'type')&&!knownSyntax.has(type))closed=false;
                 if(['Unknown','Class','Namespace','Enum','ForOf','Switch','Try','Catch','ThrowStatement'].includes(type)||type==='Declaration'&&Object.getOwnPropertyDescriptor(value,'kind')?.value==='var')closed=false;
                 if(parent&&bodyLists.has(parent))statements.add(value);
             }
             for(const own of Reflect.ownKeys(value)){
                 const descriptor=Object.getOwnPropertyDescriptor(value,own);
-                if(typeof own!=='string'||!descriptor||!Object.hasOwn(descriptor,'value')||!descriptor.enumerable&&!(Array.isArray(value)&&own==='length')){closed=false;continue;}
+                if(typeof own!=='string'||!descriptor||!Object.hasOwn(descriptor,'value')||!descriptor.enumerable&&!(Array.isArray(value)&&own==='length')&&!(parserParameterLists.has(value)&&['optionalParams','parameterDefaults','parameterProperties'].includes(own))){closed=false;continue;}
                 const child=descriptor.value;
                 // This exact root field is an existing non-executable protocol
-                // envelope (procedure-constraint-source.js). Bind its immutable
+                // envelope (procedure-constraint-source.js). Bind its actual frozen-or-cloned
                 // container/prefix identity, never call it or infer AST facts
                 // from it. Other unknown function-bearing metadata still holds.
                 if(value===program&&own==='bwProcedureConstraintSource'){
                     const entries=child&&typeof child==='object'&&Object.getOwnPropertyDescriptors(child),prefix=entries?.prefix;
-                    if(!entries||Object.getPrototypeOf(child)!==Object.prototype||!Object.isFrozen(child)||Reflect.ownKeys(child).length!==1||!prefix||!Object.hasOwn(prefix,'value')||typeof prefix.value!=='function'||!prefix.enumerable){closed=false;continue;}
+                    if(!entries||Object.getPrototypeOf(child)!==Object.prototype||Reflect.ownKeys(child).length!==1||!prefix||!Object.hasOwn(prefix,'value')||typeof prefix.value!=='function'||!prefix.enumerable||!((!prefix.writable&&!prefix.configurable&&Object.isFrozen(child))||(prefix.writable&&prefix.configurable))){closed=false;continue;}
                     physical.push({value:child,proto:Object.getPrototypeOf(child),keys:Reflect.ownKeys(child),descriptors:entries});continue;
                 }
                 // Only actual body statement lists qualify, never for.init,

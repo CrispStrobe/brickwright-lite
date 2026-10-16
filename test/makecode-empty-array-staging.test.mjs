@@ -7,6 +7,7 @@ import {lowerPxtStagedValues} from '../overlay/scratch-gui/src/lib/bw-makecode/l
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from '../overlay/scratch-gui/src/lib/bw-makecode/procedure-constraint-source.js';
+import {lowerLiveFontMetrics} from '../overlay/scratch-gui/src/lib/bw-makecode/live-font-metrics.js';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 
 const directory=process.env.BW_EMPTY_ARRAY_OBSERVATIONS;let serial=0;
@@ -134,4 +135,18 @@ test('the genuine literal stays bound to its own actual statement through the ho
  const input=parse('probe();let values=[];'),statement=input.body[1],literal=statement.decls[0].init;let observed;
  const result=lower(input,{lowerArrayMap:(node,{expression})=>{if(node.type==='Call'&&node.callee?.name==='probe')observed=expression(literal,statement);return null;}});
  assert.ok(observed);assert.deepEqual(observed.prefix,[]);assert.equal(observed.value,literal);assert.equal(result.body[1].decls[0].init,literal);assert.equal(temporaryCount(result),0);
+});
+
+
+test('actual hidden parser parameter channels stay bound to their function without blanket hidden admission',()=>{
+ const input=parse('let values:number[]=[];function f(values:number[]){values=[];let other:number[]=[];return other;}'),fn=input.body[1];
+ for(const name of['optionalParams','parameterDefaults','parameterProperties']){const d=Object.getOwnPropertyDescriptor(fn.params,name);retain('actual-parameter-descriptor',{name,descriptor:d,optionalIdentity:fn.params.optionalParams===fn.optionalParams});assert.ok(d);assert.equal(d.enumerable,false);assert.equal(d.writable,false);assert.equal(d.configurable,false);assert.deepEqual(d.value,[]);}
+ assert.equal(fn.params.optionalParams,fn.optionalParams);assert.equal(temporaryCount(lower(input)),0);
+ const foreign=parse('let values=[];function f(arg:number[]){arg=[];}');Object.defineProperty(foreign.body[1].params,'foreignHidden',{value:[]});assert.ok(temporaryCount(lower(foreign))>0);
+ const swapped=parse('let values=[];function f(arg:number[]){arg=[];}');swapped.body[1].optionalParams=[];assert.ok(temporaryCount(lower(swapped))>0,'optional channel must retain actual fn metadata identity');
+ const defaults=parse('let values=[];function f(arg:any=1){let other=[];}');assert.ok(temporaryCount(lower(defaults))>0,'unproved default protocol retains prior staging');
+});
+
+test('the actual live-font lowering clone preserves non-executable root constraint metadata',()=>{
+ const prepared=prepareProcedureConstraintSource(parse('let values:number[]=[];values=[];')),original=procedureConstraintAstMetadata(prepared),input=lowerLiveFontMetrics({...prepared.program,bwProcedureConstraintSource:original});retain('actual-font-prefix-envelope',{originalFrozen:Object.isFrozen(original),cloneFrozen:Object.isFrozen(input.bwProcedureConstraintSource),sameEnvelope:input.bwProcedureConstraintSource===original,samePrefix:input.bwProcedureConstraintSource.prefix===original.prefix,originalDescriptor:Object.fromEntries(Object.entries(Object.getOwnPropertyDescriptor(original,'prefix')).map(([k,v])=>[k,k==='value'?{kind:typeof v}:v])),cloneDescriptor:Object.fromEntries(Object.entries(Object.getOwnPropertyDescriptor(input.bwProcedureConstraintSource,'prefix')).map(([k,v])=>[k,k==='value'?{kind:typeof v}:v]))});assert.notEqual(input.bwProcedureConstraintSource,original);assert.equal(Object.isFrozen(input.bwProcedureConstraintSource),false);assert.equal(input.bwProcedureConstraintSource.prefix,original.prefix);const result=lower(input);assert.equal(temporaryCount(result),0);assert.equal(result.bwProcedureConstraintSource,input.bwProcedureConstraintSource);assert.equal(result.body[1].expr.right.type,'Array');
 });
