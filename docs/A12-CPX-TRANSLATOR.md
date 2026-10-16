@@ -5,6 +5,10 @@ as `DEVICE CPX` code. Building it produces the existing `circuitplayground`
 blocks and device world. The original recovered files remain available for
 MakeCode's own simulator and the original-source download.
 
+Delivered on 2026-10-16 in [PR1009](https://github.com/CrispStrobe/brickwright-lite/pull/1009),
+merge `e0b89072`, reviewed source `16dda603`. Required hosted qualification
+passed with the exact timing limits described below.
+
 This is a translator for the pinned **pxt-adafruit 1.6.8** vocabulary, using the
 45 words delivered by [A9](A9-CPX-SCOPING.md). It adds no firmware emulator,
 extension implementation or dependency pin.
@@ -234,3 +238,25 @@ bytes; changing those same calls back to `console.log()` reproduces 30,125 raw
 bytes. The standalone reader still recovers all five difference records and
 93 ordered trace records. This is a transport control, not guest qualification;
 the changed head still requires fresh hosted unit and browser results.
+
+## Delivered qualification
+
+The [final source run](https://github.com/CrispStrobe/brickwright-lite/actions/runs/38945485781)
+passes both complete unit shards, including all fifteen comparisons: ten exact
+matches and five separately named exact runtime-boundary controls. All 459 files
+in the affected shard report tests, with zero raw stdout bytes. The standalone
+reader admits all five complete ordered observer traces and their original
+source/factory identities; the original failed runs remain retained.
+
+The complete production browser job passes all thirteen required CPX observations,
+including firmware cleanup, target identity, named MakeCode export refusal,
+untouched original-source download and simulation, and actual native Start,
+button A and Shake producing ten red, blue and green pixels. All eleven enabled
+checks on `16dda603` pass; deployment and its deployed-GUI check are conditional
+skips for this pull-request event.
+
+The reviewed merge `e0b89072` preserves the qualified A12 implementation and newer
+peer work. Its actual parents and tree match the predicted composition. The
+original tested checkout is recorded separately; the final whole tree is not
+claimed to be that checkout. These results do not establish physical device or
+actual Scratch VM timing parity for the five documented boundary programs.

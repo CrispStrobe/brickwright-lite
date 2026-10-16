@@ -35,6 +35,15 @@ for (const outcome of ['success', 'error']) {
             Object.assign(pane, {firmwareSession: session, state: {status: 'paused', message: 'Uploading current code...'}, bridge: {},
                 clock: {uninstall () { events.push('clock.uninstall'); }}, hubState: {backend: {cancel () {}}},
                 setState (patch) { Object.assign(this.state, patch); events.push(['state', patch]); }});
+            let deliver;
+            const delivery = new Promise(done => { deliver = done; });
+            const originalStop = pane.stopProgram.bind(pane);
+            let calls = 0;
+            pane.stopProgram = async options => {
+                const first = calls++ === 0;
+                try { return await originalStop(options); }
+                finally { if (first && owner !== 'current') await delivery; }
+            };
             const task = pane.pause();
             // Release even on a baseline failure, preserving the original method's completion.
             try {
@@ -43,13 +52,17 @@ for (const outcome of ['success', 'error']) {
                 assert.ok(!events.includes('retained-program-stop'));
                 if (owner === 'disposed') pane.disposed = true;
                 if (owner !== 'current') {
-                    await pane.stopProgram();
+                    const stopped = pane.stopProgram();
+                    const observed = outcome === 'error' && owner !== 'disposed' ?
+                        assert.rejects(stopped, /authored cancellation failure/) : assert.doesNotReject(stopped);
+                    if (outcome === 'success') resolve(); else reject(new Error('authored cancellation failure'));
+                    await observed;
                     pane.firmwareSession = {stop: async () => {}};
                     pane.state = {status: 'running', message: 'replacement'};
                 }
                 const mark = events.length;
                 if (outcome === 'success') resolve(); else reject(new Error('authored cancellation failure'));
-                await task;
+                deliver(); await task;
                 if (owner !== 'current') {
                     assert.deepEqual(events.slice(mark), [], 'Old cancellation must not publish into a replacement');
                     assert.equal(pane.state.status, 'running');
@@ -57,7 +70,7 @@ for (const outcome of ['success', 'error']) {
                     assert.equal(pane.state.status, 'ready'); assert.ok(events.includes('clock.uninstall'));
                     assert.equal(pane.state.message, '', 'Finished cancellation must clear stale upload feedback');
                 } else { assert.equal(pane.state.status, 'failed'); assert.equal(pane.state.message, 'authored cancellation failure'); }
-            } finally { resolve(); await task; }
+            } finally { resolve(); deliver(); await task; }
         });
     }
 }
