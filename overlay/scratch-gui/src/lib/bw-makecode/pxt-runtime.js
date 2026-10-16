@@ -37,6 +37,7 @@
  * @module
  */
 
+import {makeCodeWorkerErrorEnvelope} from './dependency-diagnostics.js';
 import {BASE_LICENCES, emulatorBaseVerdict} from './base-licences.js';
 import {VENDORED_EXTENSIONS} from './extensions-vendored.js';
 import {fetchMakeCodeExtensions, unresolvedGithubDependencies} from './extension-fetch.js';
@@ -101,18 +102,37 @@ var bwMakeCode = {
     // \`extra\`: extensions fetched on demand for this compile (extension-fetch.js).
     resolveExtensions: function (deps, target, extra) {
         var table = bwMakeCode.extensions.concat(extra || []);
-        var overrides = {}, unresolved = [], queue = [];
+        var overrides = Object.create(null), requested = Object.create(null), unresolved = [], queue = [];
         var push = function (d) { for (var k in d) queue.push([k, String(d[k])]); };
         push(deps || {});
         while (queue.length) {
             var dep = queue.shift(), id = dep[0], spec = dep[1];
             var m = /^github:([^#]+?)(?:#(.+))?$/i.exec(spec);
-            if (!m || overrides[id]) continue;
+            if (!m) {
+                if (/^github:/i.test(spec)) {
+                    var unsupported = new Error('Unsupported MakeCode dependency identity for ' + id + ' (' + spec + ')');
+                    unsupported.code = 'UNSUPPORTED_EXTENSION';unsupported.extensions = [id + ' (' + spec + ')'];throw unsupported;
+                }
+                continue;
+            }
             var repo = m[1].toLowerCase().replace(/[/]$/, '').replace(/\\.git$/, ''), ref = m[2] || '';
+            var identity = repo + '#' + ref;
+            if (Object.prototype.hasOwnProperty.call(requested,id) && requested[id] !== identity) {
+                var conflict = new Error('Conflicting MakeCode dependency identity for ' + id + ': ' + requested[id] + ' versus ' + identity);
+                conflict.code = 'DEPENDENCY_CONFLICT';conflict.extensions = [id];throw conflict;
+            }
+            requested[id] = identity;
+            if (Object.prototype.hasOwnProperty.call(overrides,id)) continue;
             var hit = null;
             for (var i = 0; i < table.length; i++) {
                 var e = table[i];
-                if (e.repo === repo && e.refs.indexOf(ref) >= 0 && e.targets.indexOf(target) >= 0) { hit = e; break; }
+                if (e.repo === repo && e.refs.indexOf(ref) >= 0 && e.targets.indexOf(target) >= 0) {
+                    if (hit) {
+                        var ambiguous = new Error('Ambiguous MakeCode dependency source for ' + id + ' (' + spec + ')');
+                        ambiguous.code = 'AMBIGUOUS_EXTENSION';ambiguous.extensions = [id];throw ambiguous;
+                    }
+                    hit = e;
+                }
             }
             if (!hit) { unresolved.push(id + ' (' + spec + ')'); continue; }
             overrides[id] = hit.files;
@@ -338,7 +358,8 @@ var bwMakeCode = {
  * goes to pxt's handler, which never answers in this format, and a compile hangs
  * (measured: the first browser run did exactly that).
  */
-const WORKER_JS = `${PXT_GLUE_JS}
+export const WORKER_JS = `${PXT_GLUE_JS}
+var bwWorkerErrorEnvelope = ${makeCodeWorkerErrorEnvelope.toString()};
 var bwOnMessage = async function (e) {
     var m = e.data;
     try {
@@ -349,6 +370,13 @@ var bwOnMessage = async function (e) {
             importScripts(m.base + 'pxtworker.js');
             self.onmessage = bwOnMessage;
             postMessage({id: m.id, ok: true});
+        } else if (m.op === 'resolveProjectInputs') {
+            // Package loading and resource generation only. The glue returns
+            // at projectInputs before the compiler service is invoked.
+            var prepared = await bwMakeCode.compile(m.files, {
+                projectInputs: true, native: false, extensions: m.extensions
+            });
+            postMessage({id: m.id, ok: true, result: prepared});
         } else if (m.op === 'compile') {
             var out = await bwMakeCode.compile(m.files, {
                 native: m.native,
@@ -368,7 +396,7 @@ var bwOnMessage = async function (e) {
             postMessage({id: m.id, ok: true, result: out});
         }
     } catch (err) {
-        postMessage({id: m.id, ok: false, error: {message: String(err && err.message || err), code: err && err.code, sha: err && err.sha, baseSha256: err && err.baseSha256}});
+        postMessage({id: m.id, ok: false, error: bwWorkerErrorEnvelope(err)});
     }
 };
 self.onmessage = bwOnMessage;
@@ -394,7 +422,8 @@ export class MakeCodeError extends Error {
  */
 function workerFor (base) {
     const url = URL.createObjectURL(new Blob([WORKER_JS], {type: 'application/javascript'}));
-    const worker = new Worker(url);
+    let worker;
+    try {worker = new Worker(url);} catch (error) {URL.revokeObjectURL(url);throw error;}
     let next = 0;
     const pending = new Map();
     worker.onerror = event => {
@@ -406,7 +435,11 @@ function workerFor (base) {
         if (!p) return;
         pending.delete(e.data.id);
         if (e.data.ok) p.resolve(e.data.result);
-        else p.reject(new MakeCodeError(e.data.error.message, e.data.error.code || 'COMPILE', {sha: e.data.error.sha, baseSha256: e.data.error.baseSha256}));
+        else {
+            const envelope = e.data.error;
+            p.reject(new MakeCodeError(envelope.message, envelope.code || 'COMPILE',
+                {...envelope,name:'MakeCodeError',workerError:envelope}));
+        }
     };
     const call = msg => new Promise((resolve, reject) => {
         const id = ++next;
@@ -450,7 +483,26 @@ export async function compileMakeCode ({target, files, native = false, embedSour
     try {
         await w.ready;
         return withFetched(await callWithExtensions(w, {op: 'compile', files, native, embedSource, hwVariant}, extensions), extensions);
-    } finally { w.dispose(); }
+    } catch (error) {retainExtensionFailure(error,extensions);throw error;}
+    finally { w.dispose(); }
+}
+
+/** Install the CURRENT project's declared package inputs without compiling.
+ * Fetch policy and disposable worker lifetime match the existing compile route.
+ */
+export async function resolveProjectInputsMakeCode({target,files,baseUrl,
+    fetchExtensions = remoteExtensionsAllowed(),fetch} = {}) {
+    if (!MAKECODE_TARGETS.includes(target)) throw new MakeCodeError('Unsupported MakeCode target: '+target,'UNSUPPORTED_TARGET');
+    if (!files || typeof files['pxt.json'] !== 'string') throw new MakeCodeError('a MakeCode project needs its pxt.json','COMPILE');
+    const extensions = await onDemandExtensions(target,files,fetchExtensions,fetch);
+    const base = new URL(runtimeBase(target),baseUrl || document.baseURI).href;
+    let worker;
+    try {
+        worker = workerFor(base);
+        await worker.ready;
+        return withFetched(await callWithExtensions(worker,{op:'resolveProjectInputs',files},extensions),extensions);
+    } catch (error) {retainExtensionFailure(error,extensions);throw error;}
+    finally {if (worker) worker.dispose();}
 }
 
 /**
@@ -466,10 +518,17 @@ export async function onDemandExtensions (target, files, enabled, fetch) {
     return fetchMakeCodeExtensions({dependencies: deps, target, table: EXTENSION_TABLE, ...(fetch ? {fetch} : {})});
 }
 
+function retainExtensionFailure(error,onDemand) {
+    if (!error || typeof error !== 'object') return;
+    error.fetchRefusals = onDemand.refused;error.fetchedExtensions = fetchedExtensions(onDemand);
+    if (onDemand.disabled) error.fetchDisabled = true;
+}
+
 async function callWithExtensions (w, msg, onDemand) {
     try {
         return await w.call({...msg, extensions: onDemand.extensions.map(({id, repo, refs, targets, files}) => ({id, repo, refs, targets, files}))});
     } catch (e) {
+        retainExtensionFailure(e,onDemand);
         if (e && e.code === 'NO_EXTENSION') {
             const why = onDemand.disabled ? ' (this build does not fetch extensions)' :
                 onDemand.refused.length ? ' — could not fetch: ' + onDemand.refused.map(r => `${r.id} (${r.reason})`).join('; ') : '';
@@ -480,8 +539,10 @@ async function callWithExtensions (w, msg, onDemand) {
     }
 }
 
-const withFetched = (result, onDemand) => ({...result, fetchedExtensions: onDemand.extensions.map(e =>
-    ({id: e.id, repo: e.repo, ref: e.refs[0], ...e.fetched}))});
+const fetchedExtensions = onDemand => onDemand.extensions.map(e =>
+    ({id:e.id,repo:e.repo,ref:e.refs[0],...e.fetched}));
+const withFetched = (result,onDemand) => ({...result,fetchedExtensions:fetchedExtensions(onDemand),
+    fetchRefusals:onDemand.refused,...(onDemand.disabled ? {fetchDisabled:true} : {})});
 
 /**
  * Refuse, by name, a firmware base the emulator must not run. The one check
