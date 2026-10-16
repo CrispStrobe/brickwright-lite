@@ -177,3 +177,44 @@ calls, constructor syntax and arguments refuse this prefix. An earlier callback
 registration or other effect still prevents the literal backing from qualifying.
 The focused source and public roundtrip controls preserve both allocations;
 native kind allocation and the authentic application require their own evidence.
+## Selected native-source non-exposure intersection
+
+Coordinated amendment: the scope claim is merged. Extend the owned
+source intersection to `dependency-project.js` only for a private receipt issued
+inside actual dependency preparation, plus a focused adjacent private effect
+helper if needed. The existing native-source admission comparison, resolver,
+network policy, SDK execution, supplier pins and native runtime stay unchanged.
+
+Issue the receipt only after the existing admission has compared the complete
+actual selected library source. Bind that actual receipt identity, source bytes,
+source-order entry, retained replacement initializer and the resulting exact
+prepared files object. Snapshot its current descriptors, contents and ordering.
+A lookup may validate an existing private receipt; expose no registration or
+setter. Public config flags, namespace names, copied receipt fields and a
+replacement initializer alone cannot issue authority. A copied or edited map
+must re-enter genuine preparation or remain unproved.
+
+At translation, join the exact current selected entry to its actual parsed and
+namespace-lowered declaration/initializer. Re-prove physical identities through
+the existing normalization chain and at final consumption. Preserve complete
+unused bodies, diagnostics and effect order. Do not add a second parser or
+lowering pass as a predicate, trust a marker, or carry stale facts onto clones.
+
+The resulting effect facts authorize only this private Array non-exposure
+analysis. An exact selected TextSprite factory/method may have a closed effect
+contract; it does not gain general source Number, Image, class, initialization
+or receiver authority. Callback parameter and immutable ordinary-call receiver
+flow must account for every real incoming producer, writer, escape and entry;
+unknown, mixed, recursive or changed inputs keep ordinary fallback.
+
+Keep a supported zero-argument builtin SpriteKind allocation in its original
+position and execute it once. Source/library spelling does not make any other
+call, callback registration or initializer safe before a resource declaration.
+No operation or unsupported body is removed to obtain resource eligibility.
+
+Qualification must cover an actual admitted source map, copied/edited/forged
+maps and tags, changed source/order/initializer and namespace shadows, wrong
+callback parameters, mixed receiver writers and currentness after lowering.
+Retain the complete authentic seven-backing failure and all art/body channels;
+focused controls alone do not close it. Existing native alias/clone/restart,
+current-edit, fresh export/reimport and visible-editor gates remain required.
