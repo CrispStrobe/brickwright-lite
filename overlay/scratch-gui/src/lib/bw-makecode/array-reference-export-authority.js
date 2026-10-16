@@ -210,7 +210,31 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
         return !records.some(({node,scope})=>scope.invalid||invalid.has(node)||
             /^(arcade_(?:.*Callable|.*Captured|.*Object|.*Class|startParallel|pushScene|popScene)|procedures_callreturn)/.test(node.opcode));
     };
+    // One operand-effect rule serves both local-reset and callee-summary
+    // proofs. This grants no Image/Array/value or artwork-validity fact. The
+    // callers retain their closedEffects/frame/alias/completion obligations.
+    // Primitive literal codecs prevent hidden candidate reads or coercions.
+    const closedFrameImageEffect=(target,node,scope)=>{
+        if(!node||node.opcode!=='arcade_frameImage'||invalid.has(node)||owners.get(node)!==scope||
+            node.mutation!=null||!exactKeys(node,['KEY','INDEX','TEMPLATE','START','COUNT']))return false;
+        const primitive=(name,tags,field,opcode)=>{
+            const value=input(node,name,target);
+            if(value.raw&&value.raw.length===2&&tags.includes(value.raw[0]))return value.raw[1];
+            const leaf=value.node;
+            return leaf&&!invalid.has(leaf)&&owners.get(leaf)===scope&&leaf.shadow===true&&leaf.opcode===opcode&&
+                !leaf.next&&leaf.mutation==null&&exactKeys(leaf,[],[field])&&Object.keys(leaf.fields||{}).length===1?
+                (Array.isArray(leaf.fields[field])&&[1,2].includes(leaf.fields[field].length)&&
+                    (leaf.fields[field].length===1||leaf.fields[field][1]===null)?leaf.fields[field][0]:null):null;
+        };
+        if(!['KEY','TEMPLATE'].every(name=>typeof primitive(name,[10],'TEXT','text')==='string'))return false;
+        return ['INDEX','START','COUNT'].every(name=>{
+            const value=primitive(name,[4,5,6,7,8],'NUM','math_number');
+            return (typeof value==='number'||typeof value==='string')&&Number.isFinite(Number(value));
+        });
+    };
+    let frameResetUsed=false,frameResetExpired=false;
     const overwrittenPrivateReset=(destination,writer)=>{
+        let traversedFrameEffect=false;
         const {target,node,scope}=writer,reset=writer.value?.node;
         const shape=(n,inputs,fields=[])=>!!n&&!invalid.has(n)&&owners.get(n)===scope&&n.mutation==null&&
             Object.keys(n.inputs||{}).length===inputs.length&&inputs.every(key=>Object.hasOwn(n.inputs||{},key))&&
@@ -307,6 +331,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             if(n.opcode==='arrays_referenceItem'&&shape(n,['ARRAY','INDEX'])){
                 const a=operand('ARRAY'),i=operand('INDEX');return a!==unproved&&i!==unproved&&i.kind==='number'?{kind:'stored'}:unproved;
             }
+            if(closedFrameImageEffect(target,n,scope)){traversedFrameEffect=true;return {kind:'stored'};}
             if(n.opcode==='arcade_cloneImage'&&shape(n,['IMAGE']))return operand('IMAGE')!==unproved?{kind:'stored'}:unproved;
             return unproved;
         };
@@ -324,7 +349,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
                         // including earlier resets before this writer; only a
                         // real later Array overwrite completes this proof.
                         if(!special(input(current,'VALUE',target)?.node)){
-                            if(seenReset&&v.kind==='array'){extendedResetUsed=true;return true;}
+                            if(seenReset&&v.kind==='array'){extendedResetUsed=true;if(traversedFrameEffect)frameResetUsed=true;return true;}
                             return false;
                         }
                     }
@@ -605,11 +630,7 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
             if(n.opcode==='arrays_createReference'&&shape(n,['VALUES'])&&literal(n,'VALUES',scope.target)==='[]')return 'array';
             if(n.opcode==='arrays_specialValue'&&n.mutation==null&&exactKeys(n,[],['KIND'])&&
                 ['null','undefined'].includes(literal(n,'KIND',scope.target)))return 'scalar';
-            if(n.opcode==='arcade_frameImage'&&shape(n,['KEY','INDEX','TEMPLATE','START','COUNT'])){
-                const numbers=['INDEX','START','COUNT'].map(name=>literalNumber(scope.target,n,name));
-                return typeof literal(n,'KEY',scope.target)==='string'&&typeof literal(n,'TEMPLATE',scope.target)==='string'&&
-                    numbers.every(v=>v!==null&&Number.isFinite(v))?'image-effect':null;
-            }
+            if(closedFrameImageEffect(scope.target,n,scope))return 'image-effect';
             if(n.opcode==='arcade_cloneImage'&&shape(n,['IMAGE'])&&operand(at('IMAGE'),next)==='image-effect')return 'image-effect';
             return null;
         };
@@ -759,8 +780,11 @@ export function createArrayReferenceExportAuthority(project, options = {}, anima
     };
     const live=()=>project.targets===targets&&snapshot()===original&&animationProducers.isCurrent()&&(!extendedResetUsed||effectMetadata()===originalEffects)&&snapshots.every(s=>s.target.blocks?.[s.id]===s.node&&s.node.inputs===s.inputs&&s.node.fields===s.fields&&s.node.mutation===s.mutation&&s.inputRows.every(([name,row,a,b])=>s.node.inputs?.[name]===row&&row?.[1]===a&&row?.[2]===b));
     return Object.freeze({validateInput(target,node,name='ARRAY'){
-        let current;try{current=live();if(summaryIssued&&effectMetadata()!==originalEffects)summaryExpired=true;}catch(error){summaryExpired=true;throw error;}
-        if(!current)summaryExpired=true;
+        let current;try{current=live();if(summaryIssued&&effectMetadata()!==originalEffects)summaryExpired=true;}catch(error){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;throw error;}
+        if(!current){summaryExpired=true;if(frameResetUsed)frameResetExpired=true;}
+        // Only a successfully discounted reset may retain this dependency.
+        // False or thrown currentness expires it before any diagnostic exit.
+        if(frameResetUsed&&frameResetExpired)current=false;
         if(invalidGlobalBinding)return {ok:false,reason:'current variable name, ID, owner or writer schema does not agree'};
         if(!current||!nodes.get(target)||!owners.has(node)||invalid.has(node)||nodes.get(target).get(Object.keys(target.blocks||{}).find(id=>target.blocks[id]===node))!==node)return {ok:false,reason:'current target, input or connected graph changed'};
         if(!operationShape(node))return {ok:false,reason:'requires the exact supported current operation input schema'};
