@@ -11,7 +11,7 @@ complete game compatibility.
 
 | Area | Implemented or observed | Next required evidence |
 | --- | --- | --- |
-| Animation resources as Arrays | Current validated publication supplies Array export authority; unknown or invalid resources retain their diagnostics. Nineteen focused controls and the complete original five-test suite pass, including real VM/storage, three plain CLI conversions and original Arcade compile/run. | Saved-output audit completion, visible authoring and final-head hosted qualification. |
+| Animation resources as Arrays | Current validated publication supplies Array export authority; unknown or invalid resources retain their diagnostics. Nineteen focused controls and the complete original five-test suite pass, including real VM/storage, three plain CLI conversions and original Arcade compile/run. | Independent saved-output audit passes, including both archives and every costume/sound role. Visible authoring and final-head hosted qualification remain. |
 | Plain CLI library loading | The installed GUI library boundary supplies its canonical VM module through normal package resolution. Eighteen focused controls, the normal VM installer and the original five-test animation/CLI suite pass. | Valid Player2 edited-project export, retained EV3 gaps and final integration checks. |
 | Controller event literals | Emission and ordinary Number proof share the actual closed builtin event values. Focused and affected headless native controls pass. | Fresh production browser registration and final integration checks. |
 | Original simulator clock | A complete positive profiler-frame bootstrap preserves paused-zero admission and relative timers. Eight platform controls and the exact corrected 0/20/40 program-clock guest through the original helper pass. | Saved-output audit passes with all 337 mapped-file joins; final integration checks remain. Current normal CLI qualification stays separately scoped. |
@@ -96,9 +96,18 @@ next complete projects.
 
 ## Saved-output audit boundary
 
-The original five-test application run passed. Its first standalone output
-audit timed out while repeating source and installation hashing and produced
-no audit result. Preserve that failure separately. The next audit must retain
-actual before/after content checks and complete serialized-output checks while
-avoiding repeated reads within the same verification stage. It must not rerun
-the successful application, CLI children or compiler merely to inspect files.
+The original five-test application run and its independent output audit pass.
+The audit checks both complete project archives, every costume and sound role,
+rich used and unused artwork documents, all three real CLI results, and actual
+source content before and after inspection. Original internal VM and compiler
+channels that were not separately captured remain identified as source-bound
+passing assertions; the audit does not invent raw captures of those channels.
+
+Two earlier audit failures remain preserved: repeated source reads exhausted
+the first reader's time bound, and a later check incorrectly required random
+asset filenames to survive reimport. The final reader checks complete actual
+role metadata, references, member coverage and exact asset bytes, with explicit
+proof for the three regenerated default asset identities. The application,
+CLI children and successful compiler were not rerun to inspect these outputs.
+This remains a bounded animation roundtrip result, with GUI and whole-project
+qualification tracked separately.
