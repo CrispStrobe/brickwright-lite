@@ -116,6 +116,7 @@ test('empty source and multi-board source retain their existing early returns', 
 
 test('unsupported devices and parse errors fail without a download and release busy', async () => {
     for (const [target, options, error] of [['pico', {}, /not available for pico/],
+        ['cpx', {}, /not available for cpx/],
         ['calliopemini', {parseError: new Error('parse failed')}, /parse failed/]]) {
         const result = await run(target, options);
         assert.equal(result.downloads.length, 0);
@@ -124,10 +125,10 @@ test('unsupported devices and parse errors fail without a download and release b
     }
 });
 
-test('the export button is offered for micro:bit, Calliope and EV3', () => {
+test('the export button offers supported targets and the named CPX refusal', () => {
     const menu = source.match(/\{(\[[^\]]+\])\.includes\(this\.currentDevice\(\)\) \? \(\s*<button type="button" onClick=\{this\.exportMakeCode\}/);
     assert.ok(menu, 'find the actual export button device guard');
-    assert.deepEqual(JSON.parse(menu[1].replace(/'/g, '"')), ['microbit', 'calliopemini', 'ev3']);
+    assert.deepEqual(JSON.parse(menu[1].replace(/'/g, '"')), ['microbit', 'calliopemini', 'ev3', 'cpx']);
 });
 
 // A lazy import must not mix the captured source with a later editor header.
