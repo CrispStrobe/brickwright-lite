@@ -67,7 +67,28 @@ test('public Text source controls retain Code SB3 artwork export and a fresh sou
 });
 test('copied files public flags and forged context cannot issue Text effect permission',()=>{
     const f=fixture(),copy={...f.prepared.files};assert.equal(capturePreparedSharedImageSources(copy,arcadeProjectSource(copy)),null);
-    const r=convert(copy);assert.equal(frames(r.code).length,0);assert.match(r.code,/array reference/);
+    const r=convert(copy),creator=new Creator();creator.parse(r.code);
+    record({stage:'copied-private-text-Creator',project:creator.project,channels:channels(creator),code:r.code});clean(creator);
+    const rows=creator.project.targets.flatMap(target=>Object.entries(target.blocks).map(([id,node])=>({target,id,node})));
+    const only=opcode=>{const found=rows.filter(row=>row.node.opcode===opcode);assert.equal(found.length,1,opcode);return found[0];};
+    const literal=(row,name)=>{const input=row.node.inputs[name];assert.equal(input[0],1);assert.equal(input[1][0],10);return input[1][1];};
+    const edge=(owner,name,opcode)=>{const id=owner.node.inputs[name][1];assert.equal(typeof id,'string');const node=owner.target.blocks[id];assert.ok(node);assert.equal(node.opcode,opcode);assert.equal(node.parent,owner.id);return {target:owner.target,id,node};};
+    const cells=creator.project.targets.flatMap(target=>Object.entries(target.variables).filter(([,value])=>value[0]==='pictures').map(([id])=>({target,id})));
+    assert.equal(cells.length,1);assert.equal(cells[0].target.isStage,true);
+    const writes=rows.filter(row=>row.node.opcode==='data_setvariableto'&&row.node.fields.VARIABLE[1]===cells[0].id);assert.equal(writes.length,1);assert.equal(writes[0].node.fields.VARIABLE[0],'pictures');
+    const create=only('arrays_createReference'),local={target:create.target,id:create.node.parent,node:create.target.blocks[create.node.parent]};
+    assert.equal(local.node.opcode,'arcade_setLocal');assert.equal(edge(local,'VALUE','arrays_createReference').id,create.id);
+    const localName=literal(local,'NAME'),push=only('arrays_mutateReference');assert.equal(literal(push,'OP'),'push');
+    assert.equal(literal(edge(push,'ARRAY','arcade_getLocal'),'NAME'),localName);
+    const clone=edge(push,'VALUE','arcade_cloneImage'),image=edge(clone,'IMAGE','arcade_frameImage');assert.equal(only('arcade_frameImage').id,image.id);
+    assert.notEqual(literal(image,'KEY'),'pictures','ordinary Image initializer is not the private pictures resource');
+    assert.equal(literal(edge(writes[0],'VALUE','arcade_getLocal'),'NAME'),localName);
+    assert.equal(local.node.next,push.id);assert.equal(push.node.parent,local.id);assert.equal(push.node.next,writes[0].id);assert.equal(writes[0].node.parent,push.id);
+    const reads=rows.filter(row=>row.node.opcode==='arrays_referenceItem');assert.equal(reads.length,2);
+    for(const row of reads){assert.deepEqual(row.node.inputs.ARRAY[1],[12,'pictures',cells[0].id]);assert.deepEqual(row.node.inputs.INDEX,[1,[4,'0']]);}
+    const selected=reads.filter(row=>row.target.blocks[row.node.parent].opcode==='data_setvariableto');assert.equal(selected.length,1);assert.equal(selected[0].target.blocks[selected[0].node.parent].fields.VARIABLE[0],'selected');
+    const icon=only('arcade_textSpriteSetIcon');assert.equal(edge(icon,'IMAGE','arrays_referenceItem').id,reads.find(row=>row.id!==selected[0].id).id);
+    const ordinary=lowerNamespaceBindings(parse(arcadeProjectSource(copy).source),{spriteKinds:true,textSpriteInitializer:true});assert.deepEqual(ordinary.unsupported,[]);assert.equal(prepareSharedImageArrayTransport(ordinary.program),null,'copied input has no private Text effect proof');
     const b=boundary();assert.equal(prepareSharedImageArrayTransport(b.normalized,{sourceContext:{}}),null);assert.equal(currentSharedImageSourceEffects(b.normalized,{}),null);
 });
 test('source-entry order and actual boundary identities cannot be substituted',()=>{
