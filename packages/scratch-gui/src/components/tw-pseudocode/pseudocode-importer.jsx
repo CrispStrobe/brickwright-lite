@@ -121,9 +121,9 @@ const L10N = {
         mcShareLoading: 'Fetching the shared project…',
         mcExport: '⬆ To MakeCode',
         mcExportTitle: 'Save this project as a native MakeCode project (.mkcd)',
-        mcExportDone: (f, u) => (u ?
-            `Saved ${f} — drop it on makecode.microbit.org to open it there. ${u} block(s) had no MakeCode equivalent.` :
-            `Saved ${f} — drop it on makecode.microbit.org to open it there.`),
+        mcExportDone: (f, u, editor) => (u ?
+            `Saved ${f} — drop it on ${editor} to open it there. ${u} block(s) had no MakeCode equivalent.` :
+            `Saved ${f} — drop it on ${editor} to open it there.`),
         mcExportEmpty: 'Nothing to export — write some blocks first.',
         mcRun: '▶ Run in MakeCode simulator',
         mcRunTitle: 'Compile this MakeCode project with MakeCode\'s own compiler and run it in MakeCode\'s simulator — nothing is translated, so nothing is lost',
@@ -135,7 +135,7 @@ const L10N = {
         mcEmulate: '▶ Run on the emulated micro:bit V2',
         mcEmulateTitle: 'Compile this micro:bit project with MakeCode\'s own compiler onto the Bluetooth-free firmware bases and run the real image on LabWired\'s micro:bit V2 (nRF52833) in the Debug pane — the official base carries Nordic\'s SoftDevice, which the emulator never runs',
         mcEmulateBuilding: n => `Building ${n} for the emulated micro:bit V2…`,
-        mcEmulateStarted: n => `${n} is running on the emulated micro:bit V2 in the Debug pane (LED matrix in Widgets). Its serial output is not faithful on this board model yet: the engine reads a transmit buffer after CODAL has reused it.`,
+        mcEmulateStarted: n => `${n} is running on the emulated micro:bit V2. See the LED matrix in Widgets and serial output in the Debug pane.`,
         mcEmulateNoBases: 'This build does not serve the micro:bit V2 emulator bases (npm run sync:makecode fetches them), or this project needs a package set they do not cover; the emulator never falls back to the official base.',
         mcEmulateRefused: m => `The emulator refused this firmware base: ${m}`,
         mcFirmware: '⤓ Firmware for the board',
@@ -452,9 +452,9 @@ const L10N = {
         mcShareLoading: 'Geteiltes Projekt wird geladen…',
         mcExport: '⬆ Zu MakeCode',
         mcExportTitle: 'Dieses Projekt als natives MakeCode-Projekt (.mkcd) speichern',
-        mcExportDone: (f, u) => (u ?
-            `${f} gespeichert — auf makecode.microbit.org ablegen, um es dort zu öffnen. Für ${u} Block/Blöcke gibt es in MakeCode keine Entsprechung.` :
-            `${f} gespeichert — auf makecode.microbit.org ablegen, um es dort zu öffnen.`),
+        mcExportDone: (f, u, editor) => (u ?
+            `${f} gespeichert — auf ${editor} ablegen, um es dort zu öffnen. Für ${u} Block/Blöcke gibt es in MakeCode keine Entsprechung.` :
+            `${f} gespeichert — auf ${editor} ablegen, um es dort zu öffnen.`),
         mcExportEmpty: 'Nichts zu exportieren — zuerst Blöcke schreiben.',
         mcRun: '▶ Im MakeCode-Simulator ausführen',
         mcRunTitle: 'Dieses MakeCode-Projekt mit dem MakeCode-eigenen Compiler übersetzen und im MakeCode-Simulator ausführen — es wird nichts umgewandelt, also geht nichts verloren',
@@ -466,7 +466,7 @@ const L10N = {
         mcEmulate: '▶ Auf dem emulierten micro:bit V2 ausführen',
         mcEmulateTitle: 'Dieses micro:bit-Projekt mit dem MakeCode-eigenen Compiler auf die Bluetooth-freien Firmware-Basen übersetzen und das echte Image auf LabWireds micro:bit V2 (nRF52833) im Debug-Bereich ausführen — die offizielle Basis enthält Nordics SoftDevice, die der Emulator nie ausführt',
         mcEmulateBuilding: n => `${n} wird für den emulierten micro:bit V2 gebaut…`,
-        mcEmulateStarted: n => `${n} läuft auf dem emulierten micro:bit V2 im Debug-Bereich (LED-Matrix in Widgets). Die serielle Ausgabe ist auf diesem Board-Modell noch nicht originalgetreu: die Engine liest einen Sendepuffer, nachdem CODAL ihn wiederverwendet hat.`,
+        mcEmulateStarted: n => `${n} läuft auf dem emulierten micro:bit V2. Die LED-Matrix ist in Widgets, die serielle Ausgabe im Debug-Bereich.`,
         mcEmulateNoBases: 'Dieser Build stellt die micro:bit-V2-Emulator-Basen nicht bereit (npm run sync:makecode lädt sie), oder das Projekt braucht einen Paketsatz, den sie nicht abdecken; der Emulator weicht nie auf die offizielle Basis aus.',
         mcEmulateRefused: m => `Der Emulator hat diese Firmware-Basis abgelehnt: ${m}`,
         mcFirmware: '⤓ Firmware für das Board',
@@ -1998,35 +1998,33 @@ class PseudocodeImporter extends React.Component {
         }
     }
 
-    /**
-     * Save this project as a .hex makecode.microbit.org will import.
-     *
-     * MakeCode's importer does not read the machine code in a .hex — it
-     * scans for the source-embedding header and opens the project inside.
-     * So a hex carrying nothing but that embed is a valid MakeCode
-     * project file, and this is the one export that lands as a PROJECT
-     * over there rather than as text to paste.
-     */
+    /** Save the single-board program for its own MakeCode editor. */
     async exportMakeCode () {
         const source = this.state.buffers.pseudocode || '';
         if (!source.trim()) { this.setState({status: this.L.mcExportEmpty}); return; }
         if (this.hasBoards(source)) { await this.exportBoardsMakeCode(source); return; }
+        const target = this.currentDevice();
         this.setState({busy: true});
         try {
             const SB3Creator = (await this.lib()).default;
             const creator = new SB3Creator();
             const project = creator.parse(source);
-            const {exportToMakeCode, makeCodeProjectFile} = await import(
+            const {exportToMakeCode, exportToMakeCodeCalliope, exportToMakeCodeEv3, makeCodeProjectFile} = await import(
                 /* webpackChunkName: "bw-makecode" */ '../../lib/bw-makecode/index.js');
+            const exporter = {microbit: exportToMakeCode, calliopemini: exportToMakeCodeCalliope,
+                ev3: exportToMakeCodeEv3}[target];
+            if (!exporter) throw new Error(`MakeCode export is not available for ${target || 'this device'}.`);
             const name = (source.match(/^#\s*(.+)$/m) || [])[1] || 'brickwright';
             const original = this.makeCodeOriginalStatus();
-            // F10: an imported micro:bit project, unchanged since import, exports its own files.
-            const out = original.status === 'current' && original.target === 'microbit' ?
-                {files: original.files, unsupported: [], filename: `${String(original.name || name).trim().slice(0, 40)}.hex`} :
-                exportToMakeCode(project, {name: name.trim().slice(0, 40)});
-            const filename = out.filename.replace(/\.hex$/i, '.mkcd');
-            await downloadBlob(filename, new Blob([makeCodeProjectFile(out.files, {name: name.trim().slice(0, 40), target: 'microbit'})], {type: 'application/octet-stream'}));
-            this.setState({busy: false, status: this.L.mcExportDone(filename, out.unsupported.length)});
+            // F10: unchanged imported projects retain their own target's files.
+            const keepOriginal = original.status === 'current' && original.target === target;
+            const exportName = String(keepOriginal && original.name || name).trim().slice(0, 40);
+            const out = keepOriginal ? {files: original.files, unsupported: []} : exporter(project, {name: exportName});
+            const basename = keepOriginal ? exportName : String(exportName).replace(/[^A-Za-z0-9_-]+/g, '-').toLowerCase() || 'project';
+            const filename = `${basename}.mkcd`;
+            await downloadBlob(filename, new Blob([makeCodeProjectFile(out.files, {name: exportName, target})],
+                {type: 'application/octet-stream'}));
+            this.setState({busy: false, status: this.L.mcExportDone(filename, out.unsupported.length, MAKECODE_EDITOR[target])});
         } catch (err) {
             this.setState({busy: false, status: this.L.mcFailed('MakeCode export', (err && err.message) || String(err))});
         }
@@ -4394,24 +4392,56 @@ class PseudocodeImporter extends React.Component {
      * not express, and what it approximated, is listed there too.
      */
     async runOnNuttxPython () {
+        const caller = {cancelled: false};
+        this._nuttxCodeCaller = caller;
+        const owns = () => this._nuttxCodeCaller === caller;
+        const active = () => owns() && !caller.cancelled;
+        const publish = state => { if (owns()) this.setState(state); };
+        let pane = null;
         this.openSpikeArena();
-        this.setState({busy: true});
-        const feedback = createCodeRunFeedback(state => this.setState(state), {
+        if (!owns()) return;
+        publish({busy: true});
+        const feedback = createCodeRunFeedback(publish, {
             running: 'Python running in full NuttX firmware.', completed: 'Python firmware program completed.', stopped: this.L.spike3Stopped});
+        if (!owns()) return;
+        // Install cancellation before waiting for the arena or its state callback.
+        this._spike3Stop = () => {
+            if (!owns()) return;
+            caller.cancelled = true;
+            feedback.requestStop();
+            const stoppedPane = pane;
+            return Promise.resolve().then(() => {
+                if (!owns() || !stoppedPane || stoppedPane.disposed || window.__bwSpikeArena?._pane !== stoppedPane) return;
+                return stoppedPane.stopProgram();
+            }).catch(error => {
+                // The shared Stop handler has an unscoped async catch. Keep the
+                // error here so a former caller cannot publish into a new run.
+                publish({status: error.message});
+            });
+        };
         try {
             const source = this.activeCode();
             const deadline = Date.now() + 15000;
-            while (!window.__bwSpikeArena?.bridge && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
-            const pane = window.__bwSpikeArena?._pane;
-            if (!pane?.bridge) throw new Error('Open the SPIKE arena before running firmware');
+            while (active() && !window.__bwSpikeArena?.bridge && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 50));
+            if (!active()) return;
+            pane = window.__bwSpikeArena?._pane;
+            if (!pane?.bridge || pane.disposed) throw new Error('Open the SPIKE arena before running firmware');
             await new Promise(resolve => pane.setState({execution: 'nuttx'}, resolve));
-            this._spike3Stop = () => { feedback.requestStop(); return pane.stopProgram(); };
-            await pane.startFirmware(null, {source, ...feedback.callbacks,
-                onOutput: output => this.setState({spike3Log: [{kind: 'out', text: output.text + (output.truncated ? '\n… output truncated' : '')}]})});
+            if (!active()) return;
+            if (pane.disposed || window.__bwSpikeArena?._pane !== pane) {
+                caller.cancelled = true; feedback.requestStop(); return;
+            }
+            const callbacks = Object.fromEntries(Object.entries(feedback.callbacks).map(([name, callback]) =>
+                [name, (...args) => { if (active()) return callback(...args); }]));
+            await pane.startFirmware(null, {source, ...callbacks,
+                onOutput: output => {
+                    if (active()) publish({spike3Log: [{kind: 'out', text: output.text + (output.truncated ? '\n… output truncated' : '')}]});
+                }});
+            if (!active()) return;
             if (!pane.firmwareSession) throw new Error(pane.state.message || 'Full NuttX firmware could not start');
             feedback.started();
-        } catch (error) { if (!feedback.cancelled) this.setState({status: error.message}); }
-        finally { this.setState({busy: false}); }
+        } catch (error) { if (owns() && !feedback.cancelled) publish({status: error.message}); }
+        finally { publish({busy: false}); }
     }
 
     // New MicroPython execution glue: BSD-3-Clause, (c) 2026 Brickwright contributors.
@@ -4991,11 +5021,25 @@ class PseudocodeImporter extends React.Component {
     }
 
     async compile ({strict = false, pseudocode = null} = {}) {
+        const conversionRequest = {};
+        this._conversionRequest = conversionRequest;
+        const buffersAtStart = this.state.buffers;
+        const languageAtStart = this.state.lang;
+        let ownedAnimation = this._animationImport;
+        let ownedMakeCodeRequest = this._makeCodeRequest;
+        const ownsConversion = () => this._conversionRequest === conversionRequest;
+        // Buffers are immutable editor revisions. Equality of the source text
+        // alone would allow an edit/revert to revive an older conversion.
+        const ownsEditor = state => ownsConversion() &&
+            state.buffers === buffersAtStart && state.lang === languageAtStart &&
+            this._animationImport === ownedAnimation && this._makeCodeRequest === ownedMakeCodeRequest;
+        const publishEditor = patch => this.setState(state => ownsEditor(state) ?
+            (typeof patch === 'function' ? patch(state) : patch) : null);
         // A device retarget compiles the rewritten canonical program even when
         // a generated, one-way language tab is visible. Ordinary To blocks still
         // compiles the active editable language and keeps its existing checks.
         const lang = typeof pseudocode === 'string' ? 'pseudocode' : this.state.lang;
-        if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({status: this.L.stCOneWay}); return; }
+        if (!TWO_WAY.has(lang) && !this.canLiftAsm()) { this.setState({busy: false, status: this.L.stCOneWay}); return; }
         this.setState({busy: true, status: this.L.stCompiling});
         const pending = this._animationImport;
         const uploads = this.state.uploads;
@@ -5009,7 +5053,7 @@ class PseudocodeImporter extends React.Component {
                 const lift = (await import(/* webpackChunkName: "bw-asm-reader" */ '../../lib/bw-asm/asm-8086-to-pseudocode.js')).default;
                 const res = lift(source);
                 if (!res.ok) {
-                    this.setState({busy: false, status: this.L.asmLiftRefused(res.error.message, res.stats.lifted)});
+                    publishEditor({status: this.L.asmLiftRefused(res.error.message, res.stats.lifted)});
                     return;
                 }
                 source = res.pseudocode;
@@ -5094,11 +5138,22 @@ class PseudocodeImporter extends React.Component {
                     throw new Error(artwork.reason || 'Artwork or the loaded project changed while preparing this conversion. Read From blocks again.');
                 }
             }
+            if (!ownsConversion() || this._makeCodeRequest !== ownedMakeCodeRequest) return;
             if (this.props.vm.runtime.getTargetForStage() !== stage || this._animationImport !== pending || this.state.uploads !== uploads ||
                 this.activeCode() !== activeAtStart) throw new Error('The code or loaded project changed while preparing this conversion. Try again.');
+            // A request still preparing a new conversion does not revoke the
+            // metadata of the project this load actually applies. A newer VM
+            // load or a changed loaded stage does revoke that authority.
+            this._conversionProjectLoad = conversionRequest;
             await this.props.vm.loadProject(projectBytes);
-            this._animationImport = null;
-            this._makeCodeRequest = null;
+            const loadedStage = this.props.vm.runtime.getTargetForStage();
+            const ownsLoadedProject = () => this._conversionProjectLoad === conversionRequest &&
+                this.props.vm.runtime.getTargetForStage() === loadedStage;
+            if (!ownsLoadedProject()) return;
+            if (ownsEditor(this.state)) {
+                this._animationImport = ownedAnimation = null;
+                this._makeCodeRequest = ownedMakeCodeRequest = null;
+            }
             if (artwork) applyArtwork(artwork, this.props.vm);
             // The loaded project owns applied uploads, including ordinary SVG
             // imports with no animation bundle. Later conversions read its live
@@ -5111,7 +5166,7 @@ class PseudocodeImporter extends React.Component {
                 const best = vm.runtime.targets.find(
                     t => !t.isStage && t.blocks.getScripts().length > 0
                 ) || vm.runtime.targets.find(t => !t.isStage);
-                if (best) {
+                if (best && ownsEditor(this.state)) {
                     vm.setEditingTarget(best.id);
                 }
             }
@@ -5140,9 +5195,11 @@ class PseudocodeImporter extends React.Component {
             if (this.props.vm.extensionManager && this.props.vm.extensionManager.refreshBlocks) {
                 await this.props.vm.extensionManager.refreshBlocks({throwOnError: true});
             }
+            if (!ownsLoadedProject()) return;
             // Write the persistence comment on the stage target
             if (stc) {
                 const SB3Creator = (await this.lib()).default || (await this.lib());
+                if (!ownsLoadedProject()) return;
                 if (SB3Creator.writeStcComment) {
                     const proj = JSON.parse(this.props.vm.toJSON());
                     proj.stc = stc;
@@ -5170,8 +5227,9 @@ class PseudocodeImporter extends React.Component {
             // That is what "to blocks does not draw the blocks" was.
             const first = this.props.vm.runtime.targets.find(target => !target.isStage) ||
                 this.props.vm.runtime.getTargetForStage();
-            if (first) this.props.vm.setEditingTarget(first.id);
+            if (first && ownsEditor(this.state)) this.props.vm.setEditingTarget(first.id);
             // regenerate the other tabs from the compiled project
+            if (!ownsEditor(this.state)) return;
             const proj = creator.project;
             const nb = {...this.state.buffers};
             if (lang !== 'pseudocode') nb.pseudocode = new SB3Creator().decompile(proj);
@@ -5192,14 +5250,14 @@ class PseudocodeImporter extends React.Component {
             {
                 const mp = new SB3Creator().generateMicroPython(proj);
                 nb.micropython = mp.ok ? mp.py : `# === Cannot generate MicroPython ===\n${mp.reasons.map(s => '# ' + s).join('\n')}`;
-                // Regenerated from blocks: whatever was imported is gone.
-                this.setState({importedPython: false});
             }
             const warns = [...parseWarnings, ...creator.warnings];
             if (missing.length) warns.push(`no sprite named: ${missing.join(', ')}`);
             const classified = classifyConversionWarnings(warns);
-            this.setState(state => ({
+            publishEditor(state => ({
                 buffers: nb,
+                // This flag belongs to the admitted buffer regeneration too.
+                importedPython: false,
                 uploads: state.uploads.filter(upload => !appliedUploads.has(upload)),
                 status: warns.length ? this.L.stWarn(warns.slice(0, 4).join(' · ')) : this.L.stLoaded,
                 conversionReport: {direction: `${LANG_LABEL[lang] || lang} → Blocks`, preserved: true,
@@ -5207,13 +5265,15 @@ class PseudocodeImporter extends React.Component {
             }));
         } catch (e) {
             const failure = conversionFailure(e);
-            this.setState({status: this.L.stError(failure.message), conversionReport: {
+            publishEditor({status: this.L.stError(failure.message), conversionReport: {
                 direction: `${LANG_LABEL[lang] || lang} → Blocks`, preserved: false,
                 changed: [], unsupported: failure.issues
             }});
-            if (strict) { this.setState({busy: false}); throw e; }
+            if (strict) throw e;
+        } finally {
+            // React may apply this updater after a newer conversion starts.
+            this.setState(() => ownsConversion() ? {busy: false} : null);
         }
-        this.setState({busy: false});
     }
     // Read the running project into all languages at once.
     async fromBlocks () {
@@ -5426,7 +5486,7 @@ class PseudocodeImporter extends React.Component {
                         title={this.L.mcShareTitle} data-testid="bw-makecode-share">
                         {this.L.mcShare}
                     </button>
-                    {['microbit', 'calliopemini'].includes(this.currentDevice()) ? (
+                    {['microbit', 'calliopemini', 'ev3'].includes(this.currentDevice()) ? (
                         <button type="button" onClick={this.exportMakeCode} style={item}
                             title={this.L.mcExportTitle} disabled={this.state.busy}
                             data-testid="bw-makecode-export">{this.L.mcExport}</button>
