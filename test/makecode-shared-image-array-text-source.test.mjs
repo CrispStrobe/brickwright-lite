@@ -501,6 +501,57 @@ let one:Sprite=null;let two:Sprite=null;let three:Sprite=null;let four:Sprite=nu
 one=first;two=one;three=two;four=three;recent=four;destroyRecent();});}
 initialize();let selected=pictures[0];console.log(selected.getPixel(0,0));`;
 const destroys=p=>entryNodes(p).filter(node=>node.type==='Call'&&node.callee?.type==='Member'&&node.callee.name==='destroy');
+// Read actual current Creator roles and physical graph edges, independent of
+// generated token/procedure/variable spellings or random block identities.
+const assertOverlapDestroyRoles=project=>{
+    const all=project.targets.flatMap(target=>Object.entries(target.blocks).map(([id,block])=>({target,id,block})));
+    const unique=opcode=>{const rows=all.filter(row=>row.block.opcode===opcode);assert.equal(rows.length,1,opcode);return rows[0];};
+    const destroy=unique('arcade_destroySprite'),registration=unique('arcade_registerOverlapHandler'),handler=unique('arcade_whenRegisteredOverlap');
+    assert.equal(destroy.target,registration.target);assert.equal(destroy.target,handler.target);
+    const blocks=destroy.target.blocks;
+    const literal=input=>{assert.ok(Array.isArray(input)&&Array.isArray(input[1]));return input[1];};
+    const token=row=>{const value=literal(row.block.inputs.TOKEN);assert.equal(value[0],10);assert.equal(typeof value[1],'string');assert.ok(value[1]);return value[1];};
+    assert.equal(token(registration),token(handler));assert.equal(handler.block.parent,null);assert.equal(handler.block.topLevel,true);
+    assert.deepEqual(literal(registration.block.inputs.CAPTURES),[10,'']);
+    for(const [slot,name]of [['KIND','Player'],['OTHER_KIND','Projectile']]){const kind=blocks[registration.block.inputs[slot][1]];assert.equal(kind.opcode,'arcade_spriteKindValue');assert.equal(kind.parent,registration.id);assert.deepEqual(literal(kind.inputs.NAME),[10,name]);}
+    const variable=literal(destroy.block.inputs.ID);assert.equal(variable[0],12);assert.equal(typeof variable[2],'string');
+    const owners=project.targets.filter(target=>Object.hasOwn(target.variables,variable[2]));assert.equal(owners.length,1);assert.equal(owners[0].variables[variable[2]][0],variable[1]);
+    const definitions=new Map();
+    for(const [id,block]of Object.entries(blocks))if(block.opcode==='procedures_definition'){
+        const prototype=blocks[block.inputs.custom_block[1]];assert.equal(prototype.opcode,'procedures_prototype');assert.equal(prototype.parent,id);
+        const code=prototype.mutation.proccode;assert.ok(!definitions.has(code));definitions.set(code,id);
+    }
+    const trace=root=>{
+        const result=[],active=new Set();
+        const body=id=>{assert.ok(!active.has(id),'no recursive role traversal');active.add(id);let prior=id,next=blocks[id].next;
+            while(next){const block=blocks[next];assert.ok(block);assert.equal(block.parent,prior);result.push(next);
+                if(block.opcode==='procedures_call'){const definition=definitions.get(block.mutation.proccode);assert.ok(definition,'actual matching procedure body');body(definition);}
+                prior=next;next=block.next;assert.ok(result.length<10000);
+            }active.delete(id);
+        };body(root);return result;
+    };
+    const handlerTrace=trace(handler.id);assert.ok(handlerTrace.includes(destroy.id),'registered handler reaches physical destroy through current procedure calls');
+    const starts=Object.entries(blocks).filter(([_id,b])=>b.opcode==='arcade_whenSourceStarts');assert.equal(starts.length,1);
+    const startupTrace=trace(starts[0][0]);assert.ok(startupTrace.includes(registration.id),'registration belongs to actual connected source startup');
+    const sameCell=block=>block.opcode==='data_setvariableto'&&block.fields.VARIABLE[1]===variable[2];
+    const startupWrites=startupTrace.filter(id=>sameCell(blocks[id]));assert.ok(startupWrites.length);assert.ok(startupWrites.every(id=>startupTrace.indexOf(id)<startupTrace.indexOf(registration.id)));
+    const writes=handlerTrace.filter(id=>sameCell(blocks[id]));assert.equal(writes.length,1);assert.ok(handlerTrace.indexOf(writes[0])<handlerTrace.indexOf(destroy.id));
+    const locals=new Map();let incoming;
+    const origin=(input,parent)=>{
+        if(Array.isArray(input[1]))return undefined;
+        assert.equal(typeof input[1],'string');const node=blocks[input[1]];assert.ok(node);assert.equal(node.parent,parent);
+        if(node.opcode==='arcade_eventSprite')return node.fields.WHICH[0];
+        if(node.opcode==='arcade_getLocal'){const name=literal(node.inputs.NAME);assert.equal(name[0],10);return locals.get(name[1]);}
+        return undefined;
+    };
+    for(const id of handlerTrace){const block=blocks[id];
+        if(block.opcode==='arcade_setLocal'){const name=literal(block.inputs.NAME);assert.equal(name[0],10);locals.set(name[1],origin(block.inputs.VALUE,id));}
+        if(id===writes[0])incoming=origin(block.inputs.VALUE,id);
+    }
+    assert.equal(incoming,'first','actual current local writer chain reaches first native event reporter');
+    return {target:destroy.target.name,variableId:variable[2],variableOwner:owners[0].name,token:token(handler),handlerId:handler.id,registrationId:registration.id,destroyId:destroy.id,handlerTrace,startupTrace,incoming};
+};
+
 test('F overlap destroy nonexposure follows actual incoming parameters and dominating complete aliases only',()=>{
     const p=parse(overlapDestroySource),proof=sourceOverlapDestroyNonExposure(p);assert.ok(proof);
     assert.equal(destroys(p).length,1);assert.equal(proof.has(destroys(p)[0]),true);
@@ -516,15 +567,15 @@ test('F overlap destroy public pipeline preserves actual registration and destro
     const creator=new Creator();creator.parse(imported.code);
     for(const item of imported.costumes)assert.equal(item.mode==='add'?creator.addCustomSVGCostume(item.sprite,item.svg,item.name):creator.applyCustomSVG(item.sprite,item.svg),true);
     record({stage:'overlap-destroy-public-Creator',project:creator.project,channels:channels(creator)});clean(creator);
-    const blocks=creator.project.targets.flatMap(target=>Object.values(target.blocks));
-    assert.equal(blocks.filter(block=>block.opcode==='arcade_destroySprite').length,1);
-    assert.equal(blocks.filter(block=>block.opcode==='arcade_whenSpritesOverlap').length,1);
+    const roles=assertOverlapDestroyRoles(creator.project);record({stage:'overlap-destroy-public-current-roles',roles});
     const bytes=Buffer.from(await(await creator.generateSB3()).arrayBuffer()),zip=await JSZip.loadAsync(bytes),members={};
     for(const [name,item]of Object.entries(zip.files))if(!item.dir)members[name]=await item.async('base64');
     record({stage:'overlap-destroy-public-SB3',bytes:bytes.toString('base64'),members,project:creator.project});
     const exported=projectToArcade(creator.project,{costumeSvg:(_target,costume)=>creator.assets.get(costume.assetId)?.data});record({stage:'overlap-destroy-public-export',result:exported,channels:channels(exported)});clean(exported);
     const refreshed=prepareArcadeDependencyInputs(exported.files,fixture().resolved),reimported=convert(refreshed.files);clean(reimported);assert.match(reimported.code,/arcade destroy/);
     assert.equal((reimported.code.match(/arcade destroy/g)||[]).length,1);
+    const again=new Creator();again.parse(reimported.code);record({stage:'overlap-destroy-reimport-Creator',project:again.project,channels:channels(again)});clean(again);
+    const againRoles=assertOverlapDestroyRoles(again.project);record({stage:'overlap-destroy-reimport-current-roles',roles:againRoles});
     assert.equal((reimported.code.match(/new array reference/g)||[]).length,(imported.code.match(/new array reference/g)||[]).length);
 });
 test('F overlap destroy refuses forged or escaped registrations and parameter provenance',()=>{
@@ -570,13 +621,19 @@ test('F overlap destroy refuses mixed writers, early ordinary entries and unknow
         overlapDestroySource.replace('function destroyRecent(){','function destroyRecent(arg=unknown(pictures)){'),
         overlapDestroySource.replace('function initialize(){','function initialize(arg=unknown(pictures)){'),
         overlapDestroySource.replace('function destroyRecent(){','function destroyRecent(unused:Sprite){'),
-        overlapDestroySource.replace('function destroyRecent(){','function destroyRecent(...values:Sprite[]){'),
         overlapDestroySource.replace('function destroyRecent(){','function destroyRecent<T>(){'),
         overlapDestroySource.replace('recent=four;destroyRecent();','recent=four;destroyRecent(1);'),
         overlapDestroySource.replace('initialize();let selected','initialize(1);let selected')]){
         const p=parse(source),proof=sourceOverlapDestroyNonExposure(p),fn=p.body.find(node=>node.type==='FunctionDeclaration'&&node.name==='destroyRecent');
         const sites=entryNodes(fn).filter(node=>node.type==='Call');assert.ok(sites.length);assert.ok(!proof||sites.every(call=>!proof.has(call)),source);
     }
+    // The current source parser deliberately rejects rest syntax. Mutate the
+    // actual parsed positive function's consumed AST role instead of claiming
+    // that unsupported source reached this effect proof.
+    const rest=parse(overlapDestroySource),call=destroys(rest)[0],prior=sourceOverlapDestroyNonExposure(rest);assert.ok(prior?.has(call));
+    const fn=rest.body.find(node=>node.type==='FunctionDeclaration'&&node.name==='destroyRecent');assert.equal(Object.hasOwn(fn,'restParam'),false);fn.restParam='values';
+    assert.equal(prior.has(call),false,'original actual proof expires on signature edit');
+    assert.ok(!sourceOverlapDestroyNonExposure(rest)?.has(call),'fresh proof refuses an actual rest-marked function');
 });
 test('F overlap destroy preserves destroyed callback and unknown effect barriers',()=>{
     const withHandler=parse(overlapDestroySource+'sprites.onDestroyed(SpriteKind.Player,function(sprite:Sprite){console.log(1);});');
