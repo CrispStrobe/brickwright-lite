@@ -11,6 +11,8 @@ complete game compatibility.
 
 | Area | Implemented or observed | Next required evidence |
 | --- | --- | --- |
+| Discarded map and current exported loops | An unused map result preserves receiver-once evaluation, cached iteration length, current indexed reads and complete callback effects. Actual dense producers supply constrained callback inputs. Current exported loops separately prove allocation, aliases, cached positive bounds, read presence, all-call type union and stable backedge values. Twenty-seven controls pass in segments; the strict fixture completes ten actual stages, including connected input editing from 1 to 2 and both export/reimport pairs. | Complete original compiler/simulator versus normal native comparison, visible Blocks/Code editing and final composed checks. The original 25-pass/two-failure test-oracle result remains retained. No annotation, generated name or generic indexed read supplies private Number authority. |
+| Text positioning and fixed music effects | Forty-one Text/shared-frame controls qualify plain edge writes on actual TextSprites. The music successor passes 46 controls, requiring every actual SDK music.play occurrence to be a direct callee with its exact fixed mode. It grants no Playable type or general API permission. | Current authentic-library diagnostic, real playback/error behavior, graphics edits, visible authoring and repeated full project conversion. The earlier method-value escape failure is retained; whole-game support is not established. |
 | Animation resources as Arrays | Current validated publication supplies Array export authority; unknown or invalid resources retain their diagnostics. Nineteen focused controls and the complete original five-test suite pass, including real VM/storage, three plain CLI conversions and original Arcade compile/run. | Independent saved-output audit passes, including both archives and every costume/sound role. Visible authoring and final-head hosted qualification remain. |
 | Plain CLI library loading | The installed GUI library boundary supplies its canonical VM module through normal package resolution. Eighteen focused controls, the normal VM installer and the original five-test animation/CLI suite pass. | Valid Player2 edited-project export, retained EV3 gaps and final integration checks. |
 | Controller event literals | Emission and ordinary Number proof share the actual closed builtin event values. Focused and affected headless native controls pass. | Fresh production browser registration and final integration checks. |
@@ -44,7 +46,11 @@ normal VM installation. All original one-error and later-update assertions pass.
 The source/Creator/export campaign passes all 78 controls, including the
 unchanged clock controls. The latest combined run on the normal composition
 passes all 202 controls: those 78, all 36 helper controls, all 24 shared-frame
-controls and all 64 Throw/source controls; none are skipped. Independent validation now reports malformed physical
+controls and all 64 Throw/source controls; none are skipped. A later 245-control
+composition is qualified in segments: 215 complete cases before an original
+timeout and only the 30 unobserved cases in a passing successor. Exact source,
+module and name joins preserve both results; the original combined execution
+remains timed out. Independent validation now reports malformed physical
 clock reporters even when another malformed caller prevents argument emission.
 It grants no Number authority or emission permission.
 

@@ -5,6 +5,19 @@ separates measured conversion routes from native and authoring gates. Results
 below are dated checkpoints with their own source and evidence boundaries; a
 pure or headless native pass does not establish visible editor compatibility.
 
+## Current Array callbacks and Text effects — 2026-10-16
+
+| Capability | Qualified development boundary | Required visible authoring journey |
+| --- | --- | --- |
+| Discarded Array.map and indexed loops | Complete callback effects, receiver-once evaluation and cached length remain. Private dense producer proofs follow real allocations, writers, aliases and read presence. Twenty-seven focused cases pass in segments; the actual current-export fixture preserves a connected edit from 1 to 2 through ten stages and both export/reimport pairs. Generic reads retain their existing Undefined handling; annotations and generated names issue no value proof. | Create and edit the callback in Blocks and Code, navigate a real unsupported input, save/reopen in a fresh session and export the current graph with its actual dependency context. Preserve the callback body and diagnostics. The headless connected edit does not qualify visible block editing. |
+| TextSprite edge positioning | Forty-one focused source/public-artifact controls qualify plain left/right/top/bottom writes on actual TextSprites, preserving current native setters and order. Mixed, computed, compound and unknown receivers remain refused. | Edit text, icon and all four edges through actual controls; compare rendered positions, referenced artwork, controller input and Stop/restart. Save/reopen and export/reimport the edited result. |
+| Fixed music call beside shared frames | Forty-six controls qualify exact current direct music.play calls with two arguments and a fixed existing playback mode. Extracting, storing or returning that method is refused. No Playable value or neighboring SDK API is inferred. | Author and edit playback and its mode, verify audible playback and error location, then preserve it with current frame edits through save/reopen and export/reimport. Runtime playback and GUI support remain separate gates. |
+
+The original failed map/export oracles and music method-value control remain
+retained. The complete original simulator/native callback comparison, authentic
+project closure and final composed checks remain required. These focused counts
+do not change the historical corpus or establish full MakeCode compatibility.
+
 
 ## Animation roundtrip audit and remaining editor work — 2026-10-16
 

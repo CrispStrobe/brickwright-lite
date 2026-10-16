@@ -19,11 +19,25 @@ compiler used by that hosted editor evidence.
 
 ## Latest development repair frontier — 2026-10-16
 
-Read [the current repair table](ARCADE-CI-REPAIR-STATUS.md) first. The latest
-composition passes 202 focused controls: 36 generated-helper controls, 24 shared
-frame controls, 78 Number/ordinary/clock controls and 64 Throw/source controls.
-A separate private prepared-source provenance issuer passes nine controls;
-that receipt grants no value type or effect permission.
+Read [the current repair table](ARCADE-CI-REPAIR-STATUS.md) first. The base
+composition has 245 passing source controls across 18 modules, qualified in
+segments. The original combined execution timed out after 215 complete cases;
+its timeout remains retained. Only the remaining 30 cases were executed again,
+all passing. Exact source, module and test-name multiplicities join the results;
+this is not a successful single 245-case execution.
+
+Subsequent focused successors qualify TextSprite positioning, exact music-call
+non-exposure and dense indexed reads in current exported loops. The music suite
+passes 46 controls. The map/loop/export suite has 27 passing cases in segments:
+25 unchanged cases plus two corrected test oracles. The actual edited export
+fixture completes ten stages, preserving its connected numeric edit from 1 to 2
+through export and reimport. The original failures remain retained. These
+source qualifications are separate from the complete original simulator/native
+callback comparison and final composed hosted checks.
+
+The private prepared-source receipt still grants no value type or effect
+permission. Read the [shared-frame contract](ARCADE-SHARED-IMAGE-ARRAY-TRANSPORT.md)
+and [GUI ledger](CONVERSION-CAPABILITIES-AND-GUI-GAPS.md) for exact boundaries.
 
 Actual native shared-frame guests preserve aliases, independent clones,
 separate equal-pixel resources, ordinary Array mutations and Stop/restart
