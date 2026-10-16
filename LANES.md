@@ -22,6 +22,19 @@ This claim must merge to remote main before Lite implementation. Require all
 enabled final-head checks and affected browser proofs before source merge.
 iPad/hub physical acceptance remains separately pending device availability.
 
+Host implementation follow-up: reproduce held A remaining pressed in the old
+real bundled extension after runtime replacement (retained failing control).
+Each mounted face now receives an input sink bound to its runtime; replacement
+and unmount retire that sink and release only face-owned holds to the extension
+that accepted them. Late pointer releases cannot change the replacement VM.
+Replacing or removing a CPX driver within one runtime also releases its original
+hold correctly. Fourteen face/dock controls pass without skips, including the
+same stuck-input journey rejecting an omitted-cleanup mutation. Supplier pin and
+full native-program face proof remain pending qualified upstream/integrations.
+Local toolchain audit: Homebrew's node@22 path points to Node26, so earlier
+checks using that path were Node26. The fourteen controls now also pass under
+an isolated official Node22.23.3 binary, checksum-verified against nodejs.org.
+
 ## A12 — Circuit Playground Express MakeCode translator — 2026-10-16
 
 CLAIMED — Codex CPX translator lane, isolated worktree

@@ -169,7 +169,7 @@ class CircuitTab extends React.Component {
             debugHintDismissed, hideStage, debugDock, showInStage, rightPaneHidden,
             examples: null, examplesError: null, curriculum: null,
             circuitData: null, loadingExample: null,
-            cpxState: props.vm?.runtime?.bwCpxState || null,
+            cpxState: props.vm?.runtime?.bwCpxState || null, handleCpxInput: null,
             machineBooted: false, pendingExampleTitle: null,
             // The air every part sits in (lib/bench-temperature.js): the chips'
             // on-die sensors and the temperature-dependent parts read it.
@@ -189,7 +189,6 @@ class CircuitTab extends React.Component {
         this.handleProjectStop = this.handleProjectStop.bind(this);
         this.handleProjectChanged = this.handleProjectChanged.bind(this);
         this.handleCpxState = this.handleCpxState.bind(this);
-        this.handleCpxInput = this.handleCpxInput.bind(this);
         this._circuitFileWake = this._circuitFileWake.bind(this);
         // The File-menu action waiting for the designer to exist, or null. Not
         // state: replaying it must not itself schedule a render.
@@ -640,6 +639,8 @@ class CircuitTab extends React.Component {
 
     componentWillUnmount () {
         this._cpxRuntime?.removeListener('CPX_STATE', this.handleCpxState);
+        this._cpxInputs?.release();
+        this._cpxInputs = null;
         this._cpxRuntime = null;
         if (this._unregisterUndo) this._unregisterUndo();
         cancelAnimationFrame(this._hostResizeFrame);
@@ -674,9 +675,44 @@ class CircuitTab extends React.Component {
 
     subscribeCpxRuntime (runtime) {
         this._cpxRuntime?.removeListener('CPX_STATE', this.handleCpxState);
+        this._cpxInputs?.release();
         this._cpxRuntime = runtime || null;
+        this._cpxInputs = this.createCpxInputs(this._cpxRuntime);
+        this.setState({handleCpxInput: runtime ? this._cpxInputs.input : null});
         this._cpxRuntime?.on('CPX_STATE', this.handleCpxState);
         this.handleCpxState(this._cpxRuntime?.bwCpxState || null);
+    }
+
+    createCpxInputs (runtime) {
+        // A mounted face keeps its input sink even if the host changes VM.
+        // Retire that sink and release only presses originating on this face.
+        const held = new Map();
+        let active = true;
+        return {
+            input: input => {
+                let board = runtime?.bwCpx;
+                if (!active || !input) return;
+                if ((input.button === 'A' || input.button === 'B') && typeof input.down === 'boolean') {
+                    if (input.down) {
+                        if (!board || held.has(input.button)) return;
+                        held.set(input.button, board);
+                    } else {
+                        board = held.get(input.button);
+                        if (!board) return;
+                        held.delete(input.button);
+                    }
+                    board.setButton(input.button, input.down);
+                } else if (board && typeof input.switchRight === 'boolean') {
+                    board.setSwitch(input.switchRight);
+                }
+            },
+            release: () => {
+                active = false;
+                const pending = [...held];
+                held.clear();
+                for (const [button, board] of pending) board.setButton(button, false);
+            }
+        };
     }
 
     handleCpxState (next) {
@@ -698,16 +734,6 @@ class CircuitTab extends React.Component {
             }
             return {cpxState: next};
         });
-    }
-
-    handleCpxInput (input) {
-        const board = this.props.vm?.runtime?.bwCpx;
-        if (!board || !input) return;
-        if ((input.button === 'A' || input.button === 'B') && typeof input.down === 'boolean') {
-            board.setButton(input.button, input.down);
-        } else if (typeof input.switchRight === 'boolean') {
-            board.setSwitch(input.switchRight);
-        }
     }
 
     setDock (d) {
@@ -2048,7 +2074,7 @@ class CircuitTab extends React.Component {
                     {flex: '1 1 auto', minHeight: 0, overflow: 'auto'} : {display: 'none'}}>
                     {profileReactSubtree(React, 'CircuitDesigner', (<Designer
                         cpxState={this.state.cpxState}
-                        onCpxInput={this.handleCpxInput}
+                        onCpxInput={this.state.handleCpxInput}
                     performanceProbe={this._performanceProbe}
                     stc={stc}
                     examples={this.state.examples || undefined}
