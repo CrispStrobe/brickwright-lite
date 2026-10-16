@@ -71,9 +71,11 @@ const FAMS = Object.values(FAMILY);   // ['8051','avr','6502','z80','arm']
 // sb3-creator #52 (task B11) adds two more serial-language markers: `ask` (read
 // a typed line) and `printPieces` (print a join of text and numbers); #55
 // (task B12) adds `chipTemp`, the chip reading its own on-die sensor -- no part.
+// #155 adds `timer`, the Scratch timer on the STM32 millisecond tick -- a
+// language-level clock like `now`, no part.
 const CONTROL = new Set([
     'delay', 'blockDelay', 'blockingDelay', 'now', 'print', 'printNumber', 'printText',
-    'printPieces', 'ask', 'chipTemp', 'numericLists', 'random', 'table', 'devices'
+    'printPieces', 'ask', 'chipTemp', 'numericLists', 'random', 'table', 'devices', 'timer'
 ]);
 // A branch that warns or emits a "no <thing> on this machine" stub is a refusal,
 // not an implementation.

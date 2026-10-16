@@ -1,6 +1,6 @@
 ## Compose STM32 PR975 after circuit PR965 — 2026-10-16
 
-CLAIMED — Codex root, isolated `/tmp/brickwright-stm32-compose-20261016`,
+IMPLEMENTED / QUALIFICATION PENDING — Codex root, isolated `/tmp/brickwright-stm32-compose-20261016`,
 branch `lane/stm32-compose-20261016`, base main `5cb83052330b400b48293315260cb4293b4f6bcf`.
 The user explicitly requested completion of these integrations in order. PR965
 is now merged; a read-only merge of PR975 `943d540c7` reports thirteen conflicts.
@@ -23,6 +23,21 @@ owner work rather than dropping it. Merge this claim to remote main before
 implementation. Require identity/notice/pin reader controls, affected STM32
 and circuit controls and all enabled exact-head CI before merging the combined
 candidate; no installed or physical validation is inferred.
+
+Composition receipts: claim PR1016 merged before implementation. All thirteen
+conflicts resolved without changing original assertions or supplier runtime;
+canonical package/lock/notice writers retain CUI1db, Boardf84 and SBCa13.
+Installed root and GUI provenance, metadata, notices and mirrored facts pass.
+Focused affected controls: 78 passed; the one source-identity skip was separately
+rerun against an isolated SBC checkout at a13 and passed all four controls with
+zero skips. Thirteen x86 reach/compiler/mutation controls also pass. The exact
+Board census, language matrix, 8086 report and part-profile readers pass; the
+matrix writer corrected a stale abbreviated Board label. The generic SBC sync
+check refuses an intentionally pinned checkout behind current supplier main;
+the exact-pin 19-file vendor-identity gate passes instead, with no bypass or pin
+expansion. The standard GUI build passes; explicit production build and browser
+qualification are in progress. All enabled final-head CI remains a landing gate.
+Original PR975 head rechecked unchanged at 943d540c7 before this candidate commit.
 
 ## A13 — CPX live circuit face adoption — 2026-10-16
 
