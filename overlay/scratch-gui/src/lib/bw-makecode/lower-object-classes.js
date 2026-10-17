@@ -443,10 +443,16 @@ export function lowerObjectClasses(program,{classCallablePrototype=false,sdkImag
             initBody.push(statement(call('set',[{...id(selfName),bwObjectTypes:['object']},str(field.name),procedure(fn,[],types(field.init))])));
         }
         body.push({type:'FunctionDeclaration',name:initName,params:[selfName],body:initBody});
-        if(node.ctor)body.push({type:'FunctionDeclaration',name:ctorName,params:ctorParams,paramTypes:node.ctor.paramTypes,body:rewrite(classBody(node.ctor),{name,constructor:true})});
-        else if(!node.base)body.push({type:'FunctionDeclaration',name:ctorName,params:ctorParams,body:[]});
-        if(callableClass(name)?.constructorSignature&&!Number.isInteger(node.ctor?.bwClassCallableScopeId))
+        const callableConstructor=callableClass(name)?.constructorSignature;
+        if(callableConstructor&&!Number.isInteger(node.ctor?.bwClassCallableScopeId))
             fail('Class callable constructor requires its actual lowered lexical scope');
+        // The completed current class signature owns these callable parameters.
+        // Preserve its actual body as a class procedure through the following
+        // legacy static-callback specialization, exactly as for checked methods.
+        if(node.ctor)body.push({type:'FunctionDeclaration',name:ctorName,params:ctorParams,paramTypes:node.ctor.paramTypes,
+            body:rewrite(classBody(node.ctor),{name,constructor:true}),
+            ...(callableConstructor&&Number.isInteger(node.ctor.bwClassCallableScopeId)?{bwClassCallableMethod:true}:{})});
+        else if(!node.base)body.push({type:'FunctionDeclaration',name:ctorName,params:ctorParams,body:[]});
         if(Number.isInteger(node.ctor?.bwClassCallableScopeId))classCallableProcedures.push({scopeId:node.ctor.bwClassCallableScopeId,
             className:name,methodName:null,procedure:signature(ctorName,ctorParams),receiverParameter:selfName,
             ...(callableClass(name)?.constructorSignature?{constructorSignature:callableClass(name).constructorSignature}:{})});

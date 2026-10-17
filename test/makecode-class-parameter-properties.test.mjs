@@ -10,6 +10,7 @@ import {createClassCallableDescriptors} from '../overlay/scratch-gui/src/lib/bw-
 import {validateClassCallablePlan} from '../overlay/scratch-gui/src/lib/bw-makecode/class-callable-plan.js';
 import {classCallableExportTypes} from '../overlay/scratch-gui/src/lib/bw-makecode/class-callable-export-types.js';
 import {ordinaryConstructorParameterProperties} from '../overlay/scratch-gui/src/lib/bw-makecode/class-parameter-property-source.js';
+import {lowerStaticCallbackHelpers} from '../overlay/scratch-gui/src/lib/bw-makecode/static-callback-helpers.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
 
@@ -94,6 +95,14 @@ test('reflection transfers hidden parser roles and shared metadata without prein
  assert.match(types.parameter({name:'value',type:'callable',optional:false,callableSignature:classConstructorSourceSignature(proof,program,cls(program)).parameters[1].type}),/=>\s*number/);
  assert.deepEqual(owner.ctor.body,cls(program).ctor.body);
  assert.ok(owner.fields.filter(field=>field.parameterProperty).every(field=>field.init===null));
+ // Unqualified legacy higher-order helpers still specialize and refuse escapes;
+ // retaining the checked class constructor must not exempt these templates.
+ const legacy=lowerStaticCallbackHelpers(parse('function apply(handler:()=>number){return handler()}let result=apply(function(){return 3})'));
+ assert.deepEqual(legacy.unsupported,[]);assert.ok(!legacy.program.body.some(node=>node.type==='FunctionDeclaration'&&node.name==='apply'));
+ assert.ok(legacy.program.loweredStaticCallbacks);
+ const escaped=lowerStaticCallbackHelpers(parse('let stored=0;function save(handler:()=>number){stored=handler}save(function(){return 3})'));
+ assert.ok(escaped.unsupported.some(message=>/escapes/.test(message)));
+
  assert.equal(proveClassCallableSource(lowered).eligible,true);
  owner.ctor.bwClassCallableSignature.parameters[1].type.result.name='string';
  assert.ok(createClassCallableDescriptors(lowered).unsupported.length);
@@ -130,13 +139,31 @@ test('parameter property public Code and two actual SB3 projects export and reim
  const first=new Creator();first.parse(imported.code);record({stage:'parameter-property-Creator',project:first.project,errors:first.errors,warnings:first.warnings,unparsed:first.unparsed});clean(first,['errors','warnings','unparsed']);
  const firstBytes=Buffer.from(await(await first.generateSB3()).arrayBuffer()),firstZip=await JSZip.loadAsync(firstBytes),firstProject=JSON.parse(await firstZip.file('project.json').async('string'));
  record({stage:'parameter-property-SB3',bytes:firstBytes.toString('base64'),project:firstProject});assert.deepEqual(firstProject,first.project);
- const exported=projectToArcade(firstProject);record({stage:'parameter-property-export',result:exported});clean(exported,['unsupported','warnings']);
  // Mutations keep the actual declaration/procedure graph and supplied
  // closures. They must fail current export rather than acquire type authority
  // from an edited declaration or repeated lexical-plan payload.
  const literal=(target,block,name)=>{const slot=block.inputs[name][1];return Array.isArray(slot)?slot[1]:target.blocks[slot].fields.TEXT[0];};
  const setLiteral=(target,block,name,value)=>{const slot=block.inputs[name][1];if(Array.isArray(slot))slot[1]=value;else target.blocks[slot].fields.TEXT[0]=value;};
  const declaration=project=>{const found=project.targets.flatMap(target=>Object.values(target.blocks).filter(block=>block.opcode==='arcade_declareClass'&&literal(target,block,'NAME')==='Counter').map(block=>({target,block})));assert.equal(found.length,1);return found[0];};
+ const constructorBindings=project=>{
+  const {target,block}=declaration(project),code=literal(target,block,'CONSTRUCTOR');
+  const prototypes=Object.entries(target.blocks).filter(([,value])=>value.opcode==='procedures_prototype'&&value.mutation.proccode===code);
+  assert.equal(prototypes.length,1,'actual declared constructor survives callback lowering');
+  const [prototypeID,prototype]=prototypes[0],names=JSON.parse(prototype.mutation.argumentnames),definition=target.blocks[prototype.parent];
+  assert.equal(definition.opcode,'procedures_definition');assert.equal(definition.inputs.custom_block[1],prototypeID);
+  assert.deepEqual(names.slice(1),['seed','step','tick']);
+  let parent=prototype.parent,current=definition.next;
+  for(const field of JSON.parse(literal(target,block,'FIELDS')).filter(field=>field.parameterProperty)){
+   const write=target.blocks[current];assert.equal(write.opcode,'arcade_setObjectField');assert.equal(write.parent,parent);assert.equal(literal(target,write,'FIELD'),field.name);
+   for(const [input,name]of [['OBJECT',names[0]],['VALUE',field.name]]){
+    const id=write.inputs[input][1],value=target.blocks[id];assert.equal(value.opcode,'arcade_getLocal');assert.equal(value.parent,current);assert.equal(literal(target,value,'NAME'),name);
+   }
+   parent=current;current=write.next;
+  }
+  assert.ok(current,'authored constructor body follows its actual parameter writes');
+ };
+ constructorBindings(firstProject);
+ const exported=projectToArcade(firstProject);record({stage:'parameter-property-export',result:exported});clean(exported,['unsupported','warnings']);
  const actual=declaration(firstProject),parameters=JSON.parse(literal(actual.target,actual.block,'PARAMETERS'));
  assert.deepEqual(parameters.map(parameter=>parameter.type),['number','callable','callable']);
  assert.equal(parameters[1].callableSignature.result.name,'number');assert.equal(parameters[2].callableSignature.result.name,'void');
@@ -156,7 +183,7 @@ test('parameter property public Code and two actual SB3 projects export and reim
  const again=arcadeToPseudocode(exported.files);record({stage:'parameter-property-reimport',result:again});clean(again,['unsupported','warnings']);
  const second=new Creator();second.parse(again.code);record({stage:'parameter-property-second-Creator',project:second.project,errors:second.errors,warnings:second.warnings,unparsed:second.unparsed});clean(second,['errors','warnings','unparsed']);
  const secondBytes=Buffer.from(await(await second.generateSB3()).arrayBuffer()),secondZip=await JSZip.loadAsync(secondBytes),secondProject=JSON.parse(await secondZip.file('project.json').async('string'));
- record({stage:'parameter-property-second-SB3',bytes:secondBytes.toString('base64'),project:secondProject});assert.deepEqual(secondProject,second.project);
+ record({stage:'parameter-property-second-SB3',bytes:secondBytes.toString('base64'),project:secondProject});assert.deepEqual(secondProject,second.project);constructorBindings(secondProject);
  const final=projectToArcade(secondProject);record({stage:'parameter-property-second-export',result:final});clean(final,['unsupported','warnings']);
  const reconstructed=parse(final.ts);assert.equal(proveClassCallableSource(reconstructed).eligible,true);
  assert.match(final.ts,/Counter/);assert.match(final.ts,/trace/);assert.match(final.ts,/step/);assert.match(final.ts,/tick/);
