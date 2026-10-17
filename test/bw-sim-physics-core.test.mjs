@@ -266,6 +266,41 @@ test('gear ratio +2', async () => {
     core.destroy();
 });
 
+test('gear on its hinge\'s body1: the contract ratio holds for the hinge as written', async () => {
+    // The driven gear is the hinge's body1 (the frame is body2), as a gear turning on an
+    // axle fixed in the frame compiles. ω(j2) is then the FRAME relative to the gear, minus
+    // the gear's own rate: for ratio +1/3 the gear itself turns at −1/3 of the driver, and
+    // the hinge reads +1/3.
+    const mech = makeGearMech(1 / 3, [0, 1, 0], [0, 1, 0]);
+    mech.joints[1] = { ...mech.joints[1], body1: 'g2', body2: 'base' };
+    const core = createPhysicsCore(J, mech, { stepHz: 120 });
+    core.setMotor('j1', { mode: 'velocity', radPerSec: 6 });
+    for (let i = 0; i < 180; i++) core.step(1 / 120);
+    const a1 = core.jointState('j1').angle;
+    const ratio = core.jointState('j2').angle / a1;
+    assert.ok(Math.abs(ratio - 1 / 3) / (1 / 3) < TOL_GEAR, `hinge ratio ${ratio} vs +1/3`);
+    // The gear body itself turns the other way round the shared +y axis.
+    const w2 = core.bodyAngularVelocity('g2')[1];
+    const w1 = core.bodyAngularVelocity('g1')[1];
+    assert.ok(Math.abs(w2 / w1 - (-1 / 3)) < 0.01, `body rates ${w1} ${w2}`);
+    core.destroy();
+});
+
+test('gear ratios above 1 and of both signs stay stable (−3, +5, −5/3)', async () => {
+    // Jolt's gear constraint diverged for r < 1 or r < 0 before the core ordered the pair.
+    for (const ratio of [-3, 5, -5 / 3]) {
+        const mech = makeGearMech(ratio, [0, 1, 0], [0, 1, 0]);
+        const core = createPhysicsCore(J, mech, { stepHz: 120 });
+        core.setMotor('j1', { mode: 'velocity', radPerSec: 3 });
+        for (let i = 0; i < 180; i++) core.step(1 / 120);
+        const a1 = core.jointState('j1').angle;
+        const measured = core.jointState('j2').angle / a1;
+        assert.ok(Math.abs(a1 - 4.5) < 0.1, `driver ${a1} rad (ratio ${ratio})`);
+        assert.ok(Math.abs(measured - ratio) / Math.abs(ratio) < TOL_GEAR, `gear ratio ${measured} vs ${ratio}`);
+        core.destroy();
+    }
+});
+
 test('free fall ½gt² ±2% after 0.5 s', async () => {
     const mech = makeFreeFallMech();
     const core = createPhysicsCore(J, mech, { stepHz: 120 });
