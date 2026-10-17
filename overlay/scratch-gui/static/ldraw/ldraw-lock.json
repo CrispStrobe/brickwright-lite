@@ -91,6 +91,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "James Jessiman"
   },
+  "p/1-4cyls2.dat": {
+   "sha256": "77a3bf3859fa972a5d047721ef18603694f1a6f83543f955240990be9c9ee9bd",
+   "release": "G Primitive UPDATE 2012-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Chris Dee [cwdee]"
+  },
   "p/1-4disc.dat": {
    "sha256": "3b8faa77185c576085c38f37b13c6a04e2e889eea6a7dc8c4db2d1699a33bcda",
    "release": "G Primitive UPDATE 2002-02",
@@ -270,6 +276,12 @@
    "release": "G Primitive UPDATE 2010-03",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Max Martin Richter [MMR1988]"
+  },
+  "p/2-4disc.dat": {
+   "sha256": "1d4662b73e3196fadeb5ecf2fd27f3dbf7cecce0802cf3d7108ab67bb380eb15",
+   "release": "G Primitive UPDATE 2002-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "James Jessiman"
   },
   "p/2-4edge.dat": {
    "sha256": "665400f76566b161c28303cdadce40d17d979a8ff9a8a133675af2d17fbe6763",
@@ -1693,6 +1705,24 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Mark Kennedy [mkennedy]"
   },
+  "p/stud2.dat": {
+   "sha256": "5ed3702c7d7000bfac2906f12b74ae312c59194a8e3b504952820c826b51c810",
+   "release": "G Primitive UPDATE 2009-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "James Jessiman"
+  },
+  "p/stud3.dat": {
+   "sha256": "d29e9160faeaf85b2b72a098e89a81f41e0082517a82065d7b1f149b5fd2addd",
+   "release": "G Primitive UPDATE 2012-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "James Jessiman"
+  },
+  "p/stud3a.dat": {
+   "sha256": "91b1f54ed55b2f57dd73225da3198b5198e31f7587a5e8b7d3351b1478c8881c",
+   "release": "G Primitive UPDATE 2003-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "James Jessiman"
+  },
   "p/t01o3571.dat": {
    "sha256": "c43decdedac74a56d547392eb18cce7d509d0f69bd253f0899ec2a704f07e52f",
    "release": "G Primitive UPDATE 2013-01",
@@ -1747,6 +1777,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Santeri Piippo [arezey]"
   },
+  "p/toothr.dat": {
+   "sha256": "d9a968cda4736bc47287cf45d340de7f39939213d8c94c92a06505ed79df7efa",
+   "release": "G Primitive UPDATE 2012-03",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Mark Kennedy [mkennedy]"
+  },
   "parts/23807.dat": {
    "sha256": "3812a4b4f259f50236fd704a4f0b18bfcfa5987c703563d7b12350fa9f0e7102",
    "release": "G Part UPDATE 2022-03",
@@ -1764,6 +1800,12 @@
    "release": "G Part UPDATE 2009-02",
    "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
    "author": "Guy Vivan [guyvivan]"
+  },
+  "parts/2823.dat": {
+   "sha256": "a1434db9ef0933bb26b88969a13ce71da051230c7c9f9bc466b3c86430612a3c",
+   "release": "G Part UPDATE 2010-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "James Jessiman"
   },
   "parts/32002.dat": {
    "sha256": "f6b7a001276f00fa004a2c710b9e57271f7261563dc73d5c2feca0f694be6110",
@@ -1999,6 +2041,12 @@
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "James Jessiman"
   },
+  "parts/3743.dat": {
+   "sha256": "64c2c950a456757f07bebd0a5dfb9447a7402aa84c723ee117c782910c1fe889",
+   "release": "G Part UPDATE 2009-02",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "James Jessiman"
+  },
   "parts/3749.dat": {
    "sha256": "45cc85e7a28f7d0f9cd8be2aaeba090d91e7aa54649344f19c8fa5dc81684985",
    "release": "G Part UPDATE 2025-10",
@@ -2083,6 +2131,12 @@
    "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
    "author": "Remco Braak [remco1974]"
   },
+  "parts/48496.dat": {
+   "sha256": "ca68f0d2ae2403c57779c0c5a5190271baea59c8920df3ca39f84283ea9cb5ba",
+   "release": "G Part UPDATE 2010-02",
+   "license": "Licensed under CC BY 2.0 and CC BY 4.0 : see CAreadme.txt",
+   "author": "Guy Vivan [guyvivan]"
+  },
   "parts/49295p01.dat": {
    "sha256": "ae6b72d0ec6303e92886a18a1c021b16b90d84fd09ed6200f58382275adcf647",
    "release": "G Part UPDATE 2020-03",
@@ -2124,6 +2178,12 @@
    "release": "G Part UPDATE 2012-03",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Santeri Piippo [arezey]"
+  },
+  "parts/64781.dat": {
+   "sha256": "573b3cca0ea2ddbe716f831f4fe605baa9c84a11628eb102761991f2f3b3a859",
+   "release": "G Part UPDATE 2010-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Philippe Hurbain [Philo]"
   },
   "parts/6536.dat": {
    "sha256": "a6d8a8a512ebf4b109a98e6cbbbc1868cec2058c771c3e7b27c7813d5676a743",
@@ -2394,6 +2454,18 @@
    "release": "G Subpart UPDATE 2023-05",
    "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
    "author": "Santeri Piippo [arezey]"
+  },
+  "parts/s/64781s01.dat": {
+   "sha256": "2fcbf804396963e4ea9f3ab1113ac8a923cc753cfb1cb077b51a4f2f19f8db41",
+   "release": "G Subpart UPDATE 2010-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Philippe Hurbain [Philo]"
+  },
+  "parts/s/64781s02.dat": {
+   "sha256": "415b08cb9c8a31da67289d4db880e28cbc9295520c1ee216fe17fc799069052c",
+   "release": "G Subpart UPDATE 2010-01",
+   "license": "Licensed under CC BY 4.0 : see CAreadme.txt",
+   "author": "Philippe Hurbain [Philo]"
   },
   "parts/s/87082s01.dat": {
    "sha256": "7b48666b0f33d84c114411472ed795415cc4d1cdea4f14d37463b3c5217437d5",
