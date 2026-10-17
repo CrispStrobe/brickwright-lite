@@ -4832,9 +4832,9 @@
   },
   {
    "part": "3749.dat",
-   "name": "Technic axle pin",
-   "nameDe": "Technic-Achspin",
-   "category": "connector",
+   "name": "Technic axle pin without friction",
+   "nameDe": "Technic-Achspin ohne Reibung",
+   "category": "pin",
    "massGrams": 0.3,
    "connectors": [
     {
@@ -4866,7 +4866,7 @@
       0
      ],
      "length": 20,
-     "friction": true
+     "friction": false
     }
    ],
    "colliders": [
@@ -4882,8 +4882,8 @@
   },
   {
    "part": "32054.dat",
-   "name": "Technic pin with bush",
-   "nameDe": "Technic-Stift mit Buchse",
+   "name": "Technic pin 2L with stop bush",
+   "nameDe": "Technic-Pin 2L mit Stoppbuchse",
    "category": "pin",
    "massGrams": 0.35,
    "connectors": [
@@ -4891,7 +4891,7 @@
      "id": "p",
      "type": "pin",
      "position": [
-      0,
+      10,
       0,
       0
      ],
@@ -4917,18 +4917,18 @@
   },
   {
    "part": "32348.dat",
-   "name": "Technic liftarm 1 x 7 bent 53.13°",
-   "nameDe": "Technic-Winkelarm 1 x 7 53,13° gebogen",
+   "name": "Technic liftarm 1 x 7 bent 4 x 4",
+   "nameDe": "Technic-Winkelarm 1 x 7 gebogen 4 x 4",
    "category": "beam",
-   "massGrams": 1.8,
+   "massGrams": 2.3,
    "connectors": [
     {
-     "id": "h0",
-     "type": "pinhole",
+     "id": "a0",
+     "type": "axlehole",
      "position": [
       0,
       0,
-      20
+      0
      ],
      "axis": [
       0,
@@ -4943,148 +4943,6 @@
      "position": [
       0,
       0,
-      40
-     ],
-     "axis": [
-      0,
-      1,
-      0
-     ],
-     "length": 20
-    },
-    {
-     "id": "h2",
-     "type": "pinhole",
-     "position": [
-      0,
-      -10,
-      50
-     ],
-     "axis": [
-      0,
-      1,
-      0
-     ],
-     "length": 20
-    },
-    {
-     "id": "h4",
-     "type": "pinhole",
-     "position": [
-      0,
-      -10,
-      60
-     ],
-     "axis": [
-      0,
-      1,
-      0
-     ],
-     "length": 20
-    },
-    {
-     "id": "h6",
-     "type": "pinhole",
-     "position": [
-      16,
-      0,
-      72
-     ],
-     "axis": [
-      0,
-      1,
-      0
-     ],
-     "length": 20
-    },
-    {
-     "id": "h7",
-     "type": "pinhole",
-     "position": [
-      8,
-      -10,
-      66
-     ],
-     "axis": [
-      0,
-      1,
-      0
-     ],
-     "length": 20
-    },
-    {
-     "id": "h8",
-     "type": "pinhole",
-     "position": [
-      8,
-      10,
-      66
-     ],
-     "axis": [
-      0,
-      1,
-      0
-     ],
-     "length": 20
-    },
-    {
-     "id": "h9",
-     "type": "pinhole",
-     "position": [
-      32,
-      0,
-      84
-     ],
-     "axis": [
-      0,
-      1,
-      0
-     ],
-     "length": 20
-    }
-   ],
-   "colliders": [
-    {
-     "shape": "box",
-     "halfExtents": [
-      9,
-      10,
-      29
-     ],
-     "position": [
-      0,
-      0,
-      30
-     ]
-    },
-    {
-     "shape": "box",
-     "halfExtents": [
-      9,
-      10,
-      29
-     ],
-     "position": [
-      16,
-      0,
-      72
-     ]
-    }
-   ]
-  },
-  {
-   "part": "6629.dat",
-   "name": "Technic liftarm 1 x 9 bent",
-   "nameDe": "Technic-Winkelarm 1 x 9 gebogen",
-   "category": "beam",
-   "massGrams": 2.1,
-   "connectors": [
-    {
-     "id": "h0",
-     "type": "pinhole",
-     "position": [
-      0,
-      0,
       20
      ],
      "axis": [
@@ -5095,27 +4953,12 @@
      "length": 20
     },
     {
-     "id": "h1",
-     "type": "pinhole",
-     "position": [
-      0,
-      0,
-      40
-     ],
-     "axis": [
-      0,
-      1,
-      0
-     ],
-     "length": 20
-    },
-    {
      "id": "h2",
      "type": "pinhole",
      "position": [
       0,
       0,
-      60
+      40
      ],
      "axis": [
       0,
@@ -5130,7 +4973,7 @@
      "position": [
       0,
       0,
-      80
+      60
      ],
      "axis": [
       0,
@@ -5143,9 +4986,9 @@
      "id": "h4",
      "type": "pinhole",
      "position": [
+      16,
       0,
-      -10,
-      90
+      72
      ],
      "axis": [
       0,
@@ -5158,99 +5001,24 @@
      "id": "h5",
      "type": "pinhole",
      "position": [
-      0,
-      10,
-      90
-     ],
-     "axis": [
-      0,
-      1,
-      0
-     ],
-     "length": 20
-    },
-    {
-     "id": "h6",
-     "type": "pinhole",
-     "position": [
-      0,
-      -10,
-      100
-     ],
-     "axis": [
-      0,
-      1,
-      0
-     ],
-     "length": 20
-    },
-    {
-     "id": "h7",
-     "type": "pinhole",
-     "position": [
-      0,
-      10,
-      100
-     ],
-     "axis": [
-      0,
-      1,
-      0
-     ],
-     "length": 20
-    },
-    {
-     "id": "h8",
-     "type": "pinhole",
-     "position": [
-      8,
-      -10,
-      106
-     ],
-     "axis": [
-      0,
-      1,
-      0
-     ],
-     "length": 20
-    },
-    {
-     "id": "h9",
-     "type": "pinhole",
-     "position": [
-      8,
-      10,
-      106
-     ],
-     "axis": [
-      0,
-      1,
-      0
-     ],
-     "length": 20
-    },
-    {
-     "id": "h10",
-     "type": "pinhole",
-     "position": [
-      16,
-      0,
-      112
-     ],
-     "axis": [
-      0,
-      1,
-      0
-     ],
-     "length": 20
-    },
-    {
-     "id": "h11",
-     "type": "pinhole",
-     "position": [
       32,
       0,
-      124
+      84
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "a6",
+     "type": "axlehole",
+     "position": [
+      48,
+      0,
+      96
      ],
      "axis": [
       0,
@@ -5266,12 +5034,12 @@
      "halfExtents": [
       9,
       10,
-      49
+      39
      ],
      "position": [
       0,
       0,
-      50
+      30
      ]
     },
     {
@@ -5279,30 +5047,36 @@
      "halfExtents": [
       9,
       10,
-      29
+      39
      ],
      "position": [
-      16,
+      24,
       0,
-      112
+      78
+     ],
+     "rotation": [
+      0,
+      0.4472135954999579,
+      0,
+      0.8944271909999159
      ]
     }
    ]
   },
   {
-   "part": "32009.dat",
-   "name": "Technic liftarm 1 x 11.5 double bent",
-   "nameDe": "Technic-Doppelwinkelarm 1 x 11,5",
+   "part": "6629.dat",
+   "name": "Technic liftarm 1 x 9 bent 6 x 4",
+   "nameDe": "Technic-Winkelarm 1 x 9 gebogen 6 x 4",
    "category": "beam",
-   "massGrams": 2.8,
+   "massGrams": 3,
    "connectors": [
     {
-     "id": "h0",
-     "type": "pinhole",
+     "id": "a0",
+     "type": "axlehole",
      "position": [
       0,
       0,
-      -40
+      0
      ],
      "axis": [
       0,
@@ -5317,7 +5091,7 @@
      "position": [
       0,
       0,
-      -60
+      20
      ],
      "axis": [
       0,
@@ -5332,7 +5106,185 @@
      "position": [
       0,
       0,
-      -80
+      40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      80
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      100
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      16,
+      0,
+      112
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h7",
+     "type": "pinhole",
+     "position": [
+      32,
+      0,
+      124
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "a8",
+     "type": "axlehole",
+     "position": [
+      48,
+      0,
+      136
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      10,
+      59
+     ],
+     "position": [
+      0,
+      0,
+      50
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      10,
+      39
+     ],
+     "position": [
+      24,
+      0,
+      118
+     ],
+     "rotation": [
+      0,
+      0.4472135954999579,
+      0,
+      0.8944271909999159
+     ]
+    }
+   ]
+  },
+  {
+   "part": "32009.dat",
+   "name": "Technic liftarm 1 x 11.5 double bent",
+   "nameDe": "Technic-Doppelwinkelarm 1 x 11,5",
+   "category": "beam",
+   "massGrams": 3.8,
+   "connectors": [
+    {
+     "id": "a0",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      -160
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -140
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -120
      ],
      "axis": [
       0,
@@ -5362,7 +5314,7 @@
      "position": [
       0,
       0,
-      -120
+      -80
      ],
      "axis": [
       0,
@@ -5377,7 +5329,7 @@
      "position": [
       0,
       0,
-      -140
+      -60
      ],
      "axis": [
       0,
@@ -5388,6 +5340,51 @@
     },
     {
      "id": "h6",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s0",
+     "type": "pinhole",
+     "position": [
+      14.1421,
+      0,
+      -25.8579
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "s1",
+     "type": "pinhole",
+     "position": [
+      25.8579,
+      0,
+      -14.1421
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 20
+    },
+    {
+     "id": "h7",
      "type": "pinhole",
      "position": [
       40,
@@ -5402,7 +5399,7 @@
      "length": 20
     },
     {
-     "id": "h7",
+     "id": "h8",
      "type": "pinhole",
      "position": [
       60,
@@ -5417,27 +5414,12 @@
      "length": 20
     },
     {
-     "id": "h8",
-     "type": "pinhole",
+     "id": "a9",
+     "type": "axlehole",
      "position": [
-      25.9,
+      80,
       0,
-      -14.1
-     ],
-     "axis": [
-      0,
-      1,
       0
-     ],
-     "length": 20
-    },
-    {
-     "id": "h9",
-     "type": "pinhole",
-     "position": [
-      14.1,
-      0,
-      -25.9
      ],
      "axis": [
       0,
@@ -5453,46 +5435,52 @@
      "halfExtents": [
       9,
       10,
-      59
+      69
      ],
      "position": [
       0,
       0,
-      -90
+      -100
      ]
     },
     {
      "shape": "box",
      "halfExtents": [
-      19,
+      9,
       10,
-      9
-     ],
-     "position": [
-      40,
-      0,
-      0
-     ]
-    },
-    {
-     "shape": "box",
-     "halfExtents": [
-      15,
-      10,
-      15
+      37.28
      ],
      "position": [
       20,
       0,
       -20
+     ],
+     "rotation": [
+      0,
+      0.3826834323650898,
+      0,
+      0.9238795325112867
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      29,
+      10,
+      9
+     ],
+     "position": [
+      60,
+      0,
+      0
      ]
     }
    ]
   },
   {
    "part": "60483.dat",
-   "name": "Technic beam 2 with axle hole and pin",
-   "nameDe": "Technic-Träger 2 mit Achsloch und Stift",
+   "name": "Technic beam 2 with axle hole",
+   "nameDe": "Technic-Lochbalken 2 mit Achsloch",
    "category": "beam",
    "massGrams": 0.6,
    "connectors": [
@@ -5512,8 +5500,8 @@
      "length": 20
     },
     {
-     "id": "p",
-     "type": "pin",
+     "id": "h",
+     "type": "pinhole",
      "position": [
       0,
       0,
@@ -5524,8 +5512,7 @@
       1,
       0
      ],
-     "length": 20,
-     "friction": true
+     "length": 20
     }
    ],
    "colliders": [
@@ -5535,14 +5522,19 @@
       9,
       10,
       19
+     ],
+     "position": [
+      0,
+      0,
+      10
      ]
     }
    ]
   },
   {
    "part": "41678.dat",
-   "name": "Technic axle and pin connector perpendicular double",
-   "nameDe": "Technic-Achs- und Stiftverbinder doppelt senkrecht",
+   "name": "Technic axle and pin connector perpendicular 2 x 2 split",
+   "nameDe": "Technic-Achs- und Stiftverbinder 2 x 2 geteilt",
    "category": "connector",
    "massGrams": 0.5,
    "connectors": [
@@ -5550,43 +5542,43 @@
      "id": "a0",
      "type": "axlehole",
      "position": [
-      -10,
+      -15,
       0,
       0
      ],
      "axis": [
-      0,
       1,
+      0,
       0
      ],
-     "length": 20
+     "length": 10
     },
     {
      "id": "a1",
      "type": "axlehole",
      "position": [
-      10,
+      15,
       0,
       0
      ],
      "axis": [
-      0,
       1,
+      0,
       0
      ],
-     "length": 20
+     "length": 10
     },
     {
      "id": "p0",
      "type": "pinhole",
      "position": [
+      -10,
       0,
-      0,
-      -10
+      -20
      ],
      "axis": [
-      1,
       0,
+      1,
       0
      ],
      "length": 20
@@ -5595,13 +5587,13 @@
      "id": "p1",
      "type": "pinhole",
      "position": [
+      10,
       0,
-      0,
-      10
+      -20
      ],
      "axis": [
-      1,
       0,
+      1,
       0
      ],
      "length": 20
@@ -5613,7 +5605,12 @@
      "halfExtents": [
       20,
       10,
-      15
+      19.5
+     ],
+     "position": [
+      0,
+      0,
+      -10.5
      ]
     }
    ]
@@ -5621,7 +5618,7 @@
   {
    "part": "32002.dat",
    "name": "Technic pin 3/4",
-   "nameDe": "Technic-Stift 3/4",
+   "nameDe": "Technic-Pin 3/4",
    "category": "pin",
    "massGrams": 0.2,
    "connectors": [
@@ -5638,33 +5635,38 @@
       0,
       0
      ],
-     "length": 15,
-     "friction": true
+     "length": 30,
+     "friction": false
     }
    ],
    "colliders": [
     {
      "shape": "box",
      "halfExtents": [
-      7.5,
-      7.8,
+      15,
+      8,
       8
+     ],
+     "position": [
+      -5,
+      0,
+      0
      ]
     }
    ]
   },
   {
    "part": "87082.dat",
-   "name": "Technic pin long with centre pin hole",
-   "nameDe": "Technic-Stift lang mit mittlerem Stiftloch",
+   "name": "Technic pin 3L with centre pin hole",
+   "nameDe": "Technic-Pin 3L mit mittlerem Stiftloch",
    "category": "pin",
    "massGrams": 0.4,
    "connectors": [
     {
-     "id": "p",
+     "id": "p0",
      "type": "pin",
      "position": [
-      0,
+      -20,
       0,
       0
      ],
@@ -5673,7 +5675,23 @@
       0,
       0
      ],
-     "length": 40,
+     "length": 20,
+     "friction": true
+    },
+    {
+     "id": "p1",
+     "type": "pin",
+     "position": [
+      20,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 20,
      "friction": true
     },
     {
@@ -5696,9 +5714,9 @@
     {
      "shape": "box",
      "halfExtents": [
-      20,
+      30,
       10,
-      8
+      9
      ]
     }
    ]
@@ -5714,7 +5732,7 @@
      "id": "a",
      "type": "axle",
      "position": [
-      10,
+      8.75,
       0,
       0
      ],
@@ -5723,18 +5741,18 @@
       0,
       0
      ],
-     "length": 20
+     "length": 17.5
     },
     {
      "id": "ball",
      "type": "ball",
      "position": [
-      -10,
+      -12,
       0,
       0
      ],
      "axis": [
-      1,
+      -1,
       0,
       0
      ]
@@ -5742,23 +5760,36 @@
    ],
    "colliders": [
     {
-     "shape": "box",
-     "halfExtents": [
-      10,
-      6,
-      6
-     ],
+     "shape": "sphere",
+     "radius": 8,
      "position": [
-      10,
+      -12,
       0,
       0
      ]
     },
     {
-     "shape": "sphere",
-     "radius": 8,
+     "shape": "box",
+     "halfExtents": [
+      2,
+      8,
+      8
+     ],
      "position": [
-      -10,
+      -2,
+      0,
+      0
+     ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      8.5,
+      6,
+      6
+     ],
+     "position": [
+      8.5,
       0,
       0
      ]
@@ -5770,7 +5801,7 @@
    "name": "Technic worm gear",
    "nameDe": "Schneckengetriebe",
    "category": "gear",
-   "massGrams": 1.0,
+   "massGrams": 1,
    "connectors": [
     {
      "id": "c",
@@ -5781,23 +5812,23 @@
       0
      ],
      "axis": [
-      1,
       0,
-      0
+      0,
+      1
      ],
-     "length": 20
+     "length": 40
     }
    ],
    "colliders": [
     {
      "shape": "cylinder",
-     "radius": 12,
-     "halfHeight": 10,
+     "radius": 12.7,
+     "halfHeight": 20,
      "rotation": [
-      0.7071,
+      0.7071067811865476,
       0,
       0,
-      0.7071
+      0.7071067811865476
      ]
     }
    ],
@@ -5805,9 +5836,9 @@
     "type": "worm",
     "teeth": 1,
     "axis": [
-     1,
      0,
-     0
+     0,
+     1
     ],
     "center": [
      0,

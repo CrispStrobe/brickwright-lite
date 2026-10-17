@@ -28,7 +28,7 @@ import {readFileSync, existsSync} from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {flattenPart, circularFeatures, bounds, parseLDraw, compose, apply, column, IDENTITY} from '../overlay/scratch-gui/src/lib/bw-sim/ldraw/ldraw-geometry.js';
-import {validatePartMeta} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
+import {validatePartMeta, pitchRadiusLdu} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {check as checkVendored} from '../scripts/sync-ldraw-parts.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -169,6 +169,36 @@ test('a pinhole connector spans its bore: its ends are where the bore opens and 
 });
 
 /**
+ * Two holes of one part cannot be closer than a bore allows. Technic holes sit on a 20 LDU
+ * grid; a bore is 12 LDU across in a wall 18 wide, so two PARALLEL bores whose axes are less
+ * than ~15.5 LDU apart would cut into each other — such "holes" are curve fragments or
+ * counterbores read as holes (the bent liftarms 32348 and 6629 had 10–12 of them until
+ * 2026-10-17, some 8–10 LDU apart). Coaxial hole connectors (one bore split in two, like a
+ * split cross block's axle hole) are one bore and are fine. The tightest real pair is the
+ * slot of the double-bent liftarm 32009: its two ends are 16.57 LDU apart.
+ */
+const MIN_HOLE_PITCH = 15.5;
+
+test('no two parallel hole connectors of a part are closer than a bore allows, unless coaxial', () => {
+    const wrong = [];
+    for (const p of META.parts) {
+        const holes = p.connectors.filter(c => c.type === 'pinhole' || c.type === 'axlehole');
+        for (let i = 0; i < holes.length; i++) {
+            for (let j = i + 1; j < holes.length; j++) {
+                const a = holes[i];
+                const b = holes[j];
+                if (Math.abs(dot(a.axis, b.axis)) < PARALLEL) continue;
+                const d = sub(b.position, a.position);
+                const along = dot(d, a.axis);
+                const apart = len(d.map((v, k) => v - along * a.axis[k]));
+                if (apart > POS_EPS && apart < MIN_HOLE_PITCH) wrong.push(`${p.part} ${a.id}/${b.id}: axes ${apart.toFixed(2)} LDU apart`);
+            }
+        }
+    }
+    assert.deepEqual(wrong, []);
+});
+
+/**
  * Some parts draw their axle hole from their own sub-files instead of the axl*
  * primitives (the 24T gear: eight copies of "Eighth of Centre Axlehole").
  * Then the hole is where those sub-files' vertices are centred.
@@ -248,8 +278,10 @@ test('gear tip radius is pitch radius plus one module, centred on the axle hole'
         // which for 12T/20T bevels is ~1.5 LDU smaller than the spur formula due to the cone
         // angle. Check bevels with a wider tolerance and document it; spur rule stays 0.5.
         if (p.gear.type === 'worm') {
-            // Worm gear: tip radius is the worm's outer radius (~23.7 for 4716), not teeth*1.25+2.5
-            assert.ok(Math.abs(tip - 23.69) <= 0.5, `${p.part}: worm tip radius ${tip.toFixed(2)} ≠ 23.69`);
+            // A worm has no tooth count to give its pitch radius. Its pitch radius (tip − one module)
+            // must let it drive a 24T gear on the hole grid: axles two holes (40 LDU) apart.
+            const meshAt = tip - 2.5 + pitchRadiusLdu(24);
+            assert.ok(Math.abs(meshAt - 40) <= 0.5, `${p.part}: a worm of tip radius ${tip.toFixed(2)} meshes a 24T at ${meshAt.toFixed(2)} LDU, not 40`);
         } else if (p.gear.type === 'bevel') {
             assert.ok(Math.abs(tip - (teeth * 1.25 + 2.5)) <= 2.0, `${p.part}: bevel tip radius ${tip.toFixed(2)} ≠ ${teeth}·1.25 + 2.5`);
         } else if (p.part === '94925.dat') {

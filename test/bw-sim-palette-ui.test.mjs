@@ -38,8 +38,12 @@ test('search: a German word finds every part it names, ignoring case and umlaut 
     const gears = byCategory('gear');
     assert.ok(gears.length >= 6, 'the catalog has gears');
     for (const q of ['zahnrad', 'ZAHNRAD', 'Zahnrad']) assert.deepEqual(found(q).sort(), gears, q);
-    // "Zähne" is in every German gear name; typed with ä, with ae, or without the dots.
-    for (const q of ['zähne', 'zaehne', 'zahne']) assert.deepEqual(found(q).sort(), gears, q);
+    // "Zähne" is in the German name of every gear named by its tooth count ("N tooth" in English);
+    // typed with ä, with ae, or without the dots. A worm gear is named by its thread, not a tooth
+    // count, in both languages ("worm gear", "Schneckengetriebe"), so it is found as a gear (above), not here.
+    const toothed = gears.filter(p => /\btooth\b/.test(CATALOG.get(p).name));
+    assert.ok(toothed.length >= 6, 'the catalog has gears named by tooth count');
+    for (const q of ['zähne', 'zaehne', 'zahne']) assert.deepEqual(found(q).sort(), toothed, q);
     assert.equal(foldSearch('Größer Zähne'), foldSearch('groesser zaehne'));
 });
 
