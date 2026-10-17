@@ -445,8 +445,11 @@ export function lowerObjectClasses(program,{classCallablePrototype=false,sdkImag
         body.push({type:'FunctionDeclaration',name:initName,params:[selfName],body:initBody});
         if(node.ctor)body.push({type:'FunctionDeclaration',name:ctorName,params:ctorParams,paramTypes:node.ctor.paramTypes,body:rewrite(classBody(node.ctor),{name,constructor:true})});
         else if(!node.base)body.push({type:'FunctionDeclaration',name:ctorName,params:ctorParams,body:[]});
+        if(callableClass(name)?.constructorSignature&&!Number.isInteger(node.ctor?.bwClassCallableScopeId))
+            fail('Class callable constructor requires its actual lowered lexical scope');
         if(Number.isInteger(node.ctor?.bwClassCallableScopeId))classCallableProcedures.push({scopeId:node.ctor.bwClassCallableScopeId,
-            className:name,methodName:null,procedure:signature(ctorName,ctorParams),receiverParameter:selfName});
+            className:name,methodName:null,procedure:signature(ctorName,ctorParams),receiverParameter:selfName,
+            ...(callableClass(name)?.constructorSignature?{constructorSignature:callableClass(name).constructorSignature}:{})});
         const superParams=ctorParams;
         body.push({type:'FunctionDeclaration',name:`__bwClass_${name}_superConstructor`,params:superParams,body:[
             statement(procedure(signature(initName,[selfName]),[{...id(selfName),bwObjectTypes:['object']}])),
@@ -465,7 +468,11 @@ export function lowerObjectClasses(program,{classCallablePrototype=false,sdkImag
         }
         body.push(statement(call(node.base?'declareSubclass':'declare', [str(name),...(node.base?[str(node.base)]:[]), str(JSON.stringify(node.fields.map(field => ({name:field.name,type:callableField(name,field.name)?'callable':field.typeName || 'any',...(callableField(name,field.name)?{valueKind:'callable',callableSignature:callableField(name,field.name).type}:{}),...(sdkField(name,field.name)?{valueKind:'sdk',sdkType:sdkField(name,field.name).sdkType}:{}),readonly:!!field.modifiers?.includes('readonly'),visibility:visibility(field),...(field.accessor?.get?{getter:signature(accessorNames.get(field.accessor.get),[selfName])}:{}),...(field.accessor?.set?{setter:{procedure:signature(accessorNames.get(field.accessor.set),[selfName,...field.accessor.set.params]),parameters:field.accessor.set.params.map(param=>({name:param,type:typeText(field.accessor.set.paramTypes?.[param]),optional:false}))}}:{}),...(field.parameterProperty?{parameterProperty:true}:{}),...(ownInitializers.has(field.name)?{initializer:ownInitializers.get(field.name)}:{})})))),
             str(signature(initName, [selfName])), str(signature(`__bwClass_${actualCtor.name}_constructor`,ctorParams)),
-            str(JSON.stringify((actualCtor.ctor?.params || []).map((param,index) => ({name:param,type:typeText(actualCtor.ctor?.paramTypes?.[param]),...(sdkParameter(actualCtor.name,index)?{sdkType:sdkParameter(actualCtor.name,index).sdkType}:{}),optional:!!actualCtor.ctor?.optionalParams?.includes(param),...(actualCtor.ctor?.parameterDefaults?.some(value=>value.name===param)?{default:defaultValue(actualCtor.ctor.parameterDefaults.find(value=>value.name===param).value)}:{})})))), str(JSON.stringify(methods))])));
+            str(JSON.stringify((actualCtor.ctor?.params || []).map((param,index) => ({name:param,
+                ...(callableClass(actualCtor.name)?.constructorSignature?.parameters[index].type.kind==='callable'?
+                    {type:'callable',callableSignature:callableClass(actualCtor.name).constructorSignature.parameters[index].type}:
+                    {type:typeText(actualCtor.ctor?.paramTypes?.[param])}),
+                ...(sdkParameter(actualCtor.name,index)?{sdkType:sdkParameter(actualCtor.name,index).sdkType}:{}),optional:!!actualCtor.ctor?.optionalParams?.includes(param),...(actualCtor.ctor?.parameterDefaults?.some(value=>value.name===param)?{default:defaultValue(actualCtor.ctor.parameterDefaults.find(value=>value.name===param).value)}:{})})))), str(JSON.stringify(methods))])));
     }
     const result={program:{...program,body,bwObjectClasses:true,...(classCallableProcedures.length?{bwClassCallableProcedures:classCallableProcedures}:{})},unsupported};
     if(physicalEntry&&!unsupported.length){

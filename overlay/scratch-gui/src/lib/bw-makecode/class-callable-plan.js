@@ -110,6 +110,16 @@ export function createClassCallablePlan(flow,siteInfos,classProcedures) {
         owners.set(scope,owner);
     };
     for(const info of siteInfos)addOwner(info.scope);
+    // A completed constructor transfer must retain its actual current owner,
+    // even when its supplied callbacks were created at module entry. Otherwise
+    // editable parameter metadata would have no physical signature comparison.
+    for(const row of classProcedures||[])if(row.constructorSignature) {
+        const scope=lexical.functions.find(scope=>scope.id===row.scopeId);
+        if(!scope||scope.kind!=='method'||scope.constructor!==true||
+            JSON.stringify(flow.signature(flow.profiles.get(scope.node)))!==JSON.stringify(row.constructorSignature))
+            fail('constructor transfer differs from its actual source scope signature');
+        addOwner(scope);
+    }
     for(const binding of lexical.bindings) {
         if(!owners.has(binding.scope))continue;
         const targets=flow.bindingTargets.get(binding);

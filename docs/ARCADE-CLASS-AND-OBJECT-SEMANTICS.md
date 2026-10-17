@@ -19,6 +19,12 @@ field write, callback invocation and constructor completion. An annotation does
 not initialize a field. Readonly writes and private or protected access retain
 their existing restrictions.
 
+Callable constructor parameters use the existing explicit callable signature
+metadata, obtained from the completed argument and constructor-body proof.
+Export compares that signature with the actual constructor procedure and
+lexical owner before rendering its type. Raw function-type text does not
+replace this signature or supply current-body authority.
+
 Lowering preserves the hidden descriptors and shared metadata references. A
 completed proof that observes changed metadata expires permanently; restoring
 the old values requires a fresh proof. Defaults, optional parameters,

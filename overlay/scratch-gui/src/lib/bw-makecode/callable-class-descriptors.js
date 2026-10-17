@@ -55,9 +55,20 @@ export function createClassCallableDescriptors(program,{sdkImagePrototype=false}
                 fail('Class callable method requires a concrete instance signature: '+cls.name+'.'+method.name);
             else methods.push({name:method.name,typeParameters,signature,...(method.bwClassResultFlow?{resultFlow:structuredClone(method.bwClassResultFlow)}:{})});
         }
+        let constructorSignature=null;
+        if(cls.ctor?.bwClassCallableSignature) {
+            const actual={kind:'callable',parameters:cls.ctor.params.map(name=>({name,
+                optional:!!cls.ctor.optionalParams?.includes(name),type:annotation(cls.ctor.paramTypes?.[name],cls.ctor)})),
+            result:{kind:'named',name:'void'}};
+            if(!ordinary(cls.name)||cls.base||cls.ctor.parameterDefaults?.length||cls.ctor.typeParameters?.length||
+                actual.parameters.some(parameter=>parameter.optional)||!valid(actual)||
+                JSON.stringify(actual)!==JSON.stringify(cls.ctor.bwClassCallableSignature))
+                fail('Class callable constructor signature differs from its actual ordinary parameters: '+cls.name);
+            else constructorSignature=actual;
+        }
         const sdkRoles=sdkImagePrototype?sdkImageRolesForClass(cls,annotation,method=>method.bwClassCallableSignature||{kind:'callable',parameters:(method.params||[]).map(name=>({name,optional:!!method.optionalParams?.includes(name),type:annotation(method.paramTypes?.[name],method)})),result:annotation(method.returnType,method)}):null;
         if(sdkImagePrototype&&JSON.stringify(cls.bwSdkImageRoles||null)!==JSON.stringify(sdkRoles))fail('SDK Image class roles differ from completed source proof: '+cls.name);
-        rows.push({name:cls.name,parent:cls.base || null,fields,methods,...(sdkRoles?{sdkRoles}:{})});
+        rows.push({name:cls.name,parent:cls.base || null,fields,methods,...(constructorSignature?{constructorSignature}:{}),...(sdkRoles?{sdkRoles}:{})});
     }
     const owners=new Map(rows.map(row=>[row.name,row]));
     const lookup=(name,method)=>{

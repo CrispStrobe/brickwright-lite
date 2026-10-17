@@ -27,6 +27,11 @@ export function classMethodSourceSignature(proof,program,method) {
     if(!currentResultProof(record,program))throw Error('Class method requires its actual unchanged source proof');
     const row=record.methods.get(method);return row?structuredClone(row.signature):null;
 }
+export function classConstructorSourceSignature(proof,program,cls) {
+    const record=completedResultProofs.get(proof);
+    if(!currentResultProof(record,program))throw Error('Class constructor requires its actual unchanged source proof');
+    const signature=record.constructors.get(cls);return signature?structuredClone(signature):null;
+}
 export function classSdkImageRoles(proof,program,cls) {
     const record=completedResultProofs.get(proof);
     if(!currentResultProof(record,program))throw Error('SDK Image roles require their actual unchanged source proof');
@@ -433,9 +438,18 @@ export function proveClassCallableSource(program,{sdkImagePrototype=false}={}) {
         }
         for(const cls of classes.values())if(!constructed.has(cls))fail('adjacent class has no proved actual construction');
         for(const scope of lexical.functions)if(!visited.has(scope.node))fail('adjacent callable body has no proved actual invocation');
+        const constructors=new Map();
+        for(const cls of classes.values())if(cls.ctor.parameterProperties?.length) {
+            const actual=signature(cls.ctor);
+            if(!actual||actual.result.kind!=='named'||actual.result.name!=='void'||
+                actual.parameters.length!==cls.ctor.params.length||
+                actual.parameters.some((parameter,index)=>parameter.name!==cls.ctor.params[index]||parameter.optional))
+                fail('constructor requires its completed concrete ordinary signature');
+            constructors.set(cls,structuredClone(actual));
+        }
         const proof={eligible:true,unsupported:[],flow,resultFlows};
         const methods=new Map();for(const cls of classes.values())for(const method of cls.methods)methods.set(method,{signature:structuredClone(signature(method)),resultFlow:resultFlows.get(method)?structuredClone(resultFlows.get(method)):null});
         const sdkRoles=new Map();if(sdkImagePrototype)for(const cls of classes.values()){const roles=sdkImageRolesForClass(cls,annotation,signature);if(roles)sdkRoles.set(cls,roles);}
-        completedResultProofs.set(proof,{program,source:JSON.stringify(program),methods,reflections,sdkRoles,sdkExpressions,parameterPropertySnapshot,expired:false});return proof;
+        completedResultProofs.set(proof,{program,source:JSON.stringify(program),methods,constructors,reflections,sdkRoles,sdkExpressions,parameterPropertySnapshot,expired:false});return proof;
     } catch(error) {errors.push(error.message);return {eligible:false,unsupported:errors,flow};}
 }

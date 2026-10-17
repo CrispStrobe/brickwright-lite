@@ -4,8 +4,10 @@ import {appendFileSync} from 'node:fs';
 import JSZip from 'jszip';
 import Creator from '../overlay/scratch-gui/src/lib/sb3-creator.js';
 import {parseMakeCodeTs} from '../overlay/scratch-gui/src/lib/bw-makecode/ts-import.js';
-import {proveClassCallableSource,classMethodSourceSignature} from '../overlay/scratch-gui/src/lib/bw-makecode/class-callable-source-flow.js';
+import {proveClassCallableSource,classMethodSourceSignature,classConstructorSourceSignature} from '../overlay/scratch-gui/src/lib/bw-makecode/class-callable-source-flow.js';
 import {withClassResultFlowProof} from '../overlay/scratch-gui/src/lib/bw-makecode/class-callable-result-flow-proof.js';
+import {createClassCallableDescriptors} from '../overlay/scratch-gui/src/lib/bw-makecode/callable-class-descriptors.js';
+import {validateClassCallablePlan} from '../overlay/scratch-gui/src/lib/bw-makecode/class-callable-plan.js';
 import {ordinaryConstructorParameterProperties} from '../overlay/scratch-gui/src/lib/bw-makecode/class-parameter-property-source.js';
 import {arcadeToPseudocode} from '../overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js';
 import {projectToArcade} from '../overlay/scratch-gui/src/lib/bw-makecode/export-arcade.js';
@@ -79,9 +81,16 @@ test('reflection transfers hidden parser roles and shared metadata without prein
  assert.notEqual(owner.ctor.parameterProperties,cls(program).ctor.parameterProperties);
  assert.deepEqual(Object.getOwnPropertyDescriptor(owner.ctor.params,'parameterProperties'),{value:owner.ctor.parameterProperties,writable:false,enumerable:false,configurable:false});
  assert.equal(ordinaryConstructorParameterProperties(owner),true);
+ const signature=classConstructorSourceSignature(proof,program,cls(program));
+ assert.throws(()=>classConstructorSourceSignature({...proof},program,cls(program)),/actual unchanged source proof/);
+ assert.equal(signature.parameters[1].type.kind,'callable');assert.equal(signature.parameters[1].type.result.name,'number');
+ assert.deepEqual(owner.ctor.bwClassCallableSignature,signature);signature.parameters[1].type.result.name='string';
+ assert.equal(classConstructorSourceSignature(proof,program,cls(program)).parameters[1].type.result.name,'number');
  assert.deepEqual(owner.ctor.body,cls(program).ctor.body);
  assert.ok(owner.fields.filter(field=>field.parameterProperty).every(field=>field.init===null));
  assert.equal(proveClassCallableSource(lowered).eligible,true);
+ owner.ctor.bwClassCallableSignature.parameters[1].type.result.name='string';
+ assert.ok(createClassCallableDescriptors(lowered).unsupported.length);
 });
 
 test('hidden metadata mutation expires a completed proof permanently while fresh source can reprove',()=>{
@@ -116,6 +125,28 @@ test('parameter property public Code and two actual SB3 projects export and reim
  const firstBytes=Buffer.from(await(await first.generateSB3()).arrayBuffer()),firstZip=await JSZip.loadAsync(firstBytes),firstProject=JSON.parse(await firstZip.file('project.json').async('string'));
  record({stage:'parameter-property-SB3',bytes:firstBytes.toString('base64'),project:firstProject});assert.deepEqual(firstProject,first.project);
  const exported=projectToArcade(firstProject);record({stage:'parameter-property-export',result:exported});clean(exported,['unsupported','warnings']);
+ // Mutations keep the actual declaration/procedure graph and supplied
+ // closures. They must fail current export rather than acquire type authority
+ // from an edited declaration or repeated lexical-plan payload.
+ const literal=(target,block,name)=>{const slot=block.inputs[name][1];return Array.isArray(slot)?slot[1]:target.blocks[slot].fields.TEXT[0];};
+ const setLiteral=(target,block,name,value)=>{const slot=block.inputs[name][1];if(Array.isArray(slot))slot[1]=value;else target.blocks[slot].fields.TEXT[0]=value;};
+ const declaration=project=>{const found=project.targets.flatMap(target=>Object.values(target.blocks).filter(block=>block.opcode==='arcade_declareClass'&&literal(target,block,'NAME')==='Counter').map(block=>({target,block})));assert.equal(found.length,1);return found[0];};
+ const actual=declaration(firstProject),parameters=JSON.parse(literal(actual.target,actual.block,'PARAMETERS'));
+ assert.deepEqual(parameters.map(parameter=>parameter.type),['number','callable','callable']);
+ assert.equal(parameters[1].callableSignature.result.name,'number');assert.equal(parameters[2].callableSignature.result.name,'void');
+ const edits=[
+  project=>{const {target,block}=declaration(project),values=JSON.parse(literal(target,block,'PARAMETERS'));values[1].callableSignature.result.name='string';setLiteral(target,block,'PARAMETERS',JSON.stringify(values));},
+  project=>{const {target,block}=declaration(project),values=JSON.parse(literal(target,block,'PARAMETERS'));values[1].callableSignature.parameters[0].type.name='string';setLiteral(target,block,'PARAMETERS',JSON.stringify(values));},
+  project=>{const {target,block}=declaration(project),values=JSON.parse(literal(target,block,'PARAMETERS'));values[1].type='(value:number)=>number';delete values[1].callableSignature;setLiteral(target,block,'PARAMETERS',JSON.stringify(values));},
+  project=>{const {target,block}=declaration(project),code=literal(target,block,'CONSTRUCTOR'),prototypes=Object.values(target.blocks).filter(value=>value.opcode==='procedures_prototype'&&value.mutation.proccode===code);assert.equal(prototypes.length,1);const names=JSON.parse(prototypes[0].mutation.argumentnames);assert.deepEqual(names.slice(1),['seed','step','tick']);names[2]='wrongStep';prototypes[0].mutation.argumentnames=JSON.stringify(names);},
+  project=>{let count=0;for(const target of project.targets)for(const block of Object.values(target.blocks))if(block.opcode==='arcade_declareCallable'){
+   const metadata=JSON.parse(literal(target,block,'METADATA')),owners=metadata.plan.owners.filter(owner=>owner.kind==='constructor'&&owner.className==='Counter');assert.equal(owners.length,1);
+   const binding=metadata.plan.bindings.find(binding=>binding.id===owners[0].parameters[1]);assert.ok(binding);assert.equal(binding.owner,owners[0].id);assert.equal(binding.sourceName,'step');
+   owners[0].signature.parameters[1].type.result.name='string';binding.type.result.name='string';
+   assert.doesNotThrow(()=>validateClassCallablePlan(metadata.plan));setLiteral(target,block,'METADATA',JSON.stringify(metadata));count++;
+  }assert.equal(count,2);},
+ ];
+ for(let index=0;index<edits.length;index++){const edited=structuredClone(firstProject);edits[index](edited);const result=projectToArcade(edited);record({stage:'parameter-property-edited-constructor-refusal',index,project:edited,result});assert.ok(result.unsupported.length,index);}
  const again=arcadeToPseudocode(exported.files);record({stage:'parameter-property-reimport',result:again});clean(again,['unsupported','warnings']);
  const second=new Creator();second.parse(again.code);record({stage:'parameter-property-second-Creator',project:second.project,errors:second.errors,warnings:second.warnings,unparsed:second.unparsed});clean(second,['errors','warnings','unparsed']);
  const secondBytes=Buffer.from(await(await second.generateSB3()).arrayBuffer()),secondZip=await JSZip.loadAsync(secondBytes),secondProject=JSON.parse(await secondZip.file('project.json').async('string'));
