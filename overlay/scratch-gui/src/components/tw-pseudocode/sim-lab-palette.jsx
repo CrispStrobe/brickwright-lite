@@ -6,7 +6,8 @@
 // view), a search box (EN and DE names, part number), a "Recently used" row,
 // and collapsible categories. A tile is clicked to arm the placing tool, or
 // pressed and dragged into the 3D view (the pane hands the press to the editor
-// view's `pressPalettePart`). Every string comes from the pane's TEXT table
+// view's `pressPalettePart`); a finger scrolls the list up and down (touch-action
+// pan-y) and carries a tile sideways into the view. Every string comes from the pane's TEXT table
 // (`text`); this component owns no wording.
 
 import React from 'react';
@@ -69,7 +70,7 @@ class SimLabPalette extends React.Component {
                 style={{display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', gap: 2,
                     width: '100%', minHeight: compact ? 0 : 44, padding: compact ? 3 : '4px 4px 6px', borderRadius: 8, cursor: 'grab',
                     border: `${on ? 2 : 1}px solid ${on ? '#2563eb' : '#e2e8f0'}`, background: on ? '#dbeafe' : '#fff',
-                    userSelect: 'none', touchAction: 'none', boxSizing: 'border-box', fontSize: 11, lineHeight: '13px', color: '#1e293b'}}>
+                    userSelect: 'none', touchAction: 'pan-y', WebkitTouchCallout: 'none', boxSizing: 'border-box', fontSize: 11, lineHeight: '13px', color: '#1e293b'}}>
                 {thumbs && (picture ?
                     <img src={picture} alt="" draggable={false} data-testid="bw-sim-lab-thumb" width={THUMB_CSS_PX} height={THUMB_CSS_PX}
                         style={{display: 'block', pointerEvents: 'none'}} /> :

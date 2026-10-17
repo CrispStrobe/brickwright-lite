@@ -50,12 +50,17 @@ const TEXT = {
         noMatches: 'No part matches “{q}”.', partTitle: '{name} · part {number}',
         paletteHelp: 'Click a part, then click in the view. Or drag it into the view.',
         move: 'Move (W)', turn: 'Turn (E)', grid: 'Grid', ldu: 'LDU', turnUp: 'Turn ↻ (R)', tip: 'Tip (T)',
+        turnBack: 'Turn ↺ (Shift+R)', copy: 'Copy', paste: 'Paste', selectAll: 'Select all', cancel: 'Cancel (Esc)',
+        copyKey: 'Ctrl+C', pasteKey: 'Ctrl+V', selectAllKey: 'Ctrl+A',
         duplicate: 'Duplicate', group: 'Group', ungroup: 'Ungroup', groupKey: 'Ctrl+G', ungroupKey: 'Ctrl+Shift+G', home: 'Home', fit: 'Fit (F)', top: 'Top', front: 'Front', side: 'Side',
         selectedOne: 'Selected: {name}', selectedMany: 'Selected: {n} parts',
         st: {
             idle: 'Click a part to select it. Drag it to move it; Shift+click adds parts; drag empty space to look around.',
             hover: '{part}: click to select, drag to move', hoverSelected: '{part}: drag to move, R turns, Delete removes',
             placing: 'Placing {part}: click to place, R turns, Alt: no magnet, Esc stops',
+            idleTouch: 'Tap a part to select it and drag it to move it. A long press adds parts. Drag empty space to look around, pinch to zoom; long-press empty space, then drag, to select with a box.',
+            placingTouch: 'Placing {part}: tap where it goes, Turn ↻ turns it, Cancel stops',
+            boxing: 'Now drag a box around the parts to select',
             dragging: 'Drag {part} into the view and let go to place it (Esc cancels)',
             snap: 'Snaps to {target} hole {hole}', snapNoHole: 'Snaps to {target}', snapped: 'Snapped to {target} hole {hole}', snappedNoHole: 'Snapped to {target}',
             floor: 'On the floor', onTop: 'On top of {target}', moving: 'Moving x {x}, y {y}, z {z} LDU (1 hole = 20)',
@@ -98,12 +103,17 @@ const TEXT = {
         noMatches: 'Kein Teil passt zu „{q}“.', partTitle: '{name} · Teil {number}',
         paletteHelp: 'Klicke ein Teil an, dann in die Ansicht. Oder zieh es in die Ansicht.',
         move: 'Schieben (W)', turn: 'Drehen (E)', grid: 'Raster', ldu: 'LDU', turnUp: 'Drehen ↻ (R)', tip: 'Kippen (T)',
+        turnBack: 'Drehen ↺ (Umschalt+R)', copy: 'Kopieren', paste: 'Einfügen', selectAll: 'Alle wählen', cancel: 'Abbrechen (Esc)',
+        copyKey: 'Strg+C', pasteKey: 'Strg+V', selectAllKey: 'Strg+A',
         duplicate: 'Verdoppeln', group: 'Gruppieren', ungroup: 'Gruppe lösen', groupKey: 'Strg+G', ungroupKey: 'Strg+Umschalt+G', home: 'Start', fit: 'Einpassen (F)', top: 'Oben', front: 'Vorne', side: 'Seite',
         selectedOne: 'Ausgewählt: {name}', selectedMany: 'Ausgewählt: {n} Teile',
         st: {
             idle: 'Klicke ein Teil an, um es auszuwählen. Ziehen verschiebt es; Umschalt+Klick wählt mehr Teile; Ziehen auf leerer Fläche dreht die Ansicht.',
             hover: '{part}: klicken wählt aus, ziehen verschiebt', hoverSelected: '{part}: ziehen verschiebt, R dreht, Entf löscht',
             placing: '{part} platzieren: klicken setzt, R dreht, Alt: ohne Magnet, Esc beendet',
+            idleTouch: 'Tippe ein Teil an, um es auszuwählen, und zieh es, um es zu verschieben. Lange drücken wählt mehr Teile. Ziehen auf leerer Fläche dreht die Ansicht, zwei Finger zoomen; lange auf leere Fläche drücken und ziehen wählt mit einem Rahmen.',
+            placingTouch: '{part} platzieren: tippe, wo es hin soll, Drehen ↻ dreht es, Abbrechen beendet',
+            boxing: 'Zieh jetzt einen Rahmen um die Teile, die du auswählen willst',
             dragging: 'Zieh {part} in die Ansicht und lass los, um es zu setzen (Esc bricht ab)',
             snap: 'Rastet an {target} Loch {hole} ein', snapNoHole: 'Rastet an {target} ein', snapped: 'An {target} Loch {hole} eingerastet', snappedNoHole: 'An {target} eingerastet',
             floor: 'Auf dem Boden', onTop: 'Oben auf {target}', moving: 'Verschieben x {x}, y {y}, z {z} LDU (1 Loch = 20)',
@@ -142,7 +152,7 @@ class SimLabPane extends React.Component {
         this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, simMs: 0, view3d: 'loading',
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
-            showPorts: true, showMotion: false, blockers: [], portPicker: null};
+            showPorts: true, showMotion: false, blockers: [], portPicker: null, coarse: false};
         this.viewWrap = React.createRef();
         this.box = React.createRef();
         this.file = React.createRef();
@@ -155,10 +165,16 @@ class SimLabPane extends React.Component {
         this.requestThumb = this.requestThumb.bind(this);
         this.armPart = this.armPart.bind(this);
         this.pressPart = this.pressPart.bind(this);
+        this.onPointerKind = this.onPointerKind.bind(this);
         /** Palette parts waiting for their picture (drawn a few per frame in `frame`). */
         this.thumbQueue = new Set();
         this.thumbs = null;
         this.last = null;
+    }
+
+    onPointerKind () {
+        const coarse = Boolean(this.coarseQuery && this.coarseQuery.matches);
+        if (coarse !== this.state.coarse) this.setState({coarse});
     }
 
     t (key, values = {}) {
@@ -182,6 +198,10 @@ class SimLabPane extends React.Component {
         };
         window.addEventListener('bw-project-bundle-collect', this.onBundleCollect);
         window.addEventListener('bw-project-bundle-loaded', this.onBundleLoaded);
+        // A tablet (a finger is the main pointer): bigger buttons and touch wording.
+        this.coarseQuery = window.matchMedia ? window.matchMedia('(pointer: coarse)') : null;
+        if (this.coarseQuery && this.coarseQuery.addEventListener) this.coarseQuery.addEventListener('change', this.onPointerKind);
+        this.onPointerKind();
         try {
             this.lib = await import(/* webpackChunkName: "bw-sim-lab" */ '../../lib/bw-sim/sim-lab.js');
         } catch (error) {
@@ -199,6 +219,7 @@ class SimLabPane extends React.Component {
         this.onBundleCollect();
         window.removeEventListener('bw-project-bundle-collect', this.onBundleCollect);
         window.removeEventListener('bw-project-bundle-loaded', this.onBundleLoaded);
+        if (this.coarseQuery && this.coarseQuery.removeEventListener) this.coarseQuery.removeEventListener('change', this.onPointerKind);
         this.disposed = true;
         cancelAnimationFrame(this.raf);
         this.teardown();
@@ -600,13 +621,27 @@ class SimLabPane extends React.Component {
     }
 
     renderDrive (button) {
+        // The arrow follows the finger (or button) that pressed it: captured, so sliding off does not
+        // let go, and it stops when THAT finger lifts or the browser takes it away (another finger on
+        // another arrow has taken over by then and keeps driving).
+        const release = e => {
+            if (this.drivePointer !== e.pointerId) return;
+            this.drivePointer = null;
+            this.drive('stop');
+        };
         const hold = dir => ({
-            onPointerDown: e => { e.currentTarget.setPointerCapture?.(e.pointerId); this.drive(dir); },
-            onPointerUp: () => this.drive('stop'),
-            onPointerCancel: () => this.drive('stop'),
-            onLostPointerCapture: () => this.driving === dir && this.drive('stop')
+            onPointerDown: e => {
+                e.currentTarget.setPointerCapture?.(e.pointerId);
+                this.drivePointer = e.pointerId;
+                this.drive(dir);
+            },
+            onPointerUp: release,
+            onPointerCancel: release,
+            onLostPointerCapture: release,
+            onContextMenu: e => e.preventDefault()
         });
-        const arrow = {...button, minWidth: 34, fontSize: 15, lineHeight: '18px', userSelect: 'none', touchAction: 'none'};
+        const arrow = {...button, minWidth: this.state.coarse ? 48 : 34, fontSize: 15, lineHeight: '18px', userSelect: 'none',
+            WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'none'};
         const hub = this.props.hubState.data;
         const ports = [...new Set(this.session.mechanism.joints.filter(j => j.motor).map(j => j.motor.port))].sort();
         const sensorPorts = (this.session.mechanism.sensors || []).map(s => s.port).sort();
@@ -689,7 +724,7 @@ class SimLabPane extends React.Component {
         const hole = st.connector && /^[a-z](\d+)$/.exec(st.connector);
         switch (st.kind) {
         case 'hover': return fill(st.selected ? T.hoverSelected : T.hover, {part: name(st.part)});
-        case 'placing': return fill(T.placing, {part: name(st.part)});
+        case 'placing': return fill(this.state.coarse ? T.placingTouch : T.placing, {part: name(st.part)});
         case 'dragging': return fill(T.dragging, {part: name(st.part)});
         case 'snap': case 'snapped': case 'turnedAbout': {
             const target = st.target ? name(st.target) : '';
@@ -707,7 +742,8 @@ class SimLabPane extends React.Component {
         case 'placed': return fill(T.placed, {part: name(st.part)});
         case 'blocked': return fill(T.blocked, {target: name(st.target)});
         case 'refused': return fill(T[st.reason] || T.invalid, {detail: st.detail || '', target: st.target ? name(st.target) : ''});
-        default: return T[st.kind] ? fill(T[st.kind], {n: st.count}) : T.idle;
+        case 'idle': return this.state.coarse ? T.idleTouch : T.idle;
+        default: return T[st.kind] ? fill(T[st.kind], {n: st.count}) : (this.state.coarse ? T.idleTouch : T.idle);
         }
     }
 
@@ -725,7 +761,8 @@ class SimLabPane extends React.Component {
         const meta = sel ? this.lib.CATALOG.get(sel.part) : null;
         const portable = meta && (meta.motor || meta.sensor);
         const tick = () => this.setState(s => ({editorTick: s.editorTick + 1}));
-        const small = {...button, padding: '3px 8px', marginRight: 0};
+        const small = {...button, padding: this.state.coarse ? '6px 10px' : '3px 8px', marginRight: 0};
+        const field = this.state.coarse ? {minHeight: 40} : undefined;
         const pressed = on => ({...small, background: on ? '#dbeafe' : '#fff', borderColor: on ? '#2563eb' : '#94a3b8', fontWeight: on ? 600 : 400});
         const st = this.state.buildStatus || {};
         const refused = st.kind === 'refused';
@@ -739,13 +776,15 @@ class SimLabPane extends React.Component {
                     <button type="button" style={pressed(this.state.gizmoMode === 'rotate')} data-testid="bw-sim-lab-mode-rotate"
                         aria-pressed={this.state.gizmoMode === 'rotate'} onClick={() => view?.setMode('rotate')}>{T.turn}</button>
                     <label style={{marginLeft: 4}}>{T.grid}{' '}
-                        <select data-testid="bw-sim-lab-grid" value={this.state.grid}
+                        <select data-testid="bw-sim-lab-grid" value={this.state.grid} style={field}
                             onChange={e => { const g = Number(e.target.value); view?.setGrid(g); this.setState({grid: g}); }}>
                             {[1, 5, 10, 20].map(g => <option key={g} value={g}>{g} {T.ldu}</option>)}
                         </select>
                     </label>
                     <span style={{width: 6}} />
-                    <button type="button" style={small} data-testid="bw-sim-lab-turn" disabled={!selection.length} onClick={() => view?.turn('up', 1)}>{T.turnUp}</button>
+                    <button type="button" style={small} data-testid="bw-sim-lab-turn" disabled={!selection.length && !this.state.placing} onClick={() => view?.turn('up', 1)}>{T.turnUp}</button>
+                    <button type="button" style={small} data-testid="bw-sim-lab-turn-back" disabled={!selection.length && !this.state.placing}
+                        onClick={() => view?.turn('up', -1)}>{T.turnBack}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-tip" disabled={!selection.length} onClick={() => view?.turn('facing', 1)}>{T.tip}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-group" disabled={selection.length < 2}
                         title={T.groupKey} onClick={() => { view?.groupSelection(); tick(); }}>{T.group}</button>
@@ -754,6 +793,13 @@ class SimLabPane extends React.Component {
                         title={T.ungroupKey} onClick={() => { view?.ungroupSelection(); tick(); }}>{T.ungroup}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-duplicate" disabled={!selection.length} onClick={() => view?.duplicate()}>{T.duplicate}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-delete" disabled={!selection.length} onClick={() => view?.deleteSelection()}>{T.remove}</button>
+                    <button type="button" style={small} data-testid="bw-sim-lab-copy" disabled={!selection.length} title={T.copyKey}
+                        onClick={() => view?.copy()}>{T.copy}</button>
+                    <button type="button" style={small} data-testid="bw-sim-lab-paste" title={T.pasteKey} onClick={() => view?.paste()}>{T.paste}</button>
+                    <button type="button" style={small} data-testid="bw-sim-lab-select-all" disabled={!parts.length} title={T.selectAllKey}
+                        onClick={() => view?.selectAll()}>{T.selectAll}</button>
+                    <button type="button" style={small} data-testid="bw-sim-lab-cancel" disabled={!selection.length && !this.state.placing}
+                        onClick={() => view?.escape()}>{T.cancel}</button>
                     <span style={{width: 6}} />
                     <button type="button" style={small} data-testid="bw-sim-lab-undo" disabled={!editor?.canUndo} onClick={() => { view?.undo(); tick(); }}>{T.undo}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-redo" disabled={!editor?.canRedo} onClick={() => { view?.redo(); tick(); }}>{T.redo}</button>
@@ -773,7 +819,7 @@ class SimLabPane extends React.Component {
                     )}
                     {portable && (
                         <label>{T.port}{': '}
-                            <select data-testid="bw-sim-lab-port" value={sel.port || ''}
+                            <select data-testid="bw-sim-lab-port" value={sel.port || ''} style={field}
                                 onChange={e => { editor.apply({type: 'setPort', id: sel.id, port: e.target.value || null}); tick(); }}>
                                 <option value="">{T.none}</option>
                                 {['A', 'B', 'C', 'D', 'E', 'F'].map(p => <option key={p} value={p}>{p}</option>)}
@@ -871,7 +917,9 @@ class SimLabPane extends React.Component {
     render () {
         const {status, message, issues, simMs, modelFile} = this.state;
         const busy = status === 'loading';
-        const button = {padding: '4px 10px', marginRight: 6, borderRadius: 6, border: '1px solid #94a3b8', background: '#fff', cursor: 'pointer'};
+        const button = {padding: '4px 10px', marginRight: 6, borderRadius: 6, border: '1px solid #94a3b8', background: '#fff', cursor: 'pointer',
+            // Under a finger: at least 40 px each way.
+            ...(this.state.coarse ? {minHeight: 40, minWidth: 40, padding: '6px 12px'} : {})};
         return (
             <div data-testid="bw-sim-lab" data-status={status} style={{display: 'flex', flexDirection: 'column', gap: 8, padding: 10, height: '100%', boxSizing: 'border-box'}}>
                 <div style={{fontSize: 12, color: '#334155'}}>{this.text.intro}</div>
