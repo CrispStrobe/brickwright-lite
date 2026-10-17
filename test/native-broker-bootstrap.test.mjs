@@ -379,6 +379,30 @@ test('GUI program upload and deferred storage cross the real broker receiver wit
 });
 
 
+test('Robot Lab lockstep and deferred program control cross the real broker receiver with the SPIKE resource', async () => {
+    const invokes = [], replies = [];
+    const control = createNativeBrokerReceiver({NativeBrokerProtocol,
+        BrokerProtocolError: protocolModule.BrokerProtocolError,
+        invoke: async (command, args) => {
+            if (command === 'native_broker_reply') {replies.push(JSON.parse(args.payload));return;}
+            if (command === 'native_broker_lease') return 'f'.repeat(64);
+            assert.equal(command, 'native_broker_invoke');invokes.push(args);return 'snapshot';
+        }, createProtocol: () => {throw new Error('lockstep does not create a worker');}});
+    const calls = [
+        ['renode.spike.lockstep.begin', {quantumUs: 5000}],
+        ['renode.spike.lockstep.step', {quantumUs: 5000, expectClockNs: 0,
+            shafts: [{port: 'A', positionMdeg: 0, speedMdps: 0}], sensors: []}],
+        ['renode.spike.program.control.submit', {bytes: [112, 1, 3, 0, 1, 0, 0, 0]}],
+        ['renode.spike.lockstep.end', {}]
+    ];
+    for (const [index, [operation, args]] of calls.entries()) {
+        await control.receive(delivery(sid(2), sid(31 + index), 'capability', index, {operation, args}));
+        assert.deepEqual(invokes[index], {lease: 'f'.repeat(64), sequence: 0, operation, resource: 'renode/spike-prime', args});
+        assert.deepEqual(replies[index], {kind: 'capability', result: 'snapshot'});
+    }
+    assert.equal(invokes.length, calls.length);await control.dispose();
+});
+
 test('UART read/write/close cross the real broker receiver with fixed SPIKE resource', async () => {
     const invokes = [], replies = [];
     const control = createNativeBrokerReceiver({NativeBrokerProtocol,

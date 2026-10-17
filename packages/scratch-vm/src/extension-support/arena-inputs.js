@@ -55,6 +55,38 @@ module.exports.validNuttxPacket = value => {
     return [0, 7].includes(b[2]) ? b.length === 16 : b[2] === 1 ? b.length >= 11 : b.length === 8;
 };
 
+// Robot Lab lockstep (docs/ROBOT-LAB-SPIKE-EMULATION.md §2.1, R13a), as closed as the
+// native validator (arena_inputs.rs valid_lockstep_*): whole 1 ms ticks, 1–20 ms quanta;
+// each port A–F at most once across shafts and sensors; sensors as `arena.inputs`.
+const lockstepQuantum = value => integer(value, 1000, 20000) && value % 1000 === 0;
+const validHubInput = hub => keys(hub, ['buttons', 'imuRaw']) &&
+    keys(hub.buttons, ['left', 'center', 'right', 'bluetooth']) &&
+    ['left', 'center', 'right', 'bluetooth'].every(name => typeof hub.buttons[name] === 'boolean') &&
+    keys(hub.imuRaw, ['temperature', 'angularRate', 'acceleration']) && integer(hub.imuRaw.temperature, -32768, 32767) &&
+    ['angularRate', 'acceleration'].every(name => Array.isArray(hub.imuRaw[name]) && hub.imuRaw[name].length === 3 &&
+        hub.imuRaw[name].every(v => integer(v, -32768, 32767)));
+module.exports.validLockstepBegin = value => keys(value, ['quantumUs']) && lockstepQuantum(value.quantumUs);
+module.exports.validLockstepStep = value => {
+    if (!(keys(value, ['quantumUs', 'expectClockNs', 'shafts', 'sensors']) ||
+        (keys(value, ['quantumUs', 'expectClockNs', 'shafts', 'sensors', 'hub']) && validHubInput(value.hub)))) return false;
+    if (!lockstepQuantum(value.quantumUs) || !Number.isSafeInteger(value.expectClockNs) || value.expectClockNs < 0 ||
+        !Array.isArray(value.shafts) || !Array.isArray(value.sensors) ||
+        value.shafts.length > 6 || value.sensors.length > 6) return false;
+    const ports = new Set();
+    for (const item of [...value.shafts, ...value.sensors]) {
+        if (!item || typeof item.port !== 'string' || !/^[A-F]$/.test(item.port) || ports.has(item.port)) return false;
+        ports.add(item.port);
+    }
+    return value.shafts.every(item => keys(item, ['port', 'positionMdeg', 'speedMdps']) &&
+            integer(item.positionMdeg, -0x7fffffff, 0x7fffffff) && integer(item.speedMdps, -2e6, 2e6)) &&
+        value.sensors.every(item => keys(item, ['port', 'kind', 'values']) && validArenaInputs({sensors: [item], loads: []}));
+};
+module.exports.validLockstepEnd = value => keys(value, []);
+
+// START (3) / STOP (4) only, returning at once: program control inside lockstep.
+module.exports.validNuttxProgramControl = value => module.exports.validNuttxPacket(value) &&
+    value.bytes.length === 8 && [3, 4].includes(value.bytes[2]);
+
 // Storage submission is a separate closed operation, with no upload/run payload.
 module.exports.validNuttxStorageSubmit = value => module.exports.validNuttxPacket(value) &&
     value.bytes.length === 8 && [8, 9].includes(value.bytes[2]);

@@ -2,7 +2,8 @@
  * Closed, semantic capability vocabulary. Values describe public broker operations, never native
  * command names. Adding an operation is a security review: unknown names and wildcards fail closed.
  */
-const {validArenaInputs, validArenaProgram, validNuttxPacket, validNuttxStorageSubmit} = require('./arena-inputs');
+const {validArenaInputs, validArenaProgram, validNuttxPacket, validNuttxStorageSubmit,
+    validLockstepBegin, validLockstepStep, validLockstepEnd, validNuttxProgramControl} = require('./arena-inputs');
 const {validProgramUart} = require('./spike-program-uart-contract');
 const VOCABULARY_VERSION = 1;
 const MAX_DIAGNOSTICS = 256;
@@ -33,6 +34,10 @@ const OPERATIONS = Object.freeze({
     'renode.spike.micropython.uart.close': Object.freeze({validate: args => validProgramUart('close', args)}),
     'renode.spike.program.storage.submit': Object.freeze({validate: validNuttxStorageSubmit}),
     'renode.spike.arena.program.load': Object.freeze({validate: validArenaProgram}),
+    'renode.spike.lockstep.begin': Object.freeze({validate: validLockstepBegin}),
+    'renode.spike.lockstep.step': Object.freeze({validate: validLockstepStep}),
+    'renode.spike.lockstep.end': Object.freeze({validate: validLockstepEnd}),
+    'renode.spike.program.control.submit': Object.freeze({validate: validNuttxProgramControl}),
     'renode.spike.state.read': Object.freeze({validate: args =>
         isPlainRecord(args) && hasOnlyKeys(args, [])}),
     'renode.spike.breakpoint.set': Object.freeze({validate: args => isPlainRecord(args) &&

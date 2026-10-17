@@ -39,6 +39,8 @@
 export const LOCKSTEP_OPS = Object.freeze({
     sessionStart: 'renode.spike.session.start',
     sessionClose: 'renode.spike.session.close',
+    /** Resumes the guest the session starts halted: the Runtime runs quanta only on a running CPU. */
+    run: 'renode.spike.run',
     begin: 'renode.spike.lockstep.begin',
     step: 'renode.spike.lockstep.step',
     end: 'renode.spike.lockstep.end'
