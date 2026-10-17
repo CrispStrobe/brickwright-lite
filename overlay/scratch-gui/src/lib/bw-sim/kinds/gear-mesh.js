@@ -7,7 +7,7 @@
 // in the LDraw model frame; a hinge is {joint, frame, sign} (mech/gears.js).
 
 import {COS_1_DEG, SIN_1_DEG, vecSub, vecDot, vecCross, vecLen, vecScale, vecNormalize} from '../mech/vec.js';
-import {dirToWorld} from '../contracts.js';
+import {dirToWorld, LDU_M} from '../contracts.js';
 
 const COS_1 = COS_1_DEG;
 const SIN_1 = SIN_1_DEG;
@@ -31,4 +31,36 @@ export const meshRatio = (g1, h1, g2, h2, P) => {
     const den = vecDot(cross2, t);
     if (Math.abs(den) < 1e-12) return null;
     return vecDot(cross1, t) / den;
+};
+
+/** World point (metres) back to the LDraw model frame (LDU): the inverse of lduToWorld. */
+const worldToLdu = p => [p[0] / LDU_M, -p[1] / LDU_M, -p[2] / LDU_M];
+
+/**
+ * The hinges a gear can turn on: hinge joints touching the gear's body whose
+ * axis is the gear's own axis line (parallel within 1°, passing within
+ * 0.5 LDU of the gear centre). (Moved from mech/gears.js unchanged.)
+ * @param {object} gear gear info (islandId, centerLdu, axisLdu)
+ * @param {Array} joints compiled joints
+ * @returns {{joint: object, frame: string, sign: number}[]} sign +1 when the gear is on body2
+ */
+export const gearHinges = (gear, joints) => {
+    const out = [];
+    for (const j of joints) {
+        if (j.type !== 'hinge') continue;
+        let sign;
+        let frame;
+        if (j.body2 === gear.islandId) { sign = 1; frame = j.body1; }
+        else if (j.body1 === gear.islandId) { sign = -1; frame = j.body2; }
+        else continue;
+        // dirToWorld flips y and z; it is its own inverse, so it maps the world axis back to LDU.
+        const axisLdu = vecNormalize(dirToWorld(j.axis));
+        if (!parallelAxes(gear.axisLdu, axisLdu)) continue;
+        const d = vecSub(gear.centerLdu, worldToLdu(j.point));
+        const perp = vecSub(d, vecScale(axisLdu, vecDot(d, axisLdu)));
+        if (vecLen(perp) > TOL + 1e-9) continue;
+        out.push({joint: j, frame, sign});
+    }
+    out.sort((a, b) => a.joint.id.localeCompare(b.joint.id));
+    return out;
 };

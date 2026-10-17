@@ -304,6 +304,9 @@ export const validatePartMeta = (meta, {connectorKinds = null} = {}) => {
         meta.connectors.forEach((c, i) => {
             const w = `${p}.connectors[${c?.id ?? i}]`;
             if (!CONNECTOR_TYPES.includes(c?.type) && !(connectorKinds && connectorKinds.has(c?.type))) out.push(`${w}.type: '${c?.type}' is not one of ${CONNECTOR_TYPES.join('|')}`);
+            // A registered kind checks its own data (a worm's pitch radius and hand, a rack's normal).
+            const kindModule = connectorKinds && typeof connectorKinds.get === 'function' ? connectorKinds.get(c?.type) : null;
+            if (kindModule && typeof kindModule.validate === 'function' && c) for (const q of kindModule.validate(c)) out.push(`${w}: ${q}`);
             if (!isVec(c?.position)) out.push(`${w}.position: not a Vec3`);
             checkUnit(c?.axis, `${w}.axis`, out);
             if (c?.length !== undefined && !(isNum(c.length) && c.length > 0)) out.push(`${w}.length: need a positive number`);
@@ -758,7 +761,8 @@ export const collisionGroupOf = role => (role === 'robot' || role === 'frame' ? 
 
 /** Bodies with `role` and `collisionGroup` (appended, so a v1 view drops them cleanly). */
 export const withBodyRoles = bodies => bodies.map(b => {
-    const role = bodyRole(b);
+    // A body the compiler made with its role (a world load, world/objects.js) keeps it.
+    const role = BODY_ROLES.includes(b.role) ? b.role : bodyRole(b);
     return {...b, role, collisionGroup: collisionGroupOf(role)};
 });
 
@@ -803,7 +807,8 @@ export const noCollidePairs = (joints, couplings, kinds = null, seated = []) => 
     return [...pairs.values()].sort((p, q) => p[0].localeCompare(q[0]) || p[1].localeCompare(q[1]));
 };
 
-const V1_COUPLING_KINDS = Object.freeze(['gear', 'rackAndPinion']);
+/** Coupling kinds the v1 contract has (its `gears` list): the v1 view keeps exactly these. */
+export const V1_COUPLING_KINDS = Object.freeze(['gear', 'rackAndPinion']);
 
 /** The v1 `joint.motor` an actuator is (graph.js/joints.js motorOf in v1). */
 const motorAlias = a => {
