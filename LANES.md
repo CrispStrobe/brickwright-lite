@@ -1,3 +1,32 @@
+## C9 — AVR instruction-cost layout investigation — 2026-10-17
+
+CLAIMED — Codex, branch `lane/c9-avr-layout-20261017` in the owned
+LabWired Core fork. This is the C9 measurement/explanation lane, independent
+of A13, the SAMD replacement work and the existing C10/STM32 adoption owners.
+
+Own only a diagnostic profile producer and its pure controls under
+`scripts/perf/avr_layout_profile.py` and `scripts/perf/test_avr_layout_profile.py`,
+a separate manually dispatched `.github/workflows/avr-layout-profile.yml`,
+the corresponding Core engineering report, and this task's documentation.
+Keep the existing Core Perf gate, baselines, tolerances, source fixtures,
+release profiles, engine/model semantics, pins, captures and ACKs unchanged.
+No upstream workflow dispatch, issue/status automation or local heavy build.
+
+First compare fixed source snapshots from the owned fork: pre-sync `f1ca219d`,
+sync merge `6e03dd12`, current `715e1272`, and the already retained upstream
+source `49f656f5`. Hosted CI must retain each exact compiler/build identity,
+authored AVR firmware identity, step/batch counts, raw Callgrind profile and
+per-function annotation, using the existing measurement's fixture and bounds.
+The standalone reader must not execute a guest or import the producer.
+Freeze metadata/original admission before the first diagnostic dispatch and
+acquire each official original once. Keep original failures visible.
+
+This claim authorizes measurement and source explanation, not a decoder or
+profile optimization. A proposed implementation needs a separately reviewed
+precise scope and must improve both prescribed source trees without worsening
+any existing baseline row beyond its unchanged tolerance. No per-chip waiver,
+rebaselining, repeated unchanged run or release/physical-timing claim.
+
 ## H1–H7 — Code tab crash, layout, badge and language reach — 2026-10-16
 
 CLAIMED — VPS Claude (opus), branches `lane/code-tab-h*-20261016`, base main
@@ -5918,3 +5947,50 @@ source replacement, callback simulation, new domain/ABI, runtime, supplier/pin o
 workflow changes. Require affected clean genuine guest qualification in addition
 to current public roundtrip and adversarial graph controls. Pending unrelated
 handler/value claims confer no authority here.
+
+## Sim Lab S1 headless consumer and integration guards — 2026-10-17
+
+CLAIMED — Codex root, source implementation to follow on the existing STM32
+composition branch after this claim merges. User requested continued software
+integration. Hosted run38975443782 passes both browsers/build/corpus but unit2
+finds the Sim Lab plan missing from trigger paths and five S1 entry modules
+without a non-test consumer. Own only the already planned
+`scripts/verify-sim-physics.mjs` headless scenario command, a Node worker
+transport adapter in scripts/lib, its package command and CLI controls, plus
+the exact plan trigger entry and these receipts. Consume the unchanged parser,
+compiler, Jolt core, hub bridge, worker client and actual physics-worker entry
+to report real movement/encoders/IMU and a worker snapshot; refuse parse and
+compile errors, retain one-clock ownership and clean up worker/core resources.
+Use the existing driving-base asset/catalog and original physical expectations.
+
+Preserve the Sim Lab owner's runtime files, UI/engine/pins, worker protocol and
+all original guard assertions. No dead-code allowlist, fabricated import, test
+consumer counted as production, waived diagnostic, trigger bypass or workflow
+budget change. Add only the missing governed plan path to Build's trigger.
+Require the unchanged two failed controls and all enabled final-head source CI
+to pass before source merge. This creates a genuine headless diagnostic entry
+point; browser editor integration remains owned by Sim Lab's existing lane.
+
+Implementation after claimPR1039 merged as8999ced4d: the new direct command
+`node scripts/verify-sim-physics.mjs` parses the actual reference LDraw model,
+compiles unchanged metadata, drives the unchanged hub/core and runs the actual
+physics-worker entry through a Node-only message adapter and original client.
+The two-second reference run moves0.491813m, with measured opposing encoders
+and negligible yaw. The worker advances100 fixed steps and returns measured
+wheel rotation. Unknown models/options fail with no successful output; all
+worker/core resources and clock ownership are released. Both original failing
+guards now pass without any allowlist or assertion change. Build includes only
+the missing governed plan path.
+
+Broader execution exposed an existing worker fixture's unlabelled root-to-GUI
+resolution. The original worker determinism test now uses the same adapter to
+the actual integrated worker, preserving every byte-identical snapshot assertion
+and protocol. This resolves through the GUI's native dependency scope, without
+new scope exemptions or suppressed diagnostics. All88 affected controls pass,
+zero skips/failures/raw stdout; the unchanged GUI boundary checker also passes.
+Retain original hosted failures and initial boundary log; final TAP+census are
+`/tmp/brickwright-simlab-final.{tap,census.json}`. Installed-source verification
+passes in root and GUI: Board12881 and CUI1308 files match their immutable npm
+payloads, with single-engine resolution. Two actual CLI mutants (no drive and
+no worker motor targets) both fail their named physical assertions with no
+successful output. Final source-head CI still gates the integration merge.

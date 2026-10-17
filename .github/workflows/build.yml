@@ -92,6 +92,7 @@ on:
       - '!README.md'
       - '!ROADMAP.md'
       - '!docs/*.md'
+      - 'docs/SIM-LAB-PLAN.md'
       - 'docs/APP-STORE-COMPLIANCE.md'
       - 'docs/TARGET-EMULATOR-PERFORMANCE.md'
       - 'docs/CYCLE-ACCURATE-CORE-EVALUATION.md'
