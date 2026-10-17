@@ -19,9 +19,9 @@
 // LDraw format, as used here (https://www.ldraw.org/article/218): line type 1
 // is `1 colour x y z a b c d e f g h i file` (a..i row-major, applied as
 // p' = M·p + t), 3 is a triangle, 4 a quad, 2 an edge line, 5 an optional
-// line. File names are case-insensitive and use `\` as the separator. A part
-// file resolves in parts/, parts/s/ (sub-parts written `s\name.dat`), p/,
-// p/48/ and p/8/ (hi/lo-res primitives written `48\name.dat`).
+// line. File names are case-insensitive and use `\\` as the separator. A part
+// file resolves in parts/, parts/s/ (sub-parts written `s\\name.dat`), p/,
+// p/48/ and p/8/ (hi/lo-res primitives written `48\\name.dat`).
 
 /** @typedef {[number, number, number]} Vec3 */
 /** @typedef {{m: number[], t: Vec3}} Xform  3×3 row-major + translation */
@@ -57,12 +57,13 @@ export const refKey = name => name.trim().toLowerCase().replace(/\\/g, '/');
 /**
  * Parse one LDraw file's text.
  * @returns {{header: {description: string, name?: string, author?: string, license?: string, ldrawOrg?: string},
- *            refs: {file: string, x: Xform}[], polys: Vec3[][], edges: Vec3[][]}}
+ *            refs: {file: string, x: Xform, colour: number}[], polys: Vec3[][], polyColours: number[], edges: Vec3[][]}}
  */
 export const parseLDraw = text => {
     const header = {description: ''};
     const refs = [];
     const polys = [];
+    const polyColours = [];
     const edges = [];
     let first = true;
     for (const raw of text.split(/\r?\n/)) {
@@ -83,19 +84,25 @@ export const parseLDraw = text => {
         first = false;
         const n = tok.slice(2).map(Number);
         if (type === '1' && tok.length >= 15) {
+            const colour = parseInt(tok[1], 10);
             refs.push({
                 file: tok.slice(14).join(' '),
-                x: {m: n.slice(3, 12), t: n.slice(0, 3)}
+                x: {m: n.slice(3, 12), t: n.slice(0, 3)},
+                colour: Number.isFinite(colour) ? colour : 16
             });
         } else if (type === '3' && tok.length >= 11) {
+            const colour = parseInt(tok[1], 10);
             polys.push([n.slice(0, 3), n.slice(3, 6), n.slice(6, 9)]);
+            polyColours.push(Number.isFinite(colour) ? colour : 16);
         } else if (type === '4' && tok.length >= 14) {
+            const colour = parseInt(tok[1], 10);
             polys.push([n.slice(0, 3), n.slice(3, 6), n.slice(6, 9), n.slice(9, 12)]);
+            polyColours.push(Number.isFinite(colour) ? colour : 16);
         } else if (type === '2' && tok.length >= 8) {
             edges.push([n.slice(0, 3), n.slice(3, 6)]);
         }
     }
-    return {header, refs, polys, edges};
+    return {header, refs, polys, polyColours, edges};
 };
 
 /** The directories an LDraw reference is looked up in, in order. */
@@ -105,10 +112,13 @@ export const SEARCH_DIRS = Object.freeze(['parts/', 'p/', '']);
  * Flatten a part: all polygons and edges in the part frame, plus every
  * primitive (a file found under p/) with its accumulated placement.
  *
+ * Colours: type-3/4 lines carry a colour; 16 inherits from the referencing
+ * type-1 line, recursively. The returned `polyColours` parallels `polys`.
+ *
  * @param {string} name   e.g. '32523.dat'
  * @param {(path: string) => string|undefined} read  returns file text for a
  *        library-relative path such as 'parts/32523.dat' or 'p/48/4-4cyli.dat', or undefined
- * @returns {{polys: Vec3[][], edges: Vec3[][], primitives: {file: string, x: Xform}[],
+ * @returns {{polys: Vec3[][], polyColours: number[], edges: Vec3[][], primitives: {file: string, x: Xform}[],
  *            subparts: {file: string, x: Xform, description: string, polys: Vec3[][]}[],
  *            files: string[], missing: string[]}}
  *          subparts: every instance of a parts/s/ file with its placement and its
@@ -117,7 +127,7 @@ export const SEARCH_DIRS = Object.freeze(['parts/', 'p/', '']);
  *          files: every library path the part needed (its closure); missing: references not found
  */
 export const flattenPart = (name, read) => {
-    const out = {polys: [], edges: [], primitives: [], subparts: [], files: [], missing: []};
+    const out = {polys: [], polyColours: [], edges: [], primitives: [], subparts: [], files: [], missing: []};
     const cache = new Map();
     const seen = new Set();
     const load = ref => {
@@ -139,7 +149,11 @@ export const flattenPart = (name, read) => {
         }
         return found;
     };
-    const walk = (ref, x, depth) => {
+    const resolveColour = (colour, parentColour) => {
+        if (colour === 16) return parentColour;
+        return colour;
+    };
+    const walk = (ref, x, colour, depth) => {
         if (depth > 32) throw new Error(`LDraw reference depth > 32 at ${ref} (a cycle?)`);
         const f = load(ref);
         if (!f) {
@@ -148,14 +162,23 @@ export const flattenPart = (name, read) => {
         }
         if (f.path.startsWith('p/')) out.primitives.push({file: f.path, x});
         const first = out.polys.length;
-        for (const p of f.parsed.polys) out.polys.push(p.map(v => apply(x, v)));
+        for (let i = 0; i < f.parsed.polys.length; i++) {
+            const poly = f.parsed.polys[i];
+            const polyColour = f.parsed.polyColours[i];
+            const effective = resolveColour(polyColour, colour);
+            out.polys.push(poly.map(v => apply(x, v)));
+            out.polyColours.push(effective);
+        }
         for (const e of f.parsed.edges) out.edges.push(e.map(v => apply(x, v)));
-        for (const r of f.parsed.refs) walk(r.file, compose(x, r.x), depth + 1);
+        for (const r of f.parsed.refs) {
+            const childColour = resolveColour(r.colour, colour);
+            walk(r.file, compose(x, r.x), childColour, depth + 1);
+        }
         if (f.path.startsWith('parts/s/')) {
             out.subparts.push({file: f.path, x, description: f.parsed.header.description, polys: out.polys.slice(first)});
         }
     };
-    walk(name, IDENTITY, 0);
+    walk(name, IDENTITY, 16, 0);
     return out;
 };
 
