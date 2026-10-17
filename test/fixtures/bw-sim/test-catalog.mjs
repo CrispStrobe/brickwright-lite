@@ -130,6 +130,44 @@ export const makeCatalog = () => {
         gear: {type: 'bevel', teeth: 20, axis: [0, 0, 1], center: [0, 0, 0]},
     });
 
+    // Corner block: one pinhole along Z and one along X (offset), so two
+    // perpendicular beams can be pinned into one rigid frame (bevel tests).
+    cat.set('test-corner.dat', {
+        part: 'test-corner.dat',
+        name: 'Test corner block',
+        category: 'connector',
+        massGrams: 0.5,
+        connectors: [
+            {id: 'z', type: 'pinhole', position: [0, 0, 0], axis: [0, 0, 1], length: 20},
+            {id: 'x', type: 'pinhole', position: [5, 0, 25], axis: [1, 0, 0], length: 20},
+        ],
+        colliders: [{shape: 'box', halfExtents: [10, 10, 20], position: [0, 0, 12]}],
+    });
+
+    // 24T with a ROUND hole: it turns freely on an axle (gear-on-body1 sign test).
+    cat.set('test-gear24-round.dat', {
+        part: 'test-gear24-round.dat',
+        name: 'Test gear 24T round hole',
+        category: 'gear',
+        massGrams: 1.0,
+        connectors: [{id: 'c', type: 'pinhole', position: [0, 0, 0], axis: [0, 0, 1], length: 10}],
+        colliders: [{shape: 'cylinder', radius: pitchRadiusLdu(24), halfHeight: 4}],
+        gear: {type: 'spur', teeth: 24, axis: [0, 0, 1], center: [0, 0, 0]},
+    });
+
+    // Frame block with a fixed axle stub at x=0 and a pinhole at x=-40, both along Z.
+    cat.set('test-stub-frame.dat', {
+        part: 'test-stub-frame.dat',
+        name: 'Test stub frame',
+        category: 'beam',
+        massGrams: 2.0,
+        connectors: [
+            {id: 'stub', type: 'axle', position: [0, 0, 0], axis: [0, 0, 1], length: 30},
+            {id: 'h', type: 'pinhole', position: [-40, 0, 0], axis: [0, 0, 1], length: 20},
+        ],
+        colliders: [{shape: 'box', halfExtents: [30, 10, 10], position: [-20, 0, -15]}],
+    });
+
     // Worm (for unsupported test) - not required but add
     cat.set('test-worm.dat', {
         part: 'test-worm.dat',

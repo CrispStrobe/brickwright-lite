@@ -131,40 +131,54 @@ export const compile = (model, catalog, opts = {}) => {
     // Build graph (even if empty)
     const {nodes, edges: graphEdges} = buildGraph(filteredModel, catalogMap, diagnostics);
 
-    // Initial islands from rigid edges only
-    let islands = buildIslands(nodes, graphEdges, catalogMap, diagnostics, opts);
-    // Joints detection loop for locked-hinges
-    let jointsResult = buildJoints(nodes, graphEdges, islands, diagnostics);
-    let lockedPairs = jointsResult.lockedPairs;
-
-    // If locked-hinges found, we need to merge islands and re-evaluate
-    // Add warning diagnostics for locked
-    let extraRigidPairsCollected = [];
-    let iterations = 0;
-    while (lockedPairs.length > 0 && iterations < 5) {
-        iterations++;
-        for (const [bA, bB] of lockedPairs) {
-            diagnostics.push({severity: 'warning', code: 'locked-hinges', message: `Hinges between ${bA} and ${bB} lock, merging islands`, parts: []});
-            // Need to find representative node ids for these bodies to union
-            // Find any node belonging to body bA and any node belonging to body bB in current islands
-            const nodesA = [...islands.nodeToBody.entries()].filter(([, bid]) => bid === bA).map(([nid]) => nid);
-            const nodesB = [...islands.nodeToBody.entries()].filter(([, bid]) => bid === bB).map(([nid]) => nid);
-            if (nodesA.length > 0 && nodesB.length > 0) {
-                extraRigidPairsCollected.push([nodesA[0], nodesB[0]]);
-            }
-        }
-        // Rebuild islands with extra rigid pairs
-        islands = buildIslands(nodes, graphEdges, catalogMap, diagnostics, opts, extraRigidPairsCollected);
+    // Topology fixpoint. Islands come from rigid edges; two things can then
+    // weld islands together and force a rebuild: hinges between one island pair
+    // that are not collinear (locked-hinges), and a gear rigidly on the frame its
+    // mesh partner turns in (gear-on-frame, gears.js). Each pass rebuilds islands,
+    // joints and gears from the graph plus the welds found so far; the gear pass's
+    // other diagnostics are kept from the final pass only.
+    const extraRigidPairs = [];
+    const firstNodeOf = (islandsNow, bodyId) => {
+        for (const [nid, bid] of islandsNow.nodeToBody.entries()) if (bid === bodyId) return nid;
+        return null;
+    };
+    const weld = (islandsNow, bA, bB) => {
+        const nA = firstNodeOf(islandsNow, bA);
+        const nB = firstNodeOf(islandsNow, bB);
+        if (nA && nB) extraRigidPairs.push([nA, nB]);
+    };
+    let islands;
+    let jointsResult;
+    let gearResult;
+    let gearDiagnostics;
+    // Every weld merges two islands, so this settles in at most one pass per node.
+    for (let pass = 0; pass <= nodes.size + 1; pass++) {
+        islands = buildIslands(nodes, graphEdges, catalogMap, diagnostics, opts, extraRigidPairs);
         jointsResult = buildJoints(nodes, graphEdges, islands, diagnostics);
-        lockedPairs = jointsResult.lockedPairs;
-        // Avoid infinite loop: if still locked, continue
-        if (lockedPairs.length === 0) break;
+        if (jointsResult.lockedPairs.length > 0) {
+            for (const [bA, bB] of jointsResult.lockedPairs) {
+                diagnostics.push({severity: 'warning', code: 'locked-hinges', message: `Hinges between ${bA} and ${bB} lock, merging islands`, parts: []});
+                weld(islands, bA, bB);
+            }
+            continue;
+        }
+        gearDiagnostics = [];
+        gearResult = buildGears(nodes, islands, jointsResult.joints, catalogMap, gearDiagnostics, jointsResult.jointEntries);
+        if (gearResult.lockedPairs.length === 0) break;
+        for (const d of gearDiagnostics) if (d.code === 'gear-on-frame') diagnostics.push(d);
+        for (const [bA, bB] of gearResult.lockedPairs) weld(islands, bA, bB);
+        gearResult = null;
+    }
+    if (!gearResult) throw new Error('compile: mechanism topology did not settle');
+    // A gear welded by gear-on-frame is "not on a hinge" by construction; that is the lock, already said.
+    const lockedGears = new Set(diagnostics.filter(d => d.code === 'gear-on-frame').flatMap(d => d.parts));
+    for (const d of gearDiagnostics) {
+        if (d.code === 'gear-not-on-hinge' && d.parts.every(p => lockedGears.has(p))) continue;
+        diagnostics.push(d);
     }
 
     const joints = jointsResult.joints;
-
-    // Gears (after final islands/joints)
-    const {gears} = buildGears(nodes, islands, joints, catalogMap, diagnostics);
+    const {gears} = gearResult;
 
     // Bodies final list: islands.bodies plus ground
     const bodies = [...islands.bodies];
