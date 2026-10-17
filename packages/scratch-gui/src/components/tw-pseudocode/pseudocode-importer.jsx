@@ -6489,9 +6489,9 @@ class PseudocodeImporter extends React.Component {
                         this.setState({animationMenuOpen: false});
                         this.insertAnimationResource(kind);
                     };
-                    const item = {display: 'block', width: '100%', textAlign: 'left', whiteSpace: 'nowrap'};
+                    const item = {whiteSpace: 'nowrap'};
                     return <div data-testid="bw-code-animation-resources"
-                        style={{display: 'flex', gap: 6, alignItems: 'center', margin: '4px 0', position: 'relative'}}>
+                        style={{display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', margin: '4px 0'}}>
                         <label title={this.L.animationLabel}>🎞{' '}
                             <select data-testid="bw-code-animation-picker" value={id} aria-label={this.L.animationLabel}
                                 onChange={event => this.setState({animationResourceId: event.target.value})}>
@@ -6504,10 +6504,10 @@ class PseudocodeImporter extends React.Component {
                             onClick={() => this.setState(state => ({animationMenuOpen: !state.animationMenuOpen}))}>
                             {de ? 'Einfügen ▾' : 'Insert ▾'}</button>
                         {this.state.animationMenuOpen && ready ? (
+                            // Inline while open: an overlay here sat under the tab row,
+                            // which then took the clicks (arcade animation gate).
                             <div role="menu" data-testid="bw-code-animation-insert-items"
-                                style={{position: 'absolute', top: '100%', left: 0, zIndex: 20, background: '#fff',
-                                    border: '1px solid #cbd5e1', borderRadius: 4, padding: 2,
-                                    boxShadow: '0 2px 6px rgba(15,23,42,0.15)'}}>
+                                style={{display: 'inline-flex', gap: 4, flexWrap: 'wrap'}}>
                                 <button type="button" role="menuitem" style={item}
                                     data-testid="bw-code-animation-insert-frames" onClick={() => insert('frames')}>
                                     {de ? 'Bilder einfügen' : 'Insert frames'}</button>
