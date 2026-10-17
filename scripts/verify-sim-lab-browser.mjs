@@ -21,7 +21,10 @@
 //      a click selects a part, dragging the gizmo's X arrow moves it by a grid
 //      multiple, R turns it 90°, the rotate ring turns it, a press-and-drag on
 //      the part slides it, Shift+click selects two parts which the gizmo moves
-//      in ONE undo step, and Shift+drag box-selects;
+//      in ONE undo step, Shift+drag box-selects, a pin dragged over a beam hole
+//      from above snaps in from the top, a beam clicked onto another beam's top
+//      rests on it, and a beam pushed into the hub turns red, the status names
+//      the hub and the move is refused on release;
 //   6. no page errors.
 //
 // Run after the integrated GUI build:  node scripts/verify-sim-lab-browser.mjs
