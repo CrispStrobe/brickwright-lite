@@ -1715,7 +1715,7 @@ jobs:
           BW_SPIKE_RECEIPT_DIR: ${{ runner.temp }}/spike-browser-receipts
         run: node scripts/verify-spike-simulator-browser.mjs
 
-      - name: Browser gate — Robot Lab core: a real-parts model loads, drives, is built and saved
+      - name: Browser gate — Robot Lab core, a real-parts model loads, drives, is built and saved
         timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
         run: npm run verify:sim-lab -- --part=core
