@@ -142,10 +142,13 @@ test('3. scene: mat texture pixels and obstacle meshes world bounding boxes', ()
         const r = tex.image.data[idx], g = tex.image.data[idx+1], b = tex.image.data[idx+2];
         return [r,g,b];
     };
+    // The texture is the mat's own colorAt, rgb 0..1024 scaled to 0..255: compare against that, not a guess.
+    const expect = (x, z) => createMat('line-oval').colorAt(x, z).rgb.map(v => Math.min(255, Math.round(v / 4)));
     const black = sample(0, 0.25);
-    assert.deepEqual(black, [0,0,0], `pixel at (0,0.25) should be black, got ${black}`);
+    assert.equal(createMat('line-oval').colorAt(0, 0.25).color, 0, '(0, 0.25) is on the line');
+    assert.deepEqual(black, expect(0, 0.25), `pixel at (0,0.25) should be the line's colour, got ${black}`);
     const white = sample(0, 0);
-    assert.deepEqual(white, [255,255,255], `pixel at (0,0) should be white, got ${white}`);
+    assert.deepEqual(white, expect(0, 0), `pixel at (0,0) should be the floor's colour, got ${white}`);
 
     // Obstacle meshes exist with right world bounding boxes
     assert.ok(built.obstacleMeshes && built.obstacleMeshes.size === 2, `obstacleMeshes ${built.obstacleMeshes?.size}`);
