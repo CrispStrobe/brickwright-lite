@@ -142,7 +142,7 @@ export const GROUND_FRICTION = 0.8;
  *   gravity: Vec3,
  *   bodies: {id: string, motion: 'static'|'dynamic', position: Vec3, rotation: Quat,
  *            massKg: number, com?: Vec3, colliders: Collider[], parts: string[],
- *            friction?: number, restitution?: number}[],
+ *            friction?: number, restitution?: number, color?: number, mat?: string}[],
  *   joints: ({id: string, type: 'hinge', body1: string, body2: string, point: Vec3, axis: Vec3,
  *             motor?: {port: string, maxTorqueNm: number, maxSpeedRadPerSec: number, deviceId?: number}} |
  *            {id: string, type: 'slider', body1: string, body2: string, point: Vec3, axis: Vec3} |
@@ -301,6 +301,8 @@ export const validateCompiledMechanism = m => {
         if (!Array.isArray(b?.colliders) || b.colliders.length === 0) out.push(`${w}.colliders: need at least one collider`);
         else b.colliders.forEach((c, i) => checkCollider(c, `${w}.colliders[${i}]`, out));
         if (!Array.isArray(b?.parts)) out.push(`${w}.parts: not an array`);
+        if (b?.color !== undefined && !(Number.isInteger(b.color) && b.color >= 0 && b.color <= 10)) out.push(`${w}.color: need an integer 0..10`);
+        if (b?.mat !== undefined && typeof b.mat !== 'string') out.push(`${w}.mat: need a string`);
     });
     const joints = new Map();
     uniqueIds(m.joints, 'joints', out);
