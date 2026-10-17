@@ -116,7 +116,7 @@
     "@codemirror/search": "^6.5.8",
     "@codemirror/theme-one-dark": "^6.1.2",
     "bw-board": "github:CrispStrobe/bw-board#f84ba60ead0a90deb9830f0c1468839c293ecf05",
-    "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#1db1bb9ee565338672c7acfefec4cf94b27196e1",
+    "bw-circuit-ui": "github:CrispStrobe/bw-circuit-ui#873f68b317c2285570b77390fdfdab26b1598513",
     "@xyflow/react": "^12.3.0",
     "digitaljs": "0.14.2",
     "yosys2digitaljs": "0.10.3"

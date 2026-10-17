@@ -147,6 +147,17 @@ implementation. Require identity/notice/pin reader controls, affected STM32
 and circuit controls and all enabled exact-head CI before merging the combined
 candidate; no installed or physical validation is inferred.
 
+## bw-circuit-ui adoption 873f68b — taken over from A13 — 2026-10-17
+
+CLAIMED — Claude (Lite Code tab lane, H7), branch `lane/cui-pin-873f68b-20261017`,
+at the owner's direction while the A13 Codex lane is paused. Adopts
+bw-circuit-ui master 873f68b: A13's merged CPX live face (bw-circuit-ui #85),
+the STM32F030 chip body that replaces the LED-dimmer example's ghost outline
+(#88), and B20 ledger entries. bw-circuit-ui's dependencies are unchanged, so
+this is the same 16-surface SHA swap as earlier adoptions; history docs keep
+their recorded pins. A13's own Lite wiring (circuit-tab.jsx cpxState and
+onCpxInput) stays with A13 and is not part of this adoption.
+
 Composition receipts: claim PR1016 merged before implementation. All thirteen
 conflicts resolved without changing original assertions or supplier runtime;
 canonical package/lock/notice writers retain CUI1db, Boardf84 and SBCa13.
