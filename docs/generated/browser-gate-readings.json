@@ -262,6 +262,12 @@
    "max": null,
    "readings": []
   },
+  "Browser gate \u2014 Robot Lab layout at five window sizes (Simulate and Build)": {
+   "n": 0,
+   "p95": null,
+   "max": null,
+   "readings": []
+  },
   "Browser gate \u2014 the debugger-only pane and its round trip": {
    "n": 20,
    "p95": 12,

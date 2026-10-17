@@ -1176,7 +1176,7 @@ const GUIComponent = props => {
                                 <React.Suspense fallback={<div style={{padding: 24, color: '#64748b'}}>{/^de/i.test(navigator.language) ? 'SPIKE-Simulator wird geladen…' : 'Loading SPIKE simulator…'}</div>}>
                                     <div style={dockFullScreenStyle || {position: 'relative', flex: 1, minHeight: 0}}>
                                         <SpikeSimulatorPane vm={vm} locale={intl.locale}
-                                            />
+                                            isFullScreen={isFullScreen} onEnterFullScreen={props.onEnterFullScreen} />
                                     </div>
                                 </React.Suspense>
                             ) : dockMode === 'makecode' ? (

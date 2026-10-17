@@ -53,7 +53,13 @@
 //      press then drag on open floor box-selects, a finger drags the gizmo's X arrow, the build
 //      bar's Select all / Copy / Paste / Turn ↺ / Undo, one finger orbits and two pinch-zoom
 //      (Build and Simulate), and holding ▲ drives with lifting the finger stopping both motors;
-//  12. no page errors.
+//  12. the layout at school-device sizes (scripts/lib/sim-lab-layout-gate.mjs): at 1024×768,
+//      1280×800, 1366×768, 1600×1050 and 1920×1080, in Simulate and Build, the 3D view is at
+//      least 300 px and half the pane tall, wholly visible with nothing scrolled; Run, Reset,
+//      Build/Simulate, Drive ▲, Move/Turn, Undo and the palette are on screen and on top; the
+//      pane never scrolls sideways; the palette (a drawer when compact) places a part, Undo
+//      takes it away, the compact "More…" menu works, and "open large" goes full screen;
+//  13. no page errors.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -74,6 +80,7 @@ import {cadInteractions} from './lib/sim-lab-cad-gate.mjs';
 import {insightInteractions} from './lib/sim-lab-insight-gate.mjs';
 import {instructionsInteractions} from './lib/sim-lab-instructions-gate.mjs';
 import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
+import {layoutInteractions, MIN_CANVAS_PX} from './lib/sim-lab-layout-gate.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const build = resolve(process.env.BW_BUILD || `${root}/packages/scratch-gui/build`);
@@ -173,10 +180,10 @@ const reading = page => page.evaluate(() => {
     return {pos: [b[i * 7], b[i * 7 + 1], b[i * 7 + 2]], a: motors[0].position, b: motors[1].position, time: s.time};
 });
 
-// One gate, four CI steps (each within the per-step budget, gen-gate-budgets.mjs):
-// `--part=core|examples|ui|tablet` runs one section; no flag runs all of them.
+// One gate, five CI steps (each within the per-step budget, gen-gate-budgets.mjs):
+// `--part=core|examples|ui|tablet|layout` runs one section; no flag runs all of them.
 const PART = (process.argv.find(a => a.startsWith('--part=')) || '--part=all').slice('--part='.length);
-const PARTS = ['core', 'examples', 'ui', 'tablet'];
+const PARTS = ['core', 'examples', 'ui', 'tablet', 'layout'];
 if (PART !== 'all' && !PARTS.includes(PART)) throw new Error(`--part must be one of ${PARTS.join(', ')} (got ${PART})`);
 const want = part => PART === 'all' || PART === part;
 
@@ -597,6 +604,14 @@ try {
         await openSimLab(tablet, {program: null});
         await touchInteractions(tablet, {shotsDir: artifacts});
         await tablet.close();
+    }
+
+    if (want('layout')) { // the pane's layout at five window sizes, Simulate and Build
+        // 12. The layout at five window sizes, Simulate and Build.
+        const layout = await layoutInteractions(browser, {open: openSimLab, shotsDir: artifacts, errors});
+        for (const row of layout) {
+            console.log(`PASS layout ${row.size} ${row.mode}: ${row.layout} pane ${row.pane.join('×')}, 3D view ${row.canvas.join('×')} px (≥ ${MIN_CANVAS_PX} and half the pane), controls on screen`);
+        }
     }
 
     assert.deepEqual(errors, [], `page errors: ${errors.join('\n')}`);

@@ -107,9 +107,45 @@ export const touchInteractions = async (page, {shotsDir}) => {
     const finger = await touchInput(page);
     const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
 
+    // ---- Beside the Code tab, not full screen: the compact layout under a finger ----------
+    assert.equal(await page.getByTestId('bw-sim-lab').getAttribute('data-layout'), 'compact', 'beside the Code tab the Robot Lab is compact');
+    const hubOf = () => page.evaluate(() => {
+        const pane = window.__bwSimLab._pane;
+        const s = pane.session;
+        const i = s.snapshot().bodyIds.indexOf(s.bridge.hubBody);
+        return {z: s.snapshot().bodies[i * 7 + 2], speeds: pane.props.hubState.data.motors.slice(0, 2).map(m => m.speed), time: s.time};
+    });
+    const up = await page.getByTestId('bw-sim-lab-drive-forward').boundingBox();
+    const h0 = await hubOf();
+    await finger.start([[up.x + up.width / 2, up.y + up.height / 2]]);
+    await page.waitForFunction(t => window.__bwSimLab._pane.session.time > t + 1000, h0.time, {timeout: 60000});
+    assert.ok((await hubOf()).speeds.every(v => v !== 0), 'compact: holding ▲ with a finger runs both drive motors');
+    await finger.end();
+    await page.waitForFunction(() => window.__bwSimLab._pane.props.hubState.data.motors.slice(0, 2).every(m => m.speed === 0), null, {timeout: 10000});
+    const h1 = await hubOf();
+    assert.ok(h1.z < h0.z - 0.02, `compact: the finger drove the robot forward (${h0.z.toFixed(3)} → ${h1.z.toFixed(3)} m)`);
+    console.log(`PASS touch, not full screen: holding ▲ in the compact pane drives ${((h0.z - h1.z) * 100).toFixed(1)} cm; lifting stops it`);
+
     // ---- Build -------------------------------------------------------------------------
     await page.getByTestId('bw-sim-lab-mode-build').tap();
     await page.getByTestId('bw-sim-lab-editor-canvas').waitFor({timeout: 60000});
+    await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab.editor, null, {timeout: 60000});
+    // Compact Build: the palette is a drawer; a tapped tile closes it, a tap on the floor places the part.
+    await page.getByTestId('bw-sim-lab-parts-toggle').tap();
+    const drawerTile = page.getByTestId('bw-sim-lab-part-32524.dat');
+    await drawerTile.waitFor({timeout: 5000});
+    await page.screenshot({path: resolve(shotsDir, 'sim-lab-touch-narrow-drawer.png')});
+    await drawerTile.tap();
+    await page.getByTestId('bw-sim-lab-palette').waitFor({state: 'hidden', timeout: 5000});
+    const narrowSpot = (await openFloor(page, 80))[0];
+    assert.ok(narrowSpot, 'compact: open floor in the Build view');
+    const n0 = await countOf(page);
+    await page.touchscreen.tap(narrowSpot[0], narrowSpot[1]);
+    await page.waitForFunction(n => window.__bwSimLab.editor.model.parts.length === n + 1, n0, {timeout: 10000});
+    await page.getByTestId('bw-sim-lab-undo').tap();
+    await page.waitForFunction(n => window.__bwSimLab.editor.model.parts.length === n, n0, {timeout: 10000});
+    await settled(page);
+    console.log('PASS touch, not full screen: the parts drawer, a tapped tile and a tap on the floor place a part; Undo takes it away');
     await page.screenshot({path: resolve(shotsDir, 'sim-lab-touch-narrow.png')});
     // On a tablet the Robot Lab gets the whole screen: the stage's full-screen button.
     await page.getByAltText('Enter full screen mode').tap();
