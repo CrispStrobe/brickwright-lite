@@ -1,0 +1,14 @@
+{
+  "$comment": "8T -> 24T spur: motor A drives 8T (10 LDU) meshing 24T (30 LDU) at 40 LDU, beam rigidly pinned to motor housing. Ratio -1/3.",
+  "version": 1,
+  "parts": [
+    {"id": "m", "part": "54696p01.dat", "position": [0, 0, 0], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1], "port": "A"},
+    {"id": "a8", "part": "3705.dat", "position": [0, -40, 0], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
+    {"id": "g8", "part": "3647.dat", "position": [0, -40, 0], "rotation": [1, 0, 0, 0, 0, 1, 0, -1, 0]},
+    {"id": "beam", "part": "32524.dat", "position": [0, -40, 0], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+    {"id": "p1", "part": "2780.dat", "position": [0, -40, 20], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
+    {"id": "p2", "part": "2780.dat", "position": [0, -40, -20], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
+    {"id": "a24", "part": "3705.dat", "position": [0, -40, 40], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
+    {"id": "g24", "part": "3648.dat", "position": [0, -40, 40], "rotation": [1, 0, 0, 0, 0, 1, 0, -1, 0]}
+  ]
+}

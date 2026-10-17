@@ -1,0 +1,14 @@
+{
+  "$comment": "8T -> 40T spur: 8T (10) meshes 40T (50) at 60 LDU, ratio -1/5.",
+  "version": 1,
+  "parts": [
+    {"id": "m", "part": "54696p01.dat", "position": [0, 0, 0], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1], "port": "A"},
+    {"id": "a8", "part": "3705.dat", "position": [0, -40, 0], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
+    {"id": "g8", "part": "3647.dat", "position": [0, -40, 0], "rotation": [1, 0, 0, 0, 0, 1, 0, -1, 0]},
+    {"id": "beam", "part": "32524.dat", "position": [0, -40, 0], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+    {"id": "p1", "part": "2780.dat", "position": [0, -40, 20], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
+    {"id": "p2", "part": "2780.dat", "position": [0, -40, -20], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
+    {"id": "a40", "part": "3705.dat", "position": [0, -40, 60], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
+    {"id": "g40", "part": "3649.dat", "position": [0, -40, 60], "rotation": [1, 0, 0, 0, 0, 1, 0, -1, 0]}
+  ]
+}
