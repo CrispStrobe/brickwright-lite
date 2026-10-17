@@ -339,7 +339,6 @@ export const touchInteractions = async (page, {shotsDir}) => {
     await finger.pinch(mid, 80, 160);
     const s2 = await simCamera(page);
     assert.ok(s2.distance < s1.distance * 0.8, `pinching out zooms the Simulate view in: ${s1.distance.toFixed(3)} → ${s2.distance.toFixed(3)} m`);
-    await page.screenshot({path: resolve(shotsDir, 'sim-lab-touch-simulate-orbited.png')});
     console.log(`PASS touch: one finger orbits the Simulate view (${simTurn.toFixed(2)} rad), two fingers zoom ` +
         `(${s1.distance.toFixed(3)} → ${s2.distance.toFixed(3)} m)`);
 };
