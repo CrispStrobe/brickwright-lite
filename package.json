@@ -83,6 +83,7 @@
         "verify:microbit-flash": "node scripts/verify-microbit-flash.mjs",
         "verify:starters": "node scripts/verify-starter-journeys.mjs",
         "verify:lego-spike": "node scripts/verify-lego-spike-roundtrip.mjs",
+        "verify:sim-lab": "node scripts/verify-sim-lab-browser.mjs",
         "verify:project-bundle": "node scripts/verify-project-bundle-integrity.mjs",
         "verify:pixel-source": "node scripts/verify-pixel-source-roundtrip.mjs",
         "verify:arrays-table": "node scripts/verify-arrays-table-display.mjs",

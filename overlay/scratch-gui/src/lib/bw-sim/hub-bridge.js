@@ -43,6 +43,9 @@ const DEG = 180 / Math.PI;
 /** Fixed step, ms: the arena's STEP_MS, so the motor controller sees the same cadence in both worlds. */
 export const STEP_MS = 5;
 
+/** LEGO device id the hub reports for a motor port when the part does not say (SPIKE medium angular motor). */
+const MEDIUM_MOTOR = 48;
+
 export class SimHubBridge {
     /**
      * @param {object} options
@@ -70,6 +73,16 @@ export class SimHubBridge {
         // Heading reference: the hub's forward direction at t = 0, flattened onto the ground.
         this.forward0 = this._forward();
         this.heading = 0;
+        // Plug the model's motors into the hub, as the arena's bridge does for its
+        // driving base: the extension sees a motor on each driven port, at position 0.
+        for (const j of mechanism.joints) {
+            if (j.type !== 'hinge' || !j.motor) continue;
+            const index = PORTS.indexOf(j.motor.port);
+            hubState.data.sensors[index] = {kind: 'motor', deviceId: j.motor.deviceId ?? MEDIUM_MOTOR};
+            hubState.motors.resetPosition(j.motor.port, 0);
+            hubState.motors.stop(j.motor.port);
+        }
+        hubState.motorPairDefined = false;
         this.previousOwner = hubState.clockOwner;
         hubState.clockOwner = 'native';
         hubState.resetHeading(0);
