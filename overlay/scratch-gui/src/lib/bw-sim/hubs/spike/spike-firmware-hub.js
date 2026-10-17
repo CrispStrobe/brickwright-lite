@@ -88,7 +88,7 @@ export class SpikeFirmwareVirtualHub {
             out.push({severity: 'error', code: 'lockstep-not-started', message: 'The emulated SPIKE hub has not started.'});
             return out;
         }
-        if (this.hubState?.configurationOwner) {
+        if (this.hubState?.configurationOwner && this.hubState.configurationOwner !== this.driver) {
             out.push({severity: 'error', code: 'hub-owned', message: 'Another session owns this hub (the SPIKE arena?).'});
             return out;
         }

@@ -15,8 +15,8 @@
 // One request in flight at a time; a failed or desynchronised step fails the
 // driver for good (`failed`), so the next call refuses instead of guessing.
 
-import {LOCKSTEP_OPS, QUANTA_US, LockstepContractError, LockstepDesyncError, parseReply, readSnapshot,
-    readStepFrame, frameIdentity, stepRequest} from './contract.js';
+import {LOCKSTEP_OPS, QUANTA_US, LockstepContractError, LockstepDesyncError, LockstepUnsupportedError,
+    advertisesLockstep, parseReply, readSnapshot, readStepFrame, frameIdentity, stepRequest} from './contract.js';
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
@@ -47,9 +47,12 @@ export class RenodeLockstepDriver {
      * @param {'default'|'six-motors'|'dual-ultrasonic'} [options.topology]
      * @param {number} [options.quantumUs] 5000 (one physics step) or 10000
      * @param {boolean} [options.manageSession] start/close the Renode session around lockstep
-     *        (the existing session.start/close ops); false when a caller already owns it
+     *        (the existing session.start/run/close ops); false when a caller already owns it
+     *        (and has resumed the guest: begin refuses a debugger-halted hub)
+     * @param {Function} [options.onEnd] called once when end() has finished (the route
+     *        releases the hub's configurationOwner claim there)
      */
-    constructor ({transport, backend = 'nuttx', topology = 'default', quantumUs = 5000, manageSession = true}) {
+    constructor ({transport, backend = 'nuttx', topology = 'default', quantumUs = 5000, manageSession = true, onEnd = null}) {
         if (!transport || typeof transport.call !== 'function') throw new TypeError('a lockstep transport needs call(operation, args)');
         if (!QUANTA_US.includes(quantumUs)) throw new TypeError(`quantumUs must be one of ${QUANTA_US.join(', ')}`);
         this.transport = transport;
@@ -57,6 +60,7 @@ export class RenodeLockstepDriver {
         this.topology = topology;
         this.quantumUs = quantumUs;
         this.manageSession = manageSession;
+        this.onEnd = typeof onEnd === 'function' ? onEnd : null;
         /** The begin frame's clock: the emulator's virtual time at Lab time 0. */
         this.t0Ns = null;
         this.clockNs = null;
@@ -89,6 +93,14 @@ export class RenodeLockstepDriver {
             if (this.manageSession) {
                 await this._call(LOCKSTEP_OPS.sessionStart, {backend: this.backend, ...(this.topology !== 'default' ? {topology: this.topology} : {})});
                 this.sessionOpen = true;
+            }
+            // Gate on the running target, as the arena gates its ops on the first frame's
+            // capabilities: an older runtime is "unsupported", never a failed lockstep.begin.
+            if (!advertisesLockstep(await this._call(LOCKSTEP_OPS.stateRead, {}))) throw new LockstepUnsupportedError();
+            if (this.manageSession) {
+                // The session starts with the debugger holding the guest; lockstep.begin
+                // stops a RUNNING emulation (renode-spike-prime#59), so resume it first.
+                await this.transport.call(LOCKSTEP_OPS.run, {}); // replies 'running' (text, not a frame)
             }
             const frame = readSnapshot(await this._call(LOCKSTEP_OPS.begin, {quantumUs: this.quantumUs}));
             this.frame = frame;
@@ -156,8 +168,13 @@ export class RenodeLockstepDriver {
             this.sessionOpen = false;
             try { await this._call(LOCKSTEP_OPS.sessionClose, {}); } catch (error) { errors.push(error); }
         }
+        if (this.onEnd) {
+            const onEnd = this.onEnd;
+            this.onEnd = null;
+            onEnd();
+        }
         if (errors.length) throw errors[0];
     }
 }
 
-export {LockstepContractError, LockstepDesyncError};
+export {LockstepContractError, LockstepDesyncError, LockstepUnsupportedError};

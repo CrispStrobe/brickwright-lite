@@ -8,14 +8,27 @@
 // scene then runs in-thread, one physics step per lockstep exchange
 // (runner.js). Desktop only: the web build has no managed Renode runtime, and
 // the gate is the lockstep ops themselves (lockstepAvailable), which the
-// native owner adds (brickwright-lite#1055) — until then the pane offers the
-// route disabled.
+// native owner adds (brickwright-lite#1055); the emulated hub's own `lockstep/v1`
+// capability is checked natively at `lockstep.begin` and again by readSnapshot.
+//
+// One Renode session per app (plan §2.7): the route claims the shared hub's
+// `configurationOwner` before it starts the emulator, as the SPIKE arena's
+// RenodeArenaSession does, so neither can start while the other owns it; the
+// claim is released when the driver ends.
 
 import {createNativeRenodeCapabilities} from 'scratch-vm/src/extension-support/native-renode-capability.js';
 import {RenodeLockstepDriver, capabilityTransport, lockstepAvailable} from './driver.js';
 import {SpikeFirmwareVirtualHub} from '../../hubs/spike/spike-firmware-hub.js';
 
 export {lockstepAvailable};
+
+/**
+ * Whether the pane offers the firmware route: the desktop runtime has the lockstep ops,
+ * and no session has shown that the packaged Renode runtime lacks `lockstep/v1` (only a
+ * running target can say; once one has, the route stays "not available" for this pane).
+ */
+export const firmwareRouteReady = (capabilities, {unsupported = false} = {}) =>
+    !unsupported && lockstepAvailable(capabilities);
 
 /** The desktop app's native Renode capability object, or null outside the desktop app. */
 export const desktopRenodeCapabilities = (host = globalThis) => {
@@ -36,7 +49,18 @@ export const desktopRenodeCapabilities = (host = globalThis) => {
 export const openFirmwareRoute = async ({capabilities, hubState = null, backend = 'nuttx', topology = 'default'}) => {
     const transport = capabilityTransport(capabilities);
     if (!transport) throw new Error('This build has no managed Renode runtime with lockstep.');
-    const driver = new RenodeLockstepDriver({transport, backend, topology});
+    if (hubState?.configurationOwner) throw new Error('Hub configuration is owned by another session (the SPIKE arena?).');
+    const release = () => {
+        if (hubState?.configurationOwner === driver) {
+            hubState.configurationOwner = null;
+            hubState.changed?.();
+        }
+    };
+    const driver = new RenodeLockstepDriver({transport, backend, topology, onEnd: release});
+    if (hubState) {
+        hubState.configurationOwner = driver;
+        hubState.changed?.();
+    }
     try {
         await driver.begin();
     } catch (error) {

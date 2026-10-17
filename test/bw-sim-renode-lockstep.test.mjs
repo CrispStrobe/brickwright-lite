@@ -144,7 +144,7 @@ test('the driver refuses an emulator without the lockstep capabilities, and the 
     const driver = new RenodeLockstepDriver({transport: fake});
     await assert.rejects(driver.begin(), err => err instanceof LockstepContractError && /motor-bridge-drive\/v1, external-shaft\/v1/.test(err.message));
     await driver.end();
-    assert.deepEqual(fake.log.map(([op]) => op), [LOCKSTEP_OPS.sessionStart, LOCKSTEP_OPS.begin, LOCKSTEP_OPS.sessionClose],
+    assert.deepEqual(fake.log.map(([op]) => op), [LOCKSTEP_OPS.sessionStart, LOCKSTEP_OPS.stateRead, LOCKSTEP_OPS.run, LOCKSTEP_OPS.begin, LOCKSTEP_OPS.sessionClose],
         'no lockstep.end for a session that never entered lockstep; the session is closed');
     const ops = Object.fromEntries(Object.values(LOCKSTEP_OPS).map(op => [op, () => Promise.resolve({})]));
     assert.equal(lockstepAvailable(ops), true);

@@ -39,6 +39,10 @@
 export const LOCKSTEP_OPS = Object.freeze({
     sessionStart: 'renode.spike.session.start',
     sessionClose: 'renode.spike.session.close',
+    /** The running target's identity: lockstep needs `lockstep/v1` there before begin. */
+    stateRead: 'renode.spike.state.read',
+    /** Resumes the guest the session starts halted: the Runtime runs quanta only on a running CPU. */
+    run: 'renode.spike.run',
     begin: 'renode.spike.lockstep.begin',
     step: 'renode.spike.lockstep.step',
     end: 'renode.spike.lockstep.end'
@@ -70,6 +74,23 @@ export class LockstepContractError extends Error {
         this.code = 'lockstep-contract';
     }
 }
+
+/**
+ * The connected Renode runtime does not advertise `lockstep/v1`: the route is unsupported
+ * here (an older pinned package), not broken. The pane disables the route with its
+ * "not available" wording instead of reporting a failed start.
+ */
+export class LockstepUnsupportedError extends Error {
+    constructor (message = 'the emulated SPIKE hub does not advertise lockstep/v1') {
+        super(message);
+        this.name = 'LockstepUnsupportedError';
+        this.code = 'lockstep-unsupported';
+    }
+}
+
+/** The running target advertises the lockstep command (the gate for the whole route). */
+export const advertisesLockstep = frame => Array.isArray(frame?.target?.capabilities) &&
+    frame.target.capabilities.includes('lockstep/v1');
 
 /** Lab and emulator disagree about time or identity: the session cannot continue. */
 export class LockstepDesyncError extends Error {
