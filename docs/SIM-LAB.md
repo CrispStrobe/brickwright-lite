@@ -9,8 +9,11 @@ How it is built, and what comes next, is in `docs/SIM-LAB-PLAN.md`.
 ## Using it (for kids and teachers)
 
 1. Write a SPIKE Prime program in the Code tab (blocks or DEVICE SPIKE text). The reference model drives its wheels with ports **A (left, mounted mirrored) and B (right)**, like the arena's driving base, so `set movement motors A B` and `move forward 20 cm` work as in the arena.
-   The **Model** list has the **SPIKE driving base** and the **Line follower** (the same base with a
-   colour sensor on port **C** just ahead of the drive axle, for the Line Oval mat).
+   The **Model** list has the **SPIKE driving base**, the **Line follower** (the same base with a
+   colour sensor on port **C** just ahead of the drive axle, for the Line Oval mat), the **Wall stopper**
+   (the base with a distance sensor on port **D** looking ahead, for the Wall mat) and the **Colour
+   explorer** (the base with a colour sensor on port **C** centred ahead of the axle, for the Colour
+   Zones mat). Each of the last three comes with an example program: the examples are below.
 2. Open the SPIKE simulator (**SPIKE arena** button in the Code tab) and pick the **Robot Lab (beta)** tab.
 3. Press **Run**. As the arena's Start does, Run connects the program to the virtual hub and starts it on the green flag. **Pause** stops the program and the clock; **Reset** reloads the model.
 
@@ -33,6 +36,50 @@ WHEN flag clicked:
 
 It is a two-state follower: the colour sensor on C rides the line's outer edge, steering right while it sees black and left while it sees white. `test/bw-sim-line-follower-program.test.mjs` runs exactly this text through the Scratch VM, the spikeprime extension and the virtual hub on the shipped model and mat (100 of 100 centre-line checkpoints in order, lap in 22.6 s, at most 2.3 mm off the centre line); `scripts/verify-sim-lab-browser.mjs` does the same through the pane's buttons in the built app. Swapping the two `start tank` lines also works: the robot then follows the line's other edge.
 
+**The wall stopper, ready to run.** Choose **Wall stopper** in the Model list, press **Load example program** (it puts the program into the Code tab, builds the blocks and moves the robot onto the **Wall** mat, 0.64 m from the wall), then press **Run**. The robot drives at the wall and stops about 9 cm before it. The program (`static/sim-lab/programs/wall-stopper.bw`):
+
+```
+DEVICE SPIKE
+
+# Robot Lab: drive at the wall and stop before it.
+# Model: Wall stopper (wheels on A and B, distance sensor on D looking ahead).
+# The distance sensor measures in cm: stop as soon as the wall is closer than 10 cm.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  start moving steering 0
+  wait until (spike distance D) < 10
+  stop movement
+```
+
+The model is the driving base plus the distance sensor, held by real connections: two 15-hole beams pinned to the hub's four top holes, a 7-hole beam pinned across their front ends, and the sensor hung under that beam on two 3L pins. No two solid parts overlap, and the sensor is welded into the hub's body. `test/bw-sim-wall-stopper-program.test.mjs` runs exactly this text through the Scratch VM, the spikeprime extension and the virtual hub, and judges the robot's geometry, not the sensor's reading: at rest its foremost point and the sensor's ray origin are both 9.3 cm from the wall's face, and it never touched the wall. The same program with `< 1` stops 4.4 cm out (the sensor reads nothing closer than 5 cm, which the block reports as 0, and 0 is less than 1); with `< 0` it drives into the wall. *Challenge:* make it stop 20 cm before the wall.
+
+**The colour explorer, ready to run.** Choose **Colour explorer** in the Model list, press **Load example program** (the robot moves onto the **Colour Zones** mat), then press **Run**. The robot turns to face the red corner, drives until its colour sensor sees red, rolls on into the square and lights the hub red. The program (`static/sim-lab/programs/colour-explorer.bw`):
+
+```
+DEVICE SPIKE
+
+# Robot Lab: find the red square on the Colour Zones mat.
+# Model: Colour explorer (wheels on A and B, colour sensor on C looking down).
+# Turn left until the robot faces the red corner, drive until the sensor
+# sees red, roll on into the square, stop and light the hub red.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 30
+  reset yaw
+  start tank -10 10
+  wait until (spike angle yaw) < -130
+  stop movement
+  start moving steering 0
+  wait until spike color C is red
+  move forward 15 cm
+  set center button light to red
+```
+
+The model is the driving base plus the colour sensor, looking down 16 mm above the floor and centred 32 mm ahead of the drive axle: a 5-hole beam pinned across the hub's front holes, the sensor on two 3L pins through it. `test/bw-sim-colour-explorer-program.test.mjs` runs exactly this text and checks that, at rest, both the drive-axle midpoint and the sensor's spot are inside the red square (measured: axle at (-0.28, -0.31), spot at (-0.30, -0.33)); the same program waiting for blue drives over the red square and on. *Challenge:* make it find the green square (it is at (-0.35, 0.35): turn the other way).
+
+`scripts/verify-sim-lab-browser.mjs` runs both examples through the pane's buttons in the built app and judges them the same way.
+
 If no SPIKE program is loaded when you press Run, the pane shows: *“No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.”* The clock still runs, and the Drive pad works.
 
 **Drive pad.** Below the 3D view, four arrow buttons ▲ ▼ ◀ ▶ and a **Speed** slider (10–100 %, step 10) drive the movement pair (A left, B right, as set in the hub) even with no program. Hold an arrow (or the keyboard arrow keys) to drive; the hub readouts show motor positions and sensor values. The slider sets the percent the pad uses for `percentToDps`.
@@ -42,7 +89,9 @@ If no SPIKE program is loaded when you press Run, the pane shows: *“No SPIKE p
 - **Line Oval** (`line-oval`, 1.2 × 0.8 m) — a white field with a 20 mm black stadium line (two 0.6 m straights at z = ±0.25 m plus two 0.25 m semicircles). The robot starts **on the line** at (0, 0.25) heading +x, ready for a line follower.
 - **Colour Zones** (`colour-zones`, 1.0 × 1.0 m) — four 0.3 m squares in the corners (red at (-0.35,-0.35), yellow at (0.35,-0.35), green at (-0.35,0.35), blue at (0.35,0.35)) plus a 20 mm black border, for colour-sorting tasks.
 
-Choosing the line-oval mat puts the robot on the line; the other mats start at (0,0) heading 0.
+- **Wall** (`wall`, 1.2 × 0.8 m) — the plain white floor with a blue wall 4 cm thick, 15 cm high and 60 cm wide standing across it at x = 0.4 m (its face toward the robot at x = 0.38 m). The robot starts at (-0.3, 0) heading at the wall (+x). The wall is an obstacle the mat carries (`obstacles` in `mats.js`): choosing the mat puts it into the scene.
+
+Choosing the line-oval mat puts the robot on the line, the wall mat puts its drive axle 0.68 m before the wall face; the other mats start at (0,0) heading 0.
 
 **Open .ldr…** loads your own model from any LDraw editor (LeoCAD, BrickLink Studio's LDraw export). Parts the Robot Lab does not know, loose geometry and mirrored parts are listed under **Notes about this model** and skipped; the rest still runs. A motor or sensor is bound to a hub port by a meta line before its part line:
 ```
@@ -134,7 +183,7 @@ Groups are declared before the parts, in definition order. Each member carries `
   - **Colour (port C, device 61):** ray down up to 32 mm; if it hits the ground or a coloured body within that range, reports its `color` id (0 black, 3 blue, 6 green, 7 yellow, 9 red, 10 white) and `reflection` (0–100, 100 for white, 5 for black on the mat, scaled by `1 - d/0.032`), plus `red`/`green`/`blue` (0–1024). Beyond 32 mm → colour -1, reflection 0.
   - **Force (port F, device 63):** ray along the plunger up to 10 mm; if it hits within 2 mm, `force = 100·(1 - d/0.002)` (0–100), `pressed` when >10; otherwise 0.
   - **IMU (motion_sensor):** pitch/roll from the hub body's quaternion, `faceUp` (0 top … 5 bottom), `angularVelocity` and `acceleration` (milli-g) derived from body motion and gravity.
-- **Mats and obstacles (`bw-sim/world/`):** the Mat selector above; obstacles are static box bodies (compile option `obstacles: [{id, shape:'box', size:[w,h,d], position:[x,y,z], yawDeg, color}]`) — colour is a SPIKE colour id 0–10 shown as a box mesh; the S1 driving base collides and stops against them.
+- **Mats and obstacles (`bw-sim/world/`):** the Mat selector above; obstacles are static box bodies (compile option `obstacles: [{id, shape:'box', size:[w,h,d], position:[x,y,z], yawDeg, color}]`) — colour is a SPIKE colour id 0–10 shown as a box mesh; the S1 driving base collides and stops against them, and the distance sensor's ray meets them. A mat may carry obstacles (`createMat(id).obstacles`, same shape); `prepareModel` compiles them with the model, which is how the Wall mat's wall gets into the scene.
 - Not yet simulated: flexible parts (belts, hoses), worm and rack gears beyond spur/bevel, and the colour sensor's ambient-light modes.
 
 ## The parts it knows (45)
