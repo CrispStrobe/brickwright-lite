@@ -78,6 +78,31 @@ WHEN flag clicked:
 
 The model is the driving base plus the colour sensor, looking down 16 mm above the floor and centred 32 mm ahead of the drive axle: a 5-hole beam pinned across the hub's front holes, the sensor on two pins through it, seated in the sensor's blind side holes. `test/bw-sim-colour-explorer-program.test.mjs` runs exactly this text and checks that, at rest, both the drive-axle midpoint and the sensor's spot are inside the red square (measured: axle at (-0.28, -0.31), spot at (-0.30, -0.33)); the same program waiting for blue drives over the red square and on. *Challenge:* make it find the green square (it is at (-0.35, 0.35): turn the other way).
 
+**The sumo robot, ready to run.** Choose the **Colour explorer**, the **Sumo ring** mat (a white disc with a black band, inner radius 0.335 m and outer radius 0.385 m; the robot starts at the ring centre), put the program below into the Code tab and press Run. The robot drives forward until its colour sensor sees the black band, backs up a little, turns a quarter turn away and drives again — and never leaves the ring. The program (`static/sim-lab/programs/sumo.bw`):
+
+```
+DEVICE SPIKE
+
+# Robot Lab: stay inside the Sumo ring.
+# Model: Colour explorer (wheels on A and B, colour sensor on C looking down).
+# The robot drives forward until the sensor sees the black band, then backs up
+# a little and turns away, then drives on again - for as long as it runs.
+WHEN flag clicked:
+  set movement motors A B
+  set movement speed 60
+  FOREVER:
+    start moving steering 0
+    wait until spike color C is black
+    stop movement
+    move backward 8 cm
+    reset yaw
+    start tank -20 20
+    wait until (spike angle yaw) < -90
+```
+
+The Model list keys its entries by the model's file name (one example per model), so it cannot offer a second example for the Colour explorer — the program is loaded from the code above instead. `test/bw-sim-sumo-program.test.mjs` runs exactly this text through the Scratch VM, the spikeprime extension and the virtual hub on the shipped model and mat, for 40 s of simulated time: the drive-axle midpoint never leaves the 0.385 m ring edge, the robot reaches the band more than three times and travels more than 6 m; the same program waiting for a colour the mat does not have (blue) rolls straight out of the ring in seconds. *Challenge:* make the turn angle random so the robot explores the whole ring.
+
+
 `scripts/verify-sim-lab-browser.mjs` runs both examples through the pane's buttons in the built app and judges them the same way.
 
 If no SPIKE program is loaded when you press Run, the pane shows: *“No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.”* The clock still runs, and the Drive pad works.
@@ -90,6 +115,9 @@ If no SPIKE program is loaded when you press Run, the pane shows: *“No SPIKE p
 - **Colour Zones** (`colour-zones`, 1.0 × 1.0 m) — four 0.3 m squares in the corners (red at (-0.35,-0.35), yellow at (0.35,-0.35), green at (-0.35,0.35), blue at (0.35,0.35)) plus a 20 mm black border, for colour-sorting tasks.
 
 - **Wall** (`wall`, 1.2 × 0.8 m) — the plain white floor with a blue wall 4 cm thick, 15 cm high and 60 cm wide standing across it at x = 0.4 m (its face toward the robot at x = 0.38 m). The robot starts at (-0.3, 0) heading at the wall (+x). The wall is an obstacle the mat carries (`obstacles` in `mats.js`): choosing the mat puts it into the scene.
+
+- **Sumo ring** (`sumo`, 1.0 × 1.0 m) — a white disc with a 5 cm black ring band centred on the mat (inner radius 0.335 m, outer radius 0.385 m — outer diameter 0.77 m). The robot starts at the ring centre, heading +x, ready for a stay-in-the-ring robot.
+
 
 Choosing the line-oval mat puts the robot on the line, the wall mat puts its drive axle 0.68 m before the wall face; the other mats start at (0,0) heading 0.
 
