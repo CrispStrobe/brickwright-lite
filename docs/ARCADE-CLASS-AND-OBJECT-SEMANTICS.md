@@ -47,6 +47,11 @@ The sink must have no value binding, formal, capture, reader or other writer in
 the current project; its spelling supplies no authority. The call remains once
 in its original position, with its effects and possible exceptions preserved.
 Currentness failure expires this statement proof even if edited data is restored.
+The partial lexical typer need not assign a value type to an ordinary global
+receiver: the statement proof uses the existing current class producer and
+all-writer checks. A known conflicting result still refuses. All actual local
+initializations and complete bodies remain subject to lexical validation; no
+receiver value type is added to the partial typer by discarding the result.
 
 This does not admit Void as a stored value or arbitrary unknown calls. Existing
 conditional and field-mutation proofs remain separate. Code, current blocks and

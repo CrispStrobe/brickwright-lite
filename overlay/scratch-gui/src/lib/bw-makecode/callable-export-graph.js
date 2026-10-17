@@ -464,7 +464,13 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
                         generated.set(id,proof);generatedNames.set(identity,proof);
                     } else {
                     const valueId=block.inputs?.VALUE?.[1],value=blocks[valueId];
-                    const unusedVoidStatement=actual?.kind==='named'&&actual.name==='void'?graph.classProvider.unusedVoidStatement?.(block,owner):null;
+                    // The lexical typer catalogs callable globals, not every
+                    // ordinary class variable. A private statement certificate
+                    // checks its exact current call/receiver and arguments under
+                    // this graph's mandatory full bound-local/body validation;
+                    // it supplies no missing value type to this graph.
+                    // A known conflicting result still cannot be discarded here.
+                    const unusedVoidStatement=(!actual||actual.kind==='named'&&actual.name==='void')?graph.classProvider.unusedVoidStatement?.(block,owner):null;
                     if(!unusedVoidStatement&&(value?.opcode!=='arcade_assignObjectField'||typeof graph.classProvider.statementType!=='function'||
                         graph.classProvider.statementType(value,owner,{
                             inputType:name=>typeOf(value.inputs?.[name]?.[1],owner),argsType:()=>argsType(value,owner,new Set()),

@@ -122,8 +122,38 @@ test('reflection transfers hidden parser roles and shared metadata without prein
   const definitions=new Map([[box.constructor,{target,code:box.constructor,block:target.blocks.definition,parameters:['self']}],[method.procedure,{target,code:method.procedure,block:target.blocks.method,parameters:['self']}]]);
   const provider=()=>createClassCallableExportProvider({target,project,classes:new Map([['Box',box]]),definitions,valueTypes:()=>new Set(),literal:(_target,block,name)=>block.inputs?.[name]?.[1]?.[1]??null,key:(_target,code)=>code,builtinNames:new Set()});
   const issue=()=>{const p=provider();assert.equal(p.validateCurrentPlan(plan,target),true);return p;};
-  return {target,project,plan,owner,method,issue};
+  return {target,project,plan,owner,method,definitions,issue};
  };
+ const globalDiscarded=()=>{
+  const f=discarded(),stage={name:'Stage',isStage:true,variables:{boxID:['box',0]},blocks:{}};
+  f.project.targets.unshift(stage);
+  const owner={id:'startup',kind:'declaration',parent:'module',sourceName:'initialize',procedure:'initialize',signature:{kind:'callable',parameters:[],result:{kind:'named',name:'void'}},parameters:[],defaults:[]};
+  f.plan.owners.push(owner);f.plan.bindings.push({id:'allocated',owner:'startup',sourceName:'allocated',nativeName:'allocated',kind:'local',declarationKind:'let',type:{kind:'named',name:'Box'},written:true});
+  Object.assign(f.target.blocks,{
+   startup:{opcode:'procedures_definition',next:'allocate'},
+   allocate:{opcode:'arcade_setLocal',parent:'startup',next:'publish',inputs:{NAME:[1,[10,'allocated']],VALUE:[1,'newBox']}},
+   newBox:{opcode:'arcade_createObject',parent:'allocate',inputs:{CLASS:[1,[10,'Box']],ARGS:[1,[10,'[]']]}},
+   publish:{opcode:'data_setvariableto',parent:'allocate',next:'sink',fields:{VARIABLE:['box','boxID']},inputs:{VALUE:[1,'localBox']}},
+   localBox:{opcode:'arcade_getLocal',parent:'publish',inputs:{NAME:[1,[10,'allocated']]}}
+  });
+  f.target.blocks.definition.next=null;f.target.blocks.sink.parent='publish';f.target.blocks.call.inputs.OBJECT=[3,[12,'box','boxID'],[10,'']];
+  f.definitions.set('initialize',{target:f.target,code:'initialize',block:f.target.blocks.startup,parameters:[]});
+  return {...f,owner,stage};
+ };
+ {
+  const f=globalDiscarded(),p=f.issue(),certificate=p.unusedVoidStatement(f.target.blocks.sink,f.owner);
+  assert.equal(f.plan.bindings.some(binding=>binding.nativeName==='box'),false,'ordinary global is outside the callable global catalogue');
+  assert.equal(certificate.current(),true,'actual Stage global and Game allocation/writer independently supply statement receiver proof');
+  f.target.blocks.publish.inputs.VALUE=[1,[10,'wrong']];assert.equal(certificate.current(),false);
+  f.target.blocks.publish.inputs.VALUE=[1,'localBox'];assert.equal(certificate.current(),false);
+  assert.equal(f.issue().unusedVoidStatement(f.target.blocks.sink,f.owner).current(),true);
+ }
+ for(const mode of ['wrong-global-writer','extra-global-writer','foreign-global-writer']){
+  const f=globalDiscarded(),p=f.issue();
+  if(mode==='wrong-global-writer')f.target.blocks.publish.inputs.VALUE=[1,[10,'wrong']];
+  else (mode==='foreign-global-writer'?f.stage:f.target).blocks.otherWriter={opcode:'data_setvariableto',fields:{VARIABLE:['box','boxID']},inputs:{VALUE:[1,[10,'wrong']]}};
+  assert.equal(p.unusedVoidStatement(f.target.blocks.sink,f.owner),null,mode);
+ }
  {
   const f=discarded(),p=f.issue(),sink=f.target.blocks.sink,certificate=p.unusedVoidStatement(sink,f.owner);
   assert.equal(certificate.current(),true);
@@ -307,6 +337,30 @@ test('parameter property public Code and two actual SB3 projects export and reim
  record({stage:'parameter-property-unused-Void-statement',calls:unusedCalls.map(({target,id,block,sink})=>({target:target.name,id,block,sink}))});
  assert.equal(unusedCalls.length,1,'the authored effectful call remains exactly once');
  assert.equal(unusedCalls[0].sink.opcode,'arcade_setLocal');assert.equal(unusedCalls[0].sink.inputs.VALUE[1],unusedCalls[0].id);
+ // A statement certificate is conditional on full current-body validation.
+ // Its ordinary-class metadata anchor cannot excuse an edited bound local
+ // or malformed actual constructor argument upstream of the global receiver.
+ for(const mode of ['bound-local-writer','constructor-argument']){
+  const edited=structuredClone(secondProject),game=edited.targets.find(target=>target.name===unusedCalls[0].target.name),call=game.blocks[unusedCalls[0].id],slot=call.inputs.OBJECT[1];
+  assert.ok(Array.isArray(slot)&&slot[0]===12);
+  const writers=Object.values(game.blocks).filter(block=>block.opcode==='data_setvariableto'&&block.fields.VARIABLE[1]===slot[2]);assert.equal(writers.length,1);
+  let read=game.blocks[writers[0].inputs.VALUE[1]],assignment;const visited=new Set();
+  while(read.opcode==='arcade_getLocal'){
+   const name=literal(game,read,'NAME');assert.ok(!visited.has(name));visited.add(name);
+   const locals=Object.values(game.blocks).filter(block=>block.opcode==='arcade_setLocal'&&literal(game,block,'NAME')===name);assert.equal(locals.length,1);assignment=locals[0];
+   const next=game.blocks[assignment.inputs.VALUE[1]];
+   if(mode==='bound-local-writer'){
+    assert.equal(next.opcode,'arcade_getLocal');delete game.blocks[assignment.inputs.VALUE[1]];assignment.inputs.VALUE=[1,[10,'wrong']];break;
+   }
+   read=next;
+  }
+  if(mode==='constructor-argument'){
+   assert.equal(read.opcode,'arcade_createObject');const argument=game.blocks[read.inputs.ARGS[1]],number=game.blocks[argument.inputs.VALUE[1]];
+   assert.equal(argument.opcode,'arcade_functionArgument');assert.equal(number.opcode,'operator_add');assert.ok(Object.values(number.inputs).every(input=>Array.isArray(input[1])));
+   delete game.blocks[argument.inputs.VALUE[1]];argument.inputs.VALUE=[1,[10,'wrong']];
+  }
+  const result=projectToArcade(edited);record({stage:'parameter-property-edited-Void-producer-refusal',mode,project:edited,result});assert.ok(result.unsupported.length,mode);
+ }
  const final=projectToArcade(secondProject);record({stage:'parameter-property-second-export',result:final});clean(final,['unsupported','warnings']);
  assert.equal([...final.ts.matchAll(/\.bump\(\)/g)].length,1,'discarding a Void result neither drops nor duplicates the actual call');
  const reconstructed=parse(final.ts),finalProof=proveClassCallableSource(reconstructed);exportArrowBindings(reconstructed,finalProof,'second',final.ts);
