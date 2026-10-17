@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import JSZip from 'jszip';
 import {sandboxWorld, SANDBOX_STORAGE_KEY} from '../overlay/scratch-gui/src/lib/spike-arena/arena-sandbox.js';
 import {ControllerPanel} from 'bw-board/controller.js';
+import {readFileSync} from 'node:fs';
+import {SIM_LAB_STORAGE_KEY} from '../overlay/scratch-gui/src/lib/bw-sim/model/sim-lab-persist.js';
 
 const module = await import('../overlay/scratch-gui/src/lib/bw-project-bundle.js');
 
@@ -41,11 +43,15 @@ test('real attach/extract is deterministic and preserves all typed project surfa
     panel.setMode('play');
     const controller = panel.toJSON();
     const spikeArena = sandboxWorld();
+    // The Sim Lab model (C8): the shipped driving base's LDraw text, CRLF line ends and all.
+    const simLab = {ldraw: readFileSync(new URL('../overlay/scratch-gui/static/sim-lab/models/driving-base.ldr',
+        import.meta.url), 'utf8'), name: 'driving-base.ldr', mat: 'line-oval'};
     const expectedRaw = {
         'bw-code-autosave': JSON.stringify(code),
         'bw-circuit-autosave': JSON.stringify(circuit),
         'bw-ctl-widgets': JSON.stringify(controller),
-        [SANDBOX_STORAGE_KEY]: JSON.stringify(spikeArena)
+        [SANDBOX_STORAGE_KEY]: JSON.stringify(spikeArena),
+        [SIM_LAB_STORAGE_KEY]: JSON.stringify(simLab)
     };
 
     global.localStorage = storage(expectedRaw);
@@ -65,7 +71,7 @@ test('real attach/extract is deterministic and preserves all typed project surfa
         const document = JSON.parse(firstText);
         assert.equal(document.format, module.BUNDLE_FORMAT);
         assert.equal(document.version, module.BUNDLE_VERSION);
-        assert.deepEqual(document.state, {code, circuit, controller, spikeArena});
+        assert.deepEqual(document.state, {code, circuit, controller, spikeArena, simLab});
         const project = JSON.parse(await firstZip.file('project.json').async('text'));
         assert.deepEqual(project.extensions, ['spikeprime']);
         assert.match(project.extensionURLs.spikeprime, /legospike_turbowarp_transpile/);
