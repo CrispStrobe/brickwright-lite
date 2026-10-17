@@ -118,6 +118,8 @@ export const createSimRunner = ({J, createPhysicsCore, mechanism, hubBody, stepM
     return {
         core,
         poses: () => posesOf(core, mechanism),
+        /** The sensors' readings at t = 0 (the main thread's hub shows them before the first batch). */
+        sensors: () => (bridge ? bridge.sensorReadings() : []),
         /**
          * @param {{steps?: number, ticks?: number[], hub?: object, redo?: boolean}} batch
          *        steps (with a hub) or the ticks' ms (without one: the core steps them as the

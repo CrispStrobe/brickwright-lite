@@ -156,6 +156,9 @@ for (const [file, mat, port, kind] of [['wall-stopper.ldr', 'wall', null, 'dista
             const sensor = p.here.mechanism.sensors.find(s => s.kind === kind);
             assert.ok(sensor, `the model has a ${kind} sensor`);
             const index = 'ABCDEF'.indexOf(port || sensor.port);
+            // The hub shows the scene's reading from the start, not a previous model's.
+            assertSame(p, 'at t = 0, before any batch');
+            assert.equal(p.hubThere.data.sensors[index].kind, kind, 'the sensor reads at t = 0');
             p.both(h => { h.motors.runAtSpeed('A', -600); h.motors.runAtSpeed('B', 600); });
             const readings = new Set();
             for (let i = 0; i < 120; i++) {

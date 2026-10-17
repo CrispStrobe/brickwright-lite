@@ -152,14 +152,14 @@ export class PhysicsClient {
 
     /**
      * Load a Sim Lab scene (sim-worker-protocol.js): the physics and the hub bridge's
-     * mirror. Resolves to the poses at t = 0 and the scene's id (batches name it).
+     * mirror. Resolves to the poses and sensor readings at t = 0 and the scene's id (batches name it).
      * @param {{mechanism: object, hubBody: string|null, stepMs: number}} scene
      * @returns {Promise<{scene: number, t: number, bodies: Float64Array, joints: Float64Array}>}
      */
     async simLoad({ mechanism, hubBody, stepMs }) {
         const reply = await this._request({ type: 'sim-load', mechanism, hubBody, stepMs });
         if (reply.type !== 'sim-loaded') throw new Error(reply.message ?? 'sim load failed');
-        return { scene: reply.id, t: reply.t, bodies: reply.bodies, joints: reply.joints };
+        return { scene: reply.id, t: reply.t, bodies: reply.bodies, joints: reply.joints, sensors: reply.sensors ?? [] };
     }
 
     /**

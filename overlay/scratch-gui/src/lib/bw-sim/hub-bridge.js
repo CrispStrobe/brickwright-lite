@@ -78,6 +78,21 @@ export class SimHubBridge {
         this.forward0 = this._forward();
         this.heading = 0;
         this.previousOwner = plugMotors(hubState, mechanism);
+        // The sensors read the scene from the start, not from the first step: a port must not
+        // keep a reading from the previous model (a "nothing ahead" -1 would end a program's
+        // `wait until distance < 10` before the robot moved).
+        publishSensors(hubState, this.sensorReadings());
+    }
+
+    /** Every sensor port's reading now, as [port, kind, values] (what updateSensor takes). */
+    sensorReadings () {
+        const sensors = [];
+        const readings = readSensors(this.core, this.mechanism, this.robotBodies);
+        for (const [port, reading] of Object.entries(readings)) {
+            const {kind, ...values} = reading;
+            sensors.push([port, kind, {deviceId: SENSOR_DEVICE[kind], ...values}]);
+        }
+        return sensors;
     }
 
     /** The hub body's local -z axis (LDraw +z, the robot's forward) in world, on the ground plane. */
@@ -152,13 +167,7 @@ export class SimHubBridge {
             this._prevLinVel = linVelWorld.slice();
             imu = {pitch, roll, angularVelocity, acceleration, faceUp};
         } catch (_) {}
-        const sensors = [];
-        const readings = readSensors(this.core, this.mechanism, this.robotBodies);
-        for (const [port, reading] of Object.entries(readings)) {
-            const {kind, ...values} = reading;
-            sensors.push([port, kind, {deviceId: SENSOR_DEVICE[kind], ...values}]);
-        }
-        return {motors, heading: this.heading, rate, imu, sensors};
+        return {motors, heading: this.heading, rate, imu, sensors: this.sensorReadings()};
     }
 
     /** What step() carries from one step to the next besides the physics (for a worker's rollback). */
@@ -213,6 +222,12 @@ export const plugMotors = (hubState, mechanism) => {
     return previousOwner;
 };
 
+/** Writes sensor readings ([port, kind, values], SimHubBridge.sensorReadings) and publishes them. */
+export const publishSensors = (hubState, sensors) => {
+    for (const [port, kind, values] of sensors) hubState.updateSensor(port, kind, values);
+    if (sensors.length) hubState.changed();
+};
+
 /** Writes one step's frame (SimHubBridge._measure) into the hub: encoders, heading, IMU, sensors. */
 export const applyFrame = (hubState, frame) => {
     const data = hubState.data.motors;
@@ -242,13 +257,15 @@ export const applyFrame = (hubState, frame) => {
  * controller commanded exactly the velocity the worker's mirror did.
  */
 export class HubReplay {
-    constructor ({hubState, mechanism, hubBody, stepMs = STEP_MS}) {
+    /** @param {object} options ... sensors: the worker bridge's sensorReadings() at t = 0 */
+    constructor ({hubState, mechanism, hubBody, stepMs = STEP_MS, sensors = []}) {
         if (!mechanism.bodies.some(b => b.id === hubBody)) throw new Error(`unknown hub body '${hubBody}'`);
         this.hubState = hubState;
         this.hubBody = hubBody;
         this.stepMs = stepMs;
         this.accumulator = 0;
         this.previousOwner = plugMotors(hubState, mechanism);
+        publishSensors(hubState, sensors);
     }
 
     /** As SimHubBridge.tick's loop: how many fixed steps ms more of simulated time makes due. */

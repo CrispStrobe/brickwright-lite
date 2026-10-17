@@ -126,7 +126,7 @@ export class SimSession {
             this.client = worker;
             this.scene = loaded.scene;
             this.core = new MirrorCore(mechanism, loaded);
-            this.bridge = hubBody ? new HubReplay({hubState, mechanism, hubBody}) : null;
+            this.bridge = hubBody ? new HubReplay({hubState, mechanism, hubBody, sensors: loaded.sensors || []}) : null;
             this._steps = 0;
             this._ticks = [];
             this._pendingMs = 0;

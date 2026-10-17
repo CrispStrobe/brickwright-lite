@@ -7,7 +7,7 @@
 // an internal promise chain. See task P2 for message types.
 //
 // The Sim Lab's messages (ROADMAP §4.9; the protocol is sim-worker-protocol.js):
-//   sim-load  {mechanism, hubBody, stepMs} -> sim-loaded {t, bodies, joints}
+//   sim-load  {mechanism, hubBody, stepMs} -> sim-loaded {t, bodies, joints, sensors}
 //   sim-batch {scene, steps | ticks, hub, redo} -> sim-frames {frames, t, bodies, joints, workMs}
 //   sim-dispose {scene}                    -> disposed
 // (a batch and a dispose name their scene: the id of the sim-load that made it)
@@ -131,7 +131,7 @@ export const createPhysicsHost = ({ loadJolt, createPhysicsCore, createSimRunner
                         sim = createSimRunner({ J: jolt, createPhysicsCore, mechanism, hubBody, stepMs });
                         simScene = id;
                         const { t, bodies, joints } = sim.poses();
-                        post({ type: 'sim-loaded', id, t, bodies, joints }, [bodies.buffer, joints.buffer]);
+                        post({ type: 'sim-loaded', id, t, bodies, joints, sensors: sim.sensors() }, [bodies.buffer, joints.buffer]);
                     } catch (err) {
                         post({ type: 'error', id, message: err.message ?? String(err) });
                     }
