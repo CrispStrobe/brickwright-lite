@@ -668,6 +668,103 @@ keeps the route disabled. First slice R13-M (measurement), then R13a.
 
 ---
 
+## 7. R13e measured (Mac, 2026-10-18)
+
+Host: Apple M1, 8 cores, load ≈ 2. Stock Renode **1.16.1** (`tools/renode-1.16.1/Renode.app`,
+self-contained arm64). Branch `lane/simlab-r13e-20261018`.
+
+### 7.1 How the runtime and package were obtained — no Renode build
+
+- **No fork build is needed.** The desktop package loads the Infra models as C# source
+  (`include @models.cs`, compiled by Renode at startup: ≈ 1.2 s here) and the Runtime's state
+  service as IronPython. Both merged sides (Infra #38 at `181d9d45`, the Runtime's submodule
+  pin; Runtime #59, main `7d4a79a2`) therefore load into the stock 1.16.1 unchanged, through
+  the Runtime's own `tools/stage_prime_runtime.py` (source mode, `Brickwright*` type aliases).
+  The Runtime's CI publishes receipts only, no package.
+- **Firmware:** no NuttX build exists on the Mac and the firmware CI publishes no artefacts.
+  The NuttX ELFs (user `1935e06d…`, kernel `dcb7ed87…`), flash seed and notices were copied
+  read-only from the newest assembled desktop package on the VPS
+  (`spike-g02-pending-stop-f7b3-package-20261016/assembled/resources/nuttx`).
+- **`scripts/restage-spike-nuttx-package.mjs BASE RUNTIME INFRA RENODE OUT`** combines the two:
+  firmware side byte for byte from BASE, models/platforms/state service/helpers from the merged
+  sources, new manifest and `pins.json`/`alongside-pins.json`. Result (35 files):
+  `renode-lockstep-work/nuttx-pkg-lockstep`; the running target advertises `lockstep/v1`,
+  `motor-bridge-drive/v1`, `external-shaft/v1`, `nuttx-program-deferred-start/v1`.
+- **Gap found and fixed:** the #59 state service imports `spike_lockstep` unconditionally, but
+  the Lite staging scripts never copied `tools/spike_lockstep.py` and the supervisor refused it
+  (unsupported file; the NuttX manifest cap was 34). Fixed in the staging scripts, the
+  resource-profile freezer and `verify_*_manifest` (helper required when imported, caps +1).
+  The MicroPython support profile's closed file list does not carry it yet (R13f).
+
+### 7.2 Headless proof — `npm run verify:sim-lab-renode`
+
+`scripts/verify-sim-lab-renode-lockstep.mjs` (opt-in; skips without `BW_RENODE` /
+`BW_SIMLAB_NUTTX_PACKAGE`) launches Renode with the supervisor's NuttX monitor commands,
+talks to the state service as `BrickStateFeed` does, uploads the program with NuttX program
+packets while the guest runs, then runs the unchanged `RenodeLockstepDriver` +
+`SpikeFirmwareVirtualHub` + in-thread `SimSession` (S1 driving base, empty mat) and STARTs
+the program inside lockstep (`nuttx.program.control.submit`). Program: §4 R13e's — tank 27 %
+(300 °/s) for 2 s, stop — compiled from the same Scratch source by `compileFirmwareProgram`:
+`[[1,0,-300,0],[1,1,300,0],[2,2000,0,0],[1,0,0,0],[1,1,0,0],[0,0,0,0]]`.
+
+| Measure | Value |
+|---|---|
+| Renode start → state service up (C# compile + 1.0 s virtual boot) | 10.4–12.0 s wall (boot `RunFor "1.0"` alone ≈ 7.3 s) |
+| Program upload (8 packets, free-running guest) | ≈ 0.9 s wall |
+| Lockstep: 486 steps of 5 ms (2.43 s simulated) | 18.4–18.6 s wall, **RTF 0.131**; per step median 37.4 ms, p90 41 ms, max 64 ms |
+| Shafts sent vs physics hinge | ≤ 0.0005° (the wire's milli-degree) |
+| **Emulator encoder (`motors[].position`) vs physics, every step** | **≤ 0.16°** ✓ (≤ 1°) |
+| Firmware's own LPF2 POS reading vs physics (integer °, 10 ms reports) | ≤ 9.4° — report latency at 290 °/s, not error |
+| Firmware clock vs virtual time | 0.998 ms/ms |
+| Firmware program | RUNNING within the first step, COMPLETE at ≈ 2.05 s; peak duty 3148/10000; no oscillation |
+| Wheels A/B | −563.5° / +563.5°; heading change 0.01° (Scratch 0.01°) ✓ |
+| Distance per wheel degree, firmware vs Scratch route | 0.4884 vs 0.4890 mm/° (0.1 %) — one physics ✓ |
+| **Distance, firmware vs Scratch route** | **275.2 vs 298.6 mm, ratio 0.922 — misses 5 %** ✗ |
+
+**Why the distance misses — the firmware's controller, as §5 feared (not oscillation):**
+(a) steady speed **290.3 °/s against 300 commanded**: `motor.c` feeds forward
+`ref·10000/1110` and integrates `error·dt[ms]` but divides the integral by 1000, so the I-term
+gains ≈ 10 duty units per (°/s·s) — effectively P-only (Kp = 3); the DC model needs ≈ 3.4 %
+more duty than the 1110 °/s feed-forward assumes, and 3·10 °/s of error is the equilibrium.
+That is ≈ 19° of the 47° wheel gap. (b) the 2000 °/s² reference ramp plus START/first-report
+latency cost ≈ 28° at the start (the virtual hub's controller reaches speed faster). The fix
+belongs to the Firmware (a real integral gain, or a feed-forward calibrated against the
+model), not to the physics — the per-degree distance shows the physics agrees. The fake's
+R13d pass (ratio 0.995) used a fake firmware with an ideal speed loop.
+
+Second, exploratory program (A at speed, B a 360° position move, op 6): B ended 365° and
+A 656° (the robot curved; op 6 blocks and moves one motor), so a two-wheel "run 360 degrees"
+has no firmware form — `compileFirmwareProgram` refuses it, and it also cannot compile the
+DSL's `move forward … seconds` (its DIRECTION field is the text `forward`, the compiler
+expects −1/1).
+
+### 7.3 Desktop app
+
+- `npm run build:gui` and `cargo build` (pins: the package's `alongside-pins.json`,
+  `CARGO_TARGET_DIR=/Volumes/backups/code/cargo-target/brickwright-lite`) build the app.
+- The repo's live-app gates (`verify-native-*-e2e.mjs`) use tauri-driver/WebKitWebDriver,
+  Linux only; macOS has no WebDriver for WKWebView, so the GUI cannot be driven here without a
+  human.
+- **Native proof instead:** `native_capability::packaged_lockstep_tests` (ignored; needs the
+  pins) dispatches the route's broker operations as `native_broker_invoke` does after
+  admission (`Operation::parse` → `valid_args` → `execute`) on a real Renode:
+  `session.start {backend:nuttx}` (boot 20.2 s incl. GDB attach) → `run` → 8× `program.packet`
+  → `lockstep.begin` → `program.control.submit` START → 244 × `lockstep.step` (RTF 0.127) →
+  `lockstep.end` → `session.close`; program COMPLETE, encoder = injected shaft ≤ 0.0005°,
+  wheels ±336.5° on a first-order wheel. Run it with
+  `eval "$(jq -r 'to_entries[]|"export \(.key)=\(.value)"' PKG/alongside-pins.json)"; TMPDIR=<a non-symlinked dir> cargo test --lib packaged_nuttx_firmware -- --ignored --nocapture`
+  (macOS's `/var` → `/private/var` symlink breaks the existing manifest fixtures otherwise).
+- **Missing in the GUI route: program upload.** The pane's firmware route starts the session,
+  enters lockstep and runs the clock, but never sends a program (`sim-lab-pane.jsx` `run()`:
+  "the clock is all Run starts"), and `program.packet` is refused during lockstep. On the
+  desktop the S1 base would therefore stand still on a blank flash. Needed: compile the VM's
+  blocks with `compileFirmwareProgram` when the route opens, upload BEGIN/CHUNK/COMMIT after
+  `run` and before `lockstep.begin` (as the headless script does), START via
+  `program.control.submit` on Run. Until then a manual desktop run can only show the route
+  opening and lockstep stepping.
+
+---
+
 ## A. Measurement script
 
 The probe used for §1.7 (run with `nice`, in a private temp dir, against copies/read-only
