@@ -163,3 +163,29 @@ installation and affected genuine VM qualification remain required before a
 runtime capability is reported as qualified. Code and Blocks conversion retain
 the actual constructor form; dedicated visual authoring of parameter-property
 modifiers and callback signatures remains unqualified.
+
+### Mutable Number globals in current callback export
+
+Current class callback export can retain an Arrow's read of an ordinary mutable
+module Number cell. The exported Arrow continues to read the variable; it does
+not replace that read with a captured constant. The bounded route proves the
+actual variable ID and its unique owning target, every current writer's Number
+RHS, the real startup initializer, and initialization before each corresponding
+closure is created. The current declaration, connected bodies, lexical owners
+and concrete callback signatures remain independently required. A variable's
+name, type annotation or saved Scratch value cannot supply a missing producer
+or initialization proof. Editing a writer or body requires fresh proof.
+
+This route requires the closed startup and callable-dispatch entry catalogue.
+Direct calls to Arrow procedures are refused, because closure creation order
+cannot establish initialization before a direct invocation. Broader event
+entries, String or Boolean module captures, and primitive captures read directly
+by class methods remain separate work. Existing class, SDK and lexical binding
+proofs retain their own boundaries.
+
+Focused controls in `test/makecode-class-callable-primitive-globals.test.mjs`
+exercise current Code conversion, mutable writes, exact emitted Number Arrow
+bodies and adversarial ownership, writer and initialization edits. These controls
+establish a bounded export route. Fresh emitted-source SDK compilation and
+reimport, GUI authoring and inspection, and complete-game compatibility require
+their own qualification.

@@ -358,7 +358,7 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
         const result=[];let slot=block.inputs?.ARGS?.[1];const visited=new Set();
         while(typeof slot==='string' && blocks[slot]?.opcode==='arcade_functionArgument') {
             if(visited.has(slot))fail('cyclic current class argument chain');visited.add(slot);
-            const argument=blocks[slot],type=typeOf(argument.inputs?.VALUE?.[1],owner,seen);
+            const argument=blocks[slot],type=typeOf(argument.inputs?.VALUE?.[1],owner,seen,argument);
             if(!type)fail('unproved current class argument type');result.push(type);slot=argument.inputs?.REST?.[1];
         }
         const last=typeof slot==='string'?blocks[slot]:null;
@@ -366,18 +366,18 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
             !(last?.opcode==='text'&&last.shadow&&last.fields?.TEXT?.[0]==='[]'))fail('class call requires its actual current ordered argument chain');
         return result;
     };
-    const typeOf=(slot,owner,seen=new Set())=>{
+    const typeOf=(slot,owner,seen=new Set(),readAt=null)=>{
         if(Array.isArray(slot)) {
             if([4,5,6,7,8].includes(slot[0]))return named('number');
             if(slot[0]===10)return named('string');
             if(slot[0]===12) {
                 const row=[...graph.globalBindings].find(([,row])=>row.variableId===slot[2]);
-                return row&&plan.bindings.find(binding=>binding.id===row[0])?.type;
+                return row?plan.bindings.find(binding=>binding.id===row[0])?.type:graph.classProvider?.primitiveVariableType?.(slot,owner,readAt);
             }
         }
         const block=blocks[slot];if(!block||seen.has(slot))return null;
         seen=new Set(seen);seen.add(slot);
-        const input=name=>typeOf(block.inputs?.[name]?.[1],owner,seen);
+        const input=name=>typeOf(block.inputs?.[name]?.[1],owner,seen,block);
         const binding=name=>plan.bindings.find(binding=>binding.nativeName===name&&
             (binding.owner===owner.id || plan.sites.find(site=>site.owner===owner.id)?.captures.some(capture=>capture.binding===binding.id)));
         if(block.opcode==='arcade_createCallable') {
@@ -403,7 +403,7 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
         if(block.opcode==='text')return named('string');
         if(block.opcode==='data_variable') {
             const row=[...graph.globalBindings].find(([,row])=>row.variableId===block.fields?.VARIABLE?.[1]);
-            return row&&plan.bindings.find(binding=>binding.id===row[0])?.type;
+            return row?plan.bindings.find(binding=>binding.id===row[0])?.type:graph.classProvider?.primitiveVariableType?.(slot,owner,block);
         }
         if(block.opcode==='arcade_callFunction'||block.opcode==='arcade_callCallable') {
             const signature=block.opcode==='arcade_callFunction'?
@@ -450,7 +450,7 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
                 const binding=plan.bindings.find(binding=>binding.nativeName===name&&
                     (binding.owner===owner.id||site?.captures.some(capture=>capture.binding===binding.id)));
                 if(graph.classProvider&&name===owner.receiverParameter)fail('edited body writes its class receiver');
-                const actual=typeOf(block.inputs?.VALUE?.[1],owner);
+                const actual=typeOf(block.inputs?.VALUE?.[1],owner,new Set(),block);
                 const initialUndefined=block.opcode==='arcade_setLocal'&&binding?.kind==='local'&&binding.owner===owner.id&&
                     binding.type.kind==='named'&&binding.type.name==='number'&&actual?.kind==='named'&&actual.name==='undefined'&&!assigned.has(binding.id);
                 if(!binding && graph.classProvider && block.opcode==='arcade_setLocal') {
@@ -488,7 +488,7 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
                 }
             }
             if(block.opcode==='arcade_returnValue') {
-                const actual=typeOf(block.inputs?.VALUE?.[1],owner);
+                const actual=typeOf(block.inputs?.VALUE?.[1],owner,new Set(),block);
                 if(!actual||!same(owner.signature.result,actual))fail('edited current return differs from its concrete lexical signature');
             }
             id=block.next;
@@ -502,6 +502,6 @@ export function validateCallableCurrentBodyTypes(graph,literalInput) {
         return procedure?plan.owners.find(row=>row.id===procedure[0]):current?.opcode==='arcade_whenSourceStarts'?plan.owners.find(row=>row.id===plan.module):null;
     };
     currentTypeProofs.set(graph,{snapshot:JSON.stringify([plan,blocks]),literal:literalInput,input:(block,name)=>{
-        const owner=currentOwner(block);return owner?typeOf(block.inputs?.[name]?.[1],owner):null;
+        const owner=currentOwner(block);return owner?typeOf(block.inputs?.[name]?.[1],owner,new Set(),block):null;
     }});
 }
