@@ -3,6 +3,8 @@
 //
 // Floor mats for the Sim Lab (E1, data half). Procedurally drawn, no scraped art.
 
+import {palletLoad} from './objects.js';
+
 const COLORS = {
     0: {color: 0, reflection: 5, rgb: [0, 0, 0]},
     3: {color: 3, reflection: 50, rgb: [0, 100, 200]}, // blue approx
@@ -21,7 +23,8 @@ export const MATS = [
     {id: 'colour-zones', title: {en: 'Colour Zones', de: 'Farbzonen'}},
     {id: 'wall', title: {en: 'Wall', de: 'Wand'}},
     {id: 'sumo', title: {en: 'Sumo ring', de: 'Sumo-Ring'}},
-    {id: 'maze', title: {en: 'Maze', de: 'Labyrinth'}}
+    {id: 'maze', title: {en: 'Maze', de: 'Labyrinth'}},
+    {id: 'warehouse', title: {en: 'Warehouse', de: 'Lager'}}
 ];
 
 // Plain mat: white 1.2x0.8 (same as line-oval, but could be any, we choose 1.2x0.8 to match line-oval)
@@ -334,8 +337,25 @@ const maze = {
     }
 };
 
+// Warehouse: the plain floor with a pallet on it (world/objects.js, slice R4): a mat may carry
+// LOADS — dynamic world bodies the model moves by contact — as it carries obstacles (the compile
+// option `loads`). The pallet stands where the Forklift example's tines are when the model is
+// placed on the start pose (x −0.2 m, heading +x; the anchor is its lift motor's shaft): centred
+// between the tines (model x −40 LDU, 100 LDU ahead of the shaft), turned so its pockets run
+// along the tines. test/bw-sim-forklift.test.mjs measures that the tines sit in the pockets.
+export const WAREHOUSE = Object.freeze({start: Object.freeze({x: -0.2, z: 0, heading: 0}), pallet: Object.freeze([-0.16, 0, -0.024])});
+
+const warehouse = {
+    id: 'warehouse',
+    sizeM: plain.sizeM,
+    startPose: {...WAREHOUSE.start},
+    loads: [palletLoad({id: 'pallet', position: WAREHOUSE.pallet.slice(), yawDeg: 90})],
+    colorAt: plain.colorAt,
+    paint: plain.paint
+};
+
 export const createMat = id => {
-    const mat = {plain, 'line-oval': lineOval, 'colour-zones': colourZones, wall, sumo, maze}[id];
+    const mat = {plain, 'line-oval': lineOval, 'colour-zones': colourZones, wall, sumo, maze, warehouse}[id];
     if (!mat) throw new Error(`unknown mat '${id}'`);
     return {
         id: mat.id,
@@ -344,6 +364,7 @@ export const createMat = id => {
         paint: mat.paint.bind(mat),
         startPose: mat.startPose ? {...mat.startPose} : undefined,
         centreLineLengthM: mat.centreLineLengthM,
-        obstacles: (mat.obstacles || []).map(o => ({...o, size: o.size.slice(), position: o.position.slice()}))
+        obstacles: (mat.obstacles || []).map(o => ({...o, size: o.size.slice(), position: o.position.slice()})),
+        loads: (mat.loads || []).map(l => ({...l, position: l.position.slice(), boxes: l.boxes.map(b => ({...b, size: b.size.slice(), offset: (b.offset || [0, 0, 0]).slice()}))}))
     };
 };

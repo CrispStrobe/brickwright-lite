@@ -20,7 +20,8 @@
  * carried by the hub body's pose from where the compiler put them at t = 0.
  * Every sensor's ray origin is carried the same way (`points`, by port), next
  * to what the hub reads on that port (`readings`), and every robot body's pose
- * is kept (`bodies`, by body id) for judges that need the whole robot.
+ * is kept (`bodies`, by body id: every dynamic body, a world load too) for judges that
+ * need the whole robot, with every hinge's and slider's state (`joints`, by joint id).
  */
 import {readFileSync} from 'node:fs';
 import path from 'node:path';
@@ -100,8 +101,10 @@ export async function runOnSimLab (source, {modelText, mat = null, timeLimitMs, 
                     const p = session.core.bodyPose(id);
                     bodies[id] = {position: [...p.position], rotation: [...p.rotation]};
                 }
+                const joints = {};
+                for (const j of mechanism.joints) if (j.type === 'hinge' || j.type === 'slider') joints[j.id] = {...session.core.jointState(j.id)};
                 track.push({t: session.time, axle: carried(axle0), sensor: sensor ? carried(sensor.origin) : null,
-                    reflection: reading.reflection, color: reading.color, points, readings, bodies});
+                    reflection: reading.reflection, color: reading.color, points, readings, bodies, joints});
                 return stopWhen && stopWhen(track) ? {status: 'done'} : running;
             }
         };
