@@ -90,6 +90,8 @@ export async function verifyEditorChrome (browser, url, evidence, check) {
             await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
             await page.goto(url, {waitUntil: 'domcontentloaded'});
             const settings = page.getByTestId('bw-settings-menu-trigger');
+            await page.waitForFunction(() => document.querySelector('[role="tablist"]')?.style
+                .getPropertyValue('--bw-tab-available'));
             if (language === 'de') {
                 await settings.click();
                 await page.getByText('Preferences', {exact: true}).click();
@@ -108,17 +110,31 @@ export async function verifyEditorChrome (browser, url, evidence, check) {
                         return {layoutWidth: innerWidth, items: items.map(element => {
                             const r = element.getBoundingClientRect();
                             const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+                            const content = Array.from(element.querySelectorAll('[data-bw-tab-label], [data-bw-tab-icon]'))
+                                .filter(child => getComputedStyle(child).display !== 'none')
+                                .map(child => {
+                                    const box = child.getBoundingClientRect();
+                                    return {x: box.x, right: box.right, top: box.top, bottom: box.bottom};
+                                });
                             return {label: element.getAttribute('aria-label') || element.textContent,
                                 x: r.x, right: r.right, width: r.width, height: r.height,
+                                top: r.top, bottom: r.bottom, content,
                                 scroll: element.scrollWidth, client: element.clientWidth,
                                 hit: element === list || element.contains(hit)};
                         })};
                     });
                     for (const item of geometry.items) {
                         assert.ok(item.x >= 0 && item.right <= geometry.layoutWidth + 1, JSON.stringify(item));
-                        assert.ok(item.height >= 32 && item.width >= 32, JSON.stringify(item));
+                        assert.ok(item.height >= 44 && item.width >= 44, JSON.stringify(item));
                         assert.ok(item.scroll <= item.client + 2, JSON.stringify(item));
                         assert.ok(item.hit, JSON.stringify(item));
+                        for (const content of item.content) {
+                            assert.ok(content.x >= item.x && content.right <= item.right + 1 &&
+                                content.top >= item.top && content.bottom <= item.bottom + 1, JSON.stringify(item));
+                        }
+                        if (item.content.length === 2) {
+                            assert.ok(item.content[0].right <= item.content[1].x + 1, JSON.stringify(item));
+                        }
                     }
                     for (const name of names) {
                         const tab = page.getByRole('tab', {name, exact: true});

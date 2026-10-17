@@ -198,10 +198,10 @@ const SettingsMenu = ({intl, canChangeLanguage, canChangeTheme, isRtl, onRequest
                         />
                     </MenuItem>
                     <MenuItem onClick={() => { emit('bw-open-about'); onRequestClose(); }}>
-                        About Brickwright…
+                        {t('gui.menuBar.aboutBrickwright', 'About Brickwright…')}
                     </MenuItem>
                     <MenuItem onClick={() => { emit('bw-open-i8086-lab'); onRequestClose(); }}>
-                        8086 execution diagnostics…
+                        {t('gui.menuBar.i8086Diagnostics', '8086 execution diagnostics…')}
                     </MenuItem>
                 </MenuSection>
             </MenuBarMenu>

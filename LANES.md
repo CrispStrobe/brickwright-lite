@@ -6002,3 +6002,14 @@ the user again reported no sound. The earlier scan-only failure remains separate
 See [protocol findings and bounded next experiments](docs/WEDO-HUB-PROTOCOL-NOTES.md).
 Hardware/model identification or a genuine-hub comparison remains open; do not
 claim a new buzzer fix or change supplier pins without demonstrated evidence.
+
+Touch-size follow-up: the previously delivered native app predates this source
+candidate. Touch tabs now require 44px targets, 20px icons and 14px labels;
+the browser gate checks that visible icon/text boxes remain within each tab.
+Layout measurement loads in a local deferred chunk, and English defaults stay
+in the actual message descriptors instead of a duplicate catalog. This addresses
+the original startup-size failure without relaxing its budget. The solo-dock
+contract now checks the localized descriptor while retaining the stored `solo`
+value; the initial failed hosted receipts remain part of the record. About and
+8086 menu labels are localized too. Final production size/browser/native receipts
+and exact-head hosted qualification remain required for this follow-up.

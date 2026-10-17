@@ -87,12 +87,23 @@ user reported **no sound**. The probe stopped the buzzer and disconnected after
 the sequence. This is independent library/transport evidence, not merely the
 recording-transport encoder check.
 
-The independent-library result makes an application-specific problem less likely,
-but does not prove that the physical buzzer is absent or broken. A genuine-hub
-comparison or identification of the clone's physical buzzer is now more
-informative than repeating the same bytes. Genuine-hub support in a compatibility
+The user subsequently confirmed that the hub itself makes connection beeps and
+a connection-confirmation tone. Working sound hardware is therefore established;
+remote command handling remains unresolved. The independent-library result makes
+an application-specific problem less likely. A genuine-hub comparison is now
+more informative than repeating the same bytes. Genuine-hub support in a compatibility
 table does not establish that an unbranded clone implements the advertised piezo
 IO. A connection chime alone would not count as successful tone playback.
+
+The pinned [Python SDK piezo service](https://github.com/jannopet/LEGO-WeDo-2.0-Python-SDK/blob/00d8e736e04998bca657d2724994f6241a2c9b78/wedo2/services/piezo_tone_player.py)
+also converts notes to frequency and sends the same command. Its actual encoder
+matches the valid 440/514/1000 Hz packets already tested. Its zero-seeking
+`put_unsigned_short` helper corrupts some other frequencies, so it must not be
+copied as an alternative encoder. Its service manager unsubscribes from IO
+announcements after discovering RGB; reproducing that lifecycle, then optionally
+trying the SDK's generic service-state reset on the announced piezo, are bounded
+exploratory tests. The first availability scan found no hub; neither experiment
+has yet run physically. Neither is a documented piezo-enable requirement.
 
 ## Actual clone tests and limits
 

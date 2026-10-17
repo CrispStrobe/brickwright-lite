@@ -47,9 +47,9 @@ const STYLE_ID = 'bw-phone-chrome';
 const ATTR = 'data-bw-touch';
 
 /** Menu bar height on a touch screen, in CSS pixels. */
-export const MENU_H = 36;
+export const MENU_H = 46;
 /** Tab strip height on a touch screen, in CSS pixels. */
-export const TABS_H = 34;
+export const TABS_H = 44;
 /** Distance from the right edge, clearing the menu bar's right-hand item. */
 export const TABS_RIGHT = 48;
 /**
@@ -62,7 +62,7 @@ export const EDITOR_MIN = 598;
  * Tab height. Stays at or above the 32px touch floor deliberately — shrinking
  * the row must not shrink the thing you tap.
  */
-export const TAB_H = 32;
+export const TAB_H = 44;
 
 /**
  * The rule text. Class names are matched by SUBSTRING because CSS Modules
@@ -97,10 +97,31 @@ html[${ATTR}] [class*="gui_tab-list"] {
 html[${ATTR}] [class*="gui_tab"][role="tab"] {
     height: ${TAB_H}px;
     min-height: ${TAB_H}px;
+    min-width: ${TAB_H}px;
     flex: 0 0 auto;
     box-sizing: border-box;
     margin: 0;
     padding: 0 10px;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+html[${ATTR}] [role="tab"] [data-bw-tab-label] {
+    font-size: 14px;
+    line-height: 20px;
+}
+html[${ATTR}] [role="tab"] [data-bw-tab-icon] {
+    flex: 0 0 20px;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+}
+html[${ATTR}] [data-testid="bw-chrome-toggle"] {
+    width: ${TAB_H}px;
+    height: ${TAB_H}px;
+    min-width: ${TAB_H}px;
+    min-height: ${TAB_H}px;
+    top: 1px;
 }
 /* Compact mode must also escape the clipped editor ancestor. Reset both
    horizontal anchors; retaining right:48px with relative positioning put the
