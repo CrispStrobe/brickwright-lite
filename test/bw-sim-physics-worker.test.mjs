@@ -94,7 +94,7 @@ test('worker thread gives byte-identical snapshots', async () => {
     const hostSnap = hostMessages[hostMessages.length - 1].msg;
 
     // Worker thread run
-    const worker = new Worker(path.join(ROOT, 'test/fixtures/bw-sim/physics-worker-host.mjs'));
+    const worker = new Worker(path.join(ROOT, 'scripts/lib/sim-physics-node-worker.mjs'));
     const port = {
         postMessage: (msg, transfer) => worker.postMessage(msg, transfer),
         on: (ev, fn) => worker.on(ev, fn),

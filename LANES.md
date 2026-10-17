@@ -5846,3 +5846,24 @@ budget change. Add only the missing governed plan path to Build's trigger.
 Require the unchanged two failed controls and all enabled final-head source CI
 to pass before source merge. This creates a genuine headless diagnostic entry
 point; browser editor integration remains owned by Sim Lab's existing lane.
+
+Implementation after claimPR1039 merged as8999ced4d: the new direct command
+`node scripts/verify-sim-physics.mjs` parses the actual reference LDraw model,
+compiles unchanged metadata, drives the unchanged hub/core and runs the actual
+physics-worker entry through a Node-only message adapter and original client.
+The two-second reference run moves0.491813m, with measured opposing encoders
+and negligible yaw. The worker advances100 fixed steps and returns measured
+wheel rotation. Unknown models/options fail with no successful output; all
+worker/core resources and clock ownership are released. Both original failing
+guards now pass without any allowlist or assertion change. Build includes only
+the missing governed plan path.
+
+Broader execution exposed an existing worker fixture's unlabelled root-to-GUI
+resolution. The original worker determinism test now uses the same adapter to
+the actual integrated worker, preserving every byte-identical snapshot assertion
+and protocol. This resolves through the GUI's native dependency scope, without
+new scope exemptions or suppressed diagnostics. All88 affected controls pass,
+zero skips/failures/raw stdout; the unchanged GUI boundary checker also passes.
+Retain original hosted failures and initial boundary log; final TAP+census are
+`/tmp/brickwright-simlab-final.{tap,census.json}`. Installed-source verification
+is in progress; final source-head CI still gates the integration merge.
