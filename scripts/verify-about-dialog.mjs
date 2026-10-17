@@ -44,6 +44,9 @@ async function verify() {
     page.on('dialog', d => d.accept());
     const pageErrors = [];
     page.on('pageerror', error => pageErrors.push(String(error)));
+    let failCredits = true;
+    await page.route('**/*about-credits*.js', route =>
+        failCredits ? route.abort() : route.continue());
 
     let ok = true;
     const fail = msg => { ok = false; console.error(`  FAIL: ${msg}`); };
@@ -67,6 +70,11 @@ async function verify() {
         // Check dialog is open
         const groups = page.getByTestId('about-licence-groups');
         await groups.waitFor({state: 'visible', timeout: 10000});
+        const retryCredits = groups.getByRole('button', {name: 'Load credits again', exact: true});
+        await retryCredits.waitFor({state: 'visible', timeout: 10000});
+        pass('failed credits load exposes a retry');
+        failCredits = false;
+        await retryCredits.click();
         // Credits are a packaged lazy chunk: wait for its actual entries.
         await groups.getByText(EXPECTED_ENTRIES[0], {exact: false}).first()
             .waitFor({state: 'visible', timeout: 10000});
