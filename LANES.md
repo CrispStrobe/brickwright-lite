@@ -91,7 +91,7 @@ exact-head hosted checks remain required before source merge.
 
 ## Compose STM32 PR975 after circuit PR965 — 2026-10-16
 
-IMPLEMENTED / QUALIFICATION PENDING — Codex root, isolated `/tmp/brickwright-stm32-compose-20261016`,
+DONE candidate / QUALIFICATION PENDING — Codex root, isolated `/tmp/brickwright-stm32-compose-20261016`,
 branch `lane/stm32-compose-20261016`, base main `5cb83052330b400b48293315260cb4293b4f6bcf`.
 The user explicitly requested completion of these integrations in order. PR965
 is now merged; a read-only merge of PR975 `943d540c7` reports thirteen conflicts.
@@ -140,10 +140,50 @@ Normal merges preserve both histories and all newer main changes. This changed
 combined head requires fresh exact-head CI before landing.
 
 Final integration reconciliation includes main8a63ad26f, preserving merged
-CPX1009, SPIKE pending-stop990 and the Arcade owner's new claims. Keep this
-lane's receipts in its own section. Every enabled exact-head CI check remains
-a landing requirement; unit shard2 in run38975443782 is currently failing and
-is being investigated. Both browser jobs, build and corpus pass.
+CPX1009, SPIKE pending-stop990 and the Arcade owner's new claim. The only
+conflict is ledger placement; keep this lane's receipts within its own section
+to avoid collisions with other appended claims. No supplier, assertion or
+workflow changes. Fresh exact-head full CI remains required on this composition.
+
+Implementation after claimPR1039 merged as8999ced4d: the new direct command
+`node scripts/verify-sim-physics.mjs` parses the actual reference LDraw model,
+compiles unchanged metadata, drives the unchanged hub/core and runs the actual
+physics-worker entry through a Node-only message adapter and original client.
+The two-second reference run moves0.491813m, with measured opposing encoders
+and negligible yaw. The worker advances100 fixed steps and returns measured
+wheel rotation. Unknown models/options fail with no successful output; all
+worker/core resources and clock ownership are released. Both original failing
+guards now pass without any allowlist or assertion change. Build includes only
+the missing governed plan path.
+
+Broader execution exposed an existing worker fixture's unlabelled root-to-GUI
+resolution. The original worker determinism test now uses the same adapter to
+the actual integrated worker, preserving every byte-identical snapshot assertion
+and protocol. This resolves through the GUI's native dependency scope, without
+new scope exemptions or suppressed diagnostics. All88 affected controls pass,
+zero skips/failures/raw stdout; the unchanged GUI boundary checker also passes.
+Retain original hosted failures and initial boundary log; final TAP+census are
+`/tmp/brickwright-simlab-final.{tap,census.json}`. Installed-source verification
+is in progress; final source-head CI still gates the integration merge.
+
+Main reconciliation (2026-10-17): compose the qualified Sim Lab GUI PR1030
+and release ownership claim PR1011 from main e2225bb05. Preserve both histories,
+all simulator runtime and browser controls, and the release owner's contract.
+The worker test keeps main's explicit test identity while exercising the actual
+integrated worker. Remove only the two newly added KNOWN_DEAD worker/client
+exceptions: the real headless command now consumes both, as the unchanged
+stale-exception assertion requires. Main already supplies the governed plan
+trigger, so retain its single entry rather than duplicating it. The original
+trigger and dead-module guards pass all14 controls, zero skips. Combined
+simulator execution and the fresh source-head qualification remain pending.
+
+Final reconciled controls: 100 passed, zero failures/skips/raw stdout; GUI
+dependency boundary passes. Fresh canonical dependency preparation and installed
+root/GUI exact-source provenance plus single-engine resolution pass. Retain
+`/tmp/brickwright-stm32-reconciled.{tap,census.json,gui-scope.tsv}` and the
+provenance log. Internal npm scratch exhaustion was repaired using task-specific
+external npm cache/temporary directories; package pins and assertions unchanged.
+All enabled checks on this final composed source head remain required to land.
 
 ## A13 — CPX live circuit face adoption — 2026-10-16
 
@@ -181,6 +221,18 @@ full native-program face proof remain pending qualified upstream/integrations.
 Local toolchain audit: Homebrew's node@22 path points to Node26, so earlier
 checks using that path were Node26. The fourteen controls now also pass under
 an isolated official Node22.23.3 binary, checksum-verified against nodejs.org.
+
+Reconciled preparation (2026-10-17): normally compose STM32 candidate
+`c1e3a8f4984ca39ec0fb42adf7289e92954238ac` with the already claimed CPX/File implementation. Preserve the
+new Sim Lab GUI, release ownership, all supplier pins and original assertions.
+Only ledger placement conflicts; keep current STM32 receipts and all four owned
+A13/File sections, leaving Current Array and release ownership unchanged.
+All92 affected CPX/File/package/workflow/integration controls pass with
+zero failures/skips/raw stdout; the GUI boundary checker passes. Fresh installed
+root and GUI Boardf84/CUI625 payloads match their exact upstream npm contents
+and resolve one engine; canonical pin/notices checks pass. Production browser
+qualification follows on this committed candidate; final source PR and hosted
+qualification still wait for STM32 qualification and main landing.
 
 ## A12 — Circuit Playground Express MakeCode translator — 2026-10-16
 
@@ -5718,7 +5770,6 @@ video frame, nonblack marker and zero browser errors. Receipt and screenshot:
 The failed original is the regression negative; no duplicate source-spelling
 test is added for this one-line reader fix. One automatic fresh final-head CI
 set remains required before PR1017 merges; original PR975 remains untouched.
-
 ## CPX translator qualification diagnostic transport — 2026-10-16
 
 RELEASED — completed by the existing CPX owner; verified by Codex root, isolated `/tmp/brickwright-cpx-compose-20261016`,
@@ -5846,7 +5897,6 @@ qualifies. Source/current Blocks, native lifecycle, saved/current-export,
 selected-original and visible GUI qualification are separate required gates;
 no library/game or corpus promotion follows from a foundational holder control.
 
-
 ## Circuit File actions with a cached but unmounted designer — 2026-10-16
 
 DONE candidate / actual qualification pending — Codex root, isolated `/tmp/brickwright-circuit-file-wake-20261016`,
@@ -5950,8 +6000,8 @@ handler/value claims confer no authority here.
 
 ## Sim Lab S1 headless consumer and integration guards — 2026-10-17
 
-CLAIMED — Codex root, source implementation to follow on the existing STM32
-composition branch after this claim merges. User requested continued software
+DONE candidate / QUALIFICATION PENDING — Codex root, implemented on the existing
+STM32 composition branch after claimPR1039 merged. User requested continued software
 integration. Hosted run38975443782 passes both browsers/build/corpus but unit2
 finds the Sim Lab plan missing from trigger paths and five S1 entry modules
 without a non-test consumer. Own only the already planned
@@ -5971,26 +6021,49 @@ Require the unchanged two failed controls and all enabled final-head source CI
 to pass before source merge. This creates a genuine headless diagnostic entry
 point; browser editor integration remains owned by Sim Lab's existing lane.
 
-Implementation after claimPR1039 merged as8999ced4d: the new direct command
-`node scripts/verify-sim-physics.mjs` parses the actual reference LDraw model,
-compiles unchanged metadata, drives the unchanged hub/core and runs the actual
-physics-worker entry through a Node-only message adapter and original client.
-The two-second reference run moves0.491813m, with measured opposing encoders
-and negligible yaw. The worker advances100 fixed steps and returns measured
-wheel rotation. Unknown models/options fail with no successful output; all
-worker/core resources and clock ownership are released. Both original failing
-guards now pass without any allowlist or assertion change. Build includes only
-the missing governed plan path.
+## Release 0.1.24 ownership and qualified TestFlight follow-through — 2026-10-16
 
-Broader execution exposed an existing worker fixture's unlabelled root-to-GUI
-resolution. The original worker determinism test now uses the same adapter to
-the actual integrated worker, preserving every byte-identical snapshot assertion
-and protocol. This resolves through the GUI's native dependency scope, without
-new scope exemptions or suppressed diagnostics. All88 affected controls pass,
-zero skips/failures/raw stdout; the unchanged GUI boundary checker also passes.
-Retain original hosted failures and initial boundary log; final TAP+census are
-`/tmp/brickwright-simlab-final.{tap,census.json}`. Installed-source verification
-passes in root and GUI: Board12881 and CUI1308 files match their immutable npm
-payloads, with single-engine resolution. Two actual CLI mutants (no drive and
-no worker motor targets) both fail their named physical assertions with no
-successful output. Final source-head CI still gates the integration merge.
+CLAIMED — Codex release follow-through, branch
+`docs/release-0.1.24-claim-20261016`, exact base
+`27f473a738ff675db193ea689424f4ee3649910b`. Merge this ownership claim
+before changing release metadata. The earlier `v0.1.23` tag is immutable;
+its cancelled workflows are historical results, not a delivered new build.
+
+Envelope after this claim merges: this ledger;
+`apps/tauri/src-tauri/{tauri.conf.json,Cargo.toml,Cargo.lock}` for the three
+aligned application versions; `docs/app-store-metadata.md` for current English
+and German tester notes; operational creation of a new `v0.1.24` tag only on
+the admitted qualified main merge, using the existing mobile/release workflows.
+No product implementation, dependency pin, workflow, signing policy, transport,
+physical-device mapping or hardware behavior change belongs in this lane.
+
+Required prerequisites: retain merged WeDo adoption PR980 and its bounded
+brightness/polarity/piezo claims, the merged iOS validator repair PR981 and its
+independent actual native source binding. Review one combined release source
+candidate for actual unsigned mobile qualification before advancing versions
+or publishing; an older component build does not qualify newer frontend source.
+
+Explicit dependency correction: PR982 repairs the separate local generated-
+project helper, invoked by the local device-build npm hook. The existing
+mobile/TestFlight workflows invoke the Tauri CLI directly and do not execute
+that helper. Its actual generated-project qualification remains open in its
+own lane; lack of that uncalled-helper result alone does not block this
+release. Source CI or unsigned workflow success is not helper execution proof.
+This correction changes no workflow, signing policy or qualification threshold.
+
+Independently inspect the final source-bound unsigned app AND actual signed
+IPA resource/content inventories, including unintended libapp.a or other
+static archive packaging. Fresh project initialization and source checks do
+not prove such archives absent. Retain actual compile, source/artifact,
+signing, privacy, provisioning and icon checks. Preserve original failures and
+exact identities; no old tag move or successful qualification replay. Broader
+simulator and instrument candidates enter only after their own qualified
+merges, with honest tester boundaries.
+
+Release metadata must pass version/notes contracts and required exact-head
+checks. Review actual main composition and predicted/landed tree/parents before
+normal matched-head merges. Only then create the new tag. Completion requires
+original signed build/upload, Internal and External group assignment and Beta
+App Review receipts from the existing workflows. A queued workflow, unsigned
+build or App Store submission is not a delivery or approval claim. Keep the
+ordered five-task circuit campaign contract independent and unchanged.

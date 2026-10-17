@@ -123,7 +123,10 @@ const baseConfig = new ScratchWebpackConfigBuilder(
                 // needs the same empty mapping as `fs`.
                 fs: false,
                 'fs/promises': false,
-                path: false
+                path: false,
+                // jolt-physics (the Sim Lab engine) is Emscripten glue too: its
+                // dead Node road does createRequire from `module`.
+                module: false
             }
         }
     })
