@@ -1,12 +1,20 @@
 {
-  "$comment": "Bevel 12T -> 20T at 90deg: motor A drives 12T bevel (r15) on its output at [0,-40,0] axis Y, meshing 20T bevel (r25) at [15,-15,0] axis X. Intersection O at [0,-15,0], distances 25 and 15. Beam at [15,-15,0] holds the 20T axle. Ratio 12/20=0.6, sign positive from contact velocities (see test comment).",
+  "$comment": "Right-angle bevel drive on the bench, LDraw frame (-y up). Medium motor at the origin, port A. The 12T bevel sits on a 3L axle in the motor output at c1=(0,-75,0), teeth up (the bevel apex is local -z, LDraw file 6589.dat narrows towards -z). Its axis meets the 20T's at O=(0,-100,0): |c1-O|=25 = 20T pitch radius, |c2-O|=15 = 12T pitch radius. The 20T bevel is at c2=(15,-100,0) on a horizontal 4L axle along +x, teeth facing O. The frame: two Technic beams 7 standing upright beside the housing (x=40, z=+-20), each on two friction pins in the housing side holes s1/s5 and s3/s7, and a Technic beam 3 across their tops (x=60, y=-100, holes along x) on two friction pins; the 20T's axle turns in its middle hole. Frame and housing are one body.",
   "version": 1,
   "parts": [
-    {"id": "m", "part": "54696p01.dat", "position": [0, 0, 0], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1], "port": "A"},
-    {"id": "a12", "part": "3705.dat", "position": [0, -40, 0], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
-    {"id": "g12", "part": "6589.dat", "position": [0, -40, 0], "rotation": [1, 0, 0, 0, 0, 1, 0, -1, 0]},
-    {"id": "beam", "part": "32524.dat", "position": [15, -15, 0], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
-    {"id": "a20", "part": "3705.dat", "position": [15, -15, 0], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
-    {"id": "g20", "part": "32198.dat", "position": [15, -15, 0], "rotation": [0, 0, 1, 0, 1, 0, -1, 0, 0]}
+    {"id": "m", "part": "54696p01.dat", "position": [0,0,0], "rotation": [1,0,0,0,1,0,0,0,1], "port": "A"},
+    {"id": "a12", "part": "4519.dat", "position": [0,-60,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "g12", "part": "6589.dat", "position": [0,-75,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "postL", "part": "32524.dat", "position": [40,-40,-20], "rotation": [0,1,0,0,0,1,1,0,0]},
+    {"id": "postR", "part": "32524.dat", "position": [40,-40,20], "rotation": [0,1,0,0,0,1,1,0,0]},
+    {"id": "pinL1", "part": "2780.dat", "position": [30,-20,-20], "rotation": [1,0,0,0,1,0,0,0,1]},
+    {"id": "pinL2", "part": "2780.dat", "position": [30,20,-20], "rotation": [1,0,0,0,1,0,0,0,1]},
+    {"id": "pinR1", "part": "2780.dat", "position": [30,-20,20], "rotation": [1,0,0,0,1,0,0,0,1]},
+    {"id": "pinR2", "part": "2780.dat", "position": [30,20,20], "rotation": [1,0,0,0,1,0,0,0,1]},
+    {"id": "top", "part": "32523.dat", "position": [60,-100,0], "rotation": [0,1,0,-1,0,0,0,0,1]},
+    {"id": "pinT1", "part": "2780.dat", "position": [50,-100,-20], "rotation": [1,0,0,0,1,0,0,0,1]},
+    {"id": "pinT2", "part": "2780.dat", "position": [50,-100,20], "rotation": [1,0,0,0,1,0,0,0,1]},
+    {"id": "a20", "part": "3705.dat", "position": [40,-100,0], "rotation": [1,0,0,0,1,0,0,0,1]},
+    {"id": "g20", "part": "32198.dat", "position": [15,-100,0], "rotation": [0,0,1,0,1,0,-1,0,0]}
   ]
 }

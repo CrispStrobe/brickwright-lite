@@ -1,16 +1,16 @@
 {
-  "$comment": "8T -> 24T -> 8T chain: 8T (10) meshes 24T (30) at 40, 24T meshes second 8T (10) at 40. Last gear should turn +1× first.",
+  "$comment": "Gearbox on the bench, LDraw frame (-y up). Medium motor at the origin, port A, output axle vertical (x=0,z=0). The 8T sits on a 3L axle in the motor output at y=-60, just above the output hub. The frame is a Technic beam lying flat under the housing (holes vertical, y=40), pinned with two friction pins into the housing bottom holes u0/u1 (x=+-20, the holes parallel to the output), so the frame IS the housing body. Driven gears ride on 8L axles that turn in the beam's round holes and reach up past the housing side (x>=34) to y=-60. Pitch radii 8T=10, 24T=30, 40T=50 LDU. Beam 7 centred at x=20 (holes x=-40..80). 24T at x=40 (meshes the motor 8T, 40 LDU), a second 8T at x=80 meshes the 24T (30+10=40 LDU). The motor 8T and the last 8T are 80 LDU apart and do not mesh.",
   "version": 1,
   "parts": [
-    {"id": "m", "part": "54696p01.dat", "position": [0, 0, 0], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1], "port": "A"},
-    {"id": "a8a", "part": "3705.dat", "position": [0, -40, 0], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
-    {"id": "g8a", "part": "3647.dat", "position": [0, -40, 0], "rotation": [1, 0, 0, 0, 0, 1, 0, -1, 0]},
-    {"id": "beam", "part": "32524.dat", "position": [0, -40, 40], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
-    {"id": "p1", "part": "2780.dat", "position": [0, -40, 20], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
-    {"id": "p2", "part": "2780.dat", "position": [0, -40, -20], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
-    {"id": "a24", "part": "3705.dat", "position": [0, -40, 40], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
-    {"id": "g24", "part": "3648.dat", "position": [0, -40, 40], "rotation": [1, 0, 0, 0, 0, 1, 0, -1, 0]},
-    {"id": "a8b", "part": "3705.dat", "position": [0, -40, 80], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
-    {"id": "g8b", "part": "3647.dat", "position": [0, -40, 80], "rotation": [1, 0, 0, 0, 0, 1, 0, -1, 0]}
+    {"id": "m", "part": "54696p01.dat", "position": [0,0,0], "rotation": [1,0,0,0,1,0,0,0,1], "port": "A"},
+    {"id": "a8", "part": "4519.dat", "position": [0,-60,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "g8", "part": "3647.dat", "position": [0,-60,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "beam", "part": "32524.dat", "position": [20,40,0], "rotation": [0,0,1,0,1,0,-1,0,0]},
+    {"id": "pin1", "part": "2780.dat", "position": [20,30,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "pin2", "part": "2780.dat", "position": [-20,30,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "a24", "part": "3707.dat", "position": [40,-10,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "g24", "part": "3648.dat", "position": [40,-60,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "a8b", "part": "3707.dat", "position": [80,-10,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "g8b", "part": "3647.dat", "position": [80,-60,0], "rotation": [1,0,0,0,0,1,0,-1,0]}
   ]
 }

@@ -94,6 +94,18 @@ and the hub's yaw keep working; only the picture is missing).
 - Rigid parts merge into bodies; axles in round holes, frictionless pins and
   motor shafts become hinges; a castor ball rolls freely in its socket; spur
   and bevel gears that mesh are coupled with their tooth ratio.
+- Gears transmit only when both axles turn in the same part (the frame: a
+  beam, or the motor housing and everything pinned to it). A gear rigidly
+  joined to the part its partner turns in locks the pair (warning
+  `gear-on-frame`: the two become one rigid body); gears whose axles turn in
+  two separate parts are not coupled (`gear-frames-differ`). The coupling
+  works both ways: a blocked output stalls the motor at its torque limit.
+  Limit: exact while the frame does not itself turn about the gear axes; on a
+  frame that does (gears on a turntable) the gears are off by the frame's
+  rate. Test gearboxes: `test/fixtures/bw-sim/gears/`, run by
+  `test/bw-sim-gear-trains.test.mjs` with the motor housing clamped (a static
+  body made of model parts is the machine's frame: it does not collide with
+  the machine's moving parts).
 - Motors: the hub's own motor controller decides each motor's speed (ramps,
   holds, run-to-position, stop actions); the hinge turns under the motor's
   torque limit, and the **encoder reads what the wheel actually did**.
