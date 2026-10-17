@@ -19,6 +19,14 @@
 // steps come back as frames the hubs replay (sim-worker-protocol.js);
 // otherwise (node, no Worker, the worker could not load Jolt) on the main
 // thread, as before. Both give the same numbers; `worker` says which one runs.
+//
+// A scene with a NON-REWINDABLE hub (exportState().nonRewindable: an emulated
+// firmware, hubs/spike/spike-firmware-hub.js) never goes to the worker — a
+// batch there may be redone from a Jolt checkpoint, and an emulator cannot be
+// rewound (docs/ROBOT-LAB-SPIKE-EMULATION.md §2.3, owner answer Q1/D3). It
+// runs on this thread through the lockstep runner (routes/renode-lockstep/
+// runner.js), one physics step per exchange; `lockstep` says so, and
+// `realTimeFactor` how fast the emulator lets simulated time go.
 
 import {parseModel} from './model/ldraw-model.js';
 import {compile} from './mech/compile.js';
@@ -30,6 +38,7 @@ import {hubRegistry} from './hubs/index.js';
 import {upgradePartMeta, partHubProfile} from './contracts.js';
 import {createMat} from './world/mats.js';
 import {placeOnStart, driveAnchor} from './world/place.js';
+import {LockstepRunner, isNonRewindable, L3_HUB_NEEDS_LOCKSTEP} from './routes/renode-lockstep/runner.js';
 
 /**
  * The part catalog from part-meta/parts.json's parsed content. The caller
@@ -96,7 +105,11 @@ export const prepareModel = (text, catalog, {mat = null} = {}) => {
  * bridge binds several hubs by those (hub-bridge.js hubBindings); running a model's
  * second hub is the multi-hub slice's (R16: a hub picker, a route per hub).
  */
-export const hubsOf = (model, mechanism, catalog) => {
+export const hubsOf = (model, mechanism, catalog, {all = false} = {}) => {
+    // Every hub (CompiledMechanism v2 hubs[], in body order) when the caller runs several.
+    if (all && Array.isArray(mechanism.hubs) && mechanism.hubs.length) {
+        return mechanism.hubs.map(h => ({id: h.id, profile: h.profile, body: h.body}));
+    }
     const hubParts = new Map(model.parts.filter(p => partHubProfile(catalog.get(p.part))).map(p => [p.id, partHubProfile(catalog.get(p.part))]));
     const body = mechanism.bodies.find(b => b.parts.some(id => hubParts.has(id)));
     if (!body) return [];
@@ -106,6 +119,22 @@ export const hubsOf = (model, mechanism, catalog) => {
 
 /** The body that carries the (first) hub, or null. */
 export const hubBodyOf = (model, mechanism, catalog) => hubsOf(model, mechanism, catalog)[0]?.body ?? null;
+
+/**
+ * The scene's hubs as VirtualHubs: `createHub(def)` may supply one (an emulated
+ * firmware's, say; it returns null to take the family's default), and the default
+ * adapters wrap `hubState` — which only one hub of a scene can do.
+ */
+const makeHubs = ({defs, registry, hubState, createHub}) => {
+    let shared = false;
+    return defs.map((h, index) => {
+        const made = createHub ? createHub({...h, index}) : null;
+        if (made) return {...h, hub: made};
+        if (shared) throw new Error(`hub '${h.id}': two hubs of a scene cannot share one hub state`);
+        shared = true;
+        return {...h, hub: registry.create(h.profile, {id: h.id, hubState})};
+    });
+};
 
 /**
  * At most this much simulated time per worker batch. When the worker cannot keep up
@@ -126,9 +155,13 @@ export class SimSession {
      * @param {object} [options.J] the Jolt namespace (loadJolt()): the physics runs on this thread
      * @param {object} [options.worker] a PhysicsClient whose worker has loaded this mechanism
      *        (simLoad), with `loaded` its reply: the physics runs in the worker
+     * @param {Function} [options.createHub] ({id, profile, body, index}) => a VirtualHub for that hub,
+     *        or null for its family's default adapter on `hubState`. Given, the session runs EVERY
+     *        hub of the model (CompiledMechanism v2 hubs[]); absent, the first only (as before R13)
+     * @param {object[]} [options.hubs] the hubs, already made (fromText makes them to decide on the worker)
      */
     constructor ({hubState, model, runModel = model, mechanism, catalog, mat = null, J = null, worker = null, loaded = null,
-        registry = hubRegistry}) {
+        registry = hubRegistry, createHub = null, hubs: made = null}) {
         this.model = model;
         /** The model where it stands on the mat — what the physics runs and the view draws. */
         this.runModel = runModel;
@@ -136,7 +169,12 @@ export class SimSession {
         this.mechanism = mechanism;
         this.hubState = hubState;
         /** [{id, profile, body, hub}]: the model's hubs, each a VirtualHub (hubs/hub-profile.js). */
-        this.hubs = hubsOf(model, mechanism, catalog).map(h => ({...h, hub: registry.create(h.profile, {id: h.id, hubState})}));
+        this.hubs = made || makeHubs({defs: hubsOf(model, mechanism, catalog, {all: Boolean(createHub)}), registry, hubState, createHub});
+        /** A hub of the scene cannot be rewound: in-thread, one step per lockstep exchange. */
+        this.lockstep = this.hubs.some(({hub}) => isNonRewindable(hub));
+        if (worker && this.lockstep) {
+            throw new Error(`${L3_HUB_NEEDS_LOCKSTEP}: a scene with an emulated hub runs its physics on the main thread, not in the worker`);
+        }
         const hubs = this.hubs.map(({hub, body}) => ({hub, body}));
         this.time = 0;
         this.listeners = new Set();
@@ -161,6 +199,13 @@ export class SimSession {
             this.core = createPhysicsCore(J, mechanism, {stepHz: 1000 / STEP_MS});
             // Without a hub there is nothing to drive, but the model still falls and settles.
             this.bridge = hubs.length ? new SimHubBridge({hubs, core: this.core, mechanism}) : null;
+            this.failed = null;
+            if (this.lockstep) {
+                this.runner = new LockstepRunner({bridge: this.bridge, hubs: this.hubs.map(({hub}) => hub),
+                    onAdvance: runner => { this.time = runner.stats.simulatedMs; this._advanced(); },
+                    onFail: error => { this.failed = error; }});
+                this.stats = this.runner.stats;
+            }
         }
     }
 
@@ -169,20 +214,27 @@ export class SimSession {
      * With `worker` (a PhysicsClient) the physics runs there; if the worker cannot load the
      * scene, it runs on this thread and `session.workerError` says why.
      */
-    static async fromText (text, {hubState, catalog, mat = null, worker = null, registry = hubRegistry}) {
+    static async fromText (text, {hubState, catalog, mat = null, worker = null, registry = hubRegistry, createHub = null}) {
         const {model, runModel, mechanism, issues} = prepareModel(text, catalog, {mat});
         if (!mechanism) return {session: null, issues, model, runModel};
         let workerError = null;
+        const defs = hubsOf(model, mechanism, catalog, {all: Boolean(createHub)});
+        const hubs = makeHubs({defs, registry, hubState, createHub});
+        if (worker && hubs.some(({hub}) => isNonRewindable(hub))) {
+            // Refused, not failed: the worker stays usable for the next scene.
+            workerError = `${L3_HUB_NEEDS_LOCKSTEP}: an emulated hub cannot be rewound, so this scene runs on the main thread`;
+            worker = null;
+        }
         if (worker) {
             try {
-                const loaded = await worker.simLoad({mechanism, hubs: hubsOf(model, mechanism, catalog), stepMs: STEP_MS});
-                return {session: new SimSession({hubState, model, runModel, mechanism, catalog, mat, worker, loaded, registry}), issues, model, runModel};
+                const loaded = await worker.simLoad({mechanism, hubs: defs, stepMs: STEP_MS});
+                return {session: new SimSession({hubState, model, runModel, mechanism, catalog, mat, worker, loaded, registry, hubs}), issues, model, runModel};
             } catch (error) {
                 workerError = error.message || String(error);
             }
         }
         const J = await loadJolt();
-        const session = new SimSession({hubState, model, runModel, mechanism, catalog, mat, J, registry});
+        const session = new SimSession({hubState, model, runModel, mechanism, catalog, mat, J, registry, hubs});
         session.workerError = workerError;
         return {session, issues, model, runModel};
     }
@@ -201,6 +253,10 @@ export class SimSession {
             this._send();
             return;
         }
+        if (this.runner) {
+            this.runner.tick(ms);
+            return;
+        }
         if (this.bridge) this.bridge.tick(ms);
         else this.core.step(ms / 1000);
         this.time += ms;
@@ -209,6 +265,7 @@ export class SimSession {
 
     /** Resolves when every tick so far has reached the hub (at once on this thread). */
     idle () {
+        if (this.runner) return this.runner.idle();
         if (!this.worker || (!this._inFlight && !this._due())) return Promise.resolve();
         return new Promise((resolve, reject) => this._idle.push({resolve, reject}));
     }
@@ -327,8 +384,14 @@ export class SimSession {
 
     snapshot () { return this.core.snapshot(); }
 
+    /** Lockstep scenes: simulated ms per wall ms lately (null before it is measured, or without lockstep). */
+    get realTimeFactor () {
+        return this.runner ? this.runner.realTimeFactor : null;
+    }
+
     dispose () {
         this._disposed = true;
+        this.runner?.dispose();
         this.bridge?.dispose();
         if (this.worker) {
             this.client.simDispose(this.scene).catch(() => {});
