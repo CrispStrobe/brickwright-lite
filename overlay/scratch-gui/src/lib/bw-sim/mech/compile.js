@@ -174,6 +174,62 @@ export const compile = (model, catalog, opts = {}) => {
         bodies.unshift(ground);
     }
 
+    // Obstacles: each becomes a STATIC body sitting on the floor (bottom at ground top)
+    if (Array.isArray(opts.obstacles)) {
+        const seenIds = new Set();
+        let groundTop = 0;
+        if (bodies.length > 0) {
+            const g = bodies.find(b => b.id === 'ground');
+            if (g) groundTop = g.position[1] + 0.01;
+            else {
+                // No ground? Use lowest as 0 fallback already
+                groundTop = 0;
+            }
+        }
+        for (const obs of opts.obstacles) {
+            const id = obs && typeof obs.id === 'string' ? obs.id : '';
+            let bad = null;
+            if (!id) bad = `obstacle id missing`;
+            else if (seenIds.has(id)) bad = `duplicate obstacle id '${id}'`;
+            else if (obs.shape !== 'box') bad = `obstacle '${id}' shape must be 'box'`;
+            else if (!Array.isArray(obs.size) || obs.size.length !== 3 || !obs.size.every(v => typeof v === 'number' && Number.isFinite(v) && v > 0)) bad = `obstacle '${id}' size must be three positive numbers`;
+            else if (!Array.isArray(obs.position) || obs.position.length !== 3 || !obs.position.every(v => typeof v === 'number' && Number.isFinite(v))) bad = `obstacle '${id}' position must be Vec3`;
+            else if (obs.yawDeg !== undefined && !(typeof obs.yawDeg === 'number' && Number.isFinite(obs.yawDeg))) bad = `obstacle '${id}' yawDeg must be a number`;
+            else if (obs.color !== undefined && !(Number.isInteger(obs.color) && obs.color >= 0 && obs.color <= 10)) bad = `obstacle '${id}' color must be 0..10`;
+            // Also check size positive already, but also need to check duplicate id tracking even if bad due to other reason? We already.
+            if (bad) {
+                diagnostics.push({severity: 'error', code: 'bad-obstacle', message: bad, parts: []});
+                if (id) seenIds.add(id);
+                continue;
+            }
+            // Valid: record id
+            seenIds.add(id);
+            const size = obs.size;
+            const pos = obs.position;
+            const yawDeg = obs.yawDeg || 0;
+            const yawRad = yawDeg * Math.PI / 180;
+            const half = yawRad / 2;
+            const qy = Math.sin(half);
+            const qw = Math.cos(half);
+            // rotation about Y: [0, sin(yaw/2), 0, cos(yaw/2)]
+            const rot = [0, qy, 0, qw];
+            const h = size[1];
+            const bottomY = groundTop + pos[1];
+            const centerY = bottomY + h / 2;
+            const body = {
+                id: `obstacle:${id}`,
+                motion: 'static',
+                position: [pos[0], centerY, pos[2]],
+                rotation: rot,
+                massKg: 0,
+                colliders: [{shape: 'box', halfExtents: [size[0] / 2, size[1] / 2, size[2] / 2]}],
+                parts: [],
+            };
+            if (obs.color !== undefined) body.color = obs.color;
+            bodies.push(body);
+        }
+    }
+
     // Sort bodies deterministically: ground first (if present), then b0,b1... already sorted by smallest part id, but ground is 'ground' should stay first.
     // Our islands bodies are already b0... sorted. We'll keep ground at front.
 

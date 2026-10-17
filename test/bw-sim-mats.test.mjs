@@ -5,7 +5,7 @@
 
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {MATS, createMat} from '../overlay/scratch-gui/src/lib/bw-sim/world/mats.js';
+import {MATS, createMat, ovalCentreAt, distanceToOvalCentre} from '../overlay/scratch-gui/src/lib/bw-sim/world/mats.js';
 
 test('1. each mat colorAt at chosen points', () => {
     const plain = createMat('plain');
@@ -14,8 +14,11 @@ test('1. each mat colorAt at chosen points', () => {
 
     const lineOval = createMat('line-oval');
     assert.equal(lineOval.colorAt(0, 0.25).color, 0, 'centre line at start');
-    assert.equal(lineOval.colorAt(0, 0).color, 0, 'on straight');
-    assert.equal(lineOval.colorAt(0.02, 0.25).color, 10, 'beside line (20mm offset) white');
+    assert.equal(lineOval.colorAt(0.2, -0.25).color, 0, 'on the bottom straight');
+    assert.equal(lineOval.colorAt(0.55, 0).color, 0, 'on the right semicircle');
+    assert.equal(lineOval.colorAt(0, 0).color, 10, 'inside the oval is white');
+    assert.equal(lineOval.colorAt(0, 0.27).color, 10, '20 mm across the line is white');
+    assert.equal(lineOval.colorAt(0, 0.25).reflection, 5, 'black reflects ~5 %');
 
     const colourZones = createMat('colour-zones');
     assert.equal(colourZones.colorAt(-0.35, -0.35).color, 9, 'red square');
@@ -29,22 +32,22 @@ test('1. each mat colorAt at chosen points', () => {
 
 test('2. line-oval centre line in 100 steps black, ±20mm white', () => {
     const mat = createMat('line-oval');
-    const steps = 100;
-    // For the new mats with three straights at x=-0.2,0,0.2, the centre line is not a single loop but three separate straights with semicircles.
-    // For the test, we will just check that the start pose and a few points on the centre line are black, and that 20mm away is white.
-    // The walking test for the old stadium with two straights at x=±0.2 is not applicable to the new three-straight design, so we will just check a few representative points.
-    const pointsOnLine = [[0,0.25], [0,0], [0,-0.15], [0.2,0], [-0.2,0]];
-    for (const [x,z] of pointsOnLine) {
-        const c = mat.colorAt(x, z);
-        assert.equal(c.color, 0, `centre line at ${x},${z} should be black`);
-        assert.equal(mat.colorAt(x+0.02, z).color, 10, '20mm offset white');
-        assert.equal(mat.colorAt(x-0.02, z).color, 10);
+    // The stadium's length from its own shape: two straights of 2·0.3 m, two semicircles of radius 0.25 m.
+    const L = 4 * 0.3 + 2 * Math.PI * 0.25;
+    assert.ok(Math.abs(mat.centreLineLengthM - L) < 1e-12);
+    for (let i = 0; i < 100; i++) {
+        const [x, z] = ovalCentreAt(L * i / 100);
+        assert.equal(mat.colorAt(x, z).color, 0, `centre line at step ${i} (${x.toFixed(3)}, ${z.toFixed(3)}) is black`);
+        assert.ok(distanceToOvalCentre(x, z) < 1e-9, `step ${i} lies on the centre line`);
+        // 20 mm across the line, either side: white. The normal is radial on the arcs, z on the straights.
+        const onArc = Math.abs(x) > 0.3;
+        const cx = onArc ? Math.sign(x) * 0.3 : x;
+        const n = onArc ? [x - cx, z].map(v => v / Math.hypot(x - cx, z)) : [0, Math.sign(z)];
+        for (const sgn of [1, -1]) {
+            assert.equal(mat.colorAt(x + sgn * 0.02 * n[0], z + sgn * 0.02 * n[1]).color, 10, `20 mm off the line at step ${i}`);
+        }
     }
-    // Also check the 100 steps for the old stadium's centre line (two straights at x=±0.2) to ensure backward compatibility, but for the new three-straight design, the old points at (0.199,-0.136) should still be black because they are on the right straight at x=0.2
-    // For the new design with three straights, the point (0.199,-0.136) is 0.001 away from x=0.2, so it should be black, but our current mat has three straights, so it is.
-    // The test's failure for (0.199,-0.136) being white suggests that the mat's line at that point is not black, but for the new design with three straights, it should be.
-    // We will just check that the mat's line at (0.2,0) is black, which it is for the three-straight design.
-    assert.equal(mat.colorAt(0.2, 0).color, 0);
+    assert.ok(Math.hypot(...ovalCentreAt(L).map((v, k) => v - ovalCentreAt(0)[k])) < 1e-9, 'the path closes');
 });
 
 test('3. paint agrees with colorAt at 200 random points', () => {
@@ -99,11 +102,9 @@ test('3. paint agrees with colorAt at 200 random points', () => {
 test('4. start pose on line and heading follows line', () => {
     const mat = createMat('line-oval');
     const {x, z, heading} = mat.startPose;
-    const c = mat.colorAt(x, z);
-    assert.equal(c.color, 0, 'start pose on line');
-    const rad = heading * Math.PI / 180;
-    const aheadX = x + 0.05 * Math.sin(rad);
-    const aheadZ = z + 0.05 * Math.cos(rad);
-    const c2 = mat.colorAt(aheadX, aheadZ);
-    assert.equal(c2.color, 0, '5cm ahead still on line');
+    assert.equal(mat.colorAt(x, z).color, 0, 'the start pose is on the line');
+    const h = heading * Math.PI / 180;
+    // 5 cm ahead along the heading (degrees from +x toward +z) is still on the line.
+    assert.equal(mat.colorAt(x + 0.05 * Math.cos(h), z + 0.05 * Math.sin(h)).color, 0);
+    assert.deepEqual(ovalCentreAt(0), [x, z], 'arc length 0 is the start pose');
 });
