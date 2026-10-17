@@ -144,3 +144,15 @@ test('the gizmo is sized to the selection, within a grabbable minimum and the ol
     // Very far out: never below the minimum.
     assert.equal(gizmoSize({...view, radius: 0.001, distance: 1, viewHeightPx: 4000, minPx: 1}), GIZMO_SIZE.min);
 });
+
+test('meshing gears may share volume (their teeth interleave); a gear pushed past meshing may not', () => {
+    // The real 8→24 gearbox from the gear-train tests: the 24T meshes the 8T at 40 LDU.
+    const gearbox = JSON.parse(readFileSync(path.join(ROOT, 'test/fixtures/bw-sim/gears/8-24.json'), 'utf8'));
+    const g24 = gearbox.parts.find(p => p.id === 'g24');
+    assert.ok(partOverlaps(gearbox, CATALOG, g24).some(o => o.part === 'g8'), 'the two gears\' colliders do overlap');
+    assert.deepEqual(solidOverlaps(gearbox, CATALOG, g24).filter(o => o.part === 'g8'), [], 'but meshing is not a collision');
+    // Moving the 24T in place (to its own pose) is allowed; 10 LDU closer the teeth would cut into the 8T.
+    assert.deepEqual(moveVerdict({model: gearbox, catalog: CATALOG, moves: [{id: 'g24', position: g24.position, rotation: g24.rotation}]}), {ok: true});
+    const tooClose = moveVerdict({model: gearbox, catalog: CATALOG, moves: [{id: 'g24', position: [30, -60, 0], rotation: g24.rotation}]});
+    assert.deepEqual(tooClose, {ok: false, part: 'g24', into: 'g8'});
+});

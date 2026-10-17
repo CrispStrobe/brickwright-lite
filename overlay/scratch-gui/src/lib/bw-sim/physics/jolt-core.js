@@ -9,8 +9,8 @@
 // Bodies: one Jolt body per mechanism body, shape = compound of colliders
 // (box / cylinder local +y / sphere), mass overridden to massKg.
 // Joints: hinge / slider at point/axis (world at t=0), body2:'world' fixed.
-// Gears: contract ratio ω(joint2)=ratio·ω(joint1) mapped to Jolt
-// GearConstraint ratio via r = -1/ratio (see GearConstraint.h).
+// Gears: contract ratio ω(joint2)=ratio·ω(joint1) mapped to a Jolt
+// GearConstraint between the two gear bodies, r = -1/ratio (see GearConstraint.h).
 // Collisions v1: dynamic-dynamic disabled, dynamic-static enabled.
 // Motors: velocity / position (as velocity controller for unwrapped angle)
 // / coast / brake / hold, torque limited to ±maxTorqueNm.
@@ -55,6 +55,23 @@ const perpForAxis = axis => {
     return [px / len, py / len, pz / len];
 };
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+/**
+ * Box convex radius (metres), as for cylinders: a quarter of the thinnest half
+ * extent, at most 0.5 mm. Jolt keeps the box's outer extents and rounds its
+ * edges. With radius 0 (until 2026-10-17) box-vs-box contacts were found only
+ * once the boxes were deep inside each other (measured: a liftarm swinging into
+ * an obstacle passed 45° through it before anything pushed back).
+ */
+const boxConvexRadius = halfExtents => Math.min(0.0005, 0.25 * Math.min(...halfExtents));
+
+/**
+ * Solver velocity iterations for an island holding a gear (Jolt's default is
+ * 10, kept for everything else). A load on a gear train reaches the motor
+ * through motor → gear → contact; with 10 iterations that chain did not
+ * converge and an arm on a driven 24T swung straight through a static obstacle
+ * (measured); from 15 up it is stopped, 30 stops it within 2° of first touch.
+ */
+const GEAR_VELOCITY_STEPS = 30;
 
 export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
     const problems = validateCompiledMechanism(mechanism);
@@ -62,7 +79,12 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
     const dtFixed = 1 / stepHz;
     const LAYER_DYNAMIC = 0;
     const LAYER_STATIC = 1;
-    const NUM_OBJECT_LAYERS = 2;
+    // A static body made of model parts is the machine's own fixed frame (a
+    // gearbox clamped to the bench): like two moving parts of one machine, it
+    // does not collide with the machine's moving parts (an axle turns inside the
+    // frame's hole). The ground and obstacles carry no parts and stay LAYER_STATIC.
+    const LAYER_FRAME = 2;
+    const NUM_OBJECT_LAYERS = 3;
 
     const joltSettings = new J.JoltSettings();
     const maxBodies = Math.max(32, mechanism.bodies.length + 16);
@@ -74,10 +96,14 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
     objectLayerPairFilter.DisableCollision(LAYER_DYNAMIC, LAYER_DYNAMIC);
     objectLayerPairFilter.EnableCollision(LAYER_DYNAMIC, LAYER_STATIC);
     objectLayerPairFilter.DisableCollision(LAYER_STATIC, LAYER_STATIC);
+    objectLayerPairFilter.DisableCollision(LAYER_FRAME, LAYER_DYNAMIC);
+    objectLayerPairFilter.DisableCollision(LAYER_FRAME, LAYER_STATIC);
+    objectLayerPairFilter.DisableCollision(LAYER_FRAME, LAYER_FRAME);
 
     const bpInterface = new J.BroadPhaseLayerInterfaceTable(NUM_OBJECT_LAYERS, 2);
     bpInterface.MapObjectToBroadPhaseLayer(LAYER_DYNAMIC, new J.BroadPhaseLayer(0));
     bpInterface.MapObjectToBroadPhaseLayer(LAYER_STATIC, new J.BroadPhaseLayer(1));
+    bpInterface.MapObjectToBroadPhaseLayer(LAYER_FRAME, new J.BroadPhaseLayer(1));
 
     const ovbFilter = new J.ObjectVsBroadPhaseLayerFilterTable(bpInterface, 2, objectLayerPairFilter, NUM_OBJECT_LAYERS);
 
@@ -134,7 +160,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
         if (b.colliders.length === 1 && !b.colliders[0].position && !b.colliders[0].rotation) {
             const col = b.colliders[0];
             if (col.shape === 'box') {
-                shape = new J.BoxShape(new J.Vec3(...col.halfExtents), 0.0);
+                shape = new J.BoxShape(new J.Vec3(...col.halfExtents), boxConvexRadius(col.halfExtents));
             } else if (col.shape === 'cylinder') {
                 const convexRadius = Math.min(0.0005, 0.25 * Math.min(col.halfHeight, col.radius));
                 shape = new J.CylinderShape(col.halfHeight, col.radius, convexRadius);
@@ -148,7 +174,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
                 const rot = col.rotation ? new J.Quat(...col.rotation) : new J.Quat(0, 0, 0, 1);
                 let shapeSettings = null;
                 if (col.shape === 'box') {
-                    shapeSettings = new J.BoxShapeSettings(new J.Vec3(...col.halfExtents), 0.0);
+                    shapeSettings = new J.BoxShapeSettings(new J.Vec3(...col.halfExtents), boxConvexRadius(col.halfExtents));
                 } else if (col.shape === 'cylinder') {
                     const convexRadius = Math.min(0.0005, 0.25 * Math.min(col.halfHeight, col.radius));
                     shapeSettings = new J.CylinderShapeSettings(col.halfHeight, col.radius, convexRadius);
@@ -174,7 +200,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
         const posR = new J.RVec3(...b.position);
         const rotQ = new J.Quat(...b.rotation);
         const motionType = b.motion === 'static' ? J.EMotionType_Static : J.EMotionType_Dynamic;
-        const layer = motionType === J.EMotionType_Static ? LAYER_STATIC : LAYER_DYNAMIC;
+        const layer = motionType !== J.EMotionType_Static ? LAYER_DYNAMIC : (b.parts.length > 0 ? LAYER_FRAME : LAYER_STATIC);
         const bcs = new J.BodyCreationSettings(shape, posR, rotQ, motionType, layer);
         J.destroy(posR);
         J.destroy(rotQ);
@@ -299,12 +325,53 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
         } else throw new Error(`unknown joint type ${j.type}`);
     }
 
+    // Gears are Jolt GearConstraints between the two GEAR bodies, so the mesh
+    // works both ways: a load on the driven gear (an obstacle, a heavy arm) comes
+    // back through the teeth to the driving motor and can stall it. (Until
+    // 2026-10-17 a gear was a velocity servo on the driven hinge with an
+    // unlimited torque: the motor never felt its load, and which hinge drove
+    // which depended on joint id order.)
+    //
+    // The two hinges of a mesh share the frame body that holds both axles
+    // (mech/gears.js only couples such pairs); the gear body of each hinge is
+    // its other body. A gear on the hinge's body2 turns by +ω about the hinge
+    // axis, one on body1 by −ω, so Jolt gets the signed axes a = s·axis and
+    // ω1·a1 + r·ω2·a2 = 0 (GearConstraintPart) gives ω(joint2) = −ω(joint1)/r:
+    // r = −1/ratio. Jolt 1.1.0's gear constraint diverges (NaN within a few
+    // steps, measured) for a negative r or r < 1 (e.g. ratio −3 or +1/3), so the
+    // pair is ordered to make |ratio| ≤ 1 and a positive ratio is expressed by
+    // flipping axis 2: r = 1/|ratio| ≥ 1 always. Jolt constrains the gear bodies' WORLD rotation rates: exact
+    // while the frame does not turn about the gear axes (a gearbox clamped or
+    // standing still); on a frame that itself turns about them the coupling is
+    // off by that frame rate (documented in docs/SIM-LAB.md).
     const gearInfos = [];
     for (const g of mechanism.gears) {
         if (g.type === 'gear') {
             const j1 = jointMap.get(g.joint1);
             const j2 = jointMap.get(g.joint2);
             if (!j1 || !j2) throw new Error(`gear ${g.id} joint not found`);
+            if (j1.type !== 'hinge' || j2.type !== 'hinge') throw new Error(`gear ${g.id} must couple two hinges`);
+            const shared = [j1.body1, j1.body2].find(b => b === j2.body1 || b === j2.body2);
+            const gearSide = j => {
+                // No shared frame (a hand-built mechanism): the gear is the hinge's body2.
+                if (shared === undefined || j.body1 === j.body2) return { body: j.body2, sign: 1 };
+                return j.body2 === shared ? { body: j.body1, sign: -1 } : { body: j.body2, sign: 1 };
+            };
+            let A = { j: j1, side: gearSide(j1) };
+            let B = { j: j2, side: gearSide(j2) };
+            let ratio = g.ratio;
+            if (Math.abs(ratio) > 1) { [A, B] = [B, A]; ratio = 1 / ratio; }
+            const gs = new J.GearConstraintSettings();
+            gs.mSpace = J.EConstraintSpace_WorldSpace;
+            const flip = ratio > 0 ? -1 : 1;
+            gs.mHingeAxis1 = new J.Vec3(...A.j.axis.map(v => v * A.side.sign));
+            gs.mHingeAxis2 = new J.Vec3(...B.j.axis.map(v => v * B.side.sign * flip));
+            gs.mRatio = 1 / Math.abs(ratio);
+            gs.mNumVelocityStepsOverride = GEAR_VELOCITY_STEPS;
+            const constraint = gs.Create(getBodyForId(A.side.body), getBodyForId(B.side.body));
+            physicsSystem.AddConstraint(constraint);
+            allConstraints.push(constraint);
+            J.destroy(gs);
             gearInfos.push({ type: 'gear', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
         } else if (g.type === 'rackAndPinion') {
             gearInfos.push(g);
@@ -371,19 +438,6 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
                     const desired = clamp(err * entry.kp, -lim, lim);
                     entry.hinge.SetTargetAngularVelocity(desired);
                     if (entry.hinge.GetMotorState() !== J.EMotorState_Velocity) entry.hinge.SetMotorState(J.EMotorState_Velocity);
-                }
-                for (const g of gearInfos) {
-                    if (g.type === 'gear') {
-                        const driving = hingeMap.get(g.joint1);
-                        const driven = hingeMap.get(g.joint2);
-                        if (!driving || !driven) continue;
-                        const desired = g.ratio * driving.velocity;
-                        const lim = driven.maxSpeed || 30;
-                        const clamped = clamp(desired, -lim, lim);
-                        // console.log(`gear ${g.id} driving ${driving.velocity.toFixed(3)} desired ${desired.toFixed(3)} clamped ${clamped.toFixed(3)}`);
-                        driven.hinge.SetTargetAngularVelocity(clamped);
-                        if (driven.hinge.GetMotorState() !== J.EMotorState_Velocity) driven.hinge.SetMotorState(J.EMotorState_Velocity);
-                    }
                 }
                 joltInterface.Step(dtFixed, 1);
                 timeSteps += 1;
