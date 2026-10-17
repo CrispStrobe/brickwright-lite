@@ -112,11 +112,16 @@ iPad/hub physical acceptance remains separately pending device availability.
 
 ## A12 — Circuit Playground Express MakeCode translator — 2026-10-16
 
-CLAIMED — Codex CPX translator lane, isolated worktree
-`wt-lite-a12-cpx-makecode-20261016`, branch `lane/a12-cpx-makecode-20261016`.
-Base `8da2afe2fe64f9301f9045796317e241314a26b5`. Contract: task A12 in
-[the owner-selected queue](docs/OPEN-TASKS-2026-09-29.md), following the delivered
-[A9 device world](docs/A9-CPX-SCOPING.md).
+DONE — Codex CPX translator lane. [PR1009](https://github.com/CrispStrobe/brickwright-lite/pull/1009)
+merged as `e0b89072` on 2026-10-16, with reviewed source `16dda603`.
+All 11 enabled exact-head checks passed; deploy and verify-gui were declared
+conditional skips. Both complete unit shards passed, including all fifteen
+CPX comparisons and the zero-raw-stdout census. Ten programs match exactly;
+five separately named controls enforce both exact documented timing boundaries.
+The complete actual CPX browser journey passed import, original-source export
+and simulation, native Start, button A and Shake. The reviewed merge preserves
+newer peer work, with landed parents and tree matching the prediction.
+[Behaviour, evidence and limits](docs/A12-CPX-TRANSLATOR.md).
 
 Own a new `overlay/scratch-gui/src/lib/bw-makecode/adafruit-translate.js`;
 CPX-only target inference/import dispatch in that directory's `index.js`;
@@ -131,7 +136,10 @@ browser controls in the existing MakeCode verifier, and
 Also own only gesture/acceleration input injection in the existing
 `scripts/lib/{makecode-adafruit-sim,cpx-extension-run}.mjs` test helpers, so the
 same scheduled inputs reach each original device implementation. Existing
-clock, snapshots, sound decoding and comparisons remain unchanged. Existing
+clock, snapshots and sound decoding remain unchanged. Ten comparisons require
+exact equality; five named runtime-boundary tests assert both exact recorded
+sides at five exceptional frames and two tone sequences, with equality at all
+other captures. These explicit limits do not claim timing parity. Existing
 CPX event hats are preferred to invented polling when they express the source
 handler exactly; dynamic registration and unsupported event semantics stay
 named refusals.
@@ -5671,6 +5679,28 @@ integrations qualify and land; reconcile current main before that final head.
 No new runtime, translator, engine, firmware, physical acceptance or workflow
 budget scope is added. Merge this claim before composing/adopting the graph.
 
+## Owned Sprite callback fields and handler-record transport — 2026-10-16
+
+PROPOSED COORDINATED EXTENSION — Codex, source ownership for the existing
+[owned Sprite callback contract](docs/ARCADE-SPRITE-HANDLER-RECORD-EXTENSION.md#proposed-coordinated-sprite-handler-record-extension)
+and [handler-record Array contract](docs/ARCADE-SPRITE-HANDLER-RECORD-EXTENSION.md#proposed-coordinated-sprite-record-subset).
+Implementation waits for this amendment's normal qualified merge. Coordinate
+Sprite/class-callable, managed lifetime, handler-Array, current-export and
+translator owners; preserve their existing complete bodies and diagnostics.
+Own the exact narrow helper/shared-hook envelope in the contracts: actual
+existing owned Sprite values/bridge and source-producer extension (no parallel
+owner), constructor parameter-property metadata
+and ordered writes, callback field/all-writer/receiver/result proof, and only
+then one concrete ordinary handler Array and its exact owned Scene registry
+entry with that same Sprite callback domain. The implementation depends on the
+qualified integration foundation; this docs claim does not adopt pending source.
+No ID-string/annotation/name grant, generic SDK values, class partition, new
+word/reference kind, pin adoption or scheduler change is implicit. The existing
+no-SDK-values collection boundary remains until the corresponding foundation
+qualifies. Source/current Blocks, native lifecycle, saved/current-export,
+selected-original and visible GUI qualification are separate required gates;
+no library/game or corpus promotion follows from a foundational holder control.
+
 ## Circuit File actions with a cached but unmounted designer — 2026-10-16
 
 CLAIMED — Codex root, isolated `/tmp/brickwright-circuit-file-wake-20261016`,
@@ -5700,6 +5730,29 @@ and require actual menu-driven download/import and focused omitted-wake and
 omitted-replay negatives; no direct VM state injection or invented output.
 Merge this claim before implementation. Source merge requires all enabled
 exact-head CI, with normal composition preserving the pending A13 CPX bridge.
+
+### Current Array mandatory ordinary callee initialization — extension
+
+PROPOSED / DOCUMENTATION ONLY — Codex Arcade integration, coordinated with the
+current Array receiver authority and shared-frame owners. Merge this extension
+before product implementation. Contract:
+[current Array callee initialization](docs/ARCADE-ARRAY-CALLEE-INITIALIZATION.md).
+
+Own narrow `array-reference-export-authority.js` proofs for mandatory ordinary
+callee global Array writes and exact later caller/registration availability.
+Own focused controls and the contract; coordinate matching existing helpers
+explicitly. Prove the actual allocation and complete all-writer, call-target,
+frame, operand, completion, branch, recursion, alias, yield/reentry and currentness
+obligations. Uncertain paths retain named diagnostics and ordinary source.
+Preserve every allocation, body, effect and current Code/Blocks/SB3/export/reimport
+result. Existing index, nested-Array and element-presence proofs stay unchanged.
+
+No shared-frame effect boolean grants generic values, resources or presence.
+No annotation/default change, synthetic length/index, new numeric evaluator,
+source replacement, callback simulation, new domain/ABI, runtime, supplier/pin or
+workflow changes. Require affected clean genuine guest qualification in addition
+to current public roundtrip and adversarial graph controls. Pending unrelated
+handler/value claims confer no authority here.
 
 ## Release 0.1.24 ownership and qualified TestFlight follow-through — 2026-10-16
 
