@@ -1,7 +1,7 @@
 ## C9 — AVR instruction-cost layout investigation — 2026-10-17
 
 HANDOFF READY — diagnostic producer delivery is complete; a fresh agent may
-continue C9.1–C9.2 within this scope. Keep qualified controller branch
+continue C9.2 within this scope; C9.1 intake is complete. Keep qualified controller branch
 `lane/c9-avr-layout-20261017` frozen in the owned LabWired Core fork. This is the C9 measurement/explanation
 lane, independent
 of A13, the SAMD replacement work and the existing C10/STM32 adoption owners.
@@ -34,11 +34,13 @@ rebaselining, repeated unchanged run or release/physical-timing claim.
 Diagnostic source delivered in [Core PR248](https://github.com/CrispStrobe/labwired-core/pull/248),
 merge `5b470d61`; investigation remains open. Continue only
 [run 39001605287](https://github.com/CrispStrobe/labwired-core/actions/runs/39001605287) at qualified controller `2201716d`.
-At the 06:19 UTC checkpoint, pre-sync and sync succeeded; current was running
-and retained upstream was queued. Refresh event and all children before intake. Do not
-redispatch, replay a guest, or reacquire a successful original. Reuse retained
-originals and the frozen independent reader; preserve failures and admit all
-four sources before comparison. Follow the [Core C9.1–C9.3 handoff](https://github.com/CrispStrobe/labwired-core/blob/main/docs/engineering/avr-layout-cost.md#pending-tasks-and-acceptance)
+All four source jobs and the independent source/cohort audits passed. The four
+archives/logs were acquired once; **reuse retained originals, never download or
+dispatch again**. C9.1 is complete. Measured step costs are pre-sync 913.558531,
+sync 987.746057, current 1004.746098 and retained upstream 995.746146 Ir/step.
+The [Core results and C9.2–C9.3 handoff](https://github.com/CrispStrobe/labwired-core/blob/main/docs/engineering/avr-layout-cost.md#pending-tasks-and-acceptance)
+identify shared advance/time functions and scope the remaining causal/codegen
+review and separate implementation decision. Follow that contract
 for exact intake, attribution and decision acceptance. No optimization, baseline,
 profile, engine release or Lite pin change is included in this delivered phase.
 
