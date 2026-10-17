@@ -1,3 +1,11 @@
+# Current handoff — 2026-10-17
+
+See [WeDo/iPad integration handoff](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md) for current delivery status and scoped next actions; [LANES.md](LANES.md) governs ownership. Machine-specific context is in gitignored `CLAUDE.md`.
+
+The August record below is historical, not the current task queue.
+
+---
+
 # bw-bundle handoff — 2026-08-15 (session 8, continued)
 
 ## What was done this session (42 tasks, all pushed)

@@ -60,7 +60,7 @@ in S1.
 
 ## iOS embedded frontend packaging — 2026-10-16
 
-DONE candidate — Codex root, isolated `/tmp/brickwright-ios-assets-20261016`, branch
+DONE candidate — Codex root, isolated `local receipt/worktree (see ignored local handoff)`, branch
 `lane/ios-embedded-assets-only-20261016`, base main `664a37b57`.
 The user requested a smaller iPad build and continued coding. The signed
 192.21 MiB app contains an 82.45 MiB executable (76.21 MB of __const) plus
@@ -91,7 +91,7 @@ exact-head hosted checks remain required before source merge.
 
 ## Compose STM32 PR975 after circuit PR965 — 2026-10-16
 
-DONE candidate / QUALIFICATION PENDING — Codex root, isolated `/tmp/brickwright-stm32-compose-20261016`,
+DONE candidate / QUALIFICATION PENDING — Codex root, isolated `local receipt/worktree (see ignored local handoff)`,
 branch `lane/stm32-compose-20261016`, base main `5cb83052330b400b48293315260cb4293b4f6bcf`.
 The user explicitly requested completion of these integrations in order. PR965
 is now merged; a read-only merge of PR975 `943d540c7` reports thirteen conflicts.
@@ -163,7 +163,7 @@ and protocol. This resolves through the GUI's native dependency scope, without
 new scope exemptions or suppressed diagnostics. All88 affected controls pass,
 zero skips/failures/raw stdout; the unchanged GUI boundary checker also passes.
 Retain original hosted failures and initial boundary log; final TAP+census are
-`/tmp/brickwright-simlab-final.{tap,census.json}`. Installed-source verification
+`local TAP/census receipts (see ignored local handoff)`. Installed-source verification
 is in progress; final source-head CI still gates the integration merge.
 
 Main reconciliation (2026-10-17): compose the qualified Sim Lab GUI PR1030
@@ -180,14 +180,14 @@ simulator execution and the fresh source-head qualification remain pending.
 Final reconciled controls: 100 passed, zero failures/skips/raw stdout; GUI
 dependency boundary passes. Fresh canonical dependency preparation and installed
 root/GUI exact-source provenance plus single-engine resolution pass. Retain
-`/tmp/brickwright-stm32-reconciled.{tap,census.json,gui-scope.tsv}` and the
+`local TAP/census and GUI-scope receipts (see ignored local handoff)` and the
 provenance log. Internal npm scratch exhaustion was repaired using task-specific
 external npm cache/temporary directories; package pins and assertions unchanged.
 All enabled checks on this final composed source head remain required to land.
 
 ## A13 — CPX live circuit face adoption — 2026-10-16
 
-DONE candidate / final qualification pending — Codex root, isolated `/tmp/brickwright-lite-a13-20261016`, branch
+DONE candidate / final qualification pending — Codex root, isolated `local receipt/worktree (see ignored local handoff)`, branch
 `lane/a13-cpx-face-adoption-20261016`. User requested this after the iOS and
 existing integrations. Supplier: bw-circuit-ui PR85, published claim 796bd2c.
 Preserve PR965/975's serialized dependency ownership and all newer main pins.
@@ -586,7 +586,7 @@ local production compilation is qualified separately.
 ## iOS redundant static archive packaging — 2026-10-15
 
 DONE — Codex, isolated `fix/ios-static-archive-resources-20261015` in
-`/tmp/brickwright-ios-size-fix`, base `86daec14c`. User requested shrinking the
+`local receipt/worktree (see ignored local handoff)`, base `86daec14c`. User requested shrinking the
 current iPad app. Measured signed bundle: 371.43 MiB, including 151.98 MiB
 `libapp.a` copied as a resource despite already being linked into the executable.
 
@@ -605,7 +605,7 @@ archive; signature verification passes.
 ## iOS shared validator compilation blocker — 2026-10-15
 
 CLAIMED — Codex, isolated `fix/ios-shared-validators-20261015` in
-`/tmp/brickwright-ios-validator-fix`, base `10edc699d`. Bounded build repair
+`local receipt/worktree (see ignored local handoff)`, base `10edc699d`. Bounded build repair
 found while fulfilling the user-requested current iPad deployment.
 
 Envelope: this ledger and only the module declarations for `arena_inputs` and
@@ -614,7 +614,7 @@ pure JSON validators already called by the shared `native_policy` core; their
 current desktop gates cause eight E0433 errors on `aarch64-apple-ios`. Keep all
 native commands, adapters, supervisors and platform integrations gated exactly
 as before. Verify by the real signed iOS build, whose baseline failure is in
-`/tmp/brickwright-rust-prebuild.log`. No simulator behavior or policy admission
+`local receipt/worktree (see ignored local handoff)`. No simulator behavior or policy admission
 rules change. Claim lands before implementation.
 
 ## WeDo 88005 lights and piezo note adoption — 2026-10-15
@@ -5701,7 +5701,7 @@ execution, mode-aware disassembler, physical timing, whole-OS or release claim.
 
 ## A13 CPX production browser gate registration — 2026-10-16
 
-DONE candidate — Codex, isolated worktree `/tmp/brickwright-lite-a13-20261016`,
+DONE candidate — Codex, isolated worktree `local receipt/worktree (see ignored local handoff)`,
 branch `lane/a13-cpx-face-adoption-20261016`; amendment based on canonical
 `d544efb23`. Merge this claim before implementation. Extend the existing A13
 claim only to `.github/workflows/build.yml` for a standalone light-shard CPX
@@ -5725,7 +5725,7 @@ merged as `e1e5bc30b`. The canonical writer added exactly one zero-reading gate;
 all previous measurements and budgets remain byte-for-byte unchanged. Genuine
 Node22.23.3 focused gate coverage, budget, timeout, CI census, wait census, build
 trigger and CPX host/dock controls pass: 59 tests, zero failures or skips
-(`/tmp/brickwright-a13-ci-registration.log`). Final hosted qualification remains
+(`local receipt/worktree (see ignored local handoff)`). Final hosted qualification remains
 with the eventual immutable supplier adoption; this registration alone does not
 claim a passing full application face journey.
 
@@ -5734,13 +5734,13 @@ success or failure, and write observations before closing Chromium. A refused
 navigation still exits nonzero and emits both files. The unchanged production
 build `022807d` remains correctly red: its actual native program emits ten red
 pixels with zero page errors, but no CPX circuit board is seated; the JSON and
-viewed screenshot record that exact missing face (`/tmp/brickwright-a13-gate-baseline/`).
+viewed screenshot record that exact missing face (`local receipt/worktree (see ignored local handoff)`).
 This is a negative baseline, not final adoption acceptance. Fourteen host/dock
 controls and the script syntax check pass after the diagnostic change.
 ## STM32 composition: original 386 boot register reader — 2026-10-16
 
 DONE candidate — Codex root, branch `lane/stm32-compose-20261016`, isolated
-`/tmp/brickwright-stm32-compose-20261016`, amendment based on main `e1e5bc30b`.
+`local receipt/worktree (see ignored local handoff)`, amendment based on main `e1e5bc30b`.
 Merge this claim before changing the existing synthetic boot assertion in
 `scripts/verify-i80386-local-hdd-gui.mjs`: read the selected supplier's `edi`
 instead of absent `di`, retaining equality to42, exact halted/PC/canvas checks
@@ -5766,13 +5766,13 @@ passes using the same selected Boardf84, owned disk SHA256
 `f9e63c15c20fc87058d053c3badbc0d146206543af0dc2af7a7e05537184474a`
 and unchanged config: halted PC31770, VGA720×400, actual guest pixels equal the
 video frame, nonblack marker and zero browser errors. Receipt and screenshot:
-`/tmp/brickwright-stm32-hdd-fixed.log`, `/tmp/brickwright-stm32-hdd-fixed.png`.
+`local receipt/worktree (see ignored local handoff)`, `local receipt/worktree (see ignored local handoff)`.
 The failed original is the regression negative; no duplicate source-spelling
 test is added for this one-line reader fix. One automatic fresh final-head CI
 set remains required before PR1017 merges; original PR975 remains untouched.
 ## CPX translator qualification diagnostic transport — 2026-10-16
 
-RELEASED — completed by the existing CPX owner; verified by Codex root, isolated `/tmp/brickwright-cpx-compose-20261016`,
+RELEASED — completed by the existing CPX owner; verified by Codex root, isolated `local receipt/worktree (see ignored local handoff)`,
 branch `lane/cpx-qualification-compose-20261016`, supplier consumer source
 PR1009 at `9fbc8d97e87c6c6c9ee74d71c7ceae96996d5d4a`, base main `8fe41c722`.
 The user requested continued coding through the ordered integrations. Preserve
@@ -5804,15 +5804,15 @@ unchanged executable tree passes all74 focused CPX/import/export checks under
 genuine Node22.23.3 and the actual TAP plus census reporters. All15 behaviour
 cases are accounted for, zero raw stdout bytes or skips, and all108 diagnostic
 lines are byte-for-byte identical to the proposed repair's passing trace.
-Receipts: `/tmp/brickwright-cpx-owner-diagnostics.tap` and
-`/tmp/brickwright-cpx-owner-diagnostics-census.json`. Hosted final-head CI still
+Receipts: `local receipt/worktree (see ignored local handoff)` and
+`local receipt/worktree (see ignored local handoff)`. Hosted final-head CI still
 qualifies PR1009; five documented timing limits remain limits, not parity.
 This narrow diagnostic claim is released; no translator ownership is retained.
 
 ## A13 local combined graph preparation — 2026-10-16
 
 DONE candidate / main landing pending — Codex root, existing isolated A13 worktree and branch
-`/tmp/brickwright-lite-a13-20261016`,
+`local receipt/worktree (see ignored local handoff)`,
 `lane/a13-cpx-face-adoption-20261016`, base canonical main `9052eee43`.
 The user again requested continued implementation. Extend only the timing of
 local candidate preparation: normally compose the unchanged existing STM32
@@ -5849,7 +5849,7 @@ TMPDIR=/private/tmp. No product assertion was edited for that platform alias.
 Contract set46/47 passed before the named stale workflow reader repair; affected
 pin-chain and FreeDOS source controls now pass22/22 without skips. Matrix,
 8086 report and part profiles remain current. Logs are
-`/tmp/brickwright-a13-{provenance,combined-focused,combined-contracts,pin-readers-fixed}.log`.
+`local receipt/worktree (see ignored local handoff),combined-focused,combined-contracts,pin-readers-fixed}.log`.
 Production build and actual native-program/face browser qualification are next.
 No final sourcePR/full CI, predecessor merge or physical acceptance is inferred.
 
@@ -5869,9 +5869,9 @@ the Circuit tab active; the attempted Save while Code was active produced no
 download and is retained as a separate menu-routing observation, not fixed or
 claimed here. No product assertion or runtime was changed to make this pass.
 Final focused host/dock/coverage/budget/timeout/wait controls pass45/45 without
-skips. Browser receipt: `/tmp/brickwright-a13-combined-browser-v4/current.json`;
+skips. Browser receipt: `local receipt/worktree (see ignored local handoff)`;
 earlier v1/v2/v3 failures remain retained. Persistent copy under
-`build-artifacts/cpx-20261016-47b91dc/` contains JSON and live/round-trip images.
+`local browser receipt (see ignored local handoff)` contains JSON and live/round-trip images.
 Final source PR/full CI still waits for the ordered earlier hosted integrations.
 D13 and iPad/WeDo physical acceptance remain explicitly open.
 
@@ -5899,7 +5899,7 @@ no library/game or corpus promotion follows from a foundational holder control.
 
 ## Circuit File actions with a cached but unmounted designer — 2026-10-16
 
-DONE candidate / actual qualification pending — Codex root, isolated `/tmp/brickwright-circuit-file-wake-20261016`,
+DONE candidate / actual qualification pending — Codex root, isolated `local receipt/worktree (see ignored local handoff)`,
 branch `fix/circuit-file-wake-20261016`, claim base canonical main `7ce90fc38`.
 Prepare the implementation on the already qualified local combined A13 graph
 `6681f1868`, then reconcile current main, including the independent Sim Lab
@@ -5935,7 +5935,7 @@ receiver retains direct ownership. Preserve the host's last real circuit via
 its existing toJSON/circuitData boundary before remounting: the first production
 probe now reached Save/Open, but retained an honest failure where an immediate
 tab change cancelled upstream debounced autosave and restored1000ohm instead
-of the authored1234ohm. Keep `/tmp/brickwright-file-wake-actual/` and its log.
+of the authored1234ohm. Keep `local receipt/worktree (see ignored local handoff)` and its log.
 This narrow File-operation repair changes no serialization format and does not
 claim a general tab autosave repair.
 
@@ -5954,10 +5954,10 @@ and exactly one download per command. The same journey still exports identical
 Circuitikz from all three views and a truthful1120-row scope CSV: seven actual
 downloads total, zero page errors. The complete eight-step CPX native/face/fresh
 circuit round trip also passes on this build, zero page errors. Final receipts:
-`/tmp/brickwright-file-wake-actual-final/result.json` and
-`/tmp/brickwright-file-wake-cpx-regression/current.json`. Original failed
+`local receipt/worktree (see ignored local handoff)` and
+`local receipt/worktree (see ignored local handoff)`. Original failed
 receipts remain retained. Persistent copies are in
-`build-artifacts/file-menu-20261016-19a7879/`. The final proof-only update adds
+`local browser receipt (see ignored local handoff)`. The final proof-only update adds
 download counting, not product behavior. Keep final main reconciliation and
 exact-head hosted qualification pending; no physical acceptance is inferred.
 
@@ -6067,3 +6067,7 @@ original signed build/upload, Internal and External group assignment and Beta
 App Review receipts from the existing workflows. A queued workflow, unsigned
 build or App Store submission is not a delivery or approval claim. Keep the
 ordered five-task circuit campaign contract independent and unchanged.
+
+### Delivery handoff update — 2026-10-17
+
+Current status and bounded follow-ups: [WeDo/iPad integration handoff](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md). Earlier chronological pending notes above are historical; the current qualified candidate is `3181acdc9df820a3316c1c4cb557d1bffd168400` (92 local controls, ten actual CPX browser steps, real File exports and SimLab motion). PR1017 source qualification and final A13 source landing remain pending; no hardware acceptance is claimed. Machine-specific worktrees and receipts belong only in the ignored local handoff. All other owners retain their claims.
