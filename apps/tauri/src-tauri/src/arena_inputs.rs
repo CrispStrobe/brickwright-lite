@@ -286,12 +286,13 @@ mod hub_tests {
 // Robot Lab lockstep (docs/ROBOT-LAB-SPIKE-EMULATION.md §2.1, §4 R13a). One quantum of
 // virtual time per exchange: the physics shafts and sensor readings at t_k in, the
 // emulator runs [t_k, t_k + quantum]. Closed DTOs: no monitor text, paths or addresses.
-const LOCKSTEP_TICK_US: i64 = 1000;
 const MAX_SAFE_INTEGER: u64 = 9_007_199_254_740_991;
 
-/// A quantum is whole 1 kHz port-model ticks, 1 ms ..= 20 ms.
+/// Exactly the quanta the Runtime admits (renode-spike-prime#59 `QUANTA_US`): one physics
+/// step (5 ms) or two. Anything else would pass here only to be refused there, and a
+/// refused lockstep command ends the feed.
 fn lockstep_quantum(value: &Value) -> bool {
-    integer(value, 1000, 20000) && value.as_i64().is_some_and(|v| v % LOCKSTEP_TICK_US == 0)
+    matches!(value.as_i64(), Some(5000 | 10000)) && value.is_u64()
 }
 
 /// `lockstep.begin {quantumUs}`.
@@ -388,8 +389,11 @@ mod lockstep_tests {
 
     #[test]
     fn lockstep_begin_and_end_are_closed() {
-        for quantum in [1000, 5000, 10000, 20000] {
+        for quantum in [5000, 10000] {
             assert!(valid_lockstep_begin(&json!({"quantumUs": quantum})));
+        }
+        for quantum in [0, 1000, 4000, 4999, 5001, 6000, 7000, 9000, 15000, 20000, -5000] {
+            assert!(!valid_lockstep_begin(&json!({"quantumUs": quantum})), "{quantum}");
         }
         for bad in [json!({}), json!({"quantumUs":999}), json!({"quantumUs":20001}), json!({"quantumUs":7500}),
             json!({"quantumUs":5000.5}), json!({"quantumUs":"5000"}), json!({"quantumUs":5000,"monitor":"start"}),
@@ -425,6 +429,10 @@ mod lockstep_tests {
             ("quantum not whole ticks", Box::new(|v| v["quantumUs"] = json!(7500))),
             ("quantum below", Box::new(|v| v["quantumUs"] = json!(0))),
             ("quantum above", Box::new(|v| v["quantumUs"] = json!(25000))),
+            ("quantum 4000", Box::new(|v| v["quantumUs"] = json!(4000))),
+            ("quantum 6000", Box::new(|v| v["quantumUs"] = json!(6000))),
+            ("quantum 20000", Box::new(|v| v["quantumUs"] = json!(20000))),
+            ("quantum float", Box::new(|v| v["quantumUs"] = json!(5000.0))),
             ("negative clock", Box::new(|v| v["expectClockNs"] = json!(-1))),
             ("float clock", Box::new(|v| v["expectClockNs"] = json!(1.5))),
             ("unsafe clock", Box::new(|v| v["expectClockNs"] = json!(MAX_SAFE_INTEGER + 1))),

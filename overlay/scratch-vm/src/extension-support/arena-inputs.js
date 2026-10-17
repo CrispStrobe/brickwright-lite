@@ -56,9 +56,9 @@ module.exports.validNuttxPacket = value => {
 };
 
 // Robot Lab lockstep (docs/ROBOT-LAB-SPIKE-EMULATION.md §2.1, R13a), as closed as the
-// native validator (arena_inputs.rs valid_lockstep_*): whole 1 ms ticks, 1–20 ms quanta;
-// each port A–F at most once across shafts and sensors; sensors as `arena.inputs`.
-const lockstepQuantum = value => integer(value, 1000, 20000) && value % 1000 === 0;
+// native validator (arena_inputs.rs valid_lockstep_*): exactly the Runtime's quanta
+// (5 or 10 ms); each port A–F at most once across shafts and sensors; sensors as `arena.inputs`.
+const lockstepQuantum = value => value === 5000 || value === 10000;
 const validHubInput = hub => keys(hub, ['buttons', 'imuRaw']) &&
     keys(hub.buttons, ['left', 'center', 'right', 'bluetooth']) &&
     ['left', 'center', 'right', 'bluetooth'].every(name => typeof hub.buttons[name] === 'boolean') &&

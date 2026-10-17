@@ -1358,8 +1358,11 @@ mod tests {
             let lease = state.issue_broker_lease(BROKER_LABEL, 7, id(index as u8 + 50)).unwrap();
             assert!(state.consume_broker_call(BROKER_LABEL, lease, 0, name, "renode/spike-prime", &args).is_ok());
         }
-        assert!(!Operation::RenodeSpikeLockstepStep.valid_args(&json!({"quantumUs":7500,
-            "expectClockNs":0,"shafts":[],"sensors":[]})));
+        for quantum in [4000, 6000, 7500, 20000] {
+            assert!(!Operation::RenodeSpikeLockstepStep.valid_args(&json!({"quantumUs":quantum,
+                "expectClockNs":0,"shafts":[],"sensors":[]})));
+            assert!(!Operation::RenodeSpikeLockstepBegin.valid_args(&json!({"quantumUs":quantum})));
+        }
         assert!(!Operation::RenodeSpikeLockstepBegin.valid_args(&empty()));
         for name in ["renode.spike.lockstep", "renode.spike.lockstep.run", "renode.ev3.lockstep.step"] {
             assert!(Operation::parse(name).is_none());
