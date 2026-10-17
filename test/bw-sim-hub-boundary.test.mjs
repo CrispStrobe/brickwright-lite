@@ -96,8 +96,9 @@ test('hub profiles validate, and the registry takes a family as data + one modul
     assert.equal(hubRegistry.has('test-two-port'), false, 'the built-in registry is not changed by a test\'s');
 });
 
-test('a two-port pwm hub drives the S1 base forward; its encoder counts are the measured hinge angles', async () => {
+test('a two-port pwm hub drives the S1 base forward; its encoder counts are the measured hinge angles', async t => {
     const r = await drive({seconds: 1, script: hub => { hub.setOutput('A', -1); hub.setOutput('B', 1); }});
+    t.diagnostic(`1 s at duty 1 (9 V): ${r.dz.toFixed(3)} m along z, ${r.dx.toFixed(4)} m sideways, heading ${r.hub.headingDeg.toFixed(2)}°`);
     // Forward is away from the castor: world -z (test/bw-sim-s1-driving-base.test.mjs).
     assert.ok(r.dz < -0.3, `moved ${r.dz.toFixed(3)} m along z`);
     assert.ok(Math.abs(r.dx) < 0.05 * Math.abs(r.dz), `drifted ${r.dx.toFixed(3)} m sideways`);
@@ -111,7 +112,7 @@ test('a two-port pwm hub drives the S1 base forward; its encoder counts are the 
     assert.equal(r.hub.publishes, 1000 / 50, 'and published once per tick');
 });
 
-test('the pwm drive path: half the duty, half the speed; coast and brake stop the wheels as the DC model predicts', async () => {
+test('the pwm drive path: half the duty, half the speed; coast and brake stop the wheels as the DC model predicts', async tc => {
     const full = await drive({seconds: 1, script: hub => { hub.setOutput('A', -1); hub.setOutput('B', 1); }});
     const half = await drive({seconds: 1, script: hub => { hub.setOutput('A', -0.5); hub.setOutput('B', 0.5); }});
     // The DC line ω = ω0·(u − τ_load/τs) with u ∝ duty: half the duty gives
@@ -121,6 +122,8 @@ test('the pwm drive path: half the duty, half the speed; coast and brake stop th
         assert.ok(Math.abs(ratio - 0.5) < 0.05, `port ${port}: wheel speed ratio ${ratio.toFixed(3)} at half duty`);
     }
     const travel = along(half.start, half.end) / along(full.start, full.end);
+    tc.diagnostic(`half duty: speed ratio A ${(half.hub.speeds.A / full.hub.speeds.A).toFixed(3)}, B ${(half.hub.speeds.B / full.hub.speeds.B).toFixed(3)}, ` +
+        `travel ${travel.toFixed(3)}`);
     assert.ok(travel > 0.4 && travel < 0.6, `half duty went ${travel.toFixed(3)} of the distance`);
     // Drive 0.6 s, then duty 0: how far do the wheels turn in the 50 ms after the stop?
     // Predicted from the DC model (devices/dc-motors.js) and the base, not from a run. Each
@@ -157,6 +160,8 @@ test('the pwm drive path: half the duty, half the speed; coast and brake stop th
         `coasting, wheel B turned ${(coast.afterStop * DEG).toFixed(1)}° in 50 ms; predicted ${(coastPredicted * DEG).toFixed(1)}°`);
     const tau = I / b;
     const high = brake.speedAtStop * tau * (1 - Math.exp(-t / tau));
+    tc.diagnostic(`coast ${(coast.afterStop * DEG).toFixed(1)}° in 50 ms (predicted ${(coastPredicted * DEG).toFixed(1)}°); ` +
+        `brake ${(brake.afterStop * DEG).toFixed(1)}° (at most ${(high * DEG).toFixed(1)}°)`);
     assert.ok(brake.afterStop > 0 && brake.afterStop < 1.1 * high,
         `braked, wheel B turned ${(brake.afterStop * DEG).toFixed(1)}° in 50 ms; predicted at most ${(high * DEG).toFixed(1)}°`);
     assert.ok(coast.afterStop > brake.afterStop, 'the shorted winding stops the wheel sooner than the open one');

@@ -108,19 +108,20 @@ const loadTorque = (device, torqueNm) => ({mode: 'torque', torqueNm,
 for (const [name, device, deviceId] of MOTORS) {
     const {noLoadRadPerSec: w0, stallTorqueNm: ts, rotorInertiaKgM2: Jr, frictionTorqueNm: tf} = device.motor;
 
-    test(`(a) ${name}: no-load speed at duty 1 and 0.5 is ω0·u within 3 %`, () => {
+    test(`(a) ${name}: no-load speed at duty 1 and 0.5 is ω0·u within 3 %`, t => {
         for (const duty of [1, 0.5]) {
             const r = rig({device, deviceId});
             // Time constant (J + I)/b ≈ 40–50 ms: after 1 s the speed has settled.
             const speeds = runDuty(r, device, duty, 200);
             r.core.destroy();
             const measured = speeds.at(-1);
+            t.diagnostic(`duty ${duty}: ${(measured * DEG).toFixed(1)} °/s (ω0·u ${(w0 * duty * DEG).toFixed(1)} °/s)`);
             assert.ok(Math.abs(measured - w0 * duty) < 0.03 * w0 * duty,
                 `duty ${duty}: ${(measured * DEG).toFixed(1)} °/s vs ω0·u = ${(w0 * duty * DEG).toFixed(1)} °/s`);
         }
     });
 
-    test(`(b) ${name}: the stall torque holds an arm whose weight is within 3 % of τs`, () => {
+    test(`(b) ${name}: the stall torque holds an arm whose weight is within 3 % of τs`, t => {
         // An arm with its centre of mass L = 40 mm out on a horizontal axis, level at the start:
         // gravity pulls it down with m·g·L, the motor at duty 1 and standstill pushes it up with
         // τs. 3 % lighter than the stall torque it rises, 3 % heavier it falls.
@@ -134,11 +135,12 @@ for (const [name, device, deviceId] of MOTORS) {
         };
         const lighter = angleAfter(0.97);
         const heavier = angleAfter(1.03);
+        t.diagnostic(`τs ${(ts * 100).toFixed(2)} N·cm: arm at 0.97·τs ${lighter.toFixed(2)}°, at 1.03·τs ${heavier.toFixed(2)}°`);
         assert.ok(lighter > 0, `an arm 3 % under the stall torque rose: ${lighter.toFixed(2)}°`);
         assert.ok(heavier < 0, `an arm 3 % over the stall torque fell: ${heavier.toFixed(2)}°`);
     });
 
-    test(`(c) ${name}: brake stops a 20 g·cm² flywheel sooner than coast, each as predicted`, () => {
+    test(`(c) ${name}: brake stops a 20 g·cm² flywheel sooner than coast, each as predicted`, t => {
         const disc = {massKg: 0.04, radius: 0.01};
         const I = discInertia(disc) + Jr;
         const timeTo10 = decay => {
@@ -166,11 +168,13 @@ for (const [name, device, deviceId] of MOTORS) {
         assert.ok(Math.abs(brake.seconds - continuous) <= 0.15 * continuous, `brake: ${brake.seconds} s vs ${continuous.toFixed(3)} s`);
         // Coast: the gearbox friction decelerates linearly, to 10 % after 0.9·ω·I/τf.
         const coastPredicted = 0.9 * coast.w * I / tf;
+        t.diagnostic(`brake ${brake.seconds.toFixed(3)} s (${steps} steps; τ·ln 10 ${continuous.toFixed(3)} s), coast ${coast.seconds.toFixed(3)} s ` +
+            `(0.9·ω·I/τf ${coastPredicted.toFixed(3)} s)`);
         assert.ok(Math.abs(coast.seconds - coastPredicted) <= Math.max(0.1 * coastPredicted, DT),
             `coast: ${coast.seconds} s vs 0.9·ω·I/τf = ${coastPredicted.toFixed(3)} s`);
     });
 
-    test(`(d) ${name}: run_for_degrees(360) ends within ±2° unloaded and ±5° against a 30 % load`, async () => {
+    test(`(d) ${name}: run_for_degrees(360) ends within ±2° unloaded and ±5° against a 30 % load`, async t => {
         for (const [load, tolerance] of [[0, 2], [0.3, 5]]) {
             const r = rig({device, deviceId});
             const loop = spikeLoop(r, device, deviceId);
@@ -188,13 +192,14 @@ for (const [name, device, deviceId] of MOTORS) {
             for (let i = 0; i < 100; i++) loop.step(friction);
             const rest = loop.position;
             r.core.destroy();
+            t.diagnostic(`load ${load}: completed at ${atEnd?.toFixed(2)}°, at rest ${rest.toFixed(2)}°`);
             assert.equal(outcome, 'completed', `load ${load}`);
             assert.ok(Math.abs(atEnd - 360) <= tolerance, `load ${load}: completed at ${atEnd.toFixed(2)}°`);
             assert.ok(Math.abs(rest - 360) <= tolerance, `load ${load}: at rest at ${rest.toFixed(2)}°`);
         }
     });
 
-    test(`(e) ${name}: hold resists a disturbance torque and returns`, () => {
+    test(`(e) ${name}: hold resists a disturbance torque and returns`, t => {
         const r = rig({device, deviceId});
         const loop = spikeLoop(r, device, deviceId);
         loop.motors.stop('A', 'hold');
@@ -209,6 +214,7 @@ for (const [name, device, deviceId] of MOTORS) {
             worst = Math.max(worst, Math.abs(loop.position - held));
         }
         const pOnly = disturbance / KP * DEG;
+        t.diagnostic(`deflected ${worst.toFixed(2)}° by ${(disturbance * 100).toFixed(2)} N·cm (P alone ${pOnly.toFixed(2)}°)`);
         assert.ok(worst < pOnly, `deflected ${worst.toFixed(2)}° (P alone: ${pOnly.toFixed(2)}°)`);
         assert.ok(worst > 0, 'the disturbance did reach the shaft');
         // Released: back on the held angle within 0.5 s, to the encoder's 1°.
@@ -217,7 +223,7 @@ for (const [name, device, deviceId] of MOTORS) {
         assert.ok(Math.abs(loop.position - held) <= 1, `returned to ${loop.position.toFixed(2)}° of ${held.toFixed(2)}°`);
     });
 
-    test(`(f) ${name}: after a load step the speed is back within 5 % in under 300 ms`, () => {
+    test(`(f) ${name}: after a load step the speed is back within 5 % in under 300 ms`, t => {
         const r = rig({device, deviceId});
         const loop = spikeLoop(r, device, deviceId);
         const target = 500;
@@ -231,10 +237,11 @@ for (const [name, device, deviceId] of MOTORS) {
         assert.ok(dip < 0.95 * target, `the load did slow it (to ${dip.toFixed(0)} °/s)`);
         // Recovered: from this step on, every speed is within 5 %.
         const k = speeds.findIndex((_, i) => speeds.slice(i).every(v => Math.abs(v - target) <= 0.05 * target));
+        t.diagnostic(`dip to ${dip.toFixed(0)} °/s, back within 5 % after ${k * STEP_MS} ms`);
         assert.ok(k >= 0 && k * STEP_MS < 300, `recovered after ${k * STEP_MS} ms`);
     });
 
-    test(`(g) ${name}: no oscillation over 1 % of the speed at steady state, bare and loaded with inertia`, () => {
+    test(`(g) ${name}: no oscillation over 1 % of the speed at steady state, bare and loaded with inertia`, t => {
         // Bare: the output is the rotor alone (J ≈ ${Jr}); loaded: 1e-3 kg·m² more, a heavy arm.
         for (const disc of [{massKg: 0.04, radius: 0.01}, {massKg: 0.5, radius: 0.0632}]) {
             const r = rig({device, deviceId, disc});
@@ -247,6 +254,7 @@ for (const [name, device, deviceId] of MOTORS) {
             const last = speeds.slice(-100);
             const peakToPeak = Math.max(...last) - Math.min(...last);
             const mean = last.reduce((a, b) => a + b) / last.length;
+            t.diagnostic(`I ${discInertia(disc)}: peak-to-peak ${peakToPeak.toFixed(2)} °/s, mean ${mean.toFixed(1)} °/s`);
             assert.ok(peakToPeak < 0.01 * target, `I ${discInertia(disc)}: peak-to-peak ${peakToPeak.toFixed(2)} °/s`);
             assert.ok(Math.abs(mean - target) < 0.01 * target, `I ${discInertia(disc)}: mean ${mean.toFixed(1)} °/s`);
         }
