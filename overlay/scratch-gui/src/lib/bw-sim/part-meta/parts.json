@@ -68,7 +68,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Lochbalken 3"
+   "nameDe": "Technic-Lochbalken 3"
   },
   {
    "part": "32524.dat",
@@ -192,7 +192,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Lochbalken 7"
+   "nameDe": "Technic-Lochbalken 7"
   },
   {
    "part": "2780.dat",
@@ -227,7 +227,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Verbinder/Pin mit Reibung"
+   "nameDe": "Technic-Pin mit Reibung"
   },
   {
    "part": "3673.dat",
@@ -262,7 +262,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Verbinder/Pin ohne Reibung"
+   "nameDe": "Technic-Pin ohne Reibung"
   },
   {
    "part": "3705.dat",
@@ -296,7 +296,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Achse 4"
+   "nameDe": "Technic-Achse 4"
   },
   {
    "part": "3647.dat",
@@ -347,7 +347,7 @@
      0
     ]
    },
-   "nameDe": "Technic Zahnrad 8 tooth"
+   "nameDe": "Zahnrad 8 Zähne"
   },
   {
    "part": "3648.dat",
@@ -398,7 +398,7 @@
      0
     ]
    },
-   "nameDe": "Technic Zahnrad 24 tooth"
+   "nameDe": "Zahnrad 24 Zähne"
   },
   {
    "part": "39367p01.dat",
@@ -436,7 +436,7 @@
     }
    ],
    "friction": 1,
-   "nameDe": "Rad 56 x 14 with medium azure tyre (SPIKE Prime)"
+   "nameDe": "Rad 56 mm"
   },
   {
    "part": "39370.dat",
@@ -635,7 +635,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Lochbalken 5 x 3 H-shaped with ball socket"
+   "nameDe": "Kugelrad-Halter"
   },
   {
    "part": "52629.dat",
@@ -664,7 +664,7 @@
      "radius": 24
     }
    ],
-   "nameDe": "Technic Kugelrolle 19 mm for Kugelrolle castor"
+   "nameDe": "Kugelrolle 19 mm"
   },
   {
    "part": "54696p01.dat",
@@ -1058,7 +1058,7 @@
     "maxSpeedDegPerSec": 1110,
     "deviceId": 48
    },
-   "nameDe": "SPIKE medium angular Motor"
+   "nameDe": "Mittlerer Motor"
   },
   {
    "part": "45601.dat",
@@ -1846,7 +1846,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Lochbalken 5"
+   "nameDe": "Technic-Lochbalken 5"
   },
   {
    "part": "40490.dat",
@@ -2000,7 +2000,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Lochbalken 9"
+   "nameDe": "Technic-Lochbalken 9"
   },
   {
    "part": "32525.dat",
@@ -2184,7 +2184,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Lochbalken 11"
+   "nameDe": "Technic-Lochbalken 11"
   },
   {
    "part": "41239.dat",
@@ -2398,7 +2398,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Lochbalken 13"
+   "nameDe": "Technic-Lochbalken 13"
   },
   {
    "part": "32278.dat",
@@ -2642,7 +2642,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Lochbalken 15"
+   "nameDe": "Technic-Lochbalken 15"
   },
   {
    "part": "32062.dat",
@@ -2676,7 +2676,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Achse 2 notched"
+   "nameDe": "Technic-Achse 2 mit Kerbe"
   },
   {
    "part": "4519.dat",
@@ -2710,7 +2710,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Achse 3"
+   "nameDe": "Technic-Achse 3"
   },
   {
    "part": "32073.dat",
@@ -2744,7 +2744,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Achse 5"
+   "nameDe": "Technic-Achse 5"
   },
   {
    "part": "3706.dat",
@@ -2778,7 +2778,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Achse 6"
+   "nameDe": "Technic-Achse 6"
   },
   {
    "part": "3707.dat",
@@ -2812,7 +2812,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Achse 8"
+   "nameDe": "Technic-Achse 8"
   },
   {
    "part": "6558.dat",
@@ -2847,7 +2847,7 @@
      ]
     }
    ],
-   "nameDe": "Technic Verbinder/Pin 3L mit Reibung"
+   "nameDe": "Technic-Pin 3L mit Reibung"
   },
   {
    "part": "43093.dat",
@@ -2897,7 +2897,7 @@
      ]
     }
    ],
-   "nameDe": "Technic axle Verbinder/Pin mit Reibung"
+   "nameDe": "Technic-Achspin mit Reibung"
   },
   {
    "part": "3713.dat",
@@ -2934,7 +2934,7 @@
      ]
     }
    ],
-   "nameDe": "Technic bush"
+   "nameDe": "Technic-Buchse"
   },
   {
    "part": "4265c.dat",
@@ -2971,7 +2971,7 @@
      ]
     }
    ],
-   "nameDe": "Technic half bush"
+   "nameDe": "Technic-Halbbuchse"
   },
   {
    "part": "94925.dat",
@@ -3022,7 +3022,7 @@
      0
     ]
    },
-   "nameDe": "Technic Zahnrad 16 tooth"
+   "nameDe": "Zahnrad 16 Zähne"
   },
   {
    "part": "3649.dat",
@@ -3073,7 +3073,7 @@
      0
     ]
    },
-   "nameDe": "Technic Zahnrad 40 tooth"
+   "nameDe": "Zahnrad 40 Zähne"
   },
   {
    "part": "6589.dat",
@@ -3129,7 +3129,7 @@
      0
     ]
    },
-   "nameDe": "Technic Kegelzahnrad 12 tooth bevel"
+   "nameDe": "Kegelzahnrad 12 Zähne"
   },
   {
    "part": "32198.dat",
@@ -3185,7 +3185,7 @@
      0
     ]
    },
-   "nameDe": "Technic Kegelzahnrad 20 tooth bevel"
+   "nameDe": "Kegelzahnrad 20 Zähne"
   },
   {
    "part": "54675.dat",
@@ -3489,7 +3489,7 @@
     "maxSpeedDegPerSec": 1050,
     "deviceId": 49
    },
-   "nameDe": "SPIKE large angular Motor"
+   "nameDe": "Großer Motor"
   },
   {
    "part": "37308.dat",
@@ -3573,7 +3573,7 @@
      ]
     }
    ],
-   "nameDe": "SPIKE colour Sensor",
+   "nameDe": "Farbsensor",
    "sensor": {
     "kind": "color",
     "origin": [
@@ -3670,7 +3670,7 @@
      ]
     }
    ],
-   "nameDe": "SPIKE distance Sensor",
+   "nameDe": "Abstandssensor",
    "sensor": {
     "kind": "distance",
     "origin": [
@@ -3767,7 +3767,7 @@
      ]
     }
    ],
-   "nameDe": "SPIKE force Sensor",
+   "nameDe": "Kraftsensor",
    "sensor": {
     "kind": "force",
     "origin": [
@@ -3785,7 +3785,7 @@
   {
    "part": "32526.dat",
    "name": "Technic beam 3 x 5 L-shaped",
-   "nameDe": "Technic Winkelbalken 3 x 5",
+   "nameDe": "Technic-Lochbalken 3 x 5 L-förmig",
    "category": "beam",
    "massGrams": 2,
    "connectors": [
@@ -3914,7 +3914,7 @@
   {
    "part": "32140.dat",
    "name": "Technic beam 2 x 4 L-shaped",
-   "nameDe": "Technic Winkelbalken 2 x 4",
+   "nameDe": "Technic-Lochbalken 2 x 4 L-förmig",
    "category": "beam",
    "massGrams": 1.5,
    "connectors": [
@@ -4013,7 +4013,7 @@
   {
    "part": "64179.dat",
    "name": "Technic frame 5 x 7 open centre",
-   "nameDe": "Technic Rahmen 5 x 7 offen",
+   "nameDe": "Technic-Rahmen 5 x 7",
    "category": "beam",
    "massGrams": 4,
    "connectors": [
@@ -4152,7 +4152,7 @@
   {
    "part": "39794.dat",
    "name": "Technic frame 5 x 11 open centre",
-   "nameDe": "Technic Rahmen 5 x 11 offen",
+   "nameDe": "Technic-Rahmen 5 x 11",
    "category": "beam",
    "massGrams": 6,
    "connectors": [
@@ -4411,7 +4411,7 @@
   {
    "part": "6536.dat",
    "name": "Technic axle and pin connector perpendicular",
-   "nameDe": "Technic Achs- und Stiftverbinder senkrecht",
+   "nameDe": "Achs- und Stiftverbinder senkrecht",
    "category": "connector",
    "massGrams": 0.4,
    "connectors": [
@@ -4465,7 +4465,7 @@
   {
    "part": "32184.dat",
    "name": "Technic axle and pin connector perpendicular 3L with centre pin hole",
-   "nameDe": "Technic Achs- und Stiftverbinder senkrecht 3L mit mittlerem Stiftloch",
+   "nameDe": "Achs- und Stiftverbinder 3L mit mittlerem Stiftloch",
    "category": "connector",
    "massGrams": 0.6,
    "connectors": [
@@ -4529,7 +4529,7 @@
   {
    "part": "32039.dat",
    "name": "Technic axle connector with axle hole",
-   "nameDe": "Technic Achsverbinder mit Achsloch",
+   "nameDe": "Achsverbinder mit Achsloch",
    "category": "connector",
    "massGrams": 0.5,
    "connectors": [
@@ -4583,7 +4583,7 @@
   {
    "part": "42003.dat",
    "name": "Technic axle and pin connector perpendicular 3L with 2 pin holes",
-   "nameDe": "Technic Achs- und Stiftverbinder senkrecht 3L mit 2 Stiftl\u00f6chern",
+   "nameDe": "Achs- und Stiftverbinder 3L mit 2 Stiftlöchern",
    "category": "connector",
    "massGrams": 0.7,
    "connectors": [
@@ -4647,7 +4647,7 @@
   {
    "part": "6632.dat",
    "name": "Technic thin liftarm 1 x 3",
-   "nameDe": "Technic d\u00fcnner Liftarm 1 x 3",
+   "nameDe": "Technic-Liftarm 1 x 3 dünn",
    "category": "beam",
    "massGrams": 0.5,
    "connectors": [
@@ -4716,7 +4716,7 @@
   {
    "part": "32449.dat",
    "name": "Technic thin liftarm 1 x 4",
-   "nameDe": "Technic d\u00fcnner Liftarm 1 x 4",
+   "nameDe": "Technic-Liftarm 1 x 4 dünn",
    "category": "beam",
    "massGrams": 0.7,
    "connectors": [
@@ -4795,7 +4795,7 @@
   {
    "part": "49295p01.dat",
    "name": "Wheel 88 x 14 with medium azure tyre (SPIKE Prime large)",
-   "nameDe": "Rad 88 x 14 mit Reifen medium azure (SPIKE Prime gro\u00df)",
+   "nameDe": "Rad 88 mm",
    "category": "wheel",
    "massGrams": 18,
    "friction": 1,
