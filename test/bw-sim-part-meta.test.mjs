@@ -169,6 +169,34 @@ test('a pinhole connector spans its bore: its ends are where the bore opens and 
 });
 
 /**
+ * Blind holes. LDraw draws a one-sided Technic hole with p/connhol3.dat: in its own frame the
+ * opening (peghole) is at y = -10 and the bore ends at y = +8. A pinhole connector whose seat
+ * is such a bore must say so with `closedEnd` (±1, the end of its segment along its axis that
+ * is the bottom), and only those may: the connector matcher (mech/graph.js shaftEngagement)
+ * refuses a shaft that would reach past the bottom. Measured here, never trusted from parts.json.
+ */
+test('a pinhole is blind (closedEnd) exactly when LDraw draws its seat one-sided, and closedEnd is the bottom', () => {
+    const wrong = [];
+    let blind = 0;
+    for (const p of META.parts) {
+        const prims = flat.get(p.part).primitives.filter(q => /\/connhol3\.dat$/.test(q.file));
+        for (const c of p.connectors.filter(k => k.type === 'pinhole')) {
+            const t = dot(c.position, c.axis);
+            const seg = [t - c.length / 2, t + c.length / 2];
+            const lines = prims.map(q => ({...lineOf(q.x, q.file, BORE_R), open: dot(apply(q.x, [0, -10, 0]), c.axis), bottom: dot(apply(q.x, [0, 8, 0]), c.axis)}));
+            const seats = onLine(c, lines).filter(l => Math.min(seg[1], Math.max(l.open, l.bottom)) - Math.max(seg[0], Math.min(l.open, l.bottom)) > SEAT_EPS);
+            const want = seats.length === 1 ? Math.sign(seats[0].bottom - seats[0].open) : undefined;
+            if (seats.length > 1) wrong.push(`${p.part} ${c.id}: ${seats.length} one-sided bores in one seat`);
+            else if (c.closedEnd !== want) wrong.push(`${p.part} ${c.id}: closedEnd ${c.closedEnd}, the LDraw bore says ${want}`);
+            if (want !== undefined) blind++;
+        }
+    }
+    assert.deepEqual(wrong, []);
+    // The motors', hub's and sensors' side holes (92 measured 2026-10-17): a wrong regex or frame would find none.
+    assert.ok(blind >= 80, `only ${blind} blind pinholes found`);
+});
+
+/**
  * Two holes of one part cannot be closer than a bore allows. Technic holes sit on a 20 LDU
  * grid; a bore is 12 LDU across in a wall 18 wide, so two PARALLEL bores whose axes are less
  * than ~15.5 LDU apart would cut into each other — such "holes" are curve fragments or

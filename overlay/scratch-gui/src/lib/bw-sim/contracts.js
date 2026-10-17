@@ -72,7 +72,12 @@ export const GROUND_FRICTION = 0.8;
  * position is the ball centre; `axis` is the socket's opening direction and is
  * not used for matching. A ball in a socket is a free 3-axis pivot.
  * `friction: false` marks a frictionless pin (it makes a hinge, not a rigid joint).
- * @typedef {{id: string, type: string, position: Vec3, axis: Vec3, length?: number, friction?: boolean}} Connector
+ * `closedEnd` (±1) marks a blind hole: the end of its segment at
+ * position + closedEnd·axis·length/2 is the bottom, which no shaft passes
+ * (measured from LDraw's one-sided hole primitive, test/bw-sim-part-meta.test.mjs).
+ * A shaft seats in a hole when it engages at least mech/graph.js MIN_ENGAGE_LDU
+ * of it (graph.js shaftEngagement).
+ * @typedef {{id: string, type: string, position: Vec3, axis: Vec3, length?: number, friction?: boolean, closedEnd?: 1|-1}} Connector
  */
 
 /**
@@ -222,6 +227,9 @@ export const validatePartMeta = meta => {
             checkUnit(c?.axis, `${w}.axis`, out);
             if (c?.length !== undefined && !(isNum(c.length) && c.length > 0)) out.push(`${w}.length: need a positive number`);
             if (c?.friction !== undefined && typeof c.friction !== 'boolean') out.push(`${w}.friction: need a boolean`);
+            if (c?.closedEnd !== undefined && !((c.closedEnd === 1 || c.closedEnd === -1) && (c.type === 'pinhole' || c.type === 'axlehole'))) {
+                out.push(`${w}.closedEnd: only a pinhole/axlehole may have one, and it is 1 or -1`);
+            }
         });
         if (meta.motor) {
             for (const o of meta.motor.output || []) if (!ids.has(o)) out.push(`${p}.motor.output: unknown connector '${o}'`);

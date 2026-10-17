@@ -22,7 +22,9 @@ const transformConnector = (conn, pos, rot) => {
     const p = vecAdd(mat3MulVec3(rot, conn.position), pos);
     const aRaw = mat3MulVec3(rot, conn.axis);
     const a = vecNormalize(aRaw);
-    return {id: conn.id, type: conn.type, position: p, axis: a, length: conn.length, friction: conn.friction, _orig: conn};
+    const out = {id: conn.id, type: conn.type, position: p, axis: a, length: conn.length, friction: conn.friction, _orig: conn};
+    if (conn.closedEnd !== undefined) out.closedEnd = conn.closedEnd;
+    return out;
 };
 
 const isShaftType = t => t === 'axle' || t === 'pin' || t === 'stud';
@@ -47,27 +49,58 @@ export const edgeKind = (shaft, hole) => {
 };
 
 /**
+ * How far a shaft must reach into a hole to be held, in LDU (along their common axis).
+ *
+ * Technic lengths come on a 10 LDU lattice (a pin half and a beam's hole are 20, a thin
+ * liftarm's hole, a half bush and a bevel gear's hub 10), so a real seat engages 10, 20,
+ * ... LDU; a shaft that ends at a hole's face engages 0. A partly inserted axle still holds
+ * in reality (the towball 2736's 17.5 LDU stub in a 20 LDU hole), so a shaft seats when it
+ * engages at least 8 LDU: 2 LDU of slack under the shortest real seat (a 10 LDU hole), far
+ * above the ±0.5 LDU of a face-to-face contact. A hole or shaft shorter than that seats on
+ * its full length.
+ */
+export const MIN_ENGAGE_LDU = 8;
+
+/**
+ * Engaged length of a shaft connector in a hole connector (both in one frame, LDU), or
+ * null when the shaft does not seat: axes parallel (1°) and coaxial (0.5 LDU), the two
+ * segments (`length` along `axis`, centred on `position`) overlapping by at least
+ * min(MIN_ENGAGE_LDU, shaft length, hole length), and — for a blind hole (`closedEnd`
+ * ±1: which end of the hole's segment, along its axis, is the bottom) — the shaft not
+ * reaching past the bottom (0.5 LDU tolerance). Applies to every shaft length alike
+ * (pins, half pins, 3L pins, axles, axle pins, stubs).
+ * @param {{position: number[], axis: number[], length?: number}} shaft
+ * @param {{position: number[], axis: number[], length?: number, closedEnd?: number}} hole
+ * @returns {number|null}
+ */
+export const shaftEngagement = (shaft, hole) => {
+    const dot = vecDot(shaft.axis, hole.axis);
+    if (Math.abs(dot) < COS_1 - 1e-12) return null;
+    const delta = vecSub(hole.position, shaft.position);
+    const axial = vecDot(delta, shaft.axis);
+    const perp = vecSub(delta, vecScale(shaft.axis, axial));
+    if (vecLen(perp) > TOL) return null;
+    const Ls = shaft.length; const Lh = hole.length;
+    if (Ls === undefined || Lh === undefined) return null;
+    // Along the shaft's axis: shaft [-Ls/2, Ls/2], hole [axial - Lh/2, axial + Lh/2].
+    const engaged = Math.min(Ls / 2, axial + Lh / 2) - Math.max(-Ls / 2, axial - Lh / 2);
+    if (engaged < Math.min(MIN_ENGAGE_LDU, Ls, Lh) - 1e-9) return null;
+    if (hole.closedEnd === 1 || hole.closedEnd === -1) {
+        const bottomSide = hole.closedEnd * Math.sign(dot);
+        const bottom = axial + bottomSide * Lh / 2;
+        if (bottomSide > 0 ? Ls / 2 > bottom + 0.5 + 1e-9 : -Ls / 2 < bottom - 0.5 - 1e-9) return null;
+    }
+    return engaged;
+};
+
+/**
  * Check if shaft/hole geometry matches (shaft types except stud/antistud already handled,
  * ball handled separately).
  * @param {object} shaft transformed shaft connector (model LDU)
  * @param {object} hole transformed hole connector (model LDU)
  * @returns {boolean}
  */
-const geometryMatchesShaftHole = (shaft, hole) => {
-    // Parallel
-    const dot = Math.abs(vecDot(shaft.axis, hole.axis));
-    if (dot < COS_1 - 1e-12) return false;
-    // Perp distance hole centre to shaft line <=0.5
-    const delta = vecSub(hole.position, shaft.position);
-    const axial = vecDot(delta, shaft.axis);
-    const perp = vecSub(delta, vecScale(shaft.axis, axial));
-    if (vecLen(perp) > TOL) return false;
-    // Axial extent
-    const Ls = shaft.length; const Lh = hole.length;
-    if (Ls === undefined || Lh === undefined) return false;
-    if (Math.abs(axial) > (Ls - Lh) / 2 + 0.5 + 1e-9) return false;
-    return true;
-};
+const geometryMatchesShaftHole = (shaft, hole) => shaftEngagement(shaft, hole) !== null;
 
 /**
  * Build the connection graph from a PlacedModel and catalog.

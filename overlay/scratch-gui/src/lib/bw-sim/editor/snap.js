@@ -6,32 +6,20 @@
 // connector-to-connector. Pure, no DOM, no three.
 
 import {mat3MulVec3, vecAdd, vecSub, vecScale, vecDot, vecCross, vecLen, vecNormalize, vecDist, mat3MulMat3, quatFromMat3, quatMul, quatNormalize} from '../mech/vec.js';
-import {edgeKind} from '../mech/graph.js';
+import {edgeKind, shaftEngagement} from '../mech/graph.js';
 import {validatePlacedModel, det3} from '../contracts.js';
 import {partOverlaps} from './overlap.js';
 
 const TOL = 0.5 + 1e-9;
-const COS_1 = Math.cos(Math.PI / 180);
 const RADIUS_DEFAULT = 40;
 
 // Helpers for transforms
 const transformPoint = (pos, rot, local) => vecAdd(mat3MulVec3(rot, local), pos);
 const transformAxis = (rot, localAxis) => vecNormalize(mat3MulVec3(rot, localAxis));
 
-// Check if two axes are parallel within 1 deg (for shaft/hole)
-const axesParallel = (a, b) => Math.abs(vecDot(a, b)) >= COS_1 - 1e-12;
-
-// For shaft/hole geometry: hole centre on shaft line within 0.5 perp, axial within (Ls-Lh)/2+0.5
-const shaftHoleGeometryOk = (shaftPos, shaftAxis, shaftLen, holePos, holeLen) => {
-    const delta = vecSub(holePos, shaftPos);
-    const axial = vecDot(delta, shaftAxis);
-    const perp = vecSub(delta, vecScale(shaftAxis, axial));
-    if (vecLen(perp) > TOL) return false;
-    if (shaftLen !== undefined && holeLen !== undefined) {
-        if (Math.abs(axial) > (shaftLen - holeLen) / 2 + 0.5 + 1e-9) return false;
-    }
-    return true;
-};
+// One seating rule with the compiler (mech/graph.js shaftEngagement): a partly inserted
+// shaft holds, a blind hole's bottom stops it.
+const shaftHoleGeometryOk = (shaft, hole) => shaftEngagement(shaft, hole) !== null;
 
 // Compute the world AABB for a part's colliders after a transform
 const partAABB = (meta, pos, rot) => {
@@ -206,6 +194,7 @@ export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFA
                 axis: worldAxis,
                 length: c.length,
                 friction: c.friction,
+                closedEnd: c.closedEnd,
                 metaConnector: c,
                 placed: pl
             });
@@ -301,8 +290,9 @@ export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFA
                     const axialDist = vecDot(toDragged, shaftAxis);
                     // Clamp axialDist to be within the shaft's half length (so the hole is within the shaft)
                     const maxAxial = shaftLen / 2 - 1e-9; // allow some tolerance, but for wheel the hole length 18, shaft 80, the hole at centre with axial 0 is within 31, so it's ok
-                    // Actually for the hole to be fully on the shaft, we need |axial| <= (shaftLen - holeLen)/2
-                    const maxAllowed = (shaftLen - holeLen) / 2 + 0.5;
+                    // Prefer a full seat: the hole wholly on the shaft (|axial| <= (shaftLen - holeLen)/2),
+                    // or, for a shaft shorter than the hole (the towball's stub), the shaft wholly in it.
+                    const maxAllowed = Math.abs(shaftLen - holeLen) / 2 + 0.5;
                     let clampedAxial = Math.max(-maxAllowed, Math.min(maxAllowed, axialDist));
                     // For the wheel case, the dragged hole at [0,0,0] has axialDist 0, which is within maxAllowed 31, so clamped is 0, so the hole should be at shaftPos + shaftAxis*0 = shaftPos
                     const projPoint = vecAdd(shaftPos, vecScale(shaftAxis, clampedAxial));
@@ -327,7 +317,8 @@ export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFA
                 position: transformPoint(newPos, newRot, c.position),
                 axis: transformAxis(newRot, c.axis),
                 length: c.length,
-                friction: c.friction
+                friction: c.friction,
+                closedEnd: c.closedEnd
             }));
             for (const mw of movingWorldConns) {
                 for (const sc of sceneConnectors) {
@@ -351,15 +342,7 @@ export const snapCandidates = ({model, catalog, part, pose, radius = RADIUS_DEFA
                     } else {
                         // Shaft/hole
                         // Need to determine which is shaft/hole for geometry check
-                        let shaftPos, shaftAxis, shaftLen, holePos, holeLen;
-                        if (shaftW === mw) {
-                            shaftPos = mw.position; shaftAxis = mw.axis; shaftLen = mw.length;
-                            holePos = sc.position; holeLen = sc.length;
-                        } else {
-                            shaftPos = sc.position; shaftAxis = sc.axis; shaftLen = sc.length;
-                            holePos = mw.position; holeLen = mw.length;
-                        }
-                        if (shaftHoleGeometryOk(shaftPos, shaftAxis, shaftLen, holePos, holeLen) && axesParallel(mw.axis, sc.axis)) {
+                        if (shaftHoleGeometryOk(shaftW, holeW)) {
                             geomOk = true;
                         }
                     }
