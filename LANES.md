@@ -6274,3 +6274,13 @@ chevron/dots, preserving the localized button name, pressed state and hit target
 The browser reader now requires a visible 20px SVG with nonempty drawing bounds
 in both states. Qualify the rendering and send a fresh native candidate; physical
 icon acceptance remains pending that delivery.
+
+Physical follow-up: SVG candidate `9ba9a2e89` was installed over WLAN, but the
+user still sees a blank collapse button with a small white bar. Its desktop
+WebKit/Chromium SVG checks do not establish physical iPad rendering success.
+Replace the icon with CSS border/box-shadow shapes and disable native button
+appearance, keeping both 20px icon states and the existing 44px touch target.
+The reader checks the actual pseudo-element, and the delivery proof must also
+inspect painted pixels in both states before building/installing the next
+identified candidate. Ask for physical confirmation after delivery; do not
+claim the cause or the visual defect resolved from geometry checks alone.

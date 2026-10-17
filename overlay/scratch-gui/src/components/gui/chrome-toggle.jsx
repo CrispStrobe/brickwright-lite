@@ -96,25 +96,10 @@ class ChromeToggle extends React.Component {
                 })}
                 onClick={this.toggle}
             >
-                <svg
+                <span
                     aria-hidden="true"
-                    focusable="false"
-                    data-bw-chrome-icon=""
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                >
-                    {compact ? (
-                        <g fill="currentColor">
-                            <circle cx="6" cy="12" r="1.75" />
-                            <circle cx="12" cy="12" r="1.75" />
-                            <circle cx="18" cy="12" r="1.75" />
-                        </g>
-                    ) : (
-                        <path d="M6 15l6-6 6 6" fill="none" stroke="currentColor"
-                            strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                    )}
-                </svg>
+                    data-bw-chrome-icon={compact ? 'expand' : 'collapse'}
+                />
             </button>
         );
     }
