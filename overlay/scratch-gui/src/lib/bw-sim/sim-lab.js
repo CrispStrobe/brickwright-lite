@@ -20,6 +20,7 @@ export {createEditorView3D} from './editor/editor-view3d.js';
 export {snapCandidates} from './editor/snap.js';
 export {paletteFrom} from './editor/palette.js';
 export {serializeModel, parseModel} from './model/ldraw-model.js';
+export {modelInsight, insightOf, portItems, runBlockers} from './mech/insight.js';
 export {parseLDConfig} from './view/ldraw-colors.js';
 export {MATS, createMat, ovalCentreAt, distanceToOvalCentre} from './world/mats.js';
 

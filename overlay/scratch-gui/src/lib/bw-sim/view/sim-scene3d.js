@@ -136,7 +136,10 @@ export const buildSimScene = ({model, mechanism, read, colors, catalog = null}) 
         const hubRef = motor ? driveHubRef(pl.part, read, catalogGet(catalog, pl.part)) : -1;
         if (hubRef >= 0 && bodyGroups.get(motor.output.id)) {
             partMeshes.set(pl.id, addPartMesh(pl, body, partVisual(pl.part, read, colors, {ref: hubRef, take: 'rest'}), material, pl.id));
-            hubMeshes.set(pl.id, addPartMesh(pl, motor.output, partVisual(pl.part, read, colors, {ref: hubRef, take: 'ref'}), material, `${pl.id}#hub`));
+            // The drive hub gets its own materials: it is in another body, which may be painted differently.
+            const hubMaterial = material.map(m => m.clone());
+            for (const m of hubMaterial) createdMaterials.add(m);
+            hubMeshes.set(pl.id, addPartMesh(pl, motor.output, partVisual(pl.part, read, colors, {ref: hubRef, take: 'ref'}), hubMaterial, `${pl.id}#hub`));
         } else {
             partMeshes.set(pl.id, addPartMesh(pl, body, partVisual(pl.part, read, colors), material, pl.id));
         }

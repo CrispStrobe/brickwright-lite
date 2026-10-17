@@ -31,7 +31,12 @@
 //      blocks), Run — and the robot follows the line once round the oval:
 //      ≥ 95 of 100 centre-line checkpoints in order, within 4 cm, inside 60 s
 //      of simulated time, never more than 5 cm off the line (sim-time waits);
-//   7. no page errors.
+//   7. seeing the model (scripts/lib/sim-lab-insight-gate.mjs): port badges A/B or "?"
+//      in both views, "Show how it moves" draws the hinge axes and body tints in both,
+//      unplugging a motor from its badge lists the issue, clicking the issue selects the
+//      motor, the "?" badge's picker plugs it back in, and "Before you press Run" warns
+//      when no motor is plugged in;
+//   8. no page errors.
 //
 // Run after the integrated GUI build:  node scripts/verify-sim-lab-browser.mjs
 import {chromium} from 'playwright';
@@ -42,6 +47,7 @@ import {resolve, extname, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
 import {cadInteractions} from './lib/sim-lab-cad-gate.mjs';
+import {insightInteractions} from './lib/sim-lab-insight-gate.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const build = resolve(process.env.BW_BUILD || `${root}/packages/scratch-gui/build`);
@@ -390,6 +396,14 @@ try {
         `${lapResult.passed}/100 checkpoints in ${(lapResult.lapMs / 1000).toFixed(1)} s simulated, ` +
         `at most ${(lapResult.maxOff * 1000).toFixed(1)} mm off the centre line`);
     await lf.close();
+
+    // 7. Seeing the model: port badges, issues that show their parts, "Show how it moves".
+    const see = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+    see.on('pageerror', error => errors.push(error.message));
+    see.on('dialog', dialog => dialog.accept());
+    await openSimLab(see, {program: null});
+    await insightInteractions(see, {shotsDir: artifacts});
+    await see.close();
 
     const fallback = await browser.newPage({viewport: {width: 1400, height: 900}, serviceWorkers: 'block'});
     fallback.on('pageerror', error => errors.push(error.message));

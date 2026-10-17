@@ -21,6 +21,7 @@
 import React from 'react';
 import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
 import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorableName} from '../../lib/bw-sim/model/sim-lab-persist.js';
+import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
 
 const TEXT = {
     en: {
@@ -105,6 +106,10 @@ const TEXT = {
 
 /** Longest step the pane hands the physics per frame: a backgrounded tab must not jump seconds ahead. */
 const MAX_FRAME_MS = 50;
+/** Build mode recompiles the model this long after the last edit (ms), for the issues and the motion overlay. */
+const INSIGHT_DEBOUNCE_MS = 150;
+/** How long "show me these parts" pulses them in Simulate (ms). */
+const HIGHLIGHT_MS = 3000;
 /** The `0 <title>` line every model the pane writes carries (it is not parsed back, so it must not vary). */
 const MODEL_TITLE = 'Robot Lab model';
 
@@ -114,9 +119,12 @@ class SimLabPane extends React.Component {
         const locale = pickLocale(props.locale || browserLocale(), TEXT);
         this.locale = locale;
         this.text = TEXT[locale];
+        this.itext = INSIGHT_TEXT[locale] || INSIGHT_TEXT.en;
         this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, simMs: 0, view3d: 'loading',
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
-            buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10};
+            buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10,
+            showPorts: true, showMotion: false, blockers: [], portPicker: null};
+        this.viewWrap = React.createRef();
         this.box = React.createRef();
         this.file = React.createRef();
         this.lib = null;
@@ -142,6 +150,9 @@ class SimLabPane extends React.Component {
             get editor () { return this._pane.editor || null; },
             get editView () { return this._pane.editView || null; },
             get projectRecord () { return this._pane.currentRecord(); },
+            get blockers () { return this._pane.state.blockers; },
+            /** The last Build-mode compile for the issues and the overlay: {ms, parts}. */
+            get insight () { return this._pane.lastInsight || null; },
             _pane: this
         };
         window.addEventListener('bw-project-bundle-collect', this.onBundleCollect);
@@ -171,6 +182,9 @@ class SimLabPane extends React.Component {
     }
 
     teardownEditor () {
+        clearTimeout(this.insightTimer);
+        if (this.unsubscribeInsight) this.unsubscribeInsight();
+        this.unsubscribeInsight = null;
         if (this.editView) { try { this.editView.dispose(); } catch { /* a lost context may already be gone */ } }
         this.editView = null;
         this.editor = null;
@@ -183,7 +197,7 @@ class SimLabPane extends React.Component {
         this.pause();
         this.teardown();
         this.teardownEditor();
-        this.setState({mode: 'build', status: 'loading', message: '', placing: null, selection: [], buildStatus: {kind: 'idle'}, gizmoMode: 'move'});
+        this.setState({mode: 'build', status: 'loading', message: '', placing: null, selection: [], buildStatus: {kind: 'idle'}, gizmoMode: 'move', portPicker: null});
         // Any palette part may be placed, so load the whole catalog's geometry once.
         if (!this.catalogFiles) this.catalogFiles = await fetchLDrawClosure([...CATALOG.keys()], {withConfig: true});
         if (this.disposed) return;
@@ -192,17 +206,88 @@ class SimLabPane extends React.Component {
         try {
             this.editView = createEditorView3D({container: this.box.current, read, colors: parseLDConfig(read('ldconfig.ldr')),
                 catalog: CATALOG, editor: this.editor,
-                onSelect: selection => this.setState({selection}),
+                // A port picker belongs to the one part it was opened for.
+                onSelect: selection => this.setState(s => ({selection,
+                    portPicker: s.portPicker && selection.includes(s.portPicker.id) ? s.portPicker : null})),
                 onChange: () => this.setState(s => ({editorTick: s.editorTick + 1})),
                 onStatus: buildStatus => this.setState({buildStatus}),
                 onTool: placing => this.setState({placing}),
-                onMode: gizmoMode => this.setState({gizmoMode})});
+                onMode: gizmoMode => this.setState({gizmoMode}),
+                portLabel: item => this.portLabelText(item),
+                onPortLabel: (id, rect) => this.openPortPicker(id, rect)});
             this.editView.setGrid(this.state.grid);
+            this.editView.setOverlay({ports: this.state.showPorts, motion: this.state.showMotion});
+            this.unsubscribeInsight = this.editor.subscribe(() => this.scheduleInsight());
+            this.runInsight();
         } catch (error) {
             this.setState({status: 'failed', message: this.t('noWebgl', {error: error.message})});
             return;
         }
         this.setState({status: 'ready'});
+    }
+
+    /** Build: recompile shortly after the last edit (a drag is many edits). */
+    scheduleInsight () {
+        clearTimeout(this.insightTimer);
+        this.insightTimer = setTimeout(() => this.runInsight(), INSIGHT_DEBOUNCE_MS);
+    }
+
+    /** Build: compile the editor's model; list its issues and redraw the motion overlay. */
+    runInsight () {
+        if (!this.editor || !this.lib) return;
+        const result = this.lib.modelInsight(this.editor.model, this.lib.CATALOG);
+        this.lastInsight = {ms: result.ms, parts: this.editor.model.parts.length};
+        this.editView?.setMotion({joints: result.joints, gears: result.gears, tints: result.tints.parts});
+        this.setState({issues: result.issues, blockers: result.blockers});
+    }
+
+    /** The accessible name of a port badge. */
+    portLabelText (item) {
+        const part = this.partName(item.part);
+        return item.port ? fillText(this.itext.portLabel, {part, port: item.port}) : fillText(this.itext.portLabelNone, {part});
+    }
+
+    /** Build: a port badge was clicked — select its part and offer the ports next to the badge. */
+    openPortPicker (id, rect) {
+        if (!this.editView) return;
+        this.editView.select([id]);
+        const wrap = this.viewWrap.current?.getBoundingClientRect();
+        const left = wrap ? Math.max(0, rect.left - wrap.left) : 0;
+        const top = wrap ? rect.bottom - wrap.top + 4 : 0;
+        this.setState({portPicker: {id, left, top}});
+    }
+
+    pickPort (id, port) {
+        if (!this.editor) return;
+        this.editor.apply({type: 'setPort', id, port: port || null});
+        this.setState(s => ({portPicker: null, editorTick: s.editorTick + 1}));
+    }
+
+    setOverlay (change) {
+        this.setState(change, () => {
+            const shown = {ports: this.state.showPorts, motion: this.state.showMotion};
+            this.editView?.setOverlay(shown);
+            this.view?.setOverlay?.(shown);
+        });
+    }
+
+    /** The parts an issue names, shown: selected and framed in Build, pulsing in Simulate. */
+    focusIssue (issue) {
+        const ids = issue.parts || [];
+        if (!ids.length) return;
+        if (this.editView) {
+            this.editView.select(ids);
+            this.editView.fitSelection();
+        } else if (this.view?.highlight) {
+            this.view.highlight(ids, HIGHLIGHT_MS);
+        }
+    }
+
+    /** A placed part's name in the learner's language, from its id in the model on show. */
+    partNameById (id) {
+        const model = this.editor ? this.editor.model : this.session?.model;
+        const placed = model && model.parts.find(p => p.id === id);
+        return placed ? this.partName(placed.part) : fillText(this.itext.part, {id});
     }
 
     /**
@@ -341,7 +426,7 @@ class SimLabPane extends React.Component {
     async openText (text, name) {
         const token = this.loadToken = {};
         this.teardown();
-        this.setState({status: 'loading', message: '', issues: [], modelFile: name, simMs: 0, view3d: 'loading'});
+        this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, simMs: 0, view3d: 'loading'});
         const {SimSession, fetchLDrawClosure, createSimView3D, CATALOG} = this.lib;
         let result;
         try {
@@ -353,9 +438,11 @@ class SimLabPane extends React.Component {
         if (token !== this.loadToken || this.disposed) { result.session?.dispose(); return; }
         const {session, issues, model, runModel} = result;
         if (!session) {
-            this.setState({status: 'failed', issues, message: this.t('failed', {error: issues.at(-1)?.message || ''})});
+            this.setState({status: 'failed', issues, blockers: this.lib.runBlockers(issues, model, CATALOG),
+                message: this.t('failed', {error: issues.at(-1)?.message || ''})});
             return;
         }
+        const insight = this.lib.insightOf(runModel, session.mechanism, CATALOG, issues);
         this.session = session;
         let view3d = 'webgl';
         try {
@@ -363,12 +450,15 @@ class SimLabPane extends React.Component {
             if (token !== this.loadToken || this.disposed) return;
             this.view = createSimView3D({container: this.box.current, model: runModel, mechanism: session.mechanism, read, catalog: CATALOG});
             this.view.canvas.setAttribute('aria-label', this.t('canvasLabel'));
+            this.view.setPorts(insight.ports.map(item => ({...item, label: this.portLabelText(item)})));
+            this.view.setMotion({joints: insight.joints, gears: insight.gears, tints: insight.tints.bodies});
+            this.view.setOverlay({ports: this.state.showPorts, motion: this.state.showMotion});
             this.view.render(session.snapshot());
         } catch (error) {
             view3d = 'fallback';
             this.setState({message: this.t('noWebgl', {error: error.message})});
         }
-        this.setState({status: 'ready', issues, view3d});
+        this.setState({status: 'ready', issues, blockers: insight.blockers, view3d});
     }
 
     frame (now) {
@@ -651,6 +741,85 @@ class SimLabPane extends React.Component {
         );
     }
 
+    /** One issue in a child's words; one that names parts is a button that shows them. */
+    renderIssue (issue, key) {
+        const sentence = issueSentence(this.itext, issue, id => this.partNameById(id));
+        const color = issue.severity === 'error' ? '#b91c1c' : '#334155';
+        if (!(issue.parts && issue.parts.length)) {
+            return <li key={key} data-testid="bw-sim-lab-issue" data-code={issue.code} title={issue.message} style={{color}}>{sentence}</li>;
+        }
+        return (
+            <li key={key} data-testid="bw-sim-lab-issue" data-code={issue.code} style={{color}}>
+                <button type="button" data-testid={`bw-sim-lab-issue-${issue.code}`} data-parts={issue.parts.join(' ')}
+                    title={this.itext.issueHelp} onClick={() => this.focusIssue(issue)}
+                    style={{font: 'inherit', color: 'inherit', textAlign: 'left', background: 'none', border: 'none', padding: 0,
+                        cursor: 'pointer', textDecoration: 'underline dotted'}}>
+                    {sentence}
+                </button>
+            </li>
+        );
+    }
+
+    /** What stops Run from doing what a child expects, said before Run. */
+    renderBlockers () {
+        const blockers = this.state.blockers || [];
+        if (!blockers.length || this.state.status === 'loading') return null;
+        return (
+            <div role="alert" data-testid="bw-sim-lab-blockers"
+                style={{fontSize: 12, color: '#7c2d12', background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 6, padding: '6px 8px'}}>
+                <strong>{this.itext.blockersTitle}</strong>
+                <ul style={{margin: '2px 0 0', paddingLeft: 18}}>
+                    {blockers.map(b => this.renderIssue({...b, severity: 'warning'}, b.code))}
+                </ul>
+            </div>
+        );
+    }
+
+    /** The overlay switches: port badges, and "show how it moves" (tints, axes, gear pairs). */
+    renderInsightBar () {
+        const T = this.itext;
+        return (
+            <div data-testid="bw-sim-lab-insight-bar" style={{display: 'flex', alignItems: 'center', gap: 12, fontSize: 12}}>
+                <label title={T.showPortsHelp}>
+                    <input type="checkbox" data-testid="bw-sim-lab-show-ports" checked={this.state.showPorts}
+                        onChange={e => this.setOverlay({showPorts: e.target.checked})} />{' '}{T.showPorts}
+                </label>
+                <label title={T.showMotionHelp}>
+                    <input type="checkbox" data-testid="bw-sim-lab-show-motion" checked={this.state.showMotion}
+                        onChange={e => this.setOverlay({showMotion: e.target.checked})} />{' '}{T.showMotion}
+                </label>
+            </div>
+        );
+    }
+
+    /** Build: the ports offered next to a clicked port badge. */
+    renderPortPicker (button) {
+        const picker = this.state.portPicker;
+        if (!picker || !this.editor) return null;
+        const placed = this.editor.model.parts.find(p => p.id === picker.id);
+        if (!placed) return null;
+        const title = fillText(this.itext.portPick, {part: this.partName(placed.part)});
+        const small = {...button, padding: '2px 7px', marginRight: 0};
+        return (
+            <div role="dialog" aria-label={title} data-testid="bw-sim-lab-port-picker"
+                onKeyDown={e => e.key === 'Escape' && this.setState({portPicker: null})}
+                style={{position: 'absolute', left: picker.left, top: picker.top, zIndex: 5, display: 'flex', alignItems: 'center', flexWrap: 'wrap',
+                    gap: 3, maxWidth: 320, fontSize: 12, background: '#fff', border: '1px solid #94a3b8', borderRadius: 6, padding: 5,
+                    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.2)'}}>
+                <span style={{fontWeight: 600, marginRight: 4}}>{title}</span>
+                {['', 'A', 'B', 'C', 'D', 'E', 'F'].map(port => (
+                    <button key={port || 'none'} type="button" data-testid={`bw-sim-lab-port-pick-${port || 'none'}`}
+                        aria-pressed={(placed.port || '') === port}
+                        style={{...small, fontWeight: (placed.port || '') === port ? 700 : 400, background: (placed.port || '') === port ? '#dbeafe' : '#fff'}}
+                        onClick={() => this.pickPort(picker.id, port)}>
+                        {port || this.itext.portNone}
+                    </button>
+                ))}
+                <button type="button" style={small} aria-label={this.itext.close} onClick={() => this.setState({portPicker: null})}>×</button>
+            </div>
+        );
+    }
+
     render () {
         const {status, message, issues, simMs, modelFile} = this.state;
         const busy = status === 'loading';
@@ -701,14 +870,19 @@ class SimLabPane extends React.Component {
                 )}
                 {this.state.mode === 'simulate' && this.session && this.session.bridge && this.renderDrive(button)}
                 {this.state.mode === 'build' && this.renderBuildBar(button)}
+                {this.lib && this.renderInsightBar()}
+                {this.renderBlockers()}
                 <div style={{display: 'flex', flex: '1 1 auto', minHeight: 240, gap: 8}}>
                     {this.state.mode === 'build' && this.renderPalette()}
-                    <div ref={this.box} data-testid="bw-sim-lab-view" style={{flex: '1 1 auto', minHeight: 240, position: 'relative'}} />
+                    <div ref={this.viewWrap} style={{flex: '1 1 auto', minHeight: 240, position: 'relative', display: 'flex'}}>
+                        <div ref={this.box} data-testid="bw-sim-lab-view" style={{flex: '1 1 auto', minHeight: 240, position: 'relative'}} />
+                        {this.renderPortPicker(button)}
+                    </div>
                 </div>
                 {issues.length > 0 && (
-                    <details data-testid="bw-sim-lab-issues" style={{fontSize: 12}}>
+                    <details data-testid="bw-sim-lab-issues" style={{fontSize: 12}} open>
                         <summary>{this.text.issues} ({issues.length})</summary>
-                        <ul>{issues.map((i, n) => <li key={n} data-code={i.code}>{i.line ? `${i.line}: ` : ''}{i.message}</li>)}</ul>
+                        <ul style={{margin: '4px 0', paddingLeft: 18}}>{issues.map((i, n) => this.renderIssue(i, n))}</ul>
                     </details>
                 )}
             </div>
