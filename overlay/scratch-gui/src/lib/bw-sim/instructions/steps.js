@@ -23,6 +23,13 @@
 //   - an editor group (`0 !BW GROUP`) whose parts hold together is a
 //     sub-assembly: built in its own steps (drawn alone) right before the step
 //     that attaches it to the model.
+//   - mirrored pairs go on together, as LEGO prints them ("2x" in the callout):
+//     two structural parts with the same part number and colour whose
+//     connectors mirror onto each other across the model's symmetry plane
+//     (mirrorPairs), and whose neighbours mirror onto each other as well, so the
+//     second is attached to the mirror image of what holds the first (the two
+//     drive motors, the two wheels). If pairing ever made a step unbuildable,
+//     the steps are derived without it.
 //
 // Every derived step is buildable: each new part touches a part already built,
 // directly or through other parts of the same step (test/bw-sim-instructions.test.mjs).
@@ -102,6 +109,103 @@ const holdsTogether = (ids, adjacency) => {
     return seen.size === inside.size;
 };
 
+/** LDU: how close a mirrored connector must come to its counterpart. */
+const MIRROR_EPS = 0.5;
+
+/**
+ * The model's mirrored pairs: part id → its mirror partner (both directions).
+ *
+ * The symmetry plane is the axis-aligned plane (x, y or z = c) across which the most parts of
+ * the model have a mirror image. Part P's image is Q when Q has P's part number and colour and
+ * Q's connectors are exactly P's connectors mirrored across the plane (positions within
+ * MIRROR_EPS) — the holes and shafts are where the parts connect, so this is the geometric test
+ * that matters for building. A part that is its own image (the hub on the plane) is not a pair.
+ * A pair counts only when it relates the same way to the rest: every part touching P has its
+ * image (or is its own image) touching Q, and that image is itself a counted pair or self-image
+ * (iterated to a fixpoint), so placing Q with P leaves Q attached to what is already built.
+ * @param {object} model PlacedModel
+ * @param {Map|object} catalog
+ * @param {Map<string, Set<string>>} adjacency from partAdjacency
+ * @returns {Map<string, string>}
+ */
+export const mirrorPairs = (model, catalog, adjacency) => {
+    const {nodes} = buildGraph(model, catalog, []);
+    const points = new Map(model.parts.map(p => [p.id, []]));
+    for (const node of nodes.values()) points.get(node.partId)?.push(...node.connectors.map(c => c.position));
+    const key = p => `${p.part}@${p.color ?? 16}`;
+    const imageOf = (k, c, id) => points.get(id).map(v => v.map((x, i) => (i === k ? 2 * c - x : x)));
+    const sameSet = (a, b) => a.length === b.length && a.length > 0 &&
+        a.every(v => b.some(w => Math.hypot(v[0] - w[0], v[1] - w[1], v[2] - w[2]) <= MIRROR_EPS)) &&
+        b.every(v => a.some(w => Math.hypot(v[0] - w[0], v[1] - w[1], v[2] - w[2]) <= MIRROR_EPS));
+    /** Mirror map for plane (k, c): id → image id (self allowed). */
+    const mapFor = (k, c) => {
+        const m = new Map();
+        for (const p of model.parts) {
+            if (m.has(p.id)) continue;
+            const img = imageOf(k, c, p.id);
+            const q = model.parts.find(o => key(o) === key(p) && (o.id === p.id || !m.has(o.id)) && sameSet(img, points.get(o.id)));
+            if (q) { m.set(p.id, q.id); m.set(q.id, p.id); }
+        }
+        return m;
+    };
+    // Candidate planes: midway between two parts of the same kind, on each axis.
+    const candidates = new Map();
+    const parts = model.parts;
+    for (let i = 0; i < parts.length; i++) {
+        for (let j = i + 1; j < parts.length; j++) {
+            if (key(parts[i]) !== key(parts[j])) continue;
+            for (let k = 0; k < 3; k++) {
+                const c = Math.round((parts[i].position[k] + parts[j].position[k])) / 2;
+                candidates.set(`${k}|${c}`, [k, c]);
+            }
+        }
+    }
+    let best = new Map();
+    let bestPairs = 0;
+    for (const [k, c] of candidates.values()) {
+        const m = mapFor(k, c);
+        const pairs = [...m].filter(([a, b]) => a !== b).length / 2;
+        if (pairs > bestPairs) { best = m; bestPairs = pairs; }
+    }
+    // Keep only pairs that relate the same way to their neighbours.
+    const ok = new Map(best);
+    for (let changed = true; changed;) {
+        changed = false;
+        for (const [a, b] of ok) {
+            if (a === b) continue;
+            const fits = [...(adjacency.get(a) || [])].every(n => ok.has(n) && (adjacency.get(b) || new Set()).has(ok.get(n)));
+            if (!fits) { ok.delete(a); ok.delete(b); changed = true; }
+        }
+    }
+    return new Map([...ok].filter(([a, b]) => a !== b));
+};
+
+/**
+ * Can every step be built? Each new part reaches a part built before (`built`, then every earlier
+ * step) through the step's new parts; a loose step, or the first step with nothing built, only
+ * needs its parts to hold together. Sub-assembly steps were judged when they were derived.
+ */
+const buildable = (steps, adjacency, built) => {
+    const done = new Set(built);
+    for (const step of steps) {
+        if (step.subassembly) continue;
+        const fresh = step.parts;
+        const freshSet = new Set(fresh);
+        const reached = new Set();
+        const queue = (done.size && !step.loose) ? fresh.filter(id => [...(adjacency.get(id) || [])].some(x => done.has(x))) : fresh.slice(0, 1);
+        if (step.attach.length) queue.length = 0; // an attaching step brings its sub-assembly: not judged here
+        for (const id of queue) reached.add(id);
+        while (queue.length) {
+            for (const x of adjacency.get(queue.shift()) || []) {
+                if (freshSet.has(x) && !reached.has(x)) { reached.add(x); queue.push(x); }
+            }
+        }
+        if (!step.attach.length && fresh.some(id => !reached.has(id))) return false;
+        for (const id of fresh) done.add(id);
+    }
+    return true;
+};
+
 /**
  * Orders `ids` into steps, starting from what `built` already holds (part ids).
  * @param {object} options
@@ -112,9 +216,20 @@ const holdsTogether = (ids, adjacency) => {
  * @param {Set<string>} [options.built] parts already placed (they are not placed again)
  * @param {Array<{id: string, parts: string[]}>} [options.groups] sub-assemblies: each is placed as one unit
  * @param {(group: object, built: Set<string>) => object[]} [options.subSteps] the steps building a group, emitted before it is attached
+ * @param {Map<string, string>} [options.pairs] mirrored pairs (mirrorPairs): each pair goes on in one step
  * @returns {object[]} steps {parts, attach, subassembly: null, loose}
  */
-const deriveSteps = ({ids, adjacency, metaOf: meta, index, built = new Set(), groups = [], subSteps = () => []}) => {
+const deriveSteps = options => {
+    const {pairs = new Map(), adjacency, built = new Set()} = options;
+    if (pairs.size) {
+        const paired = deriveUnits({...options, withPairs: pairs});
+        if (buildable(paired, adjacency, built)) return paired;
+    }
+    return deriveUnits({...options, withPairs: new Map()});
+};
+
+/** deriveSteps' walk; `withPairs` (part id → mirror partner) puts mirrored structural parts in one unit. */
+const deriveUnits = ({ids, adjacency, metaOf: meta, index, built = new Set(), groups = [], subSteps = () => [], withPairs = new Map()}) => {
     const groupOfPart = new Map();
     for (const g of groups) for (const id of g.parts) groupOfPart.set(id, g);
     const loosePart = ids.filter(id => !groupOfPart.has(id));
@@ -130,10 +245,13 @@ const deriveSteps = ({ids, adjacency, metaOf: meta, index, built = new Set(), gr
     const fastenerIds = loosePart.filter(id => isFastener(meta(id)));
     const fastenerSet = new Set(fastenerIds);
     const everyFastener = fastenerIds.length === loosePart.length && groups.length === 0;
+    const loosePartSet = new Set(loosePart);
+    const structuralPart = id => loosePartSet.has(id) && (!fastenerSet.has(id) || everyFastener);
     for (const id of loosePart) {
         if (unitOf.has(id)) continue;
-        if (!fastenerSet.has(id) || everyFastener) {
-            addUnit({kind: 'part', parts: [id], fastener: false});
+        if (structuralPart(id)) {
+            const mate = withPairs.get(id);
+            addUnit({kind: 'part', parts: mate && structuralPart(mate) && !unitOf.has(mate) ? [id, mate] : [id], fastener: false});
             continue;
         }
         const cluster = [id];
@@ -309,6 +427,7 @@ export const buildSteps = (model, catalog) => {
     const partOf = new Map(model.parts.map(p => [p.id, p]));
     const meta = id => metaOf(catalog, partOf.get(id)?.part);
     const allIds = model.parts.map(p => p.id);
+    const pairs = mirrorPairs(model, catalog, adjacency);
 
     if (Array.isArray(model.steps) && model.steps.length) {
         // The author's steps, as written: each part once, in its first step.
@@ -321,7 +440,7 @@ export const buildSteps = (model, catalog) => {
         }
         // Parts added since (in the editor) follow in derived steps.
         const rest = allIds.filter(id => !seen.has(id));
-        if (rest.length) steps.push(...deriveSteps({ids: rest, adjacency, metaOf: meta, index, built: seen}));
+        if (rest.length) steps.push(...deriveSteps({ids: rest, adjacency, metaOf: meta, index, built: seen, pairs}));
         return {source: 'meta', steps, groups: []};
     }
 
@@ -329,9 +448,9 @@ export const buildSteps = (model, catalog) => {
     const groups = (model.groups || [])
         .map(g => ({id: g.id, name: g.name, parts: g.parts.filter(id => index.has(id))}))
         .filter(g => g.parts.length >= 2 && holdsTogether(g.parts, adjacency));
-    const subSteps = group => deriveSteps({ids: group.parts, adjacency, metaOf: meta, index})
+    const subSteps = group => deriveSteps({ids: group.parts, adjacency, metaOf: meta, index, pairs})
         .map(step => ({...step, attach: [], subassembly: group.id, loose: false}));
-    const steps = deriveSteps({ids: allIds, adjacency, metaOf: meta, index, groups, subSteps});
+    const steps = deriveSteps({ids: allIds, adjacency, metaOf: meta, index, groups, subSteps, pairs});
     return {source: 'auto', steps, groups};
 };
 
