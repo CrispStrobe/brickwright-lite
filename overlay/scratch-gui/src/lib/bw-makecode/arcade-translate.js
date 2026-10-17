@@ -7,7 +7,7 @@ import {prepareThrowSource,prepareThrowEmission,reproveThrowEmission,hasThrowEmi
 import {proveArrayMapValues} from './lower-array-map-values.js';
 import {selectNamedFunctionSourceProof} from './named-function-source-selection.js';
 import {lowerNamedFunctionValues} from './lower-named-function-values.js';
-import {selectClassCallableSourceProof} from './class-callable-source-gate.js';
+import {selectClassCallableSourceProofForTranslation} from './class-callable-source-gate.js';
 import {withClassResultFlowProof} from './class-callable-result-flow-proof.js';
 import {numberLiteralCode,containsNonFiniteNumberLiteral} from './source-number-literal.js';
 import {lowerMathIdivValues} from './math-idiv-source.js';
@@ -5053,7 +5053,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     const namedLowering=namedEnabled?lowerNamedFunctionValues(callableSourceParsed):null;
     const callableEligibility=callableSourceGate(callableSourceParsed,{normalize:true});
     const callableEnabled=opts.callableLexicalPrototype===true || callableEligibility.eligible;
-    const {proof:classEligibility,sdkImageEnabled}=selectClassCallableSourceProof(callableSourceParsed,{sdkImagePrototype:opts.sdkImagePrototype===true});
+    const {proof:classEligibility,sdkImageEnabled}=selectClassCallableSourceProofForTranslation(callableSourceParsed,{sdkImagePrototype:opts.sdkImagePrototype===true});
     const classEnabled=opts.classCallablePrototype===true || classEligibility.eligible;
     if(opts.sdkImagePrototype===true&&!classEligibility.eligible)projectInputDiagnostics.push(...classEligibility.unsupported,'SDK Image prototype requires its completed actual source producer proof');
     // Ordinary programs retain their ordinary parse. Only the proved numeric

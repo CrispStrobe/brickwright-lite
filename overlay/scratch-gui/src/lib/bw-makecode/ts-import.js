@@ -32,6 +32,129 @@
  * @module
  */
 
+// These records describe parser-owned structure only. They never establish a
+// binding, type, producer or eligibility. External ASTs are deliberately absent.
+// Parent descriptors are compared before their children, so replacing a child
+// with a getter or Proxy cannot make this observer traverse the replacement.
+const parserStructures = new WeakMap();
+const structureKeys = Reflect.ownKeys;
+const structureDescriptor = Object.getOwnPropertyDescriptor;
+const structurePrototype = Object.getPrototypeOf;
+const structureSame = Object.is;
+const structureHasOwn = Object.hasOwn;
+const structureApply = Reflect.apply;
+const structureGet = WeakMap.prototype.get, structureSet = WeakMap.prototype.set;
+const structureSeenHas = Set.prototype.has, structureSeenAdd = Set.prototype.add;
+const StructureSet = Set;
+const structureObjectPrototype = Object.prototype, structureArrayPrototype = Array.prototype;
+const prototypeStructure = object => {
+    const keys = structureKeys(object), fields = [];
+    for (let index = 0; index < keys.length; index++) fields[index] = structureDescriptor(object, keys[index]);
+    return {object, prototype: structurePrototype(object), keys, fields};
+};
+const structurePrototypes = [prototypeStructure(structureObjectPrototype), prototypeStructure(structureArrayPrototype)];
+const sameStructureRow = row => {
+    const keys = structureKeys(row.object);
+    if (structurePrototype(row.object) !== row.prototype || keys.length !== row.keys.length) return false;
+    for (let index = 0; index < keys.length; index++) {
+        const key = keys[index];
+        if (key !== row.keys[index]) return false;
+        const actual = structureDescriptor(row.object, key), before = row.fields[index];
+        if (!actual || actual.enumerable !== before.enumerable || actual.configurable !== before.configurable ||
+            structureHasOwn(actual, 'value') !== structureHasOwn(before, 'value') ||
+            (structureHasOwn(before, 'value') ? actual.writable !== before.writable || !structureSame(actual.value, before.value) :
+                actual.get !== before.get || actual.set !== before.set)) return false;
+    }
+    return true;
+};
+const structurePrototypesCurrent = () => {
+    for (let index = 0; index < structurePrototypes.length; index++)
+        if (!sameStructureRow(structurePrototypes[index])) return false;
+    return true;
+};
+const structureArray = Array.isArray, structureExec = RegExp.prototype.exec;
+const structureTypeSyntax = /^(?:[A-Za-z_$][A-Za-z0-9_$]*)(?:\.[A-Za-z_$][A-Za-z0-9_$]*)*(?:\[\])*$/;
+const simpleStructureType = value => {
+    if (value !== null && typeof value === 'object') {
+        const descriptor = structureDescriptor(value, 'text');
+        if (!descriptor || !structureHasOwn(descriptor, 'value')) return false;
+        value = descriptor.value;
+    }
+    return typeof value === 'string' && (value === '' || value.length <= 256 &&
+        structureApply(structureExec, structureTypeSyntax, [value]) !== null);
+};
+const rememberParserStructure = (program, tokens) => {
+    try {
+        if (!structurePrototypesCurrent()) return;
+        // Partial syntax and uncertain type forms retain the eager analyses.
+        // These restrictions only decline an optimization, never reject input.
+        for (let index = 0; index < tokens.length; index++)
+            if (tokens[index].unknownBefore || tokens[index].invalidLiteral) return;
+        const rows = [], seen = new StructureSet(), pending = [{object: program, depth: 0}];
+        let slots = 0, hasClass = false;
+        while (pending.length) {
+            const entry = pending[pending.length - 1];pending.length--;
+            if (entry.depth > 128) return;
+            const object = entry.object;
+            if (structureApply(structureSeenHas, seen, [object])) continue;
+            structureApply(structureSeenAdd, seen, [object]);
+            if (rows.length >= 50000) return;
+            const prototype = structurePrototype(object);
+            if (prototype !== structureObjectPrototype && prototype !== structureArrayPrototype && prototype !== null) return;
+            const keys = structureKeys(object), fields = [];
+            if ((slots += keys.length) > 500000) return;
+            for (let index = 0; index < keys.length; index++) {
+                const key = keys[index], descriptor = structureDescriptor(object, key);
+                if (typeof key !== 'string' || !descriptor || !structureHasOwn(descriptor, 'value')) return;
+                const value = descriptor.value;
+                if (typeof value === 'function' || typeof value === 'symbol' || typeof value === 'bigint') return;
+                if (key === 'type' && value === 'Class') hasClass = true;
+                if (key === 'type' && value === 'Unknown' || key === 'opaque' && value === true) return;
+                if ((key === 'unsupported' || key === 'typeParameters' || key === 'typeArguments') &&
+                    (!structureArray(value) || value.length !== 0)) return;
+                if ((key === 'typeName' || key === 'returnType' || key === 'assertedType') && !simpleStructureType(value)) return;
+                if (key === 'paramTypes') {
+                    if (!value || typeof value !== 'object' || structureArray(value)) return;
+                    const names = structureKeys(value);
+                    for (let at = 0; at < names.length; at++) {
+                        const type = structureDescriptor(value, names[at]);
+                        if (!type || !structureHasOwn(type, 'value') || !simpleStructureType(type.value)) return;
+                    }
+                }
+                if (key === 'type' && value === 'FunctionDeclaration') {
+                    const name = structureDescriptor(object, 'name');
+                    if (!name || !structureHasOwn(name, 'value') || typeof name.value !== 'string' || !name.value) return;
+                }
+                fields[index] = descriptor;
+                if (value !== null && typeof value === 'object') pending[pending.length] = {object: value, depth: entry.depth + 1};
+            }
+            rows[rows.length] = {object, prototype, keys, fields};
+        }
+        if (!hasClass) structureApply(structureSet, parserStructures, [program, {rows, expired: false}]);
+    } catch {
+        // An uncertain observation never changes parsing or source diagnostics.
+    }
+};
+
+// Only a still-identical, own-data parser graph can omit an unused analysis.
+// An observed change expires this optimization permanently; ordinary analysis
+// remains responsible for every changed, externally built or wrapped input.
+export function currentParserClassAbsence (program) {
+    const record = structureApply(structureGet, parserStructures, [program]);
+    if (!record || record.expired) return false;
+    try {
+        if (!structurePrototypesCurrent()) {
+            record.expired = true;return false;
+        }
+        for (let index = 0; index < record.rows.length; index++) {
+            if (!sameStructureRow(record.rows[index])) {record.expired = true;return false;}
+        }
+        return true;
+    } catch {
+        record.expired = true;return false;
+    }
+}
+
 // ─── lexer ──────────────────────────────────────────────────────────────
 
 const PUNCT = [
@@ -1327,5 +1450,7 @@ export function parseMakeCodeTs (source, opts = {}) {
     parser.retainCallableMetadata = Boolean(opts.retainCallableMetadata);
     parser.retainPrimitiveProcedureDefaults = Boolean(opts.retainPrimitiveProcedureDefaults);
     parser.retainOrdinaryDefaultProvenance = Boolean(opts.retainOrdinaryDefaultProvenance);
-    return parser.parseProgram();
+    const program = parser.parseProgram();
+    if (parser.retainCallableMetadata) rememberParserStructure(program, parser.toks);
+    return program;
 }
