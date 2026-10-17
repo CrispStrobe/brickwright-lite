@@ -47,7 +47,13 @@
 //      opens step 1 of the driving base with its new parts in the highlight orange
 //      and a "parts needed" callout counting them; Next and → / ← turn the pages; the
 //      last page is the parts list; "Print / Save as PDF" opens one picture per step;
-//  11. no page errors.
+//  11. a school tablet (scripts/lib/sim-lab-touch-gate.mjs), a 1024×768 touch page and real
+//      touch input only: tap a tile then the floor places a part, one finger drags a part by
+//      grid steps, drags a tile out of the palette, a long press adds to the selection, a long
+//      press then drag on open floor box-selects, a finger drags the gizmo's X arrow, the build
+//      bar's Select all / Copy / Paste / Turn ↺ / Undo, one finger orbits and two pinch-zoom
+//      (Build and Simulate), and holding ▲ drives with lifting the finger stopping both motors;
+//  12. no page errors.
 //
 // Every Sim Lab here runs its physics in the Web Worker (ROADMAP §4.9): each load
 // asserts `window.__bwSimLab.worker === true`, so the line-follower lap, the wall
@@ -67,6 +73,7 @@ import assert from 'node:assert/strict';
 import {cadInteractions} from './lib/sim-lab-cad-gate.mjs';
 import {insightInteractions} from './lib/sim-lab-insight-gate.mjs';
 import {instructionsInteractions} from './lib/sim-lab-instructions-gate.mjs';
+import {touchInteractions} from './lib/sim-lab-touch-gate.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const build = resolve(process.env.BW_BUILD || `${root}/packages/scratch-gui/build`);
@@ -556,6 +563,14 @@ try {
     await openSimLab(manual, {program: null});
     await instructionsInteractions(manual, {shotsDir: artifacts});
     await manual.close();
+
+    // 11. A school tablet: a 1024×768 touch page, real fingers only (scripts/lib/sim-lab-touch-gate.mjs).
+    const tablet = await browser.newPage({viewport: {width: 1024, height: 768}, hasTouch: true, serviceWorkers: 'block'});
+    tablet.on('pageerror', error => errors.push(error.message));
+    tablet.on('dialog', dialog => dialog.accept());
+    await openSimLab(tablet, {program: null});
+    await touchInteractions(tablet, {shotsDir: artifacts});
+    await tablet.close();
 
     const fallback = await browser.newPage({viewport: {width: 1400, height: 900}, serviceWorkers: 'block'});
     fallback.on('pageerror', error => errors.push(error.message));

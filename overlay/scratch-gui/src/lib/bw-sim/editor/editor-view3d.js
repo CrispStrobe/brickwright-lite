@@ -45,6 +45,15 @@
 //   camera                left-drag on empty space or right-drag: orbit;
 //                         middle-drag or Shift+right-drag: pan; wheel: zoom
 //                         toward the pointer
+//   fingers               (tablets; touch-gestures.js) a finger on a part:
+//                         select it, drag it (the mouse's drag: magnet,
+//                         overlap); on empty space: orbit; two fingers: pinch
+//                         zoom and pan; a long press on a part adds or removes
+//                         it (Shift+click), on empty space then drag: box
+//                         select; a tap places the palette's part; the gizmo's
+//                         handles are bigger and easier to hit under a finger.
+//                         Fingers never reach three's controls: this module
+//                         moves the camera for them
 //
 // Every change goes through the editor's command stack (editor-state.js); a
 // change to several parts is one `moveMany` / `batch` command, so one Ctrl+Z
@@ -74,6 +83,10 @@ import {
 import {portsForCopies} from './editor-state.js';
 import {portItems} from '../mech/insight.js';
 import {createInsightLayer, tintMaterial} from '../view/insight-layer.js';
+import {
+    COARSE_CENTRE_PX, COARSE_GIZMO_MIN_PX, COARSE_HANDLE_PX, LONG_PRESS_MS, TOUCH_SLOP_PX, createTouchTracker, orbitAngles, orbitOffset,
+    panAmounts, pinchDistance
+} from './touch-gestures.js';
 
 /** Default LDraw colour of a newly placed part (Light Bluish Grey). */
 export const DEFAULT_COLOR = 71;
@@ -128,7 +141,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const canvas = renderer.domElement;
     canvas.dataset.testid = 'bw-sim-lab-editor-canvas';
     canvas.tabIndex = 0;
-    Object.assign(canvas.style, {width: '100%', height: '100%', display: 'block', borderRadius: '6px', touchAction: 'none', outline: 'none'});
+    Object.assign(canvas.style, {width: '100%', height: '100%', display: 'block', borderRadius: '6px', touchAction: 'none', outline: 'none',
+        userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none'});
     container.appendChild(canvas);
     const catalogMap = catalog instanceof Map ? catalog : new Map(Object.entries(catalog || {}));
 
@@ -163,6 +177,10 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     let preview = null; // {moves, candidate} while a selection is being moved
     let modifiers = {alt: false, shift: false};
     let cameraTouched = false;
+    // Fingers: the last press was a touch, or the device's main pointer is coarse (bigger gizmo handles).
+    let lastTouch = false;
+    const coarseQuery = typeof window !== 'undefined' && window.matchMedia ? window.matchMedia('(pointer: coarse)') : null;
+    const bigHandles = () => lastTouch || Boolean(coarseQuery && coarseQuery.matches);
 
     const partsById = () => new Map(editor.model.parts.map(p => [p.id, p]));
     const selectedParts = () => {
@@ -402,6 +420,9 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     // Registered before OrbitControls and TransformControls: this listener decides
     // first what a press means (gizmo, part drag, box select or camera).
     canvas.addEventListener('pointerdown', event => onDown(event));
+    // Fingers' moves and lifts too: a finger is followed here and kept from three's
+    // controls (stopImmediatePropagation), except one that grabbed a gizmo handle.
+    for (const type of ['pointermove', 'pointerup', 'pointercancel']) canvas.addEventListener(type, event => onTouchEvent(event));
     const transform = new TransformControls(camera, canvas);
     transform.setSpace('world');
     transform.setSize(1.25);
@@ -430,7 +451,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const fitGizmo = () => {
         if (!transform.object || !selectionRadius) return;
         const size = gizmoSize({radius: selectionRadius, distance: camera.position.distanceTo(pivotObject.position),
-            fov: camera.fov, viewHeightPx: canvas.clientHeight});
+            fov: camera.fov, viewHeightPx: canvas.clientHeight, minPx: bigHandles() ? COARSE_GIZMO_MIN_PX : undefined});
         if (Math.abs(size - transform.size) > 0.01) transform.setSize(size);
     };
     const updateGizmo = () => {
@@ -466,9 +487,9 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
      * Whether the pointer is on the VISIBLE shape of the gizmo handle the picker
      * found (within HANDLE_PX). TransformControls picks with fat invisible shapes
      * that reach over neighbouring parts; a press there on a part is meant for
-     * the part.
+     * the part. A finger gets a wider margin (COARSE_HANDLE_PX).
      */
-    const onHandleShape = event => {
+    const onHandleShape = (event, reach = HANDLE_PX) => {
         const gizmo = transform._gizmo && transform._gizmo.gizmo && transform._gizmo.gizmo[transform.mode];
         if (!gizmo) return true; // three's internals changed: trust the picker
         const rect = canvas.getBoundingClientRect();
@@ -486,7 +507,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             const n = index ? index.count : pos.count;
             for (let i = 0; i + 2 < n; i += 3) {
                 const [a, b, c] = [0, 1, 2].map(k => screen[index ? index.getX(i + k) : i + k]);
-                if (triangleDistance(p, a, b, c) <= HANDLE_PX) return true;
+                if (triangleDistance(p, a, b, c) <= reach) return true;
             }
         }
         return false;
@@ -495,10 +516,18 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const gizmoGrab = event => {
         if (!transform.object) return null;
         // The handles as they are now (size and pose change between frames), not as last drawn.
+        fitGizmo();
         transform.getHelper().updateMatrixWorld(true);
         transform.pointerHover(ndc(event));
         if (transform.axis === null) return null;
-        if (onHandleShape(event) || !partUnder(event)) return transform.axis;
+        const finger = event.pointerType === 'touch';
+        if (finger && partUnder(event)) {
+            const rect = canvas.getBoundingClientRect();
+            const c = pivotObject.position.clone().project(camera);
+            const off = Math.hypot(rect.left + (c.x + 1) / 2 * rect.width - event.clientX, rect.top + (1 - c.y) / 2 * rect.height - event.clientY);
+            if (off < COARSE_CENTRE_PX) { transform.axis = null; return null; }
+        }
+        if (onHandleShape(event, finger ? COARSE_HANDLE_PX : HANDLE_PX) || !partUnder(event)) return transform.axis;
         transform.axis = null; // the handle does not light up either
         return null;
     };
@@ -801,7 +830,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         const d = paletteDrag;
         if (!d || event.pointerId !== d.pointerId) return;
         if (!d.dragging) {
-            if (travelled(event, d) <= CLICK_PX) return;
+            if (travelled(event, d) <= (event.pointerType === 'touch' ? TOUCH_SLOP_PX : CLICK_PX)) return;
             d.dragging = true;
             setTool(d.part);
         }
@@ -1040,6 +1069,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const travelled = (event, g) => Math.hypot(event.clientX - g.x, event.clientY - g.y);
 
     function onDown (event) {
+        lastTouch = event.pointerType === 'touch';
+        if (lastTouch) { onTouchDown(event); return; }
         readModifiers(event);
         canvas.focus();
         if (event.button !== 0) { gesture = null; return; }
@@ -1075,6 +1106,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     }
 
     const onMove = event => {
+        if (event.pointerType === 'mouse') lastTouch = false;
         readModifiers(event);
         if (paletteDrag && paletteDrag.dragging) return; // onPaletteMove follows it
         if (tool && (!gesture || travelled(event, gesture) <= CLICK_PX)) { updateGhost(event); return; }
@@ -1104,36 +1136,51 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (gesture.kind === 'part') {
             if (!gesture.started && travelled(event, gesture) <= CLICK_PX) return;
             gesture.started = true;
-            const surface = surfaceUnder(event, selection);
-            if (!surface) return;
-            // Where the pressed point would be: on the pointer's ray, as high above the
-            // surface as it was above the part's bottom.
-            const ray = raycaster.ray;
-            const height = surface.point.y + (gesture.grab.y - gesture.bottom);
-            const t = Math.abs(ray.direction.y) > 1e-6 ? (height - ray.origin.y) / ray.direction.y : -1;
-            const at = t > 0 ? ray.at(t, new Vector3()) : surface.point.clone();
-            const d = worldDeltaToLdu(new Vector3(at.x - gesture.grab.x, surface.point.y - gesture.bottom, at.z - gesture.grab.z));
-            const delta = [Math.round(d[0] / gridStep) * gridStep, Math.round(d[1]), Math.round(d[2] / gridStep) * gridStep].map(tidy);
-            let aimed = null;
-            if (surface.part && gesture.start.length === 1) {
-                const p = worldToLdu(surface.point);
-                const s0 = gesture.start[0];
-                aimed = {id: s0.id, position: [p[0], s0.position[1] + delta[1], p[2]], rotation: s0.rotation};
-            }
-            showMove(gesture.start, translatePoses(gesture.start, delta), delta, aimed);
-            if (!preview.candidate && !preview.blocked) {
-                const on = surface.part && partsById().get(surface.part);
-                status(on ? {kind: 'onTop', target: on.part, delta} : {kind: 'floor', delta});
-            }
+            dragPart(event, gesture);
         } else if (gesture.kind === 'box') {
-            const crect = container.getBoundingClientRect();
-            const x0 = Math.min(gesture.x, event.clientX), y0 = Math.min(gesture.y, event.clientY);
-            Object.assign(boxDiv.style, {display: travelled(event, gesture) > CLICK_PX ? 'block' : 'none',
-                left: `${x0 - crect.left}px`, top: `${y0 - crect.top}px`,
-                width: `${Math.abs(event.clientX - gesture.x)}px`, height: `${Math.abs(event.clientY - gesture.y)}px`});
+            drawBox(event, gesture);
         }
     };
 
+    /** A pressed part (and the rest of the selection) follows the pointer or finger at `event` (clientX/Y). */
+    const dragPart = (event, g) => {
+        const surface = surfaceUnder(event, selection);
+        if (!surface) return;
+        // Where the pressed point would be: on the pointer's ray, as high above the
+        // surface as it was above the part's bottom.
+        const ray = raycaster.ray;
+        const height = surface.point.y + (g.grab.y - g.bottom);
+        const t = Math.abs(ray.direction.y) > 1e-6 ? (height - ray.origin.y) / ray.direction.y : -1;
+        const at = t > 0 ? ray.at(t, new Vector3()) : surface.point.clone();
+        const d = worldDeltaToLdu(new Vector3(at.x - g.grab.x, surface.point.y - g.bottom, at.z - g.grab.z));
+        const delta = [Math.round(d[0] / gridStep) * gridStep, Math.round(d[1]), Math.round(d[2] / gridStep) * gridStep].map(tidy);
+        let aimed = null;
+        if (surface.part && g.start.length === 1) {
+            const p = worldToLdu(surface.point);
+            const s0 = g.start[0];
+            aimed = {id: s0.id, position: [p[0], s0.position[1] + delta[1], p[2]], rotation: s0.rotation};
+        }
+        showMove(g.start, translatePoses(g.start, delta), delta, aimed);
+        if (!preview.candidate && !preview.blocked) {
+            const on = surface.part && partsById().get(surface.part);
+            status(on ? {kind: 'onTop', target: on.part, delta} : {kind: 'floor', delta});
+        }
+    };
+    /** The selection box from where `g` was pressed to `event`. */
+    const drawBox = (event, g, slop = CLICK_PX) => {
+        const crect = container.getBoundingClientRect();
+        const x0 = Math.min(g.x, event.clientX), y0 = Math.min(g.y, event.clientY);
+        Object.assign(boxDiv.style, {display: travelled(event, g) > slop ? 'block' : 'none',
+            left: `${x0 - crect.left}px`, top: `${y0 - crect.top}px`,
+            width: `${Math.abs(event.clientX - g.x)}px`, height: `${Math.abs(event.clientY - g.y)}px`});
+    };
+
+    /** Shift+click, or a finger's long press: the part (and its group) joins or leaves the selection. */
+    const toggleSelected = id => {
+        const group = expandToGroups(editor.model, [id]);
+        const on = selection.includes(id);
+        setSelection(on ? selection.filter(x => !group.includes(x)) : [...selection, ...group]);
+    };
     const boxSelect = (g, event) => {
         const rect = canvas.getBoundingClientRect();
         const [x0, x1] = [Math.min(g.x, event.clientX), Math.max(g.x, event.clientX)];
@@ -1172,9 +1219,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         } else if (g.kind === 'box') {
             if (click) {
                 if (!g.hit) return;
-                const group = expandToGroups(editor.model, [g.hit]);
-                const on = selection.includes(g.hit);
-                setSelection(on ? selection.filter(id => !group.includes(id)) : [...selection, ...group]);
+                toggleSelected(g.hit);
             } else {
                 const inside = boxSelect(g, event);
                 setSelection([...new Set([...selection, ...inside])]);
@@ -1186,14 +1231,191 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         }
     };
 
+    // ---- fingers ----------------------------------------------------------------------
+    // touch-gestures.js says what the fingers mean; here it is done with the same
+    // functions the mouse uses. A part pressed by a finger is not selected at once:
+    // a long press adds it to the selection instead (the finger's Shift+click), a
+    // drag or a tap selects it then.
+    const tracker = createTouchTracker();
+    let touchGizmo = null; // the finger on a gizmo handle: three's TransformControls follows it, as a mouse
+    let longPressTimer = null;
+    const touchAt = event => ({id: event.pointerId, x: event.clientX, y: event.clientY, t: event.timeStamp});
+    const at = (x, y) => ({clientX: x, clientY: y});
+    const stopLongPress = () => {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+    };
+    /** A finger's part drag or box ends without a change (a second finger, or the browser took the finger). */
+    const dropTouchGesture = () => {
+        stopLongPress();
+        boxDiv.style.display = 'none';
+        if (gesture && gesture.kind === 'part' && gesture.started) {
+            preview = null;
+            clearGhost();
+            placeMeshes();
+            status({kind: 'idle'});
+        }
+    };
+    function onTouchDown (event) {
+        if (touchGizmo !== null || transform.dragging || (paletteDrag && paletteDrag.dragging)) {
+            // Another finger while one turns a handle or carries a part from the palette: ignored.
+            event.stopImmediatePropagation();
+            return;
+        }
+        canvas.focus();
+        if (!tracker.count && !tool && gizmoGrab(event)) {
+            // To three's TransformControls, like a mouse press on the handle (its events go on to it).
+            touchGizmo = event.pointerId;
+            controls.enabled = false;
+            gesture = null;
+            return;
+        }
+        event.stopImmediatePropagation(); // OrbitControls and TransformControls never see this finger
+        const out = tracker.down(touchAt(event));
+        if (!out) return;
+        if (out.type === 'pinchStart') {
+            dropTouchGesture();
+            gesture = {kind: 'pinch', touch: true};
+            return;
+        }
+        modifiers = {alt: false, shift: false};
+        const base = {x: event.clientX, y: event.clientY, pointerId: event.pointerId, touch: true};
+        const hit = tool ? null : partUnder(event);
+        if (tool) gesture = {...base, kind: 'tool'};
+        else if (hit) gesture = {...base, kind: 'part', id: hit.object.name, grab: hit.point.clone(), started: false};
+        else gesture = {...base, kind: 'empty'};
+        stopLongPress();
+        const due = event.timeStamp + LONG_PRESS_MS;
+        longPressTimer = setTimeout(() => onTouch(tracker.tick(Math.max(due, performance.now()))), LONG_PRESS_MS);
+    }
+    function onTouchEvent (event) {
+        if (event.pointerType !== 'touch') return;
+        if (event.pointerId === touchGizmo) {
+            if (event.type === 'pointermove') return;
+            touchGizmo = null;
+            if (event.type === 'pointercancel') {
+                // The browser took the finger: the handle lets go and nothing changes (TransformControls has no cancel).
+                preview = null;
+                clearGhost();
+                transform.pointerUp({x: 0, y: 0, button: 0});
+                placeMeshes();
+            }
+            return;
+        }
+        event.stopImmediatePropagation();
+        const p = touchAt(event);
+        onTouch(event.type === 'pointermove' ? tracker.move(p) : tracker.up(p, {cancelled: event.type === 'pointercancel'}),
+            at(event.clientX, event.clientY));
+    }
+    /** Acts on what the fingers did (touch-gestures.js); `where` is the finger's position for a move or a lift. */
+    function onTouch (out, where) {
+        const g = gesture;
+        if (!out) return;
+        if (out.type === 'longPress') {
+            stopLongPress();
+            if (g && g.kind === 'part') {
+                toggleSelected(g.id);
+                status({kind: 'selected', count: selection.length});
+                gesture = {...g, kind: 'held'};
+            } else if (g && g.kind === 'empty') {
+                gesture = {...g, kind: 'box'};
+                status({kind: 'boxing'});
+            }
+        } else if (out.type === 'dragStart' || out.type === 'drag') {
+            stopLongPress();
+            if (!g) return;
+            if (g.kind === 'part') {
+                if (!g.started) {
+                    if (!selection.includes(g.id)) setSelection([g.id]);
+                    modelGroup.updateMatrixWorld(true);
+                    g.start = selectedParts();
+                    g.bottom = modelBox(selection).min.y;
+                    g.started = true;
+                }
+                dragPart(at(out.x, out.y), g);
+            } else if (g.kind === 'empty' || g.kind === 'tool') {
+                orbitBy(out.dx, out.dy);
+            }
+        } else if (out.type === 'heldDrag') {
+            if (g && g.kind === 'box') drawBox(at(out.x, out.y), g, TOUCH_SLOP_PX);
+        } else if (out.type === 'pinch') {
+            pinchBy(out.scale, out.pan);
+        } else if (out.type === 'end') {
+            if (out.cancelled) {
+                dropTouchGesture();
+                gesture = null;
+                return;
+            }
+            stopLongPress();
+            gesture = null;
+            boxDiv.style.display = 'none';
+            if (!g || g.kind === 'pinch') return;
+            const still = out.was === 'tap' || out.was === 'longPress' || out.was === 'held';
+            if (g.kind === 'tool') {
+                if (!still) return; // the finger orbited the camera
+                updateGhost(where);
+                place();
+            } else if (g.kind === 'part') {
+                if (g.started) {
+                    commitPreview();
+                } else if (out.was === 'longPress') {
+                    toggleSelected(g.id);
+                    status({kind: 'selected', count: selection.length});
+                } else if (out.was === 'tap') {
+                    setSelection([g.id]);
+                    status({kind: 'selected', count: selection.length});
+                }
+                updateGizmo();
+            } else if (g.kind === 'box') {
+                if (out.was === 'heldDrag') setSelection([...new Set([...selection, ...boxSelect(g, where)])]);
+                status({kind: 'selected', count: selection.length});
+            } else if (g.kind === 'empty' && out.was === 'tap') {
+                setSelection([]);
+                status({kind: 'idle'});
+            }
+        }
+    }
+    /** One finger on empty space turns the camera about its target, as a mouse drag does. */
+    const orbitBy = (dx, dy) => {
+        const a = orbitAngles(dx, dy, canvas.clientHeight);
+        const offset = orbitOffset(camera.position.clone().sub(controls.target).toArray(), a.theta, a.phi,
+            {maxPolar: controls.maxPolarAngle});
+        camera.position.copy(controls.target).add(new Vector3(...offset));
+        controls.update();
+        cameraTouched = true;
+    };
+    /** Two fingers: closer to the target as they spread, and the scene follows their midpoint. */
+    const pinchBy = (scale, [dx, dy]) => {
+        const offset = camera.position.clone().sub(controls.target);
+        const distance = pinchDistance(offset.length(), scale, {min: Math.max(0.01, controls.minDistance), max: controls.maxDistance});
+        camera.position.copy(controls.target).add(offset.setLength(distance));
+        camera.updateMatrix();
+        const [right, up] = panAmounts(dx, dy, distance, camera.fov, canvas.clientHeight);
+        const shift = new Vector3().setFromMatrixColumn(camera.matrix, 0).multiplyScalar(right)
+            .add(new Vector3().setFromMatrixColumn(camera.matrix, 1).multiplyScalar(up));
+        camera.position.add(shift);
+        controls.target.add(shift);
+        controls.update();
+        cameraTouched = true;
+    };
+    const onContextMenu = event => {
+        // A long press is a selection gesture here, not the browser's menu.
+        if (lastTouch) event.preventDefault();
+    };
+
+    /** Esc (or its button): a drag in progress is called off, else the placing tool ends, else the selection is cleared. */
+    const escape = () => {
+        if (gesture && gesture.kind === 'part') { preview = null; gesture = null; clearGhost(); placeMeshes(); return; }
+        if (tool) setTool(null);
+        else { setSelection([]); status({kind: 'idle'}); }
+    };
+
     const onKey = event => {
         readModifiers(event);
         const ctrl = event.ctrlKey || event.metaKey;
         const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
         if (key === 'Escape') {
-            if (gesture && gesture.kind === 'part') { preview = null; gesture = null; clearGhost(); placeMeshes(); return; }
-            if (tool) setTool(null);
-            else { setSelection([]); status({kind: 'idle'}); }
+            escape();
             return;
         }
         if (ctrl) {
@@ -1222,6 +1444,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     canvas.addEventListener('pointerup', onUp);
     canvas.addEventListener('pointercancel', onUp);
     canvas.addEventListener('pointerleave', onLeave);
+    canvas.addEventListener('contextmenu', onContextMenu);
     canvas.addEventListener('keydown', onKey);
     canvas.addEventListener('keyup', onKeyUp);
     const unsubscribe = editor.subscribe(() => rebuild());
@@ -1257,7 +1480,10 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         canvas.removeEventListener('pointerup', onUp);
         canvas.removeEventListener('pointercancel', onUp);
         canvas.removeEventListener('pointerleave', onLeave);
+        canvas.removeEventListener('contextmenu', onContextMenu);
         canvas.removeEventListener('keydown', onKey);
+        stopLongPress();
+        tracker.reset();
         canvas.removeEventListener('keyup', onKeyUp);
         clearGhost();
         for (const mesh of meshes.values()) for (const m of [].concat(mesh.material)) m.dispose();
@@ -1293,6 +1519,10 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         get selection () { return selection.slice(); },
         get mode () { return mode; },
         get grid () { return gridStep; },
+        /** The camera now (for the browser gate to read what a gesture did): position, target, distance (metres). */
+        get camera () {
+            return {position: camera.position.toArray(), target: controls.target.toArray(), distance: camera.position.distanceTo(controls.target)};
+        },
         /** The gizmo handle under the pointer ('X', 'Y', 'XY', …) or null: what a press would grab. */
         get gizmoAxis () { return transform.object ? gizmoHover : null; },
         /** While a move is previewed: the part it would push into (shown red), else null. */
@@ -1300,8 +1530,8 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         setGrid (step) { if (GRID_STEPS.includes(step)) gridStep = step; },
         setMode,
         select: ids => setSelection([].concat(ids || [])),
-        selectAll: () => setSelection(editor.model.parts.map(p => p.id)),
-        deleteSelection, duplicate, copy, paste, undo, redo, view, fitSelection, groupSelection, ungroupSelection,
+        selectAll: () => { setSelection(editor.model.parts.map(p => p.id)); status({kind: 'selected', count: selection.length}); },
+        deleteSelection, duplicate, copy, paste, undo, redo, view, fitSelection, groupSelection, ungroupSelection, escape,
         setMotion, setOverlay,
         /** What the overlay shows now (for the browser gate). */
         overlayStats: () => ({...insight.stats(),
