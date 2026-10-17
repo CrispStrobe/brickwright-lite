@@ -31,7 +31,7 @@ const TEXT = {
         failed: 'Could not load the model: {error}', noWebgl: 'This browser cannot show the 3D view ({error}). The simulation still runs.',
         connectFailed: 'Could not connect the program to the virtual hub: {error}',
         noProgram: 'No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.',
-        drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
+        mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
         driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
         issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
         simulate: 'Simulate', build: 'Build', parts: 'Parts', undo: 'Undo', redo: 'Redo', remove: 'Delete',
@@ -46,7 +46,7 @@ const TEXT = {
         failed: 'Das Modell konnte nicht geladen werden: {error}', noWebgl: 'Dieser Browser kann die 3D-Ansicht nicht zeigen ({error}). Die Simulation läuft trotzdem.',
         connectFailed: 'Das Programm konnte nicht mit dem virtuellen Hub verbunden werden: {error}',
         noProgram: 'Es ist noch kein SPIKE-Programm geladen, darum dreht sich kein Motor. Schreibe eins im Code-Tab und drücke ⇦ Zu Blöcken (oder baue es aus Blöcken), dann Start — oder fahre den Roboter mit den Pfeilen unten.',
-        drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
+        mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
         driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
         issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
         simulate: 'Simulieren', build: 'Bauen', parts: 'Teile', undo: 'Rückgängig', redo: 'Wiederholen', remove: 'Löschen',
@@ -261,13 +261,13 @@ class SimLabPane extends React.Component {
         const {SimSession, fetchLDrawClosure, createSimView3D, CATALOG} = this.lib;
         let result;
         try {
-            result = await SimSession.fromText(text, {hubState: this.props.hubState, catalog: CATALOG});
+            result = await SimSession.fromText(text, {hubState: this.props.hubState, catalog: CATALOG, mat: this.state.mat});
         } catch (error) {
             if (token === this.loadToken) this.setState({status: 'failed', message: this.t('failed', {error: error.message})});
             return;
         }
         if (token !== this.loadToken || this.disposed) { result.session?.dispose(); return; }
-        const {session, issues, model} = result;
+        const {session, issues, model, runModel} = result;
         if (!session) {
             this.setState({status: 'failed', issues, message: this.t('failed', {error: issues.at(-1)?.message || ''})});
             return;
@@ -277,7 +277,7 @@ class SimLabPane extends React.Component {
         try {
             const {read} = await fetchLDrawClosure([...new Set(model.parts.map(p => p.part))], {withConfig: true});
             if (token !== this.loadToken || this.disposed) return;
-            this.view = createSimView3D({container: this.box.current, model, mechanism: session.mechanism, read});
+            this.view = createSimView3D({container: this.box.current, model: runModel, mechanism: session.mechanism, read});
             this.view.canvas.setAttribute('aria-label', this.t('canvasLabel'));
             this.view.render(session.snapshot());
         } catch (error) {
@@ -337,6 +337,14 @@ class SimLabPane extends React.Component {
         }
         if (this.state.status === 'running') vm.greenFlag();
     }
+    /** Puts the current model on another mat (its start pose, if the mat has one) and reloads it. */
+    async setMat (mat) {
+        if (!this.session) return;
+        const text = this.lib.serializeModel(this.session.model, {name: this.state.modelFile || 'model.ldr'});
+        this.pause();
+        this.setState({mat: mat || null}, () => this.openText(text, this.state.modelFile));
+    }
+
     /** Hold-to-drive with the movement pair (A left, mounted mirrored; B right), as the arena's drive pad. */
     drive (direction) {
         if (!this.session || !this.session.bridge) return;
@@ -512,6 +520,12 @@ class SimLabPane extends React.Component {
                     <button type="button" style={button} disabled={busy || !this.lib} onClick={() => this.file.current.click()}>{this.text.importModel}</button>
                     <input ref={this.file} type="file" accept=".ldr,.mpd" style={{display: 'none'}} data-testid="bw-sim-lab-file"
                         onChange={e => this.openImported(e)} />
+                    <label style={{fontSize: 12}}>{this.text.mat}{': '}
+                        <select data-testid="bw-sim-lab-mat" disabled={busy || !this.session} value={this.state.mat || 'plain'}
+                            onChange={e => this.setMat(e.target.value === 'plain' ? null : e.target.value)}>
+                            {this.lib && this.lib.MATS.map(m => <option key={m.id} value={m.id}>{m.title[this.locale] || m.title.en}</option>)}
+                        </select>
+                    </label>
                     {status === 'running' ?
                         <button type="button" style={button} data-testid="bw-sim-lab-pause" onClick={() => this.pause()}>{this.text.pause}</button> :
                         <button type="button" style={button} data-testid="bw-sim-lab-run" disabled={!this.session || busy} onClick={() => this.run()}>{this.text.run}</button>}

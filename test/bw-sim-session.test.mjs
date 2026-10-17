@@ -86,3 +86,18 @@ test('a model without a hub settles and says nothing will move', async () => {
     session.tick(1000);
     session.dispose();
 });
+
+test('a mat with a start pose puts the drive axle on it, facing along the line', async () => {
+    const {createMat} = await import('../overlay/scratch-gui/src/lib/bw-sim/world/mats.js');
+    const text = await shippedModel();
+    const {model, runModel, mechanism} = prepareModel(text, CATALOG, {mat: 'line-oval'});
+    const start = createMat('line-oval').startPose;
+    assert.equal(mechanism.bodies.find(b => b.id === 'ground').mat, 'line-oval', 'the floor carries the mat');
+    const hinges = mechanism.joints.filter(j => j.motor);
+    const mid = [0, 2].map(i => (hinges[0].point[i] + hinges[1].point[i]) / 2);
+    assert.ok(Math.hypot(mid[0] - start.x, mid[1] - start.z) < 1e-6, `drive axle midpoint ${mid} vs start ${start.x},${start.z}`);
+    // Forward (LDraw +z of the authored model) now points along the start heading (+x): the axle runs across it, along z.
+    assert.ok(Math.abs(Math.abs(hinges[0].axis[2]) - 1) < 1e-9, `axle along world z: ${hinges[0].axis}`);
+    assert.notDeepEqual(runModel.parts[0].position, model.parts[0].position, 'the run model moved');
+    assert.deepEqual(prepareModel(text, CATALOG).model, model, 'the authored model is untouched (what Build edits and the project saves)');
+});

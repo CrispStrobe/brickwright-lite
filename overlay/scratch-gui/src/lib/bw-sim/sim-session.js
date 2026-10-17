@@ -20,6 +20,8 @@ import {parseModel} from './model/ldraw-model.js';
 import {compile} from './mech/compile.js';
 import {loadJolt, createPhysicsCore} from './physics/jolt-core.js';
 import {SimHubBridge, STEP_MS} from './hub-bridge.js';
+import {createMat} from './world/mats.js';
+import {placeOnStart, driveAnchor} from './world/place.js';
 
 /**
  * The part catalog from part-meta/parts.json's parsed content. The caller
@@ -39,20 +41,30 @@ export const MODELS_BASE = 'static/sim-lab/models/';
  * come back in `issues`, and `mechanism` is null when nothing can run.
  * @returns {{model: object, mechanism: object|null, issues: {severity: string, code: string, message: string, line?: number}[]}}
  */
-export const prepareModel = (text, catalog) => {
+/**
+ * @param {string} text LDraw
+ * @param {Map} catalog
+ * @param {{mat?: string}} [options] a mat id (bw-sim/world/mats.js): the floor shows it, the colour
+ *        sensor reads it, and a mat with a start pose gets the model placed on that pose
+ * @returns {{model, runModel, mechanism, issues}} `model` is the model as authored (what Build edits
+ *          and the project saves); `runModel` is where it stands on the mat (what is simulated and drawn)
+ */
+export const prepareModel = (text, catalog, {mat = null} = {}) => {
     const {model, refusals} = parseModel(text, {catalog});
     const issues = refusals.map(r => ({severity: 'warning', ...r}));
     if (model.parts.length === 0) {
         issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.'});
-        return {model, mechanism: null, issues};
+        return {model, runModel: model, mechanism: null, issues};
     }
-    const mechanism = compile(model, catalog);
+    const start = mat ? createMat(mat).startPose : null;
+    const runModel = start ? placeOnStart(model, start, driveAnchor(model, catalog)) : model;
+    const mechanism = compile(runModel, catalog, mat ? {mat} : {});
     issues.push(...mechanism.diagnostics);
     const motors = mechanism.joints.filter(j => j.motor).length;
     if (motors === 0) {
         issues.push({severity: 'warning', code: 'no-motor', message: 'No motor is connected to a hub port, so nothing will move on its own.'});
     }
-    return {model, mechanism, issues};
+    return {model, runModel, mechanism, issues};
 };
 
 /** The body that carries the SPIKE hub (its pose is the IMU), or null. */
@@ -70,8 +82,11 @@ export class SimSession {
      * @param {Map} options.catalog part catalog (catalogFrom(parts.json))
      * @param {object} options.J the Jolt namespace (loadJolt())
      */
-    constructor ({hubState, model, mechanism, catalog, J}) {
+    constructor ({hubState, model, runModel = model, mechanism, catalog, mat = null, J}) {
         this.model = model;
+        /** The model where it stands on the mat — what the physics runs and the view draws. */
+        this.runModel = runModel;
+        this.mat = mat;
         this.mechanism = mechanism;
         this.core = createPhysicsCore(J, mechanism, {stepHz: 1000 / STEP_MS});
         const hubBody = hubBodyOf(model, mechanism, catalog);
@@ -81,11 +96,11 @@ export class SimSession {
     }
 
     /** Builds a session from LDraw text; resolves to {session, issues} or {session: null, issues}. */
-    static async fromText (text, {hubState, catalog}) {
-        const {model, mechanism, issues} = prepareModel(text, catalog);
-        if (!mechanism) return {session: null, issues, model};
+    static async fromText (text, {hubState, catalog, mat = null}) {
+        const {model, runModel, mechanism, issues} = prepareModel(text, catalog, {mat});
+        if (!mechanism) return {session: null, issues, model, runModel};
         const J = await loadJolt();
-        return {session: new SimSession({hubState, model, mechanism, catalog, J}), issues, model};
+        return {session: new SimSession({hubState, model, runModel, mechanism, catalog, mat, J}), issues, model, runModel};
     }
 
     /** Advance by ms of simulated time (fixed 5 ms steps inside). */

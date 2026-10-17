@@ -33,6 +33,7 @@ import {loadJolt, createPhysicsCore} from '../overlay/scratch-gui/src/lib/bw-sim
 import VirtualSpikeHubState from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
 import {SimHubBridge, STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
 import {createMat, distanceToOvalCentre} from '../overlay/scratch-gui/src/lib/bw-sim/world/mats.js';
+import {placeOnStart} from '../overlay/scratch-gui/src/lib/bw-sim/world/place.js';
 
 const parts = JSON.parse(readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', import.meta.url))).parts;
 const CATALOG = new Map(parts.map(p => [p.part, p]));
@@ -49,27 +50,7 @@ const AXLE_MID_LDU = [0, 10, 80];
  * World (x, z) = (x, −z)·LDU_M, so a world heading h (degrees from +x toward
  * +z) is the LDraw direction (cos h, 0, −sin h).
  */
-const placeModel = (model, start, anchorLdu) => {
-    const h = start.heading * Math.PI / 180;
-    const fx = Math.round(Math.cos(h) * 1e12) / 1e12;
-    const fz = Math.round(-Math.sin(h) * 1e12) / 1e12;
-    // Columns: +x -> (fz, 0, -fx), +y -> +y, +z -> (fx, 0, fz); det = +1.
-    const P = [fz, 0, fx, 0, 1, 0, -fx, 0, fz];
-    const mul = v => [0, 1, 2].map(i => P[3 * i] * v[0] + P[3 * i + 1] * v[1] + P[3 * i + 2] * v[2]);
-    const mat = M => {
-        const out = [];
-        for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
-            out.push(P[3 * i] * M[j] + P[3 * i + 1] * M[3 + j] + P[3 * i + 2] * M[6 + j]);
-        }
-        return out.map(v => v + 0); // no -0
-    };
-    const a = mul(anchorLdu);
-    const t = [start.x / LDU_M - a[0], 0, -start.z / LDU_M - a[2]];
-    return {
-        ...model,
-        parts: model.parts.map(p => ({...p, position: mul(p.position).map((v, i) => v + t[i]), rotation: mat(p.rotation)}))
-    };
-};
+const placeModel = placeOnStart;
 
 const quatRotate = ([x, y, z, w], v) => {
     const ix = w * v[0] + y * v[2] - z * v[1];

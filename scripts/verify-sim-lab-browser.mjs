@@ -174,6 +174,21 @@ try {
     assert.ok(Math.abs(after.a - before.a) > 90 && Math.abs(after.b - before.b) > 90, `encoders: ${JSON.stringify({before, after})}`);
     await page.screenshot({path: resolve(artifacts, 'sim-lab-driving.png'), fullPage: true});
 
+    // The line-oval mat: the robot is placed on its start pose, the floor shows the line.
+    await page.getByTestId('bw-sim-lab-mat').selectOption('line-oval');
+    await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session?.mat === 'line-oval', null, {timeout: 60000});
+    const onMat = await page.evaluate(() => {
+        const s = window.__bwSimLab._pane.session;
+        const hinges = s.mechanism.joints.filter(j => j.motor);
+        return {mid: [0, 2].map(i => (hinges[0].point[i] + hinges[1].point[i]) / 2), ground: s.mechanism.bodies.find(b => b.id === 'ground').mat};
+    });
+    assert.equal(onMat.ground, 'line-oval');
+    assert.ok(Math.hypot(onMat.mid[0] - 0, onMat.mid[1] - 0.25) < 1e-6, `drive axle on the start pose: ${onMat.mid}`);
+    await page.screenshot({path: resolve(artifacts, 'sim-lab-line-oval.png'), fullPage: true});
+    console.log('PASS choosing the line-oval mat puts the robot on the line');
+    await page.getByTestId('bw-sim-lab-mat').selectOption('plain');
+    await page.waitForFunction(() => window.__bwSimLab.status === 'ready' && !window.__bwSimLab._pane.session?.mat, null, {timeout: 60000});
+
     // Build mode: the editor opens on the current model; real clicks place a part;
     // a pin dropped onto a beam hole snaps; undo/redo; back to Simulate compiles it.
     await page.getByTestId('bw-sim-lab-mode-build').click();
