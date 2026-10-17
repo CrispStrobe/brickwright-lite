@@ -1715,10 +1715,20 @@ jobs:
           BW_SPIKE_RECEIPT_DIR: ${{ runner.temp }}/spike-browser-receipts
         run: node scripts/verify-spike-simulator-browser.mjs
 
-      - name: Browser gate — Sim Lab drives a real-parts model from a Scratch program
-        timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+      - name: Browser gate — Robot Lab core: a real-parts model loads, drives, is built and saved
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
         if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
-        run: npm run verify:sim-lab
+        run: npm run verify:sim-lab -- --part=core
+
+      - name: Browser gate — Robot Lab examples run their programs (line follower, wall stopper, colour explorer)
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: npm run verify:sim-lab -- --part=examples
+
+      - name: Browser gate — Robot Lab model insight, instructions and the no-WebGL fallback
+        timeout-minutes: 8  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
+        if: ${{ !cancelled() && steps.serve.outcome == 'success' && matrix.shard == 'light' }}
+        run: npm run verify:sim-lab -- --part=ui
 
       - name: Browser gate — ESP8266 image runs on the esp8266 debug kind with serial
         timeout-minutes: 3  # PROVISIONAL — 0 reading(s), fewer than 5; derived once 5 green runs exist (gen-gate-budgets.mjs)
