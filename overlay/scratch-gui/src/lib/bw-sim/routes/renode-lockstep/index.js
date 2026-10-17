@@ -22,6 +22,14 @@ import {SpikeFirmwareVirtualHub} from '../../hubs/spike/spike-firmware-hub.js';
 
 export {lockstepAvailable};
 
+/**
+ * Whether the pane offers the firmware route: the desktop runtime has the lockstep ops,
+ * and no session has shown that the packaged Renode runtime lacks `lockstep/v1` (only a
+ * running target can say; once one has, the route stays "not available" for this pane).
+ */
+export const firmwareRouteReady = (capabilities, {unsupported = false} = {}) =>
+    !unsupported && lockstepAvailable(capabilities);
+
 /** The desktop app's native Renode capability object, or null outside the desktop app. */
 export const desktopRenodeCapabilities = (host = globalThis) => {
     const internals = host && host.__TAURI_INTERNALS__;

@@ -354,6 +354,8 @@ export class FakeSpikeRenode {
             if (this.session) throw new Error('operation-failed');
             this.session = true;
             return {ok: true};
+        case 'renode.spike.state.read':
+            return JSON.stringify(this.snapshot());
         case 'renode.spike.run':
             if (!this.session) throw new Error('operation-failed');
             return 'running';

@@ -21,7 +21,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {RenodeLockstepDriver, capabilityTransport, lockstepAvailable} from '../overlay/scratch-gui/src/lib/bw-sim/routes/renode-lockstep/driver.js';
-import {LOCKSTEP_OPS, stepRequest} from '../overlay/scratch-gui/src/lib/bw-sim/routes/renode-lockstep/contract.js';
+import {LOCKSTEP_OPS, stepRequest, LockstepUnsupportedError} from '../overlay/scratch-gui/src/lib/bw-sim/routes/renode-lockstep/contract.js';
 import Hub from '../overlay/scratch-gui/src/lib/virtual-hub/spike-hub-state.js';
 import {ArenaHubBridge} from '../overlay/scratch-gui/src/lib/spike-arena/arena-hub-bridge.js';
 import {RenodeArenaSession} from '../overlay/scratch-gui/src/lib/spike-arena/renode-arena-session.js';
@@ -110,8 +110,14 @@ test('the JS validator refuses each malformed lockstep request', () => {
     const ok = {quantumUs: 5000, expectClockNs: 0, shafts: [{port: 'A', positionMdeg: 0, speedMdps: 0}],
         sensors: [{port: 'D', kind: 'distance', values: {distanceMillimeters: 100}}]};
     assert.equal(validLockstepStep(ok), true);
-    assert.equal(validLockstepStep({...ok, quantumUs: 1000}), true);
-    assert.equal(validLockstepStep({...ok, quantumUs: 20000}), true);
+    assert.equal(validLockstepStep({...ok, quantumUs: 10000}), true);
+    // Exactly the Runtime's quanta (renode-spike-prime#59): nothing passes here only to be
+    // refused there, and the contract that builds the request agrees.
+    for (const quantumUs of [1000, 4000, 6000, 7000, 15000, 20000, 5000.5, '5000']) {
+        assert.equal(validLockstepStep({...ok, quantumUs}), false, `step ${quantumUs}`);
+        assert.equal(validLockstepBegin({quantumUs}), false, `begin ${quantumUs}`);
+        assert.throws(() => stepRequest({...ok, quantumUs}), /quantumUs/);
+    }
     const hub = {buttons: {left: false, center: true, right: false, bluetooth: false},
         imuRaw: {temperature: 0, angularRate: [0, 0, 0], acceleration: [0, 0, 4096]}};
     assert.equal(validLockstepStep({...ok, hub}), true);
@@ -176,5 +182,23 @@ test('one Renode session per app: the Robot Lab and the SPIKE arena exclude each
     await driver.end();
     assert.equal(hubState.configurationOwner, null);
     assert.deepEqual(fake.log.map(([op]) => op).filter(op => op !== LOCKSTEP_OPS.step),
-        [LOCKSTEP_OPS.sessionStart, LOCKSTEP_OPS.run, LOCKSTEP_OPS.begin, LOCKSTEP_OPS.end, LOCKSTEP_OPS.sessionClose]);
+        [LOCKSTEP_OPS.sessionStart, LOCKSTEP_OPS.stateRead, LOCKSTEP_OPS.run, LOCKSTEP_OPS.begin, LOCKSTEP_OPS.end,
+            LOCKSTEP_OPS.sessionClose]);
+});
+
+test('a runtime without lockstep/v1 is "unsupported": no run, no begin, and the pane stops offering the route', async () => {
+    const {openFirmwareRoute, firmwareRouteReady} = await loadRoute();
+    const hubState = new Hub();
+    // An older pinned package: the arena's capabilities, no lockstep.
+    const fake = new FakeSpikeRenode({capabilities: ['arena-inputs/v1', 'arena-clock/v1', 'state-sample/v1', 'nuttx-program/v1']});
+    const capabilities = fakeCapabilities(fake);
+    assert.equal(firmwareRouteReady(capabilities), true, 'offered until a running target says otherwise');
+    await assert.rejects(openFirmwareRoute({capabilities, hubState}),
+        error => error instanceof LockstepUnsupportedError && error.code === 'lockstep-unsupported');
+    assert.deepEqual(fake.log.map(([op]) => op), [LOCKSTEP_OPS.sessionStart, LOCKSTEP_OPS.stateRead, LOCKSTEP_OPS.sessionClose],
+        'the target is checked before the guest runs or lockstep begins, and the session is closed');
+    assert.equal(hubState.configurationOwner, null, 'the hub claim is released');
+    assert.equal(firmwareRouteReady(capabilities, {unsupported: true}), false);
+    assert.equal(firmwareRouteReady(null), false, 'the web build has no route');
+    assert.equal(firmwareRouteReady({'renode.spike.state.read': () => null}), false, 'nor a desktop build without the ops');
 });

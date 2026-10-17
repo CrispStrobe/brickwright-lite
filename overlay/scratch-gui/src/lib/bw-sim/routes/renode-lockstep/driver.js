@@ -15,8 +15,8 @@
 // One request in flight at a time; a failed or desynchronised step fails the
 // driver for good (`failed`), so the next call refuses instead of guessing.
 
-import {LOCKSTEP_OPS, QUANTA_US, LockstepContractError, LockstepDesyncError, parseReply, readSnapshot,
-    readStepFrame, frameIdentity, stepRequest} from './contract.js';
+import {LOCKSTEP_OPS, QUANTA_US, LockstepContractError, LockstepDesyncError, LockstepUnsupportedError,
+    advertisesLockstep, parseReply, readSnapshot, readStepFrame, frameIdentity, stepRequest} from './contract.js';
 
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
@@ -93,6 +93,11 @@ export class RenodeLockstepDriver {
             if (this.manageSession) {
                 await this._call(LOCKSTEP_OPS.sessionStart, {backend: this.backend, ...(this.topology !== 'default' ? {topology: this.topology} : {})});
                 this.sessionOpen = true;
+            }
+            // Gate on the running target, as the arena gates its ops on the first frame's
+            // capabilities: an older runtime is "unsupported", never a failed lockstep.begin.
+            if (!advertisesLockstep(await this._call(LOCKSTEP_OPS.stateRead, {}))) throw new LockstepUnsupportedError();
+            if (this.manageSession) {
                 // The session starts with the debugger holding the guest; lockstep.begin
                 // stops a RUNNING emulation (renode-spike-prime#59), so resume it first.
                 await this.transport.call(LOCKSTEP_OPS.run, {}); // replies 'running' (text, not a frame)
@@ -172,4 +177,4 @@ export class RenodeLockstepDriver {
     }
 }
 
-export {LockstepContractError, LockstepDesyncError};
+export {LockstepContractError, LockstepDesyncError, LockstepUnsupportedError};

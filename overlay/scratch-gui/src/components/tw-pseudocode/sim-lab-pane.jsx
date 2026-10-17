@@ -591,7 +591,13 @@ class SimLabPane extends React.Component {
             try {
                 firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.props.hubState});
             } catch (error) {
-                if (token === this.loadToken) this.setState({status: 'failed', message: this.t('firmwareFailed', {error: error.message})});
+                if (token !== this.loadToken) return;
+                // The packaged runtime has no lockstep/v1: not a failure, an unavailable route.
+                if (error.code === 'lockstep-unsupported') {
+                    this.setState({status: 'failed', route: 'scratch', firmwareUnsupported: true, message: this.text.routeUnavailable});
+                } else {
+                    this.setState({status: 'failed', message: this.t('firmwareFailed', {error: error.message})});
+                }
                 return;
             }
         }
@@ -1204,7 +1210,8 @@ class SimLabPane extends React.Component {
         const statusText = `${busy ? T.loading : T[status] || ''}${this.session ? ` · ${compact ? this.t('timeShort', {s: (simMs / 1000).toFixed(1)}) : this.t('time', {s: (simMs / 1000).toFixed(1)})}` : ''}` +
             (rtf !== null && running ? ` · ${this.t('realTime', {f: rtf < 0.1 ? rtf.toFixed(3) : rtf.toFixed(2)})}` : '');
         // Desktop only (the web build has no managed Renode runtime): the program route.
-        const firmwareReady = this.lib && this.desktop() && this.lib.lockstepAvailable(this.renodeCapabilities());
+        const firmwareReady = this.lib && this.desktop() &&
+            this.lib.firmwareRouteReady(this.renodeCapabilities(), {unsupported: this.state.firmwareUnsupported});
         const routeSelect = this.lib && this.desktop() && (
             <label style={{fontSize: 12}}>{T.route}{': '}
                 <select data-testid="bw-sim-lab-route" disabled={busy} value={this.state.route} onChange={e => this.setRoute(e.target.value)}>

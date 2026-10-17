@@ -19,7 +19,7 @@ export {isPortPart} from './contracts.js';
 export {fetchLDrawClosure, LDRAW_BASE} from './ldraw/ldraw-fetch.js';
 export {connectVirtualSpike} from '../virtual-hub/connect-virtual-spike.js';
 export {createSimView3D, WebGLUnavailableError, webglAvailable} from './view/sim-view3d.js';
-export {openFirmwareRoute, desktopRenodeCapabilities, lockstepAvailable} from './routes/renode-lockstep/index.js';
+export {openFirmwareRoute, desktopRenodeCapabilities, lockstepAvailable, firmwareRouteReady} from './routes/renode-lockstep/index.js';
 export {createEditor} from './editor/editor-state.js';
 export {createEditorView3D, DEFAULT_COLOR} from './editor/editor-view3d.js';
 export {snapCandidates} from './editor/snap.js';
