@@ -93,7 +93,7 @@ If no SPIKE program is loaded when you press Run, the pane shows: *“No SPIKE p
 
 Choosing the line-oval mat puts the robot on the line, the wall mat puts its drive axle 0.68 m before the wall face; the other mats start at (0,0) heading 0.
 
-**Open .ldr…** loads your own model from any LDraw editor (LeoCAD, BrickLink Studio's LDraw export). Parts the Robot Lab does not know, loose geometry and mirrored parts are listed under **Notes about this model** and skipped; the rest still runs. A motor or sensor is bound to a hub port by a meta line before its part line:
+**Open .ldr…** loads your own model from any LDraw editor (LeoCAD, BrickLink Studio's LDraw export, including MPD files with `0 FILE` submodels; Studio meta like `0 STEP`, `!LDCAD`, `!STUDIO`/`PE_TEX` and `0x2RRGGBB` direct colours are ignored). Parts the Robot Lab does not know, loose geometry and mirrored parts are listed under **Notes about this model** and skipped; the rest still runs. A motor or sensor is bound to a hub port by a meta line before its part line:
 ```
 0 !BW PORT A
 1 71 -100 10 80 0 1 0 1 0 0 0 0 -1 54696p01.dat
@@ -101,7 +101,7 @@ Choosing the line-oval mat puts the robot on the line, the wall mat puts its dri
 
 Without WebGL the pane says so and the simulation still runs (encoders and yaw keep working; only the picture is missing).
 
-**Saved with the project.** “Save to your computer” stores the model the Lab shows (the Build scene, or the model being simulated) inside the `.sb3`, as its LDraw text, in the `simLab` section of the Brickwright bundle (`lib/bw-project-bundle.js`; record in `bw-sim/model/sim-lab-persist.js`). Opening the project restores it byte-for-byte; a project without one opens the reference driving base. Vanilla Scratch ignores the entry.
+**Saved with the project.** “Save to your computer” stores the model the Lab shows (the Build scene, or the model being simulated) inside the `.sb3`, as its LDraw text, in the `simLab` section of the Brickwright bundle (`lib/bw-project-bundle.js`; record in `bw-sim/model/sim-lab-persist.js`). Opening the project restores it byte-for-byte; a project without one opens the reference driving base. Vanilla Scratch ignores the entry. Saving (`serializeModel` in `bw-sim/model/ldraw-model.js`) writes a flat single-file model (first FILE is main, submodels expanded), not an MPD.
 
 ## Seeing the model
 
