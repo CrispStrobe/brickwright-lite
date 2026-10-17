@@ -30,6 +30,14 @@ before its part line:
 1 71 -100 10 80 0 1 0 1 0 0 0 0 -1 54696p01.dat
 ```
 
+**Saved with the project.** "Save to your computer" stores the model the Sim
+Lab shows (the Build scene, or the model being simulated) inside the `.sb3`,
+as its LDraw text, in the `simLab` section of the Brickwright bundle
+(`lib/bw-project-bundle.js`, the same mechanism as the circuit; the record is
+`bw-sim/model/sim-lab-persist.js`). Opening the project restores it, byte for
+byte; a project without one opens the reference model. Vanilla Scratch ignores
+the entry.
+
 Without WebGL the pane says so and the simulation still runs (the encoders
 and the hub's yaw keep working; only the picture is missing).
 
@@ -73,6 +81,10 @@ the LEGO Group, which does not sponsor, authorize or endorse this project.
   compiler, physics core and worker, model I/O, session, 3D scene).
 - Browser: `npm run verify:sim-lab` (after a GUI build) — the Sim Lab tab loads
   the reference model with a WebGL view, a green-flag program drives it
-  forward with physical encoders, and the no-WebGL fallback still runs.
+  forward with physical encoders, a built model saved with the project
+  reopens byte-identical, and the no-WebGL fallback still runs.
+- Project file: `test/bw-sim-persist.test.mjs` (round trip through the real
+  bundle writer/reader, no model, malformed sections) and
+  `test/project-bundle-archive.test.mjs`.
 - `scripts/verify-boot-payload.mjs` keeps Jolt and the Sim Lab view out of the
   first load (chunk `bw-sim-lab`).

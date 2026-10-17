@@ -10,9 +10,17 @@
 // One clock (docs/SPIKE-ARENA.md): while the Sim Lab runs, its session owns
 // the hub's motor clock; the arena is not mounted at the same time (the
 // simulator pane shows one or the other).
+//
+// The model is saved with the project (C8) the way every other Brickwright
+// surface is (lib/bw-project-bundle.js): one localStorage key, carried as the
+// bundle's `simLab` section. On `bw-project-bundle-collect` the pane writes
+// the model it shows; on mount and on `bw-project-bundle-loaded` it opens the
+// stored one. While the pane is not mounted the key simply keeps what the
+// project load put there, so nothing is lost and nothing is pending.
 
 import React from 'react';
 import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
+import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorableName} from '../../lib/bw-sim/model/sim-lab-persist.js';
 
 const TEXT = {
     en: {
@@ -43,6 +51,8 @@ const TEXT = {
 
 /** Longest step the pane hands the physics per frame: a backgrounded tab must not jump seconds ahead. */
 const MAX_FRAME_MS = 50;
+/** The `0 <title>` line every model the pane writes carries (it is not parsed back, so it must not vary). */
+const MODEL_TITLE = 'Sim Lab model';
 
 class SimLabPane extends React.Component {
     constructor (props) {
@@ -51,13 +61,15 @@ class SimLabPane extends React.Component {
         this.locale = locale;
         this.text = TEXT[locale];
         this.state = {status: 'loading', message: '', issues: [], modelFile: null, simMs: 0, view3d: 'loading',
-            mode: 'simulate', placing: null, selected: null, editorTick: 0};
+            mode: 'simulate', placing: null, selected: null, editorTick: 0, mat: null};
         this.box = React.createRef();
         this.file = React.createRef();
         this.lib = null;
         this.session = null;
         this.view = null;
         this.frame = this.frame.bind(this);
+        this.onBundleCollect = this.onBundleCollect.bind(this);
+        this.onBundleLoaded = this.onBundleLoaded.bind(this);
         this.last = null;
     }
 
@@ -74,8 +86,11 @@ class SimLabPane extends React.Component {
             get mode () { return this._pane.state.mode; },
             get editor () { return this._pane.editor || null; },
             get editView () { return this._pane.editView || null; },
+            get projectRecord () { return this._pane.currentRecord(); },
             _pane: this
         };
+        window.addEventListener('bw-project-bundle-collect', this.onBundleCollect);
+        window.addEventListener('bw-project-bundle-loaded', this.onBundleLoaded);
         try {
             this.lib = await import(/* webpackChunkName: "bw-sim-lab" */ '../../lib/bw-sim/sim-lab.js');
         } catch (error) {
@@ -83,11 +98,16 @@ class SimLabPane extends React.Component {
             return;
         }
         if (this.disposed) return;
-        await this.openShipped(this.lib.MODELS[0].file);
         this.raf = requestAnimationFrame(this.frame);
+        await this.openStored();
     }
 
     componentWillUnmount () {
+        // Flush first: a Build-mode edit made just before switching to the arena
+        // tab must still be in the next save.
+        this.onBundleCollect();
+        window.removeEventListener('bw-project-bundle-collect', this.onBundleCollect);
+        window.removeEventListener('bw-project-bundle-loaded', this.onBundleLoaded);
         this.disposed = true;
         cancelAnimationFrame(this.raf);
         this.teardown();
@@ -126,9 +146,68 @@ class SimLabPane extends React.Component {
         this.setState({status: 'ready'});
     }
 
+    /**
+     * The model the pane shows, as the project stores it, or null when there is
+     * no model (an empty Build scene). `undefined` means "unknown": the pane is
+     * still loading or failed to load, and must not erase what is stored.
+     * @returns {object|null|undefined} a sim-lab-persist record
+     */
+    currentRecord () {
+        if (!this.lib) return undefined;
+        const model = this.editor ? this.editor.model : this.session?.model;
+        if (!model) return undefined;
+        // The name is written into the text's `0 Name:` line; one the record could not
+        // keep would make the reopened text differ, so such a name is not used at all.
+        const name = !this.editor && isStorableName(this.state.modelFile) ? this.state.modelFile : 'my-model.ldr';
+        return simLabRecordFromText(this.lib.serializeModel(model, {name, title: MODEL_TITLE}),
+            {name, mat: this.state.mat});
+    }
+
+    /** Before a save reads the bundle's keys: write the model the pane shows. */
+    onBundleCollect () {
+        try {
+            const record = this.currentRecord();
+            if (record) localStorage.setItem(SIM_LAB_STORAGE_KEY, JSON.stringify(record));
+            else if (record === null) localStorage.removeItem(SIM_LAB_STORAGE_KEY);
+        } catch { /* the Scratch half of the save must survive this */ }
+    }
+
+    /** A project was opened: its model (or none) is in storage now. */
+    async onBundleLoaded (event) {
+        const outcome = event && event.detail && event.detail.outcome;
+        if (outcome !== 'loaded' && outcome !== 'legacy') return;
+        // Mount reads storage itself once the chunk is in.
+        if (!this.lib || this.disposed) return;
+        if (this.state.status === 'running') this.pause();
+        if (this.editor) {
+            this.teardownEditor();
+            this.setState({mode: 'simulate', placing: null, selected: null});
+        }
+        await this.openStored();
+    }
+
+    /** Open the project's model, or the default model when the project has none. */
+    async openStored () {
+        let stored;
+        try {
+            stored = readSimLabStorage(localStorage.getItem(SIM_LAB_STORAGE_KEY));
+        } catch {
+            stored = {record: null, refusals: []}; // storage disabled: nothing was restored
+        }
+        const {record, refusals} = stored;
+        this.setState({mat: record && record.mat ? record.mat : null});
+        if (record) {
+            this.lastText = record.ldraw;
+            await this.openText(record.ldraw, record.name || 'my-model.ldr');
+        } else {
+            await this.openShipped(this.lib.MODELS[0].file);
+        }
+        if (refusals.length && !this.disposed) this.setState(s => ({issues: [...refusals, ...s.issues]}));
+    }
+
     /** Back to simulation: compile what was built. */
     async exitBuild () {
-        const text = this.lib.serializeModel(this.editor.model, {name: 'my-model.ldr', title: 'Sim Lab model'});
+        const text = this.lib.serializeModel(this.editor.model, {name: 'my-model.ldr', title: MODEL_TITLE});
         this.lastText = text;
         this.teardownEditor();
         this.setState({mode: 'simulate', placing: null, selected: null});
@@ -136,7 +215,7 @@ class SimLabPane extends React.Component {
     }
 
     saveLdr () {
-        const text = this.lib.serializeModel(this.editor.model, {name: 'my-model.ldr', title: 'Sim Lab model'});
+        const text = this.lib.serializeModel(this.editor.model, {name: 'my-model.ldr', title: MODEL_TITLE});
         const url = URL.createObjectURL(new Blob([text], {type: 'text/plain'}));
         const a = document.createElement('a');
         a.href = url;
