@@ -1,4 +1,4 @@
-import {analyseSourceValueProducers} from './source-value-producers.js';
+import {analyseSourceValueProducers,analyseSourceDeclarationIdentityForPreparation} from './source-value-producers.js';
 import {callableSourceGate} from './callable-source-gate.js';
 import {analyseCallableFlow} from './callable-flow.js';
 const TYPES=Object.freeze({number:'Number',string:'String',boolean:'Boolean',any:'Any'});
@@ -131,8 +131,20 @@ function lowerOmittedDefaults(program,selected,graph) {
 // lowering creates additional functions. The catalogue retains constraints only.
 export function prepareProcedureConstraintSource(program,{mode='prototype'}={}) {
  if(!['prototype','supported-default'].includes(mode))fail('unknown ordinary constraint selection policy');
+ return prepareConstraints(program,mode,false);
+}
+
+// Only the actual translator parse/known-lowering callchain uses this demand.
+// Public/external low-level preparation keeps its original eager observation.
+export function prepareProcedureConstraintSourceForTranslation(program,{mode='prototype'}={}) {
+ if(!['prototype','supported-default'].includes(mode))fail('unknown ordinary constraint selection policy');
+ return prepareConstraints(program,mode,true);
+}
+
+function prepareConstraints(program,mode,declarationIdentityOnly) {
  const excludedSignature=(messages,message)=>{if(mode==='prototype')messages.push(message);};
- const graph=analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true});
+ const graph=declarationIdentityOnly?analyseSourceDeclarationIdentityForPreparation(program):
+  analyseSourceValueProducers(program,{unboundIsOpaque:true,opaqueDeclarationValues:true});
  // A complete existing callable certificate owns its factory ABI. Primitive
  // annotations on that factory do not opt it into this ordinary protocol.
  const callable=callableSourceGate(program),independent=new Set();

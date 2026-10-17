@@ -1,6 +1,6 @@
 import {capturePreparedSharedImageSources,parseSharedImageSourceBoundary,parseSharedImageSourceProgram,bindPreparedSharedImageSource,sharedImageSourceContextCurrent} from './shared-image-array-source-effects.js';
 import {prepareSharedImageArrayTransport,projectSharedImageArrayTransport,finishSharedImageArrayTransport,currentSharedImageArrayTransport,reproveSharedImageArrayTransport} from './source-shared-image-array-transport.js';
-import {prepareProcedureConstraintSource,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
+import {prepareProcedureConstraintSourceForTranslation,procedureConstraintAstMetadata} from './procedure-constraint-source.js';
 import {BUTTON_EVENTS,controllerButtonEventNumberLeaves} from './controller-button-event-number-source.js';
 import {createProcedureOwnerEmission} from './procedure-owner-emission.js';
 import {prepareThrowSource,prepareThrowEmission,reproveThrowEmission,hasThrowEmission} from './throw-source-gate.js';
@@ -5163,7 +5163,7 @@ export function arcadeToPseudocode (files, opts = {}) {
     projectInputDiagnostics.push(...integerDivisions.unsupported);
     const ordinaryOmissions = prepareOrdinaryCallOmissions(integerDivisions.program);
     projectInputDiagnostics.push(...ordinaryOmissions.unsupported);
-    const procedureConstraints=prepareProcedureConstraintSource(ordinaryOmissions.program,{mode:opts.procedureConstraintsPrototype===true?'prototype':'supported-default'});
+    const procedureConstraints=prepareProcedureConstraintSourceForTranslation(ordinaryOmissions.program,{mode:opts.procedureConstraintsPrototype===true?'prototype':'supported-default'});
     if(procedureConstraints)projectInputDiagnostics.push(...procedureConstraints.diagnostics);
     // Never attach the preparation's Program inside the executable AST: general
     // walkers would otherwise see a second copy of all declarations and effects.

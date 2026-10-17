@@ -1,3 +1,4 @@
+import {declarationIdentityInput} from './declaration-identity-input.js';
 import {consumeSharedImageEntryEffects,sharedImageEntryArrayDomain} from './shared-image-array-source-effects.js';
 import {parseExactImgLiteral} from './arcade-assets.js';
 import {proveDenseArrayLoopEntries} from './dense-array-loop-entry.js';
@@ -29,11 +30,18 @@ const spriteAyArrayCurrent=()=>{
     }
     return true;
 };
+// New private views use the initial intrinsic; the existing eager graph keeps
+// its original dynamic freeze observations, including exceptional fallback.
+const declarationIdentityFreeze=Object.freeze;
 
 export function analyseSourceValueProducers(program,options={}) {
+    return analyseSourceValues(program,options,null);
+}
+
+function analyseSourceValues(program,options,identityInput) {
     if(options.normalCompletion&&!sourceNormalCompletionFor(program,options.normalCompletion))throw new Error('Source completion proof must belong to the actual Program');
     const containsThrow=node=>node&&typeof node==='object'&&(node.type==='ThrowStatement'||Object.values(node).some(value=>Array.isArray(value)?value.some(containsThrow):containsThrow(value)));
-    if(!containsThrow(program))return analyseGraph(program,options);
+    if(!containsThrow(program))return analyseGraph(program,options,null,identityInput);
     // Bootstrap is private. No public option can bypass exceptional reachability
     // or supply a caller-made callee table after a consumer clones the AST.
     const initial=analyseGraph(program,{...options,normalCompletion:null});
@@ -41,9 +49,20 @@ export function analyseSourceValueProducers(program,options={}) {
     return Object.freeze({...analyseGraph(program,{...options,normalCompletion:completion}),normalCompletion:completion,constraintTypesAt:node=>new Set(initial.typesAt(node))});
 }
 
+
+// Internal preparation demand only. No public option or supplied syntax token
+// can select it, and the view cannot discharge a value/completion obligation.
+// Throw and uncertain inputs run the complete original eager analyser.
+export function analyseSourceDeclarationIdentityForPreparation(program) {
+    const options={unboundIsOpaque:true,opaqueDeclarationValues:true};
+    const input=declarationIdentityInput(program);
+    const graph=analyseSourceValues(program,options,input);
+    return declarationIdentityFreeze({unchangedFunctionAt:graph.unchangedFunctionAt});
+}
+
 // Analyze actual lexical producers and all writers without rewriting the AST.
 // Source annotations constrain consumers; they never seed producer authority.
-function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null) {
+function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpers:provedHelpers=new Set(),parenthesized=false,unboundIsOpaque=false,opaqueDeclarationValues=false,uninitializedLocalsAreOpaque=false,declaredLocalUndefined=false,multiplayerPlayerProperties=false,consoleInspection=false,arrayValues=false,arrayEffectSites=false,arrayCallbackParameters=false,arrayLoopEntries=false,ordinaryPrimitiveSdkNumbers=false,sceneClockNumbers=false,initializationEntries=false,normalCompletion=null,physicalUpdateSource=null}={},privateSpriteAyProof=null,identityInput=null) {
     const physicalEntry=physicalUpdateSource?physicalUpdateSourceRecord(program,physicalUpdateSource):null;
     if(physicalUpdateSource&&!physicalEntry)throw new Error('Physical update source proof must belong to the actual current Program');
     const loopEntry=arrayLoopEntries?proveDenseArrayLoopEntries(program,()=>analyseGraph(program,{parenthesized:true,unboundIsOpaque:true})):null;
@@ -212,6 +231,29 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
         if(cyclic(call.callee))add(call.result,'Opaque');
         fn.node.params.forEach((name,index)=>{const arg=call.node.args[index],param=fn.owner.bindings.get(name);if(arg)edge(cell(arg),param);else add(param,'Undefined');});edge(fn.result,call.result);
     }
+    const knownBinding=(node,name=node?.name)=>{
+        if(typeof name!=='string')return null;
+        for(let owner=owners.get(node);owner;owner=owner.parent)if(owner.bindings.has(name))return owner.bindings.get(name);
+        return null;
+    };
+    // Declaration identity is separate from result production. Recursive calls
+    // may keep a unique unchanged declaration without acquiring a result fact.
+    const unchangedFunction=node=>{
+        const identifier=node?.type==='Call'?node.callee:node;
+        if(node?.type==='Call'&&node.isNew)return null;
+        if(!['Identifier','FunctionDeclaration'].includes(identifier?.type))return null;
+        const id=knownBinding(identifier),fn=functions.get(id);
+        return fn&&declarations.get(id)?.size===1&&!classWrites.has(id)?fn.node:null;
+    };
+    // Keep collectPrints, occurrence entry, actual class calls, recursive-call
+    // classification and actual formal propagation setup before this boundary.
+    // Only the private own-data demand can omit unconsumed value fixedpoints.
+    // If syntax/intrinsics changed during those phases, continue the old tail.
+    if(identityInput&&identityInput.current()){
+        identityInput=null;
+        return declarationIdentityFreeze({unchangedFunctionAt:unchangedFunction});
+    }
+    identityInput=null;
     const isFont=current=>{const set=types.get(current);return !!set?.has('Font')&&set.size===1;};
     const exactType=(value,type)=>types.get(value)?.size===1&&types.get(value).has(type);
     const primitiveTypes=new Set(['String','Number','Boolean','Null','Undefined']);
@@ -247,20 +289,6 @@ function analyseGraph(program,{numericArrows:provedArrows=new Set(),numericHelpe
     const playerWriteUnsafe=()=>!!multiplayer?.computedWrites.some(node=>{const keys=types.get(cell(node));return !keys?.size||[...keys].some(type=>!['Number','Boolean','Null','Undefined'].includes(type));});
     let invalidated;do{invalidated=false;if(!unsafePlayerWrite&&playerWriteUnsafe()){unsafePlayerWrite=true;invalidated=true;}for(const item of derived)if(!derivedValid(item))invalidated=add(item.result,'Opaque')||invalidated;for(const item of numericCalls)if(item.node.args.length||!exactType(item.receiver,'NumericCallable'))invalidated=add(item.result,'Opaque')||invalidated;propagate();}while(invalidated);
     const fontAnnotations=new Set();const collectScope=node=>{if(!node||typeof node!=='object')return;if(Array.isArray(node)){node.forEach(collectScope);return;}const owner=owners.get(node);for(let s=owner;s;s=s.parent)for(const value of s.fontAnnotations||[])fontAnnotations.add(value);Object.values(node).forEach(value=>{if(value&&typeof value==='object')collectScope(value);});};collectScope(program);
-    const knownBinding=(node,name=node?.name)=>{
-        if(typeof name!=='string')return null;
-        for(let owner=owners.get(node);owner;owner=owner.parent)if(owner.bindings.has(name))return owner.bindings.get(name);
-        return null;
-    };
-    // Declaration identity is separate from result production. Recursive calls
-    // may keep a unique unchanged declaration without acquiring a result fact.
-    const unchangedFunction=node=>{
-        const identifier=node?.type==='Call'?node.callee:node;
-        if(node?.type==='Call'&&node.isNew)return null;
-        if(!['Identifier','FunctionDeclaration'].includes(identifier?.type))return null;
-        const id=knownBinding(identifier),fn=functions.get(id);
-        return fn&&declarations.get(id)?.size===1&&!classWrites.has(id)?fn.node:null;
-    };
     const immutableFunction=node=>{const fn=unchangedFunction(node);return fn&&!cyclic(knownBinding(fn))?fn:null;};
     const currentTypes=value=>new Set((!callbackEntry||callbackEntry.current())&&(!loopEntry||loopEntry.current())&&(!spriteAyNumbers||spriteAyNumbers.current())?types.get(value)||[]:[]);
     // Copies prevent a consumer from changing another consumer's proof facts.

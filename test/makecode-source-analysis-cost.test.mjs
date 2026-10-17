@@ -214,3 +214,194 @@ test('overwritten Array helpers and iterator cannot validate a changed parser gr
     assert.equal(recordedCalls,ordinaryCalls,'recording never invokes replaced RegExp.exec');
     assert.equal(currentParserClassAbsence(recorded),true);
 });
+
+// These preparation controls compare the original eager public entry with the
+// translator-only demand. No value/completion fact is supplied by the latter.
+import {analyseSourceValueProducers,analyseSourceDeclarationIdentityForPreparation} from '../overlay/scratch-gui/src/lib/bw-makecode/source-value-producers.js';
+import {declarationIdentityInput} from '../overlay/scratch-gui/src/lib/bw-makecode/declaration-identity-input.js';
+import {prepareProcedureConstraintSource,prepareProcedureConstraintSourceForTranslation} from '../overlay/scratch-gui/src/lib/bw-makecode/procedure-constraint-source.js';
+const identityOptions={unboundIsOpaque:true,opaqueDeclarationValues:true};
+const identityNodes=program=>{
+    const out=[],seen=new Set();
+    const visit=value=>{if(!value||typeof value!=='object'||seen.has(value))return;seen.add(value);out.push(value);
+        for(const key of Reflect.ownKeys(value)){const d=Object.getOwnPropertyDescriptor(value,key);if(Object.hasOwn(d,'value'))visit(d.value);}};
+    visit(program);return out;
+};
+const completionFacts=fn=>{try{return {value:fn()};}catch(error){return {error:{name:error.name,message:error.message}};}};
+const identityParity=program=>{
+    const eager=analyseSourceValueProducers(program,identityOptions),identity=analyseSourceDeclarationIdentityForPreparation(program);
+    assert.deepEqual(Reflect.ownKeys(identity),['unchangedFunctionAt']);assert.equal(Object.isFrozen(identity),true);
+    for(const node of identityNodes(program))assert.equal(identity.unchangedFunctionAt(node),eager.unchangedFunctionAt(node));
+    return {eager,identity};
+};
+const preparedFacts=value=>({program:value.program,diagnostics:value.diagnostics,independentRoutes:value.independentRoutes,
+    prefixes:value.program.body.filter(node=>node.type==='FunctionDeclaration').map(fn=>value.prefix(fn,'actual_'+fn.name,name=>'arg_'+name))});
+const preparationParity=(program,mode='prototype')=>{
+    const old=completionFacts(()=>preparedFacts(prepareProcedureConstraintSource(program,{mode}))),
+        demand=completionFacts(()=>preparedFacts(prepareProcedureConstraintSourceForTranslation(program,{mode})));
+    assert.deepEqual(demand,old);return old;
+};
+
+test('preparation declaration demand preserves unique lexical identities without granting immutable results',()=>{
+    const program=parse('function direct(n:number){return n}let result=direct(2);function recurse(n:number):number{return recurse(n)}let recursive=recurse(1);let alias=direct;let indirect=alias(3);');
+    assert.ok(declarationIdentityInput(program));
+    const {eager,identity}=identityParity(program),nodes=identityNodes(program);
+    const direct=program.body.find(node=>node.type==='FunctionDeclaration'&&node.name==='direct');
+    const recurse=program.body.find(node=>node.type==='FunctionDeclaration'&&node.name==='recurse');
+    const calls=nodes.filter(node=>node.type==='Call'&&node.callee?.type==='Identifier');
+    assert.equal(identity.unchangedFunctionAt(calls.find(node=>node.callee.name==='direct')),direct);
+    assert.equal(identity.unchangedFunctionAt(calls.find(node=>node.callee.name==='recurse')),recurse);
+    assert.equal(eager.immutableFunctionAt(recurse),null);
+    assert.equal(identity.unchangedFunctionAt(calls.find(node=>node.callee.name==='alias')),null);
+    for(const source of [
+        'function read(){return 1}function outer(){function read(){return 2}return read()}let value=read();',
+        'function read(){return 1}read=function(){return 2};let value=read();',
+        'function read(){return 1}function read(){return 2}let value=read();',
+        'function read(){return 1}let value=new read();',ordinaryClass,sdkClass
+    ])identityParity(parse(source));
+});
+
+test('Throw and unreachable writers retain the original complete exceptional identity path',()=>{
+    for(const source of [
+        'function read(){return 1}function fail(){throw 2}let result=read();',
+        'function read(){return 1}function change(){return;read=function(){return 2}}let result=read();',
+        'function read(){return 1}function fail(){throw 2;read=function(){return 2}}let result=read();'
+    ]){
+        const program=parse(source);identityParity(program);preparationParity(program);
+        if(identityNodes(program).some(node=>node.type==='ThrowStatement'))assert.equal(declarationIdentityInput(program),null);
+    }
+    const program=parse('function read(){return 1}function change(){return;read=function(){return 2}}let result=read();');
+    const graph=identityParity(program).identity;
+    assert.equal(graph.unchangedFunctionAt(program.body[0]),null,'physical unreachable reassignment still invalidates the declaration');
+});
+
+test('selected primitive constraints and omitted defaults keep full validation and lowering',()=>{
+    for(const source of [
+        'function read(n:number){return n+1}let result=read(2);',
+        'function read(n:number){return n+1}let result=read("wrong");',
+        'function read(n:string,b:boolean){return n}let result=read("ok",true);',
+        'function read(n:number){n="wrong";return n}let result=read(2);',
+        'function read(n:any=2){return n}let result=read();'
+    ])for(const mode of ['prototype','supported-default'])preparationParity(parse(source),mode);
+    const good=preparationParity(parse('function read(n:number){return n+1}let result=read(2);'));
+    assert.ok(good.value);assert.deepEqual(good.value.diagnostics,[]);assert.equal(good.value.prefixes[0].length,1);
+    const bad=preparationParity(parse('function read(n:number){return n}let result=read("wrong");'));
+    assert.ok(bad.value.diagnostics.length,'identity does not replace actual argument production');
+});
+
+test('empty selections excluded declarations duplicates and callable routes keep the original passes',()=>{
+    for(const source of [
+        'let value=1;', 'function read(){return 1}let result=read();',
+        'function read(n:number[]){return n}let result=read([1]);',
+        'function read(n:number=2){return n}let result=read();',
+        'function read(n:number){return n}let alias=read;let result=alias(2);',
+        'function read(n:number){return n}function read(n:number){return n+1}let result=read(2);',
+        'function makeCounter(start:number):()=>number{let n=start;return()=>{n+=1;return n}}let first=makeCounter(2);let value=first();'
+    ])for(const mode of ['prototype','supported-default'])preparationParity(parse(source),mode);
+    // Even an empty catalogue must perform the old malformed-graph observation.
+    const program=parse('screen.print("hello");');
+    const call=identityNodes(program).find(node=>node.type==='Call');call.args=null;
+    const old=completionFacts(()=>prepareProcedureConstraintSource(program)),demand=completionFacts(()=>prepareProcedureConstraintSourceForTranslation(program));
+    assert.ok(old.error);assert.deepEqual(demand,old);
+});
+
+test('private identity preserves original print formal and malformed syntax errors before its cut',()=>{
+    const rows=[
+        ['screen.print("hi");',program=>{identityNodes(program).find(node=>node.type==='Call').args=null;}],
+        ['function read(n:number){return n}let result=read(2);',program=>{program.body[0].params=null;}],
+        ['function read(n:number){return n}let result=read(2);',program=>{identityNodes(program).find(node=>node.type==='Call').args=null;}],
+        ['let value=1;',program=>{program.body.push({type:'Unknown',text:'unparsed'});}]
+    ];
+    for(const [source,mutate] of rows){
+        const program=parse(source);mutate(program);
+        const old=completionFacts(()=>{analyseSourceValueProducers(program,identityOptions);return 'returned';}),
+            demand=completionFacts(()=>{analyseSourceDeclarationIdentityForPreparation(program);return 'returned';});
+        assert.deepEqual(demand,old);preparationParity(program);
+    }
+    const program=parse('screen.print("hi");');identityNodes(program).find(node=>node.type==='Call').args=null;
+    assert.ok(completionFacts(()=>analyseSourceDeclarationIdentityForPreparation(program)).error);
+});
+
+test('fresh preparation reanalyses changed formal metadata writers and physical declarations',()=>{
+    const program=parse('function read(n:number){return n}let result=read(2);'),original=program.body[0];
+    identityParity(program);assert.deepEqual(preparationParity(program).value.diagnostics,[]);
+    const input=declarationIdentityInput(program);assert.ok(input);assert.equal(input.current(),true);
+    const replacement=externalCopy(original);program.body[0]=replacement;
+    assert.equal(input.current(),false);program.body[0]=original;assert.equal(input.current(),false);
+    program.body[0]=replacement;
+    assert.equal(identityParity(program).identity.unchangedFunctionAt(replacement),replacement);
+    assert.equal(identityParity(program).identity.unchangedFunctionAt(original),null);
+    const call=identityNodes(program).find(node=>node.type==='Call');
+    const argument=call.args[0];call.args[0]={type:'String',value:'wrong'};
+    assert.ok(preparationParity(program).value.diagnostics.length);
+    call.args[0]=argument;assert.deepEqual(preparationParity(program).value.diagnostics,[]);
+    replacement.paramTypes.n.text='string';assert.ok(preparationParity(program).value.diagnostics.length);
+    replacement.paramTypes.n.text='number';assert.deepEqual(preparationParity(program).value.diagnostics,[]);
+});
+
+test('public external AST APIs stay eager and cannot receive a declaration demand through options',()=>{
+    const sentinel=Error('actual getter failure');
+    const run=privateEntry=>{
+        const program=parse('function read(){return 1}let value=read();');let reads=0;
+        Object.defineProperty(program,'foreign',{enumerable:true,get(){reads++;throw sentinel;}});
+        const observed=result(()=>privateEntry?analyseSourceDeclarationIdentityForPreparation(program):analyseSourceValueProducers(program,identityOptions));
+        return {observed,reads};
+    };
+    const old=run(false),demand=run(true);assert.equal(old.observed.threw,sentinel);assert.equal(demand.observed.threw,sentinel);assert.equal(demand.reads,old.reads);
+    const program=parse('function read(){return 1}let value=read();');
+    const poison=new Proxy({}, {get(){throw Error('supplied token read');}});
+    const graph=analyseSourceValueProducers(program,{...identityOptions,identityOnly:true,declarationIdentityOnly:true,identityInput:poison});
+    assert.equal(typeof graph.typesAt,'function');assert.equal(typeof graph.immutableFunctionAt,'function');assert.equal(typeof graph.bindingOf,'function');
+    const fn=program.body[0];assert.equal(graph.unchangedFunctionAt(fn),fn);
+    let ownKeys=0;const proxy=new Proxy(program,{ownKeys(target){ownKeys++;return Reflect.ownKeys(target);}});
+    analyseSourceValueProducers(proxy,identityOptions);const first=ownKeys;ownKeys=0;
+    analyseSourceValueProducers(proxy,{...identityOptions,identityInput:poison,identityOnly:true});assert.equal(ownKeys,first);
+});
+
+test('changed intrinsics during the original front phase force the original value tail',()=>{
+    const originalValues=Object.getOwnPropertyDescriptor(Object,'values');
+    const run=privateEntry=>{
+        const target=parse('function read(n:number){return n+1}let result=read(2);');
+        let armed=true,values=0;const gets=[];
+        const proxy=new Proxy(target,{get(object,key,receiver){gets.push(key);if(armed&&key==='type'){
+            armed=false;Object.defineProperty(Object,'values',{...originalValues,value:function(value){values++;return Reflect.apply(originalValues.value,Object,[value]);}});
+        }return Reflect.get(object,key,receiver);}});
+        let graph;
+        try{graph=privateEntry?analyseSourceDeclarationIdentityForPreparation(proxy):analyseSourceValueProducers(proxy,identityOptions);}
+        finally{Object.defineProperty(Object,'values',originalValues);}
+        assert.equal(graph.unchangedFunctionAt(target.body[0]),target.body[0]);
+        return {gets,values};
+    };
+    assert.deepEqual(run(true),run(false),'currentness decline resumes the actual full eager tail');
+    // The old eager tail has several dynamic freeze observations. An altered
+    // intrinsic must see exactly that old sequence, with no NEW private-view
+    // call after it. A one-shot throw at the next call distinguishes this from
+    // merely checking that final output still looks frozen.
+    const freezeDescriptor=Object.getOwnPropertyDescriptor(Object,'freeze');
+    const freezeSentinel=Error('changed freeze reached');
+    const freezeRun=(privateEntry,throwAt=Infinity)=>{
+        const target=parse('function read(n:number){return n}let result=read(2);');let armed=true,calls=0;
+        const proxy=new Proxy(target,{get(object,key,receiver){if(armed&&key==='type'){
+            armed=false;Object.defineProperty(Object,'freeze',{...freezeDescriptor,value:function(value){
+                calls++;if(calls===throwAt)throw freezeSentinel;return Reflect.apply(freezeDescriptor.value,Object,[value]);
+            }});
+        }return Reflect.get(object,key,receiver);}});
+        let observed;
+        try{observed=result(()=>privateEntry?analyseSourceDeclarationIdentityForPreparation(proxy):analyseSourceValueProducers(proxy,identityOptions));}
+        finally{Object.defineProperty(Object,'freeze',freezeDescriptor);}
+        return {observed,calls};
+    };
+    const originalFreezeCalls=freezeRun(false);assert.ok(originalFreezeCalls.observed.returned);assert.ok(originalFreezeCalls.calls>0);
+    const eagerFreeze=freezeRun(false,originalFreezeCalls.calls+1),privateFreeze=freezeRun(true,originalFreezeCalls.calls+1);
+    assert.ok(eagerFreeze.observed.returned);assert.ok(privateFreeze.observed.returned);
+    assert.equal(privateFreeze.calls,eagerFreeze.calls);assert.equal(privateFreeze.calls,originalFreezeCalls.calls);
+    assert.equal(freezeRun(false,1).observed.threw,freezeSentinel);
+    assert.equal(freezeRun(true,1).observed.threw,freezeSentinel,'original eager freeze failure is still observed');
+    for(const [key,replacement] of [['every',()=>true],['some',()=>false],[Symbol.iterator,function(){throw Error('foreign iterator');}]]){
+        const program=parse('let value=1;'),input=declarationIdentityInput(program);assert.ok(input);
+        const d=Object.getOwnPropertyDescriptor(Array.prototype,key);let current;
+        try{Object.defineProperty(Array.prototype,key,{...d,value:replacement});current=input.current();}
+        finally{Object.defineProperty(Array.prototype,key,d);}
+        assert.equal(current,false);assert.equal(input.current(),false);assert.ok(declarationIdentityInput(program));
+    }
+});
