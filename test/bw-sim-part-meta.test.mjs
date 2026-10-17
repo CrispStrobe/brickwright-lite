@@ -19,6 +19,11 @@
  *     subfiles, which is exactly the split the compiler needs);
  *   - a gear's tip radius is pitch radius + one module (1 mm = 2.5 LDU), and its
  *     centre is on its axle hole; the wheel is 56 mm across, as its name says;
+ *   - a slide-bore (an axle runs through it, kinds/slide.js) is a bore like a pinhole;
+ *   - a worm's thread (kinds/worm.js): tip radius = its pitch radius + one module, the
+ *     thread's extent along the axis = the connector, and its hand from a helix fit;
+ *   - a rack's teeth (kinds/rack.js): the tips one module beyond the pitch line, the
+ *     toothed length and the teeth's width;
  *   - colliders enclose the mesh (≥ 98 % of its vertices inside a collider) without
  *     being oversized (≤ 110 % of the mesh box volume).
  */
@@ -31,6 +36,7 @@ import {flattenPart, circularFeatures, bounds, parseLDraw, compose, apply, colum
 import {validatePartMeta, pitchRadiusLdu} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {check as checkVendored} from '../scripts/sync-ldraw-parts.mjs';
 import {solidColliders} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
+import {BUILTIN_KINDS} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/index.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LIB = path.join(ROOT, 'overlay/scratch-gui/static/ldraw');
@@ -106,15 +112,19 @@ test('the vendored LDraw subset matches its lock, its licences and parts.json', 
 
 test('every part entry is a valid PartMeta and resolves completely', () => {
     for (const p of META.parts) {
-        assert.deepEqual(validatePartMeta(p), [], p.part);
+        // The shipped connector kinds are the built-in registry's (kinds/index.js), which checks their data.
+        assert.deepEqual(validatePartMeta(p, {connectorKinds: BUILTIN_KINDS.connectors}), [], p.part);
         assert.deepEqual(flat.get(p.part).missing, [], `${p.part} closure`);
     }
 });
 
-test('pin and pinhole connectors sit on a 6 LDU Technic bore', () => {
+/** Connectors that are a round Technic bore: a pinhole, and a slide-bore an axle runs through (kinds/slide.js). */
+const BORES = new Set(['pinhole', 'slide-bore']);
+
+test('pin, pinhole and slide-bore connectors sit on a 6 LDU Technic bore', () => {
     for (const p of META.parts) {
         const lines = boreLines(flat.get(p.part).primitives);
-        for (const c of p.connectors.filter(k => k.type === 'pin' || k.type === 'pinhole')) {
+        for (const c of p.connectors.filter(k => k.type === 'pin' || BORES.has(k.type))) {
             const hits = onLine(c, lines);
             assert.ok(hits.length > 0, `${p.part} ${c.id}: no bore of radius ${BORE_R} through ${c.position} along ${c.axis}`);
             assert.ok(coversAxially(c, hits), `${p.part} ${c.id}: ${c.position} is outside the bore's extent`);
@@ -151,12 +161,14 @@ const boreRuns = (c, lines) => {
     return runs;
 };
 
-test('a pinhole connector spans its bore: its ends are where the bore opens and ends', () => {
+test('a pinhole or slide-bore connector spans its bore: its ends are where the bore opens and ends', () => {
     const fmt = a => `[${a.map(v => +v.toFixed(2)).join(', ')}]`;
     const wrong = [];
+    let slideBores = 0;
     for (const p of META.parts) {
         const lines = boreLines(flat.get(p.part).primitives);
-        for (const c of p.connectors.filter(k => k.type === 'pinhole')) {
+        for (const c of p.connectors.filter(k => BORES.has(k.type))) {
+            if (c.type === 'slide-bore') slideBores++;
             const t = dot(c.position, c.axis);
             const seg = [t - c.length / 2, t + c.length / 2];
             const run = boreRuns(c, lines).find(r => t >= r[0] - SPAN_EPS && t <= r[1] + SPAN_EPS);
@@ -167,6 +179,8 @@ test('a pinhole connector spans its bore: its ends are where the bore opens and 
         }
     }
     assert.deepEqual(wrong, []);
+    // The toggle joint's two eyes (48496): a filter that matched no slide-bore would pass vacuously.
+    assert.ok(slideBores >= 2, `only ${slideBores} slide-bores checked`);
 });
 
 /**
@@ -310,12 +324,7 @@ test('gear tip radius is pitch radius plus one module, centred on the axle hole'
         // but measured from the LDraw mesh the tip is at the outer edge of the cone,
         // which for 12T/20T bevels is ~1.5 LDU smaller than the spur formula due to the cone
         // angle. Check bevels with a wider tolerance and document it; spur rule stays 0.5.
-        if (p.gear.type === 'worm') {
-            // A worm has no tooth count to give its pitch radius. Its pitch radius (tip − one module)
-            // must let it drive a 24T gear on the hole grid: axles two holes (40 LDU) apart.
-            const meshAt = tip - 2.5 + pitchRadiusLdu(24);
-            assert.ok(Math.abs(meshAt - 40) <= 0.5, `${p.part}: a worm of tip radius ${tip.toFixed(2)} meshes a 24T at ${meshAt.toFixed(2)} LDU, not 40`);
-        } else if (p.gear.type === 'bevel') {
+        if (p.gear.type === 'bevel') {
             assert.ok(Math.abs(tip - (teeth * 1.25 + 2.5)) <= 2.0, `${p.part}: bevel tip radius ${tip.toFixed(2)} ≠ ${teeth}·1.25 + 2.5`);
         } else if (p.part === '94925.dat') {
             // 16T reinforced spur: tip is 21.66 vs 22.5 expected, 0.84 off due to its reinforced rim
@@ -326,6 +335,69 @@ test('gear tip radius is pitch radius plus one module, centred on the axle hole'
         }
         const hole = p.connectors.find(c => c.type === 'axlehole');
         assert.ok(len(sub(hole.position, center)) <= POS_EPS, `${p.part}: gear centre is not on its axle hole`);
+    }
+});
+
+/** Component of v perpendicular to unit a. */
+const perpOf = (v, a) => v.map((x, i) => x - dot(v, a) * a[i]);
+
+test('a worm\'s thread: tip radius, threaded length and hand are the mesh\'s', () => {
+    const worms = META.parts.flatMap(p => p.connectors.filter(c => c.type === 'worm').map(c => [p, c]));
+    assert.ok(worms.length >= 1, 'the worm gear 4716 has its thread');
+    for (const [p, c] of worms) {
+        const vs = flat.get(p.part).polys.flat().map(v => sub(v, c.position));
+        const tip = Math.max(...vs.map(v => len(perpOf(v, c.axis))));
+        // Pitch radius = tip − one module (2.5 LDU), as for every Technic gear.
+        assert.ok(Math.abs(tip - 2.5 - c.data.pitchRadiusLdu) <= 0.5, `${p.part}: tip ${tip.toFixed(2)} − 2.5 ≠ pitch radius ${c.data.pitchRadiusLdu}`);
+        // It drives a 24T on the hole grid: axles two holes (40 LDU) apart.
+        assert.ok(Math.abs(c.data.pitchRadiusLdu + pitchRadiusLdu(24) - 40) <= 0.5, `${p.part}: meshes a 24T at ${c.data.pitchRadiusLdu + 30} LDU, not 40`);
+        // The thread (the vertices at the tip radius) runs the connector's length along its axis.
+        const crest = vs.filter(v => len(perpOf(v, c.axis)) > tip - 0.6);
+        const along = crest.map(v => dot(v, c.axis));
+        assert.ok(Math.abs(Math.min(...along) + c.length / 2) <= 1 && Math.abs(Math.max(...along) - c.length / 2) <= 1,
+            `${p.part}: the thread runs ${Math.min(...along).toFixed(1)}..${Math.max(...along).toFixed(1)}, the connector ±${c.length / 2}`);
+        // Hand: the crest is a helix z = hand · (lead / 2π) · θ (lead = starts · π · 2.5 LDU), so the phase
+        // 2π·z/lead − hand·θ is the same at every crest vertex; with the other hand it is spread out.
+        const x0 = perpOf(Math.abs(c.axis[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0], c.axis);
+        const e1 = x0.map(v => v / len(x0));
+        const e2 = [c.axis[1] * e1[2] - c.axis[2] * e1[1], c.axis[2] * e1[0] - c.axis[0] * e1[2], c.axis[0] * e1[1] - c.axis[1] * e1[0]];
+        const lead = (c.data.starts || 1) * Math.PI * 2.5;
+        const coherence = h => {
+            let cx = 0; let cy = 0;
+            for (const v of crest) {
+                const ph = (c.data.starts || 1) * (2 * Math.PI * dot(v, c.axis) / lead) - h * (c.data.starts || 1) * Math.atan2(dot(v, e2), dot(v, e1));
+                cx += Math.cos(ph); cy += Math.sin(ph);
+            }
+            return Math.hypot(cx, cy) / crest.length;
+        };
+        const mine = coherence(c.data.hand);
+        const other = coherence(-c.data.hand);
+        assert.ok(mine > 0.5 && other < 0.2, `${p.part}: hand ${c.data.hand} fits the thread ${mine.toFixed(2)}, the other hand ${other.toFixed(2)}`);
+    }
+});
+
+test('a rack\'s teeth: tips one module beyond the pitch line, along the toothed length, across the width', () => {
+    const racks = META.parts.flatMap(p => p.connectors.filter(c => c.type === 'rack-teeth').map(c => [p, c]));
+    assert.ok(racks.length >= 2, 'the racks 3743 and 64781 have teeth');
+    for (const [p, c] of racks) {
+        const n = c.data.normal;
+        const w = [c.axis[1] * n[2] - c.axis[2] * n[1], c.axis[2] * n[0] - c.axis[0] * n[2], c.axis[0] * n[1] - c.axis[1] * n[0]];
+        const vs = flat.get(p.part).polys.flat().map(v => sub(v, c.position));
+        // Over the toothed length nothing rises above the tips, and the tips are one module (2.5 LDU) out.
+        const over = vs.filter(v => Math.abs(dot(v, c.axis)) <= c.length / 2 - 1);
+        const tip = Math.max(...over.map(v => dot(v, n)));
+        assert.ok(Math.abs(tip - 2.5) <= 0.3, `${p.part}: tooth tips ${tip.toFixed(2)} LDU beyond the pitch line, not 2.5`);
+        // The tips span the toothed length (to within one tooth pitch, π·2.5 ≈ 7.9 LDU, short of its ends).
+        const tips = vs.filter(v => Math.abs(dot(v, n) - tip) <= 0.05);
+        const along = tips.map(v => dot(v, c.axis));
+        const across = tips.map(v => dot(v, w));
+        assert.ok(Math.min(...along) >= -c.length / 2 - 0.5 && Math.max(...along) <= c.length / 2 + 0.5 &&
+            Math.min(...along) <= -c.length / 2 + 8 && Math.max(...along) >= c.length / 2 - 8,
+            `${p.part}: tips run ${Math.min(...along)}..${Math.max(...along)}, the teeth ±${c.length / 2}`);
+        assert.ok(Math.abs(Math.min(...across) + c.data.widthLdu / 2) <= 1 && Math.abs(Math.max(...across) - c.data.widthLdu / 2) <= 1,
+            `${p.part}: tips ${Math.min(...across)}..${Math.max(...across)} across, the width ±${c.data.widthLdu / 2}`);
+        // Every tip is at the same height: the strip is straight along the axis.
+        assert.ok(tips.length >= 8, `${p.part}: ${tips.length} tip vertices`);
     }
 });
 
@@ -352,8 +424,14 @@ test('a pin or axle connector is a shaft: the mesh along it stays within a pin\'
     const wrong = [];
     for (const p of META.parts) {
         const vs = flat.get(p.part).polys.flat();
-        for (const c of p.connectors.filter(k => k.type === 'pin' || k.type === 'axle')) {
-            const along = vs.filter(v => Math.abs(dot(sub(v, c.position), c.axis)) < c.length / 2 - 1);
+        const shafts = p.connectors.filter(k => k.type === 'pin' || k.type === 'axle');
+        const inSlab = (c, v) => Math.abs(dot(sub(v, c.position), c.axis)) < c.length / 2 - 1;
+        for (const c of shafts) {
+            // The mesh along this shaft: the vertices in its slab that are not nearer another shaft's
+            // axis in whose slab they also lie (two parallel pins side by side, 48496: each pin's
+            // slab holds the other pin too; a block around a pin is still nearer that pin's axis).
+            const along = vs.filter(v => inSlab(c, v) &&
+                !shafts.some(o => o !== c && inSlab(o, v) && radialFrom(o, v) < radialFrom(c, v)));
             const r = Math.max(...along.map(v => radialFrom(c, v)));
             if (!along.length || r > SHAFT_R) wrong.push(`${p.part} ${c.id}: mesh reaches ${r.toFixed(2)} LDU from the ${c.type}'s axis`);
         }

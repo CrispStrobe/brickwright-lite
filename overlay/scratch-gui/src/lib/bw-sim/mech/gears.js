@@ -33,39 +33,12 @@
 import {vecAdd, vecSub, vecDot, vecLen, vecScale, vecNormalize, mat3MulVec3} from './vec.js';
 import {pitchRadiusLdu, dirToWorld, LDU_M} from '../contracts.js';
 import {BUILTIN_KINDS} from '../kinds/index.js';
-import {TOL, parallelAxes, meshRatio} from '../kinds/gear-mesh.js';
+import {TOL, parallelAxes, meshRatio, gearHinges} from '../kinds/gear-mesh.js';
 
-/** World point (metres) back to the LDraw model frame (LDU): the inverse of lduToWorld. */
-const worldToLdu = p => [p[0] / LDU_M, -p[1] / LDU_M, -p[2] / LDU_M];
-
-/**
- * The hinges a gear can turn on: hinge joints touching the gear's body whose
- * axis is the gear's own axis line (parallel within 1°, passing within
- * 0.5 LDU of the gear centre).
- * @param {object} gear gear info (islandId, centerLdu, axisLdu)
- * @param {Array} joints compiled joints
- * @returns {{joint: object, frame: string, sign: number}[]} sign +1 when the gear is on body2
- */
-const gearHinges = (gear, joints) => {
-    const out = [];
-    for (const j of joints) {
-        if (j.type !== 'hinge') continue;
-        let sign;
-        let frame;
-        if (j.body2 === gear.islandId) { sign = 1; frame = j.body1; }
-        else if (j.body1 === gear.islandId) { sign = -1; frame = j.body2; }
-        else continue;
-        // dirToWorld flips y and z; it is its own inverse, so it maps the world axis back to LDU.
-        const axisLdu = vecNormalize(dirToWorld(j.axis));
-        if (!parallelAxes(gear.axisLdu, axisLdu)) continue;
-        const d = vecSub(gear.centerLdu, worldToLdu(j.point));
-        const perp = vecSub(d, vecScale(axisLdu, vecDot(d, axisLdu)));
-        if (vecLen(perp) > TOL + 1e-9) continue;
-        out.push({joint: j, frame, sign});
-    }
-    out.sort((a, b) => a.joint.id.localeCompare(b.joint.id));
-    return out;
-};
+// The hinges a gear turns on (gearHinges) moved to kinds/gear-mesh.js unchanged, so the coupling
+// kinds that are connectors (kinds/worm.js, kinds/rack.js) share the frame rules without importing
+// the compiler; re-exported here under its old name.
+export {gearHinges};
 
 /** A readable name for a gear: "the 8-tooth gear (g8)". */
 const gearName = g => `the ${g.teeth}-tooth gear (${g.partId})`;
@@ -108,6 +81,11 @@ const holderName = (hinge, gear, jointEntries, nodes) => {
  * @returns {boolean}
  */
 export const placedGearsMesh = (a, metaA, b, metaB, kinds = BUILTIN_KINDS) => {
+    // Teeth that are connectors, not a `gear` (a rack's, a worm's thread: kinds/rack.js, kinds/worm.js):
+    // their coupling module says whether the two parts mesh where they stand.
+    for (const m of kinds.couplings.list()) {
+        if (typeof m.placedMesh === 'function' && m.placedMesh(a, metaA, b, metaB)) return true;
+    }
     if (!metaA?.gear || !metaB?.gear || metaA.gear.type !== metaB.gear.type) return false;
     const module = kinds.couplings.meshFor(metaA.gear.type, metaB.gear.type);
     if (!module) return false;

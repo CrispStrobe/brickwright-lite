@@ -32,7 +32,8 @@ const gearFixture = name => JSON.parse(readFileSync(path.join(ROOT, `test/fixtur
 /** Every `code: '…'` an issue producer writes, read from the sources (not from a list kept here). */
 const producedCodes = () => {
     const files = [
-        ...['mech', 'model'].flatMap(dir => readdirSync(path.join(SIM, dir)).filter(f => f.endsWith('.js')).map(f => path.join(SIM, dir, f))),
+        // kinds/: the coupling detectors write diagnostics too (worm, rack); world/: the world objects.
+        ...['mech', 'model', 'kinds', 'world'].flatMap(dir => readdirSync(path.join(SIM, dir)).filter(f => f.endsWith('.js')).map(f => path.join(SIM, dir, f))),
         path.join(SIM, 'sim-session.js')
     ];
     const codes = new Map(); // code -> files

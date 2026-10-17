@@ -17,6 +17,7 @@ import {deviceModels, DEVICE_MODELS, validateDeviceModel} from '../overlay/scrat
 import {catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {migratePartsFile, partsFileText} from '../scripts/migrate-parts-v2.mjs';
+import {BUILTIN_KINDS} from '../overlay/scratch-gui/src/lib/bw-sim/kinds/index.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TEXT = readFileSync(path.join(ROOT, 'overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json'), 'utf8');
@@ -78,7 +79,8 @@ test('parts.json is PartMeta v2: version 2, every entry valid, no v1 field left,
     assert.equal(FILE.version, 2);
     assert.ok(FILE.parts.length >= 60, `${FILE.parts.length} parts`);
     for (const p of FILE.parts) {
-        assert.deepEqual(validatePartMeta(p), [], p.part);
+        // Connector kinds beyond v1's (a slide-bore, a worm's thread, a rack's teeth) are the built-in registry's.
+        assert.deepEqual(validatePartMeta(p, {connectorKinds: BUILTIN_KINDS.connectors}), [], p.part);
         for (const k of ['motor', 'sensor', 'hub']) assert.equal(p[k], undefined, `${p.part} still has v1 '${k}'`);
         if (p.device !== undefined) assert.equal(typeof p.device, 'string', `${p.part}: the shipped file names catalogue devices`);
     }

@@ -64,7 +64,9 @@ export const MODELS = Object.freeze([
         example: 'colour-explorer.bw', mat: 'colour-zones'},
     // The same robot a second time, with its Sumo program: `id` keys the entry (the pane lists by it).
     {id: 'sumo', file: 'colour-explorer.ldr', title: {en: 'Sumo ring', de: 'Sumo-Ring'},
-        example: 'sumo.bw', mat: 'sumo'}
+        example: 'sumo.bw', mat: 'sumo'},
+    {file: 'forklift.ldr', title: {en: 'Forklift', de: 'Gabelstapler'},
+        example: 'forklift.bw', mat: 'warehouse'}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
 export const PROGRAMS_BASE = 'static/sim-lab/programs/';
@@ -94,7 +96,9 @@ export const prepareModel = (text, catalog, {mat = null} = {}) => {
     const start = matDef ? matDef.startPose : null;
     const runModel = start ? placeOnStart(model, start, driveAnchor(model, catalog)) : model;
     // A mat's obstacles (a wall) are static bodies of the scene, compiled with the model.
-    const mechanism = compile(runModel, catalog, {version: 2, ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {})} : {})});
+    // ...and its loads (a pallet: world/objects.js) dynamic bodies the model moves by contact.
+    const mechanism = compile(runModel, catalog, {version: 2, ...(matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {}),
+        ...(matDef.loads.length ? {loads: matDef.loads} : {})} : {})});
     issues.push(...mechanismIssues(mechanism));
     return {model, runModel, mechanism, issues};
 };

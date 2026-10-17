@@ -158,9 +158,10 @@ test('no two solid parts of the driving base overlap; only pins and axles sit in
         '3708.dat', '3737.dat', '87083.dat'];
     assert.deepEqual([...CATALOG.values()].filter(sitsInside).map(m => m.part).sort(), inside.slice().sort());
     // Partly shaft, partly solid: only their tagged shaft regions may sit inside another part
-    // (32054's stop bush stays outside the hole; 87082's centre, with its pin hole, between two beams).
+    // (32054's stop bush stays outside the hole; 87082's centre, with its pin hole, between two beams;
+    // 48496, the smooth toggle joint of R4: its two pins in a beam, its eyes and bar outside).
     const partly = [...CATALOG.values()].filter(m => !sitsInside(m) && m.colliders.some(c => c.region)).map(m => m.part).sort();
-    assert.deepEqual(partly, ['32054.dat', '87082.dat']);
+    assert.deepEqual(partly, ['32054.dat', '48496.dat', '87082.dat']);
     const found = [];
     for (const p of MODEL.parts) {
         for (const o of solidOverlaps(MODEL, CATALOG, p)) found.push(`${p.id} ↔ ${o.part}`);
