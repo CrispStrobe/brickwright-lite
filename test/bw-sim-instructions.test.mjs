@@ -165,7 +165,7 @@ test('a file with 0 STEP lines is built in its own steps, and they survive a sav
     const model = load(text);
     // The fixture's four steps (the second ends with a ROTSTEP line), as written.
     const expected = [['hub'], ['motorR', 'pinR', 'motorL', 'pinL'],
-        ['frontBeam', 'frontPin1', 'frontPin2', 'castor', 'castorPin1', 'castorPin2', 'ball'], ['axleR', 'wheelR', 'axleL', 'wheelL']];
+        ['frontBeam', 'frontPin1', 'frontPin2', 'castor', 'ball'], ['axleR', 'wheelR', 'axleL', 'wheelL']];
     assert.deepEqual(model.steps, expected);
     const plan = buildSteps(model, CATALOG);
     assert.equal(plan.source, 'meta');
@@ -194,8 +194,8 @@ test('a file with 0 STEP lines is built in its own steps, and they survive a sav
 
 test('an editor group is a sub-assembly: built on its own first, then attached in one step', () => {
     const model = load(read('test/fixtures/bw-sim/driving-base.ldr'));
-    // The castor, its ball and the two pins that will hold it on the front beam... the pins also touch the
-    // front beam, so the group is the castor and its ball; the wheel assembly is a second group.
+    // The castor and its ball (the 3L pins that hold it also hold the front beam on the hub, so they are
+    // not in the group); the wheel assembly is a second group.
     model.groups = [{id: 'g1', name: 'Castor', parts: ['castor', 'ball']}, {id: 'g2', name: 'Right wheel', parts: ['axleR', 'wheelR']}];
     const plan = buildSteps(model, CATALOG);
     assert.deepEqual(plan.groups.map(g => g.id), ['g1', 'g2']);
@@ -220,9 +220,11 @@ test('an editor group is a sub-assembly: built on its own first, then attached i
         assert.ok(attaching.built.includes('hub'));
     }
     assertBuildable('grouped driving base', model, plan);
-    // The castor's pins go on with it, in the attaching step (they join the castor to the front beam).
-    const attachCastor = plan.steps.find(s => s.attach.includes('g1'));
-    assert.deepEqual(attachCastor.parts.slice().sort(), ['castorPin1', 'castorPin2']);
+    // The castor slides onto the two 3L pins that already hold the front beam on the hub: its attaching
+    // step adds no loose parts, and the pins come before it.
+    const attachCastor = plan.steps.findIndex(s => s.attach.includes('g1'));
+    assert.deepEqual(plan.steps[attachCastor].parts, []);
+    for (const pin of ['frontPin1', 'frontPin2']) assert.ok(at.get(pin) < attachCastor, `${pin} is in before the castor`);
 });
 
 test('a group that does not hold together on its own is not a sub-assembly; a part touching nothing is loose', () => {
@@ -254,6 +256,6 @@ test('the print page has one picture per step, in order, then the parts list; na
     assert.match(html, /<html lang="de">/);
     assert.match(html, /<title>Fahrbasis &lt;1&gt;<\/title>/);
     assert.ok(html.indexOf('data-bom') > html.lastIndexOf('class="shot"'), 'the parts list comes after the steps');
-    assert.match(html, /16 Teile/);
+    assert.match(html, /14 Teile/);
     assert.match(html, /Technic-Achse 4/);
 });

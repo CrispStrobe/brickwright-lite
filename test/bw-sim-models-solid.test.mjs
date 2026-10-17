@@ -311,3 +311,77 @@ test('no pin, axle or ball reaches into a solid part beyond its hole or socket',
     }
     assert.deepEqual(found, []);
 });
+
+/**
+ * Two shafts cannot fill one stretch of a bore. In the S1 driving base (until 2026-10-17) the
+ * front beam's holes took a 2L pin from the hub's side AND one from the castor's side, each
+ * 10 LDU into the same 20 LDU hole: the compiler joined everything, every mesh check passed (a
+ * pin sits in the bore, outside every solid), and no real build can do it — a 3L pin goes
+ * through hub, beam and castor. Here: two pin/axle connectors of different parts on one line
+ * whose segments overlap by more than SHARE_EPS (LDU), reported with the hole they share.
+ */
+const SHARE_EPS = 1;
+const SHAFT = new Set(['pin', 'axle']);
+const HOLE = new Set(['pinhole', 'axlehole']);
+const placedConnectors = (model, types) => model.parts.filter(p => CATALOG.has(p.part)).flatMap(p =>
+    CATALOG.get(p.part).connectors.filter(c => types.has(c.type) && c.length).map(c => {
+        const r = p.rotation;
+        const axis = [0, 1, 2].map(i => r[i * 3] * c.axis[0] + r[i * 3 + 1] * c.axis[1] + r[i * 3 + 2] * c.axis[2]);
+        return {part: p.id, id: c.id, position: toWorld(p, c.position), axis, length: c.length};
+    }));
+const sameLine = (a, b) => {
+    const d = [0, 1, 2].map(i => b.position[i] - a.position[i]);
+    const along = d[0] * a.axis[0] + d[1] * a.axis[1] + d[2] * a.axis[2];
+    const cos = Math.abs(a.axis[0] * b.axis[0] + a.axis[1] * b.axis[1] + a.axis[2] * b.axis[2]);
+    return cos > Math.cos(Math.PI / 180) && Math.hypot(...d.map((v, i) => v - along * a.axis[i])) <= 0.5;
+};
+const span = (c, axis) => {
+    const t = c.position[0] * axis[0] + c.position[1] * axis[1] + c.position[2] * axis[2];
+    return [t - c.length / 2, t + c.length / 2];
+};
+const sharedHoles = model => {
+    const shafts = placedConnectors(model, SHAFT);
+    const holes = placedConnectors(model, HOLE);
+    const out = [];
+    for (let i = 0; i < shafts.length; i++) {
+        for (let j = i + 1; j < shafts.length; j++) {
+            const a = shafts[i];
+            const b = shafts[j];
+            if (a.part === b.part || !sameLine(a, b)) continue;
+            const [a0, a1] = span(a, a.axis);
+            const [b0, b1] = span(b, a.axis);
+            const lo = Math.max(a0, b0);
+            const hi = Math.min(a1, b1);
+            if (hi - lo <= SHARE_EPS) continue;
+            const mid = (lo + hi) / 2;
+            const hole = holes.find(h => h.part !== a.part && h.part !== b.part && sameLine(a, h) &&
+                span(h, a.axis)[0] <= mid && mid <= span(h, a.axis)[1]);
+            out.push(`${a.part} and ${b.part} both fill ${hole ? `${hole.part}'s hole ${hole.id}` : 'one bore'} (${(hi - lo).toFixed(1)} LDU)`);
+        }
+    }
+    return out;
+};
+
+test('the shared-hole check sees two pins in one hole and passes one long pin', () => {
+    // Beam 7 on its own: a 2L pin from each side, each with one half in its centre hole (y -10..10),
+    // as the driving base had them; then one 3L pin through the same hole.
+    const beam = {id: 'beam', part: '32524.dat', position: [0, 0, 0], rotation: [1, 0, 0, 0, 1, 0, 0, 0, 1]};
+    const ALONG_Y = [0, -1, 0, 1, 0, 0, 0, 0, 1];
+    const two = {parts: [beam,
+        {id: 'up', part: '2780.dat', position: [0, -10, 0], rotation: ALONG_Y},
+        {id: 'down', part: '2780.dat', position: [0, 10, 0], rotation: ALONG_Y}]};
+    assert.deepEqual(sharedHoles(two), ['up and down both fill beam\'s hole h3 (20.0 LDU)']);
+    // End to end in two neighbouring beams' holes is not sharing.
+    const apart = {parts: [beam,
+        {id: 'up', part: '2780.dat', position: [0, -20, 0], rotation: ALONG_Y},
+        {id: 'down', part: '2780.dat', position: [0, 20, 0], rotation: ALONG_Y}]};
+    assert.deepEqual(sharedHoles(apart), []);
+    const one = {parts: [beam, {id: 'long', part: '6558.dat', position: [0, 0, 0], rotation: ALONG_Y}]};
+    assert.deepEqual(sharedHoles(one), []);
+});
+
+test('no two pins or axles fill the same hole', () => {
+    const found = [];
+    for (const [label, model] of MODEL_LIST) for (const s of sharedHoles(model)) found.push(`${label}: ${s}`);
+    assert.deepEqual(found, []);
+});

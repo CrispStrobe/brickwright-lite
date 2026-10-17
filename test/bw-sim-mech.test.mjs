@@ -609,7 +609,7 @@ test('real driving base compiles correctly', async () => {
     // Find chassis: contains hub etc.
     const chassis = dynamics.find(b => b.parts.includes('hub'));
     assert.ok(chassis, 'chassis body');
-    const expectedChassis = new Set(['castor', 'castorPin1', 'castorPin2', 'frontBeam', 'frontPin1', 'frontPin2', 'hub', 'motorL', 'motorR', 'pinL', 'pinR']);
+    const expectedChassis = new Set(['castor', 'frontBeam', 'frontPin1', 'frontPin2', 'hub', 'motorL', 'motorR', 'pinL', 'pinR']);
     assert.deepEqual(new Set(chassis.parts), expectedChassis);
     // Left and right outputs
     const left = dynamics.find(b => b.parts.includes('axleL'));

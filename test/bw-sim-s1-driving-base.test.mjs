@@ -80,7 +80,7 @@ test('the driving base compiles to chassis + two motorised wheels + castor ball'
     assert.equal(dynamic.length, 4, `bodies: ${JSON.stringify(dynamic.map(b => b.parts))}`);
     const chassis = bodyOf(mech, 'hub');
     // A motor is in two bodies: its housing here, its output with the wheel.
-    for (const p of ['motorL', 'motorR', 'pinL', 'pinR', 'frontBeam', 'frontPin1', 'frontPin2', 'castor', 'castorPin1', 'castorPin2']) {
+    for (const p of ['motorL', 'motorR', 'pinL', 'pinR', 'frontBeam', 'frontPin1', 'frontPin2', 'castor']) {
         assert.ok(chassis.parts.includes(p), `${p} is rigid with the hub`);
     }
     for (const side of ['L', 'R']) {
