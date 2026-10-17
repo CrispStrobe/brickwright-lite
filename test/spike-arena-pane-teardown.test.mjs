@@ -41,11 +41,11 @@ for (const action of ['reset', 'step']) {
             const task = f.pane[action]();
             assert.equal(f.pane.firmwareSession, null, 'Actual teardown detaches its session synchronously');
             if (lifecycle === 'disposed') f.pane.disposed = true;
-            if (['stopped', 'replacement', 'disposed'].includes(lifecycle)) await f.pane.stopProgram();
+            const newer = ['stopped', 'replacement', 'disposed'].includes(lifecycle) ? f.pane.stopProgram() : null;
             if (lifecycle === 'replacement') f.pane.firmwareSession = {stop: async () => {}};
             if (lifecycle === 'foreign-bridge') f.pane.bridge = new f.Bridge();
             const mark = f.events.length;
-            f.release(); await task;
+            f.release(); await Promise.all([task, newer]);
             const later = f.events.slice(mark);
             if (lifecycle !== 'live') assert.deepEqual(later, [], 'Old action must not touch the current world or feedback');
             else if (action === 'reset') {
