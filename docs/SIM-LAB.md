@@ -112,6 +112,25 @@ Kids cannot read `motor-without-port`; the Lab shows what a model is made of and
 - **Show ports** (on by default): a badge next to every motor and sensor with its hub port, or **?** when it has none. In Build a click on a badge selects the part and opens a port picker (none, A–F).
 - **Show how it moves** (off by default): every rigid body in its own pastel colour (parts in one colour move together), each hinge axis as a thin arrow (red: a motor's, blue: a free hinge), a blue dot at a ball joint, and a violet line between meshing gears with their tooth ratio ("1:3"). In Simulate the marks ride on the moving bodies.
 
+## Building instructions
+
+Kids who built a robot in the Lab (or opened an example) can build it for real: **Instructions** (next to Simulate / Build; **Bauanleitung** in German) opens the model on show as the pages of a LEGO manual.
+
+- **Each step** shows the parts built before in their colours, a little paler, and the parts new in this step in full colour, outlined in orange. The camera always looks from the front-right above and frames the new parts with the model around them. A **Parts needed** box lists the step's new parts with their pictures (the Build palette's, in the part's colour) and counts; axles carry their length in a circle ("4" for an axle 4), straight beams their holes, a 3L pin its 3.
+- **Previous / Next** or **← / →** turn the pages ("3 / 12"); **Esc** closes. The last page is the **parts list**: every part with its count and its EN/DE name.
+- **Print / Save as PDF** draws every step into one page in a new window (one picture per step, then the parts list) and opens the browser's print dialog; choose "Save as PDF" there. Pop-ups must be allowed for the page.
+
+**The step order** (`bw-sim/instructions/steps.js`, pure). A model whose LDraw file has `0 STEP` (or `0 ROTSTEP`) lines is built in those steps: `model/ldraw-model.js` keeps them as `model.steps` and writes a `0 STEP` after each step when it saves, so they survive Build and the project file (a model without them is written exactly as before). Parts added since come after them, in derived steps. Otherwise the steps are worked out from the connector graph (`mech/graph.js`):
+
+1. the hub first (or, without one, the heaviest part);
+2. then a breadth-first walk over the structural parts (beams, motors, sensors, wheels, gears, connectors), neighbours being parts that touch directly or through pins and axles;
+3. a pin, axle or bush goes on in the step where the *second* part it joins does: a pin with the beam it holds on, an axle with the wheel it carries (one that sits in another, such as a bush on an axle, counts with it);
+4. about four parts per step, at most six unless one part brings more fasteners; a one-part step joins the step before when that stays within six;
+5. an editor group (`0 !BW GROUP`) whose parts hold together on their own is a **sub-assembly**: built on its own pages right before the step that attaches it;
+6. a part that touches nothing built starts a step marked loose ("This part does not connect to the rest yet").
+
+Every derived step is buildable: each new part touches a part built before, directly or through other new parts of the same step. `test/bw-sim-instructions.test.mjs` checks this on the S1 driving base and every shipped model (every part once; pins and axles with what they join; the bill of materials counts the model), the `0 STEP` fixture `test/fixtures/bw-sim/driving-base-steps.ldr`, groups and loose parts. The pictures are `view/instructions-view.js`; the dialog is `components/tw-pseudocode/sim-lab-instructions.jsx` (words in `sim-lab-instructions-text.js`); the print page is `instructions/print-page.js`. All of it is in the lazy Sim Lab chunk (`scripts/verify-boot-payload.mjs`); `scripts/lib/sim-lab-instructions-gate.mjs` drives it in the built app.
+
 ## Build mode
 
 Build is a small CAD editor (`bw-sim/editor/editor-view3d.js`; arithmetic in `editor/transform-math.js`). Every change goes through the editor command stack; a change to several parts is one `moveMany`/`batch` command, so one Ctrl+Z undoes it.

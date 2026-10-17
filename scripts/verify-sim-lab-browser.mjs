@@ -43,7 +43,11 @@
 //      unplugging a motor from its badge lists the issue, clicking the issue selects the
 //      motor, the "?" badge's picker plugs it back in, and "Before you press Run" warns
 //      when no motor is plugged in;
-//  10. no page errors.
+//  10. building instructions (scripts/lib/sim-lab-instructions-gate.mjs): "Instructions"
+//      opens step 1 of the driving base with its new parts in the highlight orange
+//      and a "parts needed" callout counting them; Next and → / ← turn the pages; the
+//      last page is the parts list; "Print / Save as PDF" opens one picture per step;
+//  11. no page errors.
 //
 // Run after the integrated GUI build:  node scripts/verify-sim-lab-browser.mjs
 import {chromium} from 'playwright';
@@ -55,6 +59,7 @@ import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
 import {cadInteractions} from './lib/sim-lab-cad-gate.mjs';
 import {insightInteractions} from './lib/sim-lab-insight-gate.mjs';
+import {instructionsInteractions} from './lib/sim-lab-instructions-gate.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const build = resolve(process.env.BW_BUILD || `${root}/packages/scratch-gui/build`);
@@ -524,6 +529,13 @@ try {
     await openSimLab(see, {program: null});
     await insightInteractions(see, {shotsDir: artifacts});
     await see.close();
+
+    // 10. Building instructions: step pages, the parts list, the print page.
+    const manual = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+    manual.on('pageerror', error => errors.push(error.message));
+    await openSimLab(manual, {program: null});
+    await instructionsInteractions(manual, {shotsDir: artifacts});
+    await manual.close();
 
     const fallback = await browser.newPage({viewport: {width: 1400, height: 900}, serviceWorkers: 'block'});
     fallback.on('pageerror', error => errors.push(error.message));
