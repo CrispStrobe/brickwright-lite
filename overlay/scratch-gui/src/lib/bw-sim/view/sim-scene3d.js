@@ -1,8 +1,16 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026 Brickwright contributors
+//
+// The Sim Lab's scene graph, headless: one Group per physics body, holding the
+// meshes of the parts in it (with their LDraw edge lines as children), so a
+// physics snapshot moves whole bodies. A motor's drive hub is drawn in its
+// output body, so it turns while the housing stays put.
 
-import {Scene, Group, Mesh, MeshStandardMaterial, BoxGeometry, PlaneGeometry, DataTexture, SRGBColorSpace} from 'three';
-import {partGeometry} from './part-geometry.js';
+import {
+    Scene, Group, Mesh, MeshStandardMaterial, BoxGeometry, PlaneGeometry, DataTexture, SRGBColorSpace, Matrix4, Quaternion, Vector3
+} from 'three';
+import {driveHubRef, partVisual} from './part-geometry.js';
+import {PART_SURFACE, addEdgeLines, edgeMaterials} from './part-style.js';
 import {lduToWorld} from '../contracts.js';
 import {quatFromMat3} from '../mech/vec.js';
 import {createMat} from '../world/mats.js';
@@ -22,6 +30,8 @@ const ID_TO_SPIKE_NAME = (() => {
     for (const [name, id] of Object.entries(SPIKE_COLOR_IDS)) m.set(id, name);
     return m;
 })();
+const catalogGet = (catalog, part) => (catalog instanceof Map ? catalog.get(part) : catalog[part]);
+
 const spikeColorToHex = id => {
     const name = ID_TO_SPIKE_NAME.get(id);
     if (name && SPIKE_MAT_COLORS[name]) return SPIKE_MAT_COLORS[name].draw;
@@ -31,13 +41,18 @@ const spikeColorToHex = id => {
 
 /**
  * Build a headless three.js scene for the Sim Lab.
- * @param {{model: any, mechanism: any, read: (p:string)=>string|undefined, colors: Map<number,{value:string,edge:string,alpha:number}>}} opts
- * @returns {{scene: Scene, bodyGroups: Map<string,Group>, partMeshes: Map<string,Mesh>, ground: Mesh|null, dispose: ()=>void}}
+ * @param {{model: any, mechanism: any, read: (p:string)=>string|undefined, colors: Map<number,{value:string,edge:string,alpha:number}>,
+ *          catalog?: Map<string, object>|Record<string, object>}} opts  without the part catalog a motor is
+ *          drawn as one mesh in its housing body (its drive hub does not turn)
+ * @returns {{scene: Scene, bodyGroups: Map<string,Group>, partMeshes: Map<string,Mesh>, hubMeshes: Map<string,Mesh>,
+ *            ground: Mesh|null, dispose: ()=>void}}
+ *          partMeshes: one per placed part (a motor's housing); hubMeshes: motor id → its drive hub's mesh
  */
-export const buildSimScene = ({model, mechanism, read, colors}) => {
+export const buildSimScene = ({model, mechanism, read, colors, catalog = null}) => {
     const scene = new Scene();
     const bodyGroups = new Map();
     const partMeshes = new Map();
+    const hubMeshes = new Map();
     const createdGeometries = new Set();
     const createdMaterials = new Set();
     let ground = null;
@@ -55,61 +70,76 @@ export const buildSimScene = ({model, mechanism, read, colors}) => {
         bodyGroups.set(b.id, g);
     }
 
-    // For motor handling: collect motor part ids (those that have two bodies: housing and #out)
-    const motorIds = new Set();
+    // A motor is two bodies, both listing its id: the housing and the output,
+    // joined by the motor's hinge with body1 = housing, body2 = output (mech/
+    // graph.js). The motor's LDraw file is split the same way, so the drive
+    // hub's mesh rides in the output body and visibly turns with what it drives.
+    // A motor whose output is locked to its housing is one body and one mesh.
+    const bodiesOf = new Map();
     for (const b of mechanism.bodies) {
-        for (const pid of b.parts) {
-            if (pid.includes('#out')) {
-                const base = pid.split('#')[0];
-                motorIds.add(base);
-            }
-        }
+        for (const pid of b.parts) bodiesOf.set(pid, [...(bodiesOf.get(pid) || []), b]);
     }
+    const byId = new Map(mechanism.bodies.map(b => [b.id, b]));
+    const motorBodies = pl => {
+        const ids = (bodiesOf.get(pl.id) || []).map(b => b.id);
+        if (ids.length !== 2) return null;
+        const between = (mechanism.joints || []).filter(j => j.type === 'hinge' && ids.includes(j.body1) && ids.includes(j.body2));
+        const j = between.find(x => x.motor && x.motor.port === pl.port) || between[0];
+        return j ? {housing: byId.get(j.body1), output: byId.get(j.body2)} : null;
+    };
+
+    // One set of line materials per placed colour, shared by every part in it.
+    const lineMaterials = new Map();
+    const linesFor = code => {
+        if (!lineMaterials.has(code)) {
+            const set = edgeMaterials(code, colors);
+            for (const m of [...set.edges, ...set.conditional]) createdMaterials.add(m);
+            lineMaterials.set(code, set);
+        }
+        return lineMaterials.get(code);
+    };
+
+    // A mesh placed at its part's world pose, expressed in its body's frame.
+    const bodyInverse = new Matrix4();
+    const partWorld = new Matrix4();
+    const addPartMesh = (pl, body, visual, materials, name) => {
+        const group = bodyGroups.get(body.id);
+        const mesh = new Mesh(visual.faces, materials);
+        mesh.name = name;
+        // LDraw (x, -y, -z) world frame: the rotation is Flip*R*Flip
+        const q = quatFromMat3(worldMatFlipped(pl.rotation));
+        partWorld.compose(new Vector3(...lduToWorld(pl.position)), new Quaternion(q[0], q[1], q[2], q[3]), new Vector3(1, 1, 1));
+        group.updateMatrix();
+        bodyInverse.copy(group.matrix).invert();
+        bodyInverse.multiply(partWorld).decompose(mesh.position, mesh.quaternion, mesh.scale);
+        mesh.layers.set(0);
+        addEdgeLines(mesh, visual, linesFor(pl.color ?? 16));
+        group.add(mesh);
+        return mesh;
+    };
 
     for (const pl of model.parts) {
-        // Motor: one mesh in housing body (note: drive hub does not visibly spin yet)
-        const isMotor = motorIds.has(pl.id);
-        // Find housing body: the body that contains pl.id (not #out)
-        let bodyId = null;
-        for (const b of mechanism.bodies) {
-            if (b.parts.includes(pl.id)) {
-                bodyId = b.id;
-                break;
-            }
-        }
-        if (!bodyId) continue;
-        const body = mechanism.bodies.find(b => b.id === bodyId);
-        const group = bodyGroups.get(bodyId);
-        if (!group) continue;
-
-        const geo = partGeometry(pl.part, read, colors);
-        if (geo) createdGeometries.add(geo);
+        const motor = catalog && catalogGet(catalog, pl.part)?.motor ? motorBodies(pl) : null;
+        const body = motor ? motor.housing : (bodiesOf.get(pl.id) || [])[0];
+        if (!body || !bodyGroups.get(body.id)) continue;
         // Material with placed colour
         const colInfo = colors.get(pl.color ?? 16) || colors.get(16);
         const matColor = colInfo ? colInfo.value : '#ffffff';
         const matAlpha = colInfo ? colInfo.alpha : 1;
         // Group 0: the placed colour. Group 1: colours the part fixes itself (vertex colours).
         const material = [
-            new MeshStandardMaterial({color: matColor, roughness: 0.6, metalness: 0.1, transparent: matAlpha < 1, opacity: matAlpha}),
-            new MeshStandardMaterial({color: '#ffffff', roughness: 0.6, metalness: 0.1, vertexColors: true})
+            new MeshStandardMaterial({color: matColor, ...PART_SURFACE, transparent: matAlpha < 1, opacity: matAlpha}),
+            new MeshStandardMaterial({color: '#ffffff', ...PART_SURFACE, vertexColors: true})
         ];
         for (const m of material) createdMaterials.add(m);
 
-        const mesh = new Mesh(geo, material);
-        mesh.name = pl.id;
-        // Position/rotation: fixed offset from body
-        const partWorldPos = lduToWorld(pl.position);
-        // World quaternion for flipped geometry: Flip*R*Flip
-        const worldMat = worldMatFlipped(pl.rotation);
-        const partWorldQuat = quatFromMat3(worldMat);
-        // Offset from body (body position is COM, rotation identity)
-        const bodyPos = body.position;
-        // mesh position = partWorldPos - bodyPos (body rotation identity)
-        mesh.position.set(partWorldPos[0] - bodyPos[0], partWorldPos[1] - bodyPos[1], partWorldPos[2] - bodyPos[2]);
-        mesh.quaternion.set(partWorldQuat[0], partWorldQuat[1], partWorldQuat[2], partWorldQuat[3]);
-        mesh.layers.set(0);
-        group.add(mesh);
-        partMeshes.set(pl.id, mesh);
+        const hubRef = motor ? driveHubRef(pl.part, read, catalogGet(catalog, pl.part)) : -1;
+        if (hubRef >= 0 && bodyGroups.get(motor.output.id)) {
+            partMeshes.set(pl.id, addPartMesh(pl, body, partVisual(pl.part, read, colors, {ref: hubRef, take: 'rest'}), material, pl.id));
+            hubMeshes.set(pl.id, addPartMesh(pl, motor.output, partVisual(pl.part, read, colors, {ref: hubRef, take: 'ref'}), material, `${pl.id}#hub`));
+        } else {
+            partMeshes.set(pl.id, addPartMesh(pl, body, partVisual(pl.part, read, colors), material, pl.id));
+        }
     }
 
     // Ground plane at ground body's top
@@ -220,7 +250,7 @@ export const buildSimScene = ({model, mechanism, read, colors}) => {
         scene.clear();
     };
 
-    return {scene, bodyGroups, partMeshes, ground, dispose, matTexture, matMesh, obstacleMeshes};
+    return {scene, bodyGroups, partMeshes, hubMeshes, ground, dispose, matTexture, matMesh, obstacleMeshes};
 };
 
 /**

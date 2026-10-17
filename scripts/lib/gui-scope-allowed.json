@@ -23,6 +23,7 @@
   "three": {
     "tests": [
       "test/bw-sim-editor-v2.test.mjs",
+      "test/bw-sim-render-quality.test.mjs",
       "test/bw-sim-scene3d.test.mjs",
       "test/bw-sim-world.test.mjs",
       "test/spike-arena-3d-pane.test.mjs",
@@ -44,6 +45,7 @@
       "test/bw-sim-physics-cast-ray.test.mjs",
       "test/bw-sim-physics-core.test.mjs",
       "test/bw-sim-physics-worker.test.mjs",
+      "test/bw-sim-render-quality.test.mjs",
       "test/bw-sim-s1-driving-base.test.mjs",
       "test/bw-sim-scene3d.test.mjs",
       "test/bw-sim-sensors.test.mjs",

@@ -318,7 +318,7 @@ class SimLabPane extends React.Component {
         try {
             const {read} = await fetchLDrawClosure([...new Set(model.parts.map(p => p.part))], {withConfig: true});
             if (token !== this.loadToken || this.disposed) return;
-            this.view = createSimView3D({container: this.box.current, model: runModel, mechanism: session.mechanism, read});
+            this.view = createSimView3D({container: this.box.current, model: runModel, mechanism: session.mechanism, read, catalog: CATALOG});
             this.view.canvas.setAttribute('aria-label', this.t('canvasLabel'));
             this.view.render(session.snapshot());
         } catch (error) {

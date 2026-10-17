@@ -6,10 +6,11 @@
 // view (lib/spike-arena/arena-view3d.js) and reached the same way, only through
 // the pane's dynamic import of bw-sim/sim-lab.js (chunk "bw-sim-lab").
 
-import {AmbientLight, Box3, Color, DirectionalLight, GridHelper, PerspectiveCamera, Vector2, Vector3, WebGLRenderer} from 'three';
+import {Box3, Color, GridHelper, PerspectiveCamera, Vector2, Vector3, WebGLRenderer} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {parseLDConfig} from './ldraw-colors.js';
 import {buildSimScene, applySnapshot} from './sim-scene3d.js';
+import {addPartLights} from './part-style.js';
 
 export class WebGLUnavailableError extends Error {
     constructor (reason) {
@@ -46,10 +47,11 @@ export const frameModel = (box, aspect, fovDeg = 40) => {
  * @param {object} options.model the PlacedModel
  * @param {object} options.mechanism its CompiledMechanism
  * @param {(path: string) => string|undefined} options.read LDraw files (fetchLDrawClosure with withConfig)
+ * @param {Map<string, object>} [options.catalog] the part catalog; with it a motor's drive hub turns with its output
  * @param {function} [options.onContextLost]
  * @returns {{canvas, render(snapshot), resize(), resetCamera(), dispose()}}
  */
-export const createSimView3D = ({container, model, mechanism, read, onContextLost = null}) => {
+export const createSimView3D = ({container, model, mechanism, read, catalog = null, onContextLost = null}) => {
     if (!webglAvailable()) throw new WebGLUnavailableError('this browser gives a canvas no WebGL 2 context');
     const config = read('ldconfig.ldr');
     if (!config) throw new Error('LDConfig.ldr (the LDraw colour table) is missing');
@@ -65,14 +67,9 @@ export const createSimView3D = ({container, model, mechanism, read, onContextLos
     Object.assign(canvas.style, {width: '100%', height: '100%', display: 'block', borderRadius: '6px', touchAction: 'none'});
     container.appendChild(canvas);
 
-    const built = buildSimScene({model, mechanism, read, colors: parseLDConfig(config)});
+    const built = buildSimScene({model, mechanism, read, colors: parseLDConfig(config), catalog});
     // The scene builder owns the model; the view adds light only when the builder brought none.
-    if (!built.scene.children.some(c => c.isLight)) {
-        built.scene.add(new AmbientLight(0xffffff, 0.6));
-        const sun = new DirectionalLight(0xffffff, 1.2);
-        sun.position.set(0.5, 1, 0.8);
-        built.scene.add(sun);
-    }
+    if (!built.scene.children.some(c => c.isLight)) addPartLights(built.scene);
     // A light sky and a 1 cm grid on the floor (10 cm major lines): without them a
     // driving robot on a plain floor shows no motion at all.
     built.scene.background = new Color(0xe8eef5);
@@ -91,7 +88,7 @@ export const createSimView3D = ({container, model, mechanism, read, onContextLos
 
     const modelBox = () => {
         const box = new Box3();
-        for (const mesh of built.partMeshes.values()) box.expandByObject(mesh);
+        for (const mesh of [...built.partMeshes.values(), ...built.hubMeshes.values()]) box.expandByObject(mesh);
         return box;
     };
     const resetCamera = () => {

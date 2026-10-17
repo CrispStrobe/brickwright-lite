@@ -35,14 +35,15 @@
 // F·R·F with F = diag(1, -1, -1).
 
 import {
-    AmbientLight, Box3, Color, DirectionalLight, EdgesGeometry, GridHelper, Group, LineBasicMaterial, LineSegments,
+    Box3, Color, EdgesGeometry, GridHelper, Group, LineBasicMaterial, LineSegments,
     Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, MOUSE, Object3D, PerspectiveCamera, Plane, Raycaster, Scene,
     Sphere, SphereGeometry, Vector2, Vector3, WebGLRenderer
 } from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {TransformControls} from 'three/addons/controls/TransformControls.js';
 import {LDU_M, lduToWorld} from '../contracts.js';
-import {partGeometry} from '../view/part-geometry.js';
+import {partGeometry, partVisual} from '../view/part-geometry.js';
+import {PART_SURFACE, addEdgeLines, addPartLights, edgeMaterials} from '../view/part-style.js';
 import {snapCandidates, rotateAboutSnap} from './snap.js';
 import {
     DEFAULT_GRID, GRID_STEPS, HOLE_PITCH, IDENTITY, cleanRotation, expandToGroups, facingAxis, mul3, mulVec3,
@@ -108,10 +109,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
     const s = new Scene();
     s.background = new Color(0xe8eef5);
     s.add(stage);
-    s.add(new AmbientLight(0xffffff, 0.6));
-    const sun = new DirectionalLight(0xffffff, 1.2);
-    sun.position.set(0.5, 1, 0.8);
-    s.add(sun);
+    addPartLights(s);
     const grid = new GridHelper(2, 50, 0x64748b, 0xcbd5e1);
     s.add(grid);
     const floor = new Plane(new Vector3(0, 1, 0), 0);
@@ -185,11 +183,17 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         if (!materials.has(color)) {
             const info = colors.get(color) || colors.get(16);
             materials.set(color, [
-                new MeshStandardMaterial({color: info ? info.value : '#cccccc', roughness: 0.6, metalness: 0.1}),
-                new MeshStandardMaterial({color: '#ffffff', roughness: 0.6, metalness: 0.1, vertexColors: true})
+                new MeshStandardMaterial({color: info ? info.value : '#cccccc', ...PART_SURFACE}),
+                new MeshStandardMaterial({color: '#ffffff', ...PART_SURFACE, vertexColors: true})
             ]);
         }
         return materials.get(color);
+    };
+    // The parts' own LDraw edge lines, one shared material set per colour.
+    const lineMaterials = new Map();
+    const linesFor = color => {
+        if (!lineMaterials.has(color)) lineMaterials.set(color, edgeMaterials(color, colors));
+        return lineMaterials.get(color);
     };
     const ghostMaterial = tone => [0, 1].map(() => new MeshStandardMaterial({
         color: tone === 'snap' ? '#22c55e' : '#3b82f6', transparent: true, opacity: 0.55, depthWrite: false
@@ -258,6 +262,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             mesh.matrix.copy(worldMatrix(p.position, p.rotation));
             mesh.name = p.id;
             mesh.userData.part = p.part;
+            addEdgeLines(mesh, partVisual(p.part, read, colors), linesFor(p.color ?? DEFAULT_COLOR));
             modelGroup.add(mesh);
             meshes.set(p.id, mesh);
         }
@@ -908,6 +913,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         clearGhost();
         for (const mesh of meshes.values()) for (const m of [].concat(mesh.material)) m.dispose();
         for (const pair of materials.values()) for (const m of pair) m.dispose();
+        for (const set of lineMaterials.values()) for (const m of [...set.edges, ...set.conditional]) m.dispose();
         for (const g of edges.values()) g.dispose();
         selectedLine.dispose();
         selectedHidden.dispose();
