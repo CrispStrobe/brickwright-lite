@@ -1,8 +1,9 @@
 # Robot Lab architecture — from one driving base to every LEGO Technic machine and hub
 
-Status: **design, not built.** Written 2026-10-17 on `lane/simlab-arch-20261017`, after reading
-the S1 code as it stands on `main` (`268c6e118`). Owner of record: unclaimed. Claim slices in
-`LANES.md` as usual.
+Status: **design; slice R1 built** (2026-10-17, `lane/simlab-r1-20261017` — see "R1 as built" in
+§7 for where the code deviates from the interfaces below and why). Written 2026-10-17 on
+`lane/simlab-arch-20261017`, after reading the S1 code as it stands on `main` (`268c6e118`).
+Owner of record: unclaimed. Claim slices in `LANES.md` as usual.
 
 This document says how the Robot Lab ("Sim Lab" in code: `overlay/scratch-gui/src/lib/bw-sim/`)
 grows from one product (a SPIKE Prime driving base on a mat) into what the owner asked for:
@@ -412,7 +413,10 @@ Generalised, with no change for SPIKE:
   `PortReading`, `HubPoseReading` (plain data). A test asserts that `bw-sim/physics/**` and
   `bw-sim/mech/**` import nothing from `virtual-hub/`, `spike-*`, `rcx/` or route modules,
   and that route modules import nothing from `bw-sim/physics/**` (an import-graph test like
-  `test/no-dead-overlay-modules.test.mjs`).
+  `test/no-dead-overlay-modules.test.mjs`). *Built in R1:*
+  `test/bw-sim-hub-boundary-imports.test.mjs` — transitive, worker URLs included; the hub
+  side's composition points (`hub-bridge.js`, `sim-worker-protocol.js`, the worker entry
+  `physics-worker.js`) therefore live beside `physics/`, not in it.
 - **Same model, different routes, same physics.** The acceptance for R5 is a *cross-route*
   check: the same driving base (with the motor/port profile of each hub) driven 50 cm by
   (a) a SPIKE `DEVICE SPIKE` program and (b) an NQC program in the RCX VM ends within the
@@ -483,8 +487,8 @@ numbers are at `268c6e118`.
   heading, SPIKE IMU, sensor readings `[port, kind, values]`); `:210–223` `plugMotors` writes
   SPIKE `data.sensors[i] = {kind:'motor', deviceId}`; `:232–248` `applyFrame` writes SPIKE
   fields. **Everything here is the SPIKE adapter**, and stays so: it becomes
-  `hubs/spike/spike-port-adapter.js` behind the `VirtualHub` interface (§5.1), and the
-  generic `SimHubBridge` loses all SPIKE knowledge.
+  `hubs/spike/spike-virtual-hub.js` behind the `VirtualHub` interface (§5.1), and the
+  generic `SimHubBridge` loses all SPIKE knowledge. *(Done in R1.)*
 - `sensors.js:29` `SENSOR_DEVICE = {color:61, distance:62, force:63}`; distance −1 outside
   50–2000 mm; colour = SPIKE colour ids from `world/mats.js` `colorAt` (ids 0..10 with
   `reflection`); force 0..100; IMU in SPIKE axes and milli-g (`:31–78`). These are **device
@@ -632,7 +636,7 @@ Who implements what:
 
 | Implementation | Wraps | Drive level | Status |
 |---|---|---|---|
-| `hubs/spike/spike-virtual-hub.js` | `VirtualSpikeHubState` + `IndependentSpikeBackend` (unchanged) — `advanceTo` = `stepMotors(5)` per step; `readDrives` = `data.motors[i].degPerSec` as `servo`; `writeReadings` = today's `applyFrame` | servo | slice R1 (refactor, bit-identical) |
+| `hubs/spike/spike-virtual-hub.js` | `VirtualSpikeHubState` + `IndependentSpikeBackend` (unchanged) — `advanceTo` = `stepMotors(5)` per step; `readDrives` = `data.motors[i].degPerSec` as `servo`; `writeReadings` = today's `applyFrame` | servo | **built** in R1 (refactor, bit-identical; deviations in §7 "R1 as built") |
 | `hubs/spike/spike-firmware-hub.js` | a SPIKE firmware emulator's port peripherals (§3) | pwm | later slice |
 | `hubs/rcx/rcx-virtual-hub.js` | the RCX route's output/input model (§3) | pwm (8 levels) | slice R5 |
 | `hubs/lwp3/…`, `hubs/nxt/…`, `hubs/ev3/…`, `hubs/wedo1/…`, `hubs/tc/…` | per §3 | per profile | later |
@@ -942,6 +946,8 @@ bw-sim/
   routes/                       route clients (VMs, lockstep drivers), never imported by physics
     rcx-vm/  nxt-vm/  ev3-vm/  renode-lockstep/
   hub-bridge.js                 generic SimHubBridge: N VirtualHubs ↔ core (no SPIKE knowledge)
+  sim-worker-protocol.js        worker batches/replay over VirtualHub states (R1: outside physics/)
+  physics-worker.js             the worker entry: physics host + hub registry (R1: outside physics/)
   world/                        floor/mats, objects, paper, scenarios
 ```
 
@@ -1015,7 +1021,15 @@ restore), device sample-and-hold buffers, worker-resident route VMs. A test runs
 with every coupling kind, checkpoints at a random step, runs, rolls back, reruns, and
 asserts bit-identical snapshots (extends `test/bw-sim-physics-worker-session.test.mjs`).
 
-### 6.5 Worker protocol growth (`physics/sim-worker-protocol.js`, `physics-host.js`)
+### 6.5 Worker protocol growth (`sim-worker-protocol.js`, `physics/physics-host.js`)
+
+Since R1 the protocol module and the worker entry are `bw-sim/sim-worker-protocol.js` and
+`bw-sim/physics-worker.js` (moved out of `physics/`, which must import no hub, §3.6);
+`physics-host.js` carries hub states and frames as opaque data and gets `createSimRunner`
+injected. The *load* and *batch* rows' v2 shapes below are built (without `residency`,
+`routeInit`, `world`, `ui`, `paperDelta`, `couplingState`, which come with the slices that need
+them); a frame is `{t, hubs: {id: {drives, readings, pose}}}` — `drives` so the replay can check
+the main-thread hub chose what the mirror did (today's `diverged` check, now generic).
 
 | Message | Today | v2 |
 |---|---|---|
@@ -1045,6 +1059,60 @@ which expectation it changes and why.
 compares frames to the last bit); an import-graph test proves physics/mech import no hub or
 route module; a fake 2-port test hub (in `test/fixtures`) drives the driving base through the
 same bridge with `pwm` drives stubbed to servo.
+
+*R1 as built (2026-10-17, `lane/simlab-r1-20261017`).* Files: `hubs/hub-profile.js` (typedefs,
+`validateHubProfile`), `hubs/spike/profile.js`, `hubs/spike/spike-virtual-hub.js`
+(`SpikeVirtualHub` around the unchanged `VirtualSpikeHubState`; `plugMotors`, `applyFrame`,
+`export/importMotorState` and the SPIKE IMU encoding moved here), `registry/hubs.js`
+(`HubRegistry`) + `hubs/index.js` (the built-in families), `physics/actuators.js`
+(`applyDrive`), and the generic `hub-bridge.js` / `sim-worker-protocol.js`. Accepted by: every
+existing Robot Lab test unchanged and green; per-tick hashes of every pose, joint and hub field
+for the four shipped models (in-thread and worker), a raw-bridge run and the line follower's VM
+program equal before and after the refactor; `test/bw-sim-hub-boundary-imports.test.mjs`;
+`test/bw-sim-hub-boundary.test.mjs` (a fake two-port **pwm** hub, `test/fixtures/bw-sim/two-port-test-hub.mjs`,
+drives the S1 base through the same bridge, worker protocol and `SimSession`, bit-identical
+in-thread vs. protocol, redo included). Where the code deviates from §5.1/§6, and why:
+
+- **`PortReading` encoder carries `deltaRad`** (the change over the step) beside `angleRad`.
+  Every LEGO encoder is incremental and a program may reset its count; the SPIKE hub's position
+  is `base + Δ·180/π` with its own base. Recomputing Δ from two `angleRad` values on the hub
+  side would not be bit-identical to today's arithmetic.
+- **`PortBinding` is `{port, class: 'motor'|'sensor', ids: {lpf2?}, sensor?}`**, not
+  `{port, device, partId}`: there is no device registry yet (§5.2), so a binding carries the
+  identity the hub reports (as `DeviceModel.ids` will). R2 replaces it with the device id.
+- **Probe readings carry v1 values**: `{kind: 'probe', device: <v1 sensor kind>, raw}` where
+  `raw` is `sensors.js`'s measurement already in SPIKE units; the SPIKE adapter only adds the
+  LPF2 id. The probe/encoder split of §5.2 lands with the device registry.
+- **`HubPoseReading` is `{headingDeg, rateDegPerSec, quat?, angVel?, linAcc?, gravity?}`**:
+  `linAcc` excludes gravity (`(v − v_prev)/dt`, computed on the physics side because it needs
+  the previous step's velocity, which is rollback state); the hub derives its IMU. The pose
+  fields are absent when the body cannot be read (the IMU then keeps its value, as before).
+- **`advanceTo(t)` takes the END of the step about to be simulated** (the route runs its
+  controller over the step and decides the held drive), so the SPIKE adapter's
+  `stepMotors(t − t_prev)` is exactly today's `stepMotors(5)`. §3.3's pseudo-code reads it as
+  the step's start; the meaning (zero-order hold, one step of reading latency) is the same.
+- **`exportState()` includes the route's time** (`timeMs`), so a mirror's `advanceTo` steps the
+  same interval as the main-thread hub.
+- **`pwm` drive, R1 stand-in**: `physics/actuators.js` sets a velocity target `u·ω0` under the
+  stall-torque limit (duty 0: `brake` holds, `coast` frees the hinge) — right no-load speed,
+  right stall torque, not the torque–speed line or back-EMF braking. R3 replaces that branch;
+  the drive data stays. (So D5's SPIKE→pwm move is an adapter change plus R3's actuator.)
+- **Hub family of a model**: a hub part's metadata may name `hub.profile`; without it the hub
+  is `spike-prime`. R1 binds every motor and sensor to the one hub on the first hub body;
+  `SimHubBridge` refuses a second hub until R2's `{hub, port}` references exist.
+- **Composition outside `physics/`**: `sim-worker-protocol.js`, the worker entry
+  `physics-worker.js` and `startPhysicsWorker` (now in `sim-lab.js`, same chunk name) moved so
+  that `physics/` imports no hub (§3.6). `SimHubBridge`/`HubReplay` still accept the pre-R1
+  `{hubState, hubBody}` options (wrapped by the registry's default family), which is why no
+  existing test changed.
+- `spike3-python-run.js` skips a hub a Lab scene drives (`window.__bwSimLab.hubState`), paused
+  or running.
+
+What R2 should know: drives are bound by `joint.motor.port` and readings by
+`mechanism.sensors[].port` in `hub-bridge.js` (`portBindings`, `SimHubBridge` constructor) —
+the two places `actuators[]`/`devices[]` with `{hub, port}` replace; `HubPoseReading` is per
+hub body, so multi-hub only needs the bindings. The worker-session test and the hash check are
+the bit-identity guard for the upgrade path.
 
 **R2 (C) — CompiledMechanism v2 + registries, v1 behaviour as modules.** Joints v2,
 `actuators`, `couplings` (gear, rackAndPinion), `devices`, body `role`/`collisionGroup`;
