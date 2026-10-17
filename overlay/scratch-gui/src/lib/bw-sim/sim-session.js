@@ -18,6 +18,7 @@
 
 import {parseModel} from './model/ldraw-model.js';
 import {compile} from './mech/compile.js';
+import {mechanismIssues} from './mech/insight.js';
 import {loadJolt, createPhysicsCore} from './physics/jolt-core.js';
 import {SimHubBridge, STEP_MS} from './hub-bridge.js';
 import {createMat} from './world/mats.js';
@@ -60,17 +61,13 @@ export const prepareModel = (text, catalog, {mat = null} = {}) => {
     const {model, refusals} = parseModel(text, {catalog});
     const issues = refusals.map(r => ({severity: 'warning', ...r}));
     if (model.parts.length === 0) {
-        issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.'});
+        issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.', parts: []});
         return {model, runModel: model, mechanism: null, issues};
     }
     const start = mat ? createMat(mat).startPose : null;
     const runModel = start ? placeOnStart(model, start, driveAnchor(model, catalog)) : model;
     const mechanism = compile(runModel, catalog, mat ? {mat} : {});
-    issues.push(...mechanism.diagnostics);
-    const motors = mechanism.joints.filter(j => j.motor).length;
-    if (motors === 0) {
-        issues.push({severity: 'warning', code: 'no-motor', message: 'No motor is connected to a hub port, so nothing will move on its own.'});
-    }
+    issues.push(...mechanismIssues(mechanism));
     return {model, runModel, mechanism, issues};
 };
 
