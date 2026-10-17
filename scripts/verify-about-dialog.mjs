@@ -39,7 +39,7 @@ const EXPECTED_ENTRIES = [
 
 async function verify() {
     const browser = await chromium.launch({ headless: true });
-    const page = await browser.newPage({viewport: {width: 1280, height: 720}});
+    const page = await browser.newPage({viewport: {width: 1280, height: 720}, serviceWorkers: 'block'});
     await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
     page.on('dialog', d => d.accept());
     const pageErrors = [];
