@@ -2,7 +2,11 @@
 // Copyright (c) 2026 Brickwright contributors
 //
 // Exact-enough primitive intersection for PartMeta colliders (LDraw frame, LDU),
-// used by snap.js instead of its AABB approximation.
+// used by snap.js instead of its AABB approximation, and the build editor's
+// collider geometry: which solid parts a pose would push into (one rule for the
+// editor and test/bw-sim-s1-driving-base.test.mjs), whether a move is allowed,
+// what a pointer ray hits (holes count as the part: colliders are solid), and
+// where a part rests on a surface.
 
 import {mat3MulVec3, vecAdd, vecSub, vecScale, vecDot, vecCross, vecLen, vecNormalize} from '../mech/vec.js';
 
@@ -200,4 +204,156 @@ export const partOverlaps = (model, catalog, placedPart, {ignore = []} = {}) => 
         if (overlaps) result.push({part: other.id, depth: maxDepth});
     }
     return result;
+};
+
+// ---- solid parts, moves, rays, resting ---------------------------------------
+
+/** Connector types of parts that legitimately sit inside another part's hole or socket. */
+const SHAFT_TYPES = new Set(['pin', 'axle', 'ball']);
+const asMap = catalog => (catalog instanceof Map ? catalog : new Map(Object.entries(catalog || {})));
+
+/**
+ * True for a part that is made to sit INSIDE another one: pins and axles (in
+ * holes) and the castor ball (in its socket) — every connector is a shaft or a
+ * ball. Everything else is solid and must not share volume with another solid.
+ * @param {object} meta PartMeta
+ */
+export const sitsInside = meta => Boolean(meta && meta.connectors && meta.connectors.length &&
+    meta.connectors.every(c => SHAFT_TYPES.has(c.type)));
+
+/**
+ * The solid parts a placed part pushes into: none for a pin/axle/ball; for a
+ * solid part every other solid part whose colliders overlap it.
+ * @returns {{part: string, depth: number}[]}
+ */
+export const solidOverlaps = (model, catalog, placedPart, {ignore = []} = {}) => {
+    const catalogMap = asMap(catalog);
+    if (sitsInside(catalogMap.get(placedPart.part))) return [];
+    const skip = model.parts.filter(p => p.id !== placedPart.id && sitsInside(catalogMap.get(p.part))).map(p => p.id);
+    return partOverlaps(model, catalogMap, placedPart, {ignore: [...ignore, ...skip]});
+};
+
+/**
+ * Whether moving parts to new poses is allowed: refused when a moved solid part
+ * would push into a solid part it was not already in (an old overlap never
+ * blocks moving out of it). Parts moved together are not checked against each
+ * other (they keep their relative poses only if moved rigidly; a gizmo, drag
+ * or turn always is), and `connected` parts — the ones a magnet snap joins the
+ * part to — count as a legitimate connection.
+ * @param {{model: object, catalog: Map|object, moves: {id: string, position: number[], rotation: number[]}[], connected?: string[]}} args
+ * @returns {{ok: true}|{ok: false, part: string, into: string}}
+ */
+export const moveVerdict = ({model, catalog, moves, connected = []}) => {
+    const moved = new Map(moves.map(m => [m.id, m]));
+    const after = {...model, parts: model.parts.map(p => (moved.has(p.id) ? {...p, position: moved.get(p.id).position, rotation: moved.get(p.id).rotation} : p))};
+    const ignore = [...moved.keys(), ...connected];
+    for (const p of after.parts) {
+        if (!moved.has(p.id)) continue;
+        const before = model.parts.find(q => q.id === p.id);
+        const was = new Set(before ? solidOverlaps(model, catalog, before, {ignore}).map(o => o.part) : []);
+        const hit = solidOverlaps(after, catalog, p, {ignore}).find(o => !was.has(o.part));
+        if (hit) return {ok: false, part: p.id, into: hit.part};
+    }
+    return {ok: true};
+};
+
+/** Ray (origin, unit dir) against one collider primitive: entry distance and outward normal, or null. */
+const rayPrimitive = (prim, origin, dir) => {
+    if (prim.shape === 'sphere') {
+        const oc = vecSub(origin, prim.centre);
+        const b = vecDot(oc, dir);
+        const c = vecDot(oc, oc) - prim.radius * prim.radius;
+        const disc = b * b - c;
+        if (disc < 0) return null;
+        const t = -b - Math.sqrt(disc);
+        if (t < 0) return null;
+        return {t, normal: vecNormalize(vecSub(vecAdd(origin, vecScale(dir, t)), prim.centre))};
+    }
+    const box = prim.shape === 'box' ? prim : cylinderAsBox(prim);
+    const rel = vecSub(origin, box.centre);
+    let tNear = -Infinity;
+    let tFar = Infinity;
+    let normal = null;
+    for (let i = 0; i < 3; i++) {
+        const e = vecDot(box.axes[i], rel);
+        const f = vecDot(box.axes[i], dir);
+        const h = box.halfExtents[i];
+        if (Math.abs(f) < 1e-12) {
+            if (Math.abs(e) > h) return null;
+            continue;
+        }
+        const t1 = (-h - e) / f;
+        const t2 = (h - e) / f;
+        const [a, b] = t1 < t2 ? [t1, t2] : [t2, t1];
+        if (a > tNear) {
+            tNear = a;
+            normal = vecScale(box.axes[i], f > 0 ? -1 : 1);
+        }
+        tFar = Math.min(tFar, b);
+        if (tNear > tFar) return null;
+    }
+    if (tNear < 0 || !normal) return null;
+    return {t: tNear, normal};
+};
+
+/**
+ * What a pointer ray hits, nearest first, against the parts' colliders (LDraw
+ * frame). Colliders are solid, so a ray aimed into a beam's hole hits the
+ * beam's face around it instead of passing through to the floor.
+ * @param {object} model
+ * @param {Map|object} catalog
+ * @param {number[]} origin LDU
+ * @param {number[]} direction any length
+ * @param {{exclude?: string[]}} [options]
+ * @returns {{part: string, t: number, point: number[], normal: number[]}[]}
+ */
+export const rayHitParts = (model, catalog, origin, direction, {exclude = []} = {}) => {
+    const catalogMap = asMap(catalog);
+    const dir = vecNormalize(direction);
+    const skip = new Set(exclude);
+    const hits = [];
+    for (const p of model.parts) {
+        if (skip.has(p.id)) continue;
+        const meta = catalogMap.get(p.part);
+        if (!meta) continue;
+        let best = null;
+        for (const prim of collidersOf(p, meta)) {
+            const h = rayPrimitive(prim, origin, dir);
+            if (h && (!best || h.t < best.t)) best = h;
+        }
+        if (best) hits.push({part: p.id, t: best.t, point: vecAdd(origin, vecScale(dir, best.t)), normal: best.normal});
+    }
+    return hits.sort((a, b) => a.t - b.t);
+};
+
+/** Extent of a primitive along a model axis k (0 x, 1 y, 2 z) about its centre. */
+const extentAlong = (prim, k) => {
+    if (prim.shape === 'sphere') return prim.radius;
+    const box = prim.shape === 'box' ? prim : cylinderAsBox(prim);
+    return box.axes.reduce((sum, axis, i) => sum + Math.abs(axis[k]) * box.halfExtents[i], 0);
+};
+
+/**
+ * Where a part rests on a surface point (LDraw, LDU): its colliders' lowest
+ * point touches the surface (no overlap with what it stands on), its footprint
+ * is centred on the point, and x/z are on the grid. LDraw is -y up, so "lowest"
+ * is the largest y; the height is rounded UP to whole LDU so it never sinks in.
+ * @param {{meta: object, rotation: number[], point: number[], grid: number}} args
+ * @returns {number[]} the part's position
+ */
+export const restingPosition = ({meta, rotation, point, grid}) => {
+    const prims = collidersOf({position: [0, 0, 0], rotation}, meta);
+    const lo = [Infinity, Infinity, Infinity];
+    const hi = [-Infinity, -Infinity, -Infinity];
+    for (const prim of prims) {
+        for (let k = 0; k < 3; k++) {
+            const e = extentAlong(prim, k);
+            lo[k] = Math.min(lo[k], prim.centre[k] - e);
+            hi[k] = Math.max(hi[k], prim.centre[k] + e);
+        }
+    }
+    if (!prims.length) for (let k = 0; k < 3; k++) { lo[k] = 0; hi[k] = 0; }
+    const onGrid = v => Math.round(v / grid) * grid;
+    const tidy = v => (Object.is(v, -0) ? 0 : v);
+    return [onGrid(point[0] - (lo[0] + hi[0]) / 2), Math.floor(point[1] - hi[1] + 1e-6), onGrid(point[2] - (lo[2] + hi[2]) / 2)].map(tidy);
 };
