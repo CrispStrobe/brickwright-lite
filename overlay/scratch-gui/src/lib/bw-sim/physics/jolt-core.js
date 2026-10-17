@@ -55,6 +55,23 @@ const perpForAxis = axis => {
     return [px / len, py / len, pz / len];
 };
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+/**
+ * Box convex radius (metres), as for cylinders: a quarter of the thinnest half
+ * extent, at most 0.5 mm. Jolt keeps the box's outer extents and rounds its
+ * edges. With radius 0 (until 2026-10-17) box-vs-box contacts were found only
+ * once the boxes were deep inside each other (measured: a liftarm swinging into
+ * an obstacle passed 45° through it before anything pushed back).
+ */
+const boxConvexRadius = halfExtents => Math.min(0.0005, 0.25 * Math.min(...halfExtents));
+
+/**
+ * Solver velocity iterations for an island holding a gear (Jolt's default is
+ * 10, kept for everything else). A load on a gear train reaches the motor
+ * through motor → gear → contact; with 10 iterations that chain did not
+ * converge and an arm on a driven 24T swung straight through a static obstacle
+ * (measured); from 15 up it is stopped, 30 stops it within 2° of first touch.
+ */
+const GEAR_VELOCITY_STEPS = 30;
 
 export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
     const problems = validateCompiledMechanism(mechanism);
@@ -62,7 +79,12 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
     const dtFixed = 1 / stepHz;
     const LAYER_DYNAMIC = 0;
     const LAYER_STATIC = 1;
-    const NUM_OBJECT_LAYERS = 2;
+    // A static body made of model parts is the machine's own fixed frame (a
+    // gearbox clamped to the bench): like two moving parts of one machine, it
+    // does not collide with the machine's moving parts (an axle turns inside the
+    // frame's hole). The ground and obstacles carry no parts and stay LAYER_STATIC.
+    const LAYER_FRAME = 2;
+    const NUM_OBJECT_LAYERS = 3;
 
     const joltSettings = new J.JoltSettings();
     const maxBodies = Math.max(32, mechanism.bodies.length + 16);
@@ -74,10 +96,14 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
     objectLayerPairFilter.DisableCollision(LAYER_DYNAMIC, LAYER_DYNAMIC);
     objectLayerPairFilter.EnableCollision(LAYER_DYNAMIC, LAYER_STATIC);
     objectLayerPairFilter.DisableCollision(LAYER_STATIC, LAYER_STATIC);
+    objectLayerPairFilter.DisableCollision(LAYER_FRAME, LAYER_DYNAMIC);
+    objectLayerPairFilter.DisableCollision(LAYER_FRAME, LAYER_STATIC);
+    objectLayerPairFilter.DisableCollision(LAYER_FRAME, LAYER_FRAME);
 
     const bpInterface = new J.BroadPhaseLayerInterfaceTable(NUM_OBJECT_LAYERS, 2);
     bpInterface.MapObjectToBroadPhaseLayer(LAYER_DYNAMIC, new J.BroadPhaseLayer(0));
     bpInterface.MapObjectToBroadPhaseLayer(LAYER_STATIC, new J.BroadPhaseLayer(1));
+    bpInterface.MapObjectToBroadPhaseLayer(LAYER_FRAME, new J.BroadPhaseLayer(1));
 
     const ovbFilter = new J.ObjectVsBroadPhaseLayerFilterTable(bpInterface, 2, objectLayerPairFilter, NUM_OBJECT_LAYERS);
 
@@ -134,7 +160,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
         if (b.colliders.length === 1 && !b.colliders[0].position && !b.colliders[0].rotation) {
             const col = b.colliders[0];
             if (col.shape === 'box') {
-                shape = new J.BoxShape(new J.Vec3(...col.halfExtents), 0.0);
+                shape = new J.BoxShape(new J.Vec3(...col.halfExtents), boxConvexRadius(col.halfExtents));
             } else if (col.shape === 'cylinder') {
                 const convexRadius = Math.min(0.0005, 0.25 * Math.min(col.halfHeight, col.radius));
                 shape = new J.CylinderShape(col.halfHeight, col.radius, convexRadius);
@@ -148,7 +174,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
                 const rot = col.rotation ? new J.Quat(...col.rotation) : new J.Quat(0, 0, 0, 1);
                 let shapeSettings = null;
                 if (col.shape === 'box') {
-                    shapeSettings = new J.BoxShapeSettings(new J.Vec3(...col.halfExtents), 0.0);
+                    shapeSettings = new J.BoxShapeSettings(new J.Vec3(...col.halfExtents), boxConvexRadius(col.halfExtents));
                 } else if (col.shape === 'cylinder') {
                     const convexRadius = Math.min(0.0005, 0.25 * Math.min(col.halfHeight, col.radius));
                     shapeSettings = new J.CylinderShapeSettings(col.halfHeight, col.radius, convexRadius);
@@ -174,7 +200,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
         const posR = new J.RVec3(...b.position);
         const rotQ = new J.Quat(...b.rotation);
         const motionType = b.motion === 'static' ? J.EMotionType_Static : J.EMotionType_Dynamic;
-        const layer = motionType === J.EMotionType_Static ? LAYER_STATIC : LAYER_DYNAMIC;
+        const layer = motionType !== J.EMotionType_Static ? LAYER_DYNAMIC : (b.parts.length > 0 ? LAYER_FRAME : LAYER_STATIC);
         const bcs = new J.BodyCreationSettings(shape, posR, rotQ, motionType, layer);
         J.destroy(posR);
         J.destroy(rotQ);
@@ -341,6 +367,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             gs.mHingeAxis1 = new J.Vec3(...A.j.axis.map(v => v * A.side.sign));
             gs.mHingeAxis2 = new J.Vec3(...B.j.axis.map(v => v * B.side.sign * flip));
             gs.mRatio = 1 / Math.abs(ratio);
+            gs.mNumVelocityStepsOverride = GEAR_VELOCITY_STEPS;
             const constraint = gs.Create(getBodyForId(A.side.body), getBodyForId(B.side.body));
             physicsSystem.AddConstraint(constraint);
             allConstraints.push(constraint);
