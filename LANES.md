@@ -101,6 +101,21 @@ expansion. The standard GUI build passes; explicit production build and browser
 qualification are in progress. All enabled final-head CI remains a landing gate.
 Original PR975 head rechecked unchanged at 943d540c7 before this candidate commit.
 
+STM32 composition reconciliation (2026-10-16): previous head7a82a14f passed
+every enabled hosted check in run38945321982. Current main6f2993d6b adds the
+qualified iOS packaging and independent Sim Lab slice, plus claims. Original
+PR975 advanced to4d0cabe24: its matrix label is already present; its register
+reader fix is incorporated with the explanatory comment while retaining this
+386-only gate's strict edi assertion and existing timeout, per the merged claim.
+Normal merges preserve both histories and all newer main changes. This changed
+combined head requires fresh exact-head CI before landing.
+
+Final integration reconciliation includes main8a63ad26f, preserving merged
+CPX1009, SPIKE pending-stop990 and the Arcade owner's new claims. Keep this
+lane's receipts in its own section. Every enabled exact-head CI check remains
+a landing requirement; unit shard2 in run38975443782 is currently failing and
+is being investigated. Both browser jobs, build and corpus pass.
+
 ## A13 — CPX live circuit face adoption — 2026-10-16
 
 DONE candidate / final qualification pending — Codex root, isolated `/tmp/brickwright-lite-a13-20261016`, branch
@@ -5780,6 +5795,29 @@ earlier v1/v2/v3 failures remain retained. Persistent copy under
 Final source PR/full CI still waits for the ordered earlier hosted integrations.
 D13 and iPad/WeDo physical acceptance remain explicitly open.
 
+## Owned Sprite callback fields and handler-record transport — 2026-10-16
+
+PROPOSED COORDINATED EXTENSION — Codex, source ownership for the existing
+[owned Sprite callback contract](docs/ARCADE-SPRITE-HANDLER-RECORD-EXTENSION.md#proposed-coordinated-sprite-handler-record-extension)
+and [handler-record Array contract](docs/ARCADE-SPRITE-HANDLER-RECORD-EXTENSION.md#proposed-coordinated-sprite-record-subset).
+Implementation waits for this amendment's normal qualified merge. Coordinate
+Sprite/class-callable, managed lifetime, handler-Array, current-export and
+translator owners; preserve their existing complete bodies and diagnostics.
+Own the exact narrow helper/shared-hook envelope in the contracts: actual
+existing owned Sprite values/bridge and source-producer extension (no parallel
+owner), constructor parameter-property metadata
+and ordered writes, callback field/all-writer/receiver/result proof, and only
+then one concrete ordinary handler Array and its exact owned Scene registry
+entry with that same Sprite callback domain. The implementation depends on the
+qualified integration foundation; this docs claim does not adopt pending source.
+No ID-string/annotation/name grant, generic SDK values, class partition, new
+word/reference kind, pin adoption or scheduler change is implicit. The existing
+no-SDK-values collection boundary remains until the corresponding foundation
+qualifies. Source/current Blocks, native lifecycle, saved/current-export,
+selected-original and visible GUI qualification are separate required gates;
+no library/game or corpus promotion follows from a foundational holder control.
+
+
 ## Circuit File actions with a cached but unmounted designer — 2026-10-16
 
 DONE candidate / actual qualification pending — Codex root, isolated `/tmp/brickwright-circuit-file-wake-20261016`,
@@ -5843,14 +5881,7 @@ receipts remain retained. Persistent copies are in
 `build-artifacts/file-menu-20261016-19a7879/`. The final proof-only update adds
 download counting, not product behavior. Keep final main reconciliation and
 exact-head hosted qualification pending; no physical acceptance is inferred.
-STM32 composition reconciliation (2026-10-16): previous head7a82a14f passed
-every enabled hosted check in run38945321982. Current main6f2993d6b adds the
-qualified iOS packaging and independent Sim Lab slice, plus claims. Original
-PR975 advanced to4d0cabe24: its matrix label is already present; its register
-reader fix is incorporated with the explanatory comment while retaining this
-386-only gate's strict edi assertion and existing timeout, per the merged claim.
-Normal merges preserve both histories and all newer main changes. This changed
-combined head requires fresh exact-head CI before landing.
+
 
 A13 reconciliation and switch proof (2026-10-16): CPX owner PR1009 is now
 merged remotely; preserve its completion record and main5feadd082, including
@@ -5864,3 +5895,26 @@ round trips. No injected output or extension/runtime change. The fresh signed
 physical-device325 app is83.31MiB and passes strict verification; no physical
 installation or new simulator boot is claimed. Final reconciled production
 build/browser checks and all enabled final-head hosted checks remain required.
+
+### Current Array mandatory ordinary callee initialization — extension
+
+PROPOSED / DOCUMENTATION ONLY — Codex Arcade integration, coordinated with the
+current Array receiver authority and shared-frame owners. Merge this extension
+before product implementation. Contract:
+[current Array callee initialization](docs/ARCADE-ARRAY-CALLEE-INITIALIZATION.md).
+
+Own narrow `array-reference-export-authority.js` proofs for mandatory ordinary
+callee global Array writes and exact later caller/registration availability.
+Own focused controls and the contract; coordinate matching existing helpers
+explicitly. Prove the actual allocation and complete all-writer, call-target,
+frame, operand, completion, branch, recursion, alias, yield/reentry and currentness
+obligations. Uncertain paths retain named diagnostics and ordinary source.
+Preserve every allocation, body, effect and current Code/Blocks/SB3/export/reimport
+result. Existing index, nested-Array and element-presence proofs stay unchanged.
+
+No shared-frame effect boolean grants generic values, resources or presence.
+No annotation/default change, synthetic length/index, new numeric evaluator,
+source replacement, callback simulation, new domain/ABI, runtime, supplier/pin or
+workflow changes. Require affected clean genuine guest qualification in addition
+to current public roundtrip and adversarial graph controls. Pending unrelated
+handler/value claims confer no authority here.
