@@ -11,10 +11,40 @@ How it is built, and what comes next, is in `docs/SIM-LAB-PLAN.md`.
 
 ## Using it
 
-1. Write a SPIKE Prime program (Code or Blocks tab). The reference model
-   drives its wheels with ports **A (left, mounted mirrored) and B (right)**,
-   like the arena's driving base, so `set movement motors A B` and
+1. Write a SPIKE Prime program (Code or Blocks tab). The reference models are
+   **SPIKE driving base** (`driving-base.ldr`) and **Line follower (colour sensor on port C)**
+   (`line-follower.ldr` — the S1 driving base plus a colour sensor on port **C** in front of the
+   drive axle, ~8 mm above the floor, for the `line-oval` mat). Both drive their wheels with ports
+   **A (left, mounted mirrored) and B (right)**, like the arena's driving base, so `set movement motors A B` and
    `move forward 20 cm` work as they do in the arena.
+
+   **Line follower pseudocode** — the headless test drives the hub directly (no SPIKE program is run):
+   ```js
+   const THRESHOLD = 40;
+   const BASE_PCT = 30; const SLOW = 0.5; const MAX_SPEED = 1110;
+   const speed = BASE_PCT * MAX_SPEED / 100; // 333 deg/s
+   // every 20 ms:
+   const reflection = hubState.data.sensors[2].reflection; // port C
+   const onWhite = reflection >= THRESHOLD;
+   hubState.motors.runAtSpeed('A', -speed * (onWhite ? SLOW : 1));
+   hubState.motors.runAtSpeed('B',  speed * (onWhite ? 1 : SLOW));
+   ```
+   Closest SPIKE 3 equivalent (untested, same logic):
+   ```python
+   from hub import motion_sensor
+   import motor, color_sensor
+   THRESHOLD = 40
+   speed = 333
+   slow = 166  # 0.5 * speed
+   while True:
+       if color_sensor.reflection(2) >= THRESHOLD:  # port C = index 2
+           motor.run(0, -slow)  # A mirrored
+           motor.run(1, speed)  # B
+       else:
+           motor.run(0, -speed)
+           motor.run(1, slow)
+       wait_for_ms(20)
+   ```
 2. Open the SPIKE simulator (**SPIKE arena** button in the Code tab) and pick
    the **Robot Lab (beta)** tab.
 3. Press **Run**. As the arena's Start does, Run connects the program to the

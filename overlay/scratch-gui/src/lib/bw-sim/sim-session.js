@@ -32,7 +32,8 @@ export const catalogFrom = partsJson => new Map(partsJson.parts.map(p => [p.part
 
 /** Reference models shipped in static/sim-lab/models/ (file name → titles). */
 export const MODELS = Object.freeze([
-    {file: 'driving-base.ldr', title: {en: 'SPIKE driving base', de: 'SPIKE-Fahrbasis'}}
+    {file: 'driving-base.ldr', title: {en: 'SPIKE driving base', de: 'SPIKE-Fahrbasis'}},
+    {file: 'line-follower.ldr', title: {en: 'Line follower (colour sensor on port C)', de: 'Linienfolger (Farbsensor an Port C)'}}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
 
