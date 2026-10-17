@@ -25,7 +25,7 @@ import {parseModel, serializeModel} from '../overlay/scratch-gui/src/lib/bw-sim/
 import {MODELS, MODELS_BASE, catalogFrom} from '../overlay/scratch-gui/src/lib/bw-sim/sim-session.js';
 import {buildGraph} from '../overlay/scratch-gui/src/lib/bw-sim/mech/graph.js';
 import {createEditor} from '../overlay/scratch-gui/src/lib/bw-sim/editor/editor-state.js';
-import {buildSteps, stepView, partsList, partLength, STEP_MAX} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
+import {buildSteps, stepView, partsList, partLength, STEP_MAX, mirrorPairs, partAdjacency} from '../overlay/scratch-gui/src/lib/bw-sim/instructions/steps.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const GUI = path.join(ROOT, 'overlay/scratch-gui');
@@ -143,6 +143,61 @@ for (const {name, text} of MODELS_UNDER_TEST) {
         assert.equal(sum, model.parts.length);
     });
 }
+
+/**
+ * Mirrored sub-assemblies go on together, as in a LEGO manual: the two drive motors in one step,
+ * the two wheels in one step, "2x" in the callout. Judged here from the placements alone: two
+ * structural parts (not pins or axles) with the same part number and colour, at the same height
+ * and depth, on either side of the hub's centre plane x = hub.x.
+ */
+const mirroredStructural = model => {
+    const hub = model.parts.find(p => CATALOG.get(p.part).hub);
+    const out = [];
+    for (const a of model.parts) {
+        if (['pin', 'axle'].includes(category(model, a.id)) || a.position[0] <= hub.position[0]) continue;
+        const b = model.parts.find(o => o.part === a.part && o.color === a.color &&
+            Math.abs(o.position[0] - (2 * hub.position[0] - a.position[0])) < 1e-6 &&
+            o.position[1] === a.position[1] && o.position[2] === a.position[2]);
+        if (b) out.push([a.id, b.id]);
+    }
+    return out;
+};
+
+for (const {name, text} of MODELS_UNDER_TEST) {
+    test(`${name}: mirrored pairs go on in one step, counted 2x in its callout`, () => {
+        const model = load(text);
+        const plan = buildSteps(model, CATALOG);
+        const at = stepIndex(plan);
+        const pairs = mirroredStructural(model);
+        const ids = pairs.flat();
+        for (const want of ['motorL', 'motorR', 'wheelL', 'wheelR']) assert.ok(ids.includes(want), `${name}: ${want} has a mirror image`);
+        for (const [a, b] of pairs) {
+            assert.equal(at.get(a), at.get(b), `${name}: ${a} and ${b} in one step`);
+            const row = partsList(model, CATALOG, plan.steps[at.get(a)].parts)
+                .find(r => r.part === model.parts.find(p => p.id === a).part);
+            assert.ok(row.count >= 2, `${name}: ${a}'s callout says ${row.count}x`);
+        }
+        // And what holds them: each wheel's axle and each motor's pin in that same step.
+        assert.equal(at.get('axleL'), at.get('wheelL'));
+        assert.equal(at.get('axleR'), at.get('wheelR'));
+        assert.equal(at.get('pinL'), at.get('motorL'));
+        assert.equal(at.get('pinR'), at.get('motorR'));
+    });
+}
+
+test('a pair is mirrored only when it is held the same way: without its pin, the left motor is not', () => {
+    const model = load(read('test/fixtures/bw-sim/driving-base.ldr'));
+    const pairs = mirrorPairs(model, CATALOG, partAdjacency(model, CATALOG));
+    assert.equal(pairs.get('motorR'), 'motorL');
+    assert.equal(pairs.get('wheelL'), 'wheelR');
+    assert.ok(!pairs.has('hub') && !pairs.has('frontBeam') && !pairs.has('castor'), 'parts on the plane are their own image');
+    const unpinned = {...model, parts: model.parts.filter(p => p.id !== 'pinL')};
+    const without = mirrorPairs(unpinned, CATALOG, partAdjacency(unpinned, CATALOG));
+    assert.ok(!without.has('motorR') && !without.has('motorL'), 'the right motor is pinned to the hub, the left one to nothing');
+    // A wheel with no counterpart (the left one moved off its axle) is not paired either.
+    const moved = {...model, parts: model.parts.map(p => (p.id === 'wheelL' ? {...p, position: [-170, 10, 300]} : p))};
+    assert.ok(!mirrorPairs(moved, CATALOG, partAdjacency(moved, CATALOG)).has('wheelR'));
+});
 
 test('lengths a manual prints: an axle 4 in a circle, a 7-hole beam, a 3L pin; none for a hub', () => {
     assert.equal(partLength(CATALOG.get('3705.dat')), 4);

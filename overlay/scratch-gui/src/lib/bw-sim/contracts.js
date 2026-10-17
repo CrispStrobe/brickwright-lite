@@ -54,10 +54,14 @@ export const GROUND_FRICTION = 0.8;
  * A collision primitive. In PartMeta it is in the part's LDraw frame (LDU);
  * in a CompiledMechanism body it is in that body's local frame (metres).
  * A cylinder's axis is its local +y before `rotation` is applied.
+ * `region` ('pin'|'axle'|'ball', PartMeta only) marks a collider as the shaft
+ * part of a part that is also solid elsewhere (87082's pin ends, 32054's pin):
+ * it may sit inside another part's hole; untagged colliders are solid
+ * (editor/overlap.js solidColliders).
  * @typedef {(
- *   {shape: 'box', halfExtents: Vec3, position?: Vec3, rotation?: Quat} |
- *   {shape: 'cylinder', radius: number, halfHeight: number, position?: Vec3, rotation?: Quat} |
- *   {shape: 'sphere', radius: number, position?: Vec3}
+ *   {shape: 'box', halfExtents: Vec3, position?: Vec3, rotation?: Quat, region?: string} |
+ *   {shape: 'cylinder', radius: number, halfHeight: number, position?: Vec3, rotation?: Quat, region?: string} |
+ *   {shape: 'sphere', radius: number, position?: Vec3, region?: string}
  * )} Collider
  */
 
@@ -72,7 +76,12 @@ export const GROUND_FRICTION = 0.8;
  * position is the ball centre; `axis` is the socket's opening direction and is
  * not used for matching. A ball in a socket is a free 3-axis pivot.
  * `friction: false` marks a frictionless pin (it makes a hinge, not a rigid joint).
- * @typedef {{id: string, type: string, position: Vec3, axis: Vec3, length?: number, friction?: boolean}} Connector
+ * `closedEnd` (±1) marks a blind hole: the end of its segment at
+ * position + closedEnd·axis·length/2 is the bottom, which no shaft passes
+ * (measured from LDraw's one-sided hole primitive, test/bw-sim-part-meta.test.mjs).
+ * A shaft seats in a hole when it engages at least mech/graph.js MIN_ENGAGE_LDU
+ * of it (graph.js shaftEngagement).
+ * @typedef {{id: string, type: string, position: Vec3, axis: Vec3, length?: number, friction?: boolean, closedEnd?: 1|-1}} Connector
  */
 
 /**
@@ -172,6 +181,7 @@ const checkCollider = (c, where, out) => {
     if (c.rotation !== undefined && !(isVec(c.rotation, 4) && Math.abs(norm(c.rotation) - 1) < 1e-4)) {
         out.push(`${where}.rotation: not a unit quaternion`);
     }
+    if (c.region !== undefined && !['pin', 'axle', 'ball'].includes(c.region)) out.push(`${where}.region: '${c.region}' is not pin|axle|ball`);
     if (c.shape === 'box') {
         if (!isVec(c.halfExtents) || !c.halfExtents.every(h => h > 0)) out.push(`${where}.halfExtents: need three positive numbers`);
     } else if (c.shape === 'cylinder') {
@@ -222,6 +232,9 @@ export const validatePartMeta = meta => {
             checkUnit(c?.axis, `${w}.axis`, out);
             if (c?.length !== undefined && !(isNum(c.length) && c.length > 0)) out.push(`${w}.length: need a positive number`);
             if (c?.friction !== undefined && typeof c.friction !== 'boolean') out.push(`${w}.friction: need a boolean`);
+            if (c?.closedEnd !== undefined && !((c.closedEnd === 1 || c.closedEnd === -1) && (c.type === 'pinhole' || c.type === 'axlehole'))) {
+                out.push(`${w}.closedEnd: only a pinhole/axlehole may have one, and it is 1 or -1`);
+            }
         });
         if (meta.motor) {
             for (const o of meta.motor.output || []) if (!ids.has(o)) out.push(`${p}.motor.output: unknown connector '${o}'`);
