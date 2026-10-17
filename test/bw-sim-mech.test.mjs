@@ -750,3 +750,33 @@ test('real sensor on beam compiles to world-frame sensors', async () => {
     assert.ok(!mech2.sensors || mech2.sensors.length === 0, 'no sensor without port');
     assert.ok(mech2.diagnostics.some(d => d.code === 'sensor-without-port'), 'warning emitted');
 });
+
+test('real L-beam 3x5 pinned to beam 7 at two holes -> one body', async () => {
+    const {readFileSync} = await import('node:fs');
+    const catalog = JSON.parse(readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', import.meta.url)));
+    const catMap = new Map(catalog.parts.map(p => [p.part, p]));
+    // Beam 7 at origin along Z, L-beam 3x5 overlapping its first two holes at 0 and 20, pins at those positions with Y axis
+    const model = {
+        version: 1,
+        parts: [
+            {id: 'beam7', part: '32524.dat', position: [0, 0, 0], rotation: I3},
+            {id: 'lbeam', part: '32526.dat', position: [0, 0, 0], rotation: I3},
+            {id: 'pin1', part: '2780.dat', position: [0, 0, 0], rotation: ROT_Z_90},
+            {id: 'pin2', part: '2780.dat', position: [0, 0, 20], rotation: ROT_Z_90},
+        ],
+    };
+    const mech = compile(model, catMap, {ground: false});
+    assert.equal(validateCompiledMechanism(mech).length, 0);
+    // Two friction pins at distinct holes lock the beams via non-collinear hinges, compiler merges via locked-hinges -> one body
+    assert.equal(mech.bodies.length, 1, `bodies ${JSON.stringify(mech.bodies.map(b=>b.parts))}`);
+    const body = mech.bodies[0];
+    assert.ok(body.parts.includes('beam7') && body.parts.includes('lbeam') && body.parts.includes('pin1') && body.parts.includes('pin2'));
+    // No hinge joints should remain between the two beams (they are rigidly locked), but there may be no joints at all since all is one island
+    // The two pins each create pinhole-pin connections, but with two pins the islands merge, so no hinge joints between beam7 and lbeam
+    // Check that there are no joints (or only locked-hinges warning)
+    // The diagnostics should contain locked-hinges warning for the two pins
+    // Actually with two friction pins at distance 20, the hinges between beam7-pin and lbeam-pin are collinear? No, they are parallel offset by 20, so they are non-collinear and should be detected as locked and merged.
+    // The resulting mechanism should have 1 body and 0 joints (since all is rigid), or with locked-hinges warning and no joints
+    // We just check bodies count and that diagnostics does not contain error, only maybe warning
+    assert.ok(!mech.diagnostics.some(d=>d.severity==='error'), `errors ${JSON.stringify(mech.diagnostics)}`);
+});
