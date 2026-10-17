@@ -25,7 +25,13 @@
 //      from above snaps in from the top, a beam clicked onto another beam's top
 //      rests on it, and a beam pushed into the hub turns red, the status names
 //      the hub and the move is refused on release;
-//   6. no page errors.
+//   6. a child's line follower, through the UI only: with no program loaded,
+//      choosing the Line follower model offers its example program; the Line
+//      Oval mat, "Load example program" (it lands in the Code tab and becomes
+//      blocks), Run — and the robot follows the line once round the oval:
+//      ≥ 95 of 100 centre-line checkpoints in order, within 4 cm, inside 60 s
+//      of simulated time, never more than 5 cm off the line (sim-time waits);
+//   7. no page errors.
 //
 // Run after the integrated GUI build:  node scripts/verify-sim-lab-browser.mjs
 import {chromium} from 'playwright';
@@ -63,7 +69,7 @@ const JSZip = createRequire(new URL('../packages/scratch-gui/package.json', impo
 
 const PROGRAM = 'DEVICE SPIKE\nWHEN flag clicked:\n  set movement motors A B\n  move forward 20 cm\n';
 
-const openSimLab = async (page, {noWebgl = false, typed = false} = {}) => {
+const openSimLab = async (page, {noWebgl = false, typed = false, program = PROGRAM} = {}) => {
     await page.addInitScript(force => {
         localStorage.clear();
         sessionStorage.clear();
@@ -81,9 +87,9 @@ const openSimLab = async (page, {noWebgl = false, typed = false} = {}) => {
         await page.keyboard.press('ControlOrMeta+a');
         // Paste it (insertText), as a person pasting the example would: typing it key by key
         // fights the editor's auto-indent and indents the last line twice.
-        await page.keyboard.insertText(PROGRAM);
-    } else {
-        await page.evaluate(code => window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: 'sim-lab-proof'}})), PROGRAM);
+        await page.keyboard.insertText(program);
+    } else if (program) {
+        await page.evaluate(code => window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: 'sim-lab-proof'}})), program);
         await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
             null, {timeout: 60000});
     }
@@ -312,6 +318,78 @@ try {
     await reopen.waitForFunction(text => window.__bwSimLab.projectRecord?.ldraw === text, shown.ldraw, {timeout: 30000});
     console.log('PASS loading a project into an open Sim Lab replaces the model with the saved one');
     await reopen.close();
+
+    // 6. The line follower: model, mat, example program, Run — a lap on the line.
+    const lf = await browser.newPage({viewport: {width: 1600, height: 1050}, serviceWorkers: 'block'});
+    lf.on('pageerror', error => errors.push(error.message));
+    lf.on('dialog', dialog => dialog.accept());
+    await openSimLab(lf, {program: null});
+    await lf.getByTestId('bw-sim-lab-model').selectOption('line-follower.ldr');
+    await lf.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.state.modelFile === 'line-follower.ldr' &&
+        window.__bwSimLab._pane.session, null, {timeout: 60000});
+    const offer = lf.getByTestId('bw-sim-lab-info');
+    await offer.waitFor({timeout: 10000});
+    assert.match(await offer.textContent(), /Load example program/, 'with no program loaded, the Line follower offers its example');
+    await lf.getByTestId('bw-sim-lab-mat').selectOption('line-oval');
+    await lf.waitForFunction(() => window.__bwSimLab.status === 'ready' && window.__bwSimLab._pane.session?.mat === 'line-oval', null, {timeout: 60000});
+    await lf.getByRole('button', {name: 'Load example program'}).click();
+    await lf.waitForFunction(() => document.querySelector('[data-testid="bw-code-status"]')?.textContent.includes('Blocks loaded.'),
+        null, {timeout: 60000});
+    assert.match(await lf.locator('.cm-content').first().textContent(), /IF spike color C is black THEN:/, 'the example is in the Code tab');
+    assert.ok(await lf.evaluate(() => window.__bwSimLab._pane.spikeLoaded()), 'the example became SPIKE blocks');
+    assert.match(await offer.textContent(), /follow the black line/);
+    // Read-only instrument: after every simulated tick, judge where the drive-axle midpoint is
+    // (the motor hinges' midpoint carried by the hub body's pose) against the oval's centre line.
+    await lf.evaluate(() => {
+        const pane = window.__bwSimLab._pane;
+        const s = pane.session;
+        const {ovalCentreAt, distanceToOvalCentre, createMat} = pane.lib;
+        const hubId = s.bridge.hubBody;
+        const hub0 = s.mechanism.bodies.find(b => b.id === hubId).position;
+        const hinges = s.mechanism.joints.filter(j => j.motor);
+        const axle0 = [0, 1, 2].map(i => (hinges[0].point[i] + hinges[1].point[i]) / 2);
+        const rotate = ([x, y, z, w], v) => {
+            const ix = w * v[0] + y * v[2] - z * v[1];
+            const iy = w * v[1] + z * v[0] - x * v[2];
+            const iz = w * v[2] + x * v[1] - y * v[0];
+            const iw = -x * v[0] - y * v[1] - z * v[2];
+            return [ix * w - iw * x - iy * z + iz * y, iy * w - iw * y - iz * x + ix * z, iz * w - iw * z - ix * y + iy * x];
+        };
+        const length = createMat('line-oval').centreLineLengthM;
+        const lap = window.__bwLineLap = {start: null, next: 1, passed: 0, maxOff: 0, lapMs: null, samples: 0};
+        const tick = s.tick.bind(s);
+        s.tick = ms => {
+            tick(ms);
+            if (lap.start === null || lap.lapMs !== null) return;
+            const pose = s.core.bodyPose(hubId);
+            const p = rotate(pose.rotation, axle0.map((v, i) => v - hub0[i])).map((v, i) => v + pose.position[i]);
+            lap.samples++;
+            lap.maxOff = Math.max(lap.maxOff, distanceToOvalCentre(p[0], p[2]));
+            // In order: the next checkpoint, or one of the five after it (the ones jumped are missed).
+            for (let k = lap.next; k <= Math.min(100, lap.next + 5); k++) {
+                const c = ovalCentreAt(k * length / 100);
+                if (Math.hypot(p[0] - c[0], p[2] - c[1]) >= 0.04) continue;
+                lap.passed++;
+                lap.next = k + 1;
+                if (k === 100 && lap.passed >= 95) lap.lapMs = s.time - lap.start;
+                break;
+            }
+        };
+        lap.start = s.time;
+    });
+    await lf.getByTestId('bw-sim-lab-run').click();
+    // Simulated time decides: the lap, or 60 s of simulated time without one.
+    await lf.waitForFunction(() => window.__bwLineLap.lapMs !== null || window.__bwSimLab._pane.session.time - window.__bwLineLap.start > 60000,
+        null, {timeout: 240000});
+    const lapResult = await lf.evaluate(() => window.__bwLineLap);
+    await lf.screenshot({path: resolve(artifacts, 'sim-lab-line-follower.png'), fullPage: true});
+    assert.ok(lapResult.lapMs !== null && lapResult.lapMs <= 60000, `no lap in 60 s of simulated time: ${JSON.stringify(lapResult)}`);
+    assert.ok(lapResult.passed >= 95, `checkpoints: ${JSON.stringify(lapResult)}`);
+    assert.ok(lapResult.maxOff <= 0.05, `off the line: ${JSON.stringify(lapResult)}`);
+    console.log(`PASS the Line follower's example program, loaded from the pane, follows the Line Oval once round: ` +
+        `${lapResult.passed}/100 checkpoints in ${(lapResult.lapMs / 1000).toFixed(1)} s simulated, ` +
+        `at most ${(lapResult.maxOff * 1000).toFixed(1)} mm off the centre line`);
+    await lf.close();
 
     const fallback = await browser.newPage({viewport: {width: 1400, height: 900}, serviceWorkers: 'block'});
     fallback.on('pageerror', error => errors.push(error.message));

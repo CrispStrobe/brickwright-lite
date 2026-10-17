@@ -21,6 +21,6 @@ export {snapCandidates} from './editor/snap.js';
 export {paletteFrom} from './editor/palette.js';
 export {serializeModel, parseModel} from './model/ldraw-model.js';
 export {parseLDConfig} from './view/ldraw-colors.js';
-export {MATS} from './world/mats.js';
+export {MATS, createMat, ovalCentreAt, distanceToOvalCentre} from './world/mats.js';
 
 export const CATALOG = catalogFrom(PARTS);

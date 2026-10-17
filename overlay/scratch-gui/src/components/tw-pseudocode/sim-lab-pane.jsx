@@ -31,6 +31,9 @@ const TEXT = {
         failed: 'Could not load the model: {error}', noWebgl: 'This browser cannot show the 3D view ({error}). The simulation still runs.',
         connectFailed: 'Could not connect the program to the virtual hub: {error}',
         noProgram: 'No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.',
+        example: 'Load example program', exampleOffer: 'This robot comes with an example program. Press Load example program to put it in the Code tab, then press Run.',
+        exampleLoaded: 'The example program is in the Code tab now. Press Run and watch the robot follow the black line.',
+        exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
         driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
         issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
@@ -67,6 +70,9 @@ const TEXT = {
         failed: 'Das Modell konnte nicht geladen werden: {error}', noWebgl: 'Dieser Browser kann die 3D-Ansicht nicht zeigen ({error}). Die Simulation läuft trotzdem.',
         connectFailed: 'Das Programm konnte nicht mit dem virtuellen Hub verbunden werden: {error}',
         noProgram: 'Es ist noch kein SPIKE-Programm geladen, darum dreht sich kein Motor. Schreibe eins im Code-Tab und drücke ⇦ Zu Blöcken (oder baue es aus Blöcken), dann Start — oder fahre den Roboter mit den Pfeilen unten.',
+        example: 'Beispielprogramm laden', exampleOffer: 'Zu diesem Roboter gibt es ein Beispielprogramm. Drücke Beispielprogramm laden, dann steht es im Code-Tab, und drücke Start.',
+        exampleLoaded: 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter der schwarzen Linie folgt.',
+        exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
         driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
         issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
@@ -291,6 +297,37 @@ class SimLabPane extends React.Component {
             return;
         }
         await this.openText(await response.text(), file);
+        // A model that comes with an example offers it while the Code tab has no SPIKE program.
+        if (!this.disposed) this.setState({info: this.shippedModel()?.example && !this.spikeLoaded() ? this.text.exampleOffer : ''});
+    }
+
+    /** The MODELS entry of the model on show, or null for a built or imported one. */
+    shippedModel () {
+        return this.lib?.MODELS.find(m => m.file === this.state.modelFile) || null;
+    }
+
+    /**
+     * The model's example program (static/sim-lab/programs/, DEVICE SPIKE text) into the
+     * Code tab, built into blocks as the arena's reference solutions are; the robot goes
+     * onto the mat the program is written for.
+     */
+    async loadExample () {
+        const entry = this.shippedModel();
+        if (!entry?.example) return;
+        let code;
+        try {
+            const response = await fetch(`${this.lib.PROGRAMS_BASE}${entry.example}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            code = await response.text();
+        } catch (error) {
+            this.setState({message: this.t('exampleFailed', {error: error.message})});
+            return;
+        }
+        if (this.disposed) return;
+        if (this.state.status === 'running') this.pause();
+        window.dispatchEvent(new CustomEvent('bw-load-pseudocode', {detail: {code, source: `sim-lab:${entry.file}`}}));
+        this.setState({info: this.text.exampleLoaded});
+        if (entry.mat && this.state.mat !== entry.mat) await this.setMat(entry.mat);
     }
 
     async openImported (event) {
@@ -364,7 +401,7 @@ class SimLabPane extends React.Component {
         // Without a SPIKE program the clock still runs (the arrows below drive the motors),
         // but say plainly why nothing moves on its own.
         if (!this.spikeLoaded()) {
-            this.setState({info: this.text.noProgram});
+            this.setState({info: this.shippedModel()?.example ? `${this.text.noProgram} ${this.text.exampleOffer}` : this.text.noProgram});
             return;
         }
         this.setState({info: ''});
@@ -651,6 +688,9 @@ class SimLabPane extends React.Component {
                         <button type="button" style={button} data-testid="bw-sim-lab-pause" onClick={() => this.pause()}>{this.text.pause}</button> :
                         <button type="button" style={button} data-testid="bw-sim-lab-run" disabled={!this.session || busy} onClick={() => this.run()}>{this.text.run}</button>}
                     <button type="button" style={button} data-testid="bw-sim-lab-reset" disabled={!this.session || busy} onClick={() => this.reset()}>{this.text.reset}</button>
+                    {this.shippedModel()?.example && (
+                        <button type="button" style={button} data-testid="bw-sim-lab-example" disabled={busy} onClick={() => this.loadExample()}>{this.text.example}</button>
+                    )}
                     <span role="status" data-testid="bw-sim-lab-status" style={{fontSize: 12, color: '#475569'}}>
                         {busy ? this.text.loading : this.text[status] || ''}{this.session ? ` · ${this.t('time', {s: (simMs / 1000).toFixed(1)})}` : ''}
                     </span>
