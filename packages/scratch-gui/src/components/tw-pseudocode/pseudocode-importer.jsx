@@ -177,7 +177,7 @@ const L10N = {
         catalogUnavailable: e => `Example catalog unavailable (${e})`,
         infoTitle: 'Click for info', infoAria: 'About the Code tab',
         matrixTitle: 'What runs where: every language on every chip, native or lowered, simulator or silicon',
-        matrixAria: 'Show the language and device matrix',
+        matrixAria: 'Show the language and device matrix', matrixInfoAria: 'Reach of this language on this board',
         matrixHeading: 'What runs where',
         matrixLegend: 'native = the language itself runs on the chip · lowered = read into the dialect and re-emitted as something the chip runs · sim / silicon = where the result can go · open = a named task, not yet',
         matrixCurrent: 'current choice',
@@ -509,7 +509,7 @@ const L10N = {
         catalogUnavailable: e => `Beispiel-Katalog nicht verfügbar (${e})`,
         infoTitle: 'Für Infos klicken', infoAria: 'Über den Code-Tab',
         matrixTitle: 'Was läuft wo: jede Sprache auf jedem Chip, nativ oder übersetzt, Simulator oder Hardware',
-        matrixAria: 'Sprach- und Geräte-Matrix anzeigen',
+        matrixAria: 'Sprach- und Geräte-Matrix anzeigen', matrixInfoAria: 'Reichweite dieser Sprache auf diesem Board',
         matrixHeading: 'Was läuft wo',
         matrixLegend: 'nativ = die Sprache selbst läuft auf dem Chip · übersetzt = in den Dialekt gelesen und als etwas ausgegeben, das der Chip nativ ausführt · Sim / Hardware = wohin das Ergebnis kann · offen = eine benannte Aufgabe, noch nicht',
         matrixCurrent: 'aktuelle Wahl',
@@ -5374,7 +5374,7 @@ class PseudocodeImporter extends React.Component {
                     {this.L.loadExample}
                 </button>
                 {open && (
-                    <div style={{position: 'absolute', top: '100%', right: 0, zIndex: 60, marginTop: 4,
+                    <div style={{position: 'absolute', top: '100%', ...(this.state.actionsAlignLeft ? {left: 0} : {right: 0}), zIndex: 60, marginTop: 4,
                         width: 340, maxHeight: 380, display: 'flex', flexDirection: 'column',
                         background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
                         boxShadow: '0 8px 24px rgba(15,23,42,.18)', textAlign: 'left'}}
@@ -5459,13 +5459,16 @@ class PseudocodeImporter extends React.Component {
         return (
             <details style={{position: 'relative', alignSelf: 'center'}} data-testid="bw-code-actions"
                 onToggle={event => {
-                    this.setState({actionsOpen: event.currentTarget.open});
+                    // The menu and its catalog open leftwards from the ⋯; with too
+                    // little room on the left (a narrow row), open them rightwards.
+                    const right = event.currentTarget.getBoundingClientRect().right;
+                    this.setState({actionsOpen: event.currentTarget.open, actionsAlignLeft: right < 360});
                 }}>
                 <summary style={{...csel, cursor: 'pointer', listStyle: 'none', border: '1px solid #cbd5e1',
                     background: '#f1f5f9', whiteSpace: 'nowrap'}} title={L10N[pickLocale(this.props.locale)].fileMenuTitle}>
                     ⋯
                 </summary>
-                <div style={{position: 'absolute', top: '100%', right: 0, zIndex: 70, marginTop: 4,
+                <div style={{position: 'absolute', top: '100%', ...(this.state.actionsAlignLeft ? {left: 0} : {right: 0}), zIndex: 70, marginTop: 4,
                     width: 220, padding: 6, background: '#fff', border: '1px solid #cbd5e1', borderRadius: 8,
                     boxShadow: '0 8px 24px rgba(15,23,42,.2)', display: 'flex', flexDirection: 'column', gap: 2}}>
                     <label style={item} title={this.L.openFileTitle(`${CODE_ACCEPT},${IMPORT_ACCEPT}`)}
@@ -5784,11 +5787,31 @@ class PseudocodeImporter extends React.Component {
                             an open task — one line, read from lib/bw-matrix/capabilities.js,
                             the same table the docs are generated from. Title = the long form. */}
                         {this.currentDevice() && matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale)) ? (
-                            <span data-testid="bw-matrix-badge"
-                                title={matrixExplain(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
-                                style={{...csel, alignSelf: 'center', fontSize: 11, color: '#475569', background: '#f1f5f9',
-                                    border: '1px solid #cbd5e1', whiteSpace: 'nowrap', cursor: 'help'}}>
-                                {matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                            <span style={{position: 'relative', alignSelf: 'center', display: 'inline-flex'}}>
+                                {/* The reach summary is long; keep it behind an (i) button. */}
+                                <button type="button" data-testid="bw-matrix-badge"
+                                    aria-expanded={this.state.matrixInfoOpen ? 'true' : 'false'}
+                                    aria-label={this.L.matrixInfoAria}
+                                    data-summary={matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                                    title={matrixExplain(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                                    onClick={() => this.setState(state => ({matrixInfoOpen: !state.matrixInfoOpen}))}
+                                    style={{width: 20, height: 20, padding: 0, borderRadius: '50%', fontSize: 11,
+                                        fontWeight: 700, fontStyle: 'italic', fontFamily: 'Georgia, serif', lineHeight: '18px',
+                                        color: '#475569', background: '#f1f5f9', border: '1px solid #cbd5e1', cursor: 'pointer'}}>
+                                    i
+                                </button>
+                                {this.state.matrixInfoOpen ? (
+                                    <span data-testid="bw-matrix-badge-popover" role="status"
+                                        style={{position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 20,
+                                            width: 'max-content', maxWidth: 320, padding: '6px 8px', fontSize: 11,
+                                            color: '#334155', background: '#fff', border: '1px solid #cbd5e1',
+                                            borderRadius: 4, boxShadow: '0 2px 6px rgba(15,23,42,0.15)', whiteSpace: 'normal'}}>
+                                        <strong style={{display: 'block'}}>
+                                            {matrixSummary(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                                        </strong>
+                                        {matrixExplain(this.state.lang, this.currentDevice(), pickLocale(this.props.locale))}
+                                    </span>
+                                ) : null}
                             </span>
                         ) : null}
                         {this.renderActionMenu(csel)}

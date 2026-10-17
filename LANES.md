@@ -1,7 +1,9 @@
 ## C9 — AVR instruction-cost layout investigation — 2026-10-17
 
-CLAIMED — Codex, branch `lane/c9-avr-layout-20261017` in the owned
-LabWired Core fork. This is the C9 measurement/explanation lane, independent
+HANDOFF READY — diagnostic producer delivery is complete; a fresh agent may
+continue C9.1–C9.2 within this scope. Keep qualified controller branch
+`lane/c9-avr-layout-20261017` frozen in the owned LabWired Core fork. This is the C9 measurement/explanation
+lane, independent
 of A13, the SAMD replacement work and the existing C10/STM32 adoption owners.
 
 Own only a diagnostic profile producer and its pure controls under
@@ -26,6 +28,19 @@ profile optimization. A proposed implementation needs a separately reviewed
 precise scope and must improve both prescribed source trees without worsening
 any existing baseline row beyond its unchanged tolerance. No per-chip waiver,
 rebaselining, repeated unchanged run or release/physical-timing claim.
+
+### C9 continuation — 2026-10-17
+
+Diagnostic source delivered in [Core PR248](https://github.com/CrispStrobe/labwired-core/pull/248),
+merge `5b470d61`; investigation remains open. Continue only
+[run 39001605287](https://github.com/CrispStrobe/labwired-core/actions/runs/39001605287) at qualified controller `2201716d`.
+At the 06:19 UTC checkpoint, pre-sync and sync succeeded; current was running
+and retained upstream was queued. Refresh event and all children before intake. Do not
+redispatch, replay a guest, or reacquire a successful original. Reuse retained
+originals and the frozen independent reader; preserve failures and admit all
+four sources before comparison. Follow the [Core C9.1–C9.3 handoff](https://github.com/CrispStrobe/labwired-core/blob/main/docs/engineering/avr-layout-cost.md#pending-tasks-and-acceptance)
+for exact intake, attribution and decision acceptance. No optimization, baseline,
+profile, engine release or Lite pin change is included in this delivered phase.
 
 ## H1–H7 — Code tab crash, layout, badge and language reach — 2026-10-16
 
@@ -60,7 +75,7 @@ in S1.
 
 ## iOS embedded frontend packaging — 2026-10-16
 
-DONE candidate — Codex root, isolated `/tmp/brickwright-ios-assets-20261016`, branch
+DONE candidate — Codex root, branch
 `lane/ios-embedded-assets-only-20261016`, base main `664a37b57`.
 The user requested a smaller iPad build and continued coding. The signed
 192.21 MiB app contains an 82.45 MiB executable (76.21 MB of __const) plus
@@ -91,7 +106,7 @@ exact-head hosted checks remain required before source merge.
 
 ## Compose STM32 PR975 after circuit PR965 — 2026-10-16
 
-DONE candidate / QUALIFICATION PENDING — Codex root, isolated `/tmp/brickwright-stm32-compose-20261016`,
+DONE candidate / QUALIFICATION PENDING — Codex root, isolated `local worktree/receipt (see ignored local handoff)`,
 branch `lane/stm32-compose-20261016`, base main `5cb83052330b400b48293315260cb4293b4f6bcf`.
 The user explicitly requested completion of these integrations in order. PR965
 is now merged; a read-only merge of PR975 `943d540c7` reports thirteen conflicts.
@@ -163,7 +178,7 @@ and protocol. This resolves through the GUI's native dependency scope, without
 new scope exemptions or suppressed diagnostics. All88 affected controls pass,
 zero skips/failures/raw stdout; the unchanged GUI boundary checker also passes.
 Retain original hosted failures and initial boundary log; final TAP+census are
-`/tmp/brickwright-simlab-final.{tap,census.json}`. Installed-source verification
+`local worktree/receipt (see ignored local handoff)`. Installed-source verification
 is in progress; final source-head CI still gates the integration merge.
 
 Main reconciliation (2026-10-17): compose the qualified Sim Lab GUI PR1030
@@ -180,14 +195,14 @@ simulator execution and the fresh source-head qualification remain pending.
 Final reconciled controls: 100 passed, zero failures/skips/raw stdout; GUI
 dependency boundary passes. Fresh canonical dependency preparation and installed
 root/GUI exact-source provenance plus single-engine resolution pass. Retain
-`/tmp/brickwright-stm32-reconciled.{tap,census.json,gui-scope.tsv}` and the
+`local worktree/receipt (see ignored local handoff)` and the
 provenance log. Internal npm scratch exhaustion was repaired using task-specific
 external npm cache/temporary directories; package pins and assertions unchanged.
 All enabled checks on this final composed source head remain required to land.
 
 ## A13 — CPX live circuit face adoption — 2026-10-16
 
-CLAIMED — Codex root, isolated `/tmp/brickwright-lite-a13-20261016`, branch
+CLAIMED — Codex root, branch
 `lane/a13-cpx-face-adoption-20261016`. User requested this after the iOS and
 existing integrations. Supplier: bw-circuit-ui PR85, published claim 796bd2c.
 Preserve PR965/975's serialized dependency ownership and all newer main pins.
@@ -560,8 +575,7 @@ local production compilation is qualified separately.
 
 ## iOS redundant static archive packaging — 2026-10-15
 
-DONE — Codex, isolated `fix/ios-static-archive-resources-20261015` in
-`/tmp/brickwright-ios-size-fix`, base `86daec14c`. User requested shrinking the
+DONE — Codex, isolated `fix/ios-static-archive-resources-20261015`, base `86daec14c`. User requested shrinking the
 current iPad app. Measured signed bundle: 371.43 MiB, including 151.98 MiB
 `libapp.a` copied as a resource despite already being linked into the executable.
 
@@ -579,8 +593,7 @@ archive; signature verification passes.
 
 ## iOS shared validator compilation blocker — 2026-10-15
 
-CLAIMED — Codex, isolated `fix/ios-shared-validators-20261015` in
-`/tmp/brickwright-ios-validator-fix`, base `10edc699d`. Bounded build repair
+CLAIMED — Codex, isolated `fix/ios-shared-validators-20261015`, base `10edc699d`. Bounded build repair
 found while fulfilling the user-requested current iPad deployment.
 
 Envelope: this ledger and only the module declarations for `arena_inputs` and
@@ -588,8 +601,8 @@ Envelope: this ledger and only the module declarations for `arena_inputs` and
 pure JSON validators already called by the shared `native_policy` core; their
 current desktop gates cause eight E0433 errors on `aarch64-apple-ios`. Keep all
 native commands, adapters, supervisors and platform integrations gated exactly
-as before. Verify by the real signed iOS build, whose baseline failure is in
-`/tmp/brickwright-rust-prebuild.log`. No simulator behavior or policy admission
+as before. Verify by the real signed iOS build, whose baseline failure is retained in operator diagnostics.
+No simulator behavior or policy admission
 rules change. Claim lands before implementation.
 
 ## WeDo 88005 lights and piezo note adoption — 2026-10-15
@@ -2977,7 +2990,7 @@ node scripts/worktree-deps.mjs gc --dry-run      # evict keys idle > 14 days and
 | Original MakeCode files in the `.sb3`, kept but marked stale (task F10 of docs/OPEN-TASKS-2026-09-29.md; owner decision 2026-10-12) | VPS Claude (opus) | base `origin/main`; a new overlay module `overlay/scratch-vm/src/serialization/bw-makecode-original.js` (+ its save/load hooks in `scripts/apply-vm-overlay.mjs`), where an import records the original (`scripts/makecode.mjs to-sb3`, the GUI MakeCode import), the export's choice between original and regenerated files, the WIP test `test/arcade-metadata-sb3.test.mjs` re-ported plus a stale-case test; this row and the task file. Not the importer's translation (E10) nor the Arcade runtime/painter lanes. | **DONE 2026-10-12 — Lite PR #832 (merge `414b25e6`).** An imported MakeCode project saves its own files as `bwMakeCode` {version 2, target, name, files, fingerprint} (overlay module `serialization/bw-makecode-original.js`; two idempotent hooks in `apply-vm-overlay.mjs`: toJSON after E5's extensionURLs, deserializeProject load + settle after installTargets). The importer writes it unfingerprinted; the VM's first load fingerprints the program from its own serialization (blocks without positions/comments, variable/list/broadcast names, costume/sound assets, target names, extensions — not runtime state, so running the game is not an edit). CLI `to-ts`/`to-project`/`to-hex` export the original while current and say when it is stale; the Code tab records it only for a build of the unedited translation, and its run/download subject, Arcade `.mkcd` and micro:bit exports use it only while current; the source zip says when the program changed. `test/arcade-metadata-sb3.test.mjs` (the WIP test re-ported + stale case + GUI wiring): 4/4, red under never-stale, no-settle, position-counts and not-saved mutations. |
 | F10's GUI path in a real browser (task F10.1 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `origin/main`; `scripts/verify-makecode.mjs` (Arcade import section only), plus status text. No new CI step, budget or census entry; no runtime/importer change unless the browser check finds a real F10 defect. | **DONE 2026-10-13** (branch `lane/f10-1-gui-check-20261013`). Five new checks in `scripts/verify-makecode.mjs` section 2d′, after the Arcade run: ⇦ To blocks keeps `bwMakeCode` with a 16-hex fingerprint; the real `.sb3` save → reopen brings the same files and fingerprint back; ⤓ Arcade export of the unchanged project writes the original `main.ts` byte for byte; after deleting a script's top block the original is still saved; and the export then comes from the blocks. No new CI step. Found while reading 2d: since F10, ▶ Run as MakeCode Arcade on an unchanged import compiles the ORIGINAL files, so 2d no longer exercises the Scratch → Arcade exporter for this fixture; the post-edit export check covers that exporter again. |
 | MakeCode CLI + emulation: Calliope/EV3 CLI targets, `makecode run` on LabWired, micro:bit V2 emulated MakeCode (tasks A6, A7, A8 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `origin/main`; `scripts/makecode.mjs`, new `scripts/lib/makecode-run.mjs`, tests `test/makecode-cli-*.test.mjs`; for A8 the `pxt-runtime.js` emulator call sites, the Code-tab MakeCode run/emulate action and the Debug pane's firmware attach, plus the emu-bases serving step. Not the importer/translators themselves (Arcade lane), not Arcade export. One PR per task, in order A6, A7, A8. | **DONE 2026-10-13** (claimed 2026-10-13; A6 #873, A7 #873, A8 #874). A6 DONE 2026-10-13 (Calliope mini and EV3 CLI targets; status in the task row). A7 DONE 2026-10-13 (`makecode run` on the emulated micro:bit V1 / Calliope mini board; nRF51 ADC unmodelled). A8 DONE 2026-10-13 (micro:bit V2 emulated MakeCode in the CLI and the Code tab; V2 serial withheld, queued as A10). |
-| DONE — Circuit Playground Express: scope the device world, then the translator (task A9 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), `Claude-Session: 6f571e07-89cb-47b7-907d-ea390bbf9778` | base `origin/main`. Phase 1 (this claim) is SCOPING ONLY, delivered as a written plan for the owner to approve: what CPX MakeCode projects use (pxt-adafruit's block namespaces), which of it Lite's dialect, VM device state and the existing CPX board part can carry, whether LabWired's `atsamd21` model can back the board, and what is refused by name. No code, pin or dependency change in phase 1. Not the MakeCode CLI/emulation work of A6–A8 (that lane's row above). **Scoping delivered 2026-10-13:** `docs/A9-CPX-SCOPING.md`; owner chose an own CPX pane, core words + animations/sounds, pxt-adafruit's sim as the behavioural reference, and LabWired SAMD21 as a separate scoping note (`docs/A9-CPX-LABWIRED-SCOPING.md`, no code; licence route (b)+(c): own test firmware now, a from-source CPX image on a permissive ASF4 replacement later, the CDN base never executed). **Phase 1 (device world) delivered 2026-10-14:** extensions #41 + #45 (`circuitplayground`, 45 blocks, pxt-adafruit 1.6.8 behaviour; #45 fixes full-brightness unscaling and the switch starting right, both found by the simulator comparison), sb3-creator #136 (`DEVICE CPX`, `cpxDialect.js`, 45 words, census = pinned surface), and this Lite PR: sb3-creator pin `c47b9680` → `0e486e0f` (carries 75 other-lane commits; the Arcade word census 316 → 380 is theirs), the bundled extension on its own scoped `circuitplayground` pin, notices, the CPX dock + pane (stage-header button on DEVICE CPX), `scripts/lib/makecode-adafruit-sim.mjs` (pxt-adafruit's own simulator, headless, virtual clock) and `test/cpx-device-world.test.mjs`: 23 scenarios — ring operations, five animations frame by frame, tones and six melodies note by note, click / long click, switch, light and loud-sound events — read the same in Lite's extension and in MakeCode's simulator. The translator (phase 2) is queued separately as **A12**, live state on the circuit face as **A13**, and the LabWired CPX lane as **B19–B22**, all unclaimed; this claim is released. | **DONE 2026-10-14** (phase 1) |
+| DONE — Circuit Playground Express: scope the device world, then the translator (task A9 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus) | base `origin/main`. Phase 1 (this claim) is SCOPING ONLY, delivered as a written plan for the owner to approve: what CPX MakeCode projects use (pxt-adafruit's block namespaces), which of it Lite's dialect, VM device state and the existing CPX board part can carry, whether LabWired's `atsamd21` model can back the board, and what is refused by name. No code, pin or dependency change in phase 1. Not the MakeCode CLI/emulation work of A6–A8 (that lane's row above). **Scoping delivered 2026-10-13:** `docs/A9-CPX-SCOPING.md`; owner chose an own CPX pane, core words + animations/sounds, pxt-adafruit's sim as the behavioural reference, and LabWired SAMD21 as a separate scoping note (`docs/A9-CPX-LABWIRED-SCOPING.md`, no code; licence route (b)+(c): own test firmware now, a from-source CPX image on a permissive ASF4 replacement later, the CDN base never executed). **Phase 1 (device world) delivered 2026-10-14:** extensions #41 + #45 (`circuitplayground`, 45 blocks, pxt-adafruit 1.6.8 behaviour; #45 fixes full-brightness unscaling and the switch starting right, both found by the simulator comparison), sb3-creator #136 (`DEVICE CPX`, `cpxDialect.js`, 45 words, census = pinned surface), and this Lite PR: sb3-creator pin `c47b9680` → `0e486e0f` (carries 75 other-lane commits; the Arcade word census 316 → 380 is theirs), the bundled extension on its own scoped `circuitplayground` pin, notices, the CPX dock + pane (stage-header button on DEVICE CPX), `scripts/lib/makecode-adafruit-sim.mjs` (pxt-adafruit's own simulator, headless, virtual clock) and `test/cpx-device-world.test.mjs`: 23 scenarios — ring operations, five animations frame by frame, tones and six melodies note by note, click / long click, switch, light and loud-sound events — read the same in Lite's extension and in MakeCode's simulator. The translator (phase 2) is queued separately as **A12**, live state on the circuit face as **A13**, and the LabWired CPX lane as **B19–B22**, all unclaimed; this claim is released. | **DONE 2026-10-14** (phase 1) |
 | The GUI package's avr8js follows bw-board's fork (task B15 of docs/OPEN-TASKS-2026-09-29.md) | VPS Claude (opus), worktrees under `[local path omitted]` | base `origin/main`; `packages/scratch-gui/package.json`, `scripts/integrate.mjs`'s avr8js default (via `scripts/lib/avr8js-spec.mjs`), one focused test; this row and the task file. Not B14 (gearmotor reverse, 7-segment minus) nor B9 (ESP32 LEDC). | **DONE 2026-10-12 — Lite PR (this branch, `lane/b14-pwm-closeout-avr8js-20261012`).** `packages/scratch-gui/package.json` declares `github:CrispStrobe/avr8js#feea84c4`, the commit bw-board pins (#413), instead of npm `^0.21.0`; `scripts/integrate.mjs` writes it from one constant, `scripts/lib/avr8js-spec.mjs`. `test/avr8js-one-version.test.mjs` holds the constant equal to the installed bw-board's declared avr8js, checks the GUI package.json and integrate.mjs use it, and where the GUI package is installed that it resolves the fork build (`-bw.N`): 2/2 locally with the GUI installed. **Follow-up 2026-10-12:** the tracked `packages/scratch-gui/package-lock.json` still locked npm 0.21.0 (and a nested copy under bw-board), so `worktree-deps verify` failed in every fresh worktree; it now locks the fork commit once at the top level, as installed, and the test checks the lockfile too (3/3; red on the old lockfile). |
 | DONE — Arcade importer gaps found by E9: text truthiness, shared functions across sprites, unreachable predicateBranches (task E10 of docs/OPEN-TASKS-2026-09-29.md; starts after C8) | VPS Claude (opus), worktrees under `[local path omitted]` | base `40cfe8107`; `overlay/scratch-gui/src/lib/bw-makecode/arcade-translate.js` + helpers, export side only if a round trip needs it, focused tests; this row and the task file. | **DONE 2026-10-13 — Lite PR #863.** Paths: `arcade-translate.js` (fixed-path text condition in `conditionInner`; fixed-path DEFINEs per calling sprite in the assembly; predicateBranches/predicateCell and their statement branch removed), `lower-lazy-values.js` (Switch), new `test/makecode-arcade-importer-gaps.test.mjs`. Before → after (sim / Lite / export): (1) text truthiness 9 readings: Lite 7 wrong, export 4 wrong → 0/0; (2) fixed-path function called from the setup sprite: Lite `0 0`, export `0 0` + refusal → `6 4` = sim; (3) switch-case lazy values: 2 unsupported + 1 condition-as-value warning, Lite/export `…20 0 5 <text> 0` → 0/0, = sim `…20 5 6 true 0`; predicateBranches was reachable only via switch, now unreachable and removed. Corpus: importer output byte-identical for all 433 inputs (E2 242/244, E9 0/0 hold). Mutations (6, each red): text override off; string-typed references dropped; functions back on the last sprite; uncalled fallback on the last sprite; Switch lowering off; case bodies unlowered. Local: Arcade suites + gates 962/962 (music and terrain-trajectories PXT-clock flakes under load 9–19 green on rerun). CI: see PR #863. Not done: the same `not (s = 0)` text truthiness exists in translate-base.js for micro:bit/EV3 (not this lane); a switch label whose value needs lines before it keeps `&&`/`||` as written. |
 
@@ -5676,7 +5689,7 @@ execution, mode-aware disassembler, physical timing, whole-OS or release claim.
 
 ## A13 CPX production browser gate registration — 2026-10-16
 
-CLAIMED — Codex, isolated worktree `/tmp/brickwright-lite-a13-20261016`,
+CLAIMED — Codex,
 branch `lane/a13-cpx-face-adoption-20261016`; amendment based on canonical
 `d544efb23`. Merge this claim before implementation. Extend the existing A13
 claim only to `.github/workflows/build.yml` for a standalone light-shard CPX
@@ -5698,7 +5711,7 @@ changes no runtime semantics, and claims no physical hardware acceptance.
 ## STM32 composition: original 386 boot register reader — 2026-10-16
 
 DONE candidate — Codex root, branch `lane/stm32-compose-20261016`, isolated
-`/tmp/brickwright-stm32-compose-20261016`, amendment based on main `e1e5bc30b`.
+`local worktree/receipt (see ignored local handoff)`, amendment based on main `e1e5bc30b`.
 Merge this claim before changing the existing synthetic boot assertion in
 `scripts/verify-i80386-local-hdd-gui.mjs`: read the selected supplier's `edi`
 instead of absent `di`, retaining equality to42, exact halted/PC/canvas checks
@@ -5724,13 +5737,13 @@ passes using the same selected Boardf84, owned disk SHA256
 `f9e63c15c20fc87058d053c3badbc0d146206543af0dc2af7a7e05537184474a`
 and unchanged config: halted PC31770, VGA720×400, actual guest pixels equal the
 video frame, nonblack marker and zero browser errors. Receipt and screenshot:
-`/tmp/brickwright-stm32-hdd-fixed.log`, `/tmp/brickwright-stm32-hdd-fixed.png`.
+`local worktree/receipt (see ignored local handoff)`, `local worktree/receipt (see ignored local handoff)`.
 The failed original is the regression negative; no duplicate source-spelling
 test is added for this one-line reader fix. One automatic fresh final-head CI
 set remains required before PR1017 merges; original PR975 remains untouched.
 ## CPX translator qualification diagnostic transport — 2026-10-16
 
-RELEASED — completed by the existing CPX owner; verified by Codex root, isolated `/tmp/brickwright-cpx-compose-20261016`,
+RELEASED — completed by the existing CPX owner; verified by Codex root,
 branch `lane/cpx-qualification-compose-20261016`, supplier consumer source
 PR1009 at `9fbc8d97e87c6c6c9ee74d71c7ceae96996d5d4a`, base main `8fe41c722`.
 The user requested continued coding through the ordered integrations. Preserve
@@ -5762,15 +5775,14 @@ unchanged executable tree passes all74 focused CPX/import/export checks under
 genuine Node22.23.3 and the actual TAP plus census reporters. All15 behaviour
 cases are accounted for, zero raw stdout bytes or skips, and all108 diagnostic
 lines are byte-for-byte identical to the proposed repair's passing trace.
-Receipts: `/tmp/brickwright-cpx-owner-diagnostics.tap` and
-`/tmp/brickwright-cpx-owner-diagnostics-census.json`. Hosted final-head CI still
+Original diagnostic trace and census are retained by the operator.
+Hosted final-head CI still
 qualifies PR1009; five documented timing limits remain limits, not parity.
 This narrow diagnostic claim is released; no translator ownership is retained.
 
 ## A13 local combined graph preparation — 2026-10-16
 
 CLAIMED — Codex root, existing isolated A13 worktree and branch
-`/tmp/brickwright-lite-a13-20261016`,
 `lane/a13-cpx-face-adoption-20261016`, base canonical main `9052eee43`.
 The user again requested continued implementation. Extend only the timing of
 local candidate preparation: normally compose the unchanged existing STM32
@@ -5813,7 +5825,7 @@ no library/game or corpus promotion follows from a foundational holder control.
 
 ## Circuit File actions with a cached but unmounted designer — 2026-10-16
 
-CLAIMED — Codex root, isolated `/tmp/brickwright-circuit-file-wake-20261016`,
+CLAIMED — Codex root,
 branch `fix/circuit-file-wake-20261016`, claim base canonical main `7ce90fc38`.
 Prepare the implementation on the already qualified local combined A13 graph
 `6681f1868`, then reconcile current main, including the independent Sim Lab
@@ -5933,3 +5945,42 @@ original signed build/upload, Internal and External group assignment and Beta
 App Review receipts from the existing workflows. A queued workflow, unsigned
 build or App Store submission is not a delivery or approval claim. Keep the
 ordered five-task circuit campaign contract independent and unchanged.
+
+## iOS mobile workflow resource preparation — 2026-10-17
+
+CLAIMED — Codex integration owner, branch
+`docs/ios-workflow-resource-preparation-20261017`, base
+`e2225bb05eb2464e31100de3a8060f59ab6f3062`. The release ownership claim
+PR1011 is merged. PR1020's generated-project resource preparation is reached
+through the local device-build npm hook; the current mobile workflow invokes
+the Tauri CLI directly and does not execute that preparation. Its local signed
+archive and simulator results do not automatically qualify the workflow path.
+
+Own only `.github/workflows/mobile.yml`, focused workflow call-path controls,
+this ledger and narrowly necessary packaging documentation. Connect the
+existing reviewed preparation to the simulator, App Store signed and device
+IPA build paths after project initialization, with explicit ordering controls.
+Preserve the preparation implementation from PR1020, embedded frontend inputs,
+all other resources and static linker inputs, the Tauri CLI targets/export
+methods, privacy/icon/signing/provisioning checks and existing CI bounds.
+No application/runtime/firmware/dependency, version, tag, signing policy, secret
+handling or unrelated workflow change belongs in this lane. Coordinate any
+required helper implementation change as a separate envelope before editing.
+
+Merge this claim before implementation. Require nonvacuous call-path and
+ordering controls, every enabled exact-head check, and affected actual clean
+iOS qualification on the final combined source before merging implementation.
+Independently inspect source-bound unsigned app and actual signed IPA resource
+inventories, including duplicate frontend folders and unintended static
+archives; source checks or fresh initialization alone are not absence proof.
+Preserve embedded offline frontend, frameworks, privacy, icons and signatures.
+Existing component receipts remain bounded; physical device acceptance,
+release versions/tag, upload, both TestFlight groups and Beta App Review stay
+separate prerequisites. No new mobile or release event is performed by this
+documentation-only ownership claim.
+
+### H1–H3 main reconciliation — 2026-10-17
+
+Preserve the current Code-tab error recovery, matrix reach popover and TypeScript landing cell. The normal merge had only two ledger conflicts (privacy cleanup versus completed candidate status); retain both facts without restoring private locations. No source conflict resolution was required. Fresh combined controls and exact-head hosted qualification are required before integration landing.
+
+Reconciled H1–H3 controls: 113 passed, zero failures/skips. Initial stale generated lazy-loader check was retained as negative evidence; canonical integration regenerated the ignored installed copy. Assertions unchanged; final exact-head hosted CI still gates merge.
