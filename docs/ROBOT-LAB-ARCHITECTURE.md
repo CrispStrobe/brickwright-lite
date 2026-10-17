@@ -1,7 +1,7 @@
 # Robot Lab architecture — from one driving base to every LEGO Technic machine and hub
 
-Status: **design; slices R1 and R2 built** (2026-10-17, `lane/simlab-r1-20261017`,
-`lane/simlab-r2-20261017` — see "R1 as built" and "R2 as built" in §7 for where the code deviates
+Status: **design; slices R1, R2 and R3 built** (2026-10-17, `lane/simlab-r1-20261017`,
+`lane/simlab-r2-20261017`, `lane/simlab-r3-20261017` — see "R1 as built", "R2 as built" and "R3 as built" in §7 for where the code deviates
 from the interfaces below and why). Written 2026-10-17 on
 `lane/simlab-arch-20261017`, after reading the S1 code as it stands on `main` (`268c6e118`).
 Owner of record: unclaimed. Claim slices in `LANES.md` as usual.
@@ -1216,6 +1216,60 @@ flywheel faster than with `coast` (both measured);
 (d) a dynamic 50 g box resting on a beam carried by a hinge is lifted with it (robot–load
 contact works) while robot parts still do not collide with each other;
 (e) checkpoint/rollback bit-identity with sliders and rack.
+
+*R3 as built (2026-10-17, `lane/simlab-r3-20261017`; (c), the DC model, is D5's — see "D5 as
+built").* Files: `physics/jolt-core.js`, `physics/state-registry.js`, `contracts.js`
+(`BODY_ROLES` + `load`; joint fields; `noCollidePairs(…, seated)`), `mech/compile.js` (the
+connector edges into `noCollide`), `sim-worker-protocol.js` (slider states in the poses).
+Accepted by `test/bw-sim-sliders.test.mjs` and `test/bw-sim-collisions.test.mjs`. Where it
+deviates, and why:
+
+- **D2 overrides (d)'s "robot parts still do not collide"**: everything collides except the
+  `noCollide` pairs (joints, couplings, and the compiler's connector edges between two bodies,
+  i.e. parts seated in each other's holes). The filter is a Jolt `GroupFilterTable` — one
+  group, sub-group = body index — so it is decided in C++ in the broad phase, no JavaScript
+  per contact. Measured (5 ms steps, physics only, median of 5): S1 driving base 6.0 → 6.0 ms
+  per simulated second, 2.3 contact manifolds per step, none robot–robot; the 42-body gear
+  train 73.1 → 73.8 ms, 0 manifolds. A contact-listener filter (no pair filter, reject in
+  `OnContactValidate`) costs 6.0 → 11.1 ms on the base and 4.2× on the gear train, which
+  then computes 82 manifolds per step between jointed overlapping parts only to drop them.
+  **Limit (for R4+):** the filter is per BODY pair, as the owner decision states it; a part
+  cannot hit a body it is jointed to, anywhere (a one-link arm on a motor cannot hit the
+  chassis that holds the motor; a forearm on that arm can). A per-collider rule (seated
+  colliders at t = 0 + contact normal along the hinge axis) would need the listener path.
+- **Expectations changed:** `bw-sim-physics-core` "a static body made of model parts is the
+  machine frame" asserted that a frame does not push an overlapping *unjoined* moving body;
+  under D2 only a *joined* one is left alone (the test now checks both, plus the obstacle).
+  No other test changed: in the four shipped models and the gear fixtures every robot–robot
+  body pair is jointed or coupled, so no new contact exists (measured with the contact log).
+- **Joint fields** (optional, v1 and v2): hinge `limits` (rad, within [−π, π]) and `frictionNm`
+  (also the default coast friction of a motorised hinge); slider `limits` (m), `frictionN`,
+  `maxForceN`, `maxSpeedMPerSec`. Limits count from the start pose, so min ≤ 0 ≤ max.
+- **Slider motor**: `core.setMotor(slider, {mode: 'velocity'|'position'|'coast'|'brake'|'hold',
+  mPerSec, m, maxForceN})` — the force limit from the command or the joint; there is no slider
+  *actuator* (hub port) yet: `actuators[]` stays hinge-only until R9's linear actuator.
+  `jointState(slider)` = `{position, velocity}`; snapshots, `posesOf` and `MirrorCore` carry it.
+- **Rack and pinion**: body1 = the hinge's side not shared with the slider, body2 = the
+  slider's; `r = 1/|ratio|`, the ratio's sign in the slider axis; 30 velocity / 10 position
+  iterations like a gear, the pinion's inertia floored like a gear's. `SetConstraints` (Jolt's
+  position drift correction) is not called: Jolt reads the hinge angle and slider position in
+  their own sign conventions, which the signed axes here do not match. Measured drift over
+  10 cm: none at the reported precision (|v − r·ω| < 1e-5 relative); a loaded rack held for
+  a long time (R4's forklift) should measure it.
+- **State registry** (§6.4): `clock`, `hinges` (incl. D5's torque/damping/friction and the
+  rotor inertia), `sliders` (incl. the motor force limit, which Jolt's SaveState skips) and,
+  when recorded, `contacts`; `core.registerState(key, {save, restore})` for coupling modules.
+  The collision filter is fixed at construction and has no per-step state.
+- **Contact log** `createPhysicsCore(…, {recordContacts: true})` + `contactPairs()`: a JS
+  callback per contact, for tests and benches only.
+- The Technic rack 3743 is not in the vendored LDraw subset and the full library is not on
+  the build machine: R3's tests use primitive colliders (8T pinion r = module·z/2 = 4 mm).
+
+What R4 should know: the compiler must emit a `slider` joint (rack in `rack-slot`) and a
+`rackAndPinion` coupling with `ratio = ±r_pitch`; the core builds both and keeps the pair
+apart. Give the slider `limits` from the rack's length and the mast's stops. The fork–pallet
+contact works (D2); the forks and the mast are jointed, so they cannot collide with each
+other — model mast stops as slider limits, not as touching parts.
 
 **R4 — Worm and rack in the compiler; the forklift.** `worm.js` (worm–spur detection at 90°,
 ratio 1/teeth, self-lock hold friction), `rack.js` (rack-teeth vs pinion detection, slider
