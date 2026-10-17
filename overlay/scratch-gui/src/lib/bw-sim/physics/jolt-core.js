@@ -33,6 +33,7 @@
 // Per-step JavaScript state is in the state registry (state-registry.js).
 
 import { validateCompiledMechanism, upgradeMechanismV1 } from '../contracts.js';
+import { BUILTIN_KINDS } from '../kinds/index.js';
 import { createStateRegistry } from './state-registry.js';
 
 let joltPromise = null;
@@ -109,6 +110,16 @@ const GEAR_VELOCITY_STEPS = 30;
 const GEAR_POSITION_STEPS = 10;
 
 /**
+ * Solver velocity iterations for an island holding a worm (R4). A worm's 1:24 puts the wheel's
+ * load on the worm 24 times smaller and the worm's inertia on the wheel 576 times larger, and the
+ * gear constraint slips where the solve has not converged: a 102 g arm 5 cm out (0.05 N·m) on a
+ * 24T driven by a worm turned 1.49 % faster than ω/24 over 1.6 s with 30 iterations, 0.28 % with
+ * 120 (measured; the plain 'gear' kind does the same at this ratio and load). Islands without a
+ * worm keep GEAR_VELOCITY_STEPS, so every gear train runs as before.
+ */
+const WORM_VELOCITY_STEPS = 120;
+
+/**
  * Principal moments and axes of a symmetric 3×3 inertia tensor (cyclic Jacobi).
  * @param {number[][]} m row-major, symmetric
  * @returns {{values: number[], vectors: number[][]}} vectors[k] = the k-th axis (unit)
@@ -166,12 +177,14 @@ const quatFromColumns = ([c0, c1, c2]) => {
 /**
  * @param {object} J the Jolt namespace (loadJolt())
  * @param {object} compiled a CompiledMechanism, v1 or v2
- * @param {{stepHz?: number, recordContacts?: boolean}} [options]
+ * @param {{stepHz?: number, recordContacts?: boolean, kinds?: object}} [options]
  *        recordContacts: count contacts per body pair (contactPairs()); a JavaScript
- *        callback per contact, so for tests and benches only, never the app
+ *        callback per contact, so for tests and benches only, never the app;
+ *        kinds: the kind registries the mechanism was compiled with (default the built-in
+ *        ones, kinds/index.js) — what a coupling of a registered kind (worm) is validated by
  */
-export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = false } = {}) => {
-    const problems = validateCompiledMechanism(compiled);
+export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = false, kinds = BUILTIN_KINDS } = {}) => {
+    const problems = validateCompiledMechanism(compiled, { kinds });
     if (problems.length) throw new Error(problems.join('\n'));
     const mechanism = upgradeMechanismV1(compiled);
     /** joint id -> its actuator (CompiledMechanism v2): the motorised hinges */
@@ -559,36 +572,49 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
         setInertia(mp, [0, 1, 2].map(r => [0, 1, 2].map(c => vectors.reduce((acc, u, k) => acc + v[k] * u[r] * u[c], 0))));
     };
     const gearInfos = [];
+    /** A Jolt GearConstraint for ω(j2) = ratio·ω(j1) between the two gear bodies (the 'gear' kind's rules). */
+    const buildGearConstraint = (id, j1, j2, ratio0, velocitySteps = GEAR_VELOCITY_STEPS) => {
+        if (!j1 || !j2) throw new Error(`gear ${id} joint not found`);
+        if (j1.type !== 'hinge' || j2.type !== 'hinge') throw new Error(`gear ${id} must couple two hinges`);
+        const shared = [j1.body1, j1.body2].find(b => b === j2.body1 || b === j2.body2);
+        const gearSide = j => {
+            // No shared frame (a hand-built mechanism): the gear is the hinge's body2.
+            if (shared === undefined || j.body1 === j.body2) return { body: j.body2, sign: 1 };
+            return j.body2 === shared ? { body: j.body1, sign: -1 } : { body: j.body2, sign: 1 };
+        };
+        let A = { j: j1, side: gearSide(j1) };
+        let B = { j: j2, side: gearSide(j2) };
+        let ratio = ratio0;
+        if (Math.abs(ratio) > 1) { [A, B] = [B, A]; ratio = 1 / ratio; }
+        const gs = new J.GearConstraintSettings();
+        gs.mSpace = J.EConstraintSpace_WorldSpace;
+        const flip = ratio > 0 ? -1 : 1;
+        gs.mHingeAxis1 = new J.Vec3(...A.j.axis.map(v => v * A.side.sign));
+        gs.mHingeAxis2 = new J.Vec3(...B.j.axis.map(v => v * B.side.sign * flip));
+        gs.mRatio = 1 / Math.abs(ratio);
+        gs.mNumVelocityStepsOverride = velocitySteps;
+        gs.mNumPositionStepsOverride = GEAR_POSITION_STEPS;
+        const constraint = gs.Create(getBodyForId(A.side.body), getBodyForId(B.side.body));
+        physicsSystem.AddConstraint(constraint);
+        allConstraints.push(constraint);
+        J.destroy(gs);
+        for (const bid of [A.side.body, B.side.body]) floorInertia(bid);
+        return constraint;
+    };
+    /** Self-locking worms (built below): {wormJoint, wheel (hinge entry), holdNm, driver (hinge entry|null), held}. */
+    const worms = [];
     for (const g of mechanism.couplings) {
         if (g.kind === 'gear') {
-            const j1 = jointMap.get(g.joint1);
-            const j2 = jointMap.get(g.joint2);
-            if (!j1 || !j2) throw new Error(`gear ${g.id} joint not found`);
-            if (j1.type !== 'hinge' || j2.type !== 'hinge') throw new Error(`gear ${g.id} must couple two hinges`);
-            const shared = [j1.body1, j1.body2].find(b => b === j2.body1 || b === j2.body2);
-            const gearSide = j => {
-                // No shared frame (a hand-built mechanism): the gear is the hinge's body2.
-                if (shared === undefined || j.body1 === j.body2) return { body: j.body2, sign: 1 };
-                return j.body2 === shared ? { body: j.body1, sign: -1 } : { body: j.body2, sign: 1 };
-            };
-            let A = { j: j1, side: gearSide(j1) };
-            let B = { j: j2, side: gearSide(j2) };
-            let ratio = g.ratio;
-            if (Math.abs(ratio) > 1) { [A, B] = [B, A]; ratio = 1 / ratio; }
-            const gs = new J.GearConstraintSettings();
-            gs.mSpace = J.EConstraintSpace_WorldSpace;
-            const flip = ratio > 0 ? -1 : 1;
-            gs.mHingeAxis1 = new J.Vec3(...A.j.axis.map(v => v * A.side.sign));
-            gs.mHingeAxis2 = new J.Vec3(...B.j.axis.map(v => v * B.side.sign * flip));
-            gs.mRatio = 1 / Math.abs(ratio);
-            gs.mNumVelocityStepsOverride = GEAR_VELOCITY_STEPS;
-            gs.mNumPositionStepsOverride = GEAR_POSITION_STEPS;
-            const constraint = gs.Create(getBodyForId(A.side.body), getBodyForId(B.side.body));
-            physicsSystem.AddConstraint(constraint);
-            allConstraints.push(constraint);
-            J.destroy(gs);
+            buildGearConstraint(g.id, jointMap.get(g.joint1), jointMap.get(g.joint2), g.ratio);
             gearInfos.push({ type: 'gear', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
-            for (const id of [A.side.body, B.side.body]) floorInertia(id);
+        } else if (g.kind === 'worm') {
+            // A worm and its wheel (kinds/worm.js): the mesh is a gear constraint, ratio = 1/teeth
+            // (signed by the thread's hand); the SELF-LOCK is a hold on the wheel's hinge, applied
+            // per step while nothing drives the worm (wormHolds below).
+            buildGearConstraint(g.id, jointMap.get(g.wormJoint), jointMap.get(g.wheelJoint), g.ratio, WORM_VELOCITY_STEPS);
+            const wheel = hingeMap.get(g.wheelJoint);
+            worms.push({ id: g.id, wormJoint: g.wormJoint, wheel, holdNm: g.holdTorqueNm / Math.abs(g.ratio), driver: null, held: false });
+            gearInfos.push({ type: 'worm', id: g.id, wormJoint: g.wormJoint, wheelJoint: g.wheelJoint, ratio: g.ratio });
         } else if (g.kind === 'rackAndPinion') {
             // A Jolt RackAndPinionConstraint between the pinion body (the hinge's side
             // not shared with the slider) and the rack body (the slider's other side),
@@ -625,6 +651,48 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
     }
 
     try { physicsSystem.OptimizeBroadPhase(); } catch (_) {}
+
+    // Self-lock (kinds/worm.js has the physics): a worm cannot be turned from its wheel. Jolt has
+    // no friction that depends on which side drives, so the core tells the two cases apart by the
+    // motor that drives the worm — the worm's own hinge's, or the first motorised hinge a chain of
+    // gear couplings reaches from it. While that motor DRIVES (a velocity, position or torque
+    // command that is not zero) the mesh is the gear constraint alone; otherwise (coast, brake,
+    // no motor at all) the wheel's hinge holds with friction holdTorqueNm / |ratio| on top of its
+    // bearing friction (Jolt applies hinge friction while the hinge's own motor is off: the
+    // wheel's has none). Decided before every step from the commands of that step.
+    const wormDriverOf = jointId => {
+        const seen = new Set([jointId]);
+        const queue = [jointId];
+        while (queue.length) {
+            const id = queue.shift();
+            const e = hingeMap.get(id);
+            if (e && e.isMotor) return e;
+            for (const g of mechanism.couplings) {
+                if (g.kind !== 'gear') continue;
+                const next = g.joint1 === id ? g.joint2 : g.joint2 === id ? g.joint1 : null;
+                if (next && !seen.has(next)) { seen.add(next); queue.push(next); }
+            }
+        }
+        return null;
+    };
+    for (const w of worms) w.driver = wormDriverOf(w.wormJoint);
+    const wormDriven = e => {
+        if (!e) return false;
+        if (e.mode === 'velocity') return e.targetSpeed !== 0;
+        if (e.mode === 'position') return true;
+        if (e.mode === 'torque') return e.driveTorque !== 0;
+        return false;
+    };
+    const setWormHold = (w, held) => {
+        w.held = held;
+        w.wheel.hinge.SetMaxFrictionTorque(w.wheel.frictionNm + (held ? w.holdNm : 0));
+    };
+    const applyWormHolds = () => {
+        for (const w of worms) {
+            const held = !wormDriven(w.driver);
+            if (held !== w.held) setWormHold(w, held);
+        }
+    };
 
     const quatRotateVec = (q, v) => {
         const qx = q[0], qy = q[1], qz = q[2], qw = q[3];
@@ -817,6 +885,13 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
             }
         }
     });
+    // A worm's hold (friction on its wheel's hinge, which Jolt's SaveState does not record).
+    if (worms.length) {
+        stateRegistry.register('worms', {
+            save: () => worms.map(w => w.held),
+            restore: saved => worms.forEach((w, i) => setWormHold(w, saved[i]))
+        });
+    }
     // The collision filter (noCollide) is fixed when the scene is built: no per-step
     // state. The contact log, when kept, is.
     if (contactLog) {
@@ -885,6 +960,7 @@ export const createPhysicsCore = (J, compiled, { stepHz = 120, recordContacts = 
                     entry.slider.SetTargetVelocity(clamp(err * entry.kp, -lim, lim));
                     if (entry.slider.GetMotorState() !== J.EMotorState_Velocity) entry.slider.SetMotorState(J.EMotorState_Velocity);
                 }
+                if (worms.length) applyWormHolds();
                 joltInterface.Step(dtFixed, 1);
                 timeSteps += 1;
                 acc -= dtFixed;
