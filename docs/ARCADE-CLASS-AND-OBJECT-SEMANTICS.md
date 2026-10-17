@@ -58,6 +58,17 @@ physical definition and formals. Its complete body must still validate. This
 admits a statement, not a general function-call value producer; parameterized
 declaration calls and unknown targets are outside this narrow root route.
 
+Current ordinary-class staging locals are emitted as bare typed declarations,
+followed by their actual ordered allocation and alias writes. Emitting an
+explicit Undefined initializer would invent an incompatible class producer.
+Bare declarations supply no instance: a read before the actual assignment or a
+wrong assigned value still refuses, and an authored explicit Undefined
+initializer remains distinct and unsupported by this class producer proof.
+Primitive, callable and SDK local declaration routes are unchanged.
+Direct visual Blocks editing of constructor parameter-property modifiers and
+signatures, and of ordinary-class typed local declarations, remains unqualified.
+Code and Creator conversions do not establish that editor acceptance.
+
 This does not admit Void as a stored value or arbitrary unknown calls. Existing
 conditional and field-mutation proofs remain separate. Code, current blocks and
 saved-project export controls cover this narrow representation; dedicated GUI

@@ -308,7 +308,11 @@ export function createCallableLexicalEmitter(graph, compileCurrentBody) {
                 return parameter.name + (parameter.optional && !fallback?'?':'') + ': ' + renderCallableSignature(parameter.type) +
                     (fallback?' = '+JSON.stringify(fallback.value):'');
             }).join(', ');
-            const lines=[...locals.map(binding=>'    let '+binding.sourceName+': '+renderCallableSignature(binding.type)+' = undefined'),...body];
+            // An ordinary class cell starts uninitialized; an explicit
+            // Undefined initializer would falsely claim a class producer.
+            // Keep the actual subsequent writes and full source-body proof.
+            const lines=[...locals.map(binding=>'    let '+binding.sourceName+': '+renderCallableSignature(binding.type)+
+                (binding.type.kind==='named'&&plan.classes?.some(cls=>cls.name===binding.type.name)?'':' = undefined')),...body];
             const result=renderCallableSignature(owner.signature.result);
             if(owner.kind==='declaration') return 'function '+owner.sourceName+'('+params+'): '+result+' {\n'+lines.join('\n')+'\n}';
             return (owner.kind==='arrow'?'('+params+') =>':'function ('+params+'): '+result) +

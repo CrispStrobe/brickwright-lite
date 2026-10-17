@@ -48,6 +48,7 @@ test('ordinary parameter properties retain Number and Void callable constraints 
  assert.deepEqual(Object.getOwnPropertyDescriptor(ctor.params,'parameterProperties'),{value:ctor.parameterProperties,writable:false,enumerable:false,configurable:false});
  assert.deepEqual(ctor.body.slice(0,3).map(statement=>[statement.expr.left.name,statement.expr.right.name]),[['seed','seed'],['step','step'],['tick','tick']]);
  assert.equal(ctor.body[3].expr.right.name,'seed');
+ assert.equal(proveClassCallableSource(parse(source+'function carry():void{let value:Counter;value=box;value.bump();}carry();')).eligible,true,'bare local still needs its actual class assignment');
 });
 
 test('parameter property correspondence refuses independent metadata, fields, modifiers and write order',()=>{
@@ -74,6 +75,9 @@ test('actual argument producers, readonly, visibility and complete neighboring b
   source+'function unvisited(value:any){return value.missing();}',
   source.replace('this.trace=this.seed;','this.trace=unknown();'),
   source.replace('trace:number;','trace:number=this.seed;'),
+  source+'function carry():void{let value:Counter;value.bump();value=box;}carry();',
+  source+'function carry():void{let value:Counter;value="wrong";value.bump();}carry();',
+  source+'function carry():void{let value:Counter=undefined;value=box;value.bump();}carry();',
  ])assert.equal(proveClassCallableSource(parse(text)).eligible,false,text);
 });
 
@@ -330,16 +334,26 @@ test('parameter property public Code and two actual SB3 projects export and reim
  const exported=projectToArcade(firstProject);record({stage:'parameter-property-export',result:exported});clean(exported,['unsupported','warnings']);
  const unparen=node=>node?.type==='Parenthesized'?unparen(node.expression):node;
  const exportArrowBindings=(program,proof,phase,sourceText)=>{
-  const constructions=program.body.flatMap(node=>node.type==='FunctionDeclaration'?node.body:[node])
-   .filter(node=>node.type==='Declaration').flatMap(node=>node.decls.map(decl=>unparen(decl.init)))
-   .filter(node=>node?.type==='Call'&&node.isNew&&node.callee.type==='Identifier'&&node.callee.name==='Counter');
+  const constructionBindings=[];
+  for(const owner of [program,...program.body.filter(node=>node.type==='FunctionDeclaration')])for(const statement of owner.body){
+   if(statement.type==='Declaration')for(const declaration of statement.decls){const call=unparen(declaration.init);if(call?.type==='Call'&&call.isNew&&call.callee.type==='Identifier'&&call.callee.name==='Counter')constructionBindings.push({kind:'initializer',owner,name:declaration.name,declaration,call});}
+   if(statement.type==='ExpressionStatement'){
+    const assignment=unparen(statement.expr),call=unparen(assignment?.right);
+    if(assignment?.type==='Assignment'&&assignment.op==='='&&call?.type==='Call'&&call.isNew&&call.callee.type==='Identifier'&&call.callee.name==='Counter'){
+     const declarations=owner.body.filter(node=>node.type==='Declaration').flatMap(node=>node.decls).filter(row=>assignment.left.type==='Identifier'&&row.name===assignment.left.name);
+     constructionBindings.push({kind:'assignment',owner,name:assignment.left.name,declarations,declaration:declarations[0],assignment,call});
+    }
+   }
+  }
+  const constructions=constructionBindings.map(row=>row.call);
   const numberArrow=constructions[0]?.args[1],voidArrow=constructions[0]?.args[2],
    numberSignature=numberArrow&&proof.flow.signature(proof.flow.profiles.get(numberArrow)),
    voidSignature=voidArrow&&proof.flow.signature(proof.flow.profiles.get(voidArrow)),
    assignment=unparen(voidArrow?.body?.[0]?.expr),fallback=unparen(assignment?.right),
    helper=fallback?.callee?.type==='Identifier'&&program.body.find(node=>node.type==='FunctionDeclaration'&&node.name===fallback.callee.name);
-  record({stage:'parameter-property-export-arrow-bindings',phase,sourceText,program,eligible:proof.eligible,unsupported:proof.unsupported,constructionCount:constructions.length,numberArrow,numberSignature,voidArrow,voidSignature,helper});
+  record({stage:'parameter-property-export-arrow-bindings',phase,sourceText,program,eligible:proof.eligible,unsupported:proof.unsupported,constructionCount:constructions.length,constructionBindings,numberArrow,numberSignature,voidArrow,voidSignature,helper});
   assert.equal(proof.eligible,true,proof.unsupported.join('\n'));assert.equal(constructions.length,1);
+  for(const binding of constructionBindings)if(binding.kind==='assignment'){assert.equal(binding.assignment.left.type,'Identifier');assert.equal(binding.declarations.length,1,'actual constructor assignment has one same-scope local declaration');assert.equal(binding.declaration.typeName,'Counter');assert.equal(binding.declaration.init,null);}
   assert.equal(numberArrow.type,'FunctionExpression');assert.equal(numberArrow.functionKind,'arrow');assert.deepEqual(numberArrow.params,['value']);
   assert.equal(numberSignature.parameters[0].type.name,'number');assert.equal(numberSignature.result.kind,'named');assert.equal(numberSignature.result.name,'number');
   assert.equal(numberArrow.body.length,1);assert.equal(numberArrow.body[0].type,'Return');
@@ -354,6 +368,7 @@ test('parameter property public Code and two actual SB3 projects export and reim
   assert.equal(helper.paramTypes.left.text,'any');assert.equal(helper.paramTypes.right.text,'any');assert.equal(helper.returnType,'any');
   assert.equal(helper.body.length,1);const operation=unparen(helper.body[0].value);assert.equal(operation.type,'Binary');assert.equal(operation.op,'+');
   assert.equal(operation.left.name,helper.params[0]);assert.equal(operation.right.name,helper.params[1]);
+  return constructionBindings[0];
  };
  const exportedProgram=parse(exported.ts),exportedProof=proveClassCallableSource(exportedProgram);exportArrowBindings(exportedProgram,exportedProof,'first',exported.ts);
  const actual=declaration(firstProject),parameters=JSON.parse(literal(actual.target,actual.block,'PARAMETERS'));
@@ -406,14 +421,15 @@ test('parameter property public Code and two actual SB3 projects export and reim
  // A statement certificate is conditional on full current-body validation.
  // Its ordinary-class metadata anchor cannot excuse an edited bound local
  // or malformed actual constructor argument upstream of the global receiver.
- for(const mode of ['bound-local-writer','constructor-argument']){
+ for(const mode of ['bound-local-writer','constructor-argument','read-before-allocation']){
   const edited=structuredClone(secondProject),game=edited.targets.find(target=>target.name===unusedCalls[0].target.name),call=game.blocks[unusedCalls[0].id],slot=call.inputs.OBJECT[1];
   assert.ok(Array.isArray(slot)&&slot[0]===12);
   const writers=Object.values(game.blocks).filter(block=>block.opcode==='data_setvariableto'&&block.fields.VARIABLE[1]===slot[2]);assert.equal(writers.length,1);
-  let read=game.blocks[writers[0].inputs.VALUE[1]],assignment;const visited=new Set();
+  let read=game.blocks[writers[0].inputs.VALUE[1]],assignment,aliasWriter;const visited=new Set();
   while(read.opcode==='arcade_getLocal'){
    const name=literal(game,read,'NAME');assert.ok(!visited.has(name));visited.add(name);
    const locals=Object.values(game.blocks).filter(block=>block.opcode==='arcade_setLocal'&&literal(game,block,'NAME')===name);assert.equal(locals.length,1);assignment=locals[0];
+   if(!aliasWriter)aliasWriter=assignment;
    const next=game.blocks[assignment.inputs.VALUE[1]];
    if(mode==='bound-local-writer'){
     assert.equal(next.opcode,'arcade_getLocal');delete game.blocks[assignment.inputs.VALUE[1]];assignment.inputs.VALUE=[1,[10,'wrong']];break;
@@ -424,6 +440,12 @@ test('parameter property public Code and two actual SB3 projects export and reim
    assert.equal(read.opcode,'arcade_createObject');const argument=game.blocks[read.inputs.ARGS[1]],number=game.blocks[argument.inputs.VALUE[1]];
    assert.equal(argument.opcode,'arcade_functionArgument');assert.equal(number.opcode,'operator_add');assert.ok(Object.values(number.inputs).every(input=>Array.isArray(input[1])));
    delete game.blocks[argument.inputs.VALUE[1]];argument.inputs.VALUE=[1,[10,'wrong']];
+  }
+  if(mode==='read-before-allocation'){
+   assert.equal(read.opcode,'arcade_createObject');assert.notEqual(aliasWriter,assignment);
+   const allocationID=Object.keys(game.blocks).find(id=>game.blocks[id]===assignment),aliasID=Object.keys(game.blocks).find(id=>game.blocks[id]===aliasWriter),prior=assignment.parent,after=aliasWriter.next;
+   assert.equal(assignment.next,aliasID);assert.equal(aliasWriter.parent,allocationID);assert.equal(game.blocks[prior].next,allocationID);assert.ok(after);
+   game.blocks[prior].next=aliasID;aliasWriter.parent=prior;aliasWriter.next=allocationID;assignment.parent=aliasID;assignment.next=after;game.blocks[after].parent=allocationID;
   }
   const result=projectToArcade(edited);record({stage:'parameter-property-edited-Void-producer-refusal',mode,project:edited,result});assert.ok(result.unsupported.length,mode);
  }
@@ -442,7 +464,17 @@ test('parameter property public Code and two actual SB3 projects export and reim
  }
  const final=projectToArcade(secondProject);record({stage:'parameter-property-second-export',result:final});clean(final,['unsupported','warnings']);
  assert.equal([...final.ts.matchAll(/\.bump\(\)/g)].length,1,'discarding a Void result neither drops nor duplicates the actual call');
- const reconstructed=parse(final.ts),finalProof=proveClassCallableSource(reconstructed);exportArrowBindings(reconstructed,finalProof,'second',final.ts);
+ const reconstructed=parse(final.ts),finalProof=proveClassCallableSource(reconstructed),construction=exportArrowBindings(reconstructed,finalProof,'second',final.ts);
+ const classLocals=envelopes[0].plan.bindings.filter(binding=>binding.owner===entryOwners[0].id&&binding.kind==='local'&&binding.type.kind==='named'&&binding.type.name==='Counter');
+ const bare=construction.owner.body.filter(statement=>statement.type==='Declaration').flatMap(statement=>statement.decls).filter(row=>classLocals.some(binding=>binding.sourceName===row.name));
+ const writes=construction.owner.body.filter(statement=>statement.type==='ExpressionStatement').map(statement=>({statement,assignment:unparen(statement.expr)})).filter(row=>row.assignment.type==='Assignment'&&row.assignment.op==='='&&row.assignment.left.type==='Identifier');
+ const allocation=writes.filter(row=>row.assignment.left.name===construction.name),aliases=writes.filter(row=>classLocals.some(binding=>binding.sourceName===row.assignment.left.name)&&row.assignment.right.type==='Identifier'&&row.assignment.right.name===construction.name);
+ const boxWrites=writes.filter(row=>row.assignment.left.name===unusedCalls[0].block.inputs.OBJECT[1][1]&&row.assignment.right.type==='Identifier'&&row.assignment.right.name===aliases[0]?.assignment.left.name);
+ record({stage:'parameter-property-class-local-staging',owner:construction.owner.name,classLocals,bare,writes,allocation,aliases,boxWrites});
+ assert.equal(construction.kind,'assignment');assert.equal(construction.owner.name,entryOwners[0].sourceName);assert.equal(classLocals.length,2);assert.equal(bare.length,2);
+ for(const row of bare){assert.equal(row.typeName,'Counter');assert.equal(row.init,null);assert.equal(writes.filter(write=>write.assignment.left.name===row.name).length,1);}
+ assert.equal(allocation.length,1);assert.equal(allocation[0].assignment,construction.assignment);assert.equal(aliases.length,1);assert.equal(boxWrites.length,1);
+ assert.ok(construction.owner.body.indexOf(allocation[0].statement)<construction.owner.body.indexOf(aliases[0].statement));assert.ok(construction.owner.body.indexOf(aliases[0].statement)<construction.owner.body.indexOf(boxWrites[0].statement));
  const entryCalls=[];const visitEntry=(value,parent=null)=>{if(!value||typeof value!=='object')return;if(Array.isArray(value)){value.forEach(child=>visitEntry(child,parent));return;}if(value.type==='Call'&&value.callee.type==='Identifier'&&value.callee.name===entryOwners[0].sourceName)entryCalls.push({call:value,parent});for(const child of Object.values(value))visitEntry(child,value);};visitEntry(reconstructed);
  record({stage:'parameter-property-module-Void-call-binding',sourceName:entryOwners[0].sourceName,signature:entryOwners[0].signature,calls:entryCalls});
  assert.equal(entryCalls.length,1,'module declaration executes once');assert.equal(entryCalls[0].parent.type,'ExpressionStatement');assert.equal(entryCalls[0].parent.expr,entryCalls[0].call,'Void module call stays a statement without a value sink');
