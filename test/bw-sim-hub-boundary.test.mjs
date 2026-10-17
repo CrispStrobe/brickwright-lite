@@ -38,6 +38,7 @@ import {HubRegistry} from '../overlay/scratch-gui/src/lib/bw-sim/registry/hubs.j
 import {validateHubProfile} from '../overlay/scratch-gui/src/lib/bw-sim/hubs/hub-profile.js';
 import {SPIKE_PRIME_PROFILE} from '../overlay/scratch-gui/src/lib/bw-sim/hubs/spike/profile.js';
 import {TWO_PORT_PROFILE, TwoPortTestHub, twoPortTestHub} from './fixtures/bw-sim/two-port-test-hub.mjs';
+import {SPIKE_MEDIUM_ANGULAR} from '../overlay/scratch-gui/src/lib/bw-sim/devices/dc-motors.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const json = p => JSON.parse(readFileSync(path.join(ROOT, p), 'utf8'));
@@ -110,26 +111,55 @@ test('a two-port pwm hub drives the S1 base forward; its encoder counts are the 
     assert.equal(r.hub.publishes, 1000 / 50, 'and published once per tick');
 });
 
-test('the pwm drive path: half the duty, half the speed; coast rolls on where brake holds', async () => {
+test('the pwm drive path: half the duty, half the speed; coast and brake stop the wheels as the DC model predicts', async () => {
     const full = await drive({seconds: 1, script: hub => { hub.setOutput('A', -1); hub.setOutput('B', 1); }});
     const half = await drive({seconds: 1, script: hub => { hub.setOutput('A', -0.5); hub.setOutput('B', 0.5); }});
+    // The DC line ω = ω0·(u − τ_load/τs) with u ∝ duty: half the duty gives
+    // (u/2 − l)/(u − l) of the speed, 0.5 for a light rolling load l.
     for (const port of ['A', 'B']) {
         const ratio = half.hub.speeds[port] / full.hub.speeds[port];
         assert.ok(Math.abs(ratio - 0.5) < 0.05, `port ${port}: wheel speed ratio ${ratio.toFixed(3)} at half duty`);
     }
     const travel = along(half.start, half.end) / along(full.start, full.end);
     assert.ok(travel > 0.4 && travel < 0.6, `half duty went ${travel.toFixed(3)} of the distance`);
-    // Drive 0.6 s, then duty 0 for 1 s: how far does the base go after the stop?
-    const stop = decay => drive({seconds: 1.6, script: (hub, ms) => {
-        const duty = ms < 600 ? 1 : 0;
-        hub.setOutput('A', -duty, decay);
-        hub.setOutput('B', duty, decay);
-    }});
-    const after = r => along(r.track[11], r.end);
+    // Drive 0.6 s, then duty 0: how far do the wheels turn in the 50 ms after the stop?
+    // Predicted from the DC model (devices/dc-motors.js) and the base, not from a run. Each
+    // wheel carries the motor's rotor (reflected inertia J) and half the base's mass on its
+    // 28 mm radius: I = J + (m/2)·r². Coasting (winding open), only the gearbox friction τf
+    // decelerates it and the tyres roll: θ = ω·t − ½·(τf/I)·t². Braked (winding shorted),
+    // the back-EMF damping b = τs/ω0 decays the wheel's speed relative to the chassis; were
+    // the chassis level it would be exponential with τ = I/b (rolling; J/b if the tyre skids),
+    // θ = ω·τ·(1 − e^(−t/τ)). The chassis is not level: the braking torque's reaction pitches
+    // it forward (this base's castor is behind the axle, so nothing stops the nose dipping;
+    // measured up to 7 rad/s), turning the housing with the wheel, which only shortens the
+    // relative turn the encoder counts — so I/b gives an upper bound. ω is the wheel speed the
+    // hub measured at the stop.
+    const stop = decay => {
+        const at = {};
+        return drive({seconds: 1.6, script: (hub, ms) => {
+            const duty = ms < 600 ? 1 : 0;
+            if (ms === 600 || ms === 650) at[ms] = {count: hub.counts.B, speed: hub.speeds.B};
+            hub.setOutput('A', -duty, decay);
+            hub.setOutput('B', duty, decay);
+        }}).then(r => ({...r, afterStop: at[650].count - at[600].count, speedAtStop: at[600].speed}));
+    };
     const coast = await stop('coast');
     const brake = await stop('brake');
-    assert.ok(after(coast) > 2 * after(brake) && after(coast) > 0.01,
-        `after the stop: coast ${after(coast).toFixed(4)} m, brake ${after(brake).toFixed(4)} m`);
+    const motor = SPIKE_MEDIUM_ANGULAR.motor;
+    const mass = compile(MODEL, CATALOG).bodies.filter(body => body.motion === 'dynamic').reduce((sum, body) => sum + body.massKg, 0);
+    const r = 0.028;
+    const t = 0.05;
+    const J = motor.rotorInertiaKgM2;
+    const I = J + mass / 2 * r * r;
+    const b = motor.stallTorqueNm / motor.noLoadRadPerSec;
+    const coastPredicted = coast.speedAtStop * t - 0.5 * motor.frictionTorqueNm / I * t * t;
+    assert.ok(Math.abs(coast.afterStop - coastPredicted) < 0.1 * coastPredicted,
+        `coasting, wheel B turned ${(coast.afterStop * DEG).toFixed(1)}° in 50 ms; predicted ${(coastPredicted * DEG).toFixed(1)}°`);
+    const tau = I / b;
+    const high = brake.speedAtStop * tau * (1 - Math.exp(-t / tau));
+    assert.ok(brake.afterStop > 0 && brake.afterStop < 1.1 * high,
+        `braked, wheel B turned ${(brake.afterStop * DEG).toFixed(1)}° in 50 ms; predicted at most ${(high * DEG).toFixed(1)}°`);
+    assert.ok(coast.afterStop > brake.afterStop, 'the shorted winding stops the wheel sooner than the open one');
 });
 
 test('a motor on a port the hub does not have is refused, not left unbound', async () => {

@@ -15,7 +15,12 @@
 // GearConstraint between the two gear bodies, r = -1/ratio (see GearConstraint.h).
 // Collisions v1: dynamic-dynamic disabled, dynamic-static enabled.
 // Motors: velocity / position (as velocity controller for unwrapped angle)
-// / coast / brake / hold, torque limited to ±maxTorqueNm.
+// / coast / brake / hold, torque limited to ±maxTorqueNm; and `torque`, the
+// DC-motor actuator's command (physics/actuators.js): τ = T − c·ω on the
+// hinge, a drive torque and a viscous damper on the relative speed, solved
+// IMPLICITLY by Jolt as one soft motor constraint (applyHingeTorque), so it
+// stays stable however light the driven parts are; and setRotorInertia, the
+// motor's rotor reflected through its gearbox.
 
 import { validateCompiledMechanism } from '../contracts.js';
 
@@ -83,6 +88,69 @@ const boxConvexRadius = halfExtents => Math.min(0.0005, 0.25 * Math.min(...halfE
  * (measured); from 15 up it is stopped, 30 stops it within 2° of first touch.
  */
 const GEAR_VELOCITY_STEPS = 30;
+
+/**
+ * Solver position iterations for an island holding a gear (Jolt's default is 2). With
+ * gears at their true inertia (fixSmallInertia) a stalled DC motor pushing an arm on a
+ * driven 24T into a static block (first touch at 13.3°) held it at 19.5° with the default
+ * — 6° (2 mm at the tip) inside the block — and at 13.7–13.9° with 5 to 20 (measured).
+ */
+const GEAR_POSITION_STEPS = 10;
+
+/**
+ * Principal moments and axes of a symmetric 3×3 inertia tensor (cyclic Jacobi).
+ * @param {number[][]} m row-major, symmetric
+ * @returns {{values: number[], vectors: number[][]}} vectors[k] = the k-th axis (unit)
+ */
+const symmetricEigen3 = m => {
+    const a = m.map(r => r.slice());
+    const v = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    for (let sweep = 0; sweep < 50; sweep++) {
+        const off = a[0][1] ** 2 + a[0][2] ** 2 + a[1][2] ** 2;
+        const scale = a[0][0] ** 2 + a[1][1] ** 2 + a[2][2] ** 2;
+        if (off <= 1e-30 * scale) break;
+        for (const [p, q] of [[0, 1], [0, 2], [1, 2]]) {
+            if (a[p][q] === 0) continue;
+            const theta = (a[q][q] - a[p][p]) / (2 * a[p][q]);
+            const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+            const c = 1 / Math.sqrt(t * t + 1);
+            const sn = t * c;
+            for (let k = 0; k < 3; k++) {
+                const akp = a[k][p], akq = a[k][q];
+                a[k][p] = c * akp - sn * akq;
+                a[k][q] = sn * akp + c * akq;
+            }
+            for (let k = 0; k < 3; k++) {
+                const apk = a[p][k], aqk = a[q][k];
+                a[p][k] = c * apk - sn * aqk;
+                a[q][k] = sn * apk + c * aqk;
+            }
+            for (let k = 0; k < 3; k++) {
+                const vkp = v[k][p], vkq = v[k][q];
+                v[k][p] = c * vkp - sn * vkq;
+                v[k][q] = sn * vkp + c * vkq;
+            }
+        }
+    }
+    const vectors = [0, 1, 2].map(k => [v[0][k], v[1][k], v[2][k]]);
+    // Right-handed: z = x × y.
+    const [x, y] = vectors;
+    vectors[2] = [x[1] * y[2] - x[2] * y[1], x[2] * y[0] - x[0] * y[2], x[0] * y[1] - x[1] * y[0]];
+    return {values: [a[0][0], a[1][1], a[2][2]], vectors};
+};
+
+/** Unit quaternion [x, y, z, w] of the rotation whose matrix has the given columns. */
+const quatFromColumns = ([c0, c1, c2]) => {
+    const m00 = c0[0], m10 = c0[1], m20 = c0[2], m01 = c1[0], m11 = c1[1], m21 = c1[2], m02 = c2[0], m12 = c2[1], m22 = c2[2];
+    const tr = m00 + m11 + m22;
+    let q;
+    if (tr > 0) { const S = Math.sqrt(tr + 1) * 2; q = [(m21 - m12) / S, (m02 - m20) / S, (m10 - m01) / S, 0.25 * S]; }
+    else if (m00 > m11 && m00 > m22) { const S = Math.sqrt(1 + m00 - m11 - m22) * 2; q = [0.25 * S, (m01 + m10) / S, (m02 + m20) / S, (m21 - m12) / S]; }
+    else if (m11 > m22) { const S = Math.sqrt(1 + m11 - m00 - m22) * 2; q = [(m01 + m10) / S, 0.25 * S, (m12 + m21) / S, (m02 - m20) / S]; }
+    else { const S = Math.sqrt(1 + m22 - m00 - m11) * 2; q = [(m02 + m20) / S, (m12 + m21) / S, 0.25 * S, (m10 - m01) / S]; }
+    const n = Math.hypot(...q);
+    return q.map(x => x / n);
+};
 
 export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
     const problems = validateCompiledMechanism(mechanism);
@@ -168,6 +236,53 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
 
     const ensureAlive = () => { if (destroyed) throw new Error('core destroyed'); };
 
+    /**
+     * Jolt treats a principal-moment vector shorter than 1e-6 kg·m² as degenerate
+     * (MotionProperties::SetMassProperties → Vec3::IsNearZero) and falls back to the
+     * inertia of a 1 m sphere, 0.4·m — for a 2–7 g LEGO gear on its axle that is about
+     * 1000× its real inertia (measured: 8T body 2.8e-3 kg·m² instead of ~3e-7). Rigid
+     * velocity servos hid it; a torque-driven motor (`torque` mode) spun such a gear up
+     * a thousand times too slowly. Here the body gets its shape's own inertia, scaled to
+     * its mass, whenever the fallback struck.
+     */
+    const fixSmallInertia = (body, massKg) => {
+        const mp = body.GetMotionProperties();
+        const d = mp.GetInverseInertiaDiagonal();
+        const fallback = 1 / (0.4 * massKg);
+        const isFallback = [d.GetX(), d.GetY(), d.GetZ()].every(x => Math.abs(x - fallback) <= 1e-6 * fallback);
+        if (!isFallback) return;
+        const props = body.GetShape().GetMassProperties();
+        const k = massKg / props.mMass;
+        const I = props.mInertia;
+        const cols = [I.GetAxisX(), I.GetAxisY(), I.GetAxisZ()].map(c => [c.GetX() * k, c.GetY() * k, c.GetZ() * k]);
+        const sym = [0, 1, 2].map(r => [0, 1, 2].map(c => 0.5 * (cols[c][r] + cols[r][c])));
+        setInertia(mp, sym);
+    };
+    /** Give a body's motion properties a body-space inertia tensor (symmetric 3×3, kg·m²). */
+    const setInertia = (mp, tensor) => {
+        const {values, vectors} = symmetricEigen3(tensor);
+        if (!values.every(x => x > 0)) return;
+        const inv = new J.Vec3(1 / values[0], 1 / values[1], 1 / values[2]);
+        const rot = new J.Quat(...quatFromColumns(vectors));
+        mp.SetInverseInertia(inv, rot);
+        J.destroy(inv);
+        J.destroy(rot);
+    };
+    /** A body's body-space inertia tensor (the inverse of Jolt's local-space inverse inertia). */
+    const inertiaOf = mp => {
+        const m = mp.GetLocalSpaceInverseInertia();
+        const c = [m.GetAxisX(), m.GetAxisY(), m.GetAxisZ()].map(v => [v.GetX(), v.GetY(), v.GetZ()]);
+        const a = [0, 1, 2].map(r => [0, 1, 2].map(k => c[k][r]));
+        const det = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) +
+            a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
+        const inv = [
+            [a[1][1] * a[2][2] - a[1][2] * a[2][1], a[0][2] * a[2][1] - a[0][1] * a[2][2], a[0][1] * a[1][2] - a[0][2] * a[1][1]],
+            [a[1][2] * a[2][0] - a[1][0] * a[2][2], a[0][0] * a[2][2] - a[0][2] * a[2][0], a[0][2] * a[1][0] - a[0][0] * a[1][2]],
+            [a[1][0] * a[2][1] - a[1][1] * a[2][0], a[0][1] * a[2][0] - a[0][0] * a[2][1], a[0][0] * a[1][1] - a[0][1] * a[1][0]]
+        ].map(r => r.map(v => v / det));
+        return [0, 1, 2].map(r => [0, 1, 2].map(k => 0.5 * (inv[r][k] + inv[k][r])));
+    };
+
     for (const b of mechanism.bodies) {
         let shape = null;
         let releaseAfterBody = [];
@@ -231,6 +346,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
 
         const body = bodyInterface.CreateBody(bcs);
         const bodyID = body.GetID();
+        if (b.motion === 'dynamic') fixSmallInertia(body, b.massKg);
         bodyInterface.AddBody(bodyID, J.EActivation_Activate);
         bodyMap.set(b.id, { body, bodyID, motionType, layer, shape });
         allBodyIDs.push(bodyID);
@@ -306,6 +422,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
                 maxTorque: j.motor ? j.motor.maxTorqueNm : 10,
                 maxSpeed: j.motor ? j.motor.maxSpeedRadPerSec : 30,
                 mode: 'coast', target: 0, targetSpeed: null, kp: 10, isMotor,
+                driveTorque: 0, damping: 0, rotorInertia: 0,
             });
             hinge.SetMotorState(J.EMotorState_Off);
             J.destroy(hs);
@@ -358,6 +475,28 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
     // while the frame does not turn about the gear axes (a gearbox clamped or
     // standing still); on a frame that itself turns about them the coupling is
     // off by that frame rate (documented in docs/SIM-LAB.md).
+    /**
+     * Gear bodies get principal moments of at least GEAR_MIN_INERTIA. A mesh couples a
+     * 2–7 g gear (true inertia ~1e-7 kg·m²) to a motor whose rotor alone is 3e-4 kg·m² at
+     * its output (devices/dc-motors.js) — reflected through the mesh, ratios of 1000–5000
+     * — and Jolt's iterative solver cannot hold a gear constraint and a contact against
+     * such ratios: an arm on a driven 24T that hit a static block was pushed back out of it
+     * and then through it, the gear constraint slipping (measured; GEAR_VELOCITY_STEPS does
+     * not help, convergence needs iterations ∝ the ratio). With 3e-5 kg·m² (measured: the
+     * smallest floor that stalls that arm at the block) the ratio is ~100. It is a numerical
+     * floor, not a property of the parts: a small gear spins up ~100× more slowly on its
+     * own than a real one, which no motor-driven train notices (the rotor dominates).
+     */
+    const GEAR_MIN_INERTIA = 3e-5;
+    const floorInertia = id => {
+        const e = bodyMap.get(id);
+        if (!e || e.motionType === J.EMotionType_Static) return;
+        const mp = e.body.GetMotionProperties();
+        const {values, vectors} = symmetricEigen3(inertiaOf(mp));
+        if (values.every(v => v >= GEAR_MIN_INERTIA)) return;
+        const v = values.map(x => Math.max(x, GEAR_MIN_INERTIA));
+        setInertia(mp, [0, 1, 2].map(r => [0, 1, 2].map(c => vectors.reduce((acc, u, k) => acc + v[k] * u[r] * u[c], 0))));
+    };
     const gearInfos = [];
     for (const g of mechanism.gears) {
         if (g.type === 'gear') {
@@ -382,11 +521,13 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             gs.mHingeAxis2 = new J.Vec3(...B.j.axis.map(v => v * B.side.sign * flip));
             gs.mRatio = 1 / Math.abs(ratio);
             gs.mNumVelocityStepsOverride = GEAR_VELOCITY_STEPS;
+            gs.mNumPositionStepsOverride = GEAR_POSITION_STEPS;
             const constraint = gs.Create(getBodyForId(A.side.body), getBodyForId(B.side.body));
             physicsSystem.AddConstraint(constraint);
             allConstraints.push(constraint);
             J.destroy(gs);
             gearInfos.push({ type: 'gear', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
+            for (const id of [A.side.body, B.side.body]) floorInertia(id);
         } else if (g.type === 'rackAndPinion') {
             gearInfos.push(g);
         }
@@ -427,6 +568,47 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
         const rel = [wB[0] - wA[0], wB[1] - wA[1], wB[2] - wA[2]];
         return rel[0] * worldAxis[0] + rel[1] * worldAxis[1] + rel[2] * worldAxis[2];
     };
+    /** The hinge axis in world space now (body1's frame, else body2's, else as compiled). */
+    const worldAxisOf = entry => {
+        let worldAxis;
+        if (entry.bodyAID) {
+            const rot = bodyInterface.GetRotation(entry.bodyAID);
+            worldAxis = quatRotateVec([rot.GetX(), rot.GetY(), rot.GetZ(), rot.GetW()], entry.localAxis1);
+        } else if (entry.bodyBID) {
+            const rot = bodyInterface.GetRotation(entry.bodyBID);
+            worldAxis = quatRotateVec([rot.GetX(), rot.GetY(), rot.GetZ(), rot.GetW()], entry.localAxis2);
+        } else worldAxis = entry.axis;
+        const len = Math.hypot(...worldAxis);
+        return len > 0 ? worldAxis.map(v => v / len) : worldAxis;
+    };
+    /**
+     * `torque` mode, once per Jolt step. The command τ = T − c·ω (ω the hinge's relative
+     * speed) is one SOFT position motor: Jolt's spring part is an implicit spring–damper,
+     * the constraint torque −k·(θ − θt) − (c_j + k·dt)·ω_end with ω_end the speed at the END
+     * of the step; with k = c/(2·dt), c_j = c/2 and the target θt = θ + T/k it is exactly
+     * T − c·ω_end (backward Euler: stable for any inertia). The drive torque goes through
+     * the constraint, not as a torque applied to the bodies: Jolt clamps a body's predicted
+     * angular velocity (47 rad/s by default) BEFORE the constraints act, so a large torque
+     * on a light shaft was cut off there (measured: a 4e-6 kg·m² wheel stopped at 3.7 rad/s
+     * whatever the torque).
+     */
+    const applyHingeTorque = entry => {
+        const k = entry.damping / (2 * dtFixed);
+        const offset = clamp(entry.driveTorque / k, -3, 3);
+        entry.hinge.SetTargetAngle(normalizeAngle(entry.hinge.GetCurrentAngle() + offset));
+    };
+    /** Motor torque limits and spring of a hinge (Jolt reads them in the next step). */
+    const setMotorSettings = (entry, {limit, damping = null}) => {
+        const ms = entry.hinge.GetMotorSettings();
+        ms.mMinTorqueLimit = -limit;
+        ms.mMaxTorqueLimit = limit;
+        if (damping !== null) {
+            const spring = ms.mSpringSettings;
+            spring.mMode = J.ESpringMode_StiffnessAndDamping;
+            spring.mStiffness = damping / (2 * dtFixed);
+            spring.mDamping = damping / 2;
+        }
+    };
     const updateJointStates = () => {
         for (const [, entry] of hingeMap) {
             const raw = entry.hinge.GetCurrentAngle();
@@ -453,6 +635,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
                     entry.hinge.SetTargetAngularVelocity(desired);
                     if (entry.hinge.GetMotorState() !== J.EMotorState_Velocity) entry.hinge.SetMotorState(J.EMotorState_Velocity);
                 }
+                for (const [, entry] of hingeMap) if (entry.mode === 'torque') applyHingeTorque(entry);
                 joltInterface.Step(dtFixed, 1);
                 timeSteps += 1;
                 acc -= dtFixed;
@@ -473,6 +656,12 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             if (!entry.isMotor) throw new Error(`joint ${jointId} is not a motorised hinge`);
             if (!cmd || typeof cmd.mode !== 'string') throw new Error(`invalid motor command for ${jointId}`);
             const maxSpeed = entry.maxSpeed;
+            if (entry.mode === 'torque' && cmd.mode !== 'torque') {
+                setMotorSettings(entry, {limit: entry.maxTorque});
+                entry.driveTorque = 0;
+                entry.damping = 0;
+            }
+            if (cmd.mode !== 'coast') entry.hinge.SetMaxFrictionTorque(0);
             switch (cmd.mode) {
                 case 'velocity': {
                     if (typeof cmd.radPerSec !== 'number' || !Number.isFinite(cmd.radPerSec)) throw new Error(`velocity needs radPerSec`);
@@ -490,11 +679,63 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
                     const err = entry.target - entry.unwrapped;
                     entry.hinge.SetTargetAngularVelocity(clamp(err * entry.kp, -lim, lim)); break;
                 }
-                case 'coast': entry.mode = 'coast'; entry.hinge.SetMotorState(J.EMotorState_Off); break;
+                case 'coast': {
+                    // Optional friction (N·m) while the motor is off: a gearbox's drag.
+                    const friction = typeof cmd.frictionNm === 'number' && Number.isFinite(cmd.frictionNm) ? Math.max(0, cmd.frictionNm) : 0;
+                    entry.mode = 'coast'; entry.hinge.SetMotorState(J.EMotorState_Off);
+                    entry.hinge.SetMaxFrictionTorque(friction); break;
+                }
+                case 'torque': {
+                    // τ = torqueNm − dampingNmsPerRad·ω on the hinge (applyHingeTorque).
+                    const {torqueNm, dampingNmsPerRad} = cmd;
+                    if (typeof torqueNm !== 'number' || !Number.isFinite(torqueNm)) throw new Error('torque needs torqueNm');
+                    if (typeof dampingNmsPerRad !== 'number' || !Number.isFinite(dampingNmsPerRad) || dampingNmsPerRad <= 0) {
+                        throw new Error('torque needs dampingNmsPerRad > 0');
+                    }
+                    if (entry.mode !== 'torque' || entry.damping !== dampingNmsPerRad) {
+                        setMotorSettings(entry, {limit: 1e6, damping: dampingNmsPerRad});
+                    }
+                    entry.mode = 'torque'; entry.driveTorque = torqueNm; entry.damping = dampingNmsPerRad;
+                    if (entry.hinge.GetMotorState() !== J.EMotorState_Position) entry.hinge.SetMotorState(J.EMotorState_Position);
+                    break;
+                }
                 case 'brake': entry.mode = 'brake'; entry.hinge.SetMotorState(J.EMotorState_Velocity); entry.hinge.SetTargetAngularVelocity(0); break;
                 case 'hold': entry.mode = 'position'; entry.target = entry.unwrapped; entry.targetSpeed = maxSpeed; entry.hinge.SetMotorState(J.EMotorState_Velocity); entry.hinge.SetTargetAngularVelocity(0); break;
                 default: throw new Error(`unknown motor mode ${cmd.mode}`);
             }
+        },
+        /**
+         * A motor's rotor inertia reflected through its gearbox (kg·m² at the output), J. The
+         * rotor turns with the hinge's RELATIVE angle (kinetic energy ½·J·(ω2 − ω1)²), which no
+         * body inertia can express; it is added about the hinge axis to BOTH bodies that move
+         * (½·J·ω1² + ½·J·ω2²). That is exact whenever one side does not turn about the axis —
+         * a clamped motor (the housing static: only the output gets it), a driving base's wheel
+         * on a level chassis, or a planted wheel under a pitching chassis, where the rotor
+         * really does resist the chassis — and wrong only when both turn together about the
+         * axis (the rotor then adds nothing, here 2·J). As body inertia, unlike a term in the
+         * motor constraint, the rotor's momentum is in the bodies the gear and contact
+         * constraints see (measured: as a motor term the rotor drove a light 24T and arm
+         * through a static block, the gear constraint slipping). Setting, not adding: a second
+         * call with the same value changes nothing.
+         */
+        setRotorInertia(jointId, inertiaKgM2) {
+            ensureAlive();
+            const entry = hingeMap.get(jointId);
+            if (!entry || !entry.isMotor) throw new Error(`joint ${jointId} is not a motorised hinge`);
+            const I = Number(inertiaKgM2);
+            if (!(I >= 0) || !Number.isFinite(I)) throw new Error('setRotorInertia needs a finite inertia >= 0');
+            const delta = I - entry.rotorInertia;
+            if (delta === 0) return;
+            const j = jointMap.get(jointId);
+            for (const [id, body, local] of [[j.body1, entry.bodyA, entry.localAxis1], [j.body2, entry.bodyB, entry.localAxis2]]) {
+                const e = bodyMap.get(id);
+                if (!e || e.motionType === J.EMotionType_Static) continue;
+                const n = Math.hypot(...local);
+                const a = local.map(v => v / n);
+                const mp = body.GetMotionProperties();
+                setInertia(mp, inertiaOf(mp).map((row, r) => row.map((v, k) => v + delta * a[r] * a[k])));
+            }
+            entry.rotorInertia = I;
         },
         jointState(jointId) {
             ensureAlive();
@@ -676,7 +917,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             recorder.Clear();
             physicsSystem.SaveState(recorder, J.EStateRecorderState_All);
             const hinges = [];
-            for (const [, e] of hingeMap) hinges.push([e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed]);
+            for (const [, e] of hingeMap) hinges.push([e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed, e.driveTorque, e.damping, e.hinge.GetMaxFrictionTorque()]);
             saved = { acc, timeSteps, hinges };
         },
         rollback() {
@@ -687,7 +928,13 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             ({ acc, timeSteps } = saved);
             let i = 0;
             for (const [, e] of hingeMap) {
-                [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed] = saved.hinges[i++];
+                let friction;
+                [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed, e.driveTorque, e.damping, friction] = saved.hinges[i++];
+                // Motor settings are not part of Jolt's saved state: put back the checkpoint's.
+                if (e.isMotor) {
+                    setMotorSettings(e, e.mode === 'torque' ? {limit: 1e6, damping: e.damping} : {limit: e.maxTorque});
+                    e.hinge.SetMaxFrictionTorque(friction);
+                }
             }
         },
         destroy() {

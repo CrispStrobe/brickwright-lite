@@ -220,39 +220,63 @@ test('P5 §5 one hole too far: no mesh, and the 24T stays still while the motor 
     assert.ok(Math.abs(r[g24.id] * DEG) < 2, `24T turned ${r[g24.id] * DEG}°`);
 });
 
-test('P5 §6 a blocked output stalls the motor at its torque limit', async () => {
+test('P5 §6 a blocked output stalls the motor (through the hub, DC model)', async () => {
     // A thin liftarm on the 24T's axle (8-24-stalled.json) swings into a static obstacle.
     // The obstacle is a real body in the arm's sweep, so the load reaches the motor only
     // through the gear mesh: the motor stalls only if the mesh carries load both ways.
     // Arm: LDraw y −85..−75, 18 LDU wide, reaching x 31..89 from the axle at x=40. Obstacle:
     // LDraw x 70..90, y −95..−72, z 20..40 (clear of the 24T, whose top is at y −69.6 and radius
-    // 32 LDU). The arm's edge (9 LDU off its centre line) first touches the obstacle's corner
-    // (30, 20) from the axle when 36.06·sin(33.69° − θ) = 9, at θ = 19.2°.
-    const FIRST_TOUCH_DEG = 33.69 - Math.asin(9 / Math.hypot(30, 20)) * DEG;
+    // 32 LDU). Seen from the axle the obstacle's near face is z = 20 for x 30..50. Two
+    // candidates for the first contact: the arm's edge (9 LDU off its centre line) on the
+    // obstacle's corner (30, 20), 36.06·sin(33.69° − θ) = 9 at θ = 19.2°; and the arm's tip
+    // corner (49, 9) on that face, 49·sin θ + 9·cos θ = 20 at θ = 13.3° (the tip is then at
+    // x = 45.6, on the face). The tip comes first. (Until 2026-10-17 this test took 19.2°:
+    // with the core's 1 m-sphere inertia for small gears — jolt-core.js fixSmallInertia — the
+    // arm sank ~6° into the obstacle, which the wrong first touch absorbed.)
+    const cornerOnEdge = 33.69 - Math.asin(9 / Math.hypot(30, 20)) * DEG;
+    const tipOnFace = (Math.asin(20 / Math.hypot(49, 9)) - Math.atan2(9, 49)) * DEG;
+    const FIRST_TOUCH_DEG = Math.min(cornerOnEdge, tipOnFace);
     const ldu = v => v * LDU_M;
     const wall = {id: 'wall', shape: 'box', size: [ldu(20), ldu(23), ldu(20)], position: [ldu(80), ldu(72), -ldu(30)]};
     const commanded = MOTOR_DEG_PER_SEC;
+    // The motor is driven as the hub drives it (owner decision D5): the SPIKE controller asks
+    // for 300 °/s and puts a duty into the motor's DC model, so a blocked output meets the
+    // motor's stall torque (through the 1:3 mesh) — not an ideal velocity source. (Until
+    // 2026-10-17 this test drove the hinge as an ideal servo; at the gears' true inertia that
+    // servo, stiff up to its torque limit, tears the gear constraint: the motor kept turning
+    // at ~130 °/s with the 24T held, measured.)
     const measure = async obstacles => {
-        const {mech} = compileOnBench('8-24-stalled', {obstacles});
+        const {mech, housing} = compileOnBench('8-24-stalled', {obstacles});
         assert.deepEqual(mech.diagnostics, []);
         const motor = motorHinge(mech);
         const g24 = hingeTurning(mech, 'g24');
         assert.ok(mech.bodies.find(b => b.id === g24.body2).parts.includes('arm'), 'the arm turns with the 24T');
-        // The arm reaches the obstacle after ~0.2 s and rebounds a few times before it settles:
-        // the speed is the mean over the last full second of 4.
+        const J = await loadJolt();
+        const core = createPhysicsCore(J, mech, {stepHz: STEP_HZ});
+        const hubState = new VirtualSpikeHubState();
+        const bridge = new SimHubBridge({hubState, core, mechanism: mech, hubBody: housing});
+        const start = core.jointState(g24.id).angle;
+        hubState.motors.runAtSpeed('A', commanded);
+        // The arm reaches the obstacle after ~0.2 s: the speed is the mean over the last full second of 4.
         const seconds = 4;
         let lastSecond = null;
-        const r = await runMotor(mech, {seconds, degPerSec: commanded, watch: [g24], onStep: (core, i) => {
-            if (i === Math.round((seconds - 1) * STEP_HZ) - 1) lastSecond = core.jointState(motor.id).angle;
-        }});
-        const speed = (r.core.jointState(motor.id).angle - lastSecond) * DEG;
-        r.core.destroy();
-        return {speed, g24: r[g24.id] * DEG};
+        for (let i = 0; i < seconds * STEP_HZ; i++) {
+            bridge.tick(STEP_MS);
+            if (i === (seconds - 1) * STEP_HZ - 1) lastSecond = core.jointState(motor.id).angle;
+        }
+        const speed = (core.jointState(motor.id).angle - lastSecond) * DEG;
+        const turned = (core.jointState(g24.id).angle - start) * DEG;
+        const stalled = hubState.data.motors[0].stalled;
+        bridge.dispose();
+        core.destroy();
+        return {speed, g24: turned, stalled};
     };
     const free = await measure([]);
     assert.ok(relErr(free.speed, commanded) < 0.05, `without the obstacle the motor runs at ${free.speed}°/s`);
+    assert.equal(free.stalled, false);
     const blocked = await measure([wall]);
     assert.ok(Math.abs(blocked.speed) < 0.1 * commanded, `stalled motor still turns at ${blocked.speed}°/s of ${commanded}`);
+    assert.equal(blocked.stalled, true, 'the hub reports the port stalled');
     // It stopped AT the obstacle: not before first touch, and not far into it (the contact is
     // slightly soft at this scale; a few degrees of creep under the stalled torque).
     assert.ok(Math.abs(blocked.g24) > FIRST_TOUCH_DEG - 2 && Math.abs(blocked.g24) < FIRST_TOUCH_DEG + 6,

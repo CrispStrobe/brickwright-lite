@@ -60,12 +60,14 @@
  * @property {'motor'|'sensor'} class
  * @property {{lpf2?: number}} ids       e.g. {lpf2: 49} for the SPIKE large motor; {} = the hub's default
  * @property {string} [sensor]           for class 'sensor': the v1 sensor kind ('color', 'distance', 'force')
+ * @property {object} [device]           for class 'motor': the DeviceModel physics drives (devices/dc-motors.js),
+ *                                       so a hub's controller can regulate the same DC model
  */
 
 /**
  * What an actuator port is told to do during one physics step (zero-order hold).
  *   servo — an ideal speed servo: the hub's JS controller already decided the
- *           shaft speed (SPIKE today). Torque limited by the motor's stall torque.
+ *           shaft speed (SPIKE before owner decision D5; now a test fixture). Torque limited by the motor's stall torque.
  *   pwm   — a duty cycle into a DC motor (unregulated hubs, emulated firmwares,
  *           and SPIKE after owner decision D5). decay: what the H-bridge does in
  *           the off phase / at duty 0: short the winding (brake) or float (coast).
