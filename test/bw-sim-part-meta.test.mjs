@@ -271,3 +271,16 @@ test('sensor origin lies on the mesh box surface and direction points outward', 
         assert.ok(!inside, `${p.part}: sensor direction ${direction} from ${origin} does not point outward (probe ${probe} still inside ${JSON.stringify(b)})`);
     }
 });
+
+test('every part has name, nameDe and a palette category, and nameDe is unique', () => {
+    // Allowed categories from palette.js
+    const allowed = new Set(['hub','motor','sensor','beam','axle','pin','connector','gear','wheel','other']);
+    const seenDe = new Set();
+    for (const p of META.parts) {
+        assert.ok(typeof p.name === 'string' && p.name.trim().length > 0, `${p.part}: missing name`);
+        assert.ok(typeof p.nameDe === 'string' && p.nameDe.trim().length > 0, `${p.part}: missing nameDe`);
+        assert.ok(allowed.has(p.category), `${p.part}: unknown category '${p.category}'`);
+        assert.ok(!seenDe.has(p.nameDe), `duplicate nameDe '${p.nameDe}' in ${p.part}`);
+        seenDe.add(p.nameDe);
+    }
+});

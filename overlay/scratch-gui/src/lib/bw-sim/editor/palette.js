@@ -12,7 +12,8 @@ export const PALETTE_CATEGORIES = [
     {id: 'sensor', en: 'Sensor', de: 'Sensor'},
     {id: 'beam', en: 'Beam', de: 'Lochbalken'},
     {id: 'axle', en: 'Axle', de: 'Achse'},
-    {id: 'pin', en: 'Pin', de: 'Verbinder/Pin'},
+    {id: 'pin', en: 'Pin', de: 'Pin'},
+    {id: 'connector', en: 'Connector', de: 'Verbinder'},
     {id: 'gear', en: 'Gear', de: 'Zahnrad'},
     {id: 'wheel', en: 'Wheel', de: 'Rad'},
     {id: 'other', en: 'Other', de: 'Sonstiges'}
