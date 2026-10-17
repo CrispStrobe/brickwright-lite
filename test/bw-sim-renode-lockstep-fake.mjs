@@ -336,7 +336,7 @@ export class FakeSpikeRenode {
             target: {board: 'spike-prime', firmware: 'brickwright-nuttx', transport: 'none', imageSha256: FAKE_IMAGE,
                 capabilities: [...this.capabilities], limitations: []},
             lifecycle: {connectionGeneration: 1, nuttxProgram: {state: STATE_CODE[p.state], error: p.error}},
-            ports: this.ports.map(port => ({id: port.id, attached: port.kind !== 'none', kind: port.kind})),
+            ports: this.ports.map(port => ({id: port.id, attached: port.kind !== 'none', kind: port.kind === 'none' ? null : port.kind})),
             motors: this.ports.filter(port => port.kind === 'motor').map(port => {
                 const position = port.positionAt(this.ms);
                 return {port: port.id, position, speedDps: port.anchor.dps, stalled: false,
