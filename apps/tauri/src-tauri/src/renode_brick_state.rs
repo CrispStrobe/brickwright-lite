@@ -1121,7 +1121,11 @@ mod tests {
         feed.lockstep("lockstep.end", serde_json::json!({})).unwrap();
         assert_eq!(feed.lockstep("lockstep.step", lockstep_step(T0)).unwrap_err(), "lockstep has not begun");
         wall.sort();
-        assert!(wall[wall.len() / 2] < Duration::from_millis(5), "median exchange {:?}", wall[wall.len() / 2]);
+        // Without polling: the ordinary command path waits in 5 ms sleeps, so a polling wait can
+        // never finish an exchange in under 5 ms; the condition-variable wait finishes the fastest
+        // ones in well under a millisecond even on a loaded CI runner. A median threshold at 5 ms
+        // measured runner load instead (5.4 ms on a GitHub runner, PR #1061), not polling.
+        assert!(wall[0] < Duration::from_micros(2500), "fastest exchange {:?} (median {:?}): a polling wait cannot go below its 5 ms sleep", wall[0], wall[wall.len() / 2]);
         server.join().unwrap();
     }
 
