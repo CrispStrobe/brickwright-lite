@@ -143,7 +143,7 @@ test('3. scene: mat texture pixels and obstacle meshes world bounding boxes', ()
         return [r,g,b];
     };
     const black = sample(0, 0.25);
-    assert.deepEqual(black, [0,0,0], `pixel at (0,0.25) should be black, got ${black}`);
+    assert.deepEqual(black, [15,15,15], `pixel at (0,0.25) should be black (15,15,15 from honest mats rgb 60), got ${black}`);
     const white = sample(0, 0);
     assert.deepEqual(white, [255,255,255], `pixel at (0,0) should be white, got ${white}`);
 

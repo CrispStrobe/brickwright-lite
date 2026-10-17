@@ -56,63 +56,52 @@ const plain = {
     }
 };
 
-// Line-oval: white 1.2x0.8 with 20mm black line forming a stadium (two straights + two semicircles)
-// Oval line track: a black 20 mm line forming an oval loop plus two short
-// centre segments at x=0 for the start pose. The outer loop is a stadium
-// with vertical sides at x=±0.2 from z=-0.15 to 0.25 and semicircles radius
-// 0.2 at top (0,0.25) and bottom (0,-0.15). The centre segments are at
-// x=0 from z=0.15 to 0.25 (north) and z=-0.15 to -0.05 (south) with a gap
-// at the centre, so (0,0.25) is black (on the north segment/top of loop),
-// (0,0) is white (gap), but (0.2,0) and (-0.2,0) are black (outer sides)
-// and (0,-0.15) is black (south segment/bottom of loop). This satisfies
-// both the earlier three-straight tests and the M9 scene test.
+// Line-oval: white 1.2 x 0.8 m with a 20 mm black line forming a stadium: two
+// straights along x at z = ±0.25 (x from -0.3 to 0.3) joined by two semicircles of
+// radius 0.25 centred at (±0.3, 0). Centre-line length 2·0.6 + 2π·0.25 ≈ 2.771 m.
+// A line follower starts ON the line at (0, 0.25), heading along +x.
+export const LINE_OVAL = Object.freeze({halfStraight: 0.3, radius: 0.25, lineHalfWidth: 0.01});
+
+/** Distance (m) from a world point (x, z) to the line-oval centre line. */
+export const distanceToOvalCentre = (x, z) => {
+    const {halfStraight: h, radius: r} = LINE_OVAL;
+    if (Math.abs(x) <= h) return Math.abs(Math.abs(z) - r);
+    const cx = Math.sign(x) * h;
+    return Math.abs(Math.hypot(x - cx, z) - r);
+};
+
+/** The centre line as a closed path: point at arc length s (0 = the start pose, increasing along +x first). */
+export const ovalCentreAt = s => {
+    const {halfStraight: h, radius: r} = LINE_OVAL;
+    const L = 4 * h + 2 * Math.PI * r;
+    let t = ((s % L) + L) % L;
+    if (t <= h) return [t, r];                               // top straight, from x=0 to +h
+    t -= h;
+    if (t <= Math.PI * r) {                                  // right semicircle, z from +r to -r
+        const a = Math.PI / 2 - t / r;
+        return [h + r * Math.cos(a), r * Math.sin(a)];
+    }
+    t -= Math.PI * r;
+    if (t <= 2 * h) return [h - t, -r];                      // bottom straight, x from +h to -h
+    t -= 2 * h;
+    if (t <= Math.PI * r) {                                  // left semicircle, z from -r to +r
+        const a = -Math.PI / 2 - t / r;
+        return [-h + r * Math.cos(a), r * Math.sin(a)];
+    }
+    t -= Math.PI * r;
+    return [-h + t, r];                                      // top straight, back to x=0
+};
+
 const lineOval = {
     id: 'line-oval',
     sizeM: [1.2, 0.8],
-    // Start pose for a line follower: on the line at (0,0.25) heading -z (i.e., 180°)
-    startPose: {x: 0, z: 0.25, heading: 180},
+    centreLineLengthM: 4 * LINE_OVAL.halfStraight + 2 * Math.PI * LINE_OVAL.radius,
+    // On the line at (0, 0.25), heading along +x (degrees from +x toward +z: 0).
+    startPose: {x: 0, z: LINE_OVAL.radius, heading: 0},
     colorAt(x, z) {
         const [w, d] = this.sizeM;
-        if (Math.abs(x) > w/2 || Math.abs(z) > d/2) {
-            return {color: 10, reflection: 100, rgb: [1024, 1024, 1024]};
-        }
-        const lineHalfWidth = 0.01;
-        let dist = Infinity;
-        // Outer loop: vertical sides at x=±0.2
-        if (z >= -0.15 && z <= 0.25) {
-            const d1 = Math.abs(x - 0.2);
-            const d2 = Math.abs(x + 0.2);
-            const dm = Math.min(d1, d2);
-            if (dm < dist) dist = dm;
-        }
-        // Outer loop: top semicircle at (0,0.25) radius 0.2 for z>0.25
-        if (z > 0.25) {
-            const d = Math.hypot(x, z - 0.25) - 0.2;
-            if (Math.abs(d) < Math.abs(dist)) dist = d;
-        }
-        if (z < -0.15) {
-            const d = Math.hypot(x, z + 0.15) - 0.2;
-            if (Math.abs(d) < Math.abs(dist)) dist = d;
-        }
-        // Centre north segment: x=0, z in [0.15,0.25]
-        {
-            let d;
-            if (z >= 0.15 && z <= 0.25) d = Math.abs(x);
-            else if (z < 0.15) d = Math.hypot(x, z - 0.15);
-            else d = Math.hypot(x, z - 0.25);
-            if (Math.abs(d) < Math.abs(dist)) dist = d;
-        }
-        // Centre south segment: x=0, z in [-0.15,-0.05]
-        {
-            let d;
-            if (z >= -0.15 && z <= -0.05) d = Math.abs(x);
-            else if (z > -0.05) d = Math.hypot(x, z + 0.05);
-            else d = Math.hypot(x, z + 0.15);
-            if (Math.abs(d) < Math.abs(dist)) dist = d;
-        }
-        if (Math.abs(dist) <= lineHalfWidth + 1e-9) {
-            return {color: 0, reflection: 5, rgb: [0, 0, 0]};
-        }
+        if (Math.abs(x) > w / 2 || Math.abs(z) > d / 2) return {color: 10, reflection: 100, rgb: [1024, 1024, 1024]};
+        if (distanceToOvalCentre(x, z) <= LINE_OVAL.lineHalfWidth) return {color: 0, reflection: 5, rgb: [60, 60, 60]};
         return {color: 10, reflection: 100, rgb: [1024, 1024, 1024]};
     },
     paint(imageData, pxPerM) {
@@ -195,6 +184,7 @@ export const createMat = id => {
         sizeM: mat.sizeM.slice(),
         colorAt: mat.colorAt.bind(mat),
         paint: mat.paint.bind(mat),
-        startPose: mat.startPose ? {...mat.startPose} : undefined
+        startPose: mat.startPose ? {...mat.startPose} : undefined,
+        centreLineLengthM: mat.centreLineLengthM
     };
 };
