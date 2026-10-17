@@ -23,6 +23,7 @@
   "three": {
     "tests": [
       "test/bw-sim-editor-v2.test.mjs",
+      "test/bw-sim-palette-ui.test.mjs",
       "test/bw-sim-render-quality.test.mjs",
       "test/bw-sim-scene3d.test.mjs",
       "test/bw-sim-world.test.mjs",
