@@ -25,16 +25,23 @@ history, not reservations or evidence that their work is still pending.
 1. **Upstream LM741 CLI qualification: complete.** Six signed/phase-shifted
    precision captures passed independent waveform, meter and work-receipt audits.
    This is a bounded nominal-model result, not vendor-model or hardware accuracy.
-2. **Adopt the qualified CLI through the existing package boundary.** This
-   batch selects CUI `1db1bb9ee565338672c7acfefec4cf94b27196e1`, preserving the
-   reviewed Board and sb3-creator pins. Installed package identity, actual batch
-   and finite-watch CLI numerics, cumulative work limits and the built GUI are
-   qualification gates. No copied engine sources or deployment claim.
-3. **Run a fresh stratified instrument regression on the installed consumer.**
-   Account for at least 300 cases, distinct topology templates and parameter
-   variants separately, meaningful probe locations, exact package/oracle
-   identities, clocks, windows, signs and unchanged numerical bounds. Separate
-   matched-law SPICE comparisons from independent nominal-model references.
+2. **Consumer adoption: complete; TestFlight release: still pending.** PR965
+   landed as `5cb83052330b400b48293315260cb4293b4f6bcf`, adopting CUI
+   `1db1bb9ee565338672c7acfefec4cf94b27196e1`. Its qualified CLI and built-GUI
+   checks do not prove a newer signed or installed release. PR1011's release
+   ownership claim is merged, not a delivery receipt. Finish the existing iOS
+   workflow-resource lane, actual combined-source unsigned and signed artifact
+   checks, aligned release metadata, upload, both TestFlight groups and Beta
+   App Review. Do not start a competing iOS workflow or release lane.
+3. **Prepare, then run the stratified installed-consumer regression.** Harness
+   preparation may proceed in parallel with release work; actual campaign
+   execution remains after TestFlight. The harness is not yet implemented and
+   none of its 312 planned parameter cases has run. The
+   [implementation handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) specifies 12
+   topology templates, 264 direct ngspice cases, 48 analytic model cases, the
+   bounded files, measurements, provenance and nonvacuous negative controls.
+   Claim fresh ownership in `LANES.md` before implementation. Preserve failed,
+   refused and not-run cases rather than changing the denominator.
 4. **Fix demonstrated causes, not scores.** Preserve every failure and distinguish
    import loss, unavailable models, engine/instrument defects, exhausted work
    budgets and oracle/harness mistakes. Require minimal reproductions and
@@ -43,6 +50,12 @@ history, not reservations or evidence that their work is still pending.
    and CLI; expose acquisition/overrange/aliasing limits without altering raw
    captures or pretending to implement an ADC or analogue front end. Review the
    results and remaining limits before starting a further campaign.
+
+Status reconciliation: 2026-10-17. The regression and realism steps are scoped
+follow-ups, not completed features. The closing preparation session leaves no
+active implementation reservation; see `LANES.md` and refresh the linked PRs
+before taking over. The [handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md) also
+defines causal-repair and instrument-realism acceptance and stopping criteria.
 
 Shared engine, importer and instrument changes land upstream first. Lite adopts
 one reviewed full SHA with derived specifications, locks and provenance. A
