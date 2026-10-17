@@ -4,7 +4,6 @@ import React from 'react';
 import {connect} from 'react-redux';
 
 import styles from './bw-about.css';
-import ABOUT_GROUPS from './about-data.js';
 
 const VERSION = (typeof process.env.BW_VERSION === 'string' && process.env.BW_VERSION) || 'unknown';
 const BUILD_TIME = (typeof process.env.BW_BUILD_TIME === 'string' && process.env.BW_BUILD_TIME) || '';
@@ -53,6 +52,8 @@ const PROVIDER = {
 const L10N = {
     en: {
         about: 'About Brickwright',
+        creditsLoading: 'Loading credits…',
+        creditsRetry: 'Load credits again',
         version: 'Version',
         built: 'Built',
         remoteDownloads: 'Remote downloads',
@@ -105,7 +106,9 @@ const L10N = {
         toolchainDown: 'service not reachable right now — compiling will say why'
     },
     de: {
-        about: 'Uber Brickwright',
+        about: 'Über Brickwright',
+        creditsLoading: 'Danksagungen werden geladen…',
+        creditsRetry: 'Danksagungen erneut laden',
         version: 'Version',
         built: 'Erstellt',
         remoteDownloads: 'Remote-Downloads',
@@ -232,20 +235,38 @@ LicenceGroup.propTypes = {
 class BwAbout extends React.Component {
     constructor (props) {
         super(props);
-        this.state = {open: false, copied: false, toolchain: null};
+        this.state = {open: false, copied: false, toolchain: null, groups: null, groupsError: false};
         this.handleToggle = this.handleToggle.bind(this);
         this.handleClose = this.handleClose.bind(this);
         this.handleCopy = this.handleCopy.bind(this);
         this.handleKeyDown = this.handleKeyDown.bind(this);
     }
     componentDidMount () {
+        this.mounted = true;
         document.addEventListener('keydown', this.handleKeyDown);
         this.openFromSettings = () => this.setState({open: true, copied: false});
         window.addEventListener('bw-open-about', this.openFromSettings);
     }
     componentWillUnmount () {
+        this.mounted = false;
         document.removeEventListener('keydown', this.handleKeyDown);
         window.removeEventListener('bw-open-about', this.openFromSettings);
+    }
+    componentDidUpdate (previousProps, previousState) {
+        if (this.state.open && !previousState.open) this.loadGroups();
+    }
+    loadGroups () {
+        if (this.state.groups || this.loadingGroups) return;
+        this.loadingGroups = true;
+        this.setState({groupsError: false});
+        import(/* webpackChunkName: "about-credits" */ './about-data.js')
+            .then(({default: groups}) => {
+                if (this.mounted) this.setState({groups});
+            })
+            .catch(() => {
+                if (this.mounted) this.setState({groupsError: true});
+            })
+            .finally(() => { this.loadingGroups = false; });
     }
     handleKeyDown (event) {
         if (event.key === 'Escape' && this.state.open) this.handleClose();
@@ -351,13 +372,15 @@ class BwAbout extends React.Component {
                                 <div className={styles.heading}>{t('components')}</div>
                                 <p className={styles.body}>{t('licenseNote')}</p>
                                 <div className={styles.groupList} data-testid="about-licence-groups">
-                                    {ABOUT_GROUPS.map(group => (
+                                    {this.state.groups ? this.state.groups.map(group => (
                                         <LicenceGroup
                                             key={group.title}
                                             group={group}
                                             locale={locale}
                                         />
-                                    ))}
+                                    )) : this.state.groupsError ? (
+                                        <button type="button" onClick={() => this.loadGroups()}>{t('creditsRetry')}</button>
+                                    ) : <p role="status">{t('creditsLoading')}</p>}
                                 </div>
 
                                 {/* Named IN the app, not only behind a link: these ship inside

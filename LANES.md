@@ -6220,3 +6220,16 @@ See [current integration status and scoped next actions](docs/WEDO-IPAD-INTEGRAT
 
 CLAIMED — Codex root, branch `docs/wedo-recovery-adoption-20261017`.
 Adopt the published WeDo supplier connection-recovery commit `98eca46ed343ffe186e737062fdc68716f28ca6c` (upstream PR50 merged as `c0223a134d1be45dbe939a3f078224f22229b71f`). Own only the `wedo2unified` pin, its canonical generated extension wrapper, focused recovery/LED/tone conformance controls, and the associated public delivery/protocol records. Merge this claim to remote main before implementation. Use the supplier sync workflow; never hand-edit the bundled wrapper or other suppliers' pins. Qualify exact source freshness, failed-connect cleanup, bounded waits, concurrent attempts, retry without app restart, and existing light/tone commands. Native Bluetooth readiness/session ownership work remains separately scoped; do not claim physical connection or buzzer success from these deterministic controls. Compose this adoption with the owned iPad chrome fixes after their CI failures are resolved, qualify enabled exact-head CI, then build/sign/install an identified current-main candidate. Keep local paths, device identifiers, screenshots and raw receipts in ignored handoffs.
+
+### Reconciled UI and recovery follow-through
+
+Upstream recovery PR50 is merged; adoption claim PR1059 is merged before the
+WeDo pin/wrapper update. This branch now normally composes current main,
+preserving the completed STM32/A13/SimLab work and both ledger sections.
+The previous browser failures were the 46px toolbar exceeding its 44px limit
+and startup JavaScript exceeding the unchanged ownership cap. Restore the row
+to 44px with 44px targets and load packaged About credits only when needed,
+with localized loading/retry states. Qualify the actual credits content after
+loading, the phone chrome geometry, vendor freshness/recovery/LED controls,
+and exact-head hosted CI before normal merge. Earlier installed candidates
+remain identified separately; no new physical hub or buzzer acceptance is implied.

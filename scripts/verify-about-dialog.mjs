@@ -52,11 +52,11 @@ async function verify() {
     try {
         console.log(`Opening ${URL} ...`);
         await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await page.getByText('Settings', {exact: true}).waitFor({state: 'visible', timeout: 60000});
+        await page.getByTestId('bw-settings-menu-trigger').waitFor({state: 'visible', timeout: 60000});
 
         // Use the labelled menu surface, not CSS-module class fragments shared
         // by unrelated settings content.
-        const settingsBtn = page.getByText('Settings', {exact: true});
+        const settingsBtn = page.getByTestId('bw-settings-menu-trigger');
         await settingsBtn.click();
 
         // The label is intentionally bilingual; this is the user-facing action.
@@ -67,6 +67,9 @@ async function verify() {
         // Check dialog is open
         const groups = page.getByTestId('about-licence-groups');
         await groups.waitFor({state: 'visible', timeout: 10000});
+        // Credits are a packaged lazy chunk: wait for its actual entries.
+        await groups.getByText(EXPECTED_ENTRIES[0], {exact: false}).first()
+            .waitFor({state: 'visible', timeout: 10000});
         pass('About dialog opened');
 
         const manifest = await page.evaluate(async () => {

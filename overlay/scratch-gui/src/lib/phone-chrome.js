@@ -47,7 +47,7 @@ const STYLE_ID = 'bw-phone-chrome';
 const ATTR = 'data-bw-touch';
 
 /** Menu bar height on a touch screen, in CSS pixels. */
-export const MENU_H = 46;
+export const MENU_H = 44;
 /** Tab strip height on a touch screen, in CSS pixels. */
 export const TABS_H = 44;
 /** Distance from the right edge, clearing the menu bar's right-hand item. */
