@@ -292,3 +292,28 @@ test('Code-tab run advances the shared hub only when the VM steps and cancels on
     assert.equal(hub.data.motors[0].degPerSec, 0);
     assert.equal(vm.runtime._step, original);
 });
+
+test('Code-tab run never advances a hub a Robot Lab scene drives, and still advances any other', async t => {
+    // docs/ROBOT-LAB-ARCHITECTURE.md §3.5: the Lab's physics measures the shafts, so a
+    // Python run on the Lab's hub must leave its clock alone even while the Lab is paused.
+    const {default: Hub} = await import(resolve(LIB, 'virtual-hub/spike-hub-state.js'));
+    const hub = new Hub();
+    let connected = true;
+    const vm = {runtime: {_step () {}, currentStepTime: 100,
+        _primitives: {spikeprime_isConnected: () => connected,
+            spikeprime_disconnectHub: () => { connected = false; }, spikeprime_setConnectionMode () {},
+            spikeprime_connectHub: () => {win.__brickwrightChooseVirtualBluetooth([{hubState: hub}]); connected = true;}},
+        on () {}, removeListener () {}, listeners: () => []},
+        greenFlag () {hub.backend.runAtSpeed('A', 300);}, stopAll () {}};
+    const win = {__brickwrightVirtualSpike: {enable () {}, hubState: hub}, __bwSimLab: {hubState: hub}};
+    const run = await runSpike3OnVirtualHub(vm, {window: win});
+    t.after(() => run.stop());
+    vm.runtime._step(); vm.runtime._step();
+    await new Promise(resolve => setTimeout(resolve, 40));
+    assert.equal(hub.data.motors[0].degPerSec, 0, 'the controller was not stepped');
+    assert.equal(hub.data.motors[0].position, 0, 'the Lab owns this hub\'s clock');
+    win.__bwSimLab = {hubState: new Hub()};
+    vm.runtime._step();
+    await new Promise(resolve => setTimeout(resolve, 40));
+    assert.ok(hub.data.motors[0].position > 0, 'a Lab scene on another hub does not hold this one');
+});

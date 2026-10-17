@@ -5,6 +5,15 @@
 // The host is created with {loadJolt, createPhysicsCore, post} and
 // exposes handle(msg) which processes messages strictly in order via
 // an internal promise chain. See task P2 for message types.
+//
+// The Sim Lab's messages (ROADMAP §4.9; the protocol is ../sim-worker-protocol.js,
+// generic over hubs per docs/ROBOT-LAB-ARCHITECTURE.md §6.5):
+//   sim-load  {mechanism, hubs: [{id, profile, body}], stepMs} -> sim-loaded {t, bodies, joints, readings}
+//   sim-batch {scene, steps | ticks, hubs: {id: state}, redo}  -> sim-frames {frames, t, bodies, joints, workMs}
+//   sim-dispose {scene}                    -> disposed
+// (a batch and a dispose name their scene: the id of the sim-load that made it)
+// They need {createSimRunner} as well, injected: this module carries hub states and
+// frames as opaque data and imports no hub.
 
 /**
  * Create a physics host.
@@ -14,9 +23,13 @@
  * @param {(msg: any, transfer?: Transferable[]) => void} opts.post - reply sender
  * @returns {{handle: (msg: any) => Promise<void>}}
  */
-export const createPhysicsHost = ({ loadJolt, createPhysicsCore, post }) => {
+export const createPhysicsHost = ({ loadJolt, createPhysicsCore, createSimRunner = null, post }) => {
     let J = null;
     let core = null;
+    let sim = null;
+    /** The sim-load request id of the scene loaded now: batches and disposes name it, so a stale one is refused. */
+    let simScene = null;
+    const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
     let lastMechanism = null;
     let lastStepHz = 120;
     let chain = Promise.resolve();
@@ -109,6 +122,47 @@ export const createPhysicsHost = ({ loadJolt, createPhysicsCore, post }) => {
                     } catch (err) {
                         post({ type: 'error', id, message: err.message ?? String(err) });
                     }
+                    break;
+                }
+                case 'sim-load': {
+                    const { id, mechanism, hubs, stepMs } = msg;
+                    try {
+                        if (!createSimRunner) throw new Error('this host has no Sim Lab runner');
+                        if (sim) { try { sim.destroy(); } catch (_) {} sim = null; }
+                        const jolt = await ensureJolt();
+                        sim = createSimRunner({ J: jolt, createPhysicsCore, mechanism, hubs: hubs || [], stepMs });
+                        simScene = id;
+                        const { t, bodies, joints } = sim.poses();
+                        post({ type: 'sim-loaded', id, t, bodies, joints, readings: sim.readings() }, [bodies.buffer, joints.buffer]);
+                    } catch (err) {
+                        post({ type: 'error', id, message: err.message ?? String(err) });
+                    }
+                    break;
+                }
+                case 'sim-batch': {
+                    const { id } = msg;
+                    if (!sim) {
+                        post({ type: 'error', id, message: 'sim batch before sim load' });
+                        break;
+                    }
+                    if (msg.scene !== simScene) {
+                        post({ type: 'error', id, message: 'sim batch for a scene that is no longer loaded' });
+                        break;
+                    }
+                    try {
+                        const start = now();
+                        const { frames, t, bodies, joints } = sim.run(msg);
+                        post({ type: 'sim-frames', id, frames, t, bodies, joints, workMs: now() - start }, [bodies.buffer, joints.buffer]);
+                    } catch (err) {
+                        post({ type: 'error', id, message: err.message ?? String(err) });
+                    }
+                    break;
+                }
+                case 'sim-dispose': {
+                    const { id } = msg;
+                    // Only the scene it names: a load that was given up on must not end the next one.
+                    if (sim && msg.scene === simScene) { try { sim.destroy(); } catch (_) {} sim = null; simScene = null; }
+                    post({ type: 'disposed', id });
                     break;
                 }
                 default: {

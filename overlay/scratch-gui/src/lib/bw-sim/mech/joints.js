@@ -32,8 +32,19 @@ const perpDist = (p, origin, dir) => {
  * @param {Array} edges from graph (rigid/hinge/ball including motor internal)
  * @param {{bodies:Array, nodeToBody:Map, bodyMap:Map}} islands
  * @param {Array} diagnostics
- * @returns {{joints:Array, lockedPairs:Array}} lockedPairs = list of [bodyIdA, bodyIdB] that need merging
+ * @returns {{joints:Array, lockedPairs:Array, lockedParts:Array}} lockedPairs = list of [bodyIdA, bodyIdB] that need merging;
+ *   lockedParts[i] = the placed parts whose hinges lock pair i
  */
+/**
+ * The joint's motor from the graph edge's: every field the contract names, the device id
+ * included — the hub reports it (48 medium, 49 large angular motor) and scales speeds by it.
+ */
+const motorOf = m => {
+    const motor = {port: m.port, maxTorqueNm: m.maxTorqueNm, maxSpeedRadPerSec: m.maxSpeedRadPerSec};
+    if (Number.isInteger(m.deviceId)) motor.deviceId = m.deviceId;
+    return motor;
+};
+
 export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
     const {nodeToBody, bodyMap} = islands;
     // Collect hinge and ball edges that are between different islands
@@ -114,6 +125,7 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
 
     const joints = [];
     const lockedPairs = []; // list of [bodyIdA, bodyIdB] that are locked
+    const lockedParts = []; // per locked pair: the placed parts whose hinges lock (for the diagnostic)
 
     // Process hinge groups
     for (const [key, group] of hingeGroups.entries()) {
@@ -128,7 +140,7 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
                 point: g.pointWorld,
                 axis: g.axisWorld,
             };
-            if (g.motor) joint.motor = {port: g.motor.port, maxTorqueNm: g.motor.maxTorqueNm, maxSpeedRadPerSec: g.motor.maxSpeedRadPerSec};
+            if (g.motor) joint.motor = motorOf(g.motor);
             joints.push({joint, groupKey: key, members: group});
         } else {
             // Check collinearity among all members
@@ -164,12 +176,20 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
                 };
                 // If any member has motor, include it (should not happen for hinge group >1)
                 const motorMember = group.find(g => g.motor);
-                if (motorMember) joint.motor = {port: motorMember.motor.port, maxTorqueNm: motorMember.motor.maxTorqueNm, maxSpeedRadPerSec: motorMember.motor.maxSpeedRadPerSec};
+                if (motorMember) joint.motor = motorOf(motorMember.motor);
                 joints.push({joint, groupKey: key, members: group});
             } else {
                 // Locked: non-collinear hinges between same pair lock it
                 const [bA, bB] = key.split('|');
                 lockedPairs.push([bA, bB]);
+                const ids = new Set();
+                for (const g of group) {
+                    for (const end of [g.edge.a, g.edge.b]) {
+                        const node = nodes.get(end.part);
+                        if (node) ids.add(node.partId);
+                    }
+                }
+                lockedParts.push([...ids].sort());
                 // No joint created; will be merged and diagnostic added by compile.js
             }
         }
@@ -249,5 +269,5 @@ export const buildJoints = (nodes, edges, islands, diagnostics = []) => {
     // Unwrap to list of joint objects
     const jointList = joints.map(e => e.joint);
 
-    return {joints: jointList, lockedPairs, jointEntries: joints};
+    return {joints: jointList, lockedPairs, lockedParts, jointEntries: joints};
 };

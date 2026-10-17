@@ -21,6 +21,9 @@ import {
     summarize as matrixSummary, explain as matrixExplain, LANGUAGES as MATRIX_LANGUAGES,
     DEVICES, DEVICE_GROUPS, cell as matrixCell
 } from '../../lib/bw-matrix/capabilities.js';
+import {feProgramToC} from '../../lib/bw-lang/fe-target-c.js';
+import {forthProgramToC} from '../../lib/bw-lang/forth-target-c.js';
+import {fetchTclProgramC} from '../../lib/bw-lang/tcl-target-c.js';
 import {showCircuitDebugger} from '../../lib/bw-debug/debug-view.js';
 import downloadBlob from '../../lib/download-blob.js';
 import animationResourceMenuItems from 'scratch-vm/src/util/bw-animation-resource-menu.js';
@@ -186,7 +189,11 @@ const L10N = {
         toBlocks: '⇦ To blocks', toBlocksTitle: l => `Compile this ${l} into blocks`,
         fromBlocks: 'From blocks ⇨', fromBlocksTitle: 'Read the current blocks back into all languages',
         compactToBlocks: '⇦ Blocks', compactFromBlocks: 'Blocks ⇨',
-        run: 'Run', runBasic: '▶ Run BASIC', runFe: '▶ Run fe', runTcl: '▶ Run Tcl', runForth: '▶ Run Forth', animationLabel: 'Animation',
+        run: 'Run', runBasic: '▶ Run BASIC', runFe: '▶ Run fe', runTcl: '▶ Run Tcl', runForth: '▶ Run Forth', animationLabel: 'Animation', runViaBlocks: d => `▶ ${d} via blocks`,
+        runFeRiscv: '▶ fe on RISC-V', runTclRiscv: '▶ Tcl on RISC-V',
+        runTclRiscvTitle: 'Build Jim Tcl with this program as C and run it on the RISC-V board', runForthRiscv: '▶ Forth on RISC-V',
+        runForthRiscvTitle: 'Build zForth with this program as C and run it on the RISC-V board', runFeRiscvTitle: 'Build the fe interpreter with this program as C and run it on the RISC-V board',
+        runViaBlocksTitle: 'Convert to blocks, then build them as C for the selected board in the debugger',
         nqcCompile: '⚙ Compile .rcx', nqcSend: '🧱 Send to RCX',
         nqcEmpty: 'Type some NQC first.',
         nqcNoCompiler: 'This build has no local NQC compiler.',
@@ -518,7 +525,11 @@ const L10N = {
         toBlocks: '⇦ Zu Blöcken', toBlocksTitle: l => `Diesen ${l}-Code zu Blöcken kompilieren`,
         fromBlocks: 'Von Blöcken ⇨', fromBlocksTitle: 'Das aktuelle Projekt in alle Sprachen einlesen',
         compactToBlocks: '⇦ Blöcke', compactFromBlocks: 'Blöcke ⇨',
-        run: 'Ausführen', runBasic: '▶ BASIC ausführen', runFe: '▶ fe ausführen', runTcl: '▶ Tcl ausführen', runForth: '▶ Forth ausführen', animationLabel: 'Animation',
+        run: 'Ausführen', runBasic: '▶ BASIC ausführen', runFe: '▶ fe ausführen', runTcl: '▶ Tcl ausführen', runForth: '▶ Forth ausführen', animationLabel: 'Animation', runViaBlocks: d => `▶ ${d} über Blöcke`,
+        runFeRiscv: '▶ fe auf RISC-V', runTclRiscv: '▶ Tcl auf RISC-V',
+        runTclRiscvTitle: 'Jim Tcl mit diesem Programm als C bauen und auf dem RISC-V-Board ausführen', runForthRiscv: '▶ Forth auf RISC-V',
+        runForthRiscvTitle: 'zForth mit diesem Programm als C bauen und auf dem RISC-V-Board ausführen', runFeRiscvTitle: 'Den fe-Interpreter mit diesem Programm als C bauen und auf dem RISC-V-Board ausführen',
+        runViaBlocksTitle: 'In Blöcke umwandeln und sie im Debugger als C für das gewählte Board bauen',
         nqcCompile: '⚙ .rcx kompilieren', nqcSend: '🧱 An RCX senden',
         nqcEmpty: 'Zuerst NQC eingeben.',
         nqcNoCompiler: 'Dieser Build hat keinen lokalen NQC-Compiler.',
@@ -906,7 +917,7 @@ const CODE_ACCEPT = [...new Set(Object.values(CODE_FILES).map(f => `.${f.ext}`))
 const BW_AUTOSAVE_KEY = 'bw-code-autosave';
 // Code-tab languages most people never need: they stay out of the language row
 // until chosen from its "+" menu (remembered per browser), opened, or written in.
-const BW_OPTIONAL_LANGS = [['fe', 'λ fe', 'Lisp (fe on DOS)'], ['tcl', '○ Tcl', 'Tcl (partcl on DOS)'], ['forth', '🔺 Forth', 'Forth (zForth on DOS)']];
+const BW_OPTIONAL_LANGS = [['fe', 'λ fe', 'Lisp (fe: DOS, or any board via blocks)'], ['tcl', '○ Tcl', 'Tcl (Jim: DOS, or any board via blocks)'], ['forth', '🔺 Forth', 'Forth (zForth: DOS, or any board via blocks)']];
 const BW_EXTRA_LANGS_KEY = 'bw-code-extra-languages';
 const readExtraLangs = () => {
     try {
@@ -3146,8 +3157,35 @@ class PseudocodeImporter extends React.Component {
      * `format: 'riscv'` detail). With no BW_RISCV_CC_ENDPOINT configured the
      * route REFUSES by name — the status says so honestly, assembly still runs.
      */
-    async runCOnRiscv (forceRoute) {
-        const source = this.state.buffers.c || '';
+    // fe's own interpreter on RISC-V: one generated C file (bw-lang/fe-target-c.js)
+    // on the hosted full-C route, booted like any RISC-V C program.
+    runFeOnRiscv () {
+        if (!this.activeCode().trim()) return;
+        return this.runCOnRiscv('server', feProgramToC(this.activeCode()));
+    }
+
+    // Jim Tcl the same way (bw-lang/tcl-target-c.js); its 650 KB source is
+    // fetched on demand and checked against the pinned hash, never bundled.
+    async runTclOnRiscv () {
+        if (!this.activeCode().trim()) return;
+        let source;
+        try {
+            source = await fetchTclProgramC(this.activeCode());
+        } catch (e) {
+            this.setState({status: this.L.runCRiscvUnavailable(e.message)});
+            return;
+        }
+        return this.runCOnRiscv('server', source);
+    }
+
+    // zForth the same way (bw-lang/forth-target-c.js).
+    runForthOnRiscv () {
+        if (!this.activeCode().trim()) return;
+        return this.runCOnRiscv('server', forthProgramToC(this.activeCode()));
+    }
+
+    async runCOnRiscv (forceRoute, sourceOverride) {
+        const source = typeof sourceOverride === 'string' ? sourceOverride : (this.state.buffers.c || '');
         if (!source.trim()) { this.setState({status: this.L.runCRiscvEmpty}); return; }
         // `forceRoute` (from the "try the server" hint) overrides the picker.
         const route = typeof forceRoute === 'string' ? forceRoute : this.state.riscvCRoute;
@@ -5023,6 +5061,12 @@ class PseudocodeImporter extends React.Component {
             asmTargetForDevice(this.currentDevice()) === 'i8086';
     }
 
+    // fe, Tcl and Forth interpreters exist only as DOS programs. On any other
+    // board the program runs as its blocks, which the debugger builds as C.
+    async runViaBlocksOnDevice () {
+        await this.compile();
+        if (this.state.conversionReport?.preserved) showCircuitDebugger();
+    }
     async compile ({strict = false, pseudocode = null} = {}) {
         const conversionRequest = {};
         this._conversionRequest = conversionRequest;
@@ -6124,6 +6168,14 @@ class PseudocodeImporter extends React.Component {
                                 {this.L.runFe}
                             </button>
                         ) : null}
+                        {this.state.lang === 'fe' && this.activeCode().trim() ? (
+                            <button onClick={() => this.runFeOnRiscv()} disabled={this.state.running || this.state.busy}
+                                title={this.L.runFeRiscvTitle}
+                                style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}
+                                data-testid="bw-fe-run-riscv">
+                                {this.L.runFeRiscv}
+                            </button>
+                        ) : null}
                         {this.state.lang === 'forth' && this.activeCode().trim() ? (
                             <button onClick={() => this.runForthOnDosInterp()} disabled={this.state.running}
                                 style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}
@@ -6131,11 +6183,37 @@ class PseudocodeImporter extends React.Component {
                                 {this.L.runForth}
                             </button>
                         ) : null}
+                        {this.state.lang === 'forth' && this.activeCode().trim() ? (
+                            <button onClick={() => this.runForthOnRiscv()} disabled={this.state.running || this.state.busy}
+                                title={this.L.runForthRiscvTitle}
+                                style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}
+                                data-testid="bw-forth-run-riscv">
+                                {this.L.runForthRiscv}
+                            </button>
+                        ) : null}
                         {this.state.lang === 'tcl' && this.activeCode().trim() ? (
                             <button onClick={() => this.runTclOnDosInterp()} disabled={this.state.running}
                                 style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}
                                 data-testid="bw-tcl-run">
                                 {this.L.runTcl}
+                            </button>
+                        ) : null}
+                        {['fe', 'tcl', 'forth'].includes(this.state.lang) && this.currentDevice() &&
+                            this.activeCode().trim() ? (
+                            <button onClick={() => this.runViaBlocksOnDevice()}
+                                disabled={this.state.running || this.state.busy}
+                                title={this.L.runViaBlocksTitle}
+                                style={{...actionBtn, background: 'linear-gradient(135deg,#4c97ff,#4280d7)'}}
+                                data-testid="bw-run-via-blocks">
+                                {this.L.runViaBlocks(this.currentDevice())}
+                            </button>
+                        ) : null}
+                        {this.state.lang === 'tcl' && this.activeCode().trim() ? (
+                            <button onClick={() => this.runTclOnRiscv()} disabled={this.state.running || this.state.busy}
+                                title={this.L.runTclRiscvTitle}
+                                style={{...actionBtn, background: 'linear-gradient(135deg,#37b24d,#2f9e44)'}}
+                                data-testid="bw-tcl-run-riscv">
+                                {this.L.runTclRiscv}
                             </button>
                         ) : null}
                         {this.state.lang === 'c' ? (

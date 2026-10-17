@@ -10,6 +10,8 @@ import assert from 'node:assert/strict';
 import {compile} from '../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js';
 import {validateCompiledMechanism, LDU_M, pitchRadiusLdu} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {makeCatalog} from './fixtures/bw-sim/test-catalog.mjs';
+import {readFileSync as readFileSyncTop} from 'node:fs';
+import {deviceModels} from '../overlay/scratch-gui/src/lib/bw-sim/devices/catalog.js';
 
 const I3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 const ROT_Y_180 = [-1, 0, 0, 0, 1, 0, 0, 0, -1];
@@ -263,6 +265,12 @@ test('8: bevel 12T <-> 20T at 90deg -> one constraint with right ratio', () => {
             {id: 'beamX', part: 'test-beam5.dat', position: [-15, 0, 25], rotation: ROT_Y_90},
             {id: 'axleX', part: 'test-axle4.dat', position: [-15, 0, 25], rotation: ROT_Y_90},
             {id: 'bevel20', part: 'test-bevel20.dat', position: [-15, 0, 25], rotation: ROT_Y_90},
+            // The two beams must be ONE frame for the mesh to transmit anything (a bevel
+            // pair on two loose beams is not held in mesh): a corner block pinned into
+            // beamZ's end hole (Z pin) and into beamX's hole at z=45 (X pin) makes them rigid.
+            {id: 'corner', part: 'test-corner.dat', position: [-40, 0, 20], rotation: I3},
+            {id: 'pinZ', part: 'test-pin.dat', position: [-40, 0, 10], rotation: I3},
+            {id: 'pinX', part: 'test-pin.dat', position: [-25, 0, 45], rotation: ROT_Y_90},
         ],
     };
     const mech = compile(model, catalog, {ground: false});
@@ -602,7 +610,7 @@ test('real driving base compiles correctly', async () => {
     // Find chassis: contains hub etc.
     const chassis = dynamics.find(b => b.parts.includes('hub'));
     assert.ok(chassis, 'chassis body');
-    const expectedChassis = new Set(['castor', 'castorPin1', 'castorPin2', 'hub', 'motorL', 'motorR', 'pinL', 'pinR']);
+    const expectedChassis = new Set(['castor', 'frontBeam', 'frontPin1', 'frontPin2', 'hub', 'motorL', 'motorR', 'pinL', 'pinR']);
     assert.deepEqual(new Set(chassis.parts), expectedChassis);
     // Left and right outputs
     const left = dynamics.find(b => b.parts.includes('axleL'));
@@ -705,4 +713,260 @@ test('real beam 5 with 8T and 24T on two axles 40 LDU apart -> one gear ratio -1
     const g = mech.gears[0];
     // Hand computed: 8T pitch 10, 24T pitch 30, distance 40 => mesh, axes same direction => ratio -1/3
     assert.ok(Math.abs(g.ratio - (-1 / 3)) < 1e-9, `ratio ${g.ratio} expected -0.333`);
+});
+
+test('real sensor on beam compiles to world-frame sensors', async () => {
+    const {readFileSync} = await import('node:fs');
+    const partsData = JSON.parse(readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', import.meta.url)));
+    const catalog = new Map(partsData.parts.map(p => [p.part, p]));
+    // Place a beam and a distance sensor at the same LDraw spot with identity rotation.
+    // Sensor's LDraw origin [0,0,-69] -> world [0,0,0.0276]; direction [0,0,-1] -> world [0,0,1].
+    const I3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    const ROT_Y_180 = [-1, 0, 0, 0, 1, 0, 0, 0, -1];
+    const model = {
+        version: 1,
+        parts: [
+            {id: 'beam', part: '32316.dat', position: [0, 0, 0], rotation: I3},
+            {id: 'dist', part: '37316.dat', position: [0, 0, 0], rotation: I3, port: 'D'},
+        ],
+    };
+    const mech = compile(model, catalog, {ground: false});
+    assert.equal(validateCompiledMechanism(mech).length, 0);
+    assert.ok(Array.isArray(mech.sensors) && mech.sensors.length === 1, 'one sensor');
+    const s = mech.sensors[0];
+    assert.equal(s.port, 'D');
+    assert.equal(s.kind, 'distance');
+    // Sensor is its own island (not rigidly connected without a pin), so body = b1 (beam is b0)
+    const sensorBody = mech.bodies.find(b => b.parts.includes('dist'));
+    assert.ok(sensorBody, 'sensor body');
+    assert.equal(s.body, sensorBody.id);
+    // World frame at t=0: LDraw sensor origin [0,0,-69] at model [0,0,0] -> world [0,0,69*0.0004] = [0,0,0.0276]
+    const expectedOrigin = [0 * 0.0004, 0, 69 * 0.0004];
+    // lduToWorld: (x, -y, -z)*LDU_M, origin [0,0,-69] => [0,0,69*LDU_M]
+    assert.ok(vecEq(s.origin, expectedOrigin, 1e-9), 'origin ' + s.origin + ' vs ' + expectedOrigin);
+    const expectedDir = [0, 0, 1];
+    assert.ok(vecEq(s.direction, expectedDir, 1e-9), 'direction ' + s.direction);
+    // Without a port, the compiler warns and omits.
+    const modelNoPort = {
+        version: 1,
+        parts: [
+            {id: 'beam2', part: '32316.dat', position: [0, 0, 0], rotation: I3},
+            {id: 'col', part: '37308.dat', position: [20, 0, 0], rotation: ROT_Y_180},
+        ],
+    };
+    const mech2 = compile(modelNoPort, catalog, {ground: false});
+    assert.ok(!mech2.sensors || mech2.sensors.length === 0, 'no sensor without port');
+    assert.ok(mech2.diagnostics.some(d => d.code === 'sensor-without-port'), 'warning emitted');
+});
+
+test('real L-beam 3x5 pinned to beam 7 at two holes -> one body', async () => {
+    const {readFileSync} = await import('node:fs');
+    const catalog = JSON.parse(readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', import.meta.url)));
+    const catMap = new Map(catalog.parts.map(p => [p.part, p]));
+    // Beam 7 at origin along Z, L-beam 3x5 overlapping its first two holes at 0 and 20, pins at those positions with Y axis
+    const model = {
+        version: 1,
+        parts: [
+            {id: 'beam7', part: '32524.dat', position: [0, 0, 0], rotation: I3},
+            {id: 'lbeam', part: '32526.dat', position: [0, 0, 0], rotation: I3},
+            {id: 'pin1', part: '2780.dat', position: [0, 0, 0], rotation: ROT_Z_90},
+            {id: 'pin2', part: '2780.dat', position: [0, 0, 20], rotation: ROT_Z_90},
+        ],
+    };
+    const mech = compile(model, catMap, {ground: false});
+    assert.equal(validateCompiledMechanism(mech).length, 0);
+    // Two friction pins at distinct holes lock the beams via non-collinear hinges, compiler merges via locked-hinges -> one body
+    assert.equal(mech.bodies.length, 1, `bodies ${JSON.stringify(mech.bodies.map(b=>b.parts))}`);
+    const body = mech.bodies[0];
+    assert.ok(body.parts.includes('beam7') && body.parts.includes('lbeam') && body.parts.includes('pin1') && body.parts.includes('pin2'));
+    // No hinge joints should remain between the two beams (they are rigidly locked), but there may be no joints at all since all is one island
+    // The two pins each create pinhole-pin connections, but with two pins the islands merge, so no hinge joints between beam7 and lbeam
+    // Check that there are no joints (or only locked-hinges warning)
+    // The diagnostics should contain locked-hinges warning for the two pins
+    // Actually with two friction pins at distance 20, the hinges between beam7-pin and lbeam-pin are collinear? No, they are parallel offset by 20, so they are non-collinear and should be detected as locked and merged.
+    // The resulting mechanism should have 1 body and 0 joints (since all is rigid), or with locked-hinges warning and no joints
+    // We just check bodies count and that diagnostics does not contain error, only maybe warning
+    assert.ok(!mech.diagnostics.some(d=>d.severity==='error'), `errors ${JSON.stringify(mech.diagnostics)}`);
+});
+
+// ---------------------------------------------------------------------------
+// Gear meshes need a common frame (gears.js). Two meshing gears only transmit
+// motion when both axles turn in the same part; a gear rigidly on the frame its
+// partner turns in locks the pair.
+
+const REAL_CATALOG = () => {
+    const parts = JSON.parse(readFileSyncTop(new URL('../overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', import.meta.url))).parts;
+    return new Map(parts.map(p => [p.part, p]));
+};
+
+test('gear-on-frame: a beam pinned to the motor OUTPUT that also carries the 8T locks the 24T it holds', () => {
+    // The model a review found in test/fixtures/bw-sim/gears (before 2026-10-17): the beam is
+    // pinned into the output's pin holes out2/out3, so beam + 8T + output turn as one body and
+    // the 24T's axle turns in that same body. The 8T cannot turn relative to the beam, so its
+    // teeth hold the 24T: nothing is transmitted, the whole train turns rigidly with the output.
+    const AX = [0, 1, 0, 1, 0, 0, 0, 0, -1];
+    const GR = [1, 0, 0, 0, 0, 1, 0, -1, 0];
+    const model = {version: 1, parts: [
+        {id: 'm', part: '54696p01.dat', position: [0, 0, 0], rotation: I3, port: 'A'},
+        {id: 'a8', part: '3705.dat', position: [0, -40, 0], rotation: AX},
+        {id: 'g8', part: '3647.dat', position: [0, -40, 0], rotation: GR},
+        {id: 'beam', part: '32524.dat', position: [0, -40, 0], rotation: I3},
+        {id: 'p1', part: '2780.dat', position: [0, -40, 20], rotation: AX},
+        {id: 'p2', part: '2780.dat', position: [0, -40, -20], rotation: AX},
+        {id: 'a24', part: '3705.dat', position: [0, -40, 40], rotation: AX},
+        {id: 'g24', part: '3648.dat', position: [0, -40, 40], rotation: GR},
+    ]};
+    const mech = compile(model, REAL_CATALOG(), {ground: false});
+    assert.equal(validateCompiledMechanism(mech).length, 0);
+    assert.deepEqual(mech.gears, [], 'no fictitious transmission');
+    const lock = mech.diagnostics.filter(d => d.code === 'gear-on-frame');
+    assert.equal(lock.length, 1);
+    assert.equal(lock[0].severity, 'warning');
+    assert.deepEqual(lock[0].parts.slice().sort(), ['g24', 'g8']);
+    assert.match(lock[0].message, /8-tooth gear \(g8\).*Technic beam 7 \(beam\).*24-tooth gear \(g24\).*cannot turn it/);
+    // Locked means welded: the 24T, its axle, the beam, the 8T and the output are one body,
+    // and the only hinge left is the motor's.
+    const body = findBodyWithPart(mech.bodies, 'g24');
+    for (const p of ['a24', 'beam', 'g8', 'a8']) assert.ok(body.parts.includes(p), `${p} welded to g24`);
+    assert.equal(mech.joints.length, 1);
+    assert.ok(mech.joints[0].motor);
+    assert.ok(!mech.diagnostics.some(d => d.code === 'gear-not-on-hinge'), 'the lock is reported once, as the lock');
+});
+
+test('common frame: the same 8T/24T with the beam pinned to the motor HOUSING couple at -1/3', () => {
+    // The motor output carries the 8T on a vertical axle; a beam pinned under the housing
+    // (u0/u1, the holes parallel to the output) holds the 24T's axle 40 LDU away.
+    const AX = [0, 1, 0, 1, 0, 0, 0, 0, -1]; // axle/pin local X -> LDraw Y
+    const GR = [1, 0, 0, 0, 0, 1, 0, -1, 0]; // gear local Z -> LDraw Y
+    const FLAT = [0, 0, 1, 0, 1, 0, -1, 0, 0]; // beam holes vertical, length along X
+    const model = {version: 1, parts: [
+        {id: 'm', part: '54696p01.dat', position: [0, 0, 0], rotation: I3, port: 'A'},
+        {id: 'a8', part: '4519.dat', position: [0, -60, 0], rotation: AX},
+        {id: 'g8', part: '3647.dat', position: [0, -60, 0], rotation: GR},
+        {id: 'beam', part: '32524.dat', position: [0, 40, 0], rotation: FLAT},
+        {id: 'p1', part: '2780.dat', position: [20, 30, 0], rotation: AX},
+        {id: 'p2', part: '2780.dat', position: [-20, 30, 0], rotation: AX},
+        {id: 'a24', part: '3707.dat', position: [40, -10, 0], rotation: AX},
+        {id: 'g24', part: '3648.dat', position: [40, -60, 0], rotation: GR},
+    ]};
+    const mech = compile(model, REAL_CATALOG(), {ground: false});
+    assert.equal(validateCompiledMechanism(mech).length, 0);
+    assert.deepEqual(mech.diagnostics, []);
+    assert.equal(mech.gears.length, 1);
+    const housing = mech.bodies.find(b => b.parts.includes('beam'));
+    assert.ok(housing.parts.includes('m'), 'beam pinned rigidly to the housing');
+    const motor = mech.joints.find(j => j.motor);
+    const driven = mech.joints.find(j => j.body2 === findBodyWithPart(mech.bodies, 'g24').id);
+    assert.equal(motor.body1, housing.id);
+    assert.equal(driven.body1, housing.id, '24T turns in the housing frame');
+    // Same-direction parallel hinge axes, external mesh: the 24T turns the other way at 8/24.
+    const sameDir = motor.axis.every((v, i) => Math.abs(v - driven.axis[i]) < 1e-9);
+    assert.ok(sameDir);
+    const g = mech.gears[0];
+    const expected = g.joint1 === motor.id ? -8 / 24 : -24 / 8;
+    assert.ok(Math.abs(g.ratio - expected) < 1e-9, `ratio ${g.ratio} vs ${expected}`);
+});
+
+test('gears whose axles turn in two unconnected beams do not couple (gear-frames-differ)', () => {
+    const catalog = makeCatalog();
+    const ROT_Y_90 = [0, 0, 1, 0, 1, 0, -1, 0, 0];
+    const model = {version: 1, parts: [
+        {id: 'beamZ', part: 'test-beam5.dat', position: [0, 0, 0], rotation: I3},
+        {id: 'axleZ', part: 'test-axle4.dat', position: [0, 0, 0], rotation: I3},
+        {id: 'bevel12', part: 'test-bevel12.dat', position: [0, 0, 0], rotation: I3},
+        {id: 'beamX', part: 'test-beam5.dat', position: [-15, 0, 25], rotation: ROT_Y_90},
+        {id: 'axleX', part: 'test-axle4.dat', position: [-15, 0, 25], rotation: ROT_Y_90},
+        {id: 'bevel20', part: 'test-bevel20.dat', position: [-15, 0, 25], rotation: ROT_Y_90},
+    ]};
+    const mech = compile(model, catalog, {ground: false});
+    assert.deepEqual(mech.gears, []);
+    const d = mech.diagnostics.find(x => x.code === 'gear-frames-differ');
+    assert.ok(d, JSON.stringify(mech.diagnostics));
+    assert.deepEqual(d.parts.slice().sort(), ['bevel12', 'bevel20']);
+});
+
+test('a gear turning on an axle fixed in the frame (gear = hinge body1) gets the hinge-signed ratio', () => {
+    // 24T with a round hole on the frame's fixed stub; 8T on an axle in the frame's hole 40 LDU away.
+    const catalog = makeCatalog();
+    const model = {version: 1, parts: [
+        {id: 'frame', part: 'test-stub-frame.dat', position: [0, 0, 0], rotation: I3},
+        {id: 'g24', part: 'test-gear24-round.dat', position: [0, 0, 0], rotation: I3},
+        {id: 'axle', part: 'test-axle4.dat', position: [-40, 0, 0], rotation: I3},
+        {id: 'g8', part: 'test-gear8.dat', position: [-40, 0, 0], rotation: I3},
+    ]};
+    const mech = compile(model, catalog, {ground: false});
+    assert.equal(validateCompiledMechanism(mech).length, 0);
+    const frame = findBodyWithPart(mech.bodies, 'frame').id;
+    const j24 = mech.joints.find(j => j.body1 === findBodyWithPart(mech.bodies, 'g24').id);
+    const j8 = mech.joints.find(j => j.body2 === findBodyWithPart(mech.bodies, 'g8').id);
+    assert.ok(j24 && j8 && j24.body2 === frame && j8.body1 === frame);
+    assert.deepEqual(j24.axis, j8.axis);
+    // Relative to the frame the 24T turns at -1/3 of the 8T. j8 reads the 8T's rate; j24 reads
+    // the FRAME relative to the 24T, i.e. minus the 24T's rate: +1/3 of j8.
+    assert.equal(mech.gears.length, 1);
+    const g = mech.gears[0];
+    const expected = g.joint1 === j8.id ? 1 / 3 : 3;
+    assert.ok(Math.abs(g.ratio - expected) < 1e-9, `ratio ${g.ratio} vs ${expected}`);
+});
+
+test('a 3L friction pin through two stacked beams makes them one body', async () => {
+    const {readFileSync} = await import('node:fs');
+    const catalog = new Map(JSON.parse(readFileSync('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', 'utf8')).parts.map(p => [p.part, p]));
+    // Beam 7 holes run along y (20 deep); b2 sits on b1. The pin's x axis is turned onto world y and
+    // it spans y -20..40: through b1's hole (y -10..10) and b2's (10..30).
+    const ROT_Z_90 = [0, -1, 0, 1, 0, 0, 0, 0, 1];
+    const model = {version: 1, parts: [
+        {id: 'b1', part: '32524.dat', position: [0, 0, 0], rotation: I3.slice()},
+        {id: 'b2', part: '32524.dat', position: [0, 20, 0], rotation: I3.slice()},
+        {id: 'pin', part: '6558.dat', position: [0, 10, 0], rotation: ROT_Z_90.slice()}
+    ]};
+    const mech = compile(model, catalog, {ground: false});
+    assert.equal(validateCompiledMechanism(mech).length, 0);
+    assert.equal(mech.bodies.length, 1, JSON.stringify(mech.bodies.map(b => b.parts)));
+    assert.deepEqual(mech.bodies[0].parts.slice().sort(), ['b1', 'b2', 'pin']);
+});
+
+test('an axle pin (no friction) turns in a pin hole and is held fast in an axle hole', async () => {
+    const {readFileSync} = await import('node:fs');
+    const catalog = new Map(JSON.parse(readFileSync('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', 'utf8')).parts.map(p => [p.part, p]));
+    // 60483: axle hole at z 0, pin hole at z 20, both along y. 3749: pin half at local x -20..0,
+    // axle half at 0..20; its x axis turned onto world y.
+    const ROT_Z_90 = [0, -1, 0, 1, 0, 0, 0, 0, 1];
+    const inPinHole = {version: 1, parts: [
+        {id: 'beam', part: '60483.dat', position: [0, 0, 0], rotation: I3.slice()},
+        {id: 'axlePin', part: '3749.dat', position: [0, 10, 20], rotation: ROT_Z_90.slice()}
+    ]};
+    const turning = compile(inPinHole, catalog, {ground: false});
+    assert.equal(validateCompiledMechanism(turning).length, 0);
+    assert.equal(turning.bodies.length, 2);
+    const hinges = turning.joints.filter(j => j.type === 'hinge');
+    assert.equal(hinges.length, 1);
+    assert.ok(Math.abs(Math.abs(hinges[0].axis[1]) - 1) < 1e-9, `hinge along y: ${hinges[0].axis}`);
+    // Turned round, its axle half in the axle hole: one rigid body.
+    const ROT_Z_M90 = [0, 1, 0, -1, 0, 0, 0, 0, 1];
+    const inAxleHole = {version: 1, parts: [
+        {id: 'beam', part: '60483.dat', position: [0, 0, 0], rotation: I3.slice()},
+        {id: 'axlePin', part: '3749.dat', position: [0, 10, 0], rotation: ROT_Z_M90.slice()}
+    ]};
+    const fixed = compile(inAxleHole, catalog, {ground: false});
+    assert.equal(validateCompiledMechanism(fixed).length, 0);
+    assert.equal(fixed.bodies.length, 1, JSON.stringify(fixed.bodies.map(b => b.parts)));
+});
+
+test('a motor joint keeps its device id: the large angular motor is not reported as the medium one', () => {
+    // The S1 driving base with its two medium motors swapped for large ones (54675, deviceId 49 in parts.json).
+    const base = JSON.parse(readFileSyncTop('test/fixtures/bw-sim/driving-base.json', 'utf8'));
+    const parts = JSON.parse(readFileSyncTop('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', 'utf8')).parts;
+    const REAL = new Map(parts.map(p => [p.part, p]));
+    // parts.json is PartMeta v2: a motor names its device, the device the id the hub reports.
+    const deviceOf = file => deviceModels.get(REAL.get(file).device).ids.lpf2;
+    const medium = compile(base, REAL);
+    const motors = medium.joints.filter(j => j.motor);
+    assert.equal(motors.length, 2);
+    for (const j of motors) assert.equal(j.motor.deviceId, deviceOf('54696p01.dat'), `${j.id} medium`);
+    const large = {...base, parts: base.parts.map(p => (p.part === '54696p01.dat' ? {...p, part: '54675.dat'} : p))};
+    const compiled = compile(large, REAL);
+    const largeMotors = compiled.joints.filter(j => j.motor);
+    assert.ok(largeMotors.length >= 1, 'the large motors still drive');
+    for (const j of largeMotors) assert.equal(j.motor.deviceId, deviceOf('54675.dat'), `${j.id} large`);
 });

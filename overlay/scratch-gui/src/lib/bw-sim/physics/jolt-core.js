@@ -3,20 +3,24 @@
 //
 // Jolt physics core for Sim Lab (overlay/scratch-gui/src/lib/bw-sim/physics/).
 //
-// Runs a CompiledMechanism in Jolt under node --test. No worker, no DOM,
-// no three.js. The worker wrapper will call this module.
+// Runs a CompiledMechanism (v2; a v1 one is lifted by contracts.js
+// upgradeMechanismV1, so every hand-built v1 mechanism runs unchanged) in Jolt
+// under node --test. It reads joints, `actuators` (a motorised hinge's torque
+// and speed limits) and `couplings`, never the v1 view (`joint.motor`,
+// `gears`). No worker, no DOM, no three.js. In the app it runs inside the physics worker
+// (../physics-worker.js, ../sim-worker-protocol.js), or on the main thread where
+// there is no worker (sim-session.js).
 //
 // Bodies: one Jolt body per mechanism body, shape = compound of colliders
 // (box / cylinder local +y / sphere), mass overridden to massKg.
 // Joints: hinge / slider at point/axis (world at t=0), body2:'world' fixed.
-// Gears: contract ratio ω(joint2)=ratio·ω(joint1) mapped to Jolt
-// GearConstraint ratio via r = -1/ratio (see GearConstraint.h).
+// Gears: contract ratio ω(joint2)=ratio·ω(joint1) mapped to a Jolt
+// GearConstraint between the two gear bodies, r = -1/ratio (see GearConstraint.h).
 // Collisions v1: dynamic-dynamic disabled, dynamic-static enabled.
 // Motors: velocity / position (as velocity controller for unwrapped angle)
 // / coast / brake / hold, torque limited to ±maxTorqueNm.
 
-import { validateCompiledMechanism } from '../contracts.js';
-import initJolt from 'jolt-physics/wasm-compat';
+import { validateCompiledMechanism, upgradeMechanismV1 } from '../contracts.js';
 
 let joltPromise = null;
 
@@ -24,8 +28,18 @@ let joltPromise = null;
 export const LEGO_SPECULATIVE_CONTACT_M = 0.002;
 export const LEGO_PENETRATION_SLOP_M = 0.0002;
 
+/**
+ * Jolt's WebAssembly (3 MB of JavaScript) is imported here, on first use, and not at the
+ * top of this module: the Sim Lab's main thread imports createPhysicsCore through
+ * sim-session.js, and when the physics runs in the worker (physics-worker.js) the main
+ * thread never needs Jolt at all, so its chunk must not carry it
+ * (scripts/verify-boot-payload.mjs, "Jolt physics").
+ */
 export const loadJolt = async () => {
-    if (!joltPromise) joltPromise = initJolt();
+    if (!joltPromise) {
+        joltPromise = import(/* webpackChunkName: "bw-sim-jolt" */ 'jolt-physics/wasm-compat')
+            .then(m => (m.default || m)());
+    }
     return joltPromise;
 };
 
@@ -55,14 +69,39 @@ const perpForAxis = axis => {
     return [px / len, py / len, pz / len];
 };
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+/**
+ * Box convex radius (metres), as for cylinders: a quarter of the thinnest half
+ * extent, at most 0.5 mm. Jolt keeps the box's outer extents and rounds its
+ * edges. With radius 0 (until 2026-10-17) box-vs-box contacts were found only
+ * once the boxes were deep inside each other (measured: a liftarm swinging into
+ * an obstacle passed 45° through it before anything pushed back).
+ */
+const boxConvexRadius = halfExtents => Math.min(0.0005, 0.25 * Math.min(...halfExtents));
 
-export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
-    const problems = validateCompiledMechanism(mechanism);
+/**
+ * Solver velocity iterations for an island holding a gear (Jolt's default is
+ * 10, kept for everything else). A load on a gear train reaches the motor
+ * through motor → gear → contact; with 10 iterations that chain did not
+ * converge and an arm on a driven 24T swung straight through a static obstacle
+ * (measured); from 15 up it is stopped, 30 stops it within 2° of first touch.
+ */
+const GEAR_VELOCITY_STEPS = 30;
+
+export const createPhysicsCore = (J, compiled, { stepHz = 120 } = {}) => {
+    const problems = validateCompiledMechanism(compiled);
     if (problems.length) throw new Error(problems.join('\n'));
+    const mechanism = upgradeMechanismV1(compiled);
+    /** joint id -> its actuator (CompiledMechanism v2): the motorised hinges */
+    const actuatorOf = new Map(mechanism.actuators.map(a => [a.joint, a]));
     const dtFixed = 1 / stepHz;
     const LAYER_DYNAMIC = 0;
     const LAYER_STATIC = 1;
-    const NUM_OBJECT_LAYERS = 2;
+    // A static body made of model parts is the machine's own fixed frame (a
+    // gearbox clamped to the bench): like two moving parts of one machine, it
+    // does not collide with the machine's moving parts (an axle turns inside the
+    // frame's hole). The ground and obstacles carry no parts and stay LAYER_STATIC.
+    const LAYER_FRAME = 2;
+    const NUM_OBJECT_LAYERS = 3;
 
     const joltSettings = new J.JoltSettings();
     const maxBodies = Math.max(32, mechanism.bodies.length + 16);
@@ -74,10 +113,14 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
     objectLayerPairFilter.DisableCollision(LAYER_DYNAMIC, LAYER_DYNAMIC);
     objectLayerPairFilter.EnableCollision(LAYER_DYNAMIC, LAYER_STATIC);
     objectLayerPairFilter.DisableCollision(LAYER_STATIC, LAYER_STATIC);
+    objectLayerPairFilter.DisableCollision(LAYER_FRAME, LAYER_DYNAMIC);
+    objectLayerPairFilter.DisableCollision(LAYER_FRAME, LAYER_STATIC);
+    objectLayerPairFilter.DisableCollision(LAYER_FRAME, LAYER_FRAME);
 
     const bpInterface = new J.BroadPhaseLayerInterfaceTable(NUM_OBJECT_LAYERS, 2);
     bpInterface.MapObjectToBroadPhaseLayer(LAYER_DYNAMIC, new J.BroadPhaseLayer(0));
     bpInterface.MapObjectToBroadPhaseLayer(LAYER_STATIC, new J.BroadPhaseLayer(1));
+    bpInterface.MapObjectToBroadPhaseLayer(LAYER_FRAME, new J.BroadPhaseLayer(1));
 
     const ovbFilter = new J.ObjectVsBroadPhaseLayerFilterTable(bpInterface, 2, objectLayerPairFilter, NUM_OBJECT_LAYERS);
 
@@ -125,6 +168,9 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
     let destroyed = false;
     let timeSteps = 0;
     let acc = 0;
+    /** checkpoint()/rollback(): Jolt's recorded state and this core's own. */
+    let recorder = null;
+    let saved = null;
 
     const ensureAlive = () => { if (destroyed) throw new Error('core destroyed'); };
 
@@ -134,7 +180,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
         if (b.colliders.length === 1 && !b.colliders[0].position && !b.colliders[0].rotation) {
             const col = b.colliders[0];
             if (col.shape === 'box') {
-                shape = new J.BoxShape(new J.Vec3(...col.halfExtents), 0.0);
+                shape = new J.BoxShape(new J.Vec3(...col.halfExtents), boxConvexRadius(col.halfExtents));
             } else if (col.shape === 'cylinder') {
                 const convexRadius = Math.min(0.0005, 0.25 * Math.min(col.halfHeight, col.radius));
                 shape = new J.CylinderShape(col.halfHeight, col.radius, convexRadius);
@@ -148,7 +194,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
                 const rot = col.rotation ? new J.Quat(...col.rotation) : new J.Quat(0, 0, 0, 1);
                 let shapeSettings = null;
                 if (col.shape === 'box') {
-                    shapeSettings = new J.BoxShapeSettings(new J.Vec3(...col.halfExtents), 0.0);
+                    shapeSettings = new J.BoxShapeSettings(new J.Vec3(...col.halfExtents), boxConvexRadius(col.halfExtents));
                 } else if (col.shape === 'cylinder') {
                     const convexRadius = Math.min(0.0005, 0.25 * Math.min(col.halfHeight, col.radius));
                     shapeSettings = new J.CylinderShapeSettings(col.halfHeight, col.radius, convexRadius);
@@ -174,7 +220,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
         const posR = new J.RVec3(...b.position);
         const rotQ = new J.Quat(...b.rotation);
         const motionType = b.motion === 'static' ? J.EMotionType_Static : J.EMotionType_Dynamic;
-        const layer = motionType === J.EMotionType_Static ? LAYER_STATIC : LAYER_DYNAMIC;
+        const layer = motionType !== J.EMotionType_Static ? LAYER_DYNAMIC : (b.parts.length > 0 ? LAYER_FRAME : LAYER_STATIC);
         const bcs = new J.BodyCreationSettings(shape, posR, rotQ, motionType, layer);
         J.destroy(posR);
         J.destroy(rotQ);
@@ -224,9 +270,10 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             const perp = perpForAxis(j.axis);
             hs.mNormalAxis1 = new J.Vec3(...perp);
             hs.mNormalAxis2 = new J.Vec3(...perp);
-            if (j.motor) {
-                hs.mMotorSettings.mMinTorqueLimit = -j.motor.maxTorqueNm;
-                hs.mMotorSettings.mMaxTorqueLimit = j.motor.maxTorqueNm;
+            const actuator = actuatorOf.get(j.id);
+            if (actuator) {
+                hs.mMotorSettings.mMinTorqueLimit = -actuator.maxTorqueNm;
+                hs.mMotorSettings.mMaxTorqueLimit = actuator.maxTorqueNm;
             } else {
                 hs.mMotorSettings.mMinTorqueLimit = -1e6;
                 hs.mMotorSettings.mMaxTorqueLimit = 1e6;
@@ -255,7 +302,7 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             };
             const localAxis1 = toLocal(j.body1, j.axis);
             const localAxis2 = toLocal(j.body2, j.axis);
-            const isMotor = !!j.motor;
+            const isMotor = !!actuator;
             hingeMap.set(j.id, {
                 hinge, constraint, bodyA, bodyB,
                 bodyAID: getBodyIDForId(j.body1),
@@ -263,8 +310,8 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
                 axis: [...j.axis], point: [...j.point], perp: [...perp],
                 localAxis1, localAxis2,
                 rawPrev: 0, unwrapped: 0, velocity: 0,
-                maxTorque: j.motor ? j.motor.maxTorqueNm : 10,
-                maxSpeed: j.motor ? j.motor.maxSpeedRadPerSec : 30,
+                maxTorque: actuator ? actuator.maxTorqueNm : 10,
+                maxSpeed: actuator ? actuator.maxSpeedRadPerSec : 30,
                 mode: 'coast', target: 0, targetSpeed: null, kp: 10, isMotor,
             });
             hinge.SetMotorState(J.EMotorState_Off);
@@ -299,16 +346,57 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
         } else throw new Error(`unknown joint type ${j.type}`);
     }
 
+    // Gears are Jolt GearConstraints between the two GEAR bodies, so the mesh
+    // works both ways: a load on the driven gear (an obstacle, a heavy arm) comes
+    // back through the teeth to the driving motor and can stall it. (Until
+    // 2026-10-17 a gear was a velocity servo on the driven hinge with an
+    // unlimited torque: the motor never felt its load, and which hinge drove
+    // which depended on joint id order.)
+    //
+    // The two hinges of a mesh share the frame body that holds both axles
+    // (mech/gears.js only couples such pairs); the gear body of each hinge is
+    // its other body. A gear on the hinge's body2 turns by +ω about the hinge
+    // axis, one on body1 by −ω, so Jolt gets the signed axes a = s·axis and
+    // ω1·a1 + r·ω2·a2 = 0 (GearConstraintPart) gives ω(joint2) = −ω(joint1)/r:
+    // r = −1/ratio. Jolt 1.1.0's gear constraint diverges (NaN within a few
+    // steps, measured) for a negative r or r < 1 (e.g. ratio −3 or +1/3), so the
+    // pair is ordered to make |ratio| ≤ 1 and a positive ratio is expressed by
+    // flipping axis 2: r = 1/|ratio| ≥ 1 always. Jolt constrains the gear bodies' WORLD rotation rates: exact
+    // while the frame does not turn about the gear axes (a gearbox clamped or
+    // standing still); on a frame that itself turns about them the coupling is
+    // off by that frame rate (documented in docs/SIM-LAB.md).
     const gearInfos = [];
-    for (const g of mechanism.gears) {
-        if (g.type === 'gear') {
+    for (const g of mechanism.couplings) {
+        if (g.kind === 'gear') {
             const j1 = jointMap.get(g.joint1);
             const j2 = jointMap.get(g.joint2);
             if (!j1 || !j2) throw new Error(`gear ${g.id} joint not found`);
+            if (j1.type !== 'hinge' || j2.type !== 'hinge') throw new Error(`gear ${g.id} must couple two hinges`);
+            const shared = [j1.body1, j1.body2].find(b => b === j2.body1 || b === j2.body2);
+            const gearSide = j => {
+                // No shared frame (a hand-built mechanism): the gear is the hinge's body2.
+                if (shared === undefined || j.body1 === j.body2) return { body: j.body2, sign: 1 };
+                return j.body2 === shared ? { body: j.body1, sign: -1 } : { body: j.body2, sign: 1 };
+            };
+            let A = { j: j1, side: gearSide(j1) };
+            let B = { j: j2, side: gearSide(j2) };
+            let ratio = g.ratio;
+            if (Math.abs(ratio) > 1) { [A, B] = [B, A]; ratio = 1 / ratio; }
+            const gs = new J.GearConstraintSettings();
+            gs.mSpace = J.EConstraintSpace_WorldSpace;
+            const flip = ratio > 0 ? -1 : 1;
+            gs.mHingeAxis1 = new J.Vec3(...A.j.axis.map(v => v * A.side.sign));
+            gs.mHingeAxis2 = new J.Vec3(...B.j.axis.map(v => v * B.side.sign * flip));
+            gs.mRatio = 1 / Math.abs(ratio);
+            gs.mNumVelocityStepsOverride = GEAR_VELOCITY_STEPS;
+            const constraint = gs.Create(getBodyForId(A.side.body), getBodyForId(B.side.body));
+            physicsSystem.AddConstraint(constraint);
+            allConstraints.push(constraint);
+            J.destroy(gs);
             gearInfos.push({ type: 'gear', id: g.id, joint1: g.joint1, joint2: g.joint2, ratio: g.ratio });
-        } else if (g.type === 'rackAndPinion') {
-            gearInfos.push(g);
-        }
+        } else if (g.kind === 'rackAndPinion') {
+            gearInfos.push(g); // accepted, not built yet (R3)
+        } else throw new Error(`no physics builder for coupling kind '${g.kind}' (${g.id})`);
     }
 
     try { physicsSystem.OptimizeBroadPhase(); } catch (_) {}
@@ -372,19 +460,6 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
                     entry.hinge.SetTargetAngularVelocity(desired);
                     if (entry.hinge.GetMotorState() !== J.EMotorState_Velocity) entry.hinge.SetMotorState(J.EMotorState_Velocity);
                 }
-                for (const g of gearInfos) {
-                    if (g.type === 'gear') {
-                        const driving = hingeMap.get(g.joint1);
-                        const driven = hingeMap.get(g.joint2);
-                        if (!driving || !driven) continue;
-                        const desired = g.ratio * driving.velocity;
-                        const lim = driven.maxSpeed || 30;
-                        const clamped = clamp(desired, -lim, lim);
-                        // console.log(`gear ${g.id} driving ${driving.velocity.toFixed(3)} desired ${desired.toFixed(3)} clamped ${clamped.toFixed(3)}`);
-                        driven.hinge.SetTargetAngularVelocity(clamped);
-                        if (driven.hinge.GetMotorState() !== J.EMotorState_Velocity) driven.hinge.SetMotorState(J.EMotorState_Velocity);
-                    }
-                }
                 joltInterface.Step(dtFixed, 1);
                 timeSteps += 1;
                 acc -= dtFixed;
@@ -443,6 +518,20 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             const res = { position: [pos.GetX(), pos.GetY(), pos.GetZ()], rotation: [rot.GetX(), rot.GetY(), rot.GetZ(), rot.GetW()] };
             return res;
         },
+        bodyLinearVelocity(bodyId) {
+            ensureAlive();
+            const e = bodyMap.get(bodyId);
+            if (!e) throw new Error(`unknown body ${bodyId}`);
+            const v = bodyInterface.GetLinearVelocity(e.bodyID);
+            return [v.GetX(), v.GetY(), v.GetZ()];
+        },
+        bodyAngularVelocity(bodyId) {
+            ensureAlive();
+            const e = bodyMap.get(bodyId);
+            if (!e) throw new Error(`unknown body ${bodyId}`);
+            const v = bodyInterface.GetAngularVelocity(e.bodyID);
+            return [v.GetX(), v.GetY(), v.GetZ()];
+        },
         snapshot() {
             ensureAlive();
             const t = timeSteps * dtFixed;
@@ -464,9 +553,154 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             }
             return { t, bodyIds: [...bodyOrder], jointIds: [...jointOrder], bodies, joints };
         },
+        castRay(origin, direction, maxDistance, { ignoreBodies = [] } = {}) {
+            ensureAlive();
+            if (!Array.isArray(origin) || origin.length !== 3) throw new Error('origin must be Vec3');
+            if (!Array.isArray(direction) || direction.length !== 3) throw new Error('direction must be Vec3');
+            if (typeof maxDistance !== 'number' || !Number.isFinite(maxDistance) || maxDistance <= 0) throw new Error('maxDistance must be positive');
+            const len = Math.hypot(...direction);
+            if (len < 1e-9) throw new Error('direction must be non-zero');
+            const dir = direction.map(v => v / len);
+            const ray = new J.RRayCast();
+            const originVec = new J.RVec3(...origin);
+            const dirVec = new J.Vec3(...dir.map(v => v * maxDistance));
+            ray.mOrigin = originVec;
+            ray.mDirection = dirVec;
+            const raySettings = new J.RayCastSettings();
+            const collector = new J.CastRayClosestHitCollisionCollector();
+            // Ray queries must hit both static and dynamic bodies. Jolt's layer
+            // filters are configured for collisions (dynamic-static only), so a
+            // naive DefaultBroadPhaseLayerFilter/DefaultObjectLayerFilter with
+            // either layer as the query's pretend object layer hits only one
+            // side. Use permissive filters that pass all layers.
+            const permissiveOVB = new J.ObjectVsBroadPhaseLayerFilterJS();
+            permissiveOVB.ShouldCollide = () => true;
+            const bpFilter = new J.DefaultBroadPhaseLayerFilter(permissiveOVB, 0);
+            const objectFilter = new J.ObjectLayerFilterJS();
+            objectFilter.ShouldCollide = () => true;
+            let bodyFilter = new J.BodyFilter();
+            if (ignoreBodies.length) {
+                const ignoreFilter = new J.IgnoreMultipleBodiesFilter();
+                for (const id of ignoreBodies) {
+                    const e = bodyMap.get(id);
+                    if (e) ignoreFilter.IgnoreBody(e.bodyID);
+                }
+                bodyFilter = ignoreFilter;
+            }
+            const shapeFilter = new J.ShapeFilter();
+            const query = physicsSystem.GetNarrowPhaseQuery();
+            query.CastRay(ray, raySettings, collector, bpFilter, objectFilter, bodyFilter, shapeFilter);
+            const hadHit = collector.HadHit();
+            let result = null;
+            if (hadHit) {
+                const hit = collector.mHit;
+                const fraction = hit.mFraction;
+                const distance = fraction * maxDistance;
+                const bodyID = hit.mBodyID;
+                // Find bodyId string from bodyMap
+                let hitBodyId = null;
+                for (const [id, entry] of bodyMap) {
+                    if (entry.bodyID.GetIndex() === bodyID.GetIndex()) { hitBodyId = id; break; }
+                }
+                // If not found, try to get from allBodyIDs
+                if (!hitBodyId) {
+                    for (const bid of allBodyIDs) {
+                        if (bid.GetIndex() === bodyID.GetIndex()) {
+                            for (const [id, entry] of bodyMap) if (entry.bodyID === bid) { hitBodyId = id; break; }
+                            break;
+                        }
+                    }
+                }
+                const point = [origin[0] + dir[0] * distance, origin[1] + dir[1] * distance, origin[2] + dir[2] * distance];
+                // Get normal at hit point — GetSurfaceNormal wants the hit
+                // point in the shape's local frame, not world.
+                let normal = [0, 1, 0];
+                try {
+                    const bodyLock = physicsSystem.GetBodyLockInterfaceNoLock();
+                    const body = bodyLock.TryGetBody(bodyID);
+                    if (body) {
+                        const shape = body.GetShape();
+                        const subShapeID = hit.mSubShapeID2;
+                        // Inverse body rotation: conjugate of body quat, then
+                        // local = invRot * (world - bodyPos).
+                        const bPos = body.GetPosition();
+                        const bRot = body.GetRotation();
+                        const bx = bRot.GetX(), by = bRot.GetY(), bz = bRot.GetZ(), bw = bRot.GetW();
+                        const dx = point[0] - bPos.GetX();
+                        const dy = point[1] - bPos.GetY();
+                        const dz = point[2] - bPos.GetZ();
+                        // invQ = (-x,-y,-z,w)
+                        const qx = -bx, qy = -by, qz = -bz, qw = bw;
+                        const ix = qy * dz - qz * dy;
+                        const iy = qz * dx - qx * dz;
+                        const iz = qx * dy - qy * dx;
+                        const ix2 = qy * iz - qz * iy;
+                        const iy2 = qz * ix - qx * iz;
+                        const iz2 = qx * iy - qy * ix;
+                        const lx = dx + 2 * (qw * ix + ix2);
+                        const ly = dy + 2 * (qw * iy + iy2);
+                        const lz = dz + 2 * (qw * iz + iz2);
+                        const localHit = new J.Vec3(lx, ly, lz);
+                        const nLocal = shape.GetSurfaceNormal(subShapeID, localHit);
+                        let nx = nLocal.GetX(), ny = nLocal.GetY(), nz = nLocal.GetZ();
+                        J.destroy(localHit); J.destroy(nLocal);
+                        // Local normal → world: rotate by body quat (no translation).
+                        const cx = by * nz - bz * ny;
+                        const cy = bz * nx - bx * nz;
+                        const cz = bx * ny - by * nx;
+                        const jx = by * cz - bz * cy + bw * cx;
+                        const jy = bz * cx - bx * cz + bw * cy;
+                        const jz = bx * cy - by * cx + bw * cz;
+                        nx = nx + 2 * jx; ny = ny + 2 * jy; nz = nz + 2 * jz;
+                        const nLen = Math.hypot(nx, ny, nz);
+                        if (nLen > 1e-9) normal = [nx / nLen, ny / nLen, nz / nLen];
+                        else normal = [nx, ny, nz];
+                    }
+                } catch (_) {}
+                result = { distance, bodyId: hitBodyId, point, normal };
+            }
+            J.destroy(ray);
+            J.destroy(raySettings);
+            J.destroy(collector);
+            J.destroy(bpFilter);
+            J.destroy(permissiveOVB);
+            J.destroy(objectFilter);
+            J.destroy(bodyFilter);
+            J.destroy(shapeFilter);
+            return result;
+        },
+        /**
+         * Remember the whole simulation state (Jolt's bodies, contacts and constraints, and
+         * this core's own clock, unwrapped hinge angles and motor commands). rollback()
+         * returns to it, and stepping again with the same commands gives bit-identical
+         * results (test/bw-sim-physics-worker-session.test.mjs). The physics worker
+         * checkpoints before every batch so a batch computed from motor commands that
+         * changed while it was in flight can be redone (sim-worker-protocol.js, beside physics/).
+         */
+        checkpoint() {
+            ensureAlive();
+            if (!recorder) recorder = new J.StateRecorderImpl();
+            recorder.Clear();
+            physicsSystem.SaveState(recorder, J.EStateRecorderState_All);
+            const hinges = [];
+            for (const [, e] of hingeMap) hinges.push([e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed]);
+            saved = { acc, timeSteps, hinges };
+        },
+        rollback() {
+            ensureAlive();
+            if (!saved) throw new Error('rollback without a checkpoint');
+            recorder.Rewind();
+            if (!physicsSystem.RestoreState(recorder)) throw new Error('Jolt could not restore the checkpoint');
+            ({ acc, timeSteps } = saved);
+            let i = 0;
+            for (const [, e] of hingeMap) {
+                [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed] = saved.hinges[i++];
+            }
+        },
         destroy() {
             if (destroyed) return;
             destroyed = true;
+            if (recorder) { J.destroy(recorder); recorder = null; }
             for (const c of allConstraints) physicsSystem.RemoveConstraint(c);
             for (const bid of allBodyIDs) { bodyInterface.RemoveBody(bid); bodyInterface.DestroyBody(bid); }
             J.destroy(joltInterface);
