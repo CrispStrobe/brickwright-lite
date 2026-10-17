@@ -40,5 +40,9 @@ test('a chunk without a default export fails with a named, stale-build error', (
     assert.match(source, /"pseudocode-importer" chunk loaded without a default/);
     assert.match(source, /componentDidCatch \(error, info\)/);
     assert.match(source, /Reload page/);
+    // A plain location.reload() can get the same stale chunk back from the
+    // service worker; the button must clear caches and the worker first.
+    assert.match(source, /handleReload = \(\) => hardReload\(\);/);
+    assert.match(source, /import \{hardReload\} from '\.\.\/lib\/hard-reload\.js';/);
     assert.match(source, /Retry code editor/);
 });
