@@ -5885,3 +5885,12 @@ Existing component receipts remain bounded; physical device acceptance,
 release versions/tag, upload, both TestFlight groups and Beta App Review stay
 separate prerequisites. No new mobile or release event is performed by this
 documentation-only ownership claim.
+
+Implementation candidate on `lane/ios-workflow-resource-preparation-20261017`:
+the three mobile iOS build blocks invoke the existing preparation immediately
+after CLI initialization. Focused controls execute each actual block with
+authored build/signing command shims, require per-job ordering, stop on helper
+failure, and detect removed, commented or moved calls. All 19 focused workflow
+and existing preparation controls pass. The preparation implementation and
+all other workflow bytes are preserved. This is source wiring evidence only;
+final combined unsigned app and signed IPA qualification remains pending.
