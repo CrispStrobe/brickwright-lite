@@ -249,7 +249,7 @@ before a profile is written (§8 D6, D7).
 | **Boost Move Hub** (17101, 2017) | A, B internal motors (with encoders), C, D external; internal tilt | LPF2/LWP3 | internal motor (id 39), external interactive motor (id 38, 1° encoder), colour & distance (37), tilt (40) |
 | **Powered Up City hub** (88009) / **Technic hub / Control+** (88012) | 2 ports A, B / 4 ports A–D + internal IMU | LPF2/LWP3 | train motor (2), L (46), XL (47) Control+ motors with encoders; Technic medium/large angular (75/76); lights (8); colour & distance (37) |
 | **SPIKE Essential** (45609 small hub) | 2 ports A, B; internal IMU, RGB light | LPF2 + SPIKE 3 firmware | small angular motor (65, ~660 °/s, 1°), colour (61), 3×3 light matrix (64) |
-| **SPIKE Prime** (45601, 2019) / **Robot Inventor** (51515, 2020; same electronics) | 6 ports A–F; internal IMU, 5×5 matrix, speaker, buttons | LPF2, absolute encoders on angular motors | medium angular (48; RI uses the dark version 75), large angular (49), small (65); colour (61), distance (62), force (63) — `parts.json` has 48 at 0.18 N·m / 1110 °/s and 49 at 0.38 N·m / 1050 °/s |
+| **SPIKE Prime** (45601, 2019) / **Robot Inventor** (51515, 2020; same electronics) | 6 ports A–F; internal IMU, 5×5 matrix, speaker, buttons | LPF2, absolute encoders on angular motors | medium angular (48; RI uses the dark version 75), large angular (49), small (65); colour (61), distance (62), force (63) — `devices/catalog.js` has 48 at 0.104 N·m / 176 rpm and 49 at 0.264 N·m / 168 rpm at the hub's 7.2 V (Philo's measurements, D6; R2 had 0.18 / 0.38 N·m), controller limits 1110 / 1050 °/s |
 
 ### 2.2 In the repo
 
@@ -1435,7 +1435,10 @@ for the parts and kinds that exist).
   re-derived and named in the commit, never silently loosened.
 - **D7 → the XY plotter on SPIKE first (R10), and later the 1990 set 8094 (Control Center)
   plotter** with the Technic Control interface (R14).
-- D1, D3, D6: open (not yet needed).
+- **D6 → Philo's LEGO motor comparison** (https://philohome.com/motors/motorcomp.htm) is the
+  source for motor numbers; LEGO's sheets and Pybricks' identified models are kept as cross-checks.
+  See "D6 as built".
+- D1, D3: open (not yet needed).
 
 ### D5 as built (2026-10-17, `lane/simlab-dc-20261017`)
 
@@ -1458,7 +1461,7 @@ for the parts and kinds that exist).
   The rotor's reflected inertia J is added about the axis to both moving bodies of the hinge
   (`setRotorInertia`; exact unless both turn together about the axis). As a term in the motor
   constraint instead, the gear constraint could not hold a light 24T against a wall (measured).
-- **Numbers** (the v2 device catalogue `devices/catalog.js`, each field with `sources`;
+- **Numbers** (superseded by "D6 as built" below; the v2 device catalogue `devices/catalog.js`, each field with `sources`;
   `devices/dc-motors.js` resolves an actuator's DC model): ω0 at 7.2 V and the 360-count encoder
   from LEGO's fact sheets (medium 185 rpm, large 175 rpm; the 7.2 V test supply is stated on the
   medium sheet and assumed for the large); τs medium 18 N·cm (LEGO); gearbox friction
@@ -1471,3 +1474,52 @@ for the parts and kinds that exist).
   rotationally (the ideal servo hid it; with real torques the castor ball's spin drove a braked
   base). `jolt-core.js fixSmallInertia` restores the shape's inertia; gear bodies are floored
   at 3e-5 kg·m² and gear islands get 10 position iterations (solver conditioning, measured).
+
+### D6 as built (2026-10-17, `lane/simlab-motors-20261017`)
+
+- **Source.** Philo's page returns HTTP 403 to tools; it was read from the Internet Archive snapshot
+  `web.archive.org/web/20260918072225/…/motorcomp.htm` (SHA-1 digest `MCQCRRXD…`, the same
+  content in every 2026 snapshot). Every value is cited `philohome-motorcomp@2026-09-18`; only
+  measured numbers are recorded (`DeviceModel.measured.philo`), none of the page's prose.
+- **Model** (`devices/catalog.js`): `i = (u − k_e·ω)/R`, `τ = k_t·(i − i0)` at the output, so
+  `τs(V) = k_t·(V/R − i0)`, `ω0(V) = (V − R·i0)/k_e`, slope `k_t·k_e/R` independent of V.
+  `fitDcModel` takes R from the 9 V stall current, k_t from stall torque/(stall − no-load
+  current), k_e from the 9 V no-load point, τf = k_t·i0. `dcLineAt(motor, V)` gives the line at
+  any supply; `physics/actuators.js` drives `duty·τs(V_port)` with damping `k_t·k_e/R` (D5's
+  `u = duty·V/V_nom` scaling is gone: a 9 V port gives Philo's 9 V numbers, not 9/7.2 of the
+  7.2 V ones). The friction sits inside the driven line scaled by |duty| (exact at 0 and ±1).
+- **Supplies** (`HUB_SUPPLY_VOLTS`, all marked estimated): SPIKE 7.2 V (7.3 V Li-ion less the
+  H-bridge drop; LEGO's test supply; 8.3 V full adds 17–18 %); RCX, NXT, EV3, PF battery box,
+  Powered Up / Technic / Move hub 9 V (6 alkaline cells; their Li-ion/NiMH packs 7.2–7.4 V).
+- **SPIKE fits** (Philo 9 V: M 228 rpm, 0.10 A, 13.5 N·cm, 0.85 A; L 213 rpm, 0.11 A,
+  33.5 N·cm, 1.8 A): medium R 10.59 Ω, k_t 0.180 N·m/A, k_e 0.333 V·s/rad, τf 18.0 mN·m →
+  at 7.2 V τs 10.44 N·cm, ω0 176 rpm (R2: 18 N·cm, 185 rpm; −42 %); large R 5.00 Ω, k_t
+  0.198, k_e 0.379, τf 21.8 mN·m → 26.4 N·cm, 168 rpm (R2: 38 N·cm, 175 rpm; −31 %). Philo's
+  load points (4.48 / 8.47 N·cm, 4.5–12 V): speed residuals medium −4…+12 % (9 V: 152 vs 138 rpm,
+  +10 %), large −5…+2 %; currents over-predicted 9–31 % (k_t from the stall point is below what
+  the load points imply; he calls his stall torques "very imprecise"). LEGO's sheets at 7.2 V:
+  no-load speeds −5 / −4 %, max-efficiency speeds −13 / −14 % (sheet tolerance ±15 %); medium
+  stall torque 42 % below LEGO's 18 N·cm (Pybricks: 16 N·cm), large +5 %. Friction agrees with
+  Pybricks (18.0 vs 21.4, 21.8 vs 23.2 mN·m); rotor inertia stays Pybricks' (Philo has none).
+- **Other motors** (catalogue entries, no parts, for future hubs): 2838, 71427, 43362, 47154,
+  5292 (outer output, 1240 rpm), NXT, EV3 L/M, PF M/L/XL/Train, PUP medium (LPF2 1) and train (2),
+  Boost interactive (38) and Move-hub (39), Control+ L (46) and XL (47); Pybricks' inertia where it
+  has a model (NXT, EV3, Boost, Control+). At 9 V every one is within 15 % of its own load point
+  (worst Boost external −15 %); at 4.5 V the old motors fall far below the line (friction rises at
+  low speed). Not added: micromotor 2986 (the line through its points misses its load point by
+  56 %), E-motor, 9V/RC train motors (outside the motors named for D6).
+- **What changed in behaviour** (same checks, same bounds; measured old → new): DC tests (a) no-load
+  1108 → 1055 °/s medium, 1047 → 1002 large (ω0 1110 → 1058, 1050 → 1006); (b) τs 18 → 10.44,
+  38 → 26.36 N·cm; (c) brake to 10 % 85 → 130 ms, 145 → 195 ms (τ = I·ω0/τs grows), coast 245 →
+  280 ms, 845 → 860 ms; (e) hold deflection 1.72 → 1.06°, 4.11 → 3.06° (half the smaller τs);
+  (f) recovery 30 → 10 ms, 70 → 65 ms; (d), (g) unchanged. Wall stopper 9.0 → 8.6 cm (the brake's
+  back-EMF damping fell 39 %, the base rolls 4 mm further; window 8–12 cm). Line follower lap
+  22.5 s / 22.6 s unchanged (30 % speed, far from saturation), colour explorer red square at
+  4.7 → 4.8 s, gear ratios exact, 8-24 stall still stalls (blocked −0.24 → −0.06 °/s), R3
+  rack/slider tests do not use the DC model. The SPIKE motors at 7.2 V top out at 1058 / 1006 °/s,
+  below the API's 1110 / 1050 °/s: a 100 % command saturates the duty (a fresh 8.3 V battery
+  reaches 1247 / 1172 °/s).
+- **v1 files.** PartMeta v1 held 0.18 / 0.38 N·m; `DeviceModel.v1` keeps them, and the v1→v2
+  migration recognises exactly those numbers on exactly those parts as the catalogue motor.
+- Tests: `test/bw-sim-motor-catalogue.test.mjs` (self-consistency, Philo's 9 V numbers transcribed
+  independently, load-point residuals, LEGO cross-check with documented disagreements, sources).

@@ -128,7 +128,7 @@ test('the gearbox fixtures are real builds: only meshing gears share volume', ()
     }
 });
 
-test('P5 §1 8T → 24T: the 24T turns −1/3 of the motor', async () => {
+test('P5 §1 8T → 24T: the 24T turns −1/3 of the motor', async t => {
     const {mech} = compileOnBench('8-24');
     assert.deepEqual(mech.diagnostics, []);
     const motor = motorHinge(mech);
@@ -139,10 +139,11 @@ test('P5 §1 8T → 24T: the 24T turns −1/3 of the motor', async () => {
     r.core.destroy();
     assert.ok(r.motor * DEG > 600, `motor turned ${r.motor * DEG}°`);
     const ratio = r[g24.id] / r.motor;
+    t.diagnostic(`motor ${(r.motor * DEG).toFixed(1)}°, 24T/motor ${ratio.toFixed(5)} (error ${(relErr(ratio, -1 / 3) * 100).toFixed(3)} %)`);
     assert.ok(relErr(ratio, -1 / 3) <= REL_TOL, `24T/motor ${ratio} vs −1/3`);
 });
 
-test('P5 §2 8T → 24T → 8T: the last 8T turns +1 with the motor, the idler −1/3', async () => {
+test('P5 §2 8T → 24T → 8T: the last 8T turns +1 with the motor, the idler −1/3', async t => {
     const {mech} = compileOnBench('8-24-8');
     assert.deepEqual(mech.diagnostics, []);
     assert.equal(mech.gears.length, 2, 'two meshes; the two 8Ts are 80 LDU apart');
@@ -151,21 +152,23 @@ test('P5 §2 8T → 24T → 8T: the last 8T turns +1 with the motor, the idler �
     const r = await runMotor(mech, {watch: [g24, last]});
     r.core.destroy();
     assert.ok(r.motor * DEG > 600, `motor turned ${r.motor * DEG}°`);
+    t.diagnostic(`motor ${(r.motor * DEG).toFixed(1)}°, last 8T/motor ${(r[last.id] / r.motor).toFixed(5)}, 24T/motor ${(r[g24.id] / r.motor).toFixed(5)}`);
     assert.ok(relErr(r[last.id] / r.motor, 1) <= REL_TOL, `last 8T/motor ${r[last.id] / r.motor} vs +1`);
     assert.ok(relErr(r[g24.id] / r.motor, -1 / 3) <= REL_TOL, `24T/motor ${r[g24.id] / r.motor} vs −1/3`);
 });
 
-test('P5 §3 8T → 40T: the 40T turns −1/5 of the motor', async () => {
+test('P5 §3 8T → 40T: the 40T turns −1/5 of the motor', async t => {
     const {mech} = compileOnBench('8-40');
     assert.deepEqual(mech.diagnostics, []);
     const g40 = hingeTurning(mech, 'g40');
     const r = await runMotor(mech, {watch: [g40]});
     r.core.destroy();
     assert.ok(r.motor * DEG > 600, `motor turned ${r.motor * DEG}°`);
+    t.diagnostic(`motor ${(r.motor * DEG).toFixed(1)}°, 40T/motor ${(r[g40.id] / r.motor).toFixed(5)}`);
     assert.ok(relErr(r[g40.id] / r.motor, -1 / 5) <= REL_TOL, `40T/motor ${r[g40.id] / r.motor} vs −1/5`);
 });
 
-test('P5 §4 bevel 12T → 20T: magnitude 12/20, sign from the geometry, confirmed by physics', async () => {
+test('P5 §4 bevel 12T → 20T: magnitude 12/20, sign from the geometry, confirmed by physics', async tc => {
     const {mech} = compileOnBench('bevel-12-20');
     assert.deepEqual(mech.diagnostics, []);
     const motor = motorHinge(mech);
@@ -201,10 +204,11 @@ test('P5 §4 bevel 12T → 20T: magnitude 12/20, sign from the geometry, confirm
     r.core.destroy();
     assert.ok(r.motor * DEG > 600, `motor turned ${r.motor * DEG}°`);
     const measured = r[g20.id] / r.motor;
+    tc.diagnostic(`motor ${(r.motor * DEG).toFixed(1)}°, 20T/motor ${measured.toFixed(5)} vs ${expected.toFixed(5)}`);
     assert.ok(relErr(measured, expected) <= REL_TOL, `20T/motor ${measured} vs ${expected}`);
 });
 
-test('P5 §5 one hole too far: no mesh, and the 24T stays still while the motor turns', async () => {
+test('P5 §5 one hole too far: no mesh, and the 24T stays still while the motor turns', async t => {
     // With the housing clamped, the 24T's axle turns in a frame that does not move. Nothing
     // couples it to the motor: no gear constraint, no tooth contact (the moving parts of one
     // machine do not collide with each other), and its frame does not rotate. So it is not
@@ -216,11 +220,12 @@ test('P5 §5 one hole too far: no mesh, and the 24T stays still while the motor 
     const g24 = hingeTurning(mech, 'g24');
     const r = await runMotor(mech, {watch: [g24]});
     r.core.destroy();
+    t.diagnostic(`motor ${(r.motor * DEG).toFixed(1)}°, 24T ${(r[g24.id] * DEG).toFixed(3)}°`);
     assert.ok(r.motor * DEG > 300, `motor turned ${r.motor * DEG}°`);
     assert.ok(Math.abs(r[g24.id] * DEG) < 2, `24T turned ${r[g24.id] * DEG}°`);
 });
 
-test('P5 §6 a blocked output stalls the motor (through the hub, DC model)', async () => {
+test('P5 §6 a blocked output stalls the motor (through the hub, DC model)', async t => {
     // A thin liftarm on the 24T's axle (8-24-stalled.json) swings into a static obstacle.
     // The obstacle is a real body in the arm's sweep, so the load reaches the motor only
     // through the gear mesh: the motor stalls only if the mesh carries load both ways.
@@ -275,6 +280,8 @@ test('P5 §6 a blocked output stalls the motor (through the hub, DC model)', asy
     assert.ok(relErr(free.speed, commanded) < 0.05, `without the obstacle the motor runs at ${free.speed}°/s`);
     assert.equal(free.stalled, false);
     const blocked = await measure([wall]);
+    t.diagnostic(`free ${free.speed.toFixed(1)} °/s; blocked ${blocked.speed.toFixed(2)} °/s, 24T stopped at ${blocked.g24.toFixed(2)}° ` +
+        `(first touch ${FIRST_TOUCH_DEG.toFixed(1)}°), stalled ${blocked.stalled}`);
     assert.ok(Math.abs(blocked.speed) < 0.1 * commanded, `stalled motor still turns at ${blocked.speed}°/s of ${commanded}`);
     assert.equal(blocked.stalled, true, 'the hub reports the port stalled');
     // It stopped AT the obstacle: not before first touch, and not far into it (the contact is
@@ -283,7 +290,7 @@ test('P5 §6 a blocked output stalls the motor (through the hub, DC model)', asy
         `the 24T stopped at ${blocked.g24}°, first touch at ${FIRST_TOUCH_DEG.toFixed(1)}°`);
 });
 
-test('P5 §7 through the hub: run_for_degrees(A, 360) turns the 24T −120°', async () => {
+test('P5 §7 through the hub: run_for_degrees(A, 360) turns the 24T −120°', async t => {
     const {mech, housing} = compileOnBench('8-24');
     const g24 = hingeTurning(mech, 'g24');
     const J = await loadJolt();
@@ -300,6 +307,7 @@ test('P5 §7 through the hub: run_for_degrees(A, 360) turns the 24T −120°', a
     const drivenDeg = (core.jointState(g24.id).angle - start) * DEG;
     bridge.dispose();
     core.destroy();
+    t.diagnostic(`motor ended at ${motorDeg.toFixed(2)}°, 24T ${drivenDeg.toFixed(2)}°`);
     assert.equal(outcome, 'completed');
     assert.ok(Math.abs(motorDeg - 360) < 3, `motor ended at ${motorDeg}°`);
     assert.ok(relErr(drivenDeg / motorDeg, -1 / 3) <= REL_TOL, `24T turned ${drivenDeg}° for ${motorDeg}°`);

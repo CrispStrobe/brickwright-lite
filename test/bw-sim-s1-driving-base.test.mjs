@@ -103,8 +103,10 @@ test('the driving base compiles to chassis + two motorised wheels + castor ball'
     assert.ok(mech.bodies.some(b => b.motion === 'static'), 'a ground');
 });
 
-test('A negative, B positive drives straight forward; encoders read the wheels', async () => {
+test('A negative, B positive drives straight forward; encoders read the wheels', async t => {
     const r = await run({left: -HALF_SPEED, right: HALF_SPEED, seconds: 2});
+    t.diagnostic(`2 s at ${HALF_SPEED} °/s: ${r.dz.toFixed(3)} m along z, ${r.dx.toFixed(4)} m sideways, yaw ${r.yaw}°, ` +
+        `encoders ${r.posA.toFixed(1)}° / ${r.posB.toFixed(1)}°`);
     // Forward is away from the castor: LDraw +z, world -z.
     assert.ok(r.dz < -0.3, `moved ${r.dz.toFixed(3)} m along z (expected forward, -z)`);
     assert.ok(Math.abs(r.dx) < 0.05 * Math.abs(r.dz), `drifted ${r.dx.toFixed(3)} m sideways`);
@@ -116,18 +118,20 @@ test('A negative, B positive drives straight forward; encoders read the wheels',
     assert.ok(r.posA < 0 && r.posB > 0, 'A turned negative, B positive');
 });
 
-test('both motors positive turns in place to the left: negative yaw', async () => {
+test('both motors positive turns in place to the left: negative yaw', async t => {
     const r = await run({left: HALF_SPEED / 2, right: HALF_SPEED / 2, seconds: 1.5});
+    t.diagnostic(`yaw ${r.yaw}°, the centre moved ${r.moved.toFixed(4)} m`);
     assert.ok(r.yaw < -30, `yaw ${r.yaw}`);
     assert.ok(r.moved < 0.06, `the centre moved ${r.moved.toFixed(3)} m`);
 });
 
-test('run_for_degrees completes on the physical angle', async () => {
+test('run_for_degrees completes on the physical angle', async t => {
     let outcome;
     const r = await run({seconds: 2, setup: hub => {
         hub.motors.runForDegrees('B', 360, 500).then(v => { outcome = v; });
     }});
     await new Promise(resolve => setImmediate(resolve));
+    t.diagnostic(`B ended at ${r.posB.toFixed(2)}°`);
     assert.equal(outcome, 'completed');
     assert.ok(Math.abs(r.posB - 360) < 3, `B ended at ${r.posB}°`);
 });
