@@ -32,6 +32,22 @@ before its part line:
 1 71 -100 10 80 0 1 0 1 0 0 0 0 -1 54696p01.dat
 ```
 
+**Build mode** is a small CAD editor (`bw-sim/editor/editor-view3d.js`; the
+arithmetic is in `editor/transform-math.js`). Click selects a part (a grouped
+part selects its group), Shift+click adds or removes, Shift+drag box-selects,
+Esc clears, Ctrl+A selects all. Drag a part to slide it over the floor or onto
+another part's top; the gizmo moves along world axes (W) or turns about them (E;
+90° steps, 15° with Shift); R / Shift+R turn 90° about the vertical (about the
+pin or axle a part sits on), T / Shift+T tip it about the horizontal axis facing
+the camera. Moves snap to the grid chosen in the bar (1/5/10/20 LDU, default 10
+= half a hole pitch). A lone part moved or placed near a matching hole or axle
+shows a green ghost and snaps there on release (Alt: no magnet). Delete,
+Ctrl+D (duplicate one hole pitch over), Ctrl+C / Ctrl+V, Ctrl+Z / Ctrl+Y; a
+change to several parts is one undo step (`moveMany` / `batch` commands).
+Camera: left-drag on empty space or right-drag orbits, middle-drag or
+Shift+right-drag pans, the wheel zooms toward the pointer; Home, Fit (F), Top,
+Front and Side views.
+
 **Saved with the project.** "Save to your computer" stores the model the Sim
 Lab shows (the Build scene, or the model being simulated) inside the `.sb3`,
 as its LDraw text, in the `simLab` section of the Brickwright bundle

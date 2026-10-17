@@ -35,8 +35,24 @@ const TEXT = {
         driveHelp: 'Hold an arrow (or use the arrow keys) to drive with motors A and B.', readout: 'Hub',
         issues: 'Notes about this model', time: 'Simulated time: {s} s', canvasLabel: '3D view of the simulated model',
         simulate: 'Simulate', build: 'Build', parts: 'Parts', undo: 'Undo', redo: 'Redo', remove: 'Delete',
-        save: 'Save .ldr', port: 'Port', none: 'none', placing: 'Placing {part}: click to place, R turns, Esc stops',
-        buildHelp: 'Pick a part, move it over the model: it snaps green onto a matching hole or axle, blue on the floor. Click a part to select it.'
+        save: 'Save .ldr', port: 'Port', none: 'none',
+        move: 'Move (W)', turn: 'Turn (E)', grid: 'Grid', ldu: 'LDU', turnUp: 'Turn ↻ (R)', tip: 'Tip (T)',
+        duplicate: 'Duplicate', home: 'Home', fit: 'Fit (F)', top: 'Top', front: 'Front', side: 'Side',
+        selectedOne: 'Selected: {name}', selectedMany: 'Selected: {n} parts',
+        st: {
+            idle: 'Click a part to select it. Drag it to move it; Shift+click adds parts; drag empty space to look around.',
+            hover: '{part}: click to select, drag to move', hoverSelected: '{part}: drag to move, R turns, Delete removes',
+            placing: 'Placing {part}: click to place, R turns, Alt: no magnet, Esc stops',
+            snap: 'Snaps to {target} hole {hole}', snapNoHole: 'Snaps to {target}', snapped: 'Snapped to {target} hole {hole}', snappedNoHole: 'Snapped to {target}',
+            floor: 'On the floor', onTop: 'On top of {target}', moving: 'Moving x {x}, y {y}, z {z} LDU (1 hole = 20)',
+            turning: 'Turning {deg}° (hold Shift for 15° steps)', turned: 'Turned 90°', turnedAbout: 'Turned about its connection to {target}',
+            moved: 'Moved', placed: 'Placed {part}', selected: '{n} selected', deleted: 'Deleted {n}', pasted: 'Added {n} copies', copied: 'Copied {n}',
+            undone: 'Undone', redone: 'Redone',
+            gizmoArrow: 'Drag the {color} arrow to move along {axis}', gizmoPlane: 'Drag the square to move in the {axis} plane',
+            gizmoRing: 'Drag the {color} ring to turn (90° steps, Shift: 15°)', red: 'red', green: 'green', blue: 'blue',
+            nothingSelected: 'Select a part first (click it).', clipboardEmpty: 'Nothing copied yet: select parts and press Ctrl+C.',
+            nothingToUndo: 'Nothing to undo.', nothingToRedo: 'Nothing to redo.', invalid: 'That does not work here: {detail}'
+        }
     },
     de: {
         title: 'Roboter-Labor (Beta)',
@@ -50,8 +66,24 @@ const TEXT = {
         driveHelp: 'Halte einen Pfeil gedrückt (oder nutze die Pfeiltasten), um mit den Motoren A und B zu fahren.', readout: 'Hub',
         issues: 'Hinweise zu diesem Modell', time: 'Simulierte Zeit: {s} s', canvasLabel: '3D-Ansicht des simulierten Modells',
         simulate: 'Simulieren', build: 'Bauen', parts: 'Teile', undo: 'Rückgängig', redo: 'Wiederholen', remove: 'Löschen',
-        save: '.ldr speichern', port: 'Port', none: 'keiner', placing: '{part} platzieren: klicken setzt, R dreht, Esc beendet',
-        buildHelp: 'Wähle ein Teil und bewege es über das Modell: grün rastet es an einem passenden Loch oder einer Achse ein, blau liegt es auf dem Boden. Klicke ein Teil an, um es auszuwählen.'
+        save: '.ldr speichern', port: 'Port', none: 'keiner',
+        move: 'Schieben (W)', turn: 'Drehen (E)', grid: 'Raster', ldu: 'LDU', turnUp: 'Drehen ↻ (R)', tip: 'Kippen (T)',
+        duplicate: 'Verdoppeln', home: 'Start', fit: 'Einpassen (F)', top: 'Oben', front: 'Vorne', side: 'Seite',
+        selectedOne: 'Ausgewählt: {name}', selectedMany: 'Ausgewählt: {n} Teile',
+        st: {
+            idle: 'Klicke ein Teil an, um es auszuwählen. Ziehen verschiebt es; Umschalt+Klick wählt mehr Teile; Ziehen auf leerer Fläche dreht die Ansicht.',
+            hover: '{part}: klicken wählt aus, ziehen verschiebt', hoverSelected: '{part}: ziehen verschiebt, R dreht, Entf löscht',
+            placing: '{part} platzieren: klicken setzt, R dreht, Alt: ohne Magnet, Esc beendet',
+            snap: 'Rastet an {target} Loch {hole} ein', snapNoHole: 'Rastet an {target} ein', snapped: 'An {target} Loch {hole} eingerastet', snappedNoHole: 'An {target} eingerastet',
+            floor: 'Auf dem Boden', onTop: 'Oben auf {target}', moving: 'Verschieben x {x}, y {y}, z {z} LDU (1 Loch = 20)',
+            turning: 'Drehen {deg}° (Umschalt halten: 15°-Schritte)', turned: 'Um 90° gedreht', turnedAbout: 'Um die Verbindung zu {target} gedreht',
+            moved: 'Verschoben', placed: '{part} gesetzt', selected: '{n} ausgewählt', deleted: '{n} gelöscht', pasted: '{n} Kopien eingefügt', copied: '{n} kopiert',
+            undone: 'Rückgängig gemacht', redone: 'Wiederhergestellt',
+            gizmoArrow: 'Ziehe den {color} Pfeil, um entlang {axis} zu schieben', gizmoPlane: 'Ziehe das Quadrat, um in der {axis}-Ebene zu schieben',
+            gizmoRing: 'Ziehe den {color} Ring zum Drehen (90°-Schritte, Umschalt: 15°)', red: 'roten', green: 'grünen', blue: 'blauen',
+            nothingSelected: 'Wähle zuerst ein Teil aus (anklicken).', clipboardEmpty: 'Noch nichts kopiert: Teile auswählen und Strg+C drücken.',
+            nothingToUndo: 'Nichts rückgängig zu machen.', nothingToRedo: 'Nichts zu wiederholen.', invalid: 'Das geht hier nicht: {detail}'
+        }
     }
 };
 
@@ -67,7 +99,8 @@ class SimLabPane extends React.Component {
         this.locale = locale;
         this.text = TEXT[locale];
         this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, simMs: 0, view3d: 'loading',
-            mode: 'simulate', placing: null, selected: null, editorTick: 0, mat: null};
+            mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
+            buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10};
         this.box = React.createRef();
         this.file = React.createRef();
         this.lib = null;
@@ -134,7 +167,7 @@ class SimLabPane extends React.Component {
         this.pause();
         this.teardown();
         this.teardownEditor();
-        this.setState({mode: 'build', status: 'loading', message: '', placing: null, selected: null});
+        this.setState({mode: 'build', status: 'loading', message: '', placing: null, selection: [], buildStatus: {kind: 'idle'}, gizmoMode: 'move'});
         // Any palette part may be placed, so load the whole catalog's geometry once.
         if (!this.catalogFiles) this.catalogFiles = await fetchLDrawClosure([...CATALOG.keys()], {withConfig: true});
         if (this.disposed) return;
@@ -143,8 +176,12 @@ class SimLabPane extends React.Component {
         try {
             this.editView = createEditorView3D({container: this.box.current, read, colors: parseLDConfig(read('ldconfig.ldr')),
                 catalog: CATALOG, editor: this.editor,
-                onSelect: selected => this.setState({selected}),
-                onChange: () => this.setState(s => ({editorTick: s.editorTick + 1}))});
+                onSelect: selection => this.setState({selection}),
+                onChange: () => this.setState(s => ({editorTick: s.editorTick + 1})),
+                onStatus: buildStatus => this.setState({buildStatus}),
+                onTool: placing => this.setState({placing}),
+                onMode: gizmoMode => this.setState({gizmoMode})});
+            this.editView.setGrid(this.state.grid);
         } catch (error) {
             this.setState({status: 'failed', message: this.t('noWebgl', {error: error.message})});
             return;
@@ -187,7 +224,7 @@ class SimLabPane extends React.Component {
         if (this.state.status === 'running') this.pause();
         if (this.editor) {
             this.teardownEditor();
-            this.setState({mode: 'simulate', placing: null, selected: null});
+            this.setState({mode: 'simulate', placing: null, selection: []});
         }
         await this.openStored();
     }
@@ -216,7 +253,7 @@ class SimLabPane extends React.Component {
         const text = this.lib.serializeModel(this.editor.model, {name: 'my-model.ldr', title: MODEL_TITLE});
         this.lastText = text;
         this.teardownEditor();
-        this.setState({mode: 'simulate', placing: null, selected: null});
+        this.setState({mode: 'simulate', placing: null, selection: []});
         await this.openText(text, 'my-model.ldr');
     }
 
@@ -459,36 +496,103 @@ class SimLabPane extends React.Component {
         );
     }
 
+    /** The build view's status (what is happening / what a click will do), in the learner's language. */
+    buildStatusText () {
+        const st = this.state.buildStatus || {kind: 'idle'};
+        const T = this.text.st;
+        const name = part => this.partName(part);
+        const fill = (template, values) => template.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ''));
+        const hole = st.connector && /^[a-z](\d+)$/.exec(st.connector);
+        switch (st.kind) {
+        case 'hover': return fill(st.selected ? T.hoverSelected : T.hover, {part: name(st.part)});
+        case 'placing': return fill(T.placing, {part: name(st.part)});
+        case 'snap': case 'snapped': case 'turnedAbout': {
+            const target = st.target ? name(st.target) : '';
+            if (st.kind === 'turnedAbout') return fill(T.turnedAbout, {target});
+            return hole ? fill(T[st.kind], {target, hole: Number(hole[1]) + 1}) : fill(T[`${st.kind}NoHole`], {target});
+        }
+        case 'gizmo': {
+            const color = T[{X: 'red', Y: 'green', Z: 'blue'}[st.axis]] || '';
+            if (st.mode === 'rotate') return fill(T.gizmoRing, {color});
+            return fill(st.axis.length === 1 ? T.gizmoArrow : T.gizmoPlane, {color, axis: st.axis.toLowerCase()});
+        }
+        case 'onTop': return fill(T.onTop, {target: name(st.target)});
+        case 'moving': return fill(T.moving, {x: st.delta[0], y: -st.delta[1], z: -st.delta[2]});
+        case 'turning': return fill(T.turning, {deg: st.degrees});
+        case 'placed': return fill(T.placed, {part: name(st.part)});
+        case 'refused': return fill(T[st.reason] || T.invalid, {detail: st.detail || ''});
+        default: return T[st.kind] ? fill(T[st.kind], {n: st.count}) : T.idle;
+        }
+    }
+
+    partName (part) {
+        const m = this.lib && this.lib.CATALOG.get(part);
+        return m ? ((this.locale === 'de' && m.nameDe) || m.name) : part;
+    }
+
     renderBuildBar (button) {
         const editor = this.editor;
-        const sel = editor && this.state.selected ? editor.model.parts.find(p => p.id === this.state.selected) : null;
+        const view = this.editView;
+        const parts = editor ? editor.model.parts : [];
+        const selection = this.state.selection.map(id => parts.find(p => p.id === id)).filter(Boolean);
+        const sel = selection.length === 1 ? selection[0] : null;
         const meta = sel ? this.lib.CATALOG.get(sel.part) : null;
         const portable = meta && (meta.motor || meta.sensor);
-        const name = part => {
-            const m = this.lib.CATALOG.get(part);
-            return m ? ((this.locale === 'de' && m.nameDe) || m.name) : part;
-        };
+        const tick = () => this.setState(s => ({editorTick: s.editorTick + 1}));
+        const small = {...button, padding: '3px 8px', marginRight: 0};
+        const pressed = on => ({...small, background: on ? '#dbeafe' : '#fff', borderColor: on ? '#2563eb' : '#94a3b8', fontWeight: on ? 600 : 400});
+        const st = this.state.buildStatus || {};
+        const refused = st.kind === 'refused';
+        const T = this.text;
         return (
-            <div style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, fontSize: 12}}>
-                <button type="button" style={button} data-testid="bw-sim-lab-undo" disabled={!editor?.canUndo}
-                    onClick={() => { editor.undo(); this.setState(s => ({editorTick: s.editorTick + 1})); }}>{this.text.undo}</button>
-                <button type="button" style={button} data-testid="bw-sim-lab-redo" disabled={!editor?.canRedo}
-                    onClick={() => { editor.redo(); this.setState(s => ({editorTick: s.editorTick + 1})); }}>{this.text.redo}</button>
-                <button type="button" style={button} data-testid="bw-sim-lab-delete" disabled={!sel}
-                    onClick={() => { editor.apply({type: 'delete', id: sel.id}); this.setState(s => ({selected: null, editorTick: s.editorTick + 1})); }}>{this.text.remove}</button>
-                {portable && (
-                    <label>{name(sel.part)} · {this.text.port}{': '}
-                        <select data-testid="bw-sim-lab-port" value={sel.port || ''}
-                            onChange={e => { editor.apply({type: 'setPort', id: sel.id, port: e.target.value || null}); this.setState(s => ({editorTick: s.editorTick + 1})); }}>
-                            <option value="">{this.text.none}</option>
-                            {['A', 'B', 'C', 'D', 'E', 'F'].map(p => <option key={p} value={p}>{p}</option>)}
+            <div style={{display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12}}>
+                <div style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4}}>
+                    <button type="button" style={pressed(this.state.gizmoMode === 'move')} data-testid="bw-sim-lab-mode-move"
+                        aria-pressed={this.state.gizmoMode === 'move'} onClick={() => view?.setMode('move')}>{T.move}</button>
+                    <button type="button" style={pressed(this.state.gizmoMode === 'rotate')} data-testid="bw-sim-lab-mode-rotate"
+                        aria-pressed={this.state.gizmoMode === 'rotate'} onClick={() => view?.setMode('rotate')}>{T.turn}</button>
+                    <label style={{marginLeft: 4}}>{T.grid}{' '}
+                        <select data-testid="bw-sim-lab-grid" value={this.state.grid}
+                            onChange={e => { const g = Number(e.target.value); view?.setGrid(g); this.setState({grid: g}); }}>
+                            {[1, 5, 10, 20].map(g => <option key={g} value={g}>{g} {T.ldu}</option>)}
                         </select>
                     </label>
-                )}
-                <button type="button" style={button} data-testid="bw-sim-lab-save" disabled={!editor} onClick={() => this.saveLdr()}>{this.text.save}</button>
-                <span role="status" data-testid="bw-sim-lab-build-status" style={{color: '#475569'}}>
-                    {this.state.placing ? this.t('placing', {part: name(this.state.placing)}) : this.text.buildHelp}
-                </span>
+                    <span style={{width: 6}} />
+                    <button type="button" style={small} data-testid="bw-sim-lab-turn" disabled={!selection.length} onClick={() => view?.turn('up', 1)}>{T.turnUp}</button>
+                    <button type="button" style={small} data-testid="bw-sim-lab-tip" disabled={!selection.length} onClick={() => view?.turn('facing', 1)}>{T.tip}</button>
+                    <button type="button" style={small} data-testid="bw-sim-lab-duplicate" disabled={!selection.length} onClick={() => view?.duplicate()}>{T.duplicate}</button>
+                    <button type="button" style={small} data-testid="bw-sim-lab-delete" disabled={!selection.length} onClick={() => view?.deleteSelection()}>{T.remove}</button>
+                    <span style={{width: 6}} />
+                    <button type="button" style={small} data-testid="bw-sim-lab-undo" disabled={!editor?.canUndo} onClick={() => { view?.undo(); tick(); }}>{T.undo}</button>
+                    <button type="button" style={small} data-testid="bw-sim-lab-redo" disabled={!editor?.canRedo} onClick={() => { view?.redo(); tick(); }}>{T.redo}</button>
+                    <span style={{width: 6}} />
+                    {['home', 'fit', 'top', 'front', 'side'].map(v => (
+                        <button key={v} type="button" style={small} data-testid={`bw-sim-lab-view-${v}`}
+                            onClick={() => (v === 'fit' ? view?.fitSelection() : view?.view(v))}>{T[v]}</button>
+                    ))}
+                    <span style={{width: 6}} />
+                    <button type="button" style={small} data-testid="bw-sim-lab-save" disabled={!editor} onClick={() => this.saveLdr()}>{T.save}</button>
+                </div>
+                <div style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, minHeight: 22}}>
+                    {selection.length > 0 && (
+                        <span data-testid="bw-sim-lab-selection" style={{fontWeight: 600, color: '#1e3a8a'}}>
+                            {sel ? this.t('selectedOne', {name: this.partName(sel.part)}) : this.t('selectedMany', {n: selection.length})}
+                        </span>
+                    )}
+                    {portable && (
+                        <label>{T.port}{': '}
+                            <select data-testid="bw-sim-lab-port" value={sel.port || ''}
+                                onChange={e => { editor.apply({type: 'setPort', id: sel.id, port: e.target.value || null}); tick(); }}>
+                                <option value="">{T.none}</option>
+                                {['A', 'B', 'C', 'D', 'E', 'F'].map(p => <option key={p} value={p}>{p}</option>)}
+                            </select>
+                        </label>
+                    )}
+                    <span role="status" data-testid="bw-sim-lab-build-status" data-kind={st.kind || 'idle'}
+                        style={{color: refused ? '#b91c1c' : '#475569', fontWeight: refused ? 600 : 400}}>
+                        {this.buildStatusText()}
+                    </span>
+                </div>
             </div>
         );
     }

@@ -15,7 +15,14 @@
 //      writes the built model's LDraw text into the .sb3's Brickwright bundle,
 //      and loading that file restores it byte for byte, both into a Sim Lab
 //      opened afterwards and into one that is already open;
-//   5. no page errors.
+//   5. the Build mode works like a CAD editor, driven by real mouse moves, drags
+//      and keys only (internal APIs are used to READ results and to find where a
+//      part is on screen): a click on the floor places a part under the pointer,
+//      a click selects a part, dragging the gizmo's X arrow moves it by a grid
+//      multiple, R turns it 90°, the rotate ring turns it, a press-and-drag on
+//      the part slides it, Shift+click selects two parts which the gizmo moves
+//      in ONE undo step, and Shift+drag box-selects;
+//   6. no page errors.
 //
 // Run after the integrated GUI build:  node scripts/verify-sim-lab-browser.mjs
 import {chromium} from 'playwright';
@@ -25,6 +32,7 @@ import {createRequire} from 'node:module';
 import {resolve, extname, sep} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
+import {cadInteractions} from './lib/sim-lab-cad-gate.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const build = resolve(process.env.BW_BUILD || `${root}/packages/scratch-gui/build`);
@@ -237,10 +245,12 @@ try {
     assert.equal(await count(), start + 3);
     await page.screenshot({path: resolve(artifacts, 'sim-lab-build.png'), fullPage: true});
     console.log('PASS Build: a pin snaps into a beam hole; undo and redo');
+    await cadInteractions(page, beam.id, {shotsDir: artifacts});
+    const builtInEditor = await count();
     await page.getByTestId('bw-sim-lab-mode-simulate').click();
     await page.waitForFunction(() => window.__bwSimLab.mode === 'simulate' && window.__bwSimLab.status === 'ready', null, {timeout: 60000});
     const built = await page.evaluate(() => window.__bwSimLab._pane.session.model.parts.length);
-    assert.equal(built, start + 3, 'the built model is what Simulate runs');
+    assert.equal(built, builtInEditor, 'the built model is what Simulate runs');
     console.log('PASS Build → Simulate compiles and runs the built model');
     console.log(`PASS a green-flag Scratch program drives the simulated robot (${(before.pos[2] - after.pos[2]).toFixed(3)} m, encoders A ${after.a.toFixed(0)}°, B ${after.b.toFixed(0)}°)`);
 
