@@ -21,6 +21,8 @@ const cloneModel = model => {
         }))
     };
     if (model.groups) out.groups = model.groups.map(g => ({id: g.id, name: g.name, parts: g.parts.slice()}));
+    // Building steps from `0 STEP` lines ride along; parts deleted since are skipped where they are read.
+    if (model.steps) out.steps = model.steps.map(ids => ids.slice());
     return out;
 };
 

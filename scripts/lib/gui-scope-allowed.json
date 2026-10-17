@@ -43,6 +43,7 @@
       "test/bw-sim-colour-explorer-program.test.mjs",
       "test/bw-sim-gear-trains.test.mjs",
       "test/bw-sim-imu.test.mjs",
+      "test/bw-sim-instructions.test.mjs",
       "test/bw-sim-line-follower-program.test.mjs",
       "test/bw-sim-line-follower.test.mjs",
       "test/bw-sim-model-insight.test.mjs",

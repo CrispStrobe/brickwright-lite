@@ -5,6 +5,9 @@
 // Pure text <-> PlacedModel, no DOM. Handles .ldr and .mpd (first FILE is
 // main, type-1 lines referencing other FILE sections are flattened with
 // composed transforms). Generates refusals for lossy or malformed lines.
+// `0 STEP` lines in the main model become `model.steps` (part ids per building
+// step, for instructions/steps.js); a model without them has no `steps` key and
+// is written back exactly as before.
 
 import {det3} from '../contracts.js';
 
@@ -150,6 +153,10 @@ export const parseModel = (text, {catalog} = {}) => {
     const groupsById = new Map(); // id -> {id, name, parts: []}
     const groupOrder = []; // to preserve order
     const partToGroup = new Map(); // partId -> groupId (for checking duplicate part in two groups)
+    // Building steps: `0 STEP` (or `0 ROTSTEP …`) in the main model ends a step (instructions/steps.js).
+    const steps = [];
+    let stepParts = [];
+    let sawStep = false;
 
     // For sub-model flattening, we need to track line index path for ids
     // We will define recursive function to flatten a sub-model file
@@ -301,6 +308,12 @@ export const parseModel = (text, {catalog} = {}) => {
         const {text: line, lineNo} = mainLines[idx];
         const trimmed = line.trim();
         if (!trimmed) continue;
+        if (/^0\s+(?:STEP|ROTSTEP)(?:\s|$)/i.test(trimmed)) {
+            if (stepParts.length) steps.push(stepParts);
+            stepParts = [];
+            sawStep = true;
+            continue;
+        }
         // Check for !BW PORT
         if (/^0\s+!BW\s+PORT\s+/i.test(trimmed)) {
             const m = trimmed.match(/^0\s+!BW\s+PORT\s+(.+?)\s*$/i);
@@ -386,6 +399,7 @@ export const parseModel = (text, {catalog} = {}) => {
                 pendingPort = null;
                 const subParts = flattenSubModel(parsed.file, parsed.position, parsed.rotation, [idx + 1]);
                 parts.push(...subParts);
+                stepParts.push(...subParts.map(p => p.id));
                 continue;
             }
             // Real part
@@ -441,6 +455,7 @@ export const parseModel = (text, {catalog} = {}) => {
                 pendingGroup = null;
             }
             parts.push(part);
+            stepParts.push(id);
             continue;
         }
         // Check for loose geometry
@@ -473,6 +488,11 @@ export const parseModel = (text, {catalog} = {}) => {
         // Remove empty groups (should not happen, but for safety, filter out groups with 0 parts? But spec says groups with <2 dissolve, but parser should keep whatever was defined, even if empty, and let validator catch it)
         // We keep all groups as defined, even if empty, so that malformed ones are visible
     }
+    if (sawStep) {
+        // Parts after the last STEP line are the last step; steps with no parts are dropped.
+        if (stepParts.length) steps.push(stepParts);
+        if (steps.length) model.steps = steps;
+    }
     return {model, refusals};
 };
 
@@ -502,7 +522,19 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
             for (const pid of g.parts) partGroupMap.set(pid, g.id);
         }
     }
+    // Building steps: a `0 STEP` line after each step's last part (only for a model that has steps,
+    // so a model without them is written exactly as before).
+    const stepOf = new Map();
+    if (Array.isArray(model.steps) && model.steps.length) {
+        model.steps.forEach((ids, n) => { for (const id of ids) if (!stepOf.has(id)) stepOf.set(id, n); });
+    }
+    let previousStep;
     for (const p of model.parts) {
+        if (stepOf.size) {
+            const step = stepOf.has(p.id) ? stepOf.get(p.id) : -1;
+            if (previousStep !== undefined && step !== previousStep) lines.push('0 STEP');
+            previousStep = step;
+        }
         lines.push(`0 !BW ID ${p.id}`);
         const gid = partGroupMap.get(p.id);
         if (gid) lines.push(`0 !BW IN ${gid}`);
@@ -522,5 +554,6 @@ export const serializeModel = (model, {name = 'model.ldr', title = 'Brickwright 
         const color = p.color ?? 16;
         lines.push(`1 ${color} ${x} ${y} ${z} ${a} ${b} ${c} ${d} ${e} ${f} ${g} ${h} ${i} ${p.part}`);
     }
+    if (stepOf.size && previousStep !== undefined) lines.push('0 STEP');
     return lines.join('\r\n') + '\r\n';
 };
