@@ -6125,3 +6125,18 @@ See [current integration status and scoped next actions](docs/WEDO-IPAD-INTEGRAT
 
 CLAIMED — Codex root, branch `docs/wedo-recovery-adoption-20261017`.
 Adopt the published WeDo supplier connection-recovery commit `98eca46ed343ffe186e737062fdc68716f28ca6c` (upstream PR50 merged as `c0223a134d1be45dbe939a3f078224f22229b71f`). Own only the `wedo2unified` pin, its canonical generated extension wrapper, focused recovery/LED/tone conformance controls, and the associated public delivery/protocol records. Merge this claim to remote main before implementation. Use the supplier sync workflow; never hand-edit the bundled wrapper or other suppliers' pins. Qualify exact source freshness, failed-connect cleanup, bounded waits, concurrent attempts, retry without app restart, and existing light/tone commands. Native Bluetooth readiness/session ownership work remains separately scoped; do not claim physical connection or buzzer success from these deterministic controls. Compose this adoption with the owned iPad chrome fixes after their CI failures are resolved, qualify enabled exact-head CI, then build/sign/install an identified current-main candidate. Keep local paths, device identifiers, screenshots and raw receipts in ignored handoffs.
+
+### Reconciled delivery checkpoint — 2026-10-18
+
+STM32 PR1017, A13 PR1015/PR1057 and SimLab PR1058 have landed. Earlier
+instructions to wait for or restart their integration controllers are historical.
+WeDo supplier PR50 merged as `c0223a134d1be45dbe939a3f078224f22229b71f`;
+Lite claim PR1059 preceded the immutable recovery adoption in PR1050.
+PR1050 source `8b7ae49e239cbfa2e790c50ca0efd48f62046c10` is published and
+awaiting final enabled checks and normal merge. The existing iPad/WeDo lane
+retains qualification, main composition and signed-app delivery ownership.
+See [the updated handoff](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md) for bounded
+acceptance tasks and explicit native Bluetooth, buzzer, D13 and size follow-ups.
+The installed earlier candidate does not yet establish current-main delivery
+or physical caret acceptance. Other owners' nondefault/dirty repository
+checkouts are preserved; no blanket rebase or supplier bump is claimed.
