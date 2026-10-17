@@ -25,6 +25,9 @@ import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
 
+/** A MODELS entry's key: its `id` when one model file is listed more than once, else its file. */
+const modelKey = m => m.id || m.file;
+
 const TEXT = {
     en: {
         title: 'Robot Lab (beta)',
@@ -39,7 +42,8 @@ const TEXT = {
         exampleGoal: {
             'line-follower.bw': 'The example program is in the Code tab now. Press Run and watch the robot follow the black line.',
             'wall-stopper.bw': 'The example program is in the Code tab now. Press Run and watch the robot stop before the wall. Challenge: make it stop 20 cm away.',
-            'colour-explorer.bw': 'The example program is in the Code tab now. Press Run and watch the robot find the red square. Challenge: make it find the green one.'
+            'colour-explorer.bw': 'The example program is in the Code tab now. Press Run and watch the robot find the red square. Challenge: make it find the green one.',
+            'sumo.bw': 'The example program is in the Code tab now. Press Run: the robot drives around and turns back whenever it sees the black ring. Challenge: make it turn the other way, or faster.'
         },
         exampleFailed: 'Could not load the example program: {error}',
         mat: 'Mat', drive: 'Drive', forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', stop: 'Stop', speed: 'Speed',
@@ -95,7 +99,8 @@ const TEXT = {
         exampleGoal: {
             'line-follower.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter der schwarzen Linie folgt.',
             'wall-stopper.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter vor der Wand anhält. Aufgabe: Lass ihn 20 cm vor der Wand anhalten.',
-            'colour-explorer.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter das rote Feld findet. Aufgabe: Lass ihn das grüne finden.'
+            'colour-explorer.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start und schau zu, wie der Roboter das rote Feld findet. Aufgabe: Lass ihn das grüne finden.',
+            'sumo.bw': 'Das Beispielprogramm steht jetzt im Code-Tab. Drücke Start: Der Roboter fährt herum und kehrt um, sobald er den schwarzen Ring sieht. Aufgabe: Lass ihn andersherum oder schneller drehen.'
         },
         exampleFailed: 'Das Beispielprogramm konnte nicht geladen werden: {error}',
         mat: 'Matte', drive: 'Fahren', forward: 'Vorwärts', back: 'Rückwärts', left: 'Links', right: 'Rechts', stop: 'Stopp', speed: 'Tempo',
@@ -193,7 +198,7 @@ class SimLabPane extends React.Component {
         this.locale = locale;
         this.text = TEXT[locale];
         this.itext = INSIGHT_TEXT[locale] || INSIGHT_TEXT.en;
-        this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, simMs: 0, view3d: 'loading',
+        this.state = {status: 'loading', message: '', info: '', driveSpeed: 50, issues: [], modelFile: null, shipped: null, simMs: 0, view3d: 'loading',
             mode: 'simulate', placing: null, selection: [], editorTick: 0, mat: null,
             buildStatus: {kind: 'idle'}, gizmoMode: 'move', grid: 10, recent: [], thumbTick: 0,
             showPorts: true, showMotion: false, blockers: [], portPicker: null, instructions: null, coarse: false,
@@ -484,7 +489,7 @@ class SimLabPane extends React.Component {
             this.lastText = record.ldraw;
             await this.openText(record.ldraw, record.name || 'my-model.ldr');
         } else {
-            await this.openShipped(this.lib.MODELS[0].file);
+            await this.openShipped(modelKey(this.lib.MODELS[0]));
         }
         if (refusals.length && !this.disposed) this.setState(s => ({issues: [...refusals, ...s.issues]}));
     }
@@ -515,20 +520,24 @@ class SimLabPane extends React.Component {
         this.session = null;
     }
 
-    async openShipped (file) {
+    /** Opens a MODELS entry by its key (`id`, else its file): one model file may be listed twice, with different examples. */
+    async openShipped (key) {
+        const entry = this.lib.MODELS.find(m => modelKey(m) === key);
+        if (!entry) return;
+        const file = entry.file;
         const response = await fetch(`${this.lib.MODELS_BASE}${file}`);
         if (!response.ok) {
             this.setState({status: 'failed', message: this.t('failed', {error: `HTTP ${response.status}`})});
             return;
         }
-        await this.openText(await response.text(), file);
+        await this.openText(await response.text(), file, key);
         // A model that comes with an example offers it while the Code tab has no SPIKE program.
         if (!this.disposed) this.setState({info: this.shippedModel()?.example && !this.spikeLoaded() ? this.text.exampleOffer : ''});
     }
 
     /** The MODELS entry of the model on show, or null for a built or imported one. */
     shippedModel () {
-        return this.lib?.MODELS.find(m => m.file === this.state.modelFile) || null;
+        return this.lib?.MODELS.find(m => modelKey(m) === this.state.shipped) || null;
     }
 
     /**
@@ -563,10 +572,10 @@ class SimLabPane extends React.Component {
         await this.openText(this.lastText, f.name);
     }
 
-    async openText (text, name) {
+    async openText (text, name, shipped = null) {
         const token = this.loadToken = {};
         this.teardown();
-        this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, simMs: 0, view3d: 'loading'});
+        this.setState({status: 'loading', message: '', issues: [], blockers: [], modelFile: name, shipped, simMs: 0, view3d: 'loading'});
         const {SimSession, fetchLDrawClosure, createSimView3D, CATALOG} = this.lib;
         let result;
         try {
@@ -673,7 +682,7 @@ class SimLabPane extends React.Component {
         if (!this.session) return;
         const text = this.lib.serializeModel(this.session.model, {name: this.state.modelFile || 'model.ldr'});
         this.pause();
-        this.setState({mat: mat || null}, () => this.openText(text, this.state.modelFile));
+        this.setState({mat: mat || null}, () => this.openText(text, this.state.modelFile, this.state.shipped));
     }
 
     /** Hold-to-drive with the movement pair (A left, mounted mirrored; B right), as the arena's drive pad. */
@@ -718,8 +727,7 @@ class SimLabPane extends React.Component {
         if (!this.session) return;
         this.props.hubState.stopAll?.();
         const name = this.state.modelFile;
-        const shipped = this.lib.MODELS.find(m => m.file === name);
-        if (shipped) await this.openShipped(shipped.file);
+        if (this.state.shipped) await this.openShipped(this.state.shipped);
         else if (this.lastText) await this.openText(this.lastText, name);
     }
 
@@ -1137,7 +1145,7 @@ class SimLabPane extends React.Component {
     }
 
     render () {
-        const {status, message, issues, simMs, modelFile} = this.state;
+        const {status, message, issues, simMs, modelFile, shipped} = this.state;
         const busy = status === 'loading';
         const compact = this.compact();
         const narrow = this.narrow();
@@ -1150,12 +1158,12 @@ class SimLabPane extends React.Component {
         const running = status === 'running';
         const statusText = `${busy ? T.loading : T[status] || ''}${this.session ? ` · ${compact ? this.t('timeShort', {s: (simMs / 1000).toFixed(1)}) : this.t('time', {s: (simMs / 1000).toFixed(1)})}` : ''}`;
         const modelSelect = (
-            <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={this.lib?.MODELS.some(m => m.file === modelFile) ? modelFile : ''}
+            <select data-testid="bw-sim-lab-model" disabled={busy || !this.lib} value={shipped || ''}
                 aria-label={compact ? T.model : undefined} title={compact ? T.model : undefined}
                 style={compact ? {flex: '1 1 0', minWidth: 0, ...(this.state.coarse ? {minHeight: 40} : {})} : undefined}
                 onChange={e => e.target.value && this.openShipped(e.target.value)}>
-                {this.lib && this.lib.MODELS.map(m => <option key={m.file} value={m.file}>{m.title[this.locale] || m.title.en}</option>)}
-                {modelFile && !this.lib?.MODELS.some(m => m.file === modelFile) && <option value="">{modelFile}</option>}
+                {this.lib && this.lib.MODELS.map(m => <option key={modelKey(m)} value={modelKey(m)}>{m.title[this.locale] || m.title.en}</option>)}
+                {modelFile && !shipped && <option value="">{modelFile}</option>}
             </select>
         );
         const matSelect = (
