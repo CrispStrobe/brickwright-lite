@@ -233,6 +233,7 @@ export const cadInteractions = async (page, beamId, {shotsDir}) => {
     await pinIntoHoleFromAbove(page, beamId, {shotsDir});
     const third = await beamOntoBeam(page, second, {shotsDir});
     await beamIntoHub(page, third, {shotsDir});
+    await paletteInteractions(page, beamId, {shotsDir});
 };
 
 const statusText = page => page.getByTestId('bw-sim-lab-build-status').textContent();
@@ -378,3 +379,172 @@ const beamIntoHub = async (page, beamId, {shotsDir}) => {
     await page.keyboard.press('Escape');
 };
 
+
+// ---- the palette (Tinkercad's shape panel): pictures, search, drag into the view ----
+
+const tileOf = (page, part) => page.getByTestId(`bw-sim-lab-part-${part}`);
+/** Pixels of a palette tile's picture that are not background (transparent), and how many colours they use. */
+const thumbPixels = (page, part) => page.evaluate(async id => {
+    const img = document.querySelector(`[data-testid="${id}"] img[data-testid="bw-sim-lab-thumb"]`);
+    if (!img) return null;
+    await img.decode();
+    const cv = document.createElement('canvas');
+    cv.width = img.naturalWidth;
+    cv.height = img.naturalHeight;
+    const g = cv.getContext('2d');
+    g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, cv.width, cv.height).data;
+    let drawn = 0;
+    const colours = new Set();
+    for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] < 32) continue;
+        drawn++;
+        colours.add(`${d[i] >> 3},${d[i + 1] >> 3},${d[i + 2] >> 3}`);
+    }
+    return {drawn, total: cv.width * cv.height, colours: colours.size};
+}, `bw-sim-lab-part-${part}`);
+/** The parts the palette shows right now (tiles laid out on screen), in order. */
+const shownParts = page => page.evaluate(() => [...document.querySelectorAll('[data-testid="bw-sim-lab-palette"] [data-testid^="bw-sim-lab-part-"]')]
+    .filter(el => el.getClientRects().length > 0).map(el => el.dataset.part));
+const catalogPart = (page, part) => page.evaluate(p => {
+    const m = window.__bwSimLab._pane.lib.CATALOG.get(p);
+    return m && {category: m.category, name: m.name, nameDe: m.nameDe};
+}, part);
+
+/** Press on a palette tile and move, in small steps, to a point in the view (the button stays down). */
+const pressAndDragTo = async (page, part, to, steps = 14) => {
+    const tile = tileOf(page, part);
+    await tile.scrollIntoViewIfNeeded();
+    const b = await tile.boundingBox();
+    const from = [b.x + b.width / 2, b.y + b.height / 2];
+    await page.mouse.move(from[0], from[1]);
+    await page.mouse.down();
+    for (let i = 1; i <= steps; i++) await page.mouse.move(from[0] + (to[0] - from[0]) * i / steps, from[1] + (to[1] - from[1]) * i / steps);
+};
+/** While dragging: move over the view's lower part until the status says the part would lie on open floor. */
+const findOpenFloor = async page => {
+    const box = await page.getByTestId('bw-sim-lab-editor-canvas').boundingBox();
+    for (const [fx, fy] of [[0.2, 0.85], [0.8, 0.85], [0.5, 0.9], [0.15, 0.6], [0.85, 0.6], [0.35, 0.92], [0.65, 0.92]]) {
+        const at = [box.x + box.width * fx, box.y + box.height * fy];
+        await page.mouse.move(at[0], at[1], {steps: 6});
+        if (/^On the floor/.test(await statusText(page))) return at;
+    }
+    throw new Error(`no open floor found while dragging: ${await statusText(page)}`);
+};
+
+/**
+ * The palette as a child uses it: pictures drawn from the real parts (lazily: a
+ * closed category's are drawn when it is opened), the search box, dragging a
+ * part from the palette onto the floor and onto a beam hole, Esc during a drag,
+ * and the "Recently used" row.
+ */
+const paletteInteractions = async (page, beamId, {shotsDir}) => {
+    const canvas = page.getByTestId('bw-sim-lab-editor-canvas');
+    await canvas.focus();
+    await page.keyboard.press('Escape');
+    await page.getByTestId('bw-sim-lab-view-home').click();
+
+    // Pictures: an open category's tile shows its part, drawn (not blank) and shaded (many colours).
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-sim-lab-part-32524.dat"] img[data-testid="bw-sim-lab-thumb"]'),
+        null, {timeout: 30000});
+    const beamPic = await thumbPixels(page, '32524.dat');
+    assert.ok(beamPic.drawn > beamPic.total * 0.05 && beamPic.colours > 12,
+        `the beam 7 tile shows a drawn part: ${JSON.stringify(beamPic)}`);
+    // Lazily: the gears' category is closed, so no gear picture is drawn until it is opened.
+    assert.equal(await page.locator('[data-testid="bw-sim-lab-part-3647.dat"] img').count(), 0, 'a closed category draws nothing');
+    await page.getByTestId('bw-sim-lab-category-gear').locator('summary').click();
+    await page.waitForFunction(() => document.querySelector('[data-testid="bw-sim-lab-part-3647.dat"] img[data-testid="bw-sim-lab-thumb"]'),
+        null, {timeout: 30000});
+    const gearPic = await thumbPixels(page, '3647.dat');
+    assert.ok(gearPic.drawn > gearPic.total * 0.05 && gearPic.colours > 12, `the gear tile shows a drawn part: ${JSON.stringify(gearPic)}`);
+    const [beamUrl, gearUrl] = await page.evaluate(() => ['32524.dat', '3647.dat'].map(p =>
+        document.querySelector(`[data-testid="bw-sim-lab-part-${p}"] img`).src));
+    assert.notEqual(beamUrl, gearUrl, 'each part has its own picture');
+    const title = await tileOf(page, '32524.dat').getAttribute('title');
+    assert.match(title, /Technic beam 7 · part 32524/, 'the tooltip names the part and its number');
+    await page.getByTestId('bw-sim-lab-palette').screenshot({path: resolve(shotsDir, 'sim-lab-palette.png')});
+    console.log(`PASS Palette: tiles show pictures of the real parts (beam 7: ${beamPic.drawn}/${beamPic.total} px drawn, ` +
+        `${beamPic.colours} colours), a closed category's are drawn when it opens`);
+
+    // Search: by German word, by English name with a size, by part number; clearing brings the categories back.
+    const search = page.getByTestId('bw-sim-lab-search');
+    const allShown = (await shownParts(page)).length;
+    await search.fill('zahnrad');
+    const gears = await shownParts(page);
+    assert.ok(gears.length >= 6 && gears.length < allShown, `zahnrad narrows the list: ${gears.length} of ${allShown}`);
+    for (const p of gears) assert.equal((await catalogPart(page, p)).category, 'gear', `${p} is a gear`);
+    await search.fill('beam 7');
+    const beam7 = await shownParts(page);
+    assert.equal(beam7[0], '32524.dat', `beam 7 first: ${beam7}`);
+    assert.ok(!beam7.includes('32278.dat'), 'beam 15 is not beam 7');
+    await search.fill('3647');
+    assert.deepEqual(await shownParts(page), ['3647.dat'], 'a part number finds that part');
+    await search.fill('xylophone');
+    await page.getByTestId('bw-sim-lab-search-none').waitFor();
+    await page.getByTestId('bw-sim-lab-search-clear').click();
+    assert.equal((await shownParts(page)).length, allShown, 'clearing the search shows every category again');
+    assert.equal(await page.getByTestId('bw-sim-lab-category-gear').evaluate(el => el.open), true, 'a category opened before the search stays open');
+    console.log(`PASS Palette: search narrows the list (zahnrad → ${gears.length} gears, "beam 7" → 32524 first, 3647 → 1 part)`);
+
+    // Drag a beam 5 from the palette onto open floor: the ghost follows, letting go places it there.
+    const grid = await page.evaluate(() => window.__bwSimLab.editView.grid);
+    let before = await partsCount(page);
+    const box = await canvas.boundingBox();
+    await pressAndDragTo(page, '32316.dat', [box.x + box.width * 0.5, box.y + box.height * 0.5]);
+    assert.equal(await page.evaluate(() => window.__bwSimLab.editView.draggingFromPalette), true, 'the press became a drag');
+    const spot = await findOpenFloor(page);
+    await page.screenshot({path: resolve(shotsDir, 'sim-lab-palette-drag.png'), fullPage: true});
+    const aimed = await page.evaluate(([x, y]) => window.__bwSimLab.editView.floorPointAt(x, y), spot);
+    await page.mouse.up();
+    await page.waitForFunction(n => window.__bwSimLab.editor.model.parts.length === n + 1, before, {timeout: 10000});
+    const dropped = await lastPartId(page);
+    const dp = await page.evaluate(id => window.__bwSimLab.editor.model.parts.find(p => p.id === id), dropped);
+    assert.equal(dp.part, '32316.dat', 'the dragged part was placed');
+    const off = Math.hypot(dp.position[0] - aimed[0], dp.position[2] - aimed[2]);
+    assert.ok(off <= grid, `it lies where it was let go: ${off.toFixed(1)} LDU from the pointer's floor point ${aimed} (grid ${grid})`);
+    assert.deepEqual(await selectionOf(page), [dropped], 'the dropped part is selected');
+    assert.match(await statusText(page), /Placed Technic beam 5/);
+    assert.equal(await tileOf(page, '32316.dat').getAttribute('aria-pressed'), 'false', 'a drag does not leave the tool armed');
+    const recent = await page.evaluate(() => [...document.querySelectorAll('[data-testid="bw-sim-lab-recent"] [data-part]')].map(el => el.dataset.part));
+    assert.equal(recent[0], '32316.dat', `Recently used starts with the part just placed: ${recent}`);
+    assert.equal(new Set(recent).size, recent.length, 'each part once');
+    console.log(`PASS Palette: dragging a beam from the palette onto the floor places it where let go (${off.toFixed(1)} LDU off), Recently used: ${recent.length}`);
+
+    // Drag a pin from the palette onto a beam hole: the magnet snaps it in.
+    await focusOn(page, beamId, 'Technic beam 7');
+    const beam = await pose(page, beamId);
+    before = await partsCount(page);
+    await pressAndDragTo(page, '2780.dat', await screenOf(page, beamId, [0, -10, -40]), 16);
+    const promised = await statusText(page);
+    assert.match(promised, /Snaps to Technic beam 7 hole \d/, 'over the hole the magnet offers it');
+    await page.mouse.up();
+    await page.waitForFunction(n => window.__bwSimLab.editor.model.parts.length === n + 1, before, {timeout: 10000});
+    const pin = await lastPartId(page);
+    const pp = await pose(page, pin);
+    const d = pp.position.map((v, i) => v - beam.position[i]);
+    const local = [0, 1, 2].map(c => beam.rotation[c] * d[0] + beam.rotation[3 + c] * d[1] + beam.rotation[6 + c] * d[2]);
+    assert.ok(Math.abs(local[0]) < 1e-6 && Math.abs(local[2] + 40) < 1e-6, `in the hole pointed at (z -40 in the beam's frame): ${local}`);
+    assert.match(await statusText(page), /Snapped to Technic beam 7/);
+    await page.screenshot({path: resolve(shotsDir, 'sim-lab-palette-drag-pin.png'), fullPage: true});
+    console.log(`PASS Palette: a pin dragged from the palette onto a beam hole snaps in (${promised})`);
+
+    // Esc during a drag: nothing is placed, even when the button is let go over the view.
+    await page.getByTestId('bw-sim-lab-view-home').click();
+    before = await partsCount(page);
+    await pressAndDragTo(page, '32316.dat', [box.x + box.width * 0.5, box.y + box.height * 0.5]);
+    await findOpenFloor(page);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => window.__bwSimLab.editView.draggingFromPalette), false, 'Esc ends the drag');
+    await page.mouse.move(box.x + box.width * 0.45, box.y + box.height * 0.8, {steps: 4});
+    await page.mouse.up();
+    assert.equal(await partsCount(page), before, 'Esc during a drag places nothing');
+    assert.equal(await tileOf(page, '32316.dat').getAttribute('aria-pressed'), 'false');
+    // And a click-armed tool still places with a click.
+    const spot2 = [box.x + box.width * 0.5, box.y + box.height * 0.5];
+    await tileOf(page, '32316.dat').click();
+    assert.equal(await tileOf(page, '32316.dat').getAttribute('aria-pressed'), 'true', 'a click arms the tool');
+    await page.mouse.move(spot2[0], spot2[1], {steps: 4});
+    await page.keyboard.press('Escape');
+    assert.equal(await tileOf(page, '32316.dat').getAttribute('aria-pressed'), 'false', 'Esc disarms it');
+    console.log('PASS Palette: Esc during a drag cancels it (no part added); click-to-arm still arms, Esc disarms');
+};
