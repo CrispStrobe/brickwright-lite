@@ -147,8 +147,11 @@ test('no two solid parts of the driving base overlap; only pins and axles sit in
     // The rule is the build editor's (editor/overlap.js `solidOverlaps`, which refuses such moves);
     // these are the parts it lets sit inside another one.
     // (3749 axle pin, 32002 pin 3/4, 2736 towball: an axle in a hole and a ball in a socket.)
+    // 3708/3737 axles 12/10 and 87083 axle 4 with stop are the newly catalogued shafts
+    // (oc-parts.md): like 3705 they are single axle connectors, so they too sit inside holes.
     const inside = ['2780.dat', '3673.dat', '6558.dat', '43093.dat', '3705.dat', '4519.dat', '32073.dat', '3706.dat', '3707.dat', '32062.dat', '52629.dat',
-        '3749.dat', '32002.dat', '2736.dat'];
+        '3749.dat', '32002.dat', '2736.dat',
+        '3708.dat', '3737.dat', '87083.dat'];
     assert.deepEqual([...CATALOG.values()].filter(sitsInside).map(m => m.part).sort(), inside.slice().sort());
     // Partly shaft, partly solid: only their tagged shaft regions may sit inside another part
     // (32054's stop bush stays outside the hole; 87082's centre, with its pin hole, between two beams).

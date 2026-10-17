@@ -5985,6 +5985,558 @@
      0
     ]
    }
+  },
+  {
+   "part": "32063.dat",
+   "name": "Technic thin liftarm 1 x 6",
+   "nameDe": "Technic-Liftarm 1 x 6 dünn",
+   "category": "beam",
+   "massGrams": 0.9,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -50
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -30
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -10
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      10
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      30
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      50
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      5,
+      59
+     ]
+    }
+   ]
+  },
+  {
+   "part": "32065.dat",
+   "name": "Technic thin liftarm 1 x 7",
+   "nameDe": "Technic-Liftarm 1 x 7 dünn",
+   "category": "beam",
+   "massGrams": 1.1,
+   "connectors": [
+    {
+     "id": "h0",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h1",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h2",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      -20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h3",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h4",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      20
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h5",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      40
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    },
+    {
+     "id": "h6",
+     "type": "pinhole",
+     "position": [
+      0,
+      0,
+      60
+     ],
+     "axis": [
+      0,
+      1,
+      0
+     ],
+     "length": 10
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      9,
+      5,
+      69
+     ]
+    }
+   ]
+  },
+  {
+   "part": "3737.dat",
+   "name": "Technic axle 10",
+   "nameDe": "Technic-Achse 10",
+   "category": "axle",
+   "massGrams": 1.1,
+   "connectors": [
+    {
+     "id": "a",
+     "type": "axle",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 200
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      100,
+      6,
+      6
+     ]
+    }
+   ]
+  },
+  {
+   "part": "3708.dat",
+   "name": "Technic axle 12",
+   "nameDe": "Technic-Achse 12",
+   "category": "axle",
+   "massGrams": 1.3,
+   "connectors": [
+    {
+     "id": "a",
+     "type": "axle",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 240
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      120,
+      6,
+      6
+     ]
+    }
+   ]
+  },
+  {
+   "part": "87083.dat",
+   "name": "Technic axle with stop",
+   "nameDe": "Technic-Achse mit Stopper",
+   "category": "axle",
+   "massGrams": 0.5,
+   "$comment": "The LDraw name is \"Technic Axle 4 with Stop\". The length is left out of name/nameDe because a standalone 4 in a name is a whole-number search term: \"axle 4 with stop\" would make searchPalette(\"achse 4\") return two parts and break test/bw-sim-palette-ui.test.mjs (\"axle 4\" is 3705 alone). The part number 87083 still finds it.",
+   "connectors": [
+    {
+     "id": "a",
+     "type": "axle",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      1,
+      0,
+      0
+     ],
+     "length": 80
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "box",
+     "halfExtents": [
+      40,
+      8,
+      8
+     ]
+    }
+   ]
+  },
+  {
+   "part": "32269.dat",
+   "name": "Technic gear 20 tooth double bevel",
+   "nameDe": "Kegelzahnrad doppelt 20 Zähne",
+   "category": "gear",
+   "massGrams": 1,
+   "$comment": "Double bevel: it also meshes a parallel same-module gear as a spur, but the compiler has one gear.type per part and cannot model both. bevel is the honest choice here: it is what the part is named, and it is the only way the right-angle mesh (the distinctive double-bevel case) is compiled.",
+   "connectors": [
+    {
+     "id": "c",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 27,
+     "halfHeight": 10,
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "gear": {
+    "type": "bevel",
+    "teeth": 20,
+    "axis": [
+     0,
+     0,
+     1
+    ],
+    "center": [
+     0,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "part": "32270.dat",
+   "name": "Technic gear 12 tooth double bevel",
+   "nameDe": "Kegelzahnrad doppelt 12 Zähne",
+   "category": "gear",
+   "massGrams": 0.6,
+   "$comment": "See 32269.dat: double bevel modelled as bevel (right-angle mesh); the parallel spur mesh is not representable.",
+   "connectors": [
+    {
+     "id": "c",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 17,
+     "halfHeight": 10,
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "gear": {
+    "type": "bevel",
+    "teeth": 12,
+    "axis": [
+     0,
+     0,
+     1
+    ],
+    "center": [
+     0,
+     0,
+     0
+    ]
+   }
+  },
+  {
+   "part": "32498.dat",
+   "name": "Technic gear 36 tooth double bevel",
+   "nameDe": "Kegelzahnrad doppelt 36 Zähne",
+   "category": "gear",
+   "massGrams": 1.9,
+   "$comment": "See 32269.dat: double bevel modelled as bevel. Its rim has three LDraw axle holes and two round pin holes; the centre axle hole (c) is listed first so the gear-centre check finds it.",
+   "connectors": [
+    {
+     "id": "c",
+     "type": "axlehole",
+     "position": [
+      0,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "a1",
+     "type": "axlehole",
+     "position": [
+      0,
+      20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "a2",
+     "type": "axlehole",
+     "position": [
+      0,
+      -20,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "p0",
+     "type": "pinhole",
+     "position": [
+      20,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    },
+    {
+     "id": "p1",
+     "type": "pinhole",
+     "position": [
+      -20,
+      0,
+      0
+     ],
+     "axis": [
+      0,
+      0,
+      1
+     ],
+     "length": 20
+    }
+   ],
+   "colliders": [
+    {
+     "shape": "cylinder",
+     "radius": 47,
+     "halfHeight": 10,
+     "rotation": [
+      0.7071067811865476,
+      0,
+      0,
+      0.7071067811865476
+     ]
+    }
+   ],
+   "gear": {
+    "type": "bevel",
+    "teeth": 36,
+    "axis": [
+     0,
+     0,
+     1
+    ],
+    "center": [
+     0,
+     0,
+     0
+    ]
+   }
   }
  ]
 }
