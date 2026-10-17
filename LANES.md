@@ -2436,11 +2436,21 @@ This documentation-only handover owns no actuator or firmware implementation.
 
 ## Stratified CLI instrument regression harness — 2026-10-17
 
-CLAIMED — Codex circuit instruments owner, isolated branch
+SCOPED HANDOFF — implementation not started; no active implementation owner
+after this documentation closeout. Preparation branch
 `lane/instrument-regression-20261017`, exact base
 `e2225bb05eb2464e31100de3a8060f59ab6f3062`. The user explicitly permits
 preparing this harness in parallel with iOS release work. Execution of the
 actual campaign remains after TestFlight; no mobile/release ownership takeover.
+
+The closing session releases this prospective implementation lane. A fresh
+agent must refresh main and PR1043, check overlapping claims, then publish and
+merge its own implementation claim before coding. This is not a finished
+harness or an executed campaign. The current status, case grid, file boundary,
+negative controls and follow-up acceptance are specified in
+[the implementation handoff](docs/CIRCUIT-INSTRUMENT-REGRESSION.md).
+This closeout changes only this ledger, `PLAN.md`, `ROADMAP.md` and that handoff;
+the future implementation boundary below is unchanged.
 
 Bounded envelope: this ledger; `PLAN.md`;
 `.github/workflows/circuit-instrument-regression.yml`;
