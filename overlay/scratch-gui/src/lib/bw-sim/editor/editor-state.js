@@ -88,7 +88,10 @@ export const createEditor = ({model, catalog}) => {
             return () => subs.delete(fn);
         },
         apply(cmd) {
-            if (cmd && (cmd.type === 'batch' || cmd.type === 'moveMany')) return applyBatch(cmd);
+            // moveMany has two shapes, both ONE undo step: `moves: [{id, position, rotation}]` (the build
+            // view's gizmo and drags) runs as an all-or-nothing batch of moves; `ids` + `delta` or `poses`
+            // (group moves) is handled below.
+            if (cmd && (cmd.type === 'batch' || (cmd.type === 'moveMany' && Array.isArray(cmd.moves)))) return applyBatch(cmd);
             const prev = cloneModel(current);
             let next;
             if (cmd.type === 'place') {
