@@ -230,3 +230,23 @@ test('colliders cover 50–110 % of the mesh box', () => {
         assert.ok(ratio >= 0.5 && ratio <= 1.1, `${p.part}: colliders cover ${(ratio * 100).toFixed(0)} % of the mesh box`);
     }
 });
+
+test('sensor origin lies on the mesh box surface and direction points outward', () => {
+    for (const p of META.parts.filter(q => q.sensor)) {
+        const {origin, direction} = p.sensor;
+        const b = bounds(flat.get(p.part).polys);
+        // Distance from origin to the closest face of the axis-aligned bounding box.
+        const d = Math.min(
+            Math.abs(origin[0] - b.min[0]), Math.abs(origin[0] - b.max[0]),
+            Math.abs(origin[1] - b.min[1]), Math.abs(origin[1] - b.max[1]),
+            Math.abs(origin[2] - b.min[2]), Math.abs(origin[2] - b.max[2])
+        );
+        assert.ok(d <= 2 + 1e-9, `${p.part}: sensor origin ${origin} is ${d.toFixed(2)} LDU from the mesh box (need <= 2)`);
+        // origin + 5 LDU along direction must be outside the box.
+        const probe = origin.map((v, i) => v + 5 * direction[i]);
+        const inside = probe[0] >= b.min[0] - 1e-9 && probe[0] <= b.max[0] + 1e-9
+            && probe[1] >= b.min[1] - 1e-9 && probe[1] <= b.max[1] + 1e-9
+            && probe[2] >= b.min[2] - 1e-9 && probe[2] <= b.max[2] + 1e-9;
+        assert.ok(!inside, `${p.part}: sensor direction ${direction} from ${origin} does not point outward (probe ${probe} still inside ${JSON.stringify(b)})`);
+    }
+});

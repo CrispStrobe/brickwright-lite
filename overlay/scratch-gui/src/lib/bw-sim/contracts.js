@@ -37,6 +37,7 @@ export const pitchRadiusLdu = teeth => teeth * 1.25;
 export const CONNECTOR_TYPES = Object.freeze(['pinhole', 'axlehole', 'axle', 'pin', 'stud', 'antistud', 'ball', 'ballsocket']);
 export const GEAR_TYPES = Object.freeze(['spur', 'bevel', 'worm', 'rack']);
 export const HUB_PORTS = Object.freeze(['A', 'B', 'C', 'D', 'E', 'F']);
+export const SENSOR_KINDS = Object.freeze(['distance', 'color', 'force']);
 
 /** Friction of a part with no `friction` (ABS plastic on a mat) and of the ground (a printed mat). */
 export const PART_FRICTION = 0.4;
@@ -80,6 +81,7 @@ export const GROUND_FRICTION = 0.8;
  * @typedef {{
  *   part: string,                 e.g. '3713.dat'
  *   name: string,
+ *   nameDe?: string,
  *   category: string,             'beam' | 'axle' | 'pin' | 'gear' | 'wheel' | 'motor' | 'hub' | 'sensor' | 'other'
  *   massGrams: number,
  *   friction?: number,            Coulomb friction coefficient of the part surface, 0..2;
@@ -95,6 +97,8 @@ export const GROUND_FRICTION = 0.8;
  *        Both bodies must end up with at least one collider. deviceId: the LEGO
  *        device type the hub reports on the motor's port (48 medium, 49 large angular).
  *   hub?: {ports: string[]}
+ *   sensor?: {kind: 'distance'|'color'|'force', origin: Vec3, direction: Vec3}
+ *      in the part's LDraw frame (LDU; direction unit, out of the sensing face).
  * }} PartMeta
  */
 
@@ -138,14 +142,16 @@ export const GROUND_FRICTION = 0.8;
  *   gravity: Vec3,
  *   bodies: {id: string, motion: 'static'|'dynamic', position: Vec3, rotation: Quat,
  *            massKg: number, com?: Vec3, colliders: Collider[], parts: string[],
- *            friction?: number, restitution?: number}[],
+ *            friction?: number, restitution?: number, color?: number, mat?: string}[],
  *   joints: ({id: string, type: 'hinge', body1: string, body2: string, point: Vec3, axis: Vec3,
  *             motor?: {port: string, maxTorqueNm: number, maxSpeedRadPerSec: number, deviceId?: number}} |
  *            {id: string, type: 'slider', body1: string, body2: string, point: Vec3, axis: Vec3} |
  *            {id: string, type: 'ball', body1: string, body2: string, point: Vec3})[],
  *   gears: ({id: string, type: 'gear', joint1: string, joint2: string, ratio: number} |
  *           {id: string, type: 'rackAndPinion', hingeJoint: string, sliderJoint: string, ratio: number})[],
- *   diagnostics: {severity: 'error'|'warning', code: string, message: string, parts?: string[]}[]
+ *   diagnostics: {severity: 'error'|'warning', code: string, message: string, parts?: string[]}[],
+ *   sensors?: {port: string, kind: 'distance'|'color'|'force', body: string, origin: Vec3, direction: Vec3}[],
+ *      world frame at t=0, metres; body is the island holding the sensor part.
  * }} CompiledMechanism
  */
 
@@ -194,6 +200,7 @@ export const validatePartMeta = meta => {
     const p = typeof meta.part === 'string' ? meta.part : '?';
     if (!/^[\w.-]+\.dat$/i.test(meta.part || '')) out.push(`${p}.part: need an LDraw file name like '3713.dat'`);
     if (typeof meta.name !== 'string' || !meta.name) out.push(`${p}.name: missing`);
+    if (meta.nameDe !== undefined && (typeof meta.nameDe !== 'string' || !meta.nameDe)) out.push(`${p}.nameDe: must be a non-empty string`);
     if (typeof meta.category !== 'string' || !meta.category) out.push(`${p}.category: missing`);
     if (!(isNum(meta.massGrams) && meta.massGrams > 0)) out.push(`${p}.massGrams: need a positive number`);
     if (meta.friction !== undefined && !(isNum(meta.friction) && meta.friction >= 0 && meta.friction <= 2)) {
@@ -234,6 +241,14 @@ export const validatePartMeta = meta => {
     }
     if (meta.hub && !(Array.isArray(meta.hub.ports) && meta.hub.ports.every(x => HUB_PORTS.includes(x)))) {
         out.push(`${p}.hub.ports: need a list of ${HUB_PORTS.join('|')}`);
+    }
+    if (meta.sensor !== undefined) {
+        if (!meta.sensor || typeof meta.sensor !== 'object') out.push(`${p}.sensor: not an object`);
+        else {
+            if (!SENSOR_KINDS.includes(meta.sensor.kind)) out.push(`${p}.sensor.kind: '${meta.sensor.kind}' is not one of ${SENSOR_KINDS.join('|')}`);
+            if (!isVec(meta.sensor.origin)) out.push(`${p}.sensor.origin: not a Vec3`);
+            checkUnit(meta.sensor.direction, `${p}.sensor.direction`, out);
+        }
     }
     return out;
 };
@@ -286,6 +301,8 @@ export const validateCompiledMechanism = m => {
         if (!Array.isArray(b?.colliders) || b.colliders.length === 0) out.push(`${w}.colliders: need at least one collider`);
         else b.colliders.forEach((c, i) => checkCollider(c, `${w}.colliders[${i}]`, out));
         if (!Array.isArray(b?.parts)) out.push(`${w}.parts: not an array`);
+        if (b?.color !== undefined && !(Number.isInteger(b.color) && b.color >= 0 && b.color <= 10)) out.push(`${w}.color: need an integer 0..10`);
+        if (b?.mat !== undefined && typeof b.mat !== 'string') out.push(`${w}.mat: need a string`);
     });
     const joints = new Map();
     uniqueIds(m.joints, 'joints', out);
@@ -325,6 +342,21 @@ export const validateCompiledMechanism = m => {
             out.push(`${w}.type: need 'gear' or 'rackAndPinion'`);
         }
     });
+    if (m.sensors !== undefined) {
+        if (!Array.isArray(m.sensors)) out.push('mechanism.sensors: not an array');
+        else {
+            for (let i = 0; i < m.sensors.length; i++) {
+                const s = m.sensors[i];
+                const w = `sensors[${i}]`;
+                if (!HUB_PORTS.includes(s?.port)) out.push(`${w}.port: '${s?.port}' is not ${HUB_PORTS.join('|')}`);
+                if (!SENSOR_KINDS.includes(s?.kind)) out.push(`${w}.kind: '${s?.kind}' is not one of ${SENSOR_KINDS.join('|')}`);
+                if (!bodies.has(s?.body)) out.push(`${w}.body: unknown body '${s?.body}'`);
+                if (!isVec(s?.origin)) out.push(`${w}.origin: not a Vec3`);
+                if (!isVec(s?.direction)) out.push(`${w}.direction: not a Vec3`);
+                else checkUnit(s.direction, `${w}.direction`, out);
+            }
+        }
+    }
     m.diagnostics.forEach((d, i) => {
         if (d?.severity !== 'error' && d?.severity !== 'warning') out.push(`diagnostics[${i}].severity: need 'error' or 'warning'`);
         if (typeof d?.code !== 'string' || typeof d?.message !== 'string') out.push(`diagnostics[${i}]: need string code and message`);

@@ -74,7 +74,11 @@ test('PartMeta: each malformation is named', () => {
         [m => { m.colliders.push({shape: 'sphere', radius: 5}); m.motor = {output: ['h0'], outputColliders: [1], maxTorqueNm: 0.1, maxSpeedDegPerSec: 600}; }, null],
         [m => { m.motor = {output: ['h0'], outputColliders: [0], maxTorqueNm: 0.1, maxSpeedDegPerSec: 600}; }, /housing needs at least one collider/],
         [m => { m.motor = {output: ['h0'], outputColliders: [], maxTorqueNm: 0.1, maxSpeedDegPerSec: 600}; }, /outputColliders: need at least one index/],
-        [m => { m.gear = {type: 'spur', teeth: 7.5, axis: [0, 0, 1], center: [0, 0, 0]}; }, /teeth: need a positive integer/]
+        [m => { m.gear = {type: 'spur', teeth: 7.5, axis: [0, 0, 1], center: [0, 0, 0]}; }, /teeth: need a positive integer/],
+        [m => { m.sensor = {kind: 'ultrasonic', origin: [0, 0, 0], direction: [0, 0, 1]}; }, /sensor\.kind/],
+        [m => { m.sensor = {kind: 'color', origin: [0, 0], direction: [0, 0, 1]}; }, /sensor\.origin/],
+        [m => { m.sensor = {kind: 'force', origin: [0, 0, 0], direction: [0, 0, 2]}; }, /sensor\.direction.*not a unit vector/],
+        [m => { m.sensor = {kind: 'distance', origin: [0, 0, -49], direction: [0, 0, -1]}; }, null]
     ];
     for (const [mutate, re] of cases) {
         const m = beam3();
@@ -113,7 +117,13 @@ test('CompiledMechanism: valid passes, references are checked', () => {
         [m => { delete m.diagnostics; }, /diagnostics: not an array/],
         [m => { m.joints.push({id: 'c', type: 'ball', body1: 'frame', body2: 'g24', point: [0, 0, 0]}); }, null],
         [m => { m.joints.push({id: 'c', type: 'ball', body1: 'frame', body2: 'g24', point: [0, 0, 0]}); m.gears[0].joint2 = 'c'; }, /is a ball, need a hinge/],
-        [m => { m.joints[1].type = 'weld'; }, /need 'hinge', 'slider' or 'ball'/]
+        [m => { m.joints[1].type = 'weld'; }, /need 'hinge', 'slider' or 'ball'/],
+        [m => { m.sensors = [{port: 'A', kind: 'color', body: 'frame', origin: [0, 0, 0], direction: [0, 0, 1]}]; }, null],
+        [m => { m.sensors = [{port: 'Z', kind: 'color', body: 'frame', origin: [0, 0, 0], direction: [0, 0, 1]}]; }, /port:/],
+        [m => { m.sensors = [{port: 'A', kind: 'ultrasonic', body: 'frame', origin: [0, 0, 0], direction: [0, 0, 1]}]; }, /kind:/],
+        [m => { m.sensors = [{port: 'A', kind: 'color', body: 'nope', origin: [0, 0, 0], direction: [0, 0, 1]}]; }, /body:/],
+        [m => { m.sensors = [{port: 'A', kind: 'color', body: 'frame', origin: [0, 0], direction: [0, 0, 1]}]; }, /origin:/],
+        [m => { m.sensors = [{port: 'A', kind: 'color', body: 'frame', origin: [0, 0, 0], direction: [0, 0, 2]}]; }, /direction.*not a unit vector/]
     ];
     for (const [mutate, re] of cases) {
         const m = mechanism();

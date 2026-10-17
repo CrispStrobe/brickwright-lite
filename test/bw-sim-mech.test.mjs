@@ -706,3 +706,47 @@ test('real beam 5 with 8T and 24T on two axles 40 LDU apart -> one gear ratio -1
     // Hand computed: 8T pitch 10, 24T pitch 30, distance 40 => mesh, axes same direction => ratio -1/3
     assert.ok(Math.abs(g.ratio - (-1 / 3)) < 1e-9, `ratio ${g.ratio} expected -0.333`);
 });
+
+test('real sensor on beam compiles to world-frame sensors', async () => {
+    const {readFileSync} = await import('node:fs');
+    const partsData = JSON.parse(readFileSync(new URL('../overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', import.meta.url)));
+    const catalog = new Map(partsData.parts.map(p => [p.part, p]));
+    // Place a beam and a distance sensor at the same LDraw spot with identity rotation.
+    // Sensor's LDraw origin [0,0,-69] -> world [0,0,0.0276]; direction [0,0,-1] -> world [0,0,1].
+    const I3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    const ROT_Y_180 = [-1, 0, 0, 0, 1, 0, 0, 0, -1];
+    const model = {
+        version: 1,
+        parts: [
+            {id: 'beam', part: '32316.dat', position: [0, 0, 0], rotation: I3},
+            {id: 'dist', part: '37316.dat', position: [0, 0, 0], rotation: I3, port: 'D'},
+        ],
+    };
+    const mech = compile(model, catalog, {ground: false});
+    assert.equal(validateCompiledMechanism(mech).length, 0);
+    assert.ok(Array.isArray(mech.sensors) && mech.sensors.length === 1, 'one sensor');
+    const s = mech.sensors[0];
+    assert.equal(s.port, 'D');
+    assert.equal(s.kind, 'distance');
+    // Sensor is its own island (not rigidly connected without a pin), so body = b1 (beam is b0)
+    const sensorBody = mech.bodies.find(b => b.parts.includes('dist'));
+    assert.ok(sensorBody, 'sensor body');
+    assert.equal(s.body, sensorBody.id);
+    // World frame at t=0: LDraw sensor origin [0,0,-69] at model [0,0,0] -> world [0,0,69*0.0004] = [0,0,0.0276]
+    const expectedOrigin = [0 * 0.0004, 0, 69 * 0.0004];
+    // lduToWorld: (x, -y, -z)*LDU_M, origin [0,0,-69] => [0,0,69*LDU_M]
+    assert.ok(vecEq(s.origin, expectedOrigin, 1e-9), 'origin ' + s.origin + ' vs ' + expectedOrigin);
+    const expectedDir = [0, 0, 1];
+    assert.ok(vecEq(s.direction, expectedDir, 1e-9), 'direction ' + s.direction);
+    // Without a port, the compiler warns and omits.
+    const modelNoPort = {
+        version: 1,
+        parts: [
+            {id: 'beam2', part: '32316.dat', position: [0, 0, 0], rotation: I3},
+            {id: 'col', part: '37308.dat', position: [20, 0, 0], rotation: ROT_Y_180},
+        ],
+    };
+    const mech2 = compile(modelNoPort, catalog, {ground: false});
+    assert.ok(!mech2.sensors || mech2.sensors.length === 0, 'no sensor without port');
+    assert.ok(mech2.diagnostics.some(d => d.code === 'sensor-without-port'), 'warning emitted');
+});

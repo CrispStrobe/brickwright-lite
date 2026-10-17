@@ -464,6 +464,122 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             }
             return { t, bodyIds: [...bodyOrder], jointIds: [...jointOrder], bodies, joints };
         },
+        castRay(origin, direction, maxDistance, { ignoreBodies = [] } = {}) {
+            ensureAlive();
+            if (!Array.isArray(origin) || origin.length !== 3) throw new Error('origin must be Vec3');
+            if (!Array.isArray(direction) || direction.length !== 3) throw new Error('direction must be Vec3');
+            if (typeof maxDistance !== 'number' || !Number.isFinite(maxDistance) || maxDistance <= 0) throw new Error('maxDistance must be positive');
+            const len = Math.hypot(...direction);
+            if (len < 1e-9) throw new Error('direction must be non-zero');
+            const dir = direction.map(v => v / len);
+            const ray = new J.RRayCast();
+            const originVec = new J.RVec3(...origin);
+            const dirVec = new J.Vec3(...dir.map(v => v * maxDistance));
+            ray.mOrigin = originVec;
+            ray.mDirection = dirVec;
+            const raySettings = new J.RayCastSettings();
+            const collector = new J.CastRayClosestHitCollisionCollector();
+            // Ray queries must hit both static and dynamic bodies. Jolt's layer
+            // filters are configured for collisions (dynamic-static only), so a
+            // naive DefaultBroadPhaseLayerFilter/DefaultObjectLayerFilter with
+            // either layer as the query's pretend object layer hits only one
+            // side. Use permissive filters that pass all layers.
+            const permissiveOVB = new J.ObjectVsBroadPhaseLayerFilterJS();
+            permissiveOVB.ShouldCollide = () => true;
+            const bpFilter = new J.DefaultBroadPhaseLayerFilter(permissiveOVB, 0);
+            const objectFilter = new J.ObjectLayerFilterJS();
+            objectFilter.ShouldCollide = () => true;
+            let bodyFilter = new J.BodyFilter();
+            if (ignoreBodies.length) {
+                const ignoreFilter = new J.IgnoreMultipleBodiesFilter();
+                for (const id of ignoreBodies) {
+                    const e = bodyMap.get(id);
+                    if (e) ignoreFilter.IgnoreBody(e.bodyID);
+                }
+                bodyFilter = ignoreFilter;
+            }
+            const shapeFilter = new J.ShapeFilter();
+            const query = physicsSystem.GetNarrowPhaseQuery();
+            query.CastRay(ray, raySettings, collector, bpFilter, objectFilter, bodyFilter, shapeFilter);
+            const hadHit = collector.HadHit();
+            let result = null;
+            if (hadHit) {
+                const hit = collector.mHit;
+                const fraction = hit.mFraction;
+                const distance = fraction * maxDistance;
+                const bodyID = hit.mBodyID;
+                // Find bodyId string from bodyMap
+                let hitBodyId = null;
+                for (const [id, entry] of bodyMap) {
+                    if (entry.bodyID.GetIndex() === bodyID.GetIndex()) { hitBodyId = id; break; }
+                }
+                // If not found, try to get from allBodyIDs
+                if (!hitBodyId) {
+                    for (const bid of allBodyIDs) {
+                        if (bid.GetIndex() === bodyID.GetIndex()) {
+                            for (const [id, entry] of bodyMap) if (entry.bodyID === bid) { hitBodyId = id; break; }
+                            break;
+                        }
+                    }
+                }
+                const point = [origin[0] + dir[0] * distance, origin[1] + dir[1] * distance, origin[2] + dir[2] * distance];
+                // Get normal at hit point — GetSurfaceNormal wants the hit
+                // point in the shape's local frame, not world.
+                let normal = [0, 1, 0];
+                try {
+                    const bodyLock = physicsSystem.GetBodyLockInterfaceNoLock();
+                    const body = bodyLock.TryGetBody(bodyID);
+                    if (body) {
+                        const shape = body.GetShape();
+                        const subShapeID = hit.mSubShapeID2;
+                        // Inverse body rotation: conjugate of body quat, then
+                        // local = invRot * (world - bodyPos).
+                        const bPos = body.GetPosition();
+                        const bRot = body.GetRotation();
+                        const bx = bRot.GetX(), by = bRot.GetY(), bz = bRot.GetZ(), bw = bRot.GetW();
+                        const dx = point[0] - bPos.GetX();
+                        const dy = point[1] - bPos.GetY();
+                        const dz = point[2] - bPos.GetZ();
+                        // invQ = (-x,-y,-z,w)
+                        const qx = -bx, qy = -by, qz = -bz, qw = bw;
+                        const ix = qy * dz - qz * dy;
+                        const iy = qz * dx - qx * dz;
+                        const iz = qx * dy - qy * dx;
+                        const ix2 = qy * iz - qz * iy;
+                        const iy2 = qz * ix - qx * iz;
+                        const iz2 = qx * iy - qy * ix;
+                        const lx = dx + 2 * (qw * ix + ix2);
+                        const ly = dy + 2 * (qw * iy + iy2);
+                        const lz = dz + 2 * (qw * iz + iz2);
+                        const localHit = new J.Vec3(lx, ly, lz);
+                        const nLocal = shape.GetSurfaceNormal(subShapeID, localHit);
+                        let nx = nLocal.GetX(), ny = nLocal.GetY(), nz = nLocal.GetZ();
+                        J.destroy(localHit); J.destroy(nLocal);
+                        // Local normal → world: rotate by body quat (no translation).
+                        const cx = by * nz - bz * ny;
+                        const cy = bz * nx - bx * nz;
+                        const cz = bx * ny - by * nx;
+                        const jx = by * cz - bz * cy + bw * cx;
+                        const jy = bz * cx - bx * cz + bw * cy;
+                        const jz = bx * cy - by * cx + bw * cz;
+                        nx = nx + 2 * jx; ny = ny + 2 * jy; nz = nz + 2 * jz;
+                        const nLen = Math.hypot(nx, ny, nz);
+                        if (nLen > 1e-9) normal = [nx / nLen, ny / nLen, nz / nLen];
+                        else normal = [nx, ny, nz];
+                    }
+                } catch (_) {}
+                result = { distance, bodyId: hitBodyId, point, normal };
+            }
+            J.destroy(ray);
+            J.destroy(raySettings);
+            J.destroy(collector);
+            J.destroy(bpFilter);
+            J.destroy(permissiveOVB);
+            J.destroy(objectFilter);
+            J.destroy(bodyFilter);
+            J.destroy(shapeFilter);
+            return result;
+        },
         destroy() {
             if (destroyed) return;
             destroyed = true;
