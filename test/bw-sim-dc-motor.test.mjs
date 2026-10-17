@@ -9,7 +9,8 @@
  * Every expectation is the MODEL's prediction from its DeviceModel numbers (ω0, τs, the
  * rotor's reflected inertia J, the gearbox friction τf) and the rig's geometry, never a
  * value the test sets and reads back. Whether those numbers are the real motor's is owner
- * decision D6 (devices/dc-motors.js says which are LEGO's, which Pybricks', which derived).
+ * decision D6: they are fitted to Philo's measurements (devices/catalog.js; checked against
+ * them in test/bw-sim-motor-catalogue.test.mjs), at the SPIKE hub's 7.2 V.
  *
  * The rig: a static housing, an output body on a vertical (or, for the stall test,
  * horizontal) hinge driven by the motor on port A, and on the same axis a second hinge
@@ -24,6 +25,7 @@ import {SPIKE_MEDIUM_ANGULAR, SPIKE_LARGE_ANGULAR} from '../overlay/scratch-gui/
 import {SpikeVirtualHub} from '../overlay/scratch-gui/src/lib/bw-sim/hubs/spike/spike-virtual-hub.js';
 import {KP} from '../overlay/scratch-gui/src/lib/bw-sim/hubs/spike/spike-motor-controller.js';
 import {STEP_MS} from '../overlay/scratch-gui/src/lib/bw-sim/hub-bridge.js';
+import {SPIKE_PRIME_PROFILE} from '../overlay/scratch-gui/src/lib/bw-sim/hubs/spike/profile.js';
 
 const J = await loadJolt();
 const DEG = 180 / Math.PI;
@@ -89,7 +91,7 @@ const spikeLoop = (r, device, deviceId) => {
         step (load = null) {
             t += STEP_MS;
             hub.advanceTo(t);
-            for (const d of hub.readDrives()) applyDrive(r.core, 'jA', d, r.motor, {device, supplyVolts: 7.2});
+            for (const d of hub.readDrives()) applyDrive(r.core, 'jA', d, r.motor, {device, supplyVolts: SPIKE_PRIME_PROFILE.ports[0].supplyVolts});
             if (load) r.core.setMotor('jB', load);
             r.core.step(DT);
             const s = r.core.jointState('jA');

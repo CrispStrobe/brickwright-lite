@@ -9,15 +9,17 @@
 // spike-motor-controller.js) outputs a PWM duty into each motor's DC model,
 // so the ports take `pwm` drives (the ideal `servo` is a test fixture).
 
+import {HUB_SUPPLY_VOLTS} from '../../devices/catalog.js';
+
 const port = id => Object.freeze({
     id,
     label: Object.freeze({en: `Port ${id}`, de: `Port ${id}`}),
     kind: 'lpf2',
     accepts: Object.freeze(['motor', 'sensor-lpf2']),
-    // The battery's nominal voltage (LEGO's SPIKE Prime technical specifications: 2100 mAh / 7.3 V
-    // Li-ion; the motors' published figures are at 7.2 V). Charge level and sag under load are not
-    // modelled: the DC model scales the duty by 7.2/7.2.
-    supplyVolts: 7.2,
+    // What the motors see (devices/catalog.js HUB_SUPPLY_VOLTS says why: the 7.3 V Li-ion battery
+    // less the H-bridge's drop, LEGO's own test supply; 7.2–8.3 V over a charge). Charge level and
+    // sag under load are not modelled: the motors' lines are evaluated at this one voltage.
+    supplyVolts: HUB_SUPPLY_VOLTS['spike-prime'].volts,
     identifies: 'lpf2-id'
 });
 

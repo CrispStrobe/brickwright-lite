@@ -40,8 +40,8 @@
 //               generator (its load input), which freezes the reference and
 //               ends a position command as 'stalled' after its own stallMs.
 //
-// Gains (N·m per rad, per rad·s, per rad/s; for the medium motor, τs =
-// 0.18 N·m, they are 8, 40 and 0.3 of duty), chosen on the DC model
+// Gains (N·m per rad, per rad·s, per rad/s; 8, 40 and 0.3 of duty for a
+// motor of τs = 0.18 N·m, R2's medium motor), chosen on the DC model
 // J·ω' = τs(u − ω/ω0) − τ_load with a 5 ms zero-order hold and the encoder
 // read at the start of the step (the Robot Lab's cadence), by a grid search
 // over both SPIKE motors and driven inertias J from the bare output (the
@@ -50,15 +50,19 @@
 // peak-to-peak speed ripple at 500 °/s (≤ 1 % everywhere in that range) and
 // the fastest recovery from a step load of 30 % of the stall torque
 // (≤ 85 ms to within 5 %). As torques the same gains serve the large motor
-// (checked over the same range), and any other DC model. The derivative term is large (Kd·ω0 ≈ 6): the
-// motor's own back-EMF damping alone leaves a heavy load ringing against the
-// position loop. Above ~5e-3 kg·m² the loop rings during ramps — a load the
+// (checked over the same range), and any other DC model. Re-checked on the D6 numbers (Philo's
+// measurements: medium τs 0.104 N·m, ω0 176 rpm; large 0.264 N·m, 168 rpm at 7.2 V; for the
+// medium motor the gains are now 13.8, 69 and 0.52 of duty): same tests, same bounds —
+// test/bw-sim-dc-motor.test.mjs (d)–(g). The derivative term is large (KD is 6× the
+// back-EMF damping τs/ω0 of R2's medium motor, 9.6× the D6 one's, 3.6× the
+// large one's): the motor's own damping alone leaves a heavy load ringing
+// against the position loop. Above ~5e-3 kg·m² the loop rings during ramps — a load the
 // real firmware would also need re-tuning for (Pybricks scales its gains
 // per motor type, not per load).
 // The test (test/bw-sim-dc-motor.test.mjs) measures stability, recovery
 // after a load step, and position accuracy on the real physics.
 
-/** The stall torque the gains were tuned in duty units for (the medium motor), N·m. */
+/** The stall torque the gains were tuned in duty units for (R2's medium motor), N·m: a scale, not a motor's number. */
 const TAU_REF = 0.18;
 /** Proportional gain on the tracking error, N·m per rad. */
 export const KP = 8 * TAU_REF;

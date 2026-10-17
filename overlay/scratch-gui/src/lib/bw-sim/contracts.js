@@ -432,13 +432,19 @@ const motorInternalJoint = meta => {
     return joint;
 };
 
-/** The catalogue device whose numbers ARE the v1 motor's, else the same numbers as an inline device. */
+/**
+ * The catalogue device whose numbers ARE the v1 motor's — today's, or the ones PartMeta v1 held
+ * for that device (`device.v1`: D6 replaced the SPIKE motors' stall torques, a v1 file still
+ * names the same motor) — else the same numbers as an inline device.
+ */
 const motorDevice = meta => {
     const m = meta.motor || {};
     const lpf2 = Number.isInteger(m.deviceId) ? m.deviceId : undefined;
+    const same = (n, torque, speed) => n.maxTorqueNm === torque && n.maxSpeedDegPerSec === speed;
     for (const d of deviceModels.values()) {
-        if (d.motor && lpf2 !== undefined && d.ids.lpf2 === lpf2 && d.motor.stallTorqueNm === m.maxTorqueNm &&
-            d.motor.servoMaxDegPerSec === m.maxSpeedDegPerSec) return d.id;
+        if (!d.motor || lpf2 === undefined || d.ids.lpf2 !== lpf2) continue;
+        if (same(m, d.motor.stallTorqueNm, d.motor.servoMaxDegPerSec) ||
+            (d.v1 && d.parts.includes(meta.part) && same(m, d.v1.maxTorqueNm, d.v1.maxSpeedDegPerSec))) return d.id;
     }
     return {id: `${meta.part}#motor`, class: 'motor', parts: [meta.part], ids: lpf2 === undefined ? {} : {lpf2},
         source: 'PartMeta v1 motor (inline device: no catalogue device has these numbers)',

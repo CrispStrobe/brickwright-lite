@@ -40,7 +40,10 @@ test('the driving base compiles to v2: its hub, two motors on {hub, port}, roles
         // The motor's hinge joins its housing to its turning output: both bodies hold the motor part.
         const motorPart = BASE.parts.find(p => p.port === a.port).id;
         for (const b of [j.body1, j.body2]) assert.ok(m.bodies.find(x => x.id === b).parts.includes(motorPart), `${a.port}: ${b}`);
-        assert.equal(a.maxTorqueNm, 0.18);
+        // The medium motor's stall torque at the SPIKE hub's 7.2 V (owner decision D6), from Philo's
+        // 9 V points (no load 0.10 A; stall 13.5 N·cm, 0.85 A): k_t·(V/R − i0), R = 9 V/0.85 A,
+        // k_t = 0.135 N·m/(0.85 − 0.10) A — 0.1044 N·m (R2's 0.18 was LEGO's sheet).
+        assert.ok(Math.abs(a.maxTorqueNm - 0.135 / (0.85 - 0.10) * (7.2 * 0.85 / 9 - 0.10)) < 1e-12, `${a.maxTorqueNm}`);
         assert.equal(a.maxSpeedRadPerSec, 1110 * Math.PI / 180);
     }
     assert.deepEqual(m.devices, []);
