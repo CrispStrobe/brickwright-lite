@@ -45,7 +45,11 @@ export const LOCKSTEP_OPS = Object.freeze({
     run: 'renode.spike.run',
     begin: 'renode.spike.lockstep.begin',
     step: 'renode.spike.lockstep.step',
-    end: 'renode.spike.lockstep.end'
+    end: 'renode.spike.lockstep.end',
+    /** One NuttX program packet, answered by the free-running firmware (upload, before begin). */
+    programPacket: 'renode.spike.program.packet',
+    /** START/STOP that returns at once; the firmware's reply shows in later step snapshots (§2.6). */
+    programControl: 'renode.spike.program.control.submit'
 });
 
 /** Target capabilities a lockstep session needs (§4 R13b). */

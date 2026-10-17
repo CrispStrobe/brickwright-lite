@@ -24,6 +24,7 @@ import {SIM_LAB_STORAGE_KEY, simLabRecordFromText, readSimLabStorage, isStorable
 import SimLabPalette from './sim-lab-palette.jsx';
 import SimLabInstructions from './sim-lab-instructions.jsx';
 import {INSIGHT_TEXT, issueSentence, fillText} from './sim-lab-insight-text.js';
+import {firmwareRefusalSentence} from './sim-lab-firmware-text.js';
 
 /** A MODELS entry's key: its `id` when one model file is listed more than once, else its file. */
 const modelKey = m => m.id || m.file;
@@ -65,6 +66,10 @@ const TEXT = {
         route: 'Program', routeScratch: 'SPIKE blocks', routeFirmware: 'SPIKE firmware (desktop)',
         routeUnavailable: 'Not available: this build has no managed Renode runtime with lockstep.',
         realTime: '{f}× real time', firmwareFailed: 'Could not start the SPIKE firmware: {error}',
+        stopping: 'Stopping the program…',
+        firmwareReloading: 'The program changed: starting the emulated hub again with the new program…',
+        firmwareFault: 'The program on the SPIKE firmware stopped with an error ({error}). Press Run to start it again.',
+        firmwareControlFailed: 'The SPIKE firmware did not take the command: {error}',
         st: {
             idle: 'Click a part to select it. Drag it to move it; Shift+click adds parts; drag empty space to look around.',
             hover: '{part}: click to select, drag to move', hoverSelected: '{part}: drag to move, R turns, Delete removes',
@@ -125,6 +130,10 @@ const TEXT = {
         route: 'Programm', routeScratch: 'SPIKE-Blöcke', routeFirmware: 'SPIKE-Firmware (Desktop)',
         routeUnavailable: 'Nicht verfügbar: Dieser Build hat keine verwaltete Renode-Laufzeit mit Lockstep.',
         realTime: '{f}× Echtzeit', firmwareFailed: 'Die SPIKE-Firmware konnte nicht starten: {error}',
+        stopping: 'Das Programm hält an…',
+        firmwareReloading: 'Das Programm hat sich geändert: Der emulierte Hub startet neu mit dem neuen Programm…',
+        firmwareFault: 'Das Programm auf der SPIKE-Firmware hat mit einem Fehler angehalten ({error}). Drücke Ausführen, um es neu zu starten.',
+        firmwareControlFailed: 'Die SPIKE-Firmware hat den Befehl nicht angenommen: {error}',
         st: {
             idle: 'Klicke ein Teil an, um es auszuwählen. Ziehen verschiebt es; Umschalt+Klick wählt mehr Teile; Ziehen auf leerer Fläche dreht die Ansicht.',
             hover: '{part}: klicken wählt aus, ziehen verschiebt', hoverSelected: '{part}: ziehen verschiebt, R dreht, Entf löscht',
@@ -276,6 +285,8 @@ class SimLabPane extends React.Component {
             get editView () { return this._pane.editView || null; },
             get projectRecord () { return this._pane.currentRecord(); },
             get blockers () { return this._pane.state.blockers; },
+            /** The firmware route's program on the emulated hub: its state name ('ready', 'running', …) or null. */
+            get firmwareProgram () { return this._pane.firmware?.program?.stateName ?? null; },
             /** The last Build-mode compile for the issues and the overlay: {ms, parts}. */
             get insight () { return this._pane.lastInsight || null; },
             _pane: this
@@ -587,9 +598,17 @@ class SimLabPane extends React.Component {
         // The SPIKE firmware route (desktop): the emulated hub starts first; the scene then runs
         // in lockstep with it (lib/bw-sim/routes/renode-lockstep).
         let firmware = null;
+        let refusal = null;
+        this.firmware = null;
         if (this.state.route === 'firmware') {
+            // The program the emulated hub runs: the Code tab's blocks, compiled by the SPIKE
+            // arena's firmware compiler and uploaded before lockstep. A block it cannot express
+            // is named in the pane; the route still opens, with no program (the robot stands).
+            const compiled = this.compileFirmware();
+            refusal = compiled.error;
             try {
-                firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.props.hubState});
+                firmware = await this.lib.openFirmwareRoute({capabilities: this.renodeCapabilities(), hubState: this.props.hubState,
+                    program: compiled.program, onProgramChange: control => this.onFirmwareProgram(control)});
             } catch (error) {
                 if (token !== this.loadToken) return;
                 // The packaged runtime has no lockstep/v1: not a failure, an unavailable route.
@@ -612,6 +631,10 @@ class SimLabPane extends React.Component {
         }
         if (!result.session) firmware?.driver.end().catch(() => {});
         if (token !== this.loadToken || this.disposed) { result.session?.dispose(); return; }
+        if (result.session && firmware) {
+            this.firmware = firmware;
+            if (refusal) this.setState({message: firmwareRefusalSentence(this.locale, refusal)});
+        }
         const {session, issues, model, runModel} = result;
         if (!session) {
             this.setState({status: 'failed', issues, blockers: this.lib.runBlockers(issues, model, CATALOG),
@@ -671,6 +694,60 @@ class SimLabPane extends React.Component {
         });
     }
 
+    /** The Code tab's program for the firmware route: {program} or {error} (which block, why). */
+    compileFirmware () {
+        return this.lib.compileRouteProgram(this.props.vm, {topology: 'default'});
+    }
+
+    /**
+     * Run on the firmware route: the program as it is now (a changed one restarts the
+     * emulated hub with it: program packets cannot cross during lockstep), then START.
+     */
+    async runFirmware () {
+        const compiled = this.compileFirmware();
+        if (compiled.error) {
+            this.setState({message: firmwareRefusalSentence(this.locale, compiled.error)});
+            return;
+        }
+        const key = JSON.stringify(compiled.program.instructions);
+        if (this.firmware?.program?.key !== key) {
+            this.setState({info: this.text.firmwareReloading});
+            const opened = this.opened;
+            if (!opened) return;
+            await this.openText(opened.text, opened.name, this.state.shipped);
+            if (this.disposed || this.firmware?.program?.key !== key) return;
+        }
+        const program = this.firmware.program;
+        this.setState({status: 'running', info: '', message: ''});
+        try {
+            await program.start();
+        } catch (error) {
+            this.setState({status: 'paused', message: this.t('firmwareControlFailed', {error: error.message})});
+        }
+    }
+
+    /** Pause on the firmware route: STOP, and the clock runs on until the hub has taken it (the robot brakes). */
+    pauseFirmware () {
+        const program = this.firmware?.program;
+        if (!program || (!program.running && program.idle)) { this.setState({status: 'paused'}); return; }
+        this.setState({status: 'stopping'});
+        program.stop().catch(error => this.setState({status: 'paused', message: this.t('firmwareControlFailed', {error: error.message})}));
+    }
+
+    /** The emulated hub's program changed state (lib/bw-sim/routes/renode-lockstep/program.js onChange). */
+    onFirmwareProgram (control) {
+        if (this.disposed || this.firmware?.program !== control) return;
+        if (control.failed) {
+            this.setState({status: this.state.status === 'stopping' ? 'paused' : this.state.status,
+                message: this.t('firmwareControlFailed', {error: control.failed.message})});
+            return;
+        }
+        if (control.fault !== null && control.stateName === 'fault') {
+            this.setState({message: this.t('firmwareFault', {error: control.fault})});
+        }
+        if (this.state.status === 'stopping' && !control.running && control.idle) this.setState({status: 'paused'});
+    }
+
     frame (now) {
         this.raf = requestAnimationFrame(this.frame);
         const dt = this.last === null ? 0 : Math.min(MAX_FRAME_MS, now - this.last);
@@ -680,7 +757,8 @@ class SimLabPane extends React.Component {
         if (this.session.failed && this.state.status !== 'failed') {
             this.setState({status: 'failed', message: this.t('physicsFailed', {error: this.session.failed.message})});
         }
-        if (this.state.status === 'running' && dt > 0) {
+        // 'stopping': the firmware route keeps its clock until the emulated hub has taken STOP.
+        if ((this.state.status === 'running' || this.state.status === 'stopping') && dt > 0) {
             this.session.tick(dt);
         }
         // With the physics in the worker, simulated time advances when a batch comes back.
@@ -698,8 +776,7 @@ class SimLabPane extends React.Component {
     /** As the arena's Start: connect the spikeprime blocks to the shared virtual hub, then green flag. */
     async run () {
         if (!this.session) return;
-        // The firmware runs its own program in the emulator: the clock is all Run starts.
-        if (this.session.lockstep) { this.setState({status: 'running', info: ''}); return; }
+        if (this.session.lockstep) { await this.runFirmware(); return; }
         const hubState = this.props.hubState;
         hubState.setSimulationEnabled(true);
         this.setState({status: 'running'});
@@ -768,6 +845,7 @@ class SimLabPane extends React.Component {
 
     pause () {
         if (!this.session) return;
+        if (this.session.lockstep) { this.pauseFirmware(); return; }
         if (this.spikeLoaded()) { try { this.props.vm.stopAll(); } catch { /* the VM may be mid-load */ } }
         this.props.hubState.backend.cancel();
         this.setState({status: 'paused'});
@@ -1242,7 +1320,7 @@ class SimLabPane extends React.Component {
         );
         const runButton = running ?
             <button type="button" style={button} data-testid="bw-sim-lab-pause" onClick={() => this.pause()}>{compact ? face('pause', T.pause) : T.pause}</button> :
-            <button type="button" style={button} data-testid="bw-sim-lab-run" disabled={!this.session || busy} onClick={() => this.run()}>{compact ? face('run', T.run) : T.run}</button>;
+            <button type="button" style={button} data-testid="bw-sim-lab-run" disabled={!this.session || busy || status === 'stopping'} onClick={() => this.run()}>{compact ? face('run', T.run) : T.run}</button>;
         const resetButton = (
             <button type="button" style={compact ? icon : button} data-testid="bw-sim-lab-reset" disabled={!this.session || busy}
                 aria-label={compact ? T.reset : undefined} title={compact ? T.reset : undefined} onClick={() => this.reset()}>
