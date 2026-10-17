@@ -1,0 +1,1219 @@
+# Robot Lab architecture — from one driving base to every LEGO Technic machine and hub
+
+Status: **design, not built.** Written 2026-10-17 on `lane/simlab-arch-20261017`, after reading
+the S1 code as it stands on `main` (`268c6e118`). Owner of record: unclaimed. Claim slices in
+`LANES.md` as usual.
+
+This document says how the Robot Lab ("Sim Lab" in code: `overlay/scratch-gui/src/lib/bw-sim/`)
+grows from one product (a SPIKE Prime driving base on a mat) into what the owner asked for:
+working Technic **mechanisms** (cranes, shifting gearboxes, excavators, forklifts, the 1990
+plotter, differentials, pneumatics, winches, turntables, linear actuators), driven by **every
+LEGO hub generation** from the Technic Control interfaces and the RCX to SPIKE Prime, through
+**every execution route** the repo has (Scratch extensions, text dialects, MicroPython, compiled
+binaries, CPU/VM emulators). It overrides nothing in `docs/SIM-LAB-PLAN.md` that is built; it
+replaces that plan's §5 non-goals for the slices below, and its A2/A4/F5 tasks (see §6).
+
+Conventions. "Today" means the code at `268c6e118`. File paths are relative to
+`overlay/scratch-gui/src/lib/bw-sim/` unless they start with `overlay/`, `docs/`, `test/` or
+`scripts/`. Jolt facts are from the vendored `jolt-physics` **1.1.0** typings
+(`packages/scratch-gui/node_modules/jolt-physics/dist/types.d.ts` in the follow worktree), not
+from memory. Real-world device specs marked **~** are public approximate figures (catalogue
+values and community bench measurements); every one must be re-measured or sourced before it
+becomes a `DeviceModel` number, and the device registry carries a `source` field for exactly
+that.
+
+Contents
+
+0. Summary of decisions
+1. Target inventory: mechanisms and the physics each needs
+2. Hub inventory
+3. Execution routes and the port boundary
+4. Gap analysis of today's contracts
+5. Proposed contracts
+6. Modularity plan: registries and the worker protocol
+7. Roadmap in slices
+8. Risks and decisions for the owner
+
+---
+
+## 0. Summary of decisions
+
+1. **One boundary: the port.** Physics never talks to a hub implementation, a VM, an
+   extension or an emulator. It talks to `PortDevice`s on a `VirtualHub`, through a
+   per-step exchange of plain data (`PortIO`: actuator *drives* in, sensor *readings* and
+   encoder counts out). Every route — Scratch extension, MicroPython, a compiled RCX binary
+   in an H8 emulator, SPIKE firmware in an emulator — ends at that same port. The existing
+   `VirtualSpikeHubState` becomes the first `VirtualHub` implementation through an adapter;
+   nothing it does today changes.
+2. **Motor drive has two levels, and the level is the hub's, not the motor's.** A *smart*
+   hub whose controller is simulated in JS (today's SPIKE path) drives a port with a
+   **velocity servo** command (`{mode:'servo', radPerSec}`, exactly today's behaviour,
+   bit-identical). A hub whose firmware runs in an emulator, and every unregulated hub
+   (RCX, WeDo, Technic Control, Power Functions), drives a port with a **PWM duty**
+   (`{mode:'pwm', duty, decay}`) into a **DC-motor model** (torque–speed line, back-EMF
+   braking). The motor's `DeviceModel` holds the electrical/mechanical numbers both use.
+3. **Time is owned by the physics clock (5 ms steps), always.** A route is a
+   *step-synchronous* client: before each step it is advanced to the step's start time
+   (an interpreter runs its due ticks; an emulator runs exactly the cycles that fit), reads
+   the readings of the previous step and writes drives. No route ever runs ahead of
+   physics time. The worker's checkpoint/redo protocol (SIM-LAB-PLAN §4.9) is generalised
+   from "the SPIKE controller state" to "every route's serialisable state" (§3.4).
+4. **The compiler becomes registry-driven.** Connector kinds, edge rules, joint kinds,
+   couplings (gear, rack, worm, chain, differential, clutch, rope, pneumatic) and devices
+   are registered modules with data; adding a mechanism or a hub is data + one module, not
+   an edit to `graph.js`/`gears.js`/`jolt-core.js`/`hub-bridge.js` (§6).
+5. **Contract versions are explicit and old files keep meaning what they meant.**
+   `PlacedModel` stays `version: 1` on disk where nothing new is used; `CompiledMechanism`
+   goes to `version: 2` internally (never stored); `parts.json` gets `version: 2` with a
+   loader that upgrades v1 entries. Every existing test and fixture stays valid (§5.7).
+6. **Three things need more than stock Jolt 1.1.0**, and that is the main owner decision
+   (§8): gears whose common frame turns about the gear axis (differentials, gear trains on
+   a turntable, any gear on a yawing chassis with vertical axes), a load-bearing rope over
+   moving sheaves, and a torque-limited slip clutch. Each has a stock-Jolt approximation in
+   the early slices; the exact form needs either a custom Jolt WASM build with three small
+   C++ constraints, or JS constraints in a step listener (weaker). Recommended: the custom
+   build, after the slices that do not need it.
+
+---
+
+## 1. Target inventory: mechanisms and the physics each needs
+
+### 1.1 What stock Jolt 1.1.0 offers (verified in the WASM typings)
+
+| Jolt construct | Present | Useful members (from `types.d.ts`) | Used today |
+|---|---|---|---|
+| `HingeConstraint` | yes | limits + limit springs, `mMaxFrictionTorque`, motor (velocity/position, torque limits), `GetCurrentAngle`, `GetTotalLambdaMotor` | yes, `physics/jolt-core.js:257` |
+| `SliderConstraint` | yes | limits + springs, `mMaxFrictionForce`, motor (velocity/position, force limits), `GetCurrentPosition`, `GetTotalLambdaMotor` | created, **never driven or read** (`jolt-core.js:312`) |
+| `PointConstraint` | yes | ball joint | yes (castor), `jolt-core.js:329` |
+| `FixedConstraintSettings` | yes | weld two bodies (toggle with `Constraint.SetEnabled`) | no |
+| `ConeConstraint`, `SwingTwistConstraint` | yes | ball with angular limits (towball steering links, universal-joint approximation) | no |
+| `SixDOFConstraint` | yes | per-axis free/fixed/limited, per-axis motors and friction | no |
+| `GearConstraint` | yes | `mRatio`, axes, `SetConstraints(hinge1, hinge2)`; **couples world angular rates** | yes, `jolt-core.js:378` |
+| `RackAndPinionConstraint` | yes | `mRatio`, hinge axis, slider axis, `SetConstraints(pinion, rack)` | **validated in the contract, silently ignored by the core** (`jolt-core.js:390–392` only records it) |
+| `PulleyConstraint` | yes | two body points + two **world-fixed** points, `mRatio`, min/max length | no |
+| `DistanceConstraint` | yes | min/max distance, limit spring (soft), `SetDistance`, `GetTotalLambdaPosition` | no |
+| `PathConstraint` (+ `PathConstraintPathHermite`, `…PathJS`) | yes | body follows a curve, position motor | no |
+| `VehicleConstraint` + `TrackedVehicleController` / `WheeledVehicleController` | yes | ray/shape-cast vehicle, tracks | no |
+| Soft bodies (`SoftBodyCreationSettings`, rod stretch/shear, LRA) | yes | ropes/hoses as rods | no |
+| `Constraint.SetEnabled`, `SetNumVelocityStepsOverride`, `SaveState/RestoreState` | yes | clutches, stiff gear chains, rewind | velocity override yes (`GEAR_VELOCITY_STEPS = 30`) |
+| `GroupFilterTable` | yes | per-pair collision enable/disable | no — today **all dynamic–dynamic collisions are off** (`jolt-core.js:107`) |
+| `ContactListenerJS`, `PhysicsStepListenerJS` | yes | contact forces (touch/force sensors, pen on paper), per-step JS hook | no |
+| Custom C++ constraint | **no** (needs our own WASM build) | — | — |
+
+Two facts about the *existing* use matter for every mechanism below:
+
+- **Gears couple world rates.** `jolt-core.js:357–360` documents it: exact only while the
+  frame holding both axles does not itself rotate about the gear axes. Jolt's
+  `GearConstraint` velocity part is `ω1·a1 + r·ω2·a2 = 0` with world angular velocities;
+  `SetConstraints(hinge1, hinge2)` only adds position-drift correction, it does not make
+  the rates relative. The core does not call it today.
+- **Jolt 1.1.0 gear constraint diverges for `r < 1` or negative `r`** (`jolt-core.js:354–357`,
+  measured); the core orders the pair so `r = 1/|ratio| ≥ 1`. Every new coupling must keep
+  that normalisation (it belongs in one `normalizeGearPair` helper, §6).
+
+### 1.2 Mechanism catalogue
+
+Each row: the mechanism, the LEGO parts it needs (none of the new ones is in `parts.json`
+today except the worm `4716.dat`), and its physics mapping. "Stock" = buildable with stock
+Jolt; "approx" = an approximation with stock Jolt, stated; "custom" = exact form needs a
+custom constraint (§8 D1).
+
+| # | Mechanism | Parts (LDraw ids to verify against the library) | Physics mapping |
+|---|---|---|---|
+| M1 | Spur / bevel gear mesh (exists) | 8/16/24/40T, 12/20T bevel, 36T/28T double bevel, 12T/20T double bevel | `GearConstraint` on the two gear bodies (today). Stock, exact on a non-rotating frame. |
+| M2 | Gear train on a turning frame (crane slewing ring with a vertical gear inside the superstructure; any vertical-axis gear on a yawing robot) | as M1 | Stock is off by the frame rate (documented limit). **Custom**: frame-relative gear (`ToothContact`, §5.3). Approx: none good; diagnose with a `gear-on-turning-frame` warning when the frame's hinge axis is parallel to the gear axis. |
+| M3 | Worm drive, **non-backdrivable** | worm 4716, 24T, worm gear box | `GearConstraint` ratio `1/teeth` (worm = 1 start). Self-locking: the worm's hinge gets `mMaxFrictionTorque = holdTorqueNm` (Jolt applies hinge friction only while the motor is **off**), and a worm whose input is not motor-driven is held by that friction; a load on the wheel then cannot turn the worm. When the worm is motor-driven, back-driving would need `teeth × motor torque` — far above any realistic load, so the motor simply stalls first. Stock. Efficiency loss (real worms ~40–60 %) as an optional extra friction on the wheel hinge. |
+| M4 | Rack and pinion (forklift mast, steering, plotter axis) | gear racks (1×4 3743 and longer racks), 8T/16T/24T pinion, rack guides (beams with holes, axle connectors as runners) | `SliderConstraint` (rack body in its guide; a rack in a beam's slot is a new connector kind `rack-slot`) + `RackAndPinionConstraint` (`ratio` m/rad = pitch radius in m). Stock — the core must create it (today ignored). Limits from the rack length (end stops). |
+| M5 | Linear actuator (old 2790 / new 61927, 92693 mini) | LA housing, piston | Two bodies (housing, piston) + `SliderConstraint` with limits = stroke; input axle hinge + `RackAndPinionConstraint` with ratio = screw lead / 2π; self-locking as M3 via slider `mMaxFrictionForce`. The real LA's **end-of-stroke slip clutch**: approx = disable the rack-pinion (`SetEnabled(false)`) while the piston is at a limit and the input pushes outward, re-enable when it reverses (a 1-bit state in the core's checkpoint). **Custom** exact: torque-limited coupling. |
+| M6 | Chain / track drive | chain link 3711, tread link 3873, sprockets (gear 8T/16T/24T/40T act as sprockets), track 57518 with sprocket 57519 | Chain between two sprockets on one frame = `GearConstraint` with **positive** ratio `teeth1/teeth2` (same direction). Links are rendered, not simulated. Stock. Tracks on a vehicle (approx): the sprocket and idlers become wheels with tread friction, coupled 1:1 by `chain` couplings, plus a non-colliding visual track. `TrackedVehicleController` is not used: it owns the whole vehicle, and here the compiler owns the bodies. |
+| M7 | Differential (car, open diff) | differential 28T/24T housing (62821 new, 6573 old), 12T bevel spiders, side gears | Mechanically: carrier hinge on the chassis, two side-gear hinges on the chassis (output half-axles), spider hinges on the carrier, four bevel meshes. The spider–side meshes are on a frame (the carrier) that turns about the side-gear axis — exactly M2's limit; stock Jolt gives the wrong relation. **Custom** (`ToothContact`). Approx (no custom build): a lumped **differential coupling** solved by a JS step listener as `ω_L + ω_R = 2·ω_C` (relative to the chassis) with velocity-level impulses each step: correct kinematics, weaker under load (not inside the solver iterations). Locked diff = `FixedConstraint` carrier–side gear. |
+| M8 | Clutch gears and driving ring (shifting gearbox, Schaltgetriebe) | driving ring 6539, driving ring extension, driving-ring hub axle, 16T clutch gear 6542, 20T double bevel with clutch, changeover catch 6641, gear shift lever | Clutch gears spin freely on the hub axle: hinge (new connector kind `clutch-bore`). The ring is a body on a **slider** along the hub (new connector kind `ring-hub`) with **detents** (3 positions) as a slider position motor with a low force limit snapping to the nearest detent. A **`selectableCoupling`** per clutch gear: engaged when the ring's slider position is within ±0.6 mm of that gear's engage position; engaged = the gear's hinge to the hub axle is locked (hinge motor velocity 0, torque limit = `couplingTorqueNm`, ~0.5 N·m) — disengaged = motor off, free. The coupling state machine runs in the core per step and is saved in the checkpoint. Tooth alignment (the ring engages only at 4 angular positions) is modelled as: engagement waits until the relative angle is within ±10° of a multiple of 90°. Stock. |
+| M9 | Turntable (crane slewing, excavator upper) | turntable 28T old (2856/2855), 56T large turntable (48452 / 18938+18939), small 24T | Two halves = a hinge (new connector kind `turntable-ring` pair, axis through the centre); the outer half's teeth are a `gear` of type `spur` (or `ring`) with its tooth count, meshing with a worm or a pinion (M1/M3). Stock. Bearing friction as hinge `mMaxFrictionTorque`. |
+| M10 | Winch / rope / pulley (crane hoist) | string with end studs (several lengths), winch drum (a wedge belt wheel or a dedicated drum), hook, pulley wheels | Rope = **unilateral length constraint** `Σ|segments| + r_drum·θ_drum ≤ L0` through sheave points on bodies. Jolt's `PulleyConstraint` has world-**fixed** sheave points and no drum term, so it fits only a crane whose boom does not move. **Approx (stock, recommended for v1)**: `DistanceConstraint` from the hook body to the last sheave point (min 0 — slack allowed — max = current rope length), with `SetDistance` updated every step from the drum angle; the measured rope tension (`GetTotalLambdaPosition`/dt) is applied back to the drum as a torque `T·r` on the next step (one-step explicit coupling; stable because hoists are worm- or gear-reduced). Multi-segment ropes over boom-tip sheaves: rope length is split at the sheaves the compiler found, only the last segment is a real constraint, the others' lengths are geometric (they change when the boom luffs, and that change is added to `L`). **Custom** exact: a `Rope` constraint over moving sheaves. Soft-body rods: not for v1 (cost, and SaveState of soft bodies is unmeasured here). |
+| M11 | Rubber band | rubber bands (several sizes), as return springs and belt drives | Spring: `DistanceConstraint` min 0, max = rest length, `mLimitsSpringSettings` with the band's stiffness (pulls only). Belt drive over pulleys = `GearConstraint` ratio `r1/r2`, positive, with slip approximated by a lower velocity-step count. Stock. |
+| M12 | Pneumatics | pump (small 2797 / large 19475), cylinder (small 4692, large 2793/47224), switch/valve 4694, tank 75974, hoses, T-pieces, PF/Control+ compressor | Not a Jolt problem. A **lumped-pressure network** module (`fluid/`): nodes = hose-connected volumes with pressure state; valves switch connectivity (3 positions, a hinge with detents read like a sensor); pumps add air mass per stroke (pump = slider with a return spring, stroke volume); cylinder force = (p_A − p_B)·area applied as the cylinder **slider motor**: velocity mode, target ±large, force limits from the pressures, so Jolt does the dynamics and the end stops. Network state stepped once per physics step, saved in the checkpoint. Stock + module. |
+| M13 | Sliding joints (fork carriage, plotter carriage, telescopic boom) | beams on axles, axle connectors sliding on axles (frictionless), 6538 sliding on 3L axles | Axle in a **round** hole today is a hinge; a part that slides **and** turns on an axle needs a hinge+slider = Jolt `SixDOF` with rotation-about-axis and translation-along-axis free (new joint kind `cylindrical`). Stock. Axial friction and end stops from the axle's length (both connectors' extents are already in `PartMeta`). |
+| M14 | Limit switch / touch sensor | RCX touch 879, NXT/EV3 touch, SPIKE force, Technic Control touch sensor | Contact-based, not a raycast: `ContactListenerJS` collects contact impulses on the plunger collider (a separate small body on a slider with a spring, so it really travels), pressed = plunger travel > threshold. Requires dynamic–dynamic collisions between plunger and robot parts (`GroupFilterTable`). Stock. |
+| M15 | Pen and paper (plotter) | plotter pen holder (any Technic pen clip; the 1990 set used a felt pen in a holder), paper sheet | Pen = `MarkerDevice` (a point on a body + a "down" condition: tip within 0.4 mm of the paper surface, or a pen-lift slider at its lower limit). Each physics step with the pen down appends the tip's position in the **paper's frame** to a polyline (`world/paper.js`): the paper is a world object (static sheet, or a body moved by feed rollers). Rendered as a texture; read by the acceptance test as vectors. Stock (no physics beyond poses). |
+| M16 | Steering (Ackermann, towball links) | steering arms, towball 2736 + ball sockets (already have `ball`/`ballsocket`), rack | Rack-and-pinion (M4) + ball joints (exists) + hinges. Stock. |
+| M17 | Shock absorbers / springs | shock absorbers 6.5L and 9.5L | Slider with limit spring (stiffness + damping). Stock. |
+| M18 | Ratchet / one-way (crane pawl) | pawl on a gear | Hinge limit on a pawl body + contact; or a `oneWay` coupling flag on a hinge (motor locks one direction). Stock approx. |
+
+### 1.3 Target machines
+
+Each target lists the mechanisms it needs (§1.2 numbers), the hub/motor it is designed
+around in the first form, and what makes it hard.
+
+**T1 Crane (Kran) — tower or mobile, with slewing, luffing and hoist.**
+Mechanisms: M9 turntable (slewing, driven by a worm, M3), M3 worm hoist with M10 rope and
+hook, luffing by M5 linear actuator or a second winch, M2 if the slewing drive has vertical
+gears on the superstructure (avoid in the first model: put the slewing motor on the base).
+Loads: a 50 g weight with a hook loop (world `load`, §5.5); collision hook–load needs
+dynamic–dynamic contact (M14 prerequisite).
+Hard: rope over a moving boom tip (M10 approx), sway (the hook body on a rope swings: real,
+and it is the fun part), worm self-locking holding the load when the motor stops.
+
+**T2 Shifting gearbox (Schaltgetriebe) — 2-speed then 4-speed, as on the 8448/8880 cars.**
+Mechanisms: M8 driving ring + clutch gears, M1 spur pairs, shift via changeover catch or a
+servo/motor turning a shift drum (rack M4 or cam). Fixed frame (bench-clamped), so gears
+are exact.
+Hard: tooth alignment on engagement, the in-between neutral, and making the ratio
+measurable: the acceptance test reads input and output encoders.
+
+**T3 Excavator (Bagger).** Mechanisms: M9 turntable upper, M6 tracks (approx), boom/stick/
+bucket on M5 linear actuators or M12 pneumatic cylinders, M2 if drive gears are vertical on
+the upper. Load: a granular pile is out of scope; "dig" = push a box load / lift a bucket of
+three 1×1 bricks (rigid loads).
+Hard: tracks (approximated), many actuators (Control+ 42100 Liebherr has 7 motors across two
+hubs: multi-hub, §5.1).
+
+**T4 Forklift (Gabelstapler).** Mechanisms: M13 fork carriage on a mast (slider), M4 rack or
+M10 chain/rope lift (two classic variants), M16 rear-axle steering, drive motors. Load: a
+pallet (world `load`, §5.5) with fork pockets; fork–pallet contact needs dynamic–dynamic
+collisions.
+Hard: the load sits on the forks by friction only; contact stability at mm scale (the
+speculative-distance lesson of S1, `jolt-core.js:135–141`).
+
+**T5 The 1990 plotter.** The owner names "the 1990 LEGO Technic/Control set". The Technic
+Control line of that time (Interface A 9750 with the Control I/II sets, and the 8094 Control
+Center of 1990, whose own controller drives three motor outputs with record/playback) had a
+pen plotter among its models. *Which* plotter (paper-feed rollers + one carriage axis, or a
+flat XY table) is an owner question (§8 D7); the design supports both: M4 or friction-roller
+paper feed, M13 carriage, a pen lift (small motor or solenoid-like M17 with a cam), M15 pen
+and paper, and touch sensors (M14) as home switches. Hubs: the Technic Control interface
+(9750 profile, §2) and, as the modern equivalent, SPIKE Prime.
+Hard: 1 mm accuracy needs backlash-free gears (we have none modelled: good) and a feed that
+does not slip (friction rollers are the risk; the XY-table variant is exact).
+
+**T6 Differential car** (classic Technic 8860-style chassis or SPIKE-sized): M7 diff, M16
+steering, M1, M17 suspension. Drives on the mats. Hard: the diff is the custom-constraint
+case.
+
+**T7 Pneumatic arm / press** (8868/8862 lineage): M12 pump-valve-cylinder, M1, manual pump
+or compressor motor. Hard: the pressure model's tuning against the real feel (time to raise
+the arm, holding when the valve is centred).
+
+**T8 Ball-sorting / conveyor (WeDo/Boost classroom staple):** M6 belt over pulleys (M11),
+colour sensor, small loads in numbers (performance check: 20 balls).
+
+**T9 Robot arm with gripper (8094 Control Center's main model; SPIKE/RI arm)**: M9 base,
+M3 worms, M1, a gripper on M4 or a cam; sensors as limit switches (M14).
+
+### 1.4 Parts that must be added
+
+Grouped, with the connector kinds they need (§5.3). None is in `parts.json` today except
+4716 (whose mesh pair is refused, `mech/gears.js:221`).
+
+- Gears and transmission: rack 1×4/1×7/1×10, worm + worm box, 16T clutch, 12/20T double
+  bevel (with/without clutch), 36T double bevel, 28T old diff + 24T diff housing + new diff,
+  driving ring + extension, driving-ring hub axle, changeover catch, turntables (2856/48452/
+  new large), knob wheel, gear shift lever, universal joint (two hinges or a `SwingTwist`).
+- Linear motion: linear actuators (old, new, mini), shock absorbers, axle connectors that
+  slide.
+- Ropes and springs: string with studs (3 lengths), hook, winch drum, pulleys, rubber bands
+  (4 sizes).
+- Pneumatics: small/large pump, small/large cylinder, switch, tank, T-piece, hose (as a
+  connector-to-connector *link* item, not a part with geometry).
+- Chain/tracks: chain link, tread link, sprocket wheel.
+- Electronics by hub family (§2): hubs, motors, sensors, lamps, cables as *links*.
+- World objects (not parts): pallet, hook load, paper sheet, balls, boxes (§5.5).
+
+---
+
+## 2. Hub inventory
+
+Facts about the real hardware; then what the repo has. Numbers marked **~** are approximate
+public figures (to be re-sourced, §0). "Smart" = the device reports identity and an encoder.
+
+### 2.1 Hardware
+
+The Technic Control rows (Interface A/B, 8094) and the pre-2000 dates are from general
+knowledge, not from anything in the repo; they need the same sourcing as the device numbers
+before a profile is written (§8 D6, D7).
+
+| Family (year) | Ports | Port kinds and electrical | Typical devices (with ~specs) |
+|---|---|---|---|
+| **Technic Control Interface A** (9750, mid-1980s; Control I/II educational sets) | 6 outputs (0–5, usable as 3 bidirectional motor pairs) + 2 inputs (6, 7) | Outputs: on/off 4.5 V (later 9 V) per line, a motor is wired across two lines for direction; inputs: binary (touch, optosensor). No speed control except software PWM. Host: Apple II / IBM PC / BBC via a parallel card, polled by host software (Logo). | 4.5 V Technic motor (~6216m), touch sensor, optosensor with a striped wheel (crude encoder, counts per stripe), lamps |
+| **Technic Control Center** (8094, 1990) | 3 motor outputs (A, B, C) | Self-contained controller with keypad, record/playback; no external sensors on the stock unit | 9 V motors (~2838: fast, ungeared, ~4000 rpm no-load, ~0.85 N·cm stall) |
+| **Control Lab Interface B** (9751, ~1993) | 8 outputs (A–H) + 8 inputs (1–8) | Outputs: 9 V with 8 power levels; inputs 1–4 passive, 5–8 active (powered sensor, e.g. light, angle sensor with 16 counts/rev). Serial host link | 9 V motors, touch, light, angle (rotation), temperature, lamps, sound element |
+| **CyberMaster** (8482, 1998) | 2 internal motors with tacho, 1 external output, 3 inputs | Like RCX inputs; IR/RF tower | built-in motors, touch |
+| **RCX** (1.0/1.5/2.0, 1998–2001) | 3 outputs A, B, C; 3 inputs 1, 2, 3 | Outputs: 9 V, 8 power levels (PWM), float/brake/fwd/rev. Inputs: 10-bit ADC; passive (touch, temperature) or active (light, rotation — powered with gaps in which the ADC samples). Rotation sensor: 16 counts/rev, quadrature from the analog level | 71427 motor (~360 rpm no-load, ~6 N·cm stall), 43362 (~similar), micromotor; touch 879, light 9758, rotation 2977, temperature |
+| **Scout** (9735, 1999) | 2 outputs A, B; 2 touch inputs + built-in light sensor | as RCX outputs; sensors fixed function; VLL output to Micro Scout | motors as RCX |
+| **NXT** (2006) | 3 outputs A, B, C; 4 inputs 1–4 | Outputs: 9 V PWM + 2 tacho lines (quadrature, 1°). Inputs: analog (touch, light with LED, sound) and digital I²C (ultrasonic, compass, 3rd party); RCX sensors via converter cable | NXT motor (~170 rpm no-load at 9 V, ~50 N·cm stall, 1° encoder), touch, light, sound, ultrasonic (0–255 cm) |
+| **EV3** (2013) | 4 outputs A–D; 4 inputs 1–4 | Outputs: PWM + tacho + auto-ID pins (large/medium/NXT motor identified). Inputs: UART sensors (self-identifying: colour, IR, ultrasonic, gyro), analog (touch), NXT I²C/analog | Large (~160–175 rpm, ~40 N·cm stall), Medium (~240–260 rpm, ~12 N·cm stall), both 1° encoders; colour, ultrasonic, IR, gyro, touch |
+| **WeDo 1.0** (9580/9581 USB hub, 2009) | 2 ports A, B | Each port: a PF-style motor (PWM, no encoder) or a sensor identified by a resistor ID; host-polled over USB HID | WeDo motor (~PF M), tilt sensor (4 directions), distance sensor (IR, short range) |
+| **Power Functions** (2007, IR receiver 8884) | 2 outputs (red/blue) per receiver, 4 channels | 9 V, 7 PWM speed steps; no feedback | M 8883 (~405 rpm, ~3.6 N·cm), L 88003 (~390 rpm, ~6.5 N·cm), XL 8882 (~220 rpm, ~14.5 N·cm), servo 88004 (±90°, 15 positions), lights, linear actuator via motor |
+| **WeDo 2.0** (45300 Smarthub, 2016) | 2 ports A, B (LPF2) + internal RGB LED, piezo | LPF2: device IDs, modes, notifications over BLE (LWP3 v2-like) | WeDo medium motor (id 1, no encoder), tilt (34), motion (35) |
+| **Boost Move Hub** (17101, 2017) | A, B internal motors (with encoders), C, D external; internal tilt | LPF2/LWP3 | internal motor (id 39), external interactive motor (id 38, 1° encoder), colour & distance (37), tilt (40) |
+| **Powered Up City hub** (88009) / **Technic hub / Control+** (88012) | 2 ports A, B / 4 ports A–D + internal IMU | LPF2/LWP3 | train motor (2), L (46), XL (47) Control+ motors with encoders; Technic medium/large angular (75/76); lights (8); colour & distance (37) |
+| **SPIKE Essential** (45609 small hub) | 2 ports A, B; internal IMU, RGB light | LPF2 + SPIKE 3 firmware | small angular motor (65, ~660 °/s, 1°), colour (61), 3×3 light matrix (64) |
+| **SPIKE Prime** (45601, 2019) / **Robot Inventor** (51515, 2020; same electronics) | 6 ports A–F; internal IMU, 5×5 matrix, speaker, buttons | LPF2, absolute encoders on angular motors | medium angular (48; RI uses the dark version 75), large angular (49), small (65); colour (61), distance (62), force (63) — `parts.json` has 48 at 0.18 N·m / 1110 °/s and 49 at 0.38 N·m / 1050 °/s |
+
+### 2.2 In the repo
+
+Summary (details and file paths in §3.1):
+
+| Family | Programming routes in the repo | Virtual hub state | Missing for the Robot Lab |
+|---|---|---|---|
+| SPIKE Prime / Robot Inventor | Scratch `spikeprime` (BLE/classic peripherals), `DEVICE SPIKE` pseudocode, SPIKE 3 Python conversion, Renode firmware program / NuttX / MicroPython (desktop), USB `hub.port` (hardware) | **yes**: `VirtualSpikeHubState` (`virtual-hub/spike-hub-state.js`, six ports, LPF2 ids in `classicPorts`, controller `spike-sim/independent-backend.js`) | only the Renode routes (lockstep, external shaft) and the Python runner's session lookup |
+| SPIKE Essential | none (device ids only) | no | profile, 2-port hub state (reuse SPIKE state with `ports: ['A','B']`), small motor model |
+| EV3 | `ev3comprehensive` (direct commands, LMS→RBF), `DEVICE EV3`, MakeCode EV3 import, ev3dev, stock ext; Renode AM1808 smoke model (ADC/buttons) | no | an EV3 VM (or Renode firmware), profile, devices |
+| NXT | `legonxt` → hosted NXC compile → `.rxe` → real brick | no | an `.rxe` VM, profile, devices |
+| RCX / Scout / CyberMaster | `legorcx` → NQC (**browser WASM**) → `.rcx` → IR tower | no (no emulator, no ROM) | an RCX bytecode VM (clean-room), profile, devices |
+| Boost / Powered Up / Control+ / WeDo 2 | `legoboostunified`, `legopoweredup`, `wedo2unified`, stock exts — all to real BLE | no (SPIKE state stores Boost ids only) | LWP3 peripheral + state + controller |
+| WeDo 1.0, Power Functions IR, Technic Control (Interface A/B, Control Lab, 8094) | none | no | profiles, devices, an L1 block set |
+
+---
+
+## 3. Execution routes and the port boundary
+
+(§3.1 is the inventory of what exists; §3.2–§3.6 the design.)
+
+### 3.1 The routes that exist (inventory, 2026-10-17)
+
+Abbreviations: `G` = `overlay/scratch-gui/src`, `X` = `overlay/scratch-vm/src/extensions/crispstrobe`
+(each `X/<name>/index.js` wraps an extension source string loaded by `X/adapter.js`),
+`T` = `apps/tauri/src-tauri/src`. "Level" is where the route's I/O boundary sits today.
+The repo's own status matrix is `docs/LEGO-ARCHITECTURE.md:84–93`; this table agrees with it.
+
+| Family | Route | Entry | Executes where | Level today | Time model | Virtual hub? | Reaches the Robot Lab? |
+|---|---|---|---|---|---|---|---|
+| SPIKE Prime / RI | Scratch extension `spikeprime` (+ legacy ids migrated by `G/lib/spike-legacy-migration.js`) | `X/spikeprime/index.js` → `G/lib/virtual-hub/web-bluetooth-shim.js` → `spike-prime-peripheral.js` (SPIKE 3 GATT; tunnel Python decoded by the pattern matcher `spike-hub-commands.js:220`) or `spike-classic-scratch-link.js` (2.x JSON-RPC) | main-thread VM | **high-level** motor/sensor calls on `VirtualSpikeHubState` | VM steps; motors advance only in `stepMotors` | yes | **yes — the only route** (`sim-lab-pane.jsx:560–592` connects `spikeprime` and presses the flag) |
+| SPIKE | `DEVICE SPIKE` pseudocode → spikeprime blocks | sb3-creator (`G/lib/sb3-creator*.js`), `G/lib/spike-runtime-ops.js` | converted in the browser, then as above | high-level | as above | yes | yes (the shipped examples are `.bw` `DEVICE SPIKE`) |
+| SPIKE | SPIKE App 3 Python → blocks (Python is converted, not executed) | `G/lib/sb3-creator-spike3.js`, `G/lib/spike3-python-run.js` | VM | high-level | `VmStepClock` + 20 ms `setInterval` calling `arena.tick` or `hub.stepMotors` (`spike3-python-run.js:87–95`) | yes | indirectly: it looks for `__bwSpikeArena`, not `__bwSimLab` (`:91–95`) |
+| SPIKE | "firmware program" (bounded Scratch subset → four-integer instruction ABI) | `G/lib/spike-arena/firmware-program.js`, `G/lib/spike-nuttx/upload-protocol.js`, `T/arena_inputs.rs:121–` (closed ABI) | desktop only: ARM guest in **Renode** (`T/renode_supervisor.rs`) | **peripheral level** inside Renode (LPF2 UART electrical port model, out of repo: `LegoLpf2ElectricalPort.cs`, cited `docs/SPIKE-STATUS-AND-LANES.md:502`, which samples the H-bridge drive); the GUI sees `brick-state/v1` frames (position, `speedDps`, `demandDirection`, `stalled`) | Renode free-runs (`emulation RunFor`); GUI polls `state.read` every 50 ms (`renode-arena-session.js:292–312`) and writes `arena.inputs.write {sensors, loads[percent], hub?}` | the arena's hub state with `clockOwner = 'renode'`; encoders written by `writeObservedMotor` (`virtual-hub/motor-telemetry.js:7`) | no — arena only (`renode-arena-bridge.js:88–95` moves the arena's wheels kinematically to follow the guest's encoders) |
+| SPIKE | full NuttX firmware + embedded MicroPython | `SPIKE-NUTTX.md`, `G/lib/spike-nuttx/*`, `T/renode_supervisor.rs:598–620` | Renode STM32F413 | peripheral level (as above) | as above | as above | no |
+| SPIKE | upstream MicroPython `LEGO_HUB_NO6` image (user-supplied) | `G/lib/spike-micropython/raw-repl.js`, `T/spike_micropython_uart.rs`, `G/lib/spike-arena/prime-hub-io.js` | Renode, raw REPL over a modelled UART | interpreter on the emulated MCU, I/O via `prime-hub-io/v1` | as above | as above | no |
+| SPIKE | `DEVICE SPIKE` lines → `hub.port` MicroPython over USB | `G/lib/spike-usb-stream.js` | real hub | firmware API | wall clock | no | no (hardware) |
+| EV3 | `ev3comprehensive` (direct commands; LMS→RBF compile) | `X/ev3comprehensive/index.js` | VM → real brick (Web Serial, Scratch Link, WS bridge, local HTTP) | direct-command bytecode | wall clock | no | no |
+| EV3 | `DEVICE EV3` pseudocode, MakeCode EV3 import | `G/lib/ev3Dialect.js` (48 of 74 opcodes), `G/lib/bw-makecode/ev3-translate.js` | converts to `ev3comprehensive` blocks | — | — | no ("no virtual EV3", `ev3-translate.js:9–10`) | no |
+| EV3 | ev3dev (`scratchtoev3` → ev3dev2 Python), stock `scratch3_ev3` | `X/ev3dev/index.js`, `packages/scratch-vm/src/extensions/scratch3_ev3` | real brick | Python API / high-level | — | no | no |
+| EV3 | Renode AM1808 smoke model | `T/renode_supervisor.rs:633–664, 1211–1240`, `T/renode_brick_state.rs`, ops `renode.ev3.*` (`overlay/scratch-vm/src/extension-support/native-renode-capability.js:23–35`) | desktop Renode | register level: `ev3.analog.set-channel` (ADC 0–1023), buttons | Renode `RunFor` | ADC + buttons only | no consumer |
+| NXT | `legonxt` → NXC → **hosted** compile to `.rxe` → upload | `X/legonxt/index.js` (`https://lego-compiler.vercel.app/compile`) | remote compiler; real brick | firmware bytecode on the brick | — | no VM, no emulator | no |
+| RCX / CyberMaster / Scout (/Spy/Swan) | `legorcx` blocks → NQC → `.rcx` → IR tower | `X/legorcx/index.js`; `G/lib/nqc-runtime-hook.js` (`runtime.nqcCompile`, contract `(source, target) → {ok, bytes, log}`); `G/lib/nqc-wasm/compiler.js` (NQC in **browser WASM**, `NQC_TARGETS` `:39`); `G/lib/rcx-download-hook.js` (`runtime.rcxDownload`); `G/lib/rcx/rcx-protocol.js`, `rcx-serial.js` | compiler in the browser (hosted fallback); program runs on a real brick only | standard-firmware bytecode | — | **no**: no H8/300 emulator, no ROM model; `docs/LEGO-ARCHITECTURE.md:261–263`: emulation "nothing started", needs a user-supplied ROM | no |
+| Boost / Powered Up / Control+ / WeDo 2 | `legoboostunified`, `legopoweredup` (hub types incl. Move Hub, Technic, WeDo2), `wedo2unified`; stock `scratch3_boost`, `scratch3_wedo2` | `X/legoboostunified/`, `X/legopoweredup/`, `X/wedo2unified/` | VM → real hub over BLE (through the shim, which passes to real Bluetooth: no LWP3 peripheral is registered) | LWP3 messages | — | no ("no shared LPF2 virtual transport/state", `LEGO-ARCHITECTURE.md:92`); `VirtualSpikeHubState` stores Boost device ids only (`spike-hub-state.js:109–111`) | no |
+| SPIKE Essential | none (device ids only: 65, 0x40/0x41 in `legopoweredup`) | — | — | — | — | no | no |
+| WeDo 1.0, Technic Control (Interface A/B, Control Lab, 8094), Power Functions IR | **none** | — | — | — | — | no | no |
+
+Non-LEGO emulators exist (`G/lib/emu8051/`, `G/lib/labwired-engine.js`, `G/lib/bw-machines/`,
+`G/lib/pico-*`) but none has a LEGO port model. In-repo `services/` has no LEGO compiler.
+
+**Two consumers of one hub state already exist** and do different things with time: the
+Robot Lab (Jolt, 5 ms fixed steps, `requestAnimationFrame` wall-clock dt capped at
+`MAX_FRAME_MS = 50`, `sim-lab-pane.jsx:140, 539–550`) and the SPIKE arena (kinematic,
+`STEP_MS = 5` in `arena-hub-bridge.js:25`, `VmStepClock` advancing a nominal 1000/30 ms per
+VM step, `arena-clock.js:52`). The Renode routes take the clock away from both
+(`clockOwner = 'renode'`) and make the **guest's** motor model authoritative: the arena
+follows the guest's encoders. For the Robot Lab that direction is wrong (physics must own
+the shaft), which is the central change for emulated routes (§3.5).
+
+### 3.2 The three levels a route can meet the hub at
+
+| Level | Who simulates the hub's motor controller | What crosses to physics | Routes |
+|---|---|---|---|
+| **L1 high-level calls** (`motor.run_for_degrees`, `OnFwd(OUT_A)`, LWP3 `StartSpeed`) | a JS **controller model** of that hub's firmware (SPIKE: `IndependentSpikeBackend`; to write: LWP3, NXT, EV3, RCX output semantics) | `servo` drives (SPIKE today) or `pwm` drives (RCX power levels, PF steps) | Scratch extensions through protocol peripherals, converted Python, pseudocode |
+| **L2 firmware API / bytecode VM** (RCX standard-firmware opcodes, NXT `.rxe`, EV3 LMS, SPIKE `hub.port` MicroPython) | the VM implements the firmware's output/input semantics itself (it *is* the firmware model) | `pwm` drives (RCX/NXT/EV3 firmwares regulate in software around PWM) | NQC → `.rcx` in an RCX VM; NXC → `.rxe` in an NXT VM; LMS in an EV3 VM |
+| **L3 peripheral / register** (STM32 timers + H-bridge, LPF2 UART, AM1808 ADC) | the real firmware binary in a CPU emulator (Renode today) | `pwm` duty read from the modelled H-bridge; encoder counts and sensor UART frames written into the modelled devices | SPIKE NuttX / MicroPython / firmware program in Renode; EV3 in Renode later |
+
+**The boundary is the same at all three levels: a port carrying a drive one way and
+readings the other** (`VirtualHub`, §5.1). What differs is only which side runs the
+controller. The rule that keeps physics honest: **the shaft angle is always physics'**.
+A route never integrates motor positions itself while the Robot Lab runs; at L1 the JS
+controller reads the encoder physics wrote (today's `hub-bridge.js:138–143`), at L2/L3 the
+VM or the emulated device reads it the same way.
+
+### 3.3 Time: one owner, step-synchronous clients
+
+**Owner.** The physics clock owns simulated time, as today (`hub-bridge.js:12–28`, "one
+clock"). Its quantum is the physics step `STEP_MS = 5`. Every route is a client that is
+advanced *to* a physics step boundary, never past it:
+
+```
+for each 5 ms step k (t_k = k·5 ms):
+   for each hub h:  h.advanceTo(t_k)        // the route runs everything due before t_k
+   drives = ∪ h.readDrives()                // constant during the step (zero-order hold)
+   physics.step(5 ms)                       // actuators, couplings, fluid, Jolt
+   readings = probes(state at t_k+1)
+   for each hub h:  h.writeReadings(readings of h's ports)
+```
+
+**What `advanceTo` means per route kind.**
+
+| Route kind | `advanceTo(t)` | Reads its inputs | Determinism |
+|---|---|---|---|
+| L1 JS controller (SPIKE today) | `stepMotors(5)` — the controller's internal 1 ms ticks (`independent-backend.js:398`) | the encoder of the previous step | deterministic (pure JS) |
+| L1 Scratch VM itself | **not** stepped by physics: the VM runs on its own frame loop and talks to the controller synchronously; its commands land in the controller state between physics batches. This is exactly today's behaviour and why the worker protocol redoes a batch when the controller state changed (SIM-LAB-PLAN §4.9 step 5). | readings of the last applied step | deterministic *given* the VM's command timing; the VM's timing is wall-clock-driven (as today) — test with the existing lockstep harness (`session.idle()`) |
+| L2 bytecode VM (RCX/NXT/EV3) | run the VM's instruction budget for 5 ms of firmware time: `cycles = ⌊t·rate⌋ − executed` (an RCX VM at its documented ~1 ms task scheduler slice runs 5 slices) | readings of the previous step; its own timers are derived from `t` | deterministic: the VM is pure JS and stepped only here |
+| L3 CPU emulator (Renode) | `emulation RunFor "0.005"` (virtual time), then read the H-bridge duty from the port model | encoder counts and sensor frames written into the device models before `RunFor` | deterministic in Renode virtual time; **requires lockstep** instead of today's free-run + 50 ms poll (§3.5) |
+
+**Running ahead or behind.** A client never runs ahead: `advanceTo` is the only way its time
+moves, and the target is the physics step. If a client is *slow* (an emulator that cannot do
+5 ms of virtual time in 5 ms of wall time), physics waits for it — simulated time slows
+down, nothing is dropped, exactly like today's worker batches ("simulated time simply
+waits"). The pane's frame clamp (`MAX_FRAME_MS = 50`) and the worker's `MAX_BATCH_STEPS = 20`
+(`sim-session.js:96`) then drop wall time, not simulated time. A real-time factor is shown in
+the pane when it falls below 0.9.
+
+**Reading latency is one step for every route.** A drive commanded in step k sees readings of
+step k−1, as today. That is physically right (a real controller samples, then outputs) and
+uniform, so the same program gives the same physics whatever the route — with one documented
+exception: a route whose real hardware samples slower (RCX inputs ~3 ms, LPF2 modes 10–100 ms)
+gets its device model's `periodMs` hold on top (§5.2), which is fidelity, not latency.
+
+### 3.4 The worker protocol for any route
+
+Today (SIM-LAB-PLAN §4.9): the SPIKE controller stays on the main thread, the worker steps a
+**mirror** imported from `exportMotorState(hub)`, the main thread **replays** the real
+controller over the returned frames and checks `diverged == 0`; a changed controller state
+while a batch is in flight → `redo` from a Jolt checkpoint.
+
+Generalised, with no change for SPIKE:
+
+1. A route is either **main-resident** (it must stay where the VM is: the Scratch VM's L1
+   controllers) or **worker-resident** (it has no reason to be on the main thread: L2 VMs,
+   and the L3 lockstep driver's state machine).
+2. Main-resident hubs work as today, through their `VirtualHub` adapter: `exportState()`
+   replaces `exportMotorState`, `stateKey()` replaces `motorStateKey`, `importState()` into a
+   mirror of the same adapter class in the worker. The frames are `PortReading[]` +
+   `HubPoseReading` per hub per step; replay calls `advanceTo` + `writeReadings` per frame.
+3. Worker-resident hubs run **only** in the worker, inside the step loop. Their state is part
+   of the worker's checkpoint (`exportState()` at `checkpoint()`, `importState()` at
+   `rollback()`), so a redo caused by a main-resident hub replays them exactly. Their outputs
+   to the UI (an RCX LCD, a VM's variables, a "program finished") come back in the frame as
+   an opaque per-hub `ui` blob.
+4. L3 (Renode) is a separate process: it cannot be checkpointed by Jolt's `SaveState`. Two
+   options, owner decision §8 D3: (a) Renode **snapshots** (`Save`/`Load` of the emulation)
+   per batch — correct, expensive; (b) the L3 hub is the **only** clock-relevant route in its
+   scene and the batch is never redone: the L3 driver runs physics in lockstep with Renode
+   one step at a time, the VM-side redo trigger cannot occur because nothing on the main
+   thread commands that hub. (b) is what the design assumes; mixing an L3 hub with a
+   main-resident hub in one scene is refused with a diagnostic until (a) exists.
+5. Physics determinism (bit-identical rollback, measured in
+   `test/bw-sim-physics-worker-session.test.mjs`) is preserved because every new piece of
+   per-step state registers `save/restore` (§6.4) and all route clients are stepped only
+   from the loop.
+
+### 3.5 Per-route plan
+
+| Route | Plan | Level | Where | Slice |
+|---|---|---|---|---|
+| SPIKE Scratch / pseudocode / converted Python | unchanged behind `SpikeVirtualHub` | L1, servo | main | R1 |
+| SPIKE 3 Python runner | teach `spike3-python-run.js:91–95` to find the Robot Lab session (`__bwSimLab`) as it finds the arena, so it never steps motors itself while the Lab owns the clock | L1 | main | R1 |
+| LWP3 hubs (Boost, PU, Technic, WeDo 2, SPIKE Essential via LWP3) | an **LWP3 peripheral** registered in the existing shim (`registerVirtualPeripheral`, `web-bluetooth-shim.js:204`), scoped by the traffic `legoboostunified` / `legopoweredup` / `wedo2unified` send (SIM-LAB-PLAN A2's inventory-first rule), over an `Lwp3HubState` with an LWP3 motor controller (`StartSpeed`, `StartSpeedForDegrees`, `GotoAbsolutePosition`, acc/dec profiles, `brake/float/hold` end states) and `LwpVirtualHub` adapter | L1, servo (Boost/Control+/angular) or pwm (WeDo 2 medium motor id 1: no encoder) | main | R8 |
+| RCX (and Scout/CyberMaster as NQC targets) | **an RCX standard-firmware bytecode VM in JS**, clean-room from LEGO's published RCX bytecode documentation (the opcodes NQC emits): 10 tasks, 8 subroutines, 32 globals, timers, events (RCX2), outputs with 8 power levels + float/brake/direction, inputs with sensor type/mode (raw/bool/percent/rotation/celsius). `runtime.rcxDownload` gets a virtual target ("Robot Lab RCX") that loads the `.rcx` image the in-browser NQC (`nqc-wasm`) produced into the VM instead of the IR tower. **No ROM, no H8 emulation, no GPL code** (brickEmu is not used). `RcxVirtualHub` exposes outputs A–C (pwm, 8 levels) and inputs 1–3 (passive/active, ADC 0–1023 from device encoders). | L2, pwm | worker | **R5 — the early emulated-route proof** |
+| NXT | the same shape: an `.rxe` VM (NXT firmware bytecode, from LEGO's published NXT executable file specification) fed by the existing hosted NXC compile (`X/legonxt`) — network needed; a local NXC/NBC WASM build is an option like nqc-wasm. Outputs A–C with tacho (1°), NXT motor regulation (speed/sync) inside the VM; inputs 1–4 analog + I²C ultrasonic. | L2, pwm | worker | R11 |
+| EV3 | `ev3comprehensive`'s direct commands into an **EV3 VM** for the LMS opcodes the extension and the RBF compile use (LEGO's published EV3 firmware developer documentation; clean-room). Outputs A–D, inputs 1–4 with UART sensor modes. Alternative: the Renode AM1808 model (L3) once it boots real firmware. | L2, pwm | worker | R12 |
+| SPIKE in Renode (firmware program, NuttX, MicroPython) | **lockstep driver**: the Robot Lab, not a 50 ms poll, drives Renode: per step `arena.inputs.write` gains `encoders` (position from physics) and `RunFor 0.005`; `state.read` gains the per-port **H-bridge duty** the electrical port model already samples. The guest's own motor model must accept an external encoder (an "external shaft" mode in `LegoLpf2ElectricalPort.cs`, out-of-repo `renode-infrastructure-spike-prime`). `SpikeFirmwareVirtualHub` exposes A–F as pwm. Desktop only. | L3, pwm | main (talks to Tauri) | R13 |
+| Technic Control Interface A/B, 8094, WeDo 1.0, PF IR | no programming route exists. Add as **profiles + an L1 "Logo-like" block set** later (a small Scratch extension with on/off/direction/power per output and binary/analog inputs: they were host-polled devices, so an L1 model is faithful). | L1, pwm | main | R14 |
+
+### 3.6 What makes the boundary hold
+
+- **No route touches physics objects.** The only types crossing are `PortDrive`,
+  `PortReading`, `HubPoseReading` (plain data). A test asserts that `bw-sim/physics/**` and
+  `bw-sim/mech/**` import nothing from `virtual-hub/`, `spike-*`, `rcx/` or route modules,
+  and that route modules import nothing from `bw-sim/physics/**` (an import-graph test like
+  `test/no-dead-overlay-modules.test.mjs`).
+- **Same model, different routes, same physics.** The acceptance for R5 is a *cross-route*
+  check: the same driving base (with the motor/port profile of each hub) driven 50 cm by
+  (a) a SPIKE `DEVICE SPIKE` program and (b) an NQC program in the RCX VM ends within the
+  tolerance its motors' different speeds predict, and the physics core sees nothing but
+  drives.
+- **Hub-state authority.** While a session runs, every `VirtualHub` refuses
+  self-advancement (today: `clockOwner = 'native'` and `_assertClock`,
+  `independent-backend.js:61–69`); the arena's and Renode's paths keep their own owner values,
+  and a session refuses to start while another owner holds the hub (diagnostic, not a race).
+
+---
+
+## 4. Gap analysis of today's contracts
+
+Per file, what is SPIKE- or driving-base-specific, and what must be generalised. Line
+numbers are at `268c6e118`.
+
+### 4.1 `contracts.js`
+
+| Fact today | Where | Why it blocks the targets | Change |
+|---|---|---|---|
+| `HUB_PORTS = ['A'..'F']`, used by `validatePartMeta` (hub.ports), `validatePlacedModel` (part.port), `validateCompiledMechanism` (motor.port, sensors[].port) | `:39`, `:248`, `:285`, `:348`, `:379` | RCX ports are `A B C` + `1 2 3`, NXT `A B C` + `1–4`, EV3 `A–D` + `1–4`, Interface A `0–7`, Interface B `A–H` + `1–8`. One namespace of six letters also cannot say *which* hub (multi-hub, T3). | Port ids become strings validated against the **bound hub's `HubProfile`**, not a constant. A port reference is `{hub, port}`; `hub` defaults to the model's only hub. `HUB_PORTS` stays exported as the SPIKE profile's port list for old callers. |
+| `CONNECTOR_TYPES` fixed list of 8 | `:37` | no rack, worm, clutch, turntable ring, pneumatic port, rope anchor, sliding bore | replaced by the connector-kind registry (§6.2); the constant stays as the v1 subset. |
+| `GEAR_TYPES = spur, bevel, worm, rack` | `:38` | no ring/turntable, sprocket, clutch-gear flag, double-bevel (meshes as spur *and* bevel), differential housing | `gear` becomes a list (`gears[]`: a double bevel is two tooth sets), with `type` from the coupling registry. |
+| `SENSOR_KINDS = distance, color, force`; `sensor` is one ray (`origin`, `direction`) | `:40`, `:106` | RCX light (reflected light %, raw ADC), rotation sensor (counts, on an axle — not a ray), touch (contact, not a ray), temperature, gyro, IR seeker, sound, ultrasonic NXT (cm, cone), tilt (WeDo/Boost) | sensors move to `DeviceModel` (§5.2) with a **probe** (ray, cone, contact, axle-angle, body-pose, none) and a device-specific encoder of readings. |
+| `motor` = `{output, outputColliders, maxTorqueNm, maxSpeedDegPerSec, deviceId?}`; `deviceId` documented as "48 medium, 49 large" | `:93–98` | electrical model missing (no-load speed vs voltage, stall torque, gearing inside the housing, encoder resolution, PWM levels); `deviceId` is an LPF2 number that RCX/NXT/EV3/PF/Interface-A devices do not have | `motor` keeps the mechanical split (`output`, `outputColliders`: those are part geometry), the numbers move to `device: '<deviceModelId>'` (§5.2, §5.4). |
+| `hub` = `{ports}` only | `:99` | no profile id, no port kinds, no internal devices (IMU, lights, internal motors of Boost/CyberMaster) | `hub: {profile: 'spike-prime'}` + internal devices; ports come from the profile. |
+| `CompiledMechanism.joints`: hinge, slider, ball; motor only on hinges | `:152–155`, `:340`, `:347` | sliders cannot be driven (LA, pneumatic cylinder), no fixed/cylindrical/swing joints, no limits, no friction, no springs | §5.3 joint kinds with limits/friction/spring; actuation moves out of the joint into `actuators[]`. |
+| `gears`: `gear` and `rackAndPinion` only | `:156–157`, `:362–369` | worm (one-way), chain, differential, clutch, rope, pneumatic are couplings too | `couplings[]` with `kind` from the coupling registry; `gears` stays readable as the v1 alias. |
+| `sensors[]` with SPIKE kinds | `:159` | as above | `devices[]` bound to `{hub, port}` with probe data. |
+| bodies have no collision group; `color` is a SPIKE colour id `0..10` | `:332` | loads, pallets and paper need collisions with robot parts; mats/obstacles reuse SPIKE colour ids | bodies gain `collisionGroup` and `role` (`robot`, `frame`, `ground`, `obstacle`, `load`, `paper`); `color` becomes `surface: {colorRgb, reflectance}` with the SPIKE id derived by the SPIKE device model. |
+| `version: 1` everywhere | `:273`, `:316` | needs a migration story | §5.7. |
+
+### 4.2 `mech/` (compiler)
+
+| File | Fact | Gap |
+|---|---|---|
+| `graph.js:37–47` `edgeKind` | Hard-coded pairs: pin/pinhole (friction→rigid, else hinge), axle/axlehole rigid, axle/pinhole hinge, stud/antistud rigid, ball/socket ball. The editor's snap (`editor/snap.js:9, 225, 334`) imports the same function — good: one rule, but closed. | New kinds (rack in slot → slider, clutch bore → coupling hinge, ring hub → slider, turntable ring → hinge, sliding axle connector → cylindrical) must be **registered**, not added as `if`s. |
+| `graph.js:91–146` | A part with `meta.motor` is split into housing and `#out` nodes with an internal hinge; the internal edge carries `motor.port`. | Generalise as **part-internal joints** declared in PartMeta (`internalJoints[]`): motor (hinge), linear actuator (slider), turntable (hinge), shock absorber (slider), pneumatic cylinder (slider), pump (slider), switch (hinge with detents), driving-ring hub. The motor becomes one instance. |
+| `graph.js:136–142` | `motor-without-port` from the placed part's `port`. | Port validity checked against the hub profile; a motor on an *input* port (RCX input 1) is a `port-kind-mismatch` diagnostic, not silence. |
+| `joints.js:133`, `:169` | The emitted `joint.motor` copies `port`, `maxTorqueNm`, `maxSpeedRadPerSec` and **drops `deviceId`** that `graph.js:139` put on the edge. So `hub-bridge.js:214` (`deviceId ?? MEDIUM_MOTOR`) reports **48 for the large motor 54675 too**, and the SPIKE controller then scales percent speeds with 1110 °/s instead of 1050 (`spike-sim/independent-backend.js:5–12`). No test catches it (`test/bw-sim-sensors.test.mjs` checks only sensor ids). | Fix in slice R0 (a one-line bug, independent of this design): carry `deviceId`, add a test with a large motor. |
+| `joints.js:121–186` | Hinge edges between one island pair: collinear → one hinge; non-collinear → lock (weld). | Keep; add: a hinge plus a parallel slider edge between the same pair → `cylindrical`; two slider edges collinear → one slider. |
+| `gears.js:161–170`, `:199–270` | Mesh detection for spur/spur and bevel/bevel; worm/rack → `unsupported-gear` warning (`:221`); "common frame" rule; `gear-on-frame` lock; `gear-frames-differ` warning. | Becomes the **coupling inference** pipeline with one detector per coupling kind (§6.3): spur, bevel, worm–wheel, rack–pinion, chain (two sprockets + chain links between them), clutch (gear on clutch bore + driving ring nearby), differential (housing part with internal spiders), rope (string connector anchored to drum). `gear-frames-differ` stays as the M2 diagnostic until the custom constraint exists, then becomes a `ToothContact`. |
+| `islands.js:13` | `MOTOR_OUTPUT_MASS_FRACTION = 0.15` fixed for every motor. | per-part `internalJoints[].massFraction` (or per-collider masses). |
+| `compile.js:35–78` | Ground: a static 2 × 2 m box under the lowest collider. | World module owns the floor; tables (plotter on a table), raised bench for gearboxes; ground size from the mat. |
+| `compile.js:223–277` | Obstacles: static **boxes** only, colour 0..10. | World objects with roles (static obstacle, dynamic load, paper), shapes (box, cylinder, sphere, compound), mass, friction (§5.5). |
+| `compile.js:284–302` | Sensors from `meta.sensor` + `pl.port`; sorted by port letter. | Devices from the device registry, bound to `{hub, port}`. |
+| `insight.js` | Issue words and run blockers assume one hub ("no hub", "A–F" in `sim-lab-insight-text.js:18–20, 33`). | Text parameterised by the hub profile's port labels. |
+
+### 4.3 `physics/`
+
+| File | Fact | Gap |
+|---|---|---|
+| `jolt-core.js:107` | `DisableCollision(LAYER_DYNAMIC, LAYER_DYNAMIC)`: no robot part touches another dynamic body. | Forklift–pallet, hook–load, gripper–ball, plunger–robot all need dynamic–dynamic contact. Proposal: dynamic–dynamic **on**, with a `GroupFilterTable` that disables pairs connected by a joint/coupling (and, by default, all robot–robot pairs of one mechanism, which is today's behaviour), and enables robot–load, load–load. Self-collision of robot parts stays off in v2 (S1's whole tuning assumes it). |
+| `jolt-core.js:257–311` | Hinges: limits never set; `mMaxFrictionTorque` never set; unmotorised hinges get a ±1e6 N·m motor torque limit. | Joint limits, friction, springs from the joint record. |
+| `jolt-core.js:312–328` | Sliders: created with ±1e6 limits, no motor, not in `snapshot()`, not in `posesOf` (`sim-worker-protocol.js:92–96` reads only hinges), no `jointState`. | Slider state (position, velocity), motor, limits, friction, in snapshot and protocol. |
+| `jolt-core.js:390–392` | `rackAndPinion` entries are accepted by the validator and not created. | Create `RackAndPinionConstraint` (normalised ratio, `SetConstraints`). |
+| `jolt-core.js:443–499` | Motor modes: velocity, position (P-controller in JS, `kp = 10`), coast, brake, hold — on **hinges** only; the hub bridge uses only `velocity` (`hub-bridge.js:128`). Coast is "not modelled" by the bridge (`hub-bridge.js:125`). | Actuator model with two drive levels (servo, pwm/DC-motor) and coast/brake per §5.2; sliders actuated the same way. |
+| `jolt-core.js:673–691` | `checkpoint()` saves Jolt state + hinge bookkeeping. | Must also save: slider bookkeeping, coupling state machines (clutch engaged, LA slip, rope lengths), the fluid network, pen polylines (append-only: save the length), device-internal state (DC motor current if modelled, sensor filters). One `SaveState` registry: every module that keeps per-step state registers `save()/restore()` (§6.4). |
+| `sim-worker-protocol.js:39`, `:115–116` | The worker imports `VirtualSpikeHubState` directly and builds a SPIKE mirror; `exportMotorState`/`importMotorState` read `backend._controllers`, `classicPorts`, six ports fixed (`:75`). | The mirror becomes "whatever the route's `VirtualHub` implementation exports" through a generic `exportState()/importState()` (§3.4). |
+| `physics-host.js` | Message types `load`, `sim-load`, batch. | Grows by: route state blobs, device-reading frames that are not SPIKE-shaped, paper deltas (§6.5). |
+
+### 4.4 `hub-bridge.js`, `sensors.js`
+
+- `hub-bridge.js:41` `PORTS = 'ABCDEF'`; `:48` `MEDIUM_MOTOR = 48`; `:70–75` motors are
+  hinges with `motor.port`; `:117–131` the controller is `hubState.stepMotors` and its output
+  is `data.motors[i].degPerSec`; `:138–171` the frame is SPIKE-shaped (positions in degrees,
+  heading, SPIKE IMU, sensor readings `[port, kind, values]`); `:210–223` `plugMotors` writes
+  SPIKE `data.sensors[i] = {kind:'motor', deviceId}`; `:232–248` `applyFrame` writes SPIKE
+  fields. **Everything here is the SPIKE adapter**, and stays so: it becomes
+  `hubs/spike/spike-port-adapter.js` behind the `VirtualHub` interface (§5.1), and the
+  generic `SimHubBridge` loses all SPIKE knowledge.
+- `sensors.js:29` `SENSOR_DEVICE = {color:61, distance:62, force:63}`; distance −1 outside
+  50–2000 mm; colour = SPIKE colour ids from `world/mats.js` `colorAt` (ids 0..10 with
+  `reflection`); force 0..100; IMU in SPIKE axes and milli-g (`:31–78`). These are **device
+  models of three SPIKE devices** and the SPIKE hub IMU, and move into the device registry
+  as such. The physical probe (raycast, ignore own bodies) is generic and stays.
+- `hubBodyOf` (`sim-session.js:86–89`): the first body containing a part with `meta.hub`.
+  Multi-hub needs one IMU body per hub.
+
+### 4.5 `virtual-hub/`, `spike-sim/`
+
+- `VirtualSpikeHubState` (`virtual-hub/spike-hub-state.js:32–143`): six ports by index,
+  `data.motors[6]`, `data.sensors[6]`, `classicPorts[6] = [deviceId, values]`, SPIKE IMU,
+  display, buttons; `stepMotors(dt)` is the one clock (`docs/SPIKE-ARENA.md`, "The hub
+  contract"). It is already a good *hub state*; what it lacks is a hub-neutral face. It is
+  kept and wrapped, not rewritten — the arena and every SPIKE route depend on it.
+- The controller (`spike-sim/independent-backend.js`) is SPIKE's firmware behaviour in JS
+  (ramps, holds, stall timer, run-to-position). Other smart hubs (NXT, EV3, Boost/PU) have
+  *different* controllers (NXT's speed regulation and "brake"/"float" semantics; EV3's
+  `OUTPUT_SPEED` vs `OUTPUT_POWER`; LWP3's `StartSpeed`/`GotoAbsolutePosition` with
+  acc/dec profiles). Each hub profile brings its own controller or none (§5.1).
+
+### 4.6 Editor, views, instructions, persistence, world
+
+- Editor: port picker "none, A–F" (`docs/SIM-LAB.md` "Build bar"; `editor/editor-state.js:63–112`
+  hands out free ports A..F for copies); badges show the port letter; snap via `edgeKind`
+  (good). Needs: port lists from the hub profile, a hub picker when there are several hubs,
+  cable/hose **links** as editor objects (pneumatic hoses, ropes: connector-to-connector
+  items without their own placement), and new snap kinds from the registry (rack in slot,
+  ring on hub, rope anchor).
+- Views (`view/insight-layer.js`): draws hinge axes and gear lines; needs slider axes, rope
+  lines, hoses, couplings by kind, pen traces.
+- Instructions (`instructions/steps.js`): order by connector graph; links (hoses, strings)
+  must appear as steps (connect A to B) after both ends exist.
+- Persistence: `simLab` record `{ldraw, name?, mat?}` (`model/sim-lab-persist.js`). New data
+  that belongs to the model (hub bindings, links, world objects placed by the user, program
+  route per hub) must be in the LDraw text as `0 !BW` meta lines (format of record, D7) or
+  in new optional record fields (`world`, `routes`). Unknown fields are already dropped by
+  the reader: an old reader opening a new project loses them silently, which is acceptable
+  only because the LDraw text keeps the model; §5.7 says which goes where.
+- World (`world/mats.js`): four mats, colours are SPIKE ids (`mats.js:5–12`), obstacles are
+  boxes carried by a mat (`createMat(id).obstacles`). Needs: world objects with dynamics
+  (loads), surface colours as RGB + reflectance (so RCX light % and EV3 RGB can be derived),
+  paper, a bench/table, and scenarios (a mat + objects + a start pose + a checker).
+
+---
+
+## 5. Proposed contracts
+
+TypeScript-like, to be written as JSDoc typedefs in the files named. Everything is plain
+JSON-able data (structured-clone safe) unless marked as an interface.
+
+### 5.1 Hubs: `HubProfile` (data) and `VirtualHub` (interface)
+
+File: `hubs/hub-profile.js` (typedefs + validator), one data module per family under
+`hubs/<family>/profile.js`.
+
+```ts
+/** Static description of a hub family. Pure data, registered in the hub registry. */
+interface HubProfile {
+  id: string;                    // 'spike-prime', 'spike-essential', 'robot-inventor', 'rcx',
+                                 // 'scout', 'cybermaster', 'nxt', 'ev3', 'wedo1', 'wedo2',
+                                 // 'boost-move', 'pu-city', 'pu-technic', 'pf-ir',
+                                 // 'tc-interface-a', 'tc-interface-b', 'tc-control-center'
+  name: {en: string, de: string};
+  parts: string[];               // LDraw files of the hub's body ('45601.dat', '884.dat'…)
+  ports: PortSpec[];
+  internalDevices: InternalDevice[];   // IMU, lights, matrix, speaker, internal motors (Boost A/B)
+  clock: {
+    controllerStepMs: number;    // the hub firmware's control period it pretends to run:
+                                 // SPIKE 5, NXT 1, EV3 2… Physics step must divide it or equal it.
+    sensorPeriodMs?: number;     // how often readings update (RCX: per-input scan, LPF2: mode rate)
+  };
+  /** Which drive level the hub's ports accept from its route (see §0.2). */
+  drive: 'servo' | 'pwm';
+  /** Program routes that can bind to this hub (ids in the route registry, §3). */
+  routes: string[];
+}
+
+interface PortSpec {
+  id: string;                    // 'A', '1', '0', 'red' — exactly what programs call it
+  label: {en: string, de: string};
+  kind: 'output' | 'input' | 'lpf2' | 'ev3-output' | 'ev3-input' | 'nxt-output' | 'nxt-input'
+      | 'rcx-output' | 'rcx-input' | 'pf-output' | 'wedo1' | 'tc-output-pair' | 'tc-input';
+  /** Device classes this port accepts (device registry `class`), checked by the compiler. */
+  accepts: DeviceClass[];
+  /** Electrical limits the device models need. */
+  supplyVolts: number;           // 9 for RCX/NXT/PF, 7.2–8.3 for LPF2 Li-ion, 4.5 for Interface A
+  pwmLevels?: number;            // 8 for RCX (0..7), 7 for PF, undefined = continuous
+  identifies: 'lpf2-id' | 'ev3-autoid' | 'resistor-id' | 'none';
+}
+
+type DeviceClass = 'motor' | 'servo-motor' | 'linear-actuator' | 'lamp' | 'sensor-passive'
+                 | 'sensor-active' | 'sensor-digital' | 'sensor-lpf2' | 'pneumatic-valve-actuator';
+
+interface InternalDevice { device: string; port: string /* virtual port id, e.g. 'imu', 'A' on Boost */; body: 'hub' }
+```
+
+```ts
+/**
+ * The ONE runtime boundary between physics and any program route (§3). Implemented once per
+ * hub family by an adapter around that family's state (SPIKE: VirtualSpikeHubState). The
+ * bridge calls it once per physics step, in this order:
+ *   1. advanceTo(t)        — the route runs up to the step's start (§3.3)
+ *   2. readDrives()        — what every actuator port is told to do during this step
+ *   3. (physics steps)
+ *   4. writeReadings(r)    — encoders, sensors, IMU of the state after the step
+ * Nothing else crosses. The interface is synchronous; a route that needs async work runs it
+ * between batches, never inside a step.
+ */
+interface VirtualHub {
+  readonly profile: HubProfile;
+  readonly id: string;                         // the hub's placed-part id in the model
+  /** Bind the model's devices to ports (from CompiledMechanism.devices); returns refusals. */
+  plug(bindings: PortBinding[]): Diagnostic[];
+  advanceTo(tMs: number): void;                // route time catches up to physics time
+  readDrives(): PortDrive[];                   // one per bound actuator port
+  writeReadings(readings: PortReading[], hubPose?: HubPoseReading): void;
+  publish(): void;                             // one notification to UI/VM per batch (today: changed())
+  /** Everything the route+controller needs to redo a batch (structured-clone safe). */
+  exportState(): unknown;
+  importState(state: unknown): void;
+  stateKey(state: unknown): string;            // equal keys ⇒ identical drives (today motorStateKey)
+  dispose(): void;                             // hand the clock back (today clockOwner restore)
+}
+
+interface PortBinding { port: string; device: string /* DeviceModel id */; partId: string }
+
+type PortDrive =
+  | {port: string, mode: 'servo', radPerSec: number}          // ideal speed servo (today's SPIKE path)
+  | {port: string, mode: 'pwm', duty: number /* -1..1 */, decay: 'brake' | 'coast'}  // DC motor
+  | {port: string, mode: 'coast'} | {port: string, mode: 'brake'}
+  | {port: string, mode: 'lamp', level: number /* 0..1 */}
+  | {port: string, mode: 'valve', position: -1 | 0 | 1};       // electric pneumatic valve (PF/Control+ era mods)
+
+type PortReading =
+  | {port: string, kind: 'encoder', angleRad: number, radPerSec: number}     // motor shafts
+  | {port: string, kind: 'probe', device: string, raw: ProbeResult}          // the device model
+  // encodes `raw` into the hub-specific value (SPIKE colour id, RCX ADC 0..1023, NXT cm…)
+  ;
+
+interface HubPoseReading { quat: Quat; angVel: Vec3; linAcc: Vec3; headingDeg: number; gravity: Vec3 }
+```
+
+Who implements what:
+
+| Implementation | Wraps | Drive level | Status |
+|---|---|---|---|
+| `hubs/spike/spike-virtual-hub.js` | `VirtualSpikeHubState` + `IndependentSpikeBackend` (unchanged) — `advanceTo` = `stepMotors(5)` per step; `readDrives` = `data.motors[i].degPerSec` as `servo`; `writeReadings` = today's `applyFrame` | servo | slice R1 (refactor, bit-identical) |
+| `hubs/spike/spike-firmware-hub.js` | a SPIKE firmware emulator's port peripherals (§3) | pwm | later slice |
+| `hubs/rcx/rcx-virtual-hub.js` | the RCX route's output/input model (§3) | pwm (8 levels) | slice R5 |
+| `hubs/lwp3/…`, `hubs/nxt/…`, `hubs/ev3/…`, `hubs/wedo1/…`, `hubs/tc/…` | per §3 | per profile | later |
+
+The SPIKE adapter makes the generic bridge produce exactly today's frames; `test/bw-sim-*`
+stay green unchanged (that is R1's acceptance).
+
+### 5.2 Devices: `DeviceModel`
+
+File: `devices/device-model.js` (typedefs, validator), data in `devices/catalog/*.json`, one
+module per *probe* kind and per *encoder* family.
+
+```ts
+interface DeviceModel {
+  id: string;                    // 'spike-medium-angular', 'rcx-71427', 'nxt-motor', 'ev3-large',
+                                 // 'pf-m', 'tc-4.5v-motor', 'rcx-light-9758', 'rcx-rotation-2977',
+                                 // 'spike-color', 'ev3-gyro', 'wedo2-tilt', 'pneumatic-valve'…
+  class: DeviceClass;
+  parts: string[];               // LDraw files that are this device
+  ids?: {lpf2?: number, ev3?: number, wedo1ResistorOhm?: number};   // what the hub reports
+  source: string;                // where the numbers come from (datasheet, measurement doc) — required
+  motor?: DcMotorSpec;
+  sensor?: SensorSpec;
+  lamp?: {watts: number};
+}
+
+/** A permanent-magnet DC motor with an internal gearbox, as seen at the output shaft. */
+interface DcMotorSpec {
+  nominalVolts: number;          // 9 (RCX/NXT/PF), 7.2/8.3 (LPF2 battery)
+  noLoadRadPerSec: number;       // at nominalVolts, output shaft
+  stallTorqueNm: number;         // at nominalVolts, output shaft
+  encoder?: {countsPerRev: number, absolute: boolean};   // NXT/EV3/LPF2 angular: 360; RCX rotation sensor: 16 (separate device)
+  rotorInertiaKgM2?: number;     // reflected to the output; default derived from mass
+  /** Gearbox friction torque at the output (makes coast stop; the "holding" of an unpowered motor). */
+  frictionTorqueNm: number;
+  /** For the existing servo path: the controller's top speed (°/s) the hub uses for percent. */
+  servoMaxDegPerSec?: number;    // SPIKE 48: 1110, 49: 1050, 65: 660 — today in independent-backend.js:5–12
+}
+
+/** How a device senses: the generic physical probe + the family-specific value encoding. */
+interface SensorSpec {
+  probe:
+    | {kind: 'ray', origin: Vec3, direction: Vec3, maxM: number}                     // SPIKE distance, colour (today)
+    | {kind: 'cone', origin: Vec3, direction: Vec3, halfAngleDeg: number, maxM: number, rays: number}  // ultrasonic NXT/EV3
+    | {kind: 'contact', plungerJoint: string, pressedM: number}                      // touch: plunger slider travel
+    | {kind: 'axle-angle', connector: string}                                        // RCX/Control-Lab rotation sensor
+    | {kind: 'body-pose'}                                                            // gyro, tilt, IMU
+    | {kind: 'surface', origin: Vec3, direction: Vec3, spotRadiusM: number, maxM: number} // light/colour: averages the mat colour over a spot
+    | {kind: 'none'};                                                                // temperature, sound: fixed or UI-set
+  /** Pure function id in the encoder registry: ProbeResult → the value the hub reports. */
+  encoder: string;               // 'spike-color', 'rcx-light-raw', 'nxt-ultrasonic-cm', 'wedo2-tilt', …
+  periodMs?: number;             // sample rate; readings hold between samples (RCX ~3 ms per input)
+  noise?: {sigma: number, seed: 'scene'};   // deterministic noise only (seeded per scene)
+}
+
+type ProbeResult =
+  | {kind: 'ray', distanceM: number | null, body?: string, surface?: Surface}
+  | {kind: 'contact', travelM: number, forceN: number}
+  | {kind: 'axle-angle', angleRad: number}
+  | {kind: 'body-pose', quat: Quat, angVel: Vec3, linAcc: Vec3}
+  | {kind: 'surface', distanceM: number | null, rgb: [number, number, number], reflectance: number};
+
+interface Surface { rgb: [number, number, number]; reflectance: number /* 0..1 */; spikeColorId?: number }
+```
+
+**How a motor maps to physics** (`physics/actuators.js`, new, called by the core each step):
+
+- `servo` drive (today): hinge motor `Velocity`, target `radPerSec` clamped to
+  `servoMaxDegPerSec`, torque limit `±stallTorqueNm` (today's `maxTorqueNm`). Bit-identical to
+  `jolt-core.js:477–482` when the numbers are the same.
+- `pwm` drive: every step the actuator computes the DC-motor torque at the measured speed,
+  `τ = τs·(u − ω/ω0)` with `u = duty · V_supply / V_nominal` (clamped ±1), and applies it as a
+  hinge motor in `Velocity` mode with target `sign(τ)·ω0·|u|` and torque limits `[0, |τ|]` on
+  the right side — so Jolt cannot exceed the DC curve, and the curve is re-evaluated every
+  5 ms (explicit, one step lag; stable because `τs/ω0 · dt / I` is small for these motors;
+  verified per motor in the slice's test). `decay: 'brake'` with `duty = 0` → back-EMF
+  braking torque `−τs·ω/ω0` (shorted winding); `coast` → only `frictionTorqueNm`
+  (hinge `mMaxFrictionTorque`, motor off).
+- Linear actuator / pneumatic cylinder: same, on a slider (`mMaxForceLimit`).
+- Encoder: `angleRad` from the hinge's unwrapped angle, quantised to `countsPerRev` by the
+  *hub adapter* (the SPIKE adapter keeps today's float degrees; an emulated NXT gets integer
+  ticks — §3.5).
+
+### 5.3 Joints, couplings and connectors
+
+File: `contracts.js` (v2 typedefs), the registries in §6.
+
+**Connectors** (PartMeta, LDraw frame). `type` is a registered connector kind; the registry
+says which kinds pair up and what edge they make.
+
+```ts
+interface ConnectorV2 {
+  id: string; type: ConnectorKind; position: Vec3; axis: Vec3; length?: number;
+  friction?: boolean;            // as today (pin)
+  /** kind-specific data, validated by the kind's module */
+  data?: Record<string, unknown>;
+}
+type ConnectorKind =
+  // v1 (unchanged meaning)
+  | 'pinhole' | 'axlehole' | 'axle' | 'pin' | 'stud' | 'antistud' | 'ball' | 'ballsocket'
+  // new
+  | 'rack-teeth'        // along `axis`, `length`; data: {pitchLdu}; meshes with a pinion (coupling, not edge)
+  | 'rack-slot'         // a guide a rack (or a beam) slides in → slider edge
+  | 'slide-bore'        // round bore that slides AND turns on an axle (axle connectors, 6538 on round) → cylindrical
+  | 'clutch-bore'       // gear bore that turns freely on a driving-ring hub axle → hinge + selectable coupling
+  | 'ring-hub'          // the driving-ring hub's outer surface the ring slides on; data: {detentsLdu: number[]}
+  | 'ring-bore'         // the driving ring's bore
+  | 'turntable-ring'    // two halves of a turntable pair coaxially → hinge
+  | 'worm-thread'       // worm surface; meshes with a spur's teeth at 90° (coupling)
+  | 'pneumatic-port'    // hose end on a pump/cylinder/valve/tank; data: {chamber: 'A'|'B'|'out'|'in'}
+  | 'hose-end'          // the end of a hose link
+  | 'rope-anchor'       // where a string end is fixed (drum, hook, beam); data: {drumRadiusLdu?}
+  | 'sheave'            // a pulley groove a rope runs over; data: {radiusLdu}
+  | 'cable-plug' | 'cable-socket';   // electrical (old 9 V studs/2×2 plates, NXT/EV3 RJ12, LPF2): topology only
+```
+
+**Joints** (CompiledMechanism v2, world frame). Joints connect bodies; they no longer carry
+the motor (actuation is a separate list).
+
+```ts
+type JointV2 = {id: string, body1: string, body2: string | 'world', point: Vec3} & (
+  | {type: 'hinge', axis: Vec3, limits?: [number, number], frictionNm?: number, spring?: Spring}
+  | {type: 'slider', axis: Vec3, limits?: [number, number], frictionN?: number, spring?: Spring,
+     detents?: number[] /* m along axis, snapping force in `spring` */}
+  | {type: 'cylindrical', axis: Vec3, limits?: [number, number], frictionN?: number, frictionNm?: number}  // Jolt SixDOF
+  | {type: 'ball'}
+  | {type: 'swing', axis: Vec3, coneHalfAngleRad: number}       // Jolt Cone / SwingTwist (towball links, U-joint approx)
+  | {type: 'fixed'}                                             // Jolt Fixed; also the target of locks
+);
+interface Spring { stiffness: number; damping: number; restPosition?: number }
+```
+
+**Actuators** bind a hub port to a joint (replacing `joint.motor`):
+
+```ts
+interface ActuatorV2 {
+  id: string;
+  joint: string;                    // hinge, slider or cylindrical
+  hub: string; port: string;        // the VirtualHub + port that drives it
+  device: string;                   // DeviceModel id (DcMotorSpec)
+  sign: 1 | -1;                     // device positive vs joint positive (today implicit, hub-bridge.js:30–34)
+}
+```
+
+**Couplings** (replacing `gears`). Every coupling kind is one module in the coupling registry
+with: an inference detector (compiler side), a validator, and a physics builder (core side).
+
+```ts
+type CouplingV2 = {id: string, parts?: string[]} & (
+  | {kind: 'gear', joint1: string, joint2: string, ratio: number}            // today's 'gear' (Jolt Gear)
+  | {kind: 'rackAndPinion', hingeJoint: string, sliderJoint: string, ratio: number /* m/rad */}  // Jolt RackAndPinion
+  | {kind: 'worm', wormJoint: string, wheelJoint: string, ratio: number,
+     holdTorqueNm: number /* self-locking: hinge friction on wormJoint while unpowered */, efficiency?: number}
+  | {kind: 'chain', joint1: string, joint2: string, ratio: number /* > 0 */}                  // Jolt Gear, same sense
+  | {kind: 'toothContact', body1: string, body2: string, contactLocal1: Vec3, contactLocal2: Vec3,
+     tangentLocal1: Vec3, phaseJoint1: string, phaseJoint2: string}                           // CUSTOM (§8 D1): frame-relative mesh
+  | {kind: 'differential', carrierJoint: string, side1Joint: string, side2Joint: string}      // approx path: JS lumped constraint
+  | {kind: 'selectable', hubJoint: string /* axle body hinge */, ringJoint: string /* slider */,
+     gears: {joint: string, engageAtM: number}[], toleranceM: number, couplingTorqueNm: number,
+     indexAngles: number /* 4 for the driving ring */}
+  | {kind: 'slipLimit', inner: string /* coupling id */, maxTorqueNm: number}                 // LA clutch, approx by enable/disable
+  | {kind: 'rope', drumJoint: string, drumRadiusM: number,
+     path: {body: string | 'world', localPoint: Vec3, sheaveRadiusM?: number}[],              // anchor → sheaves → hook
+     restLengthM: number, stiffness?: number}                                                  // approx: Distance + explicit drum torque
+  | {kind: 'spring', body1: string, local1: Vec3, body2: string, local2: Vec3, restM: number, stiffness: number, damping: number}  // rubber band (Jolt Distance soft)
+  | {kind: 'pneumatic', network: string}                                                       // members listed in fluid networks
+);
+```
+
+`toothContact` is the exact general mesh (spur, bevel, worm, on any frame) that replaces
+`gear` once the custom constraint exists; until then `gear` is emitted where exact, and
+`gear-frames-differ` / `gear-on-turning-frame` diagnostics name the cases that are not.
+
+**Pneumatic networks** (`fluid/network.js`):
+
+```ts
+interface FluidNetwork {
+  id: string;
+  volumes: {id: string, m3: number, atmosphere?: boolean}[];          // hoses+tanks lumped per node
+  links: {a: string, b: string, conductance: number}[];               // hose/T-piece connectivity
+  valves: {id: string, joint: string /* switch lever hinge */, positions: Record<'-1'|'0'|'1', [string, string][]>}[];
+  pumps: {id: string, joint: string /* plunger slider */, strokeM3PerM: number, checkInto: string}[];
+  cylinders: {id: string, joint: string /* slider */, areaA: number, areaB: number, chamberA: string, chamberB: string}[];
+}
+```
+
+### 5.4 PartMeta v2 (`part-meta/parts.json` `version: 2`)
+
+Additive fields; every v1 entry is valid v2 by the upgrade rule in §5.7.
+
+```ts
+interface PartMetaV2 extends PartMetaV1 {
+  /** Several tooth sets per part (double bevel = spur + bevel; turntable top = ring 56T). */
+  gears?: {type: CouplingToothType, teeth: number, axis: Vec3, center: Vec3, connector?: string /* which bore it turns on */}[];
+  /** Movable sub-bodies inside one part (motor shaft, LA piston, turntable top, cylinder rod, pump plunger, switch lever, shock rod). */
+  internalJoints?: {
+    id: string; type: 'hinge' | 'slider';
+    point: Vec3; axis: Vec3;                     // part frame (LDU)
+    movingConnectors: string[];                  // today motor.output
+    movingColliders: number[];                   // today motor.outputColliders
+    massFraction: number;                        // today MOTOR_OUTPUT_MASS_FRACTION
+    limitsLdu?: [number, number]; detentsLdu?: number[];
+    springNPerM?: number; frictionN?: number; frictionNm?: number;
+    actuatedBy?: 'device' | 'fluid' | 'none';
+  }[];
+  /** The electronic device this part is, and its port class (device registry id). */
+  device?: string;
+  /** Hub profile this part is (hub registry id). */
+  hubProfile?: string;
+  /** Pneumatic chambers etc. referenced by connectors' data. */
+  fluid?: {chambers: {id: string, m3: number}[]};
+  /** Rope/string items: rest length and stiffness for a string part. */
+  rope?: {lengthLdu: number, stiffnessNPerM: number};
+}
+type CouplingToothType = 'spur' | 'bevel' | 'worm' | 'rack' | 'ring' | 'sprocket' | 'crown';
+```
+
+`motor` (v1) is read as `internalJoints: [{type:'hinge', movingConnectors: output,
+movingColliders: outputColliders, massFraction: 0.15, actuatedBy:'device'}]` + `device` from
+`deviceId` (48 → `spike-medium-angular`, 49 → `spike-large-angular`). `sensor` (v1) as
+`device` with a `ray` probe at `origin`/`direction`. `hub.ports` (v1) as
+`hubProfile: 'spike-prime'`. The **file** is migrated once (a script), so the loader's
+upgrade path is only for user catalogs and old fixtures.
+
+### 5.5 The world
+
+File: `world/world.js` (contract), `world/mats.js` (stays), `world/objects.js`,
+`world/paper.js`, `world/scenarios/*.js`.
+
+```ts
+interface WorldV2 {
+  version: 2;
+  floor: {mat: string | null, sizeM: [number, number], friction: number, heightM?: number /* a table */};
+  objects: WorldObject[];
+  paper?: Paper[];
+  start?: {x: number, z: number, headingDeg: number, anchor?: 'drive-axle' | 'hub' | 'origin'};
+}
+type WorldObject = {id: string, pose: {position: Vec3, yawDeg?: number, quat?: Quat}, surface?: Surface,
+                    friction?: number} & (
+  | {role: 'obstacle', shape: Shape}                                   // static (today's obstacles, any shape)
+  | {role: 'load', shape: Shape | Shape[], massKg: number, grip?: 'hook-loop' | 'pallet-pockets'}  // dynamic: pallet, 50 g weight, ball
+  | {role: 'fixture', shape: Shape, attachTo?: string}                // a bench clamp: welds a model part to the world
+);
+type Shape = {shape: 'box', size: Vec3} | {shape: 'cylinder', radius: number, height: number} | {shape: 'sphere', radius: number};
+interface Paper {
+  id: string; sizeM: [number, number]; pose: {position: Vec3, yawDeg: number};
+  body?: 'static' | 'dynamic';          // dynamic: moved by feed rollers (friction)
+  strokes: {width: number, color: string, points: [number, number][] /* paper frame, m */}[];   // written by pen devices
+}
+```
+
+The mat stays the floor's texture and colour function, but `colorAt` returns a `Surface`
+(rgb + reflectance; the SPIKE colour id is derived by the SPIKE colour encoder), so an RCX
+light sensor and an EV3 RGB mode read the same mat. A **scenario** is a world + a checker
+(the acceptance tests in §7 are scenarios). The `fixture` role replaces "a static body made
+of model parts is the machine's frame" (`jolt-core.js:93–97`): today a test clamps a gearbox by
+making a body static; a user clamps it by placing a fixture.
+
+### 5.6 The route binding
+
+```ts
+/** Which program route drives which hub in this project (stored with the project, §5.7). */
+interface RouteBinding { hub: string /* hub part id */; route: string /* route registry id */; options?: unknown }
+```
+
+The pane picks the route from the hub's profile and the Code tab's language (today it is
+implicitly "spikeprime extension on the SPIKE hub", `sim-lab-pane.jsx:560–582`).
+
+### 5.7 Versioning and migration
+
+| Data | Today | Change | Old data |
+|---|---|---|---|
+| LDraw model text (format of record) | `0 !BW PORT A`, `!BW GROUP/IN/ID` (`model/ldraw-model.js`) | Add `0 !BW PORT <port> [HUB <hubPartId>]`, `0 !BW LINK <kind> <partId>:<connector> <partId>:<connector> [len]` (hoses, strings, cables), `0 !BW HUBROUTE <hubPartId> <routeId>`. Unknown `!BW` metas stay refusals-not-crashes (today's rule). | `!BW PORT A` with one hub means that hub. A file without new metas round-trips byte-identically (existing test `bw-sim-ldraw-model.test.mjs`). |
+| `PlacedModel` (in memory) | `version: 1`, `part.port?: 'A'..'F'` | `version: 2` only when hubs/links are present: `port?: {hub?: string, port: string}`, `links?: Link[]`. `validatePlacedModel` accepts both; `version: 1` keeps its exact checks. | v1 objects valid as is. |
+| `PartMeta` / `parts.json` | `version` field present, entries v1 | file `version: 2`, entries may use v2 fields; `upgradePartMeta(v1)` (pure) | test fixtures with v1 metas keep working through the upgrade. |
+| `CompiledMechanism` | `version: 1` | `version: 2` (joints v2, `actuators`, `couplings`, `devices`, `fluid`, bodies with `role`/`collisionGroup`). Never stored. The core accepts v1 by upgrading (`gears`→`couplings`, `joint.motor`→`actuators` with the SPIKE device). | Every existing core test builds v1 mechanisms by hand (`test/bw-sim-physics-core.test.mjs`, gear fixtures): they run through the upgrade; their numbers must not change (bit-identity check in R2). |
+| `simLab` project record | `{ldraw, name?, mat?}` | add optional `world?: WorldV2` (user-placed objects; when absent: the mat's world as today), `routes?: RouteBinding[]`. | Reader already drops unknown fields (`sim-lab-persist.js` "Unknown fields are dropped"); new fields are optional. A newer project opened by an older build loses world objects and route choices but keeps the model. |
+| Worker protocol | `sim-load {mechanism, hubBody, stepMs}`, batches with SPIKE `exportMotorState` | `sim-load {mechanism, hubs: [{id, profile, body}], stepMs}`, batches carry `{hubs: {id: state}}` | in-repo protocol, both ends ship together; no persisted compatibility needed. |
+
+---
+
+## 6. Modularity plan: registries and the worker protocol
+
+### 6.1 Module layout (target)
+
+```
+bw-sim/
+  contracts.js                  v1 + v2 typedefs, validators, upgrade functions (pure)
+  registry/                     the five registries (plain Maps filled by `register*` at import)
+    connectors.js  couplings.js  joints.js  devices.js  hubs.js  routes.js
+  kinds/                        one module per connector/coupling kind: data + detector + builder
+    pin-axle.js (v1 rules moved from graph.js)   spur.js  bevel.js  worm.js  rack.js
+    chain.js  clutch.js  differential.js  rope.js  spring.js  turntable.js  slide.js
+  mech/                         compiler: graph → islands → joints → couplings (calls the registry)
+  physics/
+    jolt-core.js                bodies, joints, collision groups, step, checkpoint (generic)
+    builders/                   Jolt construction per joint kind and per coupling kind
+    actuators.js                servo / pwm DC-motor / linear / valve drives
+    state-registry.js           save/restore of every per-step module (§6.4)
+  fluid/network.js              pneumatics (pure, stepped by the core)
+  devices/                      device models: probes (generic) + encoders (per family)
+    probes/ray.js cone.js contact.js axle-angle.js body-pose.js surface.js
+    encoders/spike.js rcx.js nxt.js ev3.js lwp3.js wedo1.js tc.js
+    catalog/*.json              DeviceModel data
+  hubs/                         HubProfile data + VirtualHub adapters
+    spike/  lwp3/  rcx/  nxt/  ev3/  tc/
+  routes/                       route clients (VMs, lockstep drivers), never imported by physics
+    rcx-vm/  nxt-vm/  ev3-vm/  renode-lockstep/
+  hub-bridge.js                 generic SimHubBridge: N VirtualHubs ↔ core (no SPIKE knowledge)
+  world/                        floor/mats, objects, paper, scenarios
+```
+
+### 6.2 Registries
+
+Each registry is a `Map<string, Module>` populated by side-effect-free `register()` calls in
+an index module that the Sim Lab chunk imports. A module is data plus pure functions:
+
+```ts
+interface ConnectorKindModule {
+  kind: ConnectorKind;
+  validate(c: ConnectorV2): string[];
+  /** Pairs this kind makes with another kind: the edge (rigid|hinge|slider|cylindrical|ball|none)
+   *  and the geometric test (today geometryMatchesShaftHole and the ball/stud distance tests). */
+  pairs: {with: ConnectorKind, edge: EdgeKind, match(a, b): boolean}[];
+  snap?: {...};                 // editor hints: alignment axis, rotation steps (today snap.js)
+}
+interface CouplingKindModule {
+  kind: CouplingV2['kind'];
+  /** Compiler side: find instances in the islands/joints (spur/bevel: today's meshContact). */
+  detect(ctx: CompileContext): {couplings: CouplingV2[], welds: [string, string][], diagnostics: Diagnostic[]};
+  validate(c: CouplingV2, m: CompiledMechanismV2): string[];
+  /** Core side: create Jolt constraints/state; return a stepper if it has per-step logic. */
+  build(J, core: CoreContext, c: CouplingV2): {step?(dt): void, save?(): unknown, restore?(s): void, destroy(): void};
+}
+interface JointKindModule { type: JointV2['type']; validate; build(J, core, j); state?(j): {position, velocity} }
+interface DeviceModule { id: string; model: DeviceModel; probe: ProbeModule; encode(r: ProbeResult, hub: HubProfile): unknown }
+interface HubModule { profile: HubProfile; createVirtualHub(opts): VirtualHub }
+interface RouteModule { id: string; hubs: string[]; residency: 'main' | 'worker' | 'external'; create(hub: VirtualHub, opts): RouteClient }
+```
+
+The compiler's fixpoint (`compile.js:179–197`: islands → joints → gears, welding until it
+settles) stays; the gear pass becomes "for each registered coupling kind in priority order,
+`detect`". The **v1 behaviour is the first set of modules**: `pin-axle.js` contains exactly
+`edgeKind` and `geometryMatchesShaftHole` (moved, not changed), `spur.js`/`bevel.js` contain
+today's `meshContact` and `meshRatio`, so the v1 golden tests (`test/bw-sim-mech.test.mjs`,
+`test/bw-sim-gear-trains.test.mjs`) are the move's acceptance.
+
+**Adding a hub** = a `hubs/<family>/profile.js` (data), an adapter implementing `VirtualHub`,
+device entries in `devices/catalog/`, and (if new) an encoder module. No edit to the
+compiler, the core or the bridge. **Adding a mechanism** = a connector kind and/or coupling
+kind module + part metadata. No edit to `graph.js`/`gears.js`/`jolt-core.js`.
+
+### 6.3 Compiler pipeline (v2)
+
+1. Graph: nodes per placed part **and per internal joint body** (generalises the motor
+   split, `graph.js:91–146`); edges from the connector registry; **links** (hoses, strings,
+   cables) as typed edges that never make islands.
+2. Islands: union of rigid edges (unchanged).
+3. Joints: hinge/slider/cylindrical/ball/swing groups, collinearity merge, locks (unchanged
+   logic, more kinds).
+4. Couplings: registry detectors in order spur, bevel, worm, rack, chain, turntable ring,
+   clutch (needs the ring slider), differential (housing part), rope (needs links), spring,
+   pneumatic (needs links). Welds from detectors re-run the fixpoint (as `gear-on-frame`
+   does today).
+5. Devices and actuators: from `PartMetaV2.device` + placed `port` + the hub profile;
+   `port-kind-mismatch`, `port-taken`, `hub-missing` diagnostics.
+6. World: floor, objects, paper from `WorldV2` (not compile options any more).
+7. Validate (`validateCompiledMechanism` v2) and emit.
+
+### 6.4 Per-step state registry (rewind-safe by construction)
+
+Every module that keeps state from one physics step to the next registers
+`{key, save(): structuredClone-able, restore(s)}` with the core. `checkpoint()` = Jolt
+`SaveState` + every registered module's `save()`; `rollback()` the reverse. Today's ad-hoc
+saves (`jolt-core.js:673–691` hinge bookkeeping, `hub-bridge.js:174–184` heading/IMU memory)
+become the first two registrants. New registrants: slider bookkeeping, clutch engagement and
+index wait, LA slip state, rope lengths and last tension, worm hold state, fluid pressures,
+pen-down flags and stroke lengths (strokes are append-only: save the lengths, truncate on
+restore), device sample-and-hold buffers, worker-resident route VMs. A test runs a scenario
+with every coupling kind, checkpoints at a random step, runs, rolls back, reruns, and
+asserts bit-identical snapshots (extends `test/bw-sim-physics-worker-session.test.mjs`).
+
+### 6.5 Worker protocol growth (`physics/sim-worker-protocol.js`, `physics-host.js`)
+
+| Message | Today | v2 |
+|---|---|---|
+| load | `sim-load {mechanism, hubBody, stepMs}` → `sim-loaded {t, bodies, joints, sensors}` | `sim-load {mechanism, hubs: [{id, profile, body, residency, routeInit?}], world, stepMs}` → `sim-loaded {t, bodies, joints (hinge + slider + cylindrical states), readings per hub}` |
+| batch | `{steps, hub: exportMotorState(hub), redo?}` → frames `{motors, heading, rate, imu, sensors}` + poses | `{steps, hubs: {id: exportState()} (main-resident only), redo?}` → frames `{hubs: {id: {readings, pose, ui?}}}` + poses + `paperDelta` (new stroke points since the last batch) + `couplingState` (for insight: clutch engaged, rope length, pressures) |
+| poses | Float64 bodies×7 + joints×2 (hinges only, `posesOf` `:87–99`) | joints×2 for every joint kind with a scalar DOF (slider position, cylindrical: 2 values → joints×2 + extra block) |
+| route I/O | — | `route-load {hub, image}` (an `.rcx`/`.rxe` image into a worker-resident VM), `route-ui` events (LCD, sound) in frames |
+
+---
+
+## 7. Roadmap in slices
+
+Each slice is independently testable and shippable; acceptance is mechanical (node `--test`
+unless marked *browser*). **C** marks contract slices that must land before the slices that
+depend on them. Every slice keeps all existing `test/bw-sim-*` green unchanged unless it says
+which expectation it changes and why.
+
+**R0 — bug: large motor reports device 48.** Carry `deviceId` through `joints.js:133/169`.
+*Accept:* a model with 54675 on port A reports `classicPorts[0][0] === 49` and
+`percentToDps(0, 100) === 1050`. (Independent of everything; land first.)
+
+**R1 (C) — VirtualHub boundary, SPIKE adapter, generic bridge.** `hubs/hub-profile.js`,
+`hubs/spike/profile.js`, `SpikeVirtualHub` wrapping `VirtualSpikeHubState` unchanged;
+`SimHubBridge`/`HubReplay` rewritten against `VirtualHub`; worker protocol carries
+`hubs: {id: state}`; `spike3-python-run.js` finds the Lab session.
+*Accept:* every existing Sim Lab test passes **bit-identically** (the worker-session test
+compares frames to the last bit); an import-graph test proves physics/mech import no hub or
+route module; a fake 2-port test hub (in `test/fixtures`) drives the driving base through the
+same bridge with `pwm` drives stubbed to servo.
+
+**R2 (C) — CompiledMechanism v2 + registries, v1 behaviour as modules.** Joints v2,
+`actuators`, `couplings` (gear, rackAndPinion), `devices`, body `role`/`collisionGroup`;
+`upgradeMechanismV1`; connector/coupling/joint registries with `pin-axle`, `spur`, `bevel`
+modules moved verbatim; `parts.json` v2 file migration script (motor→internalJoints+device,
+sensor→device, hub→hubProfile) with v1 upgrade in the loader.
+*Accept:* golden tests of `bw-sim-mech`, `bw-sim-gear-trains`, `bw-sim-contracts` unchanged;
+hand-built v1 mechanisms in `bw-sim-physics-core.test.mjs` give identical snapshots through
+the upgrade; a schema test that every `parts.json` entry is v2-valid and that the
+migration of the v1 file is idempotent.
+
+**R3 (C) — Physics core v2: sliders, limits, friction, collision groups, state registry,
+DC-motor actuator.** Slider state/motor/limits/friction in the core and protocol;
+`RackAndPinionConstraint` built; `GroupFilterTable` (robot–robot off by default, robot–load
+on); `actuators.js` with `servo` (today) and `pwm` (DC curve); `state-registry.js`.
+*Accept:* (a) a motor-driven pinion moves a rack 10 cm with `|v_rack − r·ω| < 1 %`;
+(b) a slider with limits stops at them within 0.5 mm under a 0.5 N push;
+(c) DC model: an RCX-71427-spec motor with no load reaches `ω0·u ± 3 %` at duty 1 and 0.5,
+stalls at `τs ± 3 %` against a clamped arm, and with `decay:'brake'` stops a 20 g·cm²
+flywheel faster than with `coast` (both measured);
+(d) a dynamic 50 g box resting on a beam carried by a hinge is lifted with it (robot–load
+contact works) while robot parts still do not collide with each other;
+(e) checkpoint/rollback bit-identity with sliders and rack.
+
+**R4 — Worm and rack in the compiler; the forklift.** `worm.js` (worm–spur detection at 90°,
+ratio 1/teeth, self-lock hold friction), `rack.js` (rack-teeth vs pinion detection, slider
+from `rack-slot`), parts: racks, worm box, a fork, `slide-bore` axle connectors;
+`world/objects.js` with `load` objects (a pallet 60×40×10 mm, 30 g, with pockets).
+*Accept:* **T4 forklift**: a SPIKE medium motor through 8T→rack raises a pallet by 40 mm
+(± 1 mm of `r·θ`), holds it when the motor holds, and lowers it; the pallet stays on the
+forks (no relative slip > 2 mm over the cycle). **Worm**: with a 24T worm wheel on an arm
+loaded 0.05 N·m, the arm turns `θ_worm/24 ± 1 %` when driven, and when the motor coasts it
+does not move by more than 0.5° in 5 s.
+
+**R5 — The emulated-route proof: RCX bytecode VM + RCX profile.** `routes/rcx-vm/`
+(clean-room interpreter of the standard-firmware opcodes NQC emits for RCX2: tasks, vars,
+timers, `SetOutput/OnFwd/Off/Float/SetPower`, sensors type/mode, `Wait`), `hubs/rcx/`
+(profile: outputs A–C pwm with 8 levels, inputs 1–3), devices `rcx-71427` motor,
+`rcx-touch`, `rcx-light`, `rcx-rotation` (axle-angle probe, 16 counts/rev); the virtual
+`rcxDownload` target; an RCX hub part (or a placeholder brick with correct mass if the LDraw
+part is not in the curated subset). VM is worker-resident.
+*Accept:* (a) the NQC program `task main(){ OnFwd(OUT_A+OUT_C); Wait(200); Off(OUT_A+OUT_C); }`
+compiled by the in-repo `nqc-wasm` and run in the VM drives an RCX driving base (71427
+motors, wheels 43.2 mm) a distance within 3 % of the DC-model prediction for 2 s at full
+power; (b) `until(SENSOR_1 == 1);` on a touch sensor at the front stops the robot against
+the Wall mat's wall within 5 mm of contact; (c) **cross-route**: the same chassis with SPIKE
+motors and a `DEVICE SPIKE` program, and with RCX motors and the NQC program, both reach the
+wall stop; physics code identical (asserted by the import-graph test); (d) rollback with
+the VM in the checkpoint is bit-identical.
+
+**R6 — Clutch gears and the driving ring; the shifting gearbox.** `clutch.js`
+(`selectable` coupling), parts: driving ring, hub axle, 16T clutch gears, changeover catch;
+`fixture` world object (bench clamp).
+*Accept:* **T2**: a 2-speed gearbox on a bench, input motor at 300 °/s, ring moved to
+position 1 then 2 by a second motor (or by the test through the changeover catch's hinge):
+measured output/input ratios equal the tooth ratios r1, r2 within **3 %** (averaged over 2 s
+after engagement); in neutral the output turns < 1° while the input turns 360°; engagement
+waits for tooth alignment (no step in output angle > the 10° window).
+
+**R7 — Turntable, rope/winch (approx), hook load; the crane.** `turntable.js`, `rope.js`
+(Distance + explicit drum torque, §1.2 M10), parts: turntables, string, hook, drum, pulley;
+`load` with `hook-loop` grip (a ring collider the hook catches).
+*Accept:* **T1**: a worm-driven winch lifts a 50 g load by 10 cm (rope length change
+`r_drum·θ ± 2 mm`), and when the motor stops the load does not drop more than 1 mm in 5 s;
+a slewing turntable driven by a worm turns the boom 90° (± 1°) with the load swinging and
+settling (amplitude decays); the drum motor's measured torque rises with the load
+(50 g vs 100 g: ratio 2 ± 15 %). The `gear-on-turning-frame` diagnostic fires for a crane
+with a vertical gear on the superstructure.
+
+**R8 — LWP3 hubs (Boost, Powered Up/Technic, WeDo 2).** SIM-LAB-PLAN A2 as written
+(inventory doc first), `Lwp3HubState`, its controller, the LWP3 peripheral in the shim, the
+`LwpVirtualHub` adapter, profiles and devices (ids 1, 37, 38, 39, 46, 47, 75, 76).
+*Accept:* `legopoweredup` blocks connect to "Virtual Technic Hub" in the Robot Lab and drive
+a Control+ L motor model on port A by `motor A run for 360°`: the encoder ends at 360 ± 2°;
+a WeDo 2 medium motor (no encoder) runs a belt conveyor; byte-level tests per A2's DoD.
+
+**R9 — Linear actuators, springs, pneumatics; the excavator arm and the pneumatic arm.**
+LA (slider + screw coupling + slip state), rubber band `spring`, `fluid/network.js`, parts.
+*Accept:* **T7**: 10 pump strokes raise a cylinder-driven arm carrying 20 g by its full
+stroke within the network model's predicted stroke count ± 1; the arm holds with the valve
+centred (drop < 1 mm in 10 s) and falls when vented; an LA driven by a motor extends its
+full stroke in `stroke/lead·2π/ω ± 3 %` and the motor does not stall at the end (slip).
+**T3** (arm only, tracks later): boom + stick on two LAs lift a 30 g bucket load 5 cm.
+
+**R10 — Pen and paper; the plotter.** `MarkerDevice`, `world/paper.js`, paper rendering,
+touch-sensor home switches (contact probe on a plunger slider), parts for pen holder.
+*Accept:* **T5 (XY-table variant)**: a program draws a 5 cm square; the recorded polyline's
+corners are within **1 mm** of the commanded square and edges within 0.5 mm of straight;
+the pen-up moves leave no trace. Paper-feed variant: 5 cm square within 2 mm (friction feed).
+Hubs: SPIKE (R1) and, after R14, Technic Control.
+
+**R11 — NXT VM; R12 — EV3 VM.** As §3.5, each with a profile, devices and the acceptance:
+the driving base drives 50 cm and stops on the Wall mat by ultrasonic (NXT: cm; EV3: cm/in),
+the same scenario as R5 (c). R11 needs the hosted compiler or a local NXC WASM build (§8 D4).
+
+**R13 — SPIKE firmware in Renode, lockstep (desktop).** §3.5: `RunFor 0.005` per step,
+encoder in / duty out, external-shaft mode in the out-of-repo port model.
+*Accept (desktop, gated like the existing Renode checks):* the same `DEVICE SPIKE` program
+through the firmware-program ABI and through the Scratch route ends the line-follower lap
+with the same checkpoint sequence; encoders agree with physics to 1°.
+
+**R14 — Technic Control, WeDo 1.0, Power Functions profiles + an L1 block set.** Interface
+A (6 outputs as 3 pairs, 2 binary inputs), 8094 (3 outputs), Interface B (8 outputs with 8
+levels, 8 inputs), WeDo 1.0 (2 ports, resistor-ID devices), PF IR (2 outputs × 4 channels).
+*Accept:* the plotter (R10) driven through the Interface A profile with optosensor counting.
+
+**R15 — Differential and gears on turning frames, exact.** After §8 D1: `toothContact`
+(custom constraint) replaces `gear` where the frame turns; `differential` uses it.
+*Accept:* **T6**: an open diff on a bench, carrier driven at 200 °/s, one output held: the
+other turns at 400 ± 2 °/s; both free and equal load: both 200 ± 2 °/s; on a car, a 0.5 m
+radius turn gives wheel speed ratio `(R+w/2)/(R−w/2) ± 3 %`. The S1 driving base and all
+gear fixtures unchanged. (Without D1: the JS lumped-diff approximation with the same
+kinematic acceptance but a 5 % tolerance and a note.)
+
+**R16 — Multi-hub, editor and instructions for links.** Port picker per hub profile, hub
+picker, link tools (hose, string, cable), insight overlays for new kinds, instruction steps
+for links, `!BW LINK`/`!BW PORT … HUB` metas. *Browser* acceptance: build a 2-hub excavator
+(Control+ ×2) in the editor, save, reopen byte-identically, both hubs drive their motors.
+
+Order and dependencies: R0 → R1 (C) → R2 (C) → R3 (C) → {R4, R5, R6} in parallel → R7 →
+{R8, R9, R10} → {R11, R12, R13, R14} → R15 (after D1) → R16 (editor work can start after R2
+for the parts and kinds that exist).
+
+---
+
+## 8. Risks and decisions for the owner
+
+**Decisions** (each blocks the slice named):
+
+- **D1 — Custom Jolt WASM build?** (blocks R15 exact form; improves R7). Three small C++
+  constraints — `ToothContact` (frame-relative gear mesh: differentials, gears on
+  turntables/yawing chassis), `Rope` (length over moving sheaves with a drum term),
+  `SlipCoupling` (torque-limited gear/rack: LA clutch) — need our own build of
+  JoltPhysics.js (MIT; emscripten toolchain, a vendored pin, a size/iOS check under
+  SIM-LAB-PLAN F3). Alternative: JS constraints in `PhysicsStepListenerJS` (outside the
+  solver iterations: kinematically right, weak under load; acceptance tolerances loosen to
+  5 %). Recommendation: custom build, but only when R15 is next.
+- **D2 — Dynamic–dynamic collisions.** Turning them on for robot–load pairs (R3) changes the
+  contact budget and the S1 tuning assumptions. Recommendation: on for loads only; robot
+  self-collision stays off (a known, documented non-goal).
+- **D3 — Emulated routes and rewind.** L3 (Renode) cannot be rewound by Jolt; either Renode
+  snapshots per batch (cost unknown) or "an L3 hub is alone in its scene" (recommended).
+  Also: the lockstep change needs the out-of-repo `renode-infrastructure-spike-prime` port
+  model to accept an external shaft angle — a change in another repo.
+- **D4 — NXT/EV3/RCX VMs from public documentation.** Clean-room JS VMs written from LEGO's
+  published bytecode/executable specifications (as SIM-LAB-PLAN §7 allows for LWP3 docs:
+  "may be read"); no GPL firmware or brickEmu code consulted. NXT needs the hosted NXC
+  compiler (network) or a local NXC WASM build (like `nqc-wasm`). Owner to confirm the
+  licence stance and whether a network-dependent route is acceptable for the Lab.
+- **D5 — Which drive level for SPIKE long-term.** Keep the ideal servo (today, matches the
+  arena) or move SPIKE to its controller → pwm → DC model (more realistic stalls and
+  sag, different numbers from the arena). Recommendation: keep servo; the DC model is for
+  unregulated hubs and emulated firmwares.
+- **D6 — Device numbers.** Every `DeviceModel` needs a cited `source`. Who measures (a bench
+  with real motors, or published community measurements)? Until then values marked **~** in
+  §2 are placeholders and acceptance tests compare against the model's own prediction, not
+  the real motor.
+- **D7 — "The 1990 plotter".** Which set and which mechanism (paper-feed rollers or XY
+  table, which pen lift), and whether the Technic Control interface (R14) must drive it in
+  the first plotter slice. R10 builds the XY variant on SPIKE first.
+
+**Risks** (with the tripwire that catches them):
+
+| Risk | Tripwire |
+|---|---|
+| Stiff gear chains with sliders/racks/worms do not converge at 5 ms (the S1 lesson needed 30 velocity steps for gears, `jolt-core.js:79–85`) | each coupling module's acceptance includes a loaded case; `GEAR_VELOCITY_STEPS` generalised per coupling and measured |
+| The explicit DC-motor torque (one-step lag) oscillates for light, fast motors (2838: ~4000 rpm, tiny inertia) | R3 (c) per-motor stability test; fall back to sub-stepping the actuator inside the step |
+| Bit-identical rollback breaks with JS-side state (fluid, ropes, VMs) | §6.4 registry + the all-kinds rollback test |
+| Friction-driven paper feed and fork–pallet friction at mm scale are not accurate | acceptance for the exact variants first (XY plotter, pockets), friction variants with looser tolerances |
+| Performance with many bodies (excavator, 2 hubs, tracks): today 42 bodies ≈ 50 ms work per simulated second (SIM-LAB-PLAN §4.9 table) | per-slice bench line in `scripts/bench-sim-lab-worker.mjs`; real-time factor shown in the pane |
+| Part metadata volume (rack, clutch, pneumatics, turntables are complex meshes) | the existing geometric validator (`test/bw-sim-part-meta.test.mjs`) extended per new connector kind before parts are added |
+| Scope: 15+ hub families | profiles are data; only R5 (RCX) and R8 (LWP3) are needed to prove the boundary; the rest is demand-driven |
