@@ -13,10 +13,18 @@ import {fileURLToPath, pathToFileURL} from 'node:url';
 const L = new URL('../overlay/scratch-gui/src/lib/', import.meta.url);
 const emitterUrl = new URL('sb3-creator.js', L);
 
+/**
+ * Refusal fields that belong to another device's C back end and are never set
+ * by an i8086 generation, named so the census below stays exhaustive for the
+ * 8086. `_cStm32ClockRefused` (sb3-creator #155) is the STM32 CLOCK refusal:
+ * one message or null, assigned only inside the STM32 clock-tree emitter.
+ */
+export const NON_I8086_REFUSAL_FIELDS = Object.freeze(['_cStm32ClockRefused']);
+
 export const discoverCRefusalBuckets = source => [...new Set([
     ...[...source.matchAll(/\bthis\.(_c[A-Za-z0-9]*Refused)\b/g)].map(match => match[1]),
     ...[...source.matchAll(/\bthis\[\s*(['"])(_c[A-Za-z0-9]*Refused)\1\s*\]/g)].map(match => match[2])
-])].sort();
+])].filter(name => !NON_I8086_REFUSAL_FIELDS.includes(name)).sort();
 
 export const discoverRuntimeRefusalBuckets = creator => Object.keys(creator)
     .filter(name => /^_c[A-Za-z0-9]*Refused$/.test(name)).sort();

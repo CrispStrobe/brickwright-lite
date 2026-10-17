@@ -123,7 +123,7 @@ exact-head hosted checks remain required before source merge.
 
 ## Compose STM32 PR975 after circuit PR965 — 2026-10-16
 
-CLAIMED — Codex root,
+DONE candidate / QUALIFICATION PENDING — Codex root, isolated `local worktree/receipt (see ignored local handoff)`,
 branch `lane/stm32-compose-20261016`, base main `5cb83052330b400b48293315260cb4293b4f6bcf`.
 The user explicitly requested completion of these integrations in order. PR965
 is now merged; a read-only merge of PR975 `943d540c7` reports thirteen conflicts.
@@ -157,6 +157,76 @@ the STM32F030 chip body that replaces the LED-dimmer example's ghost outline
 this is the same 16-surface SHA swap as earlier adoptions; history docs keep
 their recorded pins. A13's own Lite wiring (circuit-tab.jsx cpxState and
 onCpxInput) stays with A13 and is not part of this adoption.
+
+Composition receipts: claim PR1016 merged before implementation. All thirteen
+conflicts resolved without changing original assertions or supplier runtime;
+canonical package/lock/notice writers retain CUI1db, Boardf84 and SBCa13.
+Installed root and GUI provenance, metadata, notices and mirrored facts pass.
+Focused affected controls: 78 passed; the one source-identity skip was separately
+rerun against an isolated SBC checkout at a13 and passed all four controls with
+zero skips. Thirteen x86 reach/compiler/mutation controls also pass. The exact
+Board census, language matrix, 8086 report and part-profile readers pass; the
+matrix writer corrected a stale abbreviated Board label. The generic SBC sync
+check refuses an intentionally pinned checkout behind current supplier main;
+the exact-pin 19-file vendor-identity gate passes instead, with no bypass or pin
+expansion. The standard GUI build passes; explicit production build and browser
+qualification are in progress. All enabled final-head CI remains a landing gate.
+Original PR975 head rechecked unchanged at 943d540c7 before this candidate commit.
+
+STM32 composition reconciliation (2026-10-16): previous head7a82a14f passed
+every enabled hosted check in run38945321982. Current main6f2993d6b adds the
+qualified iOS packaging and independent Sim Lab slice, plus claims. Original
+PR975 advanced to4d0cabe24: its matrix label is already present; its register
+reader fix is incorporated with the explanatory comment while retaining this
+386-only gate's strict edi assertion and existing timeout, per the merged claim.
+Normal merges preserve both histories and all newer main changes. This changed
+combined head requires fresh exact-head CI before landing.
+
+Final integration reconciliation includes main8a63ad26f, preserving merged
+CPX1009, SPIKE pending-stop990 and the Arcade owner's new claim. The only
+conflict is ledger placement; keep this lane's receipts within its own section
+to avoid collisions with other appended claims. No supplier, assertion or
+workflow changes. Fresh exact-head full CI remains required on this composition.
+
+Implementation after claimPR1039 merged as8999ced4d: the new direct command
+`node scripts/verify-sim-physics.mjs` parses the actual reference LDraw model,
+compiles unchanged metadata, drives the unchanged hub/core and runs the actual
+physics-worker entry through a Node-only message adapter and original client.
+The two-second reference run moves0.491813m, with measured opposing encoders
+and negligible yaw. The worker advances100 fixed steps and returns measured
+wheel rotation. Unknown models/options fail with no successful output; all
+worker/core resources and clock ownership are released. Both original failing
+guards now pass without any allowlist or assertion change. Build includes only
+the missing governed plan path.
+
+Broader execution exposed an existing worker fixture's unlabelled root-to-GUI
+resolution. The original worker determinism test now uses the same adapter to
+the actual integrated worker, preserving every byte-identical snapshot assertion
+and protocol. This resolves through the GUI's native dependency scope, without
+new scope exemptions or suppressed diagnostics. All88 affected controls pass,
+zero skips/failures/raw stdout; the unchanged GUI boundary checker also passes.
+Retain original hosted failures and initial boundary log; final TAP+census are
+`local worktree/receipt (see ignored local handoff)`. Installed-source verification
+is in progress; final source-head CI still gates the integration merge.
+
+Main reconciliation (2026-10-17): compose the qualified Sim Lab GUI PR1030
+and release ownership claim PR1011 from main e2225bb05. Preserve both histories,
+all simulator runtime and browser controls, and the release owner's contract.
+The worker test keeps main's explicit test identity while exercising the actual
+integrated worker. Remove only the two newly added KNOWN_DEAD worker/client
+exceptions: the real headless command now consumes both, as the unchanged
+stale-exception assertion requires. Main already supplies the governed plan
+trigger, so retain its single entry rather than duplicating it. The original
+trigger and dead-module guards pass all14 controls, zero skips. Combined
+simulator execution and the fresh source-head qualification remain pending.
+
+Final reconciled controls: 100 passed, zero failures/skips/raw stdout; GUI
+dependency boundary passes. Fresh canonical dependency preparation and installed
+root/GUI exact-source provenance plus single-engine resolution pass. Retain
+`local worktree/receipt (see ignored local handoff)` and the
+provenance log. Internal npm scratch exhaustion was repaired using task-specific
+external npm cache/temporary directories; package pins and assertions unchanged.
+All enabled checks on this final composed source head remain required to land.
 
 ## A13 — CPX live circuit face adoption — 2026-10-16
 
@@ -5711,7 +5781,8 @@ changes no runtime semantics, and claims no physical hardware acceptance.
 
 ## STM32 composition: original 386 boot register reader — 2026-10-16
 
-CLAIMED — Codex root, branch `lane/stm32-compose-20261016`, amendment based on main `e1e5bc30b`.
+DONE candidate — Codex root, branch `lane/stm32-compose-20261016`, isolated
+`local worktree/receipt (see ignored local handoff)`, amendment based on main `e1e5bc30b`.
 Merge this claim before changing the existing synthetic boot assertion in
 `scripts/verify-i80386-local-hdd-gui.mjs`: read the selected supplier's `edi`
 instead of absent `di`, retaining equality to42, exact halted/PC/canvas checks
@@ -5730,6 +5801,17 @@ No relaxed comparison, fallback register name, timeout increase, skipped gate,
 CI bypass or source rewrite is permitted. The corrected actual browser gate
 and all enabled final-head source checks must pass before integration merge.
 
+The original synthetic check now reads `edi` with all other comparisons and
+timeouts unchanged. The unchanged original failed locally at45000ms and in both
+hosted light jobs; those logs remain retained. The corrected production journey
+passes using the same selected Boardf84, owned disk SHA256
+`f9e63c15c20fc87058d053c3badbc0d146206543af0dc2af7a7e05537184474a`
+and unchanged config: halted PC31770, VGA720×400, actual guest pixels equal the
+video frame, nonblack marker and zero browser errors. Receipt and screenshot:
+`local worktree/receipt (see ignored local handoff)`, `local worktree/receipt (see ignored local handoff)`.
+The failed original is the regression negative; no duplicate source-spelling
+test is added for this one-line reader fix. One automatic fresh final-head CI
+set remains required before PR1017 merges; original PR975 remains untouched.
 ## CPX translator qualification diagnostic transport — 2026-10-16
 
 RELEASED — completed by the existing CPX owner; verified by Codex root,
@@ -5867,8 +5949,8 @@ handler/value claims confer no authority here.
 
 ## Sim Lab S1 headless consumer and integration guards — 2026-10-17
 
-CLAIMED — Codex root, source implementation to follow on the existing STM32
-composition branch after this claim merges. User requested continued software
+DONE candidate / QUALIFICATION PENDING — Codex root, implemented on the existing
+STM32 composition branch after claimPR1039 merged. User requested continued software
 integration. Hosted run38975443782 passes both browsers/build/corpus but unit2
 finds the Sim Lab plan missing from trigger paths and five S1 entry modules
 without a non-test consumer. Own only the already planned
@@ -6001,3 +6083,13 @@ substitution. Any demonstrated extension fix belongs upstream first, with a
 separate exact-pin adoption claim if necessary. All machine/device details
 and raw receipts stay in ignored local context. Acknowledge a working external
 LED separately from hub RGB; current user reports LED works but is too dim.
+
+### H1–H3 main reconciliation — 2026-10-17
+
+Preserve the current Code-tab error recovery, matrix reach popover and TypeScript landing cell. The normal merge had only two ledger conflicts (privacy cleanup versus completed candidate status); retain both facts without restoring private locations. No source conflict resolution was required. Fresh combined controls and exact-head hosted qualification are required before integration landing.
+
+Reconciled H1–H3 controls: 113 passed, zero failures/skips. Initial stale generated lazy-loader check was retained as negative evidence; canonical integration regenerated the ignored installed copy. Assertions unchanged; final exact-head hosted CI still gates merge.
+
+### Delivery handoff — 2026-10-17
+
+See [current integration status and scoped next actions](docs/WEDO-IPAD-INTEGRATION-HANDOFF.md). Completed work is committed; source integration PR1017 requires reconciliation with the latest H1–H3 main changes before final CI/landing, followed by A13 source qualification. No hardware acceptance is claimed. Private machine/device details and continuation receipts are only in ignored local `CLAUDE.md`; all peer claims remain owned.

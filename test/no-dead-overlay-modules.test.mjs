@@ -154,8 +154,6 @@ const KNOWN_DEAD = new Map([
     // that call site: it installs runtime.rcxDownload from vm-manager-hoc.jsx
     // and import()s both. This comment is the record that the entries were
     // removed in the commit that made them live, which is what the list is for.
-    ['lib/bw-sim/physics/physics-worker.js', {roadmap: '4.9', reason: 'the Sim Lab physics Web Worker entry, built and tested on a worker thread; the Sim Lab still steps physics on the main thread until its hub bridge moves into the worker'}],
-    ['lib/bw-sim/physics/physics-client.js', {roadmap: '4.9', reason: 'the main-thread side of the same worker; same owner, same exit'}]
 ]);
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;

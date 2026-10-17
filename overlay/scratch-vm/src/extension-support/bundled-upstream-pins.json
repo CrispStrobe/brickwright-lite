@@ -127,7 +127,7 @@
             "sha256": "e7c35e7ae3d45ec2bdb1a7b1b9d51c727889bfd3780b852ffb11fe13a92ad079",
             "bytes": 15127,
             "repo": "CrispStrobe/bw-board",
-            "commit": "b4b4c87f70624dfb570a6d21391c5a2d5a40a0e8"
+            "commit": "f84ba60ead0a90deb9830f0c1468839c293ecf05"
         },
         "circuitplayground": {
             "path": "extensions/CrispStrobe/circuitplayground.js",
