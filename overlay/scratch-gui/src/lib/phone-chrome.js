@@ -81,6 +81,12 @@ html[${ATTR}] [class*="gui_tab-list"] {
     position: fixed;
     top: 1px;
     right: ${TABS_RIGHT}px;
+    width: max-content;
+    max-width: var(--bw-tab-available, calc(100% - ${TABS_RIGHT + 8}px));
+    overflow-x: auto;
+    padding: 0;
+    gap: 2px;
+    flex-wrap: nowrap;
     height: ${TABS_H}px;
     min-height: ${TABS_H}px;
     margin: 0;
@@ -91,8 +97,28 @@ html[${ATTR}] [class*="gui_tab-list"] {
 html[${ATTR}] [class*="gui_tab"][role="tab"] {
     height: ${TAB_H}px;
     min-height: ${TAB_H}px;
-    padding-top: 0;
-    padding-bottom: 0;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0 10px;
+}
+/* Compact mode must also escape the clipped editor ancestor. Reset both
+   horizontal anchors; retaining right:48px with relative positioning put the
+   expand control at x=-28 on a 1024px iPad. */
+html[${ATTR}] body.bw-compact-chrome [role="tablist"] {
+    position: fixed;
+    top: 1px;
+    left: 8px;
+    right: auto;
+    width: max-content;
+    max-width: var(--bw-tab-available, calc(100% - 16px));
+    height: ${TABS_H}px;
+    min-height: ${TABS_H}px;
+}
+/* Fixed compact tabs still need a row above the editor's actual controls. */
+html[${ATTR}] body.bw-compact-chrome [class*="gui_tabs"] {
+    box-sizing: border-box;
+    padding-top: ${TABS_H}px;
 }
 /* LET THE EDITOR COLUMN SHRINK, so the pane beside it can exist.
    Upstream gives it 'flex: 1 0 598px' -- grow freely, NEVER shrink. On a 1024

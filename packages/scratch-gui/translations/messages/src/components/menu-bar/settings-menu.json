@@ -24,6 +24,10 @@
     "defaultMessage": "How Scratch Link connects…"
   },
   {
+    "id": "gui.menuBar.peerSessions",
+    "defaultMessage": "Peer sessions…"
+  },
+  {
     "id": "gui.menuBar.virtualSpikePrime",
     "description": "Settings action that opens the virtual LEGO SPIKE Prime controls",
     "defaultMessage": "Virtual SPIKE Prime…"

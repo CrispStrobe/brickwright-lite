@@ -5932,3 +5932,30 @@ substitution. Any demonstrated extension fix belongs upstream first, with a
 separate exact-pin adoption claim if necessary. All machine/device details
 and raw receipts stay in ignored local context. Acknowledge a working external
 LED separately from hub RGB; current user reports LED works but is too dim.
+
+Implementation checkpoint: claim PR1048 merged as `1e8c271e2` before source
+edits; source branch `fix/ipad-chrome-l10n-20261017` is locally qualified.
+Tabs now use measured label fit, separate icons and localized accessible names;
+the collapsed touch strip keeps its ellipsis visible. Settings and native File
+labels use the selected app's EN/DE catalog, including regional German locales.
+The catalog is applied through the existing locales reducer and preserved on
+catalog replacement. No action or serialized setting values were changed.
+The production build passed with two existing size warnings. All 77 focused and
+integration controls passed, followed by the complete Chromium responsive gate:
+22 browser observations, zero page errors, including actual tab switching,
+portrait/landscape touch contexts, icon-only desktop keyboard reach and EN/DE
+Settings/File actions with an English browser locale. These receipts describe
+the locally built working tree; final published-head CI, source merge and a
+fresh signed native build/install remain pending. Keep the A13 CPX/File candidate
+when composing that native build; do not replace it with the older main pins.
+
+Physical acceptance remains separate: full reversed LED power on numeric port
+2 was visibly brighter, but the prior iPad brightness value is unknown. Correct
+legacy piezo writes with and without response remained silent. LWP3 endpoints
+were absent from complete discovery; no valid LWP3 tone was sent. The actual
+node-poweredup encoder matches those bytes. Its independent Bluetooth retry
+connected, discovered the piezo and sent its own short low/high/low sequence;
+the user again reported no sound. The earlier scan-only failure remains separate.
+See [protocol findings and bounded next experiments](docs/WEDO-HUB-PROTOCOL-NOTES.md).
+Hardware/model identification or a genuine-hub comparison remains open; do not
+claim a new buzzer fix or change supplier pins without demonstrated evidence.

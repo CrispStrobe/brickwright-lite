@@ -76,3 +76,88 @@ export async function verifyEditorTouch (browser, url, evidence, check) {
         } finally { await context.close(); }
     }
 }
+
+/** Real tab/menu actions, including an app locale different from the browser's. */
+export async function verifyEditorChrome (browser, url, evidence, check) {
+    for (const language of ['en', 'de']) {
+        const context = await browser.newContext({viewport: {width: 1024, height: 768},
+            isMobile: true, hasTouch: true, locale: 'en-US', serviceWorkers: 'block'});
+        const page = await context.newPage();
+        const errors = [];
+        page.on('pageerror', error => errors.push(error.message));
+        const settle = () => page.evaluate(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(done))));
+        try {
+            await page.addInitScript(() => localStorage.setItem('bw-starter-v1-complete', '1'));
+            await page.goto(url, {waitUntil: 'domcontentloaded'});
+            const settings = page.getByTestId('bw-settings-menu-trigger');
+            if (language === 'de') {
+                await settings.click();
+                await page.getByText('Preferences', {exact: true}).click();
+                await page.getByText('Language', {exact: true}).locator('..').locator('select').selectOption('de');
+            }
+            const names = language === 'de' ? ['Blöcke', 'Kostüme', 'Klänge', 'Skripte', 'Schaltung'] :
+                ['Blocks', 'Costumes', 'Sounds', 'Code', 'Circuit'];
+            const toggle = page.getByTestId('bw-chrome-toggle');
+            for (const viewport of [{width: 1024, height: 768}, {width: 768, height: 1024}]) {
+                await page.setViewportSize(viewport);
+                for (const compact of [false, true]) {
+                    if ((await toggle.getAttribute('aria-pressed')) !== String(compact)) await toggle.tap();
+                    await settle();
+                    const geometry = await page.locator('[role="tablist"]').evaluate(list => {
+                        const items = [list, ...list.querySelectorAll('[role="tab"],button')];
+                        return {layoutWidth: innerWidth, items: items.map(element => {
+                            const r = element.getBoundingClientRect();
+                            const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+                            return {label: element.getAttribute('aria-label') || element.textContent,
+                                x: r.x, right: r.right, width: r.width, height: r.height,
+                                scroll: element.scrollWidth, client: element.clientWidth,
+                                hit: element === list || element.contains(hit)};
+                        })};
+                    });
+                    for (const item of geometry.items) {
+                        assert.ok(item.x >= 0 && item.right <= geometry.layoutWidth + 1, JSON.stringify(item));
+                        assert.ok(item.height >= 32 && item.width >= 32, JSON.stringify(item));
+                        assert.ok(item.scroll <= item.client + 2, JSON.stringify(item));
+                        assert.ok(item.hit, JSON.stringify(item));
+                    }
+                    for (const name of names) {
+                        const tab = page.getByRole('tab', {name, exact: true});
+                        await tab.tap();
+                        assert.equal(await tab.getAttribute('aria-selected'), 'true');
+                    }
+                    await page.screenshot({path: `${evidence}/chrome-${language}-${viewport.width}-${compact ? 'compact' : 'expanded'}.png`});
+                    check(`chrome ${language} ${viewport.width}: ${compact ? 'collapsed' : 'expanded'} tabs and expand control fit and switch`, geometry);
+                }
+            }
+            if ((await toggle.getAttribute('aria-pressed')) === 'true') await toggle.tap();
+            await settings.click();
+            await page.getByText(language === 'de' ? 'Arbeitsbereich' : 'Workspace', {exact: true}).click();
+            const debuggerRow = page.getByText('Debugger', {exact: true}).locator('..');
+            const debuggerSelect = debuggerRow.locator('select');
+            assert.deepEqual(await debuggerSelect.locator('option').allTextContents(), language === 'de' ?
+                ['Oben', 'Rechts', 'Ganzes Fenster', 'Aus'] : ['Top', 'Right', 'Full pane', 'Off']);
+            await debuggerSelect.selectOption('off');
+            assert.equal(await page.evaluate(() => localStorage.getItem('bw-debug-dock')), 'off');
+            await settings.click();
+            assert.equal(await page.getByText(language === 'de' ? 'Erste Schritte…' : 'Getting started…', {exact: true}).count(), 1);
+            assert.equal(await page.getByText(language === 'de' ? 'Lektionen…' : 'Lessons…', {exact: true}).count(), 1);
+            await settings.click();
+            // Close Settings by clicking the same trigger's backdrop-independent tab.
+            await page.getByRole('tab', {name: names[4], exact: true}).tap();
+            await page.evaluate(() => {
+                window.__chromeFileActions = [];
+                window.addEventListener('bw-circuit-file', event => window.__chromeFileActions.push(event.detail.action));
+            });
+            // The caption is hidden on touch screens; click its visible icon container.
+            await page.getByText(language === 'de' ? 'Datei' : 'File', {exact: true})
+                .locator('xpath=ancestor::div[contains(@class, "menu-bar_menu-bar-item")][1]').click();
+            await page.getByText(language === 'de' ? 'Schaltung speichern' : 'Save circuit', {exact: true}).click();
+            assert.deepEqual(await page.evaluate(() => window.__chromeFileActions), ['save']);
+            check(`chrome ${language}: selected app locale translates Settings and File; menu actions preserve values`);
+            assert.deepEqual(errors, []);
+        } catch (error) {
+            await page.screenshot({path: `${evidence}/chrome-${language}-failure.png`}).catch(() => {});
+            throw error;
+        } finally { await context.close(); }
+    }
+}

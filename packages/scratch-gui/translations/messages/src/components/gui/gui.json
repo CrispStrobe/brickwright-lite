@@ -5,6 +5,10 @@
     "defaultMessage": "Add Extension"
   },
   {
+    "id": "gui.gui.blocksTab",
+    "defaultMessage": "Blocks"
+  },
+  {
     "id": "gui.gui.backdropsTab",
     "description": "Button to get to the backdrops panel",
     "defaultMessage": "Backdrops"
@@ -27,11 +31,11 @@
   {
     "id": "gui.gui.circuitTab",
     "description": "Brickwright circuit designer tab",
-    "defaultMessage": "🔌 Circuit"
+    "defaultMessage": "Circuit"
   },
   {
     "id": "gui.gui.fpgaTab",
     "description": "Brickwright FPGA/HDL surface tab",
-    "defaultMessage": "⬢ FPGA"
+    "defaultMessage": "FPGA"
   }
 ]
