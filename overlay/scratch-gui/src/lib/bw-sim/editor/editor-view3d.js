@@ -61,7 +61,7 @@ import {LDU_M, lduToWorld} from '../contracts.js';
 import {partGeometry, partVisual} from '../view/part-geometry.js';
 import {PART_SURFACE, addEdgeLines, addPartLights, edgeMaterials} from '../view/part-style.js';
 import {snapCandidates, rotateAboutSnap} from './snap.js';
-import {moveVerdict, rayHitParts, restingPosition, solidOverlaps} from './overlap.js';
+import {freeOffset, moveVerdict, rayHitParts, restingPosition, solidOverlaps} from './overlap.js';
 import {
     DEFAULT_GRID, GRID_STEPS, HOLE_PITCH, IDENTITY, cleanRotation, expandToGroups, facingAxis, gizmoSize, mul3, mulVec3,
     placeCopies, rotatePoses, selectionPivot, snapDelta, translatePoses, worldAxisRotation
@@ -790,7 +790,17 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             status({kind: 'deleted', count: ids.length});
         }
     };
-    const pasteParts = (parts, offset) => {
+    const PASTE_OFFSETS = [
+        [20, 0, 0], [-20, 0, 0], [0, 0, 20], [0, 0, -20],
+        [40, 0, 0], [-40, 0, 0], [0, 0, 40], [0, 0, -40],
+        [0, -24, 0]
+    ];
+    const pasteParts = parts => {
+        const offset = freeOffset({model: editor.model, catalog: catalogMap, parts, offsets: PASTE_OFFSETS});
+        if (!offset) {
+            status({kind: 'refused', reason: 'noRoom'});
+            return;
+        }
         const before = editor.model.parts.length;
         const ports = portsForCopies(editor.model, catalog, parts);
         if (!run({type: 'batch', commands: placeCopies(parts, offset, ports)}, {pasted: parts.length})) return;
@@ -812,7 +822,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         }
     };
     const duplicate = () => {
-        if (needSelection()) pasteParts(selectedParts(), [HOLE_PITCH, 0, 0]);
+        if (needSelection()) pasteParts(selectedParts());
     };
     const copy = () => {
         if (!needSelection()) return;
@@ -825,8 +835,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
             status({kind: 'refused', reason: 'clipboardEmpty'});
             return;
         }
-        clipboard.pasted = (clipboard.pasted || 0) + 1;
-        pasteParts(clipboard, [HOLE_PITCH * clipboard.pasted, 0, 0]);
+        pasteParts(clipboard);
     };
     const undo = () => {
         if (!editor.canUndo) { status({kind: 'refused', reason: 'nothingToUndo'}); return; }

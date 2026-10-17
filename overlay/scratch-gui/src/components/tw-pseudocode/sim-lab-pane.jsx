@@ -52,7 +52,7 @@ const TEXT = {
             undone: 'Undone', redone: 'Redone',
             gizmoArrow: 'Drag the {color} arrow to move along {axis}', gizmoPlane: 'Drag the square to move in the {axis} plane',
             gizmoRing: 'Drag the {color} ring to turn (90° steps, Shift: 15°)', red: 'red', green: 'green', blue: 'blue',
-            nothingSelected: 'Select a part first (click it).', clipboardEmpty: 'Nothing copied yet: select parts and press Ctrl+C.',
+            nothingSelected: 'Select a part first (click it).', clipboardEmpty: 'Nothing copied yet: select parts and press Ctrl+C.', noRoom: 'No free spot next to it: move the parts apart first.',
             nothingToUndo: 'Nothing to undo.', nothingToRedo: 'Nothing to redo.', invalid: 'That does not work here: {detail}',
             blocked: 'Would go into {target}: let go and it stays where it was',
             overlapMove: 'Not moved: it would go into {target}.', overlapPlace: 'Not placed: it would go into {target}.',
@@ -88,7 +88,7 @@ const TEXT = {
             undone: 'Rückgängig gemacht', redone: 'Wiederhergestellt',
             gizmoArrow: 'Ziehe den {color} Pfeil, um entlang {axis} zu schieben', gizmoPlane: 'Ziehe das Quadrat, um in der {axis}-Ebene zu schieben',
             gizmoRing: 'Ziehe den {color} Ring zum Drehen (90°-Schritte, Umschalt: 15°)', red: 'roten', green: 'grünen', blue: 'blauen',
-            nothingSelected: 'Wähle zuerst ein Teil aus (anklicken).', clipboardEmpty: 'Noch nichts kopiert: Teile auswählen und Strg+C drücken.',
+            nothingSelected: 'Wähle zuerst ein Teil aus (anklicken).', clipboardEmpty: 'Noch nichts kopiert: Teile auswählen und Strg+C drücken.', noRoom: 'Kein freier Platz daneben: rück die Teile erst auseinander.',
             nothingToUndo: 'Nichts rückgängig zu machen.', nothingToRedo: 'Nichts zu wiederholen.', invalid: 'Das geht hier nicht: {detail}',
             blocked: 'Würde in {target} hineinragen: loslassen lässt es, wo es war',
             overlapMove: 'Nicht verschoben: Es würde in {target} hineinragen.', overlapPlace: 'Nicht gesetzt: Es würde in {target} hineinragen.',
@@ -573,10 +573,10 @@ class SimLabPane extends React.Component {
                     <button type="button" style={small} data-testid="bw-sim-lab-turn" disabled={!selection.length} onClick={() => view?.turn('up', 1)}>{T.turnUp}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-tip" disabled={!selection.length} onClick={() => view?.turn('facing', 1)}>{T.tip}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-group" disabled={selection.length < 2}
-                        title="Ctrl+G" onClick={() => { view?.groupSelection(); tick(); }}>{T.group}</button>
+                        onClick={() => { view?.groupSelection(); tick(); }}>{T.group}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-ungroup"
                         disabled={!(editor?.model.groups || []).some(g => g.parts.some(id => this.state.selection.includes(id)))}
-                        title="Ctrl+Shift+G" onClick={() => { view?.ungroupSelection(); tick(); }}>{T.ungroup}</button>
+                        onClick={() => { view?.ungroupSelection(); tick(); }}>{T.ungroup}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-duplicate" disabled={!selection.length} onClick={() => view?.duplicate()}>{T.duplicate}</button>
                     <button type="button" style={small} data-testid="bw-sim-lab-delete" disabled={!selection.length} onClick={() => view?.deleteSelection()}>{T.remove}</button>
                     <span style={{width: 6}} />

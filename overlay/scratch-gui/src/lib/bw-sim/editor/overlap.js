@@ -238,6 +238,31 @@ export const solidOverlaps = (model, catalog, placedPart, {ignore = []} = {}) =>
 };
 
 /**
+ * First offset from a list at which none of the translated copies overlaps a
+ * solid part of the model. Pure: uses solidOverlaps semantics (pins/axles/balls
+ * and meshing gears may share volume), copies are not checked against each other.
+ * @param {{model: object, catalog: Map|object, parts: {id:string,part:string,position:number[],rotation:number[]}[], offsets: number[][]}} args
+ * @returns {number[]|null} the first free offset, or null
+ */
+export const freeOffset = ({model, catalog, parts, offsets}) => {
+    for (const offset of offsets) {
+        let free = true;
+        for (const part of parts) {
+            const copy = {
+                ...part,
+                position: [part.position[0] + offset[0], part.position[1] + offset[1], part.position[2] + offset[2]]
+            };
+            if (solidOverlaps(model, catalog, copy).length > 0) {
+                free = false;
+                break;
+            }
+        }
+        if (free) return offset;
+    }
+    return null;
+};
+
+/**
  * Whether moving parts to new poses is allowed: refused when a moved solid part
  * would push into a solid part it was not already in (an old overlap never
  * blocks moving out of it). Parts moved together are not checked against each

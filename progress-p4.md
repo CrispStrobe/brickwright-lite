@@ -1,3 +1,0 @@
-DONE
-P6: ship line follower as reference model. Tasks: 1) export line-follower.ldr from fixture via serializeModel (byte-stable, 1484 bytes), 2) add to MODELS in sim-session.js (port C), 3) test bw-sim-models.test.mjs (MODELS files exist/parse/compile, motors/sensors have ports, line-follower equals fixture), 4) docs/SIM-LAB.md with verbatim hubState loop pseudocode and untested SPIKE equivalent, 5) gui-scope check (no new jolt import). Tests: bw-sim-models 2/2, line-follower lap still passes (6/6 gear trains still green), core 50/50. Fixture: line-follower.json model 21 parts, mat line-oval, sensor on C 8.4mm up, 2.9cm ahead.
-P4 §3 line follower: real lap passes (test/bw-sim-line-follower.test.mjs) — see P6 docs for pseudocode.
