@@ -90,7 +90,10 @@ try {
     await face.locator('[data-cpx-button="A"]').click();
     await expectFace('rgb(0, 0, 255)');
     await expectPane('rgb(0, 0, 255)');
-    report.steps.push('face A starts the actual native hat; pane and face turn blue');
+    // And the red state is GONE from the face, not merely joined by blue.
+    await page.waitForFunction(() => [...document.querySelectorAll('[data-cpx-live-face="live"] [data-cpx-pixel]')]
+        .filter(pixel => pixel.getClientRects().length && pixel.getAttribute('fill') === 'rgb(255, 0, 0)').length === 0);
+    report.steps.push('face A starts the actual native hat; pane and face turn blue and no red remains');
     await face.locator('[data-cpx-button="B"]').focus();
     await page.keyboard.press('Space');
     await expectFace('rgb(0, 255, 0)');
@@ -130,6 +133,8 @@ try {
     report.liveScreenshot = output.replace(/\.json$/i, '') + '.live.png';
     await page.screenshot({path: report.liveScreenshot});
     await page.getByRole('tab', {name: 'Code', exact: true}).click();
+    // Leaving the Circuit tab must take the live face off screen.
+    await page.locator('[data-cpx-live-face="live"]:visible').first().waitFor({state: 'hidden'});
     await page.getByRole('button', {name: /From blocks/}).first().click();
     await page.waitForFunction(() => document.querySelector('[data-testid="bw-code-editor"] .cm-content .cm-line')?.textContent.trim() === 'DEVICE CPX');
     report.steps.push('native CPX identity survives the real From Blocks round trip');

@@ -170,7 +170,7 @@ class CircuitTab extends React.Component {
             debugHintDismissed, hideStage, debugDock, showInStage, rightPaneHidden,
             examples: null, examplesError: null, curriculum: null,
             circuitData: null, loadingExample: null,
-            cpxState: props.vm?.runtime?.bwCpxState || null, handleCpxInput: null,
+            cpxState: this.props.vm?.runtime?.bwCpxState || null, handleCpxInput: null,
             machineBooted: false, pendingExampleTitle: null,
             // The air every part sits in (lib/bench-temperature.js): the chips'
             // on-die sensors and the temperature-dependent parts read it.
