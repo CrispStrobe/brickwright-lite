@@ -58,7 +58,7 @@ const lineOf = (x, file, radius) => {
     const axis = y.map(v => v / h);
     const p0 = x.t;
     const p1 = apply(x, [0, 1, 0]);
-    return {file, axis, p0, lo: Math.min(dot(p0, axis), dot(p1, axis)), hi: Math.max(dot(p0, axis), dot(p1, axis)), radius};
+    return {file, x, axis, p0, lo: Math.min(dot(p0, axis), dot(p1, axis)), hi: Math.max(dot(p0, axis), dot(p1, axis)), radius};
 };
 
 const boreLines = primitives => [
@@ -119,6 +119,53 @@ test('pin and pinhole connectors sit on a 6 LDU Technic bore', () => {
             assert.ok(coversAxially(c, hits), `${p.part} ${c.id}: ${c.position} is outside the bore's extent`);
         }
     }
+});
+
+/**
+ * Where a pin actually seats. A hole connector is the segment a pin half occupies
+ * (contracts.js: `length` along `axis`, centred on `position`), so its two ends must be
+ * where the bore really opens and ends — not just somewhere on the bore's line, which the
+ * test above accepts. Measured from the bore's WALLS: the 6 LDU cylinders and the Technic
+ * hole composites, merged into contiguous runs along the line. Flat primitives (edge loops,
+ * discs, rings, chords) are left out: they have no axial extent, only LDraw's unit height.
+ *
+ * Each end may differ from its run end by ≤ 2 LDU: LDraw draws a one-sided (blind) hole
+ * (p/connhol3.dat, the SPIKE sensors and the castor beam) 18 LDU deep, 2 short of a pin
+ * half. A connector placed at the bottom of a blind hole instead of its middle (8 LDU off on
+ * the SPIKE sensors until 2026-10-17) makes every model built by it interpenetrate.
+ */
+const WALL = /\/(\d+-\d+(cyli|cylo|cyls|con\d+)|connhole|peghole|beamhol\w*|npeghol\w*|confric\w*|connect\w*)\.dat$/;
+const SEAT_EPS = 2;
+const boreRuns = (c, lines) => {
+    const iv = onLine(c, lines.filter(l => WALL.test(l.file)))
+        .map(l => [dot(l.p0, c.axis), dot(apply(l.x, [0, 1, 0]), c.axis)])
+        .map(([a, b]) => [Math.min(a, b), Math.max(a, b)])
+        .sort((a, b) => a[0] - b[0]);
+    const runs = [];
+    for (const i of iv) {
+        const r = runs[runs.length - 1];
+        if (r && i[0] <= r[1] + SPAN_EPS) r[1] = Math.max(r[1], i[1]);
+        else runs.push(i.slice());
+    }
+    return runs;
+};
+
+test('a pinhole connector spans its bore: its ends are where the bore opens and ends', () => {
+    const fmt = a => `[${a.map(v => +v.toFixed(2)).join(', ')}]`;
+    const wrong = [];
+    for (const p of META.parts) {
+        const lines = boreLines(flat.get(p.part).primitives);
+        for (const c of p.connectors.filter(k => k.type === 'pinhole')) {
+            const t = dot(c.position, c.axis);
+            const seg = [t - c.length / 2, t + c.length / 2];
+            const run = boreRuns(c, lines).find(r => t >= r[0] - SPAN_EPS && t <= r[1] + SPAN_EPS);
+            if (!run) wrong.push(`${p.part} ${c.id}: no bore run through ${c.position}`);
+            else if (Math.abs(seg[0] - run[0]) > SEAT_EPS || Math.abs(seg[1] - run[1]) > SEAT_EPS) {
+                wrong.push(`${p.part} ${c.id}: spans ${fmt(seg)} along ${c.axis}, the bore runs ${fmt(run)}`);
+            }
+        }
+    }
+    assert.deepEqual(wrong, []);
 });
 
 /**
