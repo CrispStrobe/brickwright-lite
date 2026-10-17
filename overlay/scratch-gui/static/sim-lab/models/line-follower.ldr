@@ -1,0 +1,49 @@
+0 Line follower (Brickwright Sim Lab reference model)
+0 Name: line-follower.ldr
+0 Author: Brickwright
+0 !LDRAW_ORG Unofficial_Model
+0 !BW ID hub
+1 71 0 0 0 1 0 0 0 1 0 0 0 1 45601.dat
+0 !BW ID motorR
+0 !BW PORT B
+1 71 100 10 80 0 -1 0 -1 0 0 0 0 -1 54696p01.dat
+0 !BW ID pinR
+1 0 70 -10 80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID axleR
+1 0 170 10 80 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID wheelR
+1 15 170 10 80 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID motorL
+0 !BW PORT A
+1 71 -100 10 80 0 1 0 1 0 0 0 0 -1 54696p01.dat
+0 !BW ID pinL
+1 0 -70 -10 80 1 0 0 0 1 0 0 0 1 2780.dat
+0 !BW ID axleL
+1 0 -170 10 80 1 0 0 0 1 0 0 0 1 3705.dat
+0 !BW ID wheelL
+1 15 -170 10 80 0 0 1 0 -1 0 1 0 0 39367p01.dat
+0 !BW ID sensBeam
+1 0 40 -10 120 -1 0 0 0 0 1 0 1 0 32523.dat
+0 !BW ID sensPinHub1
+1 0 40 -10 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID sensPinHub2
+1 0 40 -30 110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID sensPin
+1 0 40 10 130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID sens
+0 !BW PORT C
+1 15 20 10 152 0 -1 0 0 0 -1 1 0 0 37308.dat
+0 !BW ID frontBeam
+1 71 0 -10 -120 0 0 1 1 0 0 0 1 0 32524.dat
+0 !BW ID frontPin1
+1 0 40 -10 -110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID frontPin2
+1 0 -40 -10 -110 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID castor
+1 71 0 10 -140 0 0 -1 0 1 0 1 0 0 39370.dat
+0 !BW ID castorPin1
+1 0 40 -10 -130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID castorPin2
+1 0 -40 -10 -130 0 0 -1 0 1 0 1 0 0 2780.dat
+0 !BW ID ball
+1 15 0 56 -140 1 0 0 0 1 0 0 0 1 52629.dat

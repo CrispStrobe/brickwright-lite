@@ -78,6 +78,38 @@ const makeGround = (bodies, opts = {}) => {
 };
 
 /**
+ * The placed parts of every connected group of bodies (bodies linked by joints) other
+ * than the main one: the group with the hub, or else the one with the most parts.
+ * @returns {string[][]} part ids per loose group, each sorted, groups in body order
+ */
+const looseGroups = (bodies, joints, catalogMap, nodes) => {
+    if (bodies.length < 2) return [];
+    const parent = new Map(bodies.map(b => [b.id, b.id]));
+    const find = x => (parent.get(x) === x ? x : find(parent.get(x)));
+    for (const j of joints) {
+        if (!parent.has(j.body1) || !parent.has(j.body2)) continue;
+        const a = find(j.body1); const b = find(j.body2);
+        if (a !== b) parent.set(b, a);
+    }
+    const groups = new Map(); // root -> Set(part ids)
+    for (const b of bodies) {
+        const r = find(b.id);
+        if (!groups.has(r)) groups.set(r, new Set());
+        for (const pid of b.parts) groups.get(r).add(pid);
+    }
+    if (groups.size < 2) return [];
+    const hubParts = new Set();
+    for (const node of nodes.values()) if (node.meta && node.meta.hub) hubParts.add(node.partId);
+    const list = [...groups.values()].map(set => [...set].sort((x, y) => x.localeCompare(y)));
+    let main = list.findIndex(parts => parts.some(id => hubParts.has(id)));
+    if (main < 0) {
+        main = 0;
+        list.forEach((parts, i) => { if (parts.length > list[main].length) main = i; });
+    }
+    return list.filter((_, i) => i !== main);
+};
+
+/**
  * Normalize catalog to Map.
  */
 const toCatalogMap = catalog => {
@@ -99,23 +131,15 @@ export const compile = (model, catalog, opts = {}) => {
 
     // Validate input model (including catalog membership)
     const problems = validatePlacedModel(model, catalogMap);
-    // Map problems to diagnostics
+    // Map problems to diagnostics; a problem about one placed part names it (`model.parts[<id>]…`).
+    const placedIds = new Set((model && Array.isArray(model.parts) ? model.parts : []).map(pl => pl && pl.id));
+    const problemParts = p => {
+        const m = p.match(/^model\.parts\[([^\]]+)\]/);
+        return m && placedIds.has(m[1]) ? [m[1]] : [];
+    };
     for (const p of problems) {
-        if (p.includes('is not in the part catalog') || p.includes('not in the part catalog')) {
-            // Extract part name
-            const m = p.match(/'([^']+)' is not in the part catalog/);
-            const part = m ? m[1] : 'unknown';
-            diagnostics.push({severity: 'error', code: 'unknown-part', message: p, parts: []});
-        } else if (p.includes('not a proper rotation') || p.includes('port:')) {
-            diagnostics.push({severity: 'error', code: 'invalid-model', message: p, parts: []});
-        } else {
-            // Generic invalid-model for any other validation problem
-            if (p.includes('model.parts')) {
-                diagnostics.push({severity: 'error', code: 'invalid-model', message: p, parts: []});
-            } else {
-                diagnostics.push({severity: 'error', code: 'invalid-model', message: p, parts: []});
-            }
-        }
+        const code = p.includes('is not in the part catalog') ? 'unknown-part' : 'invalid-model';
+        diagnostics.push({severity: 'error', code, message: p, parts: problemParts(p)});
     }
 
     // Filter parts to known ones; skip unknown parts (they are error, not throw)
@@ -131,40 +155,62 @@ export const compile = (model, catalog, opts = {}) => {
     // Build graph (even if empty)
     const {nodes, edges: graphEdges} = buildGraph(filteredModel, catalogMap, diagnostics);
 
-    // Initial islands from rigid edges only
-    let islands = buildIslands(nodes, graphEdges, catalogMap, diagnostics, opts);
-    // Joints detection loop for locked-hinges
-    let jointsResult = buildJoints(nodes, graphEdges, islands, diagnostics);
-    let lockedPairs = jointsResult.lockedPairs;
-
-    // If locked-hinges found, we need to merge islands and re-evaluate
-    // Add warning diagnostics for locked
-    let extraRigidPairsCollected = [];
-    let iterations = 0;
-    while (lockedPairs.length > 0 && iterations < 5) {
-        iterations++;
-        for (const [bA, bB] of lockedPairs) {
-            diagnostics.push({severity: 'warning', code: 'locked-hinges', message: `Hinges between ${bA} and ${bB} lock, merging islands`, parts: []});
-            // Need to find representative node ids for these bodies to union
-            // Find any node belonging to body bA and any node belonging to body bB in current islands
-            const nodesA = [...islands.nodeToBody.entries()].filter(([, bid]) => bid === bA).map(([nid]) => nid);
-            const nodesB = [...islands.nodeToBody.entries()].filter(([, bid]) => bid === bB).map(([nid]) => nid);
-            if (nodesA.length > 0 && nodesB.length > 0) {
-                extraRigidPairsCollected.push([nodesA[0], nodesB[0]]);
-            }
-        }
-        // Rebuild islands with extra rigid pairs
-        islands = buildIslands(nodes, graphEdges, catalogMap, diagnostics, opts, extraRigidPairsCollected);
+    // Topology fixpoint. Islands come from rigid edges; two things can then
+    // weld islands together and force a rebuild: hinges between one island pair
+    // that are not collinear (locked-hinges), and a gear rigidly on the frame its
+    // mesh partner turns in (gear-on-frame, gears.js). Each pass rebuilds islands,
+    // joints and gears from the graph plus the welds found so far; the gear pass's
+    // other diagnostics are kept from the final pass only.
+    const extraRigidPairs = [];
+    const firstNodeOf = (islandsNow, bodyId) => {
+        for (const [nid, bid] of islandsNow.nodeToBody.entries()) if (bid === bodyId) return nid;
+        return null;
+    };
+    const weld = (islandsNow, bA, bB) => {
+        const nA = firstNodeOf(islandsNow, bA);
+        const nB = firstNodeOf(islandsNow, bB);
+        if (nA && nB) extraRigidPairs.push([nA, nB]);
+    };
+    let islands;
+    let jointsResult;
+    let gearResult;
+    let gearDiagnostics;
+    // Every weld merges two islands, so this settles in at most one pass per node.
+    for (let pass = 0; pass <= nodes.size + 1; pass++) {
+        islands = buildIslands(nodes, graphEdges, catalogMap, diagnostics, opts, extraRigidPairs);
         jointsResult = buildJoints(nodes, graphEdges, islands, diagnostics);
-        lockedPairs = jointsResult.lockedPairs;
-        // Avoid infinite loop: if still locked, continue
-        if (lockedPairs.length === 0) break;
+        if (jointsResult.lockedPairs.length > 0) {
+            jointsResult.lockedPairs.forEach(([bA, bB], i) => {
+                const parts = (jointsResult.lockedParts && jointsResult.lockedParts[i]) || [];
+                diagnostics.push({severity: 'warning', code: 'locked-hinges', message: `Hinges between ${bA} and ${bB} lock, merging islands`, parts});
+                weld(islands, bA, bB);
+            });
+            continue;
+        }
+        gearDiagnostics = [];
+        gearResult = buildGears(nodes, islands, jointsResult.joints, catalogMap, gearDiagnostics, jointsResult.jointEntries);
+        if (gearResult.lockedPairs.length === 0) break;
+        for (const d of gearDiagnostics) if (d.code === 'gear-on-frame') diagnostics.push(d);
+        for (const [bA, bB] of gearResult.lockedPairs) weld(islands, bA, bB);
+        gearResult = null;
+    }
+    if (!gearResult) throw new Error('compile: mechanism topology did not settle');
+    // A gear welded by gear-on-frame is "not on a hinge" by construction; that is the lock, already said.
+    const lockedGears = new Set(diagnostics.filter(d => d.code === 'gear-on-frame').flatMap(d => d.parts));
+    for (const d of gearDiagnostics) {
+        if (d.code === 'gear-not-on-hinge' && d.parts.every(p => lockedGears.has(p))) continue;
+        diagnostics.push(d);
     }
 
     const joints = jointsResult.joints;
+    const {gears} = gearResult;
 
-    // Gears (after final islands/joints)
-    const {gears} = buildGears(nodes, islands, joints, catalogMap, diagnostics);
+    // Loose parts: bodies that no joint links, directly or through other bodies, to the
+    // body carrying the hub (or, without a hub, to the largest connected group). They are
+    // not held by the robot: they fall off or lie where they are.
+    for (const group of looseGroups(islands.bodies, joints, catalogMap, nodes)) {
+        diagnostics.push({severity: 'warning', code: 'loose-part', message: `Not connected to the rest of the model: ${group.join(', ')}`, parts: group});
+    }
 
     // Bodies final list: islands.bodies plus ground
     const bodies = [...islands.bodies];

@@ -52,7 +52,7 @@ test('2. line-oval centre line in 100 steps black, ±20mm white', () => {
 
 test('3. paint agrees with colorAt at 200 random points', () => {
     const pxPerM = 100;
-    for (const matId of ['plain', 'line-oval', 'colour-zones']) {
+    for (const matId of ['plain', 'line-oval', 'colour-zones', 'wall']) {
         const mat = createMat(matId);
         const [w, d] = mat.sizeM;
         const width = Math.round(w * pxPerM) + 40; // extra for outside

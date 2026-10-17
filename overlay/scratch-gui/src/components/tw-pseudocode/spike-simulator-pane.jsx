@@ -6,8 +6,8 @@ import SimLabPane from './sim-lab-pane.jsx';
 import VirtualSpikeHubState from '../../lib/virtual-hub/spike-hub-state.js';
 import {pickLocale, browserLocale} from '../../lib/bw-i18n.js';
 const TABS = {
-    en: {arena: 'Arena', simLab: 'Sim Lab (beta)'},
-    de: {arena: 'Arena', simLab: 'Sim-Labor (Beta)'}
+    en: {arena: 'Arena', simLab: 'Robot Lab (beta)'},
+    de: {arena: 'Arena', simLab: 'Roboter-Labor (Beta)'}
 };
 const TEXT = {
     en: 'Virtual SPIKE Prime · Run Scratch blocks, DEVICE SPIKE programs or imported LEGO SPIKE 3 programs with Start in the arena.',

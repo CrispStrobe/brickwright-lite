@@ -95,6 +95,16 @@ const LAZY = [
     {what: 'the Sim Lab 3D view', marker: 'bw-sim-lab-3d-canvas', chunk: 'bw-sim-lab',
         notInChunks: ['bw-spike-simulator'],
         why: 'the dynamic import in sim-lab-pane.jsx (webpackChunkName "bw-sim-lab")'},
+    // The Build palette's part pictures (lib/bw-sim/view/part-thumbnails.js): three.js
+    // draws them, so they come with the Sim Lab chunk, not with the pane that shows them.
+    {what: 'the Sim Lab palette thumbnails', marker: 'bw-sim-part-thumbnails', chunk: 'bw-sim-lab',
+        notInChunks: ['bw-spike-simulator'],
+        why: 'part-thumbnails.js is reached only through sim-lab.js, the dynamic import in sim-lab-pane.jsx (webpackChunkName "bw-sim-lab")'},
+    // The building instructions' 3D pages (lib/bw-sim/view/instructions-view.js) and their step order: three.js
+    // draws them, so they too come with the Sim Lab chunk, not with the pane's Instructions button.
+    {what: 'the Sim Lab building instructions', marker: 'bw-sim-instructions-canvas', chunk: 'bw-sim-lab',
+        notInChunks: ['bw-spike-simulator'],
+        why: 'instructions-view.js is reached only through sim-lab.js, the dynamic import in sim-lab-pane.jsx (webpackChunkName "bw-sim-lab")'},
     {what: 'lesson waves', marker: '"journeyId":"lesson-waves', altMarkers: ['journeyId:"lesson-waves'], chunk: 'guided-lessons',
         why: 'React.lazy(GuidedLessons) in src/components/gui/gui.jsx',
         // The core lessons.json IS eager (gui.jsx needs it for journey routing), so the

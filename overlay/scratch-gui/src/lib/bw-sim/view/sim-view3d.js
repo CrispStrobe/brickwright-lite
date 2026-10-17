@@ -6,10 +6,12 @@
 // view (lib/spike-arena/arena-view3d.js) and reached the same way, only through
 // the pane's dynamic import of bw-sim/sim-lab.js (chunk "bw-sim-lab").
 
-import {AmbientLight, Box3, Color, DirectionalLight, GridHelper, PerspectiveCamera, Vector2, Vector3, WebGLRenderer} from 'three';
+import {Box3, Color, GridHelper, PerspectiveCamera, Vector2, Vector3, WebGLRenderer} from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {parseLDConfig} from './ldraw-colors.js';
 import {buildSimScene, applySnapshot} from './sim-scene3d.js';
+import {addPartLights} from './part-style.js';
+import {createInsightLayer, createPulse, tintMaterial} from './insight-layer.js';
 
 export class WebGLUnavailableError extends Error {
     constructor (reason) {
@@ -46,10 +48,11 @@ export const frameModel = (box, aspect, fovDeg = 40) => {
  * @param {object} options.model the PlacedModel
  * @param {object} options.mechanism its CompiledMechanism
  * @param {(path: string) => string|undefined} options.read LDraw files (fetchLDrawClosure with withConfig)
+ * @param {Map<string, object>} [options.catalog] the part catalog; with it a motor's drive hub turns with its output
  * @param {function} [options.onContextLost]
  * @returns {{canvas, render(snapshot), resize(), resetCamera(), dispose()}}
  */
-export const createSimView3D = ({container, model, mechanism, read, onContextLost = null}) => {
+export const createSimView3D = ({container, model, mechanism, read, catalog = null, onContextLost = null}) => {
     if (!webglAvailable()) throw new WebGLUnavailableError('this browser gives a canvas no WebGL 2 context');
     const config = read('ldconfig.ldr');
     if (!config) throw new Error('LDConfig.ldr (the LDraw colour table) is missing');
@@ -65,14 +68,9 @@ export const createSimView3D = ({container, model, mechanism, read, onContextLos
     Object.assign(canvas.style, {width: '100%', height: '100%', display: 'block', borderRadius: '6px', touchAction: 'none'});
     container.appendChild(canvas);
 
-    const built = buildSimScene({model, mechanism, read, colors: parseLDConfig(config)});
+    const built = buildSimScene({model, mechanism, read, colors: parseLDConfig(config), catalog});
     // The scene builder owns the model; the view adds light only when the builder brought none.
-    if (!built.scene.children.some(c => c.isLight)) {
-        built.scene.add(new AmbientLight(0xffffff, 0.6));
-        const sun = new DirectionalLight(0xffffff, 1.2);
-        sun.position.set(0.5, 1, 0.8);
-        built.scene.add(sun);
-    }
+    if (!built.scene.children.some(c => c.isLight)) addPartLights(built.scene);
     // A light sky and a 1 cm grid on the floor (10 cm major lines): without them a
     // driving robot on a plain floor shows no motion at all.
     built.scene.background = new Color(0xe8eef5);
@@ -91,7 +89,7 @@ export const createSimView3D = ({container, model, mechanism, read, onContextLos
 
     const modelBox = () => {
         const box = new Box3();
-        for (const mesh of built.partMeshes.values()) box.expandByObject(mesh);
+        for (const mesh of [...built.partMeshes.values(), ...built.hubMeshes.values()]) box.expandByObject(mesh);
         return box;
     };
     const resetCamera = () => {
@@ -123,6 +121,58 @@ export const createSimView3D = ({container, model, mechanism, read, onContextLos
     // Follow: the camera and its orbit target move with the model's centre, so
     // the robot stays in view while the learner can still orbit around it.
     let followed = null;
+    // ---- seeing the model (mech/insight.js data, view/insight-layer.js) -------------
+    const insight = createInsightLayer({container, scene: built.scene});
+    const pulse = createPulse();
+    const bodyStart = new Map(mechanism.bodies.map(b => [b.id, new Vector3(...b.position)]));
+    /** An anchor on a body: a world point at t = 0, carried along by the body's pose now. */
+    const onBody = (bodyId, world) => {
+        const group = built.bodyGroups.get(bodyId);
+        if (!group || !world) return () => null;
+        // Bodies start at their origin with no rotation, so the local point is an offset.
+        const local = new Vector3(...world).sub(bodyStart.get(bodyId));
+        return () => group.localToWorld(local.clone());
+    };
+    const partCentre = id => {
+        const mesh = built.partMeshes.get(id);
+        if (!mesh) return () => null;
+        if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+        const local = mesh.geometry.boundingBox.getCenter(new Vector3());
+        return () => mesh.localToWorld(local.clone());
+    };
+    const allMeshes = () => [...built.partMeshes.values(), ...built.hubMeshes.values()];
+    let tints = null;
+    const paintTints = () => {
+        const on = tints && insight.shown.motion;
+        for (const mesh of allMeshes()) {
+            const tint = on ? tints.get(mesh.parent && mesh.parent.name) : null;
+            for (const m of [].concat(mesh.material)) tintMaterial(m, tint || null);
+        }
+    };
+    /** Port badges: items {id, port, label} (motors and sensors). */
+    const setPorts = items => insight.setPorts(items.map(item => ({...item, anchor: partCentre(item.id)})));
+    /** Hinge axes, gear pairs and body tints from insightOf(runModel, mechanism, …). */
+    const setMotion = ({joints = [], gears = [], tints: bodyTintMap = null} = {}) => {
+        insight.setMotion({
+            axes: joints.filter(j => j.type === 'hinge').map(j => ({motor: j.motor, from: onBody(j.body1, j.from), to: onBody(j.body1, j.to)})),
+            balls: joints.filter(j => j.type === 'ball').map(j => ({at: onBody(j.body1, j.point)})),
+            gears: gears.map(g => ({text: g.text, from: onBody(g.bodies[0], g.from), to: onBody(g.bodies[1], g.to)}))
+        });
+        tints = bodyTintMap;
+        paintTints();
+    };
+    const setOverlay = shown => {
+        insight.setVisible(shown);
+        paintTints();
+    };
+    /** Pulse these parts for `ms` (a motor's drive hub too). */
+    const highlight = (ids, ms = 3000) => {
+        const want = new Set(ids);
+        const meshes = allMeshes().filter(m => want.has(m.name.replace(/#hub$/, '')));
+        pulse.start(meshes, ms, performance.now());
+        return meshes.length;
+    };
+
     const render = snapshot => {
         resize();
         if (snapshot) applySnapshot(built, snapshot);
@@ -135,10 +185,16 @@ export const createSimView3D = ({container, model, mechanism, read, onContextLos
             controls.update();
         }
         followed = centre;
+        pulse.tick(performance.now());
+        built.scene.updateMatrixWorld();
+        camera.updateMatrixWorld();
+        const size = renderer.getSize(new Vector2());
+        insight.update(camera, size.x, size.y);
         renderer.render(built.scene, camera);
     };
 
     const dispose = () => {
+        insight.dispose();
         if (grid) {
             grid.geometry.dispose();
             grid.material.dispose();
@@ -156,5 +212,8 @@ export const createSimView3D = ({container, model, mechanism, read, onContextLos
         followed = null;
         resetCamera();
     };
-    return {canvas, render, resize, resetCamera: recentre, dispose};
+    return {canvas, render, resize, resetCamera: recentre, dispose, setPorts, setMotion, setOverlay, highlight,
+        /** What the overlay shows now, plus the parts pulsing (for the browser gate). */
+        overlayStats: () => ({...insight.stats(), pulsing: pulse.count,
+            tinted: allMeshes().filter(m => [].concat(m.material).some(x => x.userData.baseColor && !x.color.equals(x.userData.baseColor))).length})};
 };

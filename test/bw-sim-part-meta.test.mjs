@@ -19,8 +19,8 @@
  *     subfiles, which is exactly the split the compiler needs);
  *   - a gear's tip radius is pitch radius + one module (1 mm = 2.5 LDU), and its
  *     centre is on its axle hole; the wheel is 56 mm across, as its name says;
- *   - colliders cover 50–110 % of the mesh bounding box (50 %, not the plan's
- *     60 %: a perfect sphere fills π/6 ≈ 52 % of its box).
+ *   - colliders enclose the mesh (≥ 98 % of its vertices inside a collider) without
+ *     being oversized (≤ 110 % of the mesh box volume).
  */
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
@@ -220,14 +220,35 @@ test('the SPIKE wheel is 56 mm across', () => {
     assert.equal((b.max[1] - b.min[1]) * 0.4, 56);
 });
 
-test('colliders cover 50–110 % of the mesh box', () => {
+test('colliders enclose the part: ≥ 98 % of mesh vertices inside one, total volume ≤ 110 % of the mesh box', () => {
+    // Enclosure is what the editor's overlap check and the physics rely on: a vertex outside every
+    // collider is geometry another part can pass through. (This replaced a "colliders cover 50–110 %
+    // of the bounding box" rule, which a correct shape-following fit of a non-convex part — the H-shaped
+    // castor beam — fails, while a cylinder pointing along the wrong axis passed it.)
+    const TOL = 1.5;
+    const rot = (q, v) => {
+        const [x, y, z, w] = q;
+        const t = [2 * (y * v[2] - z * v[1]), 2 * (z * v[0] - x * v[2]), 2 * (x * v[1] - y * v[0])];
+        return [v[0] + w * t[0] + (y * t[2] - z * t[1]), v[1] + w * t[1] + (z * t[0] - x * t[2]), v[2] + w * t[2] + (x * t[1] - y * t[0])];
+    };
+    const inside = (c, v) => {
+        const p0 = c.position || [0, 0, 0];
+        const q = c.rotation || [0, 0, 0, 1];
+        const l = rot([-q[0], -q[1], -q[2], q[3]], sub(v, p0));
+        if (c.shape === 'box') return l.every((a, i) => Math.abs(a) <= c.halfExtents[i] + TOL);
+        if (c.shape === 'cylinder') return Math.abs(l[1]) <= c.halfHeight + TOL && Math.hypot(l[0], l[2]) <= c.radius + TOL;
+        return len(l) <= c.radius + TOL;
+    };
     const vol = c => (c.shape === 'box' ? 8 * c.halfExtents[0] * c.halfExtents[1] * c.halfExtents[2]
         : c.shape === 'cylinder' ? Math.PI * c.radius ** 2 * 2 * c.halfHeight : 4 / 3 * Math.PI * c.radius ** 3);
     for (const p of META.parts) {
+        const vs = flat.get(p.part).polys.flat();
+        const enclosed = vs.filter(v => p.colliders.some(c => inside(c, v))).length / vs.length;
+        assert.ok(enclosed >= 0.98, `${p.part}: only ${(enclosed * 100).toFixed(1)} % of its mesh is inside its colliders`);
         const b = bounds(flat.get(p.part).polys);
         const boxVol = (b.max[0] - b.min[0]) * (b.max[1] - b.min[1]) * (b.max[2] - b.min[2]);
         const ratio = p.colliders.reduce((s, c) => s + vol(c), 0) / boxVol;
-        assert.ok(ratio >= 0.5 && ratio <= 1.1, `${p.part}: colliders cover ${(ratio * 100).toFixed(0)} % of the mesh box`);
+        assert.ok(ratio <= 1.1, `${p.part}: colliders are ${(ratio * 100).toFixed(0)} % of the mesh box (oversized)`);
     }
 });
 
@@ -248,5 +269,18 @@ test('sensor origin lies on the mesh box surface and direction points outward', 
             && probe[1] >= b.min[1] - 1e-9 && probe[1] <= b.max[1] + 1e-9
             && probe[2] >= b.min[2] - 1e-9 && probe[2] <= b.max[2] + 1e-9;
         assert.ok(!inside, `${p.part}: sensor direction ${direction} from ${origin} does not point outward (probe ${probe} still inside ${JSON.stringify(b)})`);
+    }
+});
+
+test('every part has name, nameDe and a palette category, and nameDe is unique', () => {
+    // Allowed categories from palette.js
+    const allowed = new Set(['hub','motor','sensor','beam','axle','pin','connector','gear','wheel','other']);
+    const seenDe = new Set();
+    for (const p of META.parts) {
+        assert.ok(typeof p.name === 'string' && p.name.trim().length > 0, `${p.part}: missing name`);
+        assert.ok(typeof p.nameDe === 'string' && p.nameDe.trim().length > 0, `${p.part}: missing nameDe`);
+        assert.ok(allowed.has(p.category), `${p.part}: unknown category '${p.category}'`);
+        assert.ok(!seenDe.has(p.nameDe), `duplicate nameDe '${p.nameDe}' in ${p.part}`);
+        seenDe.add(p.nameDe);
     }
 });

@@ -51,20 +51,38 @@ export const column = (x, i) => [x.m[i], x.m[3 + i], x.m[6 + i]];
 
 const norm = v => Math.hypot(v[0], v[1], v[2]);
 
+/** Determinant of a 3×3 row-major matrix. */
+const det3 = m => m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) + m[2] * (m[3] * m[7] - m[4] * m[6]);
+
 /** Normalise an LDraw file reference to a lookup key: lower case, forward slashes. */
 export const refKey = name => name.trim().toLowerCase().replace(/\\/g, '/');
 
 /**
  * Parse one LDraw file's text.
+ * BFC (https://www.ldraw.org/article/415): `0 BFC CW`/`CCW` (also after
+ * CERTIFY) set the winding of the polygons that follow; `0 BFC INVERTNEXT`
+ * inverts the next type-1 reference. They are recorded (`polyCW`,
+ * `refs[].invert`) so flattenPart can wind every polygon counter-clockwise
+ * when seen from outside, which the renderer needs for outward normals.
+ *
  * @returns {{header: {description: string, name?: string, author?: string, license?: string, ldrawOrg?: string},
- *            refs: {file: string, x: Xform, colour: number}[], polys: Vec3[][], polyColours: number[], edges: Vec3[][]}}
+ *            refs: {file: string, x: Xform, colour: number, invert: boolean}[], polys: Vec3[][], polyColours: number[],
+ *            polyCW: boolean[], edges: Vec3[][], edgeColours: number[],
+ *            optional: Vec3[][], optionalColours: number[]}}
+ *          optional: type-5 lines as [p1, p2, control1, control2]
  */
 export const parseLDraw = text => {
     const header = {description: ''};
     const refs = [];
     const polys = [];
     const polyColours = [];
+    const polyCW = [];
     const edges = [];
+    const edgeColours = [];
+    const optional = [];
+    const optionalColours = [];
+    let cw = false;
+    let invertNext = false;
     let first = true;
     for (const raw of text.split(/\r?\n/)) {
         const line = raw.trim();
@@ -78,31 +96,43 @@ export const parseLDraw = text => {
             else if (/^Author:/i.test(rest)) header.author = rest.slice(7).trim();
             else if (/^!LICENSE\b/.test(rest)) header.license = rest.slice(8).trim();
             else if (/^!LDRAW_ORG\b/.test(rest)) header.ldrawOrg = rest.slice(9).trim();
+            else if (/^BFC\b/.test(rest)) {
+                if (/\bINVERTNEXT\b/.test(rest)) invertNext = true;
+                else if (/\bCCW\b/.test(rest)) cw = false;
+                else if (/\bCW\b/.test(rest)) cw = true;
+            }
             first = false;
             continue;
         }
         first = false;
         const n = tok.slice(2).map(Number);
+        const parsedColour = parseInt(tok[1], 10);
+        const colour = Number.isFinite(parsedColour) ? parsedColour : 16;
         if (type === '1' && tok.length >= 15) {
-            const colour = parseInt(tok[1], 10);
             refs.push({
                 file: tok.slice(14).join(' '),
                 x: {m: n.slice(3, 12), t: n.slice(0, 3)},
-                colour: Number.isFinite(colour) ? colour : 16
+                colour,
+                invert: invertNext
             });
+            invertNext = false;
         } else if (type === '3' && tok.length >= 11) {
-            const colour = parseInt(tok[1], 10);
             polys.push([n.slice(0, 3), n.slice(3, 6), n.slice(6, 9)]);
-            polyColours.push(Number.isFinite(colour) ? colour : 16);
+            polyColours.push(colour);
+            polyCW.push(cw);
         } else if (type === '4' && tok.length >= 14) {
-            const colour = parseInt(tok[1], 10);
             polys.push([n.slice(0, 3), n.slice(3, 6), n.slice(6, 9), n.slice(9, 12)]);
-            polyColours.push(Number.isFinite(colour) ? colour : 16);
+            polyColours.push(colour);
+            polyCW.push(cw);
         } else if (type === '2' && tok.length >= 8) {
             edges.push([n.slice(0, 3), n.slice(3, 6)]);
+            edgeColours.push(colour);
+        } else if (type === '5' && tok.length >= 14) {
+            optional.push([n.slice(0, 3), n.slice(3, 6), n.slice(6, 9), n.slice(9, 12)]);
+            optionalColours.push(colour);
         }
     }
-    return {header, refs, polys, polyColours, edges};
+    return {header, refs, polys, polyColours, polyCW, edges, edgeColours, optional, optionalColours};
 };
 
 /** The directories an LDraw reference is looked up in, in order. */
@@ -115,10 +145,28 @@ export const SEARCH_DIRS = Object.freeze(['parts/', 'p/', '']);
  * Colours: type-3/4 lines carry a colour; 16 inherits from the referencing
  * type-1 line, recursively. The returned `polyColours` parallels `polys`.
  *
+ * Winding: every polygon is returned counter-clockwise as seen from the
+ * part's outside (LDraw BFC: a file's CW/CCW state, INVERTNEXT and mirroring
+ * matrices with a negative determinant are all resolved here).
+ *
+ * Edge lines (type 2) and optional lines (type 5): colour 24 means "the edge
+ * colour of the current colour", so `edgeColours`/`optionalColours` hold the
+ * resolved current colour (16 = the placed colour) whose LDConfig EDGE value
+ * draws the line; `edgeDirect`/`optionalDirect` mark lines given any other
+ * code, drawn in that colour's own VALUE.
+ *
+ * `options.topRef(i)` / `options.topOwn` keep only some of the part file's own
+ * content: type-1 reference number i (in file order) and the part file's own
+ * polygons and lines. They split a part into pieces drawn separately (a
+ * motor's housing and its turning drive hub).
+ *
  * @param {string} name   e.g. '32523.dat'
  * @param {(path: string) => string|undefined} read  returns file text for a
  *        library-relative path such as 'parts/32523.dat' or 'p/48/4-4cyli.dat', or undefined
- * @returns {{polys: Vec3[][], polyColours: number[], edges: Vec3[][], primitives: {file: string, x: Xform}[],
+ * @param {{topRef?: (index: number) => boolean, topOwn?: boolean}} [options]
+ * @returns {{polys: Vec3[][], polyColours: number[], edges: Vec3[][], edgeColours: number[], edgeDirect: boolean[],
+ *            optional: Vec3[][], optionalColours: number[], optionalDirect: boolean[],
+ *            primitives: {file: string, x: Xform}[],
  *            subparts: {file: string, x: Xform, description: string, polys: Vec3[][]}[],
  *            files: string[], missing: string[]}}
  *          subparts: every instance of a parts/s/ file with its placement and its
@@ -126,8 +174,11 @@ export const SEARCH_DIRS = Object.freeze(['parts/', 'p/', '']);
  *          into such sub-files)
  *          files: every library path the part needed (its closure); missing: references not found
  */
-export const flattenPart = (name, read) => {
-    const out = {polys: [], polyColours: [], edges: [], primitives: [], subparts: [], files: [], missing: []};
+export const flattenPart = (name, read, {topRef = () => true, topOwn = true} = {}) => {
+    const out = {
+        polys: [], polyColours: [], edges: [], edgeColours: [], edgeDirect: [],
+        optional: [], optionalColours: [], optionalDirect: [], primitives: [], subparts: [], files: [], missing: []
+    };
     const cache = new Map();
     const seen = new Set();
     const load = ref => {
@@ -153,7 +204,8 @@ export const flattenPart = (name, read) => {
         if (colour === 16) return parentColour;
         return colour;
     };
-    const walk = (ref, x, colour, depth) => {
+    const lineColour = (code, current) => (code === 24 ? [current, false] : [resolveColour(code, current), true]);
+    const walk = (ref, x, colour, depth, invert) => {
         if (depth > 32) throw new Error(`LDraw reference depth > 32 at ${ref} (a cycle?)`);
         const f = load(ref);
         if (!f) {
@@ -162,23 +214,39 @@ export const flattenPart = (name, read) => {
         }
         if (f.path.startsWith('p/')) out.primitives.push({file: f.path, x});
         const first = out.polys.length;
-        for (let i = 0; i < f.parsed.polys.length; i++) {
+        const own = depth > 0 || topOwn;
+        // A mirroring placement (negative determinant) flips winding, as does INVERTNEXT.
+        const flip = invert !== (det3(x.m) < 0);
+        for (let i = 0; own && i < f.parsed.polys.length; i++) {
             const poly = f.parsed.polys[i];
             const polyColour = f.parsed.polyColours[i];
             const effective = resolveColour(polyColour, colour);
-            out.polys.push(poly.map(v => apply(x, v)));
+            const placed = poly.map(v => apply(x, v));
+            out.polys.push(f.parsed.polyCW[i] !== flip ? placed.reverse() : placed);
             out.polyColours.push(effective);
         }
-        for (const e of f.parsed.edges) out.edges.push(e.map(v => apply(x, v)));
-        for (const r of f.parsed.refs) {
-            const childColour = resolveColour(r.colour, colour);
-            walk(r.file, compose(x, r.x), childColour, depth + 1);
+        for (let i = 0; own && i < f.parsed.edges.length; i++) {
+            out.edges.push(f.parsed.edges[i].map(v => apply(x, v)));
+            const [c, direct] = lineColour(f.parsed.edgeColours[i], colour);
+            out.edgeColours.push(c);
+            out.edgeDirect.push(direct);
         }
+        for (let i = 0; own && i < f.parsed.optional.length; i++) {
+            out.optional.push(f.parsed.optional[i].map(v => apply(x, v)));
+            const [c, direct] = lineColour(f.parsed.optionalColours[i], colour);
+            out.optionalColours.push(c);
+            out.optionalDirect.push(direct);
+        }
+        f.parsed.refs.forEach((r, i) => {
+            if (depth === 0 && !topRef(i)) return;
+            const childColour = resolveColour(r.colour, colour);
+            walk(r.file, compose(x, r.x), childColour, depth + 1, invert !== r.invert);
+        });
         if (f.path.startsWith('parts/s/')) {
             out.subparts.push({file: f.path, x, description: f.parsed.header.description, polys: out.polys.slice(first)});
         }
     };
-    walk(name, IDENTITY, 16, 0);
+    walk(name, IDENTITY, 16, 0, false);
     return out;
 };
 

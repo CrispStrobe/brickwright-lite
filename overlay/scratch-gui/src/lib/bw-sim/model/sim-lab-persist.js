@@ -31,7 +31,7 @@ export const SIM_LAB_STORAGE_KEY = 'bw-sim-lab-model-v1';
 /** Largest stored record, in UTF-8 bytes of its JSON (the bundle's per-section limit). */
 export const SIM_LAB_LIMIT = 1024 * 1024;
 
-/** Mat ids are slugs (world/mats.js: `plain`, `line-oval`, `colour-zones`). */
+/** Mat ids are slugs (world/mats.js: `plain`, `line-oval`, `colour-zones`, `wall`). */
 const MAT_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
 // A name ends up in a `0 Name:` line: one line, no control characters.
 // eslint-disable-next-line no-control-regex

@@ -1,0 +1,14 @@
+{
+  "$comment": "Gearbox on the bench, LDraw frame (-y up). Medium motor at the origin, port A, output axle vertical (x=0,z=0). The 8T sits on a 3L axle in the motor output at y=-60, just above the output hub. The frame is a Technic beam lying flat under the housing (holes vertical, y=40), pinned with two friction pins into the housing bottom holes u0/u1 (x=+-20, the holes parallel to the output), so the frame IS the housing body. Driven gears ride on 8L axles that turn in the beam's round holes and reach up past the housing side (x>=34) to y=-60. Pitch radii 8T=10, 24T=30, 40T=50 LDU. The 24T is one hole too far, at x=60: centre distance 60 LDU, not 40, so the teeth do not touch.",
+  "version": 1,
+  "parts": [
+    {"id": "m", "part": "54696p01.dat", "position": [0,0,0], "rotation": [1,0,0,0,1,0,0,0,1], "port": "A"},
+    {"id": "a8", "part": "4519.dat", "position": [0,-60,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "g8", "part": "3647.dat", "position": [0,-60,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "beam", "part": "32524.dat", "position": [0,40,0], "rotation": [0,0,1,0,1,0,-1,0,0]},
+    {"id": "pin1", "part": "2780.dat", "position": [20,30,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "pin2", "part": "2780.dat", "position": [-20,30,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "a24", "part": "3707.dat", "position": [60,-10,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "g24", "part": "3648.dat", "position": [60,-60,0], "rotation": [1,0,0,0,0,1,0,-1,0]}
+  ]
+}

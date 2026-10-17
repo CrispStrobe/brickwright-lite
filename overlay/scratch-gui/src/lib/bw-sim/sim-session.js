@@ -18,8 +18,11 @@
 
 import {parseModel} from './model/ldraw-model.js';
 import {compile} from './mech/compile.js';
+import {mechanismIssues} from './mech/insight.js';
 import {loadJolt, createPhysicsCore} from './physics/jolt-core.js';
 import {SimHubBridge, STEP_MS} from './hub-bridge.js';
+import {createMat} from './world/mats.js';
+import {placeOnStart, driveAnchor} from './world/place.js';
 
 /**
  * The part catalog from part-meta/parts.json's parsed content. The caller
@@ -28,31 +31,51 @@ import {SimHubBridge, STEP_MS} from './hub-bridge.js';
  */
 export const catalogFrom = partsJson => new Map(partsJson.parts.map(p => [p.part, p]));
 
-/** Reference models shipped in static/sim-lab/models/ (file name → titles). */
+/**
+ * Reference models shipped in static/sim-lab/models/ (file name → titles). A model
+ * may name an example program in static/sim-lab/programs/ (DEVICE SPIKE text) and
+ * the mat it is meant for: the pane offers to load it into the Code tab.
+ */
 export const MODELS = Object.freeze([
-    {file: 'driving-base.ldr', title: {en: 'SPIKE driving base', de: 'SPIKE-Fahrbasis'}}
+    {file: 'driving-base.ldr', title: {en: 'SPIKE driving base', de: 'SPIKE-Fahrbasis'}},
+    {file: 'line-follower.ldr', title: {en: 'Line follower', de: 'Linienfolger'},
+        example: 'line-follower.bw', mat: 'line-oval'},
+    {file: 'wall-stopper.ldr', title: {en: 'Wall stopper', de: 'Wandstopper'},
+        example: 'wall-stopper.bw', mat: 'wall'},
+    {file: 'colour-explorer.ldr', title: {en: 'Colour explorer', de: 'Farbentdecker'},
+        example: 'colour-explorer.bw', mat: 'colour-zones'}
 ]);
 export const MODELS_BASE = 'static/sim-lab/models/';
+export const PROGRAMS_BASE = 'static/sim-lab/programs/';
 
 /**
  * Parse and compile LDraw text. Never throws for bad user input: problems
  * come back in `issues`, and `mechanism` is null when nothing can run.
  * @returns {{model: object, mechanism: object|null, issues: {severity: string, code: string, message: string, line?: number}[]}}
  */
-export const prepareModel = (text, catalog) => {
+/**
+ * @param {string} text LDraw
+ * @param {Map} catalog
+ * @param {{mat?: string}} [options] a mat id (bw-sim/world/mats.js): the floor shows it, the colour
+ *        sensor reads it, a mat with a start pose gets the model placed on that pose, and a mat's
+ *        obstacles (a wall) become static bodies the robot and the distance sensor meet
+ * @returns {{model, runModel, mechanism, issues}} `model` is the model as authored (what Build edits
+ *          and the project saves); `runModel` is where it stands on the mat (what is simulated and drawn)
+ */
+export const prepareModel = (text, catalog, {mat = null} = {}) => {
     const {model, refusals} = parseModel(text, {catalog});
     const issues = refusals.map(r => ({severity: 'warning', ...r}));
     if (model.parts.length === 0) {
-        issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.'});
-        return {model, mechanism: null, issues};
+        issues.push({severity: 'error', code: 'empty-model', message: 'The model has no parts the Sim Lab knows.', parts: []});
+        return {model, runModel: model, mechanism: null, issues};
     }
-    const mechanism = compile(model, catalog);
-    issues.push(...mechanism.diagnostics);
-    const motors = mechanism.joints.filter(j => j.motor).length;
-    if (motors === 0) {
-        issues.push({severity: 'warning', code: 'no-motor', message: 'No motor is connected to a hub port, so nothing will move on its own.'});
-    }
-    return {model, mechanism, issues};
+    const matDef = mat ? createMat(mat) : null;
+    const start = matDef ? matDef.startPose : null;
+    const runModel = start ? placeOnStart(model, start, driveAnchor(model, catalog)) : model;
+    // A mat's obstacles (a wall) are static bodies of the scene, compiled with the model.
+    const mechanism = compile(runModel, catalog, matDef ? {mat, ...(matDef.obstacles.length ? {obstacles: matDef.obstacles} : {})} : {});
+    issues.push(...mechanismIssues(mechanism));
+    return {model, runModel, mechanism, issues};
 };
 
 /** The body that carries the SPIKE hub (its pose is the IMU), or null. */
@@ -70,8 +93,11 @@ export class SimSession {
      * @param {Map} options.catalog part catalog (catalogFrom(parts.json))
      * @param {object} options.J the Jolt namespace (loadJolt())
      */
-    constructor ({hubState, model, mechanism, catalog, J}) {
+    constructor ({hubState, model, runModel = model, mechanism, catalog, mat = null, J}) {
         this.model = model;
+        /** The model where it stands on the mat — what the physics runs and the view draws. */
+        this.runModel = runModel;
+        this.mat = mat;
         this.mechanism = mechanism;
         this.core = createPhysicsCore(J, mechanism, {stepHz: 1000 / STEP_MS});
         const hubBody = hubBodyOf(model, mechanism, catalog);
@@ -81,11 +107,11 @@ export class SimSession {
     }
 
     /** Builds a session from LDraw text; resolves to {session, issues} or {session: null, issues}. */
-    static async fromText (text, {hubState, catalog}) {
-        const {model, mechanism, issues} = prepareModel(text, catalog);
-        if (!mechanism) return {session: null, issues, model};
+    static async fromText (text, {hubState, catalog, mat = null}) {
+        const {model, runModel, mechanism, issues} = prepareModel(text, catalog, {mat});
+        if (!mechanism) return {session: null, issues, model, runModel};
         const J = await loadJolt();
-        return {session: new SimSession({hubState, model, mechanism, catalog, J}), issues, model};
+        return {session: new SimSession({hubState, model, runModel, mechanism, catalog, mat, J}), issues, model, runModel};
     }
 
     /** Advance by ms of simulated time (fixed 5 ms steps inside). */

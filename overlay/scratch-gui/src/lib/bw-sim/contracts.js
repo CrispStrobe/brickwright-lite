@@ -107,9 +107,15 @@ export const GROUND_FRICTION = 0.8;
  * `position` (LDU) and `rotation` (row-major 3×3) are exactly an LDraw type-1
  * line's x y z and a..i. `port` binds a motor or sensor to a hub port
  * (stored in the MPD as a `0 !BW PORT A` meta line before the part line).
+ * `groups` is an optional list of non-nested groups for the editor: each
+ * group has an id, a display name, and the ids of the parts it contains.
+ * A part belongs to at most one group; groups do not nest in v1.
+ * In LDraw text they are `0 !BW GROUP <id> <name>` and for each member
+ * `0 !BW IN <groupId>` before its type-1 line.
  * @typedef {{
  *   version: 1,
- *   parts: {id: string, part: string, color?: number, position: Vec3, rotation: Mat3, port?: string}[]
+ *   parts: {id: string, part: string, color?: number, position: Vec3, rotation: Mat3, port?: string}[],
+ *   groups?: {id: string, name: string, parts: string[]}[]
  * }} PlacedModel
  */
 
@@ -277,6 +283,28 @@ export const validatePlacedModel = (model, catalog) => {
         // Parts are rigid: the editor only ever produces rotations (no mirror, no scale).
         else if (Math.abs(det3(pl.rotation) - 1) > 1e-3) out.push(`${w}.rotation: not a proper rotation (det = ${det3(pl.rotation).toFixed(4)})`);
         if (pl?.port !== undefined && !HUB_PORTS.includes(pl.port)) out.push(`${w}.port: '${pl.port}' is not ${HUB_PORTS.join('|')}`);
+    }
+    if (model.groups !== undefined) {
+        if (!Array.isArray(model.groups)) out.push('model.groups: not an array');
+        else {
+            uniqueIds(model.groups, 'model.groups', out);
+            const partIds = new Set(model.parts.map(pr => pr.id));
+            const seenParts = new Set();
+            for (const gr of model.groups) {
+                const wg = `model.groups[${gr?.id}]`;
+                if (typeof gr?.name !== 'string' || !gr.name) out.push(`${wg}.name: missing`);
+                if (!Array.isArray(gr?.parts)) out.push(`${wg}.parts: not an array`);
+                else {
+                    if (gr.parts.length < 2) out.push(`${wg}.parts: need at least 2 members`);
+                    for (const pid of gr.parts) {
+                        if (typeof pid !== 'string') out.push(`${wg}.parts: member is not a string`);
+                        else if (!partIds.has(pid)) out.push(`${wg}.parts: unknown part '${pid}'`);
+                        else if (seenParts.has(pid)) out.push(`${wg}.parts: part '${pid}' is in two groups`);
+                        else seenParts.add(pid);
+                    }
+                }
+            }
+        }
     }
     return out;
 };
