@@ -161,7 +161,7 @@ for (const [file, mat, port, kind] of [['wall-stopper.ldr', 'wall', null, 'dista
             assert.equal(p.hubThere.data.sensors[index].kind, kind, 'the sensor reads at t = 0');
             p.both(h => { h.motors.runAtSpeed('A', -600); h.motors.runAtSpeed('B', 600); });
             const readings = new Set();
-            for (let i = 0; i < 120; i++) {
+            for (let i = 0; i < 240; i++) {
                 await p.tick();
                 assertSame(p, `frame ${i}`);
                 readings.add(JSON.stringify(p.hubThere.data.sensors[index]));
