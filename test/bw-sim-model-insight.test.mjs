@@ -143,7 +143,7 @@ test('a loose part is named; a model that falls apart blocks Run', () => {
     const loose = one.issues.filter(i => i.code === 'loose-part');
     assert.equal(loose.length, 1, JSON.stringify(one.issues));
     assert.deepEqual(loose[0].parts, ['stray']);
-    assert.deepEqual(runBlockers(one.issues, one.model, CATALOG), [], 'one stray beam on a 17-part robot does not stop a run');
+    assert.deepEqual(runBlockers(one.issues, one.model, CATALOG), [], 'one stray beam on a 14-part robot does not stop a run');
     // The robot as shipped has no loose part.
     assert.ok(!prepareModel(DRIVING_BASE, CATALOG).issues.some(i => i.code === 'loose-part'));
 
@@ -154,13 +154,12 @@ test('a loose part is named; a model that falls apart blocks Run', () => {
     assert.deepEqual(blockers.map(b => b.code), ['falls-apart']);
     assert.deepEqual(blockers[0].parts.slice().sort(), ['stray', 'stray2']);
 
-    // The hub's own body is the robot: taking the pins out of the castor beam leaves the castor
-    // assembly loose, not the hub.
-    const unpinned = model.parts.filter(p => !['castorPin1', 'castorPin2'].includes(p.id));
+    // The hub's own body is the robot: taking out the two 3L pins (through hub, front beam and castor)
+    // leaves the front beam and the castor assembly loose, not the hub.
+    const unpinned = model.parts.filter(p => !['frontPin1', 'frontPin2'].includes(p.id));
     const castorOff = prepareModel(serializeModel({...model, parts: unpinned}), CATALOG);
     const off = castorOff.issues.filter(i => i.code === 'loose-part');
-    assert.equal(off.length, 1, JSON.stringify(castorOff.issues));
-    assert.deepEqual(off[0].parts, ['ball', 'castor']);
+    assert.deepEqual(off.map(i => i.parts.slice().sort()).sort(), [['ball', 'castor'], ['frontBeam']], JSON.stringify(castorOff.issues));
 });
 
 test('body tints: the S1 driving base\'s hub body and its wheels differ; parts in one body share one tint', () => {
@@ -259,7 +258,7 @@ test('gear pairs: the working 8-24 gearbox draws one coupling, centre to centre,
 });
 
 test('the Build overlay compile is quick on a ~70-part model', t => {
-    // Four driving bases side by side plus a few loose beams: 72 parts, every kind of joint.
+    // Four driving bases side by side plus a few loose beams: 64 parts, every kind of joint.
     const {model} = parseModel(DRIVING_BASE, {catalog: CATALOG});
     const parts = [];
     for (let k = 0; k < 4; k++) {
@@ -267,7 +266,7 @@ test('the Build overlay compile is quick on a ~70-part model', t => {
     }
     for (let k = 0; k < 8; k++) parts.push({id: `beam_${k}`, part: '32524.dat', color: 71, position: [k * 200, 0, 600], rotation: [1, 0, 0, 0, 1, 0, 0, 0, 1]});
     const big = {version: 1, parts};
-    assert.equal(big.parts.length, 72);
+    assert.equal(big.parts.length, 64);
     modelInsight(big, CATALOG); // warm up the JIT
     const runs = [];
     let result;

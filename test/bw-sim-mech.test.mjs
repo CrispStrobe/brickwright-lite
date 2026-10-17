@@ -609,7 +609,7 @@ test('real driving base compiles correctly', async () => {
     // Find chassis: contains hub etc.
     const chassis = dynamics.find(b => b.parts.includes('hub'));
     assert.ok(chassis, 'chassis body');
-    const expectedChassis = new Set(['castor', 'castorPin1', 'castorPin2', 'frontBeam', 'frontPin1', 'frontPin2', 'hub', 'motorL', 'motorR', 'pinL', 'pinR']);
+    const expectedChassis = new Set(['castor', 'frontBeam', 'frontPin1', 'frontPin2', 'hub', 'motorL', 'motorR', 'pinL', 'pinR']);
     assert.deepEqual(new Set(chassis.parts), expectedChassis);
     // Left and right outputs
     const left = dynamics.find(b => b.parts.includes('axleL'));
@@ -908,40 +908,46 @@ test('a gear turning on an axle fixed in the frame (gear = hinge body1) gets the
     assert.ok(Math.abs(g.ratio - expected) < 1e-9, `ratio ${g.ratio} vs ${expected}`);
 });
 
-test('pin 3L joins two beams side by side into one body', async () => {
+test('a 3L friction pin through two stacked beams makes them one body', async () => {
     const {readFileSync} = await import('node:fs');
-    const catalog = new Map(JSON.parse(readFileSync('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json','utf8')).parts.map(p=>[p.part,p]));
-    const I3 = [1,0,0,0,1,0,0,0,1];
-    const ROT_Z_90 = [0,-1,0,1,0,0,0,0,1];
-    const model = {
-        version: 1,
-        parts: [
-            {id:'b1', part:'32524.dat', position:[0,0,0], rotation:I3.slice()},
-            {id:'b2', part:'32524.dat', position:[0,0,0], rotation:I3.slice()},
-            {id:'pin', part:'6558.dat', position:[0,0,0], rotation:ROT_Z_90.slice()},
-        ]
-    };
-    const {compile} = await import('../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js');
-    const {validateCompiledMechanism} = await import('../overlay/scratch-gui/src/lib/bw-sim/contracts.js');
-    const mech = compile(model, catalog, {ground:false});
+    const catalog = new Map(JSON.parse(readFileSync('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', 'utf8')).parts.map(p => [p.part, p]));
+    // Beam 7 holes run along y (20 deep); b2 sits on b1. The pin's x axis is turned onto world y and
+    // it spans y -20..40: through b1's hole (y -10..10) and b2's (10..30).
+    const ROT_Z_90 = [0, -1, 0, 1, 0, 0, 0, 0, 1];
+    const model = {version: 1, parts: [
+        {id: 'b1', part: '32524.dat', position: [0, 0, 0], rotation: I3.slice()},
+        {id: 'b2', part: '32524.dat', position: [0, 20, 0], rotation: I3.slice()},
+        {id: 'pin', part: '6558.dat', position: [0, 10, 0], rotation: ROT_Z_90.slice()}
+    ]};
+    const mech = compile(model, catalog, {ground: false});
     assert.equal(validateCompiledMechanism(mech).length, 0);
-    assert.equal(mech.bodies.length, 1);
+    assert.equal(mech.bodies.length, 1, JSON.stringify(mech.bodies.map(b => b.parts)));
+    assert.deepEqual(mech.bodies[0].parts.slice().sort(), ['b1', 'b2', 'pin']);
 });
 
-test('axle pin turns in beam hole (hinge)', async () => {
+test('an axle pin (no friction) turns in a pin hole and is held fast in an axle hole', async () => {
     const {readFileSync} = await import('node:fs');
-    const catalog = new Map(JSON.parse(readFileSync('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json','utf8')).parts.map(p=>[p.part,p]));
-    const I3 = [1,0,0,0,1,0,0,0,1];
-    const model = {
-        version: 1,
-        parts: [
-            {id:'beam', part:'60483.dat', position:[0,0,0], rotation:I3.slice()},
-            {id:'axlePin', part:'3749.dat', position:[0,0,0], rotation:I3.slice()},
-        ]
-    };
-    const {compile} = await import('../overlay/scratch-gui/src/lib/bw-sim/mech/compile.js');
-    const {validateCompiledMechanism} = await import('../overlay/scratch-gui/src/lib/bw-sim/contracts.js');
-    const mech = compile(model, catalog, {ground:false});
-    assert.equal(validateCompiledMechanism(mech).length, 0);
-    assert.ok(mech.bodies.length >= 1);
+    const catalog = new Map(JSON.parse(readFileSync('overlay/scratch-gui/src/lib/bw-sim/part-meta/parts.json', 'utf8')).parts.map(p => [p.part, p]));
+    // 60483: axle hole at z 0, pin hole at z 20, both along y. 3749: pin half at local x -20..0,
+    // axle half at 0..20; its x axis turned onto world y.
+    const ROT_Z_90 = [0, -1, 0, 1, 0, 0, 0, 0, 1];
+    const inPinHole = {version: 1, parts: [
+        {id: 'beam', part: '60483.dat', position: [0, 0, 0], rotation: I3.slice()},
+        {id: 'axlePin', part: '3749.dat', position: [0, 10, 20], rotation: ROT_Z_90.slice()}
+    ]};
+    const turning = compile(inPinHole, catalog, {ground: false});
+    assert.equal(validateCompiledMechanism(turning).length, 0);
+    assert.equal(turning.bodies.length, 2);
+    const hinges = turning.joints.filter(j => j.type === 'hinge');
+    assert.equal(hinges.length, 1);
+    assert.ok(Math.abs(Math.abs(hinges[0].axis[1]) - 1) < 1e-9, `hinge along y: ${hinges[0].axis}`);
+    // Turned round, its axle half in the axle hole: one rigid body.
+    const ROT_Z_M90 = [0, 1, 0, -1, 0, 0, 0, 0, 1];
+    const inAxleHole = {version: 1, parts: [
+        {id: 'beam', part: '60483.dat', position: [0, 0, 0], rotation: I3.slice()},
+        {id: 'axlePin', part: '3749.dat', position: [0, 10, 0], rotation: ROT_Z_M90.slice()}
+    ]};
+    const fixed = compile(inAxleHole, catalog, {ground: false});
+    assert.equal(validateCompiledMechanism(fixed).length, 0);
+    assert.equal(fixed.bodies.length, 1, JSON.stringify(fixed.bodies.map(b => b.parts)));
 });

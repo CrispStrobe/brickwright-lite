@@ -324,12 +324,12 @@
    },
    {
     "id": "frontPin1",
-    "part": "2780.dat",
-    "color": 0,
+    "part": "6558.dat",
+    "color": 1,
     "position": [
      40,
      -10,
-     -110
+     -120
     ],
     "rotation": [
      0,
@@ -345,12 +345,12 @@
    },
    {
     "id": "frontPin2",
-    "part": "2780.dat",
-    "color": 0,
+    "part": "6558.dat",
+    "color": 1,
     "position": [
      -40,
      -10,
-     -110
+     -120
     ],
     "rotation": [
      0,
@@ -372,48 +372,6 @@
      0,
      10,
      -140
-    ],
-    "rotation": [
-     0,
-     0,
-     -1,
-     0,
-     1,
-     0,
-     1,
-     0,
-     0
-    ]
-   },
-   {
-    "id": "castorPin1",
-    "part": "2780.dat",
-    "color": 0,
-    "position": [
-     40,
-     -10,
-     -130
-    ],
-    "rotation": [
-     0,
-     0,
-     -1,
-     0,
-     1,
-     0,
-     1,
-     0,
-     0
-    ]
-   },
-   {
-    "id": "castorPin2",
-    "part": "2780.dat",
-    "color": 0,
-    "position": [
-     -40,
-     -10,
-     -130
     ],
     "rotation": [
      0,
