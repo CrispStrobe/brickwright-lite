@@ -6049,3 +6049,13 @@ The reader checks the actual pseudo-element, and the delivery proof must also
 inspect painted pixels in both states before building/installing the next
 identified candidate. Ask for physical confirmation after delivery; do not
 claim the cause or the visual defect resolved from geometry checks alone.
+
+Direct physical-screen evidence now shows the button's left edge clipped at
+the scrolling tab-list boundary, with its remaining area missing. Reopening
+the app did not change it. The CSS-only candidate was stopped before delivery.
+Portal the toggle to the document body, outside the overflow container, and
+reserve space beside the compact tabs; keep tab measurement attached to the
+actual tab list. Explicitly hide the portaled control in stage fullscreen.
+Qualify both icon states, tab scrolling, hit targets, label fit and fullscreen
+entry/exit, then capture the installed iPad toolbar directly to check the
+result. Direct screenshots and machine-specific capture tooling stay ignored.

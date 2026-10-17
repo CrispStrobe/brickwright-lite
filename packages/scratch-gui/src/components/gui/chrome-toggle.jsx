@@ -1,4 +1,5 @@
 import React from 'react';
+import {createPortal} from 'react-dom';
 import PropTypes from 'prop-types';
 import {injectIntl, intlShape} from 'react-intl';
 
@@ -49,9 +50,12 @@ class ChromeToggle extends React.Component {
     componentDidMount () {
         this.mounted = true;
         // Icons fit while the small local measurement chunk loads.
-        this.button.current.closest('[role="tablist"]').setAttribute('data-bw-tab-icons-only', '');
+        this.tabList = document.querySelector('[data-bw-editor-tabs]');
+        if (this.tabList) this.tabList.setAttribute('data-bw-tab-icons-only', '');
         import(/* webpackChunkName: "tab-label-fit" */ '../../lib/fit-tab-labels').then(({installTabLabelFit}) => {
-            if (this.mounted) this.labelFit = installTabLabelFit(this.button.current, () => this.state.compact);
+            if (this.mounted) {
+                this.labelFit = installTabLabelFit(() => this.state.compact, this.tabList);
+            }
         });
     }
 
@@ -77,11 +81,12 @@ class ChromeToggle extends React.Component {
 
     render () {
         const {compact} = this.state;
-        return (
+        const button = (
             <button
                 aria-pressed={compact}
                 className={this.props.className}
                 type="button"
+                hidden={this.props.hidden}
                 ref={this.button}
                 data-testid="bw-chrome-toggle"
                 aria-label={this.props.intl.formatMessage(compact ? {
@@ -102,11 +107,15 @@ class ChromeToggle extends React.Component {
                 />
             </button>
         );
+        // iPad WebKit clips a fixed child of the scrolling tab list, leaving
+        // just the button's left edge visible. Escape that scroll container.
+        return typeof document === 'undefined' ? button : createPortal(button, document.body);
     }
 }
 
 ChromeToggle.propTypes = {
     className: PropTypes.string,
+    hidden: PropTypes.bool,
     intl: intlShape.isRequired
 };
 

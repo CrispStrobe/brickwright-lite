@@ -107,6 +107,15 @@ export async function verifyEditorChrome (browser, url, evidence, check) {
             for (const compact of [false, true]) {
                 if ((await toggle.getAttribute('aria-pressed')) !== String(compact)) await toggle.tap();
                 await settle();
+                const control = await toggle.evaluate(element => {
+                    const box = element.getBoundingClientRect();
+                    return {bodyPortal: element.parentElement === document.body,
+                        width: box.width, height: box.height,
+                        hit: element.contains(document.elementFromPoint(box.x + box.width / 2,
+                            box.y + box.height / 2))};
+                });
+                assert.ok(control.bodyPortal && control.width >= 44 && control.height >= 44 && control.hit,
+                    JSON.stringify(control));
                 const icon = await toggle.locator('[data-bw-chrome-icon]').evaluate(element => {
                     const box = element.getBoundingClientRect();
                     const drawing = getComputedStyle(element, '::before');
