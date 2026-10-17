@@ -59,14 +59,42 @@
     "defaultMessage": "Scratch tutorials"
   },
   {
+    "id": "gui.menuBar.saveProject",
+    "defaultMessage": "Save project"
+  },
+  {
+    "id": "gui.menuBar.saveProjectAs",
+    "defaultMessage": "Save project as…"
+  },
+  {
     "id": "gui.menuBar.downloadToComputer",
     "description": "Menu bar item for downloading a project to your computer",
     "defaultMessage": "Save to your computer"
   },
   {
+    "id": "gui.menuBar.downloadMindstormsLms",
+    "defaultMessage": "Save as LEGO MINDSTORMS (.lms)"
+  },
+  {
     "id": "gui.menuBar.offlineLibrary",
     "description": "Menu item to download the asset library for offline use",
     "defaultMessage": "Offline library…"
+  },
+  {
+    "id": "gui.menuBar.openCircuit",
+    "defaultMessage": "Open circuit…"
+  },
+  {
+    "id": "gui.menuBar.saveCircuit",
+    "defaultMessage": "Save circuit"
+  },
+  {
+    "id": "gui.menuBar.importCircuit",
+    "defaultMessage": "Import circuit…"
+  },
+  {
+    "id": "gui.menuBar.exportCircuit",
+    "defaultMessage": "Export circuit…"
   },
   {
     "id": "gui.menuBar.edit",
