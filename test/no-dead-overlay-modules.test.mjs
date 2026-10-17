@@ -158,6 +158,11 @@ const KNOWN_DEAD = new Map([
     // 2026-10-17 (ROADMAP §4.9): the Sim Lab session runs its physics in that worker,
     // through PhysicsClient, and physics-client.js starts it with
     // new Worker(new URL('./physics-worker.js', import.meta.url)).
+    ['lib/bw-sim/routes/rcx-vm/rcx-vm.js', {roadmap: '4.10',
+        reason: 'The RCX bytecode VM (Robot Lab slice R5), a pure route module built ahead ' +
+            'of its consumer: hubs/rcx/rcx-virtual-hub.js wraps it once the VirtualHub ' +
+            'interface (slice R1) lands. Executed by test/bw-sim-rcx-vm.test.mjs on ' +
+            'programs compiled by nqc-wasm. Leaves this list in the commit that wires it.'}]
 ]);
 
 const SPEC = /from\s+['"]([^'"]+)['"]|import\(\s*(?:\/\*[^*]*\*\/\s*)?['"]([^'"]+)['"]|require\(\s*['"]([^'"]+)['"]/g;
