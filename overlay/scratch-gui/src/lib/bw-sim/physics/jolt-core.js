@@ -4,7 +4,9 @@
 // Jolt physics core for Sim Lab (overlay/scratch-gui/src/lib/bw-sim/physics/).
 //
 // Runs a CompiledMechanism in Jolt under node --test. No worker, no DOM,
-// no three.js. The worker wrapper will call this module.
+// no three.js. In the app it runs inside the physics worker
+// (physics-worker.js, sim-worker-protocol.js), or on the main thread where
+// there is no worker (sim-session.js).
 //
 // Bodies: one Jolt body per mechanism body, shape = compound of colliders
 // (box / cylinder local +y / sphere), mass overridden to massKg.
@@ -16,7 +18,6 @@
 // / coast / brake / hold, torque limited to ±maxTorqueNm.
 
 import { validateCompiledMechanism } from '../contracts.js';
-import initJolt from 'jolt-physics/wasm-compat';
 
 let joltPromise = null;
 
@@ -24,8 +25,18 @@ let joltPromise = null;
 export const LEGO_SPECULATIVE_CONTACT_M = 0.002;
 export const LEGO_PENETRATION_SLOP_M = 0.0002;
 
+/**
+ * Jolt's WebAssembly (3 MB of JavaScript) is imported here, on first use, and not at the
+ * top of this module: the Sim Lab's main thread imports createPhysicsCore through
+ * sim-session.js, and when the physics runs in the worker (physics-worker.js) the main
+ * thread never needs Jolt at all, so its chunk must not carry it
+ * (scripts/verify-boot-payload.mjs, "Jolt physics").
+ */
 export const loadJolt = async () => {
-    if (!joltPromise) joltPromise = initJolt();
+    if (!joltPromise) {
+        joltPromise = import(/* webpackChunkName: "bw-sim-jolt" */ 'jolt-physics/wasm-compat')
+            .then(m => (m.default || m)());
+    }
     return joltPromise;
 };
 
@@ -151,6 +162,9 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
     let destroyed = false;
     let timeSteps = 0;
     let acc = 0;
+    /** checkpoint()/rollback(): Jolt's recorded state and this core's own. */
+    let recorder = null;
+    let saved = null;
 
     const ensureAlive = () => { if (destroyed) throw new Error('core destroyed'); };
 
@@ -648,9 +662,38 @@ export const createPhysicsCore = (J, mechanism, { stepHz = 120 } = {}) => {
             J.destroy(shapeFilter);
             return result;
         },
+        /**
+         * Remember the whole simulation state (Jolt's bodies, contacts and constraints, and
+         * this core's own clock, unwrapped hinge angles and motor commands). rollback()
+         * returns to it, and stepping again with the same commands gives bit-identical
+         * results (test/bw-sim-physics-worker-session.test.mjs). The physics worker
+         * checkpoints before every batch so a batch computed from motor commands that
+         * changed while it was in flight can be redone (physics/sim-worker-protocol.js).
+         */
+        checkpoint() {
+            ensureAlive();
+            if (!recorder) recorder = new J.StateRecorderImpl();
+            recorder.Clear();
+            physicsSystem.SaveState(recorder, J.EStateRecorderState_All);
+            const hinges = [];
+            for (const [, e] of hingeMap) hinges.push([e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed]);
+            saved = { acc, timeSteps, hinges };
+        },
+        rollback() {
+            ensureAlive();
+            if (!saved) throw new Error('rollback without a checkpoint');
+            recorder.Rewind();
+            if (!physicsSystem.RestoreState(recorder)) throw new Error('Jolt could not restore the checkpoint');
+            ({ acc, timeSteps } = saved);
+            let i = 0;
+            for (const [, e] of hingeMap) {
+                [e.rawPrev, e.unwrapped, e.velocity, e.mode, e.target, e.targetSpeed] = saved.hinges[i++];
+            }
+        },
         destroy() {
             if (destroyed) return;
             destroyed = true;
+            if (recorder) { J.destroy(recorder); recorder = null; }
             for (const c of allConstraints) physicsSystem.RemoveConstraint(c);
             for (const bid of allBodyIDs) { bodyInterface.RemoveBody(bid); bodyInterface.DestroyBody(bid); }
             J.destroy(joltInterface);
