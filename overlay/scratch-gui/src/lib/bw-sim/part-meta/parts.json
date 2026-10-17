@@ -4627,16 +4627,16 @@
    "connectors": [
     {
      "id": "a",
-     "type": "axle",
+     "type": "axlehole",
      "position": [
       0,
       0,
-      -10
+      -20
      ],
      "axis": [
+      1,
       0,
-      0,
-      1
+      0
      ],
      "length": 20
     },
@@ -4646,7 +4646,7 @@
      "position": [
       0,
       0,
-      10
+      0
      ],
      "axis": [
       0,
@@ -5000,10 +5000,29 @@
     {
      "shape": "box",
      "halfExtents": [
-      30,
+      10,
       9,
       9
+     ],
+     "position": [
+      -20,
+      0,
+      0
      ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      20,
+      8,
+      8
+     ],
+     "position": [
+      10,
+      0,
+      0
+     ],
+     "region": "pin"
     }
    ]
   },
@@ -5806,10 +5825,38 @@
     {
      "shape": "box",
      "halfExtents": [
-      30,
+      10,
+      8,
+      8
+     ],
+     "position": [
+      -20,
+      0,
+      0
+     ],
+     "region": "pin"
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
       10,
       9
      ]
+    },
+    {
+     "shape": "box",
+     "halfExtents": [
+      10,
+      8,
+      8
+     ],
+     "position": [
+      20,
+      0,
+      0
+     ],
+     "region": "pin"
     }
    ]
   },

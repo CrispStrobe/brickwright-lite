@@ -30,6 +30,7 @@ import {fileURLToPath} from 'node:url';
 import {flattenPart, circularFeatures, bounds, parseLDraw, compose, apply, column, IDENTITY} from '../overlay/scratch-gui/src/lib/bw-sim/ldraw/ldraw-geometry.js';
 import {validatePartMeta, pitchRadiusLdu} from '../overlay/scratch-gui/src/lib/bw-sim/contracts.js';
 import {check as checkVendored} from '../scripts/sync-ldraw-parts.mjs';
+import {solidColliders} from '../overlay/scratch-gui/src/lib/bw-sim/editor/overlap.js';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const LIB = path.join(ROOT, 'overlay/scratch-gui/static/ldraw');
@@ -328,6 +329,89 @@ test('the SPIKE wheel is 56 mm across', () => {
     const b = bounds(flat.get('39367p01.dat').polys);
     assert.equal((b.max[0] - b.min[0]) * 0.4, 56);
     assert.equal((b.max[1] - b.min[1]) * 0.4, 56);
+});
+
+/**
+ * A pin or axle connector is a shaft: along its segment (1 LDU in from each end) the part's mesh
+ * stays within SHAFT_R of its axis — an axle is 6 LDU across its profile's arms, a pin 6 with an
+ * 8 LDU collar. A "shaft" inside a block is really a hole (32039 had an axle connector inside its
+ * own body until 2026-10-17: the mesh there reaches 13 LDU out; its two features are axle holes).
+ */
+const SHAFT_R = 8.5;
+const radialFrom = (c, v) => {
+    const d = sub(v, c.position);
+    const along = dot(d, c.axis);
+    return len(d.map((x, i) => x - along * c.axis[i]));
+};
+
+test('a pin or axle connector is a shaft: the mesh along it stays within a pin\'s collar of its axis', () => {
+    const wrong = [];
+    for (const p of META.parts) {
+        const vs = flat.get(p.part).polys.flat();
+        for (const c of p.connectors.filter(k => k.type === 'pin' || k.type === 'axle')) {
+            const along = vs.filter(v => Math.abs(dot(sub(v, c.position), c.axis)) < c.length / 2 - 1);
+            const r = Math.max(...along.map(v => radialFrom(c, v)));
+            if (!along.length || r > SHAFT_R) wrong.push(`${p.part} ${c.id}: mesh reaches ${r.toFixed(2)} LDU from the ${c.type}'s axis`);
+        }
+    }
+    assert.deepEqual(wrong, []);
+});
+
+/** Is point v (part frame) inside collider c (part frame)? */
+const quatRotate = (q, v) => {
+    const [x, y, z, w] = q;
+    const t = [2 * (y * v[2] - z * v[1]), 2 * (z * v[0] - x * v[2]), 2 * (x * v[1] - y * v[0])];
+    return [v[0] + w * t[0] + (y * t[2] - z * t[1]), v[1] + w * t[1] + (z * t[0] - x * t[2]), v[2] + w * t[2] + (x * t[1] - y * t[0])];
+};
+const inCollider = (c, v, tol = 0) => {
+    const q = c.rotation || [0, 0, 0, 1];
+    const l = quatRotate([-q[0], -q[1], -q[2], q[3]], sub(v, c.position || [0, 0, 0]));
+    if (c.shape === 'box') return l.every((a, i) => Math.abs(a) < c.halfExtents[i] + tol);
+    if (c.shape === 'cylinder') return Math.abs(l[1]) < c.halfHeight + tol && Math.hypot(l[0], l[2]) < c.radius + tol;
+    return len(l) < c.radius + tol;
+};
+
+/**
+ * Parts that are partly shaft and partly solid (editor/overlap.js solidColliders). The editor
+ * lets a shaft region sit inside another part and keeps solid colliders out of other solids, so:
+ *   - every shaft-region collider is a shaft: each of its points is within SHAFT_R of a pin/axle
+ *     connector's axis and inside that connector's segment (± 1 LDU) — a solid block tagged 'pin'
+ *     would let beams pass through it;
+ *   - no pin/axle connector's segment (1 LDU in from each end) runs through a solid collider —
+ *     else seating that shaft in a hole would be refused as an overlap (87082 until 2026-10-17:
+ *     one box over its pins and centre, so it could not be pinned into a beam).
+ */
+test('shaft regions are shafts, and no shaft runs through a solid collider', () => {
+    const wrong = [];
+    for (const p of META.parts) {
+        const solid = new Set(solidColliders(p));
+        const shafts = p.connectors.filter(k => k.type === 'pin' || k.type === 'axle');
+        p.colliders.forEach((col, i) => {
+            if (solid.has(i) || !col.region) return;
+            const corners = col.shape === 'box'
+                ? [-1, 1].flatMap(a => [-1, 1].flatMap(b => [-1, 1].map(c => [a * col.halfExtents[0], b * col.halfExtents[1], c * col.halfExtents[2]])))
+                    .map(v => quatRotate(col.rotation || [0, 0, 0, 1], v).map((x, k) => x + (col.position || [0, 0, 0])[k]))
+                : null;
+            const holds = shafts.some(c => (corners
+                ? corners.every(v => Math.abs(dot(sub(v, c.position), c.axis)) <= c.length / 2 + 1 &&
+                    // a box's corner is √2 out from its faces; its faces must be within SHAFT_R
+                    radialFrom(c, v) <= SHAFT_R * Math.SQRT2)
+                : len(sub(col.position || [0, 0, 0], c.position)) <= POS_EPS));
+            if (!holds) wrong.push(`${p.part} collider ${i} (region ${col.region}) is not around a ${col.region} connector`);
+        });
+        if (!solid.size) continue;
+        for (const c of shafts) {
+            for (let s = -c.length / 2 + 1; s <= c.length / 2 - 1; s += 1) {
+                const v = c.position.map((x, k) => x + s * c.axis[k]);
+                const hit = [...solid].find(i => inCollider(p.colliders[i], v));
+                if (hit !== undefined) {
+                    wrong.push(`${p.part} ${c.id}: its ${c.type} runs through solid collider ${hit} at ${v.map(x => +x.toFixed(1))}`);
+                    break;
+                }
+            }
+        }
+    }
+    assert.deepEqual(wrong, []);
 });
 
 test('colliders enclose the part: ≥ 98 % of mesh vertices inside one, total volume ≤ 110 % of the mesh box', () => {

@@ -193,6 +193,8 @@ A move, turn or place that would make two solid parts intersect is refused: the 
 
 What *is* allowed to occupy the same space: a part whose collider is meant to sit inside another part, as in the real Technic system — pins in pinholes, axles in axleholes or through pin holes, and the **castor ball** (52629.dat, sphere radius 24 LDU) in its socket (ball-and-socket on 39370.dat). Those are not overlaps; they are connector pairs that the snap system recognises.
 
+A part can be partly shaft and partly solid: **87082** (pin 3L with centre pin hole: two pin ends and a solid centre) and **32054** (pin with stop bush). Their colliders are split by region, measured from the LDraw mesh: the shaft colliders carry `region: 'pin'` (or `'axle'`/`'ball'`) and may sit inside other parts; the rest is solid and is checked like any solid part (`editor/overlap.js` `solidColliders`). So 87082 pins into two beams, while a beam pushed into its centre, or 32054 with a beam over its bush, is refused. A part that tags no region is wholly shaft when every connector is a pin, axle or ball, else wholly solid. `test/bw-sim-part-meta.test.mjs` checks that every region collider is around a shaft connector of its kind, that no pin or axle runs through a solid collider, and that every pin/axle connector really is a shaft in the mesh (within 8.5 LDU of its axis). That last check found **32039**'s "axle" inside its own body: the part has two axle holes (along x at z = −20 and along z at the origin), and its connectors now say so.
+
 **Groups in LDraw text**
 `bw-sim/model/ldraw-model.js` writes and reads:
 ```
