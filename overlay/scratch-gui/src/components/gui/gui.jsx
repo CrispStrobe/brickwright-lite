@@ -951,8 +951,8 @@ const GUIComponent = props => {
                                 selectedTabPanelClassName={tabClassNames.tabPanelSelected}
                                 onSelect={onActivateTab}
                             >
-                                <TabList className={tabClassNames.tabList}>
-                                    <ChromeToggle className={chromeStyles.chromeToggle} />
+                                <TabList className={tabClassNames.tabList} data-bw-editor-tabs="">
+                                    <ChromeToggle className={chromeStyles.chromeToggle} hidden={stageFullScreen} />
                                     <Tab className={tabClassNames.tab}
                                         title={intl.formatMessage({id: 'gui.gui.blocksTab', defaultMessage: 'Blocks'})}
                                         aria-label={intl.formatMessage({id: 'gui.gui.blocksTab', defaultMessage: 'Blocks'})}

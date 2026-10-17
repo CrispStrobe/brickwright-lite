@@ -8,15 +8,15 @@
  * modifier class would be a far larger change than the feature is worth.
  */
 
-/* The toggle lives in the tab list DOM. In expanded mode it is pulled out
-   to the VIEWPORT top-right corner (above the menu bar). This must be
+/* The toggle is portaled to the body, outside the scrolling tab list.
+   Expanded, it occupies the viewport top-right corner above the menu bar.
+   This must be
    position:fixed — absolute resolved against the nearest positioned
    ancestor, which is the editor wrapper, landing the button exactly on
    top of the right-pane toggle at 1024px and eating its clicks (the
    red-CI streak of 2026-08-15: dead pane toggle, vanished stage-view
    buttons once the mis-click collapsed the chrome).
-   In compact mode the positioning is removed (below) so it flows
-   inline as the first item in the tab row — the hamburger icon. */
+   Compact mode anchors it at the left, with space reserved beside the tabs. */
 .chrome-toggle {
     -webkit-appearance: none;
     appearance: none;
@@ -80,6 +80,10 @@
 .chrome-toggle:hover {
     background: #fff;
     border-color: rgba(0, 0, 0, 0.3);
+}
+
+.chrome-toggle[hidden] {
+    display: none;
 }
 
 /* ---- collapsed ---------------------------------------------------------- */
@@ -170,6 +174,7 @@
     right: auto;
     z-index: 600;
     pointer-events: auto;
+    padding-left: 40px;
 }
 :global(body.bw-compact-chrome) .responsive-editor :global([role="tab"]) {
     padding: 0 10px;
@@ -181,12 +186,12 @@
     height: calc(100% - 0px);
 }
 
-/* The hamburger toggle moves into the tab row in compact mode (positioned
-   by the JSX render that puts it in the tab list). In expanded mode it
-   stays in the top-right corner of the menu bar area. */
+/* The body-level portal stays outside the scrolling tab strip in both states. */
 :global(body.bw-compact-chrome) .chrome-toggle {
-    position: static;
-    z-index: auto;
-    margin-right: 4px;
+    position: fixed;
+    left: 8px;
+    right: auto;
+    z-index: 600;
+    margin: 0;
     flex-shrink: 0;
 }

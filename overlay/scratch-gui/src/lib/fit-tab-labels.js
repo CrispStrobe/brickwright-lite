@@ -1,8 +1,8 @@
 // Load tab measurement after mounting; keep layout bookkeeping out of initial JavaScript.
 class TabLabelFit {
-    constructor (button, isCompact) {
-        this.button = {current: button};
+    constructor (isCompact, tabList) {
         this.isCompact = isCompact;
+        this.tabList = tabList;
         this.fitFrame = null;
         this.scheduleFit = () => {
             if (this.fitFrame !== null) return;
@@ -15,7 +15,6 @@ class TabLabelFit {
     }
 
     mount () {
-        this.tabList = this.button.current.closest('[role="tablist"]');
         if (!this.tabList) return;
         this.canvas = document.createElement('canvas');
         this.menu = document.querySelector('[class*="menu-bar_main-menu"]');
@@ -54,18 +53,18 @@ class TabLabelFit {
         if (!context) return;
         const touch = document.documentElement.hasAttribute('data-bw-touch');
         const compact = this.isCompact();
-        let available = list.parentElement.clientWidth - 36;
+        let available = list.parentElement.clientWidth - (compact ? 76 : 36);
         if (touch) {
             const occupied = !compact && this.menu ? Math.max(0, ...Array.from(this.menu.children, child => {
                 const rect = child.getBoundingClientRect();
                 return rect.width > 0 ? rect.right : 0;
             })) : 0;
-            available = compact ? Math.min(window.innerWidth, list.parentElement.clientWidth) - 16 :
+            available = compact ? Math.min(window.innerWidth, list.parentElement.clientWidth) - 64 :
                 window.innerWidth - occupied - 60;
         }
         const gap = parseFloat(getComputedStyle(list).columnGap) || 0;
         const tabs = Array.from(list.querySelectorAll('[role="tab"]'));
-        let required = compact ? this.button.current.getBoundingClientRect().width + 4 + gap : 0;
+        let required = 0;
         for (const tab of tabs) {
             const label = tab.querySelector('[data-bw-tab-label]');
             if (!label) continue;
@@ -86,4 +85,4 @@ class TabLabelFit {
 
 }
 
-export const installTabLabelFit = (button, isCompact) => new TabLabelFit(button, isCompact);
+export const installTabLabelFit = (isCompact, tabList) => new TabLabelFit(isCompact, tabList);

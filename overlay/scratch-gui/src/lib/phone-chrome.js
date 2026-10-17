@@ -129,10 +129,10 @@ html[${ATTR}] [data-testid="bw-chrome-toggle"] {
 html[${ATTR}] body.bw-compact-chrome [role="tablist"] {
     position: fixed;
     top: 1px;
-    left: 8px;
+    left: 56px;
     right: auto;
     width: max-content;
-    max-width: var(--bw-tab-available, calc(100% - 16px));
+    max-width: var(--bw-tab-available, calc(100% - 64px));
     height: ${TABS_H}px;
     min-height: ${TABS_H}px;
 }
