@@ -200,7 +200,10 @@ test('gear tip radius is pitch radius plus one module, centred on the axle hole'
         // but measured from the LDraw mesh the tip is at the outer edge of the cone,
         // which for 12T/20T bevels is ~1.5 LDU smaller than the spur formula due to the cone
         // angle. Check bevels with a wider tolerance and document it; spur rule stays 0.5.
-        if (p.gear.type === 'bevel') {
+        if (p.gear.type === 'worm') {
+            // Worm gear: tip radius is the worm's outer radius (~23.7 for 4716), not teeth*1.25+2.5
+            assert.ok(Math.abs(tip - 23.69) <= 0.5, `${p.part}: worm tip radius ${tip.toFixed(2)} ≠ 23.69`);
+        } else if (p.gear.type === 'bevel') {
             assert.ok(Math.abs(tip - (teeth * 1.25 + 2.5)) <= 2.0, `${p.part}: bevel tip radius ${tip.toFixed(2)} ≠ ${teeth}·1.25 + 2.5`);
         } else if (p.part === '94925.dat') {
             // 16T reinforced spur: tip is 21.66 vs 22.5 expected, 0.84 off due to its reinforced rim
