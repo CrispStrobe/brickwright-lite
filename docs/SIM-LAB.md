@@ -82,7 +82,7 @@ The model is the driving base plus the colour sensor, looking down 16 mm above t
 
 If no SPIKE program is loaded when you press Run, the pane shows: *“No SPIKE program is loaded yet, so nothing tells the motors to turn. Write one in the Code tab and press ⇦ To blocks (or build it with blocks), then press Run — or drive the robot with the arrows below.”* The clock still runs, and the Drive pad works.
 
-**Drive pad.** Below the 3D view, four arrow buttons ▲ ▼ ◀ ▶ and a **Speed** slider (10–100 %, step 10) drive the movement pair (A left, B right, as set in the hub) even with no program. Hold an arrow (or the keyboard arrow keys) to drive; the hub readouts show motor positions and sensor values. The slider sets the percent the pad uses for `percentToDps`.
+**Drive pad.** Below the 3D view, four arrow buttons ▲ ▼ ◀ ▶ and a **Speed** slider (10–100 %, step 10) drive the movement pair (A left, B right, as set in the hub) even with no program. Hold an arrow (or the keyboard arrow keys) to drive; an arrow follows the finger or button that pressed it, so sliding off it keeps driving and lifting that finger (or the browser cancelling it) stops — a second finger on another arrow takes over. The hub readouts show motor positions and sensor values. The slider sets the percent the pad uses for `percentToDps`.
 
 **Mat selector.** A dropdown next to the model name chooses the floor pattern. The mats are in `bw-sim/world/mats.js`:
 - **Plain** (`plain`, 1.2 × 0.8 m) — uniform white, the default when no mat is chosen.
@@ -125,6 +125,15 @@ Build is a small CAD editor (`bw-sim/editor/editor-view3d.js`; arithmetic in `ed
 - **Magnet:** a single part dragged or placed near a matching hole or axle shows a green ghost and snaps there on release (all connector pairs that would connect are counted). **Hold Alt** to turn the magnet off. A pin must be within 0.5 LDU sideways and centred along the shaft; a placed part that would overlap another is refused (see below).
 - **Camera:** left-drag on empty space or right-drag orbits; middle-drag or Shift+right-drag pans; wheel zooms toward the pointer.
 
+**Fingers (tablets: iPad, touch Chromebooks; `editor/touch-gestures.js`)** — Pointer Events with `pointerType === 'touch'`, `touch-action: none` on the canvas; the mouse is unchanged.
+- **One finger on a part** selects it and drags it on the work plane: the mouse's drag (magnet, resting on top, overlap refusal). A **tap** selects just that part.
+- **One finger on empty space** orbits; a **tap** there clears the selection. **Two fingers** pinch to zoom and move together to pan (a second finger calls off a part drag).
+- **Long press (0.5 s) on a part** adds it to the selection or removes it (the finger's Shift+click). **Long press on empty space, then drag**, draws the selection box.
+- **Gizmo:** a finger grabs a handle within 22 px of its shape (a mouse: 8 px) and the arrows are at least 72 px long (a mouse: 44 px), when the device's main pointer is coarse or the last press was a finger; a press within 30 px of the gizmo's centre on a part goes to the part.
+- **Palette:** a tap arms a tile and a tap in the view places it; a finger carries a tile sideways into the view (up and down scrolls the list).
+- Fingers never reach three's OrbitControls/TransformControls (except on a gizmo handle): the view moves the camera itself with the same arithmetic. Simulate keeps OrbitControls' own one-finger orbit and two-finger pinch/pan.
+- Hit targets: with `(pointer: coarse)` every pane button is at least 40 × 40 px, and the status line speaks of taps and long presses.
+
 **Palette (`components/tw-pseudocode/sim-lab-palette.jsx`)** — after Tinkercad's shape panel.
 - Each part is a **tile with a picture** drawn from its real LDraw geometry in the placed colour (Light Bluish Grey), edges on, from the front-right above (`view/part-thumbnails.js`: one offscreen WebGL renderer, a picture per part drawn when its tile scrolls into view or its category is opened, a few ms per frame, kept as a data URL for the page's life). Without WebGL the tiles show names only. The tooltip gives the full name and the part number.
 - **Search** filters by EN and DE name and part number, ignoring case and umlaut spelling (`zahnrad`, `zaehne`, `beam 7`, `Lochbalken 7`, `3647`); a number matches a whole number in the name (`beam 7` is not `beam 17`), three digits or more also the start of a part number (`editor/palette.js` `searchPalette`).
@@ -144,13 +153,16 @@ Build is a small CAD editor (`bw-sim/editor/editor-view3d.js`; arithmetic in `ed
 - **Shift+Ctrl+G** (or **Ctrl+Shift+G**) — ungroup every group the selection touches (one undo step).
 - **Delete / Backspace** — delete the selection (a batch of deletes, one undo step; a group left with <2 members dissolves).
 - **Esc** — stop a placing tool or clear the selection.
+- Every key has a button on the build bar (below) for a tablet without a keyboard; only Alt (magnet off) and Shift's 15° ring steps have none.
 
 **Build bar (sim-lab-pane.jsx)**
 - **Move (W) / Turn (E)** toggle the gizmo mode.
 - **Grid** — 1 / 5 / 10 / 20 LDU (default 10 = half a hole pitch).
-- **Turn ↻ (R)** and **Tip (T)** — same as the keys, for the mouse.
+- **Turn ↻ (R)**, **Turn ↺ (Shift+R)** and **Tip (T)** — same as the keys (they also turn a part being placed).
 - **Group / Ungroup** — buttons for Ctrl+G / Shift+Ctrl+G (disabled unless the selection qualifies).
 - **Duplicate / Delete** — same as Ctrl+D / Delete.
+- **Copy / Paste / Select all** — same as Ctrl+C / Ctrl+V / Ctrl+A.
+- **Cancel (Esc)** — same as Esc: calls off a drag, stops the placing tool, or clears the selection.
 - **Undo / Redo** — same as Ctrl+Z / Ctrl+Y.
 - **Home / Fit (F) / Top / Front / Side** — camera views.
 - **Save .ldr** — downloads `my-model.ldr` (the editor's current model, title `Robot Lab model`).
@@ -254,6 +266,7 @@ Part geometry is a curated subset of the official **LDraw Parts Library** (CC BY
 - `bw-sim-session.test.mjs` — session tick, snapshot, time and yaw.
 - `bw-sim-snap-rotate.test.mjs` — magnet snapping and `rotateAboutSnap`.
 - `bw-sim-snap.test.mjs` — snap candidates (pins, axles, studs, ball).
+- `bw-sim-touch.test.mjs` — fingers: tap, drag, long press, long-press drag and pinch from touch event sequences (slop, long-press time, a late lift), one-finger orbit against an independent rotation, pinch zoom and two-finger pan.
 - `bw-sim-world.test.mjs` — mats and obstacles in the compiled mechanism and scene.
 
 Plus `test/bw-sim-persist.test.mjs` ↔ `test/project-bundle-archive.test.mjs` (real bundle writer/reader) and `scripts/verify-boot-payload.mjs` (Jolt and the Sim Lab view stay out of the first load, chunk `bw-sim-lab`).
@@ -262,3 +275,4 @@ Plus `test/bw-sim-persist.test.mjs` ↔ `test/project-bundle-archive.test.mjs` (
 - `npm run verify:sim-lab` — `scripts/verify-sim-lab-browser.mjs` loads the reference driving base with a WebGL view, runs with no program (hint shown, robot stays put, Drive pad moves it), chooses the line-oval mat (robot on the line), checks palette place/snap/undo, palette pictures (drawn, lazily), search, drag from the palette onto the floor and onto a beam hole, Esc cancelling a drag, Build→Simulate compile, a green-flag Scratch program drives with physical encoders, saved model reopens byte-identical, project load replaces the model, no-WebGL fallback still runs.
 - `scripts/lib/sim-lab-insight-gate.mjs` — port badges in both views, "Show how it moves" (overlay objects and red axis pixels) in both, unplugging a motor from its badge lists the issue, the issue selects the motor, the badge's picker plugs it back in, "Before you press Run" with no motor, the issue pulses the motors in Simulate.
 - `scripts/lib/sim-lab-cad-gate.mjs` — `npm run test:sim-lab-cad` places a part on the floor, drags the gizmo, turns with R/ring, slides on the work plane, Shift+multi-select and box-select, groups/ungroups, pins snap from above and beams stack, pushing into the hub is refused.
+- `scripts/lib/sim-lab-touch-gate.mjs` — a school tablet (1024×768, `hasTouch`, real touch through CDP `Input.dispatchTouchEvent`): tap a tile then the floor places a part, one finger drags a part by grid steps and a tile out of the palette, a long press adds to the selection, a long press then drag on open floor box-selects, a finger drags the gizmo's X arrow (x only), the build bar's Select all / Copy / Paste / Turn ↺ / Undo, one finger orbits and two pinch-zoom in Build and Simulate, holding ▲ drives (sliding off keeps driving) and lifting the finger stops both motors.
