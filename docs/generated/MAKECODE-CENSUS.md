@@ -295,3 +295,269 @@ EV3 blocks made: 1208.
 | program | detail |
 |---|---|
 
+## Circuit Playground Express import census (pxt-adafruit 1.6.8)
+
+All 244 documentation code fences (blocks, typescript and block), without deduplication.
+The earlier 149-program estimate is superseded by this exhaustive source count.
+These are import outcomes; full-program behavioural equivalence and CPX re-export are separate.
+Original target compiler checked: yes.
+
+| outcome | programs |
+|---|---|
+| full | 149 |
+| not-a-program | 9 |
+| parse | 26 |
+| partial | 33 |
+| refused-by-name | 27 |
+
+`full` means translated and parsed without warnings or unnamed source-call loss; `partial` retains named refusals.
+`refused-by-name` has named refusals and no translated CPX block. Original compiler failures remain `not-a-program`.
+The source-call reader compares actual parsed opcodes with source calls; an unnamed missing call is `silent-loss`.
+CPX MakeCode re-export is refused by name. Downloading the original recovered source remains available.
+
+| program | outcome | named refusals / errors | unnamed missing calls |
+|---|---|---|---|
+| about#0 | full | — | — |
+| about#1 | full | — | — |
+| device/windows-app/troubleshoot#0 | full | — | — |
+| examples/animation-shaker#0 | full | — | — |
+| examples/beat-visualizer#0 | full | — | — |
+| examples/blinky#0 | full | — | — |
+| examples/counter#0 | full | — | — |
+| examples/dice#0 | partial | light.setPhotonMode() — external strips, photon and strip configuration have no CPX device word; light.photonForward() — external strips, photon and strip configuration have no CPX device word | — |
+| examples/egg-game#0 | partial | light.photonForward() — external strips, photon and strip configuration have no CPX device word; light.setPhotonMode() — external strips, photon and strip configuration have no CPX device word | — |
+| examples/energy-glove#0 | full | — | — |
+| examples/fireflies#0 | full | — | — |
+| examples/juggle-counter#0 | full | — | — |
+| examples/level#0 | full | — | — |
+| examples/metronome#0 | full | — | — |
+| examples/photon-beatbox#0 | partial | light.setPhotonPenHue() — external strips, photon and strip configuration have no CPX device word; light.photonForward() — external strips, photon and strip configuration have no CPX device word; light.photonFlip() — external strips, photon and strip configuration have no CPX device word; Math.randomRange() — inside a construct that has no CPX translation | — |
+| examples/reaction#0 | full | — | — |
+| examples/spin-it#0 | parse | light.setPhotonMode() — external strips, photon and strip configuration have no CPX device word; light.photonForward() — external strips, photon and strip configuration have no CPX device word; light.photonFlip() — external strips, photon and strip configuration have no CPX device word | — |
+| learnsystem/beep-beep#0 | full | — | — |
+| learnsystem/beep-beep#1 | full | — | — |
+| learnsystem/digital-input#0 | not-a-program | MakeCode does not compile it: [{"file":"main.ts","line":7,"column":4,"message":"Cannot use namespace 'serial' as a value."}] | — |
+| learnsystem/digital-input#1 | not-a-program | MakeCode does not compile it: [{"file":"main.ts","line":4,"column":4,"message":"Cannot use namespace 'serial' as a value."}] | — |
+| learnsystem/hot-potato#0 | full | — | — |
+| learnsystem/hot-potato#1 | full | — | — |
+| learnsystem/hot-potato#2 | full | — | — |
+| learnsystem/light-paintbrush#0 | partial | pins.A1.analogRead() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words; Math.map() — written out as its formula; it goes back to MakeCode as arithmetic | — |
+| learnsystem/logic-lab/elements#0 | full | — | — |
+| learnsystem/logic-lab/elements#1 | full | — | — |
+| learnsystem/logic-lab/elements#2 | full | — | — |
+| learnsystem/logic-lab/elements#3 | full | — | — |
+| learnsystem/logic-lab/elements#4 | full | — | — |
+| learnsystem/logic-lab/elements#5 | full | — | — |
+| learnsystem/logic-lab/elements#6 | full | — | — |
+| learnsystem/logic-lab/elements#7 | full | — | — |
+| learnsystem/logic-lab/elements#8 | full | — | — |
+| learnsystem/logic-lab/elements#9 | full | — | — |
+| learnsystem/logic-lab/explorer#0 | full | — | — |
+| learnsystem/logic-lab/explorer#1 | full | — | — |
+| learnsystem/logic-lab/explorer#2 | full | — | — |
+| learnsystem/logic-lab/explorer#3 | full | — | — |
+| learnsystem/logic-lab/explorer#4 | full | — | — |
+| learnsystem/logic-lab/explorer#5 | full | — | — |
+| learnsystem/logic-lab/explorer#6 | full | — | — |
+| learnsystem/logic-lab/explorer#7 | full | — | — |
+| learnsystem/logic-lab/logic-gates#0 | full | — | — |
+| learnsystem/logic-lab/logic-gates#1 | full | — | — |
+| learnsystem/logic-lab/programmable#0 | partial | pins.A6.digitalRead() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words | — |
+| learnsystem/logic-lab/programmable#1 | refused-by-name | pins.A1.digitalWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words; pins.A4.digitalRead() — inside a construct that has no CPX translation | — |
+| learnsystem/logic-lab/programmable#2 | refused-by-name | pins.A2.digitalWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words; pins.A4.digitalRead() — inside a construct that has no CPX translation; pins.A7.digitalRead() — inside a construct that has no CPX translation | — |
+| learnsystem/logic-lab/programmable#3 | refused-by-name | pins.A3.digitalWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words; pins.A4.digitalRead() — inside a construct that has no CPX translation; pins.A7.digitalRead() — inside a construct that has no CPX translation | — |
+| learnsystem/logic-lab/programmable#4 | refused-by-name | pins.A1.digitalWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words; pins.A2.digitalWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words; pins.A3.digitalWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words; pins.A4.digitalRead() — inside a construct that has no CPX translation; pins.A7.digitalRead() — inside a construct that has no CPX translation | — |
+| learnsystem/logic-lab/programmable#5 | full | — | — |
+| learnsystem/logic-lab/programmable#6 | refused-by-name | pins.A4.digitalRead() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words; pins.A7.digitalRead() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words; pins.A2.digitalWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words | — |
+| projects/animations#0 | not-a-program | MakeCode does not compile it: [{"file":"main.ts","line":0,"column":31,"message":"Property 'rainbowCycleAnimation' does not exist on type 'typeof light'. Did you mean 'RainbowCycleAnimation'?"}] | — |
+| projects/animations#1 | not-a-program | MakeCode does not compile it: [{"file":"main.ts","line":0,"column":8,"message":"Property 'forever' does not exist on type 'typeof control'."},{"file":"main.ts","line":1,"column":35,"message":"Property 'rainbowCycleAnimation' does not exist on type 'typeof light'. Did you mean 'RainbowCycleAnimation'?"}] | — |
+| projects/animations#2 | not-a-program | MakeCode does not compile it: [{"file":"main.ts","line":0,"column":8,"message":"Property 'forever' does not exist on type 'typeof control'."},{"file":"main.ts","line":1,"column":29,"message":"Cannot invoke an expression whose type lacks a call signature. Type 'NeoPixelAnimation' has no compatible call signatures."}] | — |
+| projects/animations#3 | not-a-program | MakeCode does not compile it: [{"file":"main.ts","line":0,"column":8,"message":"Property 'forever' does not exist on type 'typeof control'."},{"file":"main.ts","line":1,"column":29,"message":"Cannot invoke an expression whose type lacks a call signature. Type 'NeoPixelAnimation' has no compatible call signatures."}] | — |
+| projects/animations#4 | not-a-program | MakeCode does not compile it: [{"file":"main.ts","line":0,"column":8,"message":"Property 'forever' does not exist on type 'typeof control'."},{"file":"main.ts","line":1,"column":35,"message":"Property 'theatreChaseAnimation' does not exist on type 'typeof light'. Did you mean 'theaterChaseAnimation'?"}] | — |
+| projects/beaded-necklace/code#0 | refused-by-name | light.createStrip() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/beaded-necklace/code#1 | refused-by-name | light.createStrip() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/beaded-necklace/code#2 | refused-by-name | light.createStrip() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/beaded-necklace/code#3 | full | — | — |
+| projects/beaded-necklace/code#4 | not-a-program | MakeCode does not compile it: [{"file":"main.ts","line":1,"column":4,"message":"Cannot find name 'Anim'."},{"file":"main.ts","line":4,"column":4,"message":"Cannot find name 'Anim'."},{"file":"main.ts","line":7,"column":4,"message":"Cannot find name 'Anim'."}] | — |
+| projects/beaded-necklace/code#5 | parse | Line 7: Empty body: "IF true THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. | — |
+| projects/beaded-necklace/code#6 | parse | Line 7: Empty body: "IF cpx switch right THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. | — |
+| projects/beaded-necklace/code#7 | parse | light.showAnimation() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/beaded-necklace/code#8 | parse | light.createStrip() — external strips, photon and strip configuration have no CPX device word; light.showAnimation() — external strips, photon and strip configuration have no CPX device word; LeftLights.showAnimation() — no CPX translation for this construct; RightLights.showAnimation() — no CPX translation for this construct | — |
+| projects/beaded-necklace/code#9 | parse | light.createStrip() — external strips, photon and strip configuration have no CPX device word; light.showAnimation() — external strips, photon and strip configuration have no CPX device word; LeftLights.showAnimation() — no CPX translation for this construct; RightLights.showAnimation() — no CPX translation for this construct; LeftLights.clear() — no CPX translation for this construct; RightLights.clear() — no CPX translation for this construct | — |
+| projects/beaded-necklace/code#10 | parse | light.rainbowAnimation — a property this importer has no word for (not read as a variable called rainbowAnimation); light.cometAnimation — a property this importer has no word for (not read as a variable called cometAnimation); light.colorWipeAnimation — a property this importer has no word for (not read as a variable called colorWipeAnimation); light.createStrip() — external strips, photon and strip configuration have no CPX device word; LeftLights.setBrightness() — no CPX translation for this construct; RightLights.setBrightness() — no CPX translation for this construct; light.showAnimation() — external strips, photon and strip configuration have no CPX device word; LeftLights.showAnimation() — no CPX translation for this construct; RightLights.showAnimation() — no CPX translation for this construct; LeftLights.clear() — no CPX translation for this construct; RightLights.clear() — no CPX translation for this construct | — |
+| projects/beaded-necklace/make#0 | partial | light.createStrip() — external strips, photon and strip configuration have no CPX device word; LeftLights.setAll() — no CPX translation for this construct; RightLights.setAll() — no CPX translation for this construct | — |
+| projects/cartoon-network/bmo-music-box#0 | full | — | — |
+| projects/cartoon-network/bmo-music-box#1 | full | — | — |
+| projects/cartoon-network/bmo-music-box#2 | full | — | — |
+| projects/cartoon-network/crown#0 | full | — | — |
+| projects/cartoon-network/cup-lamp#0 | full | — | — |
+| projects/cartoon-network/cup-lamp#1 | full | — | — |
+| projects/cartoon-network/darwin-goldfish#0 | full | — | — |
+| projects/cartoon-network/enchiridion#0 | full | — | — |
+| projects/cartoon-network/enchiridion#1 | full | — | — |
+| projects/cartoon-network/enchiridion#2 | parse | Line 11: Empty body: "IF cpx pixel color at 0 = 16776960 THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. | — |
+| projects/cartoon-network/enchiridion#3 | full | — | — |
+| projects/cartoon-network/enchiridion#4 | full | — | — |
+| projects/cartoon-network/enchiridion#5 | full | — | — |
+| projects/cartoon-network/jake-hotdog#0 | full | — | — |
+| projects/cartoon-network/jake-hotdog#1 | full | — | — |
+| projects/cartoon-network/jake-hotdog#2 | full | — | — |
+| projects/cartoon-network/room-sign#0 | full | — | — |
+| projects/coffee-cup-lamp/code#0 | full | — | — |
+| projects/coffee-cup-lamp/code#1 | full | — | — |
+| projects/coffee-cup-lamp/code#2 | full | — | — |
+| projects/coffee-cup-lamp/code#3 | full | — | — |
+| projects/confetti-box/code#0 | parse | pins.A1.servoWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words | — |
+| projects/confetti-box/code#1 | full | — | — |
+| projects/confetti-box/code#2 | partial | pins.A1.servoWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words; pins.A2.servoWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words | — |
+| projects/confetti-box/code#3 | partial | pins.A1.servoWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words; pins.A2.servoWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words | — |
+| projects/dandelion/code#0 | full | — | — |
+| projects/dandelion/code#1 | full | — | — |
+| projects/dandelion/code#2 | full | — | — |
+| projects/fabric-friend/code#0 | refused-by-name | light.createStrip() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/fabric-friend/code#1 | full | — | — |
+| projects/fabric-friend/code#2 | parse | Line 10: Empty body: "IF Magic8 = 1 THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line.; Line 13: Empty body: "IF Magic8 = 2 THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line.; Line 16: Empty body: "IF Magic8 = 3 THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. | — |
+| projects/fabric-friend/code#3 | partial | light.createStrip() — external strips, photon and strip configuration have no CPX device word; LeftEye.setAll() — no CPX translation for this construct; RightEye.setAll() — no CPX translation for this construct; LeftEye.showAnimation() — no CPX translation for this construct; RightEye.showAnimation() — no CPX translation for this construct | — |
+| projects/fabric-friend/code#4 | refused-by-name | light.createStrip() — external strips, photon and strip configuration have no CPX device word; input.buttonA.onEvent() — registration follows potentially yielding initialization; late registration is not preserved by CPX project hats | — |
+| projects/fabric-friend/code#5 | parse | Line 11: Empty body: "IF Hunger < 14 THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line.; Line 14: Empty body: "IF (not (Hunger < 14)) and (Hunger < 18) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line.; Line 17: Empty body: "IF (not (Hunger < 18)) and (Hunger < 22) THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. | — |
+| projects/fabric-friend/code#6 | full | — | — |
+| projects/fabric-friend/code#7 | partial | light.createStrip() — external strips, photon and strip configuration have no CPX device word; LeftEye.setAll() — no CPX translation for this construct; RightEye.setAll() — no CPX translation for this construct | — |
+| projects/fidget-spinner/code#0 | full | — | — |
+| projects/fidget-spinner/code#1 | parse | light.setPhotonMode() — external strips, photon and strip configuration have no CPX device word; light.photonForward() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/fidget-spinner/code#2 | refused-by-name | call() as a value — no CPX translation for this construct; light.onboardStrip() — inside a construct that has no CPX translation | — |
+| projects/fidget-spinner/code#3 | refused-by-name | call() as a value — no CPX translation for this construct; left.clear() — no CPX translation for this construct; left.setPixelColor() — no CPX translation for this construct; left.show() — no CPX translation for this construct; left.length() as a value — no CPX translation for this construct; light.onboardStrip() — inside a construct that has no CPX translation | — |
+| projects/guitar/code#0 | full | — | — |
+| projects/guitar/code#1 | full | — | — |
+| projects/guitar/code#2 | full | — | — |
+| projects/guitar/code#3 | full | — | — |
+| projects/guitar/code#4 | full | — | — |
+| projects/guitar/code#5 | full | — | — |
+| projects/headlamp/code#0 | full | — | — |
+| projects/headlamp/code#1 | full | — | — |
+| projects/headlamp/code#2 | full | — | — |
+| projects/hot-potato/code#0 | full | — | — |
+| projects/hot-potato/code#1 | full | — | — |
+| projects/hot-potato/code#2 | full | — | — |
+| projects/hot-potato/code#3 | full | — | — |
+| projects/hot-potato/code#4 | full | — | — |
+| projects/level#0 | not-a-program | MakeCode does not compile it: [{"file":"main.ts","line":0,"column":8,"message":"Property 'forever' does not exist on type 'typeof control'."},{"file":"main.ts","line":2,"column":29,"message":"Property 'showColor' does not exist on type 'NeoPixelStrip'. Did you mean 'showColors'?"},{"file":"main.ts","line":4,"column":29,"message":"Property 'showColor' does not exist on type 'NeoPixelStrip'. Did you mean 'showColors'?"}] | — |
+| projects/light-monster/code#0 | full | — | — |
+| projects/light-monster/code#1 | partial | pins.A2.servoWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words; Math.map() — inside a construct that has no CPX translation; input.lightLevel() — inside a construct that has no CPX translation | — |
+| projects/lucky-wheel/code#0 | full | — | — |
+| projects/lucky-wheel/code#1 | full | — | — |
+| projects/lucky-wheel/code#2 | full | — | — |
+| projects/lucky-wheel/code#3 | full | — | — |
+| projects/lucky-wheel/code#4 | parse | Line 12: Empty body: "REPEAT 5:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. | — |
+| projects/lucky-wheel/code#5 | parse | light.photonForward() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/lucky-wheel/code#6 | partial | light.photonForward() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/lucky-wheel/code#7 | partial | light.photonForward() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/lucky-wheel/code#8 | partial | light.photonForward() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/magic-wand/code#0 | full | — | — |
+| projects/magic-wand/code#1 | full | — | — |
+| projects/magic-wand/code#2 | full | — | — |
+| projects/musical-cloud/code#0 | refused-by-name | light.createStrip() — external strips, photon and strip configuration have no CPX device word; strip.setAll() — no CPX translation for this construct; strip.setBrightness() — no CPX translation for this construct | — |
+| projects/musical-cloud/code#1 | full | — | — |
+| projects/musical-cloud/code#2 | partial | light.createStrip() — external strips, photon and strip configuration have no CPX device word; strip.setAll() — no CPX translation for this construct; strip.setBrightness() — no CPX translation for this construct | — |
+| projects/musical-cloud/code#3 | partial | light.createStrip() — external strips, photon and strip configuration have no CPX device word; strip.setAll() — no CPX translation for this construct; strip.setBrightness() — no CPX translation for this construct | — |
+| projects/musical-cloud/code#4 | full | — | — |
+| projects/musical-cloud/code#5 | full | — | — |
+| projects/musical-cloud/code#6 | full | — | — |
+| projects/musical-cloud/code#7 | partial | light.createStrip() — external strips, photon and strip configuration have no CPX device word; strip.setAll() — no CPX translation for this construct; strip.setBrightness() — no CPX translation for this construct; music.Melody() — this sound operation has no CPX device word; song.play() — no CPX translation for this construct | — |
+| projects/reaction/code#0 | full | — | — |
+| projects/reaction/code#1 | full | — | — |
+| projects/reaction/code#2 | partial | network.infraredSendNumber() — IR and cable networking have no CPX device word | — |
+| projects/reaction/code#3 | partial | network.infraredSendNumber() — IR and cable networking have no CPX device word | — |
+| projects/reaction/code#4 | partial | network.infraredSendNumber() — IR and cable networking have no CPX device word | — |
+| projects/reaction/code#5 | partial | network.infraredSendNumber() — IR and cable networking have no CPX device word | — |
+| projects/reaction/code#6 | refused-by-name | network.onInfraredPacketReceived() — IR and cable networking have no CPX device word; light.setAll() — inside a construct that has no CPX translation | — |
+| projects/rube-goldberg/code#0 | parse | Line 7: Empty body: "IF 0 > 0 THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. | — |
+| projects/rube-goldberg/code#1 | parse | pins.A1.analogRead() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words | — |
+| projects/rube-goldberg/code#2 | partial | pins.A1.analogRead() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words | — |
+| projects/rube-goldberg/code#3 | partial | pins.A1.analogRead() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words; pins.A2.servoWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words | — |
+| projects/rube-goldberg/code#4 | partial | pins.A1.analogRead() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words; pins.A2.servoWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words | — |
+| projects/star-projector/code#0 | full | — | — |
+| projects/star-projector/code#1 | full | — | — |
+| projects/star-projector/code#2 | full | — | — |
+| projects/star-projector/code#3 | parse | Line 12: Empty body: "REPEAT UNTIL not (0 < 0):" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line.; Line 14: Empty body: "REPEAT UNTIL not (0 > 0):" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. | — |
+| projects/star-projector/code#4 | parse | Line 12: Empty body: "REPEAT UNTIL not (angle < 180):" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line.; Line 14: Empty body: "REPEAT UNTIL not (angle > 0):" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. | — |
+| projects/star-projector/code#5 | full | — | — |
+| projects/star-projector/code#6 | partial | pins.A1.servoWrite() — raw pin, I2C, SPI and pulse APIs are not CPX device-world words | — |
+| projects/watch-timer/code#0 | refused-by-name | light.photonForward() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/watch-timer/code#1 | partial | light.photonForward() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/watch-timer/code#2 | partial | light.photonFlip() — external strips, photon and strip configuration have no CPX device word; light.setPhotonMode() — external strips, photon and strip configuration have no CPX device word; light.photonForward() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/watch-timer/code#3 | parse | light.photonFlip() — external strips, photon and strip configuration have no CPX device word; light.setPhotonMode() — external strips, photon and strip configuration have no CPX device word; light.photonForward() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/watch-timer/code#4 | partial | light.photonFlip() — external strips, photon and strip configuration have no CPX device word; light.setPhotonMode() — external strips, photon and strip configuration have no CPX device word; light.photonForward() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/watch-timer/code#5 | partial | light.photonFlip() — external strips, photon and strip configuration have no CPX device word; light.setPhotonMode() — external strips, photon and strip configuration have no CPX device word; light.photonForward() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/wearable-neopixels/code#0 | refused-by-name | light.createStrip() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/wearable-neopixels/code#1 | refused-by-name | light.createStrip() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/wearable-neopixels/code#2 | parse | light.createStrip() — external strips, photon and strip configuration have no CPX device word; strip.showAnimation() — no CPX translation for this construct; strip.setAll() — no CPX translation for this construct | — |
+| projects/wearable-neopixels/code#3 | partial | strip.clear() — no CPX translation for this construct; strip.showAnimation() — no CPX translation for this construct; strip.setAll() — no CPX translation for this construct; light.createStrip() — external strips, photon and strip configuration have no CPX device word | — |
+| projects/wearable-neopixels/code#4 | parse | light.createStrip() — external strips, photon and strip configuration have no CPX device word; strip.setAll() — no CPX translation for this construct; strip.showAnimation() — no CPX translation for this construct | — |
+| projects/wearable-neopixels/code#5 | refused-by-name | light.createStrip() — external strips, photon and strip configuration have no CPX device word; strip.setAll() — no CPX translation for this construct; strip.setBrightness() — no CPX translation for this construct | — |
+| projects/wearable-neopixels/code#6 | refused-by-name | light.createStrip() — external strips, photon and strip configuration have no CPX device word; strip.setAll() — no CPX translation for this construct; strip.setBrightness() — no CPX translation for this construct | — |
+| projects/wonder-woman-gauntlets/code#0 | full | — | — |
+| projects/wonder-woman-gauntlets/code#1 | full | — | — |
+| projects/wonder-woman-gauntlets/code#2 | full | — | — |
+| projects/wonder-woman-gauntlets/code#3 | full | — | — |
+| projects/wonder-woman-gauntlets/code#4 | full | — | — |
+| reference/input/ambient-color#0 | partial | input.ambientColor() — this input operation has no CPX device word | — |
+| reference/input/on-switch-moved#0 | full | — | — |
+| reference/light/animation#0 | partial | light.showAnimation() — external strips, photon and strip configuration have no CPX device word; light.animation() — inside a construct that has no CPX translation | — |
+| reference/light/clear#0 | full | — | — |
+| reference/light/graph#0 | full | — | — |
+| reference/light/graph#1 | full | — | — |
+| reference/light/graph#2 | full | — | — |
+| reference/light/graph#3 | full | — | — |
+| reference/light/graph#4 | full | — | — |
+| reference/light/graph#5 | full | — | — |
+| reference/light/graph#6 | full | — | — |
+| reference/light/photon-flip#0 | refused-by-name | call() as a value — no CPX translation for this construct; light.photonForward() — external strips, photon and strip configuration have no CPX device word; light.photonFlip() — external strips, photon and strip configuration have no CPX device word; light.onboardStrip() — inside a construct that has no CPX translation | — |
+| reference/light/photon-forward#0 | refused-by-name | call() as a value — no CPX translation for this construct; light.photonForward() — external strips, photon and strip configuration have no CPX device word; light.onboardStrip() — inside a construct that has no CPX translation | — |
+| reference/light/pixel-color#0 | full | — | — |
+| reference/light/set-all#0 | full | — | — |
+| reference/light/set-brightness#0 | full | — | — |
+| reference/light/set-photon-mode#0 | parse | light.setPhotonPenHue() — external strips, photon and strip configuration have no CPX device word; light.setPhotonMode() — external strips, photon and strip configuration have no CPX device word; call() as a value — no CPX translation for this construct; light.photonForward() — external strips, photon and strip configuration have no CPX device word; light.photonFlip() — external strips, photon and strip configuration have no CPX device word; light.onboardStrip() — inside a construct that has no CPX translation | — |
+| reference/light/set-photon-mode#1 | refused-by-name | light.setPhotonPenHue() — external strips, photon and strip configuration have no CPX device word; light.setPhotonMode() — external strips, photon and strip configuration have no CPX device word; call() as a value — no CPX translation for this construct; light.photonForward() — external strips, photon and strip configuration have no CPX device word; light.onboardStrip() — inside a construct that has no CPX translation | — |
+| reference/light/set-photon-pen-hue#0 | refused-by-name | light.setPhotonPenHue() — external strips, photon and strip configuration have no CPX device word; call() as a value — no CPX translation for this construct; light.photonForward() — external strips, photon and strip configuration have no CPX device word; light.photonFlip() — external strips, photon and strip configuration have no CPX device word; light.onboardStrip() — inside a construct that has no CPX translation | — |
+| reference/light/set-photon-position#0 | refused-by-name | light.setPhotonPenHue() — external strips, photon and strip configuration have no CPX device word; light.setPhotonMode() — external strips, photon and strip configuration have no CPX device word; light.setPhotonPosition() — external strips, photon and strip configuration have no CPX device word; call() as a value — no CPX translation for this construct; light.photonForward() — external strips, photon and strip configuration have no CPX device word; light.photonFlip() — external strips, photon and strip configuration have no CPX device word; light.onboardStrip() — inside a construct that has no CPX translation | — |
+| reference/light/set-pixel-color#0 | full | — | — |
+| reference/light/show-animation-frame#0 | full | — | — |
+| reference/light/show-animation#0 | full | — | — |
+| reference/light/show-animation#1 | full | — | — |
+| reference/light/show-ring#0 | refused-by-name | String statement — no CPX translation for this construct | — |
+| reference/light/show-ring#1 | full | — | — |
+| reference/light/show-ring#2 | full | — | — |
+| reference/light/show-ring#3 | full | — | — |
+| reference/light/stop-all-animations#0 | full | — | — |
+| tutorials/button-flipper#0 | full | — | — |
+| tutorials/button-flipper#1 | parse | Line 6: Empty body: "IF true THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. | — |
+| tutorials/button-flipper#2 | parse | Line 6: Empty body: "IF 0 < 0 THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. | — |
+| tutorials/button-flipper#3 | parse | Line 6: Empty body: "IF (pick random 0 to 10) < 5 THEN:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. | — |
+| tutorials/button-flipper#4 | full | — | — |
+| tutorials/clap-lights#0 | full | — | — |
+| tutorials/clap-lights#1 | full | — | — |
+| tutorials/clap-lights#2 | full | — | — |
+| tutorials/getting-started#0 | full | — | — |
+| tutorials/getting-started#1 | full | — | — |
+| tutorials/getting-started#2 | full | — | — |
+| tutorials/getting-started#3 | parse | Line 11: Empty body: "FOREVER:" has no indented lines under it, so it does nothing. If the following lines were meant to be its body, indent them further than this line. | — |
+| tutorials/getting-started#4 | full | — | — |
+| tutorials/getting-started#5 | full | — | — |
+| tutorials/loudness-necklace#0 | full | — | — |
+| tutorials/loudness-necklace#1 | full | — | — |
+| tutorials/loudness-necklace#2 | full | — | — |
+| tutorials/night-light#0 | full | — | — |
+| tutorials/night-light#1 | full | — | — |
+| tutorials/night-light#2 | full | — | — |
+| tutorials/night-light#3 | full | — | — |
+| tutorials/night-light#4 | full | — | — |
+| tutorials/night-light#5 | full | — | — |
+| tutorials/remote-led#0 | partial | network.infraredSendNumber() — IR and cable networking have no CPX device word | — |
+| tutorials/remote-led#1 | refused-by-name | network.onInfraredReceivedNumber() — IR and cable networking have no CPX device word; light.showAnimation() — inside a construct that has no CPX translation | — |
+| tutorials/remote-led#2 | refused-by-name | network.onInfraredReceivedNumber() — IR and cable networking have no CPX device word; light.showAnimation() — inside a construct that has no CPX translation; light.setAll() — inside a construct that has no CPX translation | — |
+| tutorials/siren#0 | full | — | — |
+| tutorials/siren#1 | full | — | — |
+| tutorials/siren#2 | full | — | — |
+| tutorials/siren#3 | full | — | — |
+| tutorials/siren#4 | full | — | — |
+| tutorials/siren#5 | full | — | — |

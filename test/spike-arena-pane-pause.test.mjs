@@ -36,9 +36,10 @@ for (const storage of [true, false]) {
                 });
                 const task = pane.pause();
                 assert.equal(pane.firmwareSession, storage ? old : null);
+                let stopped;
                 if (lifecycle !== 'live') {
                     if (lifecycle === 'disposed') pane.disposed = true;
-                    await pane.stopProgram();
+                    stopped = pane.stopProgram();
                     pane.state = {status: 'ready', message: 'current state'};
                     if (lifecycle === 'replacement') {
                         pane.firmwareSession = {storageSupported: true};
@@ -48,8 +49,14 @@ for (const storage of [true, false]) {
                 const mark = states.length;
                 if (outcome === 'success') resolve();
                 else reject(new Error('authored old Pause failure'));
-                let error;
-                try { await task; } catch (failure) { error = failure; }
+                let error, stopError;
+                await Promise.all([
+                    task.catch(failure => { error = failure; }),
+                    stopped?.catch(failure => { stopError = failure; })
+                ]);
+                if (!storage && outcome === 'error' && ['stopped', 'replacement'].includes(lifecycle)) {
+                    assert.equal(stopError?.message, 'authored old Pause failure', 'Current Stop owns the teardown error');
+                } else assert.equal(stopError, undefined);
                 if (!storage && outcome === 'error' && lifecycle === 'live') {
                     assert.equal(error?.message, 'authored old Pause failure');
                 } else assert.equal(error, undefined);
