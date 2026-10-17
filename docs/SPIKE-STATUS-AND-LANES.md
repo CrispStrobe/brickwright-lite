@@ -6,6 +6,23 @@ physical SPIKE qualification. Repository-relative paths below belong to the
 named owner. Operational locations, reference images and raw transcripts are
 not public documentation inputs.
 
+## Pending native Stop serialization — 2026-10-15
+
+A direct second pane Stop can arrive after session detachment but before native
+clock ownership release. The separate G02 follow-up remembers and joins that
+pending teardown before shared clock/backend/topology cleanup or a later Start.
+It retains intent and bridge ownership, waits for overlapping teardown results,
+and preserves the original failure for the current caller. Twelve new host
+controls pass, six broken guards are caught, and 220 affected controls passed
+before the final focused case was added. Older timing controls preserve late
+reply delivery after actual teardown instead of waiting circularly.
+
+The Code caller/output follow-up [PR985](https://github.com/CrispStrobe/brickwright-lite/pull/985) is merged. Its three frozen
+package cases do not qualify repeated Stop. Fresh installed own-guest repeated-Stop cleanup/recovery and final-head CI are still
+required; the earlier lifecycle package does not qualify this implementation.
+Full G02, physical/reference, licensing and release qualification remain open.
+
+
 ## Installed G02 Code caller and output qualification — 2026-10-15
 
 Frozen consumer `59ddd74174f644f330f06ce567fac6b8c5f7dde3` passes three

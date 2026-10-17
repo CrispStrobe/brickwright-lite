@@ -1019,7 +1019,8 @@
      1
     ],
     "maxTorqueNm": 0.18,
-    "maxSpeedDegPerSec": 1110
+    "maxSpeedDegPerSec": 1110,
+    "deviceId": 48
    }
   },
   {
@@ -3407,7 +3408,8 @@
      1
     ],
     "maxTorqueNm": 0.38,
-    "maxSpeedDegPerSec": 1050
+    "maxSpeedDegPerSec": 1050,
+    "deviceId": 49
    }
   },
   {
