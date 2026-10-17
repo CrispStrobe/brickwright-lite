@@ -133,6 +133,7 @@ export const buildGraph = (model, catalog, diagnostics = []) => {
                 if (pl.port) {
                     const maxSpeedRadPerSec = meta.motor.maxSpeedDegPerSec * Math.PI / 180;
                     edge.motor = {port: pl.port, maxTorqueNm: meta.motor.maxTorqueNm, maxSpeedRadPerSec};
+                    if (Number.isInteger(meta.motor.deviceId)) edge.motor.deviceId = meta.motor.deviceId;
                 } else {
                     diagnostics.push({severity: 'warning', code: 'motor-without-port', message: `Motor ${pl.id} has no port`, parts: [pl.id]});
                 }
