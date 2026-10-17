@@ -140,3 +140,26 @@ controls; admitting a class cannot automatically admit an extension package.
 Full original package execution, historical target selection and source-license
 admission remain independent requirements. Do not label selected-SDK compiler
 failures as historical invalidity or structural admission as full compatibility.
+
+
+### Constructor callback metadata and runtime arguments
+
+Constructor parameters with an explicit canonical callable signature use the
+same owned signature validator in the inert source catalogue and runtime heap.
+The runtime retains a frozen signature, checks it against the actual managed
+constructor owner, and validates each supplied callback as a live owned resource
+with that signature before allocation. An uninitialized field, null, a procedure
+name, or a forged or expired reference is not a constructor callback argument.
+The source body and its actual field writes remain authoritative; metadata does
+not initialize a parameter property or issue a frame. A class merely named
+`callable` continues to use its ordinary class domain.
+
+This bounded constructor callback route accepts required ordinary signatures;
+optional/default callback parameters and SDK types nested in these signatures
+remain outside it. Existing separately qualified SDK parameter and field routes
+retain their own checks. Focused component controls are in
+`test/arcade-class-callable-constructor-parameters.test.mjs`. Fresh production
+installation and affected genuine VM qualification remain required before a
+runtime capability is reported as qualified. Code and Blocks conversion retain
+the actual constructor form; dedicated visual authoring of parameter-property
+modifiers and callback signatures remains unqualified.

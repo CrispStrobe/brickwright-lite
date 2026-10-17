@@ -12,6 +12,15 @@ module.exports = function classCallableMetadata(classes) {
     const provider=createProvider(null,null,heap,null,{sdkSchema:true}),types=createTypes(null,null,heap,null,null,{sdkSchema:true});
     return Object.freeze({
         parameter(parameter) {
+            if(Object.hasOwn(parameter,'callableSignature')) {
+                if(parameter.type!=='callable'||Object.hasOwn(parameter,'sdkType')||parameter.optional!==false||Object.hasOwn(parameter,'default'))
+                    throw Error('Invalid explicit callable constructor parameter metadata');
+                return provider.constructorParameterSignature(parameter.callableSignature);
+            }
+            // A plain identifier named callable remains an ordinary class,
+            // never an implicit function domain or a missing-signature escape.
+            if(parameter.type==='callable'&&(!classes.has('callable')||classes.get('callable').intrinsic))
+                throw Error('Callable constructor parameter requires its explicit signature or a declared ordinary class');
             if(parameter.sdkType===undefined)return;
             if(parameter.type!=='Image'||types.validate(parameter.sdkType).kind!=='sdk')throw new Error('Invalid SDK Image constructor metadata');
         },
