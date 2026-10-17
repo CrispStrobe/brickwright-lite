@@ -1,14 +1,14 @@
 {
-  "$comment": "8T -> 24T spur: motor A drives 8T (10 LDU) meshing 24T (30 LDU) at 40 LDU, beam rigidly pinned to motor housing. Ratio -1/3.",
+  "$comment": "Gearbox on the bench, LDraw frame (-y up). Medium motor at the origin, port A, output axle vertical (x=0,z=0). The 8T sits on a 3L axle in the motor output at y=-60, just above the output hub. The frame is a Technic beam lying flat under the housing (holes vertical, y=40), pinned with two friction pins into the housing bottom holes u0/u1 (x=+-20, the holes parallel to the output), so the frame IS the housing body. Driven gears ride on 8L axles that turn in the beam's round holes and reach up past the housing side (x>=34) to y=-60. Pitch radii 8T=10, 24T=30, 40T=50 LDU. 24T on the axle in the beam hole at x=40: centre distance 10+30=40 LDU, two holes.",
   "version": 1,
   "parts": [
-    {"id": "m", "part": "54696p01.dat", "position": [0, 0, 0], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1], "port": "A"},
-    {"id": "a8", "part": "3705.dat", "position": [0, -40, 0], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
-    {"id": "g8", "part": "3647.dat", "position": [0, -40, 0], "rotation": [1, 0, 0, 0, 0, 1, 0, -1, 0]},
-    {"id": "beam", "part": "32524.dat", "position": [0, -40, 0], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
-    {"id": "p1", "part": "2780.dat", "position": [0, -40, 20], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
-    {"id": "p2", "part": "2780.dat", "position": [0, -40, -20], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
-    {"id": "a24", "part": "3705.dat", "position": [0, -40, 40], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
-    {"id": "g24", "part": "3648.dat", "position": [0, -40, 40], "rotation": [1, 0, 0, 0, 0, 1, 0, -1, 0]}
+    {"id": "m", "part": "54696p01.dat", "position": [0,0,0], "rotation": [1,0,0,0,1,0,0,0,1], "port": "A"},
+    {"id": "a8", "part": "4519.dat", "position": [0,-60,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "g8", "part": "3647.dat", "position": [0,-60,0], "rotation": [1,0,0,0,0,1,0,-1,0]},
+    {"id": "beam", "part": "32524.dat", "position": [0,40,0], "rotation": [0,0,1,0,1,0,-1,0,0]},
+    {"id": "pin1", "part": "2780.dat", "position": [20,30,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "pin2", "part": "2780.dat", "position": [-20,30,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "a24", "part": "3707.dat", "position": [40,-10,0], "rotation": [0,1,0,1,0,0,0,0,-1]},
+    {"id": "g24", "part": "3648.dat", "position": [40,-60,0], "rotation": [1,0,0,0,0,1,0,-1,0]}
   ]
 }
