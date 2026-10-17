@@ -51,7 +51,7 @@
 // it. A rename is still the only recovery for a bug that makes the worker trust
 // something it should not — which is why the activate purge exists and why
 // `scripts/verify-service-worker.mjs` asserts it.
-const CACHE = 'brickwright-v4';
+const CACHE = 'brickwright-v5';
 
 /** `gui.aeeed7e4.js`, `chunks/sb3-creator.8972d337850ada585ee3.js`, `static/…` */
 const HASHED = /\.[a-f0-9]{8,32}\.(js|css)$/;
@@ -166,6 +166,20 @@ self.addEventListener('fetch', event => {
                 return null;
             }
         })();
+
+        // Lazy chunks without a content hash (webpack `chunks/[name].js`) keep their
+        // URL across builds, so a cached copy may belong to an older build than the
+        // entry that asks for it: its module ids do not match and React.lazy gets an
+        // undefined default (the Code tab's minified React error #306, 2026-10-16),
+        // and stale-while-revalidate serves that copy again on every reload. Fetch
+        // them network-first; the cache is only the offline fallback. v5 purges the
+        // stale entries v4 browsers already hold.
+        if (url.pathname.includes('/chunks/') && !HASHED.test(url.pathname)) {
+            const fresh = await fromNetwork;
+            if (fresh && fresh.ok) return fresh;
+            if (cached && cached.ok) return cached;
+            return fresh || Response.error();
+        }
 
         // `cached.ok`, not `cached`. The guard above refuses to serve a cached failure
         // cache-first — and then this branch handed back the very same entry, because a
