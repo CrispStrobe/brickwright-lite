@@ -39,6 +39,7 @@
   },
   "jolt-physics/wasm-compat": {
     "tests": [
+      "test/bw-sim-gear-trains.test.mjs",
       "test/bw-sim-imu.test.mjs",
       "test/bw-sim-line-follower.test.mjs",
       "test/bw-sim-persist.test.mjs",

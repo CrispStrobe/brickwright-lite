@@ -1,0 +1,16 @@
+{
+  "$comment": "8T -> 24T -> 8T chain: 8T (10) meshes 24T (30) at 40, 24T meshes second 8T (10) at 40. Last gear should turn +1× first.",
+  "version": 1,
+  "parts": [
+    {"id": "m", "part": "54696p01.dat", "position": [0, 0, 0], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1], "port": "A"},
+    {"id": "a8a", "part": "3705.dat", "position": [0, -40, 0], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
+    {"id": "g8a", "part": "3647.dat", "position": [0, -40, 0], "rotation": [1, 0, 0, 0, 0, 1, 0, -1, 0]},
+    {"id": "beam", "part": "32524.dat", "position": [0, -40, 40], "rotation": [1, 0, 0, 0, 1, 0, 0, 0, 1]},
+    {"id": "p1", "part": "2780.dat", "position": [0, -40, 20], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
+    {"id": "p2", "part": "2780.dat", "position": [0, -40, -20], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
+    {"id": "a24", "part": "3705.dat", "position": [0, -40, 40], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
+    {"id": "g24", "part": "3648.dat", "position": [0, -40, 40], "rotation": [1, 0, 0, 0, 0, 1, 0, -1, 0]},
+    {"id": "a8b", "part": "3705.dat", "position": [0, -40, 80], "rotation": [0, 1, 0, 1, 0, 0, 0, 0, -1]},
+    {"id": "g8b", "part": "3647.dat", "position": [0, -40, 80], "rotation": [1, 0, 0, 0, 0, 1, 0, -1, 0]}
+  ]
+}
