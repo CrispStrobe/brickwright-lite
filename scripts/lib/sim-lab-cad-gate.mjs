@@ -204,6 +204,24 @@ export const cadInteractions = async (page, beamId, {shotsDir}) => {
     const boxed = await selectionOf(page);
     assert.ok(boxed.includes(beamId) && boxed.includes(second), `Shift+drag box-selects: ${boxed}`);
     console.log(`PASS Build: Shift+drag box-selects (${boxed.length} parts)`);
+
+    // Ctrl+G groups the selection; afterwards ONE click on a member selects the whole group;
+    // Ctrl+Shift+G takes it apart and a click selects one part again.
+    await page.keyboard.press('ControlOrMeta+g');
+    const groups = await page.evaluate(() => window.__bwSimLab.editor.model.groups || []);
+    assert.equal(groups.length, 1, `one group: ${JSON.stringify(groups)}`);
+    assert.deepEqual([...groups[0].parts].sort(), [beamId, second].sort());
+    await page.keyboard.press('Escape');
+    const member = await grabPoint(page, second, 'Technic beam 5');
+    await page.mouse.click(member[0], member[1]);
+    assert.deepEqual(await selectionOf(page), [beamId, second].sort(), 'a click on one member selects the group');
+    await page.keyboard.press('ControlOrMeta+Shift+g');
+    assert.equal((await page.evaluate(() => window.__bwSimLab.editor.model.groups || [])).length, 0, 'ungrouped');
+    await page.keyboard.press('Escape');
+    const again = await grabPoint(page, second, 'Technic beam 5');
+    await page.mouse.click(again[0], again[1]);
+    assert.deepEqual(await selectionOf(page), [second], 'after ungrouping a click selects one part');
+    console.log('PASS Build: Ctrl+G groups (a click selects the whole group), Ctrl+Shift+G ungroups');
     await page.keyboard.press('Escape');
 };
 

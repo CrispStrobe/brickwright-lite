@@ -610,6 +610,20 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         setSelection(editor.model.parts.slice(before).map(p => p.id));
         status({kind: 'pasted', count: parts.length});
     };
+    /** Ctrl+G: the selection becomes one group (editor-state.js `group`): clicking any member then selects all of it. */
+    const groupSelection = () => {
+        if (selection.length < 2) { status({kind: 'refused', reason: 'groupNeedsTwo'}); return; }
+        const ids = selection.slice();
+        if (run({type: 'group', ids}, {grouped: ids.length})) status({kind: 'grouped', count: ids.length});
+    };
+    /** Ctrl+Shift+G: every group the selection touches is taken apart (one undo step). */
+    const ungroupSelection = () => {
+        const groups = (editor.model.groups || []).filter(g => g.parts.some(id => selection.includes(id)));
+        if (!groups.length) { status({kind: 'refused', reason: 'notGrouped'}); return; }
+        if (run({type: 'batch', commands: groups.map(g => ({type: 'ungroup', id: g.id}))}, {ungrouped: groups.length})) {
+            status({kind: 'ungrouped', count: groups.length});
+        }
+    };
     const duplicate = () => {
         if (needSelection()) pasteParts(selectedParts(), [HOLE_PITCH, 0, 0]);
     };
@@ -837,6 +851,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         }
         if (ctrl) {
             const actions = {z: () => (event.shiftKey ? redo() : undo()), y: redo, d: duplicate, c: copy, v: paste,
+                g: () => (event.shiftKey ? ungroupSelection() : groupSelection()),
                 a: () => { setSelection(editor.model.parts.map(p => p.id)); status({kind: 'selected', count: selection.length}); }};
             if (actions[key]) { event.preventDefault(); actions[key](); }
             return;
@@ -926,7 +941,7 @@ export const createEditorView3D = ({container, read, colors, catalog, editor,
         setMode,
         select: ids => setSelection([].concat(ids || [])),
         selectAll: () => setSelection(editor.model.parts.map(p => p.id)),
-        deleteSelection, duplicate, copy, paste, undo, redo, view, fitSelection,
+        deleteSelection, duplicate, copy, paste, undo, redo, view, fitSelection, groupSelection, ungroupSelection,
         turn: (axis, direction = 1) => turnSelection(axis, direction),
         /** World position (metres) of a point on a part (LDU, part frame) or of the gizmo, for the browser gate to aim at. */
         debugPoint: (id, local = [0, 0, 0]) => {
