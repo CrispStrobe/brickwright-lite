@@ -112,13 +112,16 @@ try {
     const maximize = page.getByTestId('bw-editor-maximize');
     await maximize.click();
     await page.getByTitle('Restore panels').waitFor({state: 'visible', timeout: 10000});
-    // The merged row is deliberately retained in maximize mode; only the
-    // expanded chrome below it is replaced by compact conversion controls.
+    // The merged row, which now also holds the conversion actions, is
+    // deliberately retained in maximize mode.
     check(await page.getByTestId('bw-device-select').isVisible(),
         'maximize retains the compact target selector');
-    check(await page.getByRole('button', {name: '⇦ Blocks', exact: true}).isVisible() &&
-        await page.getByRole('button', {name: 'Blocks ⇨', exact: true}).isVisible(),
-    'maximize exposes both compact block-conversion controls');
+    const actions = page.getByTestId('bw-code-action-row');
+    check(await actions.getByRole('button', {name: '⇦ To blocks', exact: true}).isVisible() &&
+        await actions.getByRole('button', {name: 'From blocks ⇨', exact: true}).isVisible(),
+    'maximize exposes both block-conversion controls');
+    check(await page.getByRole('button', {name: /To blocks/}).count() === 1,
+        'maximize shows exactly one To blocks control');
     await page.getByTitle('Restore panels').click();
     await page.getByTitle('Maximize editor').waitFor({state: 'visible', timeout: 10000});
     check(await page.getByTestId('bw-device-select').isVisible(), 'restoring returns the normal editor chrome');

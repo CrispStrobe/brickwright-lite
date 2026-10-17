@@ -953,76 +953,50 @@ const GUIComponent = props => {
                             >
                                 <TabList className={tabClassNames.tabList}>
                                     <ChromeToggle className={chromeStyles.chromeToggle} />
-                                    <Tab
-                                        className={tabClassNames.tab}
-                                        onFocus={preloadPseudocodeImporter}
-                                        onMouseEnter={preloadPseudocodeImporter}
-                                    >
-                                        <img
-                                            draggable={false}
-                                            src={codeIcon}
-                                        />
-                                        <span>Blocks</span>
+                                    <Tab className={tabClassNames.tab}
+                                        title={intl.formatMessage({id: 'gui.gui.blocksTab', defaultMessage: 'Blocks'})}
+                                        aria-label={intl.formatMessage({id: 'gui.gui.blocksTab', defaultMessage: 'Blocks'})}
+                                        onFocus={preloadPseudocodeImporter} onMouseEnter={preloadPseudocodeImporter}>
+                                        <img aria-hidden="true" data-bw-tab-icon="" draggable={false} src={codeIcon} />
+                                        <span data-bw-tab-label=""><FormattedMessage id="gui.gui.blocksTab" defaultMessage="Blocks" /></span>
                                     </Tab>
-                                    <Tab
-                                        className={tabClassNames.tab}
-                                        onClick={onActivateCostumesTab}
-                                    >
-                                        <img
-                                            draggable={false}
-                                            src={costumesIcon}
-                                        />
-                                        {targetIsStage ? (
-                                            <FormattedMessage
-                                                defaultMessage="Backdrops"
-                                                description="Button to get to the backdrops panel"
-                                                id="gui.gui.backdropsTab"
-                                            />
+                                    <Tab className={tabClassNames.tab} onClick={onActivateCostumesTab}
+                                        title={intl.formatMessage(targetIsStage ? {id: 'gui.gui.backdropsTab', defaultMessage: 'Backdrops'} : {id: 'gui.gui.costumesTab', defaultMessage: 'Costumes'})}
+                                        aria-label={intl.formatMessage(targetIsStage ? {id: 'gui.gui.backdropsTab', defaultMessage: 'Backdrops'} : {id: 'gui.gui.costumesTab', defaultMessage: 'Costumes'})}>
+                                        <img aria-hidden="true" data-bw-tab-icon="" draggable={false} src={costumesIcon} />
+                                        <span data-bw-tab-label="">{targetIsStage ? (
+                                            <FormattedMessage defaultMessage="Backdrops" description="Button to get to the backdrops panel" id="gui.gui.backdropsTab" />
                                         ) : (
-                                            <FormattedMessage
-                                                defaultMessage="Costumes"
-                                                description="Button to get to the costumes panel"
-                                                id="gui.gui.costumesTab"
-                                            />
-                                        )}
+                                            <FormattedMessage defaultMessage="Costumes" description="Button to get to the costumes panel" id="gui.gui.costumesTab" />
+                                        )}</span>
                                     </Tab>
-                                    <Tab
-                                        className={tabClassNames.tab}
-                                        onClick={onActivateSoundsTab}
-                                        onFocus={preloadSoundTab}
-                                        onMouseEnter={preloadSoundTab}
-                                    >
-                                        <img
-                                            draggable={false}
-                                            src={soundsIcon}
-                                        />
-                                        <FormattedMessage
-                                            defaultMessage="Sounds"
-                                            description="Button to get to the sounds panel"
-                                            id="gui.gui.soundsTab"
-                                        />
+                                    <Tab className={tabClassNames.tab} onClick={onActivateSoundsTab}
+                                        onFocus={preloadSoundTab} onMouseEnter={preloadSoundTab}
+                                        title={intl.formatMessage({id: 'gui.gui.soundsTab', defaultMessage: 'Sounds'})}
+                                        aria-label={intl.formatMessage({id: 'gui.gui.soundsTab', defaultMessage: 'Sounds'})}>
+                                        <img aria-hidden="true" data-bw-tab-icon="" draggable={false} src={soundsIcon} />
+                                        <span data-bw-tab-label=""><FormattedMessage defaultMessage="Sounds" description="Button to get to the sounds panel" id="gui.gui.soundsTab" /></span>
                                     </Tab>
-                                    <Tab className={tabClassNames.tab}>
-                                        <FormattedMessage
-                                            defaultMessage="Code"
-                                            description="Brickwright code editor tab"
-                                            id="gui.gui.codeTab"
-                                        />
+                                    <Tab className={tabClassNames.tab}
+                                        title={intl.formatMessage({id: 'gui.gui.codeTab', defaultMessage: 'Code'})}
+                                        aria-label={intl.formatMessage({id: 'gui.gui.codeTab', defaultMessage: 'Code'})}>
+                                        <svg aria-hidden="true" data-bw-tab-icon="" viewBox="0 0 24 24" focusable="false">
+                                            <path d="m8 5-6 7 6 7m8-14 6 7-6 7M14 3l-4 18" fill="none" stroke="currentColor" strokeWidth="2" />
+                                        </svg>
+                                        <span data-bw-tab-label=""><FormattedMessage defaultMessage="Code" description="Brickwright code editor tab" id="gui.gui.codeTab" /></span>
                                     </Tab>
-                                    <Tab className={tabClassNames.tab}>
-                                        <FormattedMessage
-                                            defaultMessage="🔌 Circuit"
-                                            description="Brickwright circuit designer tab"
-                                            id="gui.gui.circuitTab"
-                                        />
+                                    <Tab className={tabClassNames.tab}
+                                        title={intl.formatMessage({id: 'gui.gui.circuitTab', defaultMessage: 'Circuit'})}
+                                        aria-label={intl.formatMessage({id: 'gui.gui.circuitTab', defaultMessage: 'Circuit'})}>
+                                        <span aria-hidden="true" data-bw-tab-icon="">🔌</span>
+                                        <span data-bw-tab-label=""><FormattedMessage defaultMessage="Circuit" description="Brickwright circuit designer tab" id="gui.gui.circuitTab" /></span>
                                     </Tab>
                                     {showFpga ? (
-                                        <Tab className={tabClassNames.tab}>
-                                            <FormattedMessage
-                                                defaultMessage="⬢ FPGA"
-                                                description="Brickwright FPGA/HDL surface tab"
-                                                id="gui.gui.fpgaTab"
-                                            />
+                                        <Tab className={tabClassNames.tab}
+                                            title={intl.formatMessage({id: 'gui.gui.fpgaTab', defaultMessage: 'FPGA'})}
+                                            aria-label={intl.formatMessage({id: 'gui.gui.fpgaTab', defaultMessage: 'FPGA'})}>
+                                            <span aria-hidden="true" data-bw-tab-icon="">⬢</span>
+                                            <span data-bw-tab-label=""><FormattedMessage defaultMessage="FPGA" description="Brickwright FPGA/HDL surface tab" id="gui.gui.fpgaTab" /></span>
                                         </Tab>
                                     ) : null}
                                 </TabList>

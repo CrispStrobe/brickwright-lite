@@ -1,5 +1,6 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import {injectIntl, intlShape} from 'react-intl';
 
 /**
  * Collapse the editor's two top rows into one strip.
@@ -42,6 +43,25 @@ class ChromeToggle extends React.Component {
         this.state = {compact: typeof document !== 'undefined' &&
             document.body.classList.contains(CLASS)};
         this.toggle = this.toggle.bind(this);
+        this.button = React.createRef();
+    }
+
+    componentDidMount () {
+        this.mounted = true;
+        // Icons fit while the small local measurement chunk loads.
+        this.button.current.closest('[role="tablist"]').setAttribute('data-bw-tab-icons-only', '');
+        import(/* webpackChunkName: "tab-label-fit" */ '../../lib/fit-tab-labels').then(({installTabLabelFit}) => {
+            if (this.mounted) this.labelFit = installTabLabelFit(this.button.current, () => this.state.compact);
+        });
+    }
+
+    componentDidUpdate () {
+        if (this.labelFit) this.labelFit.scheduleFit();
+    }
+
+    componentWillUnmount () {
+        this.mounted = false;
+        if (this.labelFit) this.labelFit.dispose();
     }
 
     toggle () {
@@ -61,9 +81,19 @@ class ChromeToggle extends React.Component {
             <button
                 aria-pressed={compact}
                 className={this.props.className}
-                title={compact
-                    ? (/^de/i.test(navigator.language) ? 'Menüleiste und Tab-Beschriftungen anzeigen' : 'Show the menu bar and tab labels')
-                    : (/^de/i.test(navigator.language) ? 'Menüleiste und Tabs zu einem Streifen zusammenfalten' : 'Collapse the menu bar and tabs into one strip')}
+                type="button"
+                ref={this.button}
+                data-testid="bw-chrome-toggle"
+                aria-label={this.props.intl.formatMessage(compact ? {
+                    id: 'gui.chrome.expand', defaultMessage: 'Show the menu bar and tab labels'
+                } : {
+                    id: 'gui.chrome.collapse', defaultMessage: 'Collapse the menu bar and tabs into one strip'
+                })}
+                title={this.props.intl.formatMessage(compact ? {
+                    id: 'gui.chrome.expand', defaultMessage: 'Show the menu bar and tab labels'
+                } : {
+                    id: 'gui.chrome.collapse', defaultMessage: 'Collapse the menu bar and tabs into one strip'
+                })}
                 onClick={this.toggle}
             >
                 {/* Three dots when there is something folded away, a chevron when
@@ -75,7 +105,8 @@ class ChromeToggle extends React.Component {
 }
 
 ChromeToggle.propTypes = {
-    className: PropTypes.string
+    className: PropTypes.string,
+    intl: intlShape.isRequired
 };
 
-export default ChromeToggle;
+export default injectIntl(ChromeToggle);

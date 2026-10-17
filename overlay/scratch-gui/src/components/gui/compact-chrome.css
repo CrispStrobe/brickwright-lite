@@ -92,29 +92,46 @@
     display: none !important;
 }
 
-/* The tab row keeps every tab — capability, not permanence — but drops the
-   words. The icons and emoji stay, so nothing becomes unreachable.
-   position:relative + a stacking context above the editor body guarantees the
-   tabs AND the ⋯ toggle stay on top and clickable: with the menu bar gone the
-   strip was being overlaid by the body/workspace and swallowing every click. */
-:global(body.bw-compact-chrome) [class*="gui_tab-list"] {
-    height: 32px;
+/* Only tabs, never the tab list or expand button, receive tab styling. */
+.responsive-editor :global([role="tablist"]) {
+    padding: 0;
+    gap: 2px;
+}
+.responsive-editor :global([role="tab"]) {
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    min-width: 32px;
+    margin: 0 !important;
+    gap: 4px;
+}
+.responsive-editor :global([data-bw-tab-icon]) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    margin: 0;
+}
+.responsive-editor :global([data-bw-tab-label]) {
+    font-size: 12px;
+}
+.responsive-editor :global([data-bw-tab-icons-only] [data-bw-tab-label]) {
+    display: none;
+}
+:global(body.bw-compact-chrome) .responsive-editor :global([role="tablist"]) {
+    height: auto;
+    min-height: 32px;
     position: relative;
+    left: auto;
+    right: auto;
     z-index: 600;
     pointer-events: auto;
 }
-
-:global(body.bw-compact-chrome) [class*="gui_tab"] {
-    padding: 0 10px !important;
-    font-size: 0;             /* hides the label text */
+:global(body.bw-compact-chrome) .responsive-editor :global([role="tab"]) {
+    padding: 0 10px;
     line-height: 32px;
-}
-
-/* …but not the icon, which is a child element and needs its size back. */
-:global(body.bw-compact-chrome) [class*="gui_tab"] img,
-:global(body.bw-compact-chrome) [class*="gui_tab"] span {
-    font-size: 15px;
-    margin: 0;
 }
 
 /* The body takes back the entire menu-bar row. */
